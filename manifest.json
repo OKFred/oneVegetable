@@ -1,0 +1,50 @@
+{
+    "manifest_version": 2,
+    "name": "一根青菜",
+    "version": "0.0.1",
+    "description": "__MSG_pluginDesc__",
+	"default_locale": "zh_CN",
+	"author": "FredZ",
+    "permissions": [
+        "nativeMessaging",
+		"cookies",
+        "contextMenus",
+        "tabs",
+        "notifications",
+        "webRequest",
+        "webRequestBlocking",
+        "storage",
+        "alarms",
+        "<all_urls>"
+    ],
+    "browser_action": {
+        "default_icon": "img/veg.png",
+        "default_title": "for you specially",
+        "default_popup": "/main/popup.html",
+        "badge": "Hello dear"
+    },
+    "homepage_url": "https://i.alibaba.com",
+    "options_ui": {
+        "page": "/main/option.html",
+        "chrome_style": true
+    },
+    "icons": {
+        "48": "img/veg.png"
+    },
+    "web_accessible_resources": [
+    ],
+    "background": {
+        "scripts": [
+            "/base/network.js",
+            "/rpcs/rpc.js",
+            "/page_ma/ma.js",
+            "/main/bg.js"
+        ]
+    },
+    "devtools_page": "",
+    "omnibox": {
+        "keyword": "999"
+    },
+    "content_scripts": [
+    ]
+}
