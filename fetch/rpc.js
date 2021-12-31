@@ -8,7 +8,6 @@ rpcData=[
 			'url':	'https://i.alibaba.com/ajax/setLanguage.do',
 			"data": {
 				"language":"",
-				"_tb_token_": '',
 			}
 		},
 		"response": {
