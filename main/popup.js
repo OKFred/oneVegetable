@@ -3,14 +3,52 @@ console.log('papa');
 var BG = chrome.extension.getBackgroundPage();	/* talk with bg */
 var Check5=document.getElementById("option5");
 var label5=document.getElementById("label5");
+var inputUserEmail=document.getElementById("inputUserEmail");
+var divBeforeLogin=document.getElementById("divBeforeLogin");
+var divAfterLogin=document.getElementById("divAfterLogin");
+var divBeforeAuth=document.getElementById("divBeforeAuth");
+var divAfterAuth=document.getElementById("divAfterAuth");
+var erpLoginURL=document.getElementById("erpLoginURL");
+
+(async function preCheck() {
+	let userConfig = await BG.read(null, "sync");
+	let { userEmail, appData } = userConfig;
+	if (userEmail) inputUserEmail.value = userEmail;
+	let loginStatus = await BG.taskMa.checkLogin();
+	if (loginStatus) {
+		divBeforeLogin.setAttribute("hidden", "");
+		divAfterLogin.removeAttribute("hidden");
+	} else {
+		divAfterLogin.setAttribute("hidden", "");
+		divBeforeLogin.removeAttribute("hidden");
+	};
+	if (appData) {
+		console.log("已完成授权");
+		divBeforeAuth.setAttribute("hidden", "");
+		divAfterAuth.removeAttribute("hidden");
+		//erpLoginURL.setAttribute("href", chrome.extension.getURL("/main/option.html"));
+	} else {
+		divAfterAuth.setAttribute("hidden", "");
+		divBeforeAuth.removeAttribute("hidden");
+	}
+	return;
+})();
 
 Check5.addEventListener('click', ()=>{
 	if (Check5.checked){
-		BG.bgData.language='zh_CN';
+		BG.users.default.maData.language='zh_CN';
 		label5.innerText='中文界面';
 	}else{
-		BG.bgData.language='en_US';
+		BG.users.default.maData.language='en_US';
 		label5.innerText='English page';
 	};
-	BG.checkLogin();
+	BG.taskMa.changeLanguage();
+});
+
+inputUserEmail.addEventListener('change', async(e) => {
+	let value = e.target.value.trim();
+	return BG.write({
+		"userEmail": value,
+		"status": value?true:false,
+	}, "sync");
 });

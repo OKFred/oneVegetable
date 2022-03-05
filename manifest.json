@@ -1,13 +1,19 @@
 {
     "manifest_version": 2,
     "name": "一根青菜",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "description": "__MSG_pluginDesc__",
 	"default_locale": "zh_CN",
 	"author": "FredZ",
     "permissions": [
+        "webRequest",
+        "webRequestBlocking",
+        "nativeMessaging",
 		"cookies",
-        "*://*.alibaba.com/*"
+        "storage",
+        "*://*.taobao.com/*",
+        "*://*.alibaba.com/*",
+        "*://*.aliyun.com/*"
     ],
     "browser_action": {
         "default_icon": "img/veg.png",
@@ -27,12 +33,38 @@
     "background": {
         "scripts": [
             "/base/network.js",
+            "/base/md5.js",
             "/fetch/rpc.js",
-            "/pages/ma/ma.js",
+            "/fetch/ma.js",
+            "/fetch/aliyun.js",
+            "/main/extensionPromisify.js",
+            "/main/tasks/taskMa.js",
+            "/main/bgHandler.js",
             "/main/bg.js"
         ]
     },
     "devtools_page": "",
     "content_scripts": [
+        {
+            "matches": [
+                "https://activity.alibaba.com/pc/developer.html*"
+            ],
+            "all_frames": false,
+            "js": [
+                "/main/msgHandler.js",
+                "/pages/ma/maDev.js"
+            ],
+            "run_at": "document_idle"
+        },
+        {
+            "matches": [
+                "https://i.alibaba.com/*"
+            ],
+            "all_frames": false,
+            "js": [
+                "/pages/ma/maHome.js"
+            ],
+            "run_at": "document_idle"
+        }
     ]
 }

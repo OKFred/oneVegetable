@@ -1,28 +1,39 @@
 <!doctype html>
-
+<head>
 <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
 
+<body>
 <div class='container-fluid' style="min-width: 369px;">
 	<div class='row'>
 		<div class='col-md'>
-			<br />一键切换中英文 / 🚀
-			<br />change Language in My Alibaba
-			<br />⚠记得先登录 <a href='https://i.alibaba.com/' target='_blank'>My Alibaba</a>
-			<br />
-			<br />
-		</div>
-	</div>
-	<div class='row'>
-		<div class='col-md'>
-			<div class="form-check form-switch">
-				<input class="form-check-input" type="checkbox" id="option5">
-				<label class="form-check-label" for="option5" id="label5">MA语言切换</label>
-				<br />
-				<br />
+			<h5 style="padding: 6px;">Welcome -- 欢迎使用</h5>
+			<div id="divBeforeLogin">
+				请登录先👉 <a href='https://i.alibaba.com/' target='_blank'>My Alibaba</a>
+			</div>
+			<div id="divAfterLogin">
+				<div class="form-check form-switch">
+					<input class="form-check-input" type="checkbox" id="option5">
+					<label class="form-check-label" for="option5" id="label5">MA语言切换</label>
+				</div>
+				<hr>
+				<div id="divBeforeAuth">
+					🔑<a href='https://activity.alibaba.com/pc/developer.html' target='_blank'>ERP授权</a>
+					<br /><input class="form-control" type="email" id="inputUserEmail" placeholder="开发者邮箱(可选)">
+				</div>
+				<div id="divAfterAuth">
+					🚀<a id="erpLoginURL" href='https://activity.alibaba.com/pc/developer.html' target='_blank'>ERP登录</a>
+				</div>
 			</div>
 		</div>
 	</div>
+	<hr>
+	<div class='row'>
+		<div class='col-md'>
+		</div>
+	</div>
 </div>
+</body>
 
 <!--	resources 资源	-->
 
