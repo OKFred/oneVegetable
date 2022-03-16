@@ -1,7 +1,7 @@
 "use strict";
 
 console.log('hi develper');
-let baseData = {
+var baseData = {
 	appData:{	//授权信息暂存
 		app_key:'', appKey:'', 
 		app_secret: '', appSecret: '',

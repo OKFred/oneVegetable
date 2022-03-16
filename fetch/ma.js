@@ -160,13 +160,12 @@ var ma=(()=>{
 	};
 	function developerCodeCheck(msg){
         let { redirectURL, net } = msg.response;
-        let finalURL=(redirectURL)? redirectURL:net.url; 
-        if (!finalURL || typeof (finalURL) !== 'string') {
-            msg.response.result="链接错误"
+        if (!redirectURL) {
+            msg.response.result="需要重新授权"
             msg.response.status=false;
             return msg;
         };
-        let sp = new URL(finalURL).searchParams;
+        let sp = new URL(net.url).searchParams;
         let code = sp.get("code");
         let state = sp.get("state");
         msg.response.result={code, state};

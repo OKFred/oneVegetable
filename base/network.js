@@ -19,7 +19,7 @@ var main=(()=>{
         queryObj=await headerMaker(queryObj); //request header
         let header=queryObj.request.header;
         let fetching;
-        try { fetching = await fetch(url, header) } catch (e) { console.log("network error" + url); debugger};    //pending resolve
+        try { fetching = await fetch(url, header) } catch (e) { console.log("network error"); return res};    //pending resolve
         if (typeof(logger)!=='undefined') logger(url);
         let res=headerReceiver(queryObj, fetching);    //response header
         let data;

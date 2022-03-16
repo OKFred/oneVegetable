@@ -26,7 +26,7 @@ var erpLoginURL=document.getElementById("erpLoginURL");
 		console.log("已完成授权");
 		divBeforeAuth.setAttribute("hidden", "");
 		divAfterAuth.removeAttribute("hidden");
-		//erpLoginURL.setAttribute("href", chrome.extension.getURL("/main/option.html"));
+		//erpLoginURL.setAttribute("href", chrome.extension.getURL("/public/index.html"));
 	} else {
 		divAfterAuth.setAttribute("hidden", "");
 		divBeforeAuth.removeAttribute("hidden");
