@@ -159,6 +159,25 @@ var rpc=[
 	},
 	{
 		"request": {
+			"header":{"method":"GET"},
+			'url':	'https://crosstrade.alibaba.com/ecology/ajax/service/save.json',
+			'data':{
+				'appKey':'',
+				'expireTime':'after_6m',	//after_1m, after_3m
+				'ctoken':'',
+				'_tb_token_':'',
+			}
+		},
+		"response": {
+			"data": {}
+		},
+		"info": {
+			"type": "ma",
+			"for": "国际站服务续期"
+		}
+	},
+	{
+		"request": {
 			'url':	'https://accounts.alibaba.com/user/get_account_profile.htm',
 			"header": {"method":"GET"},
 			"data": {
@@ -191,6 +210,37 @@ var rpc=[
 		"info": {
 			"type": "ma",
 			"for": "国际站查询账号邮箱"
+		}
+	},
+    {
+        "request": {
+			"header":{"redirect":"manual","method":"GET"},
+			"url": "https://alicrm.alibaba.com/jsonp/customerPluginQueryServiceI/queryCustomerInfo.json",
+            "data": {
+				"buyerLoginId": "",
+				"_tb_token_": ""
+			}
+        },
+        "response": {
+            "data": {}
+        },
+        "info": {
+			"type": "ma",
+            "for": "国际站获取额外信息"
+        }
+    },
+	{
+		"request": {
+			'url':	'https://message.alibaba.com/message/default.htm?menu_code=messageCenter#feedback',
+			"header": {"method":"GET"},
+			"data": ""
+		},
+		"response": {
+			"data": ""//html string
+		},
+		"info": {
+			"type": "ma",
+			"for": "国际站查询询盘客户"
 		}
 	},
 	{

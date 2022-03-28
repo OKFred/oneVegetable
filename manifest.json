@@ -1,9 +1,10 @@
 {
     "manifest_version": 2,
     "name": "一根青菜",
-    "version": "0.0.3",
+    "version": "0.0.5",
     "description": "__MSG_pluginDesc__",
 	"default_locale": "zh_CN",
+    "homepage": "/public/",
 	"author": "FredZ",
     "permissions": [
         "webRequest",
@@ -13,6 +14,8 @@
         "storage",
         "*://*.taobao.com/*",
         "*://*.alibaba.com/*",
+        "*://*.cloud-ide-router.alibaba-inc.com/*",
+        "*://*.fred.wiki/*",
         "*://*.aliyun.com/*"
     ],
     "browser_action": {
@@ -53,6 +56,20 @@
             "js": [
                 "/main/msgHandler.js",
                 "/pages/ma/maDev.js"
+            ],
+            "run_at": "document_idle"
+        },
+        {
+            "matches": [
+                "https://message.alibaba.com/message/maDetail.htm*"
+            ],
+            "all_frames": false,
+            "js": [
+                "/base/proto_string.js",
+                "/base/proto_date.js",
+                "/base/qrcode.min.js",
+                "/main/msgHandler.js",
+                "/pages/ma/maInquiry.js"
             ],
             "run_at": "document_idle"
         },

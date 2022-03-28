@@ -1,6 +1,7 @@
 "use strict";
 console.log('日志已启用');
 chrome.runtime.onConnect.addListener(handleConnection);
+chrome.webRequest.onHeadersReceived.addListener(...handleResponseHeaders());
 chrome.webRequest.onBeforeSendHeaders.addListener(...handleRequestHeaders());
 var users = {
 	default: {

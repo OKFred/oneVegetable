@@ -86,17 +86,30 @@ async function sendConfig(msg, sender){
 
 function handleRequestHeaders(){	//CORS 伪装
 	return [
-		(details)=>{
-			if (!/^chrome-extension/.test(details.initiator)) return;
+		(details) => {
+			if (!/localhost|127.0.0.1|fred.wiki|cloud-ide-router.alibaba-inc.com/gi.test(details.initiator)) return;
+			//if (!/^chrome-extension/.test(details.initiator)) return;
 			let {requestHeaders, url}=details;
-			requestHeaders.forEach(headerObj=>{
-				if (/origin|referer|referrer/gi.test(headerObj.name)) delete headerObj[headerObj.name];
-			});
-			let orgin=new URL(url).origin;
-			requestHeaders.push({name:"Origin",value:orgin},{name:"Referer",value:orgin});
+			let origin=new URL(url).origin;
+			requestHeaders = requestHeaders.filter((obj) => !/origin|referer|referrer/gi.test(obj.name));
+			requestHeaders.push({"name":"Origin","value":origin},{"name":"Referer","value":origin});
 			return {requestHeaders};
 		},
 		{urls: ["<all_urls>"]},
 		["blocking", "requestHeaders", "extraHeaders"]
 	]
 };
+
+function handleResponseHeaders(){   //handle CORS requests when dev
+    return [
+		(details) => {
+            if (!/localhost|127.0.0.1|fred.wiki|cloud-ide-router.alibaba-inc.com/gi.test(details.initiator)) return;
+            let {responseHeaders}=details;
+			responseHeaders=responseHeaders.filter((headerObj)=>(!/access-control-allow-origin/gi.test(headerObj.name)));
+			responseHeaders.push({name:"Access-Control-Allow-Origin",value:"*"});
+			return {responseHeaders};
+		},
+		{urls: ["<all_urls>"]},
+		["blocking", "responseHeaders", "extraHeaders"]
+    ]
+}

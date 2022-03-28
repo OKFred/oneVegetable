@@ -78,6 +78,44 @@ var ma=(()=>{
         msg.response.result = email;
         msg.response.status = true;
         return msg;
+    };
+
+	function aliCRMQuery(memberId,_tb_token_){
+		let What='国际站获取额外信息';
+		let queryObj=prepareMsg(What);
+		queryObj.request.data={
+			"buyerLoginId": memberId,
+			"_tb_token_": _tb_token_
+		};
+		return queryObj;
+	};
+	function aliCRMCheck(msg){
+        if (!msg.response.data||!msg.response.data.data||msg.response.data.code=="REDIRECT"){
+            msg.response.status=false;
+            msg.response.result='MA账号退出登录';
+            return msg;
+        };
+        let data=msg.response.data.data.data;
+        if (!data || ! msg.response.data.data.data.buyerInfo){
+            msg.response.status=false;
+            msg.response.result='没有数据';
+            return msg;
+        };
+        let buyerInfo=msg.response.data.data.data.buyerInfo;
+        let { loginDays, registerDate } = buyerInfo;
+        buyerInfo.contacts = buyerInfo.firstName + ' ' + buyerInfo.lastName;
+        buyerInfo.loginDays=(loginDays=null)?'?':(loginDays==-1)?'?':loginDays; //登录天数
+        buyerInfo.registerDate = (registerDate == null) ? '' : (registerDate == -1) ? '' : registerDate * 1000;    //注册时间
+        if (buyerInfo.alicrmCustomerInfo) Object.assign(buyerInfo, buyerInfo.alicrmCustomerInfo);
+        if (buyerInfo.buyerContactInfo) Object.assign(buyerInfo, buyerInfo.buyerContactInfo);
+        buyerInfo.mobileNumber = (buyerInfo.mobileNumber == null) ? '' : buyerInfo.mobileNumber.replace(/-/g, "");
+        buyerInfo.phoneNumber = (buyerInfo.phoneNumber == null) ? '' : buyerInfo.phoneNumber.replace(/-/g, "");        let newObj=Object.assign({}, data, buyerInfo);
+        delete newObj['buyerInfo'];
+        delete newObj['alicrmCustomerInfo'];
+        delete newObj['buyerContactInfo'];
+        msg.response.result=newObj;
+        msg.response.status=true;
+        return msg;
 	};
 
 	function developerRegisterQuery(userInfo, callbackUrl, _tb_token_){
@@ -240,6 +278,30 @@ var ma=(()=>{
         msg.response.result=result;
         msg.response.status=status;
         return msg;
+    };
+
+	function developerRenewalQuery(appKey, TBToken, CToken, expireTime){
+		let What='国际站服务续期';
+		let queryObj=prepareMsg(What);
+        queryObj.request.data.appKey=appKey;
+        queryObj.request.data.ctoken=CToken;
+        queryObj.request.data._tb_token_ = TBToken;
+        if (expireTime) queryObj.request.data.expireTime = expireTime;
+		return queryObj;
+	};
+	function developerRenewalCheck(msg){
+        let {net, data}=msg.response;
+        let status,result;
+        if(net.ok && data.isSuccess){
+            result="续约成功";
+            status=true;
+        } else {
+            result="续约失败"
+            status=false;
+        };
+        msg.response.result=result;
+        msg.response.status=status;
+        return msg;
 	};
 
 	function developerAPIQuery(authObj, paramObj){
@@ -298,6 +360,8 @@ var ma=(()=>{
         accountMemberIdCheck,
         accountEmailQuery,
         accountEmailCheck,
+        aliCRMQuery,
+        aliCRMCheck,
         developerRegisterQuery,
         developerRegisterCheck,
         developerAppKeyQuery,
@@ -310,6 +374,8 @@ var ma=(()=>{
         developerAutoAuthCheck,
         developerTokenQuery,
         developerTokenCheck,
+        developerRenewalQuery,
+        developerRenewalCheck,
         developerAPIQuery,
         developerAPICheck,
     };

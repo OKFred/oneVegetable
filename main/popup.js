@@ -1,7 +1,8 @@
 console.log('papa');
 
 var BG = chrome.extension.getBackgroundPage();	/* talk with bg */
-var Check5=document.getElementById("option5");
+var Check1=document.getElementById("option1");
+var Check5 = document.getElementById("option5");
 var label5=document.getElementById("label5");
 var inputUserEmail=document.getElementById("inputUserEmail");
 var divBeforeLogin=document.getElementById("divBeforeLogin");
@@ -12,7 +13,10 @@ var erpLoginURL=document.getElementById("erpLoginURL");
 
 (async function preCheck() {
 	let userConfig = await BG.read(null, "sync");
-	let { userEmail, appData } = userConfig;
+	let { userEmail, appData, needQRcode } = userConfig;
+	let domArr=[Check1];
+	let setArr=[needQRcode];
+	domArr.forEach((dom, index)=>setArr[index] ? dom.setAttribute('checked',''): dom.removeAttribute('checked'));
 	if (userEmail) inputUserEmail.value = userEmail;
 	let loginStatus = await BG.taskMa.checkLogin();
 	if (loginStatus) {
@@ -26,6 +30,7 @@ var erpLoginURL=document.getElementById("erpLoginURL");
 		console.log("已完成授权");
 		divBeforeAuth.setAttribute("hidden", "");
 		divAfterAuth.removeAttribute("hidden");
+		erpLoginURL.setAttribute("href", "https://it.fred.wiki");
 		//erpLoginURL.setAttribute("href", chrome.extension.getURL("/public/index.html"));
 	} else {
 		divAfterAuth.setAttribute("hidden", "");
@@ -33,6 +38,10 @@ var erpLoginURL=document.getElementById("erpLoginURL");
 	}
 	return;
 })();
+
+Check1.addEventListener('click', async()=>{
+	return await BG.write({ "needQRcode": Check1.checked},"sync");
+});	/* 监听 二维码 开关 */
 
 Check5.addEventListener('click', ()=>{
 	if (Check5.checked){

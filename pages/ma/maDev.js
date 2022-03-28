@@ -31,6 +31,7 @@ function handler(msg){	//消息处理
 	else if (msg.info.for=='国际站获取授权码') codeReady(msg)
 	else if (msg.info.for=='国际站自动授权') authReady(msg)
 	else if (msg.info.for=='国际站查询授权令牌') getTokenReady(msg)
+	else if (msg.info.for=='国际站服务续期') serviceRenewReady(msg)
 	else if (msg.info.for=='国际站调用API') apiReady(msg)
 	else if (msg.info.for=='国际站保存令牌') saveTokenReady(msg)
 	else if (msg.info.for=='浏览器保存授权信息') saveTokenReady(msg)
@@ -198,9 +199,25 @@ function getTokenReady(msg) {
 		baseData.appData['accessToken'] = result.access_token;
 		Object.assign(baseData.appData, result);
 		bindToDom();
-		saveToken();
+		renewService();
 	};
 	return console.log('查询授权：',result);
+};
+
+function renewService() {
+	let queryObj=prepareMsg('后台任务');
+	let { appKey } = baseData.appData;
+	let { CToken, TBToken } = baseData.maData;
+	queryObj.request.args=[appKey,TBToken,CToken ];
+	queryObj.request.ns=['ma','developerRenewalQuery'];
+	queryObj.response.cb=['ma','developerRenewalCheck'];
+	bgConnect(queryObj);
+};
+
+function serviceRenewReady(msg) {
+	let { result } = msg.response;
+	console.log(result);
+	saveToken();
 };
 
 function saveToken() {
