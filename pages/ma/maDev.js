@@ -2,7 +2,7 @@
 
 console.log('hi develper');
 var baseData = {
-	appData:{	//授权信息暂存
+	loginData:{	//授权信息暂存
 		app_key:'', appKey:'', 
 		app_secret: '', appSecret: '',
 		access_token: '', accessToken: '',
@@ -51,7 +51,7 @@ function configReady(msg) {
 	let {data}=msg.response;
 	console.log('配置清单已就位');
 	Object.assign(baseData,data);
-	if (!baseData.maData.status) return queryResult(false, '账号未登录');
+	if (!baseData.maData.status) return queryResult(false, 'Not Logged In--账号未登录');
 	if (baseData.configData.status) baseData.authData.userEmail = baseData.configData.userEmail;
 	accountMIDCheck();
 	return console.log(data);
@@ -69,7 +69,8 @@ function accountMIDCheck() {
 function accountMIDReady(msg) {
 	let { status, result } = msg.response;
 	if (!status ||!baseData.configData.userEmail) return accountEmailCheck();
-	baseData.authData.userName = result.loginId;
+	if (result.loginId) baseData.authData.userName = result.loginId;
+	Object.assign(baseData.authData, result);
 	return getAppKey();
 };
 
@@ -117,14 +118,14 @@ function getAppKey(){	//国际站获取AppKey
 function appKeyReady(msg) {
 	let {status, result}=msg.response;
 	if (!status && baseObj.authData.maxTrial>0) return registration();
-	baseData.appData['app_key']=baseData.appData['appKey']=result;
+	baseData.loginData['app_key']=baseData.loginData['appKey']=result;
 	getAppSecret();
 	return console.log(result);
 };
 
 function getAppSecret(){	//国际站获取AppSecret
 	let queryObj=prepareMsg('后台任务');
-	let {appKey}=baseData.appData;
+	let {appKey}=baseData.loginData;
 	let { TBToken } = baseData.maData;
 	queryObj.request.args=[appKey, TBToken];
 	queryObj.request.ns=['ma','developerAppSecretQuery'];
@@ -135,7 +136,7 @@ function getAppSecret(){	//国际站获取AppSecret
 function appSecretReady(msg) {
 	let {status, result}=msg.response;
 	if (status){
-		baseData.appData['app_secret']=baseData.appData['appSecret']=result;
+		baseData.loginData['app_secret']=baseData.loginData['appSecret']=result;
 		getACode();
 	};
 	return console.log(result);
@@ -143,7 +144,7 @@ function appSecretReady(msg) {
 
 function getACode(){	//国际站获取授权码
 	let queryObj=prepareMsg('后台任务');
-	let {appKey}=baseData.appData;
+	let {appKey}=baseData.loginData;
 	queryObj.request.args=[appKey];
 	queryObj.request.ns=['ma','developerCodeQuery'];
 	queryObj.response.cb=['ma','developerCodeCheck'];
@@ -153,7 +154,7 @@ function getACode(){	//国际站获取授权码
 function codeReady(msg) {
 	let {status, result}=msg.response;
 	if (status){
-		baseData.appData['code']=result.code;
+		baseData.loginData['code']=result.code;
 		queryForToken();
 		console.log("请求令牌");
 	}else{
@@ -167,7 +168,7 @@ function codeReady(msg) {
 
 function autoAuth(){	//国际站自动授权
 	let queryObj=prepareMsg('后台任务');
-	let { appKey} = baseData.appData;
+	let { appKey} = baseData.loginData;
 	let { authHtml, authUrl } = baseData.authData;
 	queryObj.request.args=[appKey,authHtml,authUrl];
 	queryObj.request.ns=['ma','developerAutoAuthQuery'];
@@ -178,7 +179,7 @@ function autoAuth(){	//国际站自动授权
 function authReady(msg) {
 	let {status, result}=msg.response;
 	if (status){
-		baseData.appData['code']=result.code;
+		baseData.loginData['code']=result.code;
 		queryForToken();
 	};
 	return console.log(result);
@@ -186,7 +187,7 @@ function authReady(msg) {
 
 async function queryForToken(){	//国际站查询授权信息
 	let queryObj=prepareMsg('后台任务');
-	let { appKey,appSecret,code } = baseData.appData;
+	let { appKey,appSecret,code } = baseData.loginData;
 	queryObj.request.args=[appKey,appSecret,code ];
 	queryObj.request.ns=['ma','developerTokenQuery'];
 	queryObj.response.cb=['ma','developerTokenCheck'];
@@ -196,8 +197,8 @@ async function queryForToken(){	//国际站查询授权信息
 function getTokenReady(msg) {
 	let {status, result}=msg.response;
 	if (status) {
-		baseData.appData['accessToken'] = result.access_token;
-		Object.assign(baseData.appData, result);
+		baseData.loginData['accessToken'] = result.access_token;
+		Object.assign(baseData.loginData, result);
 		bindToDom();
 		renewService();
 	};
@@ -206,7 +207,7 @@ function getTokenReady(msg) {
 
 function renewService() {
 	let queryObj=prepareMsg('后台任务');
-	let { appKey } = baseData.appData;
+	let { appKey } = baseData.loginData;
 	let { CToken, TBToken } = baseData.maData;
 	queryObj.request.args=[appKey,TBToken,CToken ];
 	queryObj.request.ns=['ma','developerRenewalQuery'];
@@ -221,14 +222,16 @@ function serviceRenewReady(msg) {
 };
 
 function saveToken() {
+	let { loginData, authData, configData } = baseData;
 	let queryObj = prepareMsg('后台任务');
-	queryObj.request.args=[[{"appData": baseData.appData},"sync"],"write"];
+	let dataSaveObj = { ...loginData, ...authData };
+	queryObj.request.args=[[{"loginData": dataSaveObj},"sync"],"write"];
 	queryObj.request.ns=['syncData'];
 	queryObj.info.for="浏览器保存授权信息";
 	bgConnect(queryObj);
+	if (!configData.needCloudService) return;
 	queryObj = prepareMsg('后台任务');
-	let dataObj = { ...baseData.appData, ...baseData.authData };
-	queryObj.request.args=[dataObj];
+	queryObj.request.args=[dataSaveObj];
 	queryObj.request.ns=['aliyun','developerWriteTokenQuery'];
 	queryObj.response.cb=['aliyun','developerWriteTokenCheck'];
 	bgConnect(queryObj);
@@ -248,7 +251,7 @@ function bindToDom() {
 			let host=apiRows[i].children[index-2];
 			let method=apiRows[i].children[index-1].innerText;
 			host.addEventListener('dblclick', function () {
-				baseData.appData['method'] = method;
+				baseData.loginData['method'] = method;
 				queryAPI();
 			})
 		};
@@ -257,7 +260,7 @@ function bindToDom() {
 
 async function queryAPI(){
 	let queryObj=prepareMsg('后台任务');
-	queryObj.request.args=[baseData.appData/* , baseData.paramObj */];
+	queryObj.request.args=[baseData.loginData/* , baseData.paramObj */];
 	queryObj.request.ns=['ma','developerAPIQuery'];
 	queryObj.response.cb=['ma','developerAPICheck'];
 	bgConnect(queryObj);

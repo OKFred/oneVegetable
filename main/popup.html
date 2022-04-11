@@ -4,26 +4,30 @@
 </head>
 
 <body>
-<div class='container-fluid' style="min-width: 369px;">
+<div class='container-fluid' style="min-width: 339px;">
 	<div class='row'>
 		<div class='col-md'>
-			<h5 style="padding: 6px;">Welcome -- 欢迎使用</h5>
+			<h5 style="padding: 3px;" id="Welcome"></h5>
 			<div id="divBeforeLogin">
-				请登录先👉 <a href='https://i.alibaba.com/' target='_blank'>My Alibaba</a>
+				<span id="spanNeedLogin"></span>👉 <a href='https://i.alibaba.com/' target='_blank'>My Alibaba</a>
 			</div>
 			<div id="divAfterLogin">
 				<div class="form-check form-switch">
 					<input class="form-check-input" type="checkbox" id="option1">
-					<label class="form-check-label" for="option1">二维码</label>
+					<label class="form-check-label" for="option1" id="label1">QrCode--二维码</label>
 				</div>
 				<div class="form-check form-switch">
 					<input class="form-check-input" type="checkbox" id="option5">
-					<label class="form-check-label" for="option5" id="label5">MA语言切换</label>
+					<label class="form-check-label" for="option5" id="label5">Language--语言切换</label>
+				</div>
+				<div class="form-check form-switch">
+					<input class="form-check-input" type="checkbox" id="option6">
+					<label class="form-check-label" for="option6" id="label6">Local service--本地服务</label>
 				</div>
 				<hr>
 				<div id="divBeforeAuth">
-					🔑<a href='https://activity.alibaba.com/pc/developer.html' target='_blank'>ERP授权</a>
-					<br /><input class="form-control" type="email" id="inputUserEmail" placeholder="开发者邮箱(可选)">
+					🔑<a id="erpAuthURL" href='https://activity.alibaba.com/pc/developer.html' target='_blank'>ERP授权</a>
+					<br /><input hidden class="form-control" type="email" id="inputUserEmail" placeholder="开发者邮箱(可选)">
 				</div>
 				<div id="divAfterAuth">
 					🚀<a id="erpLoginURL" href='https://query.aliyun.com/rest/erp.index' target='_blank'>ERP登录</a>

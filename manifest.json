@@ -1,10 +1,10 @@
 {
     "manifest_version": 2,
     "name": "一根青菜",
-    "version": "0.0.5",
+    "version": "1.0.1",
     "description": "__MSG_pluginDesc__",
+    "content_security_policy": "script-src 'self' blob: filesystem: 'unsafe-inline' 'unsafe-eval' 'sha256-EBNqxohkvOoz3j+BhK2CjKd5GV6ER5ODsh4WPotfz5o=' 'sha256-SI3nw33GJj4a4p0h0pGFlktYng+0TwGxuNv/MmY1U9c=' https://*.cloudflare.com; object-src 'self'",
 	"default_locale": "zh_CN",
-    "homepage": "/public/",
 	"author": "FredZ",
     "permissions": [
         "webRequest",
@@ -12,10 +12,9 @@
         "nativeMessaging",
 		"cookies",
         "storage",
+        "<all_urls>",
         "*://*.taobao.com/*",
         "*://*.alibaba.com/*",
-        "*://*.cloud-ide-router.alibaba-inc.com/*",
-        "*://*.fred.wiki/*",
         "*://*.aliyun.com/*"
     ],
     "browser_action": {
@@ -82,6 +81,17 @@
                 "/pages/ma/maHome.js"
             ],
             "run_at": "document_idle"
+        },
+        {
+            "matches": [
+                "http://localhost:3000/*"
+            ],
+            "all_frames": false,
+            "js": [
+                "/public/index.js",
+                "/public/fERP.js"
+            ],
+            "run_at": "document_start"
         }
     ]
 }

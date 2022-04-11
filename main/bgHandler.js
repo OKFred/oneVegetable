@@ -47,29 +47,6 @@ async function netTask(msg){
 	if (support&&!msg.response.status) await support();
 	return res;
 };
-function customAPI(msg){
-	let {caesarData, orionData, aliyunData}=users.default;
-	if (msg.info.type==='wiki'){
-		let newURL=new URL(aliyunData.server);
-		let oldURL=new URL(msg.request.url);
-		oldURL.hostname=newURL.hostname;
-		oldURL.port=newURL.port;
-		oldURL.protocol=newURL.protocol;
-		msg.request.url=oldURL.toString();
-		return msg;	//2021-10-19 停服，且高可用需要
-	}else if (msg.info.type==='caesar'){
-		let Apis=caesarData.Apis;
-		let ApiData=Apis.find((obj)=>obj.name==msg.info.for);
-		msg.request.url=(ApiData)?ApiData.url:'';
-		return msg;	//凯撒动态API，根据Session决定
-	}else if (msg.info.type==='orion'){
-		if (!msg.request.header || msg.request.header.method==='GET') return msg;
-		let CToken=orionData.CToken;
-		msg.request.header.headers["x-csrf-token"]=CToken;
-		return msg;	//猎户座CSRF Token
-	};
-	return msg;
-};
 
 async function syncData(paramArr, type, loginId){
 	let fn=type==='read'? read:type==='write'?write:type==='remove'?remove:'';
@@ -84,11 +61,10 @@ async function sendConfig(msg, sender){
 	return msg;
 };
 
-function handleRequestHeaders(){	//CORS 伪装
+function handleRequestHeaders(){	//CORS in dev mode
 	return [
 		(details) => {
-			if (!/localhost|127.0.0.1|fred.wiki|cloud-ide-router.alibaba-inc.com/gi.test(details.initiator)) return;
-			//if (!/^chrome-extension/.test(details.initiator)) return;
+			if (!/localhost/gi.test(details.initiator)) return;
 			let {requestHeaders, url}=details;
 			let origin=new URL(url).origin;
 			requestHeaders = requestHeaders.filter((obj) => !/origin|referer|referrer/gi.test(obj.name));
@@ -100,10 +76,10 @@ function handleRequestHeaders(){	//CORS 伪装
 	]
 };
 
-function handleResponseHeaders(){   //handle CORS requests when dev
+function handleResponseHeaders(){   //handle CORS requests when in dev & on the extension page
     return [
 		(details) => {
-            if (!/localhost|127.0.0.1|fred.wiki|cloud-ide-router.alibaba-inc.com/gi.test(details.initiator)) return;
+            if (!/localhost|chrome-extension/gi.test(details.initiator)) return;
             let {responseHeaders}=details;
 			responseHeaders=responseHeaders.filter((headerObj)=>(!/access-control-allow-origin/gi.test(headerObj.name)));
 			responseHeaders.push({name:"Access-Control-Allow-Origin",value:"*"});
