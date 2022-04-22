@@ -1,0 +1,2 @@
+(this["webpackJsonperp-dashboard"]=this["webpackJsonperp-dashboard"]||[]).push([[16],{436:function(t,a,e){"use strict";e.r(a);var r=e(85),s=e(87),n=e(1);a.default=function(){return Object(n.jsx)(s.a,{title:"About--\u5173\u4e8e",children:Object(n.jsx)(r.a,{variant:"body1",children:"test app v1.0.8"})})}}}]);
+//# sourceMappingURL=16.4d88d1fe.chunk.js.map

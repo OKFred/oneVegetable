@@ -39,13 +39,55 @@ async function netTask(msg){
 		callback=(cb && writeList(cb))? findFunc(cb): null;	//回调函数
 		support=(sp && writeList(sp))? findFunc(sp): null;	//支援函数
 	};
-	//msg=customAPI(msg);
 	let res;
 	if (msg.request.url){ try { res = await doFetch(msg) } catch (e) { res=msg}}
 	else res=msg;
 	if (callback) res=await callback(res);
 	if (support&&!msg.response.status) await support();
 	return res;
+};
+
+async function handleStorage(obj){
+	let type, value, query;
+	let entryArr=Object.entries(obj)[0];
+	let key=entryArr[0];
+	let {oldValue, newValue}=entryArr[1];
+	if (newValue){
+		type='write';
+		value=newValue;
+		query={[key]:value};
+	}else if (oldValue){
+		type='remove';
+		value=oldValue;
+		query=key;
+	};
+	return console.log(type, query);
+};
+
+async function handleSyncStorage(obj){
+	let type, value;
+	let entryArr=Object.entries(obj)[0];
+	let key=entryArr[0];
+	let {oldValue, newValue}=entryArr[1];
+	if (newValue){
+		type='write';
+		value=newValue;
+	}else if (oldValue){
+		type='remove';
+		value=oldValue;
+	};
+	if (key === 'loginData') {
+		let users = {};
+		let userConfig = await read(null);
+		if (userConfig && userConfig.users) users=userConfig.users;
+		let { user_nick } = value;
+		delete users[user_nick];
+		if (type === 'write') {
+			users[user_nick] = value;
+		}
+		return await write({ users });
+	}
+	return;
 };
 
 async function syncData(paramArr, type, loginId){

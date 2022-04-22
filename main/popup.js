@@ -14,8 +14,12 @@ var divBeforeLogin=document.getElementById("divBeforeLogin");
 var divAfterLogin=document.getElementById("divAfterLogin");
 var divBeforeAuth=document.getElementById("divBeforeAuth");
 var divAfterAuth=document.getElementById("divAfterAuth");
-var erpAuthURL=document.getElementById("erpAuthURL");
-var erpLoginURL=document.getElementById("erpLoginURL");
+var btnERPAuth=document.getElementById("btnERPAuth");
+var btnERPLogin = document.getElementById("btnERPLogin");
+var btnClearAuth = document.getElementById("btnClearAuth");
+var selectCurrentAccount = document.getElementById("selectCurrentAccount");
+var ERPAuthURL = 'https://activity.alibaba.com/pc/developer.html';
+var ERPLoginURL = chrome.extension.getURL("/public/index.html");
 
 (async function preCheck() {
 	Welcome.innerText=chrome.i18n.getMessage("Welcome");
@@ -33,26 +37,35 @@ var erpLoginURL=document.getElementById("erpLoginURL");
 		label6.innerText = chrome.i18n.getMessage("ERPCloudService");
 		inputUserEmail.removeAttribute('hidden');
 	}else label6.innerText = chrome.i18n.getMessage("ERPLocalHost");
-	let loginStatus = await BG.taskMa.checkLogin();
-	if (loginStatus) {
+	let maStatus = await BG.taskMa.checkLogin();
+	if (maStatus) {
 		divBeforeLogin.setAttribute("hidden", "");
 		divAfterLogin.removeAttribute("hidden");
-		if (userLocale==='zh_CN') BG.taskMa.changeLanguage(); //默认值是英语，如果设置了就切换
+		if (userLocale === 'zh_CN') BG.taskMa.changeLanguage(); //默认值是英语，如果设置了就切换
 	} else {
 		divAfterLogin.setAttribute("hidden", "");
 		divBeforeLogin.removeAttribute("hidden");
 	};
 	if (loginData) {
 		console.log("已完成授权");
+		let userConfig = await BG.read(null);
+		if (userConfig && userConfig.users) {
+			for (let k of Object.keys(userConfig.users)) {
+				let option = document.createElement('option');
+				option.value = k;
+				option.innerText = k;
+				selectCurrentAccount.appendChild(option);
+				if (k === loginData.user_nick) option.setAttribute('selected', '');
+			}
+		}
 		divBeforeAuth.setAttribute("hidden", "");
 		divAfterAuth.removeAttribute("hidden");
-		//erpLoginURL.setAttribute("href", "https://it.fred.wiki");
-		erpLoginURL.setAttribute("href", chrome.extension.getURL("/public/index.html"));
-		erpLoginURL.innerText = chrome.i18n.getMessage("ERPLogin");
+		btnERPLogin.innerText = '🚀' + chrome.i18n.getMessage("ERPLogin");
+		btnClearAuth.innerText = '🗑' + chrome.i18n.getMessage("ERPAuthClear");
 	} else {
 		divAfterAuth.setAttribute("hidden", "");
 		divBeforeAuth.removeAttribute("hidden");
-		erpAuthURL.innerText = chrome.i18n.getMessage("ERPAuth");
+		btnERPAuth.innerText = '🔑' + chrome.i18n.getMessage("ERPAuth");
 	}
 	return;
 })();
@@ -91,3 +104,30 @@ inputUserEmail.addEventListener('change', async(e) => {
 		"status": value?true:false,
 	}, "sync");
 });
+
+btnERPAuth.addEventListener('click', async () => {
+	window.open(ERPAuthURL);
+});	// 授权开始
+
+btnERPLogin.addEventListener('click', async () => {
+	window.open(ERPLoginURL);
+});	// 登录系统
+
+btnClearAuth.addEventListener('click',  async() => {
+	await BG.remove('loginData', "sync"); //清除
+	return setTimeout(changeUser, 1000);
+});	// 授权清除
+
+selectCurrentAccount.addEventListener('change',  (e) => {
+	let user_nick = e.target.value;
+	return changeUser(user_nick);
+}) //更换账号
+
+async function changeUser(user_nick) {
+	let userConfig = await BG.read(null);
+	if (userConfig && userConfig.users) {
+		let loginData=userConfig.users[user_nick] || Object.values(userConfig.users)[0];
+		await BG.write({ loginData }, "sync");
+	}
+	return location.reload();
+}

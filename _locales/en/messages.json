@@ -8,8 +8,9 @@
 	"MALanguageEN": {"message": "English"},
 	"MAQrCode": {"message": "QR Code"},
 	"ERPAuth": {"message": "ERP Authorization"},
+	"ERPAuthClear": {"message": "Cancel Auth"},
 	"ERPLogin": {"message": "ERP Login"},
 	"ERPLocalHost": {"message": "Local Host"},
 	"ERPCloudService": {"message": "Cloud Service"},
-	"ERPDeveloperEmail": {"message": "Email for ERP login(optional)"}
+	"ERPDeveloperEmail": {"message": "Email for ERP auth & login(optional)"}
 }

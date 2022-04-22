@@ -35,6 +35,7 @@ var globalQuery=(()=>{	//⭐全局数据配置⭐
         let { configData } = data;
         if (!configData) return console.log('config data missing');
 		Object.assign(baseData, configData);
+		if (baseData.loginData) document.title=baseData.loginData.user_nick + ' 🚀';
 		if (/localhost/gi.test(location.origin)) {
 			let s = document.createElement('script');
 			s.innerHTML = `var baseData=${JSON.stringify(baseData)}`;

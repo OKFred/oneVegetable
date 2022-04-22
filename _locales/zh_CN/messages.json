@@ -8,8 +8,9 @@
 	"MALanguageEN": {"message": "英文"},
 	"MAQrCode": {"message": "二维码"},
 	"ERPAuth": {"message": "ERP 授权"},
+	"ERPAuthClear": {"message": "清除授权"},
 	"ERPLogin": {"message": "ERP 登录"},
 	"ERPLocalHost": {"message": "本地运行"},
 	"ERPCloudService": {"message": "云服务"},
-	"ERPDeveloperEmail": {"message": "用于登录的邮箱(可选)"}
+	"ERPDeveloperEmail": {"message": "用于授权和登录的邮箱(可选)"}
 }

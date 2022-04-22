@@ -68,9 +68,11 @@ function accountMIDCheck() {
 
 function accountMIDReady(msg) {
 	let { status, result } = msg.response;
-	if (!status ||!baseData.configData.userEmail) return accountEmailCheck();
-	if (result.loginId) baseData.authData.userName = result.loginId;
-	Object.assign(baseData.authData, result);
+	if (status) {
+		if (result.loginId) baseData.authData.userName = result.loginId;
+		Object.assign(baseData.authData, result);
+	};
+	if (!baseData.configData.userEmail) return accountEmailCheck();
 	return getAppKey();
 };
 
@@ -100,7 +102,7 @@ function registration(){	//国际站开发者注册
 };
 
 function registerReady(msg) {
-	baseObj.authData.maxTrial--;
+	baseData.authData.maxTrial--;
 	let { status, result } = msg.response;
 	if (!status) queryResult(status, result);
 	getAppKey();
@@ -117,7 +119,7 @@ function getAppKey(){	//国际站获取AppKey
 
 function appKeyReady(msg) {
 	let {status, result}=msg.response;
-	if (!status && baseObj.authData.maxTrial>0) return registration();
+	if (!status && baseData.authData.maxTrial>0) return registration();
 	baseData.loginData['app_key']=baseData.loginData['appKey']=result;
 	getAppSecret();
 	return console.log(result);

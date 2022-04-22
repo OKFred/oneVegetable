@@ -4,7 +4,7 @@
 </head>
 
 <body>
-<div class='container-fluid' style="min-width: 339px;">
+<div class='container-fluid' style="min-width: 430px;">
 	<div class='row'>
 		<div class='col-md'>
 			<h5 style="padding: 3px;" id="Welcome"></h5>
@@ -24,14 +24,17 @@
 					<input class="form-check-input" type="checkbox" id="option6">
 					<label class="form-check-label" for="option6" id="label6">Local service--本地服务</label>
 				</div>
-				<hr>
-				<div id="divBeforeAuth">
-					🔑<a id="erpAuthURL" href='https://activity.alibaba.com/pc/developer.html' target='_blank'>ERP授权</a>
-					<br /><input hidden class="form-control" type="email" id="inputUserEmail" placeholder="开发者邮箱(可选)">
-				</div>
-				<div id="divAfterAuth">
-					🚀<a id="erpLoginURL" href='https://query.aliyun.com/rest/erp.index' target='_blank'>ERP登录</a>
-				</div>
+			</div>
+			<hr>
+			<div id="divBeforeAuth">
+				<button class="btn btn-sm btn-outline-danger" id="btnERPAuth">ERP Auth--ERP授权</button>
+				<br /><input hidden class="form-control" type="email" id="inputUserEmail" placeholder="开发者邮箱(可选)">
+			</div>
+			<div id="divAfterAuth" style="display:flex; flex-direction: row; justify-content: space-between;">
+				<select id="selectCurrentAccount" class="form-control" style="max-width: max-content; display: inline-block;">
+				</select>
+				<button class="btn btn-sm btn-outline-primary" id="btnERPLogin">ERP Login--ERP登录</button>
+				<button class="btn btn-sm btn-outline-secondary" id="btnClearAuth">Clear Auth--清除授权</button>
 			</div>
 		</div>
 	</div>

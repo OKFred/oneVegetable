@@ -9,10 +9,14 @@ Thanks to the official APIs and great open-source frameworks, it is now possible
     Check/Create product folders.
     Check all products and products from the folders.
     Product sorting, filtering, display as in-stock/out-of-stock.
+    Modify product pictures, subjects, keywords, price (range), MOQ, attributes, descriptions, and so on.
 - Photos:
     Check/Create/Update/Delete photo folders.
     Check all photos from the folders.
     Upload photos to the folders.
+    List photos in a sheet.
+- Order:
+    Check/Filter Trade Assurance Orders.
 - Search:
     Search for the RFQs quickly from the search bar.
 - Home:
@@ -20,12 +24,11 @@ Thanks to the official APIs and great open-source frameworks, it is now possible
 
 ## The features under development:
 - Products:
-    Modify product pictures, subjects, keywords, price (range), MOQ, attributes, descriptions, and so on.
     Update product photos from uploaded photo list.
     Smart description editing with templates.
     Batch posting.
 - Photos
-    List photos in a sheet.
+    Planning...
 - Search
     Advanced search with more options.
 - Home
