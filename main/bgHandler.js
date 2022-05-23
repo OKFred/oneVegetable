@@ -96,7 +96,8 @@ async function syncData(paramArr, type, loginId){
 	return await fn(...paramArr);
 };
 
-async function sendConfig(msg, sender){
+async function sendConfig(msg, sender) {
+	await taskMa.checkLogin();
 	let data=Object.assign({}, {configData: await read(null, "sync")}, {pageData:sender}, users.default);
 	if (!msg) return data;
 	msg.response.data=data;
@@ -131,3 +132,10 @@ function handleResponseHeaders(){   //handle CORS requests when in dev & on the 
 		["blocking", "responseHeaders", "extraHeaders"]
     ]
 }
+
+function handleUninstall(){	//退订链接
+	return [
+		'https://chrome.google.com/webstore/detail/aepfdoldflokikbbcpnfifkacpfakmjc',
+		()=>{console.log('In case you want to try out the latest version')}
+	]
+};

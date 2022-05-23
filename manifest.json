@@ -1,9 +1,9 @@
 {
     "manifest_version": 2,
-    "name": "一根青菜",
-    "version": "1.0.8",
+    "name": "oneVeg/一根青菜",
+    "version": "1.1.6",
     "description": "__MSG_pluginDesc__",
-    "content_security_policy": "script-src 'self' blob: filesystem: 'unsafe-inline' 'unsafe-eval' 'sha256-5pzVfQHynsS9rGROHYsoViYphq/exaA9hdRAqlezVBQ=' https://*.cloudflare.com; object-src 'self'",
+    "content_security_policy": "script-src 'self' blob: filesystem: 'unsafe-inline' 'unsafe-eval' 'sha256-K0/E/fNpgQc+XEp9GjD321/VGz192SVgvjnubV2IUHE=' https://*.cloudflare.com; object-src 'self'",
 	"default_locale": "zh_CN",
 	"author": "FredZ",
     "permissions": [
@@ -23,7 +23,7 @@
         "default_popup": "/main/popup.html",
         "badge": "Hello dear"
     },
-    "homepage_url": "https://i.alibaba.com",
+    "homepage_url": "https://activity.alibaba.com/pc/developer.html",
     "options_ui": {
         "page": "/main/option.html"
     },

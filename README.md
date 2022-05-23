@@ -24,7 +24,6 @@ Thanks to the official APIs and great open-source frameworks, it is now possible
 
 ## The features under development:
 - Products:
-    Update product photos from uploaded photo list.
     Smart description editing with templates.
     Batch posting.
 - Photos

@@ -27,7 +27,7 @@ var globalQuery=(()=>{	//⭐全局数据配置⭐
 		if (goHome) queryObj.info.tab="Home";
 		bgConnect(queryObj);
 	};
-	setTimeout(queryConfig,0);
+	queryConfig();
 	
 	function configReady(msg){	//⭐全局配置数据⭐
 		console.log('配置清单已就位');
