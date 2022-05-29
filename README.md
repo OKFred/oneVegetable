@@ -10,6 +10,7 @@ Thanks to the official APIs and great open-source frameworks, it is now possible
     Check all products and products from the folders.
     Product sorting, filtering, display as in-stock/out-of-stock.
     Modify product pictures, subjects, keywords, price (range), MOQ, attributes, descriptions, and so on.
+    Product duplication.
 - Photos:
     Check/Create/Update/Delete photo folders.
     Check all photos from the folders.
