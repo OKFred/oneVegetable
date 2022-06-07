@@ -1,9 +1,9 @@
 {
     "manifest_version": 2,
     "name": "oneVeg/一根青菜",
-    "version": "1.1.8",
+    "version": "1.2.5",
     "description": "__MSG_pluginDesc__",
-    "content_security_policy": "script-src 'self' blob: filesystem: 'unsafe-inline' 'unsafe-eval' 'sha256-ADytsMeZKRYnoJTCQM5zqZ5CbJHuJxpPJoeu6GENW2c=' https://*.cloudflare.com; object-src 'self'",
+    "content_security_policy": "script-src 'self' blob: filesystem: 'unsafe-inline' 'unsafe-eval' 'sha256-mm/db/LLLaGB81l4iTG8dNLyNkTd9SZCDvQLERZMvUQ=' https://*.cloudflare.com; object-src 'self'",
 	"default_locale": "zh_CN",
 	"author": "FredZ",
     "permissions": [

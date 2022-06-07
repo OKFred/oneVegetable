@@ -138,7 +138,7 @@ var ma=(()=>{
             result='已注册';
             status=true;
         }else if(data.errorMessage){
-            result='注册失败';
+            result = data.errorMessage + data.errorCode;
             status=false;
         };
         msg.response.result=result;
