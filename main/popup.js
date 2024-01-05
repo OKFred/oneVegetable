@@ -27,7 +27,7 @@ var ERPLoginURL = chrome.extension.getURL("/public/index.html");
 	let userConfig = await BG.read(null, "sync");
 	let { userEmail, loginData, userLocale, needQRcode, needCloudService } = userConfig;
 	let domArr=[Check1, Check5, Check6];
-	let setArr=[needQRcode, userLocale==='zh_CN', needCloudService];
+	let setArr=[needQRcode, userLocale==='zh_SG', needCloudService];
 	domArr.forEach((dom, index)=>setArr[index] ? dom.setAttribute('checked',''): dom.removeAttribute('checked'));
 	if (userEmail) inputUserEmail.value = userEmail;
 	inputUserEmail.setAttribute('placeholder', chrome.i18n.getMessage("ERPDeveloperEmail"));
@@ -41,7 +41,7 @@ var ERPLoginURL = chrome.extension.getURL("/public/index.html");
 	if (maStatus) {
 		divBeforeLogin.setAttribute("hidden", "");
 		divAfterLogin.removeAttribute("hidden");
-		if (userLocale === 'zh_CN') BG.taskMa.changeLanguage(); //默认值是英语，如果设置了就切换
+		if (userLocale === 'zh_SG') BG.taskMa.changeLanguage(); //默认值是英语，如果设置了就切换
 	} else {
 		divAfterLogin.setAttribute("hidden", "");
 		divBeforeLogin.removeAttribute("hidden");
@@ -76,14 +76,14 @@ Check1.addEventListener('click', async()=>{
 
 Check5.addEventListener('click', async()=>{
 	if (Check5.checked){
-		BG.users.default.maData.language='zh_CN';
+		BG.users.default.maData.language='zh_SG';
 		label5.innerText=chrome.i18n.getMessage("MALanguageCN");
 	}else{
 		BG.users.default.maData.language='en_US';
 		label5.innerText=chrome.i18n.getMessage("MALanguageEN");
 	};
 	BG.taskMa.changeLanguage();
-	return await BG.write({ "userLocale": Check5.checked ? 'zh_CN' : 'en_US' }, "sync");
+	return await BG.write({ "userLocale": Check5.checked ? 'zh_SG' : 'en_US' }, "sync");
 }); //语言切换
 
 Check6.addEventListener('click', async()=>{

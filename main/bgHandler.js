@@ -6,7 +6,8 @@ function handleConnection(port){	//通信管理
 		console.log(`收到 ${port.name} 需求：`, msg);
 		let res=await handle(msg, sender);
 		if (res===null) return;
-		try{
+    try {
+      console.log('发送',res) 
 			port.postMessage(res);
 		}catch(e){
 			console.log('连接已关闭：'+e);
@@ -17,7 +18,7 @@ function handleConnection(port){	//通信管理
 async function handle(msg, sender){
 	if (!msg.info.type) return console.log('where r u from?', msg);
 	if (msg.info.type==="configuration") return sendConfig(msg,sender);
-	else if (msg.info.type==="extension") return await taskMa.checkLogin();
+	else if (msg.info.type==="extension") return await taskMa.changeLanguageAgainAndAgain();
 	else return await netTask(msg);
 };
 
