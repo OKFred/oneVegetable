@@ -4,7 +4,7 @@ var ma=(()=>{
         AccessCode:'',
         CToken:'',
         TBToken:'',
-        language:'en_US',//'zh_SG'
+        language:'en_US',//'zh_HK'
     };
     
 	function languageQuery(language,ctoken){

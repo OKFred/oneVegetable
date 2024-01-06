@@ -37,11 +37,11 @@ var taskMa = (() => {
         let { language, CToken } = users.default.maData;
         let cookieArr = await cookie("check", { url: "https://i.alibaba.com" });
         for (let cookieObj of cookieArr) {
-            let execResult = /tr_TR|en_US|zh_SG/g.exec(cookieObj.value);
+            let execResult = /tr_TR|en_US|zh_HK/g.exec(cookieObj.value);
             if (execResult) {
                 let { hostOnly, session, ...res } = cookieObj;
                 let url = `https://www${cookieObj.domain}`;
-                let value = cookieObj.value.replace(/tr_TR|en_US|zh_SG/g, language);
+                let value = cookieObj.value.replace(/tr_TR|en_US|zh_HK/g, language);
                 await cookie("create", { ...res, url, value });
             }
         }
