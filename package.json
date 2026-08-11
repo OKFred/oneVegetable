@@ -27,7 +27,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test",
+    "test:e2e": "pnpm build:extension && playwright test",
     "check": "pnpm run format:check && pnpm run lint && pnpm run check:openapi && pnpm run typecheck && pnpm run test && pnpm run build",
     "prepare": "husky"
   },
