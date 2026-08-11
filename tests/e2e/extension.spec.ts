@@ -10,7 +10,6 @@ test.beforeAll(async () => {
   const extensionPath = resolve(import.meta.dirname, '../../apps/extension/.output/chrome-mv3');
   const userDataDir = await mkdtemp(resolve(tmpdir(), 'one-vegetable-e2e-'));
   context = await chromium.launchPersistentContext(userDataDir, {
-    channel: 'chrome',
     headless: false,
     args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`]
   });

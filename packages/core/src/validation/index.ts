@@ -29,8 +29,8 @@ function runValidator<T>(
   if (valid) return { valid: true, data: value as T, errors: [] };
 
   const errors = validator.errors ?? [];
-  if (locale === 'zh') localize.zh(errors as ErrorObject[]);
-  else localize.en(errors as ErrorObject[]);
+  if (locale === 'zh') localize.zh(errors);
+  else localize.en(errors);
   return {
     valid: false,
     errors: errors.map((error) => `${error.instancePath || '/'} ${error.message ?? '校验失败'}`)
@@ -38,22 +38,10 @@ function runValidator<T>(
 }
 
 export const validateProductSchemaInput = (value: unknown, locale?: 'en' | 'zh') =>
-  runValidator<ProductSchemaRequest>(
-    validateProductSchemaRequest as StandaloneValidator,
-    value,
-    locale
-  );
+  runValidator<ProductSchemaRequest>(validateProductSchemaRequest as StandaloneValidator, value, locale);
 
 export const validateSchemaPublishInput = (value: unknown, locale?: 'en' | 'zh') =>
-  runValidator<SchemaPublishRequest>(
-    validateSchemaPublishRequest as StandaloneValidator,
-    value,
-    locale
-  );
+  runValidator<SchemaPublishRequest>(validateSchemaPublishRequest as StandaloneValidator, value, locale);
 
 export const validateCapabilityCallInput = (value: unknown, locale?: 'en' | 'zh') =>
-  runValidator<CapabilityCallRequest>(
-    validateCapabilityCallRequest as StandaloneValidator,
-    value,
-    locale
-  );
+  runValidator<CapabilityCallRequest>(validateCapabilityCallRequest as StandaloneValidator, value, locale);

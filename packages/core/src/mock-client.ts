@@ -1,23 +1,18 @@
 import { API_CAPABILITIES } from './generated/capabilities';
 
-import type {
-  GatewayClient,
-  OperationId,
-  OperationMap,
-  Product,
-  RequestOf,
-  ResponseOf
-} from './types';
+import type { GatewayClient, OperationId, OperationMap, Product, RequestOf, ResponseOf } from './types';
+
+const PRIMARY_PRODUCT: Product = {
+  id: '10000001',
+  subject: 'Portable solar power station 1000W',
+  groupName: 'Energy storage',
+  status: 'online',
+  score: 92,
+  updatedAt: '2026-08-11T03:20:00Z'
+};
 
 const PRODUCTS: Product[] = [
-  {
-    id: '10000001',
-    subject: 'Portable solar power station 1000W',
-    groupName: 'Energy storage',
-    status: 'online',
-    score: 92,
-    updatedAt: '2026-08-11T03:20:00Z'
-  },
+  PRIMARY_PRODUCT,
   {
     id: '10000002',
     subject: 'Custom recycled cotton canvas tote bag',
@@ -45,10 +40,11 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
   },
   listProducts: { items: PRODUCTS, page: 1, pageSize: 20, total: 128 },
   getProduct: {
-    ...PRODUCTS[0]!,
+    ...PRIMARY_PRODUCT,
     categoryId: 100003109,
     language: 'en_US',
-    schemaXml: '<itemSchema><field id="productTitle"><value>Portable solar power station 1000W</value></field></itemSchema>'
+    schemaXml:
+      '<itemSchema><field id="productTitle"><value>Portable solar power station 1000W</value></field></itemSchema>'
   },
   getProductSchema: {
     categoryId: 100003109,
@@ -154,6 +150,6 @@ export class MockGatewayClient implements GatewayClient {
 
   async request<K extends OperationId>(operation: K, _request: RequestOf<K>): Promise<ResponseOf<K>> {
     await new Promise<void>((resolve) => setTimeout(resolve, this.latency));
-    return structuredClone(MOCK_DATA[operation]) as ResponseOf<K>;
+    return structuredClone(MOCK_DATA[operation]);
   }
 }

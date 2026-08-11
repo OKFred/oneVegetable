@@ -12,11 +12,23 @@ interface AlibabaErrorResponse {
   };
 }
 
+export class GatewayException extends Error {
+  readonly gatewayError: GatewayError;
+
+  constructor(gatewayError: GatewayError) {
+    super(gatewayError.message);
+    this.name = 'GatewayException';
+    this.gatewayError = gatewayError;
+  }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
 export function normalizeGatewayError(error: unknown): GatewayError {
+  if (error instanceof GatewayException) return error.gatewayError;
+
   if (axios.isAxiosError<AlibabaErrorResponse>(error)) {
     const apiError = error.response?.data.error_response;
     return {
@@ -24,7 +36,7 @@ export function normalizeGatewayError(error: unknown): GatewayError {
       message: apiError?.sub_msg ?? apiError?.msg ?? error.message,
       ...(apiError?.sub_code ? { subCode: apiError.sub_code } : {}),
       ...(apiError?.request_id ? { traceId: apiError.request_id } : {}),
-      retryable: error.response === undefined || (error.response.status ?? 0) >= 500
+      retryable: error.response === undefined || error.response.status >= 500
     };
   }
 

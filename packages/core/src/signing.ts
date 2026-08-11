@@ -20,7 +20,9 @@ function serializeValue(value: unknown): string | undefined {
   return JSON.stringify(value);
 }
 
-export function serializeAlibabaParameters(parameters: Readonly<Record<string, unknown>>): Record<string, string> {
+export function serializeAlibabaParameters(
+  parameters: Readonly<Record<string, unknown>>
+): Record<string, string> {
   const serialized: Record<string, string> = {};
   for (const [key, value] of Object.entries(parameters)) {
     const candidate = serializeValue(value);

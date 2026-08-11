@@ -7,15 +7,16 @@ import { API_CAPABILITIES } from '../src/generated/capabilities';
 
 describe('Alibaba API audit snapshot', () => {
   it('contains the audited 84 free non-Jushita APIs', () => {
+    const methods = new Set<string>(API_CAPABILITIES.map((item) => item.method));
     expect(API_CAPABILITIES).toHaveLength(84);
-    expect(API_CAPABILITIES.every((item) => !item.jushitaOnly)).toBe(true);
-    expect(API_CAPABILITIES.some((item) => item.method === 'alibaba.seller.order.get')).toBe(false);
+    expect(new Set(API_CAPABILITIES.map((item) => item.jushitaOnly))).toEqual(new Set([false]));
+    expect(methods.has('alibaba.seller.order.get')).toBe(false);
   });
 
   it('keeps restricted ISV APIs disabled', () => {
     const restricted = API_CAPABILITIES.filter((item) => item.restricted);
     expect(restricted.length).toBeGreaterThan(0);
-    expect(restricted.every((item) => !item.enabled)).toBe(true);
+    expect(new Set(restricted.map((item) => item.enabled))).toEqual(new Set([false]));
   });
 
   it('keeps the generated catalog synchronized with the checked-in audit count', async () => {

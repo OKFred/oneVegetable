@@ -4,6 +4,7 @@ import { browser } from 'wxt/browser';
 
 import {
   ALIBABA_GATEWAY,
+  GatewayException,
   normalizeGatewayError,
   type GatewayClient,
   type GatewaySettings,
@@ -44,8 +45,8 @@ class ExtensionGatewayClient implements GatewayClient {
       operation,
       payload
     };
-    const response = (await browser.runtime.sendMessage(message)) as RuntimeResponse<K>;
-    if (!response.ok) throw response.error;
+    const response: RuntimeResponse<K> = await browser.runtime.sendMessage(message);
+    if (!response.ok) throw new GatewayException(response.error);
     return response.data;
   }
 }

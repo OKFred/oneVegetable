@@ -40,7 +40,26 @@ export default tseslint.config(
         { allowNumber: true, allowBoolean: true }
       ],
       'vue/attributes-order': 'off',
-      'vue/multi-word-component-names': 'off'
+      'vue/html-closing-bracket-newline': 'off',
+      'vue/html-indent': 'off',
+      'vue/html-self-closing': 'off',
+      'vue/max-attributes-per-line': 'off',
+      'vue/multiline-html-element-content-newline': 'off',
+      'vue/multi-word-component-names': 'off',
+      'vue/singleline-html-element-content-newline': 'off'
+    }
+  },
+  {
+    files: [
+      '**/*.vue',
+      'apps/web/src/main.ts',
+      'apps/extension/entrypoints/options/main.ts',
+      'apps/extension/entrypoints/popup/main.ts'
+    ],
+    rules: {
+      // vue-tsc validates SFC imports strictly; typescript-eslint sees them as parser error types.
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off'
     }
   },
   {

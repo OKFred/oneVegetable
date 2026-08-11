@@ -16,7 +16,9 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>();
 const value = computed({
   get: () => props.modelValue,
-  set: (next: string) => emit('update:modelValue', next)
+  set: (next: string) => {
+    emit('update:modelValue', next);
+  }
 });
 </script>
 

@@ -19,17 +19,18 @@ const defaults: GatewaySettings = {
   signMethod: 'hmac'
 };
 const settings: SettingsRepository = {
-  async load() {
+  load() {
     const stored = localStorage.getItem(SETTINGS_KEY);
-    if (!stored) return defaults;
+    if (!stored) return Promise.resolve(defaults);
     try {
-      return { ...defaults, ...(JSON.parse(stored) as Partial<GatewaySettings>) };
+      return Promise.resolve({ ...defaults, ...(JSON.parse(stored) as Partial<GatewaySettings>) });
     } catch {
-      return defaults;
+      return Promise.resolve(defaults);
     }
   },
-  async save(value) {
+  save(value) {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(value));
+    return Promise.resolve();
   }
 };
 

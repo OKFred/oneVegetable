@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance } from 'axios';
 
-import { normalizeGatewayError } from './errors';
+import { GatewayException, normalizeGatewayError } from './errors';
 import { createAlibabaRequest } from './signing';
 import type { GatewayCredentials, GatewayError } from './types';
 
@@ -26,12 +26,12 @@ export class AlibabaClient {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' }
       });
       const apiError = getAlibabaError(response.data);
-      if (apiError) throw apiError;
+      if (apiError) throw new GatewayException(apiError);
       return { method, data: response.data };
     } catch (error: unknown) {
-      if (isGatewayError(error)) throw error;
+      if (error instanceof GatewayException) throw error;
       const normalized: GatewayError = normalizeGatewayError(error);
-      throw normalized;
+      throw new GatewayException(normalized);
     }
   }
 }
@@ -58,17 +58,4 @@ function getAlibabaError(value: unknown): GatewayError | null {
       : {}),
     retryable: false
   };
-}
-
-function isGatewayError(value: unknown): value is GatewayError {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'code' in value &&
-    typeof value.code === 'string' &&
-    'message' in value &&
-    typeof value.message === 'string' &&
-    'retryable' in value &&
-    typeof value.retryable === 'boolean'
-  );
 }

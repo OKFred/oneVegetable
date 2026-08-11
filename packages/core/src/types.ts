@@ -88,8 +88,7 @@ export interface RuntimeRequest<K extends OperationId = OperationId> {
 }
 
 export type RuntimeResponse<K extends OperationId = OperationId> =
-  | { id: string; ok: true; data: ResponseOf<K> }
-  | { id: string; ok: false; error: GatewayError };
+  { id: string; ok: true; data: ResponseOf<K> } | { id: string; ok: false; error: GatewayError };
 
 export interface GatewayCredentials {
   appKey: string;

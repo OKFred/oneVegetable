@@ -33,8 +33,7 @@ interface AuditEntry {
   updatedAt: string | null;
 }
 
-const CATALOG_URL =
-  'https://developer.alibaba.com/handler/document/getCatelogConfig.json?docId=118496';
+const CATALOG_URL = 'https://developer.alibaba.com/handler/document/getCatelogConfig.json?docId=118496';
 const DOCUMENT_URL = 'https://developer.alibaba.com/handler/document/getDocument.json?docType=2&docId=';
 const FREE_LABELS = new Set(['￥免费', '￥开放平台免费API']);
 const ENABLED_METHODS = new Set([
@@ -93,11 +92,9 @@ function collectDocuments(value: unknown, result = new Map<string, number>()): M
 function asDocumentResponse(value: unknown): DocumentResponse {
   if (!isRecord(value) || !isRecord(value.data)) throw new Error('Unexpected document response');
   const labels = Array.isArray(value.data.labels)
-    ? value.data.labels
-        .filter(isRecord)
-        .map((label) => ({
-          ...(typeof label.displayName === 'string' ? { displayName: label.displayName } : {})
-        }))
+    ? value.data.labels.filter(isRecord).map((label) => ({
+        ...(typeof label.displayName === 'string' ? { displayName: label.displayName } : {})
+      }))
     : [];
   return {
     data: {
@@ -122,12 +119,12 @@ function resolveDomain(method: string): string {
 function resolveAuth(labels: string[]): AuditEntry['auth'] {
   if (labels.some((label) => /必须用户授权|需要授权/.test(label))) return 'required';
   if (labels.some((label) => /不需用户授权|不需要授权/.test(label))) return 'none';
-  if (labels.some((label) => /可选授权/.test(label))) return 'optional';
+  if (labels.some((label) => label.includes('可选授权'))) return 'optional';
   return 'unknown';
 }
 
 function isRestricted(method: string): boolean {
-  return /\.(snsoft|xiaoman|wetrade)\./.test(method) || /ecology\.write/.test(method);
+  return /\.(snsoft|xiaoman|wetrade)\./.test(method) || method.includes('ecology.write');
 }
 
 async function fetchJson(url: string): Promise<unknown> {
@@ -171,9 +168,7 @@ const audited = await fetchInBatches(documents, 12, async ([catalogMethod, docId
     enabled: !restricted && ENABLED_METHODS.has(method),
     docUrl: `https://developer.alibaba.com/docs/api.htm?apiId=${docId}`,
     checkedAt,
-    updatedAt: document.gmtModified
-      ? new Date(document.gmtModified).toISOString().slice(0, 10)
-      : null
+    updatedAt: document.gmtModified ? new Date(document.gmtModified).toISOString().slice(0, 10) : null
   } satisfies AuditEntry;
 });
 

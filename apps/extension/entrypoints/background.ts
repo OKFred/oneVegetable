@@ -4,8 +4,8 @@ import {
   ALIBABA_GATEWAY,
   AlibabaClient,
   API_CAPABILITIES,
+  GatewayException,
   normalizeGatewayError,
-  type GatewayError,
   type GatewaySettings,
   type OperationId,
   type RuntimeRequest,
@@ -32,6 +32,8 @@ const OPERATIONS = new Set<OperationId>([
 ]);
 
 export default defineBackground(() => {
+  // WebExtension runtime listeners support returning a promise for the response.
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
   browser.runtime.onMessage.addListener((value: unknown) => {
     const message = asRuntimeRequest(value);
     if (!message) return undefined;
@@ -44,7 +46,7 @@ async function handleRequest(message: RuntimeRequest): Promise<RuntimeResponse> 
     const data = await executeOperation(message.operation, message.payload);
     return { id: message.id, ok: true, data } as RuntimeResponse;
   } catch (error: unknown) {
-    const normalized = isGatewayError(error) ? error : normalizeGatewayError(error);
+    const normalized = normalizeGatewayError(error);
     return { id: message.id, ok: false, error: normalized };
   }
 }
@@ -398,11 +400,11 @@ function readTraceId(value: unknown): string | undefined {
 
 function assertCredentials(settings: GatewaySettings): void {
   if (!settings.appKey || !settings.appSecret || !settings.accessToken) {
-    throw {
+    throw new GatewayException({
       code: 'MISSING_CREDENTIALS',
       message: '请先在设置中填写 App Key、App Secret 和 Access Token',
       retryable: false
-    } satisfies GatewayError;
+    });
   }
 }
 
@@ -410,15 +412,6 @@ function assertCallable(
   capability: (typeof API_CAPABILITIES)[number] | undefined
 ): asserts capability is (typeof API_CAPABILITIES)[number] {
   if (!capability) throw new Error('API 不在已审计的免费非聚石塔目录中');
-  if (capability.restricted) throw new Error(capability.restrictionReason ?? 'API 需要额外业务权限');
+  if (capability.restricted) throw new Error(capability.restrictionReason);
   if (!capability.enabled) throw new Error('API 尚未完成契约、适配器与测试，当前不可调用');
-}
-
-function isGatewayError(value: unknown): value is GatewayError {
-  return (
-    isRecord(value) &&
-    typeof value.code === 'string' &&
-    typeof value.message === 'string' &&
-    typeof value.retryable === 'boolean'
-  );
 }
