@@ -1,0 +1,22 @@
+{
+  "name": "@one-vegetable/core",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./mock": "./src/mock-client.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "ajv-i18n": "4.2.0",
+    "@noble/hashes": "2.3.0",
+    "axios": "1.19.0"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

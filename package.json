@@ -1,0 +1,64 @@
+{
+  "name": "one-vegetable",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": ">=24.0.0 <27",
+    "pnpm": ">=11.20.0 <12"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter @one-vegetable/web dev",
+    "dev:extension": "pnpm --filter @one-vegetable/extension dev",
+    "build": "pnpm run generate && pnpm -r --if-present build",
+    "build:web": "pnpm --filter @one-vegetable/web build",
+    "build:extension": "pnpm --filter @one-vegetable/extension build",
+    "zip:extension": "pnpm --filter @one-vegetable/extension zip",
+    "generate": "pnpm run generate:types && pnpm run generate:validators",
+    "generate:types": "openapi-typescript openapi/one-vegetable.yaml -o packages/core/src/generated/api.ts",
+    "generate:validators": "tsx scripts/generate-validators.ts",
+    "check:openapi": "redocly lint openapi/one-vegetable.yaml && openapi-typescript openapi/one-vegetable.yaml --check",
+    "audit:apis": "tsx scripts/audit-alibaba-api.ts",
+    "audit:apis:check": "tsx scripts/audit-alibaba-api.ts --check",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "check": "pnpm run format:check && pnpm run lint && pnpm run check:openapi && pnpm run typecheck && pnpm run test && pnpm run build",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,mjs,cjs,ts,tsx,vue}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,yaml,yml,md,css,html}": "prettier --write"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.62.1",
+    "@redocly/cli": "2.46.1",
+    "@types/node": "24.10.1",
+    "@vue/test-utils": "2.4.11",
+    "ajv": "8.20.0",
+    "ajv-errors": "3.0.0",
+    "ajv-formats": "3.0.1",
+    "eslint": "10.8.1",
+    "eslint-plugin-vue": "10.10.0",
+    "husky": "9.1.7",
+    "jsdom": "30.0.1",
+    "lint-staged": "17.3.0",
+    "openapi-typescript": "7.13.0",
+    "prettier": "3.9.6",
+    "tsx": "4.23.12",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.67.0",
+    "vitest": "4.1.10",
+    "vue-eslint-parser": "10.4.1",
+    "yaml": "2.9.0"
+  }
+}
