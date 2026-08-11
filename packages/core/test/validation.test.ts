@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -7,6 +9,11 @@ import {
 } from '../src/validation';
 
 describe('standalone OpenAPI validators', () => {
+  it('contains no CSP-unsafe runtime code', async () => {
+    const source = await readFile(new URL('../src/generated/validators.ts', import.meta.url), 'utf8');
+    expect(source).not.toMatch(/\brequire\(|\beval\(|new Function/);
+  });
+
   it('accepts a valid Schema publishing payload', () => {
     expect(
       validateSchemaPublishInput({ categoryId: 1, language: 'en_US', schemaXml: '<itemSchema />' }).valid

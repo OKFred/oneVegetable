@@ -5,7 +5,6 @@ import Ajv2020 from 'ajv/dist/2020.js';
 import standaloneCode from 'ajv/dist/standalone/index.js';
 import addErrors from 'ajv-errors';
 import addFormats from 'ajv-formats';
-import { parse } from 'yaml';
 
 interface OpenApiDocument {
   components?: {
@@ -14,7 +13,9 @@ interface OpenApiDocument {
 }
 
 const root = resolve(import.meta.dirname, '..');
-const document = parse(await readFile(resolve(root, 'openapi/one-vegetable.yaml'), 'utf8')) as OpenApiDocument;
+const rawDocument = await readFile(resolve(root, 'openapi/one-vegetable.json'), 'utf8');
+const parsedDocument: unknown = JSON.parse(rawDocument);
+const document = parsedDocument as OpenApiDocument;
 const schemas = document.components?.schemas;
 if (!schemas) throw new Error('OpenAPI components.schemas is missing');
 
@@ -50,5 +51,22 @@ const validators = Object.fromEntries(
   })
 );
 
-const output = `// @ts-nocheck\n// Generated from openapi/one-vegetable.yaml. Do not edit.\n${standaloneCode(ajv, validators)}\n`;
-await writeFile(resolve(root, 'packages/core/src/generated/validators.ts'), output, 'utf8');
+const unicodeLengthRuntime = 'require("ajv/dist/runtime/ucs2length").default';
+const browserSafeCode = standaloneCode(ajv, validators).replace(
+  unicodeLengthRuntime,
+  '((value) => [...value].length)'
+);
+if (browserSafeCode.includes('require(') || browserSafeCode.includes('eval(')) {
+  throw new Error('AJV standalone output contains a browser-unsafe runtime dependency.');
+}
+const output = `// @ts-nocheck\n// Generated from openapi/one-vegetable.json. Do not edit.\n${browserSafeCode}\n`;
+const target = resolve(root, 'packages/core/src/generated/validators.ts');
+
+if (process.argv.includes('--check')) {
+  const current = await readFile(target, 'utf8');
+  if (current !== output) {
+    throw new Error('Generated AJV validators are stale. Run pnpm generate:validators.');
+  }
+} else {
+  await writeFile(target, output, 'utf8');
+}

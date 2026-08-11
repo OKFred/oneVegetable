@@ -1,0 +1,1181 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "oneVegetable Gateway",
+    "version": "2.0.0",
+    "description": "Stable application contract shared by the web mock and the MV3 extension.",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    }
+  },
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "security": [],
+  "servers": [
+    {
+      "url": "/api"
+    }
+  ],
+  "paths": {
+    "/dashboard": {
+      "get": {
+        "summary": "Get dashboard summary",
+        "operationId": "getDashboard",
+        "responses": {
+          "200": {
+            "description": "Dashboard summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardSummary"
+                },
+                "examples": {
+                  "default": {
+                    "value": {
+                      "productCount": 128,
+                      "photoCount": 436,
+                      "pendingOrderCount": 6,
+                      "enabledCapabilityCount": 22
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      }
+    },
+    "/products": {
+      "get": {
+        "summary": "List products",
+        "operationId": "listProducts",
+        "x-alibaba-method": "alibaba.icbu.product.list",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PageSize"
+          },
+          {
+            "name": "subject",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductPage"
+                },
+                "examples": {
+                  "default": {
+                    "value": {
+                      "items": [
+                        {
+                          "id": "10000001",
+                          "subject": "Portable solar power station 1000W",
+                          "groupName": "Energy storage",
+                          "status": "online",
+                          "score": 92,
+                          "updatedAt": "2026-08-11T03:20:00Z"
+                        },
+                        {
+                          "id": "10000002",
+                          "subject": "Custom recycled cotton canvas tote bag",
+                          "groupName": "Packaging",
+                          "status": "draft",
+                          "score": 76,
+                          "updatedAt": "2026-08-10T09:12:00Z"
+                        }
+                      ],
+                      "page": 1,
+                      "pageSize": 20,
+                      "total": 128
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      },
+      "post": {
+        "summary": "Publish a product with Schema XML",
+        "operationId": "publishProduct",
+        "x-alibaba-method": "alibaba.icbu.product.schema.add",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchemaPublishRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Published product",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductMutationResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      }
+    },
+    "/products/drafts": {
+      "post": {
+        "summary": "Save a product draft with Schema XML",
+        "operationId": "saveProductDraft",
+        "x-alibaba-method": "alibaba.icbu.product.schema.add.draft",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchemaPublishRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Saved draft",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductMutationResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      }
+    },
+    "/products/schema": {
+      "post": {
+        "summary": "Get the product publishing Schema",
+        "operationId": "getProductSchema",
+        "x-alibaba-method": "alibaba.icbu.product.schema.get",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductSchemaRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Alibaba schema XML and normalized fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductSchema"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      }
+    },
+    "/products/display": {
+      "patch": {
+        "summary": "Update product display state",
+        "operationId": "updateProductDisplay",
+        "x-alibaba-method": "alibaba.icbu.product.batch.update.display",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["productIds", "display"],
+                "properties": {
+                  "productIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "display": {
+                    "type": "string",
+                    "enum": ["online", "offline"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Updated"
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      }
+    },
+    "/products/{productId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProductId"
+        }
+      ],
+      "get": {
+        "summary": "Get a product rendered as Schema XML",
+        "operationId": "getProduct",
+        "x-alibaba-method": "alibaba.icbu.product.schema.render",
+        "responses": {
+          "200": {
+            "description": "Product detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update a product with Schema XML",
+        "operationId": "updateProduct",
+        "x-alibaba-method": "alibaba.icbu.product.schema.update",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchemaPublishRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated product",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductMutationResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      }
+    },
+    "/photo-groups": {
+      "get": {
+        "summary": "List photo bank groups",
+        "operationId": "listPhotoGroups",
+        "x-alibaba-method": "alibaba.icbu.photobank.group.list",
+        "responses": {
+          "200": {
+            "description": "Photo groups",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PhotoGroup"
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "value": [
+                      {
+                        "id": "-1",
+                        "name": "All images",
+                        "photoCount": 436
+                      },
+                      {
+                        "id": "2001",
+                        "name": "Product hero images",
+                        "photoCount": 84
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      }
+    },
+    "/photos": {
+      "get": {
+        "summary": "List photo bank images",
+        "operationId": "listPhotos",
+        "x-alibaba-method": "alibaba.icbu.photobank.list",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PageSize"
+          },
+          {
+            "name": "groupId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Photo page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoPage"
+                },
+                "examples": {
+                  "default": {
+                    "value": {
+                      "items": [
+                        {
+                          "id": "ph_001",
+                          "name": "solar-station-front.jpg",
+                          "url": "https://sc04.alicdn.com/kf/mock-solar-station.jpg",
+                          "groupId": "2001",
+                          "width": 1200,
+                          "height": 1200
+                        }
+                      ],
+                      "page": 1,
+                      "pageSize": 24,
+                      "total": 436
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      },
+      "post": {
+        "summary": "Upload a photo bank image",
+        "operationId": "uploadPhoto",
+        "x-alibaba-method": "alibaba.icbu.photobank.upload",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["file", "fileName"],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "contentEncoding": "base64"
+                  },
+                  "fileName": {
+                    "type": "string"
+                  },
+                  "groupId": {
+                    "type": "string",
+                    "default": "-1"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Uploaded photo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Photo"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      }
+    },
+    "/orders": {
+      "get": {
+        "summary": "List seller orders",
+        "operationId": "listOrders",
+        "x-alibaba-method": "alibaba.seller.order.list",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PageSize"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderPage"
+                },
+                "examples": {
+                  "default": {
+                    "value": {
+                      "items": [
+                        {
+                          "id": "ORD-202608-0012",
+                          "buyerName": "Northwind Trading",
+                          "amount": 2450.5,
+                          "currency": "USD",
+                          "status": "awaiting_shipment",
+                          "createdAt": "2026-08-09T08:30:00Z",
+                          "detailAvailability": "summary_only"
+                        },
+                        {
+                          "id": "ORD-202608-0011",
+                          "buyerName": "Contoso Retail",
+                          "amount": 980,
+                          "currency": "USD",
+                          "status": "paid",
+                          "createdAt": "2026-08-08T02:10:00Z",
+                          "detailAvailability": "summary_only"
+                        }
+                      ],
+                      "page": 1,
+                      "pageSize": 20,
+                      "total": 24
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      }
+    },
+    "/orders/{orderId}/fund": {
+      "get": {
+        "summary": "Get order fund information",
+        "operationId": "getOrderFund",
+        "x-alibaba-method": "alibaba.seller.order.fund.get",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OrderId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order fund information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderFund"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      }
+    },
+    "/orders/{orderId}/logistics": {
+      "get": {
+        "summary": "Get order logistics information",
+        "operationId": "getOrderLogistics",
+        "x-alibaba-method": "alibaba.seller.order.logistics.get",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OrderId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order logistics information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderLogistics"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      }
+    },
+    "/capabilities": {
+      "get": {
+        "summary": "List audited API capabilities",
+        "operationId": "listCapabilities",
+        "responses": {
+          "200": {
+            "description": "Audited Alibaba API capabilities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApiCapability"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      }
+    },
+    "/gateway/call": {
+      "post": {
+        "summary": "Call an enabled audited capability",
+        "operationId": "callCapability",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapabilityCallRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Normalized gateway result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilityCallResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "Page": {
+        "name": "page",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        }
+      },
+      "PageSize": {
+        "name": "pageSize",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20
+        }
+      },
+      "ProductId": {
+        "name": "productId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "OrderId": {
+        "name": "orderId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "GatewayFailure": {
+        "description": "Gateway failure",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/GatewayError"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "DashboardSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["productCount", "photoCount", "pendingOrderCount", "enabledCapabilityCount"],
+        "properties": {
+          "productCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "photoCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pendingOrderCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "enabledCapabilityCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "required": ["id", "subject", "groupName", "status", "score", "updatedAt"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "groupName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["online", "offline", "draft", "auditing", "rejected"]
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ProductDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Product"
+          },
+          {
+            "type": "object",
+            "required": ["categoryId", "language", "schemaXml"],
+            "properties": {
+              "categoryId": {
+                "type": "integer"
+              },
+              "language": {
+                "type": "string"
+              },
+              "schemaXml": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "unevaluatedProperties": false
+      },
+      "ProductPage": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PageMeta"
+          },
+          {
+            "type": "object",
+            "required": ["items"],
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          }
+        ],
+        "unevaluatedProperties": false
+      },
+      "ProductSchemaRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["categoryId", "language", "market"],
+        "properties": {
+          "categoryId": {
+            "type": "integer"
+          },
+          "language": {
+            "type": "string",
+            "default": "en_US"
+          },
+          "market": {
+            "type": "string",
+            "enum": ["wholesale", "sourcing"]
+          },
+          "productId": {
+            "type": "string"
+          }
+        }
+      },
+      "ProductSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["xml", "categoryId", "language", "market"],
+        "properties": {
+          "xml": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "integer"
+          },
+          "language": {
+            "type": "string"
+          },
+          "market": {
+            "type": "string"
+          }
+        }
+      },
+      "SchemaPublishRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["categoryId", "language", "schemaXml"],
+        "properties": {
+          "categoryId": {
+            "type": "integer"
+          },
+          "language": {
+            "type": "string",
+            "default": "en_US"
+          },
+          "productId": {
+            "type": "string"
+          },
+          "schemaXml": {
+            "type": "string",
+            "minLength": 1,
+            "x-ajv-errorMessage": "商品 Schema XML 不能为空"
+          }
+        }
+      },
+      "ProductMutationResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["productId", "traceId", "success"],
+        "properties": {
+          "productId": {
+            "type": "string"
+          },
+          "traceId": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PhotoGroup": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "photoCount"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "photoCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "Photo": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "url", "groupId", "width", "height"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "PhotoPage": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PageMeta"
+          },
+          {
+            "type": "object",
+            "required": ["items"],
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Photo"
+                }
+              }
+            }
+          }
+        ],
+        "unevaluatedProperties": false
+      },
+      "Order": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "buyerName", "amount", "currency", "status", "createdAt", "detailAvailability"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "buyerName": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "currency": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "detailAvailability": {
+            "type": "string",
+            "enum": ["summary_only"],
+            "description": "seller.order.get is not callable outside Jushita."
+          }
+        }
+      },
+      "OrderPage": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PageMeta"
+          },
+          {
+            "type": "object",
+            "required": ["items"],
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          }
+        ],
+        "unevaluatedProperties": false
+      },
+      "OrderFund": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["orderId", "paidAmount", "currency", "status"],
+        "properties": {
+          "orderId": {
+            "type": "string"
+          },
+          "paidAmount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "OrderLogistics": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["orderId", "status"],
+        "properties": {
+          "orderId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "carrier": {
+            "type": ["string", "null"]
+          },
+          "trackingNumber": {
+            "type": ["string", "null"]
+          }
+        }
+      },
+      "ApiCapability": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "method",
+          "domain",
+          "chargeLabel",
+          "auth",
+          "jushitaOnly",
+          "restricted",
+          "enabled",
+          "docUrl",
+          "checkedAt"
+        ],
+        "properties": {
+          "method": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "chargeLabel": {
+            "type": "string"
+          },
+          "auth": {
+            "type": "string",
+            "enum": ["required", "optional", "none", "unknown"]
+          },
+          "jushitaOnly": {
+            "type": "boolean"
+          },
+          "restricted": {
+            "type": "boolean"
+          },
+          "restrictionReason": {
+            "type": ["string", "null"]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "docUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date"
+          },
+          "updatedAt": {
+            "type": ["string", "null"],
+            "format": "date"
+          }
+        }
+      },
+      "CapabilityCallRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["method", "parameters"],
+        "properties": {
+          "method": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "CapabilityCallResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["method", "traceId", "data"],
+        "properties": {
+          "method": {
+            "type": "string"
+          },
+          "traceId": {
+            "type": "string"
+          },
+          "data": {}
+        }
+      },
+      "GatewayError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "retryable"],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "subCode": {
+            "type": "string"
+          },
+          "traceId": {
+            "type": "string"
+          },
+          "retryable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PageMeta": {
+        "type": "object",
+        "required": ["page", "pageSize", "total"],
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}
