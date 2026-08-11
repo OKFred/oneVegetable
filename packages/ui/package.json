@@ -1,0 +1,27 @@
+{
+  "name": "@one-vegetable/ui",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css"
+  },
+  "scripts": {
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@one-vegetable/core": "workspace:*",
+    "@tanstack/vue-query": "5.101.4",
+    "@tanstack/vue-table": "9.1.2",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "@lucide/vue": "1.31.0",
+    "tailwind-merge": "3.6.0",
+    "vue": "3.5.41"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vue-tsc": "3.2.5"
+  }
+}
