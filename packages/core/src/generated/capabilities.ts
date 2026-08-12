@@ -4,7 +4,7 @@ import type { ApiCapability } from '../types';
 export const API_CAPABILITIES = [
   {
     "method": "alibaba.icbu.annex.upload",
-    "domain": "other",
+    "domain": "rfq",
     "chargeLabel": "￥开放平台免费API",
     "auth": "required",
     "jushitaOnly": false,

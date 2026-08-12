@@ -1,0 +1,1316 @@
+{
+  "checkedAt": "2026-08-12",
+  "catalogCount": 7,
+  "definitions": [
+    {
+      "method": "alibaba.icbu.annex.upload",
+      "source": "catalog",
+      "docId": 40805,
+      "title": "上传附件获取附件files_str",
+      "description": "上传附件获取附件files_str",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-12",
+      "updatedAt": "2021-11-23",
+      "requestParams": [
+        {
+          "name": "file_name",
+          "type": "String",
+          "required": true,
+          "description": "文件名",
+          "demoValue": "picture.jpg"
+        },
+        {
+          "name": "file_input_stream_bytes",
+          "type": "byte[]",
+          "required": true,
+          "description": "文件字节流",
+          "demoValue": "byte[]"
+        },
+        {
+          "name": "source",
+          "type": "String",
+          "required": true,
+          "description": "来源",
+          "demoValue": "top"
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "err_type",
+          "type": "String",
+          "required": false,
+          "description": "返回错误码",
+          "demoValue": "SYSTEMERROR"
+        },
+        {
+          "name": "message",
+          "type": "String",
+          "required": false,
+          "description": "错误信息",
+          "demoValue": "filename is null"
+        },
+        {
+          "name": "result",
+          "type": "String",
+          "required": false,
+          "description": "文件file_str",
+          "demoValue": "fileId:0|fileSavePath:sdsdcfsdvdfvdfvdfv.jpg|fileFlag:add"
+        },
+        {
+          "name": "is_success",
+          "type": "Boolean",
+          "required": false,
+          "description": "是否成功",
+          "demoValue": "true"
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_icbu_annex_upload_response\":{\n        \"err_type\":\"SYSTEMERROR\",\n        \"message\":\"filename is null\",\n        \"result\":\"fileId:0|fileSavePath:sdsdcfsdvdfvdfvdfv.jpg|fileFlag:add\",\n        \"is_success\":true\n    }\n}"
+    },
+    {
+      "method": "alibaba.icbu.quotation.post",
+      "source": "catalog",
+      "docId": 32101,
+      "title": "供应商提交报价",
+      "description": "供应商对RFQ进行报价",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-12",
+      "updatedAt": "2021-11-23",
+      "requestParams": [
+        {
+          "name": "md5key",
+          "type": "String",
+          "required": false,
+          "description": "验证",
+          "defaultValue": "8cb02c2c9cf4e4fbefe4a77e4e5f31b4",
+          "demoValue": "8cb02c2c9cf4e4fbefe4a77e4e5f31b4"
+        },
+        {
+          "name": "dto",
+          "type": "RfqQuotationRemoteDto",
+          "required": false,
+          "description": "报价DTO",
+          "subParams": [
+            {
+              "name": "details",
+              "type": "String",
+              "required": true,
+              "description": "给买家留言",
+              "demoValue": "have a cordial working relationship"
+            },
+            {
+              "name": "annex_files_str",
+              "type": "String",
+              "required": false,
+              "description": "附件file_str,请通过调用alibaba.icbu.annex.upload结果作为入参",
+              "demoValue": "fileId:0|fileSavePath:sdcdscdvfdvswejwieahssdcjdvdfv.jpg|fileFlag:add"
+            },
+            {
+              "name": "sample",
+              "type": "RfqQuotationPriceRemoteDTO",
+              "required": false,
+              "description": "样本",
+              "subParams": [
+                {
+                  "name": "remark",
+                  "type": "String",
+                  "required": false,
+                  "description": "备注",
+                  "demoValue": "无"
+                },
+                {
+                  "name": "estimated_date",
+                  "type": "BigDecimal",
+                  "required": false,
+                  "description": "预计时间",
+                  "demoValue": "10"
+                },
+                {
+                  "name": "payment",
+                  "type": "String",
+                  "required": false,
+                  "description": "样品运费支付方",
+                  "demoValue": "Buyer/Supplier/Negotiable"
+                },
+                {
+                  "name": "is_free",
+                  "type": "String",
+                  "required": false,
+                  "description": "是否是免费",
+                  "demoValue": "Y"
+                },
+                {
+                  "name": "is_support",
+                  "type": "String",
+                  "required": false,
+                  "description": "是否提供样本",
+                  "demoValue": "Y"
+                }
+              ]
+            },
+            {
+              "name": "price_list",
+              "type": "PriceList[]",
+              "required": false,
+              "description": "报价列表",
+              "subParams": [
+                {
+                  "name": "port",
+                  "type": "String",
+                  "required": true,
+                  "description": "目的港",
+                  "demoValue": "Tin Can port Lagos"
+                },
+                {
+                  "name": "shipping_terms",
+                  "type": "String",
+                  "required": true,
+                  "description": "发运条件",
+                  "demoValue": "FOB"
+                },
+                {
+                  "name": "image_str",
+                  "type": "String",
+                  "required": false,
+                  "description": "图片image_str,请通过调用alibaba.icbu.annex.upload结果作为入参如果是都个附件通过\\r\\n分割",
+                  "demoValue": "fileId:0|fileSavePath:sdcdscdvfdvswejwieahssdcjdvdfv.jpg|fileFlag:add|fileDestOrder:0|fileName:pic.jpg"
+                },
+                {
+                  "name": "model_num",
+                  "type": "String",
+                  "required": false,
+                  "description": "产品编号",
+                  "demoValue": "10"
+                },
+                {
+                  "name": "item_name",
+                  "type": "String",
+                  "required": true,
+                  "description": "产品名称",
+                  "demoValue": "phone"
+                },
+                {
+                  "name": "fob_price",
+                  "type": "String",
+                  "required": true,
+                  "description": "价格",
+                  "demoValue": "100"
+                },
+                {
+                  "name": "quantity",
+                  "type": "String",
+                  "required": true,
+                  "description": "数量",
+                  "demoValue": "100"
+                },
+                {
+                  "name": "quantity_unit",
+                  "type": "String",
+                  "required": true,
+                  "description": "数量单位",
+                  "demoValue": "Pieces"
+                },
+                {
+                  "name": "remark",
+                  "type": "String",
+                  "required": true,
+                  "description": "备注",
+                  "demoValue": "无"
+                },
+                {
+                  "name": "fob_price_unit",
+                  "type": "String",
+                  "required": true,
+                  "description": "价格单位",
+                  "demoValue": "USD"
+                }
+              ]
+            },
+            {
+              "name": "rfq_id",
+              "type": "String",
+              "required": true,
+              "description": "RFQID",
+              "demoValue": "sdc34r4gfdvdv"
+            },
+            {
+              "name": "payment_terms",
+              "type": "String",
+              "required": true,
+              "description": "付费条款",
+              "demoValue": "L/C"
+            },
+            {
+              "name": "expiry_date",
+              "type": "Date",
+              "required": true,
+              "description": "过期时间",
+              "demoValue": "2018-12-12 00:00:00"
+            }
+          ]
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "RfqRemoteServiceResult",
+          "required": false,
+          "description": "请求返回结果信息",
+          "demoValue": "null",
+          "subParams": [
+            {
+              "name": "message",
+              "type": "String",
+              "required": false,
+              "description": "错误信息",
+              "demoValue": "success"
+            },
+            {
+              "name": "result",
+              "type": "RfqQuotationRemoteDto",
+              "required": false,
+              "description": "返回结果信息",
+              "demoValue": "null",
+              "subParams": [
+                {
+                  "name": "id",
+                  "type": "Number",
+                  "required": false,
+                  "description": "报价ID",
+                  "demoValue": "10000"
+                }
+              ]
+            },
+            {
+              "name": "err_type",
+              "type": "String",
+              "required": false,
+              "description": "错误类型",
+              "demoValue": "ILLEGAL_TYPE"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否成功",
+              "demoValue": "true"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_icbu_quotation_post_response\":{\n        \"result\":{\n            \"message\":\"success\",\n            \"result\":{\n                \"id\":10000\n            },\n            \"err_type\":\"ILLEGAL_TYPE\",\n            \"success\":true\n        }\n    }\n}"
+    },
+    {
+      "method": "alibaba.icbu.rfq.myequity",
+      "source": "catalog",
+      "docId": 40865,
+      "title": "我的权益",
+      "description": "查询供应商权益接口",
+      "lifecycle": "active",
+      "risk": "read",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-12",
+      "updatedAt": "2021-11-23",
+      "requestParams": [],
+      "responseParams": [
+        {
+          "name": "service_result",
+          "type": "ServiceResult",
+          "required": false,
+          "description": "请求返回结果",
+          "demoValue": "null",
+          "subParams": [
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "msg",
+              "type": "String",
+              "required": false,
+              "description": "返回信息",
+              "demoValue": "loginId is null"
+            },
+            {
+              "name": "value",
+              "type": "EquityPackageDto",
+              "required": false,
+              "description": "我的权益信息",
+              "demoValue": "null",
+              "subParams": [
+                {
+                  "name": "equity_count",
+                  "type": "Number",
+                  "required": false,
+                  "description": "剩余权益",
+                  "demoValue": "10"
+                },
+                {
+                  "name": "expired_date",
+                  "type": "String",
+                  "required": false,
+                  "description": "过期时间",
+                  "demoValue": "2018-10-10"
+                },
+                {
+                  "name": "score",
+                  "type": "Number",
+                  "required": false,
+                  "description": "市场表现分",
+                  "demoValue": "20"
+                },
+                {
+                  "name": "beat_supplier_percent",
+                  "type": "String",
+                  "required": false,
+                  "description": "击败其他供应商百分比",
+                  "demoValue": "20%"
+                },
+                {
+                  "name": "statistic_start_date",
+                  "type": "String",
+                  "required": false,
+                  "description": "市场表现分统计开始时间",
+                  "demoValue": "20190101"
+                },
+                {
+                  "name": "statistic_end_date",
+                  "type": "String",
+                  "required": false,
+                  "description": "市场表现分统计结束时间",
+                  "demoValue": "20190110"
+                },
+                {
+                  "name": "top_service_count",
+                  "type": "Number",
+                  "required": false,
+                  "description": "剩余置顶报价权益",
+                  "demoValue": "10"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_icbu_rfq_myequity_response\":{\n        \"service_result\":{\n            \"success\":true,\n            \"msg\":\"loginId is null\",\n            \"value\":{\n                \"equity_count\":10,\n                \"expired_date\":\"2018-10-10\",\n                \"score\":20,\n                \"beat_supplier_percent\":\"20%\",\n                \"statistic_start_date\":\"20190101\",\n                \"statistic_end_date\":\"20190110\",\n                \"top_service_count\":10\n            }\n        }\n    }\n}"
+    },
+    {
+      "method": "alibaba.icbu.rfq.read",
+      "source": "catalog",
+      "docId": 42604,
+      "title": "是否已读RFQ",
+      "description": "是否已读RFQ",
+      "lifecycle": "active",
+      "risk": "read",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-12",
+      "updatedAt": "2021-11-23",
+      "requestParams": [
+        {
+          "name": "rfq_id_list",
+          "type": "String[]",
+          "required": true,
+          "description": "查询RFQID列表",
+          "demoValue": "sdc2e23sdc,sfvdfvdfv",
+          "maxListSize": 20
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "ServiceResult",
+          "required": false,
+          "description": "alinkappserver系统返回的通用结果类",
+          "subParams": [
+            {
+              "name": "code",
+              "type": "String",
+              "required": false,
+              "description": "错误码",
+              "demoValue": "200"
+            },
+            {
+              "name": "msg",
+              "type": "String",
+              "required": false,
+              "description": "错误信息",
+              "demoValue": "success"
+            },
+            {
+              "name": "result_code",
+              "type": "Number",
+              "required": false,
+              "description": "操作结果对象",
+              "demoValue": "200"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "value",
+              "type": "String",
+              "required": false,
+              "description": "结果",
+              "demoValue": "{\"123\":\"false\",\"124\":\"true\"}"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_icbu_rfq_read_response\":{\n        \"result\":{\n            \"code\":\"200\",\n            \"msg\":\"success\",\n            \"result_code\":200,\n            \"success\":true,\n            \"value\":\"{\\\"123\\\":\\\"false\\\",\\\"124\\\":\\\"true\\\"}\"\n        }\n    }\n}"
+    },
+    {
+      "method": "alibaba.icbu.rfq.recommend",
+      "source": "catalog",
+      "docId": 42211,
+      "title": "rfq推荐",
+      "description": "rfq推荐",
+      "lifecycle": "active",
+      "risk": "read",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-12",
+      "updatedAt": "2021-11-22",
+      "requestParams": [
+        {
+          "name": "query_dto",
+          "type": "QueryDto",
+          "required": true,
+          "description": "入参数据",
+          "subParams": [
+            {
+              "name": "count",
+              "type": "Number",
+              "required": true,
+              "description": "推荐数量",
+              "demoValue": "90"
+            },
+            {
+              "name": "current",
+              "type": "Number",
+              "required": true,
+              "description": "当前页面数",
+              "demoValue": "1"
+            },
+            {
+              "name": "page_size",
+              "type": "Number",
+              "required": true,
+              "description": "页面大小",
+              "demoValue": "10"
+            },
+            {
+              "name": "site",
+              "type": "String",
+              "required": true,
+              "description": "系统参数qn-homepage",
+              "demoValue": "qn-homepage"
+            },
+            {
+              "name": "type",
+              "type": "String",
+              "required": true,
+              "description": "系统参数U_P_I",
+              "demoValue": "U_P_I"
+            }
+          ]
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "ServiceResult",
+          "required": false,
+          "description": "alinkappserver系统返回的通用结果类",
+          "demoValue": "null",
+          "subParams": [
+            {
+              "name": "msg",
+              "type": "String",
+              "required": false,
+              "description": "系统信息",
+              "demoValue": "success"
+            },
+            {
+              "name": "result_code",
+              "type": "Number",
+              "required": false,
+              "description": "返回系统代码",
+              "demoValue": "200"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": false,
+              "description": "请求是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "value",
+              "type": "RecommendReturnDto",
+              "required": false,
+              "description": "返回结果",
+              "demoValue": "null",
+              "subParams": [
+                {
+                  "name": "pagination",
+                  "type": "PageView",
+                  "required": false,
+                  "description": "返回结果统计",
+                  "demoValue": "null",
+                  "subParams": [
+                    {
+                      "name": "current",
+                      "type": "Number",
+                      "required": false,
+                      "description": "当前页面",
+                      "demoValue": "1"
+                    },
+                    {
+                      "name": "page_size",
+                      "type": "Number",
+                      "required": false,
+                      "description": "页面大小",
+                      "demoValue": "10"
+                    },
+                    {
+                      "name": "total_item",
+                      "type": "Number",
+                      "required": false,
+                      "description": "推荐数量",
+                      "demoValue": "90"
+                    },
+                    {
+                      "name": "total_pages",
+                      "type": "Number",
+                      "required": false,
+                      "description": "总页数",
+                      "demoValue": "9"
+                    }
+                  ]
+                },
+                {
+                  "name": "rfq_list",
+                  "type": "RecommendRfqDto[]",
+                  "required": false,
+                  "description": "返回推荐RFQ",
+                  "demoValue": "null",
+                  "subParams": [
+                    {
+                      "name": "country",
+                      "type": "String",
+                      "required": false,
+                      "description": "国家全称",
+                      "demoValue": "Thailand"
+                    },
+                    {
+                      "name": "country_simple",
+                      "type": "String",
+                      "required": false,
+                      "description": "国家简称",
+                      "demoValue": "TH"
+                    },
+                    {
+                      "name": "date_post",
+                      "type": "Number",
+                      "required": false,
+                      "description": "发布时间戳"
+                    },
+                    {
+                      "name": "date_post_str",
+                      "type": "String",
+                      "required": false,
+                      "description": "发布时间",
+                      "demoValue": "01/28/2019"
+                    },
+                    {
+                      "name": "detail",
+                      "type": "String",
+                      "required": false,
+                      "description": "RFQ详情",
+                      "demoValue": "hello,i am ....."
+                    },
+                    {
+                      "name": "has_read",
+                      "type": "Boolean",
+                      "required": false,
+                      "description": "是否有读过",
+                      "demoValue": "false"
+                    },
+                    {
+                      "name": "have_image",
+                      "type": "Boolean",
+                      "required": false,
+                      "description": "是否有图片",
+                      "demoValue": "false"
+                    },
+                    {
+                      "name": "image_url",
+                      "type": "String",
+                      "required": false,
+                      "description": "图片地址",
+                      "demoValue": "http://sc01.alicdn.com?fvdfvdfv"
+                    },
+                    {
+                      "name": "left_count",
+                      "type": "Number",
+                      "required": false,
+                      "description": "剩余报价数",
+                      "demoValue": "5"
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "Number",
+                      "required": false,
+                      "description": "数量",
+                      "demoValue": "5"
+                    },
+                    {
+                      "name": "rfq_id",
+                      "type": "String",
+                      "required": false,
+                      "description": "rfqID",
+                      "demoValue": "dfvdsvfdfvdfvdfvdfvdsd"
+                    },
+                    {
+                      "name": "subject",
+                      "type": "String",
+                      "required": false,
+                      "description": "RFQ标题",
+                      "demoValue": "mp3"
+                    },
+                    {
+                      "name": "quantity_unit",
+                      "type": "String",
+                      "required": false,
+                      "description": "数量单位",
+                      "demoValue": "Sets"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_icbu_rfq_recommend_response\":{\n        \"result\":{\n            \"msg\":\"success\",\n            \"result_code\":200,\n            \"success\":true,\n            \"value\":{\n                \"pagination\":{\n                    \"current\":1,\n                    \"page_size\":10,\n                    \"total_item\":90,\n                    \"total_pages\":9\n                },\n                \"rfq_list\":[\n                    {\n                            \"country\":\"Thailand\",\n                            \"country_simple\":\"TH\",\n                            \"date_post\":,\n                            \"date_post_str\":\"01\\/28\\/2019\",\n                            \"detail\":\"hello,i am .....\",\n                            \"has_read\":false,\n                            \"have_image\":false,\n                            \"image_url\":\"http:\\/\\/sc01.alicdn.com?fvdfvdfv\",\n                            \"left_count\":5,\n                            \"quantity\":5,\n                            \"rfq_id\":\"dfvdsvfdfvdfvdfvdfvdsd\",\n                            \"subject\":\"mp3\",\n                            \"quantity_unit\":\"Sets\"\n                    }\n                ]\n            }\n        }\n    }\n}"
+    },
+    {
+      "method": "alibaba.icbu.rfq.search",
+      "source": "catalog",
+      "docId": 32084,
+      "title": "查询RFQ",
+      "description": "用于查询RFQ的信息",
+      "lifecycle": "active",
+      "risk": "read",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-12",
+      "updatedAt": "2021-11-24",
+      "requestParams": [
+        {
+          "name": "md5key",
+          "type": "String",
+          "required": false,
+          "description": "验证",
+          "defaultValue": "8cb02c2c9cf4e4fbefe4a77e4e5f31b4",
+          "demoValue": "8cb02c2c9cf4e4fbefe4a77e4e5f31b4"
+        },
+        {
+          "name": "cond",
+          "type": "RfqRequestSearchCondDto",
+          "required": false,
+          "description": "查询条件",
+          "subParams": [
+            {
+              "name": "search_text",
+              "type": "String",
+              "required": true,
+              "description": "关键词",
+              "demoValue": "mp3"
+            },
+            {
+              "name": "page_size",
+              "type": "Number",
+              "required": false,
+              "description": "每页显示个数",
+              "demoValue": "10"
+            },
+            {
+              "name": "open_time",
+              "type": "Number",
+              "required": false,
+              "description": "过滤RFQ发送时间秒级别的",
+              "demoValue": "1000"
+            },
+            {
+              "name": "attachment",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否有附件",
+              "demoValue": "false"
+            },
+            {
+              "name": "photo",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否有图片",
+              "demoValue": "false"
+            },
+            {
+              "name": "country",
+              "type": "String",
+              "required": false,
+              "description": "国家简称",
+              "demoValue": "CN"
+            },
+            {
+              "name": "category_id",
+              "type": "String",
+              "required": false,
+              "description": "类目",
+              "demoValue": "44"
+            },
+            {
+              "name": "close_time",
+              "type": "Number",
+              "required": false,
+              "description": "RFQ发布到现在的结束时间秒级别",
+              "demoValue": "100"
+            },
+            {
+              "name": "quantity_min",
+              "type": "Number",
+              "required": false,
+              "description": "最小量",
+              "demoValue": "10"
+            },
+            {
+              "name": "current_page",
+              "type": "Number",
+              "required": false,
+              "description": "当前页",
+              "demoValue": "1"
+            },
+            {
+              "name": "quantity_max",
+              "type": "Number",
+              "required": false,
+              "description": "最大量",
+              "demoValue": "10"
+            },
+            {
+              "name": "full_quote",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否报满RFQ",
+              "demoValue": "false"
+            },
+            {
+              "name": "zero_quotation",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否限免RFQ",
+              "demoValue": "false"
+            },
+            {
+              "name": "filter_quoted",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否过滤已报价",
+              "demoValue": "false"
+            }
+          ]
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "RfqRemoteServiceResult",
+          "required": false,
+          "description": "返回信息结果集",
+          "demoValue": "null",
+          "subParams": [
+            {
+              "name": "message",
+              "type": "String",
+              "required": false,
+              "description": "查询返回信息",
+              "demoValue": "success"
+            },
+            {
+              "name": "result",
+              "type": "RfqRequestSearchResultDto",
+              "required": false,
+              "description": "结果集",
+              "demoValue": "null",
+              "subParams": [
+                {
+                  "name": "request_list",
+                  "type": "Requestlist[]",
+                  "required": false,
+                  "description": "RFQ列表",
+                  "demoValue": "null",
+                  "subParams": [
+                    {
+                      "name": "rfq_id",
+                      "type": "String",
+                      "required": false,
+                      "description": "RFQID",
+                      "demoValue": "ID1hCOdof7urrUoa2D9447qdGbAniTntB7nHTgUfG7wkRt0waPw0hn3eeiWftoNWNFB"
+                    },
+                    {
+                      "name": "category_id",
+                      "type": "Number",
+                      "required": false,
+                      "description": "类目ID",
+                      "demoValue": "44"
+                    },
+                    {
+                      "name": "subject",
+                      "type": "String",
+                      "required": false,
+                      "description": "RFQ标题",
+                      "demoValue": "1509051994000"
+                    },
+                    {
+                      "name": "description",
+                      "type": "String",
+                      "required": false,
+                      "description": "RFQ内容",
+                      "demoValue": "Feature:3G,FM Radio,WiFi,GPS Navigation,Build in Flash,<font><b>MP3</b></font> Playback,Auto Focus,Email,Touch Screen,Bluetooth Color:Silver,Gold,Gray warranty time:1 year shipping way:DHL EMS brand:6S.6,5S,5,4S OS:OS ..."
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "Number",
+                      "required": false,
+                      "description": "数量",
+                      "demoValue": "100"
+                    },
+                    {
+                      "name": "quantity_unit",
+                      "type": "String",
+                      "required": false,
+                      "description": "数量单位",
+                      "demoValue": "Pieces"
+                    },
+                    {
+                      "name": "country_simple",
+                      "type": "String",
+                      "required": false,
+                      "description": "国家简称",
+                      "demoValue": "CN"
+                    },
+                    {
+                      "name": "left_count",
+                      "type": "Number",
+                      "required": false,
+                      "description": "剩余报价",
+                      "demoValue": "100"
+                    },
+                    {
+                      "name": "annex_names",
+                      "type": "String",
+                      "required": false,
+                      "description": "附件名称",
+                      "demoValue": "HTB1yKesFVXXXXc4XFXXq6xXFXXXd.jpg:Homeage_brazilian_hair_beauty_on_sale_body.jpg_50x50.jpg"
+                    },
+                    {
+                      "name": "lang_src",
+                      "type": "String",
+                      "required": false,
+                      "description": "语种",
+                      "demoValue": "en"
+                    },
+                    {
+                      "name": "expirate_time",
+                      "type": "Number",
+                      "required": false,
+                      "description": "过期时间",
+                      "demoValue": "1509051994000"
+                    },
+                    {
+                      "name": "open_time",
+                      "type": "Number",
+                      "required": false,
+                      "description": "开始时间",
+                      "demoValue": "1509051994000"
+                    },
+                    {
+                      "name": "image_url",
+                      "type": "String",
+                      "required": false,
+                      "description": "图片地址",
+                      "demoValue": "http://www.baidu.com?id=24354546"
+                    },
+                    {
+                      "name": "supplier_countrys",
+                      "type": "String",
+                      "required": false,
+                      "description": "供应商国家",
+                      "demoValue": "China"
+                    },
+                    {
+                      "name": "annex_files",
+                      "type": "RfqAnnexFileRemoteDto[]",
+                      "required": false,
+                      "description": "附件",
+                      "demoValue": "null",
+                      "subParams": [
+                        {
+                          "name": "file_name",
+                          "type": "String",
+                          "required": false,
+                          "description": "文件名",
+                          "demoValue": "test"
+                        },
+                        {
+                          "name": "unique_file_name",
+                          "type": "String",
+                          "required": false,
+                          "description": "唯一文件名",
+                          "demoValue": "sdcsdcsdj89sca"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "unique_rfq_id",
+                      "type": "String",
+                      "required": false,
+                      "description": "唯一加密RFQID",
+                      "demoValue": "sdcdvsdvdfvdvsdcsdc"
+                    }
+                  ]
+                },
+                {
+                  "name": "total",
+                  "type": "Number",
+                  "required": false,
+                  "description": "总数",
+                  "demoValue": "100"
+                },
+                {
+                  "name": "category_list",
+                  "type": "Categorylist[]",
+                  "required": false,
+                  "description": "类目列表",
+                  "demoValue": "null",
+                  "subParams": [
+                    {
+                      "name": "category_id",
+                      "type": "Number",
+                      "required": false,
+                      "description": "类目ID",
+                      "demoValue": "44"
+                    },
+                    {
+                      "name": "category_name",
+                      "type": "String",
+                      "required": false,
+                      "description": "类目名称",
+                      "demoValue": "phone"
+                    },
+                    {
+                      "name": "count",
+                      "type": "Number",
+                      "required": false,
+                      "description": "数量",
+                      "demoValue": "100"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "error_type",
+              "type": "String",
+              "required": false,
+              "description": "错误类型",
+              "demoValue": "null"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否成功",
+              "demoValue": "true"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_icbu_rfq_search_response\":{\n        \"result\":{\n            \"message\":\"success\",\n            \"result\":{\n                \"request_list\":[\n                    {\n                            \"rfq_id\":\"ID1hCOdof7urrUoa2D9447qdGbAniTntB7nHTgUfG7wkRt0waPw0hn3eeiWftoNWNFB\",\n                            \"category_id\":44,\n                            \"subject\":\"1509051994000\",\n                            \"description\":\"Feature:3G,FM Radio,WiFi,GPS Navigation,Build in Flash,<font><b>MP3<\\/b><\\/font> Playback,Auto Focus,Email,Touch Screen,Bluetooth Color:Silver,Gold,Gray warranty time:1 year shipping way:DHL EMS brand:6S.6,5S,5,4S OS:OS ...\",\n                            \"quantity\":100,\n                            \"quantity_unit\":\"Pieces\",\n                            \"country_simple\":\"CN\",\n                            \"left_count\":100,\n                            \"annex_names\":\"HTB1yKesFVXXXXc4XFXXq6xXFXXXd.jpg:Homeage_brazilian_hair_beauty_on_sale_body.jpg_50x50.jpg\",\n                            \"lang_src\":\"en\",\n                            \"expirate_time\":1509051994000,\n                            \"open_time\":1509051994000,\n                            \"image_url\":\"http:\\/\\/www.baidu.com?id=24354546\",\n                            \"supplier_countrys\":\"China\",\n                            \"annex_files\":[\n                                {\n                                        \"file_name\":\"test\",\n                                        \"unique_file_name\":\"sdcsdcsdj89sca\"\n                                }\n                            ],\n                            \"unique_rfq_id\":\"sdcdvsdvdfvdvsdcsdc\"\n                    }\n                ],\n                \"total\":100,\n                \"category_list\":[\n                    {\n                            \"category_id\":44,\n                            \"category_name\":\"phone\",\n                            \"count\":100\n                    }\n                ]\n            },\n            \"error_type\":\"null\",\n            \"success\":true\n        }\n    }\n}"
+    },
+    {
+      "method": "alibaba.icbu.rfqdetail.get",
+      "source": "catalog",
+      "docId": 32086,
+      "title": "获取RFQ详情",
+      "description": "查看RFQ的详情信息",
+      "lifecycle": "active",
+      "risk": "read",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-12",
+      "updatedAt": "2021-11-23",
+      "requestParams": [
+        {
+          "name": "md5key",
+          "type": "String",
+          "required": false,
+          "description": "验证",
+          "defaultValue": "8cb02c2c9cf4e4fbefe4a77e4e5f31b4",
+          "demoValue": "8cb02c2c9cf4e4fbefe4a77e4e5f31b4"
+        },
+        {
+          "name": "rfq_query_dto",
+          "type": "RfqDetailSearchQueryDto",
+          "required": false,
+          "description": "查询RFQ详情DTO",
+          "subParams": [
+            {
+              "name": "rfq_id",
+              "type": "String",
+              "required": true,
+              "description": "RFQ ID",
+              "demoValue": "1000"
+            }
+          ]
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "RfqRemoteServiceResult",
+          "required": false,
+          "description": "返回结果集",
+          "demoValue": "null",
+          "subParams": [
+            {
+              "name": "message",
+              "type": "String",
+              "required": false,
+              "description": "返回状态信息",
+              "demoValue": "\"success\""
+            },
+            {
+              "name": "result",
+              "type": "RfqBuyRequestSearchDetailRemoteDto",
+              "required": false,
+              "description": "RFQ详情结果集",
+              "demoValue": "null",
+              "subParams": [
+                {
+                  "name": "attachments",
+                  "type": "Attachedfiles[]",
+                  "required": false,
+                  "description": "附件列表",
+                  "demoValue": "null",
+                  "subParams": [
+                    {
+                      "name": "file_name",
+                      "type": "String",
+                      "required": false,
+                      "description": "文件名",
+                      "demoValue": "test.jpg"
+                    },
+                    {
+                      "name": "file_url",
+                      "type": "String",
+                      "required": false,
+                      "description": "文件地址",
+                      "demoValue": "http://sc01.alicdn.com"
+                    }
+                  ]
+                },
+                {
+                  "name": "rfq_detail_dto",
+                  "type": "BuyRequestSearchDetailRemoteDto",
+                  "required": false,
+                  "description": "RFQ详情",
+                  "demoValue": "null",
+                  "subParams": [
+                    {
+                      "name": "lang_src",
+                      "type": "String",
+                      "required": false,
+                      "description": "语种",
+                      "demoValue": "re"
+                    },
+                    {
+                      "name": "supplier_countrys",
+                      "type": "String",
+                      "required": false,
+                      "description": "供应商国家",
+                      "demoValue": "\"China\""
+                    },
+                    {
+                      "name": "category_id",
+                      "type": "Number",
+                      "required": false,
+                      "description": "类目ID",
+                      "demoValue": "44"
+                    },
+                    {
+                      "name": "category_name",
+                      "type": "String",
+                      "required": false,
+                      "description": "类目名称",
+                      "demoValue": "Food & Beverage"
+                    },
+                    {
+                      "name": "annex_names",
+                      "type": "String",
+                      "required": false,
+                      "description": "附加名称",
+                      "demoValue": "test"
+                    },
+                    {
+                      "name": "payment_terms",
+                      "type": "String",
+                      "required": false,
+                      "description": "付款条件",
+                      "demoValue": "PayPal"
+                    },
+                    {
+                      "name": "destination_port",
+                      "type": "String",
+                      "required": false,
+                      "description": "目的港",
+                      "demoValue": "Sydney"
+                    },
+                    {
+                      "name": "fob_price_unit",
+                      "type": "String",
+                      "required": false,
+                      "description": "价格单位",
+                      "demoValue": "USD"
+                    },
+                    {
+                      "name": "fob_price",
+                      "type": "String",
+                      "required": false,
+                      "description": "价格",
+                      "demoValue": "20"
+                    },
+                    {
+                      "name": "shipping_terms",
+                      "type": "String",
+                      "required": false,
+                      "description": "发运条件",
+                      "demoValue": "FOB"
+                    },
+                    {
+                      "name": "left_count",
+                      "type": "Number",
+                      "required": false,
+                      "description": "剩余报价数量",
+                      "demoValue": "1000"
+                    },
+                    {
+                      "name": "open_time",
+                      "type": "Number",
+                      "required": false,
+                      "description": "开放时间",
+                      "demoValue": "1000L"
+                    },
+                    {
+                      "name": "expirate_time",
+                      "type": "Number",
+                      "required": false,
+                      "description": "过期值",
+                      "demoValue": "1000L"
+                    },
+                    {
+                      "name": "country_simple",
+                      "type": "String",
+                      "required": false,
+                      "description": "国家简称",
+                      "demoValue": "\"CN\""
+                    },
+                    {
+                      "name": "quantity_unit",
+                      "type": "String",
+                      "required": false,
+                      "description": "数量单位",
+                      "demoValue": "Pieces"
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "Number",
+                      "required": false,
+                      "description": "数量",
+                      "demoValue": "100"
+                    },
+                    {
+                      "name": "status",
+                      "type": "String",
+                      "required": false,
+                      "description": "状态",
+                      "demoValue": "tbd"
+                    },
+                    {
+                      "name": "description",
+                      "type": "String",
+                      "required": false,
+                      "description": "描述",
+                      "demoValue": "we need plain tshirts, preferably 100% cotton, thick,  in different sizes and colors, no marks"
+                    },
+                    {
+                      "name": "subject",
+                      "type": "String",
+                      "required": false,
+                      "description": "标题",
+                      "demoValue": "T-shirt"
+                    },
+                    {
+                      "name": "rfq_id",
+                      "type": "String",
+                      "required": false,
+                      "description": "RFQ ID",
+                      "demoValue": "\"sdsdc8779sdcsdc\""
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "error_type",
+              "type": "String",
+              "required": false,
+              "description": "错误类型",
+              "demoValue": "null"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": false,
+              "description": "判断是否成功",
+              "demoValue": "false"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_icbu_rfqdetail_get_response\":{\n        \"result\":{\n            \"message\":\"\\\"success\\\"\",\n            \"result\":{\n                \"attachments\":[\n                    {\n                            \"file_name\":\"test.jpg\",\n                            \"file_url\":\"http:\\/\\/sc01.alicdn.com\"\n                    }\n                ],\n                \"rfq_detail_dto\":{\n                    \"lang_src\":\"re\",\n                    \"supplier_countrys\":\"\\\"China\\\"\",\n                    \"category_id\":44,\n                    \"category_name\":\"Food & Beverage\",\n                    \"annex_names\":\"test\",\n                    \"payment_terms\":\"PayPal\",\n                    \"destination_port\":\"Sydney\",\n                    \"fob_price_unit\":\"USD\",\n                    \"fob_price\":\"20\",\n                    \"shipping_terms\":\"FOB\",\n                    \"left_count\":1000,\n                    \"open_time\":1000L,\n                    \"expirate_time\":1000L,\n                    \"country_simple\":\"\\\"CN\\\"\",\n                    \"quantity_unit\":\"Pieces\",\n                    \"quantity\":100,\n                    \"status\":\"tbd\",\n                    \"description\":\"we need plain tshirts, preferably 100% cotton, thick,  in different sizes and colors, no marks\",\n                    \"subject\":\"T-shirt\",\n                    \"rfq_id\":\"\\\"sdsdc8779sdcsdc\\\"\"\n                }\n            },\n            \"error_type\":\"null\",\n            \"success\":false\n        }\n    }\n}"
+    }
+  ]
+}
