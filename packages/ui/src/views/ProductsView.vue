@@ -5,13 +5,15 @@ import { Layers3, RefreshCw, Save, Search, Send, ShieldAlert } from '@lucide/vue
 
 import {
   parseProductSchemaXml,
+  productSchemaFieldText,
   serializeProductSchemaXml,
   validateProductSchemaModel,
   validateSchemaPublishInput,
   type Product,
   type ProductCategory,
   type ProductSchemaField,
-  type ProductSchemaModel
+  type ProductSchemaModel,
+  withProductSchemaFieldText
 } from '@one-vegetable/core';
 
 import DataTable from '../components/DataTable.vue';
@@ -68,6 +70,10 @@ const schemaPreview = computed(() => {
   }
 });
 const extensionMutationDisabled = computed(() => mode === 'extension');
+const productDescriptionType = computed(() => {
+  const typeField = schemaModel.value?.fields.find((field) => field.id === 'productDescType');
+  return typeField ? productSchemaFieldText(typeField) : undefined;
+});
 
 const publish = useMutation({
   mutationFn: async (draft: boolean) => {
@@ -231,11 +237,18 @@ async function refreshLevelSchema(): Promise<void> {
 
 function updateRootField(index: number, field: ProductSchemaField): void {
   if (!schemaModel.value) return;
+  const isDescription =
+    field.id === 'superText' ||
+    field.rules.some((rule) => rule.name === 'valueTypeRule' && rule.value.toLocaleLowerCase() === 'html');
   schemaModel.value = {
     ...schemaModel.value,
-    fields: schemaModel.value.fields.map((current, currentIndex) =>
-      currentIndex === index ? field : current
-    )
+    fields: schemaModel.value.fields.map((current, currentIndex) => {
+      if (currentIndex === index) return field;
+      if (isDescription && current.id === 'productDescType') {
+        return withProductSchemaFieldText(current, '2');
+      }
+      return current;
+    })
   };
 }
 
@@ -362,6 +375,7 @@ onMounted(() => {
           :key="field.key"
           :field="field"
           :issues="schemaIssues"
+          :product-description-type="productDescriptionType"
           @update="updateRootField(index, $event)"
         />
       </div>

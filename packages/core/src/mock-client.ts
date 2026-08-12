@@ -47,6 +47,8 @@ const PRODUCTS: Product[] = [
 const MOCK_PRODUCT_SCHEMA_XML = `<itemSchema version="2">
   <field id="productTitle" name="商品标题" type="input"><rules><rule name="requiredRule" value="true"/><rule name="minLengthRule" value="5"/><rule name="maxLengthRule" value="128"/><rule name="tipRule" value="面向买家的英文商品标题"/></rules><values><value>Portable solar power station 1000W</value></values></field>
   <field id="scImages" name="商品主图" type="multiInput"><rules><rule name="requiredRule" value="true"/><rule name="maxInputNumRule" value="6"/><rule name="minTargetSizeRule" value="750x750"/></rules><value fileId="ph_001">https://sc04.alicdn.com/kf/mock-solar-station.jpg</value></field>
+  <field id="productDescType" name="详情类型" type="label"><value>2</value></field>
+  <field id="superText" name="商品详情" type="input"><rules><rule name="requiredRule" value="true"/><rule name="valueTypeRule" value="html"/><rule name="tipRule" value="API 仅支持维护普通详情"/></rules><value>&lt;h2&gt;Portable power for every scenario&lt;/h2&gt;&lt;p&gt;Reliable energy storage for camping, emergency backup, and mobile workstations.&lt;/p&gt;&lt;img src=&quot;https://sc04.alicdn.com/kf/mock-solar-station.jpg&quot; alt=&quot;Portable solar power station front view&quot; data-photobank-file-id=&quot;ph_001&quot;&gt;</value></field>
   <field id="keywords" name="关键词" type="multiInput"><rules><rule name="minInputNumRule" value="2"/><rule name="maxInputNumRule" value="3"/></rules><values><value>solar generator</value><value>portable power station</value></values></field>
   <field id="condition" name="商品状态" type="singleCheck"><options><option displayName="全新" value="new"/><option displayName="翻新" value="refurbished"/></options><values><value>new</value></values></field>
   <field id="certifications" name="认证" type="multiCheck"><options><option displayName="CE" value="ce"/><option displayName="RoHS" value="rohs"/><option displayName="FCC" value="fcc"/></options><values><value>ce</value><value>rohs</value></values></field>
@@ -91,7 +93,7 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
       {
         id: 'ph_001',
         name: 'solar-station-front.jpg',
-        url: 'https://placehold.co/800x800/0f172a/f8fafc?text=Solar+Station',
+        url: 'https://sc04.alicdn.com/kf/mock-solar-station.jpg',
         groupId: '2001',
         width: 1200,
         height: 1200,
@@ -102,7 +104,7 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
       {
         id: 'ph_002',
         name: 'canvas-bag-natural.jpg',
-        url: 'https://placehold.co/800x800/166534/f8fafc?text=Canvas+Bag',
+        url: 'https://sc04.alicdn.com/kf/mock-canvas-bag.jpg',
         groupId: '2001',
         width: 1200,
         height: 1200,
@@ -113,7 +115,7 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
       {
         id: 'ph_003',
         name: 'dehydrator-detail.jpg',
-        url: 'https://placehold.co/800x800/334155/f8fafc?text=Dehydrator',
+        url: 'https://sc04.alicdn.com/kf/mock-dehydrator-detail.jpg',
         groupId: '2002',
         width: 1600,
         height: 1200,
@@ -243,6 +245,21 @@ export class MockGatewayClient implements GatewayClient {
 
   async request<K extends OperationId>(operation: K, _request: RequestOf<K>): Promise<ResponseOf<K>> {
     await new Promise<void>((resolve) => setTimeout(resolve, this.latency));
+    if (operation === 'getProductSchema') {
+      const payload = _request as OperationMap['getProductSchema']['request'];
+      if (payload.productId === 'mock-smart') {
+        return {
+          ...structuredClone(MOCK_DATA.getProductSchema),
+          xml: descriptionSchemaVariant('smart')
+        } as ResponseOf<K>;
+      }
+      if (payload.productId === 'mock-legacy') {
+        return {
+          ...structuredClone(MOCK_DATA.getProductSchema),
+          xml: descriptionSchemaVariant('legacy')
+        } as ResponseOf<K>;
+      }
+    }
     if (operation === 'getCapabilityDefinition') {
       const payload = _request as OperationMap['getCapabilityDefinition']['request'];
       return structuredClone(requireCapabilityDefinition(payload.method));
@@ -291,6 +308,19 @@ export class MockGatewayClient implements GatewayClient {
     }
     return structuredClone(MOCK_DATA[operation]);
   }
+}
+
+function descriptionSchemaVariant(variant: 'smart' | 'legacy'): string {
+  if (variant === 'smart') {
+    return MOCK_PRODUCT_SCHEMA_XML.replace(
+      '<field id="productDescType" name="详情类型" type="label"><value>2</value></field>',
+      '<field id="productDescType" name="详情类型" type="label"><value>1</value></field>'
+    );
+  }
+  return MOCK_PRODUCT_SCHEMA_XML.replace(
+    '&lt;h2&gt;Portable power for every scenario&lt;/h2&gt;&lt;p&gt;Reliable energy storage for camping, emergency backup, and mobile workstations.&lt;/p&gt;&lt;img src=&quot;https://sc04.alicdn.com/kf/mock-solar-station.jpg&quot; alt=&quot;Portable solar power station front view&quot; data-photobank-file-id=&quot;ph_001&quot;&gt;',
+    '&lt;div class=&quot;legacy-detail&quot;&gt;&lt;h1 style=&quot;color:red&quot;&gt;Legacy detail&lt;/h1&gt;&lt;p onclick=&quot;track()&quot;&gt;Existing content stays untouched until conversion.&lt;/p&gt;&lt;iframe src=&quot;https://example.com&quot;&gt;&lt;/iframe&gt;&lt;/div&gt;'
+  );
 }
 
 function requireCapabilityDefinition(method: string) {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 defineOptions({ name: 'ProductSchemaField' });
 
-import { computed } from 'vue';
+import { computed, defineAsyncComponent } from 'vue';
 import { Plus, Trash2 } from '@lucide/vue';
 
 import {
@@ -9,6 +9,7 @@ import {
   isProductSchemaFieldDisabled,
   isProductSchemaImageField,
   isProductSchemaFieldReadOnly,
+  isProductSchemaHtmlField,
   productSchemaFieldText,
   productSchemaFieldTexts,
   type ProductSchemaField,
@@ -23,9 +24,12 @@ import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
 import PhotoBankPicker from './PhotoBankPicker.vue';
 
+const ProductDescriptionEditor = defineAsyncComponent(() => import('./ProductDescriptionEditor.vue'));
+
 const props = defineProps<{
   field: ProductSchemaField;
   issues: ProductSchemaFieldIssue[];
+  productDescriptionType: string | undefined;
 }>();
 const emit = defineEmits<{ update: [field: ProductSchemaField] }>();
 
@@ -35,6 +39,7 @@ const readOnly = computed(() => isProductSchemaFieldReadOnly(props.field));
 const fieldText = computed(() => productSchemaFieldText(props.field));
 const fieldTexts = computed(() => productSchemaFieldTexts(props.field));
 const imageField = computed(() => isProductSchemaImageField(props.field));
+const htmlField = computed(() => isProductSchemaHtmlField(props.field));
 const imageLimit = computed(() => {
   const value = Number(
     props.field.rules.find((rule) => rule.name === 'maxInputNumRule')?.value ??
@@ -155,8 +160,14 @@ function removeInstance(index: number): void {
     </div>
     <p v-if="tip" class="text-xs text-muted-foreground">{{ tip }}</p>
 
+    <ProductDescriptionEditor
+      v-if="htmlField"
+      :model-value="fieldText"
+      :smart-detail="productDescriptionType !== undefined && productDescriptionType !== '2'"
+      @update:model-value="updateValue"
+    />
     <PhotoBankPicker
-      v-if="imageField && (field.type === 'input' || field.type === 'multiInput')"
+      v-else-if="imageField && (field.type === 'input' || field.type === 'multiInput')"
       :model-value="selectedPhotos"
       :max="imageLimit"
       @update:model-value="updatePhotos"
@@ -201,6 +212,7 @@ function removeInstance(index: number): void {
         :key="child.key"
         :field="child"
         :issues="issues"
+        :product-description-type="productDescriptionType"
         @update="updateComplexChild(index, $event)"
       />
     </div>
@@ -221,6 +233,7 @@ function removeInstance(index: number): void {
           :key="child.key"
           :field="child"
           :issues="issues"
+          :product-description-type="productDescriptionType"
           @update="updateInstanceChild(instanceIndex, childIndex, $event)"
         />
       </div>
