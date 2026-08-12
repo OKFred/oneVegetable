@@ -45,6 +45,18 @@ export type RfqQuotationRequest = components['schemas']['RfqQuotationRequest'];
 export type RfqQuotationResult = components['schemas']['RfqQuotationResult'];
 export type RfqAttachmentUploadRequest = components['schemas']['RfqAttachmentUploadRequest'];
 export type RfqAttachmentUploadResult = components['schemas']['RfqAttachmentUploadResult'];
+export type TradeOrderSummary = components['schemas']['TradeOrderSummary'];
+export type TradeOrderPage = components['schemas']['TradeOrderPage'];
+export type TradeFund = components['schemas']['TradeFund'];
+export type TradeLogistics = components['schemas']['TradeLogistics'];
+export type TradeOrderAggregate = components['schemas']['TradeOrderAggregate'];
+export type TradeFulfillmentChannel = components['schemas']['TradeFulfillmentChannel'];
+export type TradeServiceCharge = components['schemas']['TradeServiceCharge'];
+export type TradeTtAccount = components['schemas']['TradeTtAccount'];
+export type TradeAddressSchema = components['schemas']['TradeAddressSchema'];
+export type TradeAddress = components['schemas']['TradeAddress'];
+export type TradeOrderDraft = components['schemas']['TradeOrderDraft'];
+export type TradeMutationResult = components['schemas']['TradeMutationResult'];
 export type { ProductCapabilityRequestMap, ProductCapabilityResponseMap };
 export type { RfqCapabilityRequestMap, RfqCapabilityResponseMap };
 export type { TradeCapabilityRequestMap, TradeCapabilityResponseMap };
@@ -80,6 +92,17 @@ export interface RfqListQuery {
   categoryId?: string;
   country?: string;
   unquotedOnly?: boolean;
+}
+
+export interface TradeOrderListQuery {
+  page?: number;
+  pageSize?: number;
+  status?: string;
+  buyerLoginId?: string;
+  createDateStart?: string;
+  createDateEnd?: string;
+  modifiedDateStart?: string;
+  modifiedDateEnd?: string;
 }
 
 export interface ProductDisplayRequest {
@@ -147,6 +170,31 @@ export interface OperationMap {
     response: RfqAttachmentUploadResult;
   };
   submitRfqQuotation: { request: RfqQuotationRequest; response: RfqQuotationResult };
+  listTradeOrders: { request: TradeOrderListQuery; response: TradeOrderPage };
+  getTradeOrderAggregate: {
+    request: { order: TradeOrderSummary };
+    response: TradeOrderAggregate;
+  };
+  getTradeOrderFund: { request: { orderId: string }; response: TradeFund };
+  getTradeOrderLogistics: { request: { orderId: string }; response: TradeLogistics };
+  listTradeFulfillmentChannels: {
+    request: { language?: string };
+    response: TradeFulfillmentChannel[];
+  };
+  getTradeServiceCharge: { request: { currency: string }; response: TradeServiceCharge };
+  getTradeTtAccount: { request: { orderId: string }; response: TradeTtAccount };
+  getTradeAddressSchema: {
+    request: { countryCode: string; language?: string };
+    response: TradeAddressSchema;
+  };
+  listTradeAddresses: { request: { buyerEmail: string }; response: TradeAddress[] };
+  saveTradeAddress: {
+    request: { buyerEmail: string; address: TradeAddress };
+    response: TradeAddress;
+  };
+  deleteTradeAddress: { request: { addressId: string }; response: undefined };
+  createTradeOrder: { request: TradeOrderDraft; response: TradeMutationResult };
+  modifyTradeOrder: { request: TradeOrderDraft; response: TradeMutationResult };
 }
 
 export type OperationId = keyof OperationMap;

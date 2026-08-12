@@ -10,6 +10,7 @@ import {
   listCapabilities,
   normalizeGatewayError,
   RfqAdapter,
+  TradeAdapter,
   validateCapabilityRequest,
   validateCapabilityResponse,
   type ApiCapability,
@@ -54,6 +55,19 @@ const OPERATIONS = new Set<OperationId>([
   'getRfqReadStatus',
   'uploadRfqAttachment',
   'submitRfqQuotation',
+  'listTradeOrders',
+  'getTradeOrderAggregate',
+  'getTradeOrderFund',
+  'getTradeOrderLogistics',
+  'listTradeFulfillmentChannels',
+  'getTradeServiceCharge',
+  'getTradeTtAccount',
+  'getTradeAddressSchema',
+  'listTradeAddresses',
+  'saveTradeAddress',
+  'deleteTradeAddress',
+  'createTradeOrder',
+  'modifyTradeOrder',
   'callCapability'
 ]);
 
@@ -66,7 +80,11 @@ const MUTATION_OPERATIONS = new Set<OperationId>([
   'transferPhotoFromUrl',
   'createProductGroup',
   'uploadRfqAttachment',
-  'submitRfqQuotation'
+  'submitRfqQuotation',
+  'saveTradeAddress',
+  'deleteTradeAddress',
+  'createTradeOrder',
+  'modifyTradeOrder'
 ]);
 
 export default defineBackground(() => {
@@ -109,6 +127,7 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
   const client = new AlibabaClient(settings);
   const products = new ProductAdapter(client);
   const rfqs = new RfqAdapter(client);
+  const trades = new TradeAdapter(client);
   const request = asRecord(payload);
 
   switch (operation) {
@@ -176,6 +195,34 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
       return rfqs.uploadAttachment(payload as RequestOf<'uploadRfqAttachment'>);
     case 'submitRfqQuotation':
       return rfqs.submitQuotation(payload as RequestOf<'submitRfqQuotation'>);
+    case 'listTradeOrders':
+      return trades.list(payload as RequestOf<'listTradeOrders'>);
+    case 'getTradeOrderAggregate':
+      return trades.getAggregate((payload as RequestOf<'getTradeOrderAggregate'>).order);
+    case 'getTradeOrderFund':
+      return trades.getFund(requiredString(request, 'orderId'));
+    case 'getTradeOrderLogistics':
+      return trades.getLogistics(requiredString(request, 'orderId'));
+    case 'listTradeFulfillmentChannels':
+      return trades.listFulfillmentChannels(readString(request, ['language']));
+    case 'getTradeServiceCharge':
+      return trades.getServiceCharge(requiredString(request, 'currency'));
+    case 'getTradeTtAccount':
+      return trades.getTtAccount(requiredString(request, 'orderId'));
+    case 'getTradeAddressSchema':
+      return trades.getAddressSchema(
+        requiredString(request, 'countryCode'),
+        readString(request, ['language'])
+      );
+    case 'listTradeAddresses':
+      return trades.listAddresses(requiredString(request, 'buyerEmail'));
+    case 'saveTradeAddress':
+      return trades.saveAddress(payload as RequestOf<'saveTradeAddress'>);
+    case 'deleteTradeAddress':
+      return trades.deleteAddress(requiredString(request, 'addressId'));
+    case 'createTradeOrder':
+    case 'modifyTradeOrder':
+      throw new Error('信保订单写入需要真实账号逐方法验收，当前保持禁用');
     case 'listPhotoGroups': {
       const call = await client.call('alibaba.icbu.photobank.group.list', {});
       return findRecords(unwrap(call.data, call.method), ['groups', 'photo_album_group']).map((item) => ({

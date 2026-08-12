@@ -306,28 +306,50 @@ document.components.schemas.TradeFulfillmentChannel = {
   properties: {
     code: { type: 'string' },
     name: { type: 'string' },
-    enabled: { type: 'boolean' }
+    enabled: { type: 'boolean' },
+    unavailableReason: { type: ['string', 'null'] }
+  }
+};
+document.components.schemas.TradeServiceChargeItem = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['ratio', 'maxFee', 'exportServiceType', 'logisticsType'],
+  properties: {
+    ratio: { type: ['string', 'null'] },
+    maxFee: { type: ['string', 'null'] },
+    exportServiceType: { type: ['string', 'null'] },
+    logisticsType: { type: ['string', 'null'] }
   }
 };
 document.components.schemas.TradeServiceCharge = {
   type: 'object',
   additionalProperties: false,
-  required: ['orderId', 'amount', 'currency'],
+  required: ['currency', 'items'],
   properties: {
-    orderId: { type: 'string' },
-    amount: decimalString,
-    currency: { type: 'string' }
+    currency: { type: 'string' },
+    items: { type: 'array', items: { $ref: '#/components/schemas/TradeServiceChargeItem' } }
   }
 };
 document.components.schemas.TradeTtAccount = {
   type: 'object',
   additionalProperties: false,
-  required: ['orderId', 'accountName', 'accountNumber', 'bankName'],
+  required: [
+    'orderId',
+    'payableAmount',
+    'currency',
+    'accountName',
+    'accountNumber',
+    'bankName',
+    'guideContent'
+  ],
   properties: {
     orderId: { type: 'string' },
+    payableAmount: decimalString,
+    currency: { type: 'string' },
     accountName: { type: ['string', 'null'] },
     accountNumber: { type: ['string', 'null'] },
-    bankName: { type: ['string', 'null'] }
+    bankName: { type: ['string', 'null'] },
+    guideContent: { type: ['string', 'null'] }
   }
 };
 document.components.schemas.TradeAddressSchemaField = {
@@ -505,6 +527,10 @@ document.paths['/trade-address-schema'] = {
   get: {
     summary: 'Get the declarative trade address form schema',
     operationId: 'getTradeAddressSchema',
+    parameters: [
+      { name: 'countryCode', in: 'query', required: true, schema: { type: 'string' } },
+      { name: 'language', in: 'query', schema: { type: 'string', default: 'en_US' } }
+    ],
     responses: {
       '200': jsonResponse('Trade address schema', {
         $ref: '#/components/schemas/TradeAddressSchema'
@@ -517,6 +543,9 @@ document.paths['/trade-addresses'] = {
   get: {
     summary: 'List trade addresses',
     operationId: 'listTradeAddresses',
+    parameters: [
+      { name: 'buyerEmail', in: 'query', required: true, schema: { type: 'string', format: 'email' } }
+    ],
     responses: {
       '200': jsonResponse('Trade addresses', {
         type: 'array',

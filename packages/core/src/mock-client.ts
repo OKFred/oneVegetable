@@ -13,7 +13,8 @@ import type {
   Product,
   RequestOf,
   ResponseOf,
-  RfqSummary
+  RfqSummary,
+  TradeOrderSummary
 } from './types';
 
 const PRIMARY_PRODUCT: Product = {
@@ -95,6 +96,38 @@ const RFQS: RfqSummary[] = [
     expiresAt: '2026-08-16T15:59:59.000Z',
     read: false,
     recommended: true
+  }
+];
+
+const PRIMARY_TRADE_ORDER: TradeOrderSummary = {
+  id: '24668306501026709',
+  buyerLoginId: 'northwind-buyer',
+  status: 'undeliver',
+  amount: '2450.50',
+  currency: 'USD',
+  createdAt: '2026-08-09T08:30:00.000Z',
+  modifiedAt: '2026-08-12T02:15:00.000Z'
+};
+
+const TRADE_ORDERS: TradeOrderSummary[] = [
+  PRIMARY_TRADE_ORDER,
+  {
+    id: '24668306501026710',
+    buyerLoginId: 'contoso-retail',
+    status: 'paid',
+    amount: '980',
+    currency: 'USD',
+    createdAt: '2026-08-08T02:10:00.000Z',
+    modifiedAt: '2026-08-10T06:40:00.000Z'
+  },
+  {
+    id: '24668306501026711',
+    buyerLoginId: 'adventure-works',
+    status: 'trade_success',
+    amount: '12780.75',
+    currency: 'EUR',
+    createdAt: '2026-08-05T11:20:00.000Z',
+    modifiedAt: '2026-08-12T09:05:00.000Z'
   }
 ];
 
@@ -320,7 +353,130 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
   uploadRfqAttachment: {
     filesString: 'fileId:0|fileSavePath:mock-rfq-attachment.pdf|fileFlag:add'
   },
-  submitRfqQuotation: { quotationId: 'QT-20260812-001', success: true }
+  submitRfqQuotation: { quotationId: 'QT-20260812-001', success: true },
+  listTradeOrders: {
+    items: TRADE_ORDERS,
+    page: 1,
+    pageSize: 20,
+    total: TRADE_ORDERS.length,
+    documentTimeZoneUnverified: true
+  },
+  getTradeOrderAggregate: {
+    order: PRIMARY_TRADE_ORDER,
+    fund: {
+      orderId: PRIMARY_TRADE_ORDER.id,
+      paidAmount: '2450.50',
+      currency: 'USD',
+      status: 'PAID'
+    },
+    logistics: {
+      orderId: PRIMARY_TRADE_ORDER.id,
+      status: 'UNDELIVERED',
+      carrier: null,
+      trackingNumber: null
+    },
+    availability: {
+      order: 'available',
+      fund: 'available',
+      logistics: 'available',
+      fullDetail: 'jushita-only'
+    }
+  },
+  getTradeOrderFund: {
+    orderId: PRIMARY_TRADE_ORDER.id,
+    paidAmount: '2450.50',
+    currency: 'USD',
+    status: 'PAID'
+  },
+  getTradeOrderLogistics: {
+    orderId: PRIMARY_TRADE_ORDER.id,
+    status: 'UNDELIVERED',
+    carrier: null,
+    trackingNumber: null
+  },
+  listTradeFulfillmentChannels: [
+    { code: 'TAO', name: '一达通', enabled: true, unavailableReason: null },
+    { code: 'TAD', name: '小单履约', enabled: false, unavailableReason: '当前订单金额不符合策略' }
+  ],
+  getTradeServiceCharge: {
+    currency: 'USD',
+    items: [
+      {
+        ratio: '0.01',
+        maxFee: '100',
+        exportServiceType: 'onetouch_service',
+        logisticsType: 'useCaiNiaoLogistics'
+      }
+    ]
+  },
+  getTradeTtAccount: {
+    orderId: PRIMARY_TRADE_ORDER.id,
+    payableAmount: '2450.50',
+    currency: 'USD',
+    accountName: 'Alibaba.com Singapore E-Commerce Private Limited',
+    accountNumber: '1029200038060',
+    bankName: 'Citibank, N.A., Hong Kong Branch',
+    guideContent: '汇款附言中请填写订单号。'
+  },
+  getTradeAddressSchema: {
+    fields: [
+      {
+        id: 'contact.fullName',
+        label: '联系人',
+        type: 'text',
+        required: true,
+        readOnly: false,
+        pattern: '^.+$',
+        maxLength: 128,
+        options: []
+      },
+      {
+        id: 'address.country.code',
+        label: '国家/地区',
+        type: 'select',
+        required: true,
+        readOnly: false,
+        pattern: null,
+        maxLength: null,
+        options: [{ label: 'United States', value: 'US' }]
+      },
+      {
+        id: 'address.address',
+        label: '地址',
+        type: 'textarea',
+        required: true,
+        readOnly: false,
+        pattern: null,
+        maxLength: 256,
+        options: []
+      }
+    ]
+  },
+  listTradeAddresses: [
+    {
+      id: '120384173001',
+      label: 'Northwind warehouse',
+      values: {
+        'contact.fullName': 'Alex Morgan',
+        'contact.mobileNo': '3534534251',
+        'address.country.code': 'US',
+        'address.city.name': 'Seattle',
+        'address.address': '1st Avenue 700'
+      }
+    }
+  ],
+  saveTradeAddress: {
+    id: '120384173001',
+    label: 'Northwind warehouse',
+    values: {
+      'contact.fullName': 'Alex Morgan',
+      'address.country.code': 'US',
+      'address.address': '1st Avenue 700'
+    }
+  },
+  deleteTradeAddress: undefined,
+  createTradeOrder: { id: '24668306501026999', success: true },
+  modifyTradeOrder: { id: PRIMARY_TRADE_ORDER.id, success: true }
 };
 
 export class MockGatewayClient implements GatewayClient {
@@ -426,6 +582,74 @@ export class MockGatewayClient implements GatewayClient {
             RFQS.find((candidate) => candidate.id === rfqId)?.read ?? false
           ])
         )
+      } as ResponseOf<K>;
+    }
+    if (operation === 'listTradeOrders') {
+      const payload = _request as OperationMap['listTradeOrders']['request'];
+      const page = payload.page ?? 1;
+      const pageSize = payload.pageSize ?? 20;
+      const candidates = TRADE_ORDERS.filter((order) => {
+        if (payload.status && order.status !== payload.status) return false;
+        if (payload.buyerLoginId && order.buyerLoginId !== payload.buyerLoginId) return false;
+        return true;
+      });
+      return {
+        items: candidates.slice((page - 1) * pageSize, page * pageSize),
+        page,
+        pageSize,
+        total: candidates.length,
+        documentTimeZoneUnverified: true
+      } as ResponseOf<K>;
+    }
+    if (operation === 'getTradeOrderAggregate') {
+      const payload = _request as OperationMap['getTradeOrderAggregate']['request'];
+      return {
+        ...structuredClone(MOCK_DATA.getTradeOrderAggregate),
+        order: payload.order,
+        fund: { ...structuredClone(MOCK_DATA.getTradeOrderFund), orderId: payload.order.id },
+        logistics: {
+          ...structuredClone(MOCK_DATA.getTradeOrderLogistics),
+          orderId: payload.order.id
+        }
+      } as ResponseOf<K>;
+    }
+    if (operation === 'getTradeOrderFund') {
+      const payload = _request as { orderId: string };
+      return {
+        ...structuredClone(MOCK_DATA.getTradeOrderFund),
+        orderId: payload.orderId
+      };
+    }
+    if (operation === 'getTradeOrderLogistics') {
+      const payload = _request as { orderId: string };
+      return {
+        ...structuredClone(MOCK_DATA.getTradeOrderLogistics),
+        orderId: payload.orderId
+      };
+    }
+    if (operation === 'getTradeTtAccount') {
+      const payload = _request as { orderId: string };
+      return {
+        ...structuredClone(MOCK_DATA.getTradeTtAccount),
+        orderId: payload.orderId
+      };
+    }
+    if (operation === 'getTradeServiceCharge') {
+      const payload = _request as OperationMap['getTradeServiceCharge']['request'];
+      return {
+        ...structuredClone(MOCK_DATA.getTradeServiceCharge),
+        currency: payload.currency
+      } as ResponseOf<K>;
+    }
+    if (operation === 'saveTradeAddress') {
+      const payload = _request as OperationMap['saveTradeAddress']['request'];
+      return structuredClone(payload.address);
+    }
+    if (operation === 'createTradeOrder' || operation === 'modifyTradeOrder') {
+      const payload = _request as OperationMap['createTradeOrder']['request'];
+      return {
+        id: payload.orderId ?? `mock-trade-${Date.now()}`,
+        success: true
       } as ResponseOf<K>;
     }
     if (operation === 'uploadRfqAttachment') {

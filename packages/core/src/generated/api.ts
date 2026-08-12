@@ -4392,6 +4392,7 @@ export interface components {
             code: string;
             name: string;
             enabled: boolean;
+            unavailableReason?: string | null;
         };
         TradeFund: {
             orderId: string;
@@ -4455,15 +4456,23 @@ export interface components {
             modifiedAt: string | null;
         };
         TradeServiceCharge: {
-            orderId: string;
-            amount: string;
             currency: string;
+            items: components["schemas"]["TradeServiceChargeItem"][];
+        };
+        TradeServiceChargeItem: {
+            ratio: string | null;
+            maxFee: string | null;
+            exportServiceType: string | null;
+            logisticsType: string | null;
         };
         TradeTtAccount: {
             orderId: string;
+            payableAmount: string;
+            currency: string;
             accountName: string | null;
             accountNumber: string | null;
             bankName: string | null;
+            guideContent: string | null;
         };
     };
     responses: {
@@ -5509,7 +5518,10 @@ export interface operations {
     };
     getTradeAddressSchema: {
         parameters: {
-            query?: never;
+            query: {
+                countryCode: string;
+                language?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -5531,7 +5543,9 @@ export interface operations {
     };
     listTradeAddresses: {
         parameters: {
-            query?: never;
+            query: {
+                buyerEmail: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
