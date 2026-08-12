@@ -9,6 +9,7 @@ import {
   getCapabilityDefinition,
   listCapabilities,
   normalizeGatewayError,
+  RfqAdapter,
   validateCapabilityRequest,
   validateCapabilityResponse,
   type ApiCapability,
@@ -46,6 +47,13 @@ const OPERATIONS = new Set<OperationId>([
   'listProductGroups',
   'createProductGroup',
   'getProductScore',
+  'listRfqs',
+  'listRecommendedRfqs',
+  'getRfq',
+  'getRfqEquity',
+  'getRfqReadStatus',
+  'uploadRfqAttachment',
+  'submitRfqQuotation',
   'callCapability'
 ]);
 
@@ -56,7 +64,9 @@ const MUTATION_OPERATIONS = new Set<OperationId>([
   'updateProductDisplay',
   'uploadPhoto',
   'transferPhotoFromUrl',
-  'createProductGroup'
+  'createProductGroup',
+  'uploadRfqAttachment',
+  'submitRfqQuotation'
 ]);
 
 export default defineBackground(() => {
@@ -98,6 +108,7 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
   }
   const client = new AlibabaClient(settings);
   const products = new ProductAdapter(client);
+  const rfqs = new RfqAdapter(client);
   const request = asRecord(payload);
 
   switch (operation) {
@@ -151,6 +162,20 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
       return products.createGroup(payload as RequestOf<'createProductGroup'>);
     case 'getProductScore':
       return products.getScore(requiredString(request, 'productId'));
+    case 'listRfqs':
+      return rfqs.list(payload as RequestOf<'listRfqs'>);
+    case 'listRecommendedRfqs':
+      return rfqs.listRecommended(payload as RequestOf<'listRecommendedRfqs'>);
+    case 'getRfq':
+      return rfqs.get(requiredString(request, 'rfqId'));
+    case 'getRfqEquity':
+      return rfqs.getEquity();
+    case 'getRfqReadStatus':
+      return rfqs.getReadStatus(requiredStringArray(request, 'rfqIds'));
+    case 'uploadRfqAttachment':
+      return rfqs.uploadAttachment(payload as RequestOf<'uploadRfqAttachment'>);
+    case 'submitRfqQuotation':
+      return rfqs.submitQuotation(payload as RequestOf<'submitRfqQuotation'>);
     case 'listPhotoGroups': {
       const call = await client.call('alibaba.icbu.photobank.group.list', {});
       return findRecords(unwrap(call.data, call.method), ['groups', 'photo_album_group']).map((item) => ({
@@ -357,6 +382,14 @@ function requiredString(record: Record<string, unknown>, key: string): string {
 function requiredNumber(record: Record<string, unknown>, key: string): number {
   const value = readNumber(record, [key]);
   if (value === undefined) throw new Error(`缺少必填参数 ${key}`);
+  return value;
+}
+
+function requiredStringArray(record: Record<string, unknown>, key: string): string[] {
+  const value = record[key];
+  if (!Array.isArray(value) || !value.every((item) => typeof item === 'string')) {
+    throw new Error(`缺少必填参数 ${key}`);
+  }
   return value;
 }
 

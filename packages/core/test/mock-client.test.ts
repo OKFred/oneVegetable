@@ -34,4 +34,40 @@ describe('MockGatewayClient', () => {
     });
     expect(transferred).toMatchObject({ name: 'detail.jpg', groupId: '2002' });
   });
+
+  it('serves the RFQ search, detail, equity and quotation mock workflow', async () => {
+    const client = new MockGatewayClient(0);
+    const page = await client.request('listRfqs', {
+      page: 1,
+      pageSize: 20,
+      keywords: 'solar',
+      unquotedOnly: true
+    });
+    expect(page.items[0]?.id).toBe('RFQ-20260812-001');
+
+    const detail = await client.request('getRfq', { rfqId: page.items[0]?.id ?? '' });
+    const equity = await client.request('getRfqEquity', undefined);
+    const quotation = await client.request('submitRfqQuotation', {
+      rfqId: detail.id,
+      message: 'Mock quotation',
+      paymentTerms: 'T/T',
+      expiresAt: '2026-08-31 00:00:00',
+      prices: [
+        {
+          itemName: detail.subject,
+          unitPrice: '599',
+          currency: 'USD',
+          quantity: '50',
+          quantityUnit: 'Pieces',
+          shippingTerms: 'FOB',
+          port: 'Shenzhen',
+          remark: ''
+        }
+      ]
+    });
+
+    expect(detail.destinationPort).toBe('Hamburg');
+    expect(equity.remainingQuotes).toBeGreaterThan(0);
+    expect(quotation.success).toBe(true);
+  });
 });

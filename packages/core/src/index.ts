@@ -6,6 +6,7 @@ export * from './photo-transfer';
 export * from './product-description';
 export * from './product-description-quality';
 export * from './product-schema';
+export * from './rfq-adapter';
 export * from './signing';
 export * from './types';
 export * from './validation';

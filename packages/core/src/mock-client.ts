@@ -12,7 +12,8 @@ import type {
   OperationMap,
   Product,
   RequestOf,
-  ResponseOf
+  ResponseOf,
+  RfqSummary
 } from './types';
 
 const PRIMARY_PRODUCT: Product = {
@@ -41,6 +42,59 @@ const PRODUCTS: Product[] = [
     status: 'auditing',
     score: 84,
     updatedAt: '2026-08-09T11:03:00Z'
+  }
+];
+
+const PRIMARY_RFQ: RfqSummary = {
+  id: 'RFQ-20260812-001',
+  subject: 'Portable solar power stations for outdoor retail',
+  description: 'Looking for 1000W portable stations with EU and US plugs for a seasonal order.',
+  quantity: 300,
+  quantityUnit: 'Pieces',
+  countryCode: 'DE',
+  categoryId: 100003109,
+  categoryName: 'Portable Power Stations',
+  imageUrl: 'https://placehold.co/640x480/0f766e/ffffff?text=RFQ+Solar',
+  remainingQuotes: 6,
+  openAt: '2026-08-12T02:00:00.000Z',
+  expiresAt: '2026-08-20T15:59:59.000Z',
+  read: false,
+  recommended: true
+};
+
+const RFQS: RfqSummary[] = [
+  PRIMARY_RFQ,
+  {
+    id: 'RFQ-20260811-014',
+    subject: 'Recycled cotton canvas tote bags',
+    description: 'Custom logo printing, natural color, 12 oz fabric preferred.',
+    quantity: 5000,
+    quantityUnit: 'Pieces',
+    countryCode: 'CA',
+    categoryId: 100001589,
+    categoryName: 'Shopping Bags',
+    imageUrl: null,
+    remainingQuotes: 3,
+    openAt: '2026-08-11T06:30:00.000Z',
+    expiresAt: '2026-08-18T15:59:59.000Z',
+    read: true,
+    recommended: false
+  },
+  {
+    id: 'RFQ-20260810-021',
+    subject: 'Commercial food dehydrator 24 trays',
+    description: 'Stainless steel dehydrator for a food processing pilot line.',
+    quantity: 12,
+    quantityUnit: 'Sets',
+    countryCode: 'AU',
+    categoryId: 100006001,
+    categoryName: 'Food Processing Machinery',
+    imageUrl: 'https://placehold.co/640x480/334155/ffffff?text=RFQ+Dehydrator',
+    remainingQuotes: 1,
+    openAt: '2026-08-10T09:45:00.000Z',
+    expiresAt: '2026-08-16T15:59:59.000Z',
+    read: false,
+    recommended: true
   }
 ];
 
@@ -237,7 +291,36 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
     productId: '10000001',
     score: 92,
     issues: ['建议补充更多应用场景图片', '建议完善商品关键词']
-  }
+  },
+  listRfqs: { items: RFQS, page: 1, pageSize: 20, total: 38, source: 'search' },
+  listRecommendedRfqs: {
+    items: RFQS.filter((rfq) => rfq.recommended),
+    page: 1,
+    pageSize: 20,
+    total: 2,
+    source: 'recommend'
+  },
+  getRfq: {
+    ...PRIMARY_RFQ,
+    paymentTerms: 'L/C or T/T',
+    destinationPort: 'Hamburg',
+    shippingTerms: 'FOB',
+    attachments: [{ name: 'target-specification.pdf', url: 'https://example.com/mock-rfq-spec.pdf' }]
+  },
+  getRfqEquity: {
+    remainingQuotes: 12,
+    remainingTopQuotes: 2,
+    score: 86,
+    beatSupplierPercent: '72%',
+    expiresAt: '2026-12-31'
+  },
+  getRfqReadStatus: {
+    statuses: Object.fromEntries(RFQS.map((rfq) => [rfq.id, rfq.read]))
+  },
+  uploadRfqAttachment: {
+    filesString: 'fileId:0|fileSavePath:mock-rfq-attachment.pdf|fileFlag:add'
+  },
+  submitRfqQuotation: { quotationId: 'QT-20260812-001', success: true }
 };
 
 export class MockGatewayClient implements GatewayClient {
@@ -304,6 +387,51 @@ export class MockGatewayClient implements GatewayClient {
         ...structuredClone(MOCK_DATA.transferPhotoFromUrl),
         name: payload.fileName ?? sourceName ?? 'transferred-image.jpg',
         groupId: payload.groupId
+      } as ResponseOf<K>;
+    }
+    if (operation === 'listRfqs' || operation === 'listRecommendedRfqs') {
+      const payload = _request as OperationMap['listRfqs']['request'];
+      const source = operation === 'listRfqs' ? 'search' : 'recommend';
+      const candidates = operation === 'listRfqs' ? RFQS : RFQS.filter((rfq) => rfq.recommended);
+      const keywords = payload.keywords?.toLowerCase();
+      const items = candidates.filter((rfq) => {
+        if (keywords && !`${rfq.subject} ${rfq.description}`.toLowerCase().includes(keywords)) {
+          return false;
+        }
+        if (payload.country && rfq.countryCode !== payload.country) return false;
+        return payload.unquotedOnly !== true || (rfq.remainingQuotes ?? 0) > 0;
+      });
+      return {
+        items,
+        page: payload.page ?? 1,
+        pageSize: payload.pageSize ?? 20,
+        total: items.length,
+        source
+      } as ResponseOf<K>;
+    }
+    if (operation === 'getRfq') {
+      const payload = _request as OperationMap['getRfq']['request'];
+      const rfq = RFQS.find((candidate) => candidate.id === payload.rfqId) ?? PRIMARY_RFQ;
+      return {
+        ...structuredClone(MOCK_DATA.getRfq),
+        ...rfq
+      };
+    }
+    if (operation === 'getRfqReadStatus') {
+      const payload = _request as OperationMap['getRfqReadStatus']['request'];
+      return {
+        statuses: Object.fromEntries(
+          payload.rfqIds.map((rfqId) => [
+            rfqId,
+            RFQS.find((candidate) => candidate.id === rfqId)?.read ?? false
+          ])
+        )
+      } as ResponseOf<K>;
+    }
+    if (operation === 'uploadRfqAttachment') {
+      const payload = _request as OperationMap['uploadRfqAttachment']['request'];
+      return {
+        filesString: `fileId:0|fileSavePath:mock-${encodeURIComponent(payload.fileName)}|fileFlag:add`
       } as ResponseOf<K>;
     }
     return structuredClone(MOCK_DATA[operation]);

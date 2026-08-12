@@ -247,6 +247,274 @@ for (const definition of snapshot.definitions) {
 }
 document['x-rfq-capabilities'] = capabilityMap;
 
+document.components.schemas.RfqSummary = {
+  type: 'object',
+  additionalProperties: false,
+  required: [
+    'id',
+    'subject',
+    'description',
+    'quantity',
+    'quantityUnit',
+    'countryCode',
+    'categoryId',
+    'categoryName',
+    'imageUrl',
+    'remainingQuotes',
+    'openAt',
+    'expiresAt',
+    'read',
+    'recommended'
+  ],
+  properties: {
+    id: { type: 'string' },
+    subject: { type: 'string' },
+    description: { type: 'string' },
+    quantity: { type: ['number', 'null'] },
+    quantityUnit: { type: ['string', 'null'] },
+    countryCode: { type: ['string', 'null'] },
+    categoryId: { type: ['number', 'null'] },
+    categoryName: { type: ['string', 'null'] },
+    imageUrl: { type: ['string', 'null'] },
+    remainingQuotes: { type: ['number', 'null'] },
+    openAt: { type: ['string', 'null'], format: 'date-time' },
+    expiresAt: { type: ['string', 'null'], format: 'date-time' },
+    read: { type: 'boolean' },
+    recommended: { type: 'boolean' }
+  }
+};
+document.components.schemas.RfqPage = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['items', 'page', 'pageSize', 'total', 'source'],
+  properties: {
+    items: { type: 'array', items: { $ref: '#/components/schemas/RfqSummary' } },
+    page: { type: 'integer', minimum: 1 },
+    pageSize: { type: 'integer', minimum: 1 },
+    total: { type: 'integer', minimum: 0 },
+    source: { type: 'string', enum: ['search', 'recommend'] }
+  }
+};
+document.components.schemas.RfqAttachment = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['name', 'url'],
+  properties: { name: { type: 'string' }, url: { type: 'string' } }
+};
+document.components.schemas.RfqDetail = {
+  allOf: [
+    { $ref: '#/components/schemas/RfqSummary' },
+    {
+      type: 'object',
+      additionalProperties: false,
+      required: ['paymentTerms', 'destinationPort', 'shippingTerms', 'attachments'],
+      properties: {
+        paymentTerms: { type: ['string', 'null'] },
+        destinationPort: { type: ['string', 'null'] },
+        shippingTerms: { type: ['string', 'null'] },
+        attachments: {
+          type: 'array',
+          items: { $ref: '#/components/schemas/RfqAttachment' }
+        }
+      }
+    }
+  ]
+};
+document.components.schemas.RfqEquity = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['remainingQuotes', 'remainingTopQuotes', 'score', 'beatSupplierPercent', 'expiresAt'],
+  properties: {
+    remainingQuotes: { type: 'number' },
+    remainingTopQuotes: { type: 'number' },
+    score: { type: 'number' },
+    beatSupplierPercent: { type: ['string', 'null'] },
+    expiresAt: { type: ['string', 'null'] }
+  }
+};
+document.components.schemas.RfqReadStatus = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['statuses'],
+  properties: {
+    statuses: { type: 'object', additionalProperties: { type: 'boolean' } }
+  }
+};
+document.components.schemas.RfqQuotationPrice = {
+  type: 'object',
+  additionalProperties: false,
+  required: [
+    'itemName',
+    'unitPrice',
+    'currency',
+    'quantity',
+    'quantityUnit',
+    'shippingTerms',
+    'port',
+    'remark'
+  ],
+  properties: {
+    itemName: { type: 'string', minLength: 1 },
+    unitPrice: { type: 'string', minLength: 1 },
+    currency: { type: 'string', minLength: 1 },
+    quantity: { type: 'string', minLength: 1 },
+    quantityUnit: { type: 'string', minLength: 1 },
+    shippingTerms: { type: 'string', minLength: 1 },
+    port: { type: 'string', minLength: 1 },
+    remark: { type: 'string' },
+    modelNumber: { type: 'string' },
+    imageFilesString: { type: 'string' }
+  }
+};
+document.components.schemas.RfqQuotationRequest = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['rfqId', 'message', 'paymentTerms', 'expiresAt', 'prices'],
+  properties: {
+    rfqId: { type: 'string', minLength: 1 },
+    message: { type: 'string', minLength: 1 },
+    paymentTerms: { type: 'string', minLength: 1 },
+    expiresAt: { type: 'string', minLength: 1 },
+    prices: {
+      type: 'array',
+      minItems: 1,
+      items: { $ref: '#/components/schemas/RfqQuotationPrice' }
+    },
+    attachmentFilesString: { type: 'string' }
+  }
+};
+document.components.schemas.RfqQuotationResult = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['quotationId', 'success'],
+  properties: { quotationId: { type: 'string' }, success: { type: 'boolean' } }
+};
+document.components.schemas.RfqAttachmentUploadRequest = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['fileName', 'file'],
+  properties: {
+    fileName: { type: 'string', minLength: 1 },
+    file: { type: 'string', minLength: 1, contentEncoding: 'base64' }
+  }
+};
+document.components.schemas.RfqAttachmentUploadResult = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['filesString'],
+  properties: { filesString: { type: 'string' } }
+};
+
+const gatewayFailureResponses = {
+  '4XX': { $ref: '#/components/responses/GatewayFailure' },
+  default: { $ref: '#/components/responses/GatewayFailure' }
+};
+const jsonResponse = (description: string, schema: JsonSchema) => ({
+  description,
+  content: { 'application/json': { schema } }
+});
+const jsonRequest = (schema: JsonSchema) => ({
+  required: true,
+  content: { 'application/json': { schema } }
+});
+document.paths['/rfqs'] = {
+  get: {
+    summary: 'Search RFQs',
+    operationId: 'listRfqs',
+    parameters: [
+      { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1 } },
+      { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100 } },
+      { name: 'keywords', in: 'query', schema: { type: 'string' } },
+      { name: 'categoryId', in: 'query', schema: { type: 'string' } },
+      { name: 'country', in: 'query', schema: { type: 'string' } },
+      { name: 'unquotedOnly', in: 'query', schema: { type: 'boolean' } }
+    ],
+    responses: {
+      '200': jsonResponse('RFQ search result', { $ref: '#/components/schemas/RfqPage' }),
+      ...gatewayFailureResponses
+    }
+  }
+};
+document.paths['/rfqs/recommended'] = {
+  get: {
+    summary: 'List recommended RFQs',
+    operationId: 'listRecommendedRfqs',
+    parameters: [
+      { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1 } },
+      { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100 } }
+    ],
+    responses: {
+      '200': jsonResponse('Recommended RFQs', { $ref: '#/components/schemas/RfqPage' }),
+      ...gatewayFailureResponses
+    }
+  }
+};
+document.paths['/rfqs/equity'] = {
+  get: {
+    summary: 'Get RFQ quotation equity',
+    operationId: 'getRfqEquity',
+    responses: {
+      '200': jsonResponse('RFQ equity', { $ref: '#/components/schemas/RfqEquity' }),
+      ...gatewayFailureResponses
+    }
+  }
+};
+document.paths['/rfqs/read-status'] = {
+  post: {
+    summary: 'Get RFQ read status for up to 20 IDs',
+    operationId: 'getRfqReadStatus',
+    requestBody: jsonRequest({
+      type: 'object',
+      additionalProperties: false,
+      required: ['rfqIds'],
+      properties: {
+        rfqIds: { type: 'array', minItems: 1, maxItems: 20, items: { type: 'string' } }
+      }
+    }),
+    responses: {
+      '200': jsonResponse('RFQ read status map', { $ref: '#/components/schemas/RfqReadStatus' }),
+      ...gatewayFailureResponses
+    }
+  }
+};
+document.paths['/rfqs/{rfqId}'] = {
+  get: {
+    summary: 'Get an RFQ detail',
+    operationId: 'getRfq',
+    parameters: [{ name: 'rfqId', in: 'path', required: true, schema: { type: 'string' } }],
+    responses: {
+      '200': jsonResponse('RFQ detail', { $ref: '#/components/schemas/RfqDetail' }),
+      ...gatewayFailureResponses
+    }
+  }
+};
+document.paths['/rfqs/attachments'] = {
+  post: {
+    summary: 'Upload an RFQ quotation attachment',
+    operationId: 'uploadRfqAttachment',
+    requestBody: jsonRequest({ $ref: '#/components/schemas/RfqAttachmentUploadRequest' }),
+    responses: {
+      '200': jsonResponse('RFQ attachment token', {
+        $ref: '#/components/schemas/RfqAttachmentUploadResult'
+      }),
+      ...gatewayFailureResponses
+    }
+  }
+};
+document.paths['/rfqs/quotations'] = {
+  post: {
+    summary: 'Submit an RFQ quotation',
+    operationId: 'submitRfqQuotation',
+    requestBody: jsonRequest({ $ref: '#/components/schemas/RfqQuotationRequest' }),
+    responses: {
+      '200': jsonResponse('RFQ quotation result', {
+        $ref: '#/components/schemas/RfqQuotationResult'
+      }),
+      ...gatewayFailureResponses
+    }
+  }
+};
+
 const productCapabilities = (document['x-product-capabilities'] ?? {}) as Record<
   string,
   { requestSchema: string; responseSchema: string }

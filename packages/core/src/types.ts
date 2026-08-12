@@ -35,6 +35,15 @@ export type ProductCategory = components['schemas']['ProductCategory'];
 export type ProductCategoryMapping = components['schemas']['ProductCategoryMapping'];
 export type ProductGroup = components['schemas']['ProductGroup'];
 export type ProductScore = components['schemas']['ProductScore'];
+export type RfqSummary = components['schemas']['RfqSummary'];
+export type RfqPage = components['schemas']['RfqPage'];
+export type RfqDetail = components['schemas']['RfqDetail'];
+export type RfqEquity = components['schemas']['RfqEquity'];
+export type RfqReadStatus = components['schemas']['RfqReadStatus'];
+export type RfqQuotationRequest = components['schemas']['RfqQuotationRequest'];
+export type RfqQuotationResult = components['schemas']['RfqQuotationResult'];
+export type RfqAttachmentUploadRequest = components['schemas']['RfqAttachmentUploadRequest'];
+export type RfqAttachmentUploadResult = components['schemas']['RfqAttachmentUploadResult'];
 export type { ProductCapabilityRequestMap, ProductCapabilityResponseMap };
 export type { RfqCapabilityRequestMap, RfqCapabilityResponseMap };
 export interface CapabilityRequestMap extends ProductCapabilityRequestMap, RfqCapabilityRequestMap {}
@@ -58,6 +67,15 @@ export interface OrderListQuery {
   page?: number;
   pageSize?: number;
   status?: string;
+}
+
+export interface RfqListQuery {
+  page?: number;
+  pageSize?: number;
+  keywords?: string;
+  categoryId?: string;
+  country?: string;
+  unquotedOnly?: boolean;
 }
 
 export interface ProductDisplayRequest {
@@ -112,6 +130,19 @@ export interface OperationMap {
     response: ProductGroup;
   };
   getProductScore: { request: { productId: string }; response: ProductScore };
+  listRfqs: { request: RfqListQuery; response: RfqPage };
+  listRecommendedRfqs: {
+    request: Pick<RfqListQuery, 'page' | 'pageSize'>;
+    response: RfqPage;
+  };
+  getRfq: { request: { rfqId: string }; response: RfqDetail };
+  getRfqEquity: { request: undefined; response: RfqEquity };
+  getRfqReadStatus: { request: { rfqIds: string[] }; response: RfqReadStatus };
+  uploadRfqAttachment: {
+    request: RfqAttachmentUploadRequest;
+    response: RfqAttachmentUploadResult;
+  };
+  submitRfqQuotation: { request: RfqQuotationRequest; response: RfqQuotationResult };
 }
 
 export type OperationId = keyof OperationMap;

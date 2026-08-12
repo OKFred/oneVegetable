@@ -332,6 +332,125 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/rfqs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search RFQs */
+        get: operations["listRfqs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rfqs/recommended": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List recommended RFQs */
+        get: operations["listRecommendedRfqs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rfqs/equity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get RFQ quotation equity */
+        get: operations["getRfqEquity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rfqs/read-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Get RFQ read status for up to 20 IDs */
+        post: operations["getRfqReadStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rfqs/{rfqId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an RFQ detail */
+        get: operations["getRfq"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rfqs/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload an RFQ quotation attachment */
+        post: operations["uploadRfqAttachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rfqs/quotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit an RFQ quotation */
+        post: operations["submitRfqQuotation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2608,6 +2727,85 @@ export interface components {
             /** @description Optional normalized official issues when the upstream response provides structured details. */
             qualityIssues?: components["schemas"]["ProductDescriptionQualityIssue"][];
         };
+        RfqAttachment: {
+            name: string;
+            url: string;
+        };
+        RfqAttachmentUploadRequest: {
+            fileName: string;
+            file: string;
+        };
+        RfqAttachmentUploadResult: {
+            filesString: string;
+        };
+        RfqDetail: components["schemas"]["RfqSummary"] & {
+            paymentTerms: string | null;
+            destinationPort: string | null;
+            shippingTerms: string | null;
+            attachments: components["schemas"]["RfqAttachment"][];
+        };
+        RfqEquity: {
+            remainingQuotes: number;
+            remainingTopQuotes: number;
+            score: number;
+            beatSupplierPercent: string | null;
+            expiresAt: string | null;
+        };
+        RfqPage: {
+            items: components["schemas"]["RfqSummary"][];
+            page: number;
+            pageSize: number;
+            total: number;
+            /** @enum {string} */
+            source: "search" | "recommend";
+        };
+        RfqQuotationPrice: {
+            itemName: string;
+            unitPrice: string;
+            currency: string;
+            quantity: string;
+            quantityUnit: string;
+            shippingTerms: string;
+            port: string;
+            remark: string;
+            modelNumber?: string;
+            imageFilesString?: string;
+        };
+        RfqQuotationRequest: {
+            rfqId: string;
+            message: string;
+            paymentTerms: string;
+            expiresAt: string;
+            prices: components["schemas"]["RfqQuotationPrice"][];
+            attachmentFilesString?: string;
+        };
+        RfqQuotationResult: {
+            quotationId: string;
+            success: boolean;
+        };
+        RfqReadStatus: {
+            statuses: {
+                [key: string]: boolean;
+            };
+        };
+        RfqSummary: {
+            id: string;
+            subject: string;
+            description: string;
+            quantity: number | null;
+            quantityUnit: string | null;
+            countryCode: string | null;
+            categoryId: number | null;
+            categoryName: string | null;
+            imageUrl: string | null;
+            remainingQuotes: number | null;
+            /** Format: date-time */
+            openAt: string | null;
+            /** Format: date-time */
+            expiresAt: string | null;
+            read: boolean;
+            recommended: boolean;
+        };
         SchemaPublishRequest: {
             categoryId: number;
             /** @default en_US */
@@ -3246,6 +3444,186 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProductScore"];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    listRfqs: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                keywords?: string;
+                categoryId?: string;
+                country?: string;
+                unquotedOnly?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description RFQ search result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqPage"];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    listRecommendedRfqs: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recommended RFQs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqPage"];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    getRfqEquity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description RFQ equity */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqEquity"];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    getRfqReadStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    rfqIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description RFQ read status map */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqReadStatus"];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    getRfq: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfqId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description RFQ detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqDetail"];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    uploadRfqAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RfqAttachmentUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description RFQ attachment token */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqAttachmentUploadResult"];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    submitRfqQuotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RfqQuotationRequest"];
+            };
+        };
+        responses: {
+            /** @description RFQ quotation result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqQuotationResult"];
                 };
             };
             "4XX": components["responses"]["GatewayFailure"];
