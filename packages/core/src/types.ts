@@ -1,4 +1,9 @@
 import type { components } from './generated/api';
+import type {
+  ProductCapabilityRequestMap,
+  ProductCapabilityResponseMap
+} from './generated/product-capabilities';
+import type { RfqCapabilityRequestMap, RfqCapabilityResponseMap } from './generated/rfq-capabilities';
 
 export type DashboardSummary = components['schemas']['DashboardSummary'];
 export type Product = components['schemas']['Product'];
@@ -30,7 +35,10 @@ export type ProductCategory = components['schemas']['ProductCategory'];
 export type ProductCategoryMapping = components['schemas']['ProductCategoryMapping'];
 export type ProductGroup = components['schemas']['ProductGroup'];
 export type ProductScore = components['schemas']['ProductScore'];
-export type { CapabilityRequestMap, CapabilityResponseMap } from './generated/product-capabilities';
+export type { ProductCapabilityRequestMap, ProductCapabilityResponseMap };
+export type { RfqCapabilityRequestMap, RfqCapabilityResponseMap };
+export interface CapabilityRequestMap extends ProductCapabilityRequestMap, RfqCapabilityRequestMap {}
+export interface CapabilityResponseMap extends ProductCapabilityResponseMap, RfqCapabilityResponseMap {}
 export type GatewayError = components['schemas']['GatewayError'];
 
 export interface ProductListQuery {

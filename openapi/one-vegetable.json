@@ -497,8 +497,8 @@
         }
       },
       "post": {
-        "summary": "Call a method-typed product capability",
-        "operationId": "callTypedProductCapability",
+        "summary": "Call a method-typed capability",
+        "operationId": "callTypedCapability",
         "parameters": [{ "name": "method", "in": "path", "required": true, "schema": { "type": "string" } }],
         "requestBody": {
           "required": true,
@@ -534,7 +534,14 @@
                   { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSchemaUpdateRequest" },
                   { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductScoreGetRequest" },
                   { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductUpdateRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductUpdateFieldRequest" }
+                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductUpdateFieldRequest" },
+                  { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuAnnexUploadRequest" },
+                  { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuQuotationPostRequest" },
+                  { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqMyequityRequest" },
+                  { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqReadRequest" },
+                  { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqRecommendRequest" },
+                  { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqSearchRequest" },
+                  { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqdetailGetRequest" }
                 ]
               }
             }
@@ -679,437 +686,6 @@
       }
     },
     "schemas": {
-      "DashboardSummary": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["productCount", "photoCount", "pendingOrderCount", "enabledCapabilityCount"],
-        "properties": {
-          "productCount": { "type": "integer", "minimum": 0 },
-          "photoCount": { "type": "integer", "minimum": 0 },
-          "pendingOrderCount": { "type": "integer", "minimum": 0 },
-          "enabledCapabilityCount": { "type": "integer", "minimum": 0 }
-        }
-      },
-      "Product": {
-        "type": "object",
-        "required": ["id", "subject", "groupName", "status", "score", "updatedAt"],
-        "properties": {
-          "id": { "type": "string" },
-          "subject": { "type": "string" },
-          "groupName": { "type": "string" },
-          "status": { "type": "string", "enum": ["online", "offline", "draft", "auditing", "rejected"] },
-          "score": { "type": "integer", "minimum": 0, "maximum": 100 },
-          "updatedAt": { "type": "string", "format": "date-time" }
-        }
-      },
-      "ProductDetail": {
-        "allOf": [
-          { "$ref": "#/components/schemas/Product" },
-          {
-            "type": "object",
-            "required": ["categoryId", "language", "schemaXml"],
-            "properties": {
-              "categoryId": { "type": "integer" },
-              "language": { "type": "string" },
-              "schemaXml": { "type": "string" }
-            }
-          }
-        ],
-        "unevaluatedProperties": false
-      },
-      "ProductPage": {
-        "allOf": [
-          { "$ref": "#/components/schemas/PageMeta" },
-          {
-            "type": "object",
-            "required": ["items"],
-            "properties": {
-              "items": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } }
-            }
-          }
-        ],
-        "unevaluatedProperties": false
-      },
-      "ProductSchemaRequest": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["categoryId", "language", "market"],
-        "properties": {
-          "categoryId": { "type": "integer" },
-          "language": { "type": "string", "default": "en_US" },
-          "market": { "type": "string", "enum": ["wholesale", "sourcing"] },
-          "productId": { "type": "string" }
-        }
-      },
-      "ProductSchema": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["xml", "categoryId", "language", "market"],
-        "properties": {
-          "xml": { "type": "string" },
-          "categoryId": { "type": "integer" },
-          "language": { "type": "string" },
-          "market": { "type": "string" }
-        }
-      },
-      "SchemaPublishRequest": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["categoryId", "language", "schemaXml"],
-        "properties": {
-          "categoryId": { "type": "integer" },
-          "language": { "type": "string", "default": "en_US" },
-          "productId": { "type": "string" },
-          "schemaXml": { "type": "string", "minLength": 1, "x-ajv-errorMessage": "商品 Schema XML 不能为空" }
-        }
-      },
-      "ProductMutationResult": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["productId", "traceId", "success"],
-        "properties": {
-          "productId": { "type": "string" },
-          "traceId": { "type": "string" },
-          "success": { "type": "boolean" }
-        }
-      },
-      "PhotoGroup": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "name", "photoCount"],
-        "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string" },
-          "photoCount": { "type": "integer", "minimum": 0 }
-        }
-      },
-      "Photo": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "id",
-          "name",
-          "url",
-          "groupId",
-          "width",
-          "height",
-          "fileSize",
-          "referenceCount",
-          "modifiedAt"
-        ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "Alibaba international PhotoBank fileId; persist it with the Schema value."
-          },
-          "name": { "type": "string" },
-          "url": { "type": "string", "format": "uri" },
-          "groupId": { "type": "string" },
-          "width": { "type": "integer", "minimum": 1 },
-          "height": { "type": "integer", "minimum": 1 },
-          "fileSize": { "type": "integer", "minimum": 0, "description": "Image size in bytes." },
-          "referenceCount": { "type": "integer", "minimum": 0 },
-          "modifiedAt": { "type": "string", "format": "date-time" }
-        }
-      },
-      "PhotoTransferRequest": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["url", "groupId"],
-        "properties": {
-          "url": { "type": "string", "format": "uri", "pattern": "^https?://" },
-          "groupId": { "type": "string" },
-          "fileName": { "type": "string", "minLength": 1, "maxLength": 255 },
-          "maxBytes": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 20971520,
-            "description": "Optional smaller Schema-derived limit. The service worker always caps downloads at 20 MiB."
-          }
-        }
-      },
-      "PhotoPage": {
-        "allOf": [
-          { "$ref": "#/components/schemas/PageMeta" },
-          {
-            "type": "object",
-            "required": ["items"],
-            "properties": { "items": { "type": "array", "items": { "$ref": "#/components/schemas/Photo" } } }
-          }
-        ],
-        "unevaluatedProperties": false
-      },
-      "Order": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "buyerName", "amount", "currency", "status", "createdAt", "detailAvailability"],
-        "properties": {
-          "id": { "type": "string" },
-          "buyerName": { "type": "string" },
-          "amount": { "type": "number", "minimum": 0 },
-          "currency": { "type": "string" },
-          "status": { "type": "string" },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "detailAvailability": {
-            "type": "string",
-            "enum": ["summary_only"],
-            "description": "seller.order.get is not callable outside Jushita."
-          }
-        }
-      },
-      "OrderPage": {
-        "allOf": [
-          { "$ref": "#/components/schemas/PageMeta" },
-          {
-            "type": "object",
-            "required": ["items"],
-            "properties": { "items": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } } }
-          }
-        ],
-        "unevaluatedProperties": false
-      },
-      "OrderFund": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["orderId", "paidAmount", "currency", "status"],
-        "properties": {
-          "orderId": { "type": "string" },
-          "paidAmount": { "type": "number" },
-          "currency": { "type": "string" },
-          "status": { "type": "string" }
-        }
-      },
-      "OrderLogistics": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["orderId", "status"],
-        "properties": {
-          "orderId": { "type": "string" },
-          "status": { "type": "string" },
-          "carrier": { "type": ["string", "null"] },
-          "trackingNumber": { "type": ["string", "null"] }
-        }
-      },
-      "ApiCapability": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "method",
-          "domain",
-          "chargeLabel",
-          "auth",
-          "jushitaOnly",
-          "restricted",
-          "enabled",
-          "docUrl",
-          "checkedAt",
-          "source",
-          "lifecycle",
-          "risk",
-          "verification",
-          "realCallEnabled"
-        ],
-        "properties": {
-          "method": { "type": "string" },
-          "domain": { "type": "string" },
-          "chargeLabel": { "type": "string" },
-          "auth": { "type": "string", "enum": ["required", "optional", "none", "unknown"] },
-          "jushitaOnly": { "type": "boolean" },
-          "restricted": { "type": "boolean" },
-          "restrictionReason": { "type": ["string", "null"] },
-          "enabled": { "type": "boolean" },
-          "docUrl": { "type": "string", "format": "uri" },
-          "checkedAt": { "type": "string", "format": "date" },
-          "updatedAt": { "type": ["string", "null"], "format": "date" },
-          "source": { "type": "string", "enum": ["catalog", "article"] },
-          "lifecycle": { "type": "string", "enum": ["active", "deprecated", "unlisted"] },
-          "risk": { "type": "string", "enum": ["read", "mutation"] },
-          "verification": { "type": "string", "enum": ["documented", "account-verified"] },
-          "realCallEnabled": { "type": "boolean" },
-          "requestSchema": { "type": ["string", "null"] },
-          "responseSchema": { "type": ["string", "null"] }
-        }
-      },
-      "CapabilityCallRequest": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["method", "parameters"],
-        "properties": {
-          "method": { "type": "string" },
-          "parameters": { "type": "object", "additionalProperties": true }
-        }
-      },
-      "CapabilityCallResult": { "$ref": "#/components/schemas/CapabilityResponseEnvelope" },
-      "GatewayError": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["code", "message", "retryable"],
-        "properties": {
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "subCode": { "type": "string" },
-          "traceId": { "type": "string" },
-          "retryable": { "type": "boolean" }
-        }
-      },
-      "PageMeta": {
-        "type": "object",
-        "required": ["page", "pageSize", "total"],
-        "properties": {
-          "page": { "type": "integer", "minimum": 1 },
-          "pageSize": { "type": "integer", "minimum": 1 },
-          "total": { "type": "integer", "minimum": 0 }
-        }
-      },
-      "CapabilityContractIssue": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["instancePath", "keyword", "message"],
-        "properties": {
-          "instancePath": { "type": "string" },
-          "keyword": { "type": "string" },
-          "message": { "type": "string" }
-        }
-      },
-      "CapabilityResponseEnvelope": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["method", "traceId", "data", "contractValid", "contractIssues"],
-        "properties": {
-          "method": { "type": "string" },
-          "traceId": { "type": "string" },
-          "data": {
-            "oneOf": [
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryAttrGetResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryAttributeGetResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryAttrvalueGetResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryGetResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryGetNewResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryIdMappingResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryLevelAttrGetResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryPostcatGetResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategorySchemaLevelGetResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuOpenProductPostResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductAddResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductAddDraftResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductBatchUpdateDisplayResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductGetResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductGroupAddResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductGroupGetResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductIdDecryptResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductListResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSchemaAddResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSchemaAddDraftResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSchemaGetResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSchemaRenderResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSchemaRenderDraftResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSchemaUpdateResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductScoreGetResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductUpdateResponse" },
-              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductUpdateFieldResponse" }
-            ]
-          },
-          "contractValid": { "type": "boolean" },
-          "contractIssues": {
-            "type": "array",
-            "items": { "$ref": "#/components/schemas/CapabilityContractIssue" }
-          }
-        }
-      },
-      "CapabilityDefinition": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "method",
-          "title",
-          "description",
-          "source",
-          "lifecycle",
-          "risk",
-          "verification",
-          "realCallEnabled",
-          "requestSchema",
-          "responseSchema",
-          "requestExample",
-          "responseExample",
-          "errorCodes",
-          "checkedAt",
-          "docUrl"
-        ],
-        "properties": {
-          "method": { "type": "string" },
-          "title": { "type": "string" },
-          "description": { "type": "string" },
-          "source": { "type": "string", "enum": ["catalog", "article"] },
-          "lifecycle": { "type": "string", "enum": ["active", "deprecated", "unlisted"] },
-          "risk": { "type": "string", "enum": ["read", "mutation"] },
-          "verification": { "type": "string", "enum": ["documented", "account-verified"] },
-          "realCallEnabled": { "type": "boolean" },
-          "requestSchema": { "type": "string" },
-          "responseSchema": { "type": "string" },
-          "requestExample": { "type": "object", "additionalProperties": true },
-          "responseExample": {},
-          "errorCodes": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
-          "checkedAt": { "type": "string", "format": "date" },
-          "updatedAt": { "type": ["string", "null"], "format": "date" },
-          "docUrl": { "type": "string", "format": "uri" }
-        }
-      },
-      "ProductCategory": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "name", "leaf", "children"],
-        "properties": {
-          "id": { "type": "number" },
-          "name": { "type": "string" },
-          "leaf": { "type": "boolean" },
-          "children": { "type": "array", "items": { "$ref": "#/components/schemas/ProductCategory" } }
-        }
-      },
-      "ProductCategoryMapping": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["sourceCategoryId", "targetCategoryId"],
-        "properties": { "sourceCategoryId": { "type": "number" }, "targetCategoryId": { "type": "number" } }
-      },
-      "ProductGroup": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "name", "children"],
-        "properties": {
-          "id": { "type": "number" },
-          "name": { "type": "string" },
-          "children": { "type": "array", "items": { "$ref": "#/components/schemas/ProductGroup" } }
-        }
-      },
-      "ProductScore": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["productId", "score", "issues"],
-        "properties": {
-          "productId": { "type": "string" },
-          "score": { "type": "number" },
-          "issues": { "type": "array", "items": { "type": "string" } },
-          "qualityIssues": {
-            "type": "array",
-            "items": { "$ref": "#/components/schemas/ProductDescriptionQualityIssue" },
-            "description": "Optional normalized official issues when the upstream response provides structured details."
-          }
-        }
-      },
-      "ProductDescriptionQualityIssue": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["code", "source", "level", "message", "remediation", "fieldIds"],
-        "properties": {
-          "code": { "type": "string" },
-          "source": { "type": "string", "enum": ["alibaba-schema", "official", "project"] },
-          "level": { "type": "string", "enum": ["error", "warning", "suggestion"] },
-          "message": { "type": "string" },
-          "remediation": { "type": "string" },
-          "fieldIds": { "type": "array", "items": { "type": "string" } }
-        }
-      },
       "AlibabaProductAlibabaIcbuCategoryAttrGetRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -1287,49 +863,6 @@
         },
         "title": "alibaba.icbu.category.attrvalue.get response"
       },
-      "AlibabaProductAlibabaIcbuCategoryGetRequest": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["cat_id"],
-        "properties": {
-          "cat_id": {
-            "type": "number",
-            "description": "发布类目id,必须大于等于0， 如果为0，则查询所有一级类目"
-          }
-        },
-        "title": "alibaba.icbu.category.get request"
-      },
-      "AlibabaProductAlibabaIcbuCategoryGetResponse": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "category": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "parent_ids": {
-                "type": "array",
-                "items": { "type": "number", "description": "父类目ID数组" },
-                "description": "父类目ID数组"
-              },
-              "level": { "type": "number", "description": "类目层级" },
-              "leaf_category": {
-                "type": "boolean",
-                "description": "是否叶子类目（只有叶子类目才能发布商品）"
-              },
-              "name": { "type": "string", "description": "类目名称" },
-              "category_id": { "type": "number", "description": "类目ID" },
-              "child_ids": {
-                "type": "array",
-                "items": { "type": "number", "description": "子类目ID数组" },
-                "description": "子类目ID数组"
-              }
-            },
-            "description": "类目信息"
-          }
-        },
-        "title": "alibaba.icbu.category.get response"
-      },
       "AlibabaProductAlibabaIcbuCategoryGetNewRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -1373,6 +906,49 @@
           }
         },
         "title": "alibaba.icbu.category.get.new response"
+      },
+      "AlibabaProductAlibabaIcbuCategoryGetRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cat_id"],
+        "properties": {
+          "cat_id": {
+            "type": "number",
+            "description": "发布类目id,必须大于等于0， 如果为0，则查询所有一级类目"
+          }
+        },
+        "title": "alibaba.icbu.category.get request"
+      },
+      "AlibabaProductAlibabaIcbuCategoryGetResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "parent_ids": {
+                "type": "array",
+                "items": { "type": "number", "description": "父类目ID数组" },
+                "description": "父类目ID数组"
+              },
+              "level": { "type": "number", "description": "类目层级" },
+              "leaf_category": {
+                "type": "boolean",
+                "description": "是否叶子类目（只有叶子类目才能发布商品）"
+              },
+              "name": { "type": "string", "description": "类目名称" },
+              "category_id": { "type": "number", "description": "类目ID" },
+              "child_ids": {
+                "type": "array",
+                "items": { "type": "number", "description": "子类目ID数组" },
+                "description": "子类目ID数组"
+              }
+            },
+            "description": "类目信息"
+          }
+        },
+        "title": "alibaba.icbu.category.get response"
       },
       "AlibabaProductAlibabaIcbuCategoryIdMappingRequest": {
         "type": "object",
@@ -1610,330 +1186,6 @@
           "str_product_id": { "type": "string", "description": "加密后的产品id" }
         },
         "title": "alibaba.icbu.open.product.post response"
-      },
-      "AlibabaProductAlibabaIcbuProductAddRequest": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["category_id", "keywords", "language", "main_image", "product_type", "subject"],
-        "properties": {
-          "attributes": {
-            "type": "array",
-            "maxItems": 500,
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "attribute_id": { "type": "number", "description": "属性ID" },
-                "attribute_name": { "type": "string", "description": "属性名称" },
-                "value_id": { "type": "number", "description": "属性值ID" },
-                "value_name": { "type": "string", "description": "属性值名称" },
-                "sku_custom_value_name": {
-                  "type": "string",
-                  "description": "作为sku属性值时，自定义属性值名称"
-                },
-                "sku_custom_image_url": {
-                  "type": "string",
-                  "description": "作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片"
-                }
-              },
-              "description": "商品属性和属性值"
-            },
-            "description": "商品属性和属性值"
-          },
-          "bulk_discount_prices": {
-            "type": "array",
-            "maxItems": 4,
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "price": { "type": "string", "description": "价格，范围是0.01-9999999.00" },
-                "start_quantity": { "type": "number", "description": "起始数量，范围是1-99999" }
-              },
-              "description": "根据数量设置的折扣价"
-            },
-            "description": "根据数量设置的折扣价"
-          },
-          "category_id": { "type": "number", "description": "类目ID" },
-          "description": {
-            "type": "string",
-            "description": "商品详情描述，可包含图片中心的图片URL",
-            "maxLength": 60000
-          },
-          "extra_context": { "type": "object", "additionalProperties": true, "description": "补充信息" },
-          "group_id": { "type": "number", "description": "分组ID" },
-          "keywords": {
-            "type": "array",
-            "maxItems": 3,
-            "items": { "type": "string", "description": "关键词，不要包含特殊符号（如,;），最多三个" },
-            "description": "关键词，不要包含特殊符号（如,;），最多三个"
-          },
-          "language": { "type": "string", "description": "语种，参见FAQ 语种枚举值" },
-          "main_image": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["images"],
-            "properties": {
-              "images": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "description": "alibaba图片中心的图片URL列表，请使用alibaba.icbu.photobank.upload接口上传图片"
-                },
-                "description": "alibaba图片中心的图片URL列表，请使用alibaba.icbu.photobank.upload接口上传图片"
-              },
-              "watermark": { "type": "boolean", "description": "是否打水印，是(true)或否(false)" },
-              "watermark_frame": {
-                "type": "string",
-                "description": "水印是否有边框，有边框(Y)或者无边框(N)"
-              },
-              "watermark_position": {
-                "type": "string",
-                "description": "水印位置，在中间(center)或者在底部(bottom)"
-              }
-            },
-            "description": "商品主图"
-          },
-          "product_sku": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "attributes": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "attribute_id": { "type": "number", "description": "属性ID" },
-                    "sku_custom_image_url": {
-                      "type": "string",
-                      "description": "作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片"
-                    },
-                    "sku_custom_value_name": {
-                      "type": "string",
-                      "description": "作为sku属性值时，自定义属性值名称"
-                    },
-                    "value_id": {
-                      "type": "number",
-                      "description": "属性值ID，自定义属性值时ID要小于0，并且不能重复"
-                    },
-                    "attribute_name": { "type": "string", "description": "属性名称" },
-                    "value_name": { "type": "string", "description": "属性值名称" }
-                  },
-                  "description": "商品属性"
-                },
-                "description": "商品属性"
-              },
-              "exclude_skus": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "attributes": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "properties": {
-                          "attribute_id": { "type": "number", "description": "属性ID" },
-                          "value_id": {
-                            "type": "number",
-                            "description": "属性值ID，自定义属性值时ID要小于0，并且不能重复"
-                          },
-                          "value_name": { "type": "string", "description": "属性值名称" },
-                          "attribute_name": { "type": "string", "description": "属性名称" },
-                          "sku_custom_value_name": {
-                            "type": "string",
-                            "description": "作为sku属性值时，自定义属性值名称"
-                          },
-                          "sku_custom_image_url": {
-                            "type": "string",
-                            "description": "作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片"
-                          }
-                        },
-                        "description": "商品属性"
-                      },
-                      "description": "商品属性"
-                    },
-                    "price": {
-                      "type": "string",
-                      "description": "价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00"
-                    }
-                  },
-                  "description": "需要失效的SKU的详细定义"
-                },
-                "description": "需要失效的SKU的详细定义"
-              },
-              "special_skus": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "attributes": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "properties": {
-                          "attribute_id": { "type": "number", "description": "属性ID" },
-                          "value_id": {
-                            "type": "number",
-                            "description": "属性值ID，自定义属性值时ID要小于0，并且不能重复"
-                          },
-                          "value_name": { "type": "string", "description": "属性值名称" },
-                          "attribute_name": { "type": "string", "description": "属性名称" },
-                          "sku_custom_value_name": {
-                            "type": "string",
-                            "description": "作为sku属性值时，自定义属性值名称"
-                          },
-                          "sku_custom_image_url": {
-                            "type": "string",
-                            "description": "作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片"
-                          }
-                        },
-                        "description": "商品属性"
-                      },
-                      "description": "商品属性"
-                    },
-                    "price": {
-                      "type": "string",
-                      "description": "价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00"
-                    },
-                    "sku_code": { "type": "string", "description": "商品的SKU编码" },
-                    "inventory_dto_list": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "properties": {
-                          "store_code": { "type": "string", "description": "仓库code，默认不填" },
-                          "current_inventory": { "type": "number", "description": "想设置的库存" },
-                          "src_inventory": { "type": "number", "description": "原始库存" }
-                        },
-                        "description": "库存"
-                      },
-                      "description": "库存"
-                    }
-                  },
-                  "description": "单个SKU详细定义"
-                },
-                "description": "单个SKU详细定义"
-              }
-            },
-            "description": "商品SKU定义"
-          },
-          "product_type": {
-            "type": "string",
-            "description": "商品类型，在线批发商品(wholesale)或者询盘商品(sourcing)，值为wholesale时，必须填写wholesale_trade"
-          },
-          "sourcing_trade": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "delivery_port": { "type": "string", "description": "发货港口" },
-              "delivery_time": { "type": "string", "description": "发货期限" },
-              "fob_currency": { "type": "string", "description": "FOB货币价格，枚举值" },
-              "fob_max_price": { "type": "string", "description": "FOB最大价格" },
-              "fob_min_price": { "type": "string", "description": "FOB最小价格" },
-              "fob_unit_type": { "type": "string", "description": "FOB计量单位，枚举值" },
-              "min_order_quantity": { "type": "string", "description": "最小起订量" },
-              "min_order_unit_type": { "type": "string", "description": "最小起订量计量单位，枚举值" },
-              "payment_methods": {
-                "type": "array",
-                "items": { "type": "string", "description": "付款方式，枚举值" },
-                "description": "付款方式，枚举值"
-              },
-              "supply_period_type": { "type": "string", "description": "供货能力周期，枚举值" },
-              "supply_quantity": { "type": "string", "description": "供货能力" },
-              "supply_unit_type": { "type": "string", "description": "供货能力计量单位，枚举值" },
-              "packaging_desc": { "type": "string", "description": "包装信息" },
-              "deliver_periods": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "process_period": { "type": "number", "description": "预计需要发货时间" },
-                    "quantity": { "type": "number", "description": "数量" }
-                  },
-                  "description": "发货周期，发货时间相关建议使用此项"
-                },
-                "description": "发货周期，发货时间相关建议使用此项"
-              }
-            },
-            "description": "询盘商品交易信息"
-          },
-          "subject": { "type": "string", "description": "商品名称，最多128个字符", "maxLength": 128 },
-          "wholesale_trade": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "batch_number": {
-                "type": "number",
-                "description": "每批数量，当sale_type=batch时生效，范围是1-99999"
-              },
-              "handling_time": { "type": "number", "description": "备货期，单位是天，范围是1-60" },
-              "min_order_quantity": { "type": "number", "description": "最小起订量，范围是1-99999" },
-              "package_size": { "type": "string", "description": "尺寸，单位是厘米，长宽高范围是1-9999999" },
-              "price": {
-                "type": "string",
-                "description": "价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00"
-              },
-              "sale_type": { "type": "string", "description": "销售方式，按件卖(normal)或者按批卖(batch)" },
-              "shipping_line_template_id": { "type": "number", "description": "运费模板ID" },
-              "unit_type": { "type": "string", "description": "最小计量单位，枚举值" },
-              "weight": {
-                "type": "string",
-                "description": "重量，单位是kg，精确到小数点后三位，范围是0.01-9999999.000"
-              },
-              "deliver_periods": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "process_period": { "type": "number", "description": "预计需要发货时间" },
-                    "quantity": { "type": "number", "description": "数量" }
-                  },
-                  "description": "发货周期，发货时间相关建议使用此项"
-                },
-                "description": "发货周期，发货时间相关建议使用此项"
-              }
-            },
-            "description": "在线批发商品交易信息"
-          },
-          "market": { "type": "string", "description": "发布的市场，支持main，发到主市场" },
-          "is_smart_edit": { "type": "boolean", "description": "是否智能编辑，如果不传，默认为false" },
-          "custom_info": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "custom_contents": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "min_order_quantity": { "type": "number", "description": "最小起订量" },
-                    "custom_type": { "type": "string", "description": "定制类型，只允许填写英文字符" }
-                  },
-                  "description": "定制内容"
-                },
-                "description": "定制内容"
-              }
-            },
-            "description": "定制信息"
-          }
-        },
-        "title": "alibaba.icbu.product.add request"
-      },
-      "AlibabaProductAlibabaIcbuProductAddResponse": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": { "product_id": { "type": "string", "description": "混淆后的产品ID" } },
-        "title": "alibaba.icbu.product.add response"
       },
       "AlibabaProductAlibabaIcbuProductAddDraftRequest": {
         "type": "object",
@@ -2260,6 +1512,330 @@
         "additionalProperties": false,
         "properties": { "product_id": { "type": "string", "description": "混淆后的产品ID" } },
         "title": "alibaba.icbu.product.add.draft response"
+      },
+      "AlibabaProductAlibabaIcbuProductAddRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["category_id", "keywords", "language", "main_image", "product_type", "subject"],
+        "properties": {
+          "attributes": {
+            "type": "array",
+            "maxItems": 500,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "attribute_id": { "type": "number", "description": "属性ID" },
+                "attribute_name": { "type": "string", "description": "属性名称" },
+                "value_id": { "type": "number", "description": "属性值ID" },
+                "value_name": { "type": "string", "description": "属性值名称" },
+                "sku_custom_value_name": {
+                  "type": "string",
+                  "description": "作为sku属性值时，自定义属性值名称"
+                },
+                "sku_custom_image_url": {
+                  "type": "string",
+                  "description": "作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片"
+                }
+              },
+              "description": "商品属性和属性值"
+            },
+            "description": "商品属性和属性值"
+          },
+          "bulk_discount_prices": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "price": { "type": "string", "description": "价格，范围是0.01-9999999.00" },
+                "start_quantity": { "type": "number", "description": "起始数量，范围是1-99999" }
+              },
+              "description": "根据数量设置的折扣价"
+            },
+            "description": "根据数量设置的折扣价"
+          },
+          "category_id": { "type": "number", "description": "类目ID" },
+          "description": {
+            "type": "string",
+            "description": "商品详情描述，可包含图片中心的图片URL",
+            "maxLength": 60000
+          },
+          "extra_context": { "type": "object", "additionalProperties": true, "description": "补充信息" },
+          "group_id": { "type": "number", "description": "分组ID" },
+          "keywords": {
+            "type": "array",
+            "maxItems": 3,
+            "items": { "type": "string", "description": "关键词，不要包含特殊符号（如,;），最多三个" },
+            "description": "关键词，不要包含特殊符号（如,;），最多三个"
+          },
+          "language": { "type": "string", "description": "语种，参见FAQ 语种枚举值" },
+          "main_image": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["images"],
+            "properties": {
+              "images": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "description": "alibaba图片中心的图片URL列表，请使用alibaba.icbu.photobank.upload接口上传图片"
+                },
+                "description": "alibaba图片中心的图片URL列表，请使用alibaba.icbu.photobank.upload接口上传图片"
+              },
+              "watermark": { "type": "boolean", "description": "是否打水印，是(true)或否(false)" },
+              "watermark_frame": {
+                "type": "string",
+                "description": "水印是否有边框，有边框(Y)或者无边框(N)"
+              },
+              "watermark_position": {
+                "type": "string",
+                "description": "水印位置，在中间(center)或者在底部(bottom)"
+              }
+            },
+            "description": "商品主图"
+          },
+          "product_sku": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "attributes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "attribute_id": { "type": "number", "description": "属性ID" },
+                    "sku_custom_image_url": {
+                      "type": "string",
+                      "description": "作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片"
+                    },
+                    "sku_custom_value_name": {
+                      "type": "string",
+                      "description": "作为sku属性值时，自定义属性值名称"
+                    },
+                    "value_id": {
+                      "type": "number",
+                      "description": "属性值ID，自定义属性值时ID要小于0，并且不能重复"
+                    },
+                    "attribute_name": { "type": "string", "description": "属性名称" },
+                    "value_name": { "type": "string", "description": "属性值名称" }
+                  },
+                  "description": "商品属性"
+                },
+                "description": "商品属性"
+              },
+              "exclude_skus": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "attributes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "attribute_id": { "type": "number", "description": "属性ID" },
+                          "value_id": {
+                            "type": "number",
+                            "description": "属性值ID，自定义属性值时ID要小于0，并且不能重复"
+                          },
+                          "value_name": { "type": "string", "description": "属性值名称" },
+                          "attribute_name": { "type": "string", "description": "属性名称" },
+                          "sku_custom_value_name": {
+                            "type": "string",
+                            "description": "作为sku属性值时，自定义属性值名称"
+                          },
+                          "sku_custom_image_url": {
+                            "type": "string",
+                            "description": "作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片"
+                          }
+                        },
+                        "description": "商品属性"
+                      },
+                      "description": "商品属性"
+                    },
+                    "price": {
+                      "type": "string",
+                      "description": "价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00"
+                    }
+                  },
+                  "description": "需要失效的SKU的详细定义"
+                },
+                "description": "需要失效的SKU的详细定义"
+              },
+              "special_skus": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "attributes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "attribute_id": { "type": "number", "description": "属性ID" },
+                          "value_id": {
+                            "type": "number",
+                            "description": "属性值ID，自定义属性值时ID要小于0，并且不能重复"
+                          },
+                          "value_name": { "type": "string", "description": "属性值名称" },
+                          "attribute_name": { "type": "string", "description": "属性名称" },
+                          "sku_custom_value_name": {
+                            "type": "string",
+                            "description": "作为sku属性值时，自定义属性值名称"
+                          },
+                          "sku_custom_image_url": {
+                            "type": "string",
+                            "description": "作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片"
+                          }
+                        },
+                        "description": "商品属性"
+                      },
+                      "description": "商品属性"
+                    },
+                    "price": {
+                      "type": "string",
+                      "description": "价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00"
+                    },
+                    "sku_code": { "type": "string", "description": "商品的SKU编码" },
+                    "inventory_dto_list": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "store_code": { "type": "string", "description": "仓库code，默认不填" },
+                          "current_inventory": { "type": "number", "description": "想设置的库存" },
+                          "src_inventory": { "type": "number", "description": "原始库存" }
+                        },
+                        "description": "库存"
+                      },
+                      "description": "库存"
+                    }
+                  },
+                  "description": "单个SKU详细定义"
+                },
+                "description": "单个SKU详细定义"
+              }
+            },
+            "description": "商品SKU定义"
+          },
+          "product_type": {
+            "type": "string",
+            "description": "商品类型，在线批发商品(wholesale)或者询盘商品(sourcing)，值为wholesale时，必须填写wholesale_trade"
+          },
+          "sourcing_trade": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "delivery_port": { "type": "string", "description": "发货港口" },
+              "delivery_time": { "type": "string", "description": "发货期限" },
+              "fob_currency": { "type": "string", "description": "FOB货币价格，枚举值" },
+              "fob_max_price": { "type": "string", "description": "FOB最大价格" },
+              "fob_min_price": { "type": "string", "description": "FOB最小价格" },
+              "fob_unit_type": { "type": "string", "description": "FOB计量单位，枚举值" },
+              "min_order_quantity": { "type": "string", "description": "最小起订量" },
+              "min_order_unit_type": { "type": "string", "description": "最小起订量计量单位，枚举值" },
+              "payment_methods": {
+                "type": "array",
+                "items": { "type": "string", "description": "付款方式，枚举值" },
+                "description": "付款方式，枚举值"
+              },
+              "supply_period_type": { "type": "string", "description": "供货能力周期，枚举值" },
+              "supply_quantity": { "type": "string", "description": "供货能力" },
+              "supply_unit_type": { "type": "string", "description": "供货能力计量单位，枚举值" },
+              "packaging_desc": { "type": "string", "description": "包装信息" },
+              "deliver_periods": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "process_period": { "type": "number", "description": "预计需要发货时间" },
+                    "quantity": { "type": "number", "description": "数量" }
+                  },
+                  "description": "发货周期，发货时间相关建议使用此项"
+                },
+                "description": "发货周期，发货时间相关建议使用此项"
+              }
+            },
+            "description": "询盘商品交易信息"
+          },
+          "subject": { "type": "string", "description": "商品名称，最多128个字符", "maxLength": 128 },
+          "wholesale_trade": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "batch_number": {
+                "type": "number",
+                "description": "每批数量，当sale_type=batch时生效，范围是1-99999"
+              },
+              "handling_time": { "type": "number", "description": "备货期，单位是天，范围是1-60" },
+              "min_order_quantity": { "type": "number", "description": "最小起订量，范围是1-99999" },
+              "package_size": { "type": "string", "description": "尺寸，单位是厘米，长宽高范围是1-9999999" },
+              "price": {
+                "type": "string",
+                "description": "价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00"
+              },
+              "sale_type": { "type": "string", "description": "销售方式，按件卖(normal)或者按批卖(batch)" },
+              "shipping_line_template_id": { "type": "number", "description": "运费模板ID" },
+              "unit_type": { "type": "string", "description": "最小计量单位，枚举值" },
+              "weight": {
+                "type": "string",
+                "description": "重量，单位是kg，精确到小数点后三位，范围是0.01-9999999.000"
+              },
+              "deliver_periods": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "process_period": { "type": "number", "description": "预计需要发货时间" },
+                    "quantity": { "type": "number", "description": "数量" }
+                  },
+                  "description": "发货周期，发货时间相关建议使用此项"
+                },
+                "description": "发货周期，发货时间相关建议使用此项"
+              }
+            },
+            "description": "在线批发商品交易信息"
+          },
+          "market": { "type": "string", "description": "发布的市场，支持main，发到主市场" },
+          "is_smart_edit": { "type": "boolean", "description": "是否智能编辑，如果不传，默认为false" },
+          "custom_info": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "custom_contents": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "min_order_quantity": { "type": "number", "description": "最小起订量" },
+                    "custom_type": { "type": "string", "description": "定制类型，只允许填写英文字符" }
+                  },
+                  "description": "定制内容"
+                },
+                "description": "定制内容"
+              }
+            },
+            "description": "定制信息"
+          }
+        },
+        "title": "alibaba.icbu.product.add request"
+      },
+      "AlibabaProductAlibabaIcbuProductAddResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": { "product_id": { "type": "string", "description": "混淆后的产品ID" } },
+        "title": "alibaba.icbu.product.add response"
       },
       "AlibabaProductAlibabaIcbuProductBatchUpdateDisplayRequest": {
         "type": "object",
@@ -2759,35 +2335,6 @@
         },
         "title": "alibaba.icbu.product.list response"
       },
-      "AlibabaProductAlibabaIcbuProductSchemaAddRequest": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["param_product_top_publish_request"],
-        "properties": {
-          "param_product_top_publish_request": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["cat_id", "language", "xml"],
-            "properties": {
-              "cat_id": { "type": "number", "description": "叶子类目 ID" },
-              "language": { "type": "string", "description": "商品语言" },
-              "xml": { "type": "string", "description": "填写完成的 Schema XML" }
-            },
-            "description": "Schema 发布请求"
-          }
-        },
-        "title": "alibaba.icbu.product.schema.add request"
-      },
-      "AlibabaProductAlibabaIcbuProductSchemaAddResponse": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "product_id": { "type": "string", "description": "商品 ID" },
-          "trace_id": { "type": "string", "description": "调用链路 ID" },
-          "biz_success": { "type": "boolean", "description": "业务是否成功" }
-        },
-        "title": "alibaba.icbu.product.schema.add response"
-      },
       "AlibabaProductAlibabaIcbuProductSchemaAddDraftRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -2816,6 +2363,35 @@
           "biz_success": { "type": "boolean", "description": "业务是否成功" }
         },
         "title": "alibaba.icbu.product.schema.add.draft response"
+      },
+      "AlibabaProductAlibabaIcbuProductSchemaAddRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["param_product_top_publish_request"],
+        "properties": {
+          "param_product_top_publish_request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["cat_id", "language", "xml"],
+            "properties": {
+              "cat_id": { "type": "number", "description": "叶子类目 ID" },
+              "language": { "type": "string", "description": "商品语言" },
+              "xml": { "type": "string", "description": "填写完成的 Schema XML" }
+            },
+            "description": "Schema 发布请求"
+          }
+        },
+        "title": "alibaba.icbu.product.schema.add request"
+      },
+      "AlibabaProductAlibabaIcbuProductSchemaAddResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "product_id": { "type": "string", "description": "商品 ID" },
+          "trace_id": { "type": "string", "description": "调用链路 ID" },
+          "biz_success": { "type": "boolean", "description": "业务是否成功" }
+        },
+        "title": "alibaba.icbu.product.schema.add response"
       },
       "AlibabaProductAlibabaIcbuProductSchemaGetRequest": {
         "type": "object",
@@ -2851,41 +2427,6 @@
         },
         "title": "alibaba.icbu.product.schema.get response"
       },
-      "AlibabaProductAlibabaIcbuProductSchemaRenderRequest": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "param_product_top_publish_request": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "cat_id": { "type": "number", "description": "类目id" },
-              "language": { "type": "string", "description": "返回文案的语种，支持en_US,zh,zh_TW" },
-              "product_id": { "type": "number", "description": "商品明文id" }
-            },
-            "description": "商品规则渲染请求"
-          }
-        },
-        "title": "alibaba.icbu.product.schema.render request"
-      },
-      "AlibabaProductAlibabaIcbuProductSchemaRenderResponse": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "data": { "type": "string", "description": "商品发布规则和对应填写数据" },
-          "message": {
-            "type": "string",
-            "description": "错误信息，数组形式的字符串，用;分割，支持中英繁，按照传入的语种参数决定"
-          },
-          "msg_code": { "type": "string", "description": "返回的错误码，数组形式的字符串，用;分割" },
-          "biz_success": { "type": "boolean", "description": "请求是否成功" },
-          "trace_id": {
-            "type": "string",
-            "description": "错误追踪码，请务必打印在日志中，后续排查问题请提交此错误追踪码"
-          }
-        },
-        "title": "alibaba.icbu.product.schema.render response"
-      },
       "AlibabaProductAlibabaIcbuProductSchemaRenderDraftRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -2920,6 +2461,41 @@
           }
         },
         "title": "alibaba.icbu.product.schema.render.draft response"
+      },
+      "AlibabaProductAlibabaIcbuProductSchemaRenderRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "param_product_top_publish_request": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "cat_id": { "type": "number", "description": "类目id" },
+              "language": { "type": "string", "description": "返回文案的语种，支持en_US,zh,zh_TW" },
+              "product_id": { "type": "number", "description": "商品明文id" }
+            },
+            "description": "商品规则渲染请求"
+          }
+        },
+        "title": "alibaba.icbu.product.schema.render request"
+      },
+      "AlibabaProductAlibabaIcbuProductSchemaRenderResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": { "type": "string", "description": "商品发布规则和对应填写数据" },
+          "message": {
+            "type": "string",
+            "description": "错误信息，数组形式的字符串，用;分割，支持中英繁，按照传入的语种参数决定"
+          },
+          "msg_code": { "type": "string", "description": "返回的错误码，数组形式的字符串，用;分割" },
+          "biz_success": { "type": "boolean", "description": "请求是否成功" },
+          "trace_id": {
+            "type": "string",
+            "description": "错误追踪码，请务必打印在日志中，后续排查问题请提交此错误追踪码"
+          }
+        },
+        "title": "alibaba.icbu.product.schema.render response"
       },
       "AlibabaProductAlibabaIcbuProductSchemaUpdateRequest": {
         "type": "object",
@@ -2983,340 +2559,6 @@
           }
         },
         "title": "alibaba.icbu.product.score.get response"
-      },
-      "AlibabaProductAlibabaIcbuProductUpdateRequest": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "category_id",
-          "keywords",
-          "language",
-          "main_image",
-          "product_type",
-          "subject",
-          "product_id"
-        ],
-        "properties": {
-          "attributes": {
-            "type": "array",
-            "maxItems": 100,
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "attribute_id": { "type": "number", "description": "属性ID" },
-                "attribute_name": { "type": "string", "description": "属性名称" },
-                "value_id": { "type": "number", "description": "属性值ID" },
-                "value_name": { "type": "string", "description": "属性值名称" },
-                "sku_custom_image_url": {
-                  "type": "string",
-                  "description": "作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片"
-                },
-                "sku_custom_value_name": {
-                  "type": "string",
-                  "description": "作为sku属性值时，自定义属性值名称"
-                }
-              },
-              "description": "商品属性和属性值"
-            },
-            "description": "商品属性和属性值"
-          },
-          "bulk_discount_prices": {
-            "type": "array",
-            "maxItems": 20,
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "price": { "type": "string", "description": "价格，范围是0.01-9999999.00" },
-                "start_quantity": { "type": "number", "description": "起始数量，范围是1-99999" }
-              },
-              "description": "根据数量设置的折扣价"
-            },
-            "description": "根据数量设置的折扣价"
-          },
-          "category_id": { "type": "number", "description": "类目ID" },
-          "description": {
-            "type": "string",
-            "description": "商品详情描述，可包含图片中心的图片URL",
-            "maxLength": 60000
-          },
-          "extra_context": { "type": "object", "additionalProperties": true, "description": "补充信息" },
-          "group_id": { "type": "number", "description": "分组ID" },
-          "keywords": {
-            "type": "array",
-            "maxItems": 20,
-            "items": { "type": "string", "description": "关键词，不要包含特殊符号（如,;），最多三个" },
-            "description": "关键词，不要包含特殊符号（如,;），最多三个"
-          },
-          "language": { "type": "string", "description": "语种，参见FAQ 语种枚举值" },
-          "main_image": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["images"],
-            "properties": {
-              "images": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "description": "alibaba图片中心的图片URL列表，请使用alibaba.icbu.photobank.upload接口上传图片"
-                },
-                "description": "alibaba图片中心的图片URL列表，请使用alibaba.icbu.photobank.upload接口上传图片"
-              },
-              "watermark": { "type": "boolean", "description": "是否打水印，是(true)或否(false)" },
-              "watermark_frame": {
-                "type": "string",
-                "description": "水印是否有边框，有边框(Y)或者无边框(N)"
-              },
-              "watermark_position": {
-                "type": "string",
-                "description": "水印位置，在中间(center)或者在底部(bottom)"
-              }
-            },
-            "description": "商品主图"
-          },
-          "product_sku": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "attributes": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "attribute_id": { "type": "number", "description": "属性ID" },
-                    "sku_custom_image_url": {
-                      "type": "string",
-                      "description": "作为sku属性值时，用图形来显示；必须是alibaba图片中心的图片URL，请使用alibaba.icbu.photobank.upload上传图片"
-                    },
-                    "sku_custom_value_name": {
-                      "type": "string",
-                      "description": "作为sku属性值时，自定义属性值名称"
-                    },
-                    "value_id": {
-                      "type": "number",
-                      "description": "属性值ID，自定义属性值时ID要小于0，并且不能重复"
-                    },
-                    "value_name": { "type": "string", "description": "属性值名称" },
-                    "attribute_name": { "type": "string", "description": "属性名称" }
-                  },
-                  "description": "商品属性和属性值"
-                },
-                "description": "商品属性和属性值"
-              },
-              "exclude_skus": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "attributes": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "properties": {
-                          "attribute_id": { "type": "number", "description": "属性ID" },
-                          "value_id": {
-                            "type": "number",
-                            "description": "属性值ID，自定义属性值时ID要小于0，并且不能重复"
-                          },
-                          "sku_custom_value_name": {
-                            "type": "string",
-                            "description": "作为sku属性值时，自定义属性值名称"
-                          },
-                          "sku_custom_image_url": {
-                            "type": "string",
-                            "description": "作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片"
-                          },
-                          "value_name": { "type": "string", "description": "属性值名称" },
-                          "attribute_name": { "type": "string", "description": "属性名称" }
-                        },
-                        "description": "商品属性和属性值"
-                      },
-                      "description": "商品属性和属性值"
-                    },
-                    "price": {
-                      "type": "string",
-                      "description": "价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00"
-                    }
-                  },
-                  "description": "单个SKU详细定义"
-                },
-                "description": "单个SKU详细定义"
-              },
-              "special_skus": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "attributes": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "properties": {
-                          "attribute_id": { "type": "number", "description": "属性ID" },
-                          "value_id": {
-                            "type": "number",
-                            "description": "属性值ID，自定义属性值时ID要小于0，并且不能重复"
-                          },
-                          "sku_custom_value_name": {
-                            "type": "string",
-                            "description": "作为sku属性值时，自定义属性值名称"
-                          },
-                          "sku_custom_image_url": {
-                            "type": "string",
-                            "description": "作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片"
-                          },
-                          "value_name": { "type": "string", "description": "属性值名称" },
-                          "attribute_name": { "type": "string", "description": "属性名称" }
-                        },
-                        "description": "商品属性和属性值"
-                      },
-                      "description": "商品属性和属性值"
-                    },
-                    "price": {
-                      "type": "string",
-                      "description": "价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00"
-                    }
-                  },
-                  "description": "单个SKU详细定义"
-                },
-                "description": "单个SKU详细定义"
-              }
-            },
-            "description": "商品SKU定义"
-          },
-          "product_type": {
-            "type": "string",
-            "description": "商品类型，在线批发商品(wholesale)或者询盘商品(sourcing)"
-          },
-          "sourcing_trade": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "delivery_port": { "type": "string", "description": "发货港口" },
-              "delivery_time": { "type": "string", "description": "发货期限" },
-              "fob_currency": { "type": "string", "description": "FOB价格货币，参见FAQ 货币枚举值" },
-              "fob_max_price": { "type": "string", "description": "FOB最大价格" },
-              "fob_min_price": { "type": "string", "description": "FOB最小价格" },
-              "fob_unit_type": { "type": "string", "description": "FOB计量单位，参见FAQ 计量单位枚举值" },
-              "min_order_quantity": { "type": "string", "description": "最小起订量" },
-              "min_order_unit_type": {
-                "type": "string",
-                "description": "最小起订量计量单位，参见FAQ 计量单位枚举值"
-              },
-              "payment_methods": {
-                "type": "array",
-                "items": { "type": "string", "description": "付款方式，参见FAQ 付款方式枚举值" },
-                "description": "付款方式，参见FAQ 付款方式枚举值"
-              },
-              "supply_period_type": {
-                "type": "string",
-                "description": "供货能力周期，参见FAQ 时间周期枚举值"
-              },
-              "supply_quantity": { "type": "string", "description": "供货能力" },
-              "supply_unit_type": {
-                "type": "string",
-                "description": "供货能力计量单位，参见FAQ 计量单位枚举值"
-              },
-              "packaging_desc": { "type": "string", "description": "包装信息" },
-              "deliver_periods": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "process_period": { "type": "number", "description": "预计需要发货时间" },
-                    "quantity": { "type": "number", "description": "数量" }
-                  },
-                  "description": "发货周期"
-                },
-                "description": "发货周期"
-              }
-            },
-            "description": "询盘商品交易信息"
-          },
-          "subject": { "type": "string", "description": "商品名称，最多128个字符" },
-          "wholesale_trade": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "batch_number": {
-                "type": "number",
-                "description": "每批数量，当sale_type=batch时生效，范围是1-99999"
-              },
-              "handling_time": { "type": "number", "description": "备货期，单位是天，范围是1-60" },
-              "min_order_quantity": { "type": "number", "description": "最小起订量，范围是1-99999" },
-              "package_size": { "type": "string", "description": "尺寸，单位是厘米，长宽高范围是1-9999999" },
-              "price": {
-                "type": "string",
-                "description": "价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00"
-              },
-              "sale_type": { "type": "string", "description": "销售方式，按件卖(normal)或者按批卖(batch)" },
-              "shipping_line_template_id": { "type": "number", "description": "运费模板ID" },
-              "unit_type": { "type": "string", "description": "最小计量单位，参见FAQ 计量单位枚举值" },
-              "volume": { "type": "number", "description": "体积，单位是立方厘米，范围是1-9999999" },
-              "weight": {
-                "type": "string",
-                "description": "重量，单位是kg，精确到小数点后三位，范围是0.01-9999999.000"
-              },
-              "deliver_periods": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "process_period": { "type": "number", "description": "预计需要发货时间" },
-                    "quantity": { "type": "number", "description": "数量" }
-                  },
-                  "description": "发货周期(新版本，建议使用)"
-                },
-                "description": "发货周期(新版本，建议使用)"
-              }
-            },
-            "description": "在线批发商品交易信息"
-          },
-          "market": {
-            "type": "string",
-            "description": "发布的市场，支持main/onesite，默认main发到主市场，填onesite发布为商机通产品"
-          },
-          "is_smart_edit": {
-            "type": "boolean",
-            "description": "智能编辑，不填写使用原来的。注意必须和详情的格式一致"
-          },
-          "custom_info": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "custom_contents": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "min_order_quantity": { "type": "number", "description": "最小起订量" },
-                    "custom_type": { "type": "string", "description": "定制类型" }
-                  },
-                  "description": "定制内容"
-                },
-                "description": "定制内容"
-              }
-            },
-            "description": "定制信息"
-          },
-          "product_id": { "type": "string", "description": "混淆商品ID" }
-        },
-        "title": "alibaba.icbu.product.update request"
-      },
-      "AlibabaProductAlibabaIcbuProductUpdateResponse": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": { "product_id": { "type": "string", "description": "加密后的产品ID" } },
-        "title": "alibaba.icbu.product.update response"
       },
       "AlibabaProductAlibabaIcbuProductUpdateFieldRequest": {
         "type": "object",
@@ -3661,6 +2903,1233 @@
         "additionalProperties": false,
         "properties": { "product_id": { "type": "string", "description": "加密后的产品ID" } },
         "title": "alibaba.icbu.product.update.field response"
+      },
+      "AlibabaProductAlibabaIcbuProductUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "category_id",
+          "keywords",
+          "language",
+          "main_image",
+          "product_type",
+          "subject",
+          "product_id"
+        ],
+        "properties": {
+          "attributes": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "attribute_id": { "type": "number", "description": "属性ID" },
+                "attribute_name": { "type": "string", "description": "属性名称" },
+                "value_id": { "type": "number", "description": "属性值ID" },
+                "value_name": { "type": "string", "description": "属性值名称" },
+                "sku_custom_image_url": {
+                  "type": "string",
+                  "description": "作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片"
+                },
+                "sku_custom_value_name": {
+                  "type": "string",
+                  "description": "作为sku属性值时，自定义属性值名称"
+                }
+              },
+              "description": "商品属性和属性值"
+            },
+            "description": "商品属性和属性值"
+          },
+          "bulk_discount_prices": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "price": { "type": "string", "description": "价格，范围是0.01-9999999.00" },
+                "start_quantity": { "type": "number", "description": "起始数量，范围是1-99999" }
+              },
+              "description": "根据数量设置的折扣价"
+            },
+            "description": "根据数量设置的折扣价"
+          },
+          "category_id": { "type": "number", "description": "类目ID" },
+          "description": {
+            "type": "string",
+            "description": "商品详情描述，可包含图片中心的图片URL",
+            "maxLength": 60000
+          },
+          "extra_context": { "type": "object", "additionalProperties": true, "description": "补充信息" },
+          "group_id": { "type": "number", "description": "分组ID" },
+          "keywords": {
+            "type": "array",
+            "maxItems": 20,
+            "items": { "type": "string", "description": "关键词，不要包含特殊符号（如,;），最多三个" },
+            "description": "关键词，不要包含特殊符号（如,;），最多三个"
+          },
+          "language": { "type": "string", "description": "语种，参见FAQ 语种枚举值" },
+          "main_image": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["images"],
+            "properties": {
+              "images": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "description": "alibaba图片中心的图片URL列表，请使用alibaba.icbu.photobank.upload接口上传图片"
+                },
+                "description": "alibaba图片中心的图片URL列表，请使用alibaba.icbu.photobank.upload接口上传图片"
+              },
+              "watermark": { "type": "boolean", "description": "是否打水印，是(true)或否(false)" },
+              "watermark_frame": {
+                "type": "string",
+                "description": "水印是否有边框，有边框(Y)或者无边框(N)"
+              },
+              "watermark_position": {
+                "type": "string",
+                "description": "水印位置，在中间(center)或者在底部(bottom)"
+              }
+            },
+            "description": "商品主图"
+          },
+          "product_sku": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "attributes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "attribute_id": { "type": "number", "description": "属性ID" },
+                    "sku_custom_image_url": {
+                      "type": "string",
+                      "description": "作为sku属性值时，用图形来显示；必须是alibaba图片中心的图片URL，请使用alibaba.icbu.photobank.upload上传图片"
+                    },
+                    "sku_custom_value_name": {
+                      "type": "string",
+                      "description": "作为sku属性值时，自定义属性值名称"
+                    },
+                    "value_id": {
+                      "type": "number",
+                      "description": "属性值ID，自定义属性值时ID要小于0，并且不能重复"
+                    },
+                    "value_name": { "type": "string", "description": "属性值名称" },
+                    "attribute_name": { "type": "string", "description": "属性名称" }
+                  },
+                  "description": "商品属性和属性值"
+                },
+                "description": "商品属性和属性值"
+              },
+              "exclude_skus": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "attributes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "attribute_id": { "type": "number", "description": "属性ID" },
+                          "value_id": {
+                            "type": "number",
+                            "description": "属性值ID，自定义属性值时ID要小于0，并且不能重复"
+                          },
+                          "sku_custom_value_name": {
+                            "type": "string",
+                            "description": "作为sku属性值时，自定义属性值名称"
+                          },
+                          "sku_custom_image_url": {
+                            "type": "string",
+                            "description": "作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片"
+                          },
+                          "value_name": { "type": "string", "description": "属性值名称" },
+                          "attribute_name": { "type": "string", "description": "属性名称" }
+                        },
+                        "description": "商品属性和属性值"
+                      },
+                      "description": "商品属性和属性值"
+                    },
+                    "price": {
+                      "type": "string",
+                      "description": "价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00"
+                    }
+                  },
+                  "description": "单个SKU详细定义"
+                },
+                "description": "单个SKU详细定义"
+              },
+              "special_skus": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "attributes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "attribute_id": { "type": "number", "description": "属性ID" },
+                          "value_id": {
+                            "type": "number",
+                            "description": "属性值ID，自定义属性值时ID要小于0，并且不能重复"
+                          },
+                          "sku_custom_value_name": {
+                            "type": "string",
+                            "description": "作为sku属性值时，自定义属性值名称"
+                          },
+                          "sku_custom_image_url": {
+                            "type": "string",
+                            "description": "作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片"
+                          },
+                          "value_name": { "type": "string", "description": "属性值名称" },
+                          "attribute_name": { "type": "string", "description": "属性名称" }
+                        },
+                        "description": "商品属性和属性值"
+                      },
+                      "description": "商品属性和属性值"
+                    },
+                    "price": {
+                      "type": "string",
+                      "description": "价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00"
+                    }
+                  },
+                  "description": "单个SKU详细定义"
+                },
+                "description": "单个SKU详细定义"
+              }
+            },
+            "description": "商品SKU定义"
+          },
+          "product_type": {
+            "type": "string",
+            "description": "商品类型，在线批发商品(wholesale)或者询盘商品(sourcing)"
+          },
+          "sourcing_trade": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "delivery_port": { "type": "string", "description": "发货港口" },
+              "delivery_time": { "type": "string", "description": "发货期限" },
+              "fob_currency": { "type": "string", "description": "FOB价格货币，参见FAQ 货币枚举值" },
+              "fob_max_price": { "type": "string", "description": "FOB最大价格" },
+              "fob_min_price": { "type": "string", "description": "FOB最小价格" },
+              "fob_unit_type": { "type": "string", "description": "FOB计量单位，参见FAQ 计量单位枚举值" },
+              "min_order_quantity": { "type": "string", "description": "最小起订量" },
+              "min_order_unit_type": {
+                "type": "string",
+                "description": "最小起订量计量单位，参见FAQ 计量单位枚举值"
+              },
+              "payment_methods": {
+                "type": "array",
+                "items": { "type": "string", "description": "付款方式，参见FAQ 付款方式枚举值" },
+                "description": "付款方式，参见FAQ 付款方式枚举值"
+              },
+              "supply_period_type": {
+                "type": "string",
+                "description": "供货能力周期，参见FAQ 时间周期枚举值"
+              },
+              "supply_quantity": { "type": "string", "description": "供货能力" },
+              "supply_unit_type": {
+                "type": "string",
+                "description": "供货能力计量单位，参见FAQ 计量单位枚举值"
+              },
+              "packaging_desc": { "type": "string", "description": "包装信息" },
+              "deliver_periods": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "process_period": { "type": "number", "description": "预计需要发货时间" },
+                    "quantity": { "type": "number", "description": "数量" }
+                  },
+                  "description": "发货周期"
+                },
+                "description": "发货周期"
+              }
+            },
+            "description": "询盘商品交易信息"
+          },
+          "subject": { "type": "string", "description": "商品名称，最多128个字符" },
+          "wholesale_trade": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "batch_number": {
+                "type": "number",
+                "description": "每批数量，当sale_type=batch时生效，范围是1-99999"
+              },
+              "handling_time": { "type": "number", "description": "备货期，单位是天，范围是1-60" },
+              "min_order_quantity": { "type": "number", "description": "最小起订量，范围是1-99999" },
+              "package_size": { "type": "string", "description": "尺寸，单位是厘米，长宽高范围是1-9999999" },
+              "price": {
+                "type": "string",
+                "description": "价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00"
+              },
+              "sale_type": { "type": "string", "description": "销售方式，按件卖(normal)或者按批卖(batch)" },
+              "shipping_line_template_id": { "type": "number", "description": "运费模板ID" },
+              "unit_type": { "type": "string", "description": "最小计量单位，参见FAQ 计量单位枚举值" },
+              "volume": { "type": "number", "description": "体积，单位是立方厘米，范围是1-9999999" },
+              "weight": {
+                "type": "string",
+                "description": "重量，单位是kg，精确到小数点后三位，范围是0.01-9999999.000"
+              },
+              "deliver_periods": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "process_period": { "type": "number", "description": "预计需要发货时间" },
+                    "quantity": { "type": "number", "description": "数量" }
+                  },
+                  "description": "发货周期(新版本，建议使用)"
+                },
+                "description": "发货周期(新版本，建议使用)"
+              }
+            },
+            "description": "在线批发商品交易信息"
+          },
+          "market": {
+            "type": "string",
+            "description": "发布的市场，支持main/onesite，默认main发到主市场，填onesite发布为商机通产品"
+          },
+          "is_smart_edit": {
+            "type": "boolean",
+            "description": "智能编辑，不填写使用原来的。注意必须和详情的格式一致"
+          },
+          "custom_info": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "custom_contents": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "min_order_quantity": { "type": "number", "description": "最小起订量" },
+                    "custom_type": { "type": "string", "description": "定制类型" }
+                  },
+                  "description": "定制内容"
+                },
+                "description": "定制内容"
+              }
+            },
+            "description": "定制信息"
+          },
+          "product_id": { "type": "string", "description": "混淆商品ID" }
+        },
+        "title": "alibaba.icbu.product.update request"
+      },
+      "AlibabaProductAlibabaIcbuProductUpdateResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": { "product_id": { "type": "string", "description": "加密后的产品ID" } },
+        "title": "alibaba.icbu.product.update response"
+      },
+      "AlibabaRfqAlibabaIcbuAnnexUploadRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file_name", "file_input_stream_bytes", "source"],
+        "properties": {
+          "file_name": { "type": "string", "description": "文件名" },
+          "file_input_stream_bytes": {
+            "type": "string",
+            "contentEncoding": "base64",
+            "description": "文件字节流"
+          },
+          "source": { "type": "string", "description": "来源" }
+        },
+        "title": "alibaba.icbu.annex.upload request"
+      },
+      "AlibabaRfqAlibabaIcbuAnnexUploadResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "err_type": { "type": "string", "description": "返回错误码" },
+          "message": { "type": "string", "description": "错误信息" },
+          "result": { "type": "string", "description": "文件file_str" },
+          "is_success": { "type": "boolean", "description": "是否成功" }
+        },
+        "title": "alibaba.icbu.annex.upload response"
+      },
+      "AlibabaRfqAlibabaIcbuQuotationPostRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "md5key": { "type": "string", "description": "验证" },
+          "dto": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["details", "rfq_id", "payment_terms", "expiry_date"],
+            "properties": {
+              "details": { "type": "string", "description": "给买家留言" },
+              "annex_files_str": {
+                "type": "string",
+                "description": "附件file_str,请通过调用alibaba.icbu.annex.upload结果作为入参"
+              },
+              "sample": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "remark": { "type": "string", "description": "备注" },
+                  "estimated_date": { "type": "number", "description": "预计时间" },
+                  "payment": { "type": "string", "description": "样品运费支付方" },
+                  "is_free": { "type": "string", "description": "是否是免费" },
+                  "is_support": { "type": "string", "description": "是否提供样本" }
+                },
+                "description": "样本"
+              },
+              "price_list": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "port",
+                    "shipping_terms",
+                    "item_name",
+                    "fob_price",
+                    "quantity",
+                    "quantity_unit",
+                    "remark",
+                    "fob_price_unit"
+                  ],
+                  "properties": {
+                    "port": { "type": "string", "description": "目的港" },
+                    "shipping_terms": { "type": "string", "description": "发运条件" },
+                    "image_str": {
+                      "type": "string",
+                      "description": "图片image_str,请通过调用alibaba.icbu.annex.upload结果作为入参如果是都个附件通过\\r\\n分割"
+                    },
+                    "model_num": { "type": "string", "description": "产品编号" },
+                    "item_name": { "type": "string", "description": "产品名称" },
+                    "fob_price": { "type": "string", "description": "价格" },
+                    "quantity": { "type": "string", "description": "数量" },
+                    "quantity_unit": { "type": "string", "description": "数量单位" },
+                    "remark": { "type": "string", "description": "备注" },
+                    "fob_price_unit": { "type": "string", "description": "价格单位" }
+                  },
+                  "description": "报价列表"
+                },
+                "description": "报价列表"
+              },
+              "rfq_id": { "type": "string", "description": "RFQID" },
+              "payment_terms": { "type": "string", "description": "付费条款" },
+              "expiry_date": { "type": ["integer", "string"], "description": "过期时间" }
+            },
+            "description": "报价DTO"
+          }
+        },
+        "title": "alibaba.icbu.quotation.post request"
+      },
+      "AlibabaRfqAlibabaIcbuQuotationPostResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "message": { "type": "string", "description": "错误信息" },
+              "result": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": { "id": { "type": "number", "description": "报价ID" } },
+                "description": "返回结果信息"
+              },
+              "err_type": { "type": "string", "description": "错误类型" },
+              "success": { "type": "boolean", "description": "是否成功" }
+            },
+            "description": "请求返回结果信息"
+          }
+        },
+        "title": "alibaba.icbu.quotation.post response"
+      },
+      "AlibabaRfqAlibabaIcbuRfqdetailGetRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "md5key": { "type": "string", "description": "验证" },
+          "rfq_query_dto": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["rfq_id"],
+            "properties": { "rfq_id": { "type": "string", "description": "RFQ ID" } },
+            "description": "查询RFQ详情DTO"
+          }
+        },
+        "title": "alibaba.icbu.rfqdetail.get request"
+      },
+      "AlibabaRfqAlibabaIcbuRfqdetailGetResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "message": { "type": "string", "description": "返回状态信息" },
+              "result": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "attachments": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "file_name": { "type": "string", "description": "文件名" },
+                        "file_url": { "type": "string", "description": "文件地址" }
+                      },
+                      "description": "附件列表"
+                    },
+                    "description": "附件列表"
+                  },
+                  "rfq_detail_dto": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "lang_src": { "type": "string", "description": "语种" },
+                      "supplier_countrys": { "type": "string", "description": "供应商国家" },
+                      "category_id": { "type": "number", "description": "类目ID" },
+                      "category_name": { "type": "string", "description": "类目名称" },
+                      "annex_names": { "type": "string", "description": "附加名称" },
+                      "payment_terms": { "type": "string", "description": "付款条件" },
+                      "destination_port": { "type": "string", "description": "目的港" },
+                      "fob_price_unit": { "type": "string", "description": "价格单位" },
+                      "fob_price": { "type": "string", "description": "价格" },
+                      "shipping_terms": { "type": "string", "description": "发运条件" },
+                      "left_count": { "type": "number", "description": "剩余报价数量" },
+                      "open_time": { "type": "number", "description": "开放时间" },
+                      "expirate_time": { "type": "number", "description": "过期值" },
+                      "country_simple": { "type": "string", "description": "国家简称" },
+                      "quantity_unit": { "type": "string", "description": "数量单位" },
+                      "quantity": { "type": "number", "description": "数量" },
+                      "status": { "type": "string", "description": "状态" },
+                      "description": { "type": "string", "description": "描述" },
+                      "subject": { "type": "string", "description": "标题" },
+                      "rfq_id": { "type": "string", "description": "RFQ ID" }
+                    },
+                    "description": "RFQ详情"
+                  }
+                },
+                "description": "RFQ详情结果集"
+              },
+              "error_type": { "type": "string", "description": "错误类型" },
+              "success": { "type": "boolean", "description": "判断是否成功" }
+            },
+            "description": "返回结果集"
+          }
+        },
+        "title": "alibaba.icbu.rfqdetail.get response"
+      },
+      "AlibabaRfqAlibabaIcbuRfqMyequityRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "title": "alibaba.icbu.rfq.myequity request"
+      },
+      "AlibabaRfqAlibabaIcbuRfqMyequityResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "service_result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "success": { "type": "boolean", "description": "是否成功" },
+              "msg": { "type": "string", "description": "返回信息" },
+              "value": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "equity_count": { "type": "number", "description": "剩余权益" },
+                  "expired_date": { "type": "string", "description": "过期时间" },
+                  "score": { "type": "number", "description": "市场表现分" },
+                  "beat_supplier_percent": { "type": "string", "description": "击败其他供应商百分比" },
+                  "statistic_start_date": { "type": "string", "description": "市场表现分统计开始时间" },
+                  "statistic_end_date": { "type": "string", "description": "市场表现分统计结束时间" },
+                  "top_service_count": { "type": "number", "description": "剩余置顶报价权益" }
+                },
+                "description": "我的权益信息"
+              }
+            },
+            "description": "请求返回结果"
+          }
+        },
+        "title": "alibaba.icbu.rfq.myequity response"
+      },
+      "AlibabaRfqAlibabaIcbuRfqReadRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rfq_id_list"],
+        "properties": {
+          "rfq_id_list": {
+            "type": "array",
+            "maxItems": 20,
+            "items": { "type": "string", "description": "查询RFQID列表" },
+            "description": "查询RFQID列表"
+          }
+        },
+        "title": "alibaba.icbu.rfq.read request"
+      },
+      "AlibabaRfqAlibabaIcbuRfqReadResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "code": { "type": "string", "description": "错误码" },
+              "msg": { "type": "string", "description": "错误信息" },
+              "result_code": { "type": "number", "description": "操作结果对象" },
+              "success": { "type": "boolean", "description": "是否成功" },
+              "value": { "type": "string", "description": "结果" }
+            },
+            "description": "alinkappserver系统返回的通用结果类"
+          }
+        },
+        "title": "alibaba.icbu.rfq.read response"
+      },
+      "AlibabaRfqAlibabaIcbuRfqRecommendRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["query_dto"],
+        "properties": {
+          "query_dto": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["count", "current", "page_size", "site", "type"],
+            "properties": {
+              "count": { "type": "number", "description": "推荐数量" },
+              "current": { "type": "number", "description": "当前页面数" },
+              "page_size": { "type": "number", "description": "页面大小" },
+              "site": { "type": "string", "description": "系统参数qn-homepage" },
+              "type": { "type": "string", "description": "系统参数U_P_I" }
+            },
+            "description": "入参数据"
+          }
+        },
+        "title": "alibaba.icbu.rfq.recommend request"
+      },
+      "AlibabaRfqAlibabaIcbuRfqRecommendResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "msg": { "type": "string", "description": "系统信息" },
+              "result_code": { "type": "number", "description": "返回系统代码" },
+              "success": { "type": "boolean", "description": "请求是否成功" },
+              "value": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "pagination": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "current": { "type": "number", "description": "当前页面" },
+                      "page_size": { "type": "number", "description": "页面大小" },
+                      "total_item": { "type": "number", "description": "推荐数量" },
+                      "total_pages": { "type": "number", "description": "总页数" }
+                    },
+                    "description": "返回结果统计"
+                  },
+                  "rfq_list": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "country": { "type": "string", "description": "国家全称" },
+                        "country_simple": { "type": "string", "description": "国家简称" },
+                        "date_post": { "type": "number", "description": "发布时间戳" },
+                        "date_post_str": { "type": "string", "description": "发布时间" },
+                        "detail": { "type": "string", "description": "RFQ详情" },
+                        "has_read": { "type": "boolean", "description": "是否有读过" },
+                        "have_image": { "type": "boolean", "description": "是否有图片" },
+                        "image_url": { "type": "string", "description": "图片地址" },
+                        "left_count": { "type": "number", "description": "剩余报价数" },
+                        "quantity": { "type": "number", "description": "数量" },
+                        "rfq_id": { "type": "string", "description": "rfqID" },
+                        "subject": { "type": "string", "description": "RFQ标题" },
+                        "quantity_unit": { "type": "string", "description": "数量单位" }
+                      },
+                      "description": "返回推荐RFQ"
+                    },
+                    "description": "返回推荐RFQ"
+                  }
+                },
+                "description": "返回结果"
+              }
+            },
+            "description": "alinkappserver系统返回的通用结果类"
+          }
+        },
+        "title": "alibaba.icbu.rfq.recommend response"
+      },
+      "AlibabaRfqAlibabaIcbuRfqSearchRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "md5key": { "type": "string", "description": "验证" },
+          "cond": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["search_text"],
+            "properties": {
+              "search_text": { "type": "string", "description": "关键词" },
+              "page_size": { "type": "number", "description": "每页显示个数" },
+              "open_time": { "type": "number", "description": "过滤RFQ发送时间秒级别的" },
+              "attachment": { "type": "boolean", "description": "是否有附件" },
+              "photo": { "type": "boolean", "description": "是否有图片" },
+              "country": { "type": "string", "description": "国家简称" },
+              "category_id": { "type": "string", "description": "类目" },
+              "close_time": { "type": "number", "description": "RFQ发布到现在的结束时间秒级别" },
+              "quantity_min": { "type": "number", "description": "最小量" },
+              "current_page": { "type": "number", "description": "当前页" },
+              "quantity_max": { "type": "number", "description": "最大量" },
+              "full_quote": { "type": "boolean", "description": "是否报满RFQ" },
+              "zero_quotation": { "type": "boolean", "description": "是否限免RFQ" },
+              "filter_quoted": { "type": "boolean", "description": "是否过滤已报价" }
+            },
+            "description": "查询条件"
+          }
+        },
+        "title": "alibaba.icbu.rfq.search request"
+      },
+      "AlibabaRfqAlibabaIcbuRfqSearchResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "message": { "type": "string", "description": "查询返回信息" },
+              "result": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "request_list": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "rfq_id": { "type": "string", "description": "RFQID" },
+                        "category_id": { "type": "number", "description": "类目ID" },
+                        "subject": { "type": "string", "description": "RFQ标题" },
+                        "description": { "type": "string", "description": "RFQ内容" },
+                        "quantity": { "type": "number", "description": "数量" },
+                        "quantity_unit": { "type": "string", "description": "数量单位" },
+                        "country_simple": { "type": "string", "description": "国家简称" },
+                        "left_count": { "type": "number", "description": "剩余报价" },
+                        "annex_names": { "type": "string", "description": "附件名称" },
+                        "lang_src": { "type": "string", "description": "语种" },
+                        "expirate_time": { "type": "number", "description": "过期时间" },
+                        "open_time": { "type": "number", "description": "开始时间" },
+                        "image_url": { "type": "string", "description": "图片地址" },
+                        "supplier_countrys": { "type": "string", "description": "供应商国家" },
+                        "annex_files": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "file_name": { "type": "string", "description": "文件名" },
+                              "unique_file_name": { "type": "string", "description": "唯一文件名" }
+                            },
+                            "description": "附件"
+                          },
+                          "description": "附件"
+                        },
+                        "unique_rfq_id": { "type": "string", "description": "唯一加密RFQID" }
+                      },
+                      "description": "RFQ列表"
+                    },
+                    "description": "RFQ列表"
+                  },
+                  "total": { "type": "number", "description": "总数" },
+                  "category_list": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "category_id": { "type": "number", "description": "类目ID" },
+                        "category_name": { "type": "string", "description": "类目名称" },
+                        "count": { "type": "number", "description": "数量" }
+                      },
+                      "description": "类目列表"
+                    },
+                    "description": "类目列表"
+                  }
+                },
+                "description": "结果集"
+              },
+              "error_type": { "type": "string", "description": "错误类型" },
+              "success": { "type": "boolean", "description": "是否成功" }
+            },
+            "description": "返回信息结果集"
+          }
+        },
+        "title": "alibaba.icbu.rfq.search response"
+      },
+      "ApiCapability": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "method",
+          "domain",
+          "chargeLabel",
+          "auth",
+          "jushitaOnly",
+          "restricted",
+          "enabled",
+          "docUrl",
+          "checkedAt",
+          "source",
+          "lifecycle",
+          "risk",
+          "verification",
+          "realCallEnabled"
+        ],
+        "properties": {
+          "method": { "type": "string" },
+          "domain": { "type": "string" },
+          "chargeLabel": { "type": "string" },
+          "auth": { "type": "string", "enum": ["required", "optional", "none", "unknown"] },
+          "jushitaOnly": { "type": "boolean" },
+          "restricted": { "type": "boolean" },
+          "restrictionReason": { "type": ["string", "null"] },
+          "enabled": { "type": "boolean" },
+          "docUrl": { "type": "string", "format": "uri" },
+          "checkedAt": { "type": "string", "format": "date" },
+          "updatedAt": { "type": ["string", "null"], "format": "date" },
+          "source": { "type": "string", "enum": ["catalog", "article"] },
+          "lifecycle": { "type": "string", "enum": ["active", "deprecated", "unlisted"] },
+          "risk": { "type": "string", "enum": ["read", "mutation"] },
+          "verification": { "type": "string", "enum": ["documented", "account-verified"] },
+          "realCallEnabled": { "type": "boolean" },
+          "requestSchema": { "type": ["string", "null"] },
+          "responseSchema": { "type": ["string", "null"] }
+        }
+      },
+      "CapabilityCallRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["method", "parameters"],
+        "properties": {
+          "method": { "type": "string" },
+          "parameters": { "type": "object", "additionalProperties": true }
+        }
+      },
+      "CapabilityCallResult": { "$ref": "#/components/schemas/CapabilityResponseEnvelope" },
+      "CapabilityContractIssue": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["instancePath", "keyword", "message"],
+        "properties": {
+          "instancePath": { "type": "string" },
+          "keyword": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      },
+      "CapabilityDefinition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "method",
+          "title",
+          "description",
+          "source",
+          "lifecycle",
+          "risk",
+          "verification",
+          "realCallEnabled",
+          "requestSchema",
+          "responseSchema",
+          "requestExample",
+          "responseExample",
+          "errorCodes",
+          "checkedAt",
+          "docUrl"
+        ],
+        "properties": {
+          "method": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "source": { "type": "string", "enum": ["catalog", "article"] },
+          "lifecycle": { "type": "string", "enum": ["active", "deprecated", "unlisted"] },
+          "risk": { "type": "string", "enum": ["read", "mutation"] },
+          "verification": { "type": "string", "enum": ["documented", "account-verified"] },
+          "realCallEnabled": { "type": "boolean" },
+          "requestSchema": { "type": "string" },
+          "responseSchema": { "type": "string" },
+          "requestExample": { "type": "object", "additionalProperties": true },
+          "responseExample": {},
+          "errorCodes": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+          "checkedAt": { "type": "string", "format": "date" },
+          "updatedAt": { "type": ["string", "null"], "format": "date" },
+          "docUrl": { "type": "string", "format": "uri" }
+        }
+      },
+      "CapabilityResponseEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["method", "traceId", "data", "contractValid", "contractIssues"],
+        "properties": {
+          "method": { "type": "string" },
+          "traceId": { "type": "string" },
+          "data": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryAttrGetResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryAttributeGetResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryAttrvalueGetResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryGetResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryGetNewResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryIdMappingResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryLevelAttrGetResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryPostcatGetResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategorySchemaLevelGetResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuOpenProductPostResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductAddResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductAddDraftResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductBatchUpdateDisplayResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductGetResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductGroupAddResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductGroupGetResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductIdDecryptResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductListResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSchemaAddResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSchemaAddDraftResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSchemaGetResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSchemaRenderResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSchemaRenderDraftResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSchemaUpdateResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductScoreGetResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductUpdateResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductUpdateFieldResponse" },
+              { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuAnnexUploadResponse" },
+              { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuQuotationPostResponse" },
+              { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqMyequityResponse" },
+              { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqReadResponse" },
+              { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqRecommendResponse" },
+              { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqSearchResponse" },
+              { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqdetailGetResponse" }
+            ]
+          },
+          "contractValid": { "type": "boolean" },
+          "contractIssues": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CapabilityContractIssue" }
+          }
+        }
+      },
+      "DashboardSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["productCount", "photoCount", "pendingOrderCount", "enabledCapabilityCount"],
+        "properties": {
+          "productCount": { "type": "integer", "minimum": 0 },
+          "photoCount": { "type": "integer", "minimum": 0 },
+          "pendingOrderCount": { "type": "integer", "minimum": 0 },
+          "enabledCapabilityCount": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "GatewayError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "retryable"],
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "subCode": { "type": "string" },
+          "traceId": { "type": "string" },
+          "retryable": { "type": "boolean" }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "buyerName", "amount", "currency", "status", "createdAt", "detailAvailability"],
+        "properties": {
+          "id": { "type": "string" },
+          "buyerName": { "type": "string" },
+          "amount": { "type": "number", "minimum": 0 },
+          "currency": { "type": "string" },
+          "status": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "detailAvailability": {
+            "type": "string",
+            "enum": ["summary_only"],
+            "description": "seller.order.get is not callable outside Jushita."
+          }
+        }
+      },
+      "OrderFund": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["orderId", "paidAmount", "currency", "status"],
+        "properties": {
+          "orderId": { "type": "string" },
+          "paidAmount": { "type": "number" },
+          "currency": { "type": "string" },
+          "status": { "type": "string" }
+        }
+      },
+      "OrderLogistics": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["orderId", "status"],
+        "properties": {
+          "orderId": { "type": "string" },
+          "status": { "type": "string" },
+          "carrier": { "type": ["string", "null"] },
+          "trackingNumber": { "type": ["string", "null"] }
+        }
+      },
+      "OrderPage": {
+        "allOf": [
+          { "$ref": "#/components/schemas/PageMeta" },
+          {
+            "type": "object",
+            "required": ["items"],
+            "properties": { "items": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } } }
+          }
+        ],
+        "unevaluatedProperties": false
+      },
+      "PageMeta": {
+        "type": "object",
+        "required": ["page", "pageSize", "total"],
+        "properties": {
+          "page": { "type": "integer", "minimum": 1 },
+          "pageSize": { "type": "integer", "minimum": 1 },
+          "total": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "Photo": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "url",
+          "groupId",
+          "width",
+          "height",
+          "fileSize",
+          "referenceCount",
+          "modifiedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Alibaba international PhotoBank fileId; persist it with the Schema value."
+          },
+          "name": { "type": "string" },
+          "url": { "type": "string", "format": "uri" },
+          "groupId": { "type": "string" },
+          "width": { "type": "integer", "minimum": 1 },
+          "height": { "type": "integer", "minimum": 1 },
+          "fileSize": { "type": "integer", "minimum": 0, "description": "Image size in bytes." },
+          "referenceCount": { "type": "integer", "minimum": 0 },
+          "modifiedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PhotoGroup": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "photoCount"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "photoCount": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "PhotoPage": {
+        "allOf": [
+          { "$ref": "#/components/schemas/PageMeta" },
+          {
+            "type": "object",
+            "required": ["items"],
+            "properties": { "items": { "type": "array", "items": { "$ref": "#/components/schemas/Photo" } } }
+          }
+        ],
+        "unevaluatedProperties": false
+      },
+      "PhotoTransferRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["url", "groupId"],
+        "properties": {
+          "url": { "type": "string", "format": "uri", "pattern": "^https?://" },
+          "groupId": { "type": "string" },
+          "fileName": { "type": "string", "minLength": 1, "maxLength": 255 },
+          "maxBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20971520,
+            "description": "Optional smaller Schema-derived limit. The service worker always caps downloads at 20 MiB."
+          }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "required": ["id", "subject", "groupName", "status", "score", "updatedAt"],
+        "properties": {
+          "id": { "type": "string" },
+          "subject": { "type": "string" },
+          "groupName": { "type": "string" },
+          "status": { "type": "string", "enum": ["online", "offline", "draft", "auditing", "rejected"] },
+          "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ProductCategory": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "leaf", "children"],
+        "properties": {
+          "id": { "type": "number" },
+          "name": { "type": "string" },
+          "leaf": { "type": "boolean" },
+          "children": { "type": "array", "items": { "$ref": "#/components/schemas/ProductCategory" } }
+        }
+      },
+      "ProductCategoryMapping": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sourceCategoryId", "targetCategoryId"],
+        "properties": { "sourceCategoryId": { "type": "number" }, "targetCategoryId": { "type": "number" } }
+      },
+      "ProductDescriptionQualityIssue": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "source", "level", "message", "remediation", "fieldIds"],
+        "properties": {
+          "code": { "type": "string" },
+          "source": { "type": "string", "enum": ["alibaba-schema", "official", "project"] },
+          "level": { "type": "string", "enum": ["error", "warning", "suggestion"] },
+          "message": { "type": "string" },
+          "remediation": { "type": "string" },
+          "fieldIds": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "ProductDetail": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Product" },
+          {
+            "type": "object",
+            "required": ["categoryId", "language", "schemaXml"],
+            "properties": {
+              "categoryId": { "type": "integer" },
+              "language": { "type": "string" },
+              "schemaXml": { "type": "string" }
+            }
+          }
+        ],
+        "unevaluatedProperties": false
+      },
+      "ProductGroup": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "children"],
+        "properties": {
+          "id": { "type": "number" },
+          "name": { "type": "string" },
+          "children": { "type": "array", "items": { "$ref": "#/components/schemas/ProductGroup" } }
+        }
+      },
+      "ProductMutationResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["productId", "traceId", "success"],
+        "properties": {
+          "productId": { "type": "string" },
+          "traceId": { "type": "string" },
+          "success": { "type": "boolean" }
+        }
+      },
+      "ProductPage": {
+        "allOf": [
+          { "$ref": "#/components/schemas/PageMeta" },
+          {
+            "type": "object",
+            "required": ["items"],
+            "properties": {
+              "items": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } }
+            }
+          }
+        ],
+        "unevaluatedProperties": false
+      },
+      "ProductSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["xml", "categoryId", "language", "market"],
+        "properties": {
+          "xml": { "type": "string" },
+          "categoryId": { "type": "integer" },
+          "language": { "type": "string" },
+          "market": { "type": "string" }
+        }
+      },
+      "ProductSchemaRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["categoryId", "language", "market"],
+        "properties": {
+          "categoryId": { "type": "integer" },
+          "language": { "type": "string", "default": "en_US" },
+          "market": { "type": "string", "enum": ["wholesale", "sourcing"] },
+          "productId": { "type": "string" }
+        }
+      },
+      "ProductScore": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["productId", "score", "issues"],
+        "properties": {
+          "productId": { "type": "string" },
+          "score": { "type": "number" },
+          "issues": { "type": "array", "items": { "type": "string" } },
+          "qualityIssues": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ProductDescriptionQualityIssue" },
+            "description": "Optional normalized official issues when the upstream response provides structured details."
+          }
+        }
+      },
+      "SchemaPublishRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["categoryId", "language", "schemaXml"],
+        "properties": {
+          "categoryId": { "type": "integer" },
+          "language": { "type": "string", "default": "en_US" },
+          "productId": { "type": "string" },
+          "schemaXml": { "type": "string", "minLength": 1, "x-ajv-errorMessage": "商品 Schema XML 不能为空" }
+        }
       }
     }
   },
@@ -5345,6 +5814,305 @@
     },
     "alibaba.icbu.product.update.field": {
       "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductUpdateFieldRequest"
+    }
+  },
+  "x-rfq-capabilities": {
+    "alibaba.icbu.annex.upload": {
+      "requestSchema": "AlibabaRfqAlibabaIcbuAnnexUploadRequest",
+      "responseSchema": "AlibabaRfqAlibabaIcbuAnnexUploadResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "checkedAt": "2026-08-12",
+      "updatedAt": "2021-11-23",
+      "title": "上传附件获取附件files_str",
+      "description": "上传附件获取附件files_str",
+      "errorCodes": [],
+      "requestExample": {
+        "file_name": "picture.jpg",
+        "file_input_stream_bytes": "aGVsbG8=",
+        "source": "top"
+      },
+      "responseExample": {
+        "err_type": "SYSTEMERROR",
+        "message": "filename is null",
+        "result": "fileId:0|fileSavePath:sdsdcfsdvdfvdfvdfv.jpg|fileFlag:add",
+        "is_success": true
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=40805"
+    },
+    "alibaba.icbu.quotation.post": {
+      "requestSchema": "AlibabaRfqAlibabaIcbuQuotationPostRequest",
+      "responseSchema": "AlibabaRfqAlibabaIcbuQuotationPostResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "checkedAt": "2026-08-12",
+      "updatedAt": "2021-11-23",
+      "title": "供应商提交报价",
+      "description": "供应商对RFQ进行报价",
+      "errorCodes": [],
+      "requestExample": {
+        "md5key": "8cb02c2c9cf4e4fbefe4a77e4e5f31b4",
+        "dto": {
+          "details": "have a cordial working relationship",
+          "annex_files_str": "fileId:0|fileSavePath:sdcdscdvfdvswejwieahssdcjdvdfv.jpg|fileFlag:add",
+          "sample": {
+            "remark": "无",
+            "estimated_date": 10,
+            "payment": "Buyer/Supplier/Negotiable",
+            "is_free": "Y",
+            "is_support": "Y"
+          },
+          "price_list": [
+            {
+              "port": "Tin Can port Lagos",
+              "shipping_terms": "FOB",
+              "image_str": "fileId:0|fileSavePath:sdcdscdvfdvswejwieahssdcjdvdfv.jpg|fileFlag:add|fileDestOrder:0|fileName:pic.jpg",
+              "model_num": "10",
+              "item_name": "phone",
+              "fob_price": "100",
+              "quantity": "100",
+              "quantity_unit": "Pieces",
+              "remark": "无",
+              "fob_price_unit": "USD"
+            }
+          ],
+          "rfq_id": "sdc34r4gfdvdv",
+          "payment_terms": "L/C",
+          "expiry_date": "2018-12-12 00:00:00"
+        }
+      },
+      "responseExample": {
+        "result": {
+          "message": "success",
+          "result": { "id": 10000 },
+          "err_type": "ILLEGAL_TYPE",
+          "success": true
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=32101"
+    },
+    "alibaba.icbu.rfq.myequity": {
+      "requestSchema": "AlibabaRfqAlibabaIcbuRfqMyequityRequest",
+      "responseSchema": "AlibabaRfqAlibabaIcbuRfqMyequityResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-08-12",
+      "updatedAt": "2021-11-23",
+      "title": "我的权益",
+      "description": "查询供应商权益接口",
+      "errorCodes": [],
+      "requestExample": {},
+      "responseExample": {
+        "service_result": {
+          "success": true,
+          "msg": "loginId is null",
+          "value": {
+            "equity_count": 10,
+            "expired_date": "2018-10-10",
+            "score": 20,
+            "beat_supplier_percent": "20%",
+            "statistic_start_date": "20190101",
+            "statistic_end_date": "20190110",
+            "top_service_count": 10
+          }
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=40865"
+    },
+    "alibaba.icbu.rfq.read": {
+      "requestSchema": "AlibabaRfqAlibabaIcbuRfqReadRequest",
+      "responseSchema": "AlibabaRfqAlibabaIcbuRfqReadResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-08-12",
+      "updatedAt": "2021-11-23",
+      "title": "是否已读RFQ",
+      "description": "是否已读RFQ",
+      "errorCodes": [],
+      "requestExample": { "rfq_id_list": ["sdc2e23sdc", "sfvdfvdfv"] },
+      "responseExample": {
+        "result": {
+          "code": "200",
+          "msg": "success",
+          "result_code": 200,
+          "success": true,
+          "value": "{\"123\":\"false\",\"124\":\"true\"}"
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=42604"
+    },
+    "alibaba.icbu.rfq.recommend": {
+      "requestSchema": "AlibabaRfqAlibabaIcbuRfqRecommendRequest",
+      "responseSchema": "AlibabaRfqAlibabaIcbuRfqRecommendResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-08-12",
+      "updatedAt": "2021-11-22",
+      "title": "rfq推荐",
+      "description": "rfq推荐",
+      "errorCodes": [],
+      "requestExample": {
+        "query_dto": { "count": 90, "current": 1, "page_size": 10, "site": "qn-homepage", "type": "U_P_I" }
+      },
+      "responseExample": {
+        "result": {
+          "msg": "success",
+          "result_code": 200,
+          "success": true,
+          "value": {
+            "pagination": { "current": 1, "page_size": 10, "total_item": 90, "total_pages": 9 },
+            "rfq_list": [
+              {
+                "country": "Thailand",
+                "country_simple": "TH",
+                "date_post": 123,
+                "date_post_str": "01/28/2019",
+                "detail": "hello,i am .....",
+                "has_read": false,
+                "have_image": false,
+                "image_url": "http://sc01.alicdn.com?fvdfvdfv",
+                "left_count": 5,
+                "quantity": 5,
+                "rfq_id": "dfvdsvfdfvdfvdfvdfvdsd",
+                "subject": "mp3",
+                "quantity_unit": "Sets"
+              }
+            ]
+          }
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=42211"
+    },
+    "alibaba.icbu.rfq.search": {
+      "requestSchema": "AlibabaRfqAlibabaIcbuRfqSearchRequest",
+      "responseSchema": "AlibabaRfqAlibabaIcbuRfqSearchResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-08-12",
+      "updatedAt": "2021-11-24",
+      "title": "查询RFQ",
+      "description": "用于查询RFQ的信息",
+      "errorCodes": [],
+      "requestExample": {
+        "md5key": "8cb02c2c9cf4e4fbefe4a77e4e5f31b4",
+        "cond": {
+          "search_text": "mp3",
+          "page_size": 10,
+          "open_time": 1000,
+          "attachment": false,
+          "photo": false,
+          "country": "CN",
+          "category_id": "44",
+          "close_time": 100,
+          "quantity_min": 10,
+          "current_page": 1,
+          "quantity_max": 10,
+          "full_quote": false,
+          "zero_quotation": false,
+          "filter_quoted": false
+        }
+      },
+      "responseExample": {
+        "result": {
+          "message": "success",
+          "result": {
+            "request_list": [
+              {
+                "rfq_id": "ID1hCOdof7urrUoa2D9447qdGbAniTntB7nHTgUfG7wkRt0waPw0hn3eeiWftoNWNFB",
+                "category_id": 44,
+                "subject": "1509051994000",
+                "description": "Feature:3G,FM Radio,WiFi,GPS Navigation,Build in Flash,<font><b>MP3</b></font> Playback,Auto Focus,Email,Touch Screen,Bluetooth Color:Silver,Gold,Gray warranty time:1 year shipping way:DHL EMS brand:6S.6,5S,5,4S OS:OS ...",
+                "quantity": 100,
+                "quantity_unit": "Pieces",
+                "country_simple": "CN",
+                "left_count": 100,
+                "annex_names": "HTB1yKesFVXXXXc4XFXXq6xXFXXXd.jpg:Homeage_brazilian_hair_beauty_on_sale_body.jpg_50x50.jpg",
+                "lang_src": "en",
+                "expirate_time": 1509051994000,
+                "open_time": 1509051994000,
+                "image_url": "http://www.baidu.com?id=24354546",
+                "supplier_countrys": "China",
+                "annex_files": [{ "file_name": "test", "unique_file_name": "sdcsdcsdj89sca" }],
+                "unique_rfq_id": "sdcdvsdvdfvdvsdcsdc"
+              }
+            ],
+            "total": 100,
+            "category_list": [{ "category_id": 44, "category_name": "phone", "count": 100 }]
+          },
+          "error_type": "null",
+          "success": true
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=32084"
+    },
+    "alibaba.icbu.rfqdetail.get": {
+      "requestSchema": "AlibabaRfqAlibabaIcbuRfqdetailGetRequest",
+      "responseSchema": "AlibabaRfqAlibabaIcbuRfqdetailGetResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-08-12",
+      "updatedAt": "2021-11-23",
+      "title": "获取RFQ详情",
+      "description": "查看RFQ的详情信息",
+      "errorCodes": [],
+      "requestExample": {
+        "md5key": "8cb02c2c9cf4e4fbefe4a77e4e5f31b4",
+        "rfq_query_dto": { "rfq_id": "1000" }
+      },
+      "responseExample": {
+        "result": {
+          "message": "\"success\"",
+          "result": {
+            "attachments": [{ "file_name": "test.jpg", "file_url": "http://sc01.alicdn.com" }],
+            "rfq_detail_dto": {
+              "lang_src": "re",
+              "supplier_countrys": "\"China\"",
+              "category_id": 44,
+              "category_name": "Food & Beverage",
+              "annex_names": "test",
+              "payment_terms": "PayPal",
+              "destination_port": "Sydney",
+              "fob_price_unit": "USD",
+              "fob_price": "20",
+              "shipping_terms": "FOB",
+              "left_count": 1000,
+              "open_time": 1000,
+              "expirate_time": 1000,
+              "country_simple": "\"CN\"",
+              "quantity_unit": "Pieces",
+              "quantity": 100,
+              "status": "tbd",
+              "description": "we need plain tshirts, preferably 100% cotton, thick,  in different sizes and colors, no marks",
+              "subject": "T-shirt",
+              "rfq_id": "\"sdsdc8779sdcsdc\""
+            }
+          },
+          "error_type": "null",
+          "success": false
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=32086"
     }
   }
 }

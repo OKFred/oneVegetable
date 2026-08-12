@@ -2,6 +2,7 @@ import type { ErrorObject } from 'ajv';
 
 import { API_CAPABILITIES } from './generated/capabilities';
 import { PRODUCT_CAPABILITY_DEFINITIONS } from './generated/product-capabilities';
+import { RFQ_CAPABILITY_DEFINITIONS } from './generated/rfq-capabilities';
 import * as validatorExports from './generated/validators';
 
 import type {
@@ -20,14 +21,21 @@ interface StandaloneValidator {
 }
 
 export type ProductCapabilityMethod = keyof typeof PRODUCT_CAPABILITY_DEFINITIONS;
+export type RfqCapabilityMethod = keyof typeof RFQ_CAPABILITY_DEFINITIONS;
+export type CapabilityMethod = ProductCapabilityMethod | RfqCapabilityMethod;
 
-const methods = Object.keys(PRODUCT_CAPABILITY_DEFINITIONS) as ProductCapabilityMethod[];
+const productMethods = Object.keys(PRODUCT_CAPABILITY_DEFINITIONS) as ProductCapabilityMethod[];
+const rfqMethods = Object.keys(RFQ_CAPABILITY_DEFINITIONS) as RfqCapabilityMethod[];
+const methods: CapabilityMethod[] = [...productMethods, ...rfqMethods];
 const validators = validatorExports as unknown as Record<string, unknown>;
 
 function validatorFor(method: string, kind: 'Request' | 'Response'): StandaloneValidator | null {
-  const index = methods.indexOf(method as ProductCapabilityMethod);
-  if (index < 0) return null;
-  const candidate = validators[`validateProductCapability${index}${kind}`];
+  const productIndex = productMethods.indexOf(method as ProductCapabilityMethod);
+  const rfqIndex = rfqMethods.indexOf(method as RfqCapabilityMethod);
+  const candidate =
+    productIndex >= 0
+      ? validators[`validateProductCapability${productIndex}${kind}`]
+      : validators[`validateRfqCapability${rfqIndex}${kind}`];
   return typeof candidate === 'function' ? (candidate as StandaloneValidator) : null;
 }
 
@@ -43,11 +51,22 @@ export function isProductCapabilityMethod(method: string): method is ProductCapa
   return method in PRODUCT_CAPABILITY_DEFINITIONS;
 }
 
+export function isRfqCapabilityMethod(method: string): method is RfqCapabilityMethod {
+  return method in RFQ_CAPABILITY_DEFINITIONS;
+}
+
+export function isCapabilityMethod(method: string): method is CapabilityMethod {
+  return isProductCapabilityMethod(method) || isRfqCapabilityMethod(method);
+}
+
 export function getCapabilityDefinition(method: string): CapabilityDefinition | null {
-  if (!isProductCapabilityMethod(method)) return null;
+  if (!isCapabilityMethod(method)) return null;
+  const definition = isProductCapabilityMethod(method)
+    ? PRODUCT_CAPABILITY_DEFINITIONS[method]
+    : RFQ_CAPABILITY_DEFINITIONS[method];
   return {
     method,
-    ...PRODUCT_CAPABILITY_DEFINITIONS[method]
+    ...definition
   } as unknown as CapabilityDefinition;
 }
 

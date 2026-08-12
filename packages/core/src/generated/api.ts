@@ -255,8 +255,8 @@ export interface paths {
         /** Get a typed capability definition */
         get: operations["getCapabilityDefinition"];
         put?: never;
-        /** Call a method-typed product capability */
-        post: operations["callTypedProductCapability"];
+        /** Call a method-typed capability */
+        post: operations["callTypedCapability"];
         delete?: never;
         options?: never;
         head?: never;
@@ -336,236 +336,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        DashboardSummary: {
-            productCount: number;
-            photoCount: number;
-            pendingOrderCount: number;
-            enabledCapabilityCount: number;
-        };
-        Product: {
-            id: string;
-            subject: string;
-            groupName: string;
-            /** @enum {string} */
-            status: "online" | "offline" | "draft" | "auditing" | "rejected";
-            score: number;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        ProductDetail: components["schemas"]["Product"] & {
-            categoryId: number;
-            language: string;
-            schemaXml: string;
-        };
-        ProductPage: components["schemas"]["PageMeta"] & {
-            items: components["schemas"]["Product"][];
-        };
-        ProductSchemaRequest: {
-            categoryId: number;
-            /** @default en_US */
-            language: string;
-            /** @enum {string} */
-            market: "wholesale" | "sourcing";
-            productId?: string;
-        };
-        ProductSchema: {
-            xml: string;
-            categoryId: number;
-            language: string;
-            market: string;
-        };
-        SchemaPublishRequest: {
-            categoryId: number;
-            /** @default en_US */
-            language: string;
-            productId?: string;
-            schemaXml: string;
-        };
-        ProductMutationResult: {
-            productId: string;
-            traceId: string;
-            success: boolean;
-        };
-        PhotoGroup: {
-            id: string;
-            name: string;
-            photoCount: number;
-        };
-        Photo: {
-            /** @description Alibaba international PhotoBank fileId; persist it with the Schema value. */
-            id: string;
-            name: string;
-            /** Format: uri */
-            url: string;
-            groupId: string;
-            width: number;
-            height: number;
-            /** @description Image size in bytes. */
-            fileSize: number;
-            referenceCount: number;
-            /** Format: date-time */
-            modifiedAt: string;
-        };
-        PhotoTransferRequest: {
-            /** Format: uri */
-            url: string;
-            groupId: string;
-            fileName?: string;
-            /** @description Optional smaller Schema-derived limit. The service worker always caps downloads at 20 MiB. */
-            maxBytes?: number;
-        };
-        PhotoPage: components["schemas"]["PageMeta"] & {
-            items: components["schemas"]["Photo"][];
-        };
-        Order: {
-            id: string;
-            buyerName: string;
-            amount: number;
-            currency: string;
-            status: string;
-            /** Format: date-time */
-            createdAt: string;
-            /**
-             * @description seller.order.get is not callable outside Jushita.
-             * @enum {string}
-             */
-            detailAvailability: "summary_only";
-        };
-        OrderPage: components["schemas"]["PageMeta"] & {
-            items: components["schemas"]["Order"][];
-        };
-        OrderFund: {
-            orderId: string;
-            paidAmount: number;
-            currency: string;
-            status: string;
-        };
-        OrderLogistics: {
-            orderId: string;
-            status: string;
-            carrier?: string | null;
-            trackingNumber?: string | null;
-        };
-        ApiCapability: {
-            method: string;
-            domain: string;
-            chargeLabel: string;
-            /** @enum {string} */
-            auth: "required" | "optional" | "none" | "unknown";
-            jushitaOnly: boolean;
-            restricted: boolean;
-            restrictionReason?: string | null;
-            enabled: boolean;
-            /** Format: uri */
-            docUrl: string;
-            /** Format: date */
-            checkedAt: string;
-            /** Format: date */
-            updatedAt?: string | null;
-            /** @enum {string} */
-            source: "catalog" | "article";
-            /** @enum {string} */
-            lifecycle: "active" | "deprecated" | "unlisted";
-            /** @enum {string} */
-            risk: "read" | "mutation";
-            /** @enum {string} */
-            verification: "documented" | "account-verified";
-            realCallEnabled: boolean;
-            requestSchema?: string | null;
-            responseSchema?: string | null;
-        };
-        CapabilityCallRequest: {
-            method: string;
-            parameters: {
-                [key: string]: unknown;
-            };
-        };
-        CapabilityCallResult: components["schemas"]["CapabilityResponseEnvelope"];
-        GatewayError: {
-            code: string;
-            message: string;
-            subCode?: string;
-            traceId?: string;
-            retryable: boolean;
-        };
-        PageMeta: {
-            page: number;
-            pageSize: number;
-            total: number;
-        };
-        CapabilityContractIssue: {
-            instancePath: string;
-            keyword: string;
-            message: string;
-        };
-        CapabilityResponseEnvelope: {
-            method: string;
-            traceId: string;
-            data: components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttributeGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrvalueGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetNewResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryIdMappingResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryLevelAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryPostcatGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategorySchemaLevelGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuOpenProductPostResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductBatchUpdateDisplayResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductIdDecryptResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductListResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductScoreGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateFieldResponse"];
-            contractValid: boolean;
-            contractIssues: components["schemas"]["CapabilityContractIssue"][];
-        };
-        CapabilityDefinition: {
-            method: string;
-            title: string;
-            description: string;
-            /** @enum {string} */
-            source: "catalog" | "article";
-            /** @enum {string} */
-            lifecycle: "active" | "deprecated" | "unlisted";
-            /** @enum {string} */
-            risk: "read" | "mutation";
-            /** @enum {string} */
-            verification: "documented" | "account-verified";
-            realCallEnabled: boolean;
-            requestSchema: string;
-            responseSchema: string;
-            requestExample: {
-                [key: string]: unknown;
-            };
-            responseExample: unknown;
-            errorCodes: {
-                [key: string]: unknown;
-            }[];
-            /** Format: date */
-            checkedAt: string;
-            /** Format: date */
-            updatedAt?: string | null;
-            /** Format: uri */
-            docUrl: string;
-        };
-        ProductCategory: {
-            id: number;
-            name: string;
-            leaf: boolean;
-            children: components["schemas"]["ProductCategory"][];
-        };
-        ProductCategoryMapping: {
-            sourceCategoryId: number;
-            targetCategoryId: number;
-        };
-        ProductGroup: {
-            id: number;
-            name: string;
-            children: components["schemas"]["ProductGroup"][];
-        };
-        ProductScore: {
-            productId: string;
-            score: number;
-            issues: string[];
-            /** @description Optional normalized official issues when the upstream response provides structured details. */
-            qualityIssues?: components["schemas"]["ProductDescriptionQualityIssue"][];
-        };
-        ProductDescriptionQualityIssue: {
-            code: string;
-            /** @enum {string} */
-            source: "alibaba-schema" | "official" | "project";
-            /** @enum {string} */
-            level: "error" | "warning" | "suggestion";
-            message: string;
-            remediation: string;
-            fieldIds: string[];
-        };
         /** alibaba.icbu.category.attr.get request */
         AlibabaProductAlibabaIcbuCategoryAttrGetRequest: {
             /** @description 类目属性request对象 */
@@ -676,29 +446,6 @@ export interface components {
                 cat_id?: number;
             }[];
         };
-        /** alibaba.icbu.category.get request */
-        AlibabaProductAlibabaIcbuCategoryGetRequest: {
-            /** @description 发布类目id,必须大于等于0， 如果为0，则查询所有一级类目 */
-            cat_id: number;
-        };
-        /** alibaba.icbu.category.get response */
-        AlibabaProductAlibabaIcbuCategoryGetResponse: {
-            /** @description 类目信息 */
-            category?: {
-                /** @description 父类目ID数组 */
-                parent_ids?: number[];
-                /** @description 类目层级 */
-                level?: number;
-                /** @description 是否叶子类目（只有叶子类目才能发布商品） */
-                leaf_category?: boolean;
-                /** @description 类目名称 */
-                name?: string;
-                /** @description 类目ID */
-                category_id?: number;
-                /** @description 子类目ID数组 */
-                child_ids?: number[];
-            };
-        };
         /** alibaba.icbu.category.get.new request */
         AlibabaProductAlibabaIcbuCategoryGetNewRequest: {
             /** @description 发布类目id,必须大于等于0， 如果为0，则查询所有一级类目 */
@@ -722,6 +469,29 @@ export interface components {
                 parent_ids?: string[];
                 /** @description 类目的中文名 */
                 cn_name?: string;
+            };
+        };
+        /** alibaba.icbu.category.get request */
+        AlibabaProductAlibabaIcbuCategoryGetRequest: {
+            /** @description 发布类目id,必须大于等于0， 如果为0，则查询所有一级类目 */
+            cat_id: number;
+        };
+        /** alibaba.icbu.category.get response */
+        AlibabaProductAlibabaIcbuCategoryGetResponse: {
+            /** @description 类目信息 */
+            category?: {
+                /** @description 父类目ID数组 */
+                parent_ids?: number[];
+                /** @description 类目层级 */
+                level?: number;
+                /** @description 是否叶子类目（只有叶子类目才能发布商品） */
+                leaf_category?: boolean;
+                /** @description 类目名称 */
+                name?: string;
+                /** @description 类目ID */
+                category_id?: number;
+                /** @description 子类目ID数组 */
+                child_ids?: number[];
             };
         };
         /** alibaba.icbu.category.id.mapping request */
@@ -886,212 +656,6 @@ export interface components {
             product_id?: number;
             /** @description 加密后的产品id */
             str_product_id?: string;
-        };
-        /** alibaba.icbu.product.add request */
-        AlibabaProductAlibabaIcbuProductAddRequest: {
-            /** @description 商品属性和属性值 */
-            attributes?: {
-                /** @description 属性ID */
-                attribute_id?: number;
-                /** @description 属性名称 */
-                attribute_name?: string;
-                /** @description 属性值ID */
-                value_id?: number;
-                /** @description 属性值名称 */
-                value_name?: string;
-                /** @description 作为sku属性值时，自定义属性值名称 */
-                sku_custom_value_name?: string;
-                /** @description 作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片 */
-                sku_custom_image_url?: string;
-            }[];
-            /** @description 根据数量设置的折扣价 */
-            bulk_discount_prices?: {
-                /** @description 价格，范围是0.01-9999999.00 */
-                price?: string;
-                /** @description 起始数量，范围是1-99999 */
-                start_quantity?: number;
-            }[];
-            /** @description 类目ID */
-            category_id: number;
-            /** @description 商品详情描述，可包含图片中心的图片URL */
-            description?: string;
-            /** @description 补充信息 */
-            extra_context?: {
-                [key: string]: unknown;
-            };
-            /** @description 分组ID */
-            group_id?: number;
-            /** @description 关键词，不要包含特殊符号（如,;），最多三个 */
-            keywords: string[];
-            /** @description 语种，参见FAQ 语种枚举值 */
-            language: string;
-            /** @description 商品主图 */
-            main_image: {
-                /** @description alibaba图片中心的图片URL列表，请使用alibaba.icbu.photobank.upload接口上传图片 */
-                images: string[];
-                /** @description 是否打水印，是(true)或否(false) */
-                watermark?: boolean;
-                /** @description 水印是否有边框，有边框(Y)或者无边框(N) */
-                watermark_frame?: string;
-                /** @description 水印位置，在中间(center)或者在底部(bottom) */
-                watermark_position?: string;
-            };
-            /** @description 商品SKU定义 */
-            product_sku?: {
-                /** @description 商品属性 */
-                attributes?: {
-                    /** @description 属性ID */
-                    attribute_id?: number;
-                    /** @description 作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片 */
-                    sku_custom_image_url?: string;
-                    /** @description 作为sku属性值时，自定义属性值名称 */
-                    sku_custom_value_name?: string;
-                    /** @description 属性值ID，自定义属性值时ID要小于0，并且不能重复 */
-                    value_id?: number;
-                    /** @description 属性名称 */
-                    attribute_name?: string;
-                    /** @description 属性值名称 */
-                    value_name?: string;
-                }[];
-                /** @description 需要失效的SKU的详细定义 */
-                exclude_skus?: {
-                    /** @description 商品属性 */
-                    attributes?: {
-                        /** @description 属性ID */
-                        attribute_id?: number;
-                        /** @description 属性值ID，自定义属性值时ID要小于0，并且不能重复 */
-                        value_id?: number;
-                        /** @description 属性值名称 */
-                        value_name?: string;
-                        /** @description 属性名称 */
-                        attribute_name?: string;
-                        /** @description 作为sku属性值时，自定义属性值名称 */
-                        sku_custom_value_name?: string;
-                        /** @description 作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片 */
-                        sku_custom_image_url?: string;
-                    }[];
-                    /** @description 价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00 */
-                    price?: string;
-                }[];
-                /** @description 单个SKU详细定义 */
-                special_skus?: {
-                    /** @description 商品属性 */
-                    attributes?: {
-                        /** @description 属性ID */
-                        attribute_id?: number;
-                        /** @description 属性值ID，自定义属性值时ID要小于0，并且不能重复 */
-                        value_id?: number;
-                        /** @description 属性值名称 */
-                        value_name?: string;
-                        /** @description 属性名称 */
-                        attribute_name?: string;
-                        /** @description 作为sku属性值时，自定义属性值名称 */
-                        sku_custom_value_name?: string;
-                        /** @description 作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片 */
-                        sku_custom_image_url?: string;
-                    }[];
-                    /** @description 价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00 */
-                    price?: string;
-                    /** @description 商品的SKU编码 */
-                    sku_code?: string;
-                    /** @description 库存 */
-                    inventory_dto_list?: {
-                        /** @description 仓库code，默认不填 */
-                        store_code?: string;
-                        /** @description 想设置的库存 */
-                        current_inventory?: number;
-                        /** @description 原始库存 */
-                        src_inventory?: number;
-                    }[];
-                }[];
-            };
-            /** @description 商品类型，在线批发商品(wholesale)或者询盘商品(sourcing)，值为wholesale时，必须填写wholesale_trade */
-            product_type: string;
-            /** @description 询盘商品交易信息 */
-            sourcing_trade?: {
-                /** @description 发货港口 */
-                delivery_port?: string;
-                /** @description 发货期限 */
-                delivery_time?: string;
-                /** @description FOB货币价格，枚举值 */
-                fob_currency?: string;
-                /** @description FOB最大价格 */
-                fob_max_price?: string;
-                /** @description FOB最小价格 */
-                fob_min_price?: string;
-                /** @description FOB计量单位，枚举值 */
-                fob_unit_type?: string;
-                /** @description 最小起订量 */
-                min_order_quantity?: string;
-                /** @description 最小起订量计量单位，枚举值 */
-                min_order_unit_type?: string;
-                /** @description 付款方式，枚举值 */
-                payment_methods?: string[];
-                /** @description 供货能力周期，枚举值 */
-                supply_period_type?: string;
-                /** @description 供货能力 */
-                supply_quantity?: string;
-                /** @description 供货能力计量单位，枚举值 */
-                supply_unit_type?: string;
-                /** @description 包装信息 */
-                packaging_desc?: string;
-                /** @description 发货周期，发货时间相关建议使用此项 */
-                deliver_periods?: {
-                    /** @description 预计需要发货时间 */
-                    process_period?: number;
-                    /** @description 数量 */
-                    quantity?: number;
-                }[];
-            };
-            /** @description 商品名称，最多128个字符 */
-            subject: string;
-            /** @description 在线批发商品交易信息 */
-            wholesale_trade?: {
-                /** @description 每批数量，当sale_type=batch时生效，范围是1-99999 */
-                batch_number?: number;
-                /** @description 备货期，单位是天，范围是1-60 */
-                handling_time?: number;
-                /** @description 最小起订量，范围是1-99999 */
-                min_order_quantity?: number;
-                /** @description 尺寸，单位是厘米，长宽高范围是1-9999999 */
-                package_size?: string;
-                /** @description 价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00 */
-                price?: string;
-                /** @description 销售方式，按件卖(normal)或者按批卖(batch) */
-                sale_type?: string;
-                /** @description 运费模板ID */
-                shipping_line_template_id?: number;
-                /** @description 最小计量单位，枚举值 */
-                unit_type?: string;
-                /** @description 重量，单位是kg，精确到小数点后三位，范围是0.01-9999999.000 */
-                weight?: string;
-                /** @description 发货周期，发货时间相关建议使用此项 */
-                deliver_periods?: {
-                    /** @description 预计需要发货时间 */
-                    process_period?: number;
-                    /** @description 数量 */
-                    quantity?: number;
-                }[];
-            };
-            /** @description 发布的市场，支持main，发到主市场 */
-            market?: string;
-            /** @description 是否智能编辑，如果不传，默认为false */
-            is_smart_edit?: boolean;
-            /** @description 定制信息 */
-            custom_info?: {
-                /** @description 定制内容 */
-                custom_contents?: {
-                    /** @description 最小起订量 */
-                    min_order_quantity?: number;
-                    /** @description 定制类型，只允许填写英文字符 */
-                    custom_type?: string;
-                }[];
-            };
-        };
-        /** alibaba.icbu.product.add response */
-        AlibabaProductAlibabaIcbuProductAddResponse: {
-            /** @description 混淆后的产品ID */
-            product_id?: string;
         };
         /** alibaba.icbu.product.add.draft request */
         AlibabaProductAlibabaIcbuProductAddDraftRequest: {
@@ -1296,6 +860,212 @@ export interface components {
         };
         /** alibaba.icbu.product.add.draft response */
         AlibabaProductAlibabaIcbuProductAddDraftResponse: {
+            /** @description 混淆后的产品ID */
+            product_id?: string;
+        };
+        /** alibaba.icbu.product.add request */
+        AlibabaProductAlibabaIcbuProductAddRequest: {
+            /** @description 商品属性和属性值 */
+            attributes?: {
+                /** @description 属性ID */
+                attribute_id?: number;
+                /** @description 属性名称 */
+                attribute_name?: string;
+                /** @description 属性值ID */
+                value_id?: number;
+                /** @description 属性值名称 */
+                value_name?: string;
+                /** @description 作为sku属性值时，自定义属性值名称 */
+                sku_custom_value_name?: string;
+                /** @description 作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片 */
+                sku_custom_image_url?: string;
+            }[];
+            /** @description 根据数量设置的折扣价 */
+            bulk_discount_prices?: {
+                /** @description 价格，范围是0.01-9999999.00 */
+                price?: string;
+                /** @description 起始数量，范围是1-99999 */
+                start_quantity?: number;
+            }[];
+            /** @description 类目ID */
+            category_id: number;
+            /** @description 商品详情描述，可包含图片中心的图片URL */
+            description?: string;
+            /** @description 补充信息 */
+            extra_context?: {
+                [key: string]: unknown;
+            };
+            /** @description 分组ID */
+            group_id?: number;
+            /** @description 关键词，不要包含特殊符号（如,;），最多三个 */
+            keywords: string[];
+            /** @description 语种，参见FAQ 语种枚举值 */
+            language: string;
+            /** @description 商品主图 */
+            main_image: {
+                /** @description alibaba图片中心的图片URL列表，请使用alibaba.icbu.photobank.upload接口上传图片 */
+                images: string[];
+                /** @description 是否打水印，是(true)或否(false) */
+                watermark?: boolean;
+                /** @description 水印是否有边框，有边框(Y)或者无边框(N) */
+                watermark_frame?: string;
+                /** @description 水印位置，在中间(center)或者在底部(bottom) */
+                watermark_position?: string;
+            };
+            /** @description 商品SKU定义 */
+            product_sku?: {
+                /** @description 商品属性 */
+                attributes?: {
+                    /** @description 属性ID */
+                    attribute_id?: number;
+                    /** @description 作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片 */
+                    sku_custom_image_url?: string;
+                    /** @description 作为sku属性值时，自定义属性值名称 */
+                    sku_custom_value_name?: string;
+                    /** @description 属性值ID，自定义属性值时ID要小于0，并且不能重复 */
+                    value_id?: number;
+                    /** @description 属性名称 */
+                    attribute_name?: string;
+                    /** @description 属性值名称 */
+                    value_name?: string;
+                }[];
+                /** @description 需要失效的SKU的详细定义 */
+                exclude_skus?: {
+                    /** @description 商品属性 */
+                    attributes?: {
+                        /** @description 属性ID */
+                        attribute_id?: number;
+                        /** @description 属性值ID，自定义属性值时ID要小于0，并且不能重复 */
+                        value_id?: number;
+                        /** @description 属性值名称 */
+                        value_name?: string;
+                        /** @description 属性名称 */
+                        attribute_name?: string;
+                        /** @description 作为sku属性值时，自定义属性值名称 */
+                        sku_custom_value_name?: string;
+                        /** @description 作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片 */
+                        sku_custom_image_url?: string;
+                    }[];
+                    /** @description 价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00 */
+                    price?: string;
+                }[];
+                /** @description 单个SKU详细定义 */
+                special_skus?: {
+                    /** @description 商品属性 */
+                    attributes?: {
+                        /** @description 属性ID */
+                        attribute_id?: number;
+                        /** @description 属性值ID，自定义属性值时ID要小于0，并且不能重复 */
+                        value_id?: number;
+                        /** @description 属性值名称 */
+                        value_name?: string;
+                        /** @description 属性名称 */
+                        attribute_name?: string;
+                        /** @description 作为sku属性值时，自定义属性值名称 */
+                        sku_custom_value_name?: string;
+                        /** @description 作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片 */
+                        sku_custom_image_url?: string;
+                    }[];
+                    /** @description 价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00 */
+                    price?: string;
+                    /** @description 商品的SKU编码 */
+                    sku_code?: string;
+                    /** @description 库存 */
+                    inventory_dto_list?: {
+                        /** @description 仓库code，默认不填 */
+                        store_code?: string;
+                        /** @description 想设置的库存 */
+                        current_inventory?: number;
+                        /** @description 原始库存 */
+                        src_inventory?: number;
+                    }[];
+                }[];
+            };
+            /** @description 商品类型，在线批发商品(wholesale)或者询盘商品(sourcing)，值为wholesale时，必须填写wholesale_trade */
+            product_type: string;
+            /** @description 询盘商品交易信息 */
+            sourcing_trade?: {
+                /** @description 发货港口 */
+                delivery_port?: string;
+                /** @description 发货期限 */
+                delivery_time?: string;
+                /** @description FOB货币价格，枚举值 */
+                fob_currency?: string;
+                /** @description FOB最大价格 */
+                fob_max_price?: string;
+                /** @description FOB最小价格 */
+                fob_min_price?: string;
+                /** @description FOB计量单位，枚举值 */
+                fob_unit_type?: string;
+                /** @description 最小起订量 */
+                min_order_quantity?: string;
+                /** @description 最小起订量计量单位，枚举值 */
+                min_order_unit_type?: string;
+                /** @description 付款方式，枚举值 */
+                payment_methods?: string[];
+                /** @description 供货能力周期，枚举值 */
+                supply_period_type?: string;
+                /** @description 供货能力 */
+                supply_quantity?: string;
+                /** @description 供货能力计量单位，枚举值 */
+                supply_unit_type?: string;
+                /** @description 包装信息 */
+                packaging_desc?: string;
+                /** @description 发货周期，发货时间相关建议使用此项 */
+                deliver_periods?: {
+                    /** @description 预计需要发货时间 */
+                    process_period?: number;
+                    /** @description 数量 */
+                    quantity?: number;
+                }[];
+            };
+            /** @description 商品名称，最多128个字符 */
+            subject: string;
+            /** @description 在线批发商品交易信息 */
+            wholesale_trade?: {
+                /** @description 每批数量，当sale_type=batch时生效，范围是1-99999 */
+                batch_number?: number;
+                /** @description 备货期，单位是天，范围是1-60 */
+                handling_time?: number;
+                /** @description 最小起订量，范围是1-99999 */
+                min_order_quantity?: number;
+                /** @description 尺寸，单位是厘米，长宽高范围是1-9999999 */
+                package_size?: string;
+                /** @description 价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00 */
+                price?: string;
+                /** @description 销售方式，按件卖(normal)或者按批卖(batch) */
+                sale_type?: string;
+                /** @description 运费模板ID */
+                shipping_line_template_id?: number;
+                /** @description 最小计量单位，枚举值 */
+                unit_type?: string;
+                /** @description 重量，单位是kg，精确到小数点后三位，范围是0.01-9999999.000 */
+                weight?: string;
+                /** @description 发货周期，发货时间相关建议使用此项 */
+                deliver_periods?: {
+                    /** @description 预计需要发货时间 */
+                    process_period?: number;
+                    /** @description 数量 */
+                    quantity?: number;
+                }[];
+            };
+            /** @description 发布的市场，支持main，发到主市场 */
+            market?: string;
+            /** @description 是否智能编辑，如果不传，默认为false */
+            is_smart_edit?: boolean;
+            /** @description 定制信息 */
+            custom_info?: {
+                /** @description 定制内容 */
+                custom_contents?: {
+                    /** @description 最小起订量 */
+                    min_order_quantity?: number;
+                    /** @description 定制类型，只允许填写英文字符 */
+                    custom_type?: string;
+                }[];
+            };
+        };
+        /** alibaba.icbu.product.add response */
+        AlibabaProductAlibabaIcbuProductAddResponse: {
             /** @description 混淆后的产品ID */
             product_id?: string;
         };
@@ -1658,27 +1428,6 @@ export interface components {
             /** @description 总数 */
             total_item?: number;
         };
-        /** alibaba.icbu.product.schema.add request */
-        AlibabaProductAlibabaIcbuProductSchemaAddRequest: {
-            /** @description Schema 发布请求 */
-            param_product_top_publish_request: {
-                /** @description 叶子类目 ID */
-                cat_id: number;
-                /** @description 商品语言 */
-                language: string;
-                /** @description 填写完成的 Schema XML */
-                xml: string;
-            };
-        };
-        /** alibaba.icbu.product.schema.add response */
-        AlibabaProductAlibabaIcbuProductSchemaAddResponse: {
-            /** @description 商品 ID */
-            product_id?: string;
-            /** @description 调用链路 ID */
-            trace_id?: string;
-            /** @description 业务是否成功 */
-            biz_success?: boolean;
-        };
         /** alibaba.icbu.product.schema.add.draft request */
         AlibabaProductAlibabaIcbuProductSchemaAddDraftRequest: {
             /** @description Schema 草稿请求 */
@@ -1694,6 +1443,27 @@ export interface components {
         /** alibaba.icbu.product.schema.add.draft response */
         AlibabaProductAlibabaIcbuProductSchemaAddDraftResponse: {
             /** @description 草稿商品 ID */
+            product_id?: string;
+            /** @description 调用链路 ID */
+            trace_id?: string;
+            /** @description 业务是否成功 */
+            biz_success?: boolean;
+        };
+        /** alibaba.icbu.product.schema.add request */
+        AlibabaProductAlibabaIcbuProductSchemaAddRequest: {
+            /** @description Schema 发布请求 */
+            param_product_top_publish_request: {
+                /** @description 叶子类目 ID */
+                cat_id: number;
+                /** @description 商品语言 */
+                language: string;
+                /** @description 填写完成的 Schema XML */
+                xml: string;
+            };
+        };
+        /** alibaba.icbu.product.schema.add response */
+        AlibabaProductAlibabaIcbuProductSchemaAddResponse: {
+            /** @description 商品 ID */
             product_id?: string;
             /** @description 调用链路 ID */
             trace_id?: string;
@@ -1723,31 +1493,6 @@ export interface components {
             /** @description 错误追踪码，请务必打印在日志中，后续排查问题请提交此错误追踪码 */
             trace_id?: string;
         };
-        /** alibaba.icbu.product.schema.render request */
-        AlibabaProductAlibabaIcbuProductSchemaRenderRequest: {
-            /** @description 商品规则渲染请求 */
-            param_product_top_publish_request?: {
-                /** @description 类目id */
-                cat_id?: number;
-                /** @description 返回文案的语种，支持en_US,zh,zh_TW */
-                language?: string;
-                /** @description 商品明文id */
-                product_id?: number;
-            };
-        };
-        /** alibaba.icbu.product.schema.render response */
-        AlibabaProductAlibabaIcbuProductSchemaRenderResponse: {
-            /** @description 商品发布规则和对应填写数据 */
-            data?: string;
-            /** @description 错误信息，数组形式的字符串，用;分割，支持中英繁，按照传入的语种参数决定 */
-            message?: string;
-            /** @description 返回的错误码，数组形式的字符串，用;分割 */
-            msg_code?: string;
-            /** @description 请求是否成功 */
-            biz_success?: boolean;
-            /** @description 错误追踪码，请务必打印在日志中，后续排查问题请提交此错误追踪码 */
-            trace_id?: string;
-        };
         /** alibaba.icbu.product.schema.render.draft request */
         AlibabaProductAlibabaIcbuProductSchemaRenderDraftRequest: {
             /** @description 商品规则渲染请求 */
@@ -1762,6 +1507,31 @@ export interface components {
         };
         /** alibaba.icbu.product.schema.render.draft response */
         AlibabaProductAlibabaIcbuProductSchemaRenderDraftResponse: {
+            /** @description 商品发布规则和对应填写数据 */
+            data?: string;
+            /** @description 错误信息，数组形式的字符串，用;分割，支持中英繁，按照传入的语种参数决定 */
+            message?: string;
+            /** @description 返回的错误码，数组形式的字符串，用;分割 */
+            msg_code?: string;
+            /** @description 请求是否成功 */
+            biz_success?: boolean;
+            /** @description 错误追踪码，请务必打印在日志中，后续排查问题请提交此错误追踪码 */
+            trace_id?: string;
+        };
+        /** alibaba.icbu.product.schema.render request */
+        AlibabaProductAlibabaIcbuProductSchemaRenderRequest: {
+            /** @description 商品规则渲染请求 */
+            param_product_top_publish_request?: {
+                /** @description 类目id */
+                cat_id?: number;
+                /** @description 返回文案的语种，支持en_US,zh,zh_TW */
+                language?: string;
+                /** @description 商品明文id */
+                product_id?: number;
+            };
+        };
+        /** alibaba.icbu.product.schema.render response */
+        AlibabaProductAlibabaIcbuProductSchemaRenderResponse: {
             /** @description 商品发布规则和对应填写数据 */
             data?: string;
             /** @description 错误信息，数组形式的字符串，用;分割，支持中英繁，按照传入的语种参数决定 */
@@ -1814,205 +1584,6 @@ export interface components {
                 /** @description 质量分 */
                 final_score?: string;
             };
-        };
-        /** alibaba.icbu.product.update request */
-        AlibabaProductAlibabaIcbuProductUpdateRequest: {
-            /** @description 商品属性和属性值 */
-            attributes?: {
-                /** @description 属性ID */
-                attribute_id?: number;
-                /** @description 属性名称 */
-                attribute_name?: string;
-                /** @description 属性值ID */
-                value_id?: number;
-                /** @description 属性值名称 */
-                value_name?: string;
-                /** @description 作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片 */
-                sku_custom_image_url?: string;
-                /** @description 作为sku属性值时，自定义属性值名称 */
-                sku_custom_value_name?: string;
-            }[];
-            /** @description 根据数量设置的折扣价 */
-            bulk_discount_prices?: {
-                /** @description 价格，范围是0.01-9999999.00 */
-                price?: string;
-                /** @description 起始数量，范围是1-99999 */
-                start_quantity?: number;
-            }[];
-            /** @description 类目ID */
-            category_id: number;
-            /** @description 商品详情描述，可包含图片中心的图片URL */
-            description?: string;
-            /** @description 补充信息 */
-            extra_context?: {
-                [key: string]: unknown;
-            };
-            /** @description 分组ID */
-            group_id?: number;
-            /** @description 关键词，不要包含特殊符号（如,;），最多三个 */
-            keywords: string[];
-            /** @description 语种，参见FAQ 语种枚举值 */
-            language: string;
-            /** @description 商品主图 */
-            main_image: {
-                /** @description alibaba图片中心的图片URL列表，请使用alibaba.icbu.photobank.upload接口上传图片 */
-                images: string[];
-                /** @description 是否打水印，是(true)或否(false) */
-                watermark?: boolean;
-                /** @description 水印是否有边框，有边框(Y)或者无边框(N) */
-                watermark_frame?: string;
-                /** @description 水印位置，在中间(center)或者在底部(bottom) */
-                watermark_position?: string;
-            };
-            /** @description 商品SKU定义 */
-            product_sku?: {
-                /** @description 商品属性和属性值 */
-                attributes?: {
-                    /** @description 属性ID */
-                    attribute_id?: number;
-                    /** @description 作为sku属性值时，用图形来显示；必须是alibaba图片中心的图片URL，请使用alibaba.icbu.photobank.upload上传图片 */
-                    sku_custom_image_url?: string;
-                    /** @description 作为sku属性值时，自定义属性值名称 */
-                    sku_custom_value_name?: string;
-                    /** @description 属性值ID，自定义属性值时ID要小于0，并且不能重复 */
-                    value_id?: number;
-                    /** @description 属性值名称 */
-                    value_name?: string;
-                    /** @description 属性名称 */
-                    attribute_name?: string;
-                }[];
-                /** @description 单个SKU详细定义 */
-                exclude_skus?: {
-                    /** @description 商品属性和属性值 */
-                    attributes?: {
-                        /** @description 属性ID */
-                        attribute_id?: number;
-                        /** @description 属性值ID，自定义属性值时ID要小于0，并且不能重复 */
-                        value_id?: number;
-                        /** @description 作为sku属性值时，自定义属性值名称 */
-                        sku_custom_value_name?: string;
-                        /** @description 作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片 */
-                        sku_custom_image_url?: string;
-                        /** @description 属性值名称 */
-                        value_name?: string;
-                        /** @description 属性名称 */
-                        attribute_name?: string;
-                    }[];
-                    /** @description 价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00 */
-                    price?: string;
-                }[];
-                /** @description 单个SKU详细定义 */
-                special_skus?: {
-                    /** @description 商品属性和属性值 */
-                    attributes?: {
-                        /** @description 属性ID */
-                        attribute_id?: number;
-                        /** @description 属性值ID，自定义属性值时ID要小于0，并且不能重复 */
-                        value_id?: number;
-                        /** @description 作为sku属性值时，自定义属性值名称 */
-                        sku_custom_value_name?: string;
-                        /** @description 作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片 */
-                        sku_custom_image_url?: string;
-                        /** @description 属性值名称 */
-                        value_name?: string;
-                        /** @description 属性名称 */
-                        attribute_name?: string;
-                    }[];
-                    /** @description 价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00 */
-                    price?: string;
-                }[];
-            };
-            /** @description 商品类型，在线批发商品(wholesale)或者询盘商品(sourcing) */
-            product_type: string;
-            /** @description 询盘商品交易信息 */
-            sourcing_trade?: {
-                /** @description 发货港口 */
-                delivery_port?: string;
-                /** @description 发货期限 */
-                delivery_time?: string;
-                /** @description FOB价格货币，参见FAQ 货币枚举值 */
-                fob_currency?: string;
-                /** @description FOB最大价格 */
-                fob_max_price?: string;
-                /** @description FOB最小价格 */
-                fob_min_price?: string;
-                /** @description FOB计量单位，参见FAQ 计量单位枚举值 */
-                fob_unit_type?: string;
-                /** @description 最小起订量 */
-                min_order_quantity?: string;
-                /** @description 最小起订量计量单位，参见FAQ 计量单位枚举值 */
-                min_order_unit_type?: string;
-                /** @description 付款方式，参见FAQ 付款方式枚举值 */
-                payment_methods?: string[];
-                /** @description 供货能力周期，参见FAQ 时间周期枚举值 */
-                supply_period_type?: string;
-                /** @description 供货能力 */
-                supply_quantity?: string;
-                /** @description 供货能力计量单位，参见FAQ 计量单位枚举值 */
-                supply_unit_type?: string;
-                /** @description 包装信息 */
-                packaging_desc?: string;
-                /** @description 发货周期 */
-                deliver_periods?: {
-                    /** @description 预计需要发货时间 */
-                    process_period?: number;
-                    /** @description 数量 */
-                    quantity?: number;
-                }[];
-            };
-            /** @description 商品名称，最多128个字符 */
-            subject: string;
-            /** @description 在线批发商品交易信息 */
-            wholesale_trade?: {
-                /** @description 每批数量，当sale_type=batch时生效，范围是1-99999 */
-                batch_number?: number;
-                /** @description 备货期，单位是天，范围是1-60 */
-                handling_time?: number;
-                /** @description 最小起订量，范围是1-99999 */
-                min_order_quantity?: number;
-                /** @description 尺寸，单位是厘米，长宽高范围是1-9999999 */
-                package_size?: string;
-                /** @description 价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00 */
-                price?: string;
-                /** @description 销售方式，按件卖(normal)或者按批卖(batch) */
-                sale_type?: string;
-                /** @description 运费模板ID */
-                shipping_line_template_id?: number;
-                /** @description 最小计量单位，参见FAQ 计量单位枚举值 */
-                unit_type?: string;
-                /** @description 体积，单位是立方厘米，范围是1-9999999 */
-                volume?: number;
-                /** @description 重量，单位是kg，精确到小数点后三位，范围是0.01-9999999.000 */
-                weight?: string;
-                /** @description 发货周期(新版本，建议使用) */
-                deliver_periods?: {
-                    /** @description 预计需要发货时间 */
-                    process_period?: number;
-                    /** @description 数量 */
-                    quantity?: number;
-                }[];
-            };
-            /** @description 发布的市场，支持main/onesite，默认main发到主市场，填onesite发布为商机通产品 */
-            market?: string;
-            /** @description 智能编辑，不填写使用原来的。注意必须和详情的格式一致 */
-            is_smart_edit?: boolean;
-            /** @description 定制信息 */
-            custom_info?: {
-                /** @description 定制内容 */
-                custom_contents?: {
-                    /** @description 最小起订量 */
-                    min_order_quantity?: number;
-                    /** @description 定制类型 */
-                    custom_type?: string;
-                }[];
-            };
-            /** @description 混淆商品ID */
-            product_id: string;
-        };
-        /** alibaba.icbu.product.update response */
-        AlibabaProductAlibabaIcbuProductUpdateResponse: {
-            /** @description 加密后的产品ID */
-            product_id?: string;
         };
         /** alibaba.icbu.product.update.field request */
         AlibabaProductAlibabaIcbuProductUpdateFieldRequest: {
@@ -2225,6 +1796,824 @@ export interface components {
         AlibabaProductAlibabaIcbuProductUpdateFieldResponse: {
             /** @description 加密后的产品ID */
             product_id?: string;
+        };
+        /** alibaba.icbu.product.update request */
+        AlibabaProductAlibabaIcbuProductUpdateRequest: {
+            /** @description 商品属性和属性值 */
+            attributes?: {
+                /** @description 属性ID */
+                attribute_id?: number;
+                /** @description 属性名称 */
+                attribute_name?: string;
+                /** @description 属性值ID */
+                value_id?: number;
+                /** @description 属性值名称 */
+                value_name?: string;
+                /** @description 作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片 */
+                sku_custom_image_url?: string;
+                /** @description 作为sku属性值时，自定义属性值名称 */
+                sku_custom_value_name?: string;
+            }[];
+            /** @description 根据数量设置的折扣价 */
+            bulk_discount_prices?: {
+                /** @description 价格，范围是0.01-9999999.00 */
+                price?: string;
+                /** @description 起始数量，范围是1-99999 */
+                start_quantity?: number;
+            }[];
+            /** @description 类目ID */
+            category_id: number;
+            /** @description 商品详情描述，可包含图片中心的图片URL */
+            description?: string;
+            /** @description 补充信息 */
+            extra_context?: {
+                [key: string]: unknown;
+            };
+            /** @description 分组ID */
+            group_id?: number;
+            /** @description 关键词，不要包含特殊符号（如,;），最多三个 */
+            keywords: string[];
+            /** @description 语种，参见FAQ 语种枚举值 */
+            language: string;
+            /** @description 商品主图 */
+            main_image: {
+                /** @description alibaba图片中心的图片URL列表，请使用alibaba.icbu.photobank.upload接口上传图片 */
+                images: string[];
+                /** @description 是否打水印，是(true)或否(false) */
+                watermark?: boolean;
+                /** @description 水印是否有边框，有边框(Y)或者无边框(N) */
+                watermark_frame?: string;
+                /** @description 水印位置，在中间(center)或者在底部(bottom) */
+                watermark_position?: string;
+            };
+            /** @description 商品SKU定义 */
+            product_sku?: {
+                /** @description 商品属性和属性值 */
+                attributes?: {
+                    /** @description 属性ID */
+                    attribute_id?: number;
+                    /** @description 作为sku属性值时，用图形来显示；必须是alibaba图片中心的图片URL，请使用alibaba.icbu.photobank.upload上传图片 */
+                    sku_custom_image_url?: string;
+                    /** @description 作为sku属性值时，自定义属性值名称 */
+                    sku_custom_value_name?: string;
+                    /** @description 属性值ID，自定义属性值时ID要小于0，并且不能重复 */
+                    value_id?: number;
+                    /** @description 属性值名称 */
+                    value_name?: string;
+                    /** @description 属性名称 */
+                    attribute_name?: string;
+                }[];
+                /** @description 单个SKU详细定义 */
+                exclude_skus?: {
+                    /** @description 商品属性和属性值 */
+                    attributes?: {
+                        /** @description 属性ID */
+                        attribute_id?: number;
+                        /** @description 属性值ID，自定义属性值时ID要小于0，并且不能重复 */
+                        value_id?: number;
+                        /** @description 作为sku属性值时，自定义属性值名称 */
+                        sku_custom_value_name?: string;
+                        /** @description 作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片 */
+                        sku_custom_image_url?: string;
+                        /** @description 属性值名称 */
+                        value_name?: string;
+                        /** @description 属性名称 */
+                        attribute_name?: string;
+                    }[];
+                    /** @description 价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00 */
+                    price?: string;
+                }[];
+                /** @description 单个SKU详细定义 */
+                special_skus?: {
+                    /** @description 商品属性和属性值 */
+                    attributes?: {
+                        /** @description 属性ID */
+                        attribute_id?: number;
+                        /** @description 属性值ID，自定义属性值时ID要小于0，并且不能重复 */
+                        value_id?: number;
+                        /** @description 作为sku属性值时，自定义属性值名称 */
+                        sku_custom_value_name?: string;
+                        /** @description 作为sku属性值时，用图形来展示；必须是alibaba图片中心的图片URL，请使用API alibaba.icbu.photobank.upload 上传图片 */
+                        sku_custom_image_url?: string;
+                        /** @description 属性值名称 */
+                        value_name?: string;
+                        /** @description 属性名称 */
+                        attribute_name?: string;
+                    }[];
+                    /** @description 价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00 */
+                    price?: string;
+                }[];
+            };
+            /** @description 商品类型，在线批发商品(wholesale)或者询盘商品(sourcing) */
+            product_type: string;
+            /** @description 询盘商品交易信息 */
+            sourcing_trade?: {
+                /** @description 发货港口 */
+                delivery_port?: string;
+                /** @description 发货期限 */
+                delivery_time?: string;
+                /** @description FOB价格货币，参见FAQ 货币枚举值 */
+                fob_currency?: string;
+                /** @description FOB最大价格 */
+                fob_max_price?: string;
+                /** @description FOB最小价格 */
+                fob_min_price?: string;
+                /** @description FOB计量单位，参见FAQ 计量单位枚举值 */
+                fob_unit_type?: string;
+                /** @description 最小起订量 */
+                min_order_quantity?: string;
+                /** @description 最小起订量计量单位，参见FAQ 计量单位枚举值 */
+                min_order_unit_type?: string;
+                /** @description 付款方式，参见FAQ 付款方式枚举值 */
+                payment_methods?: string[];
+                /** @description 供货能力周期，参见FAQ 时间周期枚举值 */
+                supply_period_type?: string;
+                /** @description 供货能力 */
+                supply_quantity?: string;
+                /** @description 供货能力计量单位，参见FAQ 计量单位枚举值 */
+                supply_unit_type?: string;
+                /** @description 包装信息 */
+                packaging_desc?: string;
+                /** @description 发货周期 */
+                deliver_periods?: {
+                    /** @description 预计需要发货时间 */
+                    process_period?: number;
+                    /** @description 数量 */
+                    quantity?: number;
+                }[];
+            };
+            /** @description 商品名称，最多128个字符 */
+            subject: string;
+            /** @description 在线批发商品交易信息 */
+            wholesale_trade?: {
+                /** @description 每批数量，当sale_type=batch时生效，范围是1-99999 */
+                batch_number?: number;
+                /** @description 备货期，单位是天，范围是1-60 */
+                handling_time?: number;
+                /** @description 最小起订量，范围是1-99999 */
+                min_order_quantity?: number;
+                /** @description 尺寸，单位是厘米，长宽高范围是1-9999999 */
+                package_size?: string;
+                /** @description 价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00 */
+                price?: string;
+                /** @description 销售方式，按件卖(normal)或者按批卖(batch) */
+                sale_type?: string;
+                /** @description 运费模板ID */
+                shipping_line_template_id?: number;
+                /** @description 最小计量单位，参见FAQ 计量单位枚举值 */
+                unit_type?: string;
+                /** @description 体积，单位是立方厘米，范围是1-9999999 */
+                volume?: number;
+                /** @description 重量，单位是kg，精确到小数点后三位，范围是0.01-9999999.000 */
+                weight?: string;
+                /** @description 发货周期(新版本，建议使用) */
+                deliver_periods?: {
+                    /** @description 预计需要发货时间 */
+                    process_period?: number;
+                    /** @description 数量 */
+                    quantity?: number;
+                }[];
+            };
+            /** @description 发布的市场，支持main/onesite，默认main发到主市场，填onesite发布为商机通产品 */
+            market?: string;
+            /** @description 智能编辑，不填写使用原来的。注意必须和详情的格式一致 */
+            is_smart_edit?: boolean;
+            /** @description 定制信息 */
+            custom_info?: {
+                /** @description 定制内容 */
+                custom_contents?: {
+                    /** @description 最小起订量 */
+                    min_order_quantity?: number;
+                    /** @description 定制类型 */
+                    custom_type?: string;
+                }[];
+            };
+            /** @description 混淆商品ID */
+            product_id: string;
+        };
+        /** alibaba.icbu.product.update response */
+        AlibabaProductAlibabaIcbuProductUpdateResponse: {
+            /** @description 加密后的产品ID */
+            product_id?: string;
+        };
+        /** alibaba.icbu.annex.upload request */
+        AlibabaRfqAlibabaIcbuAnnexUploadRequest: {
+            /** @description 文件名 */
+            file_name: string;
+            /** @description 文件字节流 */
+            file_input_stream_bytes: string;
+            /** @description 来源 */
+            source: string;
+        };
+        /** alibaba.icbu.annex.upload response */
+        AlibabaRfqAlibabaIcbuAnnexUploadResponse: {
+            /** @description 返回错误码 */
+            err_type?: string;
+            /** @description 错误信息 */
+            message?: string;
+            /** @description 文件file_str */
+            result?: string;
+            /** @description 是否成功 */
+            is_success?: boolean;
+        };
+        /** alibaba.icbu.quotation.post request */
+        AlibabaRfqAlibabaIcbuQuotationPostRequest: {
+            /** @description 验证 */
+            md5key?: string;
+            /** @description 报价DTO */
+            dto?: {
+                /** @description 给买家留言 */
+                details: string;
+                /** @description 附件file_str,请通过调用alibaba.icbu.annex.upload结果作为入参 */
+                annex_files_str?: string;
+                /** @description 样本 */
+                sample?: {
+                    /** @description 备注 */
+                    remark?: string;
+                    /** @description 预计时间 */
+                    estimated_date?: number;
+                    /** @description 样品运费支付方 */
+                    payment?: string;
+                    /** @description 是否是免费 */
+                    is_free?: string;
+                    /** @description 是否提供样本 */
+                    is_support?: string;
+                };
+                /** @description 报价列表 */
+                price_list?: {
+                    /** @description 目的港 */
+                    port: string;
+                    /** @description 发运条件 */
+                    shipping_terms: string;
+                    /** @description 图片image_str,请通过调用alibaba.icbu.annex.upload结果作为入参如果是都个附件通过\r\n分割 */
+                    image_str?: string;
+                    /** @description 产品编号 */
+                    model_num?: string;
+                    /** @description 产品名称 */
+                    item_name: string;
+                    /** @description 价格 */
+                    fob_price: string;
+                    /** @description 数量 */
+                    quantity: string;
+                    /** @description 数量单位 */
+                    quantity_unit: string;
+                    /** @description 备注 */
+                    remark: string;
+                    /** @description 价格单位 */
+                    fob_price_unit: string;
+                }[];
+                /** @description RFQID */
+                rfq_id: string;
+                /** @description 付费条款 */
+                payment_terms: string;
+                /** @description 过期时间 */
+                expiry_date: number | string;
+            };
+        };
+        /** alibaba.icbu.quotation.post response */
+        AlibabaRfqAlibabaIcbuQuotationPostResponse: {
+            /** @description 请求返回结果信息 */
+            result?: {
+                /** @description 错误信息 */
+                message?: string;
+                /** @description 返回结果信息 */
+                result?: {
+                    /** @description 报价ID */
+                    id?: number;
+                };
+                /** @description 错误类型 */
+                err_type?: string;
+                /** @description 是否成功 */
+                success?: boolean;
+            };
+        };
+        /** alibaba.icbu.rfqdetail.get request */
+        AlibabaRfqAlibabaIcbuRfqdetailGetRequest: {
+            /** @description 验证 */
+            md5key?: string;
+            /** @description 查询RFQ详情DTO */
+            rfq_query_dto?: {
+                /** @description RFQ ID */
+                rfq_id: string;
+            };
+        };
+        /** alibaba.icbu.rfqdetail.get response */
+        AlibabaRfqAlibabaIcbuRfqdetailGetResponse: {
+            /** @description 返回结果集 */
+            result?: {
+                /** @description 返回状态信息 */
+                message?: string;
+                /** @description RFQ详情结果集 */
+                result?: {
+                    /** @description 附件列表 */
+                    attachments?: {
+                        /** @description 文件名 */
+                        file_name?: string;
+                        /** @description 文件地址 */
+                        file_url?: string;
+                    }[];
+                    /** @description RFQ详情 */
+                    rfq_detail_dto?: {
+                        /** @description 语种 */
+                        lang_src?: string;
+                        /** @description 供应商国家 */
+                        supplier_countrys?: string;
+                        /** @description 类目ID */
+                        category_id?: number;
+                        /** @description 类目名称 */
+                        category_name?: string;
+                        /** @description 附加名称 */
+                        annex_names?: string;
+                        /** @description 付款条件 */
+                        payment_terms?: string;
+                        /** @description 目的港 */
+                        destination_port?: string;
+                        /** @description 价格单位 */
+                        fob_price_unit?: string;
+                        /** @description 价格 */
+                        fob_price?: string;
+                        /** @description 发运条件 */
+                        shipping_terms?: string;
+                        /** @description 剩余报价数量 */
+                        left_count?: number;
+                        /** @description 开放时间 */
+                        open_time?: number;
+                        /** @description 过期值 */
+                        expirate_time?: number;
+                        /** @description 国家简称 */
+                        country_simple?: string;
+                        /** @description 数量单位 */
+                        quantity_unit?: string;
+                        /** @description 数量 */
+                        quantity?: number;
+                        /** @description 状态 */
+                        status?: string;
+                        /** @description 描述 */
+                        description?: string;
+                        /** @description 标题 */
+                        subject?: string;
+                        /** @description RFQ ID */
+                        rfq_id?: string;
+                    };
+                };
+                /** @description 错误类型 */
+                error_type?: string;
+                /** @description 判断是否成功 */
+                success?: boolean;
+            };
+        };
+        /** alibaba.icbu.rfq.myequity request */
+        AlibabaRfqAlibabaIcbuRfqMyequityRequest: Record<string, never>;
+        /** alibaba.icbu.rfq.myequity response */
+        AlibabaRfqAlibabaIcbuRfqMyequityResponse: {
+            /** @description 请求返回结果 */
+            service_result?: {
+                /** @description 是否成功 */
+                success?: boolean;
+                /** @description 返回信息 */
+                msg?: string;
+                /** @description 我的权益信息 */
+                value?: {
+                    /** @description 剩余权益 */
+                    equity_count?: number;
+                    /** @description 过期时间 */
+                    expired_date?: string;
+                    /** @description 市场表现分 */
+                    score?: number;
+                    /** @description 击败其他供应商百分比 */
+                    beat_supplier_percent?: string;
+                    /** @description 市场表现分统计开始时间 */
+                    statistic_start_date?: string;
+                    /** @description 市场表现分统计结束时间 */
+                    statistic_end_date?: string;
+                    /** @description 剩余置顶报价权益 */
+                    top_service_count?: number;
+                };
+            };
+        };
+        /** alibaba.icbu.rfq.read request */
+        AlibabaRfqAlibabaIcbuRfqReadRequest: {
+            /** @description 查询RFQID列表 */
+            rfq_id_list: string[];
+        };
+        /** alibaba.icbu.rfq.read response */
+        AlibabaRfqAlibabaIcbuRfqReadResponse: {
+            /** @description alinkappserver系统返回的通用结果类 */
+            result?: {
+                /** @description 错误码 */
+                code?: string;
+                /** @description 错误信息 */
+                msg?: string;
+                /** @description 操作结果对象 */
+                result_code?: number;
+                /** @description 是否成功 */
+                success?: boolean;
+                /** @description 结果 */
+                value?: string;
+            };
+        };
+        /** alibaba.icbu.rfq.recommend request */
+        AlibabaRfqAlibabaIcbuRfqRecommendRequest: {
+            /** @description 入参数据 */
+            query_dto: {
+                /** @description 推荐数量 */
+                count: number;
+                /** @description 当前页面数 */
+                current: number;
+                /** @description 页面大小 */
+                page_size: number;
+                /** @description 系统参数qn-homepage */
+                site: string;
+                /** @description 系统参数U_P_I */
+                type: string;
+            };
+        };
+        /** alibaba.icbu.rfq.recommend response */
+        AlibabaRfqAlibabaIcbuRfqRecommendResponse: {
+            /** @description alinkappserver系统返回的通用结果类 */
+            result?: {
+                /** @description 系统信息 */
+                msg?: string;
+                /** @description 返回系统代码 */
+                result_code?: number;
+                /** @description 请求是否成功 */
+                success?: boolean;
+                /** @description 返回结果 */
+                value?: {
+                    /** @description 返回结果统计 */
+                    pagination?: {
+                        /** @description 当前页面 */
+                        current?: number;
+                        /** @description 页面大小 */
+                        page_size?: number;
+                        /** @description 推荐数量 */
+                        total_item?: number;
+                        /** @description 总页数 */
+                        total_pages?: number;
+                    };
+                    /** @description 返回推荐RFQ */
+                    rfq_list?: {
+                        /** @description 国家全称 */
+                        country?: string;
+                        /** @description 国家简称 */
+                        country_simple?: string;
+                        /** @description 发布时间戳 */
+                        date_post?: number;
+                        /** @description 发布时间 */
+                        date_post_str?: string;
+                        /** @description RFQ详情 */
+                        detail?: string;
+                        /** @description 是否有读过 */
+                        has_read?: boolean;
+                        /** @description 是否有图片 */
+                        have_image?: boolean;
+                        /** @description 图片地址 */
+                        image_url?: string;
+                        /** @description 剩余报价数 */
+                        left_count?: number;
+                        /** @description 数量 */
+                        quantity?: number;
+                        /** @description rfqID */
+                        rfq_id?: string;
+                        /** @description RFQ标题 */
+                        subject?: string;
+                        /** @description 数量单位 */
+                        quantity_unit?: string;
+                    }[];
+                };
+            };
+        };
+        /** alibaba.icbu.rfq.search request */
+        AlibabaRfqAlibabaIcbuRfqSearchRequest: {
+            /** @description 验证 */
+            md5key?: string;
+            /** @description 查询条件 */
+            cond?: {
+                /** @description 关键词 */
+                search_text: string;
+                /** @description 每页显示个数 */
+                page_size?: number;
+                /** @description 过滤RFQ发送时间秒级别的 */
+                open_time?: number;
+                /** @description 是否有附件 */
+                attachment?: boolean;
+                /** @description 是否有图片 */
+                photo?: boolean;
+                /** @description 国家简称 */
+                country?: string;
+                /** @description 类目 */
+                category_id?: string;
+                /** @description RFQ发布到现在的结束时间秒级别 */
+                close_time?: number;
+                /** @description 最小量 */
+                quantity_min?: number;
+                /** @description 当前页 */
+                current_page?: number;
+                /** @description 最大量 */
+                quantity_max?: number;
+                /** @description 是否报满RFQ */
+                full_quote?: boolean;
+                /** @description 是否限免RFQ */
+                zero_quotation?: boolean;
+                /** @description 是否过滤已报价 */
+                filter_quoted?: boolean;
+            };
+        };
+        /** alibaba.icbu.rfq.search response */
+        AlibabaRfqAlibabaIcbuRfqSearchResponse: {
+            /** @description 返回信息结果集 */
+            result?: {
+                /** @description 查询返回信息 */
+                message?: string;
+                /** @description 结果集 */
+                result?: {
+                    /** @description RFQ列表 */
+                    request_list?: {
+                        /** @description RFQID */
+                        rfq_id?: string;
+                        /** @description 类目ID */
+                        category_id?: number;
+                        /** @description RFQ标题 */
+                        subject?: string;
+                        /** @description RFQ内容 */
+                        description?: string;
+                        /** @description 数量 */
+                        quantity?: number;
+                        /** @description 数量单位 */
+                        quantity_unit?: string;
+                        /** @description 国家简称 */
+                        country_simple?: string;
+                        /** @description 剩余报价 */
+                        left_count?: number;
+                        /** @description 附件名称 */
+                        annex_names?: string;
+                        /** @description 语种 */
+                        lang_src?: string;
+                        /** @description 过期时间 */
+                        expirate_time?: number;
+                        /** @description 开始时间 */
+                        open_time?: number;
+                        /** @description 图片地址 */
+                        image_url?: string;
+                        /** @description 供应商国家 */
+                        supplier_countrys?: string;
+                        /** @description 附件 */
+                        annex_files?: {
+                            /** @description 文件名 */
+                            file_name?: string;
+                            /** @description 唯一文件名 */
+                            unique_file_name?: string;
+                        }[];
+                        /** @description 唯一加密RFQID */
+                        unique_rfq_id?: string;
+                    }[];
+                    /** @description 总数 */
+                    total?: number;
+                    /** @description 类目列表 */
+                    category_list?: {
+                        /** @description 类目ID */
+                        category_id?: number;
+                        /** @description 类目名称 */
+                        category_name?: string;
+                        /** @description 数量 */
+                        count?: number;
+                    }[];
+                };
+                /** @description 错误类型 */
+                error_type?: string;
+                /** @description 是否成功 */
+                success?: boolean;
+            };
+        };
+        ApiCapability: {
+            method: string;
+            domain: string;
+            chargeLabel: string;
+            /** @enum {string} */
+            auth: "required" | "optional" | "none" | "unknown";
+            jushitaOnly: boolean;
+            restricted: boolean;
+            restrictionReason?: string | null;
+            enabled: boolean;
+            /** Format: uri */
+            docUrl: string;
+            /** Format: date */
+            checkedAt: string;
+            /** Format: date */
+            updatedAt?: string | null;
+            /** @enum {string} */
+            source: "catalog" | "article";
+            /** @enum {string} */
+            lifecycle: "active" | "deprecated" | "unlisted";
+            /** @enum {string} */
+            risk: "read" | "mutation";
+            /** @enum {string} */
+            verification: "documented" | "account-verified";
+            realCallEnabled: boolean;
+            requestSchema?: string | null;
+            responseSchema?: string | null;
+        };
+        CapabilityCallRequest: {
+            method: string;
+            parameters: {
+                [key: string]: unknown;
+            };
+        };
+        CapabilityCallResult: components["schemas"]["CapabilityResponseEnvelope"];
+        CapabilityContractIssue: {
+            instancePath: string;
+            keyword: string;
+            message: string;
+        };
+        CapabilityDefinition: {
+            method: string;
+            title: string;
+            description: string;
+            /** @enum {string} */
+            source: "catalog" | "article";
+            /** @enum {string} */
+            lifecycle: "active" | "deprecated" | "unlisted";
+            /** @enum {string} */
+            risk: "read" | "mutation";
+            /** @enum {string} */
+            verification: "documented" | "account-verified";
+            realCallEnabled: boolean;
+            requestSchema: string;
+            responseSchema: string;
+            requestExample: {
+                [key: string]: unknown;
+            };
+            responseExample: unknown;
+            errorCodes: {
+                [key: string]: unknown;
+            }[];
+            /** Format: date */
+            checkedAt: string;
+            /** Format: date */
+            updatedAt?: string | null;
+            /** Format: uri */
+            docUrl: string;
+        };
+        CapabilityResponseEnvelope: {
+            method: string;
+            traceId: string;
+            data: components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttributeGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrvalueGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetNewResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryIdMappingResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryLevelAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryPostcatGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategorySchemaLevelGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuOpenProductPostResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductBatchUpdateDisplayResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductIdDecryptResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductListResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductScoreGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateFieldResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuAnnexUploadResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuQuotationPostResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqMyequityResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqReadResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqRecommendResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqSearchResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqdetailGetResponse"];
+            contractValid: boolean;
+            contractIssues: components["schemas"]["CapabilityContractIssue"][];
+        };
+        DashboardSummary: {
+            productCount: number;
+            photoCount: number;
+            pendingOrderCount: number;
+            enabledCapabilityCount: number;
+        };
+        GatewayError: {
+            code: string;
+            message: string;
+            subCode?: string;
+            traceId?: string;
+            retryable: boolean;
+        };
+        Order: {
+            id: string;
+            buyerName: string;
+            amount: number;
+            currency: string;
+            status: string;
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * @description seller.order.get is not callable outside Jushita.
+             * @enum {string}
+             */
+            detailAvailability: "summary_only";
+        };
+        OrderFund: {
+            orderId: string;
+            paidAmount: number;
+            currency: string;
+            status: string;
+        };
+        OrderLogistics: {
+            orderId: string;
+            status: string;
+            carrier?: string | null;
+            trackingNumber?: string | null;
+        };
+        OrderPage: components["schemas"]["PageMeta"] & {
+            items: components["schemas"]["Order"][];
+        };
+        PageMeta: {
+            page: number;
+            pageSize: number;
+            total: number;
+        };
+        Photo: {
+            /** @description Alibaba international PhotoBank fileId; persist it with the Schema value. */
+            id: string;
+            name: string;
+            /** Format: uri */
+            url: string;
+            groupId: string;
+            width: number;
+            height: number;
+            /** @description Image size in bytes. */
+            fileSize: number;
+            referenceCount: number;
+            /** Format: date-time */
+            modifiedAt: string;
+        };
+        PhotoGroup: {
+            id: string;
+            name: string;
+            photoCount: number;
+        };
+        PhotoPage: components["schemas"]["PageMeta"] & {
+            items: components["schemas"]["Photo"][];
+        };
+        PhotoTransferRequest: {
+            /** Format: uri */
+            url: string;
+            groupId: string;
+            fileName?: string;
+            /** @description Optional smaller Schema-derived limit. The service worker always caps downloads at 20 MiB. */
+            maxBytes?: number;
+        };
+        Product: {
+            id: string;
+            subject: string;
+            groupName: string;
+            /** @enum {string} */
+            status: "online" | "offline" | "draft" | "auditing" | "rejected";
+            score: number;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ProductCategory: {
+            id: number;
+            name: string;
+            leaf: boolean;
+            children: components["schemas"]["ProductCategory"][];
+        };
+        ProductCategoryMapping: {
+            sourceCategoryId: number;
+            targetCategoryId: number;
+        };
+        ProductDescriptionQualityIssue: {
+            code: string;
+            /** @enum {string} */
+            source: "alibaba-schema" | "official" | "project";
+            /** @enum {string} */
+            level: "error" | "warning" | "suggestion";
+            message: string;
+            remediation: string;
+            fieldIds: string[];
+        };
+        ProductDetail: components["schemas"]["Product"] & {
+            categoryId: number;
+            language: string;
+            schemaXml: string;
+        };
+        ProductGroup: {
+            id: number;
+            name: string;
+            children: components["schemas"]["ProductGroup"][];
+        };
+        ProductMutationResult: {
+            productId: string;
+            traceId: string;
+            success: boolean;
+        };
+        ProductPage: components["schemas"]["PageMeta"] & {
+            items: components["schemas"]["Product"][];
+        };
+        ProductSchema: {
+            xml: string;
+            categoryId: number;
+            language: string;
+            market: string;
+        };
+        ProductSchemaRequest: {
+            categoryId: number;
+            /** @default en_US */
+            language: string;
+            /** @enum {string} */
+            market: "wholesale" | "sourcing";
+            productId?: string;
+        };
+        ProductScore: {
+            productId: string;
+            score: number;
+            issues: string[];
+            /** @description Optional normalized official issues when the upstream response provides structured details. */
+            qualityIssues?: components["schemas"]["ProductDescriptionQualityIssue"][];
+        };
+        SchemaPublishRequest: {
+            categoryId: number;
+            /** @default en_US */
+            language: string;
+            productId?: string;
+            schemaXml: string;
         };
     };
     responses: {
@@ -2708,7 +3097,7 @@ export interface operations {
             default: components["responses"]["GatewayFailure"];
         };
     };
-    callTypedProductCapability: {
+    callTypedCapability: {
         parameters: {
             query?: never;
             header?: never;
@@ -2719,7 +3108,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttributeGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrvalueGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetNewRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryIdMappingRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryLevelAttrGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryPostcatGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategorySchemaLevelGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuOpenProductPostRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductBatchUpdateDisplayRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductIdDecryptRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductListRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaUpdateRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductScoreGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateFieldRequest"];
+                "application/json": components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttributeGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrvalueGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetNewRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryIdMappingRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryLevelAttrGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryPostcatGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategorySchemaLevelGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuOpenProductPostRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductBatchUpdateDisplayRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductIdDecryptRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductListRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaUpdateRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductScoreGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateFieldRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuAnnexUploadRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuQuotationPostRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqMyequityRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqReadRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqRecommendRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqSearchRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqdetailGetRequest"];
             };
         };
         responses: {

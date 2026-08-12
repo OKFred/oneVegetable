@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   callCapability,
   getCapabilityDefinition,
+  isProductCapabilityMethod,
   listCapabilityDefinitions,
   validateCapabilityRequest,
   validateCapabilityResponse
@@ -25,7 +26,10 @@ describe('typed product capability domain', () => {
       'utf8'
     );
     const snapshot = JSON.parse(source) as ProductDocumentSnapshot;
-    const definitions = listCapabilityDefinitions();
+    const productMethods = new Set(snapshot.definitions.map((definition) => definition.method));
+    const definitions = listCapabilityDefinitions().filter((definition) =>
+      productMethods.has(definition.method)
+    );
     expect(snapshot.catalogCount).toBe(25);
     expect(snapshot.articleCount).toBe(2);
     expect(definitions).toHaveLength(snapshot.catalogCount + snapshot.articleCount);
@@ -36,7 +40,9 @@ describe('typed product capability domain', () => {
   });
 
   it('exercises request and response standalone validators for every product method', () => {
-    for (const definition of listCapabilityDefinitions()) {
+    for (const definition of listCapabilityDefinitions().filter((item) =>
+      isProductCapabilityMethod(item.method)
+    )) {
       expect(() => validateCapabilityRequest(definition.method, definition.requestExample)).not.toThrow();
       expect(() => validateCapabilityResponse(definition.method, definition.responseExample)).not.toThrow();
     }
