@@ -6,8 +6,14 @@ import { Plus, Trash2 } from '@lucide/vue';
 
 import {
   cloneProductSchemaInstance,
+  isProductSchemaFieldDisabled,
+  isProductSchemaFieldReadOnly,
+  productSchemaFieldText,
+  productSchemaFieldTexts,
   type ProductSchemaField,
-  type ProductSchemaFieldIssue
+  type ProductSchemaFieldIssue,
+  withProductSchemaFieldText,
+  withProductSchemaFieldTexts
 } from '@one-vegetable/core';
 
 import Badge from './ui/Badge.vue';
@@ -21,15 +27,21 @@ const props = defineProps<{
 const emit = defineEmits<{ update: [field: ProductSchemaField] }>();
 
 const fieldIssues = computed(() => props.issues.filter((issue) => issue.fieldKey === props.field.key));
-const disabled = computed(() =>
-  props.field.rules.some((rule) => rule.name === 'disableRule' && ['true', '1'].includes(rule.value))
-);
+const disabled = computed(() => isProductSchemaFieldDisabled(props.field));
+const readOnly = computed(() => isProductSchemaFieldReadOnly(props.field));
+const fieldText = computed(() => productSchemaFieldText(props.field));
+const fieldTexts = computed(() => productSchemaFieldTexts(props.field));
 const tip = computed(
   () => props.field.rules.find((rule) => rule.name === 'tipRule' || rule.name === 'devTipRule')?.value
 );
 
 function updateValue(value: string | string[]): void {
-  emit('update', { ...props.field, value });
+  emit(
+    'update',
+    Array.isArray(value)
+      ? withProductSchemaFieldTexts(props.field, value)
+      : withProductSchemaFieldText(props.field, value)
+  );
 }
 
 function updateInstanceChild(instanceIndex: number, childIndex: number, child: ProductSchemaField): void {
@@ -52,7 +64,7 @@ function updateComplexChild(index: number, child: ProductSchemaField): void {
 }
 
 function toggleOption(value: string, checked: boolean): void {
-  const current = Array.isArray(props.field.value) ? props.field.value : [];
+  const current = fieldTexts.value;
   updateValue(checked ? [...new Set([...current, value])] : current.filter((item) => item !== value));
 }
 
@@ -75,27 +87,28 @@ function removeInstance(index: number): void {
   <div v-if="field.type === 'label'" class="rounded-lg border bg-muted/50 p-3 text-sm">
     <p class="font-medium">{{ field.name }}</p>
     <p class="mt-1 text-muted-foreground">
-      {{ Array.isArray(field.value) ? field.value.join('；') : field.value }}
+      {{ fieldTexts.join('；') }}
     </p>
   </div>
 
-  <fieldset v-else class="space-y-2 rounded-lg border p-4" :disabled="disabled">
+  <fieldset v-else class="space-y-2 rounded-lg border p-4" :disabled="readOnly">
     <div class="flex flex-wrap items-center gap-2">
       <legend class="text-sm font-medium">{{ field.name }}</legend>
       <Badge variant="outline">{{ field.type }}</Badge>
-      <Badge v-if="disabled" variant="secondary">只读</Badge>
+      <Badge v-if="readOnly" variant="secondary">只读</Badge>
+      <Badge v-if="disabled" variant="secondary">已禁用</Badge>
     </div>
     <p v-if="tip" class="text-xs text-muted-foreground">{{ tip }}</p>
 
     <Input
       v-if="field.type === 'input'"
-      :model-value="field.value as string"
+      :model-value="fieldText"
       :aria-label="field.name"
       @update:model-value="updateValue"
     />
     <textarea
       v-else-if="field.type === 'multiInput'"
-      :value="(field.value as string[]).join('\n')"
+      :value="fieldTexts.join('\n')"
       :aria-label="field.name"
       class="min-h-24 w-full rounded-md border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-ring"
       @input="updateValue(($event.target as HTMLTextAreaElement).value.split('\n'))"
@@ -106,7 +119,7 @@ function removeInstance(index: number): void {
           type="radio"
           :name="field.key"
           :value="option.value"
-          :checked="field.value === option.value"
+          :checked="fieldText === option.value"
           @change="updateValue(option.value)"
         />{{ option.label }}
       </label>
@@ -116,7 +129,7 @@ function removeInstance(index: number): void {
         <input
           type="checkbox"
           :value="option.value"
-          :checked="(field.value as string[]).includes(option.value)"
+          :checked="fieldTexts.includes(option.value)"
           @change="toggleOption(option.value, ($event.target as HTMLInputElement).checked)"
         />{{ option.label }}
       </label>
