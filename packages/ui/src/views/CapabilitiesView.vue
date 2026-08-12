@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed, h, ref } from 'vue';
 import { useMutation, useQuery } from '@tanstack/vue-query';
-import { ExternalLink, Play, Search } from '@lucide/vue';
+import { ExternalLink, Play, Search, ShieldAlert } from '@lucide/vue';
 
-import { validateCapabilityCallInput, type ApiCapability } from '@one-vegetable/core';
+import {
+  validateCapabilityCallInput,
+  type ApiCapability,
+  type CapabilityDefinition
+} from '@one-vegetable/core';
 
 import DataTable from '../components/DataTable.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -15,10 +19,12 @@ import Input from '../components/ui/Input.vue';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 
-const { gateway } = useServices();
+const { gateway, mode } = useServices();
 const search = ref('');
 const domain = ref('all');
 const selected = ref<ApiCapability | null>(null);
+const definition = ref<CapabilityDefinition | null>(null);
+const definitionError = ref('');
 const parameters = ref('{}');
 const validationErrors = ref<string[]>([]);
 const capabilities = useQuery({
@@ -31,6 +37,14 @@ const filtered = computed(() =>
     return matchesSearch && (domain.value === 'all' || item.domain === domain.value);
   })
 );
+const catalogCount = computed(
+  () => (capabilities.data.value ?? []).filter((item) => item.source === 'catalog').length
+);
+const articleCount = computed(
+  () => (capabilities.data.value ?? []).filter((item) => item.source === 'article').length
+);
+const realCallBlocked = computed(() => mode === 'extension' && selected.value?.realCallEnabled === false);
+
 const call = useMutation({
   mutationFn: async () => {
     if (!selected.value) throw new Error('请选择 API');
@@ -53,6 +67,21 @@ const call = useMutation({
   }
 });
 
+async function selectCapability(capability: ApiCapability): Promise<void> {
+  selected.value = capability;
+  definition.value = null;
+  definitionError.value = '';
+  call.reset();
+  try {
+    const result = await gateway.request('getCapabilityDefinition', { method: capability.method });
+    definition.value = result;
+    parameters.value = JSON.stringify(result.requestExample, null, 2);
+  } catch (error: unknown) {
+    parameters.value = '{}';
+    definitionError.value = error instanceof Error ? error.message : '能力定义加载失败';
+  }
+}
+
 const columns: DataColumn<ApiCapability>[] = [
   {
     accessorKey: 'method',
@@ -62,7 +91,7 @@ const columns: DataColumn<ApiCapability>[] = [
         'button',
         {
           class: 'font-mono text-xs text-primary hover:underline',
-          onClick: () => (selected.value = row.original)
+          onClick: () => void selectCapability(row.original)
         },
         row.original.method
       )
@@ -72,11 +101,21 @@ const columns: DataColumn<ApiCapability>[] = [
     header: '业务域',
     cell: (context) => h(Badge, { variant: 'secondary' }, () => context.getValue<string>())
   },
-  { accessorKey: 'auth', header: '授权' },
   {
-    accessorKey: 'chargeLabel',
-    header: '收费标签',
-    cell: (context) => h(Badge, { variant: 'success' }, () => context.getValue<string>())
+    accessorKey: 'lifecycle',
+    header: '生命周期',
+    cell: ({ row }) =>
+      h(Badge, { variant: row.original.lifecycle === 'deprecated' ? 'warning' : 'success' }, () =>
+        row.original.lifecycle === 'deprecated' ? 'deprecated' : row.original.lifecycle
+      )
+  },
+  {
+    accessorKey: 'risk',
+    header: '风险',
+    cell: ({ row }) =>
+      h(Badge, { variant: row.original.risk === 'mutation' ? 'warning' : 'outline' }, () =>
+        row.original.risk === 'mutation' ? '写操作' : '只读'
+      )
   },
   {
     id: 'state',
@@ -85,7 +124,7 @@ const columns: DataColumn<ApiCapability>[] = [
       h(
         Badge,
         { variant: row.original.restricted ? 'warning' : row.original.enabled ? 'success' : 'outline' },
-        () => (row.original.restricted ? '受限' : row.original.enabled ? '已启用' : '待接入')
+        () => (row.original.restricted ? '受限' : row.original.enabled ? '已类型化' : '待接入')
       )
   },
   {
@@ -109,15 +148,17 @@ const columns: DataColumn<ApiCapability>[] = [
 <template>
   <PageHeader
     title="API 能力目录"
-    description="免费且非聚石塔接口的审计快照。受限接口保留可见性，但默认不能调用。"
-  />
+    description="免费目录按审计快照统计；Schema 发品文章接口单列，不计入免费 API 数量。"
+  >
+    <div class="flex gap-2">
+      <Badge variant="success">目录 {{ catalogCount }}</Badge
+      ><Badge variant="outline">文章 {{ articleCount }}</Badge>
+    </div>
+  </PageHeader>
   <div class="mb-4 flex flex-wrap gap-2">
     <div class="relative min-w-72 flex-1">
-      <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" /><Input
-        v-model="search"
-        class="pl-9"
-        placeholder="搜索 API 方法"
-      />
+      <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+      <Input v-model="search" class="pl-9" placeholder="搜索 API 方法" />
     </div>
     <select v-model="domain" class="h-9 rounded-md border bg-background px-3 text-sm">
       <option value="all">全部业务域</option>
@@ -133,31 +174,68 @@ const columns: DataColumn<ApiCapability>[] = [
   <QueryState :loading="capabilities.isPending.value" :error="capabilities.error.value">
     <DataTable :columns="columns" :data="filtered" empty-text="没有匹配的 API" />
   </QueryState>
+
   <Card v-if="selected" class="mt-5 p-5">
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
         <p class="font-mono text-sm font-semibold">{{ selected.method }}</p>
-        <p class="mt-1 text-xs text-muted-foreground">检查日期 {{ selected.checkedAt }}</p>
+        <p class="mt-1 text-xs text-muted-foreground">
+          检查日期 {{ selected.checkedAt }} · 文档更新 {{ selected.updatedAt ?? '未知' }}
+        </p>
       </div>
-      <Badge :variant="selected.restricted ? 'warning' : selected.enabled ? 'success' : 'outline'">{{
-        selected.restricted ? selected.restrictionReason : selected.enabled ? '可调试' : '下一迭代接入'
-      }}</Badge>
+      <div class="flex flex-wrap gap-2">
+        <Badge variant="outline">{{ selected.source }}</Badge>
+        <Badge variant="outline">{{ selected.verification }}</Badge>
+        <Badge :variant="selected.risk === 'mutation' ? 'warning' : 'success'">{{ selected.risk }}</Badge>
+      </div>
+    </div>
+
+    <div
+      v-if="selected.lifecycle === 'deprecated'"
+      class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800"
+    >
+      该接口已 deprecated，仅在通用调试器保留类型化兼容；商品专用页面不会调用它。
+    </div>
+    <div v-if="realCallBlocked" class="mt-4 flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+      <ShieldAlert class="mt-0.5 size-4 shrink-0" />该真实写能力尚未通过账号 smoke test，扩展中不可调用。
+    </div>
+    <p v-if="definitionError" class="mt-3 text-sm text-destructive">{{ definitionError }}</p>
+    <p v-if="definition" class="mt-4 text-sm text-muted-foreground">{{ definition.description }}</p>
+    <div v-if="definition" class="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+      <code class="rounded bg-muted p-2">request: {{ definition.requestSchema }}</code>
+      <code class="rounded bg-muted p-2">response: {{ definition.responseSchema }}</code>
     </div>
     <textarea
       v-model="parameters"
-      class="mt-4 min-h-28 w-full rounded-md border bg-slate-950 p-3 font-mono text-xs text-slate-100 outline-none focus:ring-2 focus:ring-ring"
+      aria-label="调用参数 JSON"
+      class="mt-4 min-h-40 w-full rounded-md border bg-slate-950 p-3 font-mono text-xs text-slate-100 outline-none focus:ring-2 focus:ring-ring"
       spellcheck="false"
     />
     <ul v-if="validationErrors.length" class="mt-2 text-sm text-destructive">
       <li v-for="error in validationErrors" :key="error">{{ error }}</li>
     </ul>
-    <pre v-if="call.data.value" class="mt-3 overflow-auto rounded-md bg-muted p-3 text-xs">{{
+
+    <div
+      v-if="call.data.value && !call.data.value.contractValid"
+      class="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800"
+    >
+      <p class="font-medium">响应契约漂移 · traceId {{ call.data.value.traceId }}</p>
+      <ul class="mt-1 list-disc pl-5">
+        <li v-for="issue in call.data.value.contractIssues" :key="`${issue.instancePath}:${issue.keyword}`">
+          {{ issue.instancePath }} {{ issue.message }}
+        </li>
+      </ul>
+      <p class="mt-2 text-xs">原始响应仍保留在下方，便于结合 traceId 排查。</p>
+    </div>
+    <pre v-if="call.data.value" class="mt-3 max-h-96 overflow-auto rounded-md bg-muted p-3 text-xs">{{
       JSON.stringify(call.data.value, null, 2)
     }}</pre>
     <p v-if="call.error.value" class="mt-2 text-sm text-destructive">{{ call.error.value.message }}</p>
     <Button
       class="mt-3"
-      :disabled="selected.restricted || !selected.enabled || call.isPending.value"
+      :disabled="
+        selected.restricted || !selected.enabled || realCallBlocked || call.isPending.value || !definition
+      "
       @click="call.mutate()"
       ><Play class="size-4" />调用能力</Button
     >

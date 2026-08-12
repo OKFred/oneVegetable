@@ -1,6 +1,19 @@
-import { getCapabilityDefinition, listCapabilities } from './capability-registry';
+import {
+  getCapabilityDefinition,
+  listCapabilities,
+  validateCapabilityRequest,
+  validateCapabilityResponse
+} from './capability-registry';
 
-import type { GatewayClient, OperationId, OperationMap, Product, RequestOf, ResponseOf } from './types';
+import type {
+  CapabilityCallRequest,
+  GatewayClient,
+  OperationId,
+  OperationMap,
+  Product,
+  RequestOf,
+  ResponseOf
+} from './types';
 
 const PRIMARY_PRODUCT: Product = {
   id: '10000001',
@@ -31,8 +44,16 @@ const PRODUCTS: Product[] = [
   }
 ];
 
-const MOCK_CAPABILITY_DEFINITION = getCapabilityDefinition('alibaba.icbu.product.list');
-if (!MOCK_CAPABILITY_DEFINITION) throw new Error('Mock capability definition is missing');
+const MOCK_PRODUCT_SCHEMA_XML = `<itemSchema version="2">
+  <field id="productTitle" name="商品标题" type="input"><rules><rule name="requiredRule" value="true"/><rule name="minLengthRule" value="5"/><rule name="maxLengthRule" value="128"/><rule name="tipRule" value="面向买家的英文商品标题"/></rules><values><value>Portable solar power station 1000W</value></values></field>
+  <field id="keywords" name="关键词" type="multiInput"><rules><rule name="minInputNumRule" value="2"/><rule name="maxInputNumRule" value="3"/></rules><values><value>solar generator</value><value>portable power station</value></values></field>
+  <field id="condition" name="商品状态" type="singleCheck"><options><option displayName="全新" value="new"/><option displayName="翻新" value="refurbished"/></options><values><value>new</value></values></field>
+  <field id="certifications" name="认证" type="multiCheck"><options><option displayName="CE" value="ce"/><option displayName="RoHS" value="rohs"/><option displayName="FCC" value="fcc"/></options><values><value>ce</value><value>rohs</value></values></field>
+  <field id="dimensions" name="包装尺寸" type="complex"><complex-values><complex-value><field id="length" name="长（cm）" type="input"><rules><rule name="minValueRule" value="1"/><rule name="maxDecimalDigitsRule" value="1"/></rules><values><value>45.5</value></values></field><field id="width" name="宽（cm）" type="input"><values><value>30</value></values></field></complex-value></complex-values></field>
+  <field id="variants" name="销售规格" type="multiComplex"><rules><rule name="serverPriceRule" value="required"/></rules><complex-values><complex-value><field id="model" name="型号" type="input"><rules><rule name="requiredRule" value="true"/></rules><values><value>OV-1000</value></values></field><field id="price" name="价格（USD）" type="input"><rules><rule name="minValueRule" value="1"/><rule name="maxDecimalDigitsRule" value="2"/></rules><values><value>599.00</value></values></field></complex-value></complex-values></field>
+  <field id="notice" name="发布说明" type="label"><values><value>业务规则由提交接口执行最终校验，本地不执行文档返回的代码。</value></values></field>
+  <extension keep="true">Mock 中保留的未知节点</extension>
+</itemSchema>`;
 
 const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
   getDashboard: {
@@ -53,7 +74,7 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
     categoryId: 100003109,
     language: 'en_US',
     market: 'wholesale',
-    xml: '<itemSchema><field id="productTitle" name="Product name" type="input"><rules><rule name="requiredRule" value="true"/></rules></field></itemSchema>'
+    xml: MOCK_PRODUCT_SCHEMA_XML
   },
   publishProduct: { productId: '10000999', traceId: 'mock-publish-trace', success: true },
   saveProductDraft: { productId: '10000998', traceId: 'mock-draft-trace', success: true },
@@ -141,7 +162,7 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
     trackingNumber: null
   },
   listCapabilities: listCapabilities(),
-  getCapabilityDefinition: MOCK_CAPABILITY_DEFINITION,
+  getCapabilityDefinition: requireCapabilityDefinition('alibaba.icbu.product.list'),
   callCapability: {
     method: 'alibaba.icbu.product.list',
     traceId: 'mock-capability-trace',
@@ -171,7 +192,7 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
     categoryId: 100009999,
     language: 'en_US',
     market: 'wholesale',
-    xml: '<itemSchema><field id="model" name="Model" type="singleCheck"><options><option displayName="Standard" value="standard"/></options></field></itemSchema>'
+    xml: '<itemSchema><field id="model" name="层级型号" type="singleCheck"><rules><rule name="requiredRule" value="true"/></rules><options><option displayName="标准版" value="standard"/><option displayName="专业版" value="pro"/></options><values><value>standard</value></values></field><field id="voltage" name="电压" type="singleCheck"><options><option displayName="110V" value="110"/><option displayName="220V" value="220"/></options><values><value>220</value></values></field></itemSchema>'
   },
   getProductDraft: {
     ...PRIMARY_PRODUCT,
@@ -198,6 +219,35 @@ export class MockGatewayClient implements GatewayClient {
 
   async request<K extends OperationId>(operation: K, _request: RequestOf<K>): Promise<ResponseOf<K>> {
     await new Promise<void>((resolve) => setTimeout(resolve, this.latency));
+    if (operation === 'getCapabilityDefinition') {
+      const payload = _request as OperationMap['getCapabilityDefinition']['request'];
+      return structuredClone(requireCapabilityDefinition(payload.method));
+    }
+    if (operation === 'callCapability') {
+      const payload = _request as CapabilityCallRequest;
+      const requestIssues = validateCapabilityRequest(payload.method, payload.parameters);
+      if (requestIssues.length > 0) {
+        throw new Error(
+          `请求契约不通过：${requestIssues.map((issue) => `${issue.instancePath} ${issue.message}`).join('；')}`
+        );
+      }
+      const definition = requireCapabilityDefinition(payload.method);
+      const data = structuredClone(definition.responseExample);
+      const contractIssues = validateCapabilityResponse(payload.method, data);
+      return {
+        method: payload.method,
+        traceId: `mock-${payload.method.replaceAll('.', '-')}`,
+        data,
+        contractValid: contractIssues.length === 0,
+        contractIssues
+      } as ResponseOf<K>;
+    }
     return structuredClone(MOCK_DATA[operation]);
   }
+}
+
+function requireCapabilityDefinition(method: string) {
+  const definition = getCapabilityDefinition(method);
+  if (!definition) throw new Error(`能力 ${method} 尚无类型化定义`);
+  return definition;
 }

@@ -432,15 +432,15 @@ document.paths['/products/{productId}/score'] = {
 };
 
 const definitions = Object.entries(capabilityMap);
-const requestRefs = definitions.map(([, value]) => ({
-  $ref: `#/components/schemas/${(value as { requestSchema: string }).requestSchema}`
-}));
 const responseRefs = definitions.map(([, value]) => ({
   $ref: `#/components/schemas/${(value as { responseSchema: string }).responseSchema}`
 }));
 const capabilityCallRequest = document.components.schemas.CapabilityCallRequest;
 const capabilityRequestProperties = capabilityCallRequest.properties as Record<string, JsonSchema>;
-capabilityRequestProperties.parameters = { oneOf: requestRefs };
+// The runtime registry selects the strict request schema by method. Keeping the
+// transport envelope generic avoids an ambiguous oneOf for structurally equal
+// empty-object request schemas while CapabilityRequestMap preserves correlation.
+capabilityRequestProperties.parameters = { type: 'object', additionalProperties: true };
 const envelopeProperties = document.components.schemas.CapabilityResponseEnvelope.properties as Record<
   string,
   JsonSchema
