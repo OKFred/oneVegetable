@@ -1,6 +1,17 @@
 <script setup lang="ts">
 import { computed, ref, type Component } from 'vue';
-import { Boxes, Handshake, Home, Image, Menu, PlugZap, Settings, ShoppingCart, Sprout } from '@lucide/vue';
+import {
+  Boxes,
+  Handshake,
+  Home,
+  Image,
+  Menu,
+  PlugZap,
+  Settings,
+  ShoppingCart,
+  Sprout,
+  Truck
+} from '@lucide/vue';
 
 import type { GatewayClient, SettingsRepository } from '@one-vegetable/core';
 
@@ -11,6 +22,7 @@ import OrdersView from './views/OrdersView.vue';
 import CapabilitiesView from './views/CapabilitiesView.vue';
 import SettingsView from './views/SettingsView.vue';
 import RfqsView from './views/RfqsView.vue';
+import LogisticsView from './views/LogisticsView.vue';
 import Button from './components/ui/Button.vue';
 import { provideServices } from './lib/services';
 
@@ -21,7 +33,8 @@ const props = defineProps<{
 }>();
 provideServices(props);
 
-type PageId = 'dashboard' | 'products' | 'photos' | 'rfqs' | 'orders' | 'capabilities' | 'settings';
+type PageId =
+  'dashboard' | 'products' | 'photos' | 'rfqs' | 'orders' | 'logistics' | 'capabilities' | 'settings';
 interface NavigationItem {
   id: PageId;
   label: string;
@@ -33,6 +46,7 @@ const items: NavigationItem[] = [
   { id: 'photos', label: '图库', icon: Image },
   { id: 'rfqs', label: 'RFQ', icon: Handshake },
   { id: 'orders', label: '订单', icon: ShoppingCart },
+  { id: 'logistics', label: '国际物流', icon: Truck },
   { id: 'capabilities', label: 'API 能力', icon: PlugZap },
   { id: 'settings', label: '设置', icon: Settings }
 ];
@@ -44,6 +58,7 @@ const views: Record<PageId, Component> = {
   photos: PhotosView,
   rfqs: RfqsView,
   orders: OrdersView,
+  logistics: LogisticsView,
   capabilities: CapabilitiesView,
   settings: SettingsView
 };
