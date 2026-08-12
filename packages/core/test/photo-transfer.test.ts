@@ -12,6 +12,11 @@ describe('PhotoBank URL transfer safety', () => {
     'http://169.254.169.254/latest/meta-data',
     'http://[::1]/image.jpg',
     'http://[fe80::1]/image.jpg',
+    'http://[::ffff:127.0.0.1]/image.jpg',
+    'http://[::ffff:10.0.0.1]/image.jpg',
+    'http://[2001:db8::1]/image.jpg',
+    'http://198.51.100.2/image.jpg',
+    'http://203.0.113.2/image.jpg',
     'https://user:password@example.com/image.jpg',
     'file:///tmp/image.jpg'
   ])('rejects unsafe URL %s', (url) => {

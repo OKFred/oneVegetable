@@ -91,6 +91,7 @@ function isPrivateIpv4(hostname: string): boolean {
   if (octets.some((octet) => octet > 255)) return true;
   const first = octets[0] ?? 0;
   const second = octets[1] ?? 0;
+  const third = octets[2] ?? 0;
   return (
     first === 0 ||
     first === 10 ||
@@ -100,7 +101,10 @@ function isPrivateIpv4(hostname: string): boolean {
     (first === 172 && second >= 16 && second <= 31) ||
     (first === 192 && second === 0) ||
     (first === 192 && second === 168) ||
+    (first === 192 && second === 88 && third === 99) ||
     (first === 198 && (second === 18 || second === 19)) ||
+    (first === 198 && second === 51 && third === 100) ||
+    (first === 203 && second === 0 && third === 113) ||
     first >= 224
   );
 }
@@ -110,9 +114,24 @@ function isPrivateIpv6(hostname: string): boolean {
   const normalized = hostname.toLocaleLowerCase();
   if (normalized === '::' || normalized === '::1') return true;
   if (normalized.startsWith('fc') || normalized.startsWith('fd')) return true;
-  if (/^fe[89ab]/.test(normalized)) return true;
-  const mappedIpv4 = /::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(normalized)?.[1];
-  return mappedIpv4 ? isPrivateIpv4(mappedIpv4) : false;
+  if (/^fe[89abcdef]/.test(normalized) || normalized.startsWith('ff')) return true;
+  if (normalized.startsWith('2001:db8:') || normalized === '2001:db8') return true;
+  const mappedIpv4 = ipv4FromMappedIpv6(normalized);
+  return mappedIpv4 !== undefined && isPrivateIpv4(mappedIpv4);
+}
+
+function ipv4FromMappedIpv6(hostname: string): string | undefined {
+  const mapped = /^::ffff:(.+)$/.exec(hostname)?.[1];
+  if (!mapped) return undefined;
+  if (mapped.includes('.')) return mapped;
+  const groups = mapped.split(':');
+  if (groups.length !== 2) return undefined;
+  const high = Number.parseInt(groups[0] ?? '', 16);
+  const low = Number.parseInt(groups[1] ?? '', 16);
+  if (!Number.isInteger(high) || !Number.isInteger(low) || high > 0xffff || low > 0xffff) {
+    return undefined;
+  }
+  return `${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`;
 }
 
 function isRedirect(status: number): boolean {
