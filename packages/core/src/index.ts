@@ -2,6 +2,7 @@ export * from './alibaba-client';
 export * from './capability-registry';
 export * from './errors';
 export * from './mock-client';
+export * from './product-schema';
 export * from './signing';
 export * from './types';
 export * from './validation';
