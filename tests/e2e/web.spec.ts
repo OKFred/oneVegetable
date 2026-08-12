@@ -94,6 +94,27 @@ test('web mock combines typed trade order capabilities without a Jushita detail 
   await expect(page.getByText(/Mock 创建成功/)).toBeVisible();
 });
 
+test('web mock completes the qualified international logistics workflow', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '国际物流' }).click();
+  await expect(page.getByRole('heading', { name: '国际物流工作台' })).toBeVisible();
+  await expect(page.getByText(/OneTouch 国际物流接口需要业务资格/)).toBeVisible();
+
+  await page.getByRole('button', { name: '开始试算' }).click();
+  await expect(page.getByText('CNY 109.20')).toBeVisible();
+  await page.getByRole('button', { name: '下单草稿' }).click();
+  await page.getByRole('button', { name: '提交 Mock 物流订单' }).click();
+  await expect(page.getByText('ALS00201756999')).toBeVisible();
+
+  await page.getByRole('button', { name: '物流订单', exact: true }).click();
+  await page.getByRole('button', { name: 'ALS00201756002' }).click();
+  await expect(page.getByText(/Base64 数据已返回/)).toBeVisible();
+
+  await page.getByRole('button', { name: '地址与模板' }).click();
+  await expect(page.getByText('浙江省')).toBeVisible();
+  await expect(page.getByText('北美包邮模板')).toBeVisible();
+});
+
 test('web mock supports visual detail editing, PhotoBank transfer and non-blocking guidance', async ({
   page
 }) => {

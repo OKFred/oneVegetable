@@ -35,6 +35,35 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('button', { name: '设置' }).click();
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
 
+  const qualificationError = await page.evaluate(async () => {
+    const extension = (
+      globalThis as unknown as {
+        chrome: {
+          storage: { local: { set(value: object): Promise<void> } };
+          runtime: { sendMessage(value: object): Promise<unknown> };
+        };
+      }
+    ).chrome;
+    await extension.storage.local.set({
+      gatewaySettings: {
+        appKey: 'e2e-app-key',
+        appSecret: 'e2e-secret',
+        accessToken: 'e2e-token',
+        endpoint: 'https://eco.taobao.com/router/rest',
+        signMethod: 'hmac'
+      }
+    });
+    return extension.runtime.sendMessage({
+      id: 'logistics-qualification-e2e',
+      kind: 'gateway-request',
+      operation: 'listLogisticsProducts'
+    });
+  });
+  expect(qualificationError).toMatchObject({
+    ok: false,
+    error: { code: 'LOGISTICS_QUALIFICATION_REQUIRED' }
+  });
+
   await page.getByRole('button', { name: 'API 能力' }).click();
   await expect(page.locator('tbody tr')).toHaveCount(86);
   await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.product.schema.add');
@@ -74,4 +103,13 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('button', { name: '信保订单草稿' }).click();
   await expect(page.getByText('扩展真实写入已禁用')).toBeVisible();
   await expect(page.getByRole('button', { name: '创建 Mock 信保订单' })).toBeDisabled();
+
+  await page.getByRole('button', { name: '国际物流' }).click();
+  await expect(page.getByRole('heading', { name: '国际物流工作台' })).toBeVisible();
+  await expect(page.getByText(/扩展内不会发出这些请求/)).toBeVisible();
+  await expect(page.getByRole('button', { name: '业务资格待验收' })).toBeDisabled();
+  await page.getByRole('button', { name: '物流订单', exact: true }).click();
+  await expect(page.getByRole('button', { name: '刷新' })).toBeDisabled();
+  await page.getByRole('button', { name: '下单草稿' }).click();
+  await expect(page.getByRole('button', { name: '真实下单保持禁用' })).toBeDisabled();
 });
