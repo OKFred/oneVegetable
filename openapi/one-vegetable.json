@@ -273,7 +273,10 @@
                           "url": "https://sc04.alicdn.com/kf/mock-solar-station.jpg",
                           "groupId": "2001",
                           "width": 1200,
-                          "height": 1200
+                          "height": 1200,
+                          "fileSize": 286720,
+                          "referenceCount": 4,
+                          "modifiedAt": "2026-08-11T03:20:00Z"
                         }
                       ],
                       "page": 1,
@@ -313,6 +316,38 @@
         "responses": {
           "201": {
             "description": "Uploaded photo",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Photo" } } }
+          },
+          "default": { "$ref": "#/components/responses/GatewayFailure" },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      }
+    },
+    "/photos/transfer": {
+      "post": {
+        "summary": "Transfer a public image URL into the Alibaba PhotoBank",
+        "operationId": "transferPhotoFromUrl",
+        "description": "The extension service worker downloads a public HTTP(S) image and uploads its bytes with alibaba.icbu.photobank.upload so the result includes a PhotoBank fileId.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PhotoTransferRequest" },
+              "examples": {
+                "default": {
+                  "value": {
+                    "url": "https://images.example.com/product-detail.jpg",
+                    "groupId": "2002",
+                    "fileName": "product-detail.jpg"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Transferred PhotoBank image",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Photo" } } }
           },
           "default": { "$ref": "#/components/responses/GatewayFailure" },
@@ -751,14 +786,46 @@
       "Photo": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "name", "url", "groupId", "width", "height"],
+        "required": [
+          "id",
+          "name",
+          "url",
+          "groupId",
+          "width",
+          "height",
+          "fileSize",
+          "referenceCount",
+          "modifiedAt"
+        ],
         "properties": {
-          "id": { "type": "string" },
+          "id": {
+            "type": "string",
+            "description": "Alibaba international PhotoBank fileId; persist it with the Schema value."
+          },
           "name": { "type": "string" },
           "url": { "type": "string", "format": "uri" },
           "groupId": { "type": "string" },
           "width": { "type": "integer", "minimum": 1 },
-          "height": { "type": "integer", "minimum": 1 }
+          "height": { "type": "integer", "minimum": 1 },
+          "fileSize": { "type": "integer", "minimum": 0, "description": "Image size in bytes." },
+          "referenceCount": { "type": "integer", "minimum": 0 },
+          "modifiedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PhotoTransferRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["url", "groupId"],
+        "properties": {
+          "url": { "type": "string", "format": "uri", "pattern": "^https?://" },
+          "groupId": { "type": "string" },
+          "fileName": { "type": "string", "minLength": 1, "maxLength": 255 },
+          "maxBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20971520,
+            "description": "Optional smaller Schema-derived limit. The service worker always caps downloads at 20 MiB."
+          }
         }
       },
       "PhotoPage": {
@@ -1023,6 +1090,19 @@
           "productId": { "type": "string" },
           "score": { "type": "number" },
           "issues": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "ProductDescriptionQualityIssue": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "source", "level", "message", "remediation", "fieldIds"],
+        "properties": {
+          "code": { "type": "string" },
+          "source": { "type": "string", "enum": ["alibaba-schema", "official", "project"] },
+          "level": { "type": "string", "enum": ["error", "warning", "suggestion"] },
+          "message": { "type": "string" },
+          "remediation": { "type": "string" },
+          "fieldIds": { "type": "array", "items": { "type": "string" } }
         }
       },
       "AlibabaProductAlibabaIcbuCategoryAttrGetRequest": {

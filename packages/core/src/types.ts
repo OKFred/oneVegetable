@@ -11,6 +11,8 @@ export type ProductMutationResult = components['schemas']['ProductMutationResult
 export type Photo = components['schemas']['Photo'];
 export type PhotoGroup = components['schemas']['PhotoGroup'];
 export type PhotoPage = components['schemas']['PhotoPage'];
+export type PhotoTransferRequest = components['schemas']['PhotoTransferRequest'];
+export type ProductDescriptionQualityIssue = components['schemas']['ProductDescriptionQualityIssue'];
 export type Order = components['schemas']['Order'];
 export type OrderPage = components['schemas']['OrderPage'];
 export type OrderFund = components['schemas']['OrderFund'];
@@ -76,6 +78,7 @@ export interface OperationMap {
   listPhotoGroups: { request: undefined; response: PhotoGroup[] };
   listPhotos: { request: PhotoListQuery; response: PhotoPage };
   uploadPhoto: { request: PhotoUploadRequest; response: Photo };
+  transferPhotoFromUrl: { request: PhotoTransferRequest; response: Photo };
   listOrders: { request: OrderListQuery; response: OrderPage };
   getOrderFund: { request: { orderId: string }; response: OrderFund };
   getOrderLogistics: { request: { orderId: string }; response: OrderLogistics };

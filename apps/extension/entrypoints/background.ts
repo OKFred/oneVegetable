@@ -32,6 +32,7 @@ const OPERATIONS = new Set<OperationId>([
   'listPhotoGroups',
   'listPhotos',
   'uploadPhoto',
+  'transferPhotoFromUrl',
   'listOrders',
   'getOrderFund',
   'getOrderLogistics',
@@ -53,6 +54,7 @@ const MUTATION_OPERATIONS = new Set<OperationId>([
   'updateProduct',
   'updateProductDisplay',
   'uploadPhoto',
+  'transferPhotoFromUrl',
   'createProductGroup'
 ]);
 
@@ -170,7 +172,10 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
         url: normalizeUrl(readString(item, ['url', 'photobank_url'])),
         groupId: readString(item, ['group_id']) ?? '-1',
         width: readNumber(item, ['width']) ?? 1,
-        height: readNumber(item, ['height']) ?? 1
+        height: readNumber(item, ['height']) ?? 1,
+        fileSize: readNumber(item, ['file_size']) ?? 0,
+        referenceCount: readNumber(item, ['reference_count']) ?? 0,
+        modifiedAt: normalizeDate(readString(item, ['gmt_modified', 'modified_at']))
       }));
       return {
         items,
@@ -192,7 +197,10 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
         url: normalizeUrl(readString(root, ['photobank_url', 'url'])),
         groupId: readString(request, ['groupId']) ?? '-1',
         width: readNumber(root, ['width']) ?? 1,
-        height: readNumber(root, ['height']) ?? 1
+        height: readNumber(root, ['height']) ?? 1,
+        fileSize: readNumber(root, ['file_size']) ?? 0,
+        referenceCount: 0,
+        modifiedAt: new Date().toISOString()
       };
     }
     case 'listOrders': {

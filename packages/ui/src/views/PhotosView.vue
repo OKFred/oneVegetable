@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
-import { FolderOpen, Upload } from '@lucide/vue';
+import { FolderOpen } from '@lucide/vue';
+
+import type { Photo } from '@one-vegetable/core';
 
 import PageHeader from '../components/PageHeader.vue';
+import PhotoBankPicker from '../components/PhotoBankPicker.vue';
 import QueryState from '../components/QueryState.vue';
-import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import { useServices } from '../lib/services';
 
 const { gateway } = useServices();
 const selectedGroup = ref('-1');
+const selectedPhotos = ref<Photo[]>([]);
 const groups = useQuery({
   queryKey: ['photo-groups'],
   queryFn: () => gateway.request('listPhotoGroups', undefined)
@@ -26,7 +29,7 @@ const photos = useQuery({
     title="图片银行"
     description="管理国际站图片分组与发品素材；上传文件时二进制内容不参与 TOP 签名。"
   >
-    <Button><Upload class="size-4" />上传图片</Button>
+    <PhotoBankPicker v-model="selectedPhotos" :max="6" button-label="选择或上传素材" />
   </PageHeader>
   <div class="grid gap-5 lg:grid-cols-[230px_1fr]">
     <Card class="h-fit p-3">

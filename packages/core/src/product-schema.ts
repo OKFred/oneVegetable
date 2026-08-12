@@ -171,6 +171,17 @@ export function isProductSchemaHtmlField(field: ProductSchemaField): boolean {
   );
 }
 
+export function isProductSchemaImageField(field: ProductSchemaField): boolean {
+  return (
+    field.id === 'scImages' ||
+    field.id.toLocaleLowerCase().includes('image') ||
+    field.values.some((value) => Boolean(value.attributes.fileId ?? value.attributes.img)) ||
+    field.rules.some((rule) =>
+      ['minTargetSizeRule', 'maxTargetSizeRule', 'minImageSizeRule', 'maxImageSizeRule'].includes(rule.name)
+    )
+  );
+}
+
 export function isProductSchemaFieldReadOnly(field: ProductSchemaField): boolean {
   return hasActiveBooleanRule(field, 'readOnlyRule') || hasActiveBooleanRule(field, 'disableRule');
 }

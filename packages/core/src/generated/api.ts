@@ -140,6 +140,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/photos/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Transfer a public image URL into the Alibaba PhotoBank
+         * @description The extension service worker downloads a public HTTP(S) image and uploads its bytes with alibaba.icbu.photobank.upload so the result includes a PhotoBank fileId.
+         */
+        post: operations["transferPhotoFromUrl"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/orders": {
         parameters: {
             query?: never;
@@ -372,6 +392,7 @@ export interface components {
             photoCount: number;
         };
         Photo: {
+            /** @description Alibaba international PhotoBank fileId; persist it with the Schema value. */
             id: string;
             name: string;
             /** Format: uri */
@@ -379,6 +400,19 @@ export interface components {
             groupId: string;
             width: number;
             height: number;
+            /** @description Image size in bytes. */
+            fileSize: number;
+            referenceCount: number;
+            /** Format: date-time */
+            modifiedAt: string;
+        };
+        PhotoTransferRequest: {
+            /** Format: uri */
+            url: string;
+            groupId: string;
+            fileName?: string;
+            /** @description Optional smaller Schema-derived limit. The service worker always caps downloads at 20 MiB. */
+            maxBytes?: number;
         };
         PhotoPage: components["schemas"]["PageMeta"] & {
             items: components["schemas"]["Photo"][];
@@ -519,6 +553,16 @@ export interface components {
             productId: string;
             score: number;
             issues: string[];
+        };
+        ProductDescriptionQualityIssue: {
+            code: string;
+            /** @enum {string} */
+            source: "alibaba-schema" | "official" | "project";
+            /** @enum {string} */
+            level: "error" | "warning" | "suggestion";
+            message: string;
+            remediation: string;
+            fieldIds: string[];
         };
         /** alibaba.icbu.category.attr.get request */
         AlibabaProductAlibabaIcbuCategoryAttrGetRequest: {
@@ -2478,6 +2522,32 @@ export interface operations {
         };
         responses: {
             /** @description Uploaded photo */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Photo"];
+                };
+            };
+            default: components["responses"]["GatewayFailure"];
+            "4XX": components["responses"]["GatewayFailure"];
+        };
+    };
+    transferPhotoFromUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhotoTransferRequest"];
+            };
+        };
+        responses: {
+            /** @description Transferred PhotoBank image */
             201: {
                 headers: {
                     [name: string]: unknown;

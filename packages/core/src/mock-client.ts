@@ -46,6 +46,7 @@ const PRODUCTS: Product[] = [
 
 const MOCK_PRODUCT_SCHEMA_XML = `<itemSchema version="2">
   <field id="productTitle" name="商品标题" type="input"><rules><rule name="requiredRule" value="true"/><rule name="minLengthRule" value="5"/><rule name="maxLengthRule" value="128"/><rule name="tipRule" value="面向买家的英文商品标题"/></rules><values><value>Portable solar power station 1000W</value></values></field>
+  <field id="scImages" name="商品主图" type="multiInput"><rules><rule name="requiredRule" value="true"/><rule name="maxInputNumRule" value="6"/><rule name="minTargetSizeRule" value="750x750"/></rules><value fileId="ph_001">https://sc04.alicdn.com/kf/mock-solar-station.jpg</value></field>
   <field id="keywords" name="关键词" type="multiInput"><rules><rule name="minInputNumRule" value="2"/><rule name="maxInputNumRule" value="3"/></rules><values><value>solar generator</value><value>portable power station</value></values></field>
   <field id="condition" name="商品状态" type="singleCheck"><options><option displayName="全新" value="new"/><option displayName="翻新" value="refurbished"/></options><values><value>new</value></values></field>
   <field id="certifications" name="认证" type="multiCheck"><options><option displayName="CE" value="ce"/><option displayName="RoHS" value="rohs"/><option displayName="FCC" value="fcc"/></options><values><value>ce</value><value>rohs</value></values></field>
@@ -93,7 +94,10 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
         url: 'https://placehold.co/800x800/0f172a/f8fafc?text=Solar+Station',
         groupId: '2001',
         width: 1200,
-        height: 1200
+        height: 1200,
+        fileSize: 286720,
+        referenceCount: 4,
+        modifiedAt: '2026-08-11T03:20:00Z'
       },
       {
         id: 'ph_002',
@@ -101,7 +105,10 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
         url: 'https://placehold.co/800x800/166534/f8fafc?text=Canvas+Bag',
         groupId: '2001',
         width: 1200,
-        height: 1200
+        height: 1200,
+        fileSize: 198400,
+        referenceCount: 1,
+        modifiedAt: '2026-08-10T09:12:00Z'
       },
       {
         id: 'ph_003',
@@ -109,7 +116,10 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
         url: 'https://placehold.co/800x800/334155/f8fafc?text=Dehydrator',
         groupId: '2002',
         width: 1600,
-        height: 1200
+        height: 1200,
+        fileSize: 348160,
+        referenceCount: 2,
+        modifiedAt: '2026-08-09T11:03:00Z'
       }
     ],
     page: 1,
@@ -122,7 +132,21 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
     url: 'https://placehold.co/800x800/155e75/f8fafc?text=Uploaded',
     groupId: '-1',
     width: 800,
-    height: 800
+    height: 800,
+    fileSize: 153600,
+    referenceCount: 0,
+    modifiedAt: '2026-08-12T04:00:00Z'
+  },
+  transferPhotoFromUrl: {
+    id: 'ph_transferred',
+    name: 'transferred-image.jpg',
+    url: 'https://sc04.alicdn.com/kf/mock-transferred-image.jpg',
+    groupId: '2002',
+    width: 1200,
+    height: 1200,
+    fileSize: 245760,
+    referenceCount: 0,
+    modifiedAt: '2026-08-12T04:01:00Z'
   },
   listOrders: {
     items: [
@@ -240,6 +264,29 @@ export class MockGatewayClient implements GatewayClient {
         data,
         contractValid: contractIssues.length === 0,
         contractIssues
+      } as ResponseOf<K>;
+    }
+    if (operation === 'uploadPhoto') {
+      const payload = _request as OperationMap['uploadPhoto']['request'];
+      return {
+        id: `ph_upload_${Date.now()}`,
+        name: payload.fileName,
+        url: `https://sc04.alicdn.com/kf/mock-${encodeURIComponent(payload.fileName)}`,
+        groupId: payload.groupId ?? '-1',
+        width: 1200,
+        height: 1200,
+        fileSize: Math.floor((payload.file.length * 3) / 4),
+        referenceCount: 0,
+        modifiedAt: new Date().toISOString()
+      } as ResponseOf<K>;
+    }
+    if (operation === 'transferPhotoFromUrl') {
+      const payload = _request as OperationMap['transferPhotoFromUrl']['request'];
+      const sourceName = new URL(payload.url).pathname.split('/').at(-1);
+      return {
+        ...structuredClone(MOCK_DATA.transferPhotoFromUrl),
+        name: payload.fileName ?? sourceName ?? 'transferred-image.jpg',
+        groupId: payload.groupId
       } as ResponseOf<K>;
     }
     return structuredClone(MOCK_DATA[operation]);

@@ -7,11 +7,13 @@ import { Plus, Trash2 } from '@lucide/vue';
 import {
   cloneProductSchemaInstance,
   isProductSchemaFieldDisabled,
+  isProductSchemaImageField,
   isProductSchemaFieldReadOnly,
   productSchemaFieldText,
   productSchemaFieldTexts,
   type ProductSchemaField,
   type ProductSchemaFieldIssue,
+  type Photo,
   withProductSchemaFieldText,
   withProductSchemaFieldTexts
 } from '@one-vegetable/core';
@@ -19,6 +21,7 @@ import {
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
+import PhotoBankPicker from './PhotoBankPicker.vue';
 
 const props = defineProps<{
   field: ProductSchemaField;
@@ -31,6 +34,29 @@ const disabled = computed(() => isProductSchemaFieldDisabled(props.field));
 const readOnly = computed(() => isProductSchemaFieldReadOnly(props.field));
 const fieldText = computed(() => productSchemaFieldText(props.field));
 const fieldTexts = computed(() => productSchemaFieldTexts(props.field));
+const imageField = computed(() => isProductSchemaImageField(props.field));
+const imageLimit = computed(() => {
+  const value = Number(
+    props.field.rules.find((rule) => rule.name === 'maxInputNumRule')?.value ??
+      (props.field.type === 'multiInput' ? 6 : 1)
+  );
+  return Number.isFinite(value) && value > 0 ? value : 1;
+});
+const selectedPhotos = computed(() =>
+  props.field.values
+    .filter((value) => value.text && value.attributes.fileId)
+    .map((value): Photo => ({
+      id: value.attributes.fileId ?? '',
+      name: value.attributes.fileName ?? value.text.split('/').at(-1) ?? '图片银行素材',
+      url: value.text,
+      groupId: value.attributes.groupId ?? '-1',
+      width: positiveNumber(value.attributes.width),
+      height: positiveNumber(value.attributes.height),
+      fileSize: nonNegativeNumber(value.attributes.fileSize),
+      referenceCount: nonNegativeNumber(value.attributes.referenceCount),
+      modifiedAt: value.attributes.modifiedAt ?? new Date(0).toISOString()
+    }))
+);
 const tip = computed(
   () => props.field.rules.find((rule) => rule.name === 'tipRule' || rule.name === 'devTipRule')?.value
 );
@@ -68,6 +94,35 @@ function toggleOption(value: string, checked: boolean): void {
   updateValue(checked ? [...new Set([...current, value])] : current.filter((item) => item !== value));
 }
 
+function updatePhotos(photos: Photo[]): void {
+  emit('update', {
+    ...props.field,
+    values: photos.map((photo) => ({
+      text: photo.url,
+      attributes: {
+        fileId: photo.id,
+        fileName: photo.name,
+        groupId: photo.groupId,
+        width: String(photo.width),
+        height: String(photo.height),
+        fileSize: String(photo.fileSize),
+        referenceCount: String(photo.referenceCount),
+        modifiedAt: photo.modifiedAt
+      }
+    }))
+  });
+}
+
+function positiveNumber(value: string | undefined): number {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : 1;
+}
+
+function nonNegativeNumber(value: string | undefined): number {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : 0;
+}
+
 function addInstance(): void {
   emit('update', {
     ...props.field,
@@ -100,8 +155,14 @@ function removeInstance(index: number): void {
     </div>
     <p v-if="tip" class="text-xs text-muted-foreground">{{ tip }}</p>
 
+    <PhotoBankPicker
+      v-if="imageField && (field.type === 'input' || field.type === 'multiInput')"
+      :model-value="selectedPhotos"
+      :max="imageLimit"
+      @update:model-value="updatePhotos"
+    />
     <Input
-      v-if="field.type === 'input'"
+      v-else-if="field.type === 'input'"
       :model-value="fieldText"
       :aria-label="field.name"
       @update:model-value="updateValue"
