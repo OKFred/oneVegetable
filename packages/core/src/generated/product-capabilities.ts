@@ -114,7 +114,8 @@ export const PRODUCT_CAPABILITY_DEFINITIONS = {
     "requestExample": {
       "attribute_request": {
         "attr_id": [
-          "123,456"
+          "123",
+          "456"
         ],
         "cat_id": 123
       }
@@ -269,11 +270,13 @@ export const PRODUCT_CAPABILITY_DEFINITIONS = {
     "requestExample": {
       "attribute_value_request": {
         "attribute_value_id": [
-          "123,456"
+          123,
+          456
         ],
         "cat_id": 123,
         "attribute_id": [
-          "123,456"
+          123,
+          456
         ]
       }
     },
@@ -1368,8 +1371,8 @@ export const PRODUCT_CAPABILITY_DEFINITIONS = {
         "custom_info": {
           "custom_contents": [
             {
-              "custom_type": "",
-              "min_order_quantity": ""
+              "custom_type": "demo",
+              "min_order_quantity": 123
             }
           ]
         },
@@ -1590,15 +1593,15 @@ export const PRODUCT_CAPABILITY_DEFINITIONS = {
     "errorCodes": [],
     "requestExample": {
       "param_product_top_publish_request": {
-        "cat_id": "",
-        "language": "",
-        "xml": ""
+        "cat_id": 123,
+        "language": "demo",
+        "xml": "demo"
       }
     },
     "responseExample": {
-      "product_id": "",
-      "trace_id": "",
-      "biz_success": ""
+      "product_id": "demo",
+      "trace_id": "demo",
+      "biz_success": false
     },
     "docUrl": "https://developer.alibaba.com/docs/doc.htm?articleId=119213&docType=1"
   },
@@ -1617,15 +1620,15 @@ export const PRODUCT_CAPABILITY_DEFINITIONS = {
     "errorCodes": [],
     "requestExample": {
       "param_product_top_publish_request": {
-        "cat_id": "",
-        "language": "",
-        "xml": ""
+        "cat_id": 123,
+        "language": "demo",
+        "xml": "demo"
       }
     },
     "responseExample": {
-      "product_id": "",
-      "trace_id": "",
-      "biz_success": ""
+      "product_id": "demo",
+      "trace_id": "demo",
+      "biz_success": false
     },
     "docUrl": "https://developer.alibaba.com/docs/doc.htm?articleId=119212&docType=1"
   },
@@ -1812,7 +1815,7 @@ export const PRODUCT_CAPABILITY_DEFINITIONS = {
       ],
       "category_id": 123,
       "description": "Enjoy your sports and music at the same time,very convenient",
-      "extra_context": "",
+      "extra_context": {},
       "group_id": 456,
       "keywords": [
         "mp3",
@@ -1979,7 +1982,7 @@ export const PRODUCT_CAPABILITY_DEFINITIONS = {
       ],
       "category_id": 123,
       "description": "Enjoy your sports and music at the same time,very convenient",
-      "extra_context": "",
+      "extra_context": {},
       "group_id": 456,
       "keywords": [
         "mp3",

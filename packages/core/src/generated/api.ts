@@ -235,7 +235,8 @@ export interface paths {
         /** Get a typed capability definition */
         get: operations["getCapabilityDefinition"];
         put?: never;
-        post?: never;
+        /** Call a method-typed product capability */
+        post: operations["callTypedProductCapability"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2629,6 +2630,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CapabilityDefinition"];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    callTypedProductCapability: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                method: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttributeGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrvalueGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetNewRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryIdMappingRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryLevelAttrGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryPostcatGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategorySchemaLevelGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuOpenProductPostRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductBatchUpdateDisplayRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductIdDecryptRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductListRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaUpdateRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductScoreGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateFieldRequest"];
+            };
+        };
+        responses: {
+            /** @description Capability response envelope */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CapabilityResponseEnvelope"];
                 };
             };
             "4XX": components["responses"]["GatewayFailure"];

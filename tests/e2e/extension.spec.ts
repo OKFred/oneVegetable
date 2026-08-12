@@ -36,5 +36,13 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
 
   await page.getByRole('button', { name: 'API 能力' }).click();
-  await expect(page.locator('tbody tr')).toHaveCount(84);
+  await expect(page.locator('tbody tr')).toHaveCount(86);
+  await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.product.schema.add');
+  await page.getByRole('button', { name: 'alibaba.icbu.product.schema.add', exact: true }).click();
+  await expect(page.getByText(/真实写能力尚未通过账号 smoke test/)).toBeVisible();
+  await expect(page.getByRole('button', { name: '调用能力' })).toBeDisabled();
+
+  await page.getByRole('button', { name: '商品' }).click();
+  await page.getByRole('tab', { name: 'Schema 发品/编辑' }).click();
+  await expect(page.getByRole('button', { name: '发布商品' })).toHaveCount(0);
 });

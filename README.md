@@ -25,6 +25,7 @@ pnpm dev:extension
 ```bash
 pnpm generate          # OpenAPI TypeScript 类型和 AJV standalone validators
 pnpm audit:apis        # 更新官方免费、非聚石塔 API 审计快照
+pnpm snapshot:product-docs # 从人工确认后的文档输入更新商品域快照
 pnpm typecheck
 pnpm test
 pnpm build
@@ -48,6 +49,10 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 
 - 正式网关为 `https://eco.taobao.com/router/rest`，支持 `hmac`、`md5` 和 `hmac-sha256`，默认 `hmac`。
 - 商品发布、草稿与更新使用 Schema 流程；不再把旧 `product.add/update` 作为主路径。
+- 商品页分为商品列表、Schema 发品/编辑、类目与分组、质量与上下架四个工作区。Schema XML 会解析为七类可视化字段，并保留只读 XML 预览与未知节点。
+- `openapi/one-vegetable.json` 是运行时唯一契约；`docs/alibaba-product-api-docs.json` 是离线生成输入，包含 25 个目录商品 API 和 2 个文章来源 Schema 发布 API。CI 不访问官方文档站。
+- 每个商品方法都有 `CapabilityRequestMap`、`CapabilityResponseMap` 和 CSP 安全的 standalone validator。非法请求不会出网；响应漂移会保留原始数据、`traceId` 和结构化告警。
+- 所有真实 mutation 方法均为逐方法 feature flag 关闭，Web Mock 可完整演示写流程；UI 没有自行开启真实写操作的入口。
 - `alibaba.seller.order.get` 需要聚石塔，v2 不提供该调用；订单页面组合使用列表、资金和物流接口。
 - `docs/alibaba-api-audit.json` 是 2026-08-12 的文档审计快照，共 84 个免费且非聚石塔候选 API。特定 ISV/业务资格接口默认关闭。
 - 当前没有真实国际站账号，自动化验证覆盖契约 Mock、签名、适配和 MV3 行为，不代表真实账号 smoke test 已通过。

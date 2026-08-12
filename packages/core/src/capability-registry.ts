@@ -4,7 +4,15 @@ import { API_CAPABILITIES } from './generated/capabilities';
 import { PRODUCT_CAPABILITY_DEFINITIONS } from './generated/product-capabilities';
 import * as validatorExports from './generated/validators';
 
-import type { ApiCapability, CapabilityContractIssue, CapabilityDefinition } from './types';
+import type {
+  ApiCapability,
+  CapabilityContractIssue,
+  CapabilityDefinition,
+  CapabilityRequestMap,
+  CapabilityResponseEnvelope,
+  CapabilityResponseMap,
+  GatewayClient
+} from './types';
 
 interface StandaloneValidator {
   (value: unknown): boolean;
@@ -96,4 +104,13 @@ export function listCapabilities(): ApiCapability[] {
 
 export function findCapability(method: string): ApiCapability | undefined {
   return listCapabilities().find((capability) => capability.method === method);
+}
+
+export async function callCapability<M extends keyof CapabilityRequestMap>(
+  client: GatewayClient,
+  method: M,
+  parameters: CapabilityRequestMap[M]
+): Promise<CapabilityResponseEnvelope<CapabilityResponseMap[M]>> {
+  const result = await client.request('callCapability', { method, parameters });
+  return result as CapabilityResponseEnvelope<CapabilityResponseMap[M]>;
 }

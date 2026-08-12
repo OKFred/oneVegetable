@@ -17,10 +17,13 @@ export type OrderFund = components['schemas']['OrderFund'];
 export type OrderLogistics = components['schemas']['OrderLogistics'];
 export type ApiCapability = components['schemas']['ApiCapability'];
 export type CapabilityCallRequest = components['schemas']['CapabilityCallRequest'];
-export type CapabilityCallResult = components['schemas']['CapabilityCallResult'];
 export type CapabilityDefinition = components['schemas']['CapabilityDefinition'];
 export type CapabilityContractIssue = components['schemas']['CapabilityContractIssue'];
-export type CapabilityResponseEnvelope = components['schemas']['CapabilityResponseEnvelope'];
+export type CapabilityResponseEnvelope<T = unknown> = Omit<
+  components['schemas']['CapabilityResponseEnvelope'],
+  'data'
+> & { data: T };
+export type CapabilityCallResult = CapabilityResponseEnvelope;
 export type ProductCategory = components['schemas']['ProductCategory'];
 export type ProductCategoryMapping = components['schemas']['ProductCategoryMapping'];
 export type ProductGroup = components['schemas']['ProductGroup'];
