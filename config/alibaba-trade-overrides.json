@@ -16,5 +16,10 @@
   },
   "alibaba.seller.auth.extend": {
     "risk": "mutation"
+  },
+  "alibaba.seller.trade.query.drafttype": {
+    "responseExample": {
+      "types": ["TA", "RFP"]
+    }
   }
 }

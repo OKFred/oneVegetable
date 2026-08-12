@@ -4,6 +4,7 @@ import type {
   ProductCapabilityResponseMap
 } from './generated/product-capabilities';
 import type { RfqCapabilityRequestMap, RfqCapabilityResponseMap } from './generated/rfq-capabilities';
+import type { TradeCapabilityRequestMap, TradeCapabilityResponseMap } from './generated/trade-capabilities';
 
 export type DashboardSummary = components['schemas']['DashboardSummary'];
 export type Product = components['schemas']['Product'];
@@ -46,8 +47,11 @@ export type RfqAttachmentUploadRequest = components['schemas']['RfqAttachmentUpl
 export type RfqAttachmentUploadResult = components['schemas']['RfqAttachmentUploadResult'];
 export type { ProductCapabilityRequestMap, ProductCapabilityResponseMap };
 export type { RfqCapabilityRequestMap, RfqCapabilityResponseMap };
-export interface CapabilityRequestMap extends ProductCapabilityRequestMap, RfqCapabilityRequestMap {}
-export interface CapabilityResponseMap extends ProductCapabilityResponseMap, RfqCapabilityResponseMap {}
+export type { TradeCapabilityRequestMap, TradeCapabilityResponseMap };
+export interface CapabilityRequestMap
+  extends ProductCapabilityRequestMap, RfqCapabilityRequestMap, TradeCapabilityRequestMap {}
+export interface CapabilityResponseMap
+  extends ProductCapabilityResponseMap, RfqCapabilityResponseMap, TradeCapabilityResponseMap {}
 export type GatewayError = components['schemas']['GatewayError'];
 
 export interface ProductListQuery {

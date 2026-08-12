@@ -541,7 +541,35 @@
                   { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqReadRequest" },
                   { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqRecommendRequest" },
                   { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqSearchRequest" },
-                  { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqdetailGetRequest" }
+                  { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqdetailGetRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerOrderListRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerOrderFundGetRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerOrderLogisticsGetRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeOrderCreateRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeOrderModifyRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeFulfillmentChannelGetRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeServiceChargeGetRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerAssuranceCreditCardRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaOrderTradeTtGetRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeAddressGetRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuEcologyWriteRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaIntentionOrderSaveRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerAddressSaveRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerTradeDecodeRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerTradeQueryDrafttypeRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuSnsoftCustomerSyncRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuXiaomanVaListRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncRequest" },
+                  {
+                    "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncRequest"
+                  },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerAuthExtendRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeAddressSchemaQueryRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeAddressFormSaveRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeAddressListQueryRequest" },
+                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeAddressDeleteRequest" }
                 ]
               }
             }
@@ -808,6 +836,233 @@
               "application/json": { "schema": { "$ref": "#/components/schemas/RfqQuotationResult" } }
             }
           },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
+          "default": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      }
+    },
+    "/trade-orders": {
+      "get": {
+        "summary": "List international trade orders",
+        "operationId": "listTradeOrders",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1 } },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100 }
+          },
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "buyerLoginId", "in": "query", "schema": { "type": "string" } },
+          { "name": "createDateStart", "in": "query", "schema": { "type": "string" } },
+          { "name": "createDateEnd", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trade order page",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TradeOrderPage" } } }
+          },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
+          "default": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      },
+      "post": {
+        "summary": "Create a trade assurance order",
+        "operationId": "createTradeOrder",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TradeOrderDraft" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Created trade order",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/TradeMutationResult" } }
+            }
+          },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
+          "default": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      }
+    },
+    "/trade-orders/{orderId}": {
+      "get": {
+        "summary": "Get an aggregate order detail without the Jushita-only API",
+        "operationId": "getTradeOrderAggregate",
+        "parameters": [{ "name": "orderId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": {
+            "description": "Aggregate trade order",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/TradeOrderAggregate" } }
+            }
+          },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
+          "default": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      },
+      "patch": {
+        "summary": "Modify a trade assurance order",
+        "operationId": "modifyTradeOrder",
+        "parameters": [{ "name": "orderId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TradeOrderDraft" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Modified trade order",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/TradeMutationResult" } }
+            }
+          },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
+          "default": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      }
+    },
+    "/trade-orders/{orderId}/fund": {
+      "get": {
+        "summary": "Get trade order fund information",
+        "operationId": "getTradeOrderFund",
+        "parameters": [{ "name": "orderId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": {
+            "description": "Get trade order fund information",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TradeFund" } } }
+          },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
+          "default": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      }
+    },
+    "/trade-orders/{orderId}/logistics": {
+      "get": {
+        "summary": "Get trade order logistics information",
+        "operationId": "getTradeOrderLogistics",
+        "parameters": [{ "name": "orderId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": {
+            "description": "Get trade order logistics information",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TradeLogistics" } } }
+          },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
+          "default": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      }
+    },
+    "/trade-orders/{orderId}/tt-account": {
+      "get": {
+        "summary": "Get trade order TT account",
+        "operationId": "getTradeTtAccount",
+        "parameters": [{ "name": "orderId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": {
+            "description": "Get trade order TT account",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TradeTtAccount" } } }
+          },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
+          "default": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      }
+    },
+    "/trade-orders/{orderId}/service-charge": {
+      "get": {
+        "summary": "Get trade service charge",
+        "operationId": "getTradeServiceCharge",
+        "parameters": [{ "name": "orderId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": {
+            "description": "Get trade service charge",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/TradeServiceCharge" } }
+            }
+          },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
+          "default": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      }
+    },
+    "/trade-fulfillment-channels": {
+      "get": {
+        "summary": "List supported trade fulfillment channels",
+        "operationId": "listTradeFulfillmentChannels",
+        "responses": {
+          "200": {
+            "description": "Fulfillment channels",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/TradeFulfillmentChannel" }
+                }
+              }
+            }
+          },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
+          "default": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      }
+    },
+    "/trade-address-schema": {
+      "get": {
+        "summary": "Get the declarative trade address form schema",
+        "operationId": "getTradeAddressSchema",
+        "responses": {
+          "200": {
+            "description": "Trade address schema",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/TradeAddressSchema" } }
+            }
+          },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
+          "default": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      }
+    },
+    "/trade-addresses": {
+      "get": {
+        "summary": "List trade addresses",
+        "operationId": "listTradeAddresses",
+        "responses": {
+          "200": {
+            "description": "Trade addresses",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/TradeAddress" } }
+              }
+            }
+          },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
+          "default": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      },
+      "post": {
+        "summary": "Save a trade address form",
+        "operationId": "saveTradeAddress",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TradeAddress" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved trade address",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TradeAddress" } } }
+          },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
+          "default": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      }
+    },
+    "/trade-addresses/{addressId}": {
+      "delete": {
+        "summary": "Delete a trade address",
+        "operationId": "deleteTradeAddress",
+        "parameters": [
+          { "name": "addressId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "204": { "description": "Trade address deleted" },
           "4XX": { "$ref": "#/components/responses/GatewayFailure" },
           "default": { "$ref": "#/components/responses/GatewayFailure" }
         }
@@ -3839,6 +4094,1810 @@
         },
         "title": "alibaba.icbu.rfq.search response"
       },
+      "AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ali_id"],
+        "properties": { "ali_id": { "type": "number", "description": "用户国际站账号Id" } },
+        "title": "alibaba.icbu.check.overseas.admittance request"
+      },
+      "AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exception": { "type": "string", "description": "异常" },
+              "code": { "type": "string", "description": "错误码" },
+              "response": { "type": "boolean", "description": "是否准入海外现货" },
+              "message": { "type": "string", "description": "错误提示文案" }
+            },
+            "description": "返回结果"
+          }
+        },
+        "title": "alibaba.icbu.check.overseas.admittance response"
+      },
+      "AlibabaTradeAlibabaIcbuEcologyWriteRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["symbol"],
+        "properties": { "symbol": { "type": "string", "description": "唯一标志" } },
+        "title": "alibaba.icbu.ecology.write request"
+      },
+      "AlibabaTradeAlibabaIcbuEcologyWriteResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": { "value": { "type": "string", "description": "生态准入是否成功" } },
+        "title": "alibaba.icbu.ecology.write response"
+      },
+      "AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["south_north_software_common_request"],
+        "properties": {
+          "south_north_software_common_request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["data_json"],
+            "properties": {
+              "data_json": {
+                "type": "string",
+                "description": "将包含所需字段（ccode cname等）的对象序列化成json字符串"
+              },
+              "for_test": { "type": "boolean", "description": "是否为测试数据" }
+            },
+            "description": "请求参数"
+          }
+        },
+        "title": "alibaba.icbu.snsoft.account.bill.sync request"
+      },
+      "AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "success": { "type": "boolean", "description": "是否成功" },
+              "error_code": { "type": "string", "description": "错误码" },
+              "error_msg": { "type": "string", "description": "错误信息" }
+            },
+            "description": "返回结果"
+          }
+        },
+        "title": "alibaba.icbu.snsoft.account.bill.sync response"
+      },
+      "AlibabaTradeAlibabaIcbuSnsoftCustomerSyncRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["south_north_software_common_request"],
+        "properties": {
+          "south_north_software_common_request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["data_json"],
+            "properties": {
+              "data_json": {
+                "type": "string",
+                "description": "将包含所需字段（ccode cname等）的对象序列化成json字符串"
+              },
+              "for_test": { "type": "boolean", "description": "是否为测试数据" }
+            },
+            "description": "请求参数"
+          }
+        },
+        "title": "alibaba.icbu.snsoft.customer.sync request"
+      },
+      "AlibabaTradeAlibabaIcbuSnsoftCustomerSyncResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "success": { "type": "boolean", "description": "是否成功" },
+              "error_code": { "type": "string", "description": "错误码" },
+              "error_msg": { "type": "string", "description": "错误信息" }
+            },
+            "description": "返回结果"
+          }
+        },
+        "title": "alibaba.icbu.snsoft.customer.sync response"
+      },
+      "AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["south_north_software_common_request"],
+        "properties": {
+          "south_north_software_common_request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["data_json"],
+            "properties": {
+              "data_json": {
+                "type": "string",
+                "description": "将包含所需字段（ccode cname等）的对象序列化成json字符串"
+              },
+              "for_test": { "type": "boolean", "description": "是否为测试数据" }
+            },
+            "description": "请求参数"
+          }
+        },
+        "title": "alibaba.icbu.snsoft.sale.order.detail.sync request"
+      },
+      "AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "success": { "type": "boolean", "description": "是否成功" },
+              "error_code": { "type": "string", "description": "错误码" },
+              "error_msg": { "type": "string", "description": "错误信息" }
+            },
+            "description": "返回结果"
+          }
+        },
+        "title": "alibaba.icbu.snsoft.sale.order.detail.sync response"
+      },
+      "AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["south_north_software_common_request"],
+        "properties": {
+          "south_north_software_common_request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["data_json"],
+            "properties": {
+              "for_test": { "type": "boolean", "description": "是否为测试数据" },
+              "data_json": {
+                "type": "string",
+                "description": "将包含所需字段（ccode cname等）的对象序列化成json字符串"
+              }
+            },
+            "description": "请求参数"
+          }
+        },
+        "title": "alibaba.icbu.snsoft.shipment.finalaccount.sync request"
+      },
+      "AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "success": { "type": "boolean", "description": "是否成功" },
+              "error_code": { "type": "string", "description": "错误码" },
+              "error_msg": { "type": "string", "description": "错误信息" }
+            },
+            "description": "返回结果"
+          }
+        },
+        "title": "alibaba.icbu.snsoft.shipment.finalaccount.sync response"
+      },
+      "AlibabaTradeAlibabaIcbuXiaomanVaListRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["user_id"],
+        "properties": {
+          "user_id": { "type": "string", "description": "卖家accountId" },
+          "context": { "type": "string", "description": "context" },
+          "idempotent_id": { "type": "string", "description": "idempotent_id" }
+        },
+        "title": "alibaba.icbu.xiaoman.va.list request"
+      },
+      "AlibabaTradeAlibabaIcbuXiaomanVaListResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "va_list": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "account_name": { "type": "string", "description": "账户名" },
+                    "account_no": { "type": "string", "description": "账号" },
+                    "area": { "type": "string", "description": "地区" },
+                    "global": { "type": "boolean", "description": "是否是本地" },
+                    "gmt_create": { "type": ["integer", "string"], "description": "创建时间" },
+                    "gmt_modified": { "type": ["integer", "string"], "description": "修改时间" },
+                    "merchant": { "type": "string", "description": "商户" },
+                    "open_date": { "type": "string", "description": "开通日期" },
+                    "status": { "type": "string", "description": "状态" },
+                    "beneficiary_bank_name": { "type": "string", "description": "beneficiary_bank_name" },
+                    "beneficiary_bank_address": { "type": "string", "description": "beneficiaryAccountInfo" },
+                    "beneficiary_bank_swift_code": {
+                      "type": "string",
+                      "description": "beneficiary_bank_swift_code"
+                    },
+                    "beneficiary_country": { "type": "string", "description": "beneficiary_country" },
+                    "currency": { "type": "string", "description": "currency" },
+                    "country": { "type": "string", "description": "country" },
+                    "beneficiary_address": { "type": "string", "description": "beneficiaryAddress" },
+                    "routing_no": { "type": "string", "description": "routingNo" },
+                    "beneficiary_bank_code": { "type": "string", "description": "beneficiaryBankCode" },
+                    "beneficiary_bank_branch_code": {
+                      "type": "string",
+                      "description": "beneficiaryBankBranchCode"
+                    }
+                  },
+                  "description": "va列表"
+                },
+                "description": "va列表"
+              }
+            },
+            "description": "结果集"
+          },
+          "successful": { "type": "boolean", "description": "是否成功" },
+          "errcode": { "type": "string", "description": "错误码" },
+          "message": { "type": "string", "description": "消息" }
+        },
+        "title": "alibaba.icbu.xiaoman.va.list response"
+      },
+      "AlibabaTradeAlibabaIntentionOrderSaveRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "intention_order": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "buyer_fax": { "type": "string", "description": "买家传真号码" },
+              "buyer_telephone": { "type": "string", "description": "买家电话号码" },
+              "buyer_email": { "type": "string", "description": "买家电邮地址" },
+              "remark": { "type": "string", "description": "订单备注" },
+              "trade_term": { "type": "string", "description": "贸易条款" },
+              "buyer_zip_code": { "type": "string", "description": "买家邮编" },
+              "order_amount": { "type": "string", "description": "订单总价" },
+              "buyer_city": { "type": "string", "description": "买家城市" },
+              "intention_order_logistics": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "shipment_fee": { "type": "string", "description": "物流费" },
+                  "country": { "type": "string", "description": "收货国家" },
+                  "city": { "type": "string", "description": "收货城市" },
+                  "city_code": { "type": "string", "description": "收货城市代码" },
+                  "contact_person": { "type": "string", "description": "收货人" },
+                  "departure_port": { "type": "string", "description": "发货港" },
+                  "delivery_date_type": {
+                    "type": "string",
+                    "description": "* 发货日期类型：绝对时间/预付款收齐/尾款收齐 * 枚举值：absolute/relative/relative_balance;"
+                  },
+                  "address_id": {
+                    "type": "string",
+                    "description": "物流地址ID（根据国际站的物流地址ID保持一致）"
+                  },
+                  "delivery_date_relative_duration": {
+                    "type": "number",
+                    "description": "* 发货时间，适用于预付款收齐后多少天发货、尾款收齐后多少天发货两种发货类型</br>      * 单位：天"
+                  },
+                  "shipment_method": { "type": "string", "description": "运输方式" },
+                  "province": { "type": "string", "description": "收货省/州" },
+                  "departure_city_code": { "type": "string", "description": "发货城市代码" },
+                  "country_code": { "type": "string", "description": "收货国家代码" },
+                  "delivery_date_absolute_time": {
+                    "type": "string",
+                    "description": "绝对发货时间 ，格式传 \"yyyy-MM-dd HH:mm:ss\""
+                  },
+                  "fax": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "area": { "type": "string", "description": "收货人传真区域号码" },
+                      "country": { "type": "string", "description": "收货人传真国家号码" },
+                      "number": { "type": "string", "description": "收货人传真号码" }
+                    },
+                    "description": "收货人传真结构"
+                  },
+                  "departure_port_code": { "type": "string", "description": "发货港口代码" },
+                  "zip": { "type": "string", "description": "收货人邮编" },
+                  "address": { "type": "string", "description": "收货详细地址" },
+                  "departure_city": { "type": "string", "description": "发货城市" },
+                  "province_code": { "type": "string", "description": "收货人省/州代码" },
+                  "mobile": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "area": { "type": "string", "description": "收货人移动电话区域号码" },
+                      "country": { "type": "string", "description": "收货人移动电话国家号码" },
+                      "number": { "type": "string", "description": "收货人移动电话号码" }
+                    },
+                    "description": "收货人移动电话结构"
+                  },
+                  "telephone": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "area": { "type": "string", "description": "收货人电话区域号码" },
+                      "country": { "type": "string", "description": "收货人电话国家号码" },
+                      "number": { "type": "string", "description": "收货人电话号码" }
+                    },
+                    "description": "收货人电话结构"
+                  },
+                  "port_code": { "type": "string", "description": "收货人港口代码" },
+                  "carrier": { "type": "string", "description": "承运商" },
+                  "port": { "type": "string", "description": "收货人港口名称" },
+                  "carrier_code": { "type": "string", "description": "承运商代码" },
+                  "alternate_address": { "type": "string", "description": "收货人备份详细地址" },
+                  "properties": { "type": "string", "description": "物流扩展属性" }
+                },
+                "description": "意向单物流结构"
+              },
+              "currency": { "type": "string", "description": "交易货币类型" },
+              "source_channel_refer_id": { "type": "string", "description": "渠道订单ID" },
+              "buyer_province": { "type": "string", "description": "买家省/州" },
+              "buyer_contact_address": { "type": "string", "description": "买家联系地址" },
+              "buyer_country_port": { "type": "string", "description": "买家收货港口名称" },
+              "intention_order_products": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "product_desc": { "type": "string", "description": "商品描述" },
+                    "product_spec": { "type": "string", "description": "商品规格描述" },
+                    "sku_id": { "type": "string", "description": "SKU ID,跟国际站SKU ID保持一致" },
+                    "quantity": { "type": "string", "description": "商品数量" },
+                    "original_unit_price": { "type": "string", "description": "商品原始单价" },
+                    "unit_price": { "type": "string", "description": "商品单价" },
+                    "unit": { "type": "string", "description": "商品单位" },
+                    "image_url": {
+                      "type": "string",
+                      "description": "商品图片地址URL，先调用API（alibaba.order.picture.upload）上传图片"
+                    },
+                    "type": { "type": "string", "description": "商品类型" },
+                    "name": { "type": "string", "description": "商品名称" },
+                    "product_id": { "type": "number", "description": "商品ID，跟国际站商品ID保持一致" },
+                    "properties": { "type": "string", "description": "商品扩展属性" }
+                  },
+                  "description": "意向单商品结构"
+                },
+                "description": "意向单商品结构"
+              },
+              "buyer_country_port_code": { "type": "string", "description": "买家收货港口代码" },
+              "intention_order_id": {
+                "type": "string",
+                "description": "意向单ID，如果是创建意向单不需要填写"
+              },
+              "buyer_name": { "type": "string", "description": "买家名称" },
+              "buyer_company_name": { "type": "string", "description": "买家公司名称" },
+              "buyer_country_code": { "type": "string", "description": "买家国家代码" },
+              "buyer_country": { "type": "string", "description": "买家国家" },
+              "advanced_amount": { "type": "string", "description": "预付款金额" },
+              "buyer_province_code": { "type": "string", "description": "买家省/州代码" },
+              "buyer_city_code": { "type": "string", "description": "买家城市代码" },
+              "buyer_mobile": { "type": "string", "description": "买家移动电话" },
+              "properties": { "type": "string", "description": "订单扩展属性" },
+              "status": {
+                "type": "string",
+                "description": "订单状态<br />DRAFT/APPROACHED/BUYER_CONFIRMED/CONFIRMED/CANCELLED：起草意向单/已和买家联系/买家已确认/双方确定/已取消"
+              }
+            },
+            "description": "意向单结构"
+          }
+        },
+        "title": "alibaba.intention.order.save request"
+      },
+      "AlibabaTradeAlibabaIntentionOrderSaveResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": { "intention_id": { "type": "string", "description": "意向单ID" } },
+            "description": "返回值接口"
+          }
+        },
+        "title": "alibaba.intention.order.save response"
+      },
+      "AlibabaTradeAlibabaOrderTradeTtGetRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["e_trade_id"],
+        "properties": { "e_trade_id": { "type": "string", "description": "订单号" } },
+        "title": "alibaba.order.trade.tt.get request"
+      },
+      "AlibabaTradeAlibabaOrderTradeTtGetResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "pay_amount": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "amount": { "type": "string", "description": "金额" },
+                  "currency": { "type": "string", "description": "币种" }
+                },
+                "description": "当前需要支付的金额"
+              },
+              "default_tt_account": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "beneficiary_account_no": { "type": "string", "description": "收款人银行账号" },
+                  "bank_code": { "type": "string", "description": "银行代码" },
+                  "beneficiary_bank": { "type": "string", "description": "收款人银行名称" },
+                  "destination": { "type": "string", "description": "受益目的国" },
+                  "beneficiary_bank_address": { "type": "string", "description": "收款银行地址" },
+                  "beneficiary_address": { "type": "string", "description": "收款人地址" },
+                  "payment_transaction_fee": { "type": "string", "description": "支付手续费" },
+                  "branch_code": { "type": "string", "description": "分行代码" },
+                  "beneficiary_name": { "type": "string", "description": "收款人名称" },
+                  "currency": { "type": "string", "description": "币种" },
+                  "beneficiary_bank_swift_code": { "type": "string", "description": "收款银行Swift编码" },
+                  "estimated_payment_receipt": { "type": "string", "description": "预计到账时长" }
+                },
+                "description": "国际tt账号"
+              },
+              "us_tt_account": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "beneficiary_account_no": { "type": "string", "description": "收款人银行账号" },
+                  "bank_code": { "type": "string", "description": "银行代码" },
+                  "beneficiary_bank": { "type": "string", "description": "收款人银行名称" },
+                  "destination": { "type": "string", "description": "受益目的国" },
+                  "beneficiary_bank_address": { "type": "string", "description": "收款银行地址" },
+                  "beneficiary_address": { "type": "string", "description": "收款人地址" },
+                  "payment_transaction_fee": { "type": "string", "description": "支付手续费" },
+                  "branch_code": { "type": "string", "description": "分行代码" },
+                  "beneficiary_name": { "type": "string", "description": "收款人名称" },
+                  "currency": { "type": "string", "description": "币种" },
+                  "beneficiary_bank_swift_code": { "type": "string", "description": "收款银行Swift编码" },
+                  "estimated_payment_receipt": { "type": "string", "description": "预计到账时长" },
+                  "aba_no": { "type": "string", "description": "美国银行协会（ABA）代码/汇款路线代码" },
+                  "ach_payment_code": { "type": "string", "description": "ACH支付代码,美国独有" }
+                },
+                "description": "{}"
+              },
+              "guide_content": { "type": "string", "description": "引导文案" },
+              "remark": { "type": "string", "description": "备注" }
+            },
+            "description": "对象"
+          }
+        },
+        "title": "alibaba.order.trade.tt.get response"
+      },
+      "AlibabaTradeAlibabaSellerAddressSaveRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["param_trade_ecology_address_save_request"],
+        "properties": {
+          "param_trade_ecology_address_save_request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["address", "buyer_email", "contact", "contact_person"],
+            "properties": {
+              "address": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["address", "city", "country", "province"],
+                "properties": {
+                  "address": { "type": "string", "description": "主地址" },
+                  "address2": { "type": "string", "description": "备用地址" },
+                  "city": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["name"],
+                    "properties": { "name": { "type": "string", "description": "城市名" } },
+                    "description": "城市"
+                  },
+                  "country": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["name", "code"],
+                    "properties": {
+                      "name": { "type": "string", "description": "国家名" },
+                      "code": { "type": "string", "description": "国家code" }
+                    },
+                    "description": "国家"
+                  },
+                  "province": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["name"],
+                    "properties": { "name": { "type": "string", "description": "省名" } },
+                    "description": "省"
+                  },
+                  "zip": { "type": "string", "description": "邮编" }
+                },
+                "description": "地址"
+              },
+              "address_id": {
+                "type": "string",
+                "description": "地址id，不传则创建一个新的，传了的话就更新该地址"
+              },
+              "buyer_email": { "type": "string", "description": "买家邮箱" },
+              "contact": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "mobile_no": { "type": "string", "description": "号码" },
+                  "phone_code": { "type": "string", "description": "区号" }
+                },
+                "description": "联系人"
+              },
+              "contact_person": { "type": "string", "description": "联系人" }
+            },
+            "description": "{}"
+          }
+        },
+        "title": "alibaba.seller.address.save request"
+      },
+      "AlibabaTradeAlibabaSellerAddressSaveResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": { "address_id": { "type": "string", "description": "地址id" } },
+            "description": "{}"
+          }
+        },
+        "title": "alibaba.seller.address.save response"
+      },
+      "AlibabaTradeAlibabaSellerAssuranceCreditCardRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "title": "alibaba.seller.assurance.credit.card request"
+      },
+      "AlibabaTradeAlibabaSellerAssuranceCreditCardResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "value": { "type": "string", "description": "请注意是json数组 的 jsonstring 字符串" }
+        },
+        "title": "alibaba.seller.assurance.credit.card response"
+      },
+      "AlibabaTradeAlibabaSellerAuthExtendRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "title": "alibaba.seller.auth.extend request"
+      },
+      "AlibabaTradeAlibabaSellerAuthExtendResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": { "expire_time": { "type": "number", "description": "过期时间" } },
+        "title": "alibaba.seller.auth.extend response"
+      },
+      "AlibabaTradeAlibabaSellerOrderFundGetRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["e_trade_id"],
+        "properties": {
+          "e_trade_id": { "type": "string", "description": "订单号" },
+          "data_select": {
+            "type": "string",
+            "description": "不传默认查询fund_serviceFee和fund_fundPay <br />fund_refund 退款信息 <br />fund_serviceFee 订单的服务费<br />fund_fundPay 预付款和尾款的支付信息 <br /> 多个参数英文逗号分隔即可"
+          }
+        },
+        "title": "alibaba.seller.order.fund.get request"
+      },
+      "AlibabaTradeAlibabaSellerOrderFundGetResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "fund_pay_list": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "pay_amount": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "amount": { "type": "string", "description": "金额" },
+                        "currency": { "type": "string", "description": "币种" }
+                      },
+                      "description": "支付金额"
+                    },
+                    "pay_method": {
+                      "type": "string",
+                      "description": "支付方式(TT, CREDIT_CARD, E_CHECKING, OTHER, LC, BOLETO;)"
+                    },
+                    "pay_status": {
+                      "type": "string",
+                      "description": "支付状态:<br /> UNPAY //未支付<br /> PAYING,    //买家支付中，主要是包含验证的过程<br /> PAID,      //买家支付完成，对应批发是支付成功<br /> CAPTURED,  //请款完成，到这步就代表资金会到账，对应批发是审核成功<br /> RELATING,  //关联中，挂帐就会进入此状态<br /> FULFILLED, //已完成，代表这个支付单已经收齐（自动收齐或者手动收齐）<br /> FAILED,    //支付失败，可以重新进行支付<br /> CANCELED,  //支付撤销，可以重新进行支付 <br />     CLOSED;    //支付单被关闭，终态)"
+                    },
+                    "pay_step": {
+                      "type": "string",
+                      "description": "支付阶段(ADVANCE//预付款, BALANCE//尾款)"
+                    },
+                    "pay_time": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "format_date": {
+                          "type": "string",
+                          "description": "格式化后的时间(平台按美西时区会格式化好)"
+                        },
+                        "timestamp": { "type": "number", "description": "时间戳" }
+                      },
+                      "description": "支付时间"
+                    },
+                    "receive_amount": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "amount": { "type": "string", "description": "金额" },
+                        "currency": { "type": "string", "description": "币种" }
+                      },
+                      "description": "到账金额"
+                    },
+                    "receive_time": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "timestamp": { "type": "number", "description": "时间戳" },
+                        "format_date": {
+                          "type": "string",
+                          "description": "格式化后的时间(平台按美西时区会格式化好)"
+                        }
+                      },
+                      "description": "到账时间"
+                    },
+                    "should_pay_amount": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "amount": { "type": "string", "description": "金额" },
+                        "currency": { "type": "string", "description": "币种" }
+                      },
+                      "description": "应付金额"
+                    },
+                    "fund_pay_detail_list": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "pay_amount": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "amount": { "type": "string", "description": "金额" },
+                              "currency": { "type": "string", "description": "币种" }
+                            },
+                            "description": "支付金额"
+                          },
+                          "pay_time": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "timestamp": { "type": "number", "description": "时间戳" },
+                              "format_date": {
+                                "type": "string",
+                                "description": "格式化后的时间(平台按美西时区会格式化好)"
+                              }
+                            },
+                            "description": "支付时间"
+                          },
+                          "receive_amount": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "amount": { "type": "string", "description": "金额" },
+                              "currency": { "type": "string", "description": "币种" }
+                            },
+                            "description": "实收金额"
+                          },
+                          "receive_time": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "timestamp": { "type": "number", "description": "时间戳" },
+                              "format_date": {
+                                "type": "string",
+                                "description": "格式化后的时间(平台按美西时区会格式化好)"
+                              }
+                            },
+                            "description": "到账时间"
+                          },
+                          "pay_status": {
+                            "type": "string",
+                            "description": "支付状态:<br /> UNPAY //未支付<br /> PAYING,    //买家支付中，主要是包含验证的过程<br /> PAID,      //买家支付完成，对应批发是支付成功<br /> CAPTURED,  //请款完成，到这步就代表资金会到账，对应批发是审核成功<br /> RELATING,  //关联中，挂帐就会进入此状态<br /> FULFILLED, //已完成，代表这个支付单已经收齐（自动收齐或者手动收齐）<br /> FAILED,    //支付失败，可以重新进行支付<br /> CANCELED,  //支付撤销，可以重新进行支付 <br />     CLOSED;    //支付单被关闭，终态)"
+                          },
+                          "pay_method": {
+                            "type": "string",
+                            "description": "支付方式(TT, CREDIT_CARD, E_CHECKING, OTHER, LC, BOLETO;)"
+                          },
+                          "id": { "type": "number", "description": "支付详细信息主键id" }
+                        },
+                        "description": "支付详细信息列表(包含预付款和尾款)"
+                      },
+                      "description": "支付详细信息列表(包含预付款和尾款)"
+                    }
+                  },
+                  "description": "支付信息列表(包含预付款和尾款)"
+                },
+                "description": "支付信息列表(包含预付款和尾款)"
+              },
+              "service_fee": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "amount": { "type": "string", "description": "金额" },
+                  "currency": { "type": "string", "description": "币种" }
+                },
+                "description": "预估交易服务费"
+              },
+              "refund_list": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "amount": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "currency": { "type": "string", "description": "币种" },
+                        "amount": { "type": "string", "description": "金额" }
+                      },
+                      "description": "退款金额"
+                    },
+                    "refund_time": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "timestamp": { "type": "number", "description": "时间戳" },
+                        "format_date": {
+                          "type": "string",
+                          "description": "格式化后的时间(平台按美西时区会格式化好)"
+                        }
+                      },
+                      "description": "退款最后更新时间"
+                    },
+                    "id": { "type": "number", "description": "退款id" }
+                  },
+                  "description": "已成功退款的信息"
+                },
+                "description": "已成功退款的信息"
+              }
+            },
+            "description": "资金信息"
+          }
+        },
+        "title": "alibaba.seller.order.fund.get response"
+      },
+      "AlibabaTradeAlibabaSellerOrderListRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["param_trade_ecology_order_list_query"],
+        "properties": {
+          "param_trade_ecology_order_list_query": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["role"],
+            "properties": {
+              "create_date_from": {
+                "type": ["integer", "string"],
+                "description": "已经过时,请使用create_date_start"
+              },
+              "create_date_to": {
+                "type": ["integer", "string"],
+                "description": "已经过时,请使用create_date_end"
+              },
+              "other_login_id": {
+                "type": "string",
+                "description": "交易对方登录账号(对卖家来说，就是买家登录账号)"
+              },
+              "page_size": { "type": "number", "description": "每页数量，最大限制100" },
+              "role": { "type": "string", "description": "角色(seller,buyer)" },
+              "sales_man_login_id": { "type": "string", "description": "业务员登录账号" },
+              "start_page": { "type": "number", "description": "分页起始页，从0开始" },
+              "status": {
+                "type": "string",
+                "description": "订单状态( /** * 待付预付款 */ unpay, /** * 买家支付中，主要是包含验证的过程 */ paying, /** * 买家支付完成，对应批发是支付成功 */ paid, /** * 关联中，挂帐就会进入此状态 */ relating, /** * 请款完成，到这步就代表资金会到账，对应批发是审核成功 */ captured, /** * 待卖家发货 */ undeliver, /** * 发货中 */ delivering, /** * 待确认收货 */ wait_confirm_receipt, /** * 意向订单，待起草信用保障订单 */ intention_processing, /** * 交易关闭，取消 */ trade_close, /** * 交易成功，完成 */ trade_success, /** * 待确认修改合同 */ wait_confirm_modify, /** * 交易不可用 */ trade_unavailable, /** * 拒付 */ charge_back, /** * 冻结中（暂时没区分） */ frozen)"
+              },
+              "create_date_start": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "date_str": { "type": "string", "description": "格式化时间(yyyy-MM-dd HH:mm:ss)" },
+                  "time": { "type": "number", "description": "时间戳" }
+                },
+                "description": "创建时间开始,美国时间"
+              },
+              "create_date_end": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "date_str": { "type": "string", "description": "格式化时间(yyyy-MM-dd HH:mm:ss)" },
+                  "time": { "type": "number", "description": "时间戳" }
+                },
+                "description": "创建时间结束, 美国时间"
+              },
+              "modified_date_start": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "date_str": { "type": "string", "description": "格式化时间(yyyy-MM-dd HH:mm:ss)" },
+                  "time": { "type": "number", "description": "时间戳" }
+                },
+                "description": "修改时间开始,美国时间"
+              },
+              "modified_date_end": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "date_str": { "type": "string", "description": "格式化时间(yyyy-MM-dd HH:mm:ss)" },
+                  "time": { "type": "number", "description": "时间戳" }
+                },
+                "description": "修改时间结束,美国时间"
+              }
+            },
+            "description": "请求参数对象"
+          }
+        },
+        "title": "alibaba.seller.order.list request"
+      },
+      "AlibabaTradeAlibabaSellerOrderListResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "error_code": { "type": "string", "description": "错误码" },
+              "error_message": { "type": "string", "description": "错误信息提示" },
+              "success": { "type": "boolean", "description": "是否成功" },
+              "value": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "order_list": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "trade_id": { "type": "string", "description": "订单号" },
+                        "create_date": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "timestamp": { "type": "number", "description": "时间戳" },
+                            "format_date": {
+                              "type": "string",
+                              "description": "格式化时间 MMM. d, yyyy, HH:mm:ss z."
+                            }
+                          },
+                          "description": "创建时间(美国时间)"
+                        },
+                        "modify_date": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "timestamp": { "type": "number", "description": "时间戳" },
+                            "format_date": {
+                              "type": "string",
+                              "description": "格式化时间 MMM. d, yyyy, HH:mm:ss z."
+                            }
+                          },
+                          "description": "修改时间(美国时间)"
+                        }
+                      },
+                      "description": "订单对象"
+                    },
+                    "description": "订单对象"
+                  },
+                  "total_count": { "type": "number", "description": "总记录数" }
+                },
+                "description": "列表对象"
+              }
+            },
+            "description": "返回结果"
+          }
+        },
+        "title": "alibaba.seller.order.list response"
+      },
+      "AlibabaTradeAlibabaSellerOrderLogisticsGetRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["e_trade_id"],
+        "properties": {
+          "e_trade_id": { "type": "string", "description": "订单号" },
+          "data_select": { "type": "string", "description": "logistic_order 是否查物流单" }
+        },
+        "title": "alibaba.seller.order.logistics.get request"
+      },
+      "AlibabaTradeAlibabaSellerOrderLogisticsGetResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "agreed_shipment_date": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "format_date": {
+                    "type": "string",
+                    "description": "格式化后的时间(平台按美西时区会格式化好)"
+                  },
+                  "timestamp": { "type": "number", "description": "时间戳" }
+                },
+                "description": "约定发货时间(相对时间在支付后可以计算出来)"
+              },
+              "logistic_status": {
+                "type": "string",
+                "description": "发货状态:<br /> UNDELIVERED 未发货,<br /> DELIVERING 发货中,<br /> PART_DELIVERED 部分发货,<br /> DELIVERED 已发货,<br /> CONFIRM_RECEIPT 已确认收货"
+              },
+              "shipment_date": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "format_date": {
+                    "type": "string",
+                    "description": "格式化后的时间(平台按美西时区会格式化好)"
+                  },
+                  "timestamp": { "type": "number", "description": "时间戳" }
+                },
+                "description": "实际发货时间"
+              },
+              "shipping_order_list": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "goods": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "product_id": { "type": "string", "description": "商品ID" },
+                          "quantity": { "type": "string", "description": "商品数量" }
+                        },
+                        "description": "货品列表"
+                      },
+                      "description": "货品列表"
+                    },
+                    "voucher": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "logistics_type": { "type": "string", "description": "物流类型" },
+                        "service_provider": { "type": "string", "description": "物流承运商名称" },
+                        "tracking_number": { "type": "string", "description": "物流订单编号" }
+                      },
+                      "description": "物流凭证信息"
+                    }
+                  },
+                  "description": "物流订单列表"
+                },
+                "description": "物流订单列表"
+              },
+              "tracking_url": { "type": "string", "description": "物流tracking url" }
+            },
+            "description": "物流信息"
+          }
+        },
+        "title": "alibaba.seller.order.logistics.get response"
+      },
+      "AlibabaTradeAlibabaSellerTradeDecodeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["encryptor_id"],
+        "properties": { "encryptor_id": { "type": "string", "description": "密文" } },
+        "title": "alibaba.seller.trade.decode request"
+      },
+      "AlibabaTradeAlibabaSellerTradeDecodeResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": { "value": { "type": "number", "description": "明文" } },
+        "title": "alibaba.seller.trade.decode response"
+      },
+      "AlibabaTradeAlibabaSellerTradeQueryDrafttypeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "title": "alibaba.seller.trade.query.drafttype request"
+      },
+      "AlibabaTradeAlibabaSellerTradeQueryDrafttypeResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "types": {
+            "type": "array",
+            "items": { "type": "string", "description": "该卖家 支持的订单起草类型" },
+            "description": "该卖家 支持的订单起草类型"
+          }
+        },
+        "title": "alibaba.seller.trade.query.drafttype response"
+      },
+      "AlibabaTradeAlibabaTradeAddressDeleteRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["address_id"],
+        "properties": { "address_id": { "type": "number", "description": "地址id(就是addressId) " } },
+        "title": "alibaba.trade.address.delete request"
+      },
+      "AlibabaTradeAlibabaTradeAddressDeleteResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "title": "alibaba.trade.address.delete response"
+      },
+      "AlibabaTradeAlibabaTradeAddressFormSaveRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["contact_address"],
+        "properties": {
+          "contact_address": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["address", "buyer_email", "contact", "contact_person"],
+            "properties": {
+              "address": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["address", "city", "country", "province", "zip"],
+                "properties": {
+                  "address": { "type": "string", "description": "地址行1" },
+                  "address2": { "type": "string", "description": "地址行2" },
+                  "city": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["name"],
+                    "properties": {
+                      "code": { "type": "string", "description": "城市code" },
+                      "name": { "type": "string", "description": "城市名称" }
+                    },
+                    "description": "城市"
+                  },
+                  "country": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["code", "name"],
+                    "properties": {
+                      "code": { "type": "string", "description": "国家code" },
+                      "name": { "type": "string", "description": "国家名称" }
+                    },
+                    "description": "国家"
+                  },
+                  "province": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["name"],
+                    "properties": {
+                      "code": { "type": "string", "description": "省code" },
+                      "iso": { "type": "string", "description": "省iso" },
+                      "name": { "type": "string", "description": "省名称" }
+                    },
+                    "description": "省"
+                  },
+                  "zip": { "type": "string", "description": "邮编" }
+                },
+                "description": "地址"
+              },
+              "buyer_email": { "type": "string", "description": "买家邮箱" },
+              "contact": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["mobile_no", "phone_code"],
+                "properties": {
+                  "mobile_no": { "type": "string", "description": "手机号码" },
+                  "phone_code": { "type": "string", "description": "电话国家区号" }
+                },
+                "description": "联系方式(邮箱、电话号码、手机号码等)."
+              },
+              "contact_person": { "type": "string", "description": "联系人" },
+              "address_id": { "type": "number", "description": "地址id，创建的时候不传，更新的时候需要传" },
+              "is_default": { "type": "boolean", "description": "是否要设置为默认地址" }
+            },
+            "description": "地址请求对象"
+          }
+        },
+        "title": "alibaba.trade.address.form.save request"
+      },
+      "AlibabaTradeAlibabaTradeAddressFormSaveResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "address_id": { "type": "number", "description": "地址id" },
+          "snapshot_id": { "type": "string", "description": "地址快照id" }
+        },
+        "title": "alibaba.trade.address.form.save response"
+      },
+      "AlibabaTradeAlibabaTradeAddressGetRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "address_request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type"],
+            "properties": {
+              "param": { "type": "string", "description": "此参数 有时候是必传的，请仔细看下面type的解释" },
+              "type": {
+                "type": "string",
+                "description": "1. 指定type=countryList 时，代表查询国家列表，param 可不传 <br /> 2. 指定type=countryIso时，代表查询某个国家下面的省份列表，此时param必传，传国家 iso 字段 <br /> 3. 指定type=provinceId时，代表查询某个省份下面的城市列表，此时param必传，传省份 id 字段"
+              }
+            },
+            "description": "{}"
+          }
+        },
+        "title": "alibaba.trade.address.get request"
+      },
+      "AlibabaTradeAlibabaTradeAddressGetResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "country_entities": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "iso": { "type": "string", "description": "国家码" },
+                    "country_flag": { "type": "string", "description": "国家图标" },
+                    "name": { "type": "string", "description": "国家英文名" }
+                  },
+                  "description": "国家列表"
+                },
+                "description": "国家列表"
+              },
+              "provinces": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": { "type": "string", "description": "省份英文名" },
+                    "id": { "type": "number", "description": "省份id (也就是code)" },
+                    "country_name": { "type": "string", "description": "所属国家名" },
+                    "iso": { "type": "string", "description": "省iso" }
+                  },
+                  "description": "省份"
+                },
+                "description": "省份"
+              },
+              "cities": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": { "type": "string", "description": "城市英文名" },
+                    "province_id": { "type": "number", "description": "所属省份id" },
+                    "id": { "type": "string", "description": "城市id(就是code)" }
+                  },
+                  "description": "城市列表"
+                },
+                "description": "城市列表"
+              }
+            },
+            "description": "对象"
+          }
+        },
+        "title": "alibaba.trade.address.get response"
+      },
+      "AlibabaTradeAlibabaTradeAddressListQueryRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["buyer_email"],
+        "properties": { "buyer_email": { "type": "string", "description": "买家邮箱" } },
+        "title": "alibaba.trade.address.list.query request"
+      },
+      "AlibabaTradeAlibabaTradeAddressListQueryResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "gmt_modified": { "type": ["integer", "string"], "description": "修改时间" },
+                "contact_person": { "type": "string", "description": "联系人" },
+                "contact": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "phone_code": { "type": "string", "description": "电话国家号码" },
+                    "mobile_no": { "type": "string", "description": "电话号码" }
+                  },
+                  "description": "联系方式"
+                },
+                "address_id": { "type": "number", "description": "地址id" },
+                "address": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "zip": { "type": "string", "description": "邮编" },
+                    "country": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": { "type": "string", "description": "国家code" },
+                        "name": { "type": "string", "description": "国家name" }
+                      },
+                      "description": "国家"
+                    },
+                    "address": { "type": "string", "description": "address行1" },
+                    "address2": { "type": "string", "description": "address行2" },
+                    "city": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": { "type": "string", "description": "城市code" },
+                        "name": { "type": "string", "description": "城市name" }
+                      },
+                      "description": "城市"
+                    },
+                    "province": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": { "type": "string", "description": "省code" },
+                        "iso": { "type": "string", "description": "省iso" },
+                        "name": { "type": "string", "description": "省name" }
+                      },
+                      "description": "省"
+                    }
+                  },
+                  "description": "地址明细"
+                },
+                "snapshot_id": { "type": "string", "description": "地址快照id" },
+                "gmt_create": { "type": ["integer", "string"], "description": "地址创建时间" },
+                "is_default": { "type": "boolean", "description": "是否默认地址" }
+              },
+              "description": "value"
+            },
+            "description": "value"
+          }
+        },
+        "title": "alibaba.trade.address.list.query response"
+      },
+      "AlibabaTradeAlibabaTradeAddressSchemaQueryRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["param_address_localization_form_query"],
+        "properties": {
+          "param_address_localization_form_query": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["dest_country_code"],
+            "properties": {
+              "dest_country_code": { "type": "string", "description": "目的国" },
+              "language": { "type": "string", "description": "en_US,zh_CN,zh_TW" }
+            },
+            "description": "地址表单查询参数对象"
+          }
+        },
+        "title": "alibaba.trade.address.schema.query request"
+      },
+      "AlibabaTradeAlibabaTradeAddressSchemaQueryResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "forms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "country_code": { "type": "string", "description": "国家code" },
+                "disabled": { "type": "boolean", "description": "国家是否被禁用" },
+                "enable_association": { "type": "boolean", "description": "是否开启联想能力" },
+                "enable_multi_lang_input": { "type": "boolean", "description": "是否开启多语言输入" },
+                "enable_post_code_search": { "type": "boolean", "description": "开启邮编联想" },
+                "enable_smart_fill": { "type": "boolean", "description": "开启智能解析模块" },
+                "form_fields": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "field_hint": {
+                        "type": "string",
+                        "description": "     * 字段常驻提示      * 默认的只会返回 Select      * 如果需要 Enter，前端需要根据当前是否返回数据动态判断"
+                      },
+                      "field_hover_tip": { "type": "string", "description": "字段悬浮提示" },
+                      "field_key": {
+                        "type": "string",
+                        "description": "手机号 contact.mobileNo,完整姓名 contact.fullName,国家 address.country,州省 address.province,城市 address.city,地址行1 address.address1,地址行2 address.address2,邮编 address.postCode"
+                      },
+                      "field_label": { "type": "string", "description": "字段展示名" },
+                      "field_placeholder": { "type": "string", "description": "字段底纹提示" },
+                      "fill_type": { "type": "string", "description": "字段填写方式input,drop_down" },
+                      "order": { "type": "number", "description": " 顺序" },
+                      "rule": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "check_reg_exp": { "type": "boolean", "description": "是否校验正则" },
+                          "reg_exps": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "check_failed_tips_text": {
+                                  "type": "string",
+                                  "description": "     * 行间展示：失败了展示的文案      * （内容是动态的，会有动态的参数绑定）"
+                                },
+                                "reg_exp": { "type": "string", "description": "正则表达式" },
+                                "reg_key": { "type": "string", "description": "regKey=fieldKey + regExpName" }
+                              },
+                              "description": "     * 正则表达式      * checkRegExp 为 true 时有效"
+                            },
+                            "description": "     * 正则表达式      * checkRegExp 为 true 时有效"
+                          },
+                          "require_not_null": { "type": "boolean", "description": "是否必填" }
+                        },
+                        "description": "规则"
+                      }
+                    },
+                    "description": "表单字段规则"
+                  },
+                  "description": "表单字段规则"
+                },
+                "form_fill_mode": { "type": "string", "description": "表单填写模式" }
+              },
+              "description": "表单"
+            },
+            "description": "表单"
+          }
+        },
+        "title": "alibaba.trade.address.schema.query response"
+      },
+      "AlibabaTradeAlibabaTradeFulfillmentChannelGetRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": { "language": { "type": "string", "description": "用户语言" } },
+        "title": "alibaba.trade.fulfillment.channel.get request"
+      },
+      "AlibabaTradeAlibabaTradeFulfillmentChannelGetResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "error_code": { "type": "string", "description": "错误码" },
+              "error_message": { "type": "string", "description": "错误原因" },
+              "success": { "type": "boolean", "description": "是否成功" },
+              "value": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "tad_order_amount_limit": { "type": "string", "description": "小单限额" },
+                  "support_fulfillment_channels": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": { "type": "string", "description": "一达通" },
+                        "enable": { "type": "boolean", "description": "可用" },
+                        "code": { "type": "string", "description": "不可用的原因码" },
+                        "message": { "type": "string", "description": "不可用的具体原因" }
+                      },
+                      "description": "返回的支持的履约通道"
+                    },
+                    "description": "返回的支持的履约通道"
+                  },
+                  "currency": { "type": "string", "description": "小单限额的币种" }
+                },
+                "description": "返回结果"
+              }
+            },
+            "description": "返回结果"
+          }
+        },
+        "title": "alibaba.trade.fulfillment.channel.get response"
+      },
+      "AlibabaTradeAlibabaTradeOrderCreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["param_order_create"],
+        "properties": {
+          "param_order_create": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "logistics_detail",
+              "payment_detail",
+              "target_participant",
+              "product_list",
+              "biz_code"
+            ],
+            "properties": {
+              "logistics_detail": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["shipment_address", "shipment_method", "trade_term", "shipment_date"],
+                "properties": {
+                  "shipment_address": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["country", "address", "city", "contact_person", "telephone"],
+                    "properties": {
+                      "zip": { "type": "string", "description": "邮政编码" },
+                      "country": { "type": "string", "description": "国家信息" },
+                      "address": { "type": "string", "description": "地址详情" },
+                      "city": { "type": "string", "description": "城市" },
+                      "province_code": { "type": "string", "description": "省份" },
+                      "city_code": { "type": "string", "description": "城市编码" },
+                      "contact_person": { "type": "string", "description": "联系人" },
+                      "telephone": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "area": { "type": "string", "description": "区号" },
+                          "country": { "type": "string", "description": "国家区域号" },
+                          "number": { "type": "string", "description": "电话号码" }
+                        },
+                        "description": "联系电话"
+                      },
+                      "port_code": { "type": "string", "description": "港口号" },
+                      "province": { "type": "string", "description": "省份" },
+                      "port": { "type": "string", "description": "港口" },
+                      "country_code": { "type": "string", "description": "国家code" },
+                      "alternate_address": { "type": "string", "description": "备选地址" },
+                      "fax": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "area": { "type": "string", "description": "区域" },
+                          "country": { "type": "string", "description": "国家" },
+                          "number": { "type": "string", "description": "号码" }
+                        },
+                        "description": "传真"
+                      }
+                    },
+                    "description": "收货地址"
+                  },
+                  "shipment_method": { "type": "string", "description": "发货方式，海运，空运，快递等" },
+                  "trade_term": { "type": "string", "description": "贸易术语" },
+                  "carrier": { "type": "string", "description": "物流承运商" },
+                  "carrier_code": { "type": "string", "description": "物流承运商code" },
+                  "shipment_date": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "duration": { "type": "number", "description": "预付款或者尾款多少天发货" },
+                      "date": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "format_date": { "type": "string", "description": "格式化时间" },
+                          "time_stamp": { "type": "number", "description": "时间戳" }
+                        },
+                        "description": "绝对日期"
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "relative 相对预付款几天<br /> relative_balance 相对尾款几天<br /> absolute 绝对时间 如 2019-01-01"
+                      }
+                    },
+                    "description": "发货日期"
+                  }
+                },
+                "description": "物流详情"
+              },
+              "fulfillment_channel": { "type": "string", "description": "履约通道" },
+              "payment_detail": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "shipment_fee",
+                  "total_amount",
+                  "product_amount",
+                  "shipment_insurance_fee",
+                  "initial_amount"
+                ],
+                "properties": {
+                  "shipment_fee": { "type": "string", "description": "物流费用" },
+                  "total_amount": { "type": "string", "description": "订单总金额" },
+                  "product_amount": { "type": "string", "description": "产品总金额" },
+                  "shipment_insurance_fee": { "type": "string", "description": "物流保险费用" },
+                  "initial_amount": { "type": "string", "description": "预付款金额" },
+                  "value_add_service_amount": { "type": "string", "description": "增值服务费用" },
+                  "tax_amount": { "type": "string", "description": "税费金额" },
+                  "currency": { "type": "string", "description": "币种" }
+                },
+                "description": "支付详情"
+              },
+              "third_party_channel": { "type": "string", "description": "第三方软件渠道" },
+              "target_participant": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "login_id": { "type": "string", "description": "阿里登录id" },
+                  "email": { "type": "string", "description": "邮箱地址" }
+                },
+                "description": "交易对方信息"
+              },
+              "remark": { "type": "string", "description": "订单备注" },
+              "product_list": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["name", "sku_id", "unit", "quantity", "unit_price_str", "encrypt_product_id"],
+                  "properties": {
+                    "product_id": { "type": "number", "description": "产品id" },
+                    "name": { "type": "string", "description": "产品名称" },
+                    "sku_id": { "type": "string", "description": "skuId" },
+                    "unit": { "type": "string", "description": "产品单位" },
+                    "quantity": { "type": "string", "description": "购买个数" },
+                    "unit_price_str": { "type": "string", "description": "购买单价" },
+                    "currency": { "type": "string", "description": "币种" },
+                    "encrypt_product_id": { "type": "string", "description": "加密的产品ID" },
+                    "product_image": { "type": "string", "description": "产品图片地址" }
+                  },
+                  "description": "产品列表"
+                },
+                "description": "产品列表"
+              },
+              "properties": { "type": "string", "description": "扩展属性" },
+              "biz_code": { "type": "string", "description": "业务身份" },
+              "operator_email": { "type": "string", "description": "当前操作者邮箱" }
+            },
+            "description": "订单创建参数"
+          }
+        },
+        "title": "alibaba.trade.order.create request"
+      },
+      "AlibabaTradeAlibabaTradeOrderCreateResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["success", "error_message", "error_code", "value"],
+            "properties": {
+              "success": { "type": "boolean", "description": "是否成功" },
+              "error_message": { "type": "string", "description": "错误信息" },
+              "error_code": { "type": "string", "description": "错误code" },
+              "value": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["trade_id", "pay_url"],
+                "properties": {
+                  "trade_id": { "type": "string", "description": "订单id" },
+                  "pay_url": { "type": "string", "description": "支付链接" }
+                },
+                "description": "创建订单结果"
+              }
+            },
+            "description": "返回结果"
+          }
+        },
+        "title": "alibaba.trade.order.create response"
+      },
+      "AlibabaTradeAlibabaTradeOrderModifyRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["param_order_modify"],
+        "properties": {
+          "param_order_modify": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["trade_id", "logistics_detail", "payment_detail", "product_list"],
+            "properties": {
+              "trade_id": { "type": "string", "description": "订单ID" },
+              "logistics_detail": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["shipment_address", "shipment_method", "trade_term", "shipment_date"],
+                "properties": {
+                  "shipment_address": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["zip", "country", "address", "city", "contact_person", "telephone"],
+                    "properties": {
+                      "zip": { "type": "string", "description": "邮政编码" },
+                      "country": { "type": "string", "description": "国家信息" },
+                      "address": { "type": "string", "description": "收货地址详情" },
+                      "city": { "type": "string", "description": "城市" },
+                      "province_code": { "type": "string", "description": "省份" },
+                      "city_code": { "type": "string", "description": "城市编码" },
+                      "contact_person": { "type": "string", "description": "联系人" },
+                      "telephone": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "area": { "type": "string", "description": "区号" },
+                          "country": { "type": "string", "description": "国家码" },
+                          "number": { "type": "string", "description": "电话号码" }
+                        },
+                        "description": "联系电话"
+                      },
+                      "fax": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "area": { "type": "string", "description": "区域" },
+                          "country": { "type": "string", "description": "国家" },
+                          "number": { "type": "string", "description": "传真号码" }
+                        },
+                        "description": "传真"
+                      },
+                      "alternate_address": { "type": "string", "description": "备选地址" }
+                    },
+                    "description": "发货地址"
+                  },
+                  "shipment_method": { "type": "string", "description": "发货方式，海运，空运，快递等" },
+                  "trade_term": { "type": "string", "description": "贸易术语" },
+                  "carrier": { "type": "string", "description": "物流承运商" },
+                  "carrier_code": { "type": "string", "description": "物流承运商code" },
+                  "shipment_date": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "duration": { "type": "number", "description": "预付款或者尾款多少天发货" },
+                      "date": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "format_date": { "type": "string", "description": "绝对发货日期时间" },
+                          "time_stamp": { "type": "number", "description": "时间戳" }
+                        },
+                        "description": "绝对日期"
+                      },
+                      "type": { "type": "string", "description": "发货日期类型" }
+                    },
+                    "description": "发货日期"
+                  },
+                  "fulfillment_channel": { "type": "string", "description": "履约通道" }
+                },
+                "description": "物流详情"
+              },
+              "payment_detail": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["shipment_fee", "total_amount", "product_amount", "initial_amount"],
+                "properties": {
+                  "shipment_fee": { "type": "string", "description": "物流费用" },
+                  "total_amount": { "type": "string", "description": "总金额" },
+                  "product_amount": { "type": "string", "description": "产品金额" },
+                  "shipment_insurance_fee": { "type": "string", "description": "物流保险费" },
+                  "initial_amount": { "type": "string", "description": "预付款" },
+                  "value_add_service_amount": { "type": "string", "description": "增值服务费" },
+                  "tax_amount": { "type": "string", "description": "税费" },
+                  "currency": { "type": "string", "description": "币种" }
+                },
+                "description": "支付详情"
+              },
+              "remark": { "type": "string", "description": "订单备注" },
+              "product_list": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["name", "sku_id", "unit", "quantity", "unit_price_str"],
+                  "properties": {
+                    "product_id": { "type": "number", "description": "产品id" },
+                    "name": { "type": "string", "description": "产品名称" },
+                    "sku_id": { "type": "string", "description": "skuId" },
+                    "unit": { "type": "string", "description": "产品单位" },
+                    "quantity": { "type": "string", "description": "购买数量" },
+                    "unit_price_str": { "type": "string", "description": "产品单价" },
+                    "currency": { "type": "string", "description": "币种" },
+                    "encrypt_product_id": { "type": "string", "description": "加密的产品ID" }
+                  },
+                  "description": "产品列表"
+                },
+                "description": "产品列表"
+              },
+              "properties": { "type": "string", "description": "扩展属性" },
+              "version": { "type": "string", "description": "待修改订单的版本号" }
+            },
+            "description": "订单修改参数"
+          }
+        },
+        "title": "alibaba.trade.order.modify request"
+      },
+      "AlibabaTradeAlibabaTradeOrderModifyResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["success", "error_message", "error_code", "value"],
+            "properties": {
+              "success": { "type": "boolean", "description": "是否成功" },
+              "error_message": { "type": "string", "description": "错误信息" },
+              "error_code": { "type": "string", "description": "错误码" },
+              "value": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["trade_id", "pay_url"],
+                "properties": {
+                  "trade_id": { "type": "string", "description": "订单id" },
+                  "pay_url": { "type": "string", "description": "支付链接" }
+                },
+                "description": "订单修改结果"
+              }
+            },
+            "description": "返回结果"
+          }
+        },
+        "title": "alibaba.trade.order.modify response"
+      },
+      "AlibabaTradeAlibabaTradeServiceChargeGetRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": { "currency": { "type": "string", "description": "交易币种" } },
+        "title": "alibaba.trade.service.charge.get request"
+      },
+      "AlibabaTradeAlibabaTradeServiceChargeGetResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "success": { "type": "boolean", "description": "是否成功" },
+              "error_message": { "type": "string", "description": "错误信息" },
+              "error_code": { "type": "string", "description": "错误码" },
+              "servcecharge_list": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "ratio": { "type": "string", "description": "费率" },
+                    "max_fee": { "type": "string", "description": "服务费最大值" },
+                    "export_service_type": { "type": "string", "description": "一达通服务" },
+                    "logistics_type": { "type": "string", "description": "使用菜鸟物流" }
+                  },
+                  "description": "返回结果"
+                },
+                "description": "返回结果"
+              }
+            },
+            "description": "返回结果"
+          }
+        },
+        "title": "alibaba.trade.service.charge.get response"
+      },
       "ApiCapability": {
         "type": "object",
         "additionalProperties": false,
@@ -3928,6 +5987,9 @@
           "risk": { "type": "string", "enum": ["read", "mutation"] },
           "verification": { "type": "string", "enum": ["documented", "account-verified"] },
           "realCallEnabled": { "type": "boolean" },
+          "restricted": { "type": "boolean" },
+          "restrictionReason": { "type": ["string", "null"] },
+          "featureArea": { "type": "string" },
           "requestSchema": { "type": "string" },
           "responseSchema": { "type": "string" },
           "requestExample": { "type": "object", "additionalProperties": true },
@@ -3980,7 +6042,35 @@
               { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqReadResponse" },
               { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqRecommendResponse" },
               { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqSearchResponse" },
-              { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqdetailGetResponse" }
+              { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqdetailGetResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerOrderListResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerOrderFundGetResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerOrderLogisticsGetResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeOrderCreateResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeOrderModifyResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeFulfillmentChannelGetResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeServiceChargeGetResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerAssuranceCreditCardResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaOrderTradeTtGetResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeAddressGetResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuEcologyWriteResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaIntentionOrderSaveResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerAddressSaveResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerTradeDecodeResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerTradeQueryDrafttypeResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuSnsoftCustomerSyncResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuXiaomanVaListResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncResponse" },
+              {
+                "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncResponse"
+              },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerAuthExtendResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeAddressSchemaQueryResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeAddressFormSaveResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeAddressListQueryResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeAddressDeleteResponse" }
             ]
           },
           "contractValid": { "type": "boolean" },
@@ -4455,6 +6545,179 @@
           "language": { "type": "string", "default": "en_US" },
           "productId": { "type": "string" },
           "schemaXml": { "type": "string", "minLength": 1, "x-ajv-errorMessage": "商品 Schema XML 不能为空" }
+        }
+      },
+      "TradeAddress": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "values"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "values": { "type": "object", "additionalProperties": { "type": "string" } }
+        }
+      },
+      "TradeAddressSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fields"],
+        "properties": {
+          "fields": { "type": "array", "items": { "$ref": "#/components/schemas/TradeAddressSchemaField" } }
+        }
+      },
+      "TradeAddressSchemaField": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "type", "required", "readOnly", "options"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "type": { "type": "string", "enum": ["text", "select", "textarea"] },
+          "required": { "type": "boolean" },
+          "readOnly": { "type": "boolean" },
+          "pattern": { "type": ["string", "null"] },
+          "maxLength": { "type": ["integer", "null"] },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["label", "value"],
+              "properties": { "label": { "type": "string" }, "value": { "type": "string" } }
+            }
+          }
+        }
+      },
+      "TradeFulfillmentChannel": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "name", "enabled"],
+        "properties": {
+          "code": { "type": "string" },
+          "name": { "type": "string" },
+          "enabled": { "type": "boolean" }
+        }
+      },
+      "TradeFund": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["orderId", "paidAmount", "currency", "status"],
+        "properties": {
+          "orderId": { "type": "string" },
+          "paidAmount": { "type": "string", "pattern": "^-?\\d+(?:\\.\\d+)?$" },
+          "currency": { "type": "string" },
+          "status": { "type": "string" }
+        }
+      },
+      "TradeLogistics": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["orderId", "status", "carrier", "trackingNumber"],
+        "properties": {
+          "orderId": { "type": "string" },
+          "status": { "type": "string" },
+          "carrier": { "type": ["string", "null"] },
+          "trackingNumber": { "type": ["string", "null"] }
+        }
+      },
+      "TradeMutationResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "success"],
+        "properties": { "id": { "type": "string" }, "success": { "type": "boolean" } }
+      },
+      "TradeOrderAggregate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["order", "fund", "logistics", "availability"],
+        "properties": {
+          "order": { "$ref": "#/components/schemas/TradeOrderSummary" },
+          "fund": { "oneOf": [{ "$ref": "#/components/schemas/TradeFund" }, { "type": "null" }] },
+          "logistics": { "oneOf": [{ "$ref": "#/components/schemas/TradeLogistics" }, { "type": "null" }] },
+          "availability": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["order", "fund", "logistics", "fullDetail"],
+            "properties": {
+              "order": { "type": "string", "enum": ["available", "unavailable"] },
+              "fund": { "type": "string", "enum": ["available", "unavailable"] },
+              "logistics": { "type": "string", "enum": ["available", "unavailable"] },
+              "fullDetail": { "type": "string", "enum": ["jushita-only"] }
+            }
+          }
+        }
+      },
+      "TradeOrderDraft": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["buyerLoginId", "currency", "items"],
+        "properties": {
+          "orderId": { "type": "string" },
+          "buyerLoginId": { "type": "string", "minLength": 1 },
+          "currency": { "type": "string", "minLength": 1 },
+          "addressId": { "type": "string" },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["productId", "subject", "quantity", "unitPrice"],
+              "properties": {
+                "productId": { "type": "string" },
+                "subject": { "type": "string" },
+                "quantity": { "type": "string", "pattern": "^-?\\d+(?:\\.\\d+)?$" },
+                "unitPrice": { "type": "string", "pattern": "^-?\\d+(?:\\.\\d+)?$" }
+              }
+            }
+          }
+        }
+      },
+      "TradeOrderPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items", "page", "pageSize", "total", "documentTimeZoneUnverified"],
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/TradeOrderSummary" } },
+          "page": { "type": "integer", "minimum": 1 },
+          "pageSize": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "total": { "type": "integer", "minimum": 0 },
+          "documentTimeZoneUnverified": { "type": "boolean" }
+        }
+      },
+      "TradeOrderSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "buyerLoginId", "status", "amount", "currency", "createdAt", "modifiedAt"],
+        "properties": {
+          "id": { "type": "string" },
+          "buyerLoginId": { "type": ["string", "null"] },
+          "status": { "type": "string" },
+          "amount": { "type": "string", "pattern": "^-?\\d+(?:\\.\\d+)?$" },
+          "currency": { "type": "string" },
+          "createdAt": { "type": ["string", "null"], "format": "date-time" },
+          "modifiedAt": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "TradeServiceCharge": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["orderId", "amount", "currency"],
+        "properties": {
+          "orderId": { "type": "string" },
+          "amount": { "type": "string", "pattern": "^-?\\d+(?:\\.\\d+)?$" },
+          "currency": { "type": "string" }
+        }
+      },
+      "TradeTtAccount": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["orderId", "accountName", "accountNumber", "bankName"],
+        "properties": {
+          "orderId": { "type": "string" },
+          "accountName": { "type": ["string", "null"] },
+          "accountNumber": { "type": ["string", "null"] },
+          "bankName": { "type": ["string", "null"] }
         }
       }
     }
@@ -6439,6 +8702,1036 @@
         }
       },
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=32086"
+    }
+  },
+  "x-trade-capabilities": {
+    "alibaba.seller.order.list": {
+      "requestSchema": "AlibabaTradeAlibabaSellerOrderListRequest",
+      "responseSchema": "AlibabaTradeAlibabaSellerOrderListResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "order",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2021-11-23",
+      "title": "阿里巴巴国际站交易订单列表接口",
+      "description": "阿里巴巴国际站交易订单列表接口",
+      "errorCodes": [
+        {
+          "errorCode": "isv.402",
+          "errorMsg": "非法请求参数",
+          "solution": "请根据message提示，改成正确的参数"
+        }
+      ],
+      "requestExample": {
+        "param_trade_ecology_order_list_query": {
+          "create_date_from": "2018-10-30 00:00:00",
+          "create_date_to": "2018-10-30 00:00:00",
+          "other_login_id": "ca1090886111",
+          "page_size": 10,
+          "role": "seller",
+          "sales_man_login_id": "cn1514584373mpdm",
+          "start_page": 0,
+          "status": "trade_success",
+          "create_date_start": { "date_str": "2018-10-30 00:00:00", "time": 123456 },
+          "create_date_end": { "date_str": "2018-10-31 00:00:00", "time": 123456 },
+          "modified_date_start": { "date_str": "2018-10-30 00:00:00", "time": 123456 },
+          "modified_date_end": { "date_str": "2018-10-30 00:00:00", "time": 123456 }
+        }
+      },
+      "responseExample": {
+        "result": {
+          "error_code": "402",
+          "error_message": "invalidate request",
+          "success": false,
+          "value": {
+            "order_list": [
+              {
+                "trade_id": "1234566666",
+                "create_date": { "timestamp": 123456789, "format_date": "MMM. d, yyyy, HH:mm:ss z." },
+                "modify_date": { "timestamp": 123456789, "format_date": "MMM. d, yyyy, HH:mm:ss z." }
+              }
+            ],
+            "total_count": 10000
+          }
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=41047"
+    },
+    "alibaba.seller.order.fund.get": {
+      "requestSchema": "AlibabaTradeAlibabaSellerOrderFundGetRequest",
+      "responseSchema": "AlibabaTradeAlibabaSellerOrderFundGetResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "finance",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2023-07-06",
+      "title": "查询交易订单资金信息",
+      "description": "查询交易订单资金信息",
+      "errorCodes": [],
+      "requestExample": { "e_trade_id": "xxxxxx", "data_select": "fund_serviceFee,fund_fundPay" },
+      "responseExample": {
+        "value": {
+          "fund_pay_list": [
+            {
+              "pay_amount": { "amount": "12.00", "currency": "USD" },
+              "pay_method": "TT",
+              "pay_status": "UNPAY",
+              "pay_step": "ADVANCE",
+              "pay_time": { "format_date": "MMM. d, yyyy, HH:mm:ss z.", "timestamp": 12345 },
+              "receive_amount": { "amount": "12.00", "currency": "USD" },
+              "receive_time": { "timestamp": 2345, "format_date": "MMM. d, yyyy, HH:mm:ss z." },
+              "should_pay_amount": { "amount": "12.00", "currency": "USD" },
+              "fund_pay_detail_list": [
+                {
+                  "pay_amount": { "amount": "12.00", "currency": "USD" },
+                  "pay_time": { "timestamp": 2345, "format_date": "MMM. d, yyyy, HH:mm:ss z." },
+                  "receive_amount": { "amount": "12.00", "currency": "USD" },
+                  "receive_time": { "timestamp": 2345, "format_date": "MMM. d, yyyy, HH:mm:ss z." },
+                  "pay_status": "UNPAY",
+                  "pay_method": "TT",
+                  "id": 111111
+                }
+              ]
+            }
+          ],
+          "service_fee": { "amount": "1.00", "currency": "USD" },
+          "refund_list": [
+            {
+              "amount": { "currency": "USD", "amount": "123.33" },
+              "refund_time": { "timestamp": 21345343, "format_date": "MMM. d, yyyy, HH:mm:ss z." },
+              "id": 123432
+            }
+          ]
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=41074"
+    },
+    "alibaba.seller.order.logistics.get": {
+      "requestSchema": "AlibabaTradeAlibabaSellerOrderLogisticsGetRequest",
+      "responseSchema": "AlibabaTradeAlibabaSellerOrderLogisticsGetResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "fulfillment",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2021-11-23",
+      "title": "查询国际站订单物流信息",
+      "description": "查询国际站订单物流信息",
+      "errorCodes": [],
+      "requestExample": { "e_trade_id": "xxxxxxx", "data_select": "logistic_order" },
+      "responseExample": {
+        "value": {
+          "agreed_shipment_date": { "format_date": "MMM. d, yyyy, HH:mm:ss z.", "timestamp": 12345 },
+          "logistic_status": "UNDELIVERED",
+          "shipment_date": { "format_date": "MMM. d, yyyy, HH:mm:ss z.", "timestamp": 12345 },
+          "shipping_order_list": [
+            {
+              "goods": [{ "product_id": "12343213", "quantity": "2" }],
+              "voucher": {
+                "logistics_type": "EXPRESS",
+                "service_provider": "EX_ASP_OCEAN_EXPRESS",
+                "tracking_number": "123432"
+              }
+            }
+          ],
+          "tracking_url": "xxx.html"
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=41142"
+    },
+    "alibaba.trade.order.create": {
+      "requestSchema": "AlibabaTradeAlibabaTradeOrderCreateRequest",
+      "responseSchema": "AlibabaTradeAlibabaTradeOrderCreateResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "order",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2020-04-14",
+      "title": "国际站信保下单",
+      "description": "国际站信保下单",
+      "errorCodes": [],
+      "requestExample": {
+        "param_order_create": {
+          "logistics_detail": {
+            "shipment_address": {
+              "zip": "461670",
+              "country": "United States of America",
+              "address": "Bank of new york",
+              "city": "New York",
+              "province_code": "California",
+              "city_code": "NY",
+              "contact_person": "james",
+              "telephone": { "area": "0512", "country": "86", "number": "13890876543" },
+              "port_code": "frisco",
+              "province": "California",
+              "port": "SH",
+              "country_code": "US",
+              "alternate_address": "test",
+              "fax": { "area": "SH", "country": "CH", "number": "461670" }
+            },
+            "shipment_method": "sea",
+            "trade_term": "FOB",
+            "carrier": "DHL",
+            "carrier_code": "DHL",
+            "shipment_date": {
+              "duration": 5,
+              "date": { "format_date": "2019-11-11", "time_stamp": 4123459999 },
+              "type": "relative/relative_balance/absolute"
+            }
+          },
+          "fulfillment_channel": "TAD",
+          "payment_detail": {
+            "shipment_fee": "20",
+            "total_amount": "300",
+            "product_amount": "200",
+            "shipment_insurance_fee": "80",
+            "initial_amount": "100",
+            "value_add_service_amount": "0",
+            "tax_amount": "0",
+            "currency": "USD"
+          },
+          "third_party_channel": "futu",
+          "target_participant": { "login_id": "ca1090886111", "email": "xinbaoifm@sina.cn" },
+          "remark": "test",
+          "product_list": [
+            {
+              "product_id": 62337348461,
+              "name": "helloworld",
+              "sku_id": "-1",
+              "unit": "set",
+              "quantity": "100",
+              "unit_price_str": "2",
+              "currency": "USD",
+              "encrypt_product_id": "XJU123452",
+              "product_image": "Hbfa463819ebf485f8a9dc31b871b6764y.jpg"
+            }
+          ],
+          "properties": "{“key”:\"value\"}",
+          "biz_code": "1020702",
+          "operator_email": "xicat1112@163.com"
+        }
+      },
+      "responseExample": {
+        "result": {
+          "success": true,
+          "error_message": "invalid request",
+          "error_code": "400",
+          "value": { "trade_id": "123456789", "pay_url": "cashier.alibaba.com" }
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47611"
+    },
+    "alibaba.trade.order.modify": {
+      "requestSchema": "AlibabaTradeAlibabaTradeOrderModifyRequest",
+      "responseSchema": "AlibabaTradeAlibabaTradeOrderModifyResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "order",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2020-04-14",
+      "title": "国际站信保订单修改",
+      "description": "国际站信保订单修改",
+      "errorCodes": [],
+      "requestExample": {
+        "param_order_modify": {
+          "trade_id": "24668306501026709",
+          "logistics_detail": {
+            "shipment_address": {
+              "zip": "461670",
+              "country": "United States of America",
+              "address": "Bank of new york",
+              "city": "New York",
+              "province_code": "California",
+              "city_code": "NY",
+              "contact_person": "james",
+              "telephone": { "area": "0512", "country": "86", "number": "13890876543" },
+              "fax": { "area": "SH", "country": "CH", "number": "461670" },
+              "alternate_address": "test"
+            },
+            "shipment_method": "sea",
+            "trade_term": "FOB",
+            "carrier": "DHL",
+            "carrier_code": "DHL",
+            "shipment_date": {
+              "duration": 5,
+              "date": { "format_date": "2019-11-11", "time_stamp": 4123459999 },
+              "type": "absolute"
+            },
+            "fulfillment_channel": "TAD"
+          },
+          "payment_detail": {
+            "shipment_fee": "20",
+            "total_amount": "300",
+            "product_amount": "200",
+            "shipment_insurance_fee": "80",
+            "initial_amount": "150",
+            "value_add_service_amount": "0",
+            "tax_amount": "0",
+            "currency": "USD"
+          },
+          "remark": "test",
+          "product_list": [
+            {
+              "product_id": 62337348461,
+              "name": "helloworld",
+              "sku_id": "-1",
+              "unit": "set",
+              "quantity": "100",
+              "unit_price_str": "2",
+              "currency": "USD",
+              "encrypt_product_id": "XJG87654"
+            }
+          ],
+          "properties": "{“key”:\"value\"}",
+          "version": "1576114051021"
+        }
+      },
+      "responseExample": {
+        "result": {
+          "success": true,
+          "error_message": "invalid request",
+          "error_code": "400",
+          "value": { "trade_id": "123456789", "pay_url": "cashier.alibaba.com" }
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47663"
+    },
+    "alibaba.trade.fulfillment.channel.get": {
+      "requestSchema": "AlibabaTradeAlibabaTradeFulfillmentChannelGetRequest",
+      "responseSchema": "AlibabaTradeAlibabaTradeFulfillmentChannelGetResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "fulfillment",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2021-11-18",
+      "title": "获取支持的履约通道",
+      "description": "国际站供应商支持的履约通道查询",
+      "errorCodes": [],
+      "requestExample": { "language": "English" },
+      "responseExample": {
+        "result": {
+          "error_code": "200",
+          "error_message": "invalid request",
+          "success": true,
+          "value": {
+            "tad_order_amount_limit": "5000",
+            "support_fulfillment_channels": [
+              { "name": "TAO", "enable": true, "code": "12007", "message": "not match new policy" }
+            ],
+            "currency": "USD"
+          }
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47679"
+    },
+    "alibaba.trade.service.charge.get": {
+      "requestSchema": "AlibabaTradeAlibabaTradeServiceChargeGetRequest",
+      "responseSchema": "AlibabaTradeAlibabaTradeServiceChargeGetResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "finance",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2021-11-09",
+      "title": "交易服务费信息获取",
+      "description": "交易服务费信息获取",
+      "errorCodes": [],
+      "requestExample": { "currency": "USD" },
+      "responseExample": {
+        "result": {
+          "success": true,
+          "error_message": "invalid request",
+          "error_code": "400",
+          "servcecharge_list": [
+            {
+              "ratio": "0.1",
+              "max_fee": "100",
+              "export_service_type": "onetouch_service",
+              "logistics_type": "useCaiNiaoLogistics"
+            }
+          ]
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47767"
+    },
+    "alibaba.seller.assurance.credit.card": {
+      "requestSchema": "AlibabaTradeAlibabaSellerAssuranceCreditCardRequest",
+      "responseSchema": "AlibabaTradeAlibabaSellerAssuranceCreditCardResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "finance",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2021-11-22",
+      "title": "卖家信用报告",
+      "description": "获取卖家信用报告",
+      "errorCodes": [],
+      "requestExample": {},
+      "responseExample": {
+        "value": "[     {       \"type\": \"credit_assurance_card\", \t   \"html\": \"<div>卡片1 html 内容</div>\"\t     },     {       \"type\": \"credit_card\",       \"html\": \"<div>卡片2 html 内容</div>\"     },     {       \"type\": \"assurance_card\",       \"html\": \"<div>卡片3 html 内容</div>\"     }   ]"
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=49307"
+    },
+    "alibaba.order.trade.tt.get": {
+      "requestSchema": "AlibabaTradeAlibabaOrderTradeTtGetRequest",
+      "responseSchema": "AlibabaTradeAlibabaOrderTradeTtGetResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "finance",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2022-09-19",
+      "title": "国际站信保订单TT账号查询",
+      "description": "国际站信保订单TT账号查询",
+      "errorCodes": [],
+      "requestExample": { "e_trade_id": "12345643" },
+      "responseExample": {
+        "value": {
+          "pay_amount": { "amount": "12.00", "currency": "USD" },
+          "default_tt_account": {
+            "beneficiary_account_no": "1029200038060",
+            "bank_code": "006",
+            "beneficiary_bank": "Citibank,N.A.,Hong Kong Branch",
+            "destination": "Hong Kong, China",
+            "beneficiary_bank_address": "Citibank Tower,Citibank Plaza,3 Garden Road,Central,Hong Kong",
+            "beneficiary_address": "26/F TOWER ONE TIME SQUARE 1 MATHESON STREET CAUSEWAY BAY HK",
+            "payment_transaction_fee": "USD 40.00 (estimated)",
+            "branch_code": "391",
+            "beneficiary_name": "testcompanyEn",
+            "currency": "USD",
+            "beneficiary_bank_swift_code": "CITIHKHXXXX or CITIHKHX",
+            "estimated_payment_receipt": "3-7 business days"
+          },
+          "us_tt_account": {
+            "beneficiary_account_no": "1029200038060",
+            "bank_code": "006",
+            "beneficiary_bank": "Citibank,N.A.,Hong Kong Branch",
+            "destination": "Hong Kong, China",
+            "beneficiary_bank_address": "Citibank Tower,Citibank Plaza,3 Garden Road,Central,Hong Kong",
+            "beneficiary_address": "26/F TOWER ONE TIME SQUARE 1 MATHESON STREET CAUSEWAY BAY HK",
+            "payment_transaction_fee": "USD 40.00 (estimated)",
+            "branch_code": "391",
+            "beneficiary_name": "testcompanyEn",
+            "currency": "USD",
+            "beneficiary_bank_swift_code": "CITIHKHXXXX or CITIHKHX",
+            "estimated_payment_receipt": "3-7 business days",
+            "aba_no": "IAT",
+            "ach_payment_code": "031100209"
+          },
+          "guide_content": "demo",
+          "remark": "Please include the order number 123432"
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=49773"
+    },
+    "alibaba.trade.address.get": {
+      "requestSchema": "AlibabaTradeAlibabaTradeAddressGetRequest",
+      "responseSchema": "AlibabaTradeAlibabaTradeAddressGetResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "address",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2024-09-12",
+      "title": "国际站交易地址库通用查询接口",
+      "description": "国际站交易地址库通用查询接口",
+      "errorCodes": [],
+      "requestExample": { "address_request": { "param": "US", "type": "countryList" } },
+      "responseExample": {
+        "value": {
+          "country_entities": [
+            {
+              "iso": "US",
+              "country_flag": "https://u.alicdn.com/mobile/g/common/flags/1.0.0/assets/us.png",
+              "name": "United States of America"
+            }
+          ],
+          "provinces": [
+            { "name": "Alabama", "id": 922865760000000000, "country_name": "United States", "iso": "AL" }
+          ],
+          "cities": [{ "name": "Acoma", "province_id": 922865760000000000, "id": "922865765908000000" }]
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=49839"
+    },
+    "alibaba.icbu.ecology.write": {
+      "requestSchema": "AlibabaTradeAlibabaIcbuEcologyWriteRequest",
+      "responseSchema": "AlibabaTradeAlibabaIcbuEcologyWriteResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "authorization",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": true,
+      "restrictionReason": "特定 ISV、业务资格或额外权限，默认关闭",
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2021-11-23",
+      "title": "国际站交易生态授权准入",
+      "description": "国际站交易生态授权准入",
+      "errorCodes": [],
+      "requestExample": { "symbol": "abcd" },
+      "responseExample": { "value": "success" },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=52174"
+    },
+    "alibaba.intention.order.save": {
+      "requestSchema": "AlibabaTradeAlibabaIntentionOrderSaveRequest",
+      "responseSchema": "AlibabaTradeAlibabaIntentionOrderSaveResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "order",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2025-07-31",
+      "title": "意向单创建接口",
+      "description": "存储CRM客户中的意向单",
+      "errorCodes": [],
+      "requestExample": {
+        "intention_order": {
+          "buyer_fax": "001-123456789",
+          "buyer_telephone": "001-123456789",
+          "buyer_email": "xxx@alibaba.com",
+          "remark": "xxx,xxx,xxx",
+          "trade_term": "FOB",
+          "buyer_zip_code": "201101",
+          "order_amount": "1000",
+          "buyer_city": "NewYork",
+          "intention_order_logistics": {
+            "shipment_fee": "100",
+            "country": "The United States",
+            "city": "NewYork",
+            "city_code": "NY",
+            "contact_person": "Jack Wu",
+            "departure_port": "ShangHai",
+            "delivery_date_type": "relative",
+            "address_id": "12345678",
+            "delivery_date_relative_duration": 33,
+            "shipment_method": "express/air/sea/land:快递/空运/海运/陆运/",
+            "province": "California",
+            "departure_city_code": "SH",
+            "country_code": "US",
+            "delivery_date_absolute_time": "2019-10-10 10:00:00",
+            "fax": { "area": "8", "country": "001", "number": "123456789" },
+            "departure_port_code": "SH",
+            "zip": "201101",
+            "address": "#20A, 2345 Belmont Avenue, Durham, NC，America",
+            "departure_city": "Shanghai",
+            "province_code": "CA",
+            "mobile": { "area": "8", "country": "001", "number": "123456789" },
+            "telephone": { "area": "8", "country": "001", "number": "123456789" },
+            "port_code": "NY",
+            "carrier": "United Parcel Service of America",
+            "port": "NewYork",
+            "carrier_code": "UPS",
+            "alternate_address": "#20A, 2345 Belmont Avenue, Durham, NC，America",
+            "properties": "JSON字符串格式"
+          },
+          "currency": "USD",
+          "source_channel_refer_id": "12345678",
+          "buyer_province": "California",
+          "buyer_contact_address": "#20A, 2345 Belmont Avenue, Durham, NC，America",
+          "buyer_country_port": "NewYork",
+          "intention_order_products": [
+            {
+              "product_desc": "xxx,xxx",
+              "product_spec": "xxx,xxx",
+              "sku_id": "1234",
+              "quantity": "100",
+              "original_unit_price": "12",
+              "unit_price": "10",
+              "unit": "Pieces",
+              "image_url": "http://cdn.xxx.com/xxx/xxx",
+              "type": "Sample/ Customized/Standard",
+              "name": "mp3 player with bluetooth",
+              "product_id": 12345678,
+              "properties": "JSON结构字符串"
+            }
+          ],
+          "buyer_country_port_code": "NY",
+          "intention_order_id": "12345678",
+          "buyer_name": "Jack Wu",
+          "buyer_company_name": "Alibaba",
+          "buyer_country_code": "US",
+          "buyer_country": "The United States",
+          "advanced_amount": "300",
+          "buyer_province_code": "CA",
+          "buyer_city_code": "NY",
+          "buyer_mobile": "001-123456789",
+          "properties": "JSON结构字符串",
+          "status": "DRAFT"
+        }
+      },
+      "responseExample": { "value": { "intention_id": "1234567890" } },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=52721"
+    },
+    "alibaba.seller.address.save": {
+      "requestSchema": "AlibabaTradeAlibabaSellerAddressSaveRequest",
+      "responseSchema": "AlibabaTradeAlibabaSellerAddressSaveResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "address",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2021-11-18",
+      "title": "卖家保存地址",
+      "description": "卖家保存地址",
+      "errorCodes": [],
+      "requestExample": {
+        "param_trade_ecology_address_save_request": {
+          "address": {
+            "address": "New York, NY, USA",
+            "address2": "California, CA, USA",
+            "city": { "name": "New York" },
+            "country": { "name": "Unit Station America", "code": "US" },
+            "province": { "name": "xxx" },
+            "zip": "23331231"
+          },
+          "address_id": "24231",
+          "buyer_email": "afafa@qqq.com",
+          "contact": { "mobile_no": "15988332222", "phone_code": "86" },
+          "contact_person": "lihao"
+        }
+      },
+      "responseExample": { "value": { "address_id": "2134543" } },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=52788"
+    },
+    "alibaba.seller.trade.decode": {
+      "requestSchema": "AlibabaTradeAlibabaSellerTradeDecodeRequest",
+      "responseSchema": "AlibabaTradeAlibabaSellerTradeDecodeResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "authorization",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2021-11-23",
+      "title": "ICBU交易卖家id定向解密",
+      "description": "ICBU交易卖家id定向解密",
+      "errorCodes": [],
+      "requestExample": { "encryptor_id": "31sffs" },
+      "responseExample": { "value": 23432 },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=53375"
+    },
+    "alibaba.seller.trade.query.drafttype": {
+      "requestSchema": "AlibabaTradeAlibabaSellerTradeQueryDrafttypeRequest",
+      "responseSchema": "AlibabaTradeAlibabaSellerTradeQueryDrafttypeResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "authorization",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2021-11-23",
+      "title": "查询卖家订单起草类型权限",
+      "description": "查询卖家订单起草类型权限",
+      "errorCodes": [],
+      "requestExample": {},
+      "responseExample": { "types": ["TA", "RFP"] },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=53541"
+    },
+    "alibaba.icbu.snsoft.customer.sync": {
+      "requestSchema": "AlibabaTradeAlibabaIcbuSnsoftCustomerSyncRequest",
+      "responseSchema": "AlibabaTradeAlibabaIcbuSnsoftCustomerSyncResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "partner-specific",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": true,
+      "restrictionReason": "特定 ISV、业务资格或额外权限，默认关闭",
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2022-09-29",
+      "title": "ICBU自营-南北软件-客商同步",
+      "description": "ICBU自营-南北软件-客商同步",
+      "errorCodes": [],
+      "requestExample": {
+        "south_north_software_common_request": { "data_json": "[{\"ccode\":\"123\"}]", "for_test": true }
+      },
+      "responseExample": { "result": { "success": false, "error_code": "500", "error_msg": "系统错误" } },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=64507"
+    },
+    "alibaba.icbu.xiaoman.va.list": {
+      "requestSchema": "AlibabaTradeAlibabaIcbuXiaomanVaListRequest",
+      "responseSchema": "AlibabaTradeAlibabaIcbuXiaomanVaListResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "partner-specific",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": true,
+      "restrictionReason": "特定 ISV、业务资格或额外权限，默认关闭",
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2023-03-20",
+      "title": "小满查询VA列表",
+      "description": "小满查询VA列表，用户阅读条款同意小满授权后，查询VA信息",
+      "errorCodes": [],
+      "requestExample": { "user_id": "1504669025", "context": "context", "idempotent_id": "idempotent_id" },
+      "responseExample": {
+        "data": {
+          "va_list": [
+            {
+              "account_name": "accountName",
+              "account_no": "12345",
+              "area": "US",
+              "global": false,
+              "gmt_create": "2021-11-12 21:38:11",
+              "gmt_modified": "2021-11-12 21:38:11",
+              "merchant": "pingpong_po",
+              "open_date": "2022-07-28",
+              "status": "ACTIVE",
+              "beneficiary_bank_name": "beneficiary_bank_name",
+              "beneficiary_bank_address": "beneficiaryAccountInfo",
+              "beneficiary_bank_swift_code": "beneficiary_bank_swift_code",
+              "beneficiary_country": "beneficiary_country",
+              "currency": "currency",
+              "country": "country",
+              "beneficiary_address": "beneficiaryAddress",
+              "routing_no": "routingNo",
+              "beneficiary_bank_code": "beneficiaryBankCode",
+              "beneficiary_bank_branch_code": "beneficiaryBankBranchCode"
+            }
+          ]
+        },
+        "successful": true,
+        "errcode": "0001",
+        "message": "message"
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=64544"
+    },
+    "alibaba.icbu.snsoft.sale.order.detail.sync": {
+      "requestSchema": "AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncRequest",
+      "responseSchema": "AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "partner-specific",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": true,
+      "restrictionReason": "特定 ISV、业务资格或额外权限，默认关闭",
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2022-09-29",
+      "title": "ICBU自营-南北软件-销售明细同步",
+      "description": "ICBU自营-南北软件-销售明细同步",
+      "errorCodes": [],
+      "requestExample": {
+        "south_north_software_common_request": {
+          "data_json": "[{\"salordicode\":\"123\"}]",
+          "for_test": true
+        }
+      },
+      "responseExample": { "result": { "success": false, "error_code": "500", "error_msg": "系统错误" } },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=64593"
+    },
+    "alibaba.icbu.snsoft.account.bill.sync": {
+      "requestSchema": "AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncRequest",
+      "responseSchema": "AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "partner-specific",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": true,
+      "restrictionReason": "特定 ISV、业务资格或额外权限，默认关闭",
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2022-09-29",
+      "title": "ICBU自营-南北软件-jv台账同步",
+      "description": "ICBU自营-南北软件-jv台账同步",
+      "errorCodes": [],
+      "requestExample": {
+        "south_north_software_common_request": {
+          "data_json": "[{\"salordicode\":\"123\"}]",
+          "for_test": true
+        }
+      },
+      "responseExample": { "result": { "success": false, "error_code": "500", "error_msg": "系统错误" } },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=64594"
+    },
+    "alibaba.icbu.snsoft.shipment.finalaccount.sync": {
+      "requestSchema": "AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncRequest",
+      "responseSchema": "AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "partner-specific",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": true,
+      "restrictionReason": "特定 ISV、业务资格或额外权限，默认关闭",
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2022-11-09",
+      "title": "ICBU自营-南北软件-出运单决算同步",
+      "description": "ICBU自营-南北软件-出运单决算同步",
+      "errorCodes": [],
+      "requestExample": {
+        "south_north_software_common_request": {
+          "for_test": true,
+          "data_json": "[{\"salshipicode\":\"123\"}]"
+        }
+      },
+      "responseExample": { "result": { "success": false, "error_code": "500", "error_msg": "系统错误" } },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=64996"
+    },
+    "alibaba.icbu.check.overseas.admittance": {
+      "requestSchema": "AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceRequest",
+      "responseSchema": "AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "fulfillment",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": true,
+      "restrictionReason": "特定 ISV、业务资格或额外权限，默认关闭",
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2025-07-31",
+      "title": "ICBU交易平台-海外仓Saas服务平台-校验海外现货服务准入",
+      "description": "ICBU交易平台-海外仓Saas服务平台-校验海外现货服务准入",
+      "errorCodes": [],
+      "requestExample": { "ali_id": 123456789 },
+      "responseExample": {
+        "result": {
+          "exception": ":java.lang.Exception",
+          "code": "500",
+          "response": true,
+          "message": "systen error"
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=65625"
+    },
+    "alibaba.seller.auth.extend": {
+      "requestSchema": "AlibabaTradeAlibabaSellerAuthExtendRequest",
+      "responseSchema": "AlibabaTradeAlibabaSellerAuthExtendResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "authorization",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": true,
+      "restrictionReason": "特定 ISV、业务资格或额外权限，默认关闭",
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2023-09-14",
+      "title": "延长小满&国际站商家使用授权时间",
+      "description": "延长小满&国际站商家使用授权时间",
+      "errorCodes": [],
+      "requestExample": {},
+      "responseExample": { "expire_time": 2134424232 },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=67874"
+    },
+    "alibaba.trade.address.schema.query": {
+      "requestSchema": "AlibabaTradeAlibabaTradeAddressSchemaQueryRequest",
+      "responseSchema": "AlibabaTradeAlibabaTradeAddressSchemaQueryResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "address",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2024-10-15",
+      "title": "地址表单schema查询",
+      "description": "地址表单schema查询",
+      "errorCodes": [],
+      "requestExample": {
+        "param_address_localization_form_query": { "dest_country_code": "US", "language": "en_US" }
+      },
+      "responseExample": {
+        "forms": [
+          {
+            "country_code": "US",
+            "disabled": false,
+            "enable_association": false,
+            "enable_multi_lang_input": false,
+            "enable_post_code_search": false,
+            "enable_smart_fill": false,
+            "form_fields": [
+              {
+                "field_hint": "hello",
+                "field_hover_tip": "hello",
+                "field_key": "contact.mobileNo",
+                "field_label": "Phone number",
+                "field_placeholder": "null",
+                "fill_type": "input",
+                "order": 30,
+                "rule": {
+                  "check_reg_exp": true,
+                  "reg_exps": [
+                    {
+                      "check_failed_tips_text": "You need to provide your phone number so that you can be contacted for delivery updates",
+                      "reg_exp": "^.+$",
+                      "reg_key": "contact.mobileNo.nullable"
+                    }
+                  ],
+                  "require_not_null": true
+                }
+              }
+            ],
+            "form_fill_mode": "normal"
+          }
+        ]
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=70565"
+    },
+    "alibaba.trade.address.form.save": {
+      "requestSchema": "AlibabaTradeAlibabaTradeAddressFormSaveRequest",
+      "responseSchema": "AlibabaTradeAlibabaTradeAddressFormSaveResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "address",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2024-10-15",
+      "title": "地址表单保存接口",
+      "description": "地址表单保存接口",
+      "errorCodes": [],
+      "requestExample": {
+        "contact_address": {
+          "address": {
+            "address": "MN, United States",
+            "address2": "street 186",
+            "city": { "code": "922865765908000000", "name": "Abernant" },
+            "country": { "code": "US", "name": "United States of America" },
+            "province": { "code": "922865760000000000", "iso": "AL", "name": "Alabama" },
+            "zip": "55066"
+          },
+          "buyer_email": "test@qq.com",
+          "contact": { "mobile_no": "3534534251", "phone_code": "+1" },
+          "contact_person": "jack ma",
+          "address_id": 122222,
+          "is_default": false
+        }
+      },
+      "responseExample": { "address_id": 12322, "snapshot_id": "2222" },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=70569"
+    },
+    "alibaba.trade.address.list.query": {
+      "requestSchema": "AlibabaTradeAlibabaTradeAddressListQueryRequest",
+      "responseSchema": "AlibabaTradeAlibabaTradeAddressListQueryResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "address",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2024-10-15",
+      "title": "买卖家对之间的地址列表查询",
+      "description": "买卖家对之间的地址列表查询",
+      "errorCodes": [],
+      "requestExample": { "buyer_email": "2231@qq.com" },
+      "responseExample": {
+        "value": [
+          {
+            "gmt_modified": "1726025571000",
+            "contact_person": "jack ma",
+            "contact": { "phone_code": "+1", "mobile_no": "3534534251" },
+            "address_id": 120384173001,
+            "address": {
+              "zip": "35440",
+              "country": { "code": "US", "name": "United States of America" },
+              "address": "MN, United States",
+              "address2": "street 186",
+              "city": { "code": "922865765908000000", "name": "Abernant" },
+              "province": { "code": "922865760000000000", "iso": "AL", "name": "Alabama" }
+            },
+            "snapshot_id": "0014175394941001",
+            "gmt_create": "1726025571000",
+            "is_default": false
+          }
+        ]
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=70578"
+    },
+    "alibaba.trade.address.delete": {
+      "requestSchema": "AlibabaTradeAlibabaTradeAddressDeleteRequest",
+      "responseSchema": "AlibabaTradeAlibabaTradeAddressDeleteResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "address",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2024-10-15",
+      "title": "地址删除",
+      "description": "地址删除",
+      "errorCodes": [],
+      "requestExample": { "address_id": 1232222 },
+      "responseExample": {},
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=70728"
     }
   }
 }

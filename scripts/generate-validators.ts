@@ -9,6 +9,7 @@ import addFormats from 'ajv-formats';
 interface OpenApiDocument {
   'x-product-capabilities'?: Record<string, { requestSchema: string; responseSchema: string }>;
   'x-rfq-capabilities'?: Record<string, { requestSchema: string; responseSchema: string }>;
+  'x-trade-capabilities'?: Record<string, { requestSchema: string; responseSchema: string }>;
   components?: {
     schemas?: Record<string, object>;
   };
@@ -44,6 +45,11 @@ for (const [index, definition] of Object.values(document['x-product-capabilities
 for (const [index, definition] of Object.values(document['x-rfq-capabilities'] ?? {}).entries()) {
   selected[`validateRfqCapability${index}Request`] = schemas[definition.requestSchema];
   selected[`validateRfqCapability${index}Response`] = schemas[definition.responseSchema];
+}
+
+for (const [index, definition] of Object.values(document['x-trade-capabilities'] ?? {}).entries()) {
+  selected[`validateTradeCapability${index}Request`] = schemas[definition.requestSchema];
+  selected[`validateTradeCapability${index}Response`] = schemas[definition.responseSchema];
 }
 
 function withAjvExtensions(value: unknown): unknown {

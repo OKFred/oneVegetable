@@ -518,14 +518,23 @@ document.paths['/rfqs/quotations'] = {
   }
 };
 
-const productCapabilities = (document['x-product-capabilities'] ?? {}) as Record<
-  string,
-  { requestSchema: string; responseSchema: string }
->;
-const combinedDefinitions = [...Object.values(productCapabilities), ...Object.values(capabilityMap)] as {
-  requestSchema: string;
-  responseSchema: string;
-}[];
+const productDefinitions = Object.values(
+  (document['x-product-capabilities'] ?? {}) as Record<
+    string,
+    { requestSchema: string; responseSchema: string }
+  >
+);
+const tradeDefinitions = Object.values(
+  (document['x-trade-capabilities'] ?? {}) as Record<
+    string,
+    { requestSchema: string; responseSchema: string }
+  >
+);
+const combinedDefinitions = [
+  ...productDefinitions,
+  ...(Object.values(capabilityMap) as { requestSchema: string; responseSchema: string }[]),
+  ...tradeDefinitions
+];
 const envelope = document.components.schemas.CapabilityResponseEnvelope;
 const envelopeProperties = envelope.properties as Record<string, JsonSchema>;
 envelopeProperties.data = {

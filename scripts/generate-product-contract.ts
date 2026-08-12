@@ -285,6 +285,9 @@ document.components.schemas.CapabilityDefinition = {
     risk: { type: 'string', enum: ['read', 'mutation'] },
     verification: { type: 'string', enum: ['documented', 'account-verified'] },
     realCallEnabled: { type: 'boolean' },
+    restricted: { type: 'boolean' },
+    restrictionReason: { type: ['string', 'null'] },
+    featureArea: { type: 'string' },
     requestSchema: { type: 'string' },
     responseSchema: { type: 'string' },
     requestExample: { type: 'object', additionalProperties: true },
@@ -454,10 +457,12 @@ document.paths['/products/{productId}/score'] = {
 };
 
 const definitions = Object.entries(capabilityMap);
-const rfqDefinitions = Object.entries(
-  (document['x-rfq-capabilities'] ?? {}) as Record<string, { requestSchema: string; responseSchema: string }>
+const additionalDefinitions = ['x-rfq-capabilities', 'x-trade-capabilities'].flatMap((extension) =>
+  Object.entries(
+    (document[extension] ?? {}) as Record<string, { requestSchema: string; responseSchema: string }>
+  )
 );
-const allDefinitions = [...definitions, ...rfqDefinitions];
+const allDefinitions = [...definitions, ...additionalDefinitions];
 const requestRefs = allDefinitions.map(([, value]) => ({
   $ref: `#/components/schemas/${(value as { requestSchema: string }).requestSchema}`
 }));
