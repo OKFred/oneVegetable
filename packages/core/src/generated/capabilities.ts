@@ -988,8 +988,8 @@ export const API_CAPABILITIES = [
     "chargeLabel": "￥开放平台免费API",
     "auth": "required",
     "jushitaOnly": false,
-    "restricted": false,
-    "restrictionReason": null,
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47826",
     "checkedAt": "2026-08-13",
@@ -999,8 +999,8 @@ export const API_CAPABILITIES = [
     "risk": "read",
     "verification": "documented",
     "realCallEnabled": false,
-    "requestSchema": null,
-    "responseSchema": null
+    "requestSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetRequest",
+    "responseSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetResponse"
   },
   {
     "method": "alibaba.onetouch.logistics.express.address.city.list",
@@ -1008,8 +1008,8 @@ export const API_CAPABILITIES = [
     "chargeLabel": "￥开放平台免费API",
     "auth": "required",
     "jushitaOnly": false,
-    "restricted": false,
-    "restrictionReason": null,
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47959",
     "checkedAt": "2026-08-13",
@@ -1019,8 +1019,8 @@ export const API_CAPABILITIES = [
     "risk": "read",
     "verification": "documented",
     "realCallEnabled": false,
-    "requestSchema": null,
-    "responseSchema": null
+    "requestSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressCityListRequest",
+    "responseSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressCityListResponse"
   },
   {
     "method": "alibaba.onetouch.logistics.express.address.division.list",
@@ -1028,8 +1028,8 @@ export const API_CAPABILITIES = [
     "chargeLabel": "￥开放平台免费API",
     "auth": "required",
     "jushitaOnly": false,
-    "restricted": false,
-    "restrictionReason": null,
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47961",
     "checkedAt": "2026-08-13",
@@ -1039,8 +1039,8 @@ export const API_CAPABILITIES = [
     "risk": "read",
     "verification": "documented",
     "realCallEnabled": false,
-    "requestSchema": null,
-    "responseSchema": null
+    "requestSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressDivisionListRequest",
+    "responseSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressDivisionListResponse"
   },
   {
     "method": "alibaba.onetouch.logistics.express.address.province.list",
@@ -1048,8 +1048,8 @@ export const API_CAPABILITIES = [
     "chargeLabel": "￥开放平台免费API",
     "auth": "required",
     "jushitaOnly": false,
-    "restricted": false,
-    "restrictionReason": null,
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47960",
     "checkedAt": "2026-08-13",
@@ -1059,8 +1059,8 @@ export const API_CAPABILITIES = [
     "risk": "read",
     "verification": "documented",
     "realCallEnabled": false,
-    "requestSchema": null,
-    "responseSchema": null
+    "requestSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressProvinceListRequest",
+    "responseSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressProvinceListResponse"
   },
   {
     "method": "alibaba.onetouch.logistics.express.address.street.list",
@@ -1068,8 +1068,8 @@ export const API_CAPABILITIES = [
     "chargeLabel": "￥开放平台免费API",
     "auth": "required",
     "jushitaOnly": false,
-    "restricted": false,
-    "restrictionReason": null,
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47978",
     "checkedAt": "2026-08-13",
@@ -1079,8 +1079,8 @@ export const API_CAPABILITIES = [
     "risk": "read",
     "verification": "documented",
     "realCallEnabled": false,
-    "requestSchema": null,
-    "responseSchema": null
+    "requestSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressStreetListRequest",
+    "responseSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressStreetListResponse"
   },
   {
     "method": "alibaba.onetouch.logistics.express.charge.calculate",
@@ -1088,8 +1088,8 @@ export const API_CAPABILITIES = [
     "chargeLabel": "￥开放平台免费API",
     "auth": "required",
     "jushitaOnly": false,
-    "restricted": false,
-    "restrictionReason": null,
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47869",
     "checkedAt": "2026-08-13",
@@ -1099,8 +1099,8 @@ export const API_CAPABILITIES = [
     "risk": "read",
     "verification": "documented",
     "realCallEnabled": false,
-    "requestSchema": null,
-    "responseSchema": null
+    "requestSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressChargeCalculateRequest",
+    "responseSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressChargeCalculateResponse"
   },
   {
     "method": "alibaba.onetouch.logistics.express.logistics.order.create",
@@ -1108,8 +1108,8 @@ export const API_CAPABILITIES = [
     "chargeLabel": "￥开放平台免费API",
     "auth": "required",
     "jushitaOnly": false,
-    "restricted": false,
-    "restrictionReason": null,
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47873",
     "checkedAt": "2026-08-13",
@@ -1119,8 +1119,8 @@ export const API_CAPABILITIES = [
     "risk": "mutation",
     "verification": "documented",
     "realCallEnabled": false,
-    "requestSchema": null,
-    "responseSchema": null
+    "requestSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsOrderCreateRequest",
+    "responseSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsOrderCreateResponse"
   },
   {
     "method": "alibaba.onetouch.logistics.express.logistics.product.list",
@@ -1128,8 +1128,8 @@ export const API_CAPABILITIES = [
     "chargeLabel": "￥开放平台免费API",
     "auth": "required",
     "jushitaOnly": false,
-    "restricted": false,
-    "restrictionReason": null,
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47872",
     "checkedAt": "2026-08-13",
@@ -1139,8 +1139,8 @@ export const API_CAPABILITIES = [
     "risk": "read",
     "verification": "documented",
     "realCallEnabled": false,
-    "requestSchema": null,
-    "responseSchema": null
+    "requestSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsProductListRequest",
+    "responseSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsProductListResponse"
   },
   {
     "method": "alibaba.onetouch.logistics.express.logistics.rule.validate",
@@ -1148,19 +1148,19 @@ export const API_CAPABILITIES = [
     "chargeLabel": "￥开放平台免费API",
     "auth": "required",
     "jushitaOnly": false,
-    "restricted": false,
-    "restrictionReason": null,
+    "restricted": true,
+    "restrictionReason": "官方标记暂停使用",
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47870",
     "checkedAt": "2026-08-13",
     "updatedAt": "2026-08-12",
     "source": "catalog",
-    "lifecycle": "active",
+    "lifecycle": "deprecated",
     "risk": "read",
     "verification": "documented",
     "realCallEnabled": false,
-    "requestSchema": null,
-    "responseSchema": null
+    "requestSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsRuleValidateRequest",
+    "responseSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsRuleValidateResponse"
   },
   {
     "method": "alibaba.onetouch.logistics.express.order.cancel",
@@ -1168,19 +1168,19 @@ export const API_CAPABILITIES = [
     "chargeLabel": "￥开放平台免费API",
     "auth": "required",
     "jushitaOnly": false,
-    "restricted": false,
-    "restrictionReason": null,
+    "restricted": true,
+    "restrictionReason": "官方标记暂停使用",
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47871",
     "checkedAt": "2026-08-13",
     "updatedAt": "2026-08-12",
     "source": "catalog",
-    "lifecycle": "active",
-    "risk": "read",
+    "lifecycle": "deprecated",
+    "risk": "mutation",
     "verification": "documented",
     "realCallEnabled": false,
-    "requestSchema": null,
-    "responseSchema": null
+    "requestSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelRequest",
+    "responseSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelResponse"
   },
   {
     "method": "alibaba.onetouch.logistics.express.order.cancel.reason.list",
@@ -1188,8 +1188,8 @@ export const API_CAPABILITIES = [
     "chargeLabel": "￥开放平台免费API",
     "auth": "required",
     "jushitaOnly": false,
-    "restricted": false,
-    "restrictionReason": null,
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47868",
     "checkedAt": "2026-08-13",
@@ -1199,8 +1199,8 @@ export const API_CAPABILITIES = [
     "risk": "read",
     "verification": "documented",
     "realCallEnabled": false,
-    "requestSchema": null,
-    "responseSchema": null
+    "requestSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelReasonListRequest",
+    "responseSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelReasonListResponse"
   },
   {
     "method": "alibaba.onetouch.logistics.express.order.detail.get",
@@ -1208,8 +1208,8 @@ export const API_CAPABILITIES = [
     "chargeLabel": "￥开放平台免费API",
     "auth": "required",
     "jushitaOnly": false,
-    "restricted": false,
-    "restrictionReason": null,
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=48056",
     "checkedAt": "2026-08-13",
@@ -1219,8 +1219,8 @@ export const API_CAPABILITIES = [
     "risk": "read",
     "verification": "documented",
     "realCallEnabled": false,
-    "requestSchema": null,
-    "responseSchema": null
+    "requestSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderDetailGetRequest",
+    "responseSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderDetailGetResponse"
   },
   {
     "method": "alibaba.onetouch.logistics.express.order.list.query",
@@ -1228,8 +1228,8 @@ export const API_CAPABILITIES = [
     "chargeLabel": "￥开放平台免费API",
     "auth": "required",
     "jushitaOnly": false,
-    "restricted": false,
-    "restrictionReason": null,
+    "restricted": true,
+    "restrictionReason": "官方文档明确描述为 ISV 查询，需额外资格验证",
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=56235",
     "checkedAt": "2026-08-13",
@@ -1239,8 +1239,8 @@ export const API_CAPABILITIES = [
     "risk": "read",
     "verification": "documented",
     "realCallEnabled": false,
-    "requestSchema": null,
-    "responseSchema": null
+    "requestSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderListQueryRequest",
+    "responseSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderListQueryResponse"
   },
   {
     "method": "alibaba.onetouch.logistics.express.special.product.type.list",
@@ -1248,8 +1248,8 @@ export const API_CAPABILITIES = [
     "chargeLabel": "￥开放平台免费API",
     "auth": "required",
     "jushitaOnly": false,
-    "restricted": false,
-    "restrictionReason": null,
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47847",
     "checkedAt": "2026-08-13",
@@ -1259,8 +1259,8 @@ export const API_CAPABILITIES = [
     "risk": "read",
     "verification": "documented",
     "realCallEnabled": false,
-    "requestSchema": null,
-    "responseSchema": null
+    "requestSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressSpecialProductTypeListRequest",
+    "responseSchema": "AlibabaLogisticsAlibabaOnetouchLogisticsExpressSpecialProductTypeListResponse"
   },
   {
     "method": "alibaba.order.trade.tt.get",
@@ -1670,7 +1670,7 @@ export const API_CAPABILITIES = [
     "jushitaOnly": false,
     "restricted": false,
     "restrictionReason": null,
-    "enabled": false,
+    "enabled": true,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=25394",
     "checkedAt": "2026-08-13",
     "updatedAt": "2024-08-09",
@@ -1678,8 +1678,8 @@ export const API_CAPABILITIES = [
     "lifecycle": "active",
     "risk": "read",
     "verification": "documented",
-    "realCallEnabled": false,
-    "requestSchema": null,
-    "responseSchema": null
+    "realCallEnabled": true,
+    "requestSchema": "AlibabaLogisticsAlibabaWholesaleShippinglineTemplateListRequest",
+    "responseSchema": "AlibabaLogisticsAlibabaWholesaleShippinglineTemplateListResponse"
   }
 ] as const satisfies readonly ApiCapability[];

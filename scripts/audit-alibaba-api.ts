@@ -43,6 +43,8 @@ interface AuditEntry {
 interface ProductOverride {
   lifecycle?: AuditEntry['lifecycle'];
   risk?: AuditEntry['risk'];
+  restricted?: boolean;
+  restrictionReason?: string;
 }
 
 const CATALOG_URL = 'https://developer.alibaba.com/handler/document/getCatelogConfig.json?docId=118496';
@@ -78,8 +80,14 @@ const productOverrides = JSON.parse(
 const tradeOverrides = JSON.parse(
   await readFile(resolve(root, 'config/alibaba-trade-overrides.json'), 'utf8')
 ) as Record<string, ProductOverride>;
+const logisticsOverrides = JSON.parse(
+  await readFile(resolve(root, 'config/alibaba-logistics-overrides.json'), 'utf8')
+) as Record<string, ProductOverride>;
 const tradeCategoryMethods = new Set(
   JSON.parse(await readFile(resolve(root, 'config/alibaba-trade-category.json'), 'utf8')) as string[]
+);
+const logisticsCategoryMethods = new Set(
+  JSON.parse(await readFile(resolve(root, 'config/alibaba-logistics-category.json'), 'utf8')) as string[]
 );
 const checkedAt = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Shanghai',
@@ -128,6 +136,7 @@ function asDocumentResponse(value: unknown): DocumentResponse {
 
 function resolveDomain(method: string): string {
   if (tradeCategoryMethods.has(method)) return 'trade';
+  if (logisticsCategoryMethods.has(method)) return 'logistics';
   if (/photobank|photo/.test(method)) return 'photo';
   if (/rfq|quotation|alibaba\.icbu\.annex\.upload/.test(method)) return 'rfq';
   if (/logistics|shipping|onetouch/.test(method)) return 'logistics';
@@ -146,6 +155,8 @@ function resolveAuth(labels: string[]): AuditEntry['auth'] {
 }
 
 function isRestricted(method: string): boolean {
+  const explicit = logisticsOverrides[method]?.restricted;
+  if (explicit !== undefined) return explicit;
   return (
     /\.(snsoft|xiaoman|wetrade)\./.test(method) ||
     method.includes('ecology.write') ||
@@ -155,7 +166,8 @@ function isRestricted(method: string): boolean {
 }
 
 function resolveRisk(method: string): AuditEntry['risk'] {
-  const explicit = productOverrides[method]?.risk ?? tradeOverrides[method]?.risk;
+  const explicit =
+    productOverrides[method]?.risk ?? tradeOverrides[method]?.risk ?? logisticsOverrides[method]?.risk;
   if (explicit) return explicit;
   return /\.(add|create|delete|modify|operate|post|save|update|upload)(\.|$)/.test(method)
     ? 'mutation'
@@ -222,11 +234,23 @@ if (process.argv.includes('--check')) {
     const risk = resolveRisk(method);
     const enabled =
       !restricted &&
-      (ENABLED_METHODS.has(method) || domain === 'product' || domain === 'rfq' || domain === 'trade');
+      (ENABLED_METHODS.has(method) ||
+        domain === 'product' ||
+        domain === 'rfq' ||
+        domain === 'trade' ||
+        domain === 'logistics');
     const schemaName =
-      domain === 'product' || domain === 'rfq' || domain === 'trade' ? capabilitySchemaName(method) : null;
+      domain === 'product' || domain === 'rfq' || domain === 'trade' || domain === 'logistics'
+        ? capabilitySchemaName(method)
+        : null;
     const schemaPrefix =
-      domain === 'rfq' ? 'AlibabaRfq' : domain === 'trade' ? 'AlibabaTrade' : 'AlibabaProduct';
+      domain === 'rfq'
+        ? 'AlibabaRfq'
+        : domain === 'trade'
+          ? 'AlibabaTrade'
+          : domain === 'logistics'
+            ? 'AlibabaLogistics'
+            : 'AlibabaProduct';
     return {
       method,
       domain,
@@ -234,13 +258,19 @@ if (process.argv.includes('--check')) {
       auth: resolveAuth(labels),
       jushitaOnly,
       restricted,
-      restrictionReason: restricted ? '特定 ISV、业务资格或额外权限，默认关闭' : null,
+      restrictionReason: restricted
+        ? (logisticsOverrides[method]?.restrictionReason ?? '特定 ISV、业务资格或额外权限，默认关闭')
+        : null,
       enabled,
       docUrl: `https://developer.alibaba.com/docs/api.htm?apiId=${docId}`,
       checkedAt,
       updatedAt: document.gmtModified ? new Date(document.gmtModified).toISOString().slice(0, 10) : null,
       source: 'catalog',
-      lifecycle: productOverrides[method]?.lifecycle ?? tradeOverrides[method]?.lifecycle ?? 'active',
+      lifecycle:
+        productOverrides[method]?.lifecycle ??
+        tradeOverrides[method]?.lifecycle ??
+        logisticsOverrides[method]?.lifecycle ??
+        'active',
       risk,
       verification: 'documented',
       realCallEnabled: enabled && risk === 'read',

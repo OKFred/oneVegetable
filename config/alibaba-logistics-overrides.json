@@ -1,0 +1,62 @@
+{
+  "alibaba.onetouch.logistics.buyer.info.get": {
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证"
+  },
+  "alibaba.onetouch.logistics.express.special.product.type.list": {
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证"
+  },
+  "alibaba.onetouch.logistics.express.order.cancel.reason.list": {
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证"
+  },
+  "alibaba.onetouch.logistics.express.charge.calculate": {
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证"
+  },
+  "alibaba.onetouch.logistics.express.logistics.rule.validate": {
+    "lifecycle": "deprecated",
+    "restricted": true,
+    "restrictionReason": "官方标记暂停使用"
+  },
+  "alibaba.onetouch.logistics.express.order.cancel": {
+    "lifecycle": "deprecated",
+    "risk": "mutation",
+    "restricted": true,
+    "restrictionReason": "官方标记暂停使用"
+  },
+  "alibaba.onetouch.logistics.express.logistics.product.list": {
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证"
+  },
+  "alibaba.onetouch.logistics.express.logistics.order.create": {
+    "risk": "mutation",
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证"
+  },
+  "alibaba.onetouch.logistics.express.address.city.list": {
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证"
+  },
+  "alibaba.onetouch.logistics.express.address.province.list": {
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证"
+  },
+  "alibaba.onetouch.logistics.express.address.division.list": {
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证"
+  },
+  "alibaba.onetouch.logistics.express.address.street.list": {
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证"
+  },
+  "alibaba.onetouch.logistics.express.order.detail.get": {
+    "restricted": true,
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证"
+  },
+  "alibaba.onetouch.logistics.express.order.list.query": {
+    "restricted": true,
+    "restrictionReason": "官方文档明确描述为 ISV 查询，需额外资格验证"
+  }
+}

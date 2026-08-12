@@ -28,6 +28,7 @@
     "snapshot:product-docs": "tsx scripts/snapshot-product-docs.ts",
     "snapshot:rfq-docs": "tsx scripts/snapshot-rfq-docs.ts",
     "snapshot:trade-docs": "tsx scripts/snapshot-trade-docs.ts",
+    "snapshot:logistics-docs": "tsx scripts/snapshot-logistics-docs.ts",
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "eslint .",
     "format": "prettier --write .",

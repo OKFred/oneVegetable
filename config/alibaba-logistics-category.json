@@ -1,0 +1,17 @@
+[
+  "alibaba.onetouch.logistics.buyer.info.get",
+  "alibaba.onetouch.logistics.express.special.product.type.list",
+  "alibaba.onetouch.logistics.express.order.cancel.reason.list",
+  "alibaba.onetouch.logistics.express.charge.calculate",
+  "alibaba.onetouch.logistics.express.logistics.rule.validate",
+  "alibaba.onetouch.logistics.express.order.cancel",
+  "alibaba.onetouch.logistics.express.logistics.product.list",
+  "alibaba.onetouch.logistics.express.logistics.order.create",
+  "alibaba.onetouch.logistics.express.address.city.list",
+  "alibaba.onetouch.logistics.express.address.province.list",
+  "alibaba.onetouch.logistics.express.address.division.list",
+  "alibaba.onetouch.logistics.express.address.street.list",
+  "alibaba.onetouch.logistics.express.order.detail.get",
+  "alibaba.onetouch.logistics.express.order.list.query",
+  "alibaba.wholesale.shippingline.template.list"
+]

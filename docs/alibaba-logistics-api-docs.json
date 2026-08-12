@@ -1,0 +1,4232 @@
+{
+  "checkedAt": "2026-08-13",
+  "logisticsCategoryCount": 14,
+  "crossDomainCount": 1,
+  "catalogCount": 15,
+  "definitions": [
+    {
+      "method": "alibaba.onetouch.logistics.buyer.info.get",
+      "source": "catalog",
+      "sourceCategory": "logistics",
+      "docId": 47826,
+      "title": "物流买家信息获取",
+      "description": "物流买家查询email和公司信息",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "buyer",
+      "restricted": true,
+      "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2020-01-14",
+      "requestParams": [],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "Result",
+          "required": false,
+          "description": "接口返回model",
+          "subParams": [
+            {
+              "name": "code",
+              "type": "String",
+              "required": true,
+              "description": "code"
+            },
+            {
+              "name": "data",
+              "type": "Json",
+              "required": true,
+              "description": "返回素材id",
+              "demoValue": "1234"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "是否成功",
+              "demoValue": "false"
+            },
+            {
+              "name": "message",
+              "type": "String",
+              "required": true,
+              "description": "message"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_onetouch_logistics_buyer_info_get_response\":{\n        \"result\":{\n            \"code\":\"\",\n            \"data\":\"1234\",\n            \"success\":false,\n            \"message\":\"\"\n        }\n    }\n}"
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.special.product.type.list",
+      "source": "catalog",
+      "sourceCategory": "logistics",
+      "docId": 47847,
+      "title": "获取商品类型配置项",
+      "description": "获取商品类型配置项",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "configuration",
+      "restricted": true,
+      "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2026-08-12",
+      "requestParams": [],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "Result",
+          "required": false,
+          "description": "接口返回model",
+          "demoValue": "Object",
+          "subParams": [
+            {
+              "name": "error_message",
+              "type": "String",
+              "required": false,
+              "description": "返回结果描述",
+              "demoValue": "invalidate request"
+            },
+            {
+              "name": "values",
+              "type": "SpecialProductTypeDTO[]",
+              "required": false,
+              "description": "列表对象",
+              "demoValue": "list<SpecialProductTypeDTO>",
+              "subParams": [
+                {
+                  "name": "code",
+                  "type": "String",
+                  "required": false,
+                  "description": "商品类型code",
+                  "demoValue": "battery"
+                },
+                {
+                  "name": "name",
+                  "type": "String",
+                  "required": false,
+                  "description": "商品类型",
+                  "demoValue": "电池"
+                },
+                {
+                  "name": "childrens",
+                  "type": "SpecialProductTypeDTO[]",
+                  "required": false,
+                  "description": "列表对象",
+                  "demoValue": "list<SpecialProductTypeDTO>",
+                  "subParams": [
+                    {
+                      "name": "code",
+                      "type": "String",
+                      "required": false,
+                      "description": "商品类型code",
+                      "demoValue": "inlayBattery"
+                    },
+                    {
+                      "name": "name",
+                      "type": "String",
+                      "required": false,
+                      "description": "商品类型",
+                      "demoValue": "内置/配置电池"
+                    },
+                    {
+                      "name": "childrens",
+                      "type": "SpecialProductTypeDTO[]",
+                      "required": false,
+                      "description": "列表对象",
+                      "demoValue": "list<SpecialProductTypeDTO>",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "商品类型code",
+                          "demoValue": "oneLessHundredWh"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "商品类型",
+                          "demoValue": "单块电池≤100Wh"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "error_code",
+              "type": "Number",
+              "required": false,
+              "description": "返回结果编码",
+              "demoValue": "402"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_onetouch_logistics_express_special_product_type_list_response\":{\n        \"result\":{\n            \"error_message\":\"invalidate request\",\n            \"values\":[\n                {\n                        \"code\":\"battery\",\n                        \"name\":\"电池\",\n                        \"childrens\":[\n                            {\n                                    \"code\":\"inlayBattery\",\n                                    \"name\":\"内置\\/配置电池\",\n                                    \"childrens\":[\n                                        {\n                                                \"code\":\"oneLessHundredWh\",\n                                                \"name\":\"单块电池≤100Wh\"\n                                        }\n                                    ]\n                            }\n                        ]\n                }\n            ],\n            \"success\":true,\n            \"error_code\":402\n        }\n    }\n}"
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.order.cancel.reason.list",
+      "source": "catalog",
+      "sourceCategory": "logistics",
+      "docId": 47868,
+      "title": "订单取消原因列表",
+      "description": "订单取消原因列表",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "order",
+      "restricted": true,
+      "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2026-08-12",
+      "requestParams": [],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "Result",
+          "required": false,
+          "description": "接口返回model",
+          "demoValue": "result",
+          "subParams": [
+            {
+              "name": "error_message",
+              "type": "String",
+              "required": false,
+              "description": "错误信息提示",
+              "demoValue": "invalidate request"
+            },
+            {
+              "name": "values",
+              "type": "Pair[]",
+              "required": false,
+              "description": "列表对象",
+              "demoValue": "list",
+              "subParams": [
+                {
+                  "name": "value",
+                  "type": "String",
+                  "required": false,
+                  "description": "异常描述",
+                  "demoValue": "未收到货款"
+                },
+                {
+                  "name": "key",
+                  "type": "String",
+                  "required": false,
+                  "description": "异常key",
+                  "demoValue": "NO_PAYMENT_RECEIVED"
+                }
+              ]
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "error_code",
+              "type": "Number",
+              "required": false,
+              "description": "错误码",
+              "demoValue": "402"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_onetouch_logistics_express_order_cancel_reason_list_response\":{\n        \"result\":{\n            \"error_message\":\"invalidate request\",\n            \"values\":[\n                {\n                        \"value\":\"未收到货款\",\n                        \"key\":\"NO_PAYMENT_RECEIVED\"\n                }\n            ],\n            \"success\":true,\n            \"error_code\":402\n        }\n    }\n}"
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.charge.calculate",
+      "source": "catalog",
+      "sourceCategory": "logistics",
+      "docId": 47869,
+      "title": "计算快递运费&下单参数校验",
+      "description": "计算快递运费、下单参数校验",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "quote",
+      "restricted": true,
+      "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2026-08-12",
+      "requestParams": [
+        {
+          "name": "paramn_query",
+          "type": "PlaceOrderDTO",
+          "required": true,
+          "description": "请求参数对象",
+          "subParams": [
+            {
+              "name": "cargo_list",
+              "type": "CargoList[]",
+              "required": true,
+              "description": "货品信息",
+              "subParams": [
+                {
+                  "name": "unit",
+                  "type": "String",
+                  "required": true,
+                  "description": "单位",
+                  "demoValue": "pcs"
+                },
+                {
+                  "name": "hscode",
+                  "type": "String",
+                  "required": true,
+                  "description": "海关编码",
+                  "demoValue": "12345678"
+                },
+                {
+                  "name": "quantity",
+                  "type": "Number",
+                  "required": true,
+                  "description": "货物数量",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "declaration_value",
+                  "type": "String",
+                  "required": true,
+                  "description": "1",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "price",
+                  "type": "String",
+                  "required": false,
+                  "description": "货物单价",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "name_cn",
+                  "type": "String",
+                  "required": true,
+                  "description": "货物中文名",
+                  "demoValue": "无线耳机"
+                },
+                {
+                  "name": "currency",
+                  "type": "String",
+                  "required": true,
+                  "description": "1",
+                  "demoValue": "USD"
+                },
+                {
+                  "name": "name_en",
+                  "type": "String",
+                  "required": true,
+                  "description": "货物英文名",
+                  "demoValue": "wireless headsets"
+                },
+                {
+                  "name": "product_type",
+                  "type": "ProductType[]",
+                  "required": true,
+                  "description": "商品特性列表对象",
+                  "subParams": [
+                    {
+                      "name": "code",
+                      "type": "String",
+                      "required": true,
+                      "description": "商品类型code",
+                      "demoValue": "battery"
+                    },
+                    {
+                      "name": "children",
+                      "type": "Children[]",
+                      "required": false,
+                      "description": "商品特性列表对象",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "商品类型code",
+                          "demoValue": "inlayBattery"
+                        },
+                        {
+                          "name": "children",
+                          "type": "LeafNode[]",
+                          "required": false,
+                          "description": "商品特性列表对象",
+                          "subParams": [
+                            {
+                              "name": "code",
+                              "type": "String",
+                              "required": false,
+                              "description": "商品类型code",
+                              "demoValue": "oneLessHundredWh"
+                            },
+                            {
+                              "name": "name",
+                              "type": "String",
+                              "required": false,
+                              "description": "商品类型",
+                              "demoValue": "单块电池≤100Wh"
+                            }
+                          ]
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "商品类型",
+                          "demoValue": "内置/配置电池"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "name",
+                      "type": "String",
+                      "required": true,
+                      "description": "商品类型",
+                      "demoValue": "电池"
+                    }
+                  ]
+                },
+                {
+                  "name": "material",
+                  "type": "String",
+                  "required": false,
+                  "description": "材质",
+                  "demoValue": "塑料"
+                },
+                {
+                  "name": "purpose",
+                  "type": "String",
+                  "required": false,
+                  "description": "用途",
+                  "demoValue": "喝水用杯子"
+                }
+              ]
+            },
+            {
+              "name": "origin_zip_code",
+              "type": "String",
+              "required": true,
+              "description": "起始地邮编",
+              "demoValue": "518000"
+            },
+            {
+              "name": "deliver_warehouse_express",
+              "type": "DeliverWarehouseExpressDto",
+              "required": false,
+              "description": "交货到仓快递信息",
+              "subParams": [
+                {
+                  "name": "logistics_company",
+                  "type": "String",
+                  "required": false,
+                  "description": "国内快递公司code",
+                  "demoValue": "UPS"
+                },
+                {
+                  "name": "tracking_numbers",
+                  "type": "String[]",
+                  "required": false,
+                  "description": "运单号",
+                  "demoValue": "[\"111111\",\"22222\"]"
+                },
+                {
+                  "name": "package_quantity",
+                  "type": "String",
+                  "required": false,
+                  "description": "包裹数量",
+                  "demoValue": "2"
+                }
+              ]
+            },
+            {
+              "name": "package_list",
+              "type": "PackageList[]",
+              "required": true,
+              "description": "包裹信息",
+              "subParams": [
+                {
+                  "name": "quantity",
+                  "type": "String",
+                  "required": true,
+                  "description": "数量",
+                  "demoValue": "2"
+                },
+                {
+                  "name": "length",
+                  "type": "String",
+                  "required": true,
+                  "description": "长",
+                  "demoValue": "5"
+                },
+                {
+                  "name": "width",
+                  "type": "String",
+                  "required": true,
+                  "description": "宽",
+                  "demoValue": "10"
+                },
+                {
+                  "name": "weight",
+                  "type": "String",
+                  "required": true,
+                  "description": "重量",
+                  "demoValue": "3"
+                },
+                {
+                  "name": "type",
+                  "type": "String",
+                  "required": true,
+                  "description": "包装类型",
+                  "demoValue": "box"
+                },
+                {
+                  "name": "height",
+                  "type": "String",
+                  "required": true,
+                  "description": "高",
+                  "demoValue": "2"
+                }
+              ]
+            },
+            {
+              "name": "destination_country_code",
+              "type": "String",
+              "required": true,
+              "description": "目的地国家",
+              "demoValue": "US"
+            },
+            {
+              "name": "warehouse_code",
+              "type": "String",
+              "required": true,
+              "description": "仓库编码",
+              "demoValue": "ASP_YH_SZJC"
+            },
+            {
+              "name": "product_code",
+              "type": "String",
+              "required": true,
+              "description": "产品编码",
+              "demoValue": "EX_ASP_standard3C"
+            },
+            {
+              "name": "consignor_address",
+              "type": "ConsignorAddress",
+              "required": true,
+              "description": "发货人地址",
+              "subParams": [
+                {
+                  "name": "address",
+                  "type": "Address",
+                  "required": true,
+                  "description": "国家、省、市、详细地址信息",
+                  "subParams": [
+                    {
+                      "name": "zip",
+                      "type": "String",
+                      "required": true,
+                      "description": "邮编",
+                      "demoValue": "518000"
+                    },
+                    {
+                      "name": "country",
+                      "type": "Country",
+                      "required": true,
+                      "description": "国家",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址代码",
+                          "demoValue": "CN"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "Number",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "1"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址名字",
+                          "demoValue": "china"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "address",
+                      "type": "String",
+                      "required": true,
+                      "description": "地址",
+                      "demoValue": "阿里西溪园区"
+                    },
+                    {
+                      "name": "town",
+                      "type": "Town",
+                      "required": false,
+                      "description": "乡、镇名称",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "330009"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "Number",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "330009"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址名字",
+                          "demoValue": "测试街道"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "province",
+                      "type": "Province",
+                      "required": true,
+                      "description": "省份",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址代码",
+                          "demoValue": "330000"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "Number",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "330000"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址名字",
+                          "demoValue": "浙江省"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "city",
+                      "type": "City",
+                      "required": true,
+                      "description": "城市",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址代码",
+                          "demoValue": "330100"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "Number",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "330100"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址名字",
+                          "demoValue": "杭州市"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "district",
+                      "type": "District",
+                      "required": false,
+                      "description": "地区",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "330108"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址名字",
+                          "demoValue": "滨江区"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "contact",
+                  "type": "Contact",
+                  "required": true,
+                  "description": "联系方式(邮箱、电话号码、手机号码等)",
+                  "subParams": [
+                    {
+                      "name": "phone_code",
+                      "type": "String",
+                      "required": false,
+                      "description": "电话区号",
+                      "demoValue": "+86"
+                    },
+                    {
+                      "name": "mobile_no",
+                      "type": "String",
+                      "required": true,
+                      "description": "手机号码",
+                      "demoValue": "13798909890"
+                    },
+                    {
+                      "name": "email",
+                      "type": "String",
+                      "required": true,
+                      "description": "邮箱",
+                      "demoValue": "aaa@test.com\""
+                    }
+                  ]
+                },
+                {
+                  "name": "contact_person",
+                  "type": "String",
+                  "required": true,
+                  "description": "联系人姓名",
+                  "demoValue": "张三"
+                },
+                {
+                  "name": "company_name_cn",
+                  "type": "String",
+                  "required": true,
+                  "description": "公司中文名",
+                  "demoValue": "测试公司名称"
+                }
+              ]
+            },
+            {
+              "name": "express_customs",
+              "type": "ExpressCustomsDto",
+              "required": true,
+              "description": "申报信息",
+              "subParams": [
+                {
+                  "name": "declaration_amount",
+                  "type": "String",
+                  "required": true,
+                  "description": "申报金额",
+                  "demoValue": "15"
+                },
+                {
+                  "name": "need_customs_clearance",
+                  "type": "String",
+                  "required": true,
+                  "description": "是否正式报关",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "declaration_currency",
+                  "type": "String",
+                  "required": true,
+                  "description": "报关币种，出口发货中心默认USD",
+                  "demoValue": "USD"
+                }
+              ]
+            },
+            {
+              "name": "need_pickup",
+              "type": "Boolean",
+              "required": false,
+              "description": "1",
+              "demoValue": "true"
+            },
+            {
+              "name": "destination_zip_code",
+              "type": "String",
+              "required": true,
+              "description": "目的地邮编",
+              "demoValue": "07005"
+            },
+            {
+              "name": "supply_chain_biz_id",
+              "type": "String",
+              "required": false,
+              "description": "发货批次ID",
+              "demoValue": "1001"
+            },
+            {
+              "name": "consignee_address",
+              "type": "ConsigneeAddress",
+              "required": true,
+              "description": "收货人地址",
+              "subParams": [
+                {
+                  "name": "address",
+                  "type": "Address",
+                  "required": true,
+                  "description": "国家、省、市、详细地址信息",
+                  "subParams": [
+                    {
+                      "name": "zip",
+                      "type": "String",
+                      "required": true,
+                      "description": "邮编",
+                      "demoValue": "07005"
+                    },
+                    {
+                      "name": "country",
+                      "type": "Country",
+                      "required": true,
+                      "description": "国家",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址代码",
+                          "demoValue": "US"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "Number",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "228"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址名字",
+                          "demoValue": "United States of America"
+                        },
+                        {
+                          "name": "phone_code",
+                          "type": "String",
+                          "required": false,
+                          "description": "未知",
+                          "demoValue": "+1"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "address",
+                      "type": "String",
+                      "required": true,
+                      "description": "地址",
+                      "demoValue": "address1"
+                    },
+                    {
+                      "name": "province",
+                      "type": "Province",
+                      "required": true,
+                      "description": "省份",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "922878740000000000"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "100"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址名字",
+                          "demoValue": "New Jersey"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "town",
+                      "type": "Town",
+                      "required": false,
+                      "description": "乡、镇名称",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "922878740000000001"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "101"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址名字",
+                          "demoValue": "Wall township"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "address2",
+                      "type": "String",
+                      "required": false,
+                      "description": "地址2",
+                      "demoValue": "address2"
+                    },
+                    {
+                      "name": "city",
+                      "type": "City",
+                      "required": true,
+                      "description": "城市",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "922878746212000000"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址名字",
+                          "demoValue": "Absecon heights\""
+                        }
+                      ]
+                    },
+                    {
+                      "name": "district",
+                      "type": "District",
+                      "required": false,
+                      "description": "地区",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "1"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "1"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址名字",
+                          "demoValue": "1"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "contact",
+                  "type": "Contact",
+                  "required": false,
+                  "description": "联系方式(邮箱、电话号码、手机号码等)",
+                  "subParams": [
+                    {
+                      "name": "phone_area",
+                      "type": "String",
+                      "required": false,
+                      "description": "电话区码",
+                      "demoValue": "1"
+                    },
+                    {
+                      "name": "phone_code",
+                      "type": "String",
+                      "required": false,
+                      "description": "电话区号",
+                      "demoValue": "1"
+                    },
+                    {
+                      "name": "mobile_no",
+                      "type": "String",
+                      "required": true,
+                      "description": "手机号码",
+                      "demoValue": "1"
+                    },
+                    {
+                      "name": "email",
+                      "type": "String",
+                      "required": true,
+                      "description": "邮箱",
+                      "demoValue": "11"
+                    }
+                  ]
+                },
+                {
+                  "name": "address_email",
+                  "type": "String",
+                  "required": false,
+                  "description": "地址所有者邮箱(卖家维护收货地址, 值等于买家邮箱)",
+                  "demoValue": "test2@163.com"
+                },
+                {
+                  "name": "company_name_en",
+                  "type": "String",
+                  "required": true,
+                  "description": "公司英文名",
+                  "demoValue": "test company name"
+                },
+                {
+                  "name": "contact_person",
+                  "type": "String",
+                  "required": true,
+                  "description": "联系人姓名",
+                  "demoValue": "simon test"
+                },
+                {
+                  "name": "type",
+                  "type": "String",
+                  "required": false,
+                  "description": "地址类型",
+                  "demoValue": "CONSIGNEE"
+                }
+              ]
+            },
+            {
+              "name": "trade_biz_id",
+              "type": "String",
+              "required": false,
+              "description": "交易单号（例如阿里国际站的信保单ID），注意此字段不为空时，trade_platform字段必填（默认为ICBU）",
+              "demoValue": "20499906501020531"
+            },
+            {
+              "name": "trade_platform",
+              "type": "String",
+              "required": false,
+              "description": "跨境电商平台代码：ICBU（阿里巴巴国际站）、ALIEXPRESS（速卖通）、AMAZON（亚马逊）等",
+              "demoValue": "ICBU"
+            }
+          ]
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "Result",
+          "required": false,
+          "description": "接口返回model",
+          "demoValue": "Result",
+          "subParams": [
+            {
+              "name": "error_message",
+              "type": "String",
+              "required": false,
+              "description": "返回结果描述",
+              "demoValue": "invalidate request"
+            },
+            {
+              "name": "values",
+              "type": "ExpressFreightDTO",
+              "required": false,
+              "description": "结果对象",
+              "demoValue": "ExpressFreightDTO",
+              "subParams": [
+                {
+                  "name": "express_quote_item_list",
+                  "type": "ExpressQuoteItemList[]",
+                  "required": false,
+                  "description": "费用项列表",
+                  "demoValue": "ExpressQuoteItemList",
+                  "subParams": [
+                    {
+                      "name": "code",
+                      "type": "String",
+                      "required": false,
+                      "description": "费用编码",
+                      "demoValue": "logisticsExpressASP_EX0001"
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "Number",
+                      "required": false,
+                      "description": "数量",
+                      "demoValue": "1"
+                    },
+                    {
+                      "name": "sales_amount",
+                      "type": "Money",
+                      "required": false,
+                      "description": "价格信息",
+                      "demoValue": "Money",
+                      "subParams": [
+                        {
+                          "name": "amount",
+                          "type": "String",
+                          "required": false,
+                          "description": "金额",
+                          "demoValue": "109.2"
+                        },
+                        {
+                          "name": "currency",
+                          "type": "String",
+                          "required": false,
+                          "description": "币种",
+                          "demoValue": "CNY"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "name",
+                      "type": "String",
+                      "required": false,
+                      "description": "费用名称",
+                      "demoValue": "基础运费"
+                    },
+                    {
+                      "name": "charge_desc",
+                      "type": "String",
+                      "required": false,
+                      "description": "费用描述",
+                      "demoValue": "基础运费"
+                    },
+                    {
+                      "name": "currency",
+                      "type": "String",
+                      "required": false,
+                      "description": "币种",
+                      "demoValue": "CNY"
+                    },
+                    {
+                      "name": "type",
+                      "type": "String",
+                      "required": false,
+                      "description": "费用类型",
+                      "demoValue": "base_freight"
+                    }
+                  ]
+                },
+                {
+                  "name": "sales_amount",
+                  "type": "String",
+                  "required": false,
+                  "description": "销售总价",
+                  "demoValue": "100"
+                },
+                {
+                  "name": "discount_amount",
+                  "type": "String",
+                  "required": false,
+                  "description": "折扣总价",
+                  "demoValue": "10"
+                }
+              ]
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "error_code",
+              "type": "Number",
+              "required": false,
+              "description": "返回结果编码",
+              "demoValue": "402"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_onetouch_logistics_express_charge_calculate_response\":{\n        \"result\":{\n            \"error_message\":\"invalidate request\",\n            \"values\":{\n                \"express_quote_item_list\":[\n                    {\n                            \"code\":\"logisticsExpressASP_EX0001\",\n                            \"quantity\":1,\n                            \"sales_amount\":{\n                                \"amount\":\"109.2\",\n                                \"currency\":\"CNY\"\n                            },\n                            \"name\":\"基础运费\",\n                            \"charge_desc\":\"基础运费\",\n                            \"currency\":\"CNY\",\n                            \"type\":\"base_freight\"\n                    }\n                ],\n                \"sales_amount\":\"100\",\n                \"discount_amount\":\"10\"\n            },\n            \"success\":true,\n            \"error_code\":402\n        }\n    }\n}"
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.logistics.rule.validate",
+      "source": "catalog",
+      "sourceCategory": "logistics",
+      "docId": 47870,
+      "title": "验证物流规则（暂停使用）",
+      "description": "验证物流规则",
+      "lifecycle": "deprecated",
+      "risk": "read",
+      "featureArea": "order",
+      "restricted": true,
+      "restrictionReason": "官方标记暂停使用",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2026-08-12",
+      "requestParams": [
+        {
+          "name": "param_validate",
+          "type": "LogisticsRuleDto",
+          "required": true,
+          "description": "请求参数对象",
+          "subParams": [
+            {
+              "name": "length_range",
+              "type": "Range",
+              "required": false,
+              "description": "单件长区间(cm)",
+              "subParams": [
+                {
+                  "name": "min",
+                  "type": "String",
+                  "required": false,
+                  "description": "最小值",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "max",
+                  "type": "String",
+                  "required": false,
+                  "description": "最大值",
+                  "demoValue": "10"
+                }
+              ]
+            },
+            {
+              "name": "total_volume_range",
+              "type": "Range",
+              "required": false,
+              "description": "单件体积区间(m3)",
+              "subParams": [
+                {
+                  "name": "min",
+                  "type": "String",
+                  "required": false,
+                  "description": "最小值",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "max",
+                  "type": "String",
+                  "required": false,
+                  "description": "最大值",
+                  "demoValue": "10"
+                }
+              ]
+            },
+            {
+              "name": "package_count_range",
+              "type": "Range",
+              "required": false,
+              "description": "包裹区间限制",
+              "subParams": [
+                {
+                  "name": "min",
+                  "type": "String",
+                  "required": false,
+                  "description": "最小值",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "max",
+                  "type": "String",
+                  "required": false,
+                  "description": "最大值",
+                  "demoValue": "10"
+                }
+              ]
+            },
+            {
+              "name": "product_type",
+              "type": "SpecialProductTypeDto[]",
+              "required": false,
+              "description": "商品类型列表",
+              "subParams": [
+                {
+                  "name": "code",
+                  "type": "String",
+                  "required": false,
+                  "description": "商品类型code",
+                  "demoValue": "battery"
+                },
+                {
+                  "name": "children",
+                  "type": "Children[]",
+                  "required": false,
+                  "description": "商品类型列表",
+                  "subParams": [
+                    {
+                      "name": "code",
+                      "type": "String",
+                      "required": false,
+                      "description": "商品类型code",
+                      "demoValue": "inlayBattery"
+                    },
+                    {
+                      "name": "children",
+                      "type": "Children[]",
+                      "required": false,
+                      "description": "商品类型列表",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "商品类型code",
+                          "demoValue": "oneLessHundredWh"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "商品类型",
+                          "demoValue": "单块电池≤100Wh"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "name",
+                      "type": "String",
+                      "required": false,
+                      "description": "商品类型",
+                      "demoValue": "内置/配置电池"
+                    }
+                  ]
+                },
+                {
+                  "name": "name",
+                  "type": "String",
+                  "required": false,
+                  "description": "商品类型",
+                  "demoValue": "电池"
+                }
+              ]
+            },
+            {
+              "name": "warehouse_code",
+              "type": "String",
+              "required": true,
+              "description": "仓库编码",
+              "demoValue": "ASP_YH_QZ"
+            },
+            {
+              "name": "charge_range",
+              "type": "Range",
+              "required": false,
+              "description": "一票总计费重区间(kg)",
+              "subParams": [
+                {
+                  "name": "min",
+                  "type": "String",
+                  "required": false,
+                  "description": "最小值",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "max",
+                  "type": "String",
+                  "required": false,
+                  "description": "最大值",
+                  "demoValue": "10"
+                }
+              ]
+            },
+            {
+              "name": "destination_countries",
+              "type": "CodeNamePair[]",
+              "required": true,
+              "description": "目的地国家列表",
+              "demoValue": "[\"US\",\"CN\"]",
+              "subParams": [
+                {
+                  "name": "name",
+                  "type": "String",
+                  "required": true,
+                  "description": "国家名称",
+                  "demoValue": "美国"
+                },
+                {
+                  "name": "code",
+                  "type": "String",
+                  "required": true,
+                  "description": "国家code",
+                  "demoValue": "US"
+                }
+              ]
+            },
+            {
+              "name": "forbidden_address",
+              "type": "String",
+              "required": false,
+              "description": "拒绝承运地址的关键字（json格式字符串，关键字英文逗号分割）",
+              "demoValue": "\"[\\\"美国\\\",\\\"中国\\\"]\""
+            },
+            {
+              "name": "total_weight_range",
+              "type": "Range",
+              "required": false,
+              "description": "一票总重区间(kg)",
+              "subParams": [
+                {
+                  "name": "min",
+                  "type": "String",
+                  "required": false,
+                  "description": "最小值",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "max",
+                  "type": "String",
+                  "required": false,
+                  "description": "最大值",
+                  "demoValue": "10"
+                }
+              ]
+            },
+            {
+              "name": "volume_range",
+              "type": "Range",
+              "required": false,
+              "description": "单件体积区间(m3)",
+              "subParams": [
+                {
+                  "name": "min",
+                  "type": "String",
+                  "required": false,
+                  "description": "最小值",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "max",
+                  "type": "String",
+                  "required": false,
+                  "description": "最大值",
+                  "demoValue": "10"
+                }
+              ]
+            },
+            {
+              "name": "lwh_range",
+              "type": "Range",
+              "required": false,
+              "description": "单件长+宽+高区间(cm)",
+              "subParams": [
+                {
+                  "name": "min",
+                  "type": "String",
+                  "required": false,
+                  "description": "最小值",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "max",
+                  "type": "String",
+                  "required": false,
+                  "description": "最大值",
+                  "demoValue": "10"
+                }
+              ]
+            },
+            {
+              "name": "height_range",
+              "type": "Range",
+              "required": false,
+              "description": "单件高区间(cm)",
+              "subParams": [
+                {
+                  "name": "min",
+                  "type": "String",
+                  "required": false,
+                  "description": "最小值",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "max",
+                  "type": "String",
+                  "required": false,
+                  "description": "最大值",
+                  "demoValue": "10"
+                }
+              ]
+            },
+            {
+              "name": "width_range",
+              "type": "Range",
+              "required": false,
+              "description": "单件宽区间(cm)",
+              "subParams": [
+                {
+                  "name": "min",
+                  "type": "String",
+                  "required": false,
+                  "description": "最小值",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "max",
+                  "type": "String",
+                  "required": false,
+                  "description": "最大值",
+                  "demoValue": "10"
+                }
+              ]
+            },
+            {
+              "name": "product_code",
+              "type": "String",
+              "required": true,
+              "description": "产品编码",
+              "demoValue": "EX_ASP_ePacket"
+            },
+            {
+              "name": "girth_range",
+              "type": "Range",
+              "required": false,
+              "description": "单件围长区间(cm)",
+              "subParams": [
+                {
+                  "name": "min",
+                  "type": "String",
+                  "required": false,
+                  "description": "最小值",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "max",
+                  "type": "String",
+                  "required": false,
+                  "description": "最大值",
+                  "demoValue": "10"
+                }
+              ]
+            },
+            {
+              "name": "weight_range",
+              "type": "Range",
+              "required": false,
+              "description": "单件重量区间(kg)",
+              "subParams": [
+                {
+                  "name": "min",
+                  "type": "String",
+                  "required": false,
+                  "description": "最小值",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "max",
+                  "type": "String",
+                  "required": false,
+                  "description": "最大值",
+                  "demoValue": "10"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "Result",
+          "required": false,
+          "description": "返回结果",
+          "demoValue": "result",
+          "subParams": [
+            {
+              "name": "error_message",
+              "type": "String",
+              "required": false,
+              "description": "错误信息提示",
+              "demoValue": "invalidate request"
+            },
+            {
+              "name": "values",
+              "type": "Boolean",
+              "required": false,
+              "description": "校验结果",
+              "demoValue": "true"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "error_code",
+              "type": "Number",
+              "required": false,
+              "description": "错误码",
+              "demoValue": "402"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_onetouch_logistics_express_logistics_rule_validate_response\":{\n        \"result\":{\n            \"error_message\":\"invalidate request\",\n            \"values\":true,\n            \"success\":true,\n            \"error_code\":402\n        }\n    }\n}"
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.order.cancel",
+      "source": "catalog",
+      "sourceCategory": "logistics",
+      "docId": 47871,
+      "title": "取消快递订单（暂停使用）",
+      "description": "取消快递订单（暂停使用）",
+      "lifecycle": "deprecated",
+      "risk": "mutation",
+      "featureArea": "order",
+      "restricted": true,
+      "restrictionReason": "官方标记暂停使用",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2026-08-12",
+      "requestParams": [
+        {
+          "name": "param_operate",
+          "type": "CancelOrderDto",
+          "required": false,
+          "description": "系统自动生成",
+          "subParams": [
+            {
+              "name": "reason_list",
+              "type": "String[]",
+              "required": true,
+              "description": "取消原因列表",
+              "demoValue": "[     \"NO_PAYMENT_RECEIVED\",     \"BUYER_CANCEL_ORDER\" ]"
+            },
+            {
+              "name": "order_number",
+              "type": "String",
+              "required": true,
+              "description": "物流单号",
+              "demoValue": "ALS00001814005"
+            }
+          ]
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "Result",
+          "required": false,
+          "description": "返回结果",
+          "demoValue": "result",
+          "subParams": [
+            {
+              "name": "error_message",
+              "type": "String",
+              "required": false,
+              "description": "错误信息提示",
+              "demoValue": "invalidate request"
+            },
+            {
+              "name": "values",
+              "type": "Boolean",
+              "required": false,
+              "description": "取消结果",
+              "demoValue": "true"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "error_code",
+              "type": "Number",
+              "required": false,
+              "description": "错误码",
+              "demoValue": "402"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_onetouch_logistics_express_order_cancel_response\":{\n        \"result\":{\n            \"error_message\":\"invalidate request\",\n            \"values\":true,\n            \"success\":true,\n            \"error_code\":402\n        }\n    }\n}"
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.logistics.product.list",
+      "source": "catalog",
+      "sourceCategory": "logistics",
+      "docId": 47872,
+      "title": "查询物流运力列表",
+      "description": "查询物流产品&揽收仓库列表",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "configuration",
+      "restricted": true,
+      "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2026-08-12",
+      "requestParams": [],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "Result",
+          "required": false,
+          "description": "返回结果",
+          "demoValue": "result",
+          "subParams": [
+            {
+              "name": "error_message",
+              "type": "String",
+              "required": false,
+              "description": "错误信息提示",
+              "demoValue": "invalidate request"
+            },
+            {
+              "name": "values",
+              "type": "LogisticsProductDto[]",
+              "required": false,
+              "description": "列表对象",
+              "demoValue": "list",
+              "subParams": [
+                {
+                  "name": "warehouse_name",
+                  "type": "String",
+                  "required": false,
+                  "description": "仓库名称",
+                  "demoValue": "越航泉州仓库"
+                },
+                {
+                  "name": "warehouse_code",
+                  "type": "String",
+                  "required": false,
+                  "description": "仓库编码",
+                  "demoValue": "ASP_YH_QZ"
+                },
+                {
+                  "name": "product_name",
+                  "type": "String",
+                  "required": false,
+                  "description": "产品名称",
+                  "demoValue": "邮政e邮宝"
+                },
+                {
+                  "name": "product_code",
+                  "type": "String",
+                  "required": false,
+                  "description": "产品编码",
+                  "demoValue": "EX_ASP_ePacket"
+                },
+                {
+                  "name": "pickup",
+                  "type": "Boolean",
+                  "required": false,
+                  "description": "是否上门揽收",
+                  "demoValue": "true"
+                },
+                {
+                  "name": "delivery_type",
+                  "type": "String",
+                  "required": false,
+                  "description": "时效类型",
+                  "demoValue": "经济"
+                }
+              ]
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "result_code",
+              "type": "Number",
+              "required": false,
+              "description": "错误码",
+              "demoValue": "402"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_onetouch_logistics_express_logistics_product_list_response\":{\n        \"result\":{\n            \"error_message\":\"invalidate request\",\n            \"values\":[\n                {\n                        \"warehouse_name\":\"越航泉州仓库\",\n                        \"warehouse_code\":\"ASP_YH_QZ\",\n                        \"product_name\":\"邮政e邮宝\",\n                        \"product_code\":\"EX_ASP_ePacket\",\n                        \"pickup\":true,\n                        \"delivery_type\":\"经济\"\n                }\n            ],\n            \"success\":true,\n            \"result_code\":402\n        }\n    }\n}"
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.logistics.order.create",
+      "source": "catalog",
+      "sourceCategory": "logistics",
+      "docId": 47873,
+      "title": "快递下单",
+      "description": "快递下单",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "order",
+      "restricted": true,
+      "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2026-08-12",
+      "requestParams": [
+        {
+          "name": "paramn_query",
+          "type": "PlaceOrderDTO",
+          "required": true,
+          "description": "请求参数对象",
+          "subParams": [
+            {
+              "name": "cargo_list",
+              "type": "CargoList[]",
+              "required": true,
+              "description": "货品信息",
+              "subParams": [
+                {
+                  "name": "unit",
+                  "type": "String",
+                  "required": true,
+                  "description": "单位",
+                  "demoValue": "pcs"
+                },
+                {
+                  "name": "hscode",
+                  "type": "String",
+                  "required": true,
+                  "description": "海关编码",
+                  "demoValue": "12345678"
+                },
+                {
+                  "name": "quantity",
+                  "type": "Number",
+                  "required": true,
+                  "description": "货物数量",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "declaration_value",
+                  "type": "String",
+                  "required": true,
+                  "description": "申报单价",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "price",
+                  "type": "String",
+                  "required": false,
+                  "description": "货物单价",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "name_cn",
+                  "type": "String",
+                  "required": true,
+                  "description": "货物中文名",
+                  "demoValue": "无线耳机"
+                },
+                {
+                  "name": "currency",
+                  "type": "String",
+                  "required": true,
+                  "description": "币种",
+                  "demoValue": "USD"
+                },
+                {
+                  "name": "name_en",
+                  "type": "String",
+                  "required": true,
+                  "description": "货物英文名",
+                  "demoValue": "wireless headsets"
+                },
+                {
+                  "name": "product_type",
+                  "type": "ProductType[]",
+                  "required": true,
+                  "description": "商品特性列表对象",
+                  "subParams": [
+                    {
+                      "name": "code",
+                      "type": "String",
+                      "required": true,
+                      "description": "商品类型code",
+                      "demoValue": "battery"
+                    },
+                    {
+                      "name": "children",
+                      "type": "Children[]",
+                      "required": false,
+                      "description": "商品特性列表对象",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "商品类型code",
+                          "demoValue": "inlayBattery"
+                        },
+                        {
+                          "name": "children",
+                          "type": "LeafNode[]",
+                          "required": false,
+                          "description": "商品特性列表对象",
+                          "subParams": [
+                            {
+                              "name": "code",
+                              "type": "String",
+                              "required": false,
+                              "description": "商品类型code",
+                              "demoValue": "oneLessHundredWh"
+                            },
+                            {
+                              "name": "name",
+                              "type": "String",
+                              "required": false,
+                              "description": "商品类型",
+                              "demoValue": "单块电池≤100Wh"
+                            }
+                          ]
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "商品类型",
+                          "demoValue": "内置/配置电池"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "name",
+                      "type": "String",
+                      "required": true,
+                      "description": "商品类型",
+                      "demoValue": "电池"
+                    }
+                  ]
+                },
+                {
+                  "name": "purpose",
+                  "type": "String",
+                  "required": true,
+                  "description": "用途",
+                  "demoValue": "喝水生活用品"
+                },
+                {
+                  "name": "material",
+                  "type": "String",
+                  "required": true,
+                  "description": "材质",
+                  "demoValue": "塑料"
+                }
+              ]
+            },
+            {
+              "name": "origin_zip_code",
+              "type": "String",
+              "required": true,
+              "description": "起始地邮编",
+              "demoValue": "518000"
+            },
+            {
+              "name": "deliver_warehouse_express",
+              "type": "DeliverWarehouseExpressDto",
+              "required": false,
+              "description": "交货到仓快递信息（自寄必填）",
+              "subParams": [
+                {
+                  "name": "logistics_company",
+                  "type": "String",
+                  "required": false,
+                  "description": "国内快递公司code（自寄必填）",
+                  "demoValue": "UPS"
+                },
+                {
+                  "name": "tracking_numbers",
+                  "type": "String[]",
+                  "required": false,
+                  "description": "运单号（自寄必填）",
+                  "demoValue": "[\"111111\",\"22222“]"
+                },
+                {
+                  "name": "package_quantity",
+                  "type": "String",
+                  "required": false,
+                  "description": "包裹数量（自寄必填）",
+                  "demoValue": "2"
+                }
+              ]
+            },
+            {
+              "name": "package_list",
+              "type": "PackageList[]",
+              "required": true,
+              "description": "包裹信息",
+              "subParams": [
+                {
+                  "name": "quantity",
+                  "type": "String",
+                  "required": true,
+                  "description": "数量",
+                  "demoValue": "2"
+                },
+                {
+                  "name": "length",
+                  "type": "String",
+                  "required": true,
+                  "description": "长，单位：cm",
+                  "demoValue": "5"
+                },
+                {
+                  "name": "width",
+                  "type": "String",
+                  "required": true,
+                  "description": "宽，单位：cm",
+                  "demoValue": "10"
+                },
+                {
+                  "name": "weight",
+                  "type": "String",
+                  "required": true,
+                  "description": "重量，单位：kg",
+                  "demoValue": "3"
+                },
+                {
+                  "name": "type",
+                  "type": "String",
+                  "required": true,
+                  "description": "包装类型",
+                  "demoValue": "box"
+                },
+                {
+                  "name": "height",
+                  "type": "String",
+                  "required": true,
+                  "description": "高，单位：cm",
+                  "demoValue": "2"
+                }
+              ]
+            },
+            {
+              "name": "destination_country_code",
+              "type": "String",
+              "required": true,
+              "description": "目的地国家",
+              "demoValue": "US"
+            },
+            {
+              "name": "warehouse_code",
+              "type": "String",
+              "required": true,
+              "description": "仓库编码",
+              "demoValue": "ASP_YH_SZJC"
+            },
+            {
+              "name": "product_code",
+              "type": "String",
+              "required": true,
+              "description": "产品编码",
+              "demoValue": "EX_ASP_standard3C"
+            },
+            {
+              "name": "consignor_address",
+              "type": "ConsignorAddress",
+              "required": true,
+              "description": "发货人地址",
+              "subParams": [
+                {
+                  "name": "address",
+                  "type": "Address",
+                  "required": true,
+                  "description": "国家、省、市、详细地址信息",
+                  "subParams": [
+                    {
+                      "name": "zip",
+                      "type": "String",
+                      "required": true,
+                      "description": "邮编",
+                      "demoValue": "518000"
+                    },
+                    {
+                      "name": "country",
+                      "type": "Country",
+                      "required": true,
+                      "description": "国家",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址代码",
+                          "demoValue": "CN"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "Number",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "1"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址名字",
+                          "demoValue": "china"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "address",
+                      "type": "String",
+                      "required": true,
+                      "description": "地址",
+                      "demoValue": "阿里西溪园区"
+                    },
+                    {
+                      "name": "town",
+                      "type": "Town",
+                      "required": false,
+                      "description": "乡、镇名称",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "330009"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "Number",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "330009"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址名字",
+                          "demoValue": "测试街道"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "province",
+                      "type": "Province",
+                      "required": true,
+                      "description": "省份",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址代码",
+                          "demoValue": "330000"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "Number",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "330000"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址名字",
+                          "demoValue": "浙江省"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "city",
+                      "type": "City",
+                      "required": true,
+                      "description": "城市",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址代码",
+                          "demoValue": "330100"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "Number",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "330100"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址名字",
+                          "demoValue": "杭州市"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "district",
+                      "type": "District",
+                      "required": false,
+                      "description": "地区",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "330108"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址名字",
+                          "demoValue": "滨江区"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "contact",
+                  "type": "Contact",
+                  "required": true,
+                  "description": "联系方式(邮箱、电话号码、手机号码等)",
+                  "subParams": [
+                    {
+                      "name": "phone_code",
+                      "type": "String",
+                      "required": false,
+                      "description": "电话区号",
+                      "demoValue": "+86"
+                    },
+                    {
+                      "name": "mobile_no",
+                      "type": "String",
+                      "required": true,
+                      "description": "手机号码",
+                      "demoValue": "13798909890"
+                    },
+                    {
+                      "name": "email",
+                      "type": "String",
+                      "required": true,
+                      "description": "邮箱",
+                      "demoValue": "aaa@test.com\""
+                    }
+                  ]
+                },
+                {
+                  "name": "contact_person",
+                  "type": "String",
+                  "required": true,
+                  "description": "联系人姓名",
+                  "demoValue": "张三"
+                },
+                {
+                  "name": "company_name_cn",
+                  "type": "String",
+                  "required": true,
+                  "description": "公司中文名",
+                  "demoValue": "测试公司名称"
+                }
+              ]
+            },
+            {
+              "name": "express_customs",
+              "type": "ExpressCustomsDto",
+              "required": true,
+              "description": "申报信息",
+              "subParams": [
+                {
+                  "name": "declaration_amount",
+                  "type": "String",
+                  "required": true,
+                  "description": "申报金额",
+                  "demoValue": "15"
+                },
+                {
+                  "name": "need_customs_clearance",
+                  "type": "String",
+                  "required": true,
+                  "description": "是否正式报关",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "declaration_currency",
+                  "type": "String",
+                  "required": true,
+                  "description": "报关币种，出口发货中心默认USD",
+                  "demoValue": "USD"
+                },
+                {
+                  "name": "vat_type",
+                  "type": "String",
+                  "required": false,
+                  "description": "增值税类型，枚举取值：VAT、IOSS、VOEC",
+                  "demoValue": "VAT"
+                },
+                {
+                  "name": "vat_number",
+                  "type": "String",
+                  "required": false,
+                  "description": "增值税税号",
+                  "demoValue": "IM1234567890"
+                },
+                {
+                  "name": "taxpayer_id",
+                  "type": "String",
+                  "required": false,
+                  "description": "纳税人识别号",
+                  "demoValue": "999999999999"
+                },
+                {
+                  "name": "eori_number",
+                  "type": "String",
+                  "required": false,
+                  "description": "欧盟EORI",
+                  "demoValue": "ESB80000000"
+                }
+              ]
+            },
+            {
+              "name": "need_pickup",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否上门揽收",
+              "demoValue": "false"
+            },
+            {
+              "name": "destination_zip_code",
+              "type": "String",
+              "required": true,
+              "description": "目的地邮编",
+              "demoValue": "07005"
+            },
+            {
+              "name": "supply_chain_biz_id",
+              "type": "String",
+              "required": true,
+              "description": "发货批次ID，阿里国际站订单发货此字段为必填",
+              "demoValue": "1001"
+            },
+            {
+              "name": "consignee_address",
+              "type": "ConsigneeAddress",
+              "required": true,
+              "description": "收货人地址",
+              "subParams": [
+                {
+                  "name": "address",
+                  "type": "Address",
+                  "required": true,
+                  "description": "国家、省、市、详细地址信息",
+                  "subParams": [
+                    {
+                      "name": "zip",
+                      "type": "String",
+                      "required": true,
+                      "description": "邮编",
+                      "demoValue": "07005"
+                    },
+                    {
+                      "name": "country",
+                      "type": "Country",
+                      "required": true,
+                      "description": "国家",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址代码",
+                          "demoValue": "US"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "Number",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "228"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址名字",
+                          "demoValue": "United States of America"
+                        },
+                        {
+                          "name": "phone_code",
+                          "type": "String",
+                          "required": false,
+                          "description": "未知",
+                          "demoValue": "+1"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "address",
+                      "type": "String",
+                      "required": true,
+                      "description": "地址",
+                      "demoValue": "address1"
+                    },
+                    {
+                      "name": "province",
+                      "type": "Province",
+                      "required": true,
+                      "description": "省份",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "922878740000000000"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "100"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址名字",
+                          "demoValue": "New Jersey"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "town",
+                      "type": "Town",
+                      "required": false,
+                      "description": "乡、镇名称",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "922878740000000001"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "101"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址名字",
+                          "demoValue": "Wall township"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "address2",
+                      "type": "String",
+                      "required": false,
+                      "description": "地址2",
+                      "demoValue": "address2"
+                    },
+                    {
+                      "name": "city",
+                      "type": "City",
+                      "required": true,
+                      "description": "城市",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "922878746212000000"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": true,
+                          "description": "地址名字",
+                          "demoValue": "Absecon heights\""
+                        }
+                      ]
+                    },
+                    {
+                      "name": "district",
+                      "type": "District",
+                      "required": false,
+                      "description": "地区",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "330009"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "330009"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址名字",
+                          "demoValue": "测试街道"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "contact",
+                  "type": "Contact",
+                  "required": true,
+                  "description": "联系方式(邮箱、电话号码、手机号码等)",
+                  "subParams": [
+                    {
+                      "name": "phone_area",
+                      "type": "String",
+                      "required": false,
+                      "description": "电话区码",
+                      "demoValue": "+86"
+                    },
+                    {
+                      "name": "phone_code",
+                      "type": "String",
+                      "required": false,
+                      "description": "电话区号",
+                      "demoValue": "0755"
+                    },
+                    {
+                      "name": "mobile_no",
+                      "type": "String",
+                      "required": true,
+                      "description": "手机号码",
+                      "demoValue": "13909899009"
+                    },
+                    {
+                      "name": "email",
+                      "type": "String",
+                      "required": false,
+                      "description": "邮箱",
+                      "demoValue": "test@163.com"
+                    }
+                  ]
+                },
+                {
+                  "name": "address_email",
+                  "type": "String",
+                  "required": false,
+                  "description": "地址所有者邮箱(卖家维护收货地址, 值等于买家邮箱)",
+                  "demoValue": "test2@163.com"
+                },
+                {
+                  "name": "company_name_en",
+                  "type": "String",
+                  "required": true,
+                  "description": "公司英文名",
+                  "demoValue": "test company name"
+                },
+                {
+                  "name": "contact_person",
+                  "type": "String",
+                  "required": true,
+                  "description": "联系人姓名",
+                  "demoValue": "simon test"
+                },
+                {
+                  "name": "type",
+                  "type": "String",
+                  "required": false,
+                  "description": "地址类型",
+                  "demoValue": "CONSIGNEE"
+                },
+                {
+                  "name": "company_name_cn",
+                  "type": "String",
+                  "required": false,
+                  "description": "公司中文名",
+                  "demoValue": "test company name"
+                }
+              ]
+            },
+            {
+              "name": "trade_biz_id",
+              "type": "String",
+              "required": false,
+              "description": "交易单号（例如阿里国际站的信保单ID），注意此字段不为空时，trade_platform字段必填（默认为ICBU）",
+              "demoValue": "20499906501020531"
+            },
+            {
+              "name": "pickup_address",
+              "type": "ContactAddress",
+              "required": false,
+              "description": "备用字段（上门揽收地址），目前按发货人地址",
+              "subParams": [
+                {
+                  "name": "address",
+                  "type": "Address",
+                  "required": false,
+                  "description": "国家、省、市、详细地址信息",
+                  "subParams": [
+                    {
+                      "name": "zip",
+                      "type": "String",
+                      "required": false,
+                      "description": "邮编",
+                      "demoValue": "518000"
+                    },
+                    {
+                      "name": "country",
+                      "type": "Country",
+                      "required": false,
+                      "description": "国家",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "CN"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址名称",
+                          "demoValue": "中国"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "Number",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "1"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "address",
+                      "type": "String",
+                      "required": false,
+                      "description": "地址",
+                      "demoValue": "阿里西溪园区"
+                    },
+                    {
+                      "name": "town",
+                      "type": "Town",
+                      "required": false,
+                      "description": "乡、镇名称",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "330009"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址名称",
+                          "demoValue": "测试街道"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "Number",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "330009"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "province",
+                      "type": "Province",
+                      "required": false,
+                      "description": "省份",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "330009"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址名称",
+                          "demoValue": "测试地址"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "Number",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "330009"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "city",
+                      "type": "City",
+                      "required": false,
+                      "description": "城市",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "330009"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址名称",
+                          "demoValue": "测试地址"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "Number",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "330009"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "district",
+                      "type": "District",
+                      "required": false,
+                      "description": "街道",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "330009"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址名称",
+                          "demoValue": "测试地址"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "contact_person",
+                  "type": "String",
+                  "required": false,
+                  "description": "联系人",
+                  "demoValue": "张三"
+                },
+                {
+                  "name": "contact",
+                  "type": "Contact",
+                  "required": false,
+                  "description": "联系方式(邮箱、电话号码、手机号码等)",
+                  "subParams": [
+                    {
+                      "name": "mobile_no",
+                      "type": "String",
+                      "required": false,
+                      "description": "手机号",
+                      "demoValue": "19089899009"
+                    },
+                    {
+                      "name": "email",
+                      "type": "String",
+                      "required": false,
+                      "description": "邮箱",
+                      "demoValue": "test@mail.com"
+                    },
+                    {
+                      "name": "phone_code",
+                      "type": "String",
+                      "required": false,
+                      "description": "电话区号",
+                      "demoValue": "+86"
+                    }
+                  ]
+                },
+                {
+                  "name": "company_name_cn",
+                  "type": "String",
+                  "required": false,
+                  "description": "公司名称",
+                  "demoValue": "测试公司"
+                }
+              ]
+            },
+            {
+              "name": "return_address",
+              "type": "ContactAddress",
+              "required": false,
+              "description": "备用字段（退货地址），目前按退货申请指定地址",
+              "subParams": [
+                {
+                  "name": "address",
+                  "type": "Address",
+                  "required": false,
+                  "description": "地址信息",
+                  "subParams": [
+                    {
+                      "name": "zip",
+                      "type": "String",
+                      "required": false,
+                      "description": "邮编",
+                      "demoValue": "518000"
+                    },
+                    {
+                      "name": "country",
+                      "type": "Country",
+                      "required": false,
+                      "description": "国家",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "330009"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址名称",
+                          "demoValue": "测试地址"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "Number",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "330009"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "address",
+                      "type": "String",
+                      "required": false,
+                      "description": "地址",
+                      "demoValue": "测试地址"
+                    },
+                    {
+                      "name": "town",
+                      "type": "Town",
+                      "required": false,
+                      "description": "乡、镇名称",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "330009"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址名称",
+                          "demoValue": "测试地址"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "Number",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "330009"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "province",
+                      "type": "Province",
+                      "required": false,
+                      "description": "省份",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "330009"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址名称",
+                          "demoValue": "测试地址"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "Number",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "330009"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "city",
+                      "type": "City",
+                      "required": false,
+                      "description": "城市",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "330009"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址名称",
+                          "demoValue": "测试地址"
+                        },
+                        {
+                          "name": "area_id",
+                          "type": "Number",
+                          "required": false,
+                          "description": "地址id",
+                          "demoValue": "330009"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "district",
+                      "type": "District",
+                      "required": false,
+                      "description": "街道",
+                      "subParams": [
+                        {
+                          "name": "code",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址代码",
+                          "demoValue": "330009"
+                        },
+                        {
+                          "name": "name",
+                          "type": "String",
+                          "required": false,
+                          "description": "地址名称",
+                          "demoValue": "测试地址"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "contact_person",
+                  "type": "String",
+                  "required": false,
+                  "description": "联系人",
+                  "demoValue": "张三"
+                },
+                {
+                  "name": "contact",
+                  "type": "Contact",
+                  "required": false,
+                  "description": "联系方式(邮箱、电话号码、手机号码等)",
+                  "subParams": [
+                    {
+                      "name": "mobile_no",
+                      "type": "String",
+                      "required": false,
+                      "description": "手机号",
+                      "demoValue": "18909890990"
+                    },
+                    {
+                      "name": "email",
+                      "type": "String",
+                      "required": false,
+                      "description": "邮箱地址",
+                      "demoValue": "test@163.com"
+                    },
+                    {
+                      "name": "phone_code",
+                      "type": "String",
+                      "required": false,
+                      "description": "电话区号",
+                      "demoValue": "+86"
+                    }
+                  ]
+                },
+                {
+                  "name": "company_name_cn",
+                  "type": "String",
+                  "required": false,
+                  "description": "公司名称",
+                  "demoValue": "测试公司名称"
+                }
+              ]
+            },
+            {
+              "name": "trade_platform",
+              "type": "String",
+              "required": false,
+              "description": "跨境电商平台代码：ICBU（阿里巴巴国际站）、ALIEXPRESS（速卖通）、AMAZON（亚马逊）、TIKTOK、TEMU、SHEIN",
+              "demoValue": "ICBU"
+            },
+            {
+              "name": "trade_biz_mode",
+              "type": "String",
+              "required": false,
+              "description": "贸易业务模式（如半托管）",
+              "demoValue": "SEMI_MANAGED"
+            },
+            {
+              "name": "solution_dto",
+              "type": "SolutionDTO",
+              "required": false,
+              "description": "方案信息",
+              "subParams": [
+                {
+                  "name": "trunk_line_name",
+                  "type": "String",
+                  "required": false,
+                  "description": "干线线路名称",
+                  "demoValue": "半托管_无忧UPS Expedited"
+                },
+                {
+                  "name": "trunk_line_sku_code",
+                  "type": "String",
+                  "required": false,
+                  "description": "干线线路 skuCode",
+                  "demoValue": "UPS-Expedited-BTG"
+                },
+                {
+                  "name": "head_pickup_type",
+                  "type": "String",
+                  "required": false,
+                  "description": "揽收类型",
+                  "demoValue": "provider_paid_pickup"
+                },
+                {
+                  "name": "head_pickup_sku_id",
+                  "type": "Number",
+                  "required": false,
+                  "description": "头程揽收skuId",
+                  "demoValue": "17157"
+                },
+                {
+                  "name": "head_pickup_solution_id",
+                  "type": "Number",
+                  "required": false,
+                  "description": "头程线路方案id",
+                  "demoValue": "122333"
+                },
+                {
+                  "name": "head_pickup_sp_code",
+                  "type": "String",
+                  "required": false,
+                  "description": "头程揽收服务商",
+                  "demoValue": "SP_CN_000281"
+                },
+                {
+                  "name": "expect_pickup_time",
+                  "type": "Number",
+                  "required": false,
+                  "description": "预计揽收时间",
+                  "demoValue": "1724140800000"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "Result",
+          "required": false,
+          "description": "接口返回model",
+          "demoValue": "Result",
+          "subParams": [
+            {
+              "name": "error_message",
+              "type": "String",
+              "required": false,
+              "description": "返回结果描述",
+              "demoValue": "invalidate request"
+            },
+            {
+              "name": "values",
+              "type": "ExpressFreightDTO",
+              "required": false,
+              "description": "结果对象",
+              "demoValue": "ExpressFreightDTO",
+              "subParams": [
+                {
+                  "name": "warehouse",
+                  "type": "WarehouseDTO",
+                  "required": false,
+                  "description": "仓库信息",
+                  "demoValue": "WarehouseDTO",
+                  "subParams": [
+                    {
+                      "name": "address",
+                      "type": "String",
+                      "required": false,
+                      "description": "仓库地址",
+                      "demoValue": "深圳市龙岗区坂田仓库"
+                    },
+                    {
+                      "name": "name",
+                      "type": "String",
+                      "required": false,
+                      "description": "仓库名称",
+                      "demoValue": "越航深圳仓"
+                    },
+                    {
+                      "name": "code",
+                      "type": "String",
+                      "required": false,
+                      "description": "仓库编码",
+                      "demoValue": "YH_SZ_BT"
+                    },
+                    {
+                      "name": "contact_person",
+                      "type": "String",
+                      "required": false,
+                      "description": "联系人",
+                      "demoValue": "张三"
+                    },
+                    {
+                      "name": "contact_phone",
+                      "type": "String",
+                      "required": false,
+                      "description": "联系人电话",
+                      "demoValue": "13989898989"
+                    },
+                    {
+                      "name": "working_time",
+                      "type": "String",
+                      "required": false,
+                      "description": "工作时间",
+                      "demoValue": "周一到周五9:00-18:00"
+                    },
+                    {
+                      "name": "post_code",
+                      "type": "String",
+                      "required": false,
+                      "description": "邮编",
+                      "demoValue": "518000"
+                    },
+                    {
+                      "name": "description",
+                      "type": "String",
+                      "required": false,
+                      "description": "备注",
+                      "demoValue": "备注说明"
+                    }
+                  ]
+                },
+                {
+                  "name": "bar_code",
+                  "type": "String",
+                  "required": false,
+                  "description": "（废弃为空！！面单通过alibaba.onetouch.logistics.express.order.detail.get获取）原条码PDF Base64编码",
+                  "demoValue": "fehuiehuwew=="
+                },
+                {
+                  "name": "order_number",
+                  "type": "String",
+                  "required": false,
+                  "description": "物流订单号",
+                  "demoValue": "ALS20001890"
+                },
+                {
+                  "name": "pickup_info",
+                  "type": "PickupInfoDTO",
+                  "required": false,
+                  "description": "上门揽收信息",
+                  "subParams": [
+                    {
+                      "name": "service_provider",
+                      "type": "String",
+                      "required": false,
+                      "description": "备用字段（上门揽收服务商），目前为空",
+                      "demoValue": "德邦"
+                    },
+                    {
+                      "name": "pickup_type",
+                      "type": "String",
+                      "required": false,
+                      "description": "上门揽收类型，warehouse_free_pickup：仓库免费上门揽收，warehouse_paid_pickup：仓库收费上门揽收，provider_paid_pickup：服务商收费上门揽收",
+                      "demoValue": "provider_paid_pickup"
+                    },
+                    {
+                      "name": "can_pickup",
+                      "type": "Boolean",
+                      "required": false,
+                      "description": "能否上门揽收",
+                      "demoValue": "true"
+                    },
+                    {
+                      "name": "pickup_type_name",
+                      "type": "String",
+                      "required": false,
+                      "description": "上门揽收类型名称",
+                      "demoValue": "服务商收费上门揽收"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "error_code",
+              "type": "Number",
+              "required": false,
+              "description": "返回结果编码",
+              "demoValue": "402"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_onetouch_logistics_express_logistics_order_create_response\":{\n        \"result\":{\n            \"error_message\":\"invalidate request\",\n            \"values\":{\n                \"warehouse\":{\n                    \"address\":\"深圳市龙岗区坂田仓库\",\n                    \"name\":\"越航深圳仓\",\n                    \"code\":\"YH_SZ_BT\",\n                    \"contact_person\":\"张三\",\n                    \"contact_phone\":\"13989898989\",\n                    \"working_time\":\"周一到周五9:00-18:00\",\n                    \"post_code\":\"518000\",\n                    \"description\":\"备注说明\"\n                },\n                \"bar_code\":\"fehuiehuwew==\",\n                \"order_number\":\"ALS20001890\",\n                \"pickup_info\":{\n                    \"service_provider\":\"德邦\",\n                    \"pickup_type\":\"provider_paid_pickup\",\n                    \"can_pickup\":true,\n                    \"pickup_type_name\":\"服务商收费上门揽收\"\n                }\n            },\n            \"success\":true,\n            \"error_code\":402\n        }\n    }\n}"
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.address.city.list",
+      "source": "catalog",
+      "sourceCategory": "logistics",
+      "docId": 47959,
+      "title": "四级地址库-市",
+      "description": "四级地址库-市",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "address",
+      "restricted": true,
+      "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2026-08-12",
+      "requestParams": [
+        {
+          "name": "param_query",
+          "type": "AddressQueryDto",
+          "required": true,
+          "description": "请求参数",
+          "subParams": [
+            {
+              "name": "province_id",
+              "type": "Number",
+              "required": true,
+              "description": "省ID",
+              "demoValue": "310000"
+            }
+          ]
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "Result",
+          "required": false,
+          "description": "接口返回model",
+          "demoValue": "Object",
+          "subParams": [
+            {
+              "name": "error_message",
+              "type": "String",
+              "required": false,
+              "description": "返回结果描述",
+              "demoValue": "invalidate request"
+            },
+            {
+              "name": "values",
+              "type": "RegionEntity[]",
+              "required": false,
+              "description": "列表对象",
+              "demoValue": "List<RegionEntity>",
+              "subParams": [
+                {
+                  "name": "area_id",
+                  "type": "Number",
+                  "required": false,
+                  "description": "节点ID",
+                  "demoValue": "310000"
+                },
+                {
+                  "name": "pinyin",
+                  "type": "String",
+                  "required": false,
+                  "description": "节点名称拼音",
+                  "demoValue": "shang hai"
+                },
+                {
+                  "name": "parent_id",
+                  "type": "Number",
+                  "required": false,
+                  "description": "上级节点ID",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "name",
+                  "type": "String",
+                  "required": false,
+                  "description": "中文名称",
+                  "demoValue": "上海"
+                },
+                {
+                  "name": "level",
+                  "type": "Number",
+                  "required": false,
+                  "description": "层级",
+                  "demoValue": "2"
+                },
+                {
+                  "name": "parent_name",
+                  "type": "String",
+                  "required": false,
+                  "description": "上级节点名称",
+                  "demoValue": "China"
+                }
+              ]
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "error_code",
+              "type": "Number",
+              "required": false,
+              "description": "返回结果编码",
+              "demoValue": "402"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_onetouch_logistics_express_address_city_list_response\":{\n        \"result\":{\n            \"error_message\":\"invalidate request\",\n            \"values\":[\n                {\n                        \"area_id\":310000,\n                        \"pinyin\":\"shang hai\",\n                        \"parent_id\":1,\n                        \"name\":\"上海\",\n                        \"level\":2,\n                        \"parent_name\":\"China\"\n                }\n            ],\n            \"success\":true,\n            \"error_code\":402\n        }\n    }\n}"
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.address.province.list",
+      "source": "catalog",
+      "sourceCategory": "logistics",
+      "docId": 47960,
+      "title": "四级地址库-省",
+      "description": "四级地址库-省",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "address",
+      "restricted": true,
+      "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2026-08-12",
+      "requestParams": [
+        {
+          "name": "param_query",
+          "type": "AddressQueryDto",
+          "required": true,
+          "description": "请求参数",
+          "subParams": [
+            {
+              "name": "country_code",
+              "type": "String",
+              "required": true,
+              "description": "国家code",
+              "demoValue": "CN"
+            }
+          ]
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "Result",
+          "required": false,
+          "description": "接口返回model",
+          "demoValue": "Object",
+          "subParams": [
+            {
+              "name": "error_message",
+              "type": "String",
+              "required": false,
+              "description": "返回结果描述",
+              "demoValue": "invalidate request"
+            },
+            {
+              "name": "values",
+              "type": "RegionEntity[]",
+              "required": false,
+              "description": "列表对象",
+              "demoValue": "List<RegionEntity>",
+              "subParams": [
+                {
+                  "name": "parent_name",
+                  "type": "String",
+                  "required": false,
+                  "description": "上级节点名称",
+                  "demoValue": "China"
+                },
+                {
+                  "name": "level",
+                  "type": "Number",
+                  "required": false,
+                  "description": "层级",
+                  "demoValue": "2"
+                },
+                {
+                  "name": "name",
+                  "type": "String",
+                  "required": false,
+                  "description": "中文名称",
+                  "demoValue": "上海"
+                },
+                {
+                  "name": "parent_id",
+                  "type": "Number",
+                  "required": false,
+                  "description": "上级节点ID",
+                  "demoValue": "1"
+                },
+                {
+                  "name": "pinyin",
+                  "type": "String",
+                  "required": false,
+                  "description": "节点名称拼音",
+                  "demoValue": "shang hai"
+                },
+                {
+                  "name": "area_id",
+                  "type": "Number",
+                  "required": false,
+                  "description": "节点ID",
+                  "demoValue": "310000"
+                }
+              ]
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "error_code",
+              "type": "Number",
+              "required": false,
+              "description": "返回结果编码",
+              "demoValue": "402"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_onetouch_logistics_express_address_province_list_response\":{\n        \"result\":{\n            \"error_message\":\"invalidate request\",\n            \"values\":[\n                {\n                        \"parent_name\":\"China\",\n                        \"level\":2,\n                        \"name\":\"上海\",\n                        \"parent_id\":1,\n                        \"pinyin\":\"shang hai\",\n                        \"area_id\":310000\n                }\n            ],\n            \"success\":true,\n            \"error_code\":402\n        }\n    }\n}"
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.address.division.list",
+      "source": "catalog",
+      "sourceCategory": "logistics",
+      "docId": 47961,
+      "title": "四级地址库-区域",
+      "description": "四级地址库-区",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "address",
+      "restricted": true,
+      "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2026-08-12",
+      "requestParams": [
+        {
+          "name": "param_query",
+          "type": "AddressQueryDto",
+          "required": true,
+          "description": "请求参数",
+          "subParams": [
+            {
+              "name": "city_id",
+              "type": "Number",
+              "required": true,
+              "description": "城市id",
+              "demoValue": "310100"
+            },
+            {
+              "name": "with_children",
+              "type": "Boolean",
+              "required": true,
+              "description": "是否包含子节点",
+              "demoValue": "true"
+            }
+          ]
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "Result",
+          "required": false,
+          "description": "接口返回model",
+          "demoValue": "Object",
+          "subParams": [
+            {
+              "name": "error_message",
+              "type": "String",
+              "required": false,
+              "description": "返回结果描述",
+              "demoValue": "invalidate request"
+            },
+            {
+              "name": "values",
+              "type": "RegionEntity",
+              "required": false,
+              "description": "列表对象",
+              "demoValue": "List<RegionEntity>",
+              "subParams": [
+                {
+                  "name": "zip",
+                  "type": "String",
+                  "required": false,
+                  "description": "邮编",
+                  "demoValue": "200000"
+                },
+                {
+                  "name": "pinyin",
+                  "type": "String",
+                  "required": false,
+                  "description": "节点名称拼音",
+                  "demoValue": "shang hai shi"
+                },
+                {
+                  "name": "level",
+                  "type": "Number",
+                  "required": false,
+                  "description": "层级",
+                  "demoValue": "3"
+                },
+                {
+                  "name": "id",
+                  "type": "Number",
+                  "required": false,
+                  "description": "id",
+                  "demoValue": "310100"
+                },
+                {
+                  "name": "parent_id",
+                  "type": "Number",
+                  "required": false,
+                  "description": "上级节点ID",
+                  "demoValue": "310000"
+                },
+                {
+                  "name": "childrens",
+                  "type": "Division[]",
+                  "required": false,
+                  "description": "子节点列表",
+                  "demoValue": "List<Division>",
+                  "subParams": [
+                    {
+                      "name": "id",
+                      "type": "Number",
+                      "required": false,
+                      "description": "节点id",
+                      "demoValue": "310101"
+                    },
+                    {
+                      "name": "pinyin",
+                      "type": "String",
+                      "required": false,
+                      "description": "节点名称拼音",
+                      "demoValue": "huang pu qu"
+                    },
+                    {
+                      "name": "parent_id",
+                      "type": "Number",
+                      "required": false,
+                      "description": "上级节点ID",
+                      "demoValue": "310100"
+                    },
+                    {
+                      "name": "name",
+                      "type": "String",
+                      "required": false,
+                      "description": "中文名称",
+                      "demoValue": "黄浦区"
+                    },
+                    {
+                      "name": "level",
+                      "type": "Number",
+                      "required": false,
+                      "description": "层级",
+                      "demoValue": "4"
+                    }
+                  ]
+                },
+                {
+                  "name": "name",
+                  "type": "String",
+                  "required": false,
+                  "description": "节点名称",
+                  "demoValue": "上海市"
+                }
+              ]
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "error_code",
+              "type": "Number",
+              "required": false,
+              "description": "返回结果编码",
+              "demoValue": "402"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_onetouch_logistics_express_address_division_list_response\":{\n        \"result\":{\n            \"error_message\":\"invalidate request\",\n            \"values\":{\n                \"zip\":\"200000\",\n                \"pinyin\":\"shang hai shi\",\n                \"level\":3,\n                \"id\":310100,\n                \"parent_id\":310000,\n                \"childrens\":[\n                    {\n                            \"id\":310101,\n                            \"pinyin\":\"huang pu qu\",\n                            \"parent_id\":310100,\n                            \"name\":\"黄浦区\",\n                            \"level\":4\n                    }\n                ],\n                \"name\":\"上海市\"\n            },\n            \"success\":true,\n            \"error_code\":402\n        }\n    }\n}"
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.address.street.list",
+      "source": "catalog",
+      "sourceCategory": "logistics",
+      "docId": 47978,
+      "title": "四级地址库-街道",
+      "description": "四级地址库-街道模糊查询",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "address",
+      "restricted": true,
+      "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2026-08-12",
+      "requestParams": [
+        {
+          "name": "param_query",
+          "type": "AddressQueryDto",
+          "required": true,
+          "description": "请求参数",
+          "subParams": [
+            {
+              "name": "search_text",
+              "type": "String",
+              "required": true,
+              "description": "查询关键词",
+              "demoValue": "wall street"
+            }
+          ]
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "Result",
+          "required": false,
+          "description": "接口返回model",
+          "demoValue": "Object",
+          "subParams": [
+            {
+              "name": "error_message",
+              "type": "String",
+              "required": false,
+              "description": "返回结果描述",
+              "demoValue": "invalidate request"
+            },
+            {
+              "name": "values",
+              "type": "RegionEntity[]",
+              "required": false,
+              "description": "列表对象",
+              "demoValue": "List<RegionEntity>",
+              "subParams": [
+                {
+                  "name": "zip",
+                  "type": "String",
+                  "required": false,
+                  "description": "邮编",
+                  "demoValue": "200000"
+                },
+                {
+                  "name": "address",
+                  "type": "String",
+                  "required": false,
+                  "description": "地址",
+                  "demoValue": "Wall Street, New York, NY, USA"
+                }
+              ]
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "error_code",
+              "type": "Number",
+              "required": false,
+              "description": "返回结果编码",
+              "demoValue": "402"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_onetouch_logistics_express_address_street_list_response\":{\n        \"result\":{\n            \"error_message\":\"invalidate request\",\n            \"values\":[\n                {\n                        \"zip\":\"200000\",\n                        \"address\":\"Wall Street, New York, NY, USA\"\n                }\n            ],\n            \"success\":true,\n            \"error_code\":402\n        }\n    }\n}"
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.order.detail.get",
+      "source": "catalog",
+      "sourceCategory": "logistics",
+      "docId": 48056,
+      "title": "订单详细信息(面单及仓库信息)",
+      "description": "订单详细信息(面单及仓库信息)",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "order",
+      "restricted": true,
+      "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2026-08-12",
+      "requestParams": [
+        {
+          "name": "param_query",
+          "type": "LogisticsOrderQueryDto",
+          "required": true,
+          "description": "请求参数",
+          "subParams": [
+            {
+              "name": "order_number",
+              "type": "String",
+              "required": true,
+              "description": "物流单号",
+              "demoValue": "ALS00201756002"
+            }
+          ]
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "Result",
+          "required": false,
+          "description": "接口返回model",
+          "demoValue": "Object",
+          "subParams": [
+            {
+              "name": "error_code",
+              "type": "Number",
+              "required": false,
+              "description": "返回结果编码",
+              "demoValue": "402"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "data",
+              "type": "OrderDetailDto",
+              "required": false,
+              "description": "结果数据",
+              "demoValue": "OrderDetailDto",
+              "subParams": [
+                {
+                  "name": "warehouse",
+                  "type": "WarehouseDto",
+                  "required": false,
+                  "description": "仓库信息",
+                  "demoValue": "WarehouseDto",
+                  "subParams": [
+                    {
+                      "name": "description",
+                      "type": "String",
+                      "required": false,
+                      "description": "备注",
+                      "demoValue": "备注"
+                    },
+                    {
+                      "name": "working_time",
+                      "type": "String",
+                      "required": false,
+                      "description": "工作时间",
+                      "demoValue": "周一至周五 9：00-18：00"
+                    },
+                    {
+                      "name": "contact_phone",
+                      "type": "String",
+                      "required": false,
+                      "description": "联系电话",
+                      "demoValue": "130483993499"
+                    },
+                    {
+                      "name": "contact_person",
+                      "type": "String",
+                      "required": false,
+                      "description": "联系人",
+                      "demoValue": "张三"
+                    },
+                    {
+                      "name": "address",
+                      "type": "String",
+                      "required": false,
+                      "description": "地址",
+                      "demoValue": "深圳市龙岗区"
+                    },
+                    {
+                      "name": "name",
+                      "type": "String",
+                      "required": false,
+                      "description": "仓库名称",
+                      "demoValue": "龙岗仓库"
+                    },
+                    {
+                      "name": "code",
+                      "type": "String",
+                      "required": false,
+                      "description": "仓库编码",
+                      "demoValue": "YH_SZ_UJ"
+                    }
+                  ]
+                },
+                {
+                  "name": "bar_code",
+                  "type": "String",
+                  "required": false,
+                  "description": "条码Base64",
+                  "demoValue": "afafaf=="
+                },
+                {
+                  "name": "order_number",
+                  "type": "String",
+                  "required": false,
+                  "description": "物流订单号",
+                  "demoValue": "ALS00201756002"
+                },
+                {
+                  "name": "pickup_info",
+                  "type": "PickupInfoDto",
+                  "required": false,
+                  "description": "上门揽收信息",
+                  "subParams": [
+                    {
+                      "name": "can_pickup",
+                      "type": "Boolean",
+                      "required": false,
+                      "description": "能否上门揽收",
+                      "demoValue": "true"
+                    },
+                    {
+                      "name": "pickup_type",
+                      "type": "String",
+                      "required": false,
+                      "description": "上门揽收类型，warehouse_free_pickup：仓库免费上门揽收，warehouse_paid_pickup：仓库收费上门揽收，provider_paid_pickup：服务商收费上门揽收",
+                      "demoValue": "provider_paid_pickup"
+                    },
+                    {
+                      "name": "pickup_type_name",
+                      "type": "String",
+                      "required": false,
+                      "description": "上门揽收类型名称",
+                      "demoValue": "服务商收费上门揽收"
+                    },
+                    {
+                      "name": "service_provider",
+                      "type": "String",
+                      "required": false,
+                      "description": "上门揽收服务商",
+                      "demoValue": "德邦"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "error_message",
+              "type": "String",
+              "required": false,
+              "description": "返回结果描述",
+              "demoValue": "invalidate request"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_onetouch_logistics_express_order_detail_get_response\":{\n        \"result\":{\n            \"error_code\":402,\n            \"success\":true,\n            \"data\":{\n                \"warehouse\":{\n                    \"description\":\"备注\",\n                    \"working_time\":\"周一至周五 9：00-18：00\",\n                    \"contact_phone\":\"130483993499\",\n                    \"contact_person\":\"张三\",\n                    \"address\":\"深圳市龙岗区\",\n                    \"name\":\"龙岗仓库\",\n                    \"code\":\"YH_SZ_UJ\"\n                },\n                \"bar_code\":\"afafaf==\",\n                \"order_number\":\"ALS00201756002\",\n                \"pickup_info\":{\n                    \"can_pickup\":true,\n                    \"pickup_type\":\"provider_paid_pickup\",\n                    \"pickup_type_name\":\"服务商收费上门揽收\",\n                    \"service_provider\":\"德邦\"\n                }\n            },\n            \"error_message\":\"invalidate request\"\n        }\n    }\n}"
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.order.list.query",
+      "source": "catalog",
+      "sourceCategory": "logistics",
+      "docId": 56235,
+      "title": "国际站物流单列表查询",
+      "description": "ISV分页查询国际站账号下的物流订单",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "order",
+      "restricted": true,
+      "restrictionReason": "官方文档明确描述为 ISV 查询，需额外资格验证",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2026-08-12",
+      "requestParams": [
+        {
+          "name": "param_query",
+          "type": "ExpressOrderPageQuery",
+          "required": false,
+          "description": "请求参数",
+          "subParams": [
+            {
+              "name": "page_size",
+              "type": "Number",
+              "required": true,
+              "description": "页面数据大小",
+              "demoValue": "20"
+            },
+            {
+              "name": "current_page",
+              "type": "Number",
+              "required": true,
+              "description": "当前页",
+              "demoValue": "1"
+            },
+            {
+              "name": "order_number",
+              "type": "String",
+              "required": false,
+              "description": "物流订单号",
+              "demoValue": "ALS00214464488"
+            }
+          ]
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "Result",
+          "required": false,
+          "description": "结果",
+          "subParams": [
+            {
+              "name": "msg",
+              "type": "String",
+              "required": false,
+              "description": "异常信息",
+              "demoValue": "demo"
+            },
+            {
+              "name": "data",
+              "type": "Paging",
+              "required": false,
+              "description": "数据",
+              "subParams": [
+                {
+                  "name": "total",
+                  "type": "Number",
+                  "required": false,
+                  "description": "总数",
+                  "demoValue": "13237"
+                },
+                {
+                  "name": "total_page",
+                  "type": "Number",
+                  "required": false,
+                  "description": "总页数",
+                  "demoValue": "662"
+                },
+                {
+                  "name": "data_list",
+                  "type": "ExpressOrderResultDto[]",
+                  "required": false,
+                  "description": "订单数据",
+                  "subParams": [
+                    {
+                      "name": "place_order_time",
+                      "type": "Date",
+                      "required": false,
+                      "description": "下单时间",
+                      "demoValue": "1537412349000"
+                    },
+                    {
+                      "name": "order_number",
+                      "type": "String",
+                      "required": false,
+                      "description": "订单号",
+                      "demoValue": "2009390134"
+                    },
+                    {
+                      "name": "freight_amount",
+                      "type": "String",
+                      "required": false,
+                      "description": "运费金额",
+                      "demoValue": "0.02"
+                    },
+                    {
+                      "name": "trade_biz_id",
+                      "type": "String",
+                      "required": false,
+                      "description": "交易单号",
+                      "demoValue": "93960702716709"
+                    },
+                    {
+                      "name": "freight_currency",
+                      "type": "String",
+                      "required": false,
+                      "description": "运费币种",
+                      "demoValue": "CNY"
+                    },
+                    {
+                      "name": "destination_country_code",
+                      "type": "String",
+                      "required": false,
+                      "description": "目的国编码",
+                      "demoValue": "US"
+                    },
+                    {
+                      "name": "order_status",
+                      "type": "String",
+                      "required": false,
+                      "description": "订单状态",
+                      "demoValue": "创建成功"
+                    },
+                    {
+                      "name": "detail_url",
+                      "type": "String",
+                      "required": false,
+                      "description": "详情链接",
+                      "demoValue": "https://scm.alibaba.com/luyou/express/detail.htm?id=9044"
+                    },
+                    {
+                      "name": "logistics_type",
+                      "type": "String",
+                      "required": false,
+                      "description": "物流类型",
+                      "demoValue": "EXPRESS_DTD"
+                    }
+                  ]
+                },
+                {
+                  "name": "page_size",
+                  "type": "Number",
+                  "required": false,
+                  "description": "每页数据大小",
+                  "demoValue": "20"
+                },
+                {
+                  "name": "current_page",
+                  "type": "Number",
+                  "required": false,
+                  "description": "当前页",
+                  "demoValue": "1"
+                }
+              ]
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": false,
+              "description": "是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "result_code",
+              "type": "Number",
+              "required": false,
+              "description": "异常码",
+              "demoValue": "200"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_onetouch_logistics_express_order_list_query_response\":{\n        \"result\":{\n            \"msg\":\"demo\",\n            \"data\":{\n                \"total\":13237,\n                \"total_page\":662,\n                \"data_list\":[\n                    {\n                            \"place_order_time\":\"1537412349000\",\n                            \"order_number\":\"2009390134\",\n                            \"freight_amount\":\"0.02\",\n                            \"trade_biz_id\":\"93960702716709\",\n                            \"freight_currency\":\"CNY\",\n                            \"destination_country_code\":\"US\",\n                            \"order_status\":\"创建成功\",\n                            \"detail_url\":\"https:\\/\\/scm.alibaba.com\\/luyou\\/express\\/detail.htm?id=9044\",\n                            \"logistics_type\":\"EXPRESS_DTD\"\n                    }\n                ],\n                \"page_size\":20,\n                \"current_page\":1\n            },\n            \"success\":true,\n            \"result_code\":200\n        }\n    }\n}"
+    },
+    {
+      "method": "alibaba.wholesale.shippingline.template.list",
+      "source": "catalog",
+      "sourceCategory": "product",
+      "docId": 25394,
+      "title": "获取运费模板",
+      "description": "查询运费模板信息",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "template",
+      "restricted": false,
+      "restrictionReason": null,
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2024-08-09",
+      "requestParams": [
+        {
+          "name": "page_num",
+          "type": "Number",
+          "required": false,
+          "description": "第几页从1开始",
+          "defaultValue": "1",
+          "demoValue": "1",
+          "minValue": 1,
+          "maxValue": 100
+        },
+        {
+          "name": "count",
+          "type": "Number",
+          "required": false,
+          "description": "每页返回的数据个数",
+          "defaultValue": "10",
+          "demoValue": "10",
+          "minValue": 1,
+          "maxValue": 100
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "list_template_response",
+          "type": "ListTemplateAPIResult",
+          "required": false,
+          "description": "运费模板列表",
+          "subParams": [
+            {
+              "name": "total",
+              "type": "Number",
+              "required": false,
+              "description": "运费模板总数",
+              "demoValue": "1"
+            },
+            {
+              "name": "items",
+              "type": "ShippinglineTemplate[]",
+              "required": false,
+              "description": "运费模板集合",
+              "demoValue": "[{\"id\":1,\"title\":\"快捷模板\"}]",
+              "subParams": [
+                {
+                  "name": "id",
+                  "type": "Number",
+                  "required": false,
+                  "description": "运费模板id",
+                  "demoValue": "123"
+                },
+                {
+                  "name": "title",
+                  "type": "String",
+                  "required": false,
+                  "description": "运费模板名称",
+                  "demoValue": "demo"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "errorCodes": [
+        {
+          "errorCode": "isv.argument.illegal",
+          "errorMsg": "参数错误",
+          "solution": "检查参数格式和参数的值是否正确"
+        }
+      ],
+      "requestExample": null,
+      "responseExample": "{\n    \"alibaba_wholesale_shippingline_template_list_response\":{\n        \"list_template_response\":{\n            \"total\":1,\n            \"items\":[\n                {\n                        \"id\":123,\n                        \"title\":\"demo\"\n                }\n            ]\n        }\n    }\n}"
+    }
+  ]
+}
