@@ -10,7 +10,7 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=40805",
       "checkedAt": "2026-08-12",
       "updatedAt": "2021-11-23",
@@ -19,8 +19,8 @@
       "risk": "mutation",
       "verification": "documented",
       "realCallEnabled": false,
-      "requestSchema": null,
-      "responseSchema": null
+      "requestSchema": "AlibabaRfqAlibabaIcbuAnnexUploadRequest",
+      "responseSchema": "AlibabaRfqAlibabaIcbuAnnexUploadResponse"
     },
     {
       "method": "alibaba.icbu.category.attr.get",
@@ -690,7 +690,7 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=32101",
       "checkedAt": "2026-08-12",
       "updatedAt": "2021-11-23",
@@ -699,8 +699,8 @@
       "risk": "mutation",
       "verification": "documented",
       "realCallEnabled": false,
-      "requestSchema": null,
-      "responseSchema": null
+      "requestSchema": "AlibabaRfqAlibabaIcbuQuotationPostRequest",
+      "responseSchema": "AlibabaRfqAlibabaIcbuQuotationPostResponse"
     },
     {
       "method": "alibaba.icbu.rfq.myequity",
@@ -710,7 +710,7 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=40865",
       "checkedAt": "2026-08-12",
       "updatedAt": "2021-11-23",
@@ -718,9 +718,9 @@
       "lifecycle": "active",
       "risk": "read",
       "verification": "documented",
-      "realCallEnabled": false,
-      "requestSchema": null,
-      "responseSchema": null
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaRfqAlibabaIcbuRfqMyequityRequest",
+      "responseSchema": "AlibabaRfqAlibabaIcbuRfqMyequityResponse"
     },
     {
       "method": "alibaba.icbu.rfq.read",
@@ -730,7 +730,7 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=42604",
       "checkedAt": "2026-08-12",
       "updatedAt": "2021-11-23",
@@ -738,9 +738,9 @@
       "lifecycle": "active",
       "risk": "read",
       "verification": "documented",
-      "realCallEnabled": false,
-      "requestSchema": null,
-      "responseSchema": null
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaRfqAlibabaIcbuRfqReadRequest",
+      "responseSchema": "AlibabaRfqAlibabaIcbuRfqReadResponse"
     },
     {
       "method": "alibaba.icbu.rfq.recommend",
@@ -750,7 +750,7 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=42211",
       "checkedAt": "2026-08-12",
       "updatedAt": "2021-11-22",
@@ -758,9 +758,9 @@
       "lifecycle": "active",
       "risk": "read",
       "verification": "documented",
-      "realCallEnabled": false,
-      "requestSchema": null,
-      "responseSchema": null
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaRfqAlibabaIcbuRfqRecommendRequest",
+      "responseSchema": "AlibabaRfqAlibabaIcbuRfqRecommendResponse"
     },
     {
       "method": "alibaba.icbu.rfq.search",
@@ -770,7 +770,7 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=32084",
       "checkedAt": "2026-08-12",
       "updatedAt": "2021-11-24",
@@ -778,9 +778,9 @@
       "lifecycle": "active",
       "risk": "read",
       "verification": "documented",
-      "realCallEnabled": false,
-      "requestSchema": null,
-      "responseSchema": null
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaRfqAlibabaIcbuRfqSearchRequest",
+      "responseSchema": "AlibabaRfqAlibabaIcbuRfqSearchResponse"
     },
     {
       "method": "alibaba.icbu.rfqdetail.get",
@@ -790,7 +790,7 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=32086",
       "checkedAt": "2026-08-12",
       "updatedAt": "2021-11-23",
@@ -798,9 +798,9 @@
       "lifecycle": "active",
       "risk": "read",
       "verification": "documented",
-      "realCallEnabled": false,
-      "requestSchema": null,
-      "responseSchema": null
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaRfqAlibabaIcbuRfqdetailGetRequest",
+      "responseSchema": "AlibabaRfqAlibabaIcbuRfqdetailGetResponse"
     },
     {
       "method": "alibaba.icbu.risk.send",

@@ -247,7 +247,7 @@ for (const definition of snapshot.definitions) {
 }
 document['x-rfq-capabilities'] = capabilityMap;
 
-document.components.schemas.RfqSummary = {
+const rfqSummarySchema: JsonSchema = {
   type: 'object',
   additionalProperties: false,
   required: [
@@ -283,6 +283,7 @@ document.components.schemas.RfqSummary = {
     recommended: { type: 'boolean' }
   }
 };
+document.components.schemas.RfqSummary = rfqSummarySchema;
 document.components.schemas.RfqPage = {
   type: 'object',
   additionalProperties: false,
@@ -302,23 +303,25 @@ document.components.schemas.RfqAttachment = {
   properties: { name: { type: 'string' }, url: { type: 'string' } }
 };
 document.components.schemas.RfqDetail = {
-  allOf: [
-    { $ref: '#/components/schemas/RfqSummary' },
-    {
-      type: 'object',
-      additionalProperties: false,
-      required: ['paymentTerms', 'destinationPort', 'shippingTerms', 'attachments'],
-      properties: {
-        paymentTerms: { type: ['string', 'null'] },
-        destinationPort: { type: ['string', 'null'] },
-        shippingTerms: { type: ['string', 'null'] },
-        attachments: {
-          type: 'array',
-          items: { $ref: '#/components/schemas/RfqAttachment' }
-        }
-      }
+  type: 'object',
+  additionalProperties: false,
+  required: [
+    ...(rfqSummarySchema.required as string[]),
+    'paymentTerms',
+    'destinationPort',
+    'shippingTerms',
+    'attachments'
+  ],
+  properties: {
+    ...rfqSummarySchema.properties,
+    paymentTerms: { type: ['string', 'null'] },
+    destinationPort: { type: ['string', 'null'] },
+    shippingTerms: { type: ['string', 'null'] },
+    attachments: {
+      type: 'array',
+      items: { $ref: '#/components/schemas/RfqAttachment' }
     }
-  ]
+  }
 };
 document.components.schemas.RfqEquity = {
   type: 'object',

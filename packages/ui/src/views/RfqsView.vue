@@ -210,7 +210,21 @@ function fileToBase64(file: File): Promise<string> {
 
 function isQuotationDraft(value: unknown): value is QuotationDraft {
   if (typeof value !== 'object' || value === null) return false;
-  return Object.values(value).every((item) => typeof item === 'string');
+  const keys: (keyof QuotationDraft)[] = [
+    'message',
+    'paymentTerms',
+    'expiresAt',
+    'itemName',
+    'unitPrice',
+    'currency',
+    'quantity',
+    'quantityUnit',
+    'shippingTerms',
+    'port',
+    'remark',
+    'attachmentFilesString'
+  ];
+  return keys.every((key) => key in value && typeof (value as Record<string, unknown>)[key] === 'string');
 }
 
 function formatDate(value: string | null): string {
@@ -274,6 +288,14 @@ const columns: DataColumn<RfqSummary>[] = [
   <PageHeader title="RFQ 工作台" description="RFQ 搜索、推荐、详情、已读状态与报价草稿均使用类型化契约。">
     <Badge variant="outline">文档验证 · 未做账号验收</Badge>
   </PageHeader>
+
+  <Card
+    v-if="mutationBlocked"
+    class="mb-4 flex gap-2 border-amber-200 bg-amber-50 p-4 text-sm text-amber-800"
+  >
+    <ShieldAlert class="mt-0.5 size-4 shrink-0" />真实附件上传和提交报价尚未通过账号 smoke
+    test，扩展中保持禁用；RFQ 查询仍由 service worker 发起。
+  </Card>
 
   <div class="mb-4 grid gap-3 md:grid-cols-3">
     <Card class="p-4">
@@ -372,8 +394,7 @@ const columns: DataColumn<RfqSummary>[] = [
       </div>
 
       <div v-if="mutationBlocked" class="mt-4 flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-        <ShieldAlert class="mt-0.5 size-4 shrink-0" />扩展中的真实附件上传和提交报价保持禁用；可保存草稿，Web
-        Mock 可体验完整写流程。
+        <ShieldAlert class="mt-0.5 size-4 shrink-0" />可保存草稿；Web Mock 可体验附件上传与完整报价流程。
       </div>
 
       <div class="mt-4 grid gap-3 sm:grid-cols-2">

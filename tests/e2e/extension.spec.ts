@@ -62,4 +62,9 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.locator('input[type="file"]')).toBeDisabled();
   await expect(page.getByRole('textbox', { name: '外部图片 URL' })).toBeDisabled();
   await expect(page.getByText(/真实上传尚未完成账号 smoke test/)).toBeVisible();
+  await page.getByRole('button', { name: '完成选择' }).click();
+
+  await page.getByRole('button', { name: 'RFQ' }).click();
+  await expect(page.getByRole('heading', { name: 'RFQ 工作台' })).toBeVisible();
+  await expect(page.getByText(/真实附件上传和提交报价尚未通过账号 smoke test/)).toBeVisible();
 });

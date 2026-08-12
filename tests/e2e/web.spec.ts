@@ -45,6 +45,27 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await expect(page.getByText(/响应契约漂移/)).toBeVisible();
 });
 
+test('web mock completes the typed RFQ quotation workflow', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => {
+    localStorage.clear();
+  });
+  await page.getByRole('button', { name: 'RFQ' }).click();
+  await expect(page.getByRole('heading', { name: 'RFQ 工作台' })).toBeVisible();
+  await expect(page.getByText('Portable solar power stations for outdoor retail')).toBeVisible();
+  await expect(page.getByText('剩余报价权益').locator('..')).toContainText('12');
+
+  await page.getByRole('button', { name: 'Portable solar power stations for outdoor retail' }).click();
+  await expect(page.getByText('Hamburg')).toBeVisible();
+  await page.getByText('给买家留言').locator('textarea').fill('We can supply this order.');
+  await page.getByPlaceholder('599.00').fill('599');
+  await page.getByText('装运港').locator('input').fill('Shenzhen');
+  await page.getByRole('button', { name: '保存草稿' }).click();
+  await expect(page.getByText('已保存')).toBeVisible();
+  await page.getByRole('button', { name: '提交报价' }).click();
+  await expect(page.getByText(/Mock 报价提交成功/)).toBeVisible();
+});
+
 test('web mock supports visual detail editing, PhotoBank transfer and non-blocking guidance', async ({
   page
 }) => {

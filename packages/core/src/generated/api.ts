@@ -2738,7 +2738,23 @@ export interface components {
         RfqAttachmentUploadResult: {
             filesString: string;
         };
-        RfqDetail: components["schemas"]["RfqSummary"] & {
+        RfqDetail: {
+            id: string;
+            subject: string;
+            description: string;
+            quantity: number | null;
+            quantityUnit: string | null;
+            countryCode: string | null;
+            categoryId: number | null;
+            categoryName: string | null;
+            imageUrl: string | null;
+            remainingQuotes: number | null;
+            /** Format: date-time */
+            openAt: string | null;
+            /** Format: date-time */
+            expiresAt: string | null;
+            read: boolean;
+            recommended: boolean;
             paymentTerms: string | null;
             destinationPort: string | null;
             shippingTerms: string | null;

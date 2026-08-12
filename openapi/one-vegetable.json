@@ -4288,20 +4288,48 @@
         "properties": { "filesString": { "type": "string" } }
       },
       "RfqDetail": {
-        "allOf": [
-          { "$ref": "#/components/schemas/RfqSummary" },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["paymentTerms", "destinationPort", "shippingTerms", "attachments"],
-            "properties": {
-              "paymentTerms": { "type": ["string", "null"] },
-              "destinationPort": { "type": ["string", "null"] },
-              "shippingTerms": { "type": ["string", "null"] },
-              "attachments": { "type": "array", "items": { "$ref": "#/components/schemas/RfqAttachment" } }
-            }
-          }
-        ]
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "subject",
+          "description",
+          "quantity",
+          "quantityUnit",
+          "countryCode",
+          "categoryId",
+          "categoryName",
+          "imageUrl",
+          "remainingQuotes",
+          "openAt",
+          "expiresAt",
+          "read",
+          "recommended",
+          "paymentTerms",
+          "destinationPort",
+          "shippingTerms",
+          "attachments"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "subject": { "type": "string" },
+          "description": { "type": "string" },
+          "quantity": { "type": ["number", "null"] },
+          "quantityUnit": { "type": ["string", "null"] },
+          "countryCode": { "type": ["string", "null"] },
+          "categoryId": { "type": ["number", "null"] },
+          "categoryName": { "type": ["string", "null"] },
+          "imageUrl": { "type": ["string", "null"] },
+          "remainingQuotes": { "type": ["number", "null"] },
+          "openAt": { "type": ["string", "null"], "format": "date-time" },
+          "expiresAt": { "type": ["string", "null"], "format": "date-time" },
+          "read": { "type": "boolean" },
+          "recommended": { "type": "boolean" },
+          "paymentTerms": { "type": ["string", "null"] },
+          "destinationPort": { "type": ["string", "null"] },
+          "shippingTerms": { "type": ["string", "null"] },
+          "attachments": { "type": "array", "items": { "$ref": "#/components/schemas/RfqAttachment" } }
+        }
       },
       "RfqEquity": {
         "type": "object",
