@@ -66,6 +66,34 @@ test('web mock completes the typed RFQ quotation workflow', async ({ page }) => 
   await expect(page.getByText(/Mock 报价提交成功/)).toBeVisible();
 });
 
+test('web mock combines typed trade order capabilities without a Jushita detail call', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '订单' }).click();
+  await expect(page.getByRole('heading', { name: '交易 / 订单工作台' })).toBeVisible();
+  await page.getByRole('button', { name: '24668306501026709' }).click();
+  await expect(page.getByText('聚合详情 · 24668306501026709')).toBeVisible();
+  await expect(page.getByText('fullDetail: jushita-only')).toBeVisible();
+  await expect(page.getByText('USD 2450.50').first()).toBeVisible();
+
+  await page.getByRole('button', { name: '资金与履约' }).click();
+  await expect(page.getByText('一达通')).toBeVisible();
+  await expect(page.getByText('1029200038060')).toBeVisible();
+
+  await page.getByRole('button', { name: '地址 Schema' }).click();
+  await expect(page.getByText('contact.fullName')).toBeVisible();
+  await page.getByPlaceholder('buyer@example.com').fill('buyer@example.com');
+  await expect(page.getByText('Northwind warehouse')).toBeVisible();
+
+  await page.getByRole('button', { name: '信保订单草稿' }).click();
+  await page.getByPlaceholder('买家登录名').fill('northwind-buyer');
+  await page.getByPlaceholder('商品 ID').fill('10000001');
+  await page.getByPlaceholder('商品名称').fill('Portable solar power station');
+  await page.getByPlaceholder('数量').fill('10');
+  await page.getByPlaceholder('单价').fill('599');
+  await page.getByRole('button', { name: '创建 Mock 信保订单' }).click();
+  await expect(page.getByText(/Mock 创建成功/)).toBeVisible();
+});
+
 test('web mock supports visual detail editing, PhotoBank transfer and non-blocking guidance', async ({
   page
 }) => {

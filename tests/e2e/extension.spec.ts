@@ -67,4 +67,11 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('button', { name: 'RFQ' }).click();
   await expect(page.getByRole('heading', { name: 'RFQ 工作台' })).toBeVisible();
   await expect(page.getByText(/真实附件上传和提交报价尚未通过账号 smoke test/)).toBeVisible();
+
+  await page.getByRole('button', { name: '订单' }).click();
+  await expect(page.getByRole('heading', { name: '交易 / 订单工作台' })).toBeVisible();
+  await expect(page.getByText(/完整详情明确标记为不可用/)).toBeVisible();
+  await page.getByRole('button', { name: '信保订单草稿' }).click();
+  await expect(page.getByText('扩展真实写入已禁用')).toBeVisible();
+  await expect(page.getByRole('button', { name: '创建 Mock 信保订单' })).toBeDisabled();
 });

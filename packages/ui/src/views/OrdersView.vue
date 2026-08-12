@@ -57,10 +57,12 @@ const aggregate = useQuery({
 });
 const fulfillmentChannels = useQuery({
   queryKey: ['trade-fulfillment-channels'],
+  enabled: computed(() => workspace.value === 'finance'),
   queryFn: () => gateway.request('listTradeFulfillmentChannels', { language: 'zh_CN' })
 });
 const serviceCharge = useQuery({
   queryKey: computed(() => ['trade-service-charge', serviceCurrency.value]),
+  enabled: computed(() => workspace.value === 'finance'),
   queryFn: () => gateway.request('getTradeServiceCharge', { currency: serviceCurrency.value })
 });
 const ttAccount = useQuery({
@@ -70,7 +72,7 @@ const ttAccount = useQuery({
 });
 const addressSchema = useQuery({
   queryKey: computed(() => ['trade-address-schema', addressCountry.value]),
-  enabled: computed(() => addressCountry.value.trim() !== ''),
+  enabled: computed(() => workspace.value === 'addresses' && addressCountry.value.trim() !== ''),
   queryFn: () =>
     gateway.request('getTradeAddressSchema', {
       countryCode: addressCountry.value.trim().toUpperCase(),
@@ -79,7 +81,7 @@ const addressSchema = useQuery({
 });
 const addresses = useQuery({
   queryKey: computed(() => ['trade-addresses', buyerEmail.value]),
-  enabled: computed(() => buyerEmail.value.includes('@')),
+  enabled: computed(() => workspace.value === 'addresses' && buyerEmail.value.includes('@')),
   queryFn: () => gateway.request('listTradeAddresses', { buyerEmail: buyerEmail.value.trim() })
 });
 
