@@ -624,10 +624,1405 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/logistics/address-nodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List logistics address nodes */
+        get: operations["listLogisticsAddressNodes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/special-product-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List special product type configuration */
+        get: operations["listLogisticsSpecialProductTypes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List logistics products */
+        get: operations["listLogisticsProducts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/quotes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Calculate a logistics quote and validate order parameters */
+        post: operations["calculateLogisticsQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List logistics orders */
+        get: operations["listLogisticsOrders"];
+        put?: never;
+        /** Create a logistics order */
+        post: operations["createLogisticsOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/orders/{orderNumber}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get logistics order detail, label and warehouse data */
+        get: operations["getLogisticsOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/shipping-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List international shipping templates */
+        get: operations["listShippingTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** alibaba.onetouch.logistics.buyer.info.get request */
+        AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetRequest: Record<string, never>;
+        /** alibaba.onetouch.logistics.buyer.info.get response */
+        AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetResponse: {
+            /** @description 接口返回model */
+            result?: {
+                /** @description code */
+                code: string;
+                /** @description 返回素材id */
+                data: {
+                    [key: string]: unknown;
+                };
+                /** @description 是否成功 */
+                success: boolean;
+                /** @description message */
+                message: string;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.address.city.list request */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressCityListRequest: {
+            /** @description 请求参数 */
+            param_query: {
+                /** @description 省ID */
+                province_id: number;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.address.city.list response */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressCityListResponse: {
+            /** @description 接口返回model */
+            result?: {
+                /** @description 返回结果描述 */
+                error_message?: string;
+                /** @description 列表对象 */
+                values?: {
+                    /** @description 节点ID */
+                    area_id?: number;
+                    /** @description 节点名称拼音 */
+                    pinyin?: string;
+                    /** @description 上级节点ID */
+                    parent_id?: number;
+                    /** @description 中文名称 */
+                    name?: string;
+                    /** @description 层级 */
+                    level?: number;
+                    /** @description 上级节点名称 */
+                    parent_name?: string;
+                }[];
+                /** @description 是否成功 */
+                success?: boolean;
+                /** @description 返回结果编码 */
+                error_code?: number;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.address.division.list request */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressDivisionListRequest: {
+            /** @description 请求参数 */
+            param_query: {
+                /** @description 城市id */
+                city_id: number;
+                /** @description 是否包含子节点 */
+                with_children: boolean;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.address.division.list response */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressDivisionListResponse: {
+            /** @description 接口返回model */
+            result?: {
+                /** @description 返回结果描述 */
+                error_message?: string;
+                /** @description 列表对象 */
+                values?: {
+                    /** @description 邮编 */
+                    zip?: string;
+                    /** @description 节点名称拼音 */
+                    pinyin?: string;
+                    /** @description 层级 */
+                    level?: number;
+                    /** @description id */
+                    id?: number;
+                    /** @description 上级节点ID */
+                    parent_id?: number;
+                    /** @description 子节点列表 */
+                    childrens?: {
+                        /** @description 节点id */
+                        id?: number;
+                        /** @description 节点名称拼音 */
+                        pinyin?: string;
+                        /** @description 上级节点ID */
+                        parent_id?: number;
+                        /** @description 中文名称 */
+                        name?: string;
+                        /** @description 层级 */
+                        level?: number;
+                    }[];
+                    /** @description 节点名称 */
+                    name?: string;
+                };
+                /** @description 是否成功 */
+                success?: boolean;
+                /** @description 返回结果编码 */
+                error_code?: number;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.address.province.list request */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressProvinceListRequest: {
+            /** @description 请求参数 */
+            param_query: {
+                /** @description 国家code */
+                country_code: string;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.address.province.list response */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressProvinceListResponse: {
+            /** @description 接口返回model */
+            result?: {
+                /** @description 返回结果描述 */
+                error_message?: string;
+                /** @description 列表对象 */
+                values?: {
+                    /** @description 上级节点名称 */
+                    parent_name?: string;
+                    /** @description 层级 */
+                    level?: number;
+                    /** @description 中文名称 */
+                    name?: string;
+                    /** @description 上级节点ID */
+                    parent_id?: number;
+                    /** @description 节点名称拼音 */
+                    pinyin?: string;
+                    /** @description 节点ID */
+                    area_id?: number;
+                }[];
+                /** @description 是否成功 */
+                success?: boolean;
+                /** @description 返回结果编码 */
+                error_code?: number;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.address.street.list request */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressStreetListRequest: {
+            /** @description 请求参数 */
+            param_query: {
+                /** @description 查询关键词 */
+                search_text: string;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.address.street.list response */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressStreetListResponse: {
+            /** @description 接口返回model */
+            result?: {
+                /** @description 返回结果描述 */
+                error_message?: string;
+                /** @description 列表对象 */
+                values?: {
+                    /** @description 邮编 */
+                    zip?: string;
+                    /** @description 地址 */
+                    address?: string;
+                }[];
+                /** @description 是否成功 */
+                success?: boolean;
+                /** @description 返回结果编码 */
+                error_code?: number;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.charge.calculate request */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressChargeCalculateRequest: {
+            /** @description 请求参数对象 */
+            paramn_query: {
+                /** @description 货品信息 */
+                cargo_list: {
+                    /** @description 单位 */
+                    unit: string;
+                    /** @description 海关编码 */
+                    hscode: string;
+                    /** @description 货物数量 */
+                    quantity: number;
+                    /** @description 1 */
+                    declaration_value: string;
+                    /** @description 货物单价 */
+                    price?: string;
+                    /** @description 货物中文名 */
+                    name_cn: string;
+                    /** @description 1 */
+                    currency: string;
+                    /** @description 货物英文名 */
+                    name_en: string;
+                    /** @description 商品特性列表对象 */
+                    product_type: {
+                        /** @description 商品类型code */
+                        code: string;
+                        /** @description 商品特性列表对象 */
+                        children?: {
+                            /** @description 商品类型code */
+                            code?: string;
+                            /** @description 商品特性列表对象 */
+                            children?: {
+                                /** @description 商品类型code */
+                                code?: string;
+                                /** @description 商品类型 */
+                                name?: string;
+                            }[];
+                            /** @description 商品类型 */
+                            name?: string;
+                        }[];
+                        /** @description 商品类型 */
+                        name: string;
+                    }[];
+                    /** @description 材质 */
+                    material?: string;
+                    /** @description 用途 */
+                    purpose?: string;
+                }[];
+                /** @description 起始地邮编 */
+                origin_zip_code: string;
+                /** @description 交货到仓快递信息 */
+                deliver_warehouse_express?: {
+                    /** @description 国内快递公司code */
+                    logistics_company?: string;
+                    /** @description 运单号 */
+                    tracking_numbers?: string[];
+                    /** @description 包裹数量 */
+                    package_quantity?: string;
+                };
+                /** @description 包裹信息 */
+                package_list: {
+                    /** @description 数量 */
+                    quantity: string;
+                    /** @description 长 */
+                    length: string;
+                    /** @description 宽 */
+                    width: string;
+                    /** @description 重量 */
+                    weight: string;
+                    /** @description 包装类型 */
+                    type: string;
+                    /** @description 高 */
+                    height: string;
+                }[];
+                /** @description 目的地国家 */
+                destination_country_code: string;
+                /** @description 仓库编码 */
+                warehouse_code: string;
+                /** @description 产品编码 */
+                product_code: string;
+                /** @description 发货人地址 */
+                consignor_address: {
+                    /** @description 国家、省、市、详细地址信息 */
+                    address: {
+                        /** @description 邮编 */
+                        zip: string;
+                        /** @description 国家 */
+                        country: {
+                            /** @description 地址代码 */
+                            code: string;
+                            /** @description 地址id */
+                            area_id?: number;
+                            /** @description 地址名字 */
+                            name: string;
+                        };
+                        /** @description 地址 */
+                        address: string;
+                        /** @description 乡、镇名称 */
+                        town?: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址id */
+                            area_id?: number;
+                            /** @description 地址名字 */
+                            name?: string;
+                        };
+                        /** @description 省份 */
+                        province: {
+                            /** @description 地址代码 */
+                            code: string;
+                            /** @description 地址id */
+                            area_id?: number;
+                            /** @description 地址名字 */
+                            name: string;
+                        };
+                        /** @description 城市 */
+                        city: {
+                            /** @description 地址代码 */
+                            code: string;
+                            /** @description 地址id */
+                            area_id?: number;
+                            /** @description 地址名字 */
+                            name: string;
+                        };
+                        /** @description 地区 */
+                        district?: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址名字 */
+                            name?: string;
+                        };
+                    };
+                    /** @description 联系方式(邮箱、电话号码、手机号码等) */
+                    contact: {
+                        /** @description 电话区号 */
+                        phone_code?: string;
+                        /** @description 手机号码 */
+                        mobile_no: string;
+                        /** @description 邮箱 */
+                        email: string;
+                    };
+                    /** @description 联系人姓名 */
+                    contact_person: string;
+                    /** @description 公司中文名 */
+                    company_name_cn: string;
+                };
+                /** @description 申报信息 */
+                express_customs: {
+                    /** @description 申报金额 */
+                    declaration_amount: string;
+                    /** @description 是否正式报关 */
+                    need_customs_clearance: string;
+                    /** @description 报关币种，出口发货中心默认USD */
+                    declaration_currency: string;
+                };
+                /** @description 1 */
+                need_pickup?: boolean;
+                /** @description 目的地邮编 */
+                destination_zip_code: string;
+                /** @description 发货批次ID */
+                supply_chain_biz_id?: string;
+                /** @description 收货人地址 */
+                consignee_address: {
+                    /** @description 国家、省、市、详细地址信息 */
+                    address: {
+                        /** @description 邮编 */
+                        zip: string;
+                        /** @description 国家 */
+                        country: {
+                            /** @description 地址代码 */
+                            code: string;
+                            /** @description 地址id */
+                            area_id?: number;
+                            /** @description 地址名字 */
+                            name: string;
+                            /** @description 未知 */
+                            phone_code?: string;
+                        };
+                        /** @description 地址 */
+                        address: string;
+                        /** @description 省份 */
+                        province: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址代码 */
+                            area_id?: string;
+                            /** @description 地址名字 */
+                            name: string;
+                        };
+                        /** @description 乡、镇名称 */
+                        town?: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址代码 */
+                            area_id?: string;
+                            /** @description 地址名字 */
+                            name?: string;
+                        };
+                        /** @description 地址2 */
+                        address2?: string;
+                        /** @description 城市 */
+                        city: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址名字 */
+                            name: string;
+                        };
+                        /** @description 地区 */
+                        district?: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址代码 */
+                            area_id?: string;
+                            /** @description 地址名字 */
+                            name?: string;
+                        };
+                    };
+                    /** @description 联系方式(邮箱、电话号码、手机号码等) */
+                    contact?: {
+                        /** @description 电话区码 */
+                        phone_area?: string;
+                        /** @description 电话区号 */
+                        phone_code?: string;
+                        /** @description 手机号码 */
+                        mobile_no: string;
+                        /** @description 邮箱 */
+                        email: string;
+                    };
+                    /** @description 地址所有者邮箱(卖家维护收货地址, 值等于买家邮箱) */
+                    address_email?: string;
+                    /** @description 公司英文名 */
+                    company_name_en: string;
+                    /** @description 联系人姓名 */
+                    contact_person: string;
+                    /** @description 地址类型 */
+                    type?: string;
+                };
+                /** @description 交易单号（例如阿里国际站的信保单ID），注意此字段不为空时，trade_platform字段必填（默认为ICBU） */
+                trade_biz_id?: string;
+                /** @description 跨境电商平台代码：ICBU（阿里巴巴国际站）、ALIEXPRESS（速卖通）、AMAZON（亚马逊）等 */
+                trade_platform?: string;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.charge.calculate response */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressChargeCalculateResponse: {
+            /** @description 接口返回model */
+            result?: {
+                /** @description 返回结果描述 */
+                error_message?: string;
+                /** @description 结果对象 */
+                values?: {
+                    /** @description 费用项列表 */
+                    express_quote_item_list?: {
+                        /** @description 费用编码 */
+                        code?: string;
+                        /** @description 数量 */
+                        quantity?: number;
+                        /** @description 价格信息 */
+                        sales_amount?: {
+                            /** @description 金额 */
+                            amount?: string;
+                            /** @description 币种 */
+                            currency?: string;
+                        };
+                        /** @description 费用名称 */
+                        name?: string;
+                        /** @description 费用描述 */
+                        charge_desc?: string;
+                        /** @description 币种 */
+                        currency?: string;
+                        /** @description 费用类型 */
+                        type?: string;
+                    }[];
+                    /** @description 销售总价 */
+                    sales_amount?: string;
+                    /** @description 折扣总价 */
+                    discount_amount?: string;
+                };
+                /** @description 是否成功 */
+                success?: boolean;
+                /** @description 返回结果编码 */
+                error_code?: number;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.logistics.order.create request */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsOrderCreateRequest: {
+            /** @description 请求参数对象 */
+            paramn_query: {
+                /** @description 货品信息 */
+                cargo_list: {
+                    /** @description 单位 */
+                    unit: string;
+                    /** @description 海关编码 */
+                    hscode: string;
+                    /** @description 货物数量 */
+                    quantity: number;
+                    /** @description 申报单价 */
+                    declaration_value: string;
+                    /** @description 货物单价 */
+                    price?: string;
+                    /** @description 货物中文名 */
+                    name_cn: string;
+                    /** @description 币种 */
+                    currency: string;
+                    /** @description 货物英文名 */
+                    name_en: string;
+                    /** @description 商品特性列表对象 */
+                    product_type: {
+                        /** @description 商品类型code */
+                        code: string;
+                        /** @description 商品特性列表对象 */
+                        children?: {
+                            /** @description 商品类型code */
+                            code?: string;
+                            /** @description 商品特性列表对象 */
+                            children?: {
+                                /** @description 商品类型code */
+                                code?: string;
+                                /** @description 商品类型 */
+                                name?: string;
+                            }[];
+                            /** @description 商品类型 */
+                            name?: string;
+                        }[];
+                        /** @description 商品类型 */
+                        name: string;
+                    }[];
+                    /** @description 用途 */
+                    purpose: string;
+                    /** @description 材质 */
+                    material: string;
+                }[];
+                /** @description 起始地邮编 */
+                origin_zip_code: string;
+                /** @description 交货到仓快递信息（自寄必填） */
+                deliver_warehouse_express?: {
+                    /** @description 国内快递公司code（自寄必填） */
+                    logistics_company?: string;
+                    /** @description 运单号（自寄必填） */
+                    tracking_numbers?: string[];
+                    /** @description 包裹数量（自寄必填） */
+                    package_quantity?: string;
+                };
+                /** @description 包裹信息 */
+                package_list: {
+                    /** @description 数量 */
+                    quantity: string;
+                    /** @description 长，单位：cm */
+                    length: string;
+                    /** @description 宽，单位：cm */
+                    width: string;
+                    /** @description 重量，单位：kg */
+                    weight: string;
+                    /** @description 包装类型 */
+                    type: string;
+                    /** @description 高，单位：cm */
+                    height: string;
+                }[];
+                /** @description 目的地国家 */
+                destination_country_code: string;
+                /** @description 仓库编码 */
+                warehouse_code: string;
+                /** @description 产品编码 */
+                product_code: string;
+                /** @description 发货人地址 */
+                consignor_address: {
+                    /** @description 国家、省、市、详细地址信息 */
+                    address: {
+                        /** @description 邮编 */
+                        zip: string;
+                        /** @description 国家 */
+                        country: {
+                            /** @description 地址代码 */
+                            code: string;
+                            /** @description 地址id */
+                            area_id?: number;
+                            /** @description 地址名字 */
+                            name: string;
+                        };
+                        /** @description 地址 */
+                        address: string;
+                        /** @description 乡、镇名称 */
+                        town?: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址id */
+                            area_id?: number;
+                            /** @description 地址名字 */
+                            name?: string;
+                        };
+                        /** @description 省份 */
+                        province: {
+                            /** @description 地址代码 */
+                            code: string;
+                            /** @description 地址id */
+                            area_id?: number;
+                            /** @description 地址名字 */
+                            name: string;
+                        };
+                        /** @description 城市 */
+                        city: {
+                            /** @description 地址代码 */
+                            code: string;
+                            /** @description 地址id */
+                            area_id?: number;
+                            /** @description 地址名字 */
+                            name: string;
+                        };
+                        /** @description 地区 */
+                        district?: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址名字 */
+                            name?: string;
+                        };
+                    };
+                    /** @description 联系方式(邮箱、电话号码、手机号码等) */
+                    contact: {
+                        /** @description 电话区号 */
+                        phone_code?: string;
+                        /** @description 手机号码 */
+                        mobile_no: string;
+                        /** @description 邮箱 */
+                        email: string;
+                    };
+                    /** @description 联系人姓名 */
+                    contact_person: string;
+                    /** @description 公司中文名 */
+                    company_name_cn: string;
+                };
+                /** @description 申报信息 */
+                express_customs: {
+                    /** @description 申报金额 */
+                    declaration_amount: string;
+                    /** @description 是否正式报关 */
+                    need_customs_clearance: string;
+                    /** @description 报关币种，出口发货中心默认USD */
+                    declaration_currency: string;
+                    /** @description 增值税类型，枚举取值：VAT、IOSS、VOEC */
+                    vat_type?: string;
+                    /** @description 增值税税号 */
+                    vat_number?: string;
+                    /** @description 纳税人识别号 */
+                    taxpayer_id?: string;
+                    /** @description 欧盟EORI */
+                    eori_number?: string;
+                };
+                /** @description 是否上门揽收 */
+                need_pickup?: boolean;
+                /** @description 目的地邮编 */
+                destination_zip_code: string;
+                /** @description 发货批次ID，阿里国际站订单发货此字段为必填 */
+                supply_chain_biz_id: string;
+                /** @description 收货人地址 */
+                consignee_address: {
+                    /** @description 国家、省、市、详细地址信息 */
+                    address: {
+                        /** @description 邮编 */
+                        zip: string;
+                        /** @description 国家 */
+                        country: {
+                            /** @description 地址代码 */
+                            code: string;
+                            /** @description 地址id */
+                            area_id?: number;
+                            /** @description 地址名字 */
+                            name: string;
+                            /** @description 未知 */
+                            phone_code?: string;
+                        };
+                        /** @description 地址 */
+                        address: string;
+                        /** @description 省份 */
+                        province: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址id */
+                            area_id?: string;
+                            /** @description 地址名字 */
+                            name: string;
+                        };
+                        /** @description 乡、镇名称 */
+                        town?: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址id */
+                            area_id?: string;
+                            /** @description 地址名字 */
+                            name?: string;
+                        };
+                        /** @description 地址2 */
+                        address2?: string;
+                        /** @description 城市 */
+                        city: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址名字 */
+                            name: string;
+                        };
+                        /** @description 地区 */
+                        district?: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址id */
+                            area_id?: string;
+                            /** @description 地址名字 */
+                            name?: string;
+                        };
+                    };
+                    /** @description 联系方式(邮箱、电话号码、手机号码等) */
+                    contact: {
+                        /** @description 电话区码 */
+                        phone_area?: string;
+                        /** @description 电话区号 */
+                        phone_code?: string;
+                        /** @description 手机号码 */
+                        mobile_no: string;
+                        /** @description 邮箱 */
+                        email?: string;
+                    };
+                    /** @description 地址所有者邮箱(卖家维护收货地址, 值等于买家邮箱) */
+                    address_email?: string;
+                    /** @description 公司英文名 */
+                    company_name_en: string;
+                    /** @description 联系人姓名 */
+                    contact_person: string;
+                    /** @description 地址类型 */
+                    type?: string;
+                    /** @description 公司中文名 */
+                    company_name_cn?: string;
+                };
+                /** @description 交易单号（例如阿里国际站的信保单ID），注意此字段不为空时，trade_platform字段必填（默认为ICBU） */
+                trade_biz_id?: string;
+                /** @description 备用字段（上门揽收地址），目前按发货人地址 */
+                pickup_address?: {
+                    /** @description 国家、省、市、详细地址信息 */
+                    address?: {
+                        /** @description 邮编 */
+                        zip?: string;
+                        /** @description 国家 */
+                        country?: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址名称 */
+                            name?: string;
+                            /** @description 地址id */
+                            area_id?: number;
+                        };
+                        /** @description 地址 */
+                        address?: string;
+                        /** @description 乡、镇名称 */
+                        town?: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址名称 */
+                            name?: string;
+                            /** @description 地址id */
+                            area_id?: number;
+                        };
+                        /** @description 省份 */
+                        province?: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址名称 */
+                            name?: string;
+                            /** @description 地址id */
+                            area_id?: number;
+                        };
+                        /** @description 城市 */
+                        city?: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址名称 */
+                            name?: string;
+                            /** @description 地址id */
+                            area_id?: number;
+                        };
+                        /** @description 街道 */
+                        district?: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址名称 */
+                            name?: string;
+                        };
+                    };
+                    /** @description 联系人 */
+                    contact_person?: string;
+                    /** @description 联系方式(邮箱、电话号码、手机号码等) */
+                    contact?: {
+                        /** @description 手机号 */
+                        mobile_no?: string;
+                        /** @description 邮箱 */
+                        email?: string;
+                        /** @description 电话区号 */
+                        phone_code?: string;
+                    };
+                    /** @description 公司名称 */
+                    company_name_cn?: string;
+                };
+                /** @description 备用字段（退货地址），目前按退货申请指定地址 */
+                return_address?: {
+                    /** @description 地址信息 */
+                    address?: {
+                        /** @description 邮编 */
+                        zip?: string;
+                        /** @description 国家 */
+                        country?: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址名称 */
+                            name?: string;
+                            /** @description 地址id */
+                            area_id?: number;
+                        };
+                        /** @description 地址 */
+                        address?: string;
+                        /** @description 乡、镇名称 */
+                        town?: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址名称 */
+                            name?: string;
+                            /** @description 地址id */
+                            area_id?: number;
+                        };
+                        /** @description 省份 */
+                        province?: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址名称 */
+                            name?: string;
+                            /** @description 地址id */
+                            area_id?: number;
+                        };
+                        /** @description 城市 */
+                        city?: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址名称 */
+                            name?: string;
+                            /** @description 地址id */
+                            area_id?: number;
+                        };
+                        /** @description 街道 */
+                        district?: {
+                            /** @description 地址代码 */
+                            code?: string;
+                            /** @description 地址名称 */
+                            name?: string;
+                        };
+                    };
+                    /** @description 联系人 */
+                    contact_person?: string;
+                    /** @description 联系方式(邮箱、电话号码、手机号码等) */
+                    contact?: {
+                        /** @description 手机号 */
+                        mobile_no?: string;
+                        /** @description 邮箱地址 */
+                        email?: string;
+                        /** @description 电话区号 */
+                        phone_code?: string;
+                    };
+                    /** @description 公司名称 */
+                    company_name_cn?: string;
+                };
+                /** @description 跨境电商平台代码：ICBU（阿里巴巴国际站）、ALIEXPRESS（速卖通）、AMAZON（亚马逊）、TIKTOK、TEMU、SHEIN */
+                trade_platform?: string;
+                /** @description 贸易业务模式（如半托管） */
+                trade_biz_mode?: string;
+                /** @description 方案信息 */
+                solution_dto?: {
+                    /** @description 干线线路名称 */
+                    trunk_line_name?: string;
+                    /** @description 干线线路 skuCode */
+                    trunk_line_sku_code?: string;
+                    /** @description 揽收类型 */
+                    head_pickup_type?: string;
+                    /** @description 头程揽收skuId */
+                    head_pickup_sku_id?: number;
+                    /** @description 头程线路方案id */
+                    head_pickup_solution_id?: number;
+                    /** @description 头程揽收服务商 */
+                    head_pickup_sp_code?: string;
+                    /** @description 预计揽收时间 */
+                    expect_pickup_time?: number;
+                };
+            };
+        };
+        /** alibaba.onetouch.logistics.express.logistics.order.create response */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsOrderCreateResponse: {
+            /** @description 接口返回model */
+            result?: {
+                /** @description 返回结果描述 */
+                error_message?: string;
+                /** @description 结果对象 */
+                values?: {
+                    /** @description 仓库信息 */
+                    warehouse?: {
+                        /** @description 仓库地址 */
+                        address?: string;
+                        /** @description 仓库名称 */
+                        name?: string;
+                        /** @description 仓库编码 */
+                        code?: string;
+                        /** @description 联系人 */
+                        contact_person?: string;
+                        /** @description 联系人电话 */
+                        contact_phone?: string;
+                        /** @description 工作时间 */
+                        working_time?: string;
+                        /** @description 邮编 */
+                        post_code?: string;
+                        /** @description 备注 */
+                        description?: string;
+                    };
+                    /** @description （废弃为空！！面单通过alibaba.onetouch.logistics.express.order.detail.get获取）原条码PDF Base64编码 */
+                    bar_code?: string;
+                    /** @description 物流订单号 */
+                    order_number?: string;
+                    /** @description 上门揽收信息 */
+                    pickup_info?: {
+                        /** @description 备用字段（上门揽收服务商），目前为空 */
+                        service_provider?: string;
+                        /** @description 上门揽收类型，warehouse_free_pickup：仓库免费上门揽收，warehouse_paid_pickup：仓库收费上门揽收，provider_paid_pickup：服务商收费上门揽收 */
+                        pickup_type?: string;
+                        /** @description 能否上门揽收 */
+                        can_pickup?: boolean;
+                        /** @description 上门揽收类型名称 */
+                        pickup_type_name?: string;
+                    };
+                };
+                /** @description 是否成功 */
+                success?: boolean;
+                /** @description 返回结果编码 */
+                error_code?: number;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.logistics.product.list request */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsProductListRequest: Record<string, never>;
+        /** alibaba.onetouch.logistics.express.logistics.product.list response */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsProductListResponse: {
+            /** @description 返回结果 */
+            result?: {
+                /** @description 错误信息提示 */
+                error_message?: string;
+                /** @description 列表对象 */
+                values?: {
+                    /** @description 仓库名称 */
+                    warehouse_name?: string;
+                    /** @description 仓库编码 */
+                    warehouse_code?: string;
+                    /** @description 产品名称 */
+                    product_name?: string;
+                    /** @description 产品编码 */
+                    product_code?: string;
+                    /** @description 是否上门揽收 */
+                    pickup?: boolean;
+                    /** @description 时效类型 */
+                    delivery_type?: string;
+                }[];
+                /** @description 是否成功 */
+                success?: boolean;
+                /** @description 错误码 */
+                result_code?: number;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.logistics.rule.validate request */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsRuleValidateRequest: {
+            /** @description 请求参数对象 */
+            param_validate: {
+                /** @description 单件长区间(cm) */
+                length_range?: {
+                    /** @description 最小值 */
+                    min?: string;
+                    /** @description 最大值 */
+                    max?: string;
+                };
+                /** @description 单件体积区间(m3) */
+                total_volume_range?: {
+                    /** @description 最小值 */
+                    min?: string;
+                    /** @description 最大值 */
+                    max?: string;
+                };
+                /** @description 包裹区间限制 */
+                package_count_range?: {
+                    /** @description 最小值 */
+                    min?: string;
+                    /** @description 最大值 */
+                    max?: string;
+                };
+                /** @description 商品类型列表 */
+                product_type?: {
+                    /** @description 商品类型code */
+                    code?: string;
+                    /** @description 商品类型列表 */
+                    children?: {
+                        /** @description 商品类型code */
+                        code?: string;
+                        /** @description 商品类型列表 */
+                        children?: {
+                            /** @description 商品类型code */
+                            code?: string;
+                            /** @description 商品类型 */
+                            name?: string;
+                        }[];
+                        /** @description 商品类型 */
+                        name?: string;
+                    }[];
+                    /** @description 商品类型 */
+                    name?: string;
+                }[];
+                /** @description 仓库编码 */
+                warehouse_code: string;
+                /** @description 一票总计费重区间(kg) */
+                charge_range?: {
+                    /** @description 最小值 */
+                    min?: string;
+                    /** @description 最大值 */
+                    max?: string;
+                };
+                /** @description 目的地国家列表 */
+                destination_countries: {
+                    /** @description 国家名称 */
+                    name: string;
+                    /** @description 国家code */
+                    code: string;
+                }[];
+                /** @description 拒绝承运地址的关键字（json格式字符串，关键字英文逗号分割） */
+                forbidden_address?: string;
+                /** @description 一票总重区间(kg) */
+                total_weight_range?: {
+                    /** @description 最小值 */
+                    min?: string;
+                    /** @description 最大值 */
+                    max?: string;
+                };
+                /** @description 单件体积区间(m3) */
+                volume_range?: {
+                    /** @description 最小值 */
+                    min?: string;
+                    /** @description 最大值 */
+                    max?: string;
+                };
+                /** @description 单件长+宽+高区间(cm) */
+                lwh_range?: {
+                    /** @description 最小值 */
+                    min?: string;
+                    /** @description 最大值 */
+                    max?: string;
+                };
+                /** @description 单件高区间(cm) */
+                height_range?: {
+                    /** @description 最小值 */
+                    min?: string;
+                    /** @description 最大值 */
+                    max?: string;
+                };
+                /** @description 单件宽区间(cm) */
+                width_range?: {
+                    /** @description 最小值 */
+                    min?: string;
+                    /** @description 最大值 */
+                    max?: string;
+                };
+                /** @description 产品编码 */
+                product_code: string;
+                /** @description 单件围长区间(cm) */
+                girth_range?: {
+                    /** @description 最小值 */
+                    min?: string;
+                    /** @description 最大值 */
+                    max?: string;
+                };
+                /** @description 单件重量区间(kg) */
+                weight_range?: {
+                    /** @description 最小值 */
+                    min?: string;
+                    /** @description 最大值 */
+                    max?: string;
+                };
+            };
+        };
+        /** alibaba.onetouch.logistics.express.logistics.rule.validate response */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsRuleValidateResponse: {
+            /** @description 返回结果 */
+            result?: {
+                /** @description 错误信息提示 */
+                error_message?: string;
+                /** @description 校验结果 */
+                values?: boolean;
+                /** @description 是否成功 */
+                success?: boolean;
+                /** @description 错误码 */
+                error_code?: number;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.order.cancel.reason.list request */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelReasonListRequest: Record<string, never>;
+        /** alibaba.onetouch.logistics.express.order.cancel.reason.list response */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelReasonListResponse: {
+            /** @description 接口返回model */
+            result?: {
+                /** @description 错误信息提示 */
+                error_message?: string;
+                /** @description 列表对象 */
+                values?: {
+                    /** @description 异常描述 */
+                    value?: string;
+                    /** @description 异常key */
+                    key?: string;
+                }[];
+                /** @description 是否成功 */
+                success?: boolean;
+                /** @description 错误码 */
+                error_code?: number;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.order.cancel request */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelRequest: {
+            /** @description 系统自动生成 */
+            param_operate?: {
+                /** @description 取消原因列表 */
+                reason_list: string[];
+                /** @description 物流单号 */
+                order_number: string;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.order.cancel response */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelResponse: {
+            /** @description 返回结果 */
+            result?: {
+                /** @description 错误信息提示 */
+                error_message?: string;
+                /** @description 取消结果 */
+                values?: boolean;
+                /** @description 是否成功 */
+                success?: boolean;
+                /** @description 错误码 */
+                error_code?: number;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.order.detail.get request */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderDetailGetRequest: {
+            /** @description 请求参数 */
+            param_query: {
+                /** @description 物流单号 */
+                order_number: string;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.order.detail.get response */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderDetailGetResponse: {
+            /** @description 接口返回model */
+            result?: {
+                /** @description 返回结果编码 */
+                error_code?: number;
+                /** @description 是否成功 */
+                success?: boolean;
+                /** @description 结果数据 */
+                data?: {
+                    /** @description 仓库信息 */
+                    warehouse?: {
+                        /** @description 备注 */
+                        description?: string;
+                        /** @description 工作时间 */
+                        working_time?: string;
+                        /** @description 联系电话 */
+                        contact_phone?: string;
+                        /** @description 联系人 */
+                        contact_person?: string;
+                        /** @description 地址 */
+                        address?: string;
+                        /** @description 仓库名称 */
+                        name?: string;
+                        /** @description 仓库编码 */
+                        code?: string;
+                    };
+                    /** @description 条码Base64 */
+                    bar_code?: string;
+                    /** @description 物流订单号 */
+                    order_number?: string;
+                    /** @description 上门揽收信息 */
+                    pickup_info?: {
+                        /** @description 能否上门揽收 */
+                        can_pickup?: boolean;
+                        /** @description 上门揽收类型，warehouse_free_pickup：仓库免费上门揽收，warehouse_paid_pickup：仓库收费上门揽收，provider_paid_pickup：服务商收费上门揽收 */
+                        pickup_type?: string;
+                        /** @description 上门揽收类型名称 */
+                        pickup_type_name?: string;
+                        /** @description 上门揽收服务商 */
+                        service_provider?: string;
+                    };
+                };
+                /** @description 返回结果描述 */
+                error_message?: string;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.order.list.query request */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderListQueryRequest: {
+            /** @description 请求参数 */
+            param_query?: {
+                /** @description 页面数据大小 */
+                page_size: number;
+                /** @description 当前页 */
+                current_page: number;
+                /** @description 物流订单号 */
+                order_number?: string;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.order.list.query response */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderListQueryResponse: {
+            /** @description 结果 */
+            result?: {
+                /** @description 异常信息 */
+                msg?: string;
+                /** @description 数据 */
+                data?: {
+                    /** @description 总数 */
+                    total?: number;
+                    /** @description 总页数 */
+                    total_page?: number;
+                    /** @description 订单数据 */
+                    data_list?: {
+                        /** @description 下单时间 */
+                        place_order_time?: number | string;
+                        /** @description 订单号 */
+                        order_number?: string;
+                        /** @description 运费金额 */
+                        freight_amount?: string;
+                        /** @description 交易单号 */
+                        trade_biz_id?: string;
+                        /** @description 运费币种 */
+                        freight_currency?: string;
+                        /** @description 目的国编码 */
+                        destination_country_code?: string;
+                        /** @description 订单状态 */
+                        order_status?: string;
+                        /** @description 详情链接 */
+                        detail_url?: string;
+                        /** @description 物流类型 */
+                        logistics_type?: string;
+                    }[];
+                    /** @description 每页数据大小 */
+                    page_size?: number;
+                    /** @description 当前页 */
+                    current_page?: number;
+                };
+                /** @description 是否成功 */
+                success?: boolean;
+                /** @description 异常码 */
+                result_code?: number;
+            };
+        };
+        /** alibaba.onetouch.logistics.express.special.product.type.list request */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressSpecialProductTypeListRequest: Record<string, never>;
+        /** alibaba.onetouch.logistics.express.special.product.type.list response */
+        AlibabaLogisticsAlibabaOnetouchLogisticsExpressSpecialProductTypeListResponse: {
+            /** @description 接口返回model */
+            result?: {
+                /** @description 返回结果描述 */
+                error_message?: string;
+                /** @description 列表对象 */
+                values?: {
+                    /** @description 商品类型code */
+                    code?: string;
+                    /** @description 商品类型 */
+                    name?: string;
+                    /** @description 列表对象 */
+                    childrens?: {
+                        /** @description 商品类型code */
+                        code?: string;
+                        /** @description 商品类型 */
+                        name?: string;
+                        /** @description 列表对象 */
+                        childrens?: {
+                            /** @description 商品类型code */
+                            code?: string;
+                            /** @description 商品类型 */
+                            name?: string;
+                        }[];
+                    }[];
+                }[];
+                /** @description 是否成功 */
+                success?: boolean;
+                /** @description 返回结果编码 */
+                error_code?: number;
+            };
+        };
+        /** alibaba.wholesale.shippingline.template.list request */
+        AlibabaLogisticsAlibabaWholesaleShippinglineTemplateListRequest: {
+            /** @description 第几页从1开始 */
+            page_num?: number;
+            /** @description 每页返回的数据个数 */
+            count?: number;
+        };
+        /** alibaba.wholesale.shippingline.template.list response */
+        AlibabaLogisticsAlibabaWholesaleShippinglineTemplateListResponse: {
+            /** @description 运费模板列表 */
+            list_template_response?: {
+                /** @description 运费模板总数 */
+                total?: number;
+                /** @description 运费模板集合 */
+                items?: {
+                    /** @description 运费模板id */
+                    id?: number;
+                    /** @description 运费模板名称 */
+                    title?: string;
+                }[];
+            };
+        };
         /** alibaba.icbu.category.attr.get request */
         AlibabaProductAlibabaIcbuCategoryAttrGetRequest: {
             /** @description 类目属性request对象 */
@@ -4111,7 +5506,7 @@ export interface components {
         CapabilityResponseEnvelope: {
             method: string;
             traceId: string;
-            data: components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttributeGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrvalueGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetNewResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryIdMappingResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryLevelAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryPostcatGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategorySchemaLevelGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuOpenProductPostResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductBatchUpdateDisplayResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductIdDecryptResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductListResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductScoreGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateFieldResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuAnnexUploadResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuQuotationPostResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqMyequityResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqReadResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqRecommendResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqSearchResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqdetailGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderListResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderFundGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderLogisticsGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderCreateResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderModifyResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeFulfillmentChannelGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeServiceChargeGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAssuranceCreditCardResponse"] | components["schemas"]["AlibabaTradeAlibabaOrderTradeTtGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressGetResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuEcologyWriteResponse"] | components["schemas"]["AlibabaTradeAlibabaIntentionOrderSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAddressSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeDecodeResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeQueryDrafttypeResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftCustomerSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuXiaomanVaListResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAuthExtendResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressSchemaQueryResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressFormSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressListQueryResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressDeleteResponse"];
+            data: components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttributeGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrvalueGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetNewResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryIdMappingResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryLevelAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryPostcatGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategorySchemaLevelGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuOpenProductPostResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductBatchUpdateDisplayResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductIdDecryptResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductListResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductScoreGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateFieldResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuAnnexUploadResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuQuotationPostResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqMyequityResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqReadResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqRecommendResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqSearchResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqdetailGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderListResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderFundGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderLogisticsGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderCreateResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderModifyResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeFulfillmentChannelGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeServiceChargeGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAssuranceCreditCardResponse"] | components["schemas"]["AlibabaTradeAlibabaOrderTradeTtGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressGetResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuEcologyWriteResponse"] | components["schemas"]["AlibabaTradeAlibabaIntentionOrderSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAddressSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeDecodeResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeQueryDrafttypeResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftCustomerSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuXiaomanVaListResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAuthExtendResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressSchemaQueryResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressFormSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressListQueryResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressDeleteResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressSpecialProductTypeListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelReasonListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressChargeCalculateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsRuleValidateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsProductListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsOrderCreateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressCityListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressProvinceListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressDivisionListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressStreetListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderDetailGetResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderListQueryResponse"] | components["schemas"]["AlibabaLogisticsAlibabaWholesaleShippinglineTemplateListResponse"];
             contractValid: boolean;
             contractIssues: components["schemas"]["CapabilityContractIssue"][];
         };
@@ -4127,6 +5522,131 @@ export interface components {
             subCode?: string;
             traceId?: string;
             retryable: boolean;
+        };
+        LogisticsAddress: {
+            countryCode: string;
+            provinceCode: string | null;
+            cityCode: string | null;
+            divisionCode: string | null;
+            streetCode: string | null;
+            address1: string;
+            address2: string | null;
+            zipCode: string;
+            contact: components["schemas"]["LogisticsContact"];
+        };
+        LogisticsAddressNode: {
+            id: string;
+            code: string;
+            name: string;
+            /** @enum {string} */
+            level: "province" | "city" | "division" | "street";
+        };
+        LogisticsCargo: {
+            nameCn: string;
+            nameEn: string;
+            hsCode: string;
+            quantity: string;
+            unit: string;
+            declarationValue: string;
+            currency: string;
+            purpose: string;
+            material: string;
+            productTypeCodes: string[];
+        };
+        LogisticsContact: {
+            contactPerson: string;
+            mobileNo: string;
+            email: string | null;
+            companyName: string | null;
+        };
+        LogisticsCustoms: {
+            declarationAmount: string;
+            declarationCurrency: string;
+            needCustomsClearance: boolean;
+            vatType: string | null;
+            vatNumber: string | null;
+            taxpayerId: string | null;
+            eoriNumber: string | null;
+        };
+        LogisticsOrderDetail: {
+            order: components["schemas"]["LogisticsOrderSummary"];
+            warehouseName: string | null;
+            warehouseAddress: string | null;
+            /** Format: uri */
+            labelUrl: string | null;
+            trackingNumber: string | null;
+        };
+        LogisticsOrderDraft: {
+            quoteRequest: components["schemas"]["LogisticsQuoteRequest"];
+            confirmedProductCode: string;
+        };
+        LogisticsOrderMutationResult: {
+            orderNumber: string;
+            success: boolean;
+        };
+        LogisticsOrderPage: {
+            items: components["schemas"]["LogisticsOrderSummary"][];
+            page: number;
+            pageSize: number;
+            total: number;
+        };
+        LogisticsOrderSummary: {
+            orderNumber: string;
+            status: string;
+            freightAmount: string;
+            currency: string;
+            /** Format: date-time */
+            placedAt: string | null;
+        };
+        LogisticsPackage: {
+            quantity: string;
+            lengthCm: string;
+            widthCm: string;
+            heightCm: string;
+            weightKg: string;
+            type: string;
+        };
+        LogisticsProduct: {
+            code: string;
+            name: string;
+            warehouseCode: string | null;
+            enabled: boolean;
+            unavailableReason: string | null;
+        };
+        LogisticsQuoteOption: {
+            productCode: string;
+            productName: string;
+            totalAmount: string;
+            currency: string;
+            estimatedDays: string | null;
+            warehouseCode: string | null;
+            available: boolean;
+            unavailableReason: string | null;
+        };
+        LogisticsQuoteRequest: {
+            originZipCode: string;
+            destinationCountryCode: string;
+            destinationZipCode: string;
+            warehouseCode: string;
+            productCode: string;
+            cargo: components["schemas"]["LogisticsCargo"][];
+            packages: components["schemas"]["LogisticsPackage"][];
+            consignor: components["schemas"]["LogisticsAddress"];
+            consignee: components["schemas"]["LogisticsAddress"];
+            customs: components["schemas"]["LogisticsCustoms"];
+            needPickup: boolean;
+            tradeBizId: string | null;
+            /** @default ICBU */
+            tradePlatform: string;
+        };
+        LogisticsQuoteResult: {
+            options: components["schemas"]["LogisticsQuoteOption"][];
+            issues: string[];
+        };
+        LogisticsSpecialProductType: {
+            code: string;
+            name: string;
+            children: components["schemas"]["LogisticsSpecialProductType"][];
         };
         Order: {
             id: string;
@@ -4363,6 +5883,10 @@ export interface components {
             language: string;
             productId?: string;
             schemaXml: string;
+        };
+        ShippingTemplate: {
+            id: string;
+            name: string;
         };
         TradeAddress: {
             id: string;
@@ -4967,7 +6491,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttributeGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrvalueGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetNewRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryIdMappingRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryLevelAttrGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryPostcatGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategorySchemaLevelGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuOpenProductPostRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductBatchUpdateDisplayRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductIdDecryptRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductListRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaUpdateRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductScoreGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateFieldRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuAnnexUploadRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuQuotationPostRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqMyequityRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqReadRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqRecommendRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqSearchRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqdetailGetRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderListRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderFundGetRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderLogisticsGetRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderCreateRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderModifyRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeFulfillmentChannelGetRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeServiceChargeGetRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerAssuranceCreditCardRequest"] | components["schemas"]["AlibabaTradeAlibabaOrderTradeTtGetRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressGetRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuEcologyWriteRequest"] | components["schemas"]["AlibabaTradeAlibabaIntentionOrderSaveRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerAddressSaveRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeDecodeRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeQueryDrafttypeRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftCustomerSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuXiaomanVaListRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerAuthExtendRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressSchemaQueryRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressFormSaveRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressListQueryRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressDeleteRequest"];
+                "application/json": components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttributeGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrvalueGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetNewRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryIdMappingRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryLevelAttrGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryPostcatGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategorySchemaLevelGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuOpenProductPostRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductBatchUpdateDisplayRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductIdDecryptRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductListRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaUpdateRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductScoreGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateFieldRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuAnnexUploadRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuQuotationPostRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqMyequityRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqReadRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqRecommendRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqSearchRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqdetailGetRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderListRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderFundGetRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderLogisticsGetRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderCreateRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderModifyRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeFulfillmentChannelGetRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeServiceChargeGetRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerAssuranceCreditCardRequest"] | components["schemas"]["AlibabaTradeAlibabaOrderTradeTtGetRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressGetRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuEcologyWriteRequest"] | components["schemas"]["AlibabaTradeAlibabaIntentionOrderSaveRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerAddressSaveRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeDecodeRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeQueryDrafttypeRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftCustomerSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuXiaomanVaListRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerAuthExtendRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressSchemaQueryRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressFormSaveRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressListQueryRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressDeleteRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressSpecialProductTypeListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelReasonListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressChargeCalculateRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsRuleValidateRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsProductListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsOrderCreateRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressCityListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressProvinceListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressDivisionListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressStreetListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderDetailGetRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderListQueryRequest"] | components["schemas"]["AlibabaLogisticsAlibabaWholesaleShippinglineTemplateListRequest"];
             };
         };
         responses: {
@@ -5608,6 +7132,201 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    listLogisticsAddressNodes: {
+        parameters: {
+            query: {
+                level: string;
+                parentId?: string;
+                countryCode?: string;
+                searchText?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Address nodes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogisticsAddressNode"][];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    listLogisticsSpecialProductTypes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Special product types */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogisticsSpecialProductType"][];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    listLogisticsProducts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Logistics products */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogisticsProduct"][];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    calculateLogisticsQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogisticsQuoteRequest"];
+            };
+        };
+        responses: {
+            /** @description Logistics quote result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogisticsQuoteResult"];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    listLogisticsOrders: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                orderNumber?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Logistics order page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogisticsOrderPage"];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    createLogisticsOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogisticsOrderDraft"];
+            };
+        };
+        responses: {
+            /** @description Created logistics order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogisticsOrderMutationResult"];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    getLogisticsOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderNumber: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Logistics order detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogisticsOrderDetail"];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    listShippingTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shipping templates */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShippingTemplate"][];
+                };
             };
             "4XX": components["responses"]["GatewayFailure"];
             default: components["responses"]["GatewayFailure"];

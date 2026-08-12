@@ -1,7 +1,15 @@
 {
   "alibaba.onetouch.logistics.buyer.info.get": {
     "restricted": true,
-    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证"
+    "restrictionReason": "需要 OneTouch 物流业务资格，待真实账号验证",
+    "responseExample": {
+      "result": {
+        "code": "",
+        "data": {},
+        "success": false,
+        "message": ""
+      }
+    }
   },
   "alibaba.onetouch.logistics.express.special.product.type.list": {
     "restricted": true,

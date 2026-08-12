@@ -457,7 +457,11 @@ document.paths['/products/{productId}/score'] = {
 };
 
 const definitions = Object.entries(capabilityMap);
-const additionalDefinitions = ['x-rfq-capabilities', 'x-trade-capabilities'].flatMap((extension) =>
+const additionalDefinitions = [
+  'x-rfq-capabilities',
+  'x-trade-capabilities',
+  'x-logistics-capabilities'
+].flatMap((extension) =>
   Object.entries(
     (document[extension] ?? {}) as Record<string, { requestSchema: string; responseSchema: string }>
   )

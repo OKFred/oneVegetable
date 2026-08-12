@@ -5,6 +5,10 @@ import type {
 } from './generated/product-capabilities';
 import type { RfqCapabilityRequestMap, RfqCapabilityResponseMap } from './generated/rfq-capabilities';
 import type { TradeCapabilityRequestMap, TradeCapabilityResponseMap } from './generated/trade-capabilities';
+import type {
+  LogisticsCapabilityRequestMap,
+  LogisticsCapabilityResponseMap
+} from './generated/logistics-capabilities';
 
 export type DashboardSummary = components['schemas']['DashboardSummary'];
 export type Product = components['schemas']['Product'];
@@ -60,10 +64,19 @@ export type TradeMutationResult = components['schemas']['TradeMutationResult'];
 export type { ProductCapabilityRequestMap, ProductCapabilityResponseMap };
 export type { RfqCapabilityRequestMap, RfqCapabilityResponseMap };
 export type { TradeCapabilityRequestMap, TradeCapabilityResponseMap };
+export type { LogisticsCapabilityRequestMap, LogisticsCapabilityResponseMap };
 export interface CapabilityRequestMap
-  extends ProductCapabilityRequestMap, RfqCapabilityRequestMap, TradeCapabilityRequestMap {}
+  extends
+    ProductCapabilityRequestMap,
+    RfqCapabilityRequestMap,
+    TradeCapabilityRequestMap,
+    LogisticsCapabilityRequestMap {}
 export interface CapabilityResponseMap
-  extends ProductCapabilityResponseMap, RfqCapabilityResponseMap, TradeCapabilityResponseMap {}
+  extends
+    ProductCapabilityResponseMap,
+    RfqCapabilityResponseMap,
+    TradeCapabilityResponseMap,
+    LogisticsCapabilityResponseMap {}
 export type GatewayError = components['schemas']['GatewayError'];
 
 export interface ProductListQuery {

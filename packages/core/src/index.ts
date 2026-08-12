@@ -15,3 +15,4 @@ export { API_CAPABILITIES } from './generated/capabilities';
 export { PRODUCT_CAPABILITY_DEFINITIONS } from './generated/product-capabilities';
 export { RFQ_CAPABILITY_DEFINITIONS } from './generated/rfq-capabilities';
 export { TRADE_CAPABILITY_DEFINITIONS } from './generated/trade-capabilities';
+export { LOGISTICS_CAPABILITY_DEFINITIONS } from './generated/logistics-capabilities';

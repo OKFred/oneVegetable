@@ -17,17 +17,16 @@ interface ParamNode {
   subParams?: ParamNode[];
 }
 
-type FeatureArea = 'order' | 'finance' | 'fulfillment' | 'address' | 'authorization' | 'partner-specific';
-
-interface TradeDefinition {
+interface LogisticsDefinition {
   method: string;
   source: 'catalog';
+  sourceCategory: 'logistics' | 'product';
   docId: number;
   title: string;
   description: string;
   lifecycle: 'active' | 'deprecated' | 'unlisted';
   risk: 'read' | 'mutation';
-  featureArea: FeatureArea;
+  featureArea: 'address' | 'quote' | 'configuration' | 'order' | 'template' | 'buyer';
   restricted: boolean;
   restrictionReason: string | null;
   checkedAt: string;
@@ -52,14 +51,14 @@ interface OpenApiDocument {
 
 const root = resolve(import.meta.dirname, '..');
 const contractPath = resolve(root, 'openapi/one-vegetable.json');
-const registryPath = resolve(root, 'packages/core/src/generated/trade-capabilities.ts');
+const registryPath = resolve(root, 'packages/core/src/generated/logistics-capabilities.ts');
 const sourceContract = JSON.parse(await readFile(contractPath, 'utf8')) as OpenApiDocument;
-const snapshot = JSON.parse(await readFile(resolve(root, 'docs/alibaba-trade-api-docs.json'), 'utf8')) as {
-  definitions: TradeDefinition[];
-};
+const snapshot = JSON.parse(
+  await readFile(resolve(root, 'docs/alibaba-logistics-api-docs.json'), 'utf8')
+) as { definitions: LogisticsDefinition[] };
 const overrides = JSON.parse(
-  await readFile(resolve(root, 'config/alibaba-trade-overrides.json'), 'utf8')
-) as Record<string, { responseExample?: unknown }>;
+  await readFile(resolve(root, 'config/alibaba-logistics-overrides.json'), 'utf8')
+) as Record<string, { requestExample?: unknown; responseExample?: unknown }>;
 
 function schemaName(method: string): string {
   return method
@@ -136,9 +135,9 @@ function scalarExample(rawType: string, demo: string): unknown {
     return Number.isFinite(numeric) ? numeric : 0;
   }
   if (type === 'boolean') return demo === 'true';
-  if (type === 'json') {
+  if (['json', 'object', 'map'].includes(type)) {
     try {
-      return JSON.parse(demo) as unknown;
+      return JSON.parse(demo.replaceAll('“', '"').replaceAll('”', '"')) as unknown;
     } catch {
       return {};
     }
@@ -166,7 +165,7 @@ function exampleValue(node: ParamNode): unknown {
   return demo === undefined ? defaultScalarExample(node.type) : scalarExample(node.type, demo);
 }
 
-function responseExample(definition: TradeDefinition): unknown {
+function responseExample(definition: LogisticsDefinition): unknown {
   const override = overrides[definition.method]?.responseExample;
   if (override !== undefined) return override;
   if (typeof definition.responseExample !== 'string') {
@@ -187,14 +186,16 @@ function responseExample(definition: TradeDefinition): unknown {
 
 const document = structuredClone(sourceContract);
 document.components.schemas = Object.fromEntries(
-  Object.entries(document.components.schemas).filter(([name]) => !name.startsWith('AlibabaTrade'))
+  Object.entries(document.components.schemas).filter(
+    ([name]) => !name.startsWith('AlibabaLogistics') && !name.startsWith('Logistics')
+  )
 );
 
 const capabilityMap: Record<string, unknown> = {};
 for (const definition of snapshot.definitions) {
   const baseName = schemaName(definition.method);
-  const requestSchema = `AlibabaTrade${baseName}Request`;
-  const responseSchema = `AlibabaTrade${baseName}Response`;
+  const requestSchema = `AlibabaLogistics${baseName}Request`;
+  const responseSchema = `AlibabaLogistics${baseName}Response`;
   document.components.schemas[requestSchema] = {
     ...objectSchema(definition.requestParams),
     title: `${definition.method} request`
@@ -220,210 +221,279 @@ for (const definition of snapshot.definitions) {
     description: definition.description,
     errorCodes: definition.errorCodes,
     requestExample:
+      overrides[definition.method]?.requestExample ??
       definition.requestExample ??
       Object.fromEntries(definition.requestParams.map((node) => [node.name, exampleValue(node)])),
     responseExample: responseExample(definition),
     docUrl: `https://developer.alibaba.com/docs/api.htm?apiId=${definition.docId}`
   };
 }
-document['x-trade-capabilities'] = capabilityMap;
+document['x-logistics-capabilities'] = capabilityMap;
 
-const decimalString = { type: 'string', pattern: '^-?\\d+(?:\\.\\d+)?$' };
-const nullableDateTime = { type: ['string', 'null'], format: 'date-time' };
-document.components.schemas.TradeOrderSummary = {
+const decimalString = { type: 'string', pattern: '^\\d+(?:\\.\\d+)?$' };
+const nullableString = { type: ['string', 'null'] };
+document.components.schemas.LogisticsAddressNode = {
   type: 'object',
   additionalProperties: false,
-  required: ['id', 'buyerLoginId', 'status', 'amount', 'currency', 'createdAt', 'modifiedAt'],
+  required: ['id', 'code', 'name', 'level'],
   properties: {
     id: { type: 'string' },
-    buyerLoginId: { type: ['string', 'null'] },
-    status: { type: 'string' },
-    amount: decimalString,
-    currency: { type: 'string' },
-    createdAt: nullableDateTime,
-    modifiedAt: nullableDateTime
+    code: { type: 'string' },
+    name: { type: 'string' },
+    level: { type: 'string', enum: ['province', 'city', 'division', 'street'] }
   }
 };
-document.components.schemas.TradeOrderPage = {
+document.components.schemas.LogisticsSpecialProductType = {
   type: 'object',
   additionalProperties: false,
-  required: ['items', 'page', 'pageSize', 'total', 'documentTimeZoneUnverified'],
-  properties: {
-    items: { type: 'array', items: { $ref: '#/components/schemas/TradeOrderSummary' } },
-    page: { type: 'integer', minimum: 1 },
-    pageSize: { type: 'integer', minimum: 1, maximum: 100 },
-    total: { type: 'integer', minimum: 0 },
-    documentTimeZoneUnverified: { type: 'boolean' }
-  }
-};
-document.components.schemas.TradeFund = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['orderId', 'paidAmount', 'currency', 'status'],
-  properties: {
-    orderId: { type: 'string' },
-    paidAmount: decimalString,
-    currency: { type: 'string' },
-    status: { type: 'string' }
-  }
-};
-document.components.schemas.TradeLogistics = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['orderId', 'status', 'carrier', 'trackingNumber'],
-  properties: {
-    orderId: { type: 'string' },
-    status: { type: 'string' },
-    carrier: { type: ['string', 'null'] },
-    trackingNumber: { type: ['string', 'null'] }
-  }
-};
-document.components.schemas.TradeOrderAggregate = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['order', 'fund', 'logistics', 'availability'],
-  properties: {
-    order: { $ref: '#/components/schemas/TradeOrderSummary' },
-    fund: { oneOf: [{ $ref: '#/components/schemas/TradeFund' }, { type: 'null' }] },
-    logistics: { oneOf: [{ $ref: '#/components/schemas/TradeLogistics' }, { type: 'null' }] },
-    availability: {
-      type: 'object',
-      additionalProperties: false,
-      required: ['order', 'fund', 'logistics', 'fullDetail'],
-      properties: {
-        order: { type: 'string', enum: ['available', 'unavailable'] },
-        fund: { type: 'string', enum: ['available', 'unavailable'] },
-        logistics: { type: 'string', enum: ['available', 'unavailable'] },
-        fullDetail: { type: 'string', enum: ['jushita-only'] }
-      }
-    }
-  }
-};
-document.components.schemas.TradeFulfillmentChannel = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['code', 'name', 'enabled'],
+  required: ['code', 'name', 'children'],
   properties: {
     code: { type: 'string' },
     name: { type: 'string' },
+    children: {
+      type: 'array',
+      items: { $ref: '#/components/schemas/LogisticsSpecialProductType' }
+    }
+  }
+};
+document.components.schemas.LogisticsProduct = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['code', 'name', 'warehouseCode', 'enabled', 'unavailableReason'],
+  properties: {
+    code: { type: 'string' },
+    name: { type: 'string' },
+    warehouseCode: nullableString,
     enabled: { type: 'boolean' },
-    unavailableReason: { type: ['string', 'null'] }
+    unavailableReason: nullableString
   }
 };
-document.components.schemas.TradeServiceChargeItem = {
+document.components.schemas.LogisticsContact = {
   type: 'object',
   additionalProperties: false,
-  required: ['ratio', 'maxFee', 'exportServiceType', 'logisticsType'],
+  required: ['contactPerson', 'mobileNo', 'email', 'companyName'],
   properties: {
-    ratio: { type: ['string', 'null'] },
-    maxFee: { type: ['string', 'null'] },
-    exportServiceType: { type: ['string', 'null'] },
-    logisticsType: { type: ['string', 'null'] }
+    contactPerson: { type: 'string', minLength: 1 },
+    mobileNo: { type: 'string', minLength: 1 },
+    email: nullableString,
+    companyName: nullableString
   }
 };
-document.components.schemas.TradeServiceCharge = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['currency', 'items'],
-  properties: {
-    currency: { type: 'string' },
-    items: { type: 'array', items: { $ref: '#/components/schemas/TradeServiceChargeItem' } }
-  }
-};
-document.components.schemas.TradeTtAccount = {
+document.components.schemas.LogisticsAddress = {
   type: 'object',
   additionalProperties: false,
   required: [
-    'orderId',
-    'payableAmount',
-    'currency',
-    'accountName',
-    'accountNumber',
-    'bankName',
-    'guideContent'
+    'countryCode',
+    'provinceCode',
+    'cityCode',
+    'divisionCode',
+    'streetCode',
+    'address1',
+    'address2',
+    'zipCode',
+    'contact'
   ],
   properties: {
-    orderId: { type: 'string' },
-    payableAmount: decimalString,
-    currency: { type: 'string' },
-    accountName: { type: ['string', 'null'] },
-    accountNumber: { type: ['string', 'null'] },
-    bankName: { type: ['string', 'null'] },
-    guideContent: { type: ['string', 'null'] }
+    countryCode: { type: 'string', minLength: 2 },
+    provinceCode: nullableString,
+    cityCode: nullableString,
+    divisionCode: nullableString,
+    streetCode: nullableString,
+    address1: { type: 'string', minLength: 1 },
+    address2: nullableString,
+    zipCode: { type: 'string', minLength: 1 },
+    contact: { $ref: '#/components/schemas/LogisticsContact' }
   }
 };
-document.components.schemas.TradeAddressSchemaField = {
+document.components.schemas.LogisticsCargo = {
   type: 'object',
   additionalProperties: false,
-  required: ['id', 'label', 'type', 'required', 'readOnly', 'options'],
+  required: [
+    'nameCn',
+    'nameEn',
+    'hsCode',
+    'quantity',
+    'unit',
+    'declarationValue',
+    'currency',
+    'purpose',
+    'material',
+    'productTypeCodes'
+  ],
   properties: {
-    id: { type: 'string' },
-    label: { type: 'string' },
-    type: { type: 'string', enum: ['text', 'select', 'textarea'] },
-    required: { type: 'boolean' },
-    readOnly: { type: 'boolean' },
-    pattern: { type: ['string', 'null'] },
-    maxLength: { type: ['integer', 'null'] },
-    options: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['label', 'value'],
-        properties: { label: { type: 'string' }, value: { type: 'string' } }
-      }
-    }
+    nameCn: { type: 'string', minLength: 1 },
+    nameEn: { type: 'string', minLength: 1 },
+    hsCode: { type: 'string', minLength: 6 },
+    quantity: decimalString,
+    unit: { type: 'string', minLength: 1 },
+    declarationValue: decimalString,
+    currency: { type: 'string', minLength: 3 },
+    purpose: { type: 'string', minLength: 1 },
+    material: { type: 'string', minLength: 1 },
+    productTypeCodes: { type: 'array', items: { type: 'string' } }
   }
 };
-document.components.schemas.TradeAddressSchema = {
+document.components.schemas.LogisticsPackage = {
   type: 'object',
   additionalProperties: false,
-  required: ['fields'],
+  required: ['quantity', 'lengthCm', 'widthCm', 'heightCm', 'weightKg', 'type'],
   properties: {
-    fields: { type: 'array', items: { $ref: '#/components/schemas/TradeAddressSchemaField' } }
+    quantity: decimalString,
+    lengthCm: decimalString,
+    widthCm: decimalString,
+    heightCm: decimalString,
+    weightKg: decimalString,
+    type: { type: 'string', minLength: 1 }
   }
 };
-document.components.schemas.TradeAddress = {
+document.components.schemas.LogisticsCustoms = {
   type: 'object',
   additionalProperties: false,
-  required: ['id', 'label', 'values'],
+  required: [
+    'declarationAmount',
+    'declarationCurrency',
+    'needCustomsClearance',
+    'vatType',
+    'vatNumber',
+    'taxpayerId',
+    'eoriNumber'
+  ],
   properties: {
-    id: { type: 'string' },
-    label: { type: 'string' },
-    values: { type: 'object', additionalProperties: { type: 'string' } }
+    declarationAmount: decimalString,
+    declarationCurrency: { type: 'string', minLength: 3 },
+    needCustomsClearance: { type: 'boolean' },
+    vatType: nullableString,
+    vatNumber: nullableString,
+    taxpayerId: nullableString,
+    eoriNumber: nullableString
   }
 };
-document.components.schemas.TradeOrderDraft = {
+document.components.schemas.LogisticsQuoteRequest = {
   type: 'object',
   additionalProperties: false,
-  required: ['buyerLoginId', 'currency', 'items'],
+  required: [
+    'originZipCode',
+    'destinationCountryCode',
+    'destinationZipCode',
+    'warehouseCode',
+    'productCode',
+    'cargo',
+    'packages',
+    'consignor',
+    'consignee',
+    'customs',
+    'needPickup',
+    'tradeBizId',
+    'tradePlatform'
+  ],
   properties: {
-    orderId: { type: 'string' },
-    buyerLoginId: { type: 'string', minLength: 1 },
-    currency: { type: 'string', minLength: 1 },
-    addressId: { type: 'string' },
-    items: {
+    originZipCode: { type: 'string', minLength: 1 },
+    destinationCountryCode: { type: 'string', minLength: 2 },
+    destinationZipCode: { type: 'string', minLength: 1 },
+    warehouseCode: { type: 'string', minLength: 1 },
+    productCode: { type: 'string', minLength: 1 },
+    cargo: { type: 'array', minItems: 1, items: { $ref: '#/components/schemas/LogisticsCargo' } },
+    packages: {
       type: 'array',
       minItems: 1,
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['productId', 'subject', 'quantity', 'unitPrice'],
-        properties: {
-          productId: { type: 'string' },
-          subject: { type: 'string' },
-          quantity: decimalString,
-          unitPrice: decimalString
-        }
-      }
-    }
+      items: { $ref: '#/components/schemas/LogisticsPackage' }
+    },
+    consignor: { $ref: '#/components/schemas/LogisticsAddress' },
+    consignee: { $ref: '#/components/schemas/LogisticsAddress' },
+    customs: { $ref: '#/components/schemas/LogisticsCustoms' },
+    needPickup: { type: 'boolean' },
+    tradeBizId: nullableString,
+    tradePlatform: { type: 'string', default: 'ICBU' }
   }
 };
-document.components.schemas.TradeMutationResult = {
+document.components.schemas.LogisticsQuoteOption = {
   type: 'object',
   additionalProperties: false,
-  required: ['id', 'success'],
-  properties: { id: { type: 'string' }, success: { type: 'boolean' } }
+  required: [
+    'productCode',
+    'productName',
+    'totalAmount',
+    'currency',
+    'estimatedDays',
+    'warehouseCode',
+    'available',
+    'unavailableReason'
+  ],
+  properties: {
+    productCode: { type: 'string' },
+    productName: { type: 'string' },
+    totalAmount: decimalString,
+    currency: { type: 'string' },
+    estimatedDays: nullableString,
+    warehouseCode: nullableString,
+    available: { type: 'boolean' },
+    unavailableReason: nullableString
+  }
+};
+document.components.schemas.LogisticsQuoteResult = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['options', 'issues'],
+  properties: {
+    options: { type: 'array', items: { $ref: '#/components/schemas/LogisticsQuoteOption' } },
+    issues: { type: 'array', items: { type: 'string' } }
+  }
+};
+document.components.schemas.LogisticsOrderDraft = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['quoteRequest', 'confirmedProductCode'],
+  properties: {
+    quoteRequest: { $ref: '#/components/schemas/LogisticsQuoteRequest' },
+    confirmedProductCode: { type: 'string', minLength: 1 }
+  }
+};
+document.components.schemas.LogisticsOrderSummary = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['orderNumber', 'status', 'freightAmount', 'currency', 'placedAt'],
+  properties: {
+    orderNumber: { type: 'string' },
+    status: { type: 'string' },
+    freightAmount: decimalString,
+    currency: { type: 'string' },
+    placedAt: { type: ['string', 'null'], format: 'date-time' }
+  }
+};
+document.components.schemas.LogisticsOrderPage = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['items', 'page', 'pageSize', 'total'],
+  properties: {
+    items: { type: 'array', items: { $ref: '#/components/schemas/LogisticsOrderSummary' } },
+    page: { type: 'integer', minimum: 1 },
+    pageSize: { type: 'integer', minimum: 1, maximum: 100 },
+    total: { type: 'integer', minimum: 0 }
+  }
+};
+document.components.schemas.LogisticsOrderDetail = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['order', 'warehouseName', 'warehouseAddress', 'labelUrl', 'trackingNumber'],
+  properties: {
+    order: { $ref: '#/components/schemas/LogisticsOrderSummary' },
+    warehouseName: nullableString,
+    warehouseAddress: nullableString,
+    labelUrl: { type: ['string', 'null'], format: 'uri' },
+    trackingNumber: nullableString
+  }
+};
+document.components.schemas.LogisticsOrderMutationResult = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['orderNumber', 'success'],
+  properties: { orderNumber: { type: 'string' }, success: { type: 'boolean' } }
+};
+document.components.schemas.ShippingTemplate = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['id', 'name'],
+  properties: { id: { type: 'string' }, name: { type: 'string' } }
 };
 
 const gatewayFailureResponses = {
@@ -438,157 +508,118 @@ const jsonRequest = (schema: JsonSchema) => ({
   required: true,
   content: { 'application/json': { schema } }
 });
-document.paths['/trade-orders'] = {
+document.paths['/logistics/address-nodes'] = {
   get: {
-    summary: 'List international trade orders',
-    operationId: 'listTradeOrders',
+    summary: 'List logistics address nodes',
+    operationId: 'listLogisticsAddressNodes',
+    parameters: [
+      { name: 'level', in: 'query', required: true, schema: { type: 'string' } },
+      { name: 'parentId', in: 'query', schema: { type: 'string' } },
+      { name: 'countryCode', in: 'query', schema: { type: 'string' } },
+      { name: 'searchText', in: 'query', schema: { type: 'string' } }
+    ],
+    responses: {
+      '200': jsonResponse('Address nodes', {
+        type: 'array',
+        items: { $ref: '#/components/schemas/LogisticsAddressNode' }
+      }),
+      ...gatewayFailureResponses
+    }
+  }
+};
+document.paths['/logistics/special-product-types'] = {
+  get: {
+    summary: 'List special product type configuration',
+    operationId: 'listLogisticsSpecialProductTypes',
+    responses: {
+      '200': jsonResponse('Special product types', {
+        type: 'array',
+        items: { $ref: '#/components/schemas/LogisticsSpecialProductType' }
+      }),
+      ...gatewayFailureResponses
+    }
+  }
+};
+document.paths['/logistics/products'] = {
+  get: {
+    summary: 'List logistics products',
+    operationId: 'listLogisticsProducts',
+    responses: {
+      '200': jsonResponse('Logistics products', {
+        type: 'array',
+        items: { $ref: '#/components/schemas/LogisticsProduct' }
+      }),
+      ...gatewayFailureResponses
+    }
+  }
+};
+document.paths['/logistics/quotes'] = {
+  post: {
+    summary: 'Calculate a logistics quote and validate order parameters',
+    operationId: 'calculateLogisticsQuote',
+    requestBody: jsonRequest({ $ref: '#/components/schemas/LogisticsQuoteRequest' }),
+    responses: {
+      '200': jsonResponse('Logistics quote result', {
+        $ref: '#/components/schemas/LogisticsQuoteResult'
+      }),
+      ...gatewayFailureResponses
+    }
+  }
+};
+document.paths['/logistics/orders'] = {
+  get: {
+    summary: 'List logistics orders',
+    operationId: 'listLogisticsOrders',
     parameters: [
       { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1 } },
       { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100 } },
-      { name: 'status', in: 'query', schema: { type: 'string' } },
-      { name: 'buyerLoginId', in: 'query', schema: { type: 'string' } },
-      { name: 'createDateStart', in: 'query', schema: { type: 'string' } },
-      { name: 'createDateEnd', in: 'query', schema: { type: 'string' } }
+      { name: 'orderNumber', in: 'query', schema: { type: 'string' } }
     ],
     responses: {
-      '200': jsonResponse('Trade order page', { $ref: '#/components/schemas/TradeOrderPage' }),
-      ...gatewayFailureResponses
-    }
-  },
-  post: {
-    summary: 'Create a trade assurance order',
-    operationId: 'createTradeOrder',
-    requestBody: jsonRequest({ $ref: '#/components/schemas/TradeOrderDraft' }),
-    responses: {
-      '200': jsonResponse('Created trade order', { $ref: '#/components/schemas/TradeMutationResult' }),
-      ...gatewayFailureResponses
-    }
-  }
-};
-document.paths['/trade-orders/{orderId}'] = {
-  get: {
-    summary: 'Get an aggregate order detail without the Jushita-only API',
-    operationId: 'getTradeOrderAggregate',
-    parameters: [{ name: 'orderId', in: 'path', required: true, schema: { type: 'string' } }],
-    responses: {
-      '200': jsonResponse('Aggregate trade order', {
-        $ref: '#/components/schemas/TradeOrderAggregate'
-      }),
-      ...gatewayFailureResponses
-    }
-  },
-  patch: {
-    summary: 'Modify a trade assurance order',
-    operationId: 'modifyTradeOrder',
-    parameters: [{ name: 'orderId', in: 'path', required: true, schema: { type: 'string' } }],
-    requestBody: jsonRequest({ $ref: '#/components/schemas/TradeOrderDraft' }),
-    responses: {
-      '200': jsonResponse('Modified trade order', {
-        $ref: '#/components/schemas/TradeMutationResult'
-      }),
-      ...gatewayFailureResponses
-    }
-  }
-};
-document.paths['/trade-orders/{orderId}/fund'] = simpleOrderPath(
-  'getTradeOrderFund',
-  'TradeFund',
-  'Get trade order fund information'
-);
-document.paths['/trade-orders/{orderId}/logistics'] = simpleOrderPath(
-  'getTradeOrderLogistics',
-  'TradeLogistics',
-  'Get trade order logistics information'
-);
-document.paths['/trade-orders/{orderId}/tt-account'] = simpleOrderPath(
-  'getTradeTtAccount',
-  'TradeTtAccount',
-  'Get trade order TT account'
-);
-document.paths['/trade-orders/{orderId}/service-charge'] = simpleOrderPath(
-  'getTradeServiceCharge',
-  'TradeServiceCharge',
-  'Get trade service charge'
-);
-document.paths['/trade-fulfillment-channels'] = {
-  get: {
-    summary: 'List supported trade fulfillment channels',
-    operationId: 'listTradeFulfillmentChannels',
-    responses: {
-      '200': jsonResponse('Fulfillment channels', {
-        type: 'array',
-        items: { $ref: '#/components/schemas/TradeFulfillmentChannel' }
-      }),
-      ...gatewayFailureResponses
-    }
-  }
-};
-document.paths['/trade-address-schema'] = {
-  get: {
-    summary: 'Get the declarative trade address form schema',
-    operationId: 'getTradeAddressSchema',
-    parameters: [
-      { name: 'countryCode', in: 'query', required: true, schema: { type: 'string' } },
-      { name: 'language', in: 'query', schema: { type: 'string', default: 'en_US' } }
-    ],
-    responses: {
-      '200': jsonResponse('Trade address schema', {
-        $ref: '#/components/schemas/TradeAddressSchema'
-      }),
-      ...gatewayFailureResponses
-    }
-  }
-};
-document.paths['/trade-addresses'] = {
-  get: {
-    summary: 'List trade addresses',
-    operationId: 'listTradeAddresses',
-    parameters: [
-      { name: 'buyerEmail', in: 'query', required: true, schema: { type: 'string', format: 'email' } }
-    ],
-    responses: {
-      '200': jsonResponse('Trade addresses', {
-        type: 'array',
-        items: { $ref: '#/components/schemas/TradeAddress' }
+      '200': jsonResponse('Logistics order page', {
+        $ref: '#/components/schemas/LogisticsOrderPage'
       }),
       ...gatewayFailureResponses
     }
   },
   post: {
-    summary: 'Save a trade address form',
-    operationId: 'saveTradeAddress',
-    requestBody: jsonRequest({ $ref: '#/components/schemas/TradeAddress' }),
+    summary: 'Create a logistics order',
+    operationId: 'createLogisticsOrder',
+    requestBody: jsonRequest({ $ref: '#/components/schemas/LogisticsOrderDraft' }),
     responses: {
-      '200': jsonResponse('Saved trade address', { $ref: '#/components/schemas/TradeAddress' }),
+      '200': jsonResponse('Created logistics order', {
+        $ref: '#/components/schemas/LogisticsOrderMutationResult'
+      }),
       ...gatewayFailureResponses
     }
   }
 };
-document.paths['/trade-addresses/{addressId}'] = {
-  delete: {
-    summary: 'Delete a trade address',
-    operationId: 'deleteTradeAddress',
-    parameters: [{ name: 'addressId', in: 'path', required: true, schema: { type: 'string' } }],
+document.paths['/logistics/orders/{orderNumber}'] = {
+  get: {
+    summary: 'Get logistics order detail, label and warehouse data',
+    operationId: 'getLogisticsOrder',
+    parameters: [{ name: 'orderNumber', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
-      '204': { description: 'Trade address deleted' },
+      '200': jsonResponse('Logistics order detail', {
+        $ref: '#/components/schemas/LogisticsOrderDetail'
+      }),
       ...gatewayFailureResponses
     }
   }
 };
-
-function simpleOrderPath(operationId: string, schema: string, summary: string): Record<string, unknown> {
-  return {
-    get: {
-      summary,
-      operationId,
-      parameters: [{ name: 'orderId', in: 'path', required: true, schema: { type: 'string' } }],
-      responses: {
-        '200': jsonResponse(summary, { $ref: `#/components/schemas/${schema}` }),
-        ...gatewayFailureResponses
-      }
+document.paths['/logistics/shipping-templates'] = {
+  get: {
+    summary: 'List international shipping templates',
+    operationId: 'listShippingTemplates',
+    responses: {
+      '200': jsonResponse('Shipping templates', {
+        type: 'array',
+        items: { $ref: '#/components/schemas/ShippingTemplate' }
+      }),
+      ...gatewayFailureResponses
     }
-  };
-}
+  }
+};
 
 const capabilityExtensions = [
   'x-product-capabilities',
@@ -626,19 +657,19 @@ if (capabilityPath.post) {
 }
 
 const definitions = Object.entries(capabilityMap);
-const registry = `// Generated by scripts/generate-trade-contract.ts. Do not edit.\nimport type { components } from './api';\n\nexport interface TradeCapabilityRequestMap {\n${definitions
+const registry = `// Generated by scripts/generate-logistics-contract.ts. Do not edit.\nimport type { components } from './api';\n\nexport interface LogisticsCapabilityRequestMap {\n${definitions
   .map(
     ([method, value]) =>
       `  '${method}': components['schemas']['${(value as { requestSchema: string }).requestSchema}'];`
   )
-  .join('\n')}\n}\n\nexport interface TradeCapabilityResponseMap {\n${definitions
+  .join('\n')}\n}\n\nexport interface LogisticsCapabilityResponseMap {\n${definitions
   .map(
     ([method, value]) =>
       `  '${method}': components['schemas']['${(value as { responseSchema: string }).responseSchema}'];`
   )
   .join(
     '\n'
-  )}\n}\n\nexport const TRADE_CAPABILITY_DEFINITIONS = ${JSON.stringify(capabilityMap, null, 2)} as const;\n`;
+  )}\n}\n\nexport const LOGISTICS_CAPABILITY_DEFINITIONS = ${JSON.stringify(capabilityMap, null, 2)} as const;\n`;
 
 document.components.schemas = Object.fromEntries(
   Object.entries(document.components.schemas).sort(([left], [right]) => left.localeCompare(right))
@@ -649,7 +680,7 @@ if (process.argv.includes('--check')) {
   const currentRegistry = await readFile(registryPath, 'utf8');
   const currentContractOutput = await format(JSON.stringify(sourceContract), prettierJsonOptions);
   if (contractOutput !== currentContractOutput || currentRegistry !== registry) {
-    throw new Error('Generated trade contract is stale. Run pnpm generate:trade-contract.');
+    throw new Error('Generated logistics contract is stale. Run pnpm generate:logistics-contract.');
   }
 } else {
   await Promise.all([
