@@ -107,9 +107,9 @@ function asDocumentResponse(value: unknown): DocumentResponse {
 
 function resolveDomain(method: string): string {
   if (/photobank|photo/.test(method)) return 'photo';
-  if (/product|category/.test(method)) return 'product';
   if (/rfq|quotation/.test(method)) return 'rfq';
   if (/logistics|shipping|onetouch/.test(method)) return 'logistics';
+  if (/product|category/.test(method)) return 'product';
   if (/procurement|buyer/.test(method)) return 'buyer';
   if (/order|trade|seller\.address/.test(method)) return 'trade';
   if (/mydata|diagnostic/.test(method)) return 'data';

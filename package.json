@@ -22,6 +22,7 @@
     "check:openapi": "redocly lint openapi/one-vegetable.json && pnpm run generate:check",
     "audit:apis": "tsx scripts/audit-alibaba-api.ts",
     "audit:apis:check": "tsx scripts/audit-alibaba-api.ts --check",
+    "snapshot:product-docs": "tsx scripts/snapshot-product-docs.ts",
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "eslint .",
     "format": "prettier --write .",

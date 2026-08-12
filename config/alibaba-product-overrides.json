@@ -1,0 +1,68 @@
+{
+  "alibaba.icbu.product.schema.add": {
+    "source": "article",
+    "articleId": 119213,
+    "title": "Schema 正式发布商品",
+    "description": "提交由 product.schema.get 返回并填写完成的 XML。",
+    "lifecycle": "active",
+    "risk": "mutation",
+    "requestParams": [
+      {
+        "name": "param_product_top_publish_request",
+        "type": "ProductTopPublishRequest",
+        "required": true,
+        "description": "Schema 发布请求",
+        "subParams": [
+          { "name": "cat_id", "type": "Number", "required": true, "description": "叶子类目 ID" },
+          { "name": "language", "type": "String", "required": true, "description": "商品语言" },
+          { "name": "xml", "type": "String", "required": true, "description": "填写完成的 Schema XML" }
+        ]
+      }
+    ],
+    "responseParams": [
+      { "name": "product_id", "type": "String", "required": false, "description": "商品 ID" },
+      { "name": "trace_id", "type": "String", "required": false, "description": "调用链路 ID" },
+      { "name": "biz_success", "type": "Boolean", "required": false, "description": "业务是否成功" }
+    ]
+  },
+  "alibaba.icbu.product.schema.add.draft": {
+    "source": "article",
+    "articleId": 119212,
+    "title": "Schema 保存商品草稿",
+    "description": "将填写完成的 Schema XML 保存为草稿。",
+    "lifecycle": "active",
+    "risk": "mutation",
+    "requestParams": [
+      {
+        "name": "param_product_top_publish_request",
+        "type": "ProductTopPublishRequest",
+        "required": true,
+        "description": "Schema 草稿请求",
+        "subParams": [
+          { "name": "cat_id", "type": "Number", "required": true, "description": "叶子类目 ID" },
+          { "name": "language", "type": "String", "required": true, "description": "商品语言" },
+          { "name": "xml", "type": "String", "required": true, "description": "填写完成的 Schema XML" }
+        ]
+      }
+    ],
+    "responseParams": [
+      { "name": "product_id", "type": "String", "required": false, "description": "草稿商品 ID" },
+      { "name": "trace_id", "type": "String", "required": false, "description": "调用链路 ID" },
+      { "name": "biz_success", "type": "Boolean", "required": false, "description": "业务是否成功" }
+    ]
+  },
+  "alibaba.icbu.open.product.post": { "lifecycle": "deprecated", "risk": "mutation" },
+  "alibaba.icbu.product.add": { "lifecycle": "deprecated", "risk": "mutation" },
+  "alibaba.icbu.product.add.draft": { "lifecycle": "deprecated", "risk": "mutation" },
+  "alibaba.icbu.product.update": { "lifecycle": "deprecated", "risk": "mutation" },
+  "alibaba.icbu.product.update.field": { "lifecycle": "deprecated", "risk": "mutation" },
+  "alibaba.icbu.category.attr.get": { "lifecycle": "deprecated" },
+  "alibaba.icbu.category.attrvalue.get": { "lifecycle": "deprecated" },
+  "alibaba.icbu.category.get": { "lifecycle": "deprecated" },
+  "alibaba.icbu.category.level.attr.get": { "lifecycle": "deprecated" },
+  "alibaba.icbu.category.postcat.get": { "lifecycle": "deprecated" },
+  "alibaba.icbu.product.schema.render.draft": { "risk": "read" },
+  "alibaba.icbu.product.batch.update.display": { "risk": "mutation" },
+  "alibaba.icbu.product.group.add": { "risk": "mutation" },
+  "alibaba.icbu.product.schema.update": { "risk": "mutation" }
+}

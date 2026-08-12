@@ -663,7 +663,7 @@ export const API_CAPABILITIES = [
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47959",
     "checkedAt": "2026-08-12",
-    "updatedAt": "2026-08-11"
+    "updatedAt": "2026-08-12"
   },
   {
     "method": "alibaba.onetouch.logistics.express.address.division.list",
@@ -676,7 +676,7 @@ export const API_CAPABILITIES = [
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47961",
     "checkedAt": "2026-08-12",
-    "updatedAt": "2026-08-11"
+    "updatedAt": "2026-08-12"
   },
   {
     "method": "alibaba.onetouch.logistics.express.address.province.list",
@@ -689,7 +689,7 @@ export const API_CAPABILITIES = [
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47960",
     "checkedAt": "2026-08-12",
-    "updatedAt": "2026-08-11"
+    "updatedAt": "2026-08-12"
   },
   {
     "method": "alibaba.onetouch.logistics.express.address.street.list",
@@ -702,7 +702,7 @@ export const API_CAPABILITIES = [
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47978",
     "checkedAt": "2026-08-12",
-    "updatedAt": "2026-08-11"
+    "updatedAt": "2026-08-12"
   },
   {
     "method": "alibaba.onetouch.logistics.express.charge.calculate",
@@ -715,7 +715,7 @@ export const API_CAPABILITIES = [
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47869",
     "checkedAt": "2026-08-12",
-    "updatedAt": "2026-08-11"
+    "updatedAt": "2026-08-12"
   },
   {
     "method": "alibaba.onetouch.logistics.express.logistics.order.create",
@@ -728,11 +728,11 @@ export const API_CAPABILITIES = [
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47873",
     "checkedAt": "2026-08-12",
-    "updatedAt": "2026-08-11"
+    "updatedAt": "2026-08-12"
   },
   {
     "method": "alibaba.onetouch.logistics.express.logistics.product.list",
-    "domain": "product",
+    "domain": "logistics",
     "chargeLabel": "￥开放平台免费API",
     "auth": "required",
     "jushitaOnly": false,
@@ -741,7 +741,7 @@ export const API_CAPABILITIES = [
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47872",
     "checkedAt": "2026-08-12",
-    "updatedAt": "2026-08-11"
+    "updatedAt": "2026-08-12"
   },
   {
     "method": "alibaba.onetouch.logistics.express.logistics.rule.validate",
@@ -754,7 +754,7 @@ export const API_CAPABILITIES = [
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47870",
     "checkedAt": "2026-08-12",
-    "updatedAt": "2026-08-11"
+    "updatedAt": "2026-08-12"
   },
   {
     "method": "alibaba.onetouch.logistics.express.order.cancel",
@@ -767,7 +767,7 @@ export const API_CAPABILITIES = [
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47871",
     "checkedAt": "2026-08-12",
-    "updatedAt": "2026-08-11"
+    "updatedAt": "2026-08-12"
   },
   {
     "method": "alibaba.onetouch.logistics.express.order.cancel.reason.list",
@@ -780,7 +780,7 @@ export const API_CAPABILITIES = [
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47868",
     "checkedAt": "2026-08-12",
-    "updatedAt": "2026-08-11"
+    "updatedAt": "2026-08-12"
   },
   {
     "method": "alibaba.onetouch.logistics.express.order.detail.get",
@@ -793,7 +793,7 @@ export const API_CAPABILITIES = [
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=48056",
     "checkedAt": "2026-08-12",
-    "updatedAt": "2026-08-11"
+    "updatedAt": "2026-08-12"
   },
   {
     "method": "alibaba.onetouch.logistics.express.order.list.query",
@@ -806,11 +806,11 @@ export const API_CAPABILITIES = [
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=56235",
     "checkedAt": "2026-08-12",
-    "updatedAt": "2026-08-11"
+    "updatedAt": "2026-08-12"
   },
   {
     "method": "alibaba.onetouch.logistics.express.special.product.type.list",
-    "domain": "product",
+    "domain": "logistics",
     "chargeLabel": "￥开放平台免费API",
     "auth": "required",
     "jushitaOnly": false,
@@ -819,7 +819,7 @@ export const API_CAPABILITIES = [
     "enabled": false,
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47847",
     "checkedAt": "2026-08-12",
-    "updatedAt": "2026-08-11"
+    "updatedAt": "2026-08-12"
   },
   {
     "method": "alibaba.order.trade.tt.get",
