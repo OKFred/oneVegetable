@@ -3,14 +3,22 @@ import { browser } from 'wxt/browser';
 import {
   ALIBABA_GATEWAY,
   AlibabaClient,
-  API_CAPABILITIES,
+  findCapability,
   GatewayException,
+  getCapabilityDefinition,
+  listCapabilities,
   normalizeGatewayError,
+  validateCapabilityRequest,
+  validateCapabilityResponse,
+  type ApiCapability,
   type GatewaySettings,
   type OperationId,
+  type RequestOf,
   type RuntimeRequest,
   type RuntimeResponse
 } from '@one-vegetable/core';
+
+import { ProductAdapter } from '../lib/product-adapter';
 
 const OPERATIONS = new Set<OperationId>([
   'getDashboard',
@@ -28,7 +36,24 @@ const OPERATIONS = new Set<OperationId>([
   'getOrderFund',
   'getOrderLogistics',
   'listCapabilities',
+  'getCapabilityDefinition',
+  'listProductCategories',
+  'mapProductCategory',
+  'getProductLevelSchema',
+  'getProductDraft',
+  'listProductGroups',
+  'createProductGroup',
+  'getProductScore',
   'callCapability'
+]);
+
+const MUTATION_OPERATIONS = new Set<OperationId>([
+  'publishProduct',
+  'saveProductDraft',
+  'updateProduct',
+  'updateProductDisplay',
+  'uploadPhoto',
+  'createProductGroup'
 ]);
 
 export default defineBackground(() => {
@@ -52,11 +77,24 @@ async function handleRequest(message: RuntimeRequest): Promise<RuntimeResponse> 
 }
 
 async function executeOperation(operation: OperationId, payload: unknown): Promise<unknown> {
-  if (operation === 'listCapabilities') return [...API_CAPABILITIES];
+  if (operation === 'listCapabilities') return listCapabilities();
+  if (operation === 'getCapabilityDefinition') {
+    const definition = getCapabilityDefinition(requiredString(asRecord(payload), 'method'));
+    if (!definition) throw new Error('该能力尚无类型化定义');
+    return definition;
+  }
 
   const settings = await loadSettings();
   assertCredentials(settings);
+  if (MUTATION_OPERATIONS.has(operation)) {
+    throw new GatewayException({
+      code: 'REAL_MUTATION_DISABLED',
+      message: '真实写操作尚未通过账号 smoke test，当前扩展版本保持禁用',
+      retryable: false
+    });
+  }
   const client = new AlibabaClient(settings);
+  const products = new ProductAdapter(client);
   const request = asRecord(payload);
 
   switch (operation) {
@@ -76,80 +114,40 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
         productCount: readNumber(unwrap(products.data, products.method), ['total_count', 'total']) ?? 0,
         photoCount: readNumber(unwrap(photos.data, photos.method), ['total_count', 'total']) ?? 0,
         pendingOrderCount: readNumber(unwrap(orders.data, orders.method), ['total_count', 'total']) ?? 0,
-        enabledCapabilityCount: API_CAPABILITIES.filter((item) => item.enabled).length
+        enabledCapabilityCount: listCapabilities().filter((item) => item.enabled).length
       };
     }
-    case 'listProducts': {
-      const call = await client.call('alibaba.icbu.product.list', {
-        language: 'ENGLISH',
-        current_page: readNumber(request, ['page']) ?? 1,
-        page_size: readNumber(request, ['pageSize']) ?? 20,
-        subject: readString(request, ['subject']),
-        group_id1: readNumber(request, ['groupId'])
-      });
-      const root = unwrap(call.data, call.method);
-      const items = findRecords(root, ['products', 'product_list', 'result_list']).map((item) => ({
-        id: readString(item, ['id', 'product_id']) ?? '',
-        subject: readString(item, ['subject', 'product_subject']) ?? '未命名商品',
-        groupName: readString(item, ['group_name']) ?? '未分组',
-        status: normalizeProductStatus(readString(item, ['status', 'display'])),
-        score: readNumber(item, ['score']) ?? 0,
-        updatedAt: normalizeDate(readString(item, ['gmt_modified', 'modified_time']))
-      }));
-      return {
-        items,
-        page: readNumber(request, ['page']) ?? 1,
-        pageSize: readNumber(request, ['pageSize']) ?? 20,
-        total: readNumber(root, ['total_count', 'total']) ?? items.length
-      };
-    }
-    case 'getProduct': {
-      const productId = requiredString(request, 'productId');
-      const call = await client.call('alibaba.icbu.product.schema.render', {
-        param_product_top_publish_request: { product_id: productId, language: 'en_US' }
-      });
-      const root = unwrap(call.data, call.method);
-      return {
-        id: productId,
-        subject: `商品 ${productId}`,
-        groupName: 'Schema 商品',
-        status: 'online',
-        score: 0,
-        updatedAt: new Date().toISOString(),
-        categoryId: 0,
-        language: 'en_US',
-        schemaXml: readString(root, ['data']) ?? ''
-      };
-    }
-    case 'getProductSchema': {
-      const call = await client.call('alibaba.icbu.product.schema.get', {
-        param_product_top_publish_request: {
-          cat_id: requiredNumber(request, 'categoryId'),
-          language: readString(request, ['language']) ?? 'en_US',
-          market: requiredString(request, 'market'),
-          product_id: readString(request, ['productId'])
-        }
-      });
-      return {
-        xml: readString(unwrap(call.data, call.method), ['data']) ?? '',
-        categoryId: requiredNumber(request, 'categoryId'),
-        language: readString(request, ['language']) ?? 'en_US',
-        market: requiredString(request, 'market')
-      };
-    }
+    case 'listProducts':
+      return products.list(payload as RequestOf<'listProducts'>);
+    case 'getProduct':
+      return products.get(requiredString(request, 'productId'));
+    case 'getProductSchema':
+      return products.getSchema(payload as RequestOf<'getProductSchema'>);
     case 'publishProduct':
-      return mutateProduct(client, 'alibaba.icbu.product.schema.add', request);
+      return products.mutate('alibaba.icbu.product.schema.add', payload as RequestOf<'publishProduct'>);
     case 'saveProductDraft':
-      return mutateProduct(client, 'alibaba.icbu.product.schema.add.draft', request);
+      return products.mutate(
+        'alibaba.icbu.product.schema.add.draft',
+        payload as RequestOf<'saveProductDraft'>
+      );
     case 'updateProduct':
-      return mutateProduct(client, 'alibaba.icbu.product.schema.update', request);
-    case 'updateProductDisplay': {
-      await client.call('alibaba.icbu.product.batch.update.display', {
-        product_id_list: requiredStringArray(request, 'productIds').join(','),
-        new_display: requiredString(request, 'display') === 'online' ? 'true' : 'false'
-      });
-      return undefined;
-    }
+      return products.mutate('alibaba.icbu.product.schema.update', payload as RequestOf<'updateProduct'>);
+    case 'updateProductDisplay':
+      return products.updateDisplay(payload as RequestOf<'updateProductDisplay'>);
+    case 'listProductCategories':
+      return products.listCategories(readNumber(request, ['parentId']));
+    case 'mapProductCategory':
+      return products.mapCategory(requiredNumber(request, 'categoryId'));
+    case 'getProductLevelSchema':
+      return products.getLevelSchema(payload as RequestOf<'getProductLevelSchema'>);
+    case 'getProductDraft':
+      return products.get(requiredString(request, 'productId'), true);
+    case 'listProductGroups':
+      return products.listGroups();
+    case 'createProductGroup':
+      return products.createGroup(payload as RequestOf<'createProductGroup'>);
+    case 'getProductScore':
+      return products.getScore(requiredString(request, 'productId'));
     case 'listPhotoGroups': {
       const call = await client.call('alibaba.icbu.photobank.group.list', {});
       return findRecords(unwrap(call.data, call.method), ['groups', 'photo_album_group']).map((item) => ({
@@ -246,33 +244,29 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
     }
     case 'callCapability': {
       const method = requiredString(request, 'method');
-      const capability = API_CAPABILITIES.find((item) => item.method === method);
+      const capability = findCapability(method);
       assertCallable(capability);
-      const call = await client.call(method, asRecord(request.parameters));
-      return { method, traceId: readTraceId(call.data) ?? crypto.randomUUID(), data: call.data };
+      const parameters = asRecord(request.parameters);
+      const requestIssues = validateCapabilityRequest(method, parameters);
+      if (requestIssues.length > 0) {
+        throw new GatewayException({
+          code: 'REQUEST_CONTRACT_INVALID',
+          message: requestIssues.map((issue) => `${issue.instancePath} ${issue.message}`).join('；'),
+          retryable: false
+        });
+      }
+      const call = await client.call(method, parameters);
+      const data = unwrap(call.data, method);
+      const contractIssues = validateCapabilityResponse(method, data);
+      return {
+        method,
+        traceId: readTraceId(call.data) ?? crypto.randomUUID(),
+        data,
+        contractValid: contractIssues.length === 0,
+        contractIssues
+      };
     }
   }
-}
-
-async function mutateProduct(
-  client: AlibabaClient,
-  method: string,
-  request: Record<string, unknown>
-): Promise<unknown> {
-  const call = await client.call(method, {
-    param_product_top_publish_request: {
-      cat_id: requiredNumber(request, 'categoryId'),
-      language: readString(request, ['language']) ?? 'en_US',
-      product_id: readString(request, ['productId']),
-      xml: requiredString(request, 'schemaXml')
-    }
-  });
-  const root = unwrap(call.data, method);
-  return {
-    productId: readString(root, ['product_id']) ?? readString(request, ['productId']) ?? '',
-    traceId: readString(root, ['trace_id']) ?? crypto.randomUUID(),
-    success: readBoolean(root, ['biz_success', 'success']) ?? true
-  };
 }
 
 async function loadSettings(): Promise<GatewaySettings> {
@@ -325,11 +319,6 @@ function readNumber(record: Record<string, unknown>, keys: string[]): number | u
   return undefined;
 }
 
-function readBoolean(record: Record<string, unknown>, keys: string[]): boolean | undefined {
-  for (const key of keys) if (typeof record[key] === 'boolean') return record[key];
-  return undefined;
-}
-
 function requiredString(record: Record<string, unknown>, key: string): string {
   const value = readString(record, [key]);
   if (!value) throw new Error(`缺少必填参数 ${key}`);
@@ -339,13 +328,6 @@ function requiredString(record: Record<string, unknown>, key: string): string {
 function requiredNumber(record: Record<string, unknown>, key: string): number {
   const value = readNumber(record, [key]);
   if (value === undefined) throw new Error(`缺少必填参数 ${key}`);
-  return value;
-}
-
-function requiredStringArray(record: Record<string, unknown>, key: string): string[] {
-  const value = record[key];
-  if (!Array.isArray(value) || !value.every((item) => typeof item === 'string'))
-    throw new Error(`缺少必填参数 ${key}`);
   return value;
 }
 
@@ -366,17 +348,6 @@ function findRecords(record: Record<string, unknown>, keys: string[]): Record<st
     return null;
   };
   return visit(record, 0) ?? [];
-}
-
-function normalizeProductStatus(
-  value: string | undefined
-): 'online' | 'offline' | 'draft' | 'auditing' | 'rejected' {
-  const normalized = value?.toLowerCase();
-  if (normalized?.includes('online') || normalized === 'true') return 'online';
-  if (normalized?.includes('audit')) return 'auditing';
-  if (normalized?.includes('reject')) return 'rejected';
-  if (normalized?.includes('draft')) return 'draft';
-  return 'offline';
 }
 
 function normalizeDate(value: string | undefined): string {
@@ -408,10 +379,11 @@ function assertCredentials(settings: GatewaySettings): void {
   }
 }
 
-function assertCallable(
-  capability: (typeof API_CAPABILITIES)[number] | undefined
-): asserts capability is (typeof API_CAPABILITIES)[number] {
+function assertCallable(capability: ApiCapability | undefined): asserts capability is ApiCapability {
   if (!capability) throw new Error('API 不在已审计的免费非聚石塔目录中');
-  if (capability.restricted) throw new Error(capability.restrictionReason);
+  if (capability.restricted) throw new Error(capability.restrictionReason ?? 'API 需要额外业务权限');
   if (!capability.enabled) throw new Error('API 尚未完成契约、适配器与测试，当前不可调用');
+  if (!capability.realCallEnabled) {
+    throw new Error('该写能力尚未通过真实账号 smoke test，扩展中的真实调用保持禁用');
+  }
 }

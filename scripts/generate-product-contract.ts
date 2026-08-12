@@ -32,9 +32,7 @@ interface ProductDefinition {
   responseExample: string | null;
 }
 
-interface JsonSchema {
-  [key: string]: unknown;
-}
+type JsonSchema = Record<string, unknown>;
 
 interface OpenApiDocument {
   [key: string]: unknown;
@@ -154,9 +152,9 @@ function responseExample(definition: ProductDefinition): unknown {
 }
 
 const document = structuredClone(sourceContract);
-for (const name of Object.keys(document.components.schemas)) {
-  if (name.startsWith('AlibabaProduct')) delete document.components.schemas[name];
-}
+document.components.schemas = Object.fromEntries(
+  Object.entries(document.components.schemas).filter(([name]) => !name.startsWith('AlibabaProduct'))
+);
 
 const capabilityMap: Record<string, unknown> = {};
 for (const definition of snapshot.definitions) {
@@ -279,6 +277,157 @@ document.components.schemas.CapabilityDefinition = {
     checkedAt: { type: 'string', format: 'date' },
     updatedAt: { type: ['string', 'null'], format: 'date' },
     docUrl: { type: 'string', format: 'uri' }
+  }
+};
+
+document.components.schemas.ProductCategory = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['id', 'name', 'leaf', 'children'],
+  properties: {
+    id: { type: 'number' },
+    name: { type: 'string' },
+    leaf: { type: 'boolean' },
+    children: { type: 'array', items: { $ref: '#/components/schemas/ProductCategory' } }
+  }
+};
+document.components.schemas.ProductCategoryMapping = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['sourceCategoryId', 'targetCategoryId'],
+  properties: {
+    sourceCategoryId: { type: 'number' },
+    targetCategoryId: { type: 'number' }
+  }
+};
+document.components.schemas.ProductGroup = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['id', 'name', 'children'],
+  properties: {
+    id: { type: 'number' },
+    name: { type: 'string' },
+    children: { type: 'array', items: { $ref: '#/components/schemas/ProductGroup' } }
+  }
+};
+document.components.schemas.ProductScore = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['productId', 'score', 'issues'],
+  properties: {
+    productId: { type: 'string' },
+    score: { type: 'number' },
+    issues: { type: 'array', items: { type: 'string' } }
+  }
+};
+
+const gatewayFailureResponses = {
+  '4XX': { $ref: '#/components/responses/GatewayFailure' },
+  default: { $ref: '#/components/responses/GatewayFailure' }
+};
+document.paths['/product-categories'] = {
+  get: {
+    summary: 'List modern product categories',
+    operationId: 'listProductCategories',
+    parameters: [{ name: 'parentId', in: 'query', schema: { type: 'number' } }],
+    responses: {
+      '200': {
+        description: 'Product category tree',
+        content: {
+          'application/json': {
+            schema: { type: 'array', items: { $ref: '#/components/schemas/ProductCategory' } }
+          }
+        }
+      },
+      ...gatewayFailureResponses
+    }
+  }
+};
+document.paths['/product-categories/mapping'] = {
+  post: {
+    summary: 'Map a legacy category to the modern category system',
+    operationId: 'mapProductCategory',
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['categoryId'],
+            properties: { categoryId: { type: 'number' } }
+          }
+        }
+      }
+    },
+    responses: {
+      '200': {
+        description: 'Mapped category',
+        content: {
+          'application/json': { schema: { $ref: '#/components/schemas/ProductCategoryMapping' } }
+        }
+      },
+      ...gatewayFailureResponses
+    }
+  }
+};
+document.paths['/product-groups'] = {
+  get: {
+    summary: 'List product groups',
+    operationId: 'listProductGroups',
+    responses: {
+      '200': {
+        description: 'Product groups',
+        content: {
+          'application/json': {
+            schema: { type: 'array', items: { $ref: '#/components/schemas/ProductGroup' } }
+          }
+        }
+      },
+      ...gatewayFailureResponses
+    }
+  },
+  post: {
+    summary: 'Create a product group',
+    operationId: 'createProductGroup',
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['name'],
+            properties: { name: { type: 'string' }, parentId: { type: 'number' } }
+          }
+        }
+      }
+    },
+    responses: {
+      '201': {
+        description: 'Created product group',
+        content: {
+          'application/json': { schema: { $ref: '#/components/schemas/ProductGroup' } }
+        }
+      },
+      ...gatewayFailureResponses
+    }
+  }
+};
+document.paths['/products/{productId}/score'] = {
+  get: {
+    summary: 'Get product quality score',
+    operationId: 'getProductScore',
+    parameters: [{ name: 'productId', in: 'path', required: true, schema: { type: 'string' } }],
+    responses: {
+      '200': {
+        description: 'Product score',
+        content: {
+          'application/json': { schema: { $ref: '#/components/schemas/ProductScore' } }
+        }
+      },
+      ...gatewayFailureResponses
+    }
   }
 };
 

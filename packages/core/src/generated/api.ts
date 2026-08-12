@@ -242,6 +242,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/product-categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List modern product categories */
+        get: operations["listProductCategories"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/product-categories/mapping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Map a legacy category to the modern category system */
+        post: operations["mapProductCategory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/product-groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List product groups */
+        get: operations["listProductGroups"];
+        put?: never;
+        /** Create a product group */
+        post: operations["createProductGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/products/{productId}/score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get product quality score */
+        get: operations["getProductScore"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -427,6 +496,26 @@ export interface components {
             updatedAt?: string | null;
             /** Format: uri */
             docUrl: string;
+        };
+        ProductCategory: {
+            id: number;
+            name: string;
+            leaf: boolean;
+            children: components["schemas"]["ProductCategory"][];
+        };
+        ProductCategoryMapping: {
+            sourceCategoryId: number;
+            targetCategoryId: number;
+        };
+        ProductGroup: {
+            id: number;
+            name: string;
+            children: components["schemas"]["ProductGroup"][];
+        };
+        ProductScore: {
+            productId: string;
+            score: number;
+            issues: string[];
         };
         /** alibaba.icbu.category.attr.get request */
         AlibabaProductAlibabaIcbuCategoryAttrGetRequest: {
@@ -2538,6 +2627,133 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CapabilityDefinition"];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    listProductCategories: {
+        parameters: {
+            query?: {
+                parentId?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Product category tree */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductCategory"][];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    mapProductCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    categoryId: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Mapped category */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductCategoryMapping"];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    listProductGroups: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Product groups */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductGroup"][];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    createProductGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    parentId?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Created product group */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductGroup"];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    getProductScore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Product score */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductScore"];
                 };
             };
             "4XX": components["responses"]["GatewayFailure"];

@@ -1,4 +1,4 @@
-import { API_CAPABILITIES } from './generated/capabilities';
+import { getCapabilityDefinition, listCapabilities } from './capability-registry';
 
 import type { GatewayClient, OperationId, OperationMap, Product, RequestOf, ResponseOf } from './types';
 
@@ -31,12 +31,15 @@ const PRODUCTS: Product[] = [
   }
 ];
 
+const MOCK_CAPABILITY_DEFINITION = getCapabilityDefinition('alibaba.icbu.product.list');
+if (!MOCK_CAPABILITY_DEFINITION) throw new Error('Mock capability definition is missing');
+
 const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
   getDashboard: {
     productCount: 128,
     photoCount: 436,
     pendingOrderCount: 6,
-    enabledCapabilityCount: API_CAPABILITIES.filter((item) => item.enabled).length
+    enabledCapabilityCount: listCapabilities().filter((item) => item.enabled).length
   },
   listProducts: { items: PRODUCTS, page: 1, pageSize: 20, total: 128 },
   getProduct: {
@@ -137,13 +140,56 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
     carrier: null,
     trackingNumber: null
   },
-  listCapabilities: [...API_CAPABILITIES],
+  listCapabilities: listCapabilities(),
+  getCapabilityDefinition: MOCK_CAPABILITY_DEFINITION,
   callCapability: {
     method: 'alibaba.icbu.product.list',
     traceId: 'mock-capability-trace',
     data: { message: 'Mock 调用成功；真实扩展会由 service worker 发起请求。' },
     contractValid: true,
     contractIssues: []
+  },
+  listProductCategories: [
+    {
+      id: 100003109,
+      name: 'Consumer Electronics',
+      leaf: false,
+      children: [
+        { id: 100009999, name: 'Portable Power Stations', leaf: true, children: [] },
+        { id: 100009998, name: 'Solar Energy Systems', leaf: true, children: [] }
+      ]
+    },
+    {
+      id: 100001589,
+      name: 'Luggage, Bags & Cases',
+      leaf: true,
+      children: []
+    }
+  ],
+  mapProductCategory: { sourceCategoryId: 100003109, targetCategoryId: 100009999 },
+  getProductLevelSchema: {
+    categoryId: 100009999,
+    language: 'en_US',
+    market: 'wholesale',
+    xml: '<itemSchema><field id="model" name="Model" type="singleCheck"><options><option displayName="Standard" value="standard"/></options></field></itemSchema>'
+  },
+  getProductDraft: {
+    ...PRIMARY_PRODUCT,
+    status: 'draft',
+    categoryId: 100003109,
+    language: 'en_US',
+    schemaXml:
+      '<itemSchema><field id="productTitle" name="Product name" type="input"><values><value>Draft portable station</value></values></field></itemSchema>'
+  },
+  listProductGroups: [
+    { id: 1001, name: 'Energy storage', children: [] },
+    { id: 1002, name: 'Packaging', children: [] }
+  ],
+  createProductGroup: { id: 1003, name: 'New group', children: [] },
+  getProductScore: {
+    productId: '10000001',
+    score: 92,
+    issues: ['建议补充更多应用场景图片', '建议完善商品关键词']
   }
 };
 

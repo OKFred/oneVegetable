@@ -717,6 +717,190 @@
           }
         }
       }
+    },
+    "/product-categories": {
+      "get": {
+        "summary": "List modern product categories",
+        "operationId": "listProductCategories",
+        "parameters": [
+          {
+            "name": "parentId",
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product category tree",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProductCategory"
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      }
+    },
+    "/product-categories/mapping": {
+      "post": {
+        "summary": "Map a legacy category to the modern category system",
+        "operationId": "mapProductCategory",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "categoryId"
+                ],
+                "properties": {
+                  "categoryId": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mapped category",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductCategoryMapping"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      }
+    },
+    "/product-groups": {
+      "get": {
+        "summary": "List product groups",
+        "operationId": "listProductGroups",
+        "responses": {
+          "200": {
+            "description": "Product groups",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProductGroup"
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a product group",
+        "operationId": "createProductGroup",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "parentId": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created product group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductGroup"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      }
+    },
+    "/products/{productId}/score": {
+      "get": {
+        "summary": "Get product quality score",
+        "operationId": "getProductScore",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product score",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductScore"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/GatewayFailure"
+          },
+          "default": {
+            "$ref": "#/components/responses/GatewayFailure"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1670,6 +1854,95 @@
           "docUrl": {
             "type": "string",
             "format": "uri"
+          }
+        }
+      },
+      "ProductCategory": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "leaf",
+          "children"
+        ],
+        "properties": {
+          "id": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "leaf": {
+            "type": "boolean"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductCategory"
+            }
+          }
+        }
+      },
+      "ProductCategoryMapping": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sourceCategoryId",
+          "targetCategoryId"
+        ],
+        "properties": {
+          "sourceCategoryId": {
+            "type": "number"
+          },
+          "targetCategoryId": {
+            "type": "number"
+          }
+        }
+      },
+      "ProductGroup": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "children"
+        ],
+        "properties": {
+          "id": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductGroup"
+            }
+          }
+        }
+      },
+      "ProductScore": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "productId",
+          "score",
+          "issues"
+        ],
+        "properties": {
+          "productId": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },

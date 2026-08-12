@@ -21,6 +21,10 @@ export type CapabilityCallResult = components['schemas']['CapabilityCallResult']
 export type CapabilityDefinition = components['schemas']['CapabilityDefinition'];
 export type CapabilityContractIssue = components['schemas']['CapabilityContractIssue'];
 export type CapabilityResponseEnvelope = components['schemas']['CapabilityResponseEnvelope'];
+export type ProductCategory = components['schemas']['ProductCategory'];
+export type ProductCategoryMapping = components['schemas']['ProductCategoryMapping'];
+export type ProductGroup = components['schemas']['ProductGroup'];
+export type ProductScore = components['schemas']['ProductScore'];
 export type { CapabilityRequestMap, CapabilityResponseMap } from './generated/product-capabilities';
 export type GatewayError = components['schemas']['GatewayError'];
 
@@ -73,7 +77,27 @@ export interface OperationMap {
   getOrderFund: { request: { orderId: string }; response: OrderFund };
   getOrderLogistics: { request: { orderId: string }; response: OrderLogistics };
   listCapabilities: { request: undefined; response: ApiCapability[] };
+  getCapabilityDefinition: { request: { method: string }; response: CapabilityDefinition };
   callCapability: { request: CapabilityCallRequest; response: CapabilityCallResult };
+  listProductCategories: { request: { parentId?: number }; response: ProductCategory[] };
+  mapProductCategory: {
+    request: { categoryId: number };
+    response: ProductCategoryMapping;
+  };
+  getProductLevelSchema: {
+    request: { categoryId: number; language: string; xml: string };
+    response: ProductSchema;
+  };
+  getProductDraft: {
+    request: { productId: string; language: string };
+    response: ProductDetail;
+  };
+  listProductGroups: { request: undefined; response: ProductGroup[] };
+  createProductGroup: {
+    request: { name: string; parentId?: number };
+    response: ProductGroup;
+  };
+  getProductScore: { request: { productId: string }; response: ProductScore };
 }
 
 export type OperationId = keyof OperationMap;
