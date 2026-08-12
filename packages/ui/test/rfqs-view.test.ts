@@ -81,7 +81,7 @@ describe('RfqsView', () => {
     await rfqButton.trigger('click');
     await flushPromises();
 
-    expect(wrapper.text()).toContain('真实附件上传和提交报价保持禁用');
+    expect(wrapper.text()).toContain('真实附件上传和提交报价尚未通过账号 smoke test');
     const submit = wrapper.findAll('button').find((button) => button.text().includes('提交报价'));
     expect(submit?.attributes('disabled')).toBeDefined();
     expect(wrapper.get('input[type="file"]').attributes('disabled')).toBeDefined();
