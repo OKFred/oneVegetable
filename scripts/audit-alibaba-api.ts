@@ -31,6 +31,18 @@ interface AuditEntry {
   docUrl: string;
   checkedAt: string;
   updatedAt: string | null;
+  source: 'catalog' | 'article';
+  lifecycle: 'active' | 'deprecated' | 'unlisted';
+  risk: 'read' | 'mutation';
+  verification: 'documented' | 'account-verified';
+  realCallEnabled: boolean;
+  requestSchema: string | null;
+  responseSchema: string | null;
+}
+
+interface ProductOverride {
+  lifecycle?: AuditEntry['lifecycle'];
+  risk?: AuditEntry['risk'];
 }
 
 const CATALOG_URL = 'https://developer.alibaba.com/handler/document/getCatelogConfig.json?docId=118496';
@@ -60,6 +72,9 @@ const ENABLED_METHODS = new Set([
 ]);
 
 const root = resolve(import.meta.dirname, '..');
+const productOverrides = JSON.parse(
+  await readFile(resolve(root, 'config/alibaba-product-overrides.json'), 'utf8')
+) as Record<string, ProductOverride>;
 const checkedAt = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Shanghai',
   year: 'numeric',
@@ -127,6 +142,21 @@ function isRestricted(method: string): boolean {
   return /\.(snsoft|xiaoman|wetrade)\./.test(method) || method.includes('ecology.write');
 }
 
+function resolveRisk(method: string): AuditEntry['risk'] {
+  const explicit = productOverrides[method]?.risk;
+  if (explicit) return explicit;
+  return /\.(add|create|delete|modify|operate|post|save|update|upload)(\.|$)/.test(method)
+    ? 'mutation'
+    : 'read';
+}
+
+function capabilitySchemaName(method: string): string {
+  return method
+    .split('.')
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join('');
+}
+
 async function fetchJson(url: string): Promise<unknown> {
   const response = await fetch(url, { headers: { Accept: 'application/json' } });
   if (!response.ok) throw new Error(`${response.status} ${response.statusText}: ${url}`);
@@ -157,18 +187,29 @@ const audited = await fetchInBatches(documents, 12, async ([catalogMethod, docId
   const jushitaOnly = labels.some((label) => label.includes('聚石塔内调用'));
   if (jushitaOnly) return null;
   const restricted = isRestricted(method);
+  const domain = resolveDomain(method);
+  const risk = resolveRisk(method);
+  const enabled = !restricted && (ENABLED_METHODS.has(method) || domain === 'product');
+  const schemaName = domain === 'product' ? capabilitySchemaName(method) : null;
   return {
     method,
-    domain: resolveDomain(method),
+    domain,
     chargeLabel: labels.find((label) => FREE_LABELS.has(label)) ?? '￥免费',
     auth: resolveAuth(labels),
     jushitaOnly,
     restricted,
     restrictionReason: restricted ? '特定 ISV、业务资格或额外权限，默认关闭' : null,
-    enabled: !restricted && ENABLED_METHODS.has(method),
+    enabled,
     docUrl: `https://developer.alibaba.com/docs/api.htm?apiId=${docId}`,
     checkedAt,
-    updatedAt: document.gmtModified ? new Date(document.gmtModified).toISOString().slice(0, 10) : null
+    updatedAt: document.gmtModified ? new Date(document.gmtModified).toISOString().slice(0, 10) : null,
+    source: 'catalog',
+    lifecycle: productOverrides[method]?.lifecycle ?? 'active',
+    risk,
+    verification: 'documented',
+    realCallEnabled: enabled && risk === 'read',
+    requestSchema: schemaName ? `AlibabaProduct${schemaName}Request` : null,
+    responseSchema: schemaName ? `AlibabaProduct${schemaName}Response` : null
   } satisfies AuditEntry;
 });
 

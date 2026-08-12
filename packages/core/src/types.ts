@@ -18,6 +18,10 @@ export type OrderLogistics = components['schemas']['OrderLogistics'];
 export type ApiCapability = components['schemas']['ApiCapability'];
 export type CapabilityCallRequest = components['schemas']['CapabilityCallRequest'];
 export type CapabilityCallResult = components['schemas']['CapabilityCallResult'];
+export type CapabilityDefinition = components['schemas']['CapabilityDefinition'];
+export type CapabilityContractIssue = components['schemas']['CapabilityContractIssue'];
+export type CapabilityResponseEnvelope = components['schemas']['CapabilityResponseEnvelope'];
+export type { CapabilityRequestMap, CapabilityResponseMap } from './generated/product-capabilities';
 export type GatewayError = components['schemas']['GatewayError'];
 
 export interface ProductListQuery {

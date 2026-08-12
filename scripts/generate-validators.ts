@@ -7,6 +7,7 @@ import addErrors from 'ajv-errors';
 import addFormats from 'ajv-formats';
 
 interface OpenApiDocument {
+  'x-product-capabilities'?: Record<string, { requestSchema: string; responseSchema: string }>;
   components?: {
     schemas?: Record<string, object>;
   };
@@ -19,19 +20,37 @@ const document = parsedDocument as OpenApiDocument;
 const schemas = document.components?.schemas;
 if (!schemas) throw new Error('OpenAPI components.schemas is missing');
 
-const ajv = new Ajv2020({ allErrors: true, code: { esm: true, source: true }, strict: true });
+const ajv = new Ajv2020({
+  allErrors: true,
+  allowUnionTypes: true,
+  code: { esm: true, source: true },
+  strict: true
+});
 addFormats(ajv);
 addErrors(ajv);
 
-const selected = {
+const selected: Record<string, object | undefined> = {
   validateProductSchemaRequest: schemas.ProductSchemaRequest,
   validateSchemaPublishRequest: schemas.SchemaPublishRequest,
   validateCapabilityCallRequest: schemas.CapabilityCallRequest
 };
 
+for (const [index, definition] of Object.values(document['x-product-capabilities'] ?? {}).entries()) {
+  selected[`validateProductCapability${index}Request`] = schemas[definition.requestSchema];
+  selected[`validateProductCapability${index}Response`] = schemas[definition.responseSchema];
+}
+
 function withAjvExtensions(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(withAjvExtensions);
   if (typeof value !== 'object' || value === null) return value;
+  if ('$ref' in value && typeof value.$ref === 'string') {
+    const prefix = '#/components/schemas/';
+    if (value.$ref.startsWith(prefix)) {
+      const referenced = schemas[value.$ref.slice(prefix.length)];
+      if (!referenced) throw new Error(`OpenAPI schema ${value.$ref} is missing`);
+      return withAjvExtensions(referenced);
+    }
+  }
   const result: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value)) {
     result[key === 'x-ajv-errorMessage' ? 'errorMessage' : key] = withAjvExtensions(child);

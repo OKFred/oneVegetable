@@ -13,7 +13,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=40805",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2021-11-23"
+      "updatedAt": "2021-11-23",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.category.attr.get",
@@ -23,10 +30,17 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=24399",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2022-09-14"
+      "updatedAt": "2022-09-14",
+      "source": "catalog",
+      "lifecycle": "deprecated",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaProductAlibabaIcbuCategoryAttrGetRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuCategoryAttrGetResponse"
     },
     {
       "method": "alibaba.icbu.category.attribute.get",
@@ -39,7 +53,14 @@
       "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=25348",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2022-08-17"
+      "updatedAt": "2022-08-17",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaProductAlibabaIcbuCategoryAttributeGetRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuCategoryAttributeGetResponse"
     },
     {
       "method": "alibaba.icbu.category.attrvalue.get",
@@ -49,10 +70,17 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=24395",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2019-12-12"
+      "updatedAt": "2019-12-12",
+      "source": "catalog",
+      "lifecycle": "deprecated",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaProductAlibabaIcbuCategoryAttrvalueGetRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuCategoryAttrvalueGetResponse"
     },
     {
       "method": "alibaba.icbu.category.get",
@@ -62,10 +90,17 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=25349",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2022-09-14"
+      "updatedAt": "2022-09-14",
+      "source": "catalog",
+      "lifecycle": "deprecated",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaProductAlibabaIcbuCategoryGetRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuCategoryGetResponse"
     },
     {
       "method": "alibaba.icbu.category.get.new",
@@ -78,7 +113,14 @@
       "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=50064",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2022-08-17"
+      "updatedAt": "2022-08-17",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaProductAlibabaIcbuCategoryGetNewRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuCategoryGetNewResponse"
     },
     {
       "method": "alibaba.icbu.category.id.mapping",
@@ -88,10 +130,17 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=52043",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-08-08"
+      "updatedAt": "2024-08-08",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaProductAlibabaIcbuCategoryIdMappingRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuCategoryIdMappingResponse"
     },
     {
       "method": "alibaba.icbu.category.level.attr.get",
@@ -101,10 +150,17 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=48659",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2022-10-12"
+      "updatedAt": "2022-10-12",
+      "source": "catalog",
+      "lifecycle": "deprecated",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaProductAlibabaIcbuCategoryLevelAttrGetRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuCategoryLevelAttrGetResponse"
     },
     {
       "method": "alibaba.icbu.category.postcat.get",
@@ -114,10 +170,17 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=24400",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2020-07-06"
+      "updatedAt": "2020-07-06",
+      "source": "catalog",
+      "lifecycle": "deprecated",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaProductAlibabaIcbuCategoryPostcatGetRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuCategoryPostcatGetResponse"
     },
     {
       "method": "alibaba.icbu.category.schema.level.get",
@@ -127,10 +190,17 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=51873",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-08-08"
+      "updatedAt": "2024-08-08",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaProductAlibabaIcbuCategorySchemaLevelGetRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuCategorySchemaLevelGetResponse"
     },
     {
       "method": "alibaba.icbu.check.overseas.admittance",
@@ -143,7 +213,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=65625",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2025-07-31"
+      "updatedAt": "2025-07-31",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.diagnostic.supplier.rank.getpercent",
@@ -156,7 +233,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=31873",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2026-06-30"
+      "updatedAt": "2026-06-30",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.ecology.write",
@@ -169,7 +253,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=52174",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2021-11-23"
+      "updatedAt": "2021-11-23",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.file.urlposting.upload",
@@ -182,7 +273,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=70213",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2025-06-05"
+      "updatedAt": "2025-06-05",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.open.product.post",
@@ -192,10 +290,17 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=24271",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2018-07-25"
+      "updatedAt": "2018-07-25",
+      "source": "catalog",
+      "lifecycle": "deprecated",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": "AlibabaProductAlibabaIcbuOpenProductPostRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuOpenProductPostResponse"
     },
     {
       "method": "alibaba.icbu.photobank.group.list",
@@ -208,7 +313,14 @@
       "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=30575",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-08-08"
+      "updatedAt": "2024-08-08",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.photobank.group.operate",
@@ -221,7 +333,14 @@
       "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=41767",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-08-08"
+      "updatedAt": "2024-08-08",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.photobank.list",
@@ -234,7 +353,14 @@
       "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=24459",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-08-04"
+      "updatedAt": "2024-08-04",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.photobank.upload",
@@ -247,7 +373,14 @@
       "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=24463",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-08-08"
+      "updatedAt": "2024-08-08",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.product.add",
@@ -257,10 +390,17 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=25347",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2022-09-19"
+      "updatedAt": "2022-09-19",
+      "source": "catalog",
+      "lifecycle": "deprecated",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": "AlibabaProductAlibabaIcbuProductAddRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuProductAddResponse"
     },
     {
       "method": "alibaba.icbu.product.add.draft",
@@ -270,10 +410,17 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=46164",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2019-09-23"
+      "updatedAt": "2019-09-23",
+      "source": "catalog",
+      "lifecycle": "deprecated",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": "AlibabaProductAlibabaIcbuProductAddDraftRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuProductAddDraftResponse"
     },
     {
       "method": "alibaba.icbu.product.batch.update.display",
@@ -286,7 +433,14 @@
       "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=44413",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2019-09-23"
+      "updatedAt": "2019-09-23",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": "AlibabaProductAlibabaIcbuProductBatchUpdateDisplayRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuProductBatchUpdateDisplayResponse"
     },
     {
       "method": "alibaba.icbu.product.get",
@@ -299,7 +453,14 @@
       "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=25439",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2022-09-19"
+      "updatedAt": "2022-09-19",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaProductAlibabaIcbuProductGetRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuProductGetResponse"
     },
     {
       "method": "alibaba.icbu.product.group.add",
@@ -312,7 +473,14 @@
       "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=25300",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2022-09-12"
+      "updatedAt": "2022-09-12",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": "AlibabaProductAlibabaIcbuProductGroupAddRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuProductGroupAddResponse"
     },
     {
       "method": "alibaba.icbu.product.group.get",
@@ -325,7 +493,14 @@
       "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=25299",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-08-08"
+      "updatedAt": "2024-08-08",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaProductAlibabaIcbuProductGroupGetRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuProductGroupGetResponse"
     },
     {
       "method": "alibaba.icbu.product.id.decrypt",
@@ -338,7 +513,14 @@
       "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=26068",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-08-08"
+      "updatedAt": "2024-08-08",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaProductAlibabaIcbuProductIdDecryptRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuProductIdDecryptResponse"
     },
     {
       "method": "alibaba.icbu.product.list",
@@ -351,7 +533,14 @@
       "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=25438",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2022-07-19"
+      "updatedAt": "2022-07-19",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaProductAlibabaIcbuProductListRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuProductListResponse"
     },
     {
       "method": "alibaba.icbu.product.schema.get",
@@ -364,7 +553,14 @@
       "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=50063",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-08-08"
+      "updatedAt": "2024-08-08",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaProductAlibabaIcbuProductSchemaGetRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuProductSchemaGetResponse"
     },
     {
       "method": "alibaba.icbu.product.schema.render",
@@ -377,7 +573,14 @@
       "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=50188",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-08-08"
+      "updatedAt": "2024-08-08",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaProductAlibabaIcbuProductSchemaRenderRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuProductSchemaRenderResponse"
     },
     {
       "method": "alibaba.icbu.product.schema.render.draft",
@@ -387,10 +590,17 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=50205",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-08-08"
+      "updatedAt": "2024-08-08",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaProductAlibabaIcbuProductSchemaRenderDraftRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuProductSchemaRenderDraftResponse"
     },
     {
       "method": "alibaba.icbu.product.schema.update",
@@ -403,7 +613,14 @@
       "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=50189",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-08-08"
+      "updatedAt": "2024-08-08",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": "AlibabaProductAlibabaIcbuProductSchemaUpdateRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuProductSchemaUpdateResponse"
     },
     {
       "method": "alibaba.icbu.product.score.get",
@@ -416,7 +633,14 @@
       "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47461",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-08-08"
+      "updatedAt": "2024-08-08",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaProductAlibabaIcbuProductScoreGetRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuProductScoreGetResponse"
     },
     {
       "method": "alibaba.icbu.product.update",
@@ -426,10 +650,17 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=25357",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-08-08"
+      "updatedAt": "2024-08-08",
+      "source": "catalog",
+      "lifecycle": "deprecated",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": "AlibabaProductAlibabaIcbuProductUpdateRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuProductUpdateResponse"
     },
     {
       "method": "alibaba.icbu.product.update.field",
@@ -439,10 +670,17 @@
       "jushitaOnly": false,
       "restricted": false,
       "restrictionReason": null,
-      "enabled": false,
+      "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=27010",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-08-04"
+      "updatedAt": "2024-08-04",
+      "source": "catalog",
+      "lifecycle": "deprecated",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": "AlibabaProductAlibabaIcbuProductUpdateFieldRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuProductUpdateFieldResponse"
     },
     {
       "method": "alibaba.icbu.quotation.post",
@@ -455,7 +693,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=32101",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2021-11-23"
+      "updatedAt": "2021-11-23",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.rfq.myequity",
@@ -468,7 +713,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=40865",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2021-11-23"
+      "updatedAt": "2021-11-23",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.rfq.read",
@@ -481,7 +733,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=42604",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2021-11-23"
+      "updatedAt": "2021-11-23",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.rfq.recommend",
@@ -494,7 +753,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=42211",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2021-11-22"
+      "updatedAt": "2021-11-22",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.rfq.search",
@@ -507,7 +773,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=32084",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2021-11-24"
+      "updatedAt": "2021-11-24",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.rfqdetail.get",
@@ -520,7 +793,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=32086",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2021-11-23"
+      "updatedAt": "2021-11-23",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.risk.send",
@@ -533,7 +813,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=63136",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-12-24"
+      "updatedAt": "2024-12-24",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.snsoft.account.bill.sync",
@@ -546,7 +833,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=64594",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2022-09-29"
+      "updatedAt": "2022-09-29",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.snsoft.customer.sync",
@@ -559,7 +853,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=64507",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2022-09-29"
+      "updatedAt": "2022-09-29",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.snsoft.sale.order.detail.sync",
@@ -572,7 +873,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=64593",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2022-09-29"
+      "updatedAt": "2022-09-29",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.snsoft.shipment.finalaccount.sync",
@@ -585,7 +893,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=64996",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2022-11-09"
+      "updatedAt": "2022-11-09",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.task.status.notify",
@@ -598,7 +913,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=70214",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2025-06-05"
+      "updatedAt": "2025-06-05",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.icbu.xiaoman.va.list",
@@ -611,7 +933,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=64544",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2023-03-20"
+      "updatedAt": "2023-03-20",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.intention.order.save",
@@ -624,7 +953,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=52721",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2025-07-31"
+      "updatedAt": "2025-07-31",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.mydata.self.query.cgsokk",
@@ -637,7 +973,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=56989",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2021-11-23"
+      "updatedAt": "2021-11-23",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.onetouch.logistics.buyer.info.get",
@@ -650,7 +993,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47826",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2020-01-14"
+      "updatedAt": "2020-01-14",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.onetouch.logistics.express.address.city.list",
@@ -663,7 +1013,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47959",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2026-08-12"
+      "updatedAt": "2026-08-12",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.onetouch.logistics.express.address.division.list",
@@ -676,7 +1033,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47961",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2026-08-12"
+      "updatedAt": "2026-08-12",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.onetouch.logistics.express.address.province.list",
@@ -689,7 +1053,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47960",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2026-08-12"
+      "updatedAt": "2026-08-12",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.onetouch.logistics.express.address.street.list",
@@ -702,7 +1073,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47978",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2026-08-12"
+      "updatedAt": "2026-08-12",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.onetouch.logistics.express.charge.calculate",
@@ -715,7 +1093,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47869",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2026-08-12"
+      "updatedAt": "2026-08-12",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.onetouch.logistics.express.logistics.order.create",
@@ -728,7 +1113,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47873",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2026-08-12"
+      "updatedAt": "2026-08-12",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.onetouch.logistics.express.logistics.product.list",
@@ -741,7 +1133,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47872",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2026-08-12"
+      "updatedAt": "2026-08-12",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.onetouch.logistics.express.logistics.rule.validate",
@@ -754,7 +1153,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47870",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2026-08-12"
+      "updatedAt": "2026-08-12",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.onetouch.logistics.express.order.cancel",
@@ -767,7 +1173,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47871",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2026-08-12"
+      "updatedAt": "2026-08-12",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.onetouch.logistics.express.order.cancel.reason.list",
@@ -780,7 +1193,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47868",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2026-08-12"
+      "updatedAt": "2026-08-12",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.onetouch.logistics.express.order.detail.get",
@@ -793,7 +1213,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=48056",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2026-08-12"
+      "updatedAt": "2026-08-12",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.onetouch.logistics.express.order.list.query",
@@ -806,7 +1233,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=56235",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2026-08-12"
+      "updatedAt": "2026-08-12",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.onetouch.logistics.express.special.product.type.list",
@@ -819,7 +1253,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47847",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2026-08-12"
+      "updatedAt": "2026-08-12",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.order.trade.tt.get",
@@ -832,7 +1273,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=49773",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2022-09-19"
+      "updatedAt": "2022-09-19",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.procurement.mysupplier.list",
@@ -845,7 +1293,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=40747",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2018-10-31"
+      "updatedAt": "2018-10-31",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.procurement.supplier.items.get",
@@ -858,7 +1313,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=40748",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2018-10-31"
+      "updatedAt": "2018-10-31",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.seller.address.save",
@@ -871,7 +1333,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=52788",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2021-11-18"
+      "updatedAt": "2021-11-18",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.seller.assurance.credit.card",
@@ -884,7 +1353,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=49307",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2021-11-22"
+      "updatedAt": "2021-11-22",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.seller.auth.extend",
@@ -897,7 +1373,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=67874",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2023-09-14"
+      "updatedAt": "2023-09-14",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.seller.order.fund.get",
@@ -910,7 +1393,14 @@
       "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=41074",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2023-07-06"
+      "updatedAt": "2023-07-06",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.seller.order.list",
@@ -923,7 +1413,14 @@
       "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=41047",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2021-11-23"
+      "updatedAt": "2021-11-23",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.seller.order.logistics.get",
@@ -936,7 +1433,14 @@
       "enabled": true,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=41142",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2021-11-23"
+      "updatedAt": "2021-11-23",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.seller.trade.decode",
@@ -949,7 +1453,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=53375",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2021-11-23"
+      "updatedAt": "2021-11-23",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.seller.trade.query.drafttype",
@@ -962,7 +1473,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=53541",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2021-11-23"
+      "updatedAt": "2021-11-23",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.trade.address.delete",
@@ -975,7 +1493,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=70728",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-10-15"
+      "updatedAt": "2024-10-15",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.trade.address.form.save",
@@ -988,7 +1513,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=70569",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-10-15"
+      "updatedAt": "2024-10-15",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.trade.address.get",
@@ -1001,7 +1533,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=49839",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-09-12"
+      "updatedAt": "2024-09-12",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.trade.address.list.query",
@@ -1014,7 +1553,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=70578",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-10-15"
+      "updatedAt": "2024-10-15",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.trade.address.schema.query",
@@ -1027,7 +1573,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=70565",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-10-15"
+      "updatedAt": "2024-10-15",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.trade.fulfillment.channel.get",
@@ -1040,7 +1593,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47679",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2021-11-18"
+      "updatedAt": "2021-11-18",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.trade.order.create",
@@ -1053,7 +1613,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47611",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2020-04-14"
+      "updatedAt": "2020-04-14",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.trade.order.modify",
@@ -1066,7 +1633,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47663",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2020-04-14"
+      "updatedAt": "2020-04-14",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.trade.service.charge.get",
@@ -1079,7 +1653,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=47767",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2021-11-09"
+      "updatedAt": "2021-11-09",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     },
     {
       "method": "alibaba.wholesale.shippingline.template.list",
@@ -1092,7 +1673,14 @@
       "enabled": false,
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=25394",
       "checkedAt": "2026-08-12",
-      "updatedAt": "2024-08-09"
+      "updatedAt": "2024-08-09",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": null,
+      "responseSchema": null
     }
   ]
 }

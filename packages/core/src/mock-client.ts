@@ -141,7 +141,9 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
   callCapability: {
     method: 'alibaba.icbu.product.list',
     traceId: 'mock-capability-trace',
-    data: { message: 'Mock 调用成功；真实扩展会由 service worker 发起请求。' }
+    data: { message: 'Mock 调用成功；真实扩展会由 service worker 发起请求。' },
+    contractValid: true,
+    contractIssues: []
   }
 };
 

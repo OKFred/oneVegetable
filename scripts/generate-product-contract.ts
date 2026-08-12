@@ -1,0 +1,350 @@
+import { readFile, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+interface ParamNode {
+  name: string;
+  type: string;
+  required: boolean;
+  description: string;
+  defaultValue?: string;
+  demoValue?: string;
+  minValue?: number;
+  maxValue?: number;
+  maxLength?: number;
+  maxListSize?: number;
+  subParams?: ParamNode[];
+}
+
+interface ProductDefinition {
+  method: string;
+  source: 'catalog' | 'article';
+  docId?: number;
+  articleId?: number;
+  title: string;
+  description: string;
+  lifecycle: 'active' | 'deprecated' | 'unlisted';
+  risk: 'read' | 'mutation';
+  checkedAt: string;
+  updatedAt: string | null;
+  requestParams: ParamNode[];
+  responseParams: ParamNode[];
+  errorCodes: unknown[];
+  responseExample: string | null;
+}
+
+interface JsonSchema {
+  [key: string]: unknown;
+}
+
+interface OpenApiDocument {
+  [key: string]: unknown;
+  paths: Record<string, unknown>;
+  components: {
+    schemas: Record<string, JsonSchema>;
+    [key: string]: unknown;
+  };
+}
+
+const root = resolve(import.meta.dirname, '..');
+const contractPath = resolve(root, 'openapi/one-vegetable.json');
+const registryPath = resolve(root, 'packages/core/src/generated/product-capabilities.ts');
+const sourceContract = JSON.parse(await readFile(contractPath, 'utf8')) as OpenApiDocument;
+const snapshot = JSON.parse(await readFile(resolve(root, 'docs/alibaba-product-api-docs.json'), 'utf8')) as {
+  definitions: ProductDefinition[];
+};
+
+function schemaName(method: string): string {
+  return method
+    .split('.')
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join('');
+}
+
+function scalarType(rawType: string): JsonSchema {
+  const normalized = rawType.replaceAll(' ', '').replace(/\[\]$/, '').toLowerCase();
+  if (normalized === 'number' || normalized === 'long' || normalized === 'integer') {
+    return { type: 'number' };
+  }
+  if (normalized === 'boolean') return { type: 'boolean' };
+  if (normalized === 'date') return { type: ['integer', 'string'] };
+  if (normalized === 'json' || normalized === 'object' || normalized === 'map') {
+    return { type: 'object', additionalProperties: true };
+  }
+  return { type: 'string' };
+}
+
+function nodeSchema(node: ParamNode): JsonSchema {
+  const isArray = /\[\]\s*$/.test(node.type);
+  let schema: JsonSchema;
+  if ((node.subParams?.length ?? 0) > 0) {
+    schema = objectSchema(node.subParams ?? []);
+  } else {
+    schema = scalarType(node.type);
+  }
+  if (node.description) schema.description = node.description;
+  if (node.minValue !== undefined) schema.minimum = node.minValue;
+  if (node.maxValue !== undefined) schema.maximum = node.maxValue;
+  if (node.maxLength !== undefined && schema.type === 'string') schema.maxLength = node.maxLength;
+  if (isArray) {
+    return {
+      type: 'array',
+      ...(node.maxListSize !== undefined ? { maxItems: node.maxListSize } : {}),
+      items: schema,
+      ...(node.description ? { description: node.description } : {})
+    };
+  }
+  return schema;
+}
+
+function objectSchema(nodes: ParamNode[]): JsonSchema {
+  const required = nodes.filter((node) => node.required).map((node) => node.name);
+  return {
+    type: 'object',
+    additionalProperties: false,
+    ...(required.length > 0 ? { required } : {}),
+    properties: Object.fromEntries(nodes.map((node) => [node.name, nodeSchema(node)]))
+  };
+}
+
+function exampleValue(node: ParamNode): unknown {
+  if ((node.subParams?.length ?? 0) > 0) {
+    const value = Object.fromEntries(
+      (node.subParams ?? []).map((child) => [child.name, exampleValue(child)])
+    );
+    return /\[\]\s*$/.test(node.type) ? [value] : value;
+  }
+  const demo = node.demoValue ?? node.defaultValue;
+  if (demo === undefined) return /\[\]\s*$/.test(node.type) ? [] : '';
+  if (/\[\]\s*$/.test(node.type)) {
+    try {
+      const parsed: unknown = JSON.parse(demo.replaceAll('“', '"').replaceAll('”', '"'));
+      return Array.isArray(parsed) ? parsed : [demo];
+    } catch {
+      return [demo];
+    }
+  }
+  const type = node.type.toLowerCase();
+  if (type === 'number' || type === 'long' || type === 'integer') {
+    const numeric = Number(demo);
+    return Number.isFinite(numeric) ? numeric : 0;
+  }
+  if (type === 'boolean') return demo === 'true';
+  if (type === 'json') {
+    try {
+      return JSON.parse(demo) as unknown;
+    } catch {
+      return {};
+    }
+  }
+  return demo;
+}
+
+function responseExample(definition: ProductDefinition): unknown {
+  if (!definition.responseExample) {
+    return Object.fromEntries(definition.responseParams.map((node) => [node.name, exampleValue(node)]));
+  }
+  try {
+    const parsed: unknown = JSON.parse(definition.responseExample);
+    if (typeof parsed !== 'object' || parsed === null) return parsed;
+    const wrapper = `${definition.method.replaceAll('.', '_')}_response`;
+    return wrapper in parsed ? (parsed as Record<string, unknown>)[wrapper] : parsed;
+  } catch {
+    return Object.fromEntries(definition.responseParams.map((node) => [node.name, exampleValue(node)]));
+  }
+}
+
+const document = structuredClone(sourceContract);
+for (const name of Object.keys(document.components.schemas)) {
+  if (name.startsWith('AlibabaProduct')) delete document.components.schemas[name];
+}
+
+const capabilityMap: Record<string, unknown> = {};
+for (const definition of snapshot.definitions) {
+  const baseName = schemaName(definition.method);
+  const requestSchema = `AlibabaProduct${baseName}Request`;
+  const responseSchema = `AlibabaProduct${baseName}Response`;
+  document.components.schemas[requestSchema] = {
+    ...objectSchema(definition.requestParams),
+    title: `${definition.method} request`
+  };
+  document.components.schemas[responseSchema] = {
+    ...objectSchema(definition.responseParams),
+    title: `${definition.method} response`
+  };
+  capabilityMap[definition.method] = {
+    requestSchema,
+    responseSchema,
+    source: definition.source,
+    lifecycle: definition.lifecycle,
+    risk: definition.risk,
+    verification: 'documented',
+    realCallEnabled: definition.risk === 'read',
+    checkedAt: definition.checkedAt,
+    updatedAt: definition.updatedAt,
+    title: definition.title,
+    description: definition.description,
+    errorCodes: definition.errorCodes,
+    requestExample: Object.fromEntries(
+      definition.requestParams.map((node) => [node.name, exampleValue(node)])
+    ),
+    responseExample: responseExample(definition),
+    docUrl:
+      definition.source === 'catalog'
+        ? `https://developer.alibaba.com/docs/api.htm?apiId=${definition.docId ?? ''}`
+        : `https://developer.alibaba.com/docs/doc.htm?articleId=${definition.articleId ?? ''}&docType=1`
+  };
+}
+document['x-product-capabilities'] = capabilityMap;
+
+const apiCapability = document.components.schemas.ApiCapability;
+apiCapability.required = [
+  ...((apiCapability.required as string[] | undefined) ?? []),
+  'source',
+  'lifecycle',
+  'risk',
+  'verification',
+  'realCallEnabled'
+].filter((value, index, values) => values.indexOf(value) === index);
+const apiProperties = apiCapability.properties as Record<string, JsonSchema>;
+apiProperties.source = { type: 'string', enum: ['catalog', 'article'] };
+apiProperties.lifecycle = { type: 'string', enum: ['active', 'deprecated', 'unlisted'] };
+apiProperties.risk = { type: 'string', enum: ['read', 'mutation'] };
+apiProperties.verification = { type: 'string', enum: ['documented', 'account-verified'] };
+apiProperties.realCallEnabled = { type: 'boolean' };
+apiProperties.requestSchema = { type: ['string', 'null'] };
+apiProperties.responseSchema = { type: ['string', 'null'] };
+
+document.components.schemas.CapabilityContractIssue = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['instancePath', 'keyword', 'message'],
+  properties: {
+    instancePath: { type: 'string' },
+    keyword: { type: 'string' },
+    message: { type: 'string' }
+  }
+};
+document.components.schemas.CapabilityResponseEnvelope = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['method', 'traceId', 'data', 'contractValid', 'contractIssues'],
+  properties: {
+    method: { type: 'string' },
+    traceId: { type: 'string' },
+    data: {},
+    contractValid: { type: 'boolean' },
+    contractIssues: {
+      type: 'array',
+      items: { $ref: '#/components/schemas/CapabilityContractIssue' }
+    }
+  }
+};
+document.components.schemas.CapabilityCallResult = {
+  $ref: '#/components/schemas/CapabilityResponseEnvelope'
+};
+document.components.schemas.CapabilityDefinition = {
+  type: 'object',
+  additionalProperties: false,
+  required: [
+    'method',
+    'title',
+    'description',
+    'source',
+    'lifecycle',
+    'risk',
+    'verification',
+    'realCallEnabled',
+    'requestSchema',
+    'responseSchema',
+    'requestExample',
+    'responseExample',
+    'errorCodes',
+    'checkedAt',
+    'docUrl'
+  ],
+  properties: {
+    method: { type: 'string' },
+    title: { type: 'string' },
+    description: { type: 'string' },
+    source: { type: 'string', enum: ['catalog', 'article'] },
+    lifecycle: { type: 'string', enum: ['active', 'deprecated', 'unlisted'] },
+    risk: { type: 'string', enum: ['read', 'mutation'] },
+    verification: { type: 'string', enum: ['documented', 'account-verified'] },
+    realCallEnabled: { type: 'boolean' },
+    requestSchema: { type: 'string' },
+    responseSchema: { type: 'string' },
+    requestExample: { type: 'object', additionalProperties: true },
+    responseExample: {},
+    errorCodes: { type: 'array', items: { type: 'object', additionalProperties: true } },
+    checkedAt: { type: 'string', format: 'date' },
+    updatedAt: { type: ['string', 'null'], format: 'date' },
+    docUrl: { type: 'string', format: 'uri' }
+  }
+};
+
+const definitions = Object.entries(capabilityMap);
+const requestRefs = definitions.map(([, value]) => ({
+  $ref: `#/components/schemas/${(value as { requestSchema: string }).requestSchema}`
+}));
+const responseRefs = definitions.map(([, value]) => ({
+  $ref: `#/components/schemas/${(value as { responseSchema: string }).responseSchema}`
+}));
+const capabilityCallRequest = document.components.schemas.CapabilityCallRequest;
+const capabilityRequestProperties = capabilityCallRequest.properties as Record<string, JsonSchema>;
+capabilityRequestProperties.parameters = { oneOf: requestRefs };
+const envelopeProperties = document.components.schemas.CapabilityResponseEnvelope.properties as Record<
+  string,
+  JsonSchema
+>;
+envelopeProperties.data = { oneOf: responseRefs };
+document.paths['/capabilities/{method}'] = {
+  get: {
+    summary: 'Get a typed capability definition',
+    operationId: 'getCapabilityDefinition',
+    parameters: [
+      {
+        name: 'method',
+        in: 'path',
+        required: true,
+        schema: { type: 'string' }
+      }
+    ],
+    responses: {
+      '200': {
+        description: 'Capability definition',
+        content: {
+          'application/json': { schema: { $ref: '#/components/schemas/CapabilityDefinition' } }
+        }
+      },
+      '4XX': { $ref: '#/components/responses/GatewayFailure' },
+      default: { $ref: '#/components/responses/GatewayFailure' }
+    }
+  }
+};
+
+const registry = `// Generated by scripts/generate-product-contract.ts. Do not edit.\nimport type { components } from './api';\n\nexport interface CapabilityRequestMap {\n${definitions
+  .map(
+    ([method, value]) =>
+      `  '${method}': components['schemas']['${(value as { requestSchema: string }).requestSchema}'];`
+  )
+  .join('\n')}\n}\n\nexport interface CapabilityResponseMap {\n${definitions
+  .map(
+    ([method, value]) =>
+      `  '${method}': components['schemas']['${(value as { responseSchema: string }).responseSchema}'];`
+  )
+  .join(
+    '\n'
+  )}\n}\n\nexport const PRODUCT_CAPABILITY_DEFINITIONS = ${JSON.stringify(capabilityMap, null, 2)} as const;\n`;
+
+const contractOutput = `${JSON.stringify(document, null, 2)}\n`;
+if (process.argv.includes('--check')) {
+  const currentRegistry = await readFile(registryPath, 'utf8');
+  if (contractOutput !== `${JSON.stringify(sourceContract, null, 2)}\n` || currentRegistry !== registry) {
+    throw new Error('Generated product contract is stale. Run pnpm generate:product-contract.');
+  }
+} else {
+  await Promise.all([
+    writeFile(contractPath, contractOutput, 'utf8'),
+    writeFile(registryPath, registry, 'utf8')
+  ]);
+}
