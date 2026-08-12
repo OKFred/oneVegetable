@@ -27,6 +27,7 @@ import {
 import {
   sanitizeProductDescriptionHtml,
   type Photo,
+  type ProductDescriptionImageMetadata,
   type ProductDescriptionSanitizationChange
 } from '@one-vegetable/core';
 
@@ -45,6 +46,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   'update:modelValue': [html: string];
   converted: [];
+  imageStatus: [status: ProductDescriptionImageMetadata & { url: string }];
 }>();
 
 const PhotoBankImage = Image.extend({
@@ -54,6 +56,14 @@ const PhotoBankImage = Image.extend({
       'data-photobank-file-id': {
         default: null,
         parseHTML: (element: HTMLElement) => element.getAttribute('data-photobank-file-id')
+      },
+      'data-photobank-width': {
+        default: null,
+        parseHTML: (element: HTMLElement) => element.getAttribute('data-photobank-width')
+      },
+      'data-photobank-height': {
+        default: null,
+        parseHTML: (element: HTMLElement) => element.getAttribute('data-photobank-height')
       }
     };
   }
@@ -153,7 +163,21 @@ function insertPhoto(photos: Photo[]): void {
       alt: photo.name.replace(/\.[^.]+$/, '')
     })
     .updateAttributes('image', { 'data-photobank-file-id': photo.id })
+    .updateAttributes('image', {
+      'data-photobank-width': String(photo.width),
+      'data-photobank-height': String(photo.height)
+    })
     .run();
+}
+
+function reportImageStatus(event: Event, loaded: boolean): void {
+  if (!(event.target instanceof HTMLImageElement)) return;
+  emit('imageStatus', {
+    url: event.target.currentSrc || event.target.src,
+    loaded,
+    width: event.target.naturalWidth || Number(event.target.dataset.photobankWidth) || 1,
+    height: event.target.naturalHeight || Number(event.target.dataset.photobankHeight) || 1
+  });
 }
 </script>
 
@@ -272,7 +296,13 @@ function insertPhoto(photos: Photo[]): void {
           @update:model-value="insertPhoto"
         />
       </div>
-      <EditorContent v-if="editor" :editor="editor" class="product-description-editor min-h-64 p-4" />
+      <EditorContent
+        v-if="editor"
+        :editor="editor"
+        class="product-description-editor min-h-64 p-4"
+        @load.capture="reportImageStatus($event, true)"
+        @error.capture="reportImageStatus($event, false)"
+      />
       <p class="border-t px-4 py-2 text-xs text-muted-foreground">
         输出仅保留安全标签；详情图片必须来自国际站图片银行。
       </p>

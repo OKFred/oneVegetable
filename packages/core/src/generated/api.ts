@@ -553,6 +553,8 @@ export interface components {
             productId: string;
             score: number;
             issues: string[];
+            /** @description Optional normalized official issues when the upstream response provides structured details. */
+            qualityIssues?: components["schemas"]["ProductDescriptionQualityIssue"][];
         };
         ProductDescriptionQualityIssue: {
             code: string;

@@ -333,7 +333,13 @@ document.components.schemas.ProductScore = {
   properties: {
     productId: { type: 'string' },
     score: { type: 'number' },
-    issues: { type: 'array', items: { type: 'string' } }
+    issues: { type: 'array', items: { type: 'string' } },
+    qualityIssues: {
+      type: 'array',
+      items: { $ref: '#/components/schemas/ProductDescriptionQualityIssue' },
+      description:
+        'Optional normalized official issues when the upstream response provides structured details.'
+    }
   }
 };
 

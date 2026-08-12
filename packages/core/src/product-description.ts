@@ -46,7 +46,14 @@ const DROP_WITH_CONTENT = new Set([
 ]);
 const ALLOWED_ATTRIBUTES: Readonly<Record<string, ReadonlySet<string>>> = {
   a: new Set(['href', 'title', 'target', 'rel']),
-  img: new Set(['src', 'alt', 'title', 'data-photobank-file-id']),
+  img: new Set([
+    'src',
+    'alt',
+    'title',
+    'data-photobank-file-id',
+    'data-photobank-width',
+    'data-photobank-height'
+  ]),
   th: new Set(['colspan', 'rowspan']),
   td: new Set(['colspan', 'rowspan'])
 };

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, h, onMounted, ref, watch } from 'vue';
+import { computed, h, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import { Layers3, RefreshCw, Save, Search, Send, ShieldAlert } from '@lucide/vue';
 
 import {
+  analyzeProductDescriptionQuality,
   parseProductSchemaXml,
   productSchemaFieldText,
   serializeProductSchemaXml,
@@ -11,6 +12,8 @@ import {
   validateSchemaPublishInput,
   type Product,
   type ProductCategory,
+  type ProductDescriptionImageMetadata,
+  type ProductDescriptionQualityIssue,
   type ProductSchemaField,
   type ProductSchemaModel,
   withProductSchemaFieldText
@@ -44,6 +47,8 @@ const feedback = ref('');
 const draftRestored = ref(false);
 const selectedProductIds = ref<string[]>([]);
 const groupName = ref('');
+const imageMetadata = ref<Record<string, ProductDescriptionImageMetadata>>({});
+let scoreRefreshTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 
 const products = useQuery({
   queryKey: ['products', subject],
@@ -74,6 +79,14 @@ const productDescriptionType = computed(() => {
   const typeField = schemaModel.value?.fields.find((field) => field.id === 'productDescType');
   return typeField ? productSchemaFieldText(typeField) : undefined;
 });
+const productDescriptionHtml = computed(() => {
+  const description = schemaModel.value?.fields.find(
+    (field) =>
+      field.id === 'superText' ||
+      field.rules.some((rule) => rule.name === 'valueTypeRule' && rule.value.toLocaleLowerCase() === 'html')
+  );
+  return description ? productSchemaFieldText(description) : '';
+});
 
 const publish = useMutation({
   mutationFn: async (draft: boolean) => {
@@ -96,6 +109,7 @@ const publish = useMutation({
       ? `商品 ${result.productId} 已更新`
       : `${draft ? '草稿已保存' : '商品已发布'}：${result.productId}`;
     await queryClient.invalidateQueries({ queryKey: ['products'] });
+    if (editProductId.value) scheduleScoreRefresh(editProductId.value);
   }
 });
 
@@ -115,6 +129,24 @@ const categoryMapping = useMutation({
 const productScore = useMutation({
   mutationFn: (productId: string) => gateway.request('getProductScore', { productId })
 });
+
+const qualityIssues = computed(() =>
+  analyzeProductDescriptionQuality({
+    html: productDescriptionHtml.value,
+    schemaIssues: schemaIssues.value,
+    officialTips: schemaModel.value ? collectOfficialTips(schemaModel.value.fields) : [],
+    officialScoreIssues: productScore.data.value?.issues ?? [],
+    imageMetadata: imageMetadata.value
+  })
+);
+const advisoryIssues = computed(() =>
+  qualityIssues.value.filter((issue) => issue.source !== 'alibaba-schema' || issue.level !== 'error')
+);
+const issuesBySource = computed(() => ({
+  'alibaba-schema': qualityIssues.value.filter((issue) => issue.source === 'alibaba-schema'),
+  official: qualityIssues.value.filter((issue) => issue.source === 'official'),
+  project: qualityIssues.value.filter((issue) => issue.source === 'project')
+}));
 
 const batchDisplay = useMutation({
   mutationFn: (display: 'online' | 'offline') =>
@@ -199,6 +231,7 @@ async function loadSchema(): Promise<void> {
       ...(editProductId.value ? { productId: editProductId.value } : {})
     });
     applySchema(result.xml, '已按当前类目加载官方 Schema');
+    if (editProductId.value) productScore.mutate(editProductId.value);
   } catch (error: unknown) {
     schemaError.value = error instanceof Error ? error.message : '获取 Schema 失败';
   }
@@ -216,6 +249,7 @@ async function loadDraft(): Promise<void> {
     });
     categoryId.value = String(result.categoryId);
     applySchema(result.schemaXml, `已渲染草稿 ${result.id}`);
+    productScore.mutate(editProductId.value);
   } catch (error: unknown) {
     schemaError.value = error instanceof Error ? error.message : '草稿渲染失败';
   }
@@ -252,6 +286,42 @@ function updateRootField(index: number, field: ProductSchemaField): void {
   };
 }
 
+function updateImageStatus(status: ProductDescriptionImageMetadata & { url: string }): void {
+  imageMetadata.value = {
+    ...imageMetadata.value,
+    [status.url]: { loaded: status.loaded, width: status.width, height: status.height }
+  };
+}
+
+function collectOfficialTips(fields: ProductSchemaField[]): string[] {
+  const tips = new Set<string>();
+  const visit = (field: ProductSchemaField): void => {
+    for (const rule of field.rules) {
+      if ((rule.name === 'tipRule' || rule.name === 'devTipRule') && rule.value.trim()) {
+        tips.add(rule.value.trim());
+      }
+    }
+    for (const child of field.children) visit(child);
+    for (const instance of field.instances) for (const child of instance) visit(child);
+  };
+  for (const field of fields) visit(field);
+  return [...tips];
+}
+
+function scheduleScoreRefresh(productId: string): void {
+  if (scoreRefreshTimer !== undefined) globalThis.clearTimeout(scoreRefreshTimer);
+  scoreRefreshTimer = globalThis.setTimeout(() => {
+    productScore.mutate(productId);
+    scoreRefreshTimer = undefined;
+  }, 5000);
+}
+
+function sourceLabel(source: ProductDescriptionQualityIssue['source']): string {
+  if (source === 'alibaba-schema') return 'Alibaba Schema';
+  if (source === 'official') return '官方提示';
+  return '项目建议';
+}
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : '操作失败';
 }
@@ -282,6 +352,10 @@ onMounted(() => {
   } catch {
     globalThis.localStorage.removeItem(DRAFT_STORAGE_KEY);
   }
+});
+
+onBeforeUnmount(() => {
+  if (scoreRefreshTimer !== undefined) globalThis.clearTimeout(scoreRefreshTimer);
 });
 </script>
 
@@ -368,6 +442,7 @@ onMounted(() => {
         <Badge :variant="blockingSchemaIssues.length ? 'destructive' : 'success'">
           {{ blockingSchemaIssues.length ? `${blockingSchemaIssues.length} 个阻断问题` : '本地规则通过' }}
         </Badge>
+        <Badge variant="warning">{{ advisoryIssues.length }} 条非阻断建议</Badge>
       </div>
       <div class="space-y-4">
         <ProductSchemaFieldComponent
@@ -377,7 +452,55 @@ onMounted(() => {
           :issues="schemaIssues"
           :product-description-type="productDescriptionType"
           @update="updateRootField(index, $event)"
+          @image-status="updateImageStatus"
         />
+      </div>
+      <div class="mt-5 rounded-lg border p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="font-semibold">详情整改建议</h3>
+            <p class="mt-1 text-xs text-muted-foreground">项目建议与官方提示仅供整改参考，不会禁用提交。</p>
+          </div>
+          <Button
+            v-if="editProductId"
+            variant="outline"
+            size="sm"
+            :disabled="productScore.isPending.value"
+            @click="productScore.mutate(editProductId)"
+          >
+            <RefreshCw class="size-4" />刷新官方评分
+          </Button>
+        </div>
+        <p v-if="productScore.error.value" class="mt-3 text-xs text-amber-700">
+          官方评分暂时不可用，不影响编辑或提交：{{ errorMessage(productScore.error.value) }}
+        </p>
+        <div class="mt-4 grid gap-3 lg:grid-cols-3">
+          <section
+            v-for="source in ['alibaba-schema', 'official', 'project'] as const"
+            :key="source"
+            class="rounded-md bg-muted/40 p-3"
+          >
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-medium">{{ sourceLabel(source) }}</h4>
+              <Badge
+                :variant="
+                  source === 'alibaba-schema' && issuesBySource[source].length ? 'destructive' : 'secondary'
+                "
+              >
+                {{ issuesBySource[source].length }}
+              </Badge>
+            </div>
+            <p v-if="!issuesBySource[source].length" class="mt-3 text-xs text-muted-foreground">暂无问题</p>
+            <ul v-else class="mt-3 space-y-3 text-xs">
+              <li v-for="issue in issuesBySource[source]" :key="`${issue.code}:${issue.message}`">
+                <p :class="issue.level === 'error' ? 'font-medium text-destructive' : 'font-medium'">
+                  {{ issue.message }}
+                </p>
+                <p class="mt-1 text-muted-foreground">{{ issue.remediation }}</p>
+              </li>
+            </ul>
+          </section>
+        </div>
       </div>
       <div v-if="schemaModel.warnings.length" class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
         <p class="font-medium">服务端规则提示</p>
@@ -394,15 +517,16 @@ onMounted(() => {
       </div>
       <div class="mt-5 flex flex-wrap gap-2">
         <Button
-          :disabled="publish.isPending.value || extensionMutationDisabled"
+          :disabled="publish.isPending.value || extensionMutationDisabled || blockingSchemaIssues.length > 0"
           @click="publish.mutate(false)"
         >
-          <Send class="size-4" />{{ editProductId ? '更新商品' : '发布商品' }}
+          <Send class="size-4" />{{ editProductId ? '更新商品' : '发布商品' }} ·
+          {{ advisoryIssues.length }} 条建议
         </Button>
         <Button
           v-if="!editProductId"
           variant="outline"
-          :disabled="publish.isPending.value || extensionMutationDisabled"
+          :disabled="publish.isPending.value || extensionMutationDisabled || blockingSchemaIssues.length > 0"
           @click="publish.mutate(true)"
           ><Save class="size-4" />保存草稿</Button
         >

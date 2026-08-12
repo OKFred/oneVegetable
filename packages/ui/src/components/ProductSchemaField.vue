@@ -15,6 +15,7 @@ import {
   type ProductSchemaField,
   type ProductSchemaFieldIssue,
   type Photo,
+  type ProductDescriptionImageMetadata,
   withProductSchemaFieldText,
   withProductSchemaFieldTexts
 } from '@one-vegetable/core';
@@ -31,7 +32,10 @@ const props = defineProps<{
   issues: ProductSchemaFieldIssue[];
   productDescriptionType: string | undefined;
 }>();
-const emit = defineEmits<{ update: [field: ProductSchemaField] }>();
+const emit = defineEmits<{
+  update: [field: ProductSchemaField];
+  imageStatus: [status: ProductDescriptionImageMetadata & { url: string }];
+}>();
 
 const fieldIssues = computed(() => props.issues.filter((issue) => issue.fieldKey === props.field.key));
 const disabled = computed(() => isProductSchemaFieldDisabled(props.field));
@@ -165,6 +169,7 @@ function removeInstance(index: number): void {
       :model-value="fieldText"
       :smart-detail="productDescriptionType !== undefined && productDescriptionType !== '2'"
       @update:model-value="updateValue"
+      @image-status="emit('imageStatus', $event)"
     />
     <PhotoBankPicker
       v-else-if="imageField && (field.type === 'input' || field.type === 'multiInput')"
@@ -214,6 +219,7 @@ function removeInstance(index: number): void {
         :issues="issues"
         :product-description-type="productDescriptionType"
         @update="updateComplexChild(index, $event)"
+        @image-status="emit('imageStatus', $event)"
       />
     </div>
     <div v-else-if="field.type === 'multiComplex'" class="space-y-3">
@@ -235,6 +241,7 @@ function removeInstance(index: number): void {
           :issues="issues"
           :product-description-type="productDescriptionType"
           @update="updateInstanceChild(instanceIndex, childIndex, $event)"
+          @image-status="emit('imageStatus', $event)"
         />
       </div>
       <Button variant="outline" size="sm" @click="addInstance">
