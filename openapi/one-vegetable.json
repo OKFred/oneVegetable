@@ -8205,12 +8205,20 @@
       "LogisticsOrderDetail": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["order", "warehouseName", "warehouseAddress", "labelUrl", "trackingNumber"],
+        "required": [
+          "order",
+          "warehouseName",
+          "warehouseAddress",
+          "labelUrl",
+          "labelBase64",
+          "trackingNumber"
+        ],
         "properties": {
           "order": { "$ref": "#/components/schemas/LogisticsOrderSummary" },
           "warehouseName": { "type": ["string", "null"] },
           "warehouseAddress": { "type": ["string", "null"] },
-          "labelUrl": { "type": ["string", "null"], "format": "uri" },
+          "labelUrl": { "type": ["string", "null"], "format": "uri", "pattern": "^https://" },
+          "labelBase64": { "type": ["string", "null"] },
           "trackingNumber": { "type": ["string", "null"] }
         }
       },
@@ -8316,6 +8324,7 @@
           "consignee",
           "customs",
           "needPickup",
+          "supplyChainBizId",
           "tradeBizId",
           "tradePlatform"
         ],
@@ -8339,6 +8348,7 @@
           "consignee": { "$ref": "#/components/schemas/LogisticsAddress" },
           "customs": { "$ref": "#/components/schemas/LogisticsCustoms" },
           "needPickup": { "type": "boolean" },
+          "supplyChainBizId": { "type": "string", "minLength": 1 },
           "tradeBizId": { "type": ["string", "null"] },
           "tradePlatform": { "type": "string", "default": "ICBU" }
         }

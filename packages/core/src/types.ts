@@ -61,6 +61,22 @@ export type TradeAddressSchema = components['schemas']['TradeAddressSchema'];
 export type TradeAddress = components['schemas']['TradeAddress'];
 export type TradeOrderDraft = components['schemas']['TradeOrderDraft'];
 export type TradeMutationResult = components['schemas']['TradeMutationResult'];
+export type LogisticsAddressNode = components['schemas']['LogisticsAddressNode'];
+export type LogisticsSpecialProductType = components['schemas']['LogisticsSpecialProductType'];
+export type LogisticsProduct = components['schemas']['LogisticsProduct'];
+export type LogisticsContact = components['schemas']['LogisticsContact'];
+export type LogisticsAddress = components['schemas']['LogisticsAddress'];
+export type LogisticsCargo = components['schemas']['LogisticsCargo'];
+export type LogisticsPackage = components['schemas']['LogisticsPackage'];
+export type LogisticsCustoms = components['schemas']['LogisticsCustoms'];
+export type LogisticsQuoteRequest = components['schemas']['LogisticsQuoteRequest'];
+export type LogisticsQuoteResult = components['schemas']['LogisticsQuoteResult'];
+export type LogisticsOrderDraft = components['schemas']['LogisticsOrderDraft'];
+export type LogisticsOrderSummary = components['schemas']['LogisticsOrderSummary'];
+export type LogisticsOrderPage = components['schemas']['LogisticsOrderPage'];
+export type LogisticsOrderDetail = components['schemas']['LogisticsOrderDetail'];
+export type LogisticsOrderMutationResult = components['schemas']['LogisticsOrderMutationResult'];
+export type ShippingTemplate = components['schemas']['ShippingTemplate'];
 export type { ProductCapabilityRequestMap, ProductCapabilityResponseMap };
 export type { RfqCapabilityRequestMap, RfqCapabilityResponseMap };
 export type { TradeCapabilityRequestMap, TradeCapabilityResponseMap };
@@ -116,6 +132,19 @@ export interface TradeOrderListQuery {
   createDateEnd?: string;
   modifiedDateStart?: string;
   modifiedDateEnd?: string;
+}
+
+export interface LogisticsAddressNodeQuery {
+  level: 'province' | 'city' | 'division' | 'street';
+  parentId?: string;
+  countryCode?: string;
+  searchText?: string;
+}
+
+export interface LogisticsOrderListQuery {
+  page?: number;
+  pageSize?: number;
+  orderNumber?: string;
 }
 
 export interface ProductDisplayRequest {
@@ -208,6 +237,23 @@ export interface OperationMap {
   deleteTradeAddress: { request: { addressId: string }; response: undefined };
   createTradeOrder: { request: TradeOrderDraft; response: TradeMutationResult };
   modifyTradeOrder: { request: TradeOrderDraft; response: TradeMutationResult };
+  listLogisticsAddressNodes: {
+    request: LogisticsAddressNodeQuery;
+    response: LogisticsAddressNode[];
+  };
+  listLogisticsSpecialProductTypes: {
+    request: undefined;
+    response: LogisticsSpecialProductType[];
+  };
+  listLogisticsProducts: { request: undefined; response: LogisticsProduct[] };
+  calculateLogisticsQuote: { request: LogisticsQuoteRequest; response: LogisticsQuoteResult };
+  listLogisticsOrders: { request: LogisticsOrderListQuery; response: LogisticsOrderPage };
+  getLogisticsOrder: { request: { orderNumber: string }; response: LogisticsOrderDetail };
+  listShippingTemplates: { request: undefined; response: ShippingTemplate[] };
+  createLogisticsOrder: {
+    request: LogisticsOrderDraft;
+    response: LogisticsOrderMutationResult;
+  };
 }
 
 export type OperationId = keyof OperationMap;

@@ -8,6 +8,7 @@ import {
 import type {
   CapabilityCallRequest,
   GatewayClient,
+  LogisticsOrderSummary,
   OperationId,
   OperationMap,
   Product,
@@ -16,6 +17,7 @@ import type {
   RfqSummary,
   TradeOrderSummary
 } from './types';
+import { validateLogisticsOrderInput, validateLogisticsQuoteInput } from './validation';
 
 const PRIMARY_PRODUCT: Product = {
   id: '10000001',
@@ -130,6 +132,14 @@ const TRADE_ORDERS: TradeOrderSummary[] = [
     modifiedAt: '2026-08-12T09:05:00.000Z'
   }
 ];
+
+const PRIMARY_LOGISTICS_ORDER: LogisticsOrderSummary = {
+  orderNumber: 'ALS00201756002',
+  status: 'created',
+  freightAmount: '109.20',
+  currency: 'CNY',
+  placedAt: '2026-08-12T03:20:00.000Z'
+};
 
 const MOCK_PRODUCT_SCHEMA_XML = `<itemSchema version="2">
   <field id="productTitle" name="商品标题" type="input"><rules><rule name="requiredRule" value="true"/><rule name="minLengthRule" value="5"/><rule name="maxLengthRule" value="128"/><rule name="tipRule" value="面向买家的英文商品标题"/></rules><values><value>Portable solar power station 1000W</value></values></field>
@@ -476,7 +486,74 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
   },
   deleteTradeAddress: undefined,
   createTradeOrder: { id: '24668306501026999', success: true },
-  modifyTradeOrder: { id: PRIMARY_TRADE_ORDER.id, success: true }
+  modifyTradeOrder: { id: PRIMARY_TRADE_ORDER.id, success: true },
+  listLogisticsAddressNodes: [
+    { id: '330000', code: '330000', name: '浙江省', level: 'province' },
+    { id: '310000', code: '310000', name: '上海市', level: 'province' }
+  ],
+  listLogisticsSpecialProductTypes: [
+    {
+      code: 'battery',
+      name: '电池',
+      children: [
+        {
+          code: 'inlayBattery',
+          name: '内置/配置电池',
+          children: [{ code: 'oneLessHundredWh', name: '单块电池≤100Wh', children: [] }]
+        }
+      ]
+    }
+  ],
+  listLogisticsProducts: [
+    {
+      code: 'EX_ASP_ePacket',
+      name: '邮政 e 邮宝',
+      warehouseCode: 'ASP_YH_SZJC',
+      enabled: true,
+      unavailableReason: null
+    },
+    {
+      code: 'EX_ASP_standard3C',
+      name: '标准快递（带电）',
+      warehouseCode: 'ASP_YH_SZJC',
+      enabled: false,
+      unavailableReason: '当前目的国暂不可用'
+    }
+  ],
+  calculateLogisticsQuote: {
+    options: [
+      {
+        productCode: 'EX_ASP_ePacket',
+        productName: '邮政 e 邮宝',
+        totalAmount: '109.20',
+        currency: 'CNY',
+        estimatedDays: '7-12 business days',
+        warehouseCode: 'ASP_YH_SZJC',
+        available: true,
+        unavailableReason: null
+      }
+    ],
+    issues: []
+  },
+  listLogisticsOrders: {
+    items: [PRIMARY_LOGISTICS_ORDER],
+    page: 1,
+    pageSize: 20,
+    total: 1
+  },
+  getLogisticsOrder: {
+    order: PRIMARY_LOGISTICS_ORDER,
+    warehouseName: '越航深圳仓',
+    warehouseAddress: '深圳市龙岗区坂田仓库',
+    labelUrl: null,
+    labelBase64: 'JVBERi0xLjQKJU1vY2sgbGFiZWw=',
+    trackingNumber: 'YT202608120001'
+  },
+  listShippingTemplates: [
+    { id: '123', name: '快捷模板' },
+    { id: '124', name: '北美包邮模板' }
+  ],
+  createLogisticsOrder: { orderNumber: 'ALS00201756999', success: true }
 };
 
 export class MockGatewayClient implements GatewayClient {
@@ -651,6 +728,62 @@ export class MockGatewayClient implements GatewayClient {
         id: payload.orderId ?? `mock-trade-${Date.now()}`,
         success: true
       } as ResponseOf<K>;
+    }
+    if (operation === 'listLogisticsAddressNodes') {
+      const payload = _request as OperationMap['listLogisticsAddressNodes']['request'];
+      const names: Record<typeof payload.level, string[]> = {
+        province: ['浙江省', '上海市'],
+        city: ['杭州市', '宁波市'],
+        division: ['余杭区', '滨江区'],
+        street: ['仓前街道', '长河街道']
+      };
+      return names[payload.level].map((name, index) => ({
+        id: `${payload.level}-${index + 1}`,
+        code: `${payload.level}-${index + 1}`,
+        name,
+        level: payload.level
+      }));
+    }
+    if (operation === 'calculateLogisticsQuote') {
+      const payload = _request as OperationMap['calculateLogisticsQuote']['request'];
+      const validation = validateLogisticsQuoteInput(payload);
+      if (!validation.valid) throw new Error(`物流试算参数不合法：${validation.errors.join('；')}`);
+      return {
+        ...structuredClone(MOCK_DATA.calculateLogisticsQuote),
+        options: MOCK_DATA.calculateLogisticsQuote.options.map((option) => ({
+          ...option,
+          productCode: payload.productCode,
+          warehouseCode: payload.warehouseCode
+        }))
+      } as ResponseOf<K>;
+    }
+    if (operation === 'listLogisticsOrders') {
+      const payload = _request as OperationMap['listLogisticsOrders']['request'];
+      const items = payload.orderNumber
+        ? [PRIMARY_LOGISTICS_ORDER].filter((item) => item.orderNumber.includes(payload.orderNumber ?? ''))
+        : [PRIMARY_LOGISTICS_ORDER];
+      return {
+        items,
+        page: payload.page ?? 1,
+        pageSize: payload.pageSize ?? 20,
+        total: items.length
+      } as ResponseOf<K>;
+    }
+    if (operation === 'getLogisticsOrder') {
+      const payload = _request as OperationMap['getLogisticsOrder']['request'];
+      return {
+        ...structuredClone(MOCK_DATA.getLogisticsOrder),
+        order: { ...PRIMARY_LOGISTICS_ORDER, orderNumber: payload.orderNumber }
+      } as ResponseOf<K>;
+    }
+    if (operation === 'createLogisticsOrder') {
+      const payload = _request as OperationMap['createLogisticsOrder']['request'];
+      const validation = validateLogisticsOrderInput(payload);
+      if (!validation.valid) throw new Error(`物流下单参数不合法：${validation.errors.join('；')}`);
+      if (payload.confirmedProductCode !== payload.quoteRequest.productCode) {
+        throw new Error('确认的物流产品与最近试算产品不一致，请重新试算');
+      }
+      return structuredClone(MOCK_DATA.createLogisticsOrder);
     }
     if (operation === 'uploadRfqAttachment') {
       const payload = _request as OperationMap['uploadRfqAttachment']['request'];

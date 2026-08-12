@@ -8,6 +8,7 @@ import {
   GatewayException,
   getCapabilityDefinition,
   listCapabilities,
+  LogisticsAdapter,
   normalizeGatewayError,
   RfqAdapter,
   TradeAdapter,
@@ -68,6 +69,14 @@ const OPERATIONS = new Set<OperationId>([
   'deleteTradeAddress',
   'createTradeOrder',
   'modifyTradeOrder',
+  'listLogisticsAddressNodes',
+  'listLogisticsSpecialProductTypes',
+  'listLogisticsProducts',
+  'calculateLogisticsQuote',
+  'listLogisticsOrders',
+  'getLogisticsOrder',
+  'listShippingTemplates',
+  'createLogisticsOrder',
   'callCapability'
 ]);
 
@@ -84,7 +93,18 @@ const MUTATION_OPERATIONS = new Set<OperationId>([
   'saveTradeAddress',
   'deleteTradeAddress',
   'createTradeOrder',
-  'modifyTradeOrder'
+  'modifyTradeOrder',
+  'createLogisticsOrder'
+]);
+
+const QUALIFICATION_GATED_LOGISTICS_OPERATIONS = new Set<OperationId>([
+  'listLogisticsAddressNodes',
+  'listLogisticsSpecialProductTypes',
+  'listLogisticsProducts',
+  'calculateLogisticsQuote',
+  'listLogisticsOrders',
+  'getLogisticsOrder',
+  'createLogisticsOrder'
 ]);
 
 export default defineBackground(() => {
@@ -124,10 +144,18 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
       retryable: false
     });
   }
+  if (QUALIFICATION_GATED_LOGISTICS_OPERATIONS.has(operation)) {
+    throw new GatewayException({
+      code: 'LOGISTICS_QUALIFICATION_REQUIRED',
+      message: 'OneTouch 国际物流能力需要业务资格，当前账号尚未完成资格与真实接口验收',
+      retryable: false
+    });
+  }
   const client = new AlibabaClient(settings);
   const products = new ProductAdapter(client);
   const rfqs = new RfqAdapter(client);
   const trades = new TradeAdapter(client);
+  const logistics = new LogisticsAdapter(client);
   const request = asRecord(payload);
 
   switch (operation) {
@@ -223,6 +251,22 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
     case 'createTradeOrder':
     case 'modifyTradeOrder':
       throw new Error('信保订单写入需要真实账号逐方法验收，当前保持禁用');
+    case 'listLogisticsAddressNodes':
+      return logistics.listAddressNodes(payload as RequestOf<'listLogisticsAddressNodes'>);
+    case 'listLogisticsSpecialProductTypes':
+      return logistics.listSpecialProductTypes();
+    case 'listLogisticsProducts':
+      return logistics.listProducts();
+    case 'calculateLogisticsQuote':
+      return logistics.calculateQuote(payload as RequestOf<'calculateLogisticsQuote'>);
+    case 'listLogisticsOrders':
+      return logistics.listOrders(payload as RequestOf<'listLogisticsOrders'>);
+    case 'getLogisticsOrder':
+      return logistics.getOrder(requiredString(request, 'orderNumber'));
+    case 'listShippingTemplates':
+      return logistics.listShippingTemplates();
+    case 'createLogisticsOrder':
+      return logistics.createOrder(payload as RequestOf<'createLogisticsOrder'>);
     case 'listPhotoGroups': {
       const call = await client.call('alibaba.icbu.photobank.group.list', {});
       return findRecords(unwrap(call.data, call.method), ['groups', 'photo_album_group']).map((item) => ({

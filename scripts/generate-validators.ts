@@ -35,7 +35,9 @@ addErrors(ajv);
 const selected: Record<string, object | undefined> = {
   validateProductSchemaRequest: schemas.ProductSchemaRequest,
   validateSchemaPublishRequest: schemas.SchemaPublishRequest,
-  validateCapabilityCallRequest: schemas.CapabilityCallRequest
+  validateCapabilityCallRequest: schemas.CapabilityCallRequest,
+  validateLogisticsQuoteRequest: schemas.LogisticsQuoteRequest,
+  validateLogisticsOrderDraft: schemas.LogisticsOrderDraft
 };
 
 for (const [index, definition] of Object.values(document['x-product-capabilities'] ?? {}).entries()) {

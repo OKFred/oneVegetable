@@ -5574,6 +5574,7 @@ export interface components {
             warehouseAddress: string | null;
             /** Format: uri */
             labelUrl: string | null;
+            labelBase64: string | null;
             trackingNumber: string | null;
         };
         LogisticsOrderDraft: {
@@ -5635,6 +5636,7 @@ export interface components {
             consignee: components["schemas"]["LogisticsAddress"];
             customs: components["schemas"]["LogisticsCustoms"];
             needPickup: boolean;
+            supplyChainBizId: string;
             tradeBizId: string | null;
             /** @default ICBU */
             tradePlatform: string;

@@ -3,11 +3,19 @@ import localize from 'ajv-i18n';
 
 import {
   validateCapabilityCallRequest,
+  validateLogisticsOrderDraft,
+  validateLogisticsQuoteRequest,
   validateProductSchemaRequest,
   validateSchemaPublishRequest
 } from '../generated/validators';
 
-import type { CapabilityCallRequest, ProductSchemaRequest, SchemaPublishRequest } from '../types';
+import type {
+  CapabilityCallRequest,
+  LogisticsOrderDraft,
+  LogisticsQuoteRequest,
+  ProductSchemaRequest,
+  SchemaPublishRequest
+} from '../types';
 
 export interface ValidationResult<T> {
   valid: boolean;
@@ -45,3 +53,9 @@ export const validateSchemaPublishInput = (value: unknown, locale?: 'en' | 'zh')
 
 export const validateCapabilityCallInput = (value: unknown, locale?: 'en' | 'zh') =>
   runValidator<CapabilityCallRequest>(validateCapabilityCallRequest as StandaloneValidator, value, locale);
+
+export const validateLogisticsQuoteInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<LogisticsQuoteRequest>(validateLogisticsQuoteRequest as StandaloneValidator, value, locale);
+
+export const validateLogisticsOrderInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<LogisticsOrderDraft>(validateLogisticsOrderDraft as StandaloneValidator, value, locale);

@@ -383,6 +383,7 @@ document.components.schemas.LogisticsQuoteRequest = {
     'consignee',
     'customs',
     'needPickup',
+    'supplyChainBizId',
     'tradeBizId',
     'tradePlatform'
   ],
@@ -402,6 +403,7 @@ document.components.schemas.LogisticsQuoteRequest = {
     consignee: { $ref: '#/components/schemas/LogisticsAddress' },
     customs: { $ref: '#/components/schemas/LogisticsCustoms' },
     needPickup: { type: 'boolean' },
+    supplyChainBizId: { type: 'string', minLength: 1 },
     tradeBizId: nullableString,
     tradePlatform: { type: 'string', default: 'ICBU' }
   }
@@ -474,12 +476,13 @@ document.components.schemas.LogisticsOrderPage = {
 document.components.schemas.LogisticsOrderDetail = {
   type: 'object',
   additionalProperties: false,
-  required: ['order', 'warehouseName', 'warehouseAddress', 'labelUrl', 'trackingNumber'],
+  required: ['order', 'warehouseName', 'warehouseAddress', 'labelUrl', 'labelBase64', 'trackingNumber'],
   properties: {
     order: { $ref: '#/components/schemas/LogisticsOrderSummary' },
     warehouseName: nullableString,
     warehouseAddress: nullableString,
-    labelUrl: { type: ['string', 'null'], format: 'uri' },
+    labelUrl: { type: ['string', 'null'], format: 'uri', pattern: '^https://' },
+    labelBase64: nullableString,
     trackingNumber: nullableString
   }
 };
