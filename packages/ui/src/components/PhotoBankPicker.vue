@@ -18,7 +18,7 @@ const props = withDefaults(
     max?: number;
     buttonLabel?: string;
   }>(),
-  { max: 1, buttonLabel: '从图片银行选择' }
+  { max: 1, buttonLabel: '从图库选择' }
 );
 const emit = defineEmits<{ 'update:modelValue': [photos: Photo[]] }>();
 
@@ -161,12 +161,12 @@ function fileToBase64(file: File): Promise<string> {
         <Card class="flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden">
           <header class="flex items-center justify-between border-b p-4">
             <div>
-              <h2 class="font-semibold">国际站图片银行</h2>
+              <h2 class="font-semibold">国际站图库</h2>
               <p class="mt-1 text-xs text-muted-foreground">
                 已选 {{ modelValue.length }}/{{ max }}；素材 ID 会随商品 Schema 保存。
               </p>
             </div>
-            <Button variant="ghost" size="icon" aria-label="关闭图片银行" @click="open = false"
+            <Button variant="ghost" size="icon" aria-label="关闭图库" @click="open = false"
               ><X class="size-4"
             /></Button>
           </header>

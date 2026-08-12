@@ -58,7 +58,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByText('已恢复浏览器中的未提交表单草稿。')).toBeVisible();
   await expect(page.getByRole('button', { name: /发布商品/ })).toBeDisabled();
   await page.getByRole('button', { name: /插入图库图片/ }).click();
-  await expect(page.getByRole('heading', { name: '国际站图片银行' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '国际站图库' })).toBeVisible();
   await expect(page.locator('input[type="file"]')).toBeDisabled();
   await expect(page.getByRole('textbox', { name: '外部图片 URL' })).toBeDisabled();
   await expect(page.getByText(/真实上传尚未完成账号 smoke test/)).toBeVisible();

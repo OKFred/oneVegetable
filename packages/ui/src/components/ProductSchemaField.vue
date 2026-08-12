@@ -56,7 +56,7 @@ const selectedPhotos = computed(() =>
     .filter((value) => value.text && value.attributes.fileId)
     .map((value): Photo => ({
       id: value.attributes.fileId ?? '',
-      name: value.attributes.fileName ?? value.text.split('/').at(-1) ?? '图片银行素材',
+      name: value.attributes.fileName ?? value.text.split('/').at(-1) ?? '图库素材',
       url: value.text,
       groupId: value.attributes.groupId ?? '-1',
       width: positiveNumber(value.attributes.width),

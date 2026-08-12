@@ -304,7 +304,7 @@ function reportImageStatus(event: Event, loaded: boolean): void {
         @error.capture="reportImageStatus($event, false)"
       />
       <p class="border-t px-4 py-2 text-xs text-muted-foreground">
-        输出仅保留安全标签；详情图片必须来自国际站图片银行。
+        输出仅保留安全标签；详情图片必须来自国际站图库。
       </p>
     </template>
   </div>

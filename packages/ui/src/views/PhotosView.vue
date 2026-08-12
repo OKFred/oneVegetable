@@ -25,10 +25,7 @@ const photos = useQuery({
 </script>
 
 <template>
-  <PageHeader
-    title="图片银行"
-    description="管理国际站图片分组与发品素材；上传文件时二进制内容不参与 TOP 签名。"
-  >
+  <PageHeader title="图库" description="管理国际站图片分组与发品素材；上传文件时二进制内容不参与 TOP 签名。">
     <PhotoBankPicker v-model="selectedPhotos" :max="6" button-label="选择或上传素材" />
   </PageHeader>
   <div class="grid gap-5 lg:grid-cols-[230px_1fr]">

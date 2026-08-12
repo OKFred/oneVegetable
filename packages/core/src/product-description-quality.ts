@@ -123,8 +123,8 @@ function appendImageIssues(
       output.push(
         projectIssue(
           'external-image',
-          '详情中包含非国际站图片银行来源的图片',
-          '先将图片转存到国际站图片银行，再从素材选择器插入。'
+          '详情中包含非国际站图库来源的图片',
+          '先将图片转存到国际站图库，再从素材选择器插入。'
         )
       );
     }

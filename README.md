@@ -1,6 +1,6 @@
 # oneVegetable / 一根青菜
 
-Alibaba.com 国际站商品、图片银行和订单运营工具。v2 已迁移到 Vue 3、shadcn-vue、WXT 和 Chrome Extension Manifest V3。
+Alibaba.com 国际站商品、图库（图片银行）和订单运营工具。v2 已迁移到 Vue 3、shadcn-vue、WXT 和 Chrome Extension Manifest V3。
 
 ## 工程结构
 
@@ -51,7 +51,7 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 - 商品发布、草稿与更新使用 Schema 流程；不再把旧 `product.add/update` 作为主路径。
 - 商品页分为商品列表、Schema 发品/编辑、类目与分组、质量与上下架四个工作区。Schema XML 会解析为七类可视化字段，并保留只读 XML 预览与未知节点。
 - Schema 中 `valueTypeRule=html` 或 `superText` 会使用受限 Tiptap 编辑器；仅维护 `productDescType=2` 的普通详情。智能详情和不受支持的旧 HTML 默认原样只读，查看变化并二次确认后才转换。
-- 主图、SKU 图和详情图复用国际站图片银行选择器。Web Mock 支持分组/分页选择、本地上传和外部 URL 转存；真实上传、转存和商品更新在账号 smoke test 前保持禁用。
+- 主图、SKU 图和详情图复用国际站图库选择器。Web Mock 支持分组/分页选择、本地上传和外部 URL 转存；真实上传、转存和商品更新在账号 smoke test 前保持禁用。
 - 详情整改面板区分 `Alibaba Schema`、`官方提示` 和 `项目建议`。只有 Schema/契约硬错误阻止提交；内容长度、结构、SEO、图片质量和官方评分提示均不阻止提交。
 - `openapi/one-vegetable.json` 是运行时唯一契约；`docs/alibaba-product-api-docs.json` 是离线生成输入，包含 25 个目录商品 API 和 2 个文章来源 Schema 发布 API。CI 不访问官方文档站。
 - 每个商品方法都有 `CapabilityRequestMap`、`CapabilityResponseMap` 和 CSP 安全的 standalone validator。非法请求不会出网；响应漂移会保留原始数据、`traceId` 和结构化告警。

@@ -63,7 +63,7 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
   await expect(page.getByRole('button', { name: /保存草稿/ })).toBeEnabled();
 
   await page.getByRole('button', { name: /插入图库图片/ }).click();
-  await expect(page.getByRole('heading', { name: '国际站图片银行' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '国际站图库' })).toBeVisible();
   await page.getByRole('textbox', { name: '外部图片 URL' }).fill('https://images.example.com/detail.jpg');
   await page.getByRole('button', { name: '下载并存入图库' }).click();
   await expect(page.getByRole('textbox', { name: '外部图片 URL' })).toHaveValue('');

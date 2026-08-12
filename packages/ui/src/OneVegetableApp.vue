@@ -29,7 +29,7 @@ interface NavigationItem {
 const items: NavigationItem[] = [
   { id: 'dashboard', label: '总览', icon: Home },
   { id: 'products', label: '商品', icon: Boxes },
-  { id: 'photos', label: '图片银行', icon: Image },
+  { id: 'photos', label: '图库', icon: Image },
   { id: 'orders', label: '订单', icon: ShoppingCart },
   { id: 'capabilities', label: 'API 能力', icon: PlugZap },
   { id: 'settings', label: '设置', icon: Settings }

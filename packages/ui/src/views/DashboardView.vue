@@ -34,7 +34,7 @@ const summary = useQuery({
       </Card>
       <Card class="p-5">
         <div class="flex items-center justify-between">
-          <span class="text-sm text-muted-foreground">图片银行</span><Image class="size-4 text-primary" />
+          <span class="text-sm text-muted-foreground">图库</span><Image class="size-4 text-primary" />
         </div>
         <p class="mt-3 text-3xl font-semibold">{{ summary.data.value?.photoCount ?? 0 }}</p>
         <p class="mt-1 text-xs text-muted-foreground">已归档素材</p>

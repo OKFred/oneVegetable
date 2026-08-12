@@ -142,7 +142,7 @@ function sanitizeImage(element: Element, changes: ProductDescriptionSanitization
   changes.push({
     type: 'removed-url',
     target: 'img.src',
-    detail: src ? `删除非国际站图片银行图片 ${src}` : '删除缺少地址的图片'
+    detail: src ? `删除非国际站图库图片 ${src}` : '删除缺少地址的图片'
   });
   element.remove();
   return false;

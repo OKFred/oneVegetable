@@ -8,9 +8,9 @@
 
 允许的标签是：`p`、`br`、`h2`–`h4`、`strong`、`em`、`u`、`ul`、`ol`、`li`、`blockquote`、`table`、`tbody`、`tr`、`th`、`td`、`a`、`img`、`hr`。链接限 HTTP(S) 并固定安全 `rel`；图片限国际站 PhotoBank CDN。脚本、事件属性、iframe、表单、内联样式、class 和未知属性会被删除。
 
-## 图片银行
+## 图库（图片银行）
 
-`Photo.id` 对应国际站图片银行 `fileId`。Schema `<value>` 会无损保存 `fileId`、`inputValue`、`img` 等属性；主图保存 URL 与 `fileId`，详情图片保存安全 `<img>` 和内部 PhotoBank 关联。
+`Photo.id` 对应国际站图库 `fileId`。Schema `<value>` 会无损保存 `fileId`、`inputValue`、`img` 等属性；主图保存 URL 与 `fileId`，详情图片保存安全 `<img>` 和内部 PhotoBank 关联。
 
 复用选择器支持：
 
@@ -26,7 +26,7 @@ URL 转存只在扩展 service worker 下载。校验覆盖凭据 URL、localhos
 - `官方提示`：`tipRule`、`devTipRule` 与 `product.score.get` 的问题，仅提示。
 - `项目建议`：确定性内容和图片质量检查，仅提示。
 
-项目建议包括空/过短详情、长文缺少标题、超长段落、图片缺少 alt、加载失败、重复、低于 750×750、非图片银行来源、空表格/列表及联系方式或外部引流。提交按钮会显示建议数量，但不会因此禁用。
+项目建议包括空/过短详情、长文缺少标题、超长段落、图片缺少 alt、加载失败、重复、低于 750×750、非图库来源、空表格/列表及联系方式或外部引流。提交按钮会显示建议数量，但不会因此禁用。
 
 ## 无账号验证
 
