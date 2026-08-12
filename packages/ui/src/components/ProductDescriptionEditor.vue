@@ -157,15 +157,15 @@ function insertPhoto(photos: Photo[]): void {
   if (!photo || !editor.value) return;
   editor.value
     .chain()
-    .focus()
-    .setImage({
-      src: photo.url,
-      alt: photo.name.replace(/\.[^.]+$/, '')
-    })
-    .updateAttributes('image', { 'data-photobank-file-id': photo.id })
-    .updateAttributes('image', {
-      'data-photobank-width': String(photo.width),
-      'data-photobank-height': String(photo.height)
+    .insertContent({
+      type: 'image',
+      attrs: {
+        src: photo.url,
+        alt: photo.name.replace(/\.[^.]+$/, ''),
+        'data-photobank-file-id': photo.id,
+        'data-photobank-width': String(photo.width),
+        'data-photobank-height': String(photo.height)
+      }
     })
     .run();
 }

@@ -42,7 +42,24 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByText(/真实写能力尚未通过账号 smoke test/)).toBeVisible();
   await expect(page.getByRole('button', { name: '调用能力' })).toBeDisabled();
 
+  await page.evaluate(() => {
+    localStorage.setItem(
+      'one-vegetable-product-schema-draft',
+      JSON.stringify({
+        categoryId: '100009999',
+        language: 'en_US',
+        market: 'wholesale',
+        xml: '<itemSchema><field id="productDescType" name="详情类型" type="label"><value>2</value></field><field id="superText" name="商品详情" type="input"><rules><rule name="valueTypeRule" value="html"/></rules><value>&lt;p&gt;Extension draft detail&lt;/p&gt;</value></field></itemSchema>'
+      })
+    );
+  });
   await page.getByRole('button', { name: '商品' }).click();
   await page.getByRole('tab', { name: 'Schema 发品/编辑' }).click();
-  await expect(page.getByRole('button', { name: '发布商品' })).toHaveCount(0);
+  await expect(page.getByText('已恢复浏览器中的未提交表单草稿。')).toBeVisible();
+  await expect(page.getByRole('button', { name: /发布商品/ })).toBeDisabled();
+  await page.getByRole('button', { name: /插入图库图片/ }).click();
+  await expect(page.getByRole('heading', { name: '国际站图片银行' })).toBeVisible();
+  await expect(page.locator('input[type="file"]')).toBeDisabled();
+  await expect(page.getByRole('textbox', { name: '外部图片 URL' })).toBeDisabled();
+  await expect(page.getByText(/真实上传尚未完成账号 smoke test/)).toBeVisible();
 });

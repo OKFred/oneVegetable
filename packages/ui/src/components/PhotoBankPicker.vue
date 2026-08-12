@@ -202,7 +202,12 @@ function fileToBase64(file: File): Promise<string> {
               </p>
               <div class="mt-4 space-y-2 border-t pt-4">
                 <p class="text-xs font-medium">转存外部图片</p>
-                <Input v-model="transferUrl" placeholder="https://…" :disabled="!uploadsEnabled" />
+                <Input
+                  v-model="transferUrl"
+                  aria-label="外部图片 URL"
+                  placeholder="https://…"
+                  :disabled="!uploadsEnabled"
+                />
                 <Button
                   class="w-full"
                   variant="outline"
