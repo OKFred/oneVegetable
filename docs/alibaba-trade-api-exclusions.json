@@ -1,0 +1,12 @@
+{
+  "checkedAt": "2026-08-13",
+  "count": 1,
+  "exclusions": [
+    {
+      "method": "alibaba.seller.order.get",
+      "reason": "jushita-only",
+      "docId": 41148,
+      "labels": ["￥开放平台免费API", "必须用户授权", "聚石塔内调用"]
+    }
+  ]
+}

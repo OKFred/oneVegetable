@@ -26,6 +26,7 @@
     "audit:apis:check": "tsx scripts/audit-alibaba-api.ts --check",
     "snapshot:product-docs": "tsx scripts/snapshot-product-docs.ts",
     "snapshot:rfq-docs": "tsx scripts/snapshot-rfq-docs.ts",
+    "snapshot:trade-docs": "tsx scripts/snapshot-trade-docs.ts",
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "eslint .",
     "format": "prettier --write .",

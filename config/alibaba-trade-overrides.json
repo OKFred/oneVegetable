@@ -1,0 +1,20 @@
+{
+  "alibaba.icbu.ecology.write": {
+    "risk": "mutation"
+  },
+  "alibaba.icbu.snsoft.account.bill.sync": {
+    "risk": "mutation"
+  },
+  "alibaba.icbu.snsoft.customer.sync": {
+    "risk": "mutation"
+  },
+  "alibaba.icbu.snsoft.sale.order.detail.sync": {
+    "risk": "mutation"
+  },
+  "alibaba.icbu.snsoft.shipment.finalaccount.sync": {
+    "risk": "mutation"
+  },
+  "alibaba.seller.auth.extend": {
+    "risk": "mutation"
+  }
+}

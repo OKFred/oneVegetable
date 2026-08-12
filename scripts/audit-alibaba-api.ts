@@ -75,6 +75,12 @@ const root = resolve(import.meta.dirname, '..');
 const productOverrides = JSON.parse(
   await readFile(resolve(root, 'config/alibaba-product-overrides.json'), 'utf8')
 ) as Record<string, ProductOverride>;
+const tradeOverrides = JSON.parse(
+  await readFile(resolve(root, 'config/alibaba-trade-overrides.json'), 'utf8')
+) as Record<string, ProductOverride>;
+const tradeCategoryMethods = new Set(
+  JSON.parse(await readFile(resolve(root, 'config/alibaba-trade-category.json'), 'utf8')) as string[]
+);
 const checkedAt = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Shanghai',
   year: 'numeric',
@@ -121,6 +127,7 @@ function asDocumentResponse(value: unknown): DocumentResponse {
 }
 
 function resolveDomain(method: string): string {
+  if (tradeCategoryMethods.has(method)) return 'trade';
   if (/photobank|photo/.test(method)) return 'photo';
   if (/rfq|quotation|alibaba\.icbu\.annex\.upload/.test(method)) return 'rfq';
   if (/logistics|shipping|onetouch/.test(method)) return 'logistics';
@@ -139,11 +146,16 @@ function resolveAuth(labels: string[]): AuditEntry['auth'] {
 }
 
 function isRestricted(method: string): boolean {
-  return /\.(snsoft|xiaoman|wetrade)\./.test(method) || method.includes('ecology.write');
+  return (
+    /\.(snsoft|xiaoman|wetrade)\./.test(method) ||
+    method.includes('ecology.write') ||
+    method === 'alibaba.icbu.check.overseas.admittance' ||
+    method === 'alibaba.seller.auth.extend'
+  );
 }
 
 function resolveRisk(method: string): AuditEntry['risk'] {
-  const explicit = productOverrides[method]?.risk;
+  const explicit = productOverrides[method]?.risk ?? tradeOverrides[method]?.risk;
   if (explicit) return explicit;
   return /\.(add|create|delete|modify|operate|post|save|update|upload)(\.|$)/.test(method)
     ? 'mutation'
@@ -208,9 +220,13 @@ if (process.argv.includes('--check')) {
     const restricted = isRestricted(method);
     const domain = resolveDomain(method);
     const risk = resolveRisk(method);
-    const enabled = !restricted && (ENABLED_METHODS.has(method) || domain === 'product' || domain === 'rfq');
-    const schemaName = domain === 'product' || domain === 'rfq' ? capabilitySchemaName(method) : null;
-    const schemaPrefix = domain === 'rfq' ? 'AlibabaRfq' : 'AlibabaProduct';
+    const enabled =
+      !restricted &&
+      (ENABLED_METHODS.has(method) || domain === 'product' || domain === 'rfq' || domain === 'trade');
+    const schemaName =
+      domain === 'product' || domain === 'rfq' || domain === 'trade' ? capabilitySchemaName(method) : null;
+    const schemaPrefix =
+      domain === 'rfq' ? 'AlibabaRfq' : domain === 'trade' ? 'AlibabaTrade' : 'AlibabaProduct';
     return {
       method,
       domain,
@@ -224,7 +240,7 @@ if (process.argv.includes('--check')) {
       checkedAt,
       updatedAt: document.gmtModified ? new Date(document.gmtModified).toISOString().slice(0, 10) : null,
       source: 'catalog',
-      lifecycle: productOverrides[method]?.lifecycle ?? 'active',
+      lifecycle: productOverrides[method]?.lifecycle ?? tradeOverrides[method]?.lifecycle ?? 'active',
       risk,
       verification: 'documented',
       realCallEnabled: enabled && risk === 'read',
