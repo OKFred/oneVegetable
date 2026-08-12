@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import { Check, FolderOpen, ImagePlus, LoaderCircle, Upload, X } from '@lucide/vue';
+import { Check, Download, FolderOpen, ImagePlus, LoaderCircle, Upload, X } from '@lucide/vue';
 
 import type { Photo } from '@one-vegetable/core';
 
@@ -9,6 +9,7 @@ import QueryState from './QueryState.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
+import Input from './ui/Input.vue';
 import { useServices } from '../lib/services';
 
 const props = withDefaults(
@@ -28,6 +29,7 @@ const selectedGroup = ref('-1');
 const page = ref(1);
 const pageSize = 12;
 const uploadError = ref('');
+const transferUrl = ref('');
 const groups = useQuery({
   queryKey: ['photo-groups'],
   queryFn: () => gateway.request('listPhotoGroups', undefined),
@@ -56,6 +58,22 @@ const upload = useMutation({
     }),
   onSuccess: async (photo) => {
     choose(photo);
+    uploadError.value = '';
+    await queryClient.invalidateQueries({ queryKey: ['photos'] });
+  },
+  onError: (error: Error) => {
+    uploadError.value = error.message;
+  }
+});
+const transfer = useMutation({
+  mutationFn: () =>
+    gateway.request('transferPhotoFromUrl', {
+      url: transferUrl.value,
+      groupId: selectedGroup.value
+    }),
+  onSuccess: async (photo) => {
+    choose(photo);
+    transferUrl.value = '';
     uploadError.value = '';
     await queryClient.invalidateQueries({ queryKey: ['photos'] });
   },
@@ -182,6 +200,21 @@ function fileToBase64(file: File): Promise<string> {
               <p v-if="!uploadsEnabled" class="mt-2 text-xs text-amber-700">
                 真实上传尚未完成账号 smoke test。
               </p>
+              <div class="mt-4 space-y-2 border-t pt-4">
+                <p class="text-xs font-medium">转存外部图片</p>
+                <Input v-model="transferUrl" placeholder="https://…" :disabled="!uploadsEnabled" />
+                <Button
+                  class="w-full"
+                  variant="outline"
+                  size="sm"
+                  :disabled="!uploadsEnabled || !transferUrl || transfer.isPending.value"
+                  @click="transfer.mutate()"
+                >
+                  <LoaderCircle v-if="transfer.isPending.value" class="size-4 animate-spin" />
+                  <Download v-else class="size-4" />下载并存入图库
+                </Button>
+                <p class="text-xs text-muted-foreground">仅公共 HTTP(S) 图片，最大 20 MiB。</p>
+              </div>
               <p v-if="uploadError" class="mt-2 text-xs text-destructive">{{ uploadError }}</p>
             </aside>
             <main class="min-h-0 overflow-auto p-4">

@@ -3,6 +3,7 @@ import { browser } from 'wxt/browser';
 import {
   ALIBABA_GATEWAY,
   AlibabaClient,
+  downloadPhotoForUpload,
   findCapability,
   GatewayException,
   getCapabilityDefinition,
@@ -199,6 +200,26 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
         width: readNumber(root, ['width']) ?? 1,
         height: readNumber(root, ['height']) ?? 1,
         fileSize: readNumber(root, ['file_size']) ?? 0,
+        referenceCount: 0,
+        modifiedAt: new Date().toISOString()
+      };
+    }
+    case 'transferPhotoFromUrl': {
+      const downloaded = await downloadPhotoForUpload(payload as RequestOf<'transferPhotoFromUrl'>);
+      const call = await client.call('alibaba.icbu.photobank.upload', {
+        image_bytes: downloaded.file,
+        file_name: downloaded.fileName,
+        group_id: downloaded.groupId ?? '-1'
+      });
+      const root = unwrap(call.data, call.method);
+      return {
+        id: readString(root, ['file_id', 'id', 'photo_id']) ?? '',
+        name: downloaded.fileName,
+        url: normalizeUrl(readString(root, ['photobank_url', 'url'])),
+        groupId: downloaded.groupId ?? '-1',
+        width: readNumber(root, ['width']) ?? 1,
+        height: readNumber(root, ['height']) ?? 1,
+        fileSize: downloaded.byteLength,
         referenceCount: 0,
         modifiedAt: new Date().toISOString()
       };
