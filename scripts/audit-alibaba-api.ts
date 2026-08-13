@@ -86,6 +86,9 @@ const logisticsOverrides = JSON.parse(
 const insightsOverrides = JSON.parse(
   await readFile(resolve(root, 'config/alibaba-insights-overrides.json'), 'utf8')
 ) as Record<string, ProductOverride>;
+const photoOverrides = JSON.parse(
+  await readFile(resolve(root, 'config/alibaba-photo-overrides.json'), 'utf8')
+) as Record<string, ProductOverride>;
 const tradeCategoryMethods = new Set(
   JSON.parse(await readFile(resolve(root, 'config/alibaba-trade-category.json'), 'utf8')) as string[]
 );
@@ -173,7 +176,8 @@ function resolveRisk(method: string): AuditEntry['risk'] {
     productOverrides[method]?.risk ??
     tradeOverrides[method]?.risk ??
     logisticsOverrides[method]?.risk ??
-    insightsOverrides[method]?.risk;
+    insightsOverrides[method]?.risk ??
+    photoOverrides[method]?.risk;
   if (explicit) return explicit;
   return /\.(add|create|delete|modify|operate|post|save|update|upload)(\.|$)/.test(method)
     ? 'mutation'
@@ -243,6 +247,7 @@ if (process.argv.includes('--check')) {
       domain === 'rfq' ||
       domain === 'trade' ||
       domain === 'logistics' ||
+      domain === 'photo' ||
       domain === 'data' ||
       domain === 'buyer';
     const enabled = !restricted && (ENABLED_METHODS.has(method) || typedDomain);
@@ -254,9 +259,11 @@ if (process.argv.includes('--check')) {
           ? 'AlibabaTrade'
           : domain === 'logistics'
             ? 'AlibabaLogistics'
-            : domain === 'data' || domain === 'buyer'
-              ? 'AlibabaInsights'
-              : 'AlibabaProduct';
+            : domain === 'photo'
+              ? 'AlibabaPhoto'
+              : domain === 'data' || domain === 'buyer'
+                ? 'AlibabaInsights'
+                : 'AlibabaProduct';
     return {
       method,
       domain,

@@ -319,8 +319,8 @@
       "risk": "read",
       "verification": "documented",
       "realCallEnabled": true,
-      "requestSchema": null,
-      "responseSchema": null
+      "requestSchema": "AlibabaPhotoAlibabaIcbuPhotobankGroupListRequest",
+      "responseSchema": "AlibabaPhotoAlibabaIcbuPhotobankGroupListResponse"
     },
     {
       "method": "alibaba.icbu.photobank.group.operate",
@@ -339,8 +339,8 @@
       "risk": "mutation",
       "verification": "documented",
       "realCallEnabled": false,
-      "requestSchema": null,
-      "responseSchema": null
+      "requestSchema": "AlibabaPhotoAlibabaIcbuPhotobankGroupOperateRequest",
+      "responseSchema": "AlibabaPhotoAlibabaIcbuPhotobankGroupOperateResponse"
     },
     {
       "method": "alibaba.icbu.photobank.list",
@@ -359,8 +359,8 @@
       "risk": "read",
       "verification": "documented",
       "realCallEnabled": true,
-      "requestSchema": null,
-      "responseSchema": null
+      "requestSchema": "AlibabaPhotoAlibabaIcbuPhotobankListRequest",
+      "responseSchema": "AlibabaPhotoAlibabaIcbuPhotobankListResponse"
     },
     {
       "method": "alibaba.icbu.photobank.upload",
@@ -379,8 +379,8 @@
       "risk": "mutation",
       "verification": "documented",
       "realCallEnabled": false,
-      "requestSchema": null,
-      "responseSchema": null
+      "requestSchema": "AlibabaPhotoAlibabaIcbuPhotobankUploadRequest",
+      "responseSchema": "AlibabaPhotoAlibabaIcbuPhotobankUploadResponse"
     },
     {
       "method": "alibaba.icbu.product.add",

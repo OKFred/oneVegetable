@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-08-13",
+  "count": 1,
+  "exclusions": [
+    {
+      "method": "alibaba.icbu.file.urlposting.upload",
+      "reason": "returns-url-without-photobank-file-id",
+      "docId": 70213
+    }
+  ]
+}

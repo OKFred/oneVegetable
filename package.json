@@ -32,6 +32,7 @@
     "snapshot:trade-docs": "tsx scripts/snapshot-trade-docs.ts",
     "snapshot:logistics-docs": "tsx scripts/snapshot-logistics-docs.ts",
     "snapshot:insights-docs": "tsx scripts/snapshot-insights-docs.ts",
+    "snapshot:photo-docs": "tsx scripts/snapshot-photo-docs.ts",
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "eslint .",
     "format": "prettier --write .",

@@ -1,0 +1,95 @@
+{
+  "alibaba.icbu.photobank.group.list": {
+    "featureArea": "groups",
+    "responseParams": [
+      {
+        "name": "groups",
+        "type": "Groups",
+        "required": false,
+        "description": "图库分组容器",
+        "subParams": [
+          {
+            "name": "photo_album_group",
+            "type": "PhotoAlbumGroup[]",
+            "required": false,
+            "description": "图库分组",
+            "subParams": [
+              { "name": "id", "type": "Number", "required": true, "description": "分组 ID" },
+              { "name": "level1", "type": "Number", "required": false, "description": "一级分组 ID" },
+              { "name": "level2", "type": "Number", "required": false, "description": "二级分组 ID" },
+              { "name": "level3", "type": "Number", "required": false, "description": "三级分组 ID" },
+              { "name": "name", "type": "String", "required": true, "description": "分组名称" }
+            ]
+          }
+        ]
+      }
+    ],
+    "responseExample": {
+      "groups": {
+        "photo_album_group": [{ "id": 17590, "level1": 17590, "level2": 0, "level3": 0, "name": "商品主图" }]
+      }
+    }
+  },
+  "alibaba.icbu.photobank.group.operate": {
+    "featureArea": "groups",
+    "risk": "mutation",
+    "requestExample": {
+      "photo_group_operation_request": {
+        "group_name": "详情图",
+        "group_id": 17590,
+        "operation": "add"
+      }
+    },
+    "responseExample": {
+      "photo_group_result": {
+        "photobank_group": {
+          "id": 312577503,
+          "level1": 17590,
+          "level2": 312577503,
+          "level3": 0,
+          "name": "详情图"
+        }
+      }
+    }
+  },
+  "alibaba.icbu.photobank.list": {
+    "featureArea": "assets",
+    "responseExample": {
+      "trace_id": "mock-photo-trace",
+      "pagination_query_list": {
+        "list": [
+          {
+            "url": "https://sc04.alicdn.com/kf/mock-solar-station.jpg",
+            "id": "ph_001",
+            "file_name": "solar-station.jpg",
+            "gmt_modified": "2026-08-12T03:20:00.000Z",
+            "owner_member_display_name": "Mock Seller",
+            "file_size": 245760,
+            "reference_count": 3,
+            "group_id": 17590,
+            "display_name": "Portable solar station"
+          }
+        ],
+        "total": 1
+      },
+      "errorcode": "",
+      "errormsg": ""
+    }
+  },
+  "alibaba.icbu.photobank.upload": {
+    "featureArea": "assets",
+    "risk": "mutation",
+    "requestExample": {
+      "file_name": "solar-station.jpg",
+      "group_id": "17590",
+      "image_bytes": "aGVsbG8="
+    },
+    "responseExample": {
+      "upload_image_response": {
+        "file_name": "solar-station.jpg",
+        "photobank_url": "https://sc04.alicdn.com/kf/mock-solar-station.jpg",
+        "file_id": 73826382
+      }
+    }
+  }
+}
