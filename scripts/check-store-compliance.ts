@@ -34,6 +34,7 @@ const manifest = await readJson<Manifest>(resolve(output, 'manifest.json'));
 const listing = await readJson<Listing>(resolve(root, 'store-listing/listing.json'));
 const privacyHtml = await readFile(resolve(output, 'privacy.html'), 'utf8');
 const privacyPolicy = await readFile(resolve(root, 'docs/privacy-policy.md'), 'utf8');
+const credentialVaultSource = await readFile(resolve(root, 'packages/core/src/credential-vault.ts'), 'utf8');
 const storeIcon = await readFile(resolve(root, 'store-listing/assets/icon-128.png'));
 const screenshotDirectory = resolve(root, 'store-listing/assets/screenshots');
 const screenshots = (await readdir(screenshotDirectory))
@@ -94,8 +95,27 @@ for (const [file, content] of [
   ['privacy.html', privacyHtml],
   ['docs/privacy-policy.md', privacyPolicy]
 ] as const) {
-  for (const phrase of ['chrome.storage.local', 'chrome.storage.session', 'Limited Use', '真实写']) {
+  for (const phrase of [
+    'chrome.storage.local',
+    'chrome.storage.session',
+    'Limited Use',
+    'PBKDF2-HMAC-SHA256',
+    'AES-256-GCM',
+    '口令不保存',
+    '真实写'
+  ]) {
     if (!content.includes(phrase)) errors.push(`${file} is missing disclosure phrase: ${phrase}`);
+  }
+}
+
+for (const phrase of [
+  'CREDENTIAL_VAULT_ITERATIONS = 600_000',
+  "format: 'PBKDF2-HMAC-SHA256/AES-256-GCM'",
+  "name: 'AES-GCM'",
+  'KEY_EXTRACTABLE = false'
+]) {
+  if (!credentialVaultSource.includes(phrase)) {
+    errors.push(`credential vault source is missing reviewed security setting: ${phrase}`);
   }
 }
 

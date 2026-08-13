@@ -521,8 +521,8 @@ function formatBytes(bytes: number): string {
       <div>
         <p class="font-medium">安全边界</p>
         <p class="mt-1 text-sm leading-6">
-          浏览器扩展无法从根本上隐藏 App Secret；当前实现减少页面暴露面，并为未来迁移到 BFF 保留同一
-          GatewayClient 契约。
+          加密可降低本地静态存储泄露风险，但已解锁或被恶意扩展控制的浏览器仍可能暴露 App
+          Secret；高安全场景应迁移到用户控制的 BFF。
         </p>
       </div></Card
     >

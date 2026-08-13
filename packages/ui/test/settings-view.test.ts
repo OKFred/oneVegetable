@@ -8,7 +8,8 @@ import {
   ALIBABA_GATEWAY,
   MockGatewayClient,
   type CredentialVaultState,
-  type CredentialVaultStatus
+  type CredentialVaultStatus,
+  type GatewaySettings
 } from '@one-vegetable/core';
 
 import SettingsView from '../src/views/SettingsView.vue';
@@ -18,9 +19,11 @@ const anchorClick = vi.fn();
 const createObjectUrl = vi.fn(() => 'blob:diagnostics');
 const revokeObjectUrl = vi.fn();
 const clearAllLocalData = vi.fn(() => Promise.resolve());
-const unlockVault = vi.fn(() => Promise.resolve(vaultStatus('unlocked')));
-const migrateVault = vi.fn(() => Promise.resolve(vaultStatus('unlocked')));
-const createVault = vi.fn(() => Promise.resolve(vaultStatus('unlocked')));
+const unlockVault = vi.fn((_passphrase: string) => Promise.resolve(vaultStatus('unlocked')));
+const migrateVault = vi.fn((_passphrase: string) => Promise.resolve(vaultStatus('unlocked')));
+const createVault = vi.fn((_passphrase: string, _settings: GatewaySettings) =>
+  Promise.resolve(vaultStatus('unlocked'))
+);
 
 function mountView(mode: 'mock' | 'extension' = 'mock', initialVaultState?: CredentialVaultState) {
   let grantedHosts = ['https://images.example.com/*'];
@@ -56,7 +59,7 @@ function mountView(mode: 'mock' | 'extension' = 'mock', initialVaultState?: Cred
               categories: [
                 {
                   id: 'credentials',
-                  label: '开放平台凭证与网关设置',
+                  label: '加密凭证保险库与网关设置',
                   storage: 'chrome.storage.local',
                   itemCount: 1,
                   approximateBytes: 512,
@@ -159,7 +162,7 @@ describe('SettingsView diagnostics', () => {
     const wrapper = mountView('extension');
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('本地数据与隐私');
-      expect(wrapper.text()).toContain('开放平台凭证与网关设置');
+      expect(wrapper.text()).toContain('加密凭证保险库与网关设置');
     });
 
     const clearButton = wrapper.findAll('button').find((candidate) => candidate.text().includes('彻底清除'));

@@ -8,6 +8,7 @@ export const CREDENTIAL_VAULT_MAX_PASSPHRASE_BYTES = 256;
 
 const SALT_BYTES = 16;
 const IV_BYTES = 12;
+const KEY_EXTRACTABLE = false;
 const ADDITIONAL_DATA = new TextEncoder().encode('one-vegetable:v2:gateway-settings');
 
 export interface CredentialVaultRecord {
@@ -159,7 +160,7 @@ async function deriveKey(
     { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
     material,
     { name: 'AES-GCM', length: 256 },
-    false,
+    KEY_EXTRACTABLE,
     ['encrypt', 'decrypt']
   );
 }

@@ -11,7 +11,7 @@
     {
       "permission": "storage",
       "required": true,
-      "justification": "Stores user-entered gateway credentials and settings locally, and keeps redacted diagnostics for the current browser session."
+      "justification": "Stores user-entered gateway credentials encrypted with a user passphrase, local settings and onboarding state, and redacted diagnostics for the current browser session. The passphrase is never stored."
     },
     {
       "permission": "https://eco.taobao.com/*",

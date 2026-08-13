@@ -118,7 +118,7 @@ const localData: LocalDataRepository = {
     const categories: LocalDataCategory[] = [
       {
         id: 'credentials',
-        label: '开放平台凭证与网关设置',
+        label: '加密凭证保险库与网关设置',
         storage: 'chrome.storage.local',
         itemCount: SETTINGS_STORAGE_KEY in local ? 1 : 0,
         approximateBytes: approximateStorageBytes(local[SETTINGS_STORAGE_KEY]),

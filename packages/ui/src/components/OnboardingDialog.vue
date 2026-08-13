@@ -61,10 +61,10 @@ async function finish(): Promise<void> {
       <div class="mt-5 grid gap-3 sm:grid-cols-2">
         <div class="rounded-lg border p-4">
           <KeyRound class="size-5 text-emerald-700" />
-          <p class="mt-2 font-medium">凭证只保存在本机</p>
+          <p class="mt-2 font-medium">凭证在本机加密保存</p>
           <p class="mt-1 text-xs leading-5 text-muted-foreground">
-            App Key、App Secret 和 Access Token 存入
-            chrome.storage.local，仅扩展后台读取；浏览器扩展无法从根本上隐藏 App Secret。
+            App Key、App Secret 和 Access Token 使用用户口令加密后存入
+            chrome.storage.local；口令不保存，扩展后台重启后需重新解锁。
           </p>
         </div>
         <div class="rounded-lg border p-4">

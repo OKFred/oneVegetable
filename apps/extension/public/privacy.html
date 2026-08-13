@@ -61,8 +61,14 @@
         </p>
         <h2>收集与存储</h2>
         <p>
-          扩展不运行自有分析或广告服务。用户主动填写的 App Key、App Secret、Access Token 和网关设置保存在本机
-          <code>chrome.storage.local</code>；商品与 RFQ 草稿保存在扩展自身的 <code>localStorage</code>。
+          扩展不运行自有分析或广告服务。用户主动填写的 App Key、App Secret、Access Token 和网关设置使用
+          PBKDF2-HMAC-SHA256（600,000 次）派生的 AES-256-GCM 密钥加密后保存在本机
+          <code>chrome.storage.local</code>；用户口令不保存，扩展 service worker 重启后会自动锁定。商品与 RFQ
+          草稿保存在扩展自身的 <code>localStorage</code>。
+        </p>
+        <p>
+          遗忘保险库口令时无法恢复凭证，用户只能清除扩展本地数据后重新配置。旧版明文凭证不会再用于真实请求，必须先由用户设置口令并在
+          service worker 内原位加密迁移。
         </p>
         <p>
           最近 100 条脱敏诊断保存在 <code>chrome.storage.session</code>，只包含操作名、耗时、错误码和可用的
@@ -85,7 +91,12 @@
         </p>
         <h2>删除与控制</h2>
         <p>
-          设置页可查看不含具体值的数据清单、撤销额外主机权限并彻底清除扩展本地数据。卸载扩展也会删除其本地存储。
+          设置页可锁定保险库、更换口令、查看不含具体值的数据清单、撤销额外主机权限并彻底清除扩展本地数据。卸载扩展也会删除其本地存储。
+        </p>
+        <h2>安全限制</h2>
+        <p>
+          本地加密降低静态存储被读取时的泄露风险，但无法保护已经解锁的运行时、被恶意软件控制的浏览器或用户设备。高安全场景应使用用户控制的
+          BFF 保存和使用 App Secret。
         </p>
         <h2>当前验证边界</h2>
         <p>
