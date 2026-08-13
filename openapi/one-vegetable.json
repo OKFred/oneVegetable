@@ -12,6 +12,7 @@
   "paths": {
     "/healthz": {
       "get": {
+        "summary": "Check whether the API process is alive",
         "operationId": "healthCheck",
         "responses": {
           "200": {
@@ -24,6 +25,7 @@
     },
     "/readyz": {
       "get": {
+        "summary": "Check database and migration readiness",
         "operationId": "readinessCheck",
         "responses": {
           "200": {
@@ -50,6 +52,7 @@
     },
     "/meta/get": {
       "post": {
+        "summary": "Get runtime and environment metadata",
         "operationId": "getBackendMeta",
         "requestBody": {
           "required": true,
@@ -75,6 +78,7 @@
     },
     "/operations/call": {
       "post": {
+        "summary": "Call a typed oneVegetable operation",
         "operationId": "callOperation",
         "requestBody": {
           "required": true,

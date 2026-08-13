@@ -6,6 +6,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Check whether the API process is alive */
         get: operations["healthCheck"];
         put?: never;
         post?: never;
@@ -22,6 +23,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Check database and migration readiness */
         get: operations["readinessCheck"];
         put?: never;
         post?: never;
@@ -40,6 +42,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Get runtime and environment metadata */
         post: operations["getBackendMeta"];
         delete?: never;
         options?: never;
@@ -56,6 +59,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Call a typed oneVegetable operation */
         post: operations["callOperation"];
         delete?: never;
         options?: never;

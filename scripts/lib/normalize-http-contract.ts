@@ -121,6 +121,7 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
   document.paths = {
     '/healthz': {
       get: {
+        summary: 'Check whether the API process is alive',
         operationId: 'healthCheck',
         responses: {
           '200': {
@@ -137,6 +138,7 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     },
     '/readyz': {
       get: {
+        summary: 'Check database and migration readiness',
         operationId: 'readinessCheck',
         responses: {
           '200': {
@@ -154,6 +156,7 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     },
     '/meta/get': {
       post: {
+        summary: 'Get runtime and environment metadata',
         operationId: 'getBackendMeta',
         requestBody: requestBody('RequestEnvelope'),
         responses: { '200': envelopeResponse('Backend metadata') }
@@ -161,6 +164,7 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     },
     '/operations/call': {
       post: {
+        summary: 'Call a typed oneVegetable operation',
         operationId: 'callOperation',
         requestBody: requestBody('OperationCallRequest'),
         responses: {
