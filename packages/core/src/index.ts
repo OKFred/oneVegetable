@@ -9,6 +9,7 @@ export * from './product-schema';
 export * from './rfq-adapter';
 export * from './trade-adapter';
 export * from './logistics-adapter';
+export * from './insights-adapter';
 export * from './signing';
 export * from './types';
 export * from './validation';

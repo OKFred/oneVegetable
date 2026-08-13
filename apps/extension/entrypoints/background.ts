@@ -7,6 +7,7 @@ import {
   findCapability,
   GatewayException,
   getCapabilityDefinition,
+  InsightsAdapter,
   listCapabilities,
   LogisticsAdapter,
   normalizeGatewayError,
@@ -77,6 +78,9 @@ const OPERATIONS = new Set<OperationId>([
   'getLogisticsOrder',
   'listShippingTemplates',
   'createLogisticsOrder',
+  'getInsightsSupplierRank',
+  'listInsightsSuppliers',
+  'listInsightsSupplierProducts',
   'callCapability'
 ]);
 
@@ -156,6 +160,7 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
   const rfqs = new RfqAdapter(client);
   const trades = new TradeAdapter(client);
   const logistics = new LogisticsAdapter(client);
+  const insights = new InsightsAdapter(client);
   const request = asRecord(payload);
 
   switch (operation) {
@@ -267,6 +272,12 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
       return logistics.listShippingTemplates();
     case 'createLogisticsOrder':
       return logistics.createOrder(payload as RequestOf<'createLogisticsOrder'>);
+    case 'getInsightsSupplierRank':
+      return insights.getSupplierRank();
+    case 'listInsightsSuppliers':
+      return insights.listSuppliers(payload as RequestOf<'listInsightsSuppliers'>);
+    case 'listInsightsSupplierProducts':
+      return insights.listSupplierProducts(payload as RequestOf<'listInsightsSupplierProducts'>);
     case 'listPhotoGroups': {
       const call = await client.call('alibaba.icbu.photobank.group.list', {});
       return findRecords(unwrap(call.data, call.method), ['groups', 'photo_album_group']).map((item) => ({
