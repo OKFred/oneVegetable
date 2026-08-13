@@ -6,6 +6,7 @@ import { drizzle } from 'drizzle-orm/sqlite-proxy';
 
 import { CURRENT_SCHEMA_VERSION, schema } from './schema';
 
+import type { SqlExecutor, SqlPrimitive } from './sql-executor';
 import type { SQLInputValue } from 'node:sqlite';
 import type { SqliteRemoteDatabase } from 'drizzle-orm/sqlite-proxy';
 
@@ -13,6 +14,7 @@ export interface NodeDatabaseHandle {
   kind: 'sqlite';
   db: SqliteRemoteDatabase<typeof schema>;
   connection: DatabaseSync;
+  executor: SqlExecutor;
 }
 
 export function openNodeDatabase(path: string): NodeDatabaseHandle {
@@ -35,12 +37,23 @@ export function openNodeDatabase(path: string): NodeDatabaseHandle {
     },
     { schema }
   );
-  return { kind: 'sqlite', db, connection };
+  const executor: SqlExecutor = {
+    query(sql, parameters = []) {
+      return Promise.resolve(connection.prepare(sql).all(...parameters.map(toSqlInputValue)));
+    },
+    execute(sql, parameters = []) {
+      const result = connection.prepare(sql).run(...parameters.map(toSqlInputValue));
+      return Promise.resolve({ changes: Number(result.changes) });
+    }
+  };
+  return { kind: 'sqlite', db, connection, executor };
 }
 
 export function applyNodeMigrations(handle: NodeDatabaseHandle): void {
-  const migration = readFileSync(new URL('../../drizzle/0001_foundation.sql', import.meta.url), 'utf8');
-  handle.connection.exec(migration);
+  for (const name of ['0001_foundation.sql', '0002_auth_abac_audit.sql']) {
+    const migration = readFileSync(new URL(`../../drizzle/${name}`, import.meta.url), 'utf8');
+    handle.connection.exec(migration);
+  }
 }
 
 export function isNodeDatabaseReady(handle: NodeDatabaseHandle): boolean {
@@ -54,7 +67,7 @@ export function isNodeDatabaseReady(handle: NodeDatabaseHandle): boolean {
   }
 }
 
-function toSqlInputValue(value: unknown): SQLInputValue {
+function toSqlInputValue(value: SqlPrimitive): SQLInputValue {
   if (
     value === null ||
     typeof value === 'string' ||
