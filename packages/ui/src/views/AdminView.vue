@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { RefreshCw, ShieldCheck, UserPlus } from '@lucide/vue';
+import { RefreshCw, ShieldCheck, Trash2, UserPlus } from '@lucide/vue';
 
 import { API_CAPABILITIES } from '@one-vegetable/core';
-import type { ControlAuditEvent, ControlSystemInfo, ControlUser, ControlUserRole } from '@one-vegetable/core';
+import type {
+  ControlAuditEvent,
+  ControlRequestEvent,
+  ControlSystemInfo,
+  ControlUser,
+  ControlUserRole
+} from '@one-vegetable/core';
 
 import Card from '../components/ui/Card.vue';
 import Button from '../components/ui/Button.vue';
@@ -14,6 +20,7 @@ import { useServices } from '../lib/services';
 const { control, mode } = useServices();
 const users = ref<ControlUser[]>([]);
 const auditEvents = ref<ControlAuditEvent[]>([]);
+const requestEvents = ref<ControlRequestEvent[]>([]);
 const system = ref<ControlSystemInfo | null>(null);
 const policy = ref<Record<string, unknown> | null>(null);
 const error = ref('');
@@ -24,6 +31,7 @@ const password = ref('');
 const role = ref<ControlUserRole>('user');
 const remark = ref('');
 const requestIdFilter = ref('');
+const purgeArmed = ref(false);
 const remarkDrafts = ref<Record<string, string>>({});
 
 const capabilitySummary = computed(() => ({
@@ -42,10 +50,14 @@ async function refresh(): Promise<void> {
   loading.value = true;
   error.value = '';
   try {
-    const [userPage, auditPage, systemInfo, policyInfo] = await Promise.all([
+    const requestFilter = requestIdFilter.value.trim();
+    const [userPage, auditPage, requestEventPage, systemInfo, policyInfo] = await Promise.all([
       control.listUsers(),
       control.listAudit({
-        ...(requestIdFilter.value ? { requestIdFilter: requestIdFilter.value } : {})
+        ...(requestFilter ? { requestIdFilter: requestFilter } : {})
+      }),
+      control.listRequestEvents({
+        ...(requestFilter ? { requestIdFilter: requestFilter } : {})
       }),
       control.system(),
       control.policySummary()
@@ -53,12 +65,31 @@ async function refresh(): Promise<void> {
     users.value = userPage.items;
     remarkDrafts.value = Object.fromEntries(userPage.items.map((user) => [user.id, user.remark ?? '']));
     auditEvents.value = auditPage.items;
+    requestEvents.value = requestEventPage.items;
     system.value = systemInfo;
     policy.value = policyInfo;
   } catch (cause: unknown) {
     error.value = cause instanceof Error ? cause.message : '管理数据加载失败';
   } finally {
     loading.value = false;
+  }
+}
+
+async function purgeRequestEvents(): Promise<void> {
+  if (!control) return;
+  if (!purgeArmed.value) {
+    purgeArmed.value = true;
+    notice.value = '再次点击“确认清理”后，才会删除超过留存周期的请求诊断记录。';
+    return;
+  }
+  error.value = '';
+  try {
+    const result = await control.purgeRequestEvents();
+    purgeArmed.value = false;
+    notice.value = `已清理 ${result.deletedCount} 条请求诊断；保留最近 ${result.retentionDays} 天。`;
+    await refresh();
+  } catch (cause: unknown) {
+    error.value = cause instanceof Error ? cause.message : '清理请求诊断失败';
   }
 }
 
@@ -195,6 +226,9 @@ function formatTime(value: number): string {
       <Card class="p-5">
         <p class="text-xs text-muted-foreground">Alibaba Gateway</p>
         <p class="mt-2 font-semibold">{{ system?.gatewayMode ?? '—' }}</p>
+        <p class="mt-1 text-xs text-muted-foreground">
+          请求诊断保留 {{ system?.requestEventRetentionDays ?? '—' }} 天
+        </p>
       </Card>
     </div>
 
@@ -293,15 +327,59 @@ function formatTime(value: number): string {
     <Card class="mt-5 overflow-hidden">
       <div class="flex flex-wrap items-center justify-between gap-3 border-b p-5">
         <div>
-          <h2 class="font-semibold">审计与请求诊断</h2>
+          <h2 class="font-semibold">请求诊断</h2>
           <p class="text-xs text-muted-foreground">
-            按 requestId 精确关联，不展示密码、Token、Cookie 或文件 Base64。
+            按 requestId 精确关联运行时、路由、状态码和耗时；不保存请求体、密码、Token、Cookie 或文件 Base64。
           </p>
         </div>
-        <form class="flex gap-2" @submit.prevent="refresh">
-          <Input v-model="requestIdFilter" class="w-72" placeholder="requestId（UUID v4）" />
-          <Button variant="outline" type="submit">查询</Button>
-        </form>
+        <div class="flex flex-wrap gap-2">
+          <form class="flex gap-2" @submit.prevent="refresh">
+            <Input v-model="requestIdFilter" class="w-72" placeholder="requestId（UUID v4）" />
+            <Button variant="outline" type="submit">查询</Button>
+          </form>
+          <Button
+            data-testid="purge-request-events"
+            :variant="purgeArmed ? 'destructive' : 'outline'"
+            @click="purgeRequestEvents"
+          >
+            <Trash2 class="size-4" />{{ purgeArmed ? '确认清理' : '按留存周期清理' }}
+          </Button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-muted/60 text-muted-foreground">
+            <tr>
+              <th class="p-3">时间</th>
+              <th class="p-3">requestId</th>
+              <th class="p-3">主体</th>
+              <th class="p-3">运行时 / 路由</th>
+              <th class="p-3">Operation</th>
+              <th class="p-3">结果</th>
+              <th class="p-3">状态 / 耗时</th>
+            </tr>
+          </thead>
+          <tbody data-testid="request-events">
+            <tr v-for="event in requestEvents" :key="event.id" class="border-t">
+              <td class="whitespace-nowrap p-3">{{ formatTime(event.eventTimeUtc) }}</td>
+              <td class="p-3 font-mono">{{ event.requestId }}</td>
+              <td class="p-3">{{ event.actorId ?? 'anonymous' }}</td>
+              <td class="p-3">{{ event.runtime }} / {{ event.route }}</td>
+              <td class="p-3">{{ event.operation }}</td>
+              <td class="p-3">{{ event.outcome }}</td>
+              <td class="p-3">{{ event.statusCode }} / {{ event.durationMilliseconds }} ms</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </Card>
+
+    <Card class="mt-5 overflow-hidden">
+      <div class="border-b p-5">
+        <h2 class="font-semibold">操作审计</h2>
+        <p class="text-xs text-muted-foreground">
+          记录主体、动作、结果和拒绝原因；与请求诊断共用 requestId。
+        </p>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-left text-xs">

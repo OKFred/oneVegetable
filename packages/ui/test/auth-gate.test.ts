@@ -81,6 +81,8 @@ function controlFixture(
     resetPassword: () => Promise.resolve({ user: session.user, temporaryPassword: null }),
     revokeSessions: () => Promise.resolve(),
     listAudit: () => Promise.resolve({ items: [], total: 0 }),
+    listRequestEvents: () => Promise.resolve({ items: [], total: 0 }),
+    purgeRequestEvents: () => Promise.resolve({ deletedCount: 0, retentionDays: 30, cutoffTimeUtc: 0 }),
     system: () =>
       Promise.resolve({
         runtime: 'node',
@@ -88,7 +90,8 @@ function controlFixture(
         apiPrefix: '/api/v1',
         database: 'sqlite',
         gatewayMode: 'mock',
-        schemaVersion: 2
+        schemaVersion: 3,
+        requestEventRetentionDays: 30
       }),
     policySummary: () => Promise.resolve({}),
     csrfToken: () => null

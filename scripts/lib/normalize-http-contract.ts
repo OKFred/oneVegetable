@@ -153,6 +153,17 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     page: { type: 'integer', minimum: 1, default: 1 },
     pageSize: { type: 'integer', minimum: 1, maximum: 100, default: 20 }
   });
+  schemas.AdminRequestEventListRequest = objectRequest([], {
+    requestIdFilter: { $ref: '#/components/schemas/RequestId' },
+    actorId: { type: 'string' },
+    route: { type: 'string' },
+    operation: { type: 'string' },
+    outcome: { type: 'string', enum: ['success', 'error', 'denied'] },
+    fromTimeUtc: { type: 'integer', minimum: 0 },
+    toTimeUtc: { type: 'integer', minimum: 0 },
+    page: { type: 'integer', minimum: 1, default: 1 },
+    pageSize: { type: 'integer', minimum: 1, maximum: 100, default: 20 }
+  });
 
   const requestBody = (schema: string) => ({
     required: true,
@@ -278,6 +289,16 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     '/admin/policy-summary/get': postOperation(
       'Get the read-only ABAC policy summary',
       'getAdminPolicySummary',
+      'RequestEnvelope'
+    ),
+    '/admin/request-events/list': postOperation(
+      'List redacted request diagnostics',
+      'listAdminRequestEvents',
+      'AdminRequestEventListRequest'
+    ),
+    '/admin/request-events/purge': postOperation(
+      'Purge request diagnostics outside the retention window',
+      'purgeAdminRequestEvents',
       'RequestEnvelope'
     )
   };

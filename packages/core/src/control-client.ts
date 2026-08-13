@@ -62,6 +62,21 @@ export interface ControlSystemInfo {
   database: 'sqlite' | 'd1';
   gatewayMode: 'mock' | 'disabled' | 'real';
   schemaVersion: number;
+  requestEventRetentionDays: number;
+}
+
+export interface ControlRequestEvent {
+  id: string;
+  eventTimeUtc: UnixEpochMilliseconds;
+  requestId: string;
+  environment: string;
+  runtime: 'node' | 'cloudflare';
+  route: string;
+  operation: string;
+  actorId: string | null;
+  outcome: 'success' | 'error' | 'denied';
+  statusCode: number;
+  durationMilliseconds: number;
 }
 
 export interface PageResult<T> {
@@ -111,6 +126,22 @@ export interface ControlClient {
   }): Promise<PageResult<ControlAuditEvent>>;
   system(): Promise<ControlSystemInfo>;
   policySummary(): Promise<Record<string, unknown>>;
+  listRequestEvents(input?: {
+    requestIdFilter?: string;
+    actorId?: string;
+    route?: string;
+    operation?: string;
+    outcome?: ControlRequestEvent['outcome'];
+    fromTimeUtc?: number;
+    toTimeUtc?: number;
+    page?: number;
+    pageSize?: number;
+  }): Promise<PageResult<ControlRequestEvent>>;
+  purgeRequestEvents(): Promise<{
+    deletedCount: number;
+    retentionDays: number;
+    cutoffTimeUtc: UnixEpochMilliseconds;
+  }>;
   csrfToken(): string | null;
 }
 
@@ -242,6 +273,30 @@ export class BffControlClient implements ControlClient {
 
   policySummary(): Promise<Record<string, unknown>> {
     return this.#call('/admin/policy-summary/get', {});
+  }
+
+  listRequestEvents(
+    input: {
+      requestIdFilter?: string;
+      actorId?: string;
+      route?: string;
+      operation?: string;
+      outcome?: ControlRequestEvent['outcome'];
+      fromTimeUtc?: number;
+      toTimeUtc?: number;
+      page?: number;
+      pageSize?: number;
+    } = {}
+  ): Promise<PageResult<ControlRequestEvent>> {
+    return this.#call('/admin/request-events/list', { page: 1, pageSize: 50, ...input });
+  }
+
+  purgeRequestEvents(): Promise<{
+    deletedCount: number;
+    retentionDays: number;
+    cutoffTimeUtc: UnixEpochMilliseconds;
+  }> {
+    return this.#call('/admin/request-events/purge', {});
   }
 
   async #call<T>(path: string, body: Record<string, unknown>): Promise<T> {

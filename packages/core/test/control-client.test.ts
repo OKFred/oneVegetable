@@ -62,6 +62,39 @@ describe('BffControlClient', () => {
     });
     await expect(client.session()).rejects.toThrow('requestId');
   });
+
+  it('uses the request diagnostics routes and carries filters in the JSON body', async () => {
+    const requestIdFilter = '3d7c8523-93cc-48b7-a615-a23d2976c516';
+    const send = vi.fn<NetworkTransport['send']>((input, init) => {
+      const url =
+        input instanceof URL ? input : typeof input === 'string' ? new URL(input) : new URL(input.url);
+      if (typeof init.body !== 'string') throw new Error('expected JSON body');
+      const body = JSON.parse(init.body) as Record<string, unknown>;
+      if (url.pathname.endsWith('/request-events/list')) {
+        expect(body).toMatchObject({ requestIdFilter, page: 1, pageSize: 50 });
+        return Promise.resolve(
+          Response.json({ requestId: body.requestId, ok: true, data: { items: [], total: 0 } })
+        );
+      }
+      expect(url.pathname).toBe('/api/v1/admin/request-events/purge');
+      return Promise.resolve(
+        Response.json({
+          requestId: body.requestId,
+          ok: true,
+          data: { deletedCount: 2, retentionDays: 30, cutoffTimeUtc: 1 }
+        })
+      );
+    });
+    const client = new BffControlClient({
+      baseUrl: 'https://staging.example.com',
+      transport: { send },
+      csrfToken: () => 'csrf-token'
+    });
+
+    await expect(client.listRequestEvents({ requestIdFilter })).resolves.toEqual({ items: [], total: 0 });
+    await expect(client.purgeRequestEvents()).resolves.toMatchObject({ deletedCount: 2 });
+    expect(send).toHaveBeenCalledTimes(2);
+  });
 });
 
 function userFixture() {
