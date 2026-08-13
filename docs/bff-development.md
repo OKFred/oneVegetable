@@ -52,6 +52,10 @@ BFF 模式使用 HttpOnly 不透明 session Cookie 和双提交 CSRF。开发时
 - 用户实体使用 Unix Epoch 毫秒审计字段、`remark` 与乐观锁 `revision`。
 - `audit_events` 只追加 requestId、主体、动作、资源、结果和 revision，不保存 Cookie、Token、密码、
   App Secret、文件 Base64 或完整 Alibaba 响应。
+- `request_events` 记录 runtime、route、operation、actor、结果、状态码和耗时，不保存 Header、Body、
+  Alibaba 原始响应或文件内容。管理员可按 requestId 精确关联请求诊断与操作审计。
+- `ONE_VEGETABLE_REQUEST_RETENTION_DAYS` 控制请求诊断留存，默认 30 天、允许 1–90 天；清理接口只删除
+  超过留存窗口的 `request_events`，不会删除 append-only 的 `audit_events`。管理页执行清理前需要二次确认。
 - `ONE_VEGETABLE_MUTATION_FLAGS` 默认空值。没有真实账号验收前不要添加 `operation:*` 或
   `capability:*` 写能力标记。
 

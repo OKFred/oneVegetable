@@ -29,8 +29,33 @@ if (!session.response.ok || session.body.data?.principal?.role !== 'admin') {
 }
 
 const system = await post('/api/v1/admin/system/get', {}, { Cookie: cookies });
-if (!system.response.ok || system.body.data?.gatewayMode !== 'mock') {
+if (
+  !system.response.ok ||
+  system.body.data?.gatewayMode !== 'mock' ||
+  system.body.data?.schemaVersion !== 3 ||
+  system.body.data?.requestEventRetentionDays !== 30
+) {
   throw new Error('管理员系统接口失败');
+}
+
+const diagnostics = await post(
+  '/api/v1/admin/request-events/list',
+  { requestIdFilter: system.body.requestId, page: 1, pageSize: 20 },
+  { Cookie: cookies }
+);
+const diagnostic = diagnostics.body.data?.items?.[0];
+if (
+  !diagnostics.response.ok ||
+  diagnostics.body.data?.total !== 1 ||
+  diagnostic?.requestId !== system.body.requestId ||
+  diagnostic?.operation !== 'admin/system/get' ||
+  diagnostic?.statusCode !== 200
+) {
+  throw new Error('requestId 请求诊断关联失败');
+}
+const diagnosticJson = JSON.stringify(diagnostic).toLowerCase();
+for (const forbidden of ['password', 'token', 'cookie', 'contentbase64', 'appsecret']) {
+  if (diagnosticJson.includes(forbidden)) throw new Error(`请求诊断包含敏感字段：${forbidden}`);
 }
 
 const denied = await post(
