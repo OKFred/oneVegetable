@@ -11,6 +11,7 @@ import {
 import { authorizeOperation, operationIsMutation, StaticOperationFeatureFlags } from './abac';
 import { AuthError } from './auth/service';
 import { authenticateMutation, authenticateRequest, registerAuthRoutes } from './auth/routes';
+import { markRequestOperation, readRequestContext } from './observability/request-context';
 
 import type {
   ApiResponse,
@@ -24,6 +25,7 @@ import type { Context } from 'hono';
 import type { OperationFeatureFlags } from './abac';
 import type { AdminService } from './auth/admin-service';
 import type { AuthenticatedSession, AuthService } from './auth/service';
+import type { RequestEventRepository } from './observability/request-events';
 
 export type ApiRuntime = 'node' | 'cloudflare';
 export type ApiDatabase = 'sqlite' | 'd1';
@@ -44,6 +46,8 @@ export interface ApiAppOptions {
   authService?: AuthService;
   adminService?: AdminService;
   featureFlags?: OperationFeatureFlags;
+  requestEvents?: RequestEventRepository;
+  requestEventRetentionDays?: number;
 }
 
 export interface RequestLogContext {
@@ -78,6 +82,14 @@ export function createApiApp(options: ApiAppOptions): Hono {
   const api = new Hono();
   const featureFlags = options.featureFlags ?? new StaticOperationFeatureFlags();
 
+  api.use('*', async (context, next) => {
+    const startedAt = (options.clock ?? Date.now)();
+    await next();
+    if (context.req.method !== 'OPTIONS') {
+      await recordRequestEvent(options, context.req.raw, context.res, apiPrefix, startedAt);
+    }
+  });
+
   api.use(
     '*',
     cors({
@@ -104,6 +116,11 @@ export function createApiApp(options: ApiAppOptions): Hono {
       runtime: options.runtime,
       database: options.database,
       gatewayMode: options.gatewayMode,
+      ...(options.requestEvents ? { requestEvents: options.requestEvents } : {}),
+      ...(options.requestEventRetentionDays !== undefined
+        ? { requestEventRetentionDays: options.requestEventRetentionDays }
+        : {}),
+      ...(options.clock ? { clock: options.clock } : {}),
       ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
     });
   }
@@ -157,6 +174,7 @@ export function createApiApp(options: ApiAppOptions): Hono {
         retryable: false
       });
     }
+    markRequestOperation(context.req.raw, parsed.body.operation);
 
     let authenticated: AuthenticatedSession | null = null;
     try {
@@ -394,4 +412,42 @@ function auditOperation(
     outcome,
     reasonCode
   });
+}
+
+async function recordRequestEvent(
+  options: ApiAppOptions,
+  request: Request,
+  response: Response,
+  apiPrefix: string,
+  startedAt: number
+): Promise<void> {
+  if (!options.requestEvents) return;
+  const statusCode = response.status;
+  const requestId = response.headers.get('X-Request-ID') ?? createRequestId();
+  const requestContext = readRequestContext(request);
+  const route = new URL(request.url).pathname;
+  const operation = requestContext.operation ?? route.slice(apiPrefix.length).replace(/^\//, '');
+  const outcome: RequestLogContext['outcome'] =
+    statusCode >= 200 && statusCode < 300
+      ? 'success'
+      : statusCode === 401 || statusCode === 403
+        ? 'denied'
+        : 'error';
+  try {
+    await options.requestEvents.append({
+      id: crypto.randomUUID(),
+      eventTimeUtc: (options.clock ?? Date.now)(),
+      requestId,
+      environment: options.environment,
+      runtime: options.runtime,
+      route,
+      operation,
+      actorId: requestContext.actorId ?? null,
+      outcome,
+      statusCode,
+      durationMilliseconds: Math.max(0, (options.clock ?? Date.now)() - startedAt)
+    });
+  } catch {
+    // Diagnostics persistence must not turn an otherwise valid request into an outage.
+  }
 }

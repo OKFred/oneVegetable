@@ -3,12 +3,15 @@ import { getCookie, setCookie } from 'hono/cookie';
 import { isRequestId, normalizeRemark } from '@one-vegetable/core';
 import { authorizeAdmin, policySummary } from '../abac';
 import { AuthError } from './service';
+import { markRequestActor } from '../observability/request-context';
+import { requestEventRetentionCutoff } from '../observability/request-events';
 
 import type { Context, Hono } from 'hono';
 import type { GatewayError } from '@one-vegetable/core';
 import type { AdminService } from './admin-service';
 import type { AuthenticatedSession, AuthService } from './service';
 import type { PublicUser, UserRole, UserStatus } from './types';
+import type { RequestEventRepository } from '../observability/request-events';
 import { toPublicUser } from './types';
 
 export const SESSION_COOKIE = 'ov_session';
@@ -24,6 +27,9 @@ export interface AuthRoutesOptions {
   database: 'sqlite' | 'd1';
   gatewayMode: 'mock' | 'disabled' | 'real';
   allowedOrigins?: readonly string[];
+  requestEvents?: RequestEventRepository;
+  requestEventRetentionDays?: number;
+  clock?: () => number;
 }
 
 export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void {
@@ -223,7 +229,8 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
           apiPrefix: options.apiPrefix,
           database: options.database,
           gatewayMode: options.gatewayMode,
-          schemaVersion: 2
+          schemaVersion: 3,
+          requestEventRetentionDays: options.requestEventRetentionDays ?? 30
         }),
       ['requestId']
     );
@@ -231,6 +238,62 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
 
   api.post('/admin/policy-summary/get', async (context) => {
     return adminRead(context, options, () => Promise.resolve(policySummary()), ['requestId']);
+  });
+
+  api.post('/admin/request-events/list', async (context) => {
+    return adminRead(
+      context,
+      options,
+      (body) =>
+        requiredRequestEvents(options).list({
+          page: readPage(body),
+          pageSize: readPageSize(body),
+          ...(typeof body.requestIdFilter === 'string' ? { requestId: body.requestIdFilter } : {}),
+          ...(typeof body.actorId === 'string' ? { actorId: body.actorId } : {}),
+          ...(typeof body.route === 'string' ? { route: body.route } : {}),
+          ...(typeof body.operation === 'string' ? { operation: body.operation } : {}),
+          ...(body.outcome === 'success' || body.outcome === 'error' || body.outcome === 'denied'
+            ? { outcome: body.outcome }
+            : {}),
+          ...(typeof body.fromTimeUtc === 'number' ? { fromTimeUtc: body.fromTimeUtc } : {}),
+          ...(typeof body.toTimeUtc === 'number' ? { toTimeUtc: body.toTimeUtc } : {})
+        }),
+      [
+        'requestId',
+        'requestIdFilter',
+        'actorId',
+        'route',
+        'operation',
+        'outcome',
+        'fromTimeUtc',
+        'toTimeUtc',
+        'page',
+        'pageSize'
+      ]
+    );
+  });
+
+  api.post('/admin/request-events/purge', async (context) => {
+    return adminWrite(
+      context,
+      options,
+      async (body, authenticated) => {
+        const retentionDays = options.requestEventRetentionDays ?? 30;
+        const cutoffTimeUtc = requestEventRetentionCutoff((options.clock ?? Date.now)(), retentionDays);
+        const deletedCount = await requiredRequestEvents(options).purgeBefore(cutoffTimeUtc);
+        await options.authService.audit({
+          requestId: readRequestId(body),
+          actorId: authenticated.principal.actorId,
+          action: 'admin.request-events.purge',
+          resourceKind: 'request-events',
+          resourceId: null,
+          outcome: 'success',
+          reasonCode: 'RETENTION_PURGE_COMPLETED'
+        });
+        return { deletedCount, retentionDays, cutoffTimeUtc };
+      },
+      ['requestId']
+    );
   });
 }
 
@@ -240,7 +303,9 @@ export async function authenticateRequest(
 ): Promise<AuthenticatedSession> {
   const token = getCookie(context, SESSION_COOKIE);
   if (!token) throw new AuthError('SESSION_REQUIRED', '请先登录', 401);
-  return authService.authenticate(token);
+  const authenticated = await authService.authenticate(token);
+  markRequestActor(context.req.raw, authenticated.principal.actorId);
+  return authenticated;
 }
 
 export async function authenticateMutation(
@@ -456,4 +521,11 @@ function publicUser(authenticated: AuthenticatedSession): PublicUser {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function requiredRequestEvents(options: AuthRoutesOptions): RequestEventRepository {
+  if (!options.requestEvents) {
+    throw new AuthError('REQUEST_DIAGNOSTICS_UNAVAILABLE', '请求诊断存储不可用', 503);
+  }
+  return options.requestEvents;
 }

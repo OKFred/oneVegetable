@@ -4,6 +4,7 @@ import { AdminService } from './auth/admin-service';
 import { SqlAuthRepository } from './auth/repository';
 import { AuthService } from './auth/service';
 import { isD1DatabaseReady, openD1Database } from './db/d1-database';
+import { SqlRequestEventRepository } from './observability/request-events';
 
 interface Env {
   DB: D1Database;
@@ -12,6 +13,7 @@ interface Env {
   ONE_VEGETABLE_GATEWAY_MODE?: string;
   ONE_VEGETABLE_CORS_ORIGINS?: string;
   ONE_VEGETABLE_MUTATION_FLAGS?: string;
+  ONE_VEGETABLE_REQUEST_RETENTION_DAYS?: string;
   BOOTSTRAP_ADMIN_TOKEN?: string;
 }
 
@@ -38,6 +40,8 @@ export default {
             .filter(Boolean) ?? []
         )
       ),
+      requestEvents: new SqlRequestEventRepository(database.executor),
+      requestEventRetentionDays: readRetentionDays(env.ONE_VEGETABLE_REQUEST_RETENTION_DAYS),
       ...(env.ONE_VEGETABLE_CORS_ORIGINS
         ? {
             allowedOrigins: env.ONE_VEGETABLE_CORS_ORIGINS.split(',').map(
@@ -49,3 +53,11 @@ export default {
     }).fetch(request, env);
   }
 };
+
+function readRetentionDays(value: string | undefined): number {
+  const days = Number(value ?? 30);
+  if (!Number.isInteger(days) || days < 1 || days > 90) {
+    throw new Error('ONE_VEGETABLE_REQUEST_RETENTION_DAYS 必须为 1–90');
+  }
+  return days;
+}

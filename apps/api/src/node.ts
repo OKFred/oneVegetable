@@ -6,6 +6,7 @@ import { AdminService } from './auth/admin-service';
 import { SqlAuthRepository } from './auth/repository';
 import { AuthService } from './auth/service';
 import { applyNodeMigrations, isNodeDatabaseReady, openNodeDatabase } from './db/node-database';
+import { SqlRequestEventRepository } from './observability/request-events';
 
 const port = readPort(process.env.ONE_VEGETABLE_PORT);
 const environment = process.env.ONE_VEGETABLE_ENVIRONMENT ?? 'local-node';
@@ -28,6 +29,8 @@ const app = createApiApp({
   authService,
   adminService: new AdminService(authRepository),
   featureFlags: readFeatureFlags(process.env.ONE_VEGETABLE_MUTATION_FLAGS),
+  requestEvents: new SqlRequestEventRepository(database.executor),
+  requestEventRetentionDays: readRetentionDays(process.env.ONE_VEGETABLE_REQUEST_RETENTION_DAYS),
   ready: () => Promise.resolve(isNodeDatabaseReady(database))
 });
 
@@ -58,4 +61,12 @@ function readFeatureFlags(value: string | undefined): StaticOperationFeatureFlag
         .filter(Boolean) ?? []
     )
   );
+}
+
+function readRetentionDays(value: string | undefined): number {
+  const days = Number(value ?? 30);
+  if (!Number.isInteger(days) || days < 1 || days > 90) {
+    throw new Error('ONE_VEGETABLE_REQUEST_RETENTION_DAYS 必须为 1–90');
+  }
+  return days;
 }

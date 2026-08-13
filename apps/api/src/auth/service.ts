@@ -26,7 +26,7 @@ export class AuthError extends Error {
   constructor(
     readonly code: string,
     message: string,
-    readonly status: 400 | 401 | 403 | 409
+    readonly status: 400 | 401 | 403 | 409 | 503
   ) {
     super(message);
     this.name = 'AuthError';

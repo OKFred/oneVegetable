@@ -7,6 +7,7 @@ import { AdminService } from '../src/auth/admin-service';
 import { SqlAuthRepository } from '../src/auth/repository';
 import { AuthService } from '../src/auth/service';
 import { applyNodeMigrations, openNodeDatabase } from '../src/db/node-database';
+import { SqlRequestEventRepository } from '../src/observability/request-events';
 
 import type { NodeDatabaseHandle } from '../src/db/node-database';
 
@@ -25,15 +26,17 @@ function fixture() {
     repository,
     bootstrapToken: 'bootstrap-secret-that-is-long'
   });
+  const requestEvents = new SqlRequestEventRepository(database.executor);
   const app = createApiApp({
     runtime: 'node',
     database: 'sqlite',
     environment: 'test',
     gatewayMode: 'mock',
     authService,
-    adminService: new AdminService(repository)
+    adminService: new AdminService(repository),
+    requestEvents
   });
-  return { app, authService, repository };
+  return { app, authService, repository, requestEvents };
 }
 
 async function bootstrap(authService: AuthService) {
@@ -190,6 +193,32 @@ describe('authentication and ABAC routes', () => {
     await expect(audit.json()).resolves.toMatchObject({
       ok: true,
       data: { total: 1, items: [{ requestId: createId, action: 'admin.users.create' }] }
+    });
+
+    const diagnostics = await app.request('/api/v1/admin/request-events/list', {
+      method: 'POST',
+      headers: authHeaders(login.sessionToken),
+      body: JSON.stringify({
+        requestId: createRequestId(),
+        requestIdFilter: createId,
+        page: 1,
+        pageSize: 20
+      })
+    });
+    await expect(diagnostics.json()).resolves.toMatchObject({
+      ok: true,
+      data: {
+        total: 1,
+        items: [
+          {
+            requestId: createId,
+            actorId: login.user.id,
+            operation: 'admin/users/create',
+            outcome: 'success',
+            statusCode: 200
+          }
+        ]
+      }
     });
   });
 });
