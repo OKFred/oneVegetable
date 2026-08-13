@@ -1,0 +1,54 @@
+{
+  "alibaba.icbu.file.urlposting.upload": {
+    "featureArea": "fileTransfer",
+    "risk": "mutation",
+    "requestExample": {
+      "caller": "ONE_VEGETABLE",
+      "file_name": "product-detail.jpg",
+      "url": "https://images.example.com/product-detail.jpg",
+      "file_stream": "aGVsbG8="
+    },
+    "responseExample": {
+      "result": "0000",
+      "fail_reason": "success",
+      "file_url": "https://img.alicdn.com/mock/product-detail.jpg"
+    }
+  },
+  "alibaba.icbu.risk.send": {
+    "featureArea": "riskAssessment",
+    "risk": "mutation",
+    "restricted": true,
+    "restrictionReason": "天鹿风控协议需要明确的业务事件接入，并可能携带 WUA、UMID、设备码等敏感环境信息；本项目不从页面采集或通用调试器发送",
+    "requestExample": {
+      "event_data": {
+        "event_code": "icbu_minisite_module",
+        "extend": "{\"source\":\"documented-mock\"}",
+        "event_item_id": "60782468510",
+        "callback_id": "60782468510",
+        "event_item": "productId",
+        "event_time": 1656310295722
+      }
+    },
+    "responseExample": {
+      "result_code": 100,
+      "data": {
+        "reject_items": [],
+        "pending_items": []
+      }
+    }
+  },
+  "alibaba.icbu.task.status.notify": {
+    "featureArea": "taskCallback",
+    "risk": "mutation",
+    "restricted": true,
+    "restrictionReason": "URL 爬取供应商向平台回报任务状态的协议回调，不是卖家交互能力；缺少真实 ISV 任务上下文时禁止调用",
+    "requestExample": {
+      "task_key": "documented-task-key",
+      "isv": "documented-isv",
+      "task_status": "EXECUTE_FINISHED",
+      "type": "PRODUCT_DETAIL",
+      "handled_prod_nums": 100
+    },
+    "responseExample": { "result": "0000", "fail_reason": "success" }
+  }
+}

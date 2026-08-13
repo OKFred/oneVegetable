@@ -89,11 +89,17 @@ const insightsOverrides = JSON.parse(
 const photoOverrides = JSON.parse(
   await readFile(resolve(root, 'config/alibaba-photo-overrides.json'), 'utf8')
 ) as Record<string, ProductOverride>;
+const platformOverrides = JSON.parse(
+  await readFile(resolve(root, 'config/alibaba-platform-overrides.json'), 'utf8')
+) as Record<string, ProductOverride>;
 const tradeCategoryMethods = new Set(
   JSON.parse(await readFile(resolve(root, 'config/alibaba-trade-category.json'), 'utf8')) as string[]
 );
 const logisticsCategoryMethods = new Set(
   JSON.parse(await readFile(resolve(root, 'config/alibaba-logistics-category.json'), 'utf8')) as string[]
+);
+const platformCategoryMethods = new Set(
+  JSON.parse(await readFile(resolve(root, 'config/alibaba-platform-category.json'), 'utf8')) as string[]
 );
 const checkedAt = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Shanghai',
@@ -141,6 +147,7 @@ function asDocumentResponse(value: unknown): DocumentResponse {
 }
 
 function resolveDomain(method: string): string {
+  if (platformCategoryMethods.has(method)) return 'platform';
   if (tradeCategoryMethods.has(method)) return 'trade';
   if (logisticsCategoryMethods.has(method)) return 'logistics';
   if (/photobank|photo/.test(method)) return 'photo';
@@ -161,7 +168,10 @@ function resolveAuth(labels: string[]): AuditEntry['auth'] {
 }
 
 function isRestricted(method: string): boolean {
-  const explicit = logisticsOverrides[method]?.restricted ?? insightsOverrides[method]?.restricted;
+  const explicit =
+    logisticsOverrides[method]?.restricted ??
+    insightsOverrides[method]?.restricted ??
+    platformOverrides[method]?.restricted;
   if (explicit !== undefined) return explicit;
   return (
     /\.(snsoft|xiaoman|wetrade)\./.test(method) ||
@@ -177,7 +187,8 @@ function resolveRisk(method: string): AuditEntry['risk'] {
     tradeOverrides[method]?.risk ??
     logisticsOverrides[method]?.risk ??
     insightsOverrides[method]?.risk ??
-    photoOverrides[method]?.risk;
+    photoOverrides[method]?.risk ??
+    platformOverrides[method]?.risk;
   if (explicit) return explicit;
   return /\.(add|create|delete|modify|operate|post|save|update|upload)(\.|$)/.test(method)
     ? 'mutation'
@@ -248,6 +259,7 @@ if (process.argv.includes('--check')) {
       domain === 'trade' ||
       domain === 'logistics' ||
       domain === 'photo' ||
+      domain === 'platform' ||
       domain === 'data' ||
       domain === 'buyer';
     const enabled = !restricted && (ENABLED_METHODS.has(method) || typedDomain);
@@ -261,9 +273,11 @@ if (process.argv.includes('--check')) {
             ? 'AlibabaLogistics'
             : domain === 'photo'
               ? 'AlibabaPhoto'
-              : domain === 'data' || domain === 'buyer'
-                ? 'AlibabaInsights'
-                : 'AlibabaProduct';
+              : domain === 'platform'
+                ? 'AlibabaPlatform'
+                : domain === 'data' || domain === 'buyer'
+                  ? 'AlibabaInsights'
+                  : 'AlibabaProduct';
     return {
       method,
       domain,
@@ -274,6 +288,7 @@ if (process.argv.includes('--check')) {
       restrictionReason: restricted
         ? (logisticsOverrides[method]?.restrictionReason ??
           insightsOverrides[method]?.restrictionReason ??
+          platformOverrides[method]?.restrictionReason ??
           '特定 ISV、业务资格或额外权限，默认关闭')
         : null,
       enabled,
@@ -286,6 +301,7 @@ if (process.argv.includes('--check')) {
         tradeOverrides[method]?.lifecycle ??
         logisticsOverrides[method]?.lifecycle ??
         insightsOverrides[method]?.lifecycle ??
+        platformOverrides[method]?.lifecycle ??
         'active',
       risk,
       verification: 'documented',

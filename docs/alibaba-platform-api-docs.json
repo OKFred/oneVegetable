@@ -1,0 +1,397 @@
+{
+  "checkedAt": "2026-08-13",
+  "catalogCount": 3,
+  "definitions": [
+    {
+      "method": "alibaba.icbu.file.urlposting.upload",
+      "source": "catalog",
+      "sourceCategory": "platform",
+      "docId": 70213,
+      "title": "文件转存",
+      "description": "文件转存",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "fileTransfer",
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2025-06-05",
+      "requestParams": [
+        {
+          "name": "caller",
+          "type": "String",
+          "required": true,
+          "description": "调用方",
+          "demoValue": "ALI"
+        },
+        {
+          "name": "file_name",
+          "type": "String",
+          "required": true,
+          "description": "文件名称",
+          "demoValue": "123.jpg"
+        },
+        {
+          "name": "url",
+          "type": "String",
+          "required": false,
+          "description": "文件URL",
+          "demoValue": "https://123.jpg"
+        },
+        {
+          "name": "file_stream",
+          "type": "byte[]",
+          "required": true,
+          "description": "文件流",
+          "demoValue": "[]"
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "String",
+          "required": false,
+          "description": "调用结果",
+          "demoValue": "0000"
+        },
+        {
+          "name": "fail_reason",
+          "type": "String",
+          "required": false,
+          "description": "失败原因",
+          "demoValue": "success"
+        },
+        {
+          "name": "file_url",
+          "type": "String",
+          "required": false,
+          "description": "上传后的文件链接",
+          "demoValue": "https://123.png"
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": {
+        "caller": "ONE_VEGETABLE",
+        "file_name": "product-detail.jpg",
+        "url": "https://images.example.com/product-detail.jpg",
+        "file_stream": "aGVsbG8="
+      },
+      "responseExample": {
+        "result": "0000",
+        "fail_reason": "success",
+        "file_url": "https://img.alicdn.com/mock/product-detail.jpg"
+      }
+    },
+    {
+      "method": "alibaba.icbu.risk.send",
+      "source": "catalog",
+      "sourceCategory": "platform",
+      "docId": 63136,
+      "title": "ICBU天鹿平台风控校验",
+      "description": "ICBU天鹿平台风控校验",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "riskAssessment",
+      "restricted": true,
+      "restrictionReason": "天鹿风控协议需要明确的业务事件接入，并可能携带 WUA、UMID、设备码等敏感环境信息；本项目不从页面采集或通用调试器发送",
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2024-12-24",
+      "requestParams": [
+        {
+          "name": "event_data",
+          "type": "EventData",
+          "required": true,
+          "description": "风控请求参数",
+          "subParams": [
+            {
+              "name": "event_code",
+              "type": "String",
+              "required": true,
+              "description": "风险事件Code",
+              "demoValue": "icbu_minisite_module"
+            },
+            {
+              "name": "extend",
+              "type": "String",
+              "required": true,
+              "description": "风险附加参数",
+              "demoValue": "{\"key\":\"value\"}"
+            },
+            {
+              "name": "event_item_id",
+              "type": "String",
+              "required": true,
+              "description": "业务对象标识",
+              "demoValue": "60782468510"
+            },
+            {
+              "name": "callback_id",
+              "type": "String",
+              "required": true,
+              "description": "异步结果回调标识",
+              "demoValue": "60782468510"
+            },
+            {
+              "name": "event_item",
+              "type": "String",
+              "required": true,
+              "description": "业务对象名称",
+              "demoValue": "productId"
+            },
+            {
+              "name": "env_info",
+              "type": "EnvInfo",
+              "required": false,
+              "description": "请求相关环境信息",
+              "subParams": [
+                {
+                  "name": "wua",
+                  "type": "String",
+                  "required": false,
+                  "description": "通过无线保镖采集的无线wua信息",
+                  "demoValue": "iicq"
+                },
+                {
+                  "name": "umid",
+                  "type": "String",
+                  "required": false,
+                  "description": "采集用户的umidtoken",
+                  "demoValue": "H6e9bc8ffdd9047a0a17f475da2621756d"
+                },
+                {
+                  "name": "ip",
+                  "type": "String",
+                  "required": false,
+                  "description": "采集用户的ip",
+                  "demoValue": "42.120.73.172"
+                },
+                {
+                  "name": "imei",
+                  "type": "String",
+                  "required": false,
+                  "description": "硬件设备码",
+                  "demoValue": "861536030196001"
+                },
+                {
+                  "name": "imsi",
+                  "type": "String",
+                  "required": false,
+                  "description": "运营商设备码",
+                  "demoValue": "460030912121001"
+                },
+                {
+                  "name": "ua",
+                  "type": "String",
+                  "required": false,
+                  "description": "通过collina采集的ua信息",
+                  "demoValue": "ssq"
+                },
+                {
+                  "name": "mac",
+                  "type": "String",
+                  "required": false,
+                  "description": "设备mac地址",
+                  "demoValue": "00:0C:29:CA:E4:66"
+                }
+              ]
+            },
+            {
+              "name": "event_time",
+              "type": "Number",
+              "required": true,
+              "description": "数据时间戳",
+              "demoValue": "1656310295722"
+            }
+          ]
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result_code",
+          "type": "Number",
+          "required": false,
+          "description": "返回结果Code（100-Pass，200-Reject，300-Pending）",
+          "demoValue": "100"
+        },
+        {
+          "name": "data",
+          "type": "HitData",
+          "required": false,
+          "description": "返回结果附加信息",
+          "subParams": [
+            {
+              "name": "reject_items",
+              "type": "RejectItem[]",
+              "required": false,
+              "description": "拒绝原因列表",
+              "subParams": [
+                {
+                  "name": "reject_reason",
+                  "type": "String",
+                  "required": false,
+                  "description": "拒绝原因",
+                  "demoValue": "MOQ_RISK"
+                },
+                {
+                  "name": "risk_type",
+                  "type": "String",
+                  "required": false,
+                  "description": "风险分类",
+                  "demoValue": "sanction"
+                }
+              ]
+            },
+            {
+              "name": "pending_items",
+              "type": "PendingItem[]",
+              "required": false,
+              "description": "暂缓原因列表",
+              "subParams": [
+                {
+                  "name": "reject_reason",
+                  "type": "String",
+                  "required": false,
+                  "description": "暂缓原因",
+                  "demoValue": "MOQ_RISK"
+                },
+                {
+                  "name": "risk_type",
+                  "type": "String",
+                  "required": false,
+                  "description": "风险分类",
+                  "demoValue": "forbid"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": {
+        "event_data": {
+          "event_code": "icbu_minisite_module",
+          "extend": "{\"source\":\"documented-mock\"}",
+          "event_item_id": "60782468510",
+          "callback_id": "60782468510",
+          "event_item": "productId",
+          "event_time": 1656310295722
+        }
+      },
+      "responseExample": {
+        "result_code": 100,
+        "data": {
+          "reject_items": [],
+          "pending_items": []
+        }
+      }
+    },
+    {
+      "method": "alibaba.icbu.task.status.notify",
+      "source": "catalog",
+      "sourceCategory": "platform",
+      "docId": 70214,
+      "title": "URL爬取任务通知",
+      "description": "URL爬取任务通知",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "taskCallback",
+      "restricted": true,
+      "restrictionReason": "URL 爬取供应商向平台回报任务状态的协议回调，不是卖家交互能力；缺少真实 ISV 任务上下文时禁止调用",
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2025-06-05",
+      "requestParams": [
+        {
+          "name": "deduction",
+          "type": "String",
+          "required": false,
+          "description": "含税三方计费",
+          "demoValue": "100"
+        },
+        {
+          "name": "no_tax_deduction",
+          "type": "String",
+          "required": false,
+          "description": "不含税三方计费",
+          "demoValue": "90"
+        },
+        {
+          "name": "task_key",
+          "type": "String",
+          "required": true,
+          "description": "任务key",
+          "demoValue": "abc"
+        },
+        {
+          "name": "fail_reason",
+          "type": "String",
+          "required": false,
+          "description": "任务失败原因",
+          "demoValue": "success"
+        },
+        {
+          "name": "isv",
+          "type": "String",
+          "required": true,
+          "description": "供应商",
+          "demoValue": "a"
+        },
+        {
+          "name": "task_status",
+          "type": "String",
+          "required": true,
+          "description": "任务状态",
+          "demoValue": "EXECUTE_FINISHED"
+        },
+        {
+          "name": "type",
+          "type": "String",
+          "required": false,
+          "description": "商品基本详情爬取任务",
+          "demoValue": "PRODUCT_DETAIL"
+        },
+        {
+          "name": "page_id",
+          "type": "String",
+          "required": false,
+          "description": "分页ID",
+          "demoValue": "1"
+        },
+        {
+          "name": "handled_prod_nums",
+          "type": "Number",
+          "required": false,
+          "description": "当前已处理的总商品数量",
+          "demoValue": "100"
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "String",
+          "required": false,
+          "description": "调用结果",
+          "demoValue": "0000"
+        },
+        {
+          "name": "fail_reason",
+          "type": "String",
+          "required": false,
+          "description": "通知失败原因",
+          "demoValue": "success"
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": {
+        "task_key": "documented-task-key",
+        "isv": "documented-isv",
+        "task_status": "EXECUTE_FINISHED",
+        "type": "PRODUCT_DETAIL",
+        "handled_prod_nums": 100
+      },
+      "responseExample": {
+        "result": "0000",
+        "fail_reason": "success"
+      }
+    }
+  ]
+}
