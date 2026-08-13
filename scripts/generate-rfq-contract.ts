@@ -548,13 +548,20 @@ const photoDefinitions = Object.values(
     { requestSchema: string; responseSchema: string }
   >
 );
+const platformDefinitions = Object.values(
+  (document['x-platform-capabilities'] ?? {}) as Record<
+    string,
+    { requestSchema: string; responseSchema: string }
+  >
+);
 const combinedDefinitions = [
   ...productDefinitions,
   ...(Object.values(capabilityMap) as { requestSchema: string; responseSchema: string }[]),
   ...tradeDefinitions,
   ...logisticsDefinitions,
   ...insightsDefinitions,
-  ...photoDefinitions
+  ...photoDefinitions,
+  ...platformDefinitions
 ];
 const envelope = document.components.schemas.CapabilityResponseEnvelope;
 const envelopeProperties = envelope.properties as Record<string, JsonSchema>;

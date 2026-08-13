@@ -11,7 +11,7 @@ interface ParamNode {
   subParams?: ParamNode[];
 }
 
-interface PhotoDefinition {
+interface PlatformDefinition {
   method: string;
   source: 'catalog';
   docId: number;
@@ -19,7 +19,7 @@ interface PhotoDefinition {
   description: string;
   lifecycle: 'active' | 'deprecated' | 'unlisted';
   risk: 'read' | 'mutation';
-  featureArea: 'groups' | 'assets';
+  featureArea: 'fileTransfer' | 'riskAssessment' | 'taskCallback';
   restricted: boolean;
   restrictionReason: string | null;
   checkedAt: string;
@@ -32,7 +32,6 @@ interface PhotoDefinition {
 }
 
 type JsonSchema = Record<string, unknown>;
-
 interface OpenApiDocument {
   [key: string]: unknown;
   paths: Record<string, unknown>;
@@ -41,10 +40,10 @@ interface OpenApiDocument {
 
 const root = resolve(import.meta.dirname, '..');
 const contractPath = resolve(root, 'openapi/one-vegetable.json');
-const registryPath = resolve(root, 'packages/core/src/generated/photo-capabilities.ts');
+const registryPath = resolve(root, 'packages/core/src/generated/platform-capabilities.ts');
 const sourceContract = JSON.parse(await readFile(contractPath, 'utf8')) as OpenApiDocument;
-const snapshot = JSON.parse(await readFile(resolve(root, 'docs/alibaba-photo-api-docs.json'), 'utf8')) as {
-  definitions: PhotoDefinition[];
+const snapshot = JSON.parse(await readFile(resolve(root, 'docs/alibaba-platform-api-docs.json'), 'utf8')) as {
+  definitions: PlatformDefinition[];
 };
 
 function schemaName(method: string): string {
@@ -88,14 +87,13 @@ function objectSchema(nodes: ParamNode[]): JsonSchema {
 
 const document = structuredClone(sourceContract);
 document.components.schemas = Object.fromEntries(
-  Object.entries(document.components.schemas).filter(([name]) => !name.startsWith('AlibabaPhoto'))
+  Object.entries(document.components.schemas).filter(([name]) => !name.startsWith('AlibabaPlatform'))
 );
-
 const capabilityMap: Record<string, unknown> = {};
 for (const definition of snapshot.definitions) {
   const baseName = schemaName(definition.method);
-  const requestSchema = `AlibabaPhoto${baseName}Request`;
-  const responseSchema = `AlibabaPhoto${baseName}Response`;
+  const requestSchema = `AlibabaPlatform${baseName}Request`;
+  const responseSchema = `AlibabaPlatform${baseName}Response`;
   document.components.schemas[requestSchema] = {
     ...objectSchema(definition.requestParams),
     title: `${definition.method} request`
@@ -104,17 +102,6 @@ for (const definition of snapshot.definitions) {
     ...objectSchema(definition.responseParams),
     title: `${definition.method} response`
   };
-  if (definition.method === 'alibaba.icbu.photobank.list') {
-    const responseProperties = document.components.schemas[responseSchema].properties as Record<
-      string,
-      JsonSchema
-    >;
-    const paginationProperties = responseProperties.pagination_query_list?.properties as Record<
-      string,
-      JsonSchema
-    >;
-    paginationProperties.total = { type: 'integer', minimum: 0 };
-  }
   capabilityMap[definition.method] = {
     requestSchema,
     responseSchema,
@@ -123,7 +110,7 @@ for (const definition of snapshot.definitions) {
     risk: definition.risk,
     featureArea: definition.featureArea,
     verification: 'documented',
-    realCallEnabled: !definition.restricted && definition.risk === 'read',
+    realCallEnabled: false,
     restricted: definition.restricted,
     restrictionReason: definition.restrictionReason,
     checkedAt: definition.checkedAt,
@@ -136,54 +123,7 @@ for (const definition of snapshot.definitions) {
     docUrl: `https://developer.alibaba.com/docs/api.htm?apiId=${definition.docId}`
   };
 }
-document['x-photo-capabilities'] = capabilityMap;
-
-document.components.schemas.PhotoGroup = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['id', 'name', 'photoCount', 'parentId', 'level'],
-  properties: {
-    id: { type: 'string' },
-    name: { type: 'string' },
-    photoCount: { type: 'integer', minimum: 0 },
-    parentId: { type: ['string', 'null'] },
-    level: { type: 'integer', minimum: 1, maximum: 3 }
-  }
-};
-document.components.schemas.PhotoGroupOperationRequest = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['operation', 'groupId', 'groupName'],
-  properties: {
-    operation: { type: 'string', enum: ['add', 'rename', 'delete'] },
-    groupId: { type: ['string', 'null'] },
-    groupName: { type: ['string', 'null'], maxLength: 128 }
-  }
-};
-
-const gatewayFailureResponses = {
-  '4XX': { $ref: '#/components/responses/GatewayFailure' },
-  default: { $ref: '#/components/responses/GatewayFailure' }
-};
-document.paths['/photo-groups/operate'] = {
-  post: {
-    summary: 'Add, rename, or delete a gallery group',
-    operationId: 'operatePhotoGroup',
-    requestBody: {
-      required: true,
-      content: {
-        'application/json': { schema: { $ref: '#/components/schemas/PhotoGroupOperationRequest' } }
-      }
-    },
-    responses: {
-      '200': {
-        description: 'Affected gallery group',
-        content: { 'application/json': { schema: { $ref: '#/components/schemas/PhotoGroup' } } }
-      },
-      ...gatewayFailureResponses
-    }
-  }
-};
+document['x-platform-capabilities'] = capabilityMap;
 
 const extensions = [
   'x-product-capabilities',
@@ -210,19 +150,19 @@ envelopeProperties.data = {
 };
 
 const definitions = Object.entries(capabilityMap);
-const registry = `// Generated by scripts/generate-photo-contract.ts. Do not edit.\nimport type { components } from './api';\n\nexport interface PhotoCapabilityRequestMap {\n${definitions
+const registry = `// Generated by scripts/generate-platform-contract.ts. Do not edit.\nimport type { components } from './api';\n\nexport interface PlatformCapabilityRequestMap {\n${definitions
   .map(
     ([method, value]) =>
       `  '${method}': components['schemas']['${(value as { requestSchema: string }).requestSchema}'];`
   )
-  .join('\n')}\n}\n\nexport interface PhotoCapabilityResponseMap {\n${definitions
+  .join('\n')}\n}\n\nexport interface PlatformCapabilityResponseMap {\n${definitions
   .map(
     ([method, value]) =>
       `  '${method}': components['schemas']['${(value as { responseSchema: string }).responseSchema}'];`
   )
   .join(
     '\n'
-  )}\n}\n\nexport const PHOTO_CAPABILITY_DEFINITIONS = ${JSON.stringify(capabilityMap, null, 2)} as const;\n`;
+  )}\n}\n\nexport const PLATFORM_CAPABILITY_DEFINITIONS = ${JSON.stringify(capabilityMap, null, 2)} as const;\n`;
 
 document.components.schemas = Object.fromEntries(
   Object.entries(document.components.schemas).sort(([left], [right]) => left.localeCompare(right))
@@ -233,7 +173,7 @@ if (process.argv.includes('--check')) {
   const currentRegistry = await readFile(registryPath, 'utf8');
   const currentContractOutput = await format(JSON.stringify(sourceContract), options);
   if (contractOutput !== currentContractOutput || currentRegistry !== registry) {
-    throw new Error('Generated photo contract is stale. Run pnpm generate:photo-contract.');
+    throw new Error('Generated platform contract is stale. Run pnpm generate:platform-contract.');
   }
 } else {
   await Promise.all([

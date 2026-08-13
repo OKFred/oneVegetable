@@ -21,3 +21,4 @@ export { TRADE_CAPABILITY_DEFINITIONS } from './generated/trade-capabilities';
 export { LOGISTICS_CAPABILITY_DEFINITIONS } from './generated/logistics-capabilities';
 export { INSIGHTS_CAPABILITY_DEFINITIONS } from './generated/insights-capabilities';
 export { PHOTO_CAPABILITY_DEFINITIONS } from './generated/photo-capabilities';
+export { PLATFORM_CAPABILITY_DEFINITIONS } from './generated/platform-capabilities';

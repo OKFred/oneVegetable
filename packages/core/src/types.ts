@@ -14,6 +14,10 @@ import type {
   InsightsCapabilityResponseMap
 } from './generated/insights-capabilities';
 import type { PhotoCapabilityRequestMap, PhotoCapabilityResponseMap } from './generated/photo-capabilities';
+import type {
+  PlatformCapabilityRequestMap,
+  PlatformCapabilityResponseMap
+} from './generated/platform-capabilities';
 
 export type DashboardSummary = components['schemas']['DashboardSummary'];
 export type Product = components['schemas']['Product'];
@@ -95,6 +99,7 @@ export type { TradeCapabilityRequestMap, TradeCapabilityResponseMap };
 export type { LogisticsCapabilityRequestMap, LogisticsCapabilityResponseMap };
 export type { InsightsCapabilityRequestMap, InsightsCapabilityResponseMap };
 export type { PhotoCapabilityRequestMap, PhotoCapabilityResponseMap };
+export type { PlatformCapabilityRequestMap, PlatformCapabilityResponseMap };
 export interface CapabilityRequestMap
   extends
     ProductCapabilityRequestMap,
@@ -102,7 +107,8 @@ export interface CapabilityRequestMap
     TradeCapabilityRequestMap,
     LogisticsCapabilityRequestMap,
     InsightsCapabilityRequestMap,
-    PhotoCapabilityRequestMap {}
+    PhotoCapabilityRequestMap,
+    PlatformCapabilityRequestMap {}
 export interface CapabilityResponseMap
   extends
     ProductCapabilityResponseMap,
@@ -110,7 +116,8 @@ export interface CapabilityResponseMap
     TradeCapabilityResponseMap,
     LogisticsCapabilityResponseMap,
     InsightsCapabilityResponseMap,
-    PhotoCapabilityResponseMap {}
+    PhotoCapabilityResponseMap,
+    PlatformCapabilityResponseMap {}
 export type GatewayError = components['schemas']['GatewayError'];
 
 export interface ProductListQuery {

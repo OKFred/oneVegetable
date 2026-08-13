@@ -7,6 +7,7 @@ import { TRADE_CAPABILITY_DEFINITIONS } from './generated/trade-capabilities';
 import { LOGISTICS_CAPABILITY_DEFINITIONS } from './generated/logistics-capabilities';
 import { INSIGHTS_CAPABILITY_DEFINITIONS } from './generated/insights-capabilities';
 import { PHOTO_CAPABILITY_DEFINITIONS } from './generated/photo-capabilities';
+import { PLATFORM_CAPABILITY_DEFINITIONS } from './generated/platform-capabilities';
 import * as validatorExports from './generated/validators';
 
 import type {
@@ -30,13 +31,15 @@ export type TradeCapabilityMethod = keyof typeof TRADE_CAPABILITY_DEFINITIONS;
 export type LogisticsCapabilityMethod = keyof typeof LOGISTICS_CAPABILITY_DEFINITIONS;
 export type InsightsCapabilityMethod = keyof typeof INSIGHTS_CAPABILITY_DEFINITIONS;
 export type PhotoCapabilityMethod = keyof typeof PHOTO_CAPABILITY_DEFINITIONS;
+export type PlatformCapabilityMethod = keyof typeof PLATFORM_CAPABILITY_DEFINITIONS;
 export type CapabilityMethod =
   | ProductCapabilityMethod
   | RfqCapabilityMethod
   | TradeCapabilityMethod
   | LogisticsCapabilityMethod
   | InsightsCapabilityMethod
-  | PhotoCapabilityMethod;
+  | PhotoCapabilityMethod
+  | PlatformCapabilityMethod;
 
 const productMethods = Object.keys(PRODUCT_CAPABILITY_DEFINITIONS) as ProductCapabilityMethod[];
 const rfqMethods = Object.keys(RFQ_CAPABILITY_DEFINITIONS) as RfqCapabilityMethod[];
@@ -44,13 +47,15 @@ const tradeMethods = Object.keys(TRADE_CAPABILITY_DEFINITIONS) as TradeCapabilit
 const logisticsMethods = Object.keys(LOGISTICS_CAPABILITY_DEFINITIONS) as LogisticsCapabilityMethod[];
 const insightsMethods = Object.keys(INSIGHTS_CAPABILITY_DEFINITIONS) as InsightsCapabilityMethod[];
 const photoMethods = Object.keys(PHOTO_CAPABILITY_DEFINITIONS) as PhotoCapabilityMethod[];
+const platformMethods = Object.keys(PLATFORM_CAPABILITY_DEFINITIONS) as PlatformCapabilityMethod[];
 const methods: CapabilityMethod[] = [
   ...productMethods,
   ...rfqMethods,
   ...tradeMethods,
   ...logisticsMethods,
   ...insightsMethods,
-  ...photoMethods
+  ...photoMethods,
+  ...platformMethods
 ];
 const validators = validatorExports as unknown as Record<string, unknown>;
 
@@ -61,6 +66,7 @@ function validatorFor(method: string, kind: 'Request' | 'Response'): StandaloneV
   const logisticsIndex = logisticsMethods.indexOf(method as LogisticsCapabilityMethod);
   const insightsIndex = insightsMethods.indexOf(method as InsightsCapabilityMethod);
   const photoIndex = photoMethods.indexOf(method as PhotoCapabilityMethod);
+  const platformIndex = platformMethods.indexOf(method as PlatformCapabilityMethod);
   const candidate =
     productIndex >= 0
       ? validators[`validateProductCapability${productIndex}${kind}`]
@@ -72,7 +78,9 @@ function validatorFor(method: string, kind: 'Request' | 'Response'): StandaloneV
             ? validators[`validateLogisticsCapability${logisticsIndex}${kind}`]
             : insightsIndex >= 0
               ? validators[`validateInsightsCapability${insightsIndex}${kind}`]
-              : validators[`validatePhotoCapability${photoIndex}${kind}`];
+              : photoIndex >= 0
+                ? validators[`validatePhotoCapability${photoIndex}${kind}`]
+                : validators[`validatePlatformCapability${platformIndex}${kind}`];
   return typeof candidate === 'function' ? (candidate as StandaloneValidator) : null;
 }
 
@@ -108,6 +116,10 @@ export function isPhotoCapabilityMethod(method: string): method is PhotoCapabili
   return method in PHOTO_CAPABILITY_DEFINITIONS;
 }
 
+export function isPlatformCapabilityMethod(method: string): method is PlatformCapabilityMethod {
+  return method in PLATFORM_CAPABILITY_DEFINITIONS;
+}
+
 export function isCapabilityMethod(method: string): method is CapabilityMethod {
   return (
     isProductCapabilityMethod(method) ||
@@ -115,7 +127,8 @@ export function isCapabilityMethod(method: string): method is CapabilityMethod {
     isTradeCapabilityMethod(method) ||
     isLogisticsCapabilityMethod(method) ||
     isInsightsCapabilityMethod(method) ||
-    isPhotoCapabilityMethod(method)
+    isPhotoCapabilityMethod(method) ||
+    isPlatformCapabilityMethod(method)
   );
 }
 
@@ -131,7 +144,9 @@ export function getCapabilityDefinition(method: string): CapabilityDefinition | 
           ? LOGISTICS_CAPABILITY_DEFINITIONS[method]
           : isInsightsCapabilityMethod(method)
             ? INSIGHTS_CAPABILITY_DEFINITIONS[method]
-            : PHOTO_CAPABILITY_DEFINITIONS[method];
+            : isPhotoCapabilityMethod(method)
+              ? PHOTO_CAPABILITY_DEFINITIONS[method]
+              : PLATFORM_CAPABILITY_DEFINITIONS[method];
   return {
     method,
     ...definition

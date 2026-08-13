@@ -630,7 +630,10 @@
                   { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankGroupListRequest" },
                   { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankGroupOperateRequest" },
                   { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankListRequest" },
-                  { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankUploadRequest" }
+                  { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankUploadRequest" },
+                  { "$ref": "#/components/schemas/AlibabaPlatformAlibabaIcbuFileUrlpostingUploadRequest" },
+                  { "$ref": "#/components/schemas/AlibabaPlatformAlibabaIcbuRiskSendRequest" },
+                  { "$ref": "#/components/schemas/AlibabaPlatformAlibabaIcbuTaskStatusNotifyRequest" }
                 ]
               }
             }
@@ -3553,6 +3556,132 @@
           }
         },
         "title": "alibaba.icbu.photobank.upload response"
+      },
+      "AlibabaPlatformAlibabaIcbuFileUrlpostingUploadRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["caller", "file_name", "file_stream"],
+        "properties": {
+          "caller": { "type": "string", "description": "调用方" },
+          "file_name": { "type": "string", "description": "文件名称" },
+          "url": { "type": "string", "description": "文件URL" },
+          "file_stream": { "type": "string", "contentEncoding": "base64", "description": "文件流" }
+        },
+        "title": "alibaba.icbu.file.urlposting.upload request"
+      },
+      "AlibabaPlatformAlibabaIcbuFileUrlpostingUploadResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": { "type": "string", "description": "调用结果" },
+          "fail_reason": { "type": "string", "description": "失败原因" },
+          "file_url": { "type": "string", "description": "上传后的文件链接" }
+        },
+        "title": "alibaba.icbu.file.urlposting.upload response"
+      },
+      "AlibabaPlatformAlibabaIcbuRiskSendRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["event_data"],
+        "properties": {
+          "event_data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["event_code", "extend", "event_item_id", "callback_id", "event_item", "event_time"],
+            "properties": {
+              "event_code": { "type": "string", "description": "风险事件Code" },
+              "extend": { "type": "string", "description": "风险附加参数" },
+              "event_item_id": { "type": "string", "description": "业务对象标识" },
+              "callback_id": { "type": "string", "description": "异步结果回调标识" },
+              "event_item": { "type": "string", "description": "业务对象名称" },
+              "env_info": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "wua": { "type": "string", "description": "通过无线保镖采集的无线wua信息" },
+                  "umid": { "type": "string", "description": "采集用户的umidtoken" },
+                  "ip": { "type": "string", "description": "采集用户的ip" },
+                  "imei": { "type": "string", "description": "硬件设备码" },
+                  "imsi": { "type": "string", "description": "运营商设备码" },
+                  "ua": { "type": "string", "description": "通过collina采集的ua信息" },
+                  "mac": { "type": "string", "description": "设备mac地址" }
+                },
+                "description": "请求相关环境信息"
+              },
+              "event_time": { "type": "number", "description": "数据时间戳" }
+            },
+            "description": "风控请求参数"
+          }
+        },
+        "title": "alibaba.icbu.risk.send request"
+      },
+      "AlibabaPlatformAlibabaIcbuRiskSendResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result_code": {
+            "type": "number",
+            "description": "返回结果Code（100-Pass，200-Reject，300-Pending）"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "reject_items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "reject_reason": { "type": "string", "description": "拒绝原因" },
+                    "risk_type": { "type": "string", "description": "风险分类" }
+                  }
+                },
+                "description": "拒绝原因列表"
+              },
+              "pending_items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "reject_reason": { "type": "string", "description": "暂缓原因" },
+                    "risk_type": { "type": "string", "description": "风险分类" }
+                  }
+                },
+                "description": "暂缓原因列表"
+              }
+            },
+            "description": "返回结果附加信息"
+          }
+        },
+        "title": "alibaba.icbu.risk.send response"
+      },
+      "AlibabaPlatformAlibabaIcbuTaskStatusNotifyRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["task_key", "isv", "task_status"],
+        "properties": {
+          "deduction": { "type": "string", "description": "含税三方计费" },
+          "no_tax_deduction": { "type": "string", "description": "不含税三方计费" },
+          "task_key": { "type": "string", "description": "任务key" },
+          "fail_reason": { "type": "string", "description": "任务失败原因" },
+          "isv": { "type": "string", "description": "供应商" },
+          "task_status": { "type": "string", "description": "任务状态" },
+          "type": { "type": "string", "description": "商品基本详情爬取任务" },
+          "page_id": { "type": "string", "description": "分页ID" },
+          "handled_prod_nums": { "type": "number", "description": "当前已处理的总商品数量" }
+        },
+        "title": "alibaba.icbu.task.status.notify request"
+      },
+      "AlibabaPlatformAlibabaIcbuTaskStatusNotifyResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": { "type": "string", "description": "调用结果" },
+          "fail_reason": { "type": "string", "description": "通知失败原因" }
+        },
+        "title": "alibaba.icbu.task.status.notify response"
       },
       "AlibabaProductAlibabaIcbuCategoryAttrGetRequest": {
         "type": "object",
@@ -8590,7 +8719,10 @@
               { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankGroupListResponse" },
               { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankGroupOperateResponse" },
               { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankListResponse" },
-              { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankUploadResponse" }
+              { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankUploadResponse" },
+              { "$ref": "#/components/schemas/AlibabaPlatformAlibabaIcbuFileUrlpostingUploadResponse" },
+              { "$ref": "#/components/schemas/AlibabaPlatformAlibabaIcbuRiskSendResponse" },
+              { "$ref": "#/components/schemas/AlibabaPlatformAlibabaIcbuTaskStatusNotifyResponse" }
             ]
           },
           "contractValid": { "type": "boolean" },
@@ -13723,6 +13855,92 @@
         }
       },
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=24463"
+    }
+  },
+  "x-platform-capabilities": {
+    "alibaba.icbu.file.urlposting.upload": {
+      "requestSchema": "AlibabaPlatformAlibabaIcbuFileUrlpostingUploadRequest",
+      "responseSchema": "AlibabaPlatformAlibabaIcbuFileUrlpostingUploadResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "fileTransfer",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2025-06-05",
+      "title": "文件转存",
+      "description": "文件转存",
+      "errorCodes": [],
+      "requestExample": {
+        "caller": "ONE_VEGETABLE",
+        "file_name": "product-detail.jpg",
+        "url": "https://images.example.com/product-detail.jpg",
+        "file_stream": "aGVsbG8="
+      },
+      "responseExample": {
+        "result": "0000",
+        "fail_reason": "success",
+        "file_url": "https://img.alicdn.com/mock/product-detail.jpg"
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=70213"
+    },
+    "alibaba.icbu.risk.send": {
+      "requestSchema": "AlibabaPlatformAlibabaIcbuRiskSendRequest",
+      "responseSchema": "AlibabaPlatformAlibabaIcbuRiskSendResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "riskAssessment",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": true,
+      "restrictionReason": "天鹿风控协议需要明确的业务事件接入，并可能携带 WUA、UMID、设备码等敏感环境信息；本项目不从页面采集或通用调试器发送",
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2024-12-24",
+      "title": "ICBU天鹿平台风控校验",
+      "description": "ICBU天鹿平台风控校验",
+      "errorCodes": [],
+      "requestExample": {
+        "event_data": {
+          "event_code": "icbu_minisite_module",
+          "extend": "{\"source\":\"documented-mock\"}",
+          "event_item_id": "60782468510",
+          "callback_id": "60782468510",
+          "event_item": "productId",
+          "event_time": 1656310295722
+        }
+      },
+      "responseExample": { "result_code": 100, "data": { "reject_items": [], "pending_items": [] } },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=63136"
+    },
+    "alibaba.icbu.task.status.notify": {
+      "requestSchema": "AlibabaPlatformAlibabaIcbuTaskStatusNotifyRequest",
+      "responseSchema": "AlibabaPlatformAlibabaIcbuTaskStatusNotifyResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "taskCallback",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": true,
+      "restrictionReason": "URL 爬取供应商向平台回报任务状态的协议回调，不是卖家交互能力；缺少真实 ISV 任务上下文时禁止调用",
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2025-06-05",
+      "title": "URL爬取任务通知",
+      "description": "URL爬取任务通知",
+      "errorCodes": [],
+      "requestExample": {
+        "task_key": "documented-task-key",
+        "isv": "documented-isv",
+        "task_status": "EXECUTE_FINISHED",
+        "type": "PRODUCT_DETAIL",
+        "handled_prod_nums": 100
+      },
+      "responseExample": { "result": "0000", "fail_reason": "success" },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=70214"
     }
   }
 }

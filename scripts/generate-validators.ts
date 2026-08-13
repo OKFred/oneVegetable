@@ -13,6 +13,7 @@ interface OpenApiDocument {
   'x-logistics-capabilities'?: Record<string, { requestSchema: string; responseSchema: string }>;
   'x-insights-capabilities'?: Record<string, { requestSchema: string; responseSchema: string }>;
   'x-photo-capabilities'?: Record<string, { requestSchema: string; responseSchema: string }>;
+  'x-platform-capabilities'?: Record<string, { requestSchema: string; responseSchema: string }>;
   components?: {
     schemas?: Record<string, object>;
   };
@@ -67,6 +68,10 @@ for (const [index, definition] of Object.values(document['x-insights-capabilitie
 for (const [index, definition] of Object.values(document['x-photo-capabilities'] ?? {}).entries()) {
   selected[`validatePhotoCapability${index}Request`] = schemas[definition.requestSchema];
   selected[`validatePhotoCapability${index}Response`] = schemas[definition.responseSchema];
+}
+for (const [index, definition] of Object.values(document['x-platform-capabilities'] ?? {}).entries()) {
+  selected[`validatePlatformCapability${index}Request`] = schemas[definition.requestSchema];
+  selected[`validatePlatformCapability${index}Response`] = schemas[definition.responseSchema];
 }
 
 function withAjvExtensions(value: unknown): unknown {
