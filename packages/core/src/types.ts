@@ -345,6 +345,11 @@ export interface SettingsRepository {
 }
 
 export type CredentialVaultState = 'empty' | 'legacy' | 'locked' | 'unlocked' | 'invalid';
+export type CredentialVaultLockReason = 'idle' | 'manual' | null;
+
+export interface CredentialVaultPolicy {
+  idleTimeoutMinutes: number;
+}
 
 export interface CredentialVaultStatus {
   state: CredentialVaultState;
@@ -354,6 +359,10 @@ export interface CredentialVaultStatus {
   appKey: string;
   endpoint: string;
   signMethod: SignMethod;
+  idleTimeoutMinutes: number | null;
+  lastActivityAt: string | null;
+  idleRemainingSeconds: number | null;
+  lockReason: CredentialVaultLockReason;
 }
 
 export interface CredentialVaultRepository {
@@ -363,10 +372,11 @@ export interface CredentialVaultRepository {
   unlock(passphrase: string): Promise<CredentialVaultStatus>;
   lock(): Promise<CredentialVaultStatus>;
   rotate(newPassphrase: string): Promise<CredentialVaultStatus>;
+  updatePolicy(idleTimeoutMinutes: number): Promise<CredentialVaultStatus>;
 }
 
 export type CredentialVaultOperation =
-  'status' | 'get-settings' | 'create' | 'migrate' | 'unlock' | 'lock' | 'save' | 'rotate';
+  'status' | 'get-settings' | 'create' | 'migrate' | 'unlock' | 'lock' | 'save' | 'rotate' | 'update-policy';
 
 export interface CredentialVaultRequest {
   id: string;

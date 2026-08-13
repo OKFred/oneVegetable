@@ -1,10 +1,12 @@
 import { migrateGatewaySettings } from './settings-storage';
-import type { GatewaySettings } from './types';
+import type { CredentialVaultPolicy, GatewaySettings } from './types';
 
 export const CREDENTIAL_VAULT_VERSION = 2;
 export const CREDENTIAL_VAULT_ITERATIONS = 600_000;
 export const CREDENTIAL_VAULT_MIN_PASSPHRASE_BYTES = 12;
 export const CREDENTIAL_VAULT_MAX_PASSPHRASE_BYTES = 256;
+export const CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES = 15;
+export const CREDENTIAL_VAULT_IDLE_TIMEOUT_OPTIONS = [5, 15, 30, 60] as const;
 
 const SALT_BYTES = 16;
 const IV_BYTES = 12;
@@ -28,6 +30,69 @@ export interface CredentialVaultRecord {
 export interface UnlockedCredentialVault {
   key: CryptoKey;
   settings: GatewaySettings;
+  policy: CredentialVaultPolicy;
+}
+
+export interface CredentialVaultSessionTiming {
+  expired: boolean;
+  remainingSeconds: number;
+}
+
+export interface CredentialVaultSessionValue extends UnlockedCredentialVault {
+  record: CredentialVaultRecord;
+}
+
+export interface CredentialVaultSessionSnapshot {
+  value: CredentialVaultSessionValue;
+  lastActivityAt: number;
+  remainingSeconds: number;
+}
+
+export class CredentialVaultSession {
+  private active:
+    | {
+        value: CredentialVaultSessionValue;
+        lastActivityAt: number;
+      }
+    | undefined;
+
+  lockReason: 'idle' | 'manual' | null = null;
+
+  activate(value: CredentialVaultSessionValue, now = Date.now()): void {
+    this.active = { value, lastActivityAt: now };
+    this.lockReason = null;
+  }
+
+  lock(reason: 'idle' | 'manual' = 'manual'): void {
+    this.active = undefined;
+    this.lockReason = reason;
+  }
+
+  read(
+    record: CredentialVaultRecord,
+    touch = false,
+    now = Date.now()
+  ): CredentialVaultSessionSnapshot | undefined {
+    if (!this.active) return undefined;
+    if (!sameCredentialVaultRecord(this.active.value.record, record)) {
+      this.active = undefined;
+      this.lockReason = null;
+      return undefined;
+    }
+    const timing = credentialVaultSessionTiming(this.active.value.policy, this.active.lastActivityAt, now);
+    if (timing.expired) {
+      this.lock('idle');
+      return undefined;
+    }
+    if (touch) this.active.lastActivityAt = now;
+    return {
+      value: this.active.value,
+      lastActivityAt: this.active.lastActivityAt,
+      remainingSeconds: touch
+        ? credentialVaultSessionTiming(this.active.value.policy, now, now).remainingSeconds
+        : timing.remainingSeconds
+    };
+  }
 }
 
 export type CredentialStorageState =
@@ -50,13 +115,22 @@ export class CredentialVaultError extends Error {
 export async function createCredentialVault(
   settings: GatewaySettings,
   passphrase: string,
+  policy: CredentialVaultPolicy = defaultCredentialVaultPolicy(),
   cryptoSource: Crypto = globalThis.crypto
-): Promise<{ record: CredentialVaultRecord; key: CryptoKey }> {
+): Promise<{ record: CredentialVaultRecord; key: CryptoKey; policy: CredentialVaultPolicy }> {
   validateVaultPassphrase(passphrase);
+  const normalizedPolicy = strictCredentialVaultPolicy(policy);
   const salt = cryptoSource.getRandomValues(new Uint8Array(SALT_BYTES));
   const key = await deriveKey(passphrase, salt, CREDENTIAL_VAULT_ITERATIONS, cryptoSource);
-  const record = await sealCredentialVault(settings, key, salt, CREDENTIAL_VAULT_ITERATIONS, cryptoSource);
-  return { record, key };
+  const record = await sealCredentialVault(
+    settings,
+    normalizedPolicy,
+    key,
+    salt,
+    CREDENTIAL_VAULT_ITERATIONS,
+    cryptoSource
+  );
+  return { record, key, policy: normalizedPolicy };
 }
 
 export async function unlockCredentialVault(
@@ -82,8 +156,8 @@ export async function unlockCredentialVault(
       fromBase64(record.cipher.ciphertext)
     );
     const parsed: unknown = JSON.parse(new TextDecoder().decode(plaintext));
-    const settings = strictGatewaySettings(parsed);
-    return { key, settings };
+    const payload = strictCredentialVaultPayload(parsed);
+    return { key, ...payload };
   } catch (error: unknown) {
     if (error instanceof CredentialVaultError) throw error;
     throw new CredentialVaultError('VAULT_UNLOCK_FAILED', '保险库口令不正确或密文已损坏');
@@ -94,12 +168,47 @@ export async function resealCredentialVault(
   record: CredentialVaultRecord,
   settings: GatewaySettings,
   key: CryptoKey,
+  policy: CredentialVaultPolicy = defaultCredentialVaultPolicy(),
   cryptoSource: Crypto = globalThis.crypto
 ): Promise<CredentialVaultRecord> {
   if (!isCredentialVaultRecord(record)) {
     throw new CredentialVaultError('VAULT_INVALID', '凭证保险库格式无效');
   }
-  return sealCredentialVault(settings, key, fromBase64(record.kdf.salt), record.kdf.iterations, cryptoSource);
+  return sealCredentialVault(
+    settings,
+    strictCredentialVaultPolicy(policy),
+    key,
+    fromBase64(record.kdf.salt),
+    record.kdf.iterations,
+    cryptoSource
+  );
+}
+
+export function defaultCredentialVaultPolicy(): CredentialVaultPolicy {
+  return { idleTimeoutMinutes: CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES };
+}
+
+export function credentialVaultSessionTiming(
+  policy: CredentialVaultPolicy,
+  lastActivityAt: number,
+  now = Date.now()
+): CredentialVaultSessionTiming {
+  const normalized = strictCredentialVaultPolicy(policy);
+  const timeoutMilliseconds = normalized.idleTimeoutMinutes * 60_000;
+  const remainingMilliseconds = Math.max(0, timeoutMilliseconds - Math.max(0, now - lastActivityAt));
+  return {
+    expired: remainingMilliseconds === 0,
+    remainingSeconds: Math.ceil(remainingMilliseconds / 1000)
+  };
+}
+
+export function validateCredentialVaultIdleTimeout(idleTimeoutMinutes: number): void {
+  if (!(CREDENTIAL_VAULT_IDLE_TIMEOUT_OPTIONS as readonly number[]).includes(idleTimeoutMinutes)) {
+    throw new CredentialVaultError(
+      'VAULT_INVALID',
+      `空闲锁定时间仅支持 ${CREDENTIAL_VAULT_IDLE_TIMEOUT_OPTIONS.join('、')} 分钟`
+    );
+  }
 }
 
 export function inspectCredentialStorage(
@@ -167,17 +276,22 @@ async function deriveKey(
 
 async function sealCredentialVault(
   settings: GatewaySettings,
+  policy: CredentialVaultPolicy,
   key: CryptoKey,
   salt: Uint8Array<ArrayBuffer>,
   iterations: number,
   cryptoSource: Crypto
 ): Promise<CredentialVaultRecord> {
-  const normalized = strictGatewaySettings(settings);
+  const payload = {
+    payloadVersion: 1,
+    settings: strictGatewaySettings(settings),
+    policy: strictCredentialVaultPolicy(policy)
+  };
   const iv = cryptoSource.getRandomValues(new Uint8Array(IV_BYTES));
   const ciphertext = await cryptoSource.subtle.encrypt(
     { name: 'AES-GCM', iv, additionalData: ADDITIONAL_DATA, tagLength: 128 },
     key,
-    new TextEncoder().encode(JSON.stringify(normalized))
+    new TextEncoder().encode(JSON.stringify(payload))
   );
   return {
     version: CREDENTIAL_VAULT_VERSION,
@@ -185,6 +299,30 @@ async function sealCredentialVault(
     kdf: { salt: toBase64(salt), iterations, hash: 'SHA-256' },
     cipher: { iv: toBase64(iv), ciphertext: toBase64(new Uint8Array(ciphertext)) }
   };
+}
+
+function strictCredentialVaultPayload(value: unknown): {
+  settings: GatewaySettings;
+  policy: CredentialVaultPolicy;
+} {
+  if (isRecord(value) && value.payloadVersion === 1) {
+    return {
+      settings: strictGatewaySettings(value.settings),
+      policy: strictCredentialVaultPolicy(value.policy)
+    };
+  }
+  return {
+    settings: strictGatewaySettings(value),
+    policy: defaultCredentialVaultPolicy()
+  };
+}
+
+function strictCredentialVaultPolicy(value: unknown): CredentialVaultPolicy {
+  if (!isRecord(value) || typeof value.idleTimeoutMinutes !== 'number') {
+    throw new CredentialVaultError('VAULT_INVALID', '保险库空闲锁定策略无效');
+  }
+  validateCredentialVaultIdleTimeout(value.idleTimeoutMinutes);
+  return { idleTimeoutMinutes: value.idleTimeoutMinutes };
 }
 
 function strictGatewaySettings(value: unknown): GatewaySettings {
@@ -237,4 +375,12 @@ function isBase64WithByteLength(value: unknown, length: number): value is string
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function sameCredentialVaultRecord(left: CredentialVaultRecord, right: CredentialVaultRecord): boolean {
+  return (
+    left.kdf.salt === right.kdf.salt &&
+    left.cipher.iv === right.cipher.iv &&
+    left.cipher.ciphertext === right.cipher.ciphertext
+  );
 }

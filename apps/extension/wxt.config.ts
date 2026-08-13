@@ -9,6 +9,7 @@ export default defineConfig({
     version: '2.0.0',
     description: '__MSG_extDescription__',
     default_locale: 'zh_CN',
+    minimum_chrome_version: '102',
     permissions: ['storage'],
     host_permissions: ['https://eco.taobao.com/*'],
     optional_host_permissions: ['http://*/*', 'https://*/*'],

@@ -5,6 +5,7 @@ import {
   ALIBABA_GATEWAY,
   createCredentialVault,
   CredentialVaultError,
+  CredentialVaultSession,
   downloadPhotoForUpload,
   findCapability,
   GatewayException,
@@ -24,7 +25,6 @@ import {
   validateCapabilityRequest,
   validateCapabilityResponse,
   type ApiCapability,
-  type CredentialVaultRecord,
   type CredentialVaultRequest,
   type CredentialVaultResponse,
   type CredentialVaultStatus,
@@ -130,29 +130,33 @@ const QUALIFICATION_GATED_LOGISTICS_OPERATIONS = new Set<OperationId>([
 ]);
 
 export default defineBackground(() => {
+  const storageAccessReady = restrictStorageToTrustedContexts();
   // WebExtension runtime listeners support returning a promise for the response.
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   browser.runtime.onMessage.addListener((value: unknown) => {
     const vaultMessage = asCredentialVaultRequest(value);
-    if (vaultMessage) return handleCredentialVaultRequest(vaultMessage);
+    if (vaultMessage) return handleCredentialVaultRequest(vaultMessage, storageAccessReady);
     const message = asRuntimeRequest(value);
     if (!message) return undefined;
-    return handleRequest(message);
+    return handleRequestAfterStorageReady(message, storageAccessReady);
   });
 });
 
-let unlockedVault:
-  | {
-      key: CryptoKey;
-      record: CredentialVaultRecord;
-      settings: GatewaySettings;
-    }
-  | undefined;
+async function restrictStorageToTrustedContexts(): Promise<void> {
+  await Promise.all([
+    browser.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' }),
+    browser.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })
+  ]);
+}
+
+const vaultSession = new CredentialVaultSession();
 
 async function handleCredentialVaultRequest(
-  message: CredentialVaultRequest
+  message: CredentialVaultRequest,
+  storageAccessReady: Promise<void>
 ): Promise<CredentialVaultResponse> {
   try {
+    await storageAccessReady;
     const data = await executeCredentialVaultOperation(message.operation, message.payload);
     return { id: message.id, ok: true, data };
   } catch (error: unknown) {
@@ -173,11 +177,11 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
     case 'unlock': {
       if (state.kind !== 'vault') throw vaultStateError(state.kind);
       const unlocked = await unlockCredentialVault(state.record, requiredVaultString(payload, 'passphrase'));
-      unlockedVault = { ...unlocked, record: state.record };
+      vaultSession.activate({ ...unlocked, record: state.record });
       return credentialVaultStatus(state);
     }
     case 'lock':
-      unlockedVault = undefined;
+      vaultSession.lock('manual');
       return credentialVaultStatus(state);
     case 'create': {
       if (state.kind !== 'empty') throw new Error('只有空保险库可以创建新凭证');
@@ -185,14 +189,14 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
       const settings = requiredGatewaySettings(request.settings);
       const created = await createCredentialVault(settings, requiredString(request, 'passphrase'));
       await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: created.record });
-      unlockedVault = { ...created, settings };
+      vaultSession.activate({ ...created, settings });
       return credentialVaultStatus({ kind: 'vault', record: created.record });
     }
     case 'migrate': {
       if (state.kind !== 'legacy') throw new Error('当前没有待迁移的旧版明文凭证');
       const created = await createCredentialVault(state.settings, requiredVaultString(payload, 'passphrase'));
       await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: created.record });
-      unlockedVault = { ...created, settings: state.settings };
+      vaultSession.activate({ ...created, settings: state.settings });
       return credentialVaultStatus({ kind: 'vault', record: created.record });
     }
     case 'save': {
@@ -205,20 +209,29 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
         endpoint: requiredString(patch, 'endpoint'),
         signMethod: requiredSignMethod(patch.signMethod)
       };
-      const record = await resealCredentialVault(current.record, settings, current.key);
+      const record = await resealCredentialVault(current.record, settings, current.key, current.policy);
       await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: record });
-      unlockedVault = { ...current, record, settings };
+      vaultSession.activate({ ...current, record, settings });
       return credentialVaultStatus({ kind: 'vault', record });
     }
     case 'rotate': {
       const current = getUnlockedVault(state);
       const created = await createCredentialVault(
         current.settings,
-        requiredVaultString(payload, 'newPassphrase')
+        requiredVaultString(payload, 'newPassphrase'),
+        current.policy
       );
       await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: created.record });
-      unlockedVault = { ...created, settings: current.settings };
+      vaultSession.activate({ ...created, settings: current.settings });
       return credentialVaultStatus({ kind: 'vault', record: created.record });
+    }
+    case 'update-policy': {
+      const current = getUnlockedVault(state);
+      const policy = { idleTimeoutMinutes: requiredNumber(asRecord(payload), 'idleTimeoutMinutes') };
+      const record = await resealCredentialVault(current.record, current.settings, current.key, policy);
+      await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: record });
+      vaultSession.activate({ ...current, record, policy });
+      return credentialVaultStatus({ kind: 'vault', record });
     }
     default:
       throw new Error('不支持的保险库操作');
@@ -226,9 +239,10 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
 }
 
 function credentialVaultStatus(state: ReturnType<typeof inspectCredentialStorage>): CredentialVaultStatus {
-  const activeVault = state.kind === 'vault' ? matchingUnlockedVault(state.record) : undefined;
+  const activeSession = state.kind === 'vault' ? vaultSession.read(state.record) : undefined;
+  const activeVault = activeSession?.value;
   const settings = state.kind === 'legacy' ? state.settings : activeVault?.settings;
-  const effectiveState = state.kind === 'vault' ? (activeVault ? 'unlocked' : 'locked') : state.kind;
+  const effectiveState = state.kind === 'vault' ? (activeSession ? 'unlocked' : 'locked') : state.kind;
   return {
     state: effectiveState,
     hasAppKey: Boolean(settings?.appKey),
@@ -236,7 +250,11 @@ function credentialVaultStatus(state: ReturnType<typeof inspectCredentialStorage
     hasAccessToken: Boolean(settings?.accessToken),
     appKey: settings?.appKey ?? '',
     endpoint: settings?.endpoint ?? ALIBABA_GATEWAY,
-    signMethod: settings?.signMethod ?? 'hmac'
+    signMethod: settings?.signMethod ?? 'hmac',
+    idleTimeoutMinutes: activeVault?.policy.idleTimeoutMinutes ?? null,
+    lastActivityAt: activeSession ? new Date(activeSession.lastActivityAt).toISOString() : null,
+    idleRemainingSeconds: activeSession?.remainingSeconds ?? null,
+    lockReason: effectiveState === 'locked' ? vaultSession.lockReason : null
   };
 }
 
@@ -245,9 +263,8 @@ function editableSettings(state: ReturnType<typeof inspectCredentialStorage>): G
     state.kind === 'legacy'
       ? state.settings
       : state.kind === 'vault'
-        ? matchingUnlockedVault(state.record)?.settings
+        ? getUnlockedVault(state).settings
         : undefined;
-  if (!settings && state.kind === 'vault') throw vaultStateError('vault');
   return {
     appKey: settings?.appKey ?? '',
     appSecret: '',
@@ -257,22 +274,11 @@ function editableSettings(state: ReturnType<typeof inspectCredentialStorage>): G
   };
 }
 
-function getUnlockedVault(
-  state: ReturnType<typeof inspectCredentialStorage>
-): NonNullable<typeof unlockedVault> {
+function getUnlockedVault(state: ReturnType<typeof inspectCredentialStorage>) {
   if (state.kind !== 'vault') throw vaultStateError(state.kind);
-  const activeVault = matchingUnlockedVault(state.record);
-  if (!activeVault) throw vaultStateError(state.kind);
-  return activeVault;
-}
-
-function matchingUnlockedVault(record: CredentialVaultRecord): NonNullable<typeof unlockedVault> | undefined {
-  if (!unlockedVault) return undefined;
-  return unlockedVault.record.kdf.salt === record.kdf.salt &&
-    unlockedVault.record.cipher.iv === record.cipher.iv &&
-    unlockedVault.record.cipher.ciphertext === record.cipher.ciphertext
-    ? unlockedVault
-    : undefined;
+  const activeSession = vaultSession.read(state.record, true);
+  if (!activeSession) throw vaultStateError(state.kind);
+  return activeSession.value;
 }
 
 function vaultStateError(kind: ReturnType<typeof inspectCredentialStorage>['kind']): GatewayException {
@@ -283,7 +289,9 @@ function vaultStateError(kind: ReturnType<typeof inspectCredentialStorage>['kind
         ? ['CREDENTIAL_VAULT_INVALID', '凭证存储格式无效，请清除本地数据后重新配置']
         : kind === 'empty'
           ? ['CREDENTIAL_VAULT_EMPTY', '请先创建凭证保险库']
-          : ['CREDENTIAL_VAULT_LOCKED', '凭证保险库已锁定，请先在设置中解锁'];
+          : vaultSession.lockReason === 'idle'
+            ? ['CREDENTIAL_VAULT_IDLE_TIMEOUT', '凭证保险库因空闲超时已自动锁定，请重新解锁']
+            : ['CREDENTIAL_VAULT_LOCKED', '凭证保险库已锁定，请先在设置中解锁'];
   const [code, message] = details as [string, string];
   return new GatewayException({ code, message, retryable: false });
 }
@@ -330,6 +338,18 @@ async function handleRequest(message: RuntimeRequest): Promise<RuntimeResponse> 
     });
     return { id: message.id, ok: false, error: normalized };
   }
+}
+
+async function handleRequestAfterStorageReady(
+  message: RuntimeRequest,
+  storageAccessReady: Promise<void>
+): Promise<RuntimeResponse> {
+  try {
+    await storageAccessReady;
+  } catch (error: unknown) {
+    return { id: message.id, ok: false, error: normalizeGatewayError(error) };
+  }
+  return handleRequest(message);
 }
 
 async function executeOperation(operation: OperationId, payload: unknown): Promise<unknown> {
@@ -676,7 +696,8 @@ function asCredentialVaultRequest(value: unknown): CredentialVaultRequest | null
     value.operation !== 'unlock' &&
     value.operation !== 'lock' &&
     value.operation !== 'save' &&
-    value.operation !== 'rotate'
+    value.operation !== 'rotate' &&
+    value.operation !== 'update-policy'
   ) {
     return null;
   }

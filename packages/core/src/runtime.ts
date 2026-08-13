@@ -18,6 +18,7 @@ export {
 } from './privacy';
 export type {
   CredentialVaultOperation,
+  CredentialVaultPolicy,
   CredentialVaultRepository,
   CredentialVaultRequest,
   CredentialVaultResponse,

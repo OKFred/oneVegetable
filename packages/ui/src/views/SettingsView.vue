@@ -16,6 +16,8 @@ import {
 
 import {
   ALIBABA_GATEWAY,
+  CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES,
+  CREDENTIAL_VAULT_IDLE_TIMEOUT_OPTIONS,
   CREDENTIAL_VAULT_ITERATIONS,
   CREDENTIAL_VAULT_MIN_PASSPHRASE_BYTES,
   type CredentialVaultStatus,
@@ -59,12 +61,20 @@ const newVaultPassphrase = ref('');
 const newVaultPassphraseConfirmation = ref('');
 const vaultBusy = ref(false);
 const vaultError = ref('');
+const idleTimeoutMinutes = ref(CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES);
 const settingsEditable = computed(
   () => mode === 'mock' || vaultStatus.value?.state === 'empty' || vaultStatus.value?.state === 'unlocked'
 );
 const lastDiagnosticError = computed(() =>
   diagnostics.value?.entries.findLast((entry) => entry.outcome === 'error')
 );
+const vaultActivitySummary = computed(() => {
+  const status = vaultStatus.value;
+  if (!status?.lastActivityAt || status.idleRemainingSeconds === null) return '';
+  const lastActivity = new Date(status.lastActivityAt).toLocaleString('zh-CN', { hour12: false });
+  const remainingMinutes = Math.max(1, Math.ceil(status.idleRemainingSeconds / 60));
+  return `最近活动：${lastActivity}；状态快照剩余约 ${remainingMinutes} 分钟。`;
+});
 
 onMounted(async () => {
   const [, , , storedSettings] = await Promise.all([
@@ -90,7 +100,7 @@ async function save(): Promise<void> {
   try {
     if (mode === 'extension' && vault && vaultStatus.value?.state === 'empty') {
       assertMatchingPassphrases(vaultPassphrase.value, vaultPassphraseConfirmation.value);
-      vaultStatus.value = await vault.create(vaultPassphrase.value, model.value);
+      applyVaultStatus(await vault.create(vaultPassphrase.value, model.value));
       clearVaultPassphrases();
       feedback.value = '加密凭证保险库已创建并保持解锁。';
       await refreshLocalData();
@@ -111,7 +121,7 @@ async function refreshVaultStatus(): Promise<void> {
   if (!vault) return;
   vaultError.value = '';
   try {
-    vaultStatus.value = await vault.status();
+    applyVaultStatus(await vault.status());
   } catch (error: unknown) {
     vaultError.value = error instanceof Error ? error.message : '保险库状态读取失败';
   }
@@ -122,7 +132,7 @@ async function unlockVault(): Promise<void> {
   vaultBusy.value = true;
   vaultError.value = '';
   try {
-    vaultStatus.value = await vault.unlock(vaultPassphrase.value);
+    applyVaultStatus(await vault.unlock(vaultPassphrase.value));
     model.value = await settings.load();
     clearVaultPassphrases();
     feedback.value = '凭证保险库已解锁；service worker 重启后会自动重新锁定。';
@@ -139,7 +149,7 @@ async function migrateVault(): Promise<void> {
   vaultError.value = '';
   try {
     assertMatchingPassphrases(vaultPassphrase.value, vaultPassphraseConfirmation.value);
-    vaultStatus.value = await vault.migrate(vaultPassphrase.value);
+    applyVaultStatus(await vault.migrate(vaultPassphrase.value));
     model.value = await settings.load();
     clearVaultPassphrases();
     feedback.value = '旧版明文凭证已原位迁移到加密保险库。';
@@ -155,7 +165,7 @@ async function lockVault(): Promise<void> {
   if (!vault) return;
   vaultBusy.value = true;
   try {
-    vaultStatus.value = await vault.lock();
+    applyVaultStatus(await vault.lock());
     model.value = {
       appKey: '',
       appSecret: '',
@@ -177,7 +187,7 @@ async function rotateVaultPassphrase(): Promise<void> {
   vaultError.value = '';
   try {
     assertMatchingPassphrases(newVaultPassphrase.value, newVaultPassphraseConfirmation.value);
-    vaultStatus.value = await vault.rotate(newVaultPassphrase.value);
+    applyVaultStatus(await vault.rotate(newVaultPassphrase.value));
     clearVaultPassphrases();
     feedback.value = '保险库已使用新 salt 和新口令重新加密。';
   } catch (error: unknown) {
@@ -185,6 +195,25 @@ async function rotateVaultPassphrase(): Promise<void> {
   } finally {
     vaultBusy.value = false;
   }
+}
+
+async function updateVaultPolicy(): Promise<void> {
+  if (!vault) return;
+  vaultBusy.value = true;
+  vaultError.value = '';
+  try {
+    applyVaultStatus(await vault.updatePolicy(idleTimeoutMinutes.value));
+    feedback.value = `保险库将在连续 ${idleTimeoutMinutes.value} 分钟未使用凭证后自动锁定。`;
+  } catch (error: unknown) {
+    vaultError.value = error instanceof Error ? error.message : '空闲锁定策略保存失败';
+  } finally {
+    vaultBusy.value = false;
+  }
+}
+
+function applyVaultStatus(status: CredentialVaultStatus): void {
+  vaultStatus.value = status;
+  if (status.idleTimeoutMinutes !== null) idleTimeoutMinutes.value = status.idleTimeoutMinutes;
 }
 
 function assertMatchingPassphrases(passphrase: string, confirmation: string): void {
@@ -379,7 +408,14 @@ function formatBytes(bytes: number): string {
         </p>
       </div>
       <div v-else-if="vaultStatus?.state === 'locked'" class="mt-4 rounded-lg border p-4">
-        <p class="text-sm font-medium">输入口令解锁当前浏览器会话</p>
+        <p class="text-sm font-medium">
+          {{
+            vaultStatus.lockReason === 'idle' ? '保险库已因空闲超时自动锁定' : '输入口令解锁当前浏览器会话'
+          }}
+        </p>
+        <p v-if="vaultStatus.lockReason === 'idle'" class="mt-1 text-xs text-muted-foreground">
+          页面与后台中的解锁状态已清除，重新输入口令后才能继续真实查询。
+        </p>
         <div class="mt-3 flex flex-wrap gap-2">
           <Input
             v-model="vaultPassphrase"
@@ -404,6 +440,31 @@ function formatBytes(bytes: number): string {
           <Button variant="outline" :disabled="vaultBusy" @click="lockVault">
             <LockKeyhole class="size-4" />立即锁定
           </Button>
+        </div>
+        <div class="rounded-lg border p-4">
+          <p class="text-sm font-medium">空闲自动锁定</p>
+          <p class="mt-1 text-xs leading-5 text-muted-foreground">
+            仅实际读取或更新凭证会刷新计时；查看状态不会延长会话。service worker 提前终止时仍会立即锁定。
+          </p>
+          <p v-if="vaultActivitySummary" class="mt-2 text-xs text-muted-foreground">
+            {{ vaultActivitySummary }}
+          </p>
+          <div class="mt-3 flex flex-wrap items-center gap-2">
+            <select
+              v-model.number="idleTimeoutMinutes"
+              class="h-9 rounded-md border bg-background px-3 text-sm"
+              aria-label="空闲自动锁定时间"
+            >
+              <option
+                v-for="minutes in CREDENTIAL_VAULT_IDLE_TIMEOUT_OPTIONS"
+                :key="minutes"
+                :value="minutes"
+              >
+                {{ minutes }} 分钟
+              </option>
+            </select>
+            <Button variant="outline" :disabled="vaultBusy" @click="updateVaultPolicy">保存锁定策略</Button>
+          </div>
         </div>
         <div class="rounded-lg border p-4">
           <p class="text-sm font-medium">更换保险库口令</p>

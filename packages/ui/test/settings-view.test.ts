@@ -24,6 +24,9 @@ const migrateVault = vi.fn((_passphrase: string) => Promise.resolve(vaultStatus(
 const createVault = vi.fn((_passphrase: string, _settings: GatewaySettings) =>
   Promise.resolve(vaultStatus('unlocked'))
 );
+const updateVaultPolicy = vi.fn((idleTimeoutMinutes: number) =>
+  Promise.resolve(vaultStatus('unlocked', idleTimeoutMinutes))
+);
 
 function mountView(mode: 'mock' | 'extension' = 'mock', initialVaultState?: CredentialVaultState) {
   let grantedHosts = ['https://images.example.com/*'];
@@ -84,7 +87,8 @@ function mountView(mode: 'mock' | 'extension' = 'mock', initialVaultState?: Cred
                   currentVaultState = 'locked';
                   return Promise.resolve(vaultStatus('locked'));
                 },
-                rotate: () => Promise.resolve(vaultStatus('unlocked'))
+                rotate: () => Promise.resolve(vaultStatus('unlocked')),
+                updatePolicy: updateVaultPolicy
               }
             }
           : {}),
@@ -105,6 +109,7 @@ afterEach(() => {
   unlockVault.mockClear();
   migrateVault.mockClear();
   createVault.mockClear();
+  updateVaultPolicy.mockClear();
 });
 
 describe('SettingsView diagnostics', () => {
@@ -202,6 +207,17 @@ describe('SettingsView diagnostics', () => {
     expect((credentialInputs[0]?.element as HTMLInputElement | undefined)?.value).toBe('configured-key');
     expect(unlockVault).toHaveBeenCalledWith('correct-vault-password');
     expect(credentialInputs[1]?.attributes('placeholder')).toContain('留空保持不变');
+
+    await wrapper.get('select[aria-label="空闲自动锁定时间"]').setValue('30');
+    const policyButton = wrapper
+      .findAll('button')
+      .find((candidate) => candidate.text().includes('保存锁定策略'));
+    if (!policyButton) throw new Error('Missing idle-lock policy button');
+    await policyButton.trigger('click');
+    await vi.waitFor(() => {
+      expect(updateVaultPolicy).toHaveBeenCalledWith(30);
+      expect(wrapper.text()).toContain('连续 30 分钟未使用凭证后自动锁定');
+    });
     wrapper.unmount();
   });
 
@@ -228,7 +244,7 @@ describe('SettingsView diagnostics', () => {
   });
 });
 
-function vaultStatus(state: CredentialVaultState): CredentialVaultStatus {
+function vaultStatus(state: CredentialVaultState, idleTimeoutMinutes = 15): CredentialVaultStatus {
   return {
     state,
     hasAppKey: state === 'unlocked' || state === 'legacy',
@@ -236,6 +252,10 @@ function vaultStatus(state: CredentialVaultState): CredentialVaultStatus {
     hasAccessToken: state === 'unlocked' || state === 'legacy',
     appKey: state === 'unlocked' || state === 'legacy' ? 'configured-key' : '',
     endpoint: ALIBABA_GATEWAY,
-    signMethod: 'hmac'
+    signMethod: 'hmac',
+    idleTimeoutMinutes: state === 'unlocked' ? idleTimeoutMinutes : null,
+    lastActivityAt: state === 'unlocked' ? '2026-08-13T08:00:00.000Z' : null,
+    idleRemainingSeconds: state === 'unlocked' ? idleTimeoutMinutes * 60 : null,
+    lockReason: state === 'locked' ? 'manual' : null
   };
 }

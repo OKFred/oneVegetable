@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CREDENTIAL_VAULT_ITERATIONS,
+  credentialVaultSessionTiming,
+  CredentialVaultSession,
   createCredentialVault,
   CredentialVaultError,
   inspectCredentialStorage,
@@ -30,7 +32,8 @@ describe('credential vault', () => {
     expect(JSON.stringify(record)).not.toContain('vault-secret');
     expect(JSON.stringify(record)).not.toContain('vault-token');
     await expect(unlockCredentialVault(record, 'correct horse battery staple')).resolves.toMatchObject({
-      settings
+      settings,
+      policy: { idleTimeoutMinutes: 15 }
     });
   });
 
@@ -74,5 +77,60 @@ describe('credential vault', () => {
     expect(() => {
       validateVaultPassphrase('x'.repeat(257));
     }).toThrow(/不能超过/u);
+  });
+
+  it('encrypts the idle-lock policy and calculates expiration without extending activity', async () => {
+    const { record } = await createCredentialVault(settings, 'correct horse battery staple', {
+      idleTimeoutMinutes: 5
+    });
+    expect(JSON.stringify(record)).not.toContain('idleTimeoutMinutes');
+    await expect(unlockCredentialVault(record, 'correct horse battery staple')).resolves.toMatchObject({
+      policy: { idleTimeoutMinutes: 5 }
+    });
+
+    expect(credentialVaultSessionTiming({ idleTimeoutMinutes: 5 }, 1_000, 300_999)).toEqual({
+      expired: false,
+      remainingSeconds: 1
+    });
+    expect(credentialVaultSessionTiming({ idleTimeoutMinutes: 5 }, 1_000, 301_000)).toEqual({
+      expired: true,
+      remainingSeconds: 0
+    });
+  });
+
+  it('rejects unsupported idle-lock policies', async () => {
+    await expect(
+      createCredentialVault(settings, 'correct horse battery staple', { idleTimeoutMinutes: 0 })
+    ).rejects.toMatchObject({ code: 'VAULT_INVALID' });
+  });
+
+  it('does not extend idle time for status reads and locks exactly at the deadline', async () => {
+    const { record, key, policy } = await createCredentialVault(settings, 'correct horse battery staple', {
+      idleTimeoutMinutes: 5
+    });
+    const session = new CredentialVaultSession();
+    session.activate({ record, key, settings, policy }, 1_000);
+
+    expect(session.read(record, false, 61_000)).toMatchObject({
+      lastActivityAt: 1_000,
+      remainingSeconds: 240
+    });
+    expect(session.read(record, true, 121_000)).toMatchObject({
+      lastActivityAt: 121_000,
+      remainingSeconds: 300
+    });
+    expect(session.read(record, false, 420_999)).toBeDefined();
+    expect(session.read(record, false, 421_000)).toBeUndefined();
+    expect(session.lockReason).toBe('idle');
+  });
+
+  it('invalidates the session when the encrypted record changes', async () => {
+    const { record, key, policy } = await createCredentialVault(settings, 'correct horse battery staple');
+    const session = new CredentialVaultSession();
+    session.activate({ record, key, settings, policy }, 1_000);
+    const changed = structuredClone(record);
+    changed.cipher.iv = btoa('changed-iv!!');
+    expect(session.read(changed, false, 2_000)).toBeUndefined();
+    expect(session.lockReason).toBeNull();
   });
 });

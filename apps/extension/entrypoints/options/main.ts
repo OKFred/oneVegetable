@@ -49,7 +49,8 @@ const vault: CredentialVaultRepository = {
   migrate: (passphrase) => requestVault('migrate', { passphrase }),
   unlock: (passphrase) => requestVault('unlock', { passphrase }),
   lock: () => requestVault('lock', undefined),
-  rotate: (newPassphrase) => requestVault('rotate', { newPassphrase })
+  rotate: (newPassphrase) => requestVault('rotate', { newPassphrase }),
+  updatePolicy: (idleTimeoutMinutes) => requestVault('update-policy', { idleTimeoutMinutes })
 };
 
 interface VaultOperationMap {
@@ -64,6 +65,10 @@ interface VaultOperationMap {
   lock: { request: undefined; response: CredentialVaultStatus };
   save: { request: GatewaySettings; response: CredentialVaultStatus };
   rotate: { request: { newPassphrase: string }; response: CredentialVaultStatus };
+  'update-policy': {
+    request: { idleTimeoutMinutes: number };
+    response: CredentialVaultStatus;
+  };
 }
 
 async function requestVault<K extends CredentialVaultOperation>(

@@ -8,6 +8,7 @@ interface Manifest {
   description?: string;
   default_locale?: string;
   homepage_url?: string;
+  minimum_chrome_version?: string;
   permissions?: string[];
   host_permissions?: string[];
   optional_host_permissions?: string[];
@@ -47,6 +48,9 @@ if (manifest.name !== '__MSG_extName__') errors.push('manifest name must use __M
 if (manifest.description !== '__MSG_extDescription__')
   errors.push('manifest description must use __MSG_extDescription__');
 if (manifest.default_locale !== 'zh_CN') errors.push('default_locale must be zh_CN');
+if (manifest.minimum_chrome_version !== '102') {
+  errors.push('minimum_chrome_version must remain 102 for storage access-level enforcement');
+}
 if (manifest.homepage_url !== listing.homepageUrl) errors.push('manifest and listing homepage URLs differ');
 if (manifest.version !== listing.extensionVersion) errors.push('manifest and listing versions differ');
 if (JSON.stringify(manifest.permissions) !== JSON.stringify(['storage']))
