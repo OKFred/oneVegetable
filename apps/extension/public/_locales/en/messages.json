@@ -1,4 +1,6 @@
 {
   "extName": { "message": "oneVegetable" },
-  "extDescription": { "message": "Alibaba.com international operations workspace" }
+  "extDescription": {
+    "message": "Local workspace for Alibaba.com products, gallery, RFQs, trade and logistics"
+  }
 }

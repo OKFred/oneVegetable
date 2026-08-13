@@ -5,9 +5,9 @@ export default defineConfig({
   modules: ['@wxt-dev/module-vue'],
   vite: () => ({ plugins: [tailwindcss()] }),
   manifest: {
-    name: 'oneVeg/一根青菜',
+    name: '__MSG_extName__',
     version: '2.0.0',
-    description: 'Alibaba.com international operations workspace',
+    description: '__MSG_extDescription__',
     default_locale: 'zh_CN',
     permissions: ['storage'],
     host_permissions: ['https://eco.taobao.com/*'],
@@ -17,7 +17,7 @@ export default defineConfig({
       default_icon: { 16: 'icon.png', 32: 'icon.png', 48: 'icon.png', 128: 'icon.png' }
     },
     icons: { 16: 'icon.png', 32: 'icon.png', 48: 'icon.png', 128: 'icon.png' },
-    homepage_url: 'https://activity.alibaba.com/pc/developer.html',
+    homepage_url: 'https://github.com/OKFred/oneVegetable',
     content_security_policy: {
       extension_pages: "script-src 'self'; object-src 'self'"
     }

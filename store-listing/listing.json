@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "extensionVersion": "2.0.0",
+  "singlePurpose": "A user-operated local workspace for managing Alibaba.com international products, gallery assets, RFQs, trade and logistics through documented Open Platform APIs.",
+  "category": "productivity",
+  "defaultLocale": "zh_CN",
+  "privacyPolicyUrl": "https://github.com/OKFred/oneVegetable/blob/master/docs/privacy-policy.md",
+  "supportUrl": "https://github.com/OKFred/oneVegetable/issues",
+  "homepageUrl": "https://github.com/OKFred/oneVegetable",
+  "permissions": [
+    {
+      "permission": "storage",
+      "required": true,
+      "justification": "Stores user-entered gateway credentials and settings locally, and keeps redacted diagnostics for the current browser session."
+    },
+    {
+      "permission": "https://eco.taobao.com/*",
+      "required": true,
+      "justification": "Sends user-initiated, signed HTTPS requests to the documented Alibaba.com Open Platform gateway."
+    },
+    {
+      "permission": "http://*/*, https://*/*",
+      "required": false,
+      "justification": "Chrome grants only the specific host requested when a user configures a custom gateway or explicitly transfers an external image; grants are revocable in settings."
+    }
+  ],
+  "dataUse": {
+    "authenticationInformation": true,
+    "userGeneratedContent": true,
+    "websiteContent": false,
+    "browsingActivity": false,
+    "analytics": false,
+    "advertising": false,
+    "soldToThirdParties": false,
+    "humanReviewByDefault": false
+  },
+  "submissionStatus": {
+    "accountRegistration": "pending",
+    "privacyPolicyPublication": "pending-until-merged-to-master",
+    "realAccountSmokeTest": "pending",
+    "realMutationsEnabled": false
+  }
+}
