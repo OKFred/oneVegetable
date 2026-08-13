@@ -49,7 +49,8 @@
               "application/json": { "schema": { "$ref": "#/components/schemas/DiagnosticsSnapshot" } }
             }
           },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
+          "default": { "$ref": "#/components/responses/GatewayFailure" },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
         }
       },
       "delete": {
@@ -57,7 +58,8 @@
         "operationId": "clearDiagnostics",
         "responses": {
           "204": { "description": "Diagnostics cleared" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
+          "default": { "$ref": "#/components/responses/GatewayFailure" },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
         }
       }
     },

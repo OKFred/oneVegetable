@@ -6602,6 +6602,7 @@ export interface operations {
                 };
             };
             default: components["responses"]["GatewayFailure"];
+            "4XX": components["responses"]["GatewayFailure"];
         };
     };
     clearDiagnostics: {
@@ -6621,6 +6622,7 @@ export interface operations {
                 content?: never;
             };
             default: components["responses"]["GatewayFailure"];
+            "4XX": components["responses"]["GatewayFailure"];
         };
     };
     listProducts: {
