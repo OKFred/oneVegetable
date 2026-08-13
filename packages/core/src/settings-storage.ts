@@ -36,7 +36,16 @@ export function migrateGatewaySettings(value: unknown): SettingsMigrationResult 
 }
 
 export function persistGatewaySettings(settings: GatewaySettings): SettingsMigrationResult['persistedValue'] {
-  return { version: SETTINGS_SCHEMA_VERSION, settings: structuredClone(settings) };
+  return {
+    version: SETTINGS_SCHEMA_VERSION,
+    settings: {
+      appKey: settings.appKey,
+      appSecret: settings.appSecret,
+      accessToken: settings.accessToken,
+      endpoint: settings.endpoint,
+      signMethod: settings.signMethod
+    }
+  };
 }
 
 function isCompleteSettings(value: unknown): boolean {

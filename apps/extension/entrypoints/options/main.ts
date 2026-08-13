@@ -39,13 +39,15 @@ const permissions: HostPermissionsRepository = {
   async list() {
     const granted = await browser.permissions.getAll();
     return (granted.origins ?? [])
-      .filter((origin) => origin !== 'https://eco.taobao.com/*')
+      .filter((origin) => !REQUIRED_HOST_PERMISSIONS.has(origin))
       .toSorted((left, right) => left.localeCompare(right));
   },
   revoke(origin) {
     return browser.permissions.remove({ origins: [origin] });
   }
 };
+
+const REQUIRED_HOST_PERMISSIONS = new Set(['https://eco.taobao.com/*', 'https://*.alibaba.com/*']);
 
 class ExtensionGatewayClient implements GatewayClient {
   async request<K extends OperationId>(operation: K, payload: RequestOf<K>): Promise<ResponseOf<K>> {

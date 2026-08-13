@@ -37,7 +37,7 @@ pnpm test
 pnpm build
 pnpm check:extension-bundle
 pnpm test:e2e
-pnpm zip:extension
+pnpm release:extension # 可复现 ZIP、SHA-256 与 release.json
 ```
 
 ## 扩展调试
@@ -70,6 +70,7 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 - 图库工作台支持三层分组管理，展示文件大小、引用数量、更新时间与图库 `fileId`，并对未引用和低于 750 × 750 的素材给出非阻断建议。真实分组操作、上传和 URL 转存在账号 smoke test 前保持关闭。详见 [图库域说明](docs/photo-domain.md)。
 - 普通文件转存、天鹿风控和 URL 爬取任务通知归为平台协作能力。文件转存不会冒充图库入库；风控和任务回调不提供页面采集或发送入口，并由 service worker 二次门禁。详见 [平台协作能力说明](docs/platform-domain.md)。
 - MV3 默认只申请 `storage` 和正式网关主机权限；自定义网关与外部图片来源在用户执行对应操作时按需申请主机权限。设置页可导出或清空最多 100 条会话级脱敏诊断，且构建会执行权限与体积预算检查。详见 [MV3 发布加固说明](docs/mv3-release-hardening.md)。
+- RC 构建会迁移旧设置、允许查看/撤销额外主机权限、只对只读请求执行有限重试，并生成可复现 ZIP 与 SHA-256。CI 只保存产物，不自动上架。详见 [RC 发布准备说明](docs/rc-release-readiness.md)。
 - `docs/alibaba-api-audit.json` 是 2026-08-13 的文档审计快照，共 84 个免费且非聚石塔候选 API。特定 ISV/业务资格接口默认关闭。
 - 当前没有真实国际站账号，自动化验证覆盖契约 Mock、签名、适配和 MV3 行为，不代表真实账号 smoke test 已通过。
 

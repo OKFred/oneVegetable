@@ -14,7 +14,7 @@ import {
   Truck
 } from '@lucide/vue';
 
-import type { GatewayClient, SettingsRepository } from '@one-vegetable/core';
+import type { GatewayClient, HostPermissionsRepository, SettingsRepository } from '@one-vegetable/core';
 
 import Button from './components/ui/Button.vue';
 import { provideServices } from './lib/services';
@@ -22,9 +22,15 @@ import { provideServices } from './lib/services';
 const props = defineProps<{
   gateway: GatewayClient;
   settings: SettingsRepository;
+  permissions?: HostPermissionsRepository;
   mode: 'mock' | 'extension';
 }>();
-provideServices(props);
+provideServices({
+  gateway: props.gateway,
+  settings: props.settings,
+  mode: props.mode,
+  ...(props.permissions ? { permissions: props.permissions } : {})
+});
 
 type PageId =
   | 'dashboard'

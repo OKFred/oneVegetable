@@ -28,11 +28,12 @@
 
 - 后台入口不超过 1.8 MB；
 - options/popup 页面入口 chunk 单个不超过 800 KB；
-- options HTML 直接引用的 JavaScript 总量不超过 1.9 MB；
+- options HTML 直接引用的 JavaScript 总量不超过 250 KB；
+- 解压后的扩展总量不超过 3.2 MB，且不包含 source map；
 - manifest 不重新引入 `cookies` 或必选 `<all_urls>`；
 - 正式网关权限没有被误删。
 
-各工作区页面使用异步组件独立拆包。目前 AJV standalone validators 仍形成约 1.5 MB 的共享生成 chunk，后台也需要整套能力校验器；当前预算会阻止继续膨胀，但后续仍可按领域拆分 validator 注册表进一步降低首载与后台体积。
+各工作区页面使用异步组件独立拆包。AJV standalone validators 已拆成核心、商品、RFQ、交易、物流、洞察、图库和平台八个模块；Web 按领域加载，扩展页面把校验交给 service worker。WXT 仍会把后台依赖合并为单一 service worker 文件，因此后台继续使用独立的 1.8 MB 预算约束。
 
 ## 发布前检查
 

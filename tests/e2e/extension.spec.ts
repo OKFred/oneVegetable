@@ -44,6 +44,9 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.reload();
   await page.getByRole('button', { name: '设置' }).click();
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
+  await expect(page.getByRole('heading', { name: '主机权限' })).toBeVisible();
+  await expect(page.getByText('当前没有额外主机权限。')).toBeVisible();
+  await expect(page.getByText('https://*.alibaba.com/*')).toHaveCount(0);
 
   const qualificationError = await page.evaluate(async () => {
     const extension = (
@@ -72,6 +75,20 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   expect(qualificationError).toMatchObject({
     ok: false,
     error: { code: 'LOGISTICS_QUALIFICATION_REQUIRED' }
+  });
+  const migratedSettings = await page.evaluate(async () => {
+    const extension = (
+      globalThis as unknown as {
+        chrome: { storage: { local: { get(key: string): Promise<Record<string, unknown>> } } };
+      }
+    ).chrome;
+    return extension.storage.local.get('gatewaySettings');
+  });
+  expect(migratedSettings).toMatchObject({
+    gatewaySettings: {
+      version: 1,
+      settings: { appKey: 'e2e-app-key', appSecret: 'e2e-secret', accessToken: 'e2e-token' }
+    }
   });
 
   const diagnosticsBeforeRestart = await page.evaluate(async () => {
