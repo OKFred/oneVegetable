@@ -620,7 +620,11 @@
                   },
                   { "$ref": "#/components/schemas/AlibabaInsightsAlibabaMydataSelfQueryCgsokkRequest" },
                   { "$ref": "#/components/schemas/AlibabaInsightsAlibabaProcurementMysupplierListRequest" },
-                  { "$ref": "#/components/schemas/AlibabaInsightsAlibabaProcurementSupplierItemsGetRequest" }
+                  { "$ref": "#/components/schemas/AlibabaInsightsAlibabaProcurementSupplierItemsGetRequest" },
+                  { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankGroupListRequest" },
+                  { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankGroupOperateRequest" },
+                  { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankListRequest" },
+                  { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankUploadRequest" }
                 ]
               }
             }
@@ -1360,6 +1364,26 @@
             "content": {
               "application/json": { "schema": { "$ref": "#/components/schemas/InsightsSupplierProductPage" } }
             }
+          },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
+          "default": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      }
+    },
+    "/photo-groups/operate": {
+      "post": {
+        "summary": "Add, rename, or delete a gallery group",
+        "operationId": "operatePhotoGroup",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/PhotoGroupOperationRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Affected gallery group",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PhotoGroup" } } }
           },
           "4XX": { "$ref": "#/components/responses/GatewayFailure" },
           "default": { "$ref": "#/components/responses/GatewayFailure" }
@@ -3340,6 +3364,189 @@
           }
         },
         "title": "alibaba.wholesale.shippingline.template.list response"
+      },
+      "AlibabaPhotoAlibabaIcbuPhotobankGroupListRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "extra_context": { "type": "object", "additionalProperties": true, "description": "补充信息" },
+          "id": {
+            "type": "number",
+            "description": "查询图片分组信息，如果传入id，则获取当前分组和所有子分组信息，否则获取所有一级分组信息"
+          }
+        },
+        "title": "alibaba.icbu.photobank.group.list request"
+      },
+      "AlibabaPhotoAlibabaIcbuPhotobankGroupListResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "groups": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "photo_album_group": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["id", "name"],
+                  "properties": {
+                    "id": { "type": "number", "description": "分组 ID" },
+                    "level1": { "type": "number", "description": "一级分组 ID" },
+                    "level2": { "type": "number", "description": "二级分组 ID" },
+                    "level3": { "type": "number", "description": "三级分组 ID" },
+                    "name": { "type": "string", "description": "分组名称" }
+                  }
+                },
+                "description": "图库分组"
+              }
+            },
+            "description": "图库分组容器"
+          }
+        },
+        "title": "alibaba.icbu.photobank.group.list response"
+      },
+      "AlibabaPhotoAlibabaIcbuPhotobankGroupOperateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "photo_group_operation_request": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "group_name": {
+                "type": "string",
+                "description": "add操作中表示新增的分组名，rename操作中表示重命名后的分组名，delete操作不填"
+              },
+              "group_id": {
+                "type": "number",
+                "description": "add操作中表示新增分组的父分组id，delete操作和rename操作表示要操作的分组id"
+              },
+              "operation": {
+                "type": "string",
+                "description": "add表示新增分组，delete表示删除分组，rename表示重命名分组"
+              }
+            },
+            "description": "图片分组操作请求对象"
+          }
+        },
+        "title": "alibaba.icbu.photobank.group.operate request"
+      },
+      "AlibabaPhotoAlibabaIcbuPhotobankGroupOperateResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "photo_group_result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "photobank_group": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "level3": { "type": "number", "description": "level3" },
+                  "level2": { "type": "number", "description": "level2" },
+                  "level1": { "type": "number", "description": "level1" },
+                  "name": { "type": "string", "description": "分组名字" },
+                  "id": { "type": "number", "description": "分组id" }
+                },
+                "description": "add操作中表示新增的图片分组，rename操作中表示重命名的分组，delete操作中返回分组信息"
+              }
+            },
+            "description": "接口返回的数据结果"
+          }
+        },
+        "title": "alibaba.icbu.photobank.group.operate response"
+      },
+      "AlibabaPhotoAlibabaIcbuPhotobankListRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "extra_context": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "额外的上下文信息. 例如:icvId"
+          },
+          "current_page": { "type": "number", "description": "当前翻页数" },
+          "group_id": { "type": "string", "description": "图片组id" },
+          "location_type": {
+            "type": "string",
+            "description": "存放位置 必要条件, 包括ALL_GROUP(所有目录), SUB_GROUP(指定图片组下),UNGROUP(未分组), TEMP(disable)四个值"
+          },
+          "page_size": { "type": "number", "description": "每页显示数" }
+        },
+        "title": "alibaba.icbu.photobank.list request"
+      },
+      "AlibabaPhotoAlibabaIcbuPhotobankListResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "trace_id": { "type": "string", "description": "traceId" },
+          "pagination_query_list": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "list": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "url": { "type": "string", "description": "图片url" },
+                    "id": { "type": "string", "description": "图片id" },
+                    "file_name": { "type": "string", "description": "文件名字" },
+                    "gmt_modified": { "type": ["integer", "string"], "description": "修改时间" },
+                    "owner_member_display_name": { "type": "string", "description": "归属人" },
+                    "file_size": { "type": "number", "description": "文件大小" },
+                    "reference_count": { "type": "number", "description": "图片引用数量" },
+                    "group_id": { "type": "number", "description": "分组id" },
+                    "display_name": { "type": "string", "description": "展示名字" }
+                  }
+                },
+                "description": "image_list"
+              },
+              "total": { "type": "integer", "minimum": 0 }
+            },
+            "description": "PaginationQueryList"
+          },
+          "errorcode": { "type": "string", "description": "error code" },
+          "errormsg": { "type": "string", "description": "error message" }
+        },
+        "title": "alibaba.icbu.photobank.list response"
+      },
+      "AlibabaPhotoAlibabaIcbuPhotobankUploadRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file_name", "image_bytes"],
+        "properties": {
+          "extra_context": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "扩展参数信息,如ICVID"
+          },
+          "file_name": { "type": "string", "description": "上传图片名称" },
+          "group_id": { "type": "string", "description": "上传图片所在分组" },
+          "image_bytes": { "type": "string", "contentEncoding": "base64", "description": "图片字节数组" }
+        },
+        "title": "alibaba.icbu.photobank.upload request"
+      },
+      "AlibabaPhotoAlibabaIcbuPhotobankUploadResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "upload_image_response": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "file_name": { "type": "string", "description": "生成的图片名称" },
+              "photobank_url": { "type": "string", "description": "生成的图片全路径URL" },
+              "file_id": { "type": "number", "description": "图片的唯一识别id" }
+            },
+            "description": "图片信息"
+          }
+        },
+        "title": "alibaba.icbu.photobank.upload response"
       },
       "AlibabaProductAlibabaIcbuCategoryAttrGetRequest": {
         "type": "object",
@@ -8373,7 +8580,11 @@
               },
               { "$ref": "#/components/schemas/AlibabaInsightsAlibabaMydataSelfQueryCgsokkResponse" },
               { "$ref": "#/components/schemas/AlibabaInsightsAlibabaProcurementMysupplierListResponse" },
-              { "$ref": "#/components/schemas/AlibabaInsightsAlibabaProcurementSupplierItemsGetResponse" }
+              { "$ref": "#/components/schemas/AlibabaInsightsAlibabaProcurementSupplierItemsGetResponse" },
+              { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankGroupListResponse" },
+              { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankGroupOperateResponse" },
+              { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankListResponse" },
+              { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankUploadResponse" }
             ]
           },
           "contractValid": { "type": "boolean" },
@@ -8851,11 +9062,23 @@
       "PhotoGroup": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "name", "photoCount"],
+        "required": ["id", "name", "photoCount", "parentId", "level"],
         "properties": {
           "id": { "type": "string" },
           "name": { "type": "string" },
-          "photoCount": { "type": "integer", "minimum": 0 }
+          "photoCount": { "type": "integer", "minimum": 0 },
+          "parentId": { "type": ["string", "null"] },
+          "level": { "type": "integer", "minimum": 1, "maximum": 3 }
+        }
+      },
+      "PhotoGroupOperationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["operation", "groupId", "groupName"],
+        "properties": {
+          "operation": { "type": "string", "enum": ["add", "rename", "delete"] },
+          "groupId": { "type": ["string", "null"] },
+          "groupName": { "type": ["string", "null"], "maxLength": 128 }
         }
       },
       "PhotoPage": {
@@ -13347,6 +13570,153 @@
         }
       },
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=40748"
+    }
+  },
+  "x-photo-capabilities": {
+    "alibaba.icbu.photobank.group.list": {
+      "requestSchema": "AlibabaPhotoAlibabaIcbuPhotobankGroupListRequest",
+      "responseSchema": "AlibabaPhotoAlibabaIcbuPhotobankGroupListResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "groups",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2024-08-08",
+      "title": "图片银行分组信息获取",
+      "description": "图片银行分组信息获取",
+      "errorCodes": [],
+      "requestExample": {},
+      "responseExample": {
+        "groups": {
+          "photo_album_group": [
+            { "id": 17590, "level1": 17590, "level2": 0, "level3": 0, "name": "商品主图" }
+          ]
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=30575"
+    },
+    "alibaba.icbu.photobank.group.operate": {
+      "requestSchema": "AlibabaPhotoAlibabaIcbuPhotobankGroupOperateRequest",
+      "responseSchema": "AlibabaPhotoAlibabaIcbuPhotobankGroupOperateResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "groups",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2024-08-08",
+      "title": "图片银行分组操作接口",
+      "description": "修改用户图片银行的分组信息，包括 新增分组，删除分组，分组重命名",
+      "errorCodes": [],
+      "requestExample": {
+        "photo_group_operation_request": { "group_name": "详情图", "group_id": 17590, "operation": "add" }
+      },
+      "responseExample": {
+        "photo_group_result": {
+          "photobank_group": {
+            "id": 312577503,
+            "level1": 17590,
+            "level2": 312577503,
+            "level3": 0,
+            "name": "详情图"
+          }
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=41767"
+    },
+    "alibaba.icbu.photobank.list": {
+      "requestSchema": "AlibabaPhotoAlibabaIcbuPhotobankListRequest",
+      "responseSchema": "AlibabaPhotoAlibabaIcbuPhotobankListResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "assets",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2024-08-04",
+      "title": "国际站图片银行查询接口",
+      "description": "国际站图片银行查询接口",
+      "errorCodes": [],
+      "requestExample": {},
+      "responseExample": {
+        "trace_id": "mock-photo-trace",
+        "pagination_query_list": {
+          "list": [
+            {
+              "url": "https://sc04.alicdn.com/kf/mock-solar-station.jpg",
+              "id": "ph_001",
+              "file_name": "solar-station.jpg",
+              "gmt_modified": "2026-08-12T03:20:00.000Z",
+              "owner_member_display_name": "Mock Seller",
+              "file_size": 245760,
+              "reference_count": 3,
+              "group_id": 17590,
+              "display_name": "Portable solar station"
+            }
+          ],
+          "total": 1
+        },
+        "errorcode": "",
+        "errormsg": ""
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=24459"
+    },
+    "alibaba.icbu.photobank.upload": {
+      "requestSchema": "AlibabaPhotoAlibabaIcbuPhotobankUploadRequest",
+      "responseSchema": "AlibabaPhotoAlibabaIcbuPhotobankUploadResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "assets",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2024-08-08",
+      "title": "图片银行图片上传开放接口",
+      "description": "图片银行图片上传开放接口",
+      "errorCodes": [
+        {
+          "errorCode": "SIZE_TOO_LARGE",
+          "errorMsg": "SIZE_TOO_LARGE",
+          "solution": "The max limit is 5MB when uploading raw images!"
+        },
+        {
+          "errorCode": "FUNCTION_FORBIDDEN",
+          "errorMsg": "FUNCTION_FORBIDDEN",
+          "solution": "Your account is forbidden to upload images for risk issues, please contact our developer "
+        },
+        {
+          "errorCode": "NOCAPACITY",
+          "errorMsg": "NOCAPACITY",
+          "solution": "The capacity of your photobank is full and new images cannot be uploaded. "
+        },
+        {
+          "errorCode": "-2",
+          "errorMsg": "Upload Image Error",
+          "solution": "not predefined error when uploading images"
+        }
+      ],
+      "requestExample": { "file_name": "solar-station.jpg", "group_id": "17590", "image_bytes": "aGVsbG8=" },
+      "responseExample": {
+        "upload_image_response": {
+          "file_name": "solar-station.jpg",
+          "photobank_url": "https://sc04.alicdn.com/kf/mock-solar-station.jpg",
+          "file_id": 73826382
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=24463"
     }
   }
 }

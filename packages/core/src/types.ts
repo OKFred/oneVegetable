@@ -13,6 +13,7 @@ import type {
   InsightsCapabilityRequestMap,
   InsightsCapabilityResponseMap
 } from './generated/insights-capabilities';
+import type { PhotoCapabilityRequestMap, PhotoCapabilityResponseMap } from './generated/photo-capabilities';
 
 export type DashboardSummary = components['schemas']['DashboardSummary'];
 export type Product = components['schemas']['Product'];
@@ -26,6 +27,7 @@ export type Photo = components['schemas']['Photo'];
 export type PhotoGroup = components['schemas']['PhotoGroup'];
 export type PhotoPage = components['schemas']['PhotoPage'];
 export type PhotoTransferRequest = components['schemas']['PhotoTransferRequest'];
+export type PhotoGroupOperationRequest = components['schemas']['PhotoGroupOperationRequest'];
 export type ProductDescriptionQualityIssue = components['schemas']['ProductDescriptionQualityIssue'];
 export type Order = components['schemas']['Order'];
 export type OrderPage = components['schemas']['OrderPage'];
@@ -92,20 +94,23 @@ export type { RfqCapabilityRequestMap, RfqCapabilityResponseMap };
 export type { TradeCapabilityRequestMap, TradeCapabilityResponseMap };
 export type { LogisticsCapabilityRequestMap, LogisticsCapabilityResponseMap };
 export type { InsightsCapabilityRequestMap, InsightsCapabilityResponseMap };
+export type { PhotoCapabilityRequestMap, PhotoCapabilityResponseMap };
 export interface CapabilityRequestMap
   extends
     ProductCapabilityRequestMap,
     RfqCapabilityRequestMap,
     TradeCapabilityRequestMap,
     LogisticsCapabilityRequestMap,
-    InsightsCapabilityRequestMap {}
+    InsightsCapabilityRequestMap,
+    PhotoCapabilityRequestMap {}
 export interface CapabilityResponseMap
   extends
     ProductCapabilityResponseMap,
     RfqCapabilityResponseMap,
     TradeCapabilityResponseMap,
     LogisticsCapabilityResponseMap,
-    InsightsCapabilityResponseMap {}
+    InsightsCapabilityResponseMap,
+    PhotoCapabilityResponseMap {}
 export type GatewayError = components['schemas']['GatewayError'];
 
 export interface ProductListQuery {
@@ -195,6 +200,7 @@ export interface OperationMap {
   };
   updateProductDisplay: { request: ProductDisplayRequest; response: undefined };
   listPhotoGroups: { request: undefined; response: PhotoGroup[] };
+  operatePhotoGroup: { request: PhotoGroupOperationRequest; response: PhotoGroup };
   listPhotos: { request: PhotoListQuery; response: PhotoPage };
   uploadPhoto: { request: PhotoUploadRequest; response: Photo };
   transferPhotoFromUrl: { request: PhotoTransferRequest; response: Photo };

@@ -181,10 +181,17 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
   updateProduct: { productId: '10000001', traceId: 'mock-update-trace', success: true },
   updateProductDisplay: undefined,
   listPhotoGroups: [
-    { id: '-1', name: '全部图片', photoCount: 436 },
-    { id: '2001', name: '商品主图', photoCount: 84 },
-    { id: '2002', name: '详情素材', photoCount: 137 }
+    { id: '-1', name: '全部图片', photoCount: 436, parentId: null, level: 1 },
+    { id: '2001', name: '商品主图', photoCount: 84, parentId: null, level: 1 },
+    { id: '2002', name: '详情素材', photoCount: 137, parentId: null, level: 1 }
   ],
+  operatePhotoGroup: {
+    id: '2003',
+    name: '新建分组',
+    photoCount: 0,
+    parentId: null,
+    level: 1
+  },
   listPhotos: {
     items: [
       {
@@ -652,6 +659,17 @@ export class MockGatewayClient implements GatewayClient {
         fileSize: Math.floor((payload.file.length * 3) / 4),
         referenceCount: 0,
         modifiedAt: new Date().toISOString()
+      } as ResponseOf<K>;
+    }
+    if (operation === 'operatePhotoGroup') {
+      const payload = _request as OperationMap['operatePhotoGroup']['request'];
+      const current = MOCK_DATA.listPhotoGroups.find((group) => group.id === payload.groupId);
+      return {
+        ...(current ?? MOCK_DATA.operatePhotoGroup),
+        id: payload.operation === 'add' ? `group_${Date.now()}` : (payload.groupId ?? '2003'),
+        name: payload.groupName ?? current?.name ?? '已删除分组',
+        parentId: payload.operation === 'add' ? payload.groupId : (current?.parentId ?? null),
+        level: payload.operation === 'add' ? Math.min((current?.level ?? 0) + 1, 3) : (current?.level ?? 1)
       } as ResponseOf<K>;
     }
     if (operation === 'transferPhotoFromUrl') {

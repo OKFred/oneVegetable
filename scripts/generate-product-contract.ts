@@ -461,7 +461,8 @@ const additionalDefinitions = [
   'x-rfq-capabilities',
   'x-trade-capabilities',
   'x-logistics-capabilities',
-  'x-insights-capabilities'
+  'x-insights-capabilities',
+  'x-photo-capabilities'
 ].flatMap((extension) =>
   Object.entries(
     (document[extension] ?? {}) as Record<string, { requestSchema: string; responseSchema: string }>
