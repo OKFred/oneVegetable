@@ -3,6 +3,8 @@ import { resolve } from 'node:path';
 
 import { format } from 'prettier';
 
+import { normalizeHttpContract } from './lib/normalize-http-contract';
+
 interface ParamNode {
   name: string;
   type: string;
@@ -228,6 +230,7 @@ document.components.schemas = Object.fromEntries(
   Object.entries(document.components.schemas).sort(([left], [right]) => left.localeCompare(right))
 );
 const options = { parser: 'json', printWidth: 110, endOfLine: 'lf' } as const;
+normalizeHttpContract(document);
 const contractOutput = await format(JSON.stringify(document), options);
 if (process.argv.includes('--check')) {
   const currentRegistry = await readFile(registryPath, 'utf8');

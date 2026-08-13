@@ -1,13 +1,12 @@
 export interface paths {
-    "/dashboard": {
+    "/healthz": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get dashboard summary */
-        get: operations["getDashboard"];
+        get: operations["healthCheck"];
         put?: never;
         post?: never;
         delete?: never;
@@ -16,43 +15,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/diagnostics": {
+    "/readyz": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get sanitized extension diagnostics */
-        get: operations["getDiagnostics"];
+        get: operations["readinessCheck"];
         put?: never;
         post?: never;
-        /** Clear extension diagnostics */
-        delete: operations["clearDiagnostics"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/products": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List products */
-        get: operations["listProducts"];
-        put?: never;
-        /** Publish a product with Schema XML */
-        post: operations["publishProduct"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/products/drafts": {
+    "/meta/get": {
         parameters: {
             query?: never;
             header?: never;
@@ -61,15 +40,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Save a product draft with Schema XML */
-        post: operations["saveProductDraft"];
+        post: operations["getBackendMeta"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/products/schema": {
+    "/operations/call": {
         parameters: {
             query?: never;
             header?: never;
@@ -78,752 +56,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Get the product publishing Schema */
-        post: operations["getProductSchema"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/products/display": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Update product display state */
-        patch: operations["updateProductDisplay"];
-        trace?: never;
-    };
-    "/products/{productId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                productId: components["parameters"]["ProductId"];
-            };
-            cookie?: never;
-        };
-        /** Get a product rendered as Schema XML */
-        get: operations["getProduct"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Update a product with Schema XML */
-        patch: operations["updateProduct"];
-        trace?: never;
-    };
-    "/photo-groups": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List photo bank groups */
-        get: operations["listPhotoGroups"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/photos": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List photo bank images */
-        get: operations["listPhotos"];
-        put?: never;
-        /** Upload a photo bank image */
-        post: operations["uploadPhoto"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/photos/transfer": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Transfer a public image URL into the Alibaba PhotoBank
-         * @description The extension service worker downloads a public HTTP(S) image and uploads its bytes with alibaba.icbu.photobank.upload so the result includes a PhotoBank fileId.
-         */
-        post: operations["transferPhotoFromUrl"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/orders": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List seller orders */
-        get: operations["listOrders"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/orders/{orderId}/fund": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get order fund information */
-        get: operations["getOrderFund"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/orders/{orderId}/logistics": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get order logistics information */
-        get: operations["getOrderLogistics"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/capabilities": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List audited API capabilities */
-        get: operations["listCapabilities"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/gateway/call": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Call an enabled audited capability */
-        post: operations["callCapability"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/capabilities/{method}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a typed capability definition */
-        get: operations["getCapabilityDefinition"];
-        put?: never;
-        /** Call a method-typed capability */
-        post: operations["callTypedCapability"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/product-categories": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List modern product categories */
-        get: operations["listProductCategories"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/product-categories/mapping": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Map a legacy category to the modern category system */
-        post: operations["mapProductCategory"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/product-groups": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List product groups */
-        get: operations["listProductGroups"];
-        put?: never;
-        /** Create a product group */
-        post: operations["createProductGroup"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/products/{productId}/score": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get product quality score */
-        get: operations["getProductScore"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/rfqs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Search RFQs */
-        get: operations["listRfqs"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/rfqs/recommended": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List recommended RFQs */
-        get: operations["listRecommendedRfqs"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/rfqs/equity": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get RFQ quotation equity */
-        get: operations["getRfqEquity"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/rfqs/read-status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Get RFQ read status for up to 20 IDs */
-        post: operations["getRfqReadStatus"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/rfqs/{rfqId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get an RFQ detail */
-        get: operations["getRfq"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/rfqs/attachments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Upload an RFQ quotation attachment */
-        post: operations["uploadRfqAttachment"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/rfqs/quotations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Submit an RFQ quotation */
-        post: operations["submitRfqQuotation"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/trade-orders": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List international trade orders */
-        get: operations["listTradeOrders"];
-        put?: never;
-        /** Create a trade assurance order */
-        post: operations["createTradeOrder"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/trade-orders/{orderId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get an aggregate order detail without the Jushita-only API */
-        get: operations["getTradeOrderAggregate"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Modify a trade assurance order */
-        patch: operations["modifyTradeOrder"];
-        trace?: never;
-    };
-    "/trade-orders/{orderId}/fund": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get trade order fund information */
-        get: operations["getTradeOrderFund"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/trade-orders/{orderId}/logistics": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get trade order logistics information */
-        get: operations["getTradeOrderLogistics"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/trade-orders/{orderId}/tt-account": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get trade order TT account */
-        get: operations["getTradeTtAccount"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/trade-orders/{orderId}/service-charge": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get trade service charge */
-        get: operations["getTradeServiceCharge"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/trade-fulfillment-channels": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List supported trade fulfillment channels */
-        get: operations["listTradeFulfillmentChannels"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/trade-address-schema": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get the declarative trade address form schema */
-        get: operations["getTradeAddressSchema"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/trade-addresses": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List trade addresses */
-        get: operations["listTradeAddresses"];
-        put?: never;
-        /** Save a trade address form */
-        post: operations["saveTradeAddress"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/trade-addresses/{addressId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete a trade address */
-        delete: operations["deleteTradeAddress"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/logistics/address-nodes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List logistics address nodes */
-        get: operations["listLogisticsAddressNodes"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/logistics/special-product-types": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List special product type configuration */
-        get: operations["listLogisticsSpecialProductTypes"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/logistics/products": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List logistics products */
-        get: operations["listLogisticsProducts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/logistics/quotes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Calculate a logistics quote and validate order parameters */
-        post: operations["calculateLogisticsQuote"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/logistics/orders": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List logistics orders */
-        get: operations["listLogisticsOrders"];
-        put?: never;
-        /** Create a logistics order */
-        post: operations["createLogisticsOrder"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/logistics/orders/{orderNumber}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get logistics order detail, label and warehouse data */
-        get: operations["getLogisticsOrder"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/logistics/shipping-templates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List international shipping templates */
-        get: operations["listShippingTemplates"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/insights/supplier-rank": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get the authenticated supplier global rank trend */
-        get: operations["getInsightsSupplierRank"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/insights/procurement-suppliers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List suppliers with previous assurance orders */
-        get: operations["listInsightsSuppliers"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/insights/procurement-supplier-products": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List products previously ordered from an encrypted supplier id */
-        get: operations["listInsightsSupplierProducts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/photo-groups/operate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Add, rename, or delete a gallery group */
-        post: operations["operatePhotoGroup"];
+        post: operations["callOperation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5929,6 +5162,29 @@ export interface components {
             requestSchema?: string | null;
             responseSchema?: string | null;
         };
+        ApiFailure: {
+            requestId: components["schemas"]["RequestId"];
+            /** @constant */
+            ok: false;
+            error: components["schemas"]["GatewayError"];
+        };
+        ApiSuccess: {
+            requestId: components["schemas"]["RequestId"];
+            /** @constant */
+            ok: true;
+            data: unknown;
+        };
+        BackendMeta: {
+            /** @enum {string} */
+            runtime: "node" | "cloudflare";
+            /** @enum {string} */
+            database: "sqlite" | "d1";
+            environment: string;
+            /** @enum {string} */
+            gatewayMode: "mock" | "disabled" | "real";
+            apiPrefix: string;
+            version: string;
+        };
         CapabilityCallRequest: {
             method: string;
             parameters: {
@@ -6004,6 +5260,12 @@ export interface components {
             generatedAt: string;
             extensionVersion: string;
             entries: components["schemas"]["DiagnosticEntry"][];
+        };
+        EncodedFilePayload: {
+            fileName: string;
+            contentBase64: string;
+            contentType: string;
+            byteLength: number;
         };
         GatewayError: {
             code: string;
@@ -6179,6 +5441,13 @@ export interface components {
             name: string;
             children: components["schemas"]["LogisticsSpecialProductType"][];
         };
+        OperationCallRequest: {
+            requestId: components["schemas"]["RequestId"];
+            operation: string;
+            payload: {
+                [key: string]: unknown;
+            };
+        };
         Order: {
             id: string;
             buyerName: string;
@@ -6252,6 +5521,14 @@ export interface components {
             /** @description Optional smaller Schema-derived limit. The service worker always caps downloads at 20 MiB. */
             maxBytes?: number;
         };
+        PhotoUploadRequest: components["schemas"]["EncodedFilePayload"] & {
+            groupId?: string;
+        };
+        ProbeResponse: {
+            requestId: components["schemas"]["RequestId"];
+            /** @enum {string} */
+            status: "ok" | "not-ready";
+        };
         Product: {
             id: string;
             subject: string;
@@ -6321,14 +5598,16 @@ export interface components {
             /** @description Optional normalized official issues when the upstream response provides structured details. */
             qualityIssues?: components["schemas"]["ProductDescriptionQualityIssue"][];
         };
+        RequestEnvelope: {
+            requestId: components["schemas"]["RequestId"];
+        };
+        /** Format: uuid */
+        RequestId: string;
         RfqAttachment: {
             name: string;
             url: string;
         };
-        RfqAttachmentUploadRequest: {
-            fileName: string;
-            file: string;
-        };
+        RfqAttachmentUploadRequest: components["schemas"]["EncodedFilePayload"];
         RfqAttachmentUploadResult: {
             filesString: string;
         };
@@ -6542,10 +5821,11 @@ export interface components {
         /** @description Gateway failure */
         GatewayFailure: {
             headers: {
+                "X-Request-ID"?: components["schemas"]["RequestId"];
                 [name: string]: unknown;
             };
             content: {
-                "application/json": components["schemas"]["GatewayError"];
+                "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
             };
         };
     };
@@ -6561,7 +5841,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    getDashboard: {
+    healthCheck: {
         parameters: {
             query?: never;
             header?: never;
@@ -6570,20 +5850,19 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Dashboard summary */
+            /** @description Process is alive */
             200: {
                 headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DashboardSummary"];
+                    "application/json": components["schemas"]["ProbeResponse"];
                 };
             };
-            default: components["responses"]["GatewayFailure"];
-            "4XX": components["responses"]["GatewayFailure"];
         };
     };
-    getDiagnostics: {
+    readinessCheck: {
         parameters: {
             query?: never;
             header?: never;
@@ -6592,67 +5871,29 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Sanitized diagnostics snapshot */
+            /** @description Application is ready */
             200: {
                 headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DiagnosticsSnapshot"];
+                    "application/json": components["schemas"]["ProbeResponse"];
                 };
             };
-            default: components["responses"]["GatewayFailure"];
-            "4XX": components["responses"]["GatewayFailure"];
-        };
-    };
-    clearDiagnostics: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Diagnostics cleared */
-            204: {
+            /** @description Application is not ready */
+            503: {
                 headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            default: components["responses"]["GatewayFailure"];
-            "4XX": components["responses"]["GatewayFailure"];
-        };
-    };
-    listProducts: {
-        parameters: {
-            query?: {
-                page?: components["parameters"]["Page"];
-                pageSize?: components["parameters"]["PageSize"];
-                subject?: string;
-                groupId?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Product page */
-            200: {
-                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProductPage"];
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
                 };
             };
-            default: components["responses"]["GatewayFailure"];
-            "4XX": components["responses"]["GatewayFailure"];
         };
     };
-    publishProduct: {
+    getBackendMeta: {
         parameters: {
             query?: never;
             header?: never;
@@ -6661,24 +5902,23 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SchemaPublishRequest"];
+                "application/json": components["schemas"]["RequestEnvelope"];
             };
         };
         responses: {
-            /** @description Published product */
-            201: {
+            /** @description Backend metadata */
+            200: {
                 headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProductMutationResult"];
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
                 };
             };
-            default: components["responses"]["GatewayFailure"];
-            "4XX": components["responses"]["GatewayFailure"];
         };
     };
-    saveProductDraft: {
+    callOperation: {
         parameters: {
             query?: never;
             header?: never;
@@ -6687,1331 +5927,50 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SchemaPublishRequest"];
+                "application/json": components["schemas"]["OperationCallRequest"];
             };
         };
         responses: {
-            /** @description Saved draft */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductMutationResult"];
-                };
-            };
-            default: components["responses"]["GatewayFailure"];
-            "4XX": components["responses"]["GatewayFailure"];
-        };
-    };
-    getProductSchema: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProductSchemaRequest"];
-            };
-        };
-        responses: {
-            /** @description Alibaba schema XML and normalized fields */
+            /** @description Operation result */
             200: {
                 headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProductSchema"];
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
                 };
             };
-            default: components["responses"]["GatewayFailure"];
-            "4XX": components["responses"]["GatewayFailure"];
-        };
-    };
-    updateProductDisplay: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    productIds: string[];
-                    /** @enum {string} */
-                    display: "online" | "offline";
-                };
-            };
-        };
-        responses: {
-            /** @description Updated */
-            204: {
+            /** @description Invalid request */
+            400: {
                 headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            default: components["responses"]["GatewayFailure"];
-            "4XX": components["responses"]["GatewayFailure"];
-        };
-    };
-    getProduct: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                productId: components["parameters"]["ProductId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Product detail */
-            200: {
-                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProductDetail"];
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
                 };
             };
-            default: components["responses"]["GatewayFailure"];
-            "4XX": components["responses"]["GatewayFailure"];
-        };
-    };
-    updateProduct: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                productId: components["parameters"]["ProductId"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SchemaPublishRequest"];
-            };
-        };
-        responses: {
-            /** @description Updated product */
-            200: {
+            /** @description Operation denied */
+            403: {
                 headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProductMutationResult"];
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
                 };
             };
-            default: components["responses"]["GatewayFailure"];
-            "4XX": components["responses"]["GatewayFailure"];
-        };
-    };
-    listPhotoGroups: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Photo groups */
-            200: {
+            /** @description Backend unavailable */
+            503: {
                 headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PhotoGroup"][];
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
                 };
             };
-            default: components["responses"]["GatewayFailure"];
-            "4XX": components["responses"]["GatewayFailure"];
-        };
-    };
-    listPhotos: {
-        parameters: {
-            query?: {
-                page?: components["parameters"]["Page"];
-                pageSize?: components["parameters"]["PageSize"];
-                groupId?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Photo page */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PhotoPage"];
-                };
-            };
-            default: components["responses"]["GatewayFailure"];
-            "4XX": components["responses"]["GatewayFailure"];
-        };
-    };
-    uploadPhoto: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": {
-                    file: string;
-                    fileName: string;
-                    /** @default -1 */
-                    groupId?: string;
-                };
-            };
-        };
-        responses: {
-            /** @description Uploaded photo */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Photo"];
-                };
-            };
-            default: components["responses"]["GatewayFailure"];
-            "4XX": components["responses"]["GatewayFailure"];
-        };
-    };
-    transferPhotoFromUrl: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PhotoTransferRequest"];
-            };
-        };
-        responses: {
-            /** @description Transferred PhotoBank image */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Photo"];
-                };
-            };
-            default: components["responses"]["GatewayFailure"];
-            "4XX": components["responses"]["GatewayFailure"];
-        };
-    };
-    listOrders: {
-        parameters: {
-            query?: {
-                page?: components["parameters"]["Page"];
-                pageSize?: components["parameters"]["PageSize"];
-                status?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Order page */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OrderPage"];
-                };
-            };
-            default: components["responses"]["GatewayFailure"];
-            "4XX": components["responses"]["GatewayFailure"];
-        };
-    };
-    getOrderFund: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orderId: components["parameters"]["OrderId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Order fund information */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OrderFund"];
-                };
-            };
-            default: components["responses"]["GatewayFailure"];
-            "4XX": components["responses"]["GatewayFailure"];
-        };
-    };
-    getOrderLogistics: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orderId: components["parameters"]["OrderId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Order logistics information */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OrderLogistics"];
-                };
-            };
-            default: components["responses"]["GatewayFailure"];
-            "4XX": components["responses"]["GatewayFailure"];
-        };
-    };
-    listCapabilities: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Audited Alibaba API capabilities */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiCapability"][];
-                };
-            };
-            default: components["responses"]["GatewayFailure"];
-            "4XX": components["responses"]["GatewayFailure"];
-        };
-    };
-    callCapability: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CapabilityCallRequest"];
-            };
-        };
-        responses: {
-            /** @description Normalized gateway result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CapabilityCallResult"];
-                };
-            };
-            default: components["responses"]["GatewayFailure"];
-            "4XX": components["responses"]["GatewayFailure"];
-        };
-    };
-    getCapabilityDefinition: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                method: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Capability definition */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CapabilityDefinition"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    callTypedCapability: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                method: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttributeGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrvalueGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetNewRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryIdMappingRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryLevelAttrGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryPostcatGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategorySchemaLevelGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuOpenProductPostRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductBatchUpdateDisplayRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductIdDecryptRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductListRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaUpdateRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductScoreGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateFieldRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuAnnexUploadRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuQuotationPostRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqMyequityRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqReadRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqRecommendRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqSearchRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqdetailGetRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderListRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderFundGetRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderLogisticsGetRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderCreateRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderModifyRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeFulfillmentChannelGetRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeServiceChargeGetRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerAssuranceCreditCardRequest"] | components["schemas"]["AlibabaTradeAlibabaOrderTradeTtGetRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressGetRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuEcologyWriteRequest"] | components["schemas"]["AlibabaTradeAlibabaIntentionOrderSaveRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerAddressSaveRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeDecodeRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeQueryDrafttypeRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftCustomerSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuXiaomanVaListRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerAuthExtendRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressSchemaQueryRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressFormSaveRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressListQueryRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressDeleteRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressSpecialProductTypeListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelReasonListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressChargeCalculateRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsRuleValidateRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsProductListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsOrderCreateRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressCityListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressProvinceListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressDivisionListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressStreetListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderDetailGetRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderListQueryRequest"] | components["schemas"]["AlibabaLogisticsAlibabaWholesaleShippinglineTemplateListRequest"] | components["schemas"]["AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentRequest"] | components["schemas"]["AlibabaInsightsAlibabaMydataSelfQueryCgsokkRequest"] | components["schemas"]["AlibabaInsightsAlibabaProcurementMysupplierListRequest"] | components["schemas"]["AlibabaInsightsAlibabaProcurementSupplierItemsGetRequest"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankGroupListRequest"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankGroupOperateRequest"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankListRequest"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankUploadRequest"] | components["schemas"]["AlibabaPlatformAlibabaIcbuFileUrlpostingUploadRequest"] | components["schemas"]["AlibabaPlatformAlibabaIcbuRiskSendRequest"] | components["schemas"]["AlibabaPlatformAlibabaIcbuTaskStatusNotifyRequest"];
-            };
-        };
-        responses: {
-            /** @description Capability response envelope */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CapabilityResponseEnvelope"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    listProductCategories: {
-        parameters: {
-            query?: {
-                parentId?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Product category tree */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductCategory"][];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    mapProductCategory: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    categoryId: number;
-                };
-            };
-        };
-        responses: {
-            /** @description Mapped category */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductCategoryMapping"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    listProductGroups: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Product groups */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductGroup"][];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    createProductGroup: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    name: string;
-                    parentId?: number;
-                };
-            };
-        };
-        responses: {
-            /** @description Created product group */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductGroup"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    getProductScore: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                productId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Product score */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductScore"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    listRfqs: {
-        parameters: {
-            query?: {
-                page?: number;
-                pageSize?: number;
-                keywords?: string;
-                categoryId?: string;
-                country?: string;
-                unquotedOnly?: boolean;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description RFQ search result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RfqPage"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    listRecommendedRfqs: {
-        parameters: {
-            query?: {
-                page?: number;
-                pageSize?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Recommended RFQs */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RfqPage"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    getRfqEquity: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description RFQ equity */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RfqEquity"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    getRfqReadStatus: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    rfqIds: string[];
-                };
-            };
-        };
-        responses: {
-            /** @description RFQ read status map */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RfqReadStatus"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    getRfq: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                rfqId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description RFQ detail */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RfqDetail"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    uploadRfqAttachment: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RfqAttachmentUploadRequest"];
-            };
-        };
-        responses: {
-            /** @description RFQ attachment token */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RfqAttachmentUploadResult"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    submitRfqQuotation: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RfqQuotationRequest"];
-            };
-        };
-        responses: {
-            /** @description RFQ quotation result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RfqQuotationResult"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    listTradeOrders: {
-        parameters: {
-            query?: {
-                page?: number;
-                pageSize?: number;
-                status?: string;
-                buyerLoginId?: string;
-                createDateStart?: string;
-                createDateEnd?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Trade order page */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TradeOrderPage"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    createTradeOrder: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TradeOrderDraft"];
-            };
-        };
-        responses: {
-            /** @description Created trade order */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TradeMutationResult"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    getTradeOrderAggregate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orderId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Aggregate trade order */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TradeOrderAggregate"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    modifyTradeOrder: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orderId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TradeOrderDraft"];
-            };
-        };
-        responses: {
-            /** @description Modified trade order */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TradeMutationResult"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    getTradeOrderFund: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orderId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Get trade order fund information */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TradeFund"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    getTradeOrderLogistics: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orderId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Get trade order logistics information */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TradeLogistics"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    getTradeTtAccount: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orderId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Get trade order TT account */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TradeTtAccount"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    getTradeServiceCharge: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orderId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Get trade service charge */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TradeServiceCharge"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    listTradeFulfillmentChannels: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Fulfillment channels */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TradeFulfillmentChannel"][];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    getTradeAddressSchema: {
-        parameters: {
-            query: {
-                countryCode: string;
-                language?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Trade address schema */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TradeAddressSchema"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    listTradeAddresses: {
-        parameters: {
-            query: {
-                buyerEmail: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Trade addresses */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TradeAddress"][];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    saveTradeAddress: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TradeAddress"];
-            };
-        };
-        responses: {
-            /** @description Saved trade address */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TradeAddress"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    deleteTradeAddress: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                addressId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Trade address deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    listLogisticsAddressNodes: {
-        parameters: {
-            query: {
-                level: string;
-                parentId?: string;
-                countryCode?: string;
-                searchText?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Address nodes */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LogisticsAddressNode"][];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    listLogisticsSpecialProductTypes: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Special product types */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LogisticsSpecialProductType"][];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    listLogisticsProducts: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Logistics products */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LogisticsProduct"][];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    calculateLogisticsQuote: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LogisticsQuoteRequest"];
-            };
-        };
-        responses: {
-            /** @description Logistics quote result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LogisticsQuoteResult"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    listLogisticsOrders: {
-        parameters: {
-            query?: {
-                page?: number;
-                pageSize?: number;
-                orderNumber?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Logistics order page */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LogisticsOrderPage"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    createLogisticsOrder: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LogisticsOrderDraft"];
-            };
-        };
-        responses: {
-            /** @description Created logistics order */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LogisticsOrderMutationResult"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    getLogisticsOrder: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orderNumber: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Logistics order detail */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LogisticsOrderDetail"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    listShippingTemplates: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Shipping templates */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ShippingTemplate"][];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    getInsightsSupplierRank: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Supplier rank trend */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InsightsSupplierRankTrend"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    listInsightsSuppliers: {
-        parameters: {
-            query?: {
-                page?: number;
-                pageSize?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Procurement supplier page */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InsightsSupplierPage"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    listInsightsSupplierProducts: {
-        parameters: {
-            query: {
-                supplierId: string;
-                page?: number;
-                pageSize?: number;
-                dateStart?: string;
-                dateEnd?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Supplier product page */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InsightsSupplierProductPage"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
-        };
-    };
-    operatePhotoGroup: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PhotoGroupOperationRequest"];
-            };
-        };
-        responses: {
-            /** @description Affected gallery group */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PhotoGroup"];
-                };
-            };
-            "4XX": components["responses"]["GatewayFailure"];
-            default: components["responses"]["GatewayFailure"];
         };
     };
 }

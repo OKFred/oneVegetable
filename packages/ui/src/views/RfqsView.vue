@@ -3,7 +3,7 @@ import { computed, h, ref, watch } from 'vue';
 import { useMutation, useQuery } from '@tanstack/vue-query';
 import { FileText, Paperclip, Save, Search, Send, ShieldAlert, Sparkles } from '@lucide/vue';
 
-import type { RfqQuotationRequest, RfqSummary } from '@one-vegetable/core';
+import type { RfqAttachmentUploadRequest, RfqQuotationRequest, RfqSummary } from '@one-vegetable/core';
 
 import DataTable from '../components/DataTable.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -109,8 +109,7 @@ const submitQuotation = useMutation({
   mutationFn: () => gateway.request('submitRfqQuotation', quotationPayload())
 });
 const uploadAttachment = useMutation({
-  mutationFn: (payload: { fileName: string; file: string }) =>
-    gateway.request('uploadRfqAttachment', payload),
+  mutationFn: (payload: RfqAttachmentUploadRequest) => gateway.request('uploadRfqAttachment', payload),
   onSuccess: (result) => {
     draft.value.attachmentFilesString = result.filesString;
     saveDraft();
@@ -183,7 +182,12 @@ async function selectAttachment(event: Event): Promise<void> {
   const file = input.files[0];
   attachmentName.value = file.name;
   try {
-    uploadAttachment.mutate({ fileName: file.name, file: await fileToBase64(file) });
+    uploadAttachment.mutate({
+      fileName: file.name,
+      contentBase64: await fileToBase64(file),
+      contentType: file.type || 'application/octet-stream',
+      byteLength: file.size
+    });
   } catch (error: unknown) {
     attachmentError.value = error instanceof Error ? error.message : '附件读取失败';
   } finally {

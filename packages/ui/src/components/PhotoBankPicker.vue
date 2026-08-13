@@ -52,8 +52,10 @@ const uploadsEnabled = computed(() => mode === 'mock');
 const upload = useMutation({
   mutationFn: async (file: File) =>
     gateway.request('uploadPhoto', {
-      file: await fileToBase64(file),
       fileName: file.name,
+      contentBase64: await fileToBase64(file),
+      contentType: file.type,
+      byteLength: file.size,
       groupId: selectedGroup.value
     }),
   onSuccess: async (photo) => {

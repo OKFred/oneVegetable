@@ -60,7 +60,13 @@ describe('PhotoAdapter', () => {
     );
 
     await expect(
-      new PhotoAdapter({ call }).upload({ file: 'aGVsbG8=', fileName: 'solar.jpg', groupId: '2001' })
+      new PhotoAdapter({ call }).upload({
+        contentBase64: '/9j/2Q==',
+        contentType: 'image/jpeg',
+        byteLength: 4,
+        fileName: 'solar.jpg',
+        groupId: '2001'
+      })
     ).resolves.toMatchObject({
       id: '73826382',
       name: 'solar.jpg',

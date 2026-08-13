@@ -104,7 +104,12 @@ describe('RfqAdapter', () => {
     });
     const adapter = new RfqAdapter({ call });
 
-    const attachment = await adapter.uploadAttachment({ fileName: 'quote.pdf', file: 'aGVsbG8=' });
+    const attachment = await adapter.uploadAttachment({
+      fileName: 'quote.pdf',
+      contentBase64: 'JVBERg==',
+      contentType: 'application/pdf',
+      byteLength: 4
+    });
     const quotation = await adapter.submitQuotation({
       rfqId: 'RFQ-1',
       message: 'We can supply this item.',

@@ -8,1419 +8,137 @@
   },
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "security": [],
-  "servers": [{ "url": "/api" }],
+  "servers": [{ "url": "/api/v1" }],
   "paths": {
-    "/dashboard": {
+    "/healthz": {
       "get": {
-        "summary": "Get dashboard summary",
-        "operationId": "getDashboard",
+        "operationId": "healthCheck",
         "responses": {
           "200": {
-            "description": "Dashboard summary",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/DashboardSummary" },
-                "examples": {
-                  "default": {
-                    "value": {
-                      "productCount": 128,
-                      "photoCount": 436,
-                      "pendingOrderCount": 6,
-                      "enabledCapabilityCount": 22
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "default": { "$ref": "#/components/responses/GatewayFailure" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/diagnostics": {
-      "get": {
-        "summary": "Get sanitized extension diagnostics",
-        "operationId": "getDiagnostics",
-        "responses": {
-          "200": {
-            "description": "Sanitized diagnostics snapshot",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/DiagnosticsSnapshot" } }
-            }
-          },
-          "default": { "$ref": "#/components/responses/GatewayFailure" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      },
-      "delete": {
-        "summary": "Clear extension diagnostics",
-        "operationId": "clearDiagnostics",
-        "responses": {
-          "204": { "description": "Diagnostics cleared" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/products": {
-      "get": {
-        "summary": "List products",
-        "operationId": "listProducts",
-        "x-alibaba-method": "alibaba.icbu.product.list",
-        "parameters": [
-          { "$ref": "#/components/parameters/Page" },
-          { "$ref": "#/components/parameters/PageSize" },
-          { "name": "subject", "in": "query", "schema": { "type": "string" } },
-          { "name": "groupId", "in": "query", "schema": { "type": "integer" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Product page",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ProductPage" },
-                "examples": {
-                  "default": {
-                    "value": {
-                      "items": [
-                        {
-                          "id": "10000001",
-                          "subject": "Portable solar power station 1000W",
-                          "groupName": "Energy storage",
-                          "status": "online",
-                          "score": 92,
-                          "updatedAt": "2026-08-11T03:20:00Z"
-                        },
-                        {
-                          "id": "10000002",
-                          "subject": "Custom recycled cotton canvas tote bag",
-                          "groupName": "Packaging",
-                          "status": "draft",
-                          "score": 76,
-                          "updatedAt": "2026-08-10T09:12:00Z"
-                        }
-                      ],
-                      "page": 1,
-                      "pageSize": 20,
-                      "total": 128
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "default": { "$ref": "#/components/responses/GatewayFailure" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      },
-      "post": {
-        "summary": "Publish a product with Schema XML",
-        "operationId": "publishProduct",
-        "x-alibaba-method": "alibaba.icbu.product.schema.add",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/SchemaPublishRequest" } }
+            "description": "Process is alive",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProbeResponse" } } }
           }
-        },
-        "responses": {
-          "201": {
-            "description": "Published product",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ProductMutationResult" } }
-            }
-          },
-          "default": { "$ref": "#/components/responses/GatewayFailure" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
         }
       }
     },
-    "/products/drafts": {
-      "post": {
-        "summary": "Save a product draft with Schema XML",
-        "operationId": "saveProductDraft",
-        "x-alibaba-method": "alibaba.icbu.product.schema.add.draft",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/SchemaPublishRequest" } }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Saved draft",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ProductMutationResult" } }
-            }
-          },
-          "default": { "$ref": "#/components/responses/GatewayFailure" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/products/schema": {
-      "post": {
-        "summary": "Get the product publishing Schema",
-        "operationId": "getProductSchema",
-        "x-alibaba-method": "alibaba.icbu.product.schema.get",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/ProductSchemaRequest" } }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Alibaba schema XML and normalized fields",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductSchema" } } }
-          },
-          "default": { "$ref": "#/components/responses/GatewayFailure" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/products/display": {
-      "patch": {
-        "summary": "Update product display state",
-        "operationId": "updateProductDisplay",
-        "x-alibaba-method": "alibaba.icbu.product.batch.update.display",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": ["productIds", "display"],
-                "properties": {
-                  "productIds": { "type": "array", "minItems": 1, "items": { "type": "string" } },
-                  "display": { "type": "string", "enum": ["online", "offline"] }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": { "description": "Updated" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/products/{productId}": {
-      "parameters": [{ "$ref": "#/components/parameters/ProductId" }],
+    "/readyz": {
       "get": {
-        "summary": "Get a product rendered as Schema XML",
-        "operationId": "getProduct",
-        "x-alibaba-method": "alibaba.icbu.product.schema.render",
+        "operationId": "readinessCheck",
         "responses": {
           "200": {
-            "description": "Product detail",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductDetail" } } }
+            "description": "Application is ready",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProbeResponse" } } }
           },
-          "default": { "$ref": "#/components/responses/GatewayFailure" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      },
-      "patch": {
-        "summary": "Update a product with Schema XML",
-        "operationId": "updateProduct",
-        "x-alibaba-method": "alibaba.icbu.product.schema.update",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/SchemaPublishRequest" } }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Updated product",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ProductMutationResult" } }
-            }
-          },
-          "default": { "$ref": "#/components/responses/GatewayFailure" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/photo-groups": {
-      "get": {
-        "summary": "List photo bank groups",
-        "operationId": "listPhotoGroups",
-        "x-alibaba-method": "alibaba.icbu.photobank.group.list",
-        "responses": {
-          "200": {
-            "description": "Photo groups",
-            "content": {
-              "application/json": {
-                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/PhotoGroup" } },
-                "examples": {
-                  "default": {
-                    "value": [
-                      { "id": "-1", "name": "All images", "photoCount": 436, "parentId": null, "level": 1 },
-                      {
-                        "id": "2001",
-                        "name": "Product hero images",
-                        "photoCount": 84,
-                        "parentId": null,
-                        "level": 1
-                      }
-                    ]
-                  }
-                }
-              }
-            }
-          },
-          "default": { "$ref": "#/components/responses/GatewayFailure" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/photos": {
-      "get": {
-        "summary": "List photo bank images",
-        "operationId": "listPhotos",
-        "x-alibaba-method": "alibaba.icbu.photobank.list",
-        "parameters": [
-          { "$ref": "#/components/parameters/Page" },
-          { "$ref": "#/components/parameters/PageSize" },
-          { "name": "groupId", "in": "query", "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Photo page",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/PhotoPage" },
-                "examples": {
-                  "default": {
-                    "value": {
-                      "items": [
-                        {
-                          "id": "ph_001",
-                          "name": "solar-station-front.jpg",
-                          "url": "https://sc04.alicdn.com/kf/mock-solar-station.jpg",
-                          "groupId": "2001",
-                          "width": 1200,
-                          "height": 1200,
-                          "fileSize": 286720,
-                          "referenceCount": 4,
-                          "modifiedAt": "2026-08-11T03:20:00Z"
-                        }
-                      ],
-                      "page": 1,
-                      "pageSize": 24,
-                      "total": 436
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "default": { "$ref": "#/components/responses/GatewayFailure" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      },
-      "post": {
-        "summary": "Upload a photo bank image",
-        "operationId": "uploadPhoto",
-        "x-alibaba-method": "alibaba.icbu.photobank.upload",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": ["file", "fileName"],
-                "properties": {
-                  "file": { "type": "string", "contentEncoding": "base64" },
-                  "fileName": { "type": "string" },
-                  "groupId": { "type": "string", "default": "-1" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Uploaded photo",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Photo" } } }
-          },
-          "default": { "$ref": "#/components/responses/GatewayFailure" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/photos/transfer": {
-      "post": {
-        "summary": "Transfer a public image URL into the Alibaba PhotoBank",
-        "operationId": "transferPhotoFromUrl",
-        "description": "The extension service worker downloads a public HTTP(S) image and uploads its bytes with alibaba.icbu.photobank.upload so the result includes a PhotoBank fileId.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/PhotoTransferRequest" },
-              "examples": {
-                "default": {
-                  "value": {
-                    "url": "https://images.example.com/product-detail.jpg",
-                    "groupId": "2002",
-                    "fileName": "product-detail.jpg"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Transferred PhotoBank image",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Photo" } } }
-          },
-          "default": { "$ref": "#/components/responses/GatewayFailure" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/orders": {
-      "get": {
-        "summary": "List seller orders",
-        "operationId": "listOrders",
-        "x-alibaba-method": "alibaba.seller.order.list",
-        "parameters": [
-          { "$ref": "#/components/parameters/Page" },
-          { "$ref": "#/components/parameters/PageSize" },
-          { "name": "status", "in": "query", "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Order page",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/OrderPage" },
-                "examples": {
-                  "default": {
-                    "value": {
-                      "items": [
-                        {
-                          "id": "ORD-202608-0012",
-                          "buyerName": "Northwind Trading",
-                          "amount": 2450.5,
-                          "currency": "USD",
-                          "status": "awaiting_shipment",
-                          "createdAt": "2026-08-09T08:30:00Z",
-                          "detailAvailability": "summary_only"
-                        },
-                        {
-                          "id": "ORD-202608-0011",
-                          "buyerName": "Contoso Retail",
-                          "amount": 980,
-                          "currency": "USD",
-                          "status": "paid",
-                          "createdAt": "2026-08-08T02:10:00Z",
-                          "detailAvailability": "summary_only"
-                        }
-                      ],
-                      "page": 1,
-                      "pageSize": 20,
-                      "total": 24
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "default": { "$ref": "#/components/responses/GatewayFailure" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/orders/{orderId}/fund": {
-      "get": {
-        "summary": "Get order fund information",
-        "operationId": "getOrderFund",
-        "x-alibaba-method": "alibaba.seller.order.fund.get",
-        "parameters": [{ "$ref": "#/components/parameters/OrderId" }],
-        "responses": {
-          "200": {
-            "description": "Order fund information",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OrderFund" } } }
-          },
-          "default": { "$ref": "#/components/responses/GatewayFailure" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/orders/{orderId}/logistics": {
-      "get": {
-        "summary": "Get order logistics information",
-        "operationId": "getOrderLogistics",
-        "x-alibaba-method": "alibaba.seller.order.logistics.get",
-        "parameters": [{ "$ref": "#/components/parameters/OrderId" }],
-        "responses": {
-          "200": {
-            "description": "Order logistics information",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OrderLogistics" } } }
-          },
-          "default": { "$ref": "#/components/responses/GatewayFailure" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/capabilities": {
-      "get": {
-        "summary": "List audited API capabilities",
-        "operationId": "listCapabilities",
-        "responses": {
-          "200": {
-            "description": "Audited Alibaba API capabilities",
-            "content": {
-              "application/json": {
-                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ApiCapability" } }
-              }
-            }
-          },
-          "default": { "$ref": "#/components/responses/GatewayFailure" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/gateway/call": {
-      "post": {
-        "summary": "Call an enabled audited capability",
-        "operationId": "callCapability",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/CapabilityCallRequest" } }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Normalized gateway result",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/CapabilityCallResult" } }
-            }
-          },
-          "default": { "$ref": "#/components/responses/GatewayFailure" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/capabilities/{method}": {
-      "get": {
-        "summary": "Get a typed capability definition",
-        "operationId": "getCapabilityDefinition",
-        "parameters": [{ "name": "method", "in": "path", "required": true, "schema": { "type": "string" } }],
-        "responses": {
-          "200": {
-            "description": "Capability definition",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/CapabilityDefinition" } }
-            }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      },
-      "post": {
-        "summary": "Call a method-typed capability",
-        "operationId": "callTypedCapability",
-        "parameters": [{ "name": "method", "in": "path", "required": true, "schema": { "type": "string" } }],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "oneOf": [
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryAttrGetRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryAttributeGetRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryAttrvalueGetRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryGetRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryGetNewRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryIdMappingRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryLevelAttrGetRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryPostcatGetRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategorySchemaLevelGetRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuOpenProductPostRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductAddRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductAddDraftRequest" },
-                  {
-                    "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductBatchUpdateDisplayRequest"
-                  },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductGetRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductGroupAddRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductGroupGetRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductIdDecryptRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductListRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSchemaAddRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSchemaAddDraftRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSchemaGetRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSchemaRenderRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSchemaRenderDraftRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSchemaUpdateRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductScoreGetRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductUpdateRequest" },
-                  { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductUpdateFieldRequest" },
-                  { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuAnnexUploadRequest" },
-                  { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuQuotationPostRequest" },
-                  { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqMyequityRequest" },
-                  { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqReadRequest" },
-                  { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqRecommendRequest" },
-                  { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqSearchRequest" },
-                  { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqdetailGetRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerOrderListRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerOrderFundGetRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerOrderLogisticsGetRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeOrderCreateRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeOrderModifyRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeFulfillmentChannelGetRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeServiceChargeGetRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerAssuranceCreditCardRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaOrderTradeTtGetRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeAddressGetRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuEcologyWriteRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaIntentionOrderSaveRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerAddressSaveRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerTradeDecodeRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerTradeQueryDrafttypeRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuSnsoftCustomerSyncRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuXiaomanVaListRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncRequest" },
-                  {
-                    "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncRequest"
-                  },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaSellerAuthExtendRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeAddressSchemaQueryRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeAddressFormSaveRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeAddressListQueryRequest" },
-                  { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeAddressDeleteRequest" },
-                  {
-                    "$ref": "#/components/schemas/AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/AlibabaLogisticsAlibabaOnetouchLogisticsExpressSpecialProductTypeListRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelReasonListRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/AlibabaLogisticsAlibabaOnetouchLogisticsExpressChargeCalculateRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsRuleValidateRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsProductListRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsOrderCreateRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressCityListRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressProvinceListRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressDivisionListRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressStreetListRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderDetailGetRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderListQueryRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/AlibabaLogisticsAlibabaWholesaleShippinglineTemplateListRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentRequest"
-                  },
-                  { "$ref": "#/components/schemas/AlibabaInsightsAlibabaMydataSelfQueryCgsokkRequest" },
-                  { "$ref": "#/components/schemas/AlibabaInsightsAlibabaProcurementMysupplierListRequest" },
-                  { "$ref": "#/components/schemas/AlibabaInsightsAlibabaProcurementSupplierItemsGetRequest" },
-                  { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankGroupListRequest" },
-                  { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankGroupOperateRequest" },
-                  { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankListRequest" },
-                  { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankUploadRequest" },
-                  { "$ref": "#/components/schemas/AlibabaPlatformAlibabaIcbuFileUrlpostingUploadRequest" },
-                  { "$ref": "#/components/schemas/AlibabaPlatformAlibabaIcbuRiskSendRequest" },
-                  { "$ref": "#/components/schemas/AlibabaPlatformAlibabaIcbuTaskStatusNotifyRequest" }
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Capability response envelope",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/CapabilityResponseEnvelope" } }
-            }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/product-categories": {
-      "get": {
-        "summary": "List modern product categories",
-        "operationId": "listProductCategories",
-        "parameters": [{ "name": "parentId", "in": "query", "schema": { "type": "number" } }],
-        "responses": {
-          "200": {
-            "description": "Product category tree",
-            "content": {
-              "application/json": {
-                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ProductCategory" } }
-              }
-            }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/product-categories/mapping": {
-      "post": {
-        "summary": "Map a legacy category to the modern category system",
-        "operationId": "mapProductCategory",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": ["categoryId"],
-                "properties": { "categoryId": { "type": "number" } }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Mapped category",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ProductCategoryMapping" } }
-            }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/product-groups": {
-      "get": {
-        "summary": "List product groups",
-        "operationId": "listProductGroups",
-        "responses": {
-          "200": {
-            "description": "Product groups",
-            "content": {
-              "application/json": {
-                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ProductGroup" } }
-              }
-            }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      },
-      "post": {
-        "summary": "Create a product group",
-        "operationId": "createProductGroup",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": ["name"],
-                "properties": { "name": { "type": "string" }, "parentId": { "type": "number" } }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Created product group",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductGroup" } } }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/products/{productId}/score": {
-      "get": {
-        "summary": "Get product quality score",
-        "operationId": "getProductScore",
-        "parameters": [
-          { "name": "productId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Product score",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductScore" } } }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/rfqs": {
-      "get": {
-        "summary": "Search RFQs",
-        "operationId": "listRfqs",
-        "parameters": [
-          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1 } },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "schema": { "type": "integer", "minimum": 1, "maximum": 100 }
-          },
-          { "name": "keywords", "in": "query", "schema": { "type": "string" } },
-          { "name": "categoryId", "in": "query", "schema": { "type": "string" } },
-          { "name": "country", "in": "query", "schema": { "type": "string" } },
-          { "name": "unquotedOnly", "in": "query", "schema": { "type": "boolean" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "RFQ search result",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RfqPage" } } }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/rfqs/recommended": {
-      "get": {
-        "summary": "List recommended RFQs",
-        "operationId": "listRecommendedRfqs",
-        "parameters": [
-          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1 } },
-          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100 } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Recommended RFQs",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RfqPage" } } }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/rfqs/equity": {
-      "get": {
-        "summary": "Get RFQ quotation equity",
-        "operationId": "getRfqEquity",
-        "responses": {
-          "200": {
-            "description": "RFQ equity",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RfqEquity" } } }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/rfqs/read-status": {
-      "post": {
-        "summary": "Get RFQ read status for up to 20 IDs",
-        "operationId": "getRfqReadStatus",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": ["rfqIds"],
-                "properties": {
-                  "rfqIds": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "type": "string" } }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "RFQ read status map",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RfqReadStatus" } } }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/rfqs/{rfqId}": {
-      "get": {
-        "summary": "Get an RFQ detail",
-        "operationId": "getRfq",
-        "parameters": [{ "name": "rfqId", "in": "path", "required": true, "schema": { "type": "string" } }],
-        "responses": {
-          "200": {
-            "description": "RFQ detail",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RfqDetail" } } }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/rfqs/attachments": {
-      "post": {
-        "summary": "Upload an RFQ quotation attachment",
-        "operationId": "uploadRfqAttachment",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/RfqAttachmentUploadRequest" } }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "RFQ attachment token",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/RfqAttachmentUploadResult" } }
-            }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/rfqs/quotations": {
-      "post": {
-        "summary": "Submit an RFQ quotation",
-        "operationId": "submitRfqQuotation",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/RfqQuotationRequest" } }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "RFQ quotation result",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/RfqQuotationResult" } }
-            }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/trade-orders": {
-      "get": {
-        "summary": "List international trade orders",
-        "operationId": "listTradeOrders",
-        "parameters": [
-          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1 } },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "schema": { "type": "integer", "minimum": 1, "maximum": 100 }
-          },
-          { "name": "status", "in": "query", "schema": { "type": "string" } },
-          { "name": "buyerLoginId", "in": "query", "schema": { "type": "string" } },
-          { "name": "createDateStart", "in": "query", "schema": { "type": "string" } },
-          { "name": "createDateEnd", "in": "query", "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Trade order page",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TradeOrderPage" } } }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      },
-      "post": {
-        "summary": "Create a trade assurance order",
-        "operationId": "createTradeOrder",
-        "requestBody": {
-          "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TradeOrderDraft" } } }
-        },
-        "responses": {
-          "200": {
-            "description": "Created trade order",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/TradeMutationResult" } }
-            }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/trade-orders/{orderId}": {
-      "get": {
-        "summary": "Get an aggregate order detail without the Jushita-only API",
-        "operationId": "getTradeOrderAggregate",
-        "parameters": [{ "name": "orderId", "in": "path", "required": true, "schema": { "type": "string" } }],
-        "responses": {
-          "200": {
-            "description": "Aggregate trade order",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/TradeOrderAggregate" } }
-            }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      },
-      "patch": {
-        "summary": "Modify a trade assurance order",
-        "operationId": "modifyTradeOrder",
-        "parameters": [{ "name": "orderId", "in": "path", "required": true, "schema": { "type": "string" } }],
-        "requestBody": {
-          "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TradeOrderDraft" } } }
-        },
-        "responses": {
-          "200": {
-            "description": "Modified trade order",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/TradeMutationResult" } }
-            }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/trade-orders/{orderId}/fund": {
-      "get": {
-        "summary": "Get trade order fund information",
-        "operationId": "getTradeOrderFund",
-        "parameters": [{ "name": "orderId", "in": "path", "required": true, "schema": { "type": "string" } }],
-        "responses": {
-          "200": {
-            "description": "Get trade order fund information",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TradeFund" } } }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/trade-orders/{orderId}/logistics": {
-      "get": {
-        "summary": "Get trade order logistics information",
-        "operationId": "getTradeOrderLogistics",
-        "parameters": [{ "name": "orderId", "in": "path", "required": true, "schema": { "type": "string" } }],
-        "responses": {
-          "200": {
-            "description": "Get trade order logistics information",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TradeLogistics" } } }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/trade-orders/{orderId}/tt-account": {
-      "get": {
-        "summary": "Get trade order TT account",
-        "operationId": "getTradeTtAccount",
-        "parameters": [{ "name": "orderId", "in": "path", "required": true, "schema": { "type": "string" } }],
-        "responses": {
-          "200": {
-            "description": "Get trade order TT account",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TradeTtAccount" } } }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/trade-orders/{orderId}/service-charge": {
-      "get": {
-        "summary": "Get trade service charge",
-        "operationId": "getTradeServiceCharge",
-        "parameters": [{ "name": "orderId", "in": "path", "required": true, "schema": { "type": "string" } }],
-        "responses": {
-          "200": {
-            "description": "Get trade service charge",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/TradeServiceCharge" } }
-            }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/trade-fulfillment-channels": {
-      "get": {
-        "summary": "List supported trade fulfillment channels",
-        "operationId": "listTradeFulfillmentChannels",
-        "responses": {
-          "200": {
-            "description": "Fulfillment channels",
+          "503": {
+            "description": "Application is not ready",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/TradeFulfillmentChannel" }
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
                 }
               }
             }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/trade-address-schema": {
-      "get": {
-        "summary": "Get the declarative trade address form schema",
-        "operationId": "getTradeAddressSchema",
-        "parameters": [
-          { "name": "countryCode", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "language", "in": "query", "schema": { "type": "string", "default": "en_US" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Trade address schema",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/TradeAddressSchema" } }
-            }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/trade-addresses": {
-      "get": {
-        "summary": "List trade addresses",
-        "operationId": "listTradeAddresses",
-        "parameters": [
-          {
-            "name": "buyerEmail",
-            "in": "query",
-            "required": true,
-            "schema": { "type": "string", "format": "email" }
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "Trade addresses",
-            "content": {
-              "application/json": {
-                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/TradeAddress" } }
-              }
-            }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
         }
-      },
+      }
+    },
+    "/meta/get": {
       "post": {
-        "summary": "Save a trade address form",
-        "operationId": "saveTradeAddress",
+        "operationId": "getBackendMeta",
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TradeAddress" } } }
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RequestEnvelope" } } }
         },
         "responses": {
           "200": {
-            "description": "Saved trade address",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TradeAddress" } } }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/trade-addresses/{addressId}": {
-      "delete": {
-        "summary": "Delete a trade address",
-        "operationId": "deleteTradeAddress",
-        "parameters": [
-          { "name": "addressId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "204": { "description": "Trade address deleted" },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/logistics/address-nodes": {
-      "get": {
-        "summary": "List logistics address nodes",
-        "operationId": "listLogisticsAddressNodes",
-        "parameters": [
-          { "name": "level", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "parentId", "in": "query", "schema": { "type": "string" } },
-          { "name": "countryCode", "in": "query", "schema": { "type": "string" } },
-          { "name": "searchText", "in": "query", "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Address nodes",
+            "description": "Backend metadata",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/LogisticsAddressNode" }
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
                 }
               }
             }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
+          }
         }
       }
     },
-    "/logistics/special-product-types": {
-      "get": {
-        "summary": "List special product type configuration",
-        "operationId": "listLogisticsSpecialProductTypes",
+    "/operations/call": {
+      "post": {
+        "operationId": "callOperation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/OperationCallRequest" } }
+          }
+        },
         "responses": {
           "200": {
-            "description": "Special product types",
+            "description": "Operation result",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/LogisticsSpecialProductType" }
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
                 }
               }
             }
           },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/logistics/products": {
-      "get": {
-        "summary": "List logistics products",
-        "operationId": "listLogisticsProducts",
-        "responses": {
-          "200": {
-            "description": "Logistics products",
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
             "content": {
               "application/json": {
-                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/LogisticsProduct" } }
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
               }
             }
           },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/logistics/quotes": {
-      "post": {
-        "summary": "Calculate a logistics quote and validate order parameters",
-        "operationId": "calculateLogisticsQuote",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/LogisticsQuoteRequest" } }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Logistics quote result",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/LogisticsQuoteResult" } }
-            }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/logistics/orders": {
-      "get": {
-        "summary": "List logistics orders",
-        "operationId": "listLogisticsOrders",
-        "parameters": [
-          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1 } },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "schema": { "type": "integer", "minimum": 1, "maximum": 100 }
-          },
-          { "name": "orderNumber", "in": "query", "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Logistics order page",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/LogisticsOrderPage" } }
-            }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      },
-      "post": {
-        "summary": "Create a logistics order",
-        "operationId": "createLogisticsOrder",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/LogisticsOrderDraft" } }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Created logistics order",
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/LogisticsOrderMutationResult" }
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
               }
             }
           },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/logistics/orders/{orderNumber}": {
-      "get": {
-        "summary": "Get logistics order detail, label and warehouse data",
-        "operationId": "getLogisticsOrder",
-        "parameters": [
-          { "name": "orderNumber", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Logistics order detail",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/LogisticsOrderDetail" } }
-            }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/logistics/shipping-templates": {
-      "get": {
-        "summary": "List international shipping templates",
-        "operationId": "listShippingTemplates",
-        "responses": {
-          "200": {
-            "description": "Shipping templates",
+          "503": {
+            "description": "Backend unavailable",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
             "content": {
               "application/json": {
-                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ShippingTemplate" } }
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
               }
             }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/insights/supplier-rank": {
-      "get": {
-        "summary": "Get the authenticated supplier global rank trend",
-        "operationId": "getInsightsSupplierRank",
-        "responses": {
-          "200": {
-            "description": "Supplier rank trend",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/InsightsSupplierRankTrend" } }
-            }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/insights/procurement-suppliers": {
-      "get": {
-        "summary": "List suppliers with previous assurance orders",
-        "operationId": "listInsightsSuppliers",
-        "parameters": [
-          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1 } },
-          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100 } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Procurement supplier page",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/InsightsSupplierPage" } }
-            }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/insights/procurement-supplier-products": {
-      "get": {
-        "summary": "List products previously ordered from an encrypted supplier id",
-        "operationId": "listInsightsSupplierProducts",
-        "parameters": [
-          { "name": "supplierId", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1 } },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "schema": { "type": "integer", "minimum": 1, "maximum": 100 }
-          },
-          { "name": "dateStart", "in": "query", "schema": { "type": "string", "format": "date-time" } },
-          { "name": "dateEnd", "in": "query", "schema": { "type": "string", "format": "date-time" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Supplier product page",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/InsightsSupplierProductPage" } }
-            }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
-        }
-      }
-    },
-    "/photo-groups/operate": {
-      "post": {
-        "summary": "Add, rename, or delete a gallery group",
-        "operationId": "operatePhotoGroup",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/PhotoGroupOperationRequest" } }
           }
-        },
-        "responses": {
-          "200": {
-            "description": "Affected gallery group",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PhotoGroup" } } }
-          },
-          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
-          "default": { "$ref": "#/components/responses/GatewayFailure" }
         }
       }
     }
@@ -1439,7 +157,17 @@
     "responses": {
       "GatewayFailure": {
         "description": "Gateway failure",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GatewayError" } } }
+        "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+        "content": {
+          "application/json": {
+            "schema": {
+              "oneOf": [
+                { "$ref": "#/components/schemas/ApiSuccess" },
+                { "$ref": "#/components/schemas/ApiFailure" }
+              ]
+            }
+          }
+        }
       }
     },
     "schemas": {
@@ -8559,6 +7287,39 @@
           "responseSchema": { "type": ["string", "null"] }
         }
       },
+      "ApiFailure": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "ok", "error"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "ok": { "const": false },
+          "error": { "$ref": "#/components/schemas/GatewayError" }
+        }
+      },
+      "ApiSuccess": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "ok", "data"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "ok": { "const": true },
+          "data": true
+        }
+      },
+      "BackendMeta": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["runtime", "database", "environment", "gatewayMode", "apiPrefix", "version"],
+        "properties": {
+          "runtime": { "type": "string", "enum": ["node", "cloudflare"] },
+          "database": { "type": "string", "enum": ["sqlite", "d1"] },
+          "environment": { "type": "string" },
+          "gatewayMode": { "type": "string", "enum": ["mock", "disabled", "real"] },
+          "apiPrefix": { "type": "string" },
+          "version": { "type": "string" }
+        }
+      },
       "CapabilityCallRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -8806,6 +7567,17 @@
             "maxItems": 100,
             "items": { "$ref": "#/components/schemas/DiagnosticEntry" }
           }
+        }
+      },
+      "EncodedFilePayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fileName", "contentBase64", "contentType", "byteLength"],
+        "properties": {
+          "fileName": { "type": "string", "minLength": 1, "maxLength": 255 },
+          "contentBase64": { "type": "string", "minLength": 1, "contentEncoding": "base64" },
+          "contentType": { "type": "string", "minLength": 1 },
+          "byteLength": { "type": "integer", "minimum": 1, "maximum": 20971520 }
         }
       },
       "GatewayError": {
@@ -9173,6 +7945,16 @@
           }
         }
       },
+      "OperationCallRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "operation", "payload"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "operation": { "type": "string", "minLength": 1 },
+          "payload": { "type": "object", "additionalProperties": true }
+        }
+      },
       "Order": {
         "type": "object",
         "additionalProperties": false,
@@ -9311,6 +8093,21 @@
           }
         }
       },
+      "PhotoUploadRequest": {
+        "allOf": [
+          { "$ref": "#/components/schemas/EncodedFilePayload" },
+          { "type": "object", "properties": { "groupId": { "type": "string" } } }
+        ]
+      },
+      "ProbeResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "status"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "status": { "type": "string", "enum": ["ok", "not-ready"] }
+        }
+      },
       "Product": {
         "type": "object",
         "required": ["id", "subject", "groupName", "status", "score", "updatedAt"],
@@ -9438,21 +8235,24 @@
           }
         }
       },
+      "RequestEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId"],
+        "properties": { "requestId": { "$ref": "#/components/schemas/RequestId" } }
+      },
+      "RequestId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+      },
       "RfqAttachment": {
         "type": "object",
         "additionalProperties": false,
         "required": ["name", "url"],
         "properties": { "name": { "type": "string" }, "url": { "type": "string" } }
       },
-      "RfqAttachmentUploadRequest": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["fileName", "file"],
-        "properties": {
-          "fileName": { "type": "string", "minLength": 1 },
-          "file": { "type": "string", "minLength": 1, "contentEncoding": "base64" }
-        }
-      },
+      "RfqAttachmentUploadRequest": { "$ref": "#/components/schemas/EncodedFilePayload" },
       "RfqAttachmentUploadResult": {
         "type": "object",
         "additionalProperties": false,

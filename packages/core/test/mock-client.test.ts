@@ -22,8 +22,10 @@ describe('MockGatewayClient', () => {
     expect(photos.items[0]?.fileSize).toBeGreaterThan(0);
 
     const uploaded = await client.request('uploadPhoto', {
-      file: 'aGVsbG8=',
       fileName: 'new-product.jpg',
+      contentBase64: '/9j/2Q==',
+      contentType: 'image/jpeg',
+      byteLength: 4,
       groupId: '2002'
     });
     expect(uploaded).toMatchObject({ name: 'new-product.jpg', groupId: '2002', referenceCount: 0 });

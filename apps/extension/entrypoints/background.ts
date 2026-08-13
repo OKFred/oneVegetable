@@ -520,8 +520,10 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
     case 'transferPhotoFromUrl': {
       const downloaded = await downloadPhotoForUpload(payload as RequestOf<'transferPhotoFromUrl'>);
       return photos.upload({
-        file: downloaded.file,
+        contentBase64: downloaded.contentBase64,
         fileName: downloaded.fileName,
+        contentType: downloaded.contentType,
+        byteLength: downloaded.byteLength,
         ...(downloaded.groupId ? { groupId: downloaded.groupId } : {})
       });
     }

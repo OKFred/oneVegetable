@@ -1,4 +1,5 @@
 import type { AlibabaClient } from './alibaba-client';
+import { validateEncodedFile } from './encoded-file';
 import type {
   RequestOf,
   RfqDetail,
@@ -103,9 +104,10 @@ export class RfqAdapter {
   }
 
   async uploadAttachment(request: RequestOf<'uploadRfqAttachment'>): Promise<{ filesString: string }> {
+    validateEncodedFile(request);
     const call = await this.client.call('alibaba.icbu.annex.upload', {
       file_name: request.fileName,
-      file_input_stream_bytes: request.file,
+      file_input_stream_bytes: request.contentBase64,
       source: 'top'
     });
     const root = unwrap(call.data, call.method);

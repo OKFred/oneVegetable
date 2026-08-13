@@ -693,7 +693,7 @@ export class MockGatewayClient implements GatewayClient {
         groupId: payload.groupId ?? '-1',
         width: 1200,
         height: 1200,
-        fileSize: Math.floor((payload.file.length * 3) / 4),
+        fileSize: payload.byteLength,
         referenceCount: 0,
         modifiedAt: new Date().toISOString()
       } as ResponseOf<K>;

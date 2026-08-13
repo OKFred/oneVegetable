@@ -1,4 +1,5 @@
 import type { AlibabaClient } from './alibaba-client';
+import { PHOTO_CONTENT_TYPES, validateEncodedFile } from './encoded-file';
 import type {
   Photo,
   PhotoGroup,
@@ -54,10 +55,12 @@ export class PhotoAdapter {
   }
 
   async upload(request: PhotoUploadRequest): Promise<Photo> {
-    if (!request.fileName.trim()) throw new Error('fileName 不能为空');
-    if (!request.file.trim()) throw new Error('file 不能为空');
+    const bytes = validateEncodedFile(request, {
+      allowedContentTypes: PHOTO_CONTENT_TYPES,
+      requireImageSignature: true
+    });
     const call = await this.client.call('alibaba.icbu.photobank.upload', {
-      image_bytes: request.file,
+      image_bytes: request.contentBase64,
       file_name: request.fileName.trim(),
       ...(request.groupId && request.groupId !== '-1' ? { group_id: request.groupId } : {})
     });
@@ -70,7 +73,7 @@ export class PhotoAdapter {
       groupId: request.groupId ?? '-1',
       width: readInteger(root, ['width']) ?? 1,
       height: readInteger(root, ['height']) ?? 1,
-      fileSize: readInteger(root, ['file_size']) ?? Math.floor((request.file.length * 3) / 4),
+      fileSize: readInteger(root, ['file_size']) ?? bytes.byteLength,
       referenceCount: 0,
       modifiedAt: new Date().toISOString()
     };

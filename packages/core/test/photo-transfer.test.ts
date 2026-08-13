@@ -74,7 +74,7 @@ describe('PhotoBank URL transfer safety', () => {
       )
     );
     expect(result).toEqual({
-      file: 'iVBORw==',
+      contentBase64: 'iVBORw==',
       fileName: 'detail.png',
       groupId: '2002',
       contentType: 'image/png',

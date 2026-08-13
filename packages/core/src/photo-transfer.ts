@@ -12,10 +12,7 @@ const ALLOWED_IMAGE_CONTENT_TYPES = new Set([
   'image/bmp'
 ]);
 
-export interface DownloadedPhotoUpload extends PhotoUploadRequest {
-  contentType: string;
-  byteLength: number;
-}
+export type DownloadedPhotoUpload = PhotoUploadRequest;
 
 export function assertPublicPhotoUrl(rawUrl: string): URL {
   let url: URL;
@@ -107,7 +104,7 @@ export async function downloadPhotoForUpload(
   if (!(response.data instanceof Uint8Array)) throw new Error('图片下载响应格式无效');
   const bytes = response.data;
   return {
-    file: bytesToBase64(bytes),
+    contentBase64: bytesToBase64(bytes),
     fileName: sanitizeFileName(request.fileName ?? inferFileName(url, contentType)),
     groupId: request.groupId,
     contentType,

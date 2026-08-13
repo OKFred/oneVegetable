@@ -190,11 +190,7 @@ export interface ProductDisplayRequest {
   display: 'online' | 'offline';
 }
 
-export interface PhotoUploadRequest {
-  file: string;
-  fileName: string;
-  groupId?: string;
-}
+export type PhotoUploadRequest = components['schemas']['PhotoUploadRequest'];
 
 export interface OperationMap {
   getDashboard: { request: undefined; response: DashboardSummary };
