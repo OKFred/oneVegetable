@@ -99,6 +99,6 @@ const app = createApp(OneVegetableApp, {
   mode: 'extension'
 });
 app.use(VueQueryPlugin, {
-  queryClient: new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } })
+  queryClient: new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000 } } })
 });
 app.mount('#app');

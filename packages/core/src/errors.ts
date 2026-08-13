@@ -35,12 +35,18 @@ export function normalizeGatewayError(error: unknown): GatewayError {
 
   if (isAxiosError(error)) {
     const apiError = error.response?.data.error_response;
+    const status = error.response?.status;
+    const transport = transportError(status, error.code);
     return {
-      code: apiError?.code ? String(apiError.code) : 'NETWORK_ERROR',
+      code: transport?.code ?? (apiError?.code ? String(apiError.code) : 'NETWORK_ERROR'),
       message: apiError?.sub_msg ?? apiError?.msg ?? error.message,
-      ...(apiError?.sub_code ? { subCode: apiError.sub_code } : {}),
+      ...(apiError?.sub_code
+        ? { subCode: apiError.sub_code }
+        : transport && apiError?.code
+          ? { subCode: String(apiError.code) }
+          : {}),
       ...(apiError?.request_id ? { traceId: apiError.request_id } : {}),
-      retryable: error.response === undefined || error.response.status >= 500
+      retryable: transport?.retryable ?? error.response === undefined
     };
   }
 
@@ -49,4 +55,18 @@ export function normalizeGatewayError(error: unknown): GatewayError {
   }
 
   return { code: 'UNKNOWN_ERROR', message: '未知网关错误', retryable: false };
+}
+
+function transportError(
+  status: number | undefined,
+  axiosCode: string | undefined
+): Pick<GatewayError, 'code' | 'retryable'> | null {
+  if (axiosCode === 'ECONNABORTED' || axiosCode === 'ETIMEDOUT') {
+    return { code: 'REQUEST_TIMEOUT', retryable: true };
+  }
+  if (status === 401) return { code: 'AUTHENTICATION_FAILED', retryable: false };
+  if (status === 403) return { code: 'PERMISSION_DENIED', retryable: false };
+  if (status === 429) return { code: 'RATE_LIMITED', retryable: true };
+  if (status !== undefined && status >= 500) return { code: 'UPSTREAM_UNAVAILABLE', retryable: true };
+  return null;
 }

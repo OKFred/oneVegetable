@@ -196,7 +196,10 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
       retryable: false
     });
   }
-  const client = await AlibabaClient.create(settings);
+  const client = await AlibabaClient.create(settings, {
+    maxAttempts: 3,
+    shouldRetry: (method, error) => error.retryable && findCapability(method)?.risk === 'read'
+  });
   const products = new ProductAdapter(client);
   const rfqs = new RfqAdapter(client);
   const trades = new TradeAdapter(client);
