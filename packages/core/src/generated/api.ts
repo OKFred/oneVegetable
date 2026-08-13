@@ -744,10 +744,207 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/insights/supplier-rank": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the authenticated supplier global rank trend */
+        get: operations["getInsightsSupplierRank"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/insights/procurement-suppliers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List suppliers with previous assurance orders */
+        get: operations["listInsightsSuppliers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/insights/procurement-supplier-products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List products previously ordered from an encrypted supplier id */
+        get: operations["listInsightsSupplierProducts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** alibaba.icbu.diagnostic.supplier.rank.getpercent request */
+        AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentRequest: Record<string, never>;
+        /** alibaba.icbu.diagnostic.supplier.rank.getpercent response */
+        AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentResponse: {
+            /** @description 供应商排名时间序列容器 */
+            rank_info_list?: {
+                /** @description 供应商排名时间序列 */
+                rank_info?: {
+                    /** @description 统计日期 */
+                    stat_date?: string;
+                    /** @description 全站排名百分比 */
+                    percent?: number;
+                }[];
+            };
+        };
+        /** alibaba.mydata.self.query.cgsokk request */
+        AlibabaInsightsAlibabaMydataSelfQueryCgsokkRequest: {
+            /** @description 小满数据源 */
+            data_source: string;
+            /** @description JSON 字段列表 */
+            fields?: string;
+            /** @description 统一社会信用代码 */
+            social_credit_code: string;
+            /** @description 合作方业务密钥，仅允许 service worker 注入 */
+            app_secret: string;
+            /** @description 合作方应用信息 */
+            app_info: string;
+        };
+        /** alibaba.mydata.self.query.cgsokk response */
+        AlibabaInsightsAlibabaMydataSelfQueryCgsokkResponse: {
+            /** @description 接口返回model */
+            result?: {
+                /** @description 返回码 */
+                return_code?: number;
+                /** @description 返回字段以及值 */
+                return_values?: string[];
+                /** @description 异常栈 */
+                return_error_stack_trace?: string;
+                /** @description 成功与否 */
+                successed?: boolean;
+                /** @description msg */
+                return_message?: string;
+            };
+        };
+        /** alibaba.procurement.mysupplier.list request */
+        AlibabaInsightsAlibabaProcurementMysupplierListRequest: {
+            /** @description 当前页数，0开始 */
+            current_page: number;
+            /** @description 请求页大小，默认10 */
+            page_size?: number;
+            /** @description 请求类型，例如订单order */
+            type: string;
+        };
+        /** alibaba.procurement.mysupplier.list response */
+        AlibabaInsightsAlibabaProcurementMysupplierListResponse: {
+            /** @description 结果大对象 */
+            result?: {
+                /** @description 当前页 */
+                curr_page: number;
+                /** @description 错误码 */
+                error_code: string;
+                /** @description 错误信息 */
+                error_msg: string;
+                /** @description 请求页数 */
+                page_size: number;
+                /** @description 是否成功 */
+                success: boolean;
+                /** @description 加密后的供应商id */
+                supplier_id_enc_list: string[];
+                /** @description 总个数 */
+                total_item: number;
+            };
+        };
+        /** alibaba.procurement.supplier.items.get request */
+        AlibabaInsightsAlibabaProcurementSupplierItemsGetRequest: {
+            /** @description 请求query */
+            product_list_query?: {
+                /** @description 开始日期(unix时间戳，单位ms) */
+                date_end?: number;
+                /** @description 结束日期(unix时间戳，单位ms) */
+                date_start?: number;
+                /** @description 请求页 */
+                page_index: number;
+                /** @description 页大小 */
+                page_size?: number;
+                /** @description 供应商加密id */
+                seller_account_id: string;
+                /** @description 类型 */
+                type: string;
+            };
+        };
+        /** alibaba.procurement.supplier.items.get response */
+        AlibabaInsightsAlibabaProcurementSupplierItemsGetResponse: {
+            /** @description 返回结果 */
+            result?: {
+                /** @description 请求页 */
+                curr_page: number;
+                /** @description 错误码 */
+                error_code: string;
+                /** @description 错误信息 */
+                error_msg: string;
+                /** @description 页大小 */
+                page_size: number;
+                /** @description 产品列表 */
+                product_list: {
+                    /** @description 产品类目 */
+                    category: number;
+                    /** @description 产品详情描述 */
+                    description: string;
+                    /** @description 产品id */
+                    id: number;
+                    /** @description 价格区间 */
+                    price_range: string;
+                    /** @description 价格单位 */
+                    price_unit: number;
+                    /** @description 产品详情页的url */
+                    product_detail_url: string;
+                    /** @description 产品发布时间 */
+                    publish_time: number | string;
+                    /** @description sku */
+                    sku: {
+                        /** @description sku属性 */
+                        attributes: {
+                            /** @description 属性id */
+                            attribute_id: number;
+                            /** @description 属性名字 */
+                            attribute_name: string;
+                            /** @description 自定义sku链接 */
+                            sku_custom_image_url: string;
+                            /** @description 自定义属性名 */
+                            sku_custom_value_name: string;
+                            /** @description 属性值iid */
+                            value_id: number;
+                            /** @description 属性值名称 */
+                            value_name: string;
+                        }[];
+                    };
+                    /** @description 商品标题 */
+                    subject: string;
+                }[];
+                /** @description 是否成功 */
+                success: boolean;
+                /** @description 订单数量总计 */
+                total_order_count: number;
+            };
+        };
         /** alibaba.onetouch.logistics.buyer.info.get request */
         AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetRequest: Record<string, never>;
         /** alibaba.onetouch.logistics.buyer.info.get response */
@@ -5506,7 +5703,7 @@ export interface components {
         CapabilityResponseEnvelope: {
             method: string;
             traceId: string;
-            data: components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttributeGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrvalueGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetNewResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryIdMappingResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryLevelAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryPostcatGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategorySchemaLevelGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuOpenProductPostResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductBatchUpdateDisplayResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductIdDecryptResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductListResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductScoreGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateFieldResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuAnnexUploadResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuQuotationPostResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqMyequityResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqReadResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqRecommendResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqSearchResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqdetailGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderListResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderFundGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderLogisticsGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderCreateResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderModifyResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeFulfillmentChannelGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeServiceChargeGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAssuranceCreditCardResponse"] | components["schemas"]["AlibabaTradeAlibabaOrderTradeTtGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressGetResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuEcologyWriteResponse"] | components["schemas"]["AlibabaTradeAlibabaIntentionOrderSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAddressSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeDecodeResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeQueryDrafttypeResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftCustomerSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuXiaomanVaListResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAuthExtendResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressSchemaQueryResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressFormSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressListQueryResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressDeleteResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressSpecialProductTypeListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelReasonListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressChargeCalculateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsRuleValidateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsProductListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsOrderCreateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressCityListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressProvinceListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressDivisionListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressStreetListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderDetailGetResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderListQueryResponse"] | components["schemas"]["AlibabaLogisticsAlibabaWholesaleShippinglineTemplateListResponse"];
+            data: components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttributeGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrvalueGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetNewResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryIdMappingResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryLevelAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryPostcatGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategorySchemaLevelGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuOpenProductPostResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductBatchUpdateDisplayResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductIdDecryptResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductListResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductScoreGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateFieldResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuAnnexUploadResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuQuotationPostResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqMyequityResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqReadResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqRecommendResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqSearchResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqdetailGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderListResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderFundGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderLogisticsGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderCreateResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderModifyResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeFulfillmentChannelGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeServiceChargeGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAssuranceCreditCardResponse"] | components["schemas"]["AlibabaTradeAlibabaOrderTradeTtGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressGetResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuEcologyWriteResponse"] | components["schemas"]["AlibabaTradeAlibabaIntentionOrderSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAddressSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeDecodeResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeQueryDrafttypeResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftCustomerSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuXiaomanVaListResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAuthExtendResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressSchemaQueryResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressFormSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressListQueryResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressDeleteResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressSpecialProductTypeListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelReasonListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressChargeCalculateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsRuleValidateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsProductListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsOrderCreateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressCityListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressProvinceListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressDivisionListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressStreetListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderDetailGetResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderListQueryResponse"] | components["schemas"]["AlibabaLogisticsAlibabaWholesaleShippinglineTemplateListResponse"] | components["schemas"]["AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentResponse"] | components["schemas"]["AlibabaInsightsAlibabaMydataSelfQueryCgsokkResponse"] | components["schemas"]["AlibabaInsightsAlibabaProcurementMysupplierListResponse"] | components["schemas"]["AlibabaInsightsAlibabaProcurementSupplierItemsGetResponse"];
             contractValid: boolean;
             contractIssues: components["schemas"]["CapabilityContractIssue"][];
         };
@@ -5522,6 +5719,46 @@ export interface components {
             subCode?: string;
             traceId?: string;
             retryable: boolean;
+        };
+        InsightsSupplierPage: {
+            supplierIds: string[];
+            page: number;
+            pageSize: number;
+            total: number;
+        };
+        InsightsSupplierProduct: {
+            id: string;
+            subject: string;
+            description: string;
+            categoryId: string;
+            priceRange: string | null;
+            priceUnit: string | null;
+            /** Format: uri */
+            productUrl: string | null;
+            publishedAt: string | null;
+            attributes: components["schemas"]["InsightsSupplierProductAttribute"][];
+        };
+        InsightsSupplierProductAttribute: {
+            attributeId: string;
+            attributeName: string;
+            valueId: string;
+            valueName: string;
+            imageUrl: string | null;
+            customValueName: string | null;
+        };
+        InsightsSupplierProductPage: {
+            items: components["schemas"]["InsightsSupplierProduct"][];
+            page: number;
+            pageSize: number;
+            total: number;
+        };
+        InsightsSupplierRankPoint: {
+            statDate: string;
+            percent: number;
+        };
+        InsightsSupplierRankTrend: {
+            items: components["schemas"]["InsightsSupplierRankPoint"][];
+            latestPercent: number | null;
         };
         LogisticsAddress: {
             countryCode: string;
@@ -6493,7 +6730,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttributeGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrvalueGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetNewRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryIdMappingRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryLevelAttrGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryPostcatGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategorySchemaLevelGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuOpenProductPostRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductBatchUpdateDisplayRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductIdDecryptRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductListRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaUpdateRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductScoreGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateFieldRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuAnnexUploadRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuQuotationPostRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqMyequityRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqReadRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqRecommendRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqSearchRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqdetailGetRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderListRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderFundGetRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderLogisticsGetRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderCreateRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderModifyRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeFulfillmentChannelGetRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeServiceChargeGetRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerAssuranceCreditCardRequest"] | components["schemas"]["AlibabaTradeAlibabaOrderTradeTtGetRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressGetRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuEcologyWriteRequest"] | components["schemas"]["AlibabaTradeAlibabaIntentionOrderSaveRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerAddressSaveRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeDecodeRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeQueryDrafttypeRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftCustomerSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuXiaomanVaListRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerAuthExtendRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressSchemaQueryRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressFormSaveRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressListQueryRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressDeleteRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressSpecialProductTypeListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelReasonListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressChargeCalculateRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsRuleValidateRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsProductListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsOrderCreateRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressCityListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressProvinceListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressDivisionListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressStreetListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderDetailGetRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderListQueryRequest"] | components["schemas"]["AlibabaLogisticsAlibabaWholesaleShippinglineTemplateListRequest"];
+                "application/json": components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttributeGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrvalueGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetNewRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryIdMappingRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryLevelAttrGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryPostcatGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuCategorySchemaLevelGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuOpenProductPostRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductBatchUpdateDisplayRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductIdDecryptRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductListRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderDraftRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaUpdateRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductScoreGetRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateRequest"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateFieldRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuAnnexUploadRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuQuotationPostRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqMyequityRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqReadRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqRecommendRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqSearchRequest"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqdetailGetRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderListRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderFundGetRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderLogisticsGetRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderCreateRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderModifyRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeFulfillmentChannelGetRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeServiceChargeGetRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerAssuranceCreditCardRequest"] | components["schemas"]["AlibabaTradeAlibabaOrderTradeTtGetRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressGetRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuEcologyWriteRequest"] | components["schemas"]["AlibabaTradeAlibabaIntentionOrderSaveRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerAddressSaveRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeDecodeRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeQueryDrafttypeRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftCustomerSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuXiaomanVaListRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncRequest"] | components["schemas"]["AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceRequest"] | components["schemas"]["AlibabaTradeAlibabaSellerAuthExtendRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressSchemaQueryRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressFormSaveRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressListQueryRequest"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressDeleteRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressSpecialProductTypeListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelReasonListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressChargeCalculateRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsRuleValidateRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsProductListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsOrderCreateRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressCityListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressProvinceListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressDivisionListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressStreetListRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderDetailGetRequest"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderListQueryRequest"] | components["schemas"]["AlibabaLogisticsAlibabaWholesaleShippinglineTemplateListRequest"] | components["schemas"]["AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentRequest"] | components["schemas"]["AlibabaInsightsAlibabaMydataSelfQueryCgsokkRequest"] | components["schemas"]["AlibabaInsightsAlibabaProcurementMysupplierListRequest"] | components["schemas"]["AlibabaInsightsAlibabaProcurementSupplierItemsGetRequest"];
             };
         };
         responses: {
@@ -7328,6 +7565,81 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ShippingTemplate"][];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    getInsightsSupplierRank: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Supplier rank trend */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightsSupplierRankTrend"];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    listInsightsSuppliers: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Procurement supplier page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightsSupplierPage"];
+                };
+            };
+            "4XX": components["responses"]["GatewayFailure"];
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    listInsightsSupplierProducts: {
+        parameters: {
+            query: {
+                supplierId: string;
+                page?: number;
+                pageSize?: number;
+                dateStart?: string;
+                dateEnd?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Supplier product page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightsSupplierProductPage"];
                 };
             };
             "4XX": components["responses"]["GatewayFailure"];

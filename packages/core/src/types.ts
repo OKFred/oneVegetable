@@ -9,6 +9,10 @@ import type {
   LogisticsCapabilityRequestMap,
   LogisticsCapabilityResponseMap
 } from './generated/logistics-capabilities';
+import type {
+  InsightsCapabilityRequestMap,
+  InsightsCapabilityResponseMap
+} from './generated/insights-capabilities';
 
 export type DashboardSummary = components['schemas']['DashboardSummary'];
 export type Product = components['schemas']['Product'];
@@ -77,22 +81,31 @@ export type LogisticsOrderPage = components['schemas']['LogisticsOrderPage'];
 export type LogisticsOrderDetail = components['schemas']['LogisticsOrderDetail'];
 export type LogisticsOrderMutationResult = components['schemas']['LogisticsOrderMutationResult'];
 export type ShippingTemplate = components['schemas']['ShippingTemplate'];
+export type InsightsSupplierRankPoint = components['schemas']['InsightsSupplierRankPoint'];
+export type InsightsSupplierRankTrend = components['schemas']['InsightsSupplierRankTrend'];
+export type InsightsSupplierPage = components['schemas']['InsightsSupplierPage'];
+export type InsightsSupplierProductAttribute = components['schemas']['InsightsSupplierProductAttribute'];
+export type InsightsSupplierProduct = components['schemas']['InsightsSupplierProduct'];
+export type InsightsSupplierProductPage = components['schemas']['InsightsSupplierProductPage'];
 export type { ProductCapabilityRequestMap, ProductCapabilityResponseMap };
 export type { RfqCapabilityRequestMap, RfqCapabilityResponseMap };
 export type { TradeCapabilityRequestMap, TradeCapabilityResponseMap };
 export type { LogisticsCapabilityRequestMap, LogisticsCapabilityResponseMap };
+export type { InsightsCapabilityRequestMap, InsightsCapabilityResponseMap };
 export interface CapabilityRequestMap
   extends
     ProductCapabilityRequestMap,
     RfqCapabilityRequestMap,
     TradeCapabilityRequestMap,
-    LogisticsCapabilityRequestMap {}
+    LogisticsCapabilityRequestMap,
+    InsightsCapabilityRequestMap {}
 export interface CapabilityResponseMap
   extends
     ProductCapabilityResponseMap,
     RfqCapabilityResponseMap,
     TradeCapabilityResponseMap,
-    LogisticsCapabilityResponseMap {}
+    LogisticsCapabilityResponseMap,
+    InsightsCapabilityResponseMap {}
 export type GatewayError = components['schemas']['GatewayError'];
 
 export interface ProductListQuery {
@@ -145,6 +158,17 @@ export interface LogisticsOrderListQuery {
   page?: number;
   pageSize?: number;
   orderNumber?: string;
+}
+
+export interface InsightsSupplierListQuery {
+  page?: number;
+  pageSize?: number;
+}
+
+export interface InsightsSupplierProductListQuery extends InsightsSupplierListQuery {
+  supplierId: string;
+  dateStart?: string;
+  dateEnd?: string;
 }
 
 export interface ProductDisplayRequest {
@@ -253,6 +277,12 @@ export interface OperationMap {
   createLogisticsOrder: {
     request: LogisticsOrderDraft;
     response: LogisticsOrderMutationResult;
+  };
+  getInsightsSupplierRank: { request: undefined; response: InsightsSupplierRankTrend };
+  listInsightsSuppliers: { request: InsightsSupplierListQuery; response: InsightsSupplierPage };
+  listInsightsSupplierProducts: {
+    request: InsightsSupplierProductListQuery;
+    response: InsightsSupplierProductPage;
   };
 }
 

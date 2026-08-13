@@ -536,11 +536,18 @@ const logisticsDefinitions = Object.values(
     { requestSchema: string; responseSchema: string }
   >
 );
+const insightsDefinitions = Object.values(
+  (document['x-insights-capabilities'] ?? {}) as Record<
+    string,
+    { requestSchema: string; responseSchema: string }
+  >
+);
 const combinedDefinitions = [
   ...productDefinitions,
   ...(Object.values(capabilityMap) as { requestSchema: string; responseSchema: string }[]),
   ...tradeDefinitions,
-  ...logisticsDefinitions
+  ...logisticsDefinitions,
+  ...insightsDefinitions
 ];
 const envelope = document.components.schemas.CapabilityResponseEnvelope;
 const envelopeProperties = envelope.properties as Record<string, JsonSchema>;

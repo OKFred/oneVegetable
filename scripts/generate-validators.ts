@@ -11,6 +11,7 @@ interface OpenApiDocument {
   'x-rfq-capabilities'?: Record<string, { requestSchema: string; responseSchema: string }>;
   'x-trade-capabilities'?: Record<string, { requestSchema: string; responseSchema: string }>;
   'x-logistics-capabilities'?: Record<string, { requestSchema: string; responseSchema: string }>;
+  'x-insights-capabilities'?: Record<string, { requestSchema: string; responseSchema: string }>;
   components?: {
     schemas?: Record<string, object>;
   };
@@ -57,6 +58,10 @@ for (const [index, definition] of Object.values(document['x-trade-capabilities']
 for (const [index, definition] of Object.values(document['x-logistics-capabilities'] ?? {}).entries()) {
   selected[`validateLogisticsCapability${index}Request`] = schemas[definition.requestSchema];
   selected[`validateLogisticsCapability${index}Response`] = schemas[definition.responseSchema];
+}
+for (const [index, definition] of Object.values(document['x-insights-capabilities'] ?? {}).entries()) {
+  selected[`validateInsightsCapability${index}Request`] = schemas[definition.requestSchema];
+  selected[`validateInsightsCapability${index}Response`] = schemas[definition.responseSchema];
 }
 
 function withAjvExtensions(value: unknown): unknown {

@@ -1,6 +1,38 @@
 {
   "alibaba.icbu.diagnostic.supplier.rank.getpercent": {
     "featureArea": "performance",
+    "responseParams": [
+      {
+        "name": "rank_info_list",
+        "type": "RankInfoList",
+        "required": false,
+        "description": "供应商排名时间序列容器",
+        "subParams": [
+          {
+            "name": "rank_info",
+            "type": "RankInfo[]",
+            "required": false,
+            "description": "供应商排名时间序列",
+            "subParams": [
+              {
+                "name": "stat_date",
+                "type": "String",
+                "required": false,
+                "description": "统计日期",
+                "demoValue": "2026/08/12"
+              },
+              {
+                "name": "percent",
+                "type": "Number",
+                "required": false,
+                "description": "全站排名百分比",
+                "demoValue": "18.6"
+              }
+            ]
+          }
+        ]
+      }
+    ],
     "responseExample": {
       "rank_info_list": {
         "rank_info": [{ "stat_date": "2026/08/12", "percent": 18.6 }]

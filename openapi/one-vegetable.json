@@ -614,7 +614,13 @@
                   },
                   {
                     "$ref": "#/components/schemas/AlibabaLogisticsAlibabaWholesaleShippinglineTemplateListRequest"
-                  }
+                  },
+                  {
+                    "$ref": "#/components/schemas/AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentRequest"
+                  },
+                  { "$ref": "#/components/schemas/AlibabaInsightsAlibabaMydataSelfQueryCgsokkRequest" },
+                  { "$ref": "#/components/schemas/AlibabaInsightsAlibabaProcurementMysupplierListRequest" },
+                  { "$ref": "#/components/schemas/AlibabaInsightsAlibabaProcurementSupplierItemsGetRequest" }
                 ]
               }
             }
@@ -1296,6 +1302,69 @@
           "default": { "$ref": "#/components/responses/GatewayFailure" }
         }
       }
+    },
+    "/insights/supplier-rank": {
+      "get": {
+        "summary": "Get the authenticated supplier global rank trend",
+        "operationId": "getInsightsSupplierRank",
+        "responses": {
+          "200": {
+            "description": "Supplier rank trend",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/InsightsSupplierRankTrend" } }
+            }
+          },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
+          "default": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      }
+    },
+    "/insights/procurement-suppliers": {
+      "get": {
+        "summary": "List suppliers with previous assurance orders",
+        "operationId": "listInsightsSuppliers",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1 } },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Procurement supplier page",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/InsightsSupplierPage" } }
+            }
+          },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
+          "default": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      }
+    },
+    "/insights/procurement-supplier-products": {
+      "get": {
+        "summary": "List products previously ordered from an encrypted supplier id",
+        "operationId": "listInsightsSupplierProducts",
+        "parameters": [
+          { "name": "supplierId", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1 } },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100 }
+          },
+          { "name": "dateStart", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "dateEnd", "in": "query", "schema": { "type": "string", "format": "date-time" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Supplier product page",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/InsightsSupplierProductPage" } }
+            }
+          },
+          "4XX": { "$ref": "#/components/responses/GatewayFailure" },
+          "default": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      }
     }
   },
   "components": {
@@ -1316,6 +1385,233 @@
       }
     },
     "schemas": {
+      "AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "title": "alibaba.icbu.diagnostic.supplier.rank.getpercent request"
+      },
+      "AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "rank_info_list": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "rank_info": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "stat_date": { "type": "string", "description": "统计日期" },
+                    "percent": { "type": "number", "description": "全站排名百分比" }
+                  },
+                  "description": "供应商排名时间序列"
+                },
+                "description": "供应商排名时间序列"
+              }
+            },
+            "description": "供应商排名时间序列容器"
+          }
+        },
+        "title": "alibaba.icbu.diagnostic.supplier.rank.getpercent response"
+      },
+      "AlibabaInsightsAlibabaMydataSelfQueryCgsokkRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["data_source", "social_credit_code", "app_secret", "app_info"],
+        "properties": {
+          "data_source": { "type": "string", "description": "小满数据源" },
+          "fields": { "type": "string", "description": "JSON 字段列表" },
+          "social_credit_code": { "type": "string", "description": "统一社会信用代码" },
+          "app_secret": { "type": "string", "description": "合作方业务密钥，仅允许 service worker 注入" },
+          "app_info": { "type": "string", "description": "合作方应用信息" }
+        },
+        "title": "alibaba.mydata.self.query.cgsokk request"
+      },
+      "AlibabaInsightsAlibabaMydataSelfQueryCgsokkResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "return_code": { "type": "number", "description": "返回码" },
+              "return_values": {
+                "type": "array",
+                "items": { "type": "string", "description": "返回字段以及值" },
+                "description": "返回字段以及值"
+              },
+              "return_error_stack_trace": { "type": "string", "description": "异常栈" },
+              "successed": { "type": "boolean", "description": "成功与否" },
+              "return_message": { "type": "string", "description": "msg" }
+            },
+            "description": "接口返回model"
+          }
+        },
+        "title": "alibaba.mydata.self.query.cgsokk response"
+      },
+      "AlibabaInsightsAlibabaProcurementMysupplierListRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["current_page", "type"],
+        "properties": {
+          "current_page": { "type": "number", "description": "当前页数，0开始" },
+          "page_size": { "type": "number", "description": "请求页大小，默认10" },
+          "type": { "type": "string", "description": "请求类型，例如订单order" }
+        },
+        "title": "alibaba.procurement.mysupplier.list request"
+      },
+      "AlibabaInsightsAlibabaProcurementMysupplierListResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "curr_page",
+              "error_code",
+              "error_msg",
+              "page_size",
+              "success",
+              "supplier_id_enc_list",
+              "total_item"
+            ],
+            "properties": {
+              "curr_page": { "type": "number", "description": "当前页" },
+              "error_code": { "type": "string", "description": "错误码" },
+              "error_msg": { "type": "string", "description": "错误信息" },
+              "page_size": { "type": "number", "description": "请求页数" },
+              "success": { "type": "boolean", "description": "是否成功" },
+              "supplier_id_enc_list": {
+                "type": "array",
+                "items": { "type": "string", "description": "加密后的供应商id" },
+                "description": "加密后的供应商id"
+              },
+              "total_item": { "type": "number", "description": "总个数" }
+            },
+            "description": "结果大对象"
+          }
+        },
+        "title": "alibaba.procurement.mysupplier.list response"
+      },
+      "AlibabaInsightsAlibabaProcurementSupplierItemsGetRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "product_list_query": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["page_index", "seller_account_id", "type"],
+            "properties": {
+              "date_end": { "type": "number", "description": "开始日期(unix时间戳，单位ms)" },
+              "date_start": { "type": "number", "description": "结束日期(unix时间戳，单位ms)" },
+              "page_index": { "type": "number", "description": "请求页" },
+              "page_size": { "type": "number", "description": "页大小" },
+              "seller_account_id": { "type": "string", "description": "供应商加密id" },
+              "type": { "type": "string", "description": "类型" }
+            },
+            "description": "请求query"
+          }
+        },
+        "title": "alibaba.procurement.supplier.items.get request"
+      },
+      "AlibabaInsightsAlibabaProcurementSupplierItemsGetResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "curr_page",
+              "error_code",
+              "error_msg",
+              "page_size",
+              "product_list",
+              "success",
+              "total_order_count"
+            ],
+            "properties": {
+              "curr_page": { "type": "number", "description": "请求页" },
+              "error_code": { "type": "string", "description": "错误码" },
+              "error_msg": { "type": "string", "description": "错误信息" },
+              "page_size": { "type": "number", "description": "页大小" },
+              "product_list": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "category",
+                    "description",
+                    "id",
+                    "price_range",
+                    "price_unit",
+                    "product_detail_url",
+                    "publish_time",
+                    "sku",
+                    "subject"
+                  ],
+                  "properties": {
+                    "category": { "type": "number", "description": "产品类目" },
+                    "description": { "type": "string", "description": "产品详情描述" },
+                    "id": { "type": "number", "description": "产品id" },
+                    "price_range": { "type": "string", "description": "价格区间" },
+                    "price_unit": { "type": "number", "description": "价格单位" },
+                    "product_detail_url": { "type": "string", "description": "产品详情页的url" },
+                    "publish_time": { "type": ["integer", "string"], "description": "产品发布时间" },
+                    "sku": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["attributes"],
+                      "properties": {
+                        "attributes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "attribute_id",
+                              "attribute_name",
+                              "sku_custom_image_url",
+                              "sku_custom_value_name",
+                              "value_id",
+                              "value_name"
+                            ],
+                            "properties": {
+                              "attribute_id": { "type": "number", "description": "属性id" },
+                              "attribute_name": { "type": "string", "description": "属性名字" },
+                              "sku_custom_image_url": { "type": "string", "description": "自定义sku链接" },
+                              "sku_custom_value_name": { "type": "string", "description": "自定义属性名" },
+                              "value_id": { "type": "number", "description": "属性值iid" },
+                              "value_name": { "type": "string", "description": "属性值名称" }
+                            },
+                            "description": "sku属性"
+                          },
+                          "description": "sku属性"
+                        }
+                      },
+                      "description": "sku"
+                    },
+                    "subject": { "type": "string", "description": "商品标题" }
+                  },
+                  "description": "产品列表"
+                },
+                "description": "产品列表"
+              },
+              "success": { "type": "boolean", "description": "是否成功" },
+              "total_order_count": { "type": "number", "description": "订单数量总计" }
+            },
+            "description": "返回结果"
+          }
+        },
+        "title": "alibaba.procurement.supplier.items.get response"
+      },
       "AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -8071,7 +8367,13 @@
               },
               {
                 "$ref": "#/components/schemas/AlibabaLogisticsAlibabaWholesaleShippinglineTemplateListResponse"
-              }
+              },
+              {
+                "$ref": "#/components/schemas/AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentResponse"
+              },
+              { "$ref": "#/components/schemas/AlibabaInsightsAlibabaMydataSelfQueryCgsokkResponse" },
+              { "$ref": "#/components/schemas/AlibabaInsightsAlibabaProcurementMysupplierListResponse" },
+              { "$ref": "#/components/schemas/AlibabaInsightsAlibabaProcurementSupplierItemsGetResponse" }
             ]
           },
           "contractValid": { "type": "boolean" },
@@ -8102,6 +8404,88 @@
           "subCode": { "type": "string" },
           "traceId": { "type": "string" },
           "retryable": { "type": "boolean" }
+        }
+      },
+      "InsightsSupplierPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["supplierIds", "page", "pageSize", "total"],
+        "properties": {
+          "supplierIds": { "type": "array", "items": { "type": "string" } },
+          "page": { "type": "integer", "minimum": 1 },
+          "pageSize": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "total": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "InsightsSupplierProduct": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "subject",
+          "description",
+          "categoryId",
+          "priceRange",
+          "priceUnit",
+          "productUrl",
+          "publishedAt",
+          "attributes"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "subject": { "type": "string" },
+          "description": { "type": "string" },
+          "categoryId": { "type": "string" },
+          "priceRange": { "type": ["string", "null"] },
+          "priceUnit": { "type": ["string", "null"] },
+          "productUrl": { "type": ["string", "null"], "format": "uri" },
+          "publishedAt": { "type": ["string", "null"] },
+          "attributes": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/InsightsSupplierProductAttribute" }
+          }
+        }
+      },
+      "InsightsSupplierProductAttribute": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["attributeId", "attributeName", "valueId", "valueName", "imageUrl", "customValueName"],
+        "properties": {
+          "attributeId": { "type": "string" },
+          "attributeName": { "type": "string" },
+          "valueId": { "type": "string" },
+          "valueName": { "type": "string" },
+          "imageUrl": { "type": ["string", "null"] },
+          "customValueName": { "type": ["string", "null"] }
+        }
+      },
+      "InsightsSupplierProductPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items", "page", "pageSize", "total"],
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/InsightsSupplierProduct" } },
+          "page": { "type": "integer", "minimum": 1 },
+          "pageSize": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "total": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "InsightsSupplierRankPoint": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["statDate", "percent"],
+        "properties": {
+          "statDate": { "type": "string" },
+          "percent": { "type": "number", "minimum": 0, "maximum": 100 }
+        }
+      },
+      "InsightsSupplierRankTrend": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items", "latestPercent"],
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/InsightsSupplierRankPoint" } },
+          "latestPercent": { "type": ["number", "null"], "minimum": 0, "maximum": 100 }
         }
       },
       "LogisticsAddress": {
@@ -12813,6 +13197,156 @@
         "list_template_response": { "total": 1, "items": [{ "id": 123, "title": "demo" }] }
       },
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=25394"
+    }
+  },
+  "x-insights-capabilities": {
+    "alibaba.icbu.diagnostic.supplier.rank.getpercent": {
+      "requestSchema": "AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentRequest",
+      "responseSchema": "AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "performance",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2026-06-30",
+      "title": "获取供应商全站排名(百分比)",
+      "description": "获取商家在全站的排名百分比",
+      "errorCodes": [],
+      "requestExample": {},
+      "responseExample": {
+        "rank_info_list": { "rank_info": [{ "stat_date": "2026/08/12", "percent": 18.6 }] }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=31873"
+    },
+    "alibaba.mydata.self.query.cgsokk": {
+      "requestSchema": "AlibabaInsightsAlibabaMydataSelfQueryCgsokkRequest",
+      "responseSchema": "AlibabaInsightsAlibabaMydataSelfQueryCgsokkResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "partnerData",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": true,
+      "restrictionReason": "仅面向 CGS 小满签约客户，且业务参数要求独立 app_secret；默认关闭并禁止在页面填写密钥",
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2021-11-23",
+      "title": "CGS小满签约客户数据查询",
+      "description": "CGS小满签约客户数据查询",
+      "errorCodes": [],
+      "requestExample": {
+        "data_source": "okkData",
+        "fields": "[\"iii_page_level_star\",\"service_years_std_001\"]",
+        "social_credit_code": "documented-placeholder",
+        "app_secret": "service-worker-only",
+        "app_info": "alidataservice"
+      },
+      "responseExample": {
+        "result": {
+          "return_code": 0,
+          "return_values": ["{\"iii_page_level_star\":\"2.0\",\"service_years_std_001\":\"3.0\"}"],
+          "return_error_stack_trace": "",
+          "successed": true,
+          "return_message": ""
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=56989"
+    },
+    "alibaba.procurement.mysupplier.list": {
+      "requestSchema": "AlibabaInsightsAlibabaProcurementMysupplierListRequest",
+      "responseSchema": "AlibabaInsightsAlibabaProcurementMysupplierListResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "suppliers",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2018-10-31",
+      "title": "获取曾经下过信保订单的供应商列表",
+      "description": "获取曾经下过信保订单的供应商列表",
+      "errorCodes": [],
+      "requestExample": { "current_page": 0, "page_size": 10, "type": "order" },
+      "responseExample": {
+        "result": {
+          "curr_page": 0,
+          "error_code": "",
+          "error_msg": "",
+          "page_size": 10,
+          "success": true,
+          "supplier_id_enc_list": ["supplier-enc-001", "supplier-enc-002"],
+          "total_item": 2
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=40747"
+    },
+    "alibaba.procurement.supplier.items.get": {
+      "requestSchema": "AlibabaInsightsAlibabaProcurementSupplierItemsGetRequest",
+      "responseSchema": "AlibabaInsightsAlibabaProcurementSupplierItemsGetResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "supplierProducts",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2018-10-31",
+      "title": "买家通过供应商id，获取曾经下过订单的商品",
+      "description": "买家通过供应商id，获取曾经下过订单的商品",
+      "errorCodes": [],
+      "requestExample": {
+        "product_list_query": {
+          "date_end": 1540969200000,
+          "date_start": 0,
+          "page_index": 0,
+          "page_size": 10,
+          "seller_account_id": "abc",
+          "type": "order"
+        }
+      },
+      "responseExample": {
+        "result": {
+          "curr_page": 0,
+          "error_code": "",
+          "error_msg": "",
+          "page_size": 10,
+          "product_list": [
+            {
+              "category": 100003109,
+              "description": "Portable solar power station",
+              "id": 10000001,
+              "price_range": "599~699",
+              "price_unit": 1,
+              "product_detail_url": "https://www.alibaba.com/product-detail/mock.html",
+              "publish_time": "2026-08-01",
+              "sku": {
+                "attributes": [
+                  {
+                    "attribute_id": 1,
+                    "attribute_name": "Color",
+                    "sku_custom_image_url": "",
+                    "sku_custom_value_name": "",
+                    "value_id": 2,
+                    "value_name": "Black"
+                  }
+                ]
+              },
+              "subject": "Portable solar power station 1000W"
+            }
+          ],
+          "success": true,
+          "total_order_count": 1
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=40748"
     }
   }
 }

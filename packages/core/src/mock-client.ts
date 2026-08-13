@@ -553,7 +553,48 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
     { id: '123', name: '快捷模板' },
     { id: '124', name: '北美包邮模板' }
   ],
-  createLogisticsOrder: { orderNumber: 'ALS00201756999', success: true }
+  createLogisticsOrder: { orderNumber: 'ALS00201756999', success: true },
+  getInsightsSupplierRank: {
+    items: [
+      { statDate: '2026/08/10', percent: 22.4 },
+      { statDate: '2026/08/11', percent: 20.1 },
+      { statDate: '2026/08/12', percent: 18.6 }
+    ],
+    latestPercent: 18.6
+  },
+  listInsightsSuppliers: {
+    supplierIds: ['supplier-enc-001', 'supplier-enc-002'],
+    page: 1,
+    pageSize: 10,
+    total: 2
+  },
+  listInsightsSupplierProducts: {
+    items: [
+      {
+        id: '10000001',
+        subject: 'Portable solar power station 1000W',
+        description: 'Portable backup power for outdoor retail and emergency use.',
+        categoryId: '100003109',
+        priceRange: '599~699',
+        priceUnit: '1',
+        productUrl: 'https://www.alibaba.com/product-detail/mock.html',
+        publishedAt: '2026-08-01',
+        attributes: [
+          {
+            attributeId: '1',
+            attributeName: 'Color',
+            valueId: '2',
+            valueName: 'Black',
+            imageUrl: null,
+            customValueName: null
+          }
+        ]
+      }
+    ],
+    page: 1,
+    pageSize: 10,
+    total: 1
+  }
 };
 
 export class MockGatewayClient implements GatewayClient {
@@ -784,6 +825,22 @@ export class MockGatewayClient implements GatewayClient {
         throw new Error('确认的物流产品与最近试算产品不一致，请重新试算');
       }
       return structuredClone(MOCK_DATA.createLogisticsOrder);
+    }
+    if (operation === 'listInsightsSuppliers') {
+      const payload = _request as OperationMap['listInsightsSuppliers']['request'];
+      return {
+        ...structuredClone(MOCK_DATA.listInsightsSuppliers),
+        page: payload.page ?? 1,
+        pageSize: payload.pageSize ?? 10
+      } as ResponseOf<K>;
+    }
+    if (operation === 'listInsightsSupplierProducts') {
+      const payload = _request as OperationMap['listInsightsSupplierProducts']['request'];
+      return {
+        ...structuredClone(MOCK_DATA.listInsightsSupplierProducts),
+        page: payload.page ?? 1,
+        pageSize: payload.pageSize ?? 10
+      } as ResponseOf<K>;
     }
     if (operation === 'uploadRfqAttachment') {
       const payload = _request as OperationMap['uploadRfqAttachment']['request'];

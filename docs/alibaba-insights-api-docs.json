@@ -23,24 +23,31 @@
       "responseParams": [
         {
           "name": "rank_info_list",
-          "type": "RankInfo []",
+          "type": "RankInfoList",
           "required": false,
-          "description": "rankInfoList",
-          "demoValue": "rankInfoList",
+          "description": "供应商排名时间序列容器",
           "subParams": [
             {
-              "name": "stat_date",
-              "type": "String",
+              "name": "rank_info",
+              "type": "RankInfo[]",
               "required": false,
-              "description": "statDate",
-              "demoValue": "2017/09/12"
-            },
-            {
-              "name": "percent",
-              "type": "Number",
-              "required": false,
-              "description": "percent",
-              "demoValue": "30"
+              "description": "供应商排名时间序列",
+              "subParams": [
+                {
+                  "name": "stat_date",
+                  "type": "String",
+                  "required": false,
+                  "description": "统计日期",
+                  "demoValue": "2026/08/12"
+                },
+                {
+                  "name": "percent",
+                  "type": "Number",
+                  "required": false,
+                  "description": "全站排名百分比",
+                  "demoValue": "18.6"
+                }
+              ]
             }
           ]
         }

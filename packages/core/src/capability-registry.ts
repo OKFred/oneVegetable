@@ -5,6 +5,7 @@ import { PRODUCT_CAPABILITY_DEFINITIONS } from './generated/product-capabilities
 import { RFQ_CAPABILITY_DEFINITIONS } from './generated/rfq-capabilities';
 import { TRADE_CAPABILITY_DEFINITIONS } from './generated/trade-capabilities';
 import { LOGISTICS_CAPABILITY_DEFINITIONS } from './generated/logistics-capabilities';
+import { INSIGHTS_CAPABILITY_DEFINITIONS } from './generated/insights-capabilities';
 import * as validatorExports from './generated/validators';
 
 import type {
@@ -26,14 +27,26 @@ export type ProductCapabilityMethod = keyof typeof PRODUCT_CAPABILITY_DEFINITION
 export type RfqCapabilityMethod = keyof typeof RFQ_CAPABILITY_DEFINITIONS;
 export type TradeCapabilityMethod = keyof typeof TRADE_CAPABILITY_DEFINITIONS;
 export type LogisticsCapabilityMethod = keyof typeof LOGISTICS_CAPABILITY_DEFINITIONS;
+export type InsightsCapabilityMethod = keyof typeof INSIGHTS_CAPABILITY_DEFINITIONS;
 export type CapabilityMethod =
-  ProductCapabilityMethod | RfqCapabilityMethod | TradeCapabilityMethod | LogisticsCapabilityMethod;
+  | ProductCapabilityMethod
+  | RfqCapabilityMethod
+  | TradeCapabilityMethod
+  | LogisticsCapabilityMethod
+  | InsightsCapabilityMethod;
 
 const productMethods = Object.keys(PRODUCT_CAPABILITY_DEFINITIONS) as ProductCapabilityMethod[];
 const rfqMethods = Object.keys(RFQ_CAPABILITY_DEFINITIONS) as RfqCapabilityMethod[];
 const tradeMethods = Object.keys(TRADE_CAPABILITY_DEFINITIONS) as TradeCapabilityMethod[];
 const logisticsMethods = Object.keys(LOGISTICS_CAPABILITY_DEFINITIONS) as LogisticsCapabilityMethod[];
-const methods: CapabilityMethod[] = [...productMethods, ...rfqMethods, ...tradeMethods, ...logisticsMethods];
+const insightsMethods = Object.keys(INSIGHTS_CAPABILITY_DEFINITIONS) as InsightsCapabilityMethod[];
+const methods: CapabilityMethod[] = [
+  ...productMethods,
+  ...rfqMethods,
+  ...tradeMethods,
+  ...logisticsMethods,
+  ...insightsMethods
+];
 const validators = validatorExports as unknown as Record<string, unknown>;
 
 function validatorFor(method: string, kind: 'Request' | 'Response'): StandaloneValidator | null {
@@ -41,6 +54,7 @@ function validatorFor(method: string, kind: 'Request' | 'Response'): StandaloneV
   const rfqIndex = rfqMethods.indexOf(method as RfqCapabilityMethod);
   const tradeIndex = tradeMethods.indexOf(method as TradeCapabilityMethod);
   const logisticsIndex = logisticsMethods.indexOf(method as LogisticsCapabilityMethod);
+  const insightsIndex = insightsMethods.indexOf(method as InsightsCapabilityMethod);
   const candidate =
     productIndex >= 0
       ? validators[`validateProductCapability${productIndex}${kind}`]
@@ -48,7 +62,9 @@ function validatorFor(method: string, kind: 'Request' | 'Response'): StandaloneV
         ? validators[`validateRfqCapability${rfqIndex}${kind}`]
         : tradeIndex >= 0
           ? validators[`validateTradeCapability${tradeIndex}${kind}`]
-          : validators[`validateLogisticsCapability${logisticsIndex}${kind}`];
+          : logisticsIndex >= 0
+            ? validators[`validateLogisticsCapability${logisticsIndex}${kind}`]
+            : validators[`validateInsightsCapability${insightsIndex}${kind}`];
   return typeof candidate === 'function' ? (candidate as StandaloneValidator) : null;
 }
 
@@ -76,12 +92,17 @@ export function isLogisticsCapabilityMethod(method: string): method is Logistics
   return method in LOGISTICS_CAPABILITY_DEFINITIONS;
 }
 
+export function isInsightsCapabilityMethod(method: string): method is InsightsCapabilityMethod {
+  return method in INSIGHTS_CAPABILITY_DEFINITIONS;
+}
+
 export function isCapabilityMethod(method: string): method is CapabilityMethod {
   return (
     isProductCapabilityMethod(method) ||
     isRfqCapabilityMethod(method) ||
     isTradeCapabilityMethod(method) ||
-    isLogisticsCapabilityMethod(method)
+    isLogisticsCapabilityMethod(method) ||
+    isInsightsCapabilityMethod(method)
   );
 }
 
@@ -93,7 +114,9 @@ export function getCapabilityDefinition(method: string): CapabilityDefinition | 
       ? RFQ_CAPABILITY_DEFINITIONS[method]
       : isTradeCapabilityMethod(method)
         ? TRADE_CAPABILITY_DEFINITIONS[method]
-        : LOGISTICS_CAPABILITY_DEFINITIONS[method];
+        : isLogisticsCapabilityMethod(method)
+          ? LOGISTICS_CAPABILITY_DEFINITIONS[method]
+          : INSIGHTS_CAPABILITY_DEFINITIONS[method];
   return {
     method,
     ...definition
