@@ -1,4 +1,12 @@
 export { GatewayException, normalizeGatewayError } from './errors';
+export {
+  CREDENTIAL_VAULT_ITERATIONS,
+  CREDENTIAL_VAULT_MAX_PASSPHRASE_BYTES,
+  CREDENTIAL_VAULT_MIN_PASSPHRASE_BYTES,
+  CredentialVaultError,
+  inspectCredentialStorage,
+  validateVaultPassphrase
+} from './credential-vault';
 export { ALIBABA_GATEWAY } from './signing';
 export { migrateGatewaySettings, persistGatewaySettings, SETTINGS_STORAGE_KEY } from './settings-storage';
 export {
