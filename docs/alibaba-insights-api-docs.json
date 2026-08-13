@@ -1,0 +1,574 @@
+{
+  "checkedAt": "2026-08-13",
+  "dataCount": 2,
+  "buyerCount": 2,
+  "catalogCount": 4,
+  "definitions": [
+    {
+      "method": "alibaba.icbu.diagnostic.supplier.rank.getpercent",
+      "source": "catalog",
+      "sourceCategory": "data",
+      "docId": 31873,
+      "title": "获取供应商全站排名(百分比)",
+      "description": "获取商家在全站的排名百分比",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "performance",
+      "restricted": false,
+      "restrictionReason": null,
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2026-06-30",
+      "requestParams": [],
+      "responseParams": [
+        {
+          "name": "rank_info_list",
+          "type": "RankInfo []",
+          "required": false,
+          "description": "rankInfoList",
+          "demoValue": "rankInfoList",
+          "subParams": [
+            {
+              "name": "stat_date",
+              "type": "String",
+              "required": false,
+              "description": "statDate",
+              "demoValue": "2017/09/12"
+            },
+            {
+              "name": "percent",
+              "type": "Number",
+              "required": false,
+              "description": "percent",
+              "demoValue": "30"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": {
+        "rank_info_list": {
+          "rank_info": [
+            {
+              "stat_date": "2026/08/12",
+              "percent": 18.6
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "alibaba.mydata.self.query.cgsokk",
+      "source": "catalog",
+      "sourceCategory": "data",
+      "docId": 56989,
+      "title": "CGS小满签约客户数据查询",
+      "description": "CGS小满签约客户数据查询",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "partnerData",
+      "restricted": true,
+      "restrictionReason": "仅面向 CGS 小满签约客户，且业务参数要求独立 app_secret；默认关闭并禁止在页面填写密钥",
+      "labels": ["￥开放平台免费API", "不需用户授权"],
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2021-11-23",
+      "requestParams": [
+        {
+          "name": "data_source",
+          "type": "String",
+          "required": true,
+          "description": "小满数据源",
+          "demoValue": "okkData"
+        },
+        {
+          "name": "fields",
+          "type": "String",
+          "required": false,
+          "description": "JSON 字段列表",
+          "demoValue": "[\"iii_page_level_star\",\"service_years_std_001\"]"
+        },
+        {
+          "name": "social_credit_code",
+          "type": "String",
+          "required": true,
+          "description": "统一社会信用代码",
+          "demoValue": "documented-placeholder"
+        },
+        {
+          "name": "app_secret",
+          "type": "String",
+          "required": true,
+          "description": "合作方业务密钥，仅允许 service worker 注入",
+          "demoValue": "service-worker-only"
+        },
+        {
+          "name": "app_info",
+          "type": "String",
+          "required": true,
+          "description": "合作方应用信息",
+          "demoValue": "alidataservice"
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "Result",
+          "required": false,
+          "description": "接口返回model",
+          "demoValue": "{   \"alibaba_mydata_self_query_cgsokk_response\": {     \"result\": {       \"return_code\": 0,       \"return_values\": {         \"json\": [           \"{\\\"main_cate_lv2_desc\\\":\\\"机加工\\\",\\\"ord_directly_prod_cnt\\\":0,\\\"main_cate_lv2_std_001\\\":100004566,\\\"main_cate_lv1_std_001\\\":41,\\\"industry_trade_type\\\":\\\"工厂\\\",\\\"main_cate_lv1_desc\\\":\\\"定制加工\\\",\\\"main_cate_lv4_std_001\\\":100004566,\\\"social_credit_code\\\":\\\"914413003250001648\\\",\\\"ord_directly_prod_rate\\\":0.0,\\\"admin_mbr_seq\\\":242262888,\\\"main_cate_lv3_std_001\\\":100004566,\\\"comp_cn_name\\\":\\\"惠州市源文钰精密部件有限公司\\\",\\\"stat_date\\\":\\\"2021-06-26\\\",\\\"global_id\\\":2544699770,\\\"notrts_iii_page_level_star\\\":\\\"2.0\\\",\\\"fb_cnt_1m_005\\\":43,\\\"license_number\\\":\\\"441300000308754\\\",\\\"sub_account_cnt\\\":5,\\\"valid_prod_cnt\\\":1304,\\\"std_iii_page_level_star\\\":\\\"0.0\\\",\\\"ali_id\\\":2208045519364,\\\"iii_page_level_star\\\":\\\"2.0\\\",\\\"service_years_std_001\\\":\\\"1.0\\\",\\\"dw_ins_time\\\":\\\"2021-06-28 03:34:50\\\"}\"         ]       },       \"successed\": true     },     \"request_id\": \"lp065fjsv20m\"   } }",
+          "subParams": [
+            {
+              "name": "return_code",
+              "type": "Number",
+              "required": false,
+              "description": "返回码",
+              "demoValue": "0"
+            },
+            {
+              "name": "return_values",
+              "type": "String[]",
+              "required": false,
+              "description": "返回字段以及值",
+              "demoValue": "[           \"{\\\"main_cate_lv2_desc\\\":\\\"机加工\\\",\\\"ord_directly_prod_cnt\\\":0,\\\"main_cate_lv2_std_001\\\":100004566,\\\"main_cate_lv1_std_001\\\":41,\\\"industry_trade_type\\\":\\\"工厂\\\",\\\"main_cate_lv1_desc\\\":\\\"定制加工\\\",\\\"main_cate_lv4_std_001\\\":100004566,\\\"social_credit_code\\\":\\\"914413003250001648\\\",\\\"ord_directly_prod_rate\\\":0.0,\\\"admin_mbr_seq\\\":242262888,\\\"main_cate_lv3_std_001\\\":100004566,\\\"comp_cn_name\\\":\\\"惠州市源文钰精密部件有限公司\\\",\\\"stat_date\\\":\\\"2021-06-26\\\",\\\"global_id\\\":2544699770,\\\"notrts_iii_page_level_star\\\":\\\"2.0\\\",\\\"fb_cnt_1m_005\\\":43,\\\"license_number\\\":\\\"441300000308754\\\",\\\"sub_account_cnt\\\":5,\\\"valid_prod_cnt\\\":1304,\\\"std_iii_page_level_star\\\":\\\"0.0\\\",\\\"ali_id\\\":2208045519364,\\\"iii_page_level_star\\\":\\\"2.0\\\",\\\"service_years_std_001\\\":\\\"1.0\\\",\\\"dw_ins_time\\\":\\\"2021-06-28 03:34:50\\\"}\" ]"
+            },
+            {
+              "name": "return_error_stack_trace",
+              "type": "String",
+              "required": false,
+              "description": "异常栈",
+              "demoValue": "demo"
+            },
+            {
+              "name": "successed",
+              "type": "Boolean",
+              "required": false,
+              "description": "成功与否",
+              "demoValue": "true"
+            },
+            {
+              "name": "return_message",
+              "type": "String",
+              "required": false,
+              "description": "msg",
+              "demoValue": "demo"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": {
+        "data_source": "okkData",
+        "fields": "[\"iii_page_level_star\",\"service_years_std_001\"]",
+        "social_credit_code": "documented-placeholder",
+        "app_secret": "service-worker-only",
+        "app_info": "alidataservice"
+      },
+      "responseExample": {
+        "result": {
+          "return_code": 0,
+          "return_values": ["{\"iii_page_level_star\":\"2.0\",\"service_years_std_001\":\"3.0\"}"],
+          "return_error_stack_trace": "",
+          "successed": true,
+          "return_message": ""
+        }
+      }
+    },
+    {
+      "method": "alibaba.procurement.mysupplier.list",
+      "source": "catalog",
+      "sourceCategory": "buyer",
+      "docId": 40747,
+      "title": "获取曾经下过信保订单的供应商列表",
+      "description": "获取曾经下过信保订单的供应商列表",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "suppliers",
+      "restricted": false,
+      "restrictionReason": null,
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2018-10-31",
+      "requestParams": [
+        {
+          "name": "current_page",
+          "type": "Number",
+          "required": true,
+          "description": "当前页数，0开始",
+          "demoValue": "0"
+        },
+        {
+          "name": "page_size",
+          "type": "Number",
+          "required": false,
+          "description": "请求页大小，默认10",
+          "defaultValue": "10",
+          "demoValue": "10"
+        },
+        {
+          "name": "type",
+          "type": "String",
+          "required": true,
+          "description": "请求类型，例如订单order",
+          "demoValue": "order"
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "MySupplierListResultDto",
+          "required": false,
+          "description": "结果大对象",
+          "demoValue": "{}",
+          "subParams": [
+            {
+              "name": "curr_page",
+              "type": "Number",
+              "required": true,
+              "description": "当前页",
+              "demoValue": "0"
+            },
+            {
+              "name": "error_code",
+              "type": "String",
+              "required": true,
+              "description": "错误码",
+              "demoValue": "''"
+            },
+            {
+              "name": "error_msg",
+              "type": "String",
+              "required": true,
+              "description": "错误信息",
+              "demoValue": "sys_error"
+            },
+            {
+              "name": "page_size",
+              "type": "Number",
+              "required": true,
+              "description": "请求页数",
+              "demoValue": "10"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "supplier_id_enc_list",
+              "type": "String[]",
+              "required": true,
+              "description": "加密后的供应商id",
+              "demoValue": "[a, b, c]"
+            },
+            {
+              "name": "total_item",
+              "type": "Number",
+              "required": true,
+              "description": "总个数",
+              "demoValue": "100"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": {
+        "result": {
+          "curr_page": 0,
+          "error_code": "",
+          "error_msg": "",
+          "page_size": 10,
+          "success": true,
+          "supplier_id_enc_list": ["supplier-enc-001", "supplier-enc-002"],
+          "total_item": 2
+        }
+      }
+    },
+    {
+      "method": "alibaba.procurement.supplier.items.get",
+      "source": "catalog",
+      "sourceCategory": "buyer",
+      "docId": 40748,
+      "title": "买家通过供应商id，获取曾经下过订单的商品",
+      "description": "买家通过供应商id，获取曾经下过订单的商品",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "supplierProducts",
+      "restricted": false,
+      "restrictionReason": null,
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "checkedAt": "2026-08-13",
+      "updatedAt": "2018-10-31",
+      "requestParams": [
+        {
+          "name": "product_list_query",
+          "type": "ProductListQueryDto",
+          "required": false,
+          "description": "请求query",
+          "subParams": [
+            {
+              "name": "date_end",
+              "type": "Number",
+              "required": false,
+              "description": "开始日期(unix时间戳，单位ms)",
+              "demoValue": "1540969200000"
+            },
+            {
+              "name": "date_start",
+              "type": "Number",
+              "required": false,
+              "description": "结束日期(unix时间戳，单位ms)",
+              "demoValue": "0"
+            },
+            {
+              "name": "page_index",
+              "type": "Number",
+              "required": true,
+              "description": "请求页",
+              "demoValue": "0"
+            },
+            {
+              "name": "page_size",
+              "type": "Number",
+              "required": false,
+              "description": "页大小",
+              "defaultValue": "10",
+              "demoValue": "10"
+            },
+            {
+              "name": "seller_account_id",
+              "type": "String",
+              "required": true,
+              "description": "供应商加密id",
+              "demoValue": "abc"
+            },
+            {
+              "name": "type",
+              "type": "String",
+              "required": true,
+              "description": "类型",
+              "demoValue": "order"
+            }
+          ]
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "ProductListResultDto",
+          "required": false,
+          "description": "返回结果",
+          "demoValue": "0",
+          "subParams": [
+            {
+              "name": "curr_page",
+              "type": "Number",
+              "required": true,
+              "description": "请求页",
+              "demoValue": "0"
+            },
+            {
+              "name": "error_code",
+              "type": "String",
+              "required": true,
+              "description": "错误码",
+              "demoValue": "0"
+            },
+            {
+              "name": "error_msg",
+              "type": "String",
+              "required": true,
+              "description": "错误信息",
+              "demoValue": "fail"
+            },
+            {
+              "name": "page_size",
+              "type": "Number",
+              "required": true,
+              "description": "页大小",
+              "demoValue": "0"
+            },
+            {
+              "name": "product_list",
+              "type": "ProductDetailDto[]",
+              "required": true,
+              "description": "产品列表",
+              "demoValue": "[1, 2, 3]",
+              "subParams": [
+                {
+                  "name": "category",
+                  "type": "Number",
+                  "required": true,
+                  "description": "产品类目",
+                  "demoValue": "123"
+                },
+                {
+                  "name": "description",
+                  "type": "String",
+                  "required": true,
+                  "description": "产品详情描述",
+                  "demoValue": "mp3"
+                },
+                {
+                  "name": "id",
+                  "type": "Number",
+                  "required": true,
+                  "description": "产品id",
+                  "demoValue": "1234"
+                },
+                {
+                  "name": "price_range",
+                  "type": "String",
+                  "required": true,
+                  "description": "价格区间",
+                  "demoValue": "1~2"
+                },
+                {
+                  "name": "price_unit",
+                  "type": "Number",
+                  "required": true,
+                  "description": "价格单位",
+                  "demoValue": "0"
+                },
+                {
+                  "name": "product_detail_url",
+                  "type": "String",
+                  "required": true,
+                  "description": "产品详情页的url",
+                  "demoValue": "www.alibaba.com/123.htm"
+                },
+                {
+                  "name": "publish_time",
+                  "type": "Date",
+                  "required": true,
+                  "description": "产品发布时间",
+                  "demoValue": "2018-10-26"
+                },
+                {
+                  "name": "sku",
+                  "type": "ProductSku",
+                  "required": true,
+                  "description": "sku",
+                  "demoValue": "0",
+                  "subParams": [
+                    {
+                      "name": "attributes",
+                      "type": "ProductAttribute[]",
+                      "required": true,
+                      "description": "sku属性",
+                      "demoValue": "0",
+                      "subParams": [
+                        {
+                          "name": "attribute_id",
+                          "type": "Number",
+                          "required": true,
+                          "description": "属性id",
+                          "demoValue": "1"
+                        },
+                        {
+                          "name": "attribute_name",
+                          "type": "String",
+                          "required": true,
+                          "description": "属性名字",
+                          "demoValue": "type"
+                        },
+                        {
+                          "name": "sku_custom_image_url",
+                          "type": "String",
+                          "required": true,
+                          "description": "自定义sku链接",
+                          "demoValue": "0"
+                        },
+                        {
+                          "name": "sku_custom_value_name",
+                          "type": "String",
+                          "required": true,
+                          "description": "自定义属性名",
+                          "demoValue": "0"
+                        },
+                        {
+                          "name": "value_id",
+                          "type": "Number",
+                          "required": true,
+                          "description": "属性值iid",
+                          "demoValue": "2"
+                        },
+                        {
+                          "name": "value_name",
+                          "type": "String",
+                          "required": true,
+                          "description": "属性值名称",
+                          "demoValue": "red"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "subject",
+                  "type": "String",
+                  "required": true,
+                  "description": "商品标题",
+                  "demoValue": "mp3 player"
+                }
+              ]
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "total_order_count",
+              "type": "Number",
+              "required": true,
+              "description": "订单数量总计",
+              "demoValue": "100"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": null,
+      "responseExample": {
+        "result": {
+          "curr_page": 0,
+          "error_code": "",
+          "error_msg": "",
+          "page_size": 10,
+          "product_list": [
+            {
+              "category": 100003109,
+              "description": "Portable solar power station",
+              "id": 10000001,
+              "price_range": "599~699",
+              "price_unit": 1,
+              "product_detail_url": "https://www.alibaba.com/product-detail/mock.html",
+              "publish_time": "2026-08-01",
+              "sku": {
+                "attributes": [
+                  {
+                    "attribute_id": 1,
+                    "attribute_name": "Color",
+                    "sku_custom_image_url": "",
+                    "sku_custom_value_name": "",
+                    "value_id": 2,
+                    "value_name": "Black"
+                  }
+                ]
+              },
+              "subject": "Portable solar power station 1000W"
+            }
+          ],
+          "success": true,
+          "total_order_count": 1
+        }
+      }
+    }
+  ]
+}

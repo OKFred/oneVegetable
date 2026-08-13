@@ -83,6 +83,9 @@ const tradeOverrides = JSON.parse(
 const logisticsOverrides = JSON.parse(
   await readFile(resolve(root, 'config/alibaba-logistics-overrides.json'), 'utf8')
 ) as Record<string, ProductOverride>;
+const insightsOverrides = JSON.parse(
+  await readFile(resolve(root, 'config/alibaba-insights-overrides.json'), 'utf8')
+) as Record<string, ProductOverride>;
 const tradeCategoryMethods = new Set(
   JSON.parse(await readFile(resolve(root, 'config/alibaba-trade-category.json'), 'utf8')) as string[]
 );
@@ -155,7 +158,7 @@ function resolveAuth(labels: string[]): AuditEntry['auth'] {
 }
 
 function isRestricted(method: string): boolean {
-  const explicit = logisticsOverrides[method]?.restricted;
+  const explicit = logisticsOverrides[method]?.restricted ?? insightsOverrides[method]?.restricted;
   if (explicit !== undefined) return explicit;
   return (
     /\.(snsoft|xiaoman|wetrade)\./.test(method) ||
@@ -167,7 +170,10 @@ function isRestricted(method: string): boolean {
 
 function resolveRisk(method: string): AuditEntry['risk'] {
   const explicit =
-    productOverrides[method]?.risk ?? tradeOverrides[method]?.risk ?? logisticsOverrides[method]?.risk;
+    productOverrides[method]?.risk ??
+    tradeOverrides[method]?.risk ??
+    logisticsOverrides[method]?.risk ??
+    insightsOverrides[method]?.risk;
   if (explicit) return explicit;
   return /\.(add|create|delete|modify|operate|post|save|update|upload)(\.|$)/.test(method)
     ? 'mutation'
@@ -232,17 +238,15 @@ if (process.argv.includes('--check')) {
     const restricted = isRestricted(method);
     const domain = resolveDomain(method);
     const risk = resolveRisk(method);
-    const enabled =
-      !restricted &&
-      (ENABLED_METHODS.has(method) ||
-        domain === 'product' ||
-        domain === 'rfq' ||
-        domain === 'trade' ||
-        domain === 'logistics');
-    const schemaName =
-      domain === 'product' || domain === 'rfq' || domain === 'trade' || domain === 'logistics'
-        ? capabilitySchemaName(method)
-        : null;
+    const typedDomain =
+      domain === 'product' ||
+      domain === 'rfq' ||
+      domain === 'trade' ||
+      domain === 'logistics' ||
+      domain === 'data' ||
+      domain === 'buyer';
+    const enabled = !restricted && (ENABLED_METHODS.has(method) || typedDomain);
+    const schemaName = typedDomain ? capabilitySchemaName(method) : null;
     const schemaPrefix =
       domain === 'rfq'
         ? 'AlibabaRfq'
@@ -250,7 +254,9 @@ if (process.argv.includes('--check')) {
           ? 'AlibabaTrade'
           : domain === 'logistics'
             ? 'AlibabaLogistics'
-            : 'AlibabaProduct';
+            : domain === 'data' || domain === 'buyer'
+              ? 'AlibabaInsights'
+              : 'AlibabaProduct';
     return {
       method,
       domain,
@@ -259,7 +265,9 @@ if (process.argv.includes('--check')) {
       jushitaOnly,
       restricted,
       restrictionReason: restricted
-        ? (logisticsOverrides[method]?.restrictionReason ?? '特定 ISV、业务资格或额外权限，默认关闭')
+        ? (logisticsOverrides[method]?.restrictionReason ??
+          insightsOverrides[method]?.restrictionReason ??
+          '特定 ISV、业务资格或额外权限，默认关闭')
         : null,
       enabled,
       docUrl: `https://developer.alibaba.com/docs/api.htm?apiId=${docId}`,
@@ -270,6 +278,7 @@ if (process.argv.includes('--check')) {
         productOverrides[method]?.lifecycle ??
         tradeOverrides[method]?.lifecycle ??
         logisticsOverrides[method]?.lifecycle ??
+        insightsOverrides[method]?.lifecycle ??
         'active',
       risk,
       verification: 'documented',
