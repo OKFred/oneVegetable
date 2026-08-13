@@ -36,6 +36,11 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/options.html`);
 
+  await expect(page.getByRole('heading', { name: '先确认数据与调用边界' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '开始使用' })).toBeDisabled();
+  await expect(page.getByRole('link', { name: '查看隐私说明' })).toHaveAttribute('href', '/privacy.html');
+  await page.getByRole('checkbox').check();
+  await page.getByRole('button', { name: '开始使用' }).click();
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
   await page.getByRole('button', { name: '设置' }).click();
   await page.getByLabel('App Key').fill('e2e-app-key');
@@ -293,4 +298,42 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('button', { name: '清空诊断' }).click();
   await expect(page.getByText('诊断记录已清空。')).toBeVisible();
   await expect(page.getByText('0 条', { exact: true })).toBeVisible();
+
+  await expect(page.getByRole('heading', { name: '本地数据与隐私' })).toBeVisible();
+  const inventoryDownloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: '导出数据清单' }).click();
+  const inventoryDownload = await inventoryDownloadPromise;
+  const inventoryPath = await inventoryDownload.path();
+  if (!inventoryPath) throw new Error('Local data inventory download has no local path');
+  const inventoryJson = await readFile(inventoryPath, 'utf8');
+  expect(inventoryJson).toContain('credentials');
+  expect(inventoryJson).not.toContain('e2e-secret');
+  expect(inventoryJson).not.toContain('e2e-token');
+  expect(inventoryJson).not.toContain('Extension draft detail');
+
+  await expect(page.getByRole('button', { name: '彻底清除' })).toBeDisabled();
+  await page.getByLabel('清除确认短语').fill('清除全部数据');
+  await page.getByRole('button', { name: '彻底清除' }).click();
+  await expect(page.getByText(/扩展本地数据和额外主机权限已清除/)).toBeVisible();
+  const clearedState = await page.evaluate(async () => {
+    const extension = (
+      globalThis as unknown as {
+        chrome: {
+          storage: {
+            local: { get(value: null): Promise<Record<string, unknown>> };
+            session: { get(value: null): Promise<Record<string, unknown>> };
+          };
+        };
+      }
+    ).chrome;
+    return {
+      local: await extension.storage.local.get(null),
+      session: await extension.storage.session.get(null),
+      pageStorageLength: globalThis.localStorage.length
+    };
+  });
+  expect(clearedState).toEqual({ local: {}, session: {}, pageStorageLength: 0 });
+
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '先确认数据与调用边界' })).toBeVisible();
 });
