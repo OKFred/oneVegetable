@@ -234,8 +234,14 @@
                 "examples": {
                   "default": {
                     "value": [
-                      { "id": "-1", "name": "All images", "photoCount": 436 },
-                      { "id": "2001", "name": "Product hero images", "photoCount": 84 }
+                      { "id": "-1", "name": "All images", "photoCount": 436, "parentId": null, "level": 1 },
+                      {
+                        "id": "2001",
+                        "name": "Product hero images",
+                        "photoCount": 84,
+                        "parentId": null,
+                        "level": 1
+                      }
                     ]
                   }
                 }

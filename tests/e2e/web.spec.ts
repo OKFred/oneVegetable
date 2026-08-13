@@ -133,6 +133,21 @@ test('web mock exposes typed data and supplier insights without inferred conclus
   await expect(page.locator('input')).toHaveCount(0);
 });
 
+test('web mock manages gallery groups and exposes non-blocking asset governance', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '图库' }).click();
+  await expect(page.getByRole('heading', { name: '图库' })).toBeVisible();
+  await expect(page.getByText('图库 fileId：ph_001')).toBeVisible();
+  await expect(page.getByRole('button', { name: /低分辨率 1/ })).toBeVisible();
+  await page.getByRole('button', { name: /商品主图/ }).click();
+  await page.getByLabel('图库分组名称').fill('E2E 主图');
+  await page.getByRole('button', { name: '改名' }).click();
+  await expect(page.getByText('分组已保存：E2E 主图')).toBeVisible();
+  await page.getByRole('button', { name: /低分辨率 1/ }).click();
+  await expect(page.getByText('dehydrator-detail.jpg')).toBeVisible();
+  await expect(page.getByText('solar-station-front.jpg')).toHaveCount(0);
+});
+
 test('web mock supports visual detail editing, PhotoBank transfer and non-blocking guidance', async ({
   page
 }) => {
