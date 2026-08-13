@@ -5,6 +5,7 @@ packages:
 allowBuilds:
   esbuild: true
   vue-demi: true
+  workerd: true
 
 minimumReleaseAgeExclude:
   - '@redocly/cli@2.46.1'

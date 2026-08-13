@@ -1,0 +1,12 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "one-vegetable-api",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-08-13",
+  "workers_dev": true,
+  "vars": {
+    "ONE_VEGETABLE_API_PREFIX": "/api/v1",
+    "ONE_VEGETABLE_ENVIRONMENT": "local-worker",
+    "ONE_VEGETABLE_GATEWAY_MODE": "mock"
+  }
+}
