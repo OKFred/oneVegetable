@@ -3,6 +3,7 @@ export * from './capability-registry';
 export * from './errors';
 export * from './mock-client';
 export * from './photo-transfer';
+export * from './photo-adapter';
 export * from './product-description';
 export * from './product-description-quality';
 export * from './product-schema';

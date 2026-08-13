@@ -11,6 +11,7 @@ import {
   listCapabilities,
   LogisticsAdapter,
   normalizeGatewayError,
+  PhotoAdapter,
   RfqAdapter,
   TradeAdapter,
   validateCapabilityRequest,
@@ -35,6 +36,7 @@ const OPERATIONS = new Set<OperationId>([
   'updateProduct',
   'updateProductDisplay',
   'listPhotoGroups',
+  'operatePhotoGroup',
   'listPhotos',
   'uploadPhoto',
   'transferPhotoFromUrl',
@@ -90,6 +92,7 @@ const MUTATION_OPERATIONS = new Set<OperationId>([
   'updateProduct',
   'updateProductDisplay',
   'uploadPhoto',
+  'operatePhotoGroup',
   'transferPhotoFromUrl',
   'createProductGroup',
   'uploadRfqAttachment',
@@ -161,6 +164,7 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
   const trades = new TradeAdapter(client);
   const logistics = new LogisticsAdapter(client);
   const insights = new InsightsAdapter(client);
+  const photos = new PhotoAdapter(client);
   const request = asRecord(payload);
 
   switch (operation) {
@@ -278,78 +282,21 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
       return insights.listSuppliers(payload as RequestOf<'listInsightsSuppliers'>);
     case 'listInsightsSupplierProducts':
       return insights.listSupplierProducts(payload as RequestOf<'listInsightsSupplierProducts'>);
-    case 'listPhotoGroups': {
-      const call = await client.call('alibaba.icbu.photobank.group.list', {});
-      return findRecords(unwrap(call.data, call.method), ['groups', 'photo_album_group']).map((item) => ({
-        id: readString(item, ['id', 'group_id']) ?? '-1',
-        name: readString(item, ['name', 'group_name']) ?? '未命名分组',
-        photoCount: readNumber(item, ['photo_count', 'count']) ?? 0
-      }));
-    }
-    case 'listPhotos': {
-      const call = await client.call('alibaba.icbu.photobank.list', {
-        current_page: readNumber(request, ['page']) ?? 1,
-        page_size: readNumber(request, ['pageSize']) ?? 24,
-        group_id: readString(request, ['groupId']) ?? '-1',
-        location_type: readString(request, ['groupId']) === '-1' ? 'ALL_GROUP' : 'SUB_GROUP'
-      });
-      const root = unwrap(call.data, call.method);
-      const items = findRecords(root, ['list', 'photobank_image_do', 'images']).map((item) => ({
-        id: readString(item, ['id', 'photo_id']) ?? '',
-        name: readString(item, ['name', 'file_name']) ?? '图片',
-        url: normalizeUrl(readString(item, ['url', 'photobank_url'])),
-        groupId: readString(item, ['group_id']) ?? '-1',
-        width: readNumber(item, ['width']) ?? 1,
-        height: readNumber(item, ['height']) ?? 1,
-        fileSize: readNumber(item, ['file_size']) ?? 0,
-        referenceCount: readNumber(item, ['reference_count']) ?? 0,
-        modifiedAt: normalizeDate(readString(item, ['gmt_modified', 'modified_at']))
-      }));
-      return {
-        items,
-        page: readNumber(request, ['page']) ?? 1,
-        pageSize: readNumber(request, ['pageSize']) ?? 24,
-        total: readNumber(root, ['total_count', 'total']) ?? items.length
-      };
-    }
-    case 'uploadPhoto': {
-      const call = await client.call('alibaba.icbu.photobank.upload', {
-        image_bytes: requiredString(request, 'file'),
-        file_name: requiredString(request, 'fileName'),
-        group_id: readString(request, ['groupId']) ?? '-1'
-      });
-      const root = unwrap(call.data, call.method);
-      return {
-        id: readString(root, ['id', 'photo_id']) ?? '',
-        name: requiredString(request, 'fileName'),
-        url: normalizeUrl(readString(root, ['photobank_url', 'url'])),
-        groupId: readString(request, ['groupId']) ?? '-1',
-        width: readNumber(root, ['width']) ?? 1,
-        height: readNumber(root, ['height']) ?? 1,
-        fileSize: readNumber(root, ['file_size']) ?? 0,
-        referenceCount: 0,
-        modifiedAt: new Date().toISOString()
-      };
-    }
+    case 'listPhotoGroups':
+      return photos.listGroups();
+    case 'operatePhotoGroup':
+      return photos.operateGroup(payload as RequestOf<'operatePhotoGroup'>);
+    case 'listPhotos':
+      return photos.list(payload as RequestOf<'listPhotos'>);
+    case 'uploadPhoto':
+      return photos.upload(payload as RequestOf<'uploadPhoto'>);
     case 'transferPhotoFromUrl': {
       const downloaded = await downloadPhotoForUpload(payload as RequestOf<'transferPhotoFromUrl'>);
-      const call = await client.call('alibaba.icbu.photobank.upload', {
-        image_bytes: downloaded.file,
-        file_name: downloaded.fileName,
-        group_id: downloaded.groupId ?? '-1'
+      return photos.upload({
+        file: downloaded.file,
+        fileName: downloaded.fileName,
+        ...(downloaded.groupId ? { groupId: downloaded.groupId } : {})
       });
-      const root = unwrap(call.data, call.method);
-      return {
-        id: readString(root, ['file_id', 'id', 'photo_id']) ?? '',
-        name: downloaded.fileName,
-        url: normalizeUrl(readString(root, ['photobank_url', 'url'])),
-        groupId: downloaded.groupId ?? '-1',
-        width: readNumber(root, ['width']) ?? 1,
-        height: readNumber(root, ['height']) ?? 1,
-        fileSize: downloaded.byteLength,
-        referenceCount: 0,
-        modifiedAt: new Date().toISOString()
-      };
     }
     case 'listOrders': {
       const call = await client.call('alibaba.seller.order.list', {
@@ -517,11 +464,6 @@ function findRecords(record: Record<string, unknown>, keys: string[]): Record<st
 function normalizeDate(value: string | undefined): string {
   const date = value ? new Date(value) : new Date();
   return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
-}
-
-function normalizeUrl(value: string | undefined): string {
-  if (!value) return 'https://placehold.co/1x1';
-  return value.startsWith('//') ? `https:${value}` : value;
 }
 
 function normalizeSignMethod(value: string | undefined): GatewaySettings['signMethod'] {
