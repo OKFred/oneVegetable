@@ -181,3 +181,20 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
   await page.getByRole('button', { name: '确认转换为普通详情' }).click();
   await expect(page.locator('.ProseMirror')).toBeVisible();
 });
+
+test('web mock exposes the final platform contracts with protocol safeguards', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'API 能力' }).click();
+  await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.risk.send');
+  await page.getByRole('button', { name: 'alibaba.icbu.risk.send' }).click();
+  await expect(page.getByText(/WUA、UMID、IMEI、IMSI、MAC/)).toBeVisible();
+  await expect(page.getByLabel('只读文档参数示例')).toBeVisible();
+  await expect(page.getByRole('button', { name: '调用能力' })).toBeDisabled();
+
+  await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.file.urlposting.upload');
+  await page.getByRole('button', { name: 'alibaba.icbu.file.urlposting.upload' }).click();
+  await expect(page.getByText(/不返回图库 fileId/)).toBeVisible();
+  await expect(page.getByLabel('调用参数 JSON')).toHaveValue(/ONE_VEGETABLE/);
+  await page.getByRole('button', { name: '调用能力' }).click();
+  await expect(page.getByText(/"file_url"/)).toBeVisible();
+});

@@ -24,9 +24,11 @@ const search = ref('');
 const domain = ref('all');
 const selected = ref<ApiCapability | null>(null);
 const definition = ref<CapabilityDefinition | null>(null);
+const definitionMethod = ref('');
 const definitionError = ref('');
 const parameters = ref('{}');
 const validationErrors = ref<string[]>([]);
+let selectionSequence = 0;
 const capabilities = useQuery({
   queryKey: ['capabilities'],
   queryFn: () => gateway.request('listCapabilities', undefined)
@@ -63,6 +65,7 @@ const platformNotice = computed(() => {
 const call = useMutation({
   mutationFn: async () => {
     if (!selected.value) throw new Error('请选择 API');
+    if (definitionMethod.value !== selected.value.method) throw new Error('能力定义仍在加载');
     let parsed: unknown;
     try {
       parsed = JSON.parse(parameters.value) as unknown;
@@ -83,15 +86,20 @@ const call = useMutation({
 });
 
 async function selectCapability(capability: ApiCapability): Promise<void> {
+  const sequence = ++selectionSequence;
   selected.value = capability;
   definition.value = null;
+  definitionMethod.value = '';
   definitionError.value = '';
   call.reset();
   try {
     const result = await gateway.request('getCapabilityDefinition', { method: capability.method });
+    if (sequence !== selectionSequence) return;
     definition.value = result;
+    definitionMethod.value = capability.method;
     parameters.value = JSON.stringify(result.requestExample, null, 2);
   } catch (error: unknown) {
+    if (sequence !== selectionSequence) return;
     parameters.value = '{}';
     definitionError.value = error instanceof Error ? error.message : '能力定义加载失败';
   }
@@ -266,7 +274,12 @@ const columns: DataColumn<ApiCapability>[] = [
     <Button
       class="mt-3"
       :disabled="
-        selected.restricted || !selected.enabled || realCallBlocked || call.isPending.value || !definition
+        selected.restricted ||
+        !selected.enabled ||
+        realCallBlocked ||
+        call.isPending.value ||
+        !definition ||
+        definitionMethod !== selected.method
       "
       @click="call.mutate()"
       ><Play class="size-4" />调用能力</Button

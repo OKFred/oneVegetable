@@ -71,6 +71,45 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByText(/真实写能力尚未通过账号 smoke test/)).toBeVisible();
   await expect(page.getByRole('button', { name: '调用能力' })).toBeDisabled();
 
+  await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.risk.send');
+  await page.getByRole('button', { name: 'alibaba.icbu.risk.send' }).click();
+  await expect(page.getByText(/WUA、UMID、IMEI、IMSI、MAC/)).toBeVisible();
+  await expect(page.getByLabel('只读文档参数示例')).toBeVisible();
+  await expect(page.getByRole('button', { name: '调用能力' })).toBeDisabled();
+
+  const platformGateErrors = await page.evaluate(async () => {
+    const extension = (
+      globalThis as unknown as {
+        chrome: { runtime: { sendMessage(value: object): Promise<unknown> } };
+      }
+    ).chrome;
+    return Promise.all([
+      extension.runtime.sendMessage({
+        id: 'risk-protocol-gate-e2e',
+        kind: 'gateway-request',
+        operation: 'callCapability',
+        payload: { method: 'alibaba.icbu.risk.send', parameters: {} }
+      }),
+      extension.runtime.sendMessage({
+        id: 'task-callback-gate-e2e',
+        kind: 'gateway-request',
+        operation: 'callCapability',
+        payload: { method: 'alibaba.icbu.task.status.notify', parameters: {} }
+      }),
+      extension.runtime.sendMessage({
+        id: 'file-transfer-gate-e2e',
+        kind: 'gateway-request',
+        operation: 'callCapability',
+        payload: { method: 'alibaba.icbu.file.urlposting.upload', parameters: {} }
+      })
+    ]);
+  });
+  expect(platformGateErrors).toHaveLength(3);
+  expect(platformGateErrors.every((response) => JSON.stringify(response).includes('ok":false'))).toBe(true);
+  expect(JSON.stringify(platformGateErrors[0])).toContain('天鹿风控协议');
+  expect(JSON.stringify(platformGateErrors[1])).toContain('URL 爬取供应商');
+  expect(JSON.stringify(platformGateErrors[2])).toContain('真实账号 smoke test');
+
   await page.evaluate(() => {
     localStorage.setItem(
       'one-vegetable-product-schema-draft',

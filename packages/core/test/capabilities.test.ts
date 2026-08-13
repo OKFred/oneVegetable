@@ -24,4 +24,16 @@ describe('Alibaba API audit snapshot', () => {
     const snapshot = JSON.parse(raw) as { count: number };
     expect(snapshot.count).toBe(API_CAPABILITIES.length);
   });
+
+  it('has generated request and response schemas for every audited catalog method', async () => {
+    const raw = await readFile(resolve(import.meta.dirname, '../../../docs/alibaba-api-audit.json'), 'utf8');
+    const snapshot = JSON.parse(raw) as {
+      entries: { requestSchema: string | null; responseSchema: string | null }[];
+    };
+    expect(
+      snapshot.entries.every(
+        (capability) => capability.requestSchema !== null && capability.responseSchema !== null
+      )
+    ).toBe(true);
+  });
 });

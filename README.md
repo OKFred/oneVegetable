@@ -31,6 +31,7 @@ pnpm snapshot:trade-docs   # 重新生成交易域官方文档离线快照
 pnpm snapshot:logistics-docs # 重新生成物流域官方文档离线快照
 pnpm snapshot:insights-docs  # 重新生成数据与供应商领域离线快照
 pnpm snapshot:photo-docs     # 重新生成图库（图片银行）领域离线快照
+pnpm snapshot:platform-docs  # 重新生成平台协作能力离线快照
 pnpm typecheck
 pnpm test
 pnpm build
@@ -58,14 +59,15 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 - Schema 中 `valueTypeRule=html` 或 `superText` 会使用受限 Tiptap 编辑器；仅维护 `productDescType=2` 的普通详情。智能详情和不受支持的旧 HTML 默认原样只读，查看变化并二次确认后才转换。
 - 主图、SKU 图和详情图复用国际站图库选择器。Web Mock 支持分组/分页选择、本地上传和外部 URL 转存；真实上传、转存和商品更新在账号 smoke test 前保持禁用。
 - 详情整改面板区分 `Alibaba Schema`、`官方提示` 和 `项目建议`。只有 Schema/契约硬错误阻止提交；内容长度、结构、SEO、图片质量和官方评分提示均不阻止提交。
-- `openapi/one-vegetable.json` 是运行时唯一契约；商品、RFQ、交易、物流、洞察和图库文档 JSON 是离线生成输入。商品快照包含 25 个目录 API 和 2 个文章来源 Schema 发布 API；RFQ 快照包含 7 个目录 API；交易分类的 27 个方法中，26 个进入类型化快照；物流快照包含 14 个官方物流分类方法和 1 个商品域运费模板方法；洞察快照包含 2 个数据接口和 2 个采购供应商接口；图库快照包含 4 个官方目录 API。CI 不访问官方文档站。
-- 商品、RFQ、交易、物流、洞察与图库的每个已接入方法都有方法关联的请求/响应映射和 CSP 安全 standalone validator。非法请求不会出网；响应漂移会保留原始数据、`traceId` 和结构化告警。
+- `openapi/one-vegetable.json` 是运行时唯一契约；商品、RFQ、交易、物流、洞察、图库和平台协作文档 JSON 是离线生成输入。商品快照包含 25 个目录 API 和 2 个文章来源 Schema 发布 API；RFQ 快照包含 7 个目录 API；交易分类的 27 个方法中，26 个进入类型化快照；物流快照包含 14 个官方物流分类方法和 1 个商品域运费模板方法；洞察快照包含 2 个数据接口和 2 个采购供应商接口；图库快照包含 4 个官方目录 API；平台协作快照包含最后 3 个目录 API。CI 不访问官方文档站。
+- 审计目录中的 84 个候选方法均已具有方法关联的请求/响应映射和 CSP 安全 standalone validator。非法请求不会出网；响应漂移会保留原始数据、`traceId` 和结构化告警。类型化不等于业务资格或真实账号验收。
 - RFQ 工作台提供市场搜索、推荐、详情、最多 20 个 ID 的已读状态、报价权益和浏览器本地报价草稿。`alibaba.icbu.annex.upload` 按官方 RFQ 分类归入该领域；真实附件上传和提交报价在账号 smoke test 前保持禁用，Web Mock 可走通完整报价流程。
 - 所有真实 mutation 方法均为逐方法 feature flag 关闭，Web Mock 可完整演示写流程；UI 没有自行开启真实写操作的入口。
 - `alibaba.seller.order.get` 需要聚石塔，v2 不提供该调用；订单工作台组合列表、资金和物流，并提供履约通道、服务费率、TT 信息与地址 Schema。敏感交易数据不做页面持久化，真实交易写入继续关闭。详见 [交易域说明](docs/trade-domain.md)。
 - 国际物流工作台覆盖地址字典、特殊商品属性、运力列表、运费试算、物流订单、面单和下单草稿。14 个 OneTouch 方法因业务资格和账号状态在扩展中默认关闭；Web Mock 可完整回归，运费模板保持独立可查询。详见 [物流域说明](docs/logistics-domain.md)。
 - 数据洞察工作台展示供应商全站排名时间序列，以及买家历史信保供应商与下单商品。页面不推断排名含义、不补造供应商名称，并保持长 ID 为字符串。CGS 小满签约客户接口默认关闭且不提供业务密钥表单。详见 [数据与供应商洞察说明](docs/insights-domain.md)。
 - 图库工作台支持三层分组管理，展示文件大小、引用数量、更新时间与图库 `fileId`，并对未引用和低于 750 × 750 的素材给出非阻断建议。真实分组操作、上传和 URL 转存在账号 smoke test 前保持关闭。详见 [图库域说明](docs/photo-domain.md)。
+- 普通文件转存、天鹿风控和 URL 爬取任务通知归为平台协作能力。文件转存不会冒充图库入库；风控和任务回调不提供页面采集或发送入口，并由 service worker 二次门禁。详见 [平台协作能力说明](docs/platform-domain.md)。
 - `docs/alibaba-api-audit.json` 是 2026-08-13 的文档审计快照，共 84 个免费且非聚石塔候选 API。特定 ISV/业务资格接口默认关闭。
 - 当前没有真实国际站账号，自动化验证覆盖契约 Mock、签名、适配和 MV3 行为，不代表真实账号 smoke test 已通过。
 
