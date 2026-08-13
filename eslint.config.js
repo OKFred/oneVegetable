@@ -65,5 +65,22 @@ export default tseslint.config(
   {
     files: ['**/*.config.{js,mjs,ts}', 'eslint.config.js'],
     ...tseslint.configs.disableTypeChecked
+  },
+  {
+    files: ['packages/**/*.ts', 'apps/**/*.ts', 'apps/**/*.vue'],
+    ignores: ['packages/core/src/network.ts', '**/*.test.ts', '**/*.spec.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.name='fetch']",
+          message: '业务代码必须通过 NetworkManager 发起网络请求。'
+        },
+        {
+          selector: "CallExpression[callee.object.name='globalThis'][callee.property.name='fetch']",
+          message: '业务代码必须通过 NetworkManager 发起网络请求。'
+        }
+      ]
+    }
   }
 );

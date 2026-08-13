@@ -57,7 +57,7 @@ describe('PhotoBank URL transfer safety', () => {
           })
         )
       )
-    ).rejects.toThrow('下载上限');
+    ).rejects.toThrow('超过');
   });
 
   it('returns a bounded base64 payload for PhotoBank upload', async () => {

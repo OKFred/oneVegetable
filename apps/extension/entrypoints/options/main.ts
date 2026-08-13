@@ -191,7 +191,7 @@ class ExtensionGatewayClient implements GatewayClient {
       await ensureOptionalHostPermission(transfer.url, '外部图片来源');
     }
     const message: RuntimeRequest<K> = {
-      id: crypto.randomUUID(),
+      requestId: crypto.randomUUID(),
       kind: 'gateway-request',
       operation,
       payload

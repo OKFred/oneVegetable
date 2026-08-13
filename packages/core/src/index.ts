@@ -4,6 +4,7 @@ export * from './credential-vault';
 export * from './errors';
 export * from './diagnostics';
 export * from './mock-client';
+export * from './network';
 export * from './photo-transfer';
 export * from './privacy';
 export * from './photo-adapter';

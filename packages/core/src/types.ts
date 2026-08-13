@@ -312,14 +312,15 @@ export interface GatewayClient {
 }
 
 export interface RuntimeRequest<K extends OperationId = OperationId> {
-  id: string;
+  requestId: string;
   kind: 'gateway-request';
   operation: K;
   payload: RequestOf<K>;
 }
 
 export type RuntimeResponse<K extends OperationId = OperationId> =
-  { id: string; ok: true; data: ResponseOf<K> } | { id: string; ok: false; error: GatewayError };
+  | { requestId: string; ok: true; data: ResponseOf<K> }
+  | { requestId: string; ok: false; error: GatewayError };
 
 export interface GatewayCredentials {
   appKey: string;

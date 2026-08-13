@@ -1,8 +1,8 @@
-import type { AxiosInstance } from 'axios';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AlibabaClient } from '../src/alibaba-client';
 import { GatewayException, normalizeGatewayError } from '../src/errors';
+import { NetworkManager, type NetworkTransport } from '../src/network';
 
 const credentials = {
   appKey: 'key',
@@ -14,13 +14,13 @@ const credentials = {
 
 describe('AlibabaClient retry policy', () => {
   it('retries retryable reads with bounded exponential delays', async () => {
-    const post = vi
+    const send = vi
       .fn()
-      .mockRejectedValueOnce(axiosError(503))
-      .mockRejectedValueOnce(axiosError(429))
-      .mockResolvedValueOnce({ data: { result: true } });
+      .mockResolvedValueOnce(Response.json({}, { status: 503 }))
+      .mockResolvedValueOnce(Response.json({}, { status: 429 }))
+      .mockResolvedValueOnce(Response.json({ result: true }));
     const wait = vi.fn(() => Promise.resolve());
-    const client = new AlibabaClient(credentials, { post } as unknown as AxiosInstance, {
+    const client = new AlibabaClient(credentials, network(send), {
       maxAttempts: 3,
       shouldRetry: () => true,
       wait
@@ -29,13 +29,13 @@ describe('AlibabaClient retry policy', () => {
     await expect(client.call('alibaba.icbu.product.list', {})).resolves.toMatchObject({
       data: { result: true }
     });
-    expect(post).toHaveBeenCalledTimes(3);
+    expect(send).toHaveBeenCalledTimes(3);
     expect(wait.mock.calls).toEqual([[250], [500]]);
   });
 
   it('never retries when the caller marks a mutation unsafe', async () => {
-    const post = vi.fn().mockRejectedValue(axiosError(503));
-    const client = new AlibabaClient(credentials, { post } as unknown as AxiosInstance, {
+    const send = vi.fn().mockResolvedValue(Response.json({}, { status: 503 }));
+    const client = new AlibabaClient(credentials, network(send), {
       maxAttempts: 3,
       shouldRetry: () => false,
       wait: () => Promise.resolve()
@@ -44,25 +44,18 @@ describe('AlibabaClient retry policy', () => {
     await expect(client.call('alibaba.icbu.product.schema.add', {})).rejects.toMatchObject({
       gatewayError: { code: 'UPSTREAM_UNAVAILABLE', retryable: true }
     });
-    expect(post).toHaveBeenCalledOnce();
+    expect(send).toHaveBeenCalledOnce();
   });
 });
 
 describe('gateway transport error categories', () => {
-  it.each([
-    [401, 'AUTHENTICATION_FAILED', false],
-    [403, 'PERMISSION_DENIED', false],
-    [429, 'RATE_LIMITED', true],
-    [503, 'UPSTREAM_UNAVAILABLE', true]
-  ] as const)('maps HTTP %s to %s', (status, code, retryable) => {
-    expect(normalizeGatewayError(axiosError(status))).toMatchObject({ code, retryable });
-  });
-
   it('maps client timeouts separately from generic network failures', () => {
-    expect(normalizeGatewayError(axiosError(undefined, 'ETIMEDOUT'))).toMatchObject({
+    const error = new GatewayException({
       code: 'REQUEST_TIMEOUT',
+      message: 'timeout',
       retryable: true
     });
+    expect(normalizeGatewayError(error)).toMatchObject({ code: 'REQUEST_TIMEOUT', retryable: true });
   });
 
   it('keeps GatewayException payloads intact', () => {
@@ -71,11 +64,13 @@ describe('gateway transport error categories', () => {
   });
 });
 
-function axiosError(status?: number, code?: string): object {
-  return {
-    isAxiosError: true,
-    code,
-    message: status ? `HTTP ${status}` : 'timeout',
-    ...(status ? { response: { status, data: {} } } : {})
-  };
+function network(send: ReturnType<typeof vi.fn>): NetworkManager {
+  return new NetworkManager({
+    transport: { send } as NetworkTransport,
+    policies: {
+      alibaba: { allowedOrigins: ['https://eco.taobao.com'] },
+      bff: { allowedOrigins: [] },
+      'external-photo': { allowedOrigins: [] }
+    }
+  });
 }

@@ -1,6 +1,5 @@
-import type { AxiosInstance } from 'axios';
-
 import { GatewayException, normalizeGatewayError } from './errors';
+import { NetworkManager, type NetworkResponse } from './network';
 import { createAlibabaRequest } from './signing';
 import type { GatewayCredentials, GatewayError } from './types';
 
@@ -17,22 +16,35 @@ export interface AlibabaClientOptions {
 }
 
 export class AlibabaClient {
-  readonly #http: AxiosInstance;
+  readonly #network: NetworkManager;
   readonly #credentials: GatewayCredentials;
   readonly #options: AlibabaClientOptions;
 
-  constructor(credentials: GatewayCredentials, http: AxiosInstance, options: AlibabaClientOptions = {}) {
+  constructor(credentials: GatewayCredentials, network: NetworkManager, options: AlibabaClientOptions = {}) {
     this.#credentials = credentials;
-    this.#http = http;
+    this.#network = network;
     this.#options = options;
   }
 
-  static async create(
-    credentials: GatewayCredentials,
-    options: AlibabaClientOptions = {}
-  ): Promise<AlibabaClient> {
-    const { default: axios } = await import('axios');
-    return new AlibabaClient(credentials, axios.create({ timeout: 30_000 }), options);
+  static create(credentials: GatewayCredentials, options: AlibabaClientOptions = {}): AlibabaClient {
+    return new AlibabaClient(
+      credentials,
+      new NetworkManager({
+        policies: {
+          alibaba: {
+            allowedOrigins: [new URL(credentials.endpoint).origin],
+            timeoutMilliseconds: 30_000,
+            maxRequestBytes: 30 * 1024 * 1024,
+            maxResponseBytes: 30 * 1024 * 1024,
+            defaultHeaders: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' }
+          },
+          bff: { allowedOrigins: [] },
+          'external-photo': { allowedOrigins: [] }
+        },
+        ...(options.wait ? { wait: options.wait } : {})
+      }),
+      options
+    );
   }
 
   async call(method: string, parameters: Readonly<Record<string, unknown>>): Promise<AlibabaCallResult> {
@@ -40,9 +52,15 @@ export class AlibabaClient {
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
         const body = new URLSearchParams(createAlibabaRequest(this.#credentials, method, parameters));
-        const response = await this.#http.post<unknown>(this.#credentials.endpoint, body, {
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' }
+        const response = await this.#network.request({
+          service: 'alibaba',
+          url: this.#credentials.endpoint,
+          method: 'POST',
+          body,
+          responseType: 'json'
         });
+        const transport = getTransportError(response);
+        if (transport) throw new GatewayException(transport);
         const apiError = getAlibabaError(response.data);
         if (apiError) throw new GatewayException(apiError);
         return { method, data: response.data };
@@ -58,6 +76,23 @@ export class AlibabaClient {
     }
     throw new GatewayException({ code: 'RETRY_EXHAUSTED', message: '请求重试已耗尽', retryable: false });
   }
+}
+
+function getTransportError(response: NetworkResponse): GatewayError | null {
+  if (response.ok) return null;
+  if (response.status === 401) {
+    return { code: 'AUTHENTICATION_FAILED', message: '上游认证失败', retryable: false };
+  }
+  if (response.status === 403) {
+    return { code: 'PERMISSION_DENIED', message: '上游拒绝访问', retryable: false };
+  }
+  if (response.status === 429) {
+    return { code: 'RATE_LIMITED', message: '上游请求频率受限', retryable: true };
+  }
+  if (response.status >= 500) {
+    return { code: 'UPSTREAM_UNAVAILABLE', message: '上游服务暂时不可用', retryable: true };
+  }
+  return { code: 'NETWORK_ERROR', message: `上游返回 HTTP ${response.status}`, retryable: false };
 }
 
 function wait(milliseconds: number): Promise<void> {

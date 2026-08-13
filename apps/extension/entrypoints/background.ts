@@ -11,6 +11,7 @@ import {
   GatewayException,
   getCapabilityDefinition,
   InsightsAdapter,
+  isRequestId,
   listCapabilities,
   LogisticsAdapter,
   normalizeGatewayError,
@@ -307,9 +308,9 @@ async function handleRequest(message: RuntimeRequest): Promise<RuntimeResponse> 
   if (message.operation === 'getDiagnostics' || message.operation === 'clearDiagnostics') {
     try {
       const data = await executeOperation(message.operation, message.payload);
-      return { id: message.id, ok: true, data } as RuntimeResponse;
+      return { requestId: message.requestId, ok: true, data } as RuntimeResponse;
     } catch (error: unknown) {
-      return { id: message.id, ok: false, error: normalizeGatewayError(error) };
+      return { requestId: message.requestId, ok: false, error: normalizeGatewayError(error) };
     }
   }
   const startedAt = performance.now();
@@ -324,7 +325,7 @@ async function handleRequest(message: RuntimeRequest): Promise<RuntimeResponse> 
       errorMessage: null,
       traceId: readResultTraceId(data)
     });
-    return { id: message.id, ok: true, data } as RuntimeResponse;
+    return { requestId: message.requestId, ok: true, data } as RuntimeResponse;
   } catch (error: unknown) {
     const normalized = normalizeGatewayError(error);
     await safelyRecordDiagnostic({
@@ -336,7 +337,7 @@ async function handleRequest(message: RuntimeRequest): Promise<RuntimeResponse> 
       errorMessage: sanitizeDiagnosticMessage(normalized.message),
       traceId: normalized.traceId ?? null
     });
-    return { id: message.id, ok: false, error: normalized };
+    return { requestId: message.requestId, ok: false, error: normalized };
   }
 }
 
@@ -347,7 +348,7 @@ async function handleRequestAfterStorageReady(
   try {
     await storageAccessReady;
   } catch (error: unknown) {
-    return { id: message.id, ok: false, error: normalizeGatewayError(error) };
+    return { requestId: message.requestId, ok: false, error: normalizeGatewayError(error) };
   }
   return handleRequest(message);
 }
@@ -381,7 +382,7 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
       retryable: false
     });
   }
-  const client = await AlibabaClient.create(settings, {
+  const client = AlibabaClient.create(settings, {
     maxAttempts: 3,
     shouldRetry: (method, error) => error.retryable && findCapability(method)?.risk === 'read'
   });
@@ -729,7 +730,9 @@ function requiredSignMethod(value: unknown): GatewaySettings['signMethod'] {
 }
 
 function asRuntimeRequest(value: unknown): RuntimeRequest | null {
-  if (!isRecord(value) || value.kind !== 'gateway-request' || typeof value.id !== 'string') return null;
+  if (!isRecord(value) || value.kind !== 'gateway-request' || !isRequestId(value.requestId)) {
+    return null;
+  }
   if (typeof value.operation !== 'string' || !OPERATIONS.has(value.operation as OperationId)) return null;
   return value as unknown as RuntimeRequest;
 }

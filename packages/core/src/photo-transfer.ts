@@ -1,3 +1,4 @@
+import { createRequestId, NativeFetchTransport, NetworkManager } from './network';
 import type { PhotoTransferRequest, PhotoUploadRequest } from './types';
 
 export const MAX_TRANSFER_IMAGE_BYTES = 20 * 1024 * 1024;
@@ -45,19 +46,48 @@ export function assertPublicPhotoUrl(rawUrl: string): URL {
 
 export async function downloadPhotoForUpload(
   request: PhotoTransferRequest,
-  fetcher: typeof fetch = fetch
+  fetcher: typeof fetch = globalThis.fetch
 ): Promise<DownloadedPhotoUpload> {
   const maxBytes = Math.min(request.maxBytes ?? MAX_TRANSFER_IMAGE_BYTES, MAX_TRANSFER_IMAGE_BYTES);
   let url = assertPublicPhotoUrl(request.url);
-  let response: Response | undefined;
+  const requestId = createRequestId();
+  const network = new NetworkManager({
+    transport: new NativeFetchTransport(fetcher),
+    policies: {
+      alibaba: { allowedOrigins: [] },
+      bff: { allowedOrigins: [] },
+      'external-photo': {
+        allowUrl(candidate) {
+          assertPublicPhotoUrl(candidate.toString());
+          return true;
+        },
+        timeoutMilliseconds: 30_000,
+        maxResponseBytes: maxBytes,
+        redirect: 'manual',
+        credentials: 'omit',
+        defaultHeaders: {
+          Accept: 'image/avif,image/webp,image/png,image/jpeg,image/gif,image/bmp'
+        }
+      }
+    }
+  });
+  let response:
+    | {
+        status: number;
+        ok: boolean;
+        headers: Headers;
+        data: unknown;
+      }
+    | undefined;
 
   for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect += 1) {
-    response = await fetcher(url, {
+    response = await network.request({
+      service: 'external-photo',
+      url,
+      requestId,
       method: 'GET',
-      redirect: 'manual',
-      credentials: 'omit',
-      referrerPolicy: 'no-referrer',
-      headers: { Accept: 'image/avif,image/webp,image/png,image/jpeg,image/gif,image/bmp' }
+      responseType: 'bytes',
+      acceptStatuses: [301, 302, 303, 307, 308]
     });
     if (!isRedirect(response.status)) break;
     const location = response.headers.get('location');
@@ -74,7 +104,8 @@ export async function downloadPhotoForUpload(
     throw new Error(`图片超过 ${formatBytes(maxBytes)} 下载上限`);
   }
 
-  const bytes = await readResponseBytes(response, maxBytes);
+  if (!(response.data instanceof Uint8Array)) throw new Error('图片下载响应格式无效');
+  const bytes = response.data;
   return {
     file: bytesToBase64(bytes),
     fileName: sanitizeFileName(request.fileName ?? inferFileName(url, contentType)),
@@ -142,35 +173,6 @@ function parseContentLength(value: string | null): number | undefined {
   if (!value || !/^\d+$/.test(value)) return undefined;
   const length = Number(value);
   return Number.isSafeInteger(length) ? length : undefined;
-}
-
-async function readResponseBytes(response: Response, maxBytes: number): Promise<Uint8Array> {
-  if (!response.body) {
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.byteLength > maxBytes) throw new Error(`图片超过 ${formatBytes(maxBytes)} 下载上限`);
-    return bytes;
-  }
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  try {
-    let result = await reader.read();
-    while (!result.done) {
-      total += result.value.byteLength;
-      if (total > maxBytes) throw new Error(`图片超过 ${formatBytes(maxBytes)} 下载上限`);
-      chunks.push(result.value);
-      result = await reader.read();
-    }
-  } finally {
-    reader.releaseLock();
-  }
-  const bytes = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return bytes;
 }
 
 function bytesToBase64(bytes: Uint8Array): string {

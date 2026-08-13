@@ -78,7 +78,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
       }
     ).chrome;
     return extension.runtime.sendMessage({
-      id: 'diagnostics-before-consent-e2e',
+      requestId: crypto.randomUUID(),
       kind: 'gateway-request',
       operation: 'getDiagnostics'
     });
@@ -133,7 +133,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
       }
     ).chrome;
     return extension.runtime.sendMessage({
-      id: 'logistics-qualification-e2e',
+      requestId: crypto.randomUUID(),
       kind: 'gateway-request',
       operation: 'listLogisticsProducts'
     });
@@ -150,7 +150,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
       }
     ).chrome;
     return extension.runtime.sendMessage({
-      id: 'diagnostics-before-restart-e2e',
+      requestId: crypto.randomUUID(),
       kind: 'gateway-request',
       operation: 'getDiagnostics'
     });
@@ -174,7 +174,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
       }
     ).chrome;
     return extension.runtime.sendMessage({
-      id: 'diagnostics-after-restart-e2e',
+      requestId: crypto.randomUUID(),
       kind: 'gateway-request',
       operation: 'getDiagnostics'
     });
@@ -244,19 +244,19 @@ test('MV3 options page persists settings and exposes the audited catalog', async
     ).chrome;
     return Promise.all([
       extension.runtime.sendMessage({
-        id: 'risk-protocol-gate-e2e',
+        requestId: crypto.randomUUID(),
         kind: 'gateway-request',
         operation: 'callCapability',
         payload: { method: 'alibaba.icbu.risk.send', parameters: {} }
       }),
       extension.runtime.sendMessage({
-        id: 'task-callback-gate-e2e',
+        requestId: crypto.randomUUID(),
         kind: 'gateway-request',
         operation: 'callCapability',
         payload: { method: 'alibaba.icbu.task.status.notify', parameters: {} }
       }),
       extension.runtime.sendMessage({
-        id: 'file-transfer-gate-e2e',
+        requestId: crypto.randomUUID(),
         kind: 'gateway-request',
         operation: 'callCapability',
         payload: { method: 'alibaba.icbu.file.urlposting.upload', parameters: {} }
@@ -304,7 +304,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
       }
     ).chrome;
     return extension.runtime.sendMessage({
-      id: 'photo-mutation-gate-e2e',
+      requestId: crypto.randomUUID(),
       kind: 'gateway-request',
       operation: 'operatePhotoGroup',
       payload: { operation: 'add', groupId: null, groupName: '真实分组' }
@@ -349,7 +349,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
       }
     ).chrome;
     return extension.runtime.sendMessage({
-      id: 'insights-partner-gate-e2e',
+      requestId: crypto.randomUUID(),
       kind: 'gateway-request',
       operation: 'callCapability',
       payload: {
