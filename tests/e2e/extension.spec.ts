@@ -12,12 +12,14 @@ test.beforeAll(async () => {
     host_permissions?: string[];
     optional_host_permissions?: string[];
     permissions?: string[];
+    minimum_chrome_version?: string;
   };
   expect(manifest.permissions).toEqual(['storage']);
   expect(manifest.host_permissions).toEqual(['https://eco.taobao.com/*']);
   expect(manifest.optional_host_permissions).toEqual(['http://*/*', 'https://*/*']);
   expect(manifest.permissions).not.toContain('cookies');
   expect(manifest.host_permissions).not.toContain('<all_urls>');
+  expect(manifest.minimum_chrome_version).toBe('102');
   const userDataDir = await mkdtemp(resolve(tmpdir(), 'one-vegetable-e2e-'));
   context = await chromium.launchPersistentContext(userDataDir, {
     headless: false,
@@ -33,6 +35,36 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   let serviceWorker = context.serviceWorkers()[0];
   serviceWorker ??= await context.waitForEvent('serviceworker');
   const extensionId = new URL(serviceWorker.url()).host;
+  await context.route('https://storage-probe.alibaba.com/**', (route) =>
+    route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>storage probe</title>' })
+  );
+  const storageProbePage = await context.newPage();
+  const storageProbeCdp = await context.newCDPSession(storageProbePage);
+  const storageProbeResult = new Promise<unknown>((resolveStorageProbe) => {
+    storageProbeCdp.on('Runtime.executionContextCreated', ({ context: executionContext }) => {
+      if (executionContext.auxData?.type !== 'isolated') return;
+      void storageProbeCdp
+        .send('Runtime.evaluate', {
+          expression:
+            '(() => ({ localAvailable: Boolean(chrome.storage?.local), sessionAvailable: Boolean(chrome.storage?.session) }))()',
+          contextId: executionContext.id,
+          awaitPromise: true,
+          returnByValue: true
+        })
+        .then((result) => {
+          resolveStorageProbe(result);
+        })
+        .catch(() => undefined);
+    });
+  });
+  await storageProbeCdp.send('Runtime.enable');
+  await storageProbePage.goto('https://storage-probe.alibaba.com/probe');
+  const storageProbe = (await storageProbeResult) as {
+    result?: { value?: { localAvailable?: boolean; sessionAvailable?: boolean } };
+  };
+  expect(storageProbe.result?.value).toEqual({ localAvailable: false, sessionAvailable: false });
+  await storageProbePage.close();
+  await context.unroute('https://storage-probe.alibaba.com/**');
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/options.html`);
 
@@ -163,6 +195,19 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByText('已解锁', { exact: true })).toBeVisible();
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
 
+  await page.getByLabel('空闲自动锁定时间').selectOption('5');
+  await page.getByRole('button', { name: '保存锁定策略' }).click();
+  await expect(page.getByText(/连续 5 分钟未使用凭证后自动锁定/)).toBeVisible();
+  const encryptedPolicySettings = await page.evaluate(async () => {
+    const extension = (
+      globalThis as unknown as {
+        chrome: { storage: { local: { get(key: string): Promise<Record<string, unknown>> } } };
+      }
+    ).chrome;
+    return extension.storage.local.get('gatewaySettings');
+  });
+  expect(JSON.stringify(encryptedPolicySettings)).not.toContain('idleTimeoutMinutes');
+
   await page.getByLabel('新保险库口令', { exact: true }).fill('e2e-rotated-vault-password');
   await page.getByLabel('确认新保险库口令', { exact: true }).fill('e2e-rotated-vault-password');
   await page.getByRole('button', { name: '更换口令' }).click();
@@ -176,6 +221,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('button', { name: '解锁' }).click();
   await expect(page.getByText('已解锁', { exact: true })).toBeVisible();
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
+  await expect(page.getByLabel('空闲自动锁定时间')).toHaveValue('5');
 
   await page.getByRole('button', { name: 'API 能力' }).click();
   await expect(page.locator('tbody tr')).toHaveCount(86);
