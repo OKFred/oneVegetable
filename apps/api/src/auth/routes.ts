@@ -1,0 +1,442 @@
+import { getCookie, setCookie } from 'hono/cookie';
+
+import { isRequestId } from '@one-vegetable/core';
+import { authorizeAdmin, policySummary } from '../abac';
+import { AuthError } from './service';
+
+import type { Context, Hono } from 'hono';
+import type { GatewayError } from '@one-vegetable/core';
+import type { AdminService } from './admin-service';
+import type { AuthenticatedSession, AuthService } from './service';
+import type { PublicUser, UserRole, UserStatus } from './types';
+import { toPublicUser } from './types';
+
+export const SESSION_COOKIE = 'ov_session';
+export const CSRF_COOKIE = 'ov_csrf';
+const REQUEST_IDS = new WeakMap<Request, string>();
+
+export interface AuthRoutesOptions {
+  authService: AuthService;
+  adminService: AdminService;
+  apiPrefix: string;
+  environment: string;
+  runtime: 'node' | 'cloudflare';
+  database: 'sqlite' | 'd1';
+  gatewayMode: 'mock' | 'disabled' | 'real';
+  allowedOrigins?: readonly string[];
+}
+
+export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void {
+  api.post('/auth/bootstrap', async (context) => {
+    return handle(context, async () => {
+      const body = await readBody(context, ['requestId', 'bootstrapToken', 'username', 'password', 'remark']);
+      const remark = readOptionalNullableString(body, 'remark');
+      const result = await options.authService.bootstrap({
+        requestId: readRequestId(body),
+        bootstrapToken: readString(body, 'bootstrapToken'),
+        username: readString(body, 'username'),
+        password: readString(body, 'password'),
+        ...(remark !== undefined ? { remark } : {})
+      });
+      setSessionCookies(context, options, result.sessionToken, result.session.csrfToken);
+      return success(context, body.requestId as string, {
+        user: result.user,
+        session: result.session
+      });
+    });
+  });
+
+  api.post('/auth/login', async (context) => {
+    return handle(context, async () => {
+      const body = await readBody(context, ['requestId', 'username', 'password']);
+      const requestId = readRequestId(body);
+      const result = await options.authService.login({
+        requestId,
+        username: readString(body, 'username'),
+        password: readString(body, 'password')
+      });
+      setSessionCookies(context, options, result.sessionToken, result.session.csrfToken);
+      return success(context, requestId, { user: result.user, session: result.session });
+    });
+  });
+
+  api.post('/auth/session/get', async (context) => {
+    return handle(context, async () => {
+      const body = await readBody(context, ['requestId']);
+      const requestId = readRequestId(body);
+      const authenticated = await authenticateRequest(context, options.authService);
+      return success(context, requestId, {
+        principal: authenticated.principal,
+        user: publicUser(authenticated),
+        absoluteExpiresTimeUtc: authenticated.session.absoluteExpiresTimeUtc,
+        idleExpiresTimeUtc: authenticated.session.idleExpiresTimeUtc
+      });
+    });
+  });
+
+  api.post('/auth/logout', async (context) => {
+    return handle(context, async () => {
+      const body = await readBody(context, ['requestId']);
+      const requestId = readRequestId(body);
+      const authenticated = await authenticateMutation(context, options, options.authService);
+      await options.authService.logout(requestId, authenticated);
+      clearSessionCookies(context, options);
+      return success(context, requestId, {});
+    });
+  });
+
+  api.post('/auth/password/change', async (context) => {
+    return handle(context, async () => {
+      const body = await readBody(context, ['requestId', 'currentPassword', 'newPassword']);
+      const requestId = readRequestId(body);
+      const authenticated = await authenticateMutation(context, options, options.authService);
+      await options.authService.changePassword({
+        requestId,
+        authenticated,
+        currentPassword: readString(body, 'currentPassword'),
+        newPassword: readString(body, 'newPassword')
+      });
+      clearSessionCookies(context, options);
+      return success(context, requestId, {});
+    });
+  });
+
+  api.post('/admin/users/list', async (context) => {
+    return adminRead(
+      context,
+      options,
+      async (body) => {
+        return options.adminService.listUsers(readPage(body), readPageSize(body));
+      },
+      ['requestId', 'page', 'pageSize']
+    );
+  });
+
+  api.post('/admin/users/create', async (context) => {
+    return adminWrite(
+      context,
+      options,
+      async (body, authenticated) => {
+        const remark = readOptionalNullableString(body, 'remark');
+        return options.adminService.createUser({
+          requestId: readRequestId(body),
+          actor: authenticated.principal,
+          username: readString(body, 'username'),
+          password: readString(body, 'password'),
+          role: readEnum(body, 'role', ['admin', 'user']),
+          ...(remark !== undefined ? { remark } : {})
+        });
+      },
+      ['requestId', 'username', 'password', 'role', 'remark']
+    );
+  });
+
+  api.post('/admin/users/update', async (context) => {
+    return adminWrite(
+      context,
+      options,
+      async (body, authenticated) =>
+        options.adminService.updateUser({
+          requestId: readRequestId(body),
+          actor: authenticated.principal,
+          userId: readString(body, 'userId'),
+          role: readEnum<UserRole>(body, 'role', ['admin', 'user']),
+          status: readEnum<UserStatus>(body, 'status', ['active', 'disabled']),
+          expectedRevision: readInteger(body, 'revision'),
+          remark: readNullableString(body, 'remark')
+        }),
+      ['requestId', 'userId', 'role', 'status', 'revision', 'remark']
+    );
+  });
+
+  api.post('/admin/users/password/reset', async (context) => {
+    return adminWrite(
+      context,
+      options,
+      async (body, authenticated) =>
+        options.adminService.resetPassword({
+          requestId: readRequestId(body),
+          actor: authenticated.principal,
+          userId: readString(body, 'userId'),
+          expectedRevision: readInteger(body, 'revision'),
+          ...(typeof body.newPassword === 'string' ? { newPassword: body.newPassword } : {})
+        }),
+      ['requestId', 'userId', 'revision', 'newPassword']
+    );
+  });
+
+  api.post('/admin/users/sessions/revoke', async (context) => {
+    return adminWrite(
+      context,
+      options,
+      async (body, authenticated) => {
+        await options.adminService.revokeSessions(
+          readRequestId(body),
+          authenticated.principal,
+          readString(body, 'userId')
+        );
+        return {};
+      },
+      ['requestId', 'userId']
+    );
+  });
+
+  api.post('/admin/audit-events/list', async (context) => {
+    return adminRead(
+      context,
+      options,
+      (body) =>
+        options.adminService.listAudit({
+          page: readPage(body),
+          pageSize: readPageSize(body),
+          ...(typeof body.requestIdFilter === 'string' ? { requestId: body.requestIdFilter } : {}),
+          ...(typeof body.actorId === 'string' ? { actorId: body.actorId } : {}),
+          ...(typeof body.action === 'string' ? { action: body.action } : {}),
+          ...(body.outcome === 'success' || body.outcome === 'error' || body.outcome === 'denied'
+            ? { outcome: body.outcome }
+            : {}),
+          ...(typeof body.fromTimeUtc === 'number' ? { fromTimeUtc: body.fromTimeUtc } : {}),
+          ...(typeof body.toTimeUtc === 'number' ? { toTimeUtc: body.toTimeUtc } : {})
+        }),
+      [
+        'requestId',
+        'requestIdFilter',
+        'actorId',
+        'action',
+        'outcome',
+        'fromTimeUtc',
+        'toTimeUtc',
+        'page',
+        'pageSize'
+      ]
+    );
+  });
+
+  api.post('/admin/system/get', async (context) => {
+    return adminRead(
+      context,
+      options,
+      () =>
+        Promise.resolve({
+          runtime: options.runtime,
+          environment: options.environment,
+          apiPrefix: options.apiPrefix,
+          database: options.database,
+          gatewayMode: options.gatewayMode,
+          schemaVersion: 2
+        }),
+      ['requestId']
+    );
+  });
+
+  api.post('/admin/policy-summary/get', async (context) => {
+    return adminRead(context, options, () => Promise.resolve(policySummary()), ['requestId']);
+  });
+}
+
+export async function authenticateRequest(
+  context: Context,
+  authService: AuthService
+): Promise<AuthenticatedSession> {
+  const token = getCookie(context, SESSION_COOKIE);
+  if (!token) throw new AuthError('SESSION_REQUIRED', '请先登录', 401);
+  return authService.authenticate(token);
+}
+
+export async function authenticateMutation(
+  context: Context,
+  options: Pick<AuthRoutesOptions, 'authService' | 'allowedOrigins'>,
+  authService = options.authService
+): Promise<AuthenticatedSession> {
+  assertOrigin(context, options.allowedOrigins ?? []);
+  const authenticated = await authenticateRequest(context, authService);
+  await authService.assertCsrf(authenticated.session, context.req.header('X-CSRF-Token'));
+  return authenticated;
+}
+
+function assertOrigin(context: Context, allowedOrigins: readonly string[]): void {
+  const origin = context.req.header('Origin');
+  const requestOrigin = new URL(context.req.url).origin;
+  if (!origin || (origin !== requestOrigin && !allowedOrigins.includes(origin))) {
+    throw new AuthError('ORIGIN_INVALID', '请求 Origin 无效', 403);
+  }
+}
+
+async function adminRead(
+  context: Context,
+  options: AuthRoutesOptions,
+  action: (body: Record<string, unknown>, authenticated: AuthenticatedSession) => Promise<unknown>,
+  allowedKeys: readonly string[]
+): Promise<Response> {
+  return handle(context, async () => {
+    const body = await readBody(context, allowedKeys);
+    const requestId = readRequestId(body);
+    const authenticated = await authenticateRequest(context, options.authService);
+    const decision = authorizeAdmin(authenticated.principal, 'admin.read');
+    if (!decision.allowed) throw new AuthError(decision.reasonCode, '需要管理员权限', 403);
+    return success(context, requestId, await action(body, authenticated));
+  });
+}
+
+async function adminWrite(
+  context: Context,
+  options: AuthRoutesOptions,
+  action: (body: Record<string, unknown>, authenticated: AuthenticatedSession) => Promise<unknown>,
+  allowedKeys: readonly string[]
+): Promise<Response> {
+  return handle(context, async () => {
+    const body = await readBody(context, allowedKeys);
+    const requestId = readRequestId(body);
+    const authenticated = await authenticateMutation(context, options);
+    const decision = authorizeAdmin(authenticated.principal, 'admin.write');
+    if (!decision.allowed) throw new AuthError(decision.reasonCode, '需要管理员权限', 403);
+    return success(context, requestId, await action(body, authenticated));
+  });
+}
+
+async function readBody(context: Context, allowedKeys: readonly string[]): Promise<Record<string, unknown>> {
+  if (!context.req.header('content-type')?.toLocaleLowerCase().startsWith('application/json')) {
+    throw new AuthError('INVALID_CONTENT_TYPE', '请求必须使用 application/json', 400);
+  }
+  let value: unknown;
+  try {
+    value = await context.req.json<unknown>();
+  } catch {
+    throw new AuthError('INVALID_JSON', '请求 Body 不是有效 JSON', 400);
+  }
+  if (!isRecord(value) || Object.keys(value).some((key) => !allowedKeys.includes(key))) {
+    throw new AuthError('INVALID_REQUEST_BODY', '请求 Body 无效或包含未定义字段', 400);
+  }
+  readRequestId(value);
+  REQUEST_IDS.set(context.req.raw, value.requestId as string);
+  return value;
+}
+
+function readRequestId(body: Record<string, unknown>): string {
+  if (!isRequestId(body.requestId))
+    throw new AuthError('INVALID_REQUEST_ID', 'requestId 必须是 UUID v4', 400);
+  return body.requestId;
+}
+
+function readString(body: Record<string, unknown>, key: string): string {
+  const value = body[key];
+  if (typeof value !== 'string') throw new AuthError('INVALID_REQUEST_BODY', `${key} 无效`, 400);
+  return value;
+}
+
+function readNullableString(body: Record<string, unknown>, key: string): string | null {
+  const value = body[key];
+  if (value === null) return null;
+  return readString(body, key);
+}
+
+function readOptionalNullableString(body: Record<string, unknown>, key: string): string | null | undefined {
+  return body[key] === undefined ? undefined : readNullableString(body, key);
+}
+
+function readInteger(body: Record<string, unknown>, key: string): number {
+  const value = body[key];
+  if (!Number.isSafeInteger(value)) throw new AuthError('INVALID_REQUEST_BODY', `${key} 无效`, 400);
+  return value as number;
+}
+
+function readPage(body: Record<string, unknown>): number {
+  return body.page === undefined ? 1 : readInteger(body, 'page');
+}
+
+function readPageSize(body: Record<string, unknown>): number {
+  return body.pageSize === undefined ? 20 : readInteger(body, 'pageSize');
+}
+
+function readEnum<T extends string>(body: Record<string, unknown>, key: string, values: readonly T[]): T {
+  const value = readString(body, key);
+  if (!values.some((candidate) => candidate === value)) {
+    throw new AuthError('INVALID_REQUEST_BODY', `${key} 无效`, 400);
+  }
+  return value as T;
+}
+
+async function handle(context: Context, action: () => Promise<Response>): Promise<Response> {
+  try {
+    return await action();
+  } catch (error: unknown) {
+    const requestId = await requestIdForError(context);
+    if (error instanceof AuthError) {
+      return failure(context, requestId, error.status, {
+        code: error.code,
+        message: error.message,
+        retryable: false
+      });
+    }
+    return failure(context, requestId, 500, {
+      code: 'INTERNAL_ERROR',
+      message: error instanceof Error ? error.message : '内部错误',
+      retryable: false
+    });
+  }
+}
+
+function requestIdForError(context: Context): Promise<string> {
+  return Promise.resolve(REQUEST_IDS.get(context.req.raw) ?? crypto.randomUUID());
+}
+
+function success(context: Context, requestId: string, data: unknown): Response {
+  return respond(context, requestId, 200, { requestId, ok: true, data });
+}
+
+function failure(context: Context, requestId: string, status: number, error: GatewayError): Response {
+  return respond(context, requestId, status, { requestId, ok: false, error });
+}
+
+function respond(context: Context, requestId: string, status: number, body: object): Response {
+  context.header('X-Request-ID', requestId);
+  context.header('Cache-Control', 'no-store');
+  return context.json(body, status as 200);
+}
+
+function setSessionCookies(
+  context: Context,
+  options: Pick<AuthRoutesOptions, 'apiPrefix' | 'environment'>,
+  sessionToken: string,
+  csrfToken: string
+): void {
+  const secure = options.environment !== 'local-node' && options.environment !== 'test';
+  setCookie(context, SESSION_COOKIE, sessionToken, {
+    httpOnly: true,
+    secure,
+    sameSite: 'Strict',
+    path: options.apiPrefix,
+    maxAge: 8 * 60 * 60
+  });
+  setCookie(context, CSRF_COOKIE, csrfToken, {
+    httpOnly: false,
+    secure,
+    sameSite: 'Strict',
+    path: options.apiPrefix,
+    maxAge: 8 * 60 * 60
+  });
+}
+
+function clearSessionCookies(
+  context: Context,
+  options: Pick<AuthRoutesOptions, 'apiPrefix' | 'environment'>
+): void {
+  const secure = options.environment !== 'local-node' && options.environment !== 'test';
+  for (const name of [SESSION_COOKIE, CSRF_COOKIE]) {
+    setCookie(context, name, '', {
+      httpOnly: name === SESSION_COOKIE,
+      secure,
+      sameSite: 'Strict',
+      path: options.apiPrefix,
+      maxAge: 0
+    });
+  }
+}
+
+function publicUser(authenticated: AuthenticatedSession): PublicUser {
+  return toPublicUser(authenticated.user);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}

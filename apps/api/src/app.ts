@@ -8,6 +8,9 @@ import {
   MockGatewayClient,
   normalizeApiPrefix
 } from '@one-vegetable/core';
+import { authorizeOperation, operationIsMutation, StaticOperationFeatureFlags } from './abac';
+import { AuthError } from './auth/service';
+import { authenticateMutation, authenticateRequest, registerAuthRoutes } from './auth/routes';
 
 import type {
   ApiResponse,
@@ -18,6 +21,9 @@ import type {
   ProbeResponse
 } from '@one-vegetable/core';
 import type { Context } from 'hono';
+import type { OperationFeatureFlags } from './abac';
+import type { AdminService } from './auth/admin-service';
+import type { AuthenticatedSession, AuthService } from './auth/service';
 
 export type ApiRuntime = 'node' | 'cloudflare';
 export type ApiDatabase = 'sqlite' | 'd1';
@@ -35,6 +41,9 @@ export interface ApiAppOptions {
   clock?: () => number;
   logger?: (context: RequestLogContext) => void;
   allowedOrigins?: readonly string[];
+  authService?: AuthService;
+  adminService?: AdminService;
+  featureFlags?: OperationFeatureFlags;
 }
 
 export interface RequestLogContext {
@@ -67,6 +76,7 @@ export function createApiApp(options: ApiAppOptions): Hono {
   const dynamicGateway = gateway as unknown as DynamicGateway;
   const app = new Hono();
   const api = new Hono();
+  const featureFlags = options.featureFlags ?? new StaticOperationFeatureFlags();
 
   api.use(
     '*',
@@ -84,6 +94,19 @@ export function createApiApp(options: ApiAppOptions): Hono {
     const requestId = createRequestId();
     return respond(context, requestId, 200, { requestId, status: 'ok' } satisfies ProbeResponse);
   });
+
+  if (options.authService && options.adminService) {
+    registerAuthRoutes(api, {
+      authService: options.authService,
+      adminService: options.adminService,
+      apiPrefix,
+      environment: options.environment,
+      runtime: options.runtime,
+      database: options.database,
+      gatewayMode: options.gatewayMode,
+      ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
+    });
+  }
 
   api.get('/readyz', async (context) => {
     const requestId = createRequestId();
@@ -135,14 +158,91 @@ export function createApiApp(options: ApiAppOptions): Hono {
       });
     }
 
+    let authenticated: AuthenticatedSession | null = null;
     try {
+      if (options.authService) {
+        authenticated = operationIsMutation(parsed.body.operation, parsed.body.payload)
+          ? await authenticateMutation(context, {
+              authService: options.authService,
+              ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
+            })
+          : await authenticateRequest(context, options.authService);
+        const decision = authorizeOperation(
+          authenticated.principal,
+          parsed.body.operation,
+          parsed.body.payload,
+          featureFlags
+        );
+        if (!decision.allowed) {
+          await auditOperation(
+            options.authService,
+            parsed.requestId,
+            authenticated.principal.actorId,
+            parsed.body.operation,
+            'denied',
+            decision.reasonCode
+          );
+          logRequest(
+            options,
+            parsed.requestId,
+            parsed.body.operation,
+            'denied',
+            403,
+            startedAt,
+            authenticated.principal.actorId
+          );
+          return failure(context, parsed.requestId, 403, {
+            code: decision.reasonCode,
+            message: '当前身份或能力策略不允许该操作',
+            retryable: false
+          });
+        }
+      }
       const data = await dynamicGateway.request(parsed.body.operation, parsed.body.payload);
-      logRequest(options, parsed.requestId, parsed.body.operation, 'success', 200, startedAt);
+      if (options.authService && authenticated) {
+        await auditOperation(
+          options.authService,
+          parsed.requestId,
+          authenticated.principal.actorId,
+          parsed.body.operation,
+          'success',
+          'OPERATION_SUCCEEDED'
+        );
+      }
+      logRequest(
+        options,
+        parsed.requestId,
+        parsed.body.operation,
+        'success',
+        200,
+        startedAt,
+        authenticated?.principal.actorId ?? null
+      );
       return success(context, parsed.requestId, data);
     } catch (error: unknown) {
-      logRequest(options, parsed.requestId, parsed.body.operation, 'error', 500, startedAt);
-      return failure(context, parsed.requestId, 500, {
-        code: 'OPERATION_FAILED',
+      const status = error instanceof AuthError ? error.status : 500;
+      const code = error instanceof AuthError ? error.code : 'OPERATION_FAILED';
+      if (options.authService) {
+        await auditOperation(
+          options.authService,
+          parsed.requestId,
+          authenticated?.principal.actorId ?? null,
+          parsed.body.operation,
+          error instanceof AuthError && (status === 401 || status === 403) ? 'denied' : 'error',
+          code
+        );
+      }
+      logRequest(
+        options,
+        parsed.requestId,
+        parsed.body.operation,
+        error instanceof AuthError && (status === 401 || status === 403) ? 'denied' : 'error',
+        status,
+        startedAt,
+        authenticated?.principal.actorId ?? null
+      );
+      return failure(context, parsed.requestId, status, {
+        code,
         message: error instanceof Error ? error.message : '操作执行失败',
         retryable: false
       });
@@ -240,7 +340,7 @@ function success(context: Context, requestId: string, data: unknown): Response {
 function failure(
   context: Context,
   requestId: string,
-  status: 400 | 404 | 415 | 500 | 503,
+  status: 400 | 401 | 403 | 404 | 409 | 415 | 500 | 503,
   error: GatewayError
 ): Response {
   return respond(context, requestId, status, {
@@ -262,16 +362,36 @@ function logRequest(
   operation: string,
   outcome: RequestLogContext['outcome'],
   statusCode: number,
-  startedAt: number
+  startedAt: number,
+  actorId: string | null = null
 ): void {
   options.logger?.({
     requestId,
     environment: options.environment,
     runtime: options.runtime,
     operation,
-    actorId: null,
+    actorId,
     outcome,
     statusCode,
     durationMilliseconds: Math.max(0, (options.clock ?? Date.now)() - startedAt)
+  });
+}
+
+function auditOperation(
+  authService: AuthService,
+  requestId: string,
+  actorId: string | null,
+  operation: OperationId,
+  outcome: 'success' | 'error' | 'denied',
+  reasonCode: string
+): Promise<unknown> {
+  return authService.audit({
+    requestId,
+    actorId,
+    action: 'operation.call',
+    resourceKind: 'operation',
+    resourceId: operation,
+    outcome,
+    reasonCode
   });
 }

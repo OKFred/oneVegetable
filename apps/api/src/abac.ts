@@ -64,6 +64,10 @@ export function authorizeOperation(
   return { allowed: true, reasonCode: 'ADMIN_MUTATION_ALLOWED' };
 }
 
+export function operationIsMutation(operation: OperationId, payload: Record<string, unknown>): boolean {
+  return operationRisk(operation, payload) === 'mutation';
+}
+
 export function policySummary(): Record<string, unknown> {
   return {
     evaluationOrder: ['identity', 'abac', 'capability', 'mutationFlag', 'contract'],
