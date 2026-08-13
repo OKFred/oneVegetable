@@ -44,6 +44,21 @@ const articleCount = computed(
   () => (capabilities.data.value ?? []).filter((item) => item.source === 'article').length
 );
 const realCallBlocked = computed(() => mode === 'extension' && selected.value?.realCallEnabled === false);
+const platformProtocolRestricted = computed(
+  () => selected.value?.domain === 'platform' && selected.value.restricted
+);
+const platformNotice = computed(() => {
+  if (selected.value?.method === 'alibaba.icbu.file.urlposting.upload') {
+    return '该接口只返回普通文件 URL，不返回图库 fileId，因此不会用于商品主图、SKU 图或详情图入库。';
+  }
+  if (selected.value?.method === 'alibaba.icbu.risk.send') {
+    return '这是天鹿风控协议能力。本项目不采集 WUA、UMID、IMEI、IMSI、MAC 等设备环境信息，也不提供发送入口。';
+  }
+  if (selected.value?.method === 'alibaba.icbu.task.status.notify') {
+    return '这是 URL 爬取供应商的状态回调，不是卖家操作。没有平台下发的真实任务上下文时禁止调用。';
+  }
+  return '';
+});
 
 const call = useMutation({
   mutationFn: async () => {
@@ -163,7 +178,7 @@ const columns: DataColumn<ApiCapability>[] = [
     <select v-model="domain" class="h-9 rounded-md border bg-background px-3 text-sm">
       <option value="all">全部业务域</option>
       <option
-        v-for="item in ['product', 'photo', 'trade', 'rfq', 'buyer', 'logistics', 'data', 'other']"
+        v-for="item in ['product', 'photo', 'trade', 'rfq', 'buyer', 'logistics', 'data', 'platform']"
         :key="item"
         :value="item"
       >
@@ -199,13 +214,30 @@ const columns: DataColumn<ApiCapability>[] = [
     <div v-if="realCallBlocked" class="mt-4 flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
       <ShieldAlert class="mt-0.5 size-4 shrink-0" />该真实写能力尚未通过账号 smoke test，扩展中不可调用。
     </div>
+    <div
+      v-if="selected.restricted"
+      class="mt-4 flex gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800"
+    >
+      <ShieldAlert class="mt-0.5 size-4 shrink-0" />{{
+        selected.restrictionReason ?? '该能力需要专用业务上下文。'
+      }}
+    </div>
+    <div v-if="platformNotice" class="mt-3 rounded-lg bg-slate-100 p-3 text-sm text-slate-700">
+      {{ platformNotice }}
+    </div>
     <p v-if="definitionError" class="mt-3 text-sm text-destructive">{{ definitionError }}</p>
     <p v-if="definition" class="mt-4 text-sm text-muted-foreground">{{ definition.description }}</p>
     <div v-if="definition" class="mt-3 grid gap-2 text-xs sm:grid-cols-2">
       <code class="rounded bg-muted p-2">request: {{ definition.requestSchema }}</code>
       <code class="rounded bg-muted p-2">response: {{ definition.responseSchema }}</code>
     </div>
+    <pre
+      v-if="platformProtocolRestricted"
+      aria-label="只读文档参数示例"
+      class="mt-4 max-h-64 overflow-auto rounded-md border bg-slate-950 p-3 font-mono text-xs text-slate-100"
+      >{{ parameters }}</pre>
     <textarea
+      v-else
       v-model="parameters"
       aria-label="调用参数 JSON"
       class="mt-4 min-h-40 w-full rounded-md border bg-slate-950 p-3 font-mono text-xs text-slate-100 outline-none focus:ring-2 focus:ring-ring"
