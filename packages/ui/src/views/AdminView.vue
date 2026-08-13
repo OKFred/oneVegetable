@@ -17,12 +17,14 @@ const auditEvents = ref<ControlAuditEvent[]>([]);
 const system = ref<ControlSystemInfo | null>(null);
 const policy = ref<Record<string, unknown> | null>(null);
 const error = ref('');
+const notice = ref('');
 const loading = ref(false);
 const username = ref('');
 const password = ref('');
 const role = ref<ControlUserRole>('user');
 const remark = ref('');
 const requestIdFilter = ref('');
+const remarkDrafts = ref<Record<string, string>>({});
 
 const capabilitySummary = computed(() => ({
   total: API_CAPABILITIES.length,
@@ -49,6 +51,7 @@ async function refresh(): Promise<void> {
       control.policySummary()
     ]);
     users.value = userPage.items;
+    remarkDrafts.value = Object.fromEntries(userPage.items.map((user) => [user.id, user.remark ?? '']));
     auditEvents.value = auditPage.items;
     system.value = systemInfo;
     policy.value = policyInfo;
@@ -79,18 +82,61 @@ async function createUser(): Promise<void> {
 }
 
 async function toggleStatus(user: ControlUser): Promise<void> {
+  return updateUser(user, { status: user.status === 'active' ? 'disabled' : 'active' });
+}
+
+async function toggleRole(user: ControlUser): Promise<void> {
+  return updateUser(user, { role: user.role === 'admin' ? 'user' : 'admin' });
+}
+
+async function saveRemark(user: ControlUser): Promise<void> {
+  const remarkValue = remarkDrafts.value[user.id]?.trim() ?? '';
+  return updateUser(user, { remark: remarkValue === '' ? null : remarkValue });
+}
+
+async function updateUser(
+  user: ControlUser,
+  patch: Partial<Pick<ControlUser, 'role' | 'status' | 'remark'>>
+): Promise<void> {
   if (!control) return;
+  error.value = '';
   try {
     await control.updateUser({
       userId: user.id,
-      role: user.role,
-      status: user.status === 'active' ? 'disabled' : 'active',
+      role: patch.role ?? user.role,
+      status: patch.status ?? user.status,
       revision: user.revision,
-      remark: user.remark
+      remark: patch.remark === undefined ? user.remark : patch.remark
     });
     await refresh();
   } catch (cause: unknown) {
     error.value = cause instanceof Error ? cause.message : '更新用户失败';
+  }
+}
+
+async function resetPassword(user: ControlUser): Promise<void> {
+  if (!control) return;
+  error.value = '';
+  try {
+    const result = await control.resetPassword(user.id, user.revision);
+    notice.value = result.temporaryPassword
+      ? `${user.username} 的一次性临时密码：${result.temporaryPassword}（仅显示本次，请安全转交）`
+      : `${user.username} 的密码已重置`;
+    await refresh();
+  } catch (cause: unknown) {
+    error.value = cause instanceof Error ? cause.message : '重置密码失败';
+  }
+}
+
+async function revokeSessions(user: ControlUser): Promise<void> {
+  if (!control) return;
+  error.value = '';
+  try {
+    await control.revokeSessions(user.id);
+    notice.value = `${user.username} 的所有会话已撤销`;
+    await refresh();
+  } catch (cause: unknown) {
+    error.value = cause instanceof Error ? cause.message : '撤销会话失败';
   }
 }
 
@@ -124,6 +170,12 @@ function formatTime(value: number): string {
 
   <p v-if="error" class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
     {{ error }}
+  </p>
+  <p
+    v-if="notice"
+    class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"
+  >
+    {{ notice }}
   </p>
 
   <template v-if="control">
@@ -162,17 +214,31 @@ function formatTime(value: number): string {
             </thead>
             <tbody>
               <tr v-for="user in users" :key="user.id" class="border-t">
-                <td class="p-3">
+                <td class="min-w-56 p-3">
                   <p class="font-medium">{{ user.username }}</p>
-                  <p class="text-xs text-muted-foreground">{{ user.remark || '无备注' }}</p>
+                  <div class="mt-1 flex gap-1">
+                    <Input
+                      :model-value="remarkDrafts[user.id] ?? ''"
+                      class="h-8"
+                      placeholder="备注"
+                      @update:model-value="remarkDrafts[user.id] = $event"
+                    />
+                    <Button variant="ghost" size="sm" @click="saveRemark(user)">保存</Button>
+                  </div>
                 </td>
-                <td class="p-3">{{ user.role }}</td>
+                <td class="p-3">
+                  <Button variant="outline" size="sm" @click="toggleRole(user)">{{ user.role }}</Button>
+                </td>
                 <td class="p-3">{{ user.status }}</td>
                 <td class="p-3">{{ user.revision }}</td>
                 <td class="p-3">
-                  <Button variant="outline" size="sm" @click="toggleStatus(user)">{{
-                    user.status === 'active' ? '停用' : '启用'
-                  }}</Button>
+                  <div class="flex flex-wrap gap-1">
+                    <Button variant="outline" size="sm" @click="toggleStatus(user)">{{
+                      user.status === 'active' ? '停用' : '启用'
+                    }}</Button>
+                    <Button variant="outline" size="sm" @click="resetPassword(user)">重置密码</Button>
+                    <Button variant="outline" size="sm" @click="revokeSessions(user)">撤销会话</Button>
+                  </div>
                 </td>
               </tr>
             </tbody>

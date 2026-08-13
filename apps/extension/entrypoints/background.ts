@@ -159,9 +159,9 @@ async function handleCredentialVaultRequest(
   try {
     await storageAccessReady;
     const data = await executeCredentialVaultOperation(message.operation, message.payload);
-    return { id: message.id, ok: true, data };
+    return { requestId: message.requestId, ok: true, data };
   } catch (error: unknown) {
-    return { id: message.id, ok: false, error: normalizeVaultError(error) };
+    return { requestId: message.requestId, ok: false, error: normalizeVaultError(error) };
   }
 }
 
@@ -688,7 +688,7 @@ async function loadSettings(): Promise<GatewaySettings> {
 }
 
 function asCredentialVaultRequest(value: unknown): CredentialVaultRequest | null {
-  if (!isRecord(value) || value.kind !== 'credential-vault-request' || typeof value.id !== 'string') {
+  if (!isRecord(value) || value.kind !== 'credential-vault-request' || !isRequestId(value.requestId)) {
     return null;
   }
   if (

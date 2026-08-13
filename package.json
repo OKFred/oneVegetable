@@ -51,6 +51,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "pnpm build:extension && playwright test",
+    "smoke:local-auth": "node scripts/smoke-local-auth.mjs",
     "check": "pnpm run format:check && pnpm run lint && pnpm run check:openapi && pnpm run audit:apis:check && pnpm run typecheck && pnpm run test && pnpm run build",
     "prepare": "husky"
   },

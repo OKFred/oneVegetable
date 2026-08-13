@@ -76,12 +76,19 @@ async function requestVault<K extends CredentialVaultOperation>(
   payload: VaultOperationMap[K]['request']
 ): Promise<VaultOperationMap[K]['response']> {
   const message: CredentialVaultRequest = {
-    id: crypto.randomUUID(),
+    requestId: crypto.randomUUID(),
     kind: 'credential-vault-request',
     operation,
     ...(payload === undefined ? {} : { payload })
   };
   const response: CredentialVaultResponse = await browser.runtime.sendMessage(message);
+  if (response.requestId !== message.requestId) {
+    throw new GatewayException({
+      code: 'INVALID_RUNTIME_RESPONSE',
+      message: '保险库响应 requestId 不匹配',
+      retryable: false
+    });
+  }
   if (!response.ok) throw new GatewayException(response.error);
   return response.data as VaultOperationMap[K]['response'];
 }

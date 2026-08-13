@@ -16,7 +16,8 @@
     "ONE_VEGETABLE_API_PREFIX": "/api/v1",
     "ONE_VEGETABLE_ENVIRONMENT": "local-worker",
     "ONE_VEGETABLE_GATEWAY_MODE": "mock",
-    "ONE_VEGETABLE_CORS_ORIGINS": "http://localhost:5173"
+    "ONE_VEGETABLE_CORS_ORIGINS": "http://localhost:5173",
+    "ONE_VEGETABLE_MUTATION_FLAGS": ""
   },
   "env": {
     "staging": {
@@ -25,7 +26,8 @@
         "ONE_VEGETABLE_API_PREFIX": "/api/v1",
         "ONE_VEGETABLE_ENVIRONMENT": "staging",
         "ONE_VEGETABLE_GATEWAY_MODE": "mock",
-        "ONE_VEGETABLE_CORS_ORIGINS": "https://staging.example.invalid"
+        "ONE_VEGETABLE_CORS_ORIGINS": "https://staging.example.invalid",
+        "ONE_VEGETABLE_MUTATION_FLAGS": ""
       },
       "d1_databases": [
         {
@@ -43,7 +45,8 @@
         "ONE_VEGETABLE_API_PREFIX": "/api/v1",
         "ONE_VEGETABLE_ENVIRONMENT": "production",
         "ONE_VEGETABLE_GATEWAY_MODE": "disabled",
-        "ONE_VEGETABLE_CORS_ORIGINS": "https://app.example.invalid"
+        "ONE_VEGETABLE_CORS_ORIGINS": "https://app.example.invalid",
+        "ONE_VEGETABLE_MUTATION_FLAGS": ""
       },
       "d1_databases": [
         {

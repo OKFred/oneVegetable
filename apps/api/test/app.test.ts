@@ -98,6 +98,7 @@ describe('shared Hono API', () => {
       }
     });
     expect(allowed.headers.get('Access-Control-Allow-Origin')).toBe('https://web.example.com');
+    expect(allowed.headers.get('Access-Control-Allow-Headers')).toContain('X-Request-ID');
 
     const denied = await app.request('/api/v1/meta/get', {
       method: 'OPTIONS',

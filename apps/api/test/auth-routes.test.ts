@@ -77,6 +77,36 @@ describe('authentication and ABAC routes', () => {
     expect(JSON.stringify(await response.json())).not.toContain('password');
   });
 
+  it('rejects weak passwords and oversized remarks as contract errors', async () => {
+    const { app } = fixture();
+    const weak = await app.request('/api/v1/auth/bootstrap', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        requestId: createRequestId(),
+        bootstrapToken: 'bootstrap-secret-that-is-long',
+        username: 'admin',
+        password: 'short'
+      })
+    });
+    expect(weak.status).toBe(400);
+    await expect(weak.json()).resolves.toMatchObject({ error: { code: 'INVALID_PASSWORD' } });
+
+    const remark = await app.request('/api/v1/auth/bootstrap', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        requestId: createRequestId(),
+        bootstrapToken: 'bootstrap-secret-that-is-long',
+        username: 'admin',
+        password: 'correct-password-value',
+        remark: '菜'.repeat(501)
+      })
+    });
+    expect(remark.status).toBe(400);
+    await expect(remark.json()).resolves.toMatchObject({ error: { code: 'INVALID_REMARK' } });
+  });
+
   it('requires a session for reads and CSRF plus a valid Origin for mutations', async () => {
     const { app, authService } = fixture();
     const login = await bootstrap(authService);

@@ -376,14 +376,14 @@ export type CredentialVaultOperation =
   'status' | 'get-settings' | 'create' | 'migrate' | 'unlock' | 'lock' | 'save' | 'rotate' | 'update-policy';
 
 export interface CredentialVaultRequest {
-  id: string;
+  requestId: string;
   kind: 'credential-vault-request';
   operation: CredentialVaultOperation;
   payload?: unknown;
 }
 
 export type CredentialVaultResponse =
-  { id: string; ok: true; data: unknown } | { id: string; ok: false; error: GatewayError };
+  { requestId: string; ok: true; data: unknown } | { requestId: string; ok: false; error: GatewayError };
 
 export interface HostPermissionsRepository {
   list(): Promise<string[]>;

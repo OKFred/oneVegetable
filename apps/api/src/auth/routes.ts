@@ -1,6 +1,6 @@
 import { getCookie, setCookie } from 'hono/cookie';
 
-import { isRequestId } from '@one-vegetable/core';
+import { isRequestId, normalizeRemark } from '@one-vegetable/core';
 import { authorizeAdmin, policySummary } from '../abac';
 import { AuthError } from './service';
 
@@ -30,12 +30,12 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
   api.post('/auth/bootstrap', async (context) => {
     return handle(context, async () => {
       const body = await readBody(context, ['requestId', 'bootstrapToken', 'username', 'password', 'remark']);
-      const remark = readOptionalNullableString(body, 'remark');
+      const remark = readOptionalRemark(body, 'remark');
       const result = await options.authService.bootstrap({
         requestId: readRequestId(body),
         bootstrapToken: readString(body, 'bootstrapToken'),
         username: readString(body, 'username'),
-        password: readString(body, 'password'),
+        password: readPassword(body, 'password'),
         ...(remark !== undefined ? { remark } : {})
       });
       setSessionCookies(context, options, result.sessionToken, result.session.csrfToken);
@@ -53,7 +53,7 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
       const result = await options.authService.login({
         requestId,
         username: readString(body, 'username'),
-        password: readString(body, 'password')
+        password: readPassword(body, 'password')
       });
       setSessionCookies(context, options, result.sessionToken, result.session.csrfToken);
       return success(context, requestId, { user: result.user, session: result.session });
@@ -93,8 +93,8 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
       await options.authService.changePassword({
         requestId,
         authenticated,
-        currentPassword: readString(body, 'currentPassword'),
-        newPassword: readString(body, 'newPassword')
+        currentPassword: readPassword(body, 'currentPassword'),
+        newPassword: readPassword(body, 'newPassword')
       });
       clearSessionCookies(context, options);
       return success(context, requestId, {});
@@ -117,12 +117,12 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
       context,
       options,
       async (body, authenticated) => {
-        const remark = readOptionalNullableString(body, 'remark');
+        const remark = readOptionalRemark(body, 'remark');
         return options.adminService.createUser({
           requestId: readRequestId(body),
           actor: authenticated.principal,
           username: readString(body, 'username'),
-          password: readString(body, 'password'),
+          password: readPassword(body, 'password'),
           role: readEnum(body, 'role', ['admin', 'user']),
           ...(remark !== undefined ? { remark } : {})
         });
@@ -143,7 +143,7 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
           role: readEnum<UserRole>(body, 'role', ['admin', 'user']),
           status: readEnum<UserStatus>(body, 'status', ['active', 'disabled']),
           expectedRevision: readInteger(body, 'revision'),
-          remark: readNullableString(body, 'remark')
+          remark: readRemark(body, 'remark')
         }),
       ['requestId', 'userId', 'role', 'status', 'revision', 'remark']
     );
@@ -159,7 +159,7 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
           actor: authenticated.principal,
           userId: readString(body, 'userId'),
           expectedRevision: readInteger(body, 'revision'),
-          ...(typeof body.newPassword === 'string' ? { newPassword: body.newPassword } : {})
+          ...(body.newPassword === undefined ? {} : { newPassword: readPassword(body, 'newPassword') })
         }),
       ['requestId', 'userId', 'revision', 'newPassword']
     );
@@ -330,8 +330,25 @@ function readNullableString(body: Record<string, unknown>, key: string): string 
   return readString(body, key);
 }
 
-function readOptionalNullableString(body: Record<string, unknown>, key: string): string | null | undefined {
-  return body[key] === undefined ? undefined : readNullableString(body, key);
+function readOptionalRemark(body: Record<string, unknown>, key: string): string | null | undefined {
+  return body[key] === undefined ? undefined : readRemark(body, key);
+}
+
+function readRemark(body: Record<string, unknown>, key: string): string | null {
+  try {
+    return normalizeRemark(readNullableString(body, key));
+  } catch {
+    throw new AuthError('INVALID_REMARK', 'remark 不能超过 500 个 Unicode 字符', 400);
+  }
+}
+
+function readPassword(body: Record<string, unknown>, key: string): string {
+  const password = readString(body, key);
+  const bytes = new TextEncoder().encode(password).byteLength;
+  if (bytes < 12 || bytes > 256) {
+    throw new AuthError('INVALID_PASSWORD', '密码必须为 12–256 UTF-8 字节', 400);
+  }
+  return password;
 }
 
 function readInteger(body: Record<string, unknown>, key: string): number {
@@ -370,7 +387,7 @@ async function handle(context: Context, action: () => Promise<Response>): Promis
     }
     return failure(context, requestId, 500, {
       code: 'INTERNAL_ERROR',
-      message: error instanceof Error ? error.message : '内部错误',
+      message: '内部错误',
       retryable: false
     });
   }

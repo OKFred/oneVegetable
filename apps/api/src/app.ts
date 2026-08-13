@@ -83,7 +83,7 @@ export function createApiApp(options: ApiAppOptions): Hono {
     cors({
       origin: [...(options.allowedOrigins ?? [])],
       allowMethods: ['GET', 'POST', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'X-CSRF-Token'],
+      allowHeaders: ['Content-Type', 'X-CSRF-Token', 'X-Request-ID'],
       exposeHeaders: ['X-Request-ID'],
       credentials: true,
       maxAge: 600
