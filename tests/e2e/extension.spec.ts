@@ -39,6 +39,19 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByRole('heading', { name: '先确认数据与调用边界' })).toBeVisible();
   await expect(page.getByRole('button', { name: '开始使用' })).toBeDisabled();
   await expect(page.getByRole('link', { name: '查看隐私说明' })).toHaveAttribute('href', '/privacy.html');
+  const diagnosticsBeforeConsent = await page.evaluate(async () => {
+    const extension = (
+      globalThis as unknown as {
+        chrome: { runtime: { sendMessage(value: object): Promise<unknown> } };
+      }
+    ).chrome;
+    return extension.runtime.sendMessage({
+      id: 'diagnostics-before-consent-e2e',
+      kind: 'gateway-request',
+      operation: 'getDiagnostics'
+    });
+  });
+  expect(diagnosticsBeforeConsent).toMatchObject({ ok: true, data: { entries: [] } });
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: '开始使用' }).click();
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();

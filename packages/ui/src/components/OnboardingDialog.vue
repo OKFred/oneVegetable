@@ -6,6 +6,7 @@ import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
 import { useServices } from '../lib/services';
 
+const emit = defineEmits<{ ready: [] }>();
 const { onboarding, mode } = useServices();
 const visible = ref(false);
 const acknowledged = ref(false);
@@ -14,9 +15,13 @@ const error = ref('');
 const available = computed(() => mode === 'extension' && onboarding !== undefined);
 
 onMounted(async () => {
-  if (!available.value || !onboarding) return;
+  if (!available.value || !onboarding) {
+    emit('ready');
+    return;
+  }
   try {
     visible.value = (await onboarding.load()).completedAt === null;
+    if (!visible.value) emit('ready');
   } catch (reason: unknown) {
     visible.value = true;
     error.value = reason instanceof Error ? reason.message : '首次使用状态读取失败';
@@ -30,6 +35,7 @@ async function finish(): Promise<void> {
   try {
     await onboarding.complete();
     visible.value = false;
+    emit('ready');
   } catch (reason: unknown) {
     error.value = reason instanceof Error ? reason.message : '首次使用状态保存失败';
   } finally {
