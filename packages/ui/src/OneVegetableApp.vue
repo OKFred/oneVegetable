@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, type Component } from 'vue';
+import { computed, defineAsyncComponent, ref, type Component } from 'vue';
 import {
   BarChart3,
   Boxes,
@@ -16,15 +16,6 @@ import {
 
 import type { GatewayClient, SettingsRepository } from '@one-vegetable/core';
 
-import DashboardView from './views/DashboardView.vue';
-import ProductsView from './views/ProductsView.vue';
-import PhotosView from './views/PhotosView.vue';
-import OrdersView from './views/OrdersView.vue';
-import CapabilitiesView from './views/CapabilitiesView.vue';
-import SettingsView from './views/SettingsView.vue';
-import RfqsView from './views/RfqsView.vue';
-import LogisticsView from './views/LogisticsView.vue';
-import InsightsView from './views/InsightsView.vue';
 import Button from './components/ui/Button.vue';
 import { provideServices } from './lib/services';
 
@@ -64,15 +55,15 @@ const items: NavigationItem[] = [
 const page = ref<PageId>('dashboard');
 const sidebarOpen = ref(false);
 const views: Record<PageId, Component> = {
-  dashboard: DashboardView,
-  products: ProductsView,
-  photos: PhotosView,
-  rfqs: RfqsView,
-  orders: OrdersView,
-  logistics: LogisticsView,
-  insights: InsightsView,
-  capabilities: CapabilitiesView,
-  settings: SettingsView
+  dashboard: defineAsyncComponent(() => import('./views/DashboardView.vue')),
+  products: defineAsyncComponent(() => import('./views/ProductsView.vue')),
+  photos: defineAsyncComponent(() => import('./views/PhotosView.vue')),
+  rfqs: defineAsyncComponent(() => import('./views/RfqsView.vue')),
+  orders: defineAsyncComponent(() => import('./views/OrdersView.vue')),
+  logistics: defineAsyncComponent(() => import('./views/LogisticsView.vue')),
+  insights: defineAsyncComponent(() => import('./views/InsightsView.vue')),
+  capabilities: defineAsyncComponent(() => import('./views/CapabilitiesView.vue')),
+  settings: defineAsyncComponent(() => import('./views/SettingsView.vue'))
 };
 const activeView = computed(() => views[page.value]);
 </script>
