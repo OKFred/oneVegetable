@@ -157,7 +157,7 @@ async function clearDiagnostics(): Promise<void> {
             仅保留最近 100 条操作名、耗时、错误码和 traceId；不记录请求参数、凭证或响应正文。
           </p>
         </div>
-        <span class="rounded-full bg-muted px-3 py-1 text-xs">
+        <span aria-label="诊断记录数量" class="rounded-full bg-muted px-3 py-1 text-xs">
           {{ diagnostics?.entries.length ?? 0 }} 条
         </span>
       </div>

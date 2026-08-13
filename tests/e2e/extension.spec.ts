@@ -1,4 +1,4 @@
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
@@ -8,6 +8,16 @@ let context: BrowserContext;
 
 test.beforeAll(async () => {
   const extensionPath = resolve(import.meta.dirname, '../../apps/extension/.output/chrome-mv3');
+  const manifest = JSON.parse(await readFile(resolve(extensionPath, 'manifest.json'), 'utf8')) as {
+    host_permissions?: string[];
+    optional_host_permissions?: string[];
+    permissions?: string[];
+  };
+  expect(manifest.permissions).toEqual(['storage']);
+  expect(manifest.host_permissions).toEqual(['https://eco.taobao.com/*']);
+  expect(manifest.optional_host_permissions).toEqual(['http://*/*', 'https://*/*']);
+  expect(manifest.permissions).not.toContain('cookies');
+  expect(manifest.host_permissions).not.toContain('<all_urls>');
   const userDataDir = await mkdtemp(resolve(tmpdir(), 'one-vegetable-e2e-'));
   context = await chromium.launchPersistentContext(userDataDir, {
     headless: false,
@@ -62,6 +72,47 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   expect(qualificationError).toMatchObject({
     ok: false,
     error: { code: 'LOGISTICS_QUALIFICATION_REQUIRED' }
+  });
+
+  const diagnosticsBeforeRestart = await page.evaluate(async () => {
+    const extension = (
+      globalThis as unknown as {
+        chrome: { runtime: { sendMessage(value: object): Promise<unknown> } };
+      }
+    ).chrome;
+    return extension.runtime.sendMessage({
+      id: 'diagnostics-before-restart-e2e',
+      kind: 'gateway-request',
+      operation: 'getDiagnostics'
+    });
+  });
+  expect(diagnosticsBeforeRestart).toMatchObject({ ok: true });
+  expect(JSON.stringify(diagnosticsBeforeRestart)).not.toContain('e2e-secret');
+  expect(JSON.stringify(diagnosticsBeforeRestart)).not.toContain('e2e-token');
+  const entriesBeforeRestart = (diagnosticsBeforeRestart as { data: { entries: unknown[] } }).data.entries;
+
+  const cdp = await context.newCDPSession(page);
+  const { targetInfos } = await cdp.send('Target.getTargets');
+  const serviceWorkerTarget = targetInfos.find(
+    (target) => target.type === 'service_worker' && target.url === serviceWorker.url()
+  );
+  if (!serviceWorkerTarget) throw new Error('MV3 service worker target was not found');
+  await cdp.send('Target.closeTarget', { targetId: serviceWorkerTarget.targetId });
+  const diagnosticsAfterRestart = await page.evaluate(async () => {
+    const extension = (
+      globalThis as unknown as {
+        chrome: { runtime: { sendMessage(value: object): Promise<unknown> } };
+      }
+    ).chrome;
+    return extension.runtime.sendMessage({
+      id: 'diagnostics-after-restart-e2e',
+      kind: 'gateway-request',
+      operation: 'getDiagnostics'
+    });
+  });
+  expect(diagnosticsAfterRestart).toMatchObject({
+    ok: true,
+    data: { entries: entriesBeforeRestart }
   });
 
   await page.getByRole('button', { name: 'API 能力' }).click();
@@ -206,4 +257,23 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   });
   expect(partnerCapabilityError).toMatchObject({ ok: false });
   expect(JSON.stringify(partnerCapabilityError)).toContain('CGS 小满签约客户');
+
+  await page.getByRole('button', { name: '设置' }).click();
+  await expect(page.getByRole('heading', { name: '脱敏诊断' })).toBeVisible();
+  await expect(page.getByLabel('诊断记录数量')).toContainText(/\d+ 条/u);
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: '导出诊断' }).click();
+  const download = await downloadPromise;
+  const downloadPath = await download.path();
+  if (!downloadPath) throw new Error('Diagnostics download has no local path');
+  const exportedDiagnostics = await readFile(downloadPath, 'utf8');
+  expect(exportedDiagnostics).not.toContain('e2e-secret');
+  expect(exportedDiagnostics).not.toContain('e2e-token');
+  const snapshot = JSON.parse(exportedDiagnostics) as { entries: unknown[] };
+  expect(snapshot.entries.length).toBeGreaterThan(0);
+  expect(snapshot.entries.length).toBeLessThanOrEqual(100);
+
+  await page.getByRole('button', { name: '清空诊断' }).click();
+  await expect(page.getByText('诊断记录已清空。')).toBeVisible();
+  await expect(page.getByText('0 条', { exact: true })).toBeVisible();
 });

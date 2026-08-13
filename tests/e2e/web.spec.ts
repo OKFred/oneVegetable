@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+
 import { expect, test } from '@playwright/test';
 
 test('web mock exposes the migrated operations workspace', async ({ page }) => {
@@ -197,4 +199,28 @@ test('web mock exposes the final platform contracts with protocol safeguards', a
   await expect(page.getByLabel('调用参数 JSON')).toHaveValue(/ONE_VEGETABLE/);
   await page.getByRole('button', { name: '调用能力' }).click();
   await expect(page.getByText(/"file_url"/)).toBeVisible();
+});
+
+test('web mock exports and clears the typed diagnostics snapshot', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '设置' }).click();
+  await expect(page.getByRole('heading', { name: '脱敏诊断' })).toBeVisible();
+  await expect(page.getByText('1 条', { exact: true })).toBeVisible();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: '导出诊断' }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^one-vegetable-diagnostics-\d{4}-\d{2}-\d{2}\.json$/u);
+  const downloadPath = await download.path();
+  if (!downloadPath) throw new Error('Diagnostics download has no local path');
+  const snapshot = JSON.parse(await readFile(downloadPath, 'utf8')) as {
+    entries: unknown[];
+    extensionVersion: string;
+  };
+  expect(snapshot.extensionVersion).toBe('2.0.0-mock');
+  expect(snapshot.entries).toHaveLength(1);
+
+  await page.getByRole('button', { name: '清空诊断' }).click();
+  await expect(page.getByText('诊断记录已清空。')).toBeVisible();
+  await expect(page.getByText('0 条', { exact: true })).toBeVisible();
 });
