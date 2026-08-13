@@ -30,6 +30,7 @@ const eagerOptionBytes = eagerOptionFiles.reduce(
   (total, file) => total + (sizes.find((entry) => entry.file === file)?.size ?? 0),
   0
 );
+const totalBytes = sizes.reduce((total, entry) => total + entry.size, 0);
 
 const errors: string[] = [];
 if (!background || background.size > 1_800_000) {
@@ -41,6 +42,8 @@ for (const chunk of eagerPageChunks) {
 if (eagerOptionBytes > 250_000) {
   errors.push(`Options eager JavaScript exceeds 250 KB: ${eagerOptionBytes}`);
 }
+if (totalBytes > 3_200_000) errors.push(`Unpacked extension exceeds 3.2 MB: ${totalBytes}`);
+if (sizes.some((entry) => entry.file.endsWith('.map'))) errors.push('Production source maps are not allowed');
 if (manifest.permissions?.includes('cookies')) errors.push('cookies permission is not allowed');
 if (manifest.host_permissions?.includes('<all_urls>'))
   errors.push('<all_urls> must not be a required host permission');
@@ -49,7 +52,7 @@ if (!manifest.host_permissions?.includes('https://eco.taobao.com/*')) {
 }
 
 process.stdout.write(
-  `${largest.map((entry) => `${entry.file}\t${entry.size}`).join('\n')}\noptions eager JS\t${eagerOptionBytes}\n${sizes.length} extension files checked\n`
+  `${largest.map((entry) => `${entry.file}\t${entry.size}`).join('\n')}\noptions eager JS\t${eagerOptionBytes}\nunpacked total\t${totalBytes}\n${sizes.length} extension files checked\n`
 );
 if (errors.length > 0) throw new Error(errors.join('\n'));
 

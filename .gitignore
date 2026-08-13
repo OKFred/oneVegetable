@@ -8,6 +8,7 @@ coverage/
 .wxt/
 playwright-report/
 test-results/
+artifacts/
 *.log
 .env
 .env.*
