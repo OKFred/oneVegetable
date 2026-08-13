@@ -7,6 +7,7 @@ import {
 
 import type {
   CapabilityCallRequest,
+  DiagnosticEntry,
   GatewayClient,
   LogisticsOrderSummary,
   OperationId,
@@ -163,6 +164,24 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
     pendingOrderCount: 6,
     enabledCapabilityCount: listCapabilities().filter((item) => item.enabled).length
   },
+  getDiagnostics: {
+    generatedAt: '2026-08-13T04:00:00.000Z',
+    extensionVersion: '2.0.0-mock',
+    entries: [
+      {
+        id: 'mock-diagnostic-1',
+        timestamp: '2026-08-13T03:59:59.000Z',
+        operation: 'listProducts',
+        method: 'alibaba.icbu.product.list',
+        outcome: 'success',
+        durationMs: 42,
+        errorCode: null,
+        errorMessage: null,
+        traceId: 'mock-trace-products'
+      }
+    ]
+  },
+  clearDiagnostics: undefined,
   listProducts: { items: PRODUCTS, page: 1, pageSize: 20, total: 128 },
   getProduct: {
     ...PRIMARY_PRODUCT,
@@ -607,6 +626,7 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
 
 export class MockGatewayClient implements GatewayClient {
   private photoGroups: PhotoGroup[] = structuredClone(MOCK_DATA.listPhotoGroups);
+  private diagnostics: DiagnosticEntry[] = structuredClone(MOCK_DATA.getDiagnostics.entries);
 
   constructor(private readonly latency = 160) {}
 
@@ -626,6 +646,17 @@ export class MockGatewayClient implements GatewayClient {
           xml: descriptionSchemaVariant('legacy')
         } as ResponseOf<K>;
       }
+    }
+    if (operation === 'getDiagnostics') {
+      return {
+        generatedAt: new Date().toISOString(),
+        extensionVersion: '2.0.0-mock',
+        entries: structuredClone(this.diagnostics)
+      };
+    }
+    if (operation === 'clearDiagnostics') {
+      this.diagnostics = [];
+      return undefined;
     }
     if (operation === 'getCapabilityDefinition') {
       const payload = _request as OperationMap['getCapabilityDefinition']['request'];

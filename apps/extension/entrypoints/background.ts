@@ -11,12 +11,15 @@ import {
   listCapabilities,
   LogisticsAdapter,
   normalizeGatewayError,
+  sanitizeDiagnosticMessage,
   PhotoAdapter,
   RfqAdapter,
   TradeAdapter,
   validateCapabilityRequest,
   validateCapabilityResponse,
   type ApiCapability,
+  type DiagnosticEntry,
+  type DiagnosticsSnapshot,
   type GatewaySettings,
   type OperationId,
   type RequestOf,
@@ -28,6 +31,8 @@ import { ProductAdapter } from '../lib/product-adapter';
 
 const OPERATIONS = new Set<OperationId>([
   'getDashboard',
+  'getDiagnostics',
+  'clearDiagnostics',
   'listProducts',
   'getProduct',
   'getProductSchema',
@@ -125,16 +130,48 @@ export default defineBackground(() => {
 });
 
 async function handleRequest(message: RuntimeRequest): Promise<RuntimeResponse> {
+  if (message.operation === 'getDiagnostics' || message.operation === 'clearDiagnostics') {
+    try {
+      const data = await executeOperation(message.operation, message.payload);
+      return { id: message.id, ok: true, data } as RuntimeResponse;
+    } catch (error: unknown) {
+      return { id: message.id, ok: false, error: normalizeGatewayError(error) };
+    }
+  }
+  const startedAt = performance.now();
   try {
     const data = await executeOperation(message.operation, message.payload);
+    await safelyRecordDiagnostic({
+      operation: message.operation,
+      method: diagnosticMethod(message.operation, message.payload),
+      outcome: 'success',
+      durationMs: Math.max(0, Math.round(performance.now() - startedAt)),
+      errorCode: null,
+      errorMessage: null,
+      traceId: readResultTraceId(data)
+    });
     return { id: message.id, ok: true, data } as RuntimeResponse;
   } catch (error: unknown) {
     const normalized = normalizeGatewayError(error);
+    await safelyRecordDiagnostic({
+      operation: message.operation,
+      method: diagnosticMethod(message.operation, message.payload),
+      outcome: 'error',
+      durationMs: Math.max(0, Math.round(performance.now() - startedAt)),
+      errorCode: normalized.code,
+      errorMessage: sanitizeDiagnosticMessage(normalized.message),
+      traceId: normalized.traceId ?? null
+    });
     return { id: message.id, ok: false, error: normalized };
   }
 }
 
 async function executeOperation(operation: OperationId, payload: unknown): Promise<unknown> {
+  if (operation === 'getDiagnostics') return getDiagnostics();
+  if (operation === 'clearDiagnostics') {
+    await clearDiagnostics();
+    return undefined;
+  }
   if (operation === 'listCapabilities') return listCapabilities();
   if (operation === 'getCapabilityDefinition') {
     const definition = getCapabilityDefinition(requiredString(asRecord(payload), 'method'));
@@ -158,7 +195,7 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
       retryable: false
     });
   }
-  const client = new AlibabaClient(settings);
+  const client = await AlibabaClient.create(settings);
   const products = new ProductAdapter(client);
   const rfqs = new RfqAdapter(client);
   const trades = new TradeAdapter(client);
@@ -370,6 +407,85 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
       };
     }
   }
+}
+
+const DIAGNOSTICS_KEY = 'diagnosticEntries';
+const MAX_DIAGNOSTIC_ENTRIES = 100;
+let diagnosticsWrite = Promise.resolve();
+
+type DiagnosticInput = Omit<DiagnosticEntry, 'id' | 'timestamp'>;
+
+async function safelyRecordDiagnostic(input: DiagnosticInput): Promise<void> {
+  try {
+    await recordDiagnostic(input);
+  } catch (error: unknown) {
+    console.warn('[oneVegetable] diagnostic write failed', normalizeGatewayError(error).code);
+  }
+}
+
+function recordDiagnostic(input: DiagnosticInput): Promise<void> {
+  diagnosticsWrite = diagnosticsWrite
+    .catch(() => undefined)
+    .then(async () => {
+      const stored = await browser.storage.session.get(DIAGNOSTICS_KEY);
+      const entries = diagnosticEntries(stored[DIAGNOSTICS_KEY]);
+      entries.push({ id: crypto.randomUUID(), timestamp: new Date().toISOString(), ...input });
+      await browser.storage.session.set({
+        [DIAGNOSTICS_KEY]: entries.slice(-MAX_DIAGNOSTIC_ENTRIES)
+      });
+    });
+  return diagnosticsWrite;
+}
+
+async function getDiagnostics(): Promise<DiagnosticsSnapshot> {
+  await diagnosticsWrite;
+  const stored = await browser.storage.session.get(DIAGNOSTICS_KEY);
+  return {
+    generatedAt: new Date().toISOString(),
+    extensionVersion: browser.runtime.getManifest().version,
+    entries: diagnosticEntries(stored[DIAGNOSTICS_KEY])
+  };
+}
+
+async function clearDiagnostics(): Promise<void> {
+  await diagnosticsWrite;
+  await browser.storage.session.remove(DIAGNOSTICS_KEY);
+}
+
+function diagnosticEntries(value: unknown): DiagnosticEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => (isDiagnosticEntry(entry) ? [entry] : [])).slice(-MAX_DIAGNOSTIC_ENTRIES);
+}
+
+function isDiagnosticEntry(value: unknown): value is DiagnosticEntry {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.id === 'string' &&
+    typeof value.timestamp === 'string' &&
+    typeof value.operation === 'string' &&
+    (typeof value.method === 'string' || value.method === null) &&
+    (value.outcome === 'success' || value.outcome === 'error') &&
+    typeof value.durationMs === 'number' &&
+    (typeof value.errorCode === 'string' || value.errorCode === null) &&
+    (typeof value.errorMessage === 'string' || value.errorMessage === null) &&
+    (typeof value.traceId === 'string' || value.traceId === null)
+  );
+}
+
+function diagnosticMethod(operation: OperationId, payload: unknown): string | null {
+  if (operation === 'callCapability') return readString(asRecord(payload), ['method']) ?? null;
+  const methods: Partial<Record<OperationId, string>> = {
+    listProducts: 'alibaba.icbu.product.list',
+    listPhotoGroups: 'alibaba.icbu.photobank.group.list',
+    listPhotos: 'alibaba.icbu.photobank.list',
+    listTradeOrders: 'alibaba.seller.order.list',
+    listRfqs: 'alibaba.icbu.rfq.search'
+  };
+  return methods[operation] ?? null;
+}
+
+function readResultTraceId(value: unknown): string | null {
+  return readString(asRecord(value), ['traceId', 'trace_id', 'request_id']) ?? null;
 }
 
 async function loadSettings(): Promise<GatewaySettings> {

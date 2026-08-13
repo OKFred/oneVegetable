@@ -38,6 +38,29 @@
         }
       }
     },
+    "/diagnostics": {
+      "get": {
+        "summary": "Get sanitized extension diagnostics",
+        "operationId": "getDiagnostics",
+        "responses": {
+          "200": {
+            "description": "Sanitized diagnostics snapshot",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/DiagnosticsSnapshot" } }
+            }
+          },
+          "default": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      },
+      "delete": {
+        "summary": "Clear extension diagnostics",
+        "operationId": "clearDiagnostics",
+        "responses": {
+          "204": { "description": "Diagnostics cleared" },
+          "default": { "$ref": "#/components/responses/GatewayFailure" }
+        }
+      }
+    },
     "/products": {
       "get": {
         "summary": "List products",
@@ -8741,6 +8764,46 @@
           "photoCount": { "type": "integer", "minimum": 0 },
           "pendingOrderCount": { "type": "integer", "minimum": 0 },
           "enabledCapabilityCount": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "DiagnosticEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "timestamp",
+          "operation",
+          "method",
+          "outcome",
+          "durationMs",
+          "errorCode",
+          "errorMessage",
+          "traceId"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "operation": { "type": "string" },
+          "method": { "type": ["string", "null"] },
+          "outcome": { "type": "string", "enum": ["success", "error"] },
+          "durationMs": { "type": "integer", "minimum": 0 },
+          "errorCode": { "type": ["string", "null"] },
+          "errorMessage": { "type": ["string", "null"] },
+          "traceId": { "type": ["string", "null"] }
+        }
+      },
+      "DiagnosticsSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["generatedAt", "extensionVersion", "entries"],
+        "properties": {
+          "generatedAt": { "type": "string", "format": "date-time" },
+          "extensionVersion": { "type": "string" },
+          "entries": {
+            "type": "array",
+            "maxItems": 100,
+            "items": { "$ref": "#/components/schemas/DiagnosticEntry" }
+          }
         }
       },
       "GatewayError": {

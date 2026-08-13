@@ -1,4 +1,4 @@
-import axios from 'axios';
+import type { AxiosError } from 'axios';
 
 import type { GatewayError } from './types';
 
@@ -26,10 +26,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+function isAxiosError(error: unknown): error is AxiosError<AlibabaErrorResponse> {
+  return isRecord(error) && error.isAxiosError === true;
+}
+
 export function normalizeGatewayError(error: unknown): GatewayError {
   if (error instanceof GatewayException) return error.gatewayError;
 
-  if (axios.isAxiosError<AlibabaErrorResponse>(error)) {
+  if (isAxiosError(error)) {
     const apiError = error.response?.data.error_response;
     return {
       code: apiError?.code ? String(apiError.code) : 'NETWORK_ERROR',

@@ -1,4 +1,4 @@
-import axios, { type AxiosInstance } from 'axios';
+import type { AxiosInstance } from 'axios';
 
 import { GatewayException, normalizeGatewayError } from './errors';
 import { createAlibabaRequest } from './signing';
@@ -14,9 +14,14 @@ export class AlibabaClient {
   readonly #http: AxiosInstance;
   readonly #credentials: GatewayCredentials;
 
-  constructor(credentials: GatewayCredentials, http: AxiosInstance = axios.create({ timeout: 30_000 })) {
+  constructor(credentials: GatewayCredentials, http: AxiosInstance) {
     this.#credentials = credentials;
     this.#http = http;
+  }
+
+  static async create(credentials: GatewayCredentials): Promise<AlibabaClient> {
+    const { default: axios } = await import('axios');
+    return new AlibabaClient(credentials, axios.create({ timeout: 30_000 }));
   }
 
   async call(method: string, parameters: Readonly<Record<string, unknown>>): Promise<AlibabaCallResult> {

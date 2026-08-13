@@ -1,6 +1,7 @@
 export * from './alibaba-client';
 export * from './capability-registry';
 export * from './errors';
+export * from './diagnostics';
 export * from './mock-client';
 export * from './photo-transfer';
 export * from './photo-adapter';

@@ -20,6 +20,8 @@ import type {
 } from './generated/platform-capabilities';
 
 export type DashboardSummary = components['schemas']['DashboardSummary'];
+export type DiagnosticEntry = components['schemas']['DiagnosticEntry'];
+export type DiagnosticsSnapshot = components['schemas']['DiagnosticsSnapshot'];
 export type Product = components['schemas']['Product'];
 export type ProductDetail = components['schemas']['ProductDetail'];
 export type ProductPage = components['schemas']['ProductPage'];
@@ -196,6 +198,8 @@ export interface PhotoUploadRequest {
 
 export interface OperationMap {
   getDashboard: { request: undefined; response: DashboardSummary };
+  getDiagnostics: { request: undefined; response: DiagnosticsSnapshot };
+  clearDiagnostics: { request: undefined; response: undefined };
   listProducts: { request: ProductListQuery; response: ProductPage };
   getProduct: { request: { productId: string }; response: ProductDetail };
   getProductSchema: { request: ProductSchemaRequest; response: ProductSchema };

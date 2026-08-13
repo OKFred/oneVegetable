@@ -16,6 +16,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get sanitized extension diagnostics */
+        get: operations["getDiagnostics"];
+        put?: never;
+        post?: never;
+        /** Clear extension diagnostics */
+        delete: operations["clearDiagnostics"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/products": {
         parameters: {
             query?: never;
@@ -5968,6 +5986,25 @@ export interface components {
             pendingOrderCount: number;
             enabledCapabilityCount: number;
         };
+        DiagnosticEntry: {
+            id: string;
+            /** Format: date-time */
+            timestamp: string;
+            operation: string;
+            method: string | null;
+            /** @enum {string} */
+            outcome: "success" | "error";
+            durationMs: number;
+            errorCode: string | null;
+            errorMessage: string | null;
+            traceId: string | null;
+        };
+        DiagnosticsSnapshot: {
+            /** Format: date-time */
+            generatedAt: string;
+            extensionVersion: string;
+            entries: components["schemas"]["DiagnosticEntry"][];
+        };
         GatewayError: {
             code: string;
             message: string;
@@ -6544,6 +6581,46 @@ export interface operations {
             };
             default: components["responses"]["GatewayFailure"];
             "4XX": components["responses"]["GatewayFailure"];
+        };
+    };
+    getDiagnostics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sanitized diagnostics snapshot */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiagnosticsSnapshot"];
+                };
+            };
+            default: components["responses"]["GatewayFailure"];
+        };
+    };
+    clearDiagnostics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Diagnostics cleared */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["GatewayFailure"];
         };
     };
     listProducts: {
