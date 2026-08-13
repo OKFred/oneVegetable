@@ -667,7 +667,7 @@ export class MockGatewayClient implements GatewayClient {
     }
     if (operation === 'callCapability') {
       const payload = _request as CapabilityCallRequest;
-      const requestIssues = validateCapabilityRequest(payload.method, payload.parameters);
+      const requestIssues = await validateCapabilityRequest(payload.method, payload.parameters);
       if (requestIssues.length > 0) {
         throw new Error(
           `请求契约不通过：${requestIssues.map((issue) => `${issue.instancePath} ${issue.message}`).join('；')}`
@@ -675,7 +675,7 @@ export class MockGatewayClient implements GatewayClient {
       }
       const definition = requireCapabilityDefinition(payload.method);
       const data = structuredClone(definition.responseExample);
-      const contractIssues = validateCapabilityResponse(payload.method, data);
+      const contractIssues = await validateCapabilityResponse(payload.method, data);
       return {
         method: payload.method,
         traceId: `mock-${payload.method.replaceAll('.', '-')}`,

@@ -43,13 +43,13 @@ describe('typed RFQ capability domain', () => {
     for (const { method } of snapshot.definitions) {
       const definition = getCapabilityDefinition(method);
       expect(definition).not.toBeNull();
-      expect(validateCapabilityRequest(method, definition?.requestExample)).toEqual([]);
-      expect(validateCapabilityResponse(method, definition?.responseExample)).toEqual([]);
+      expect(await validateCapabilityRequest(method, definition?.requestExample)).toEqual([]);
+      expect(await validateCapabilityResponse(method, definition?.responseExample)).toEqual([]);
     }
   });
 
-  it('enforces the documented 20-ID read-status limit', () => {
-    const issues = validateCapabilityRequest('alibaba.icbu.rfq.read', {
+  it('enforces the documented 20-ID read-status limit', async () => {
+    const issues = await validateCapabilityRequest('alibaba.icbu.rfq.read', {
       rfq_id_list: Array.from({ length: 21 }, (_, index) => `rfq-${index}`)
     });
     expect(issues.some((issue) => issue.keyword === 'maxItems')).toBe(true);

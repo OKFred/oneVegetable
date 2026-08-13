@@ -7,7 +7,7 @@ import {
   validateLogisticsQuoteRequest,
   validateProductSchemaRequest,
   validateSchemaPublishRequest
-} from '../generated/validators';
+} from '../generated/validators-core';
 
 import type {
   CapabilityCallRequest,

@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
@@ -10,8 +10,13 @@ import {
 
 describe('standalone OpenAPI validators', () => {
   it('contains no CSP-unsafe runtime code', async () => {
-    const source = await readFile(new URL('../src/generated/validators.ts', import.meta.url), 'utf8');
-    expect(source).not.toMatch(/\brequire\(|\beval\(|new Function/);
+    const directory = new URL('../src/generated/', import.meta.url);
+    const files = (await readdir(directory)).filter((file) => file.startsWith('validators-'));
+    expect(files).toHaveLength(8);
+    for (const file of files) {
+      const source = await readFile(new URL(file, directory), 'utf8');
+      expect(source, file).not.toMatch(/\brequire\(|\beval\(|new Function/);
+    }
   });
 
   it('accepts a valid Schema publishing payload', () => {

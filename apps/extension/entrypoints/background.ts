@@ -387,7 +387,7 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
       const capability = findCapability(method);
       assertCallable(capability);
       const parameters = asRecord(request.parameters);
-      const requestIssues = validateCapabilityRequest(method, parameters);
+      const requestIssues = await validateCapabilityRequest(method, parameters);
       if (requestIssues.length > 0) {
         throw new GatewayException({
           code: 'REQUEST_CONTRACT_INVALID',
@@ -397,7 +397,7 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
       }
       const call = await client.call(method, parameters);
       const data = unwrap(call.data, method);
-      const contractIssues = validateCapabilityResponse(method, data);
+      const contractIssues = await validateCapabilityResponse(method, data);
       return {
         method,
         traceId: readTraceId(call.data) ?? crypto.randomUUID(),

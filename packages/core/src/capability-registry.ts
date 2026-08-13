@@ -8,8 +8,6 @@ import { LOGISTICS_CAPABILITY_DEFINITIONS } from './generated/logistics-capabili
 import { INSIGHTS_CAPABILITY_DEFINITIONS } from './generated/insights-capabilities';
 import { PHOTO_CAPABILITY_DEFINITIONS } from './generated/photo-capabilities';
 import { PLATFORM_CAPABILITY_DEFINITIONS } from './generated/platform-capabilities';
-import * as validatorExports from './generated/validators';
-
 import type {
   ApiCapability,
   CapabilityContractIssue,
@@ -57,9 +55,12 @@ const methods: CapabilityMethod[] = [
   ...photoMethods,
   ...platformMethods
 ];
-const validators = validatorExports as unknown as Record<string, unknown>;
+type ValidatorModule = Record<string, unknown>;
 
-function validatorFor(method: string, kind: 'Request' | 'Response'): StandaloneValidator | null {
+async function validatorFor(
+  method: string,
+  kind: 'Request' | 'Response'
+): Promise<StandaloneValidator | null> {
   const productIndex = productMethods.indexOf(method as ProductCapabilityMethod);
   const rfqIndex = rfqMethods.indexOf(method as RfqCapabilityMethod);
   const tradeIndex = tradeMethods.indexOf(method as TradeCapabilityMethod);
@@ -67,6 +68,22 @@ function validatorFor(method: string, kind: 'Request' | 'Response'): StandaloneV
   const insightsIndex = insightsMethods.indexOf(method as InsightsCapabilityMethod);
   const photoIndex = photoMethods.indexOf(method as PhotoCapabilityMethod);
   const platformIndex = platformMethods.indexOf(method as PlatformCapabilityMethod);
+  const validators: ValidatorModule =
+    productIndex >= 0
+      ? await import('./generated/validators-product')
+      : rfqIndex >= 0
+        ? await import('./generated/validators-rfq')
+        : tradeIndex >= 0
+          ? await import('./generated/validators-trade')
+          : logisticsIndex >= 0
+            ? await import('./generated/validators-logistics')
+            : insightsIndex >= 0
+              ? await import('./generated/validators-insights')
+              : photoIndex >= 0
+                ? await import('./generated/validators-photo')
+                : platformIndex >= 0
+                  ? await import('./generated/validators-platform')
+                  : {};
   const candidate =
     productIndex >= 0
       ? validators[`validateProductCapability${productIndex}${kind}`]
@@ -160,14 +177,20 @@ export function listCapabilityDefinitions(): CapabilityDefinition[] {
   });
 }
 
-export function validateCapabilityRequest(method: string, parameters: unknown): CapabilityContractIssue[] {
-  const validator = validatorFor(method, 'Request');
+export async function validateCapabilityRequest(
+  method: string,
+  parameters: unknown
+): Promise<CapabilityContractIssue[]> {
+  const validator = await validatorFor(method, 'Request');
   if (!validator || validator(parameters)) return [];
   return issuesOf(validator.errors);
 }
 
-export function validateCapabilityResponse(method: string, data: unknown): CapabilityContractIssue[] {
-  const validator = validatorFor(method, 'Response');
+export async function validateCapabilityResponse(
+  method: string,
+  data: unknown
+): Promise<CapabilityContractIssue[]> {
+  const validator = await validatorFor(method, 'Response');
   if (!validator || validator(data)) return [];
   return issuesOf(validator.errors);
 }

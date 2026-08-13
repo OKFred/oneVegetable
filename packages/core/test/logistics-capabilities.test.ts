@@ -49,8 +49,8 @@ describe('typed logistics capability domain', () => {
     for (const { method } of snapshot.definitions) {
       const definition = getCapabilityDefinition(method);
       expect(definition, method).not.toBeNull();
-      expect(validateCapabilityRequest(method, definition?.requestExample), method).toEqual([]);
-      expect(validateCapabilityResponse(method, definition?.responseExample), method).toEqual([]);
+      expect(await validateCapabilityRequest(method, definition?.requestExample), method).toEqual([]);
+      expect(await validateCapabilityResponse(method, definition?.responseExample), method).toEqual([]);
     }
   });
 

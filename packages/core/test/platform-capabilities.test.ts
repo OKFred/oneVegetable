@@ -40,8 +40,8 @@ describe('typed platform collaboration capability domain', () => {
     for (const { method } of snapshot.definitions) {
       const definition = getCapabilityDefinition(method);
       expect(definition, method).not.toBeNull();
-      expect(validateCapabilityRequest(method, definition?.requestExample), method).toEqual([]);
-      expect(validateCapabilityResponse(method, definition?.responseExample), method).toEqual([]);
+      expect(await validateCapabilityRequest(method, definition?.requestExample), method).toEqual([]);
+      expect(await validateCapabilityResponse(method, definition?.responseExample), method).toEqual([]);
     }
   });
 
@@ -66,10 +66,10 @@ describe('typed platform collaboration capability domain', () => {
     });
   });
 
-  it('rejects missing nested risk fields and unknown task callback fields', () => {
-    expect(validateCapabilityRequest('alibaba.icbu.risk.send', { event_data: {} })).not.toEqual([]);
+  it('rejects missing nested risk fields and unknown task callback fields', async () => {
+    expect(await validateCapabilityRequest('alibaba.icbu.risk.send', { event_data: {} })).not.toEqual([]);
     expect(
-      validateCapabilityRequest('alibaba.icbu.task.status.notify', {
+      await validateCapabilityRequest('alibaba.icbu.task.status.notify', {
         task_key: 'task',
         isv: 'vendor',
         task_status: 'EXECUTE_FINISHED',

@@ -38,8 +38,8 @@ if (!background || background.size > 1_800_000) {
 for (const chunk of eagerPageChunks) {
   if (chunk.size > 800_000) errors.push(`${chunk.file} exceeds the 800 KB eager-page budget: ${chunk.size}`);
 }
-if (eagerOptionBytes > 1_900_000) {
-  errors.push(`Options eager JavaScript exceeds 1.9 MB: ${eagerOptionBytes}`);
+if (eagerOptionBytes > 250_000) {
+  errors.push(`Options eager JavaScript exceeds 250 KB: ${eagerOptionBytes}`);
 }
 if (manifest.permissions?.includes('cookies')) errors.push('cookies permission is not allowed');
 if (manifest.host_permissions?.includes('<all_urls>'))

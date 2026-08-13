@@ -39,12 +39,16 @@ describe('typed product capability domain', () => {
     ]);
   });
 
-  it('exercises request and response standalone validators for every product method', () => {
+  it('exercises request and response standalone validators for every product method', async () => {
     for (const definition of listCapabilityDefinitions().filter((item) =>
       isProductCapabilityMethod(item.method)
     )) {
-      expect(() => validateCapabilityRequest(definition.method, definition.requestExample)).not.toThrow();
-      expect(() => validateCapabilityResponse(definition.method, definition.responseExample)).not.toThrow();
+      await expect(
+        validateCapabilityRequest(definition.method, definition.requestExample)
+      ).resolves.toBeDefined();
+      await expect(
+        validateCapabilityResponse(definition.method, definition.responseExample)
+      ).resolves.toBeDefined();
     }
   });
 

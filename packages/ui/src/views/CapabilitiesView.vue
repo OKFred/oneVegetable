@@ -3,11 +3,7 @@ import { computed, h, ref } from 'vue';
 import { useMutation, useQuery } from '@tanstack/vue-query';
 import { ExternalLink, Play, Search, ShieldAlert } from '@lucide/vue';
 
-import {
-  validateCapabilityCallInput,
-  type ApiCapability,
-  type CapabilityDefinition
-} from '@one-vegetable/core';
+import { type ApiCapability, type CapabilityDefinition } from '@one-vegetable/core';
 
 import DataTable from '../components/DataTable.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -78,9 +74,7 @@ const call = useMutation({
       throw new Error('参数格式错误');
     }
     const payload = { method: selected.value.method, parameters: parsed as Record<string, unknown> };
-    const validation = validateCapabilityCallInput(payload);
-    validationErrors.value = validation.errors;
-    if (!validation.valid) throw new Error('参数校验失败');
+    validationErrors.value = [];
     return gateway.request('callCapability', payload);
   }
 });

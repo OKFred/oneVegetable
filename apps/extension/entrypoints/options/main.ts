@@ -14,7 +14,7 @@ import {
   type RuntimeRequest,
   type RuntimeResponse,
   type SettingsRepository
-} from '@one-vegetable/core';
+} from '@one-vegetable/core/runtime';
 import { OneVegetableApp } from '@one-vegetable/ui';
 import '@one-vegetable/ui/styles.css';
 
