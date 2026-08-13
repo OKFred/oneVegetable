@@ -2,6 +2,7 @@ import { inject, provide, type InjectionKey } from 'vue';
 
 import type {
   CredentialVaultRepository,
+  ControlClient,
   GatewayClient,
   HostPermissionsRepository,
   LocalDataRepository,
@@ -16,6 +17,7 @@ export interface AppServices {
   permissions?: HostPermissionsRepository;
   localData?: LocalDataRepository;
   onboarding?: OnboardingRepository;
+  control?: ControlClient;
   mode: 'mock' | 'extension' | 'bff';
 }
 

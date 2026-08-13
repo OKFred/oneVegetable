@@ -3,6 +3,7 @@ import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 
 import {
   ALIBABA_GATEWAY,
+  BffControlClient,
   BffGatewayClient,
   MockGatewayClient,
   type GatewaySettings,
@@ -36,20 +37,40 @@ const settings: SettingsRepository = {
 };
 
 const gatewayMode = import.meta.env.VITE_GATEWAY_MODE === 'bff' ? 'bff' : 'mock';
+const bffBaseUrl = import.meta.env.VITE_BFF_BASE_URL ?? globalThis.location.origin;
+const control =
+  gatewayMode === 'bff'
+    ? new BffControlClient({
+        baseUrl: bffBaseUrl,
+        apiPrefix: import.meta.env.VITE_BFF_API_PREFIX,
+        csrfToken: () => readCookie('ov_csrf')
+      })
+    : undefined;
 const gateway =
   gatewayMode === 'bff'
     ? new BffGatewayClient({
-        baseUrl: import.meta.env.VITE_BFF_BASE_URL ?? globalThis.location.origin,
-        apiPrefix: import.meta.env.VITE_BFF_API_PREFIX
+        baseUrl: bffBaseUrl,
+        apiPrefix: import.meta.env.VITE_BFF_API_PREFIX,
+        csrfToken: () => control?.csrfToken() ?? readCookie('ov_csrf')
       })
     : new MockGatewayClient();
 
 const app = createApp(OneVegetableApp, {
   gateway,
   settings,
-  mode: gatewayMode
+  mode: gatewayMode,
+  ...(control ? { control } : {})
 });
 app.use(VueQueryPlugin, {
   queryClient: new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000 } } })
 });
 app.mount('#app');
+
+function readCookie(name: string): string | null {
+  const prefix = `${encodeURIComponent(name)}=`;
+  for (const part of document.cookie.split(';')) {
+    const cookie = part.trim();
+    if (cookie.startsWith(prefix)) return decodeURIComponent(cookie.slice(prefix.length));
+  }
+  return null;
+}

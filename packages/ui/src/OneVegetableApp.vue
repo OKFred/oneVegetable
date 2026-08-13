@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, type Component } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref, type Component } from 'vue';
 import {
   BarChart3,
   Boxes,
@@ -8,6 +8,7 @@ import {
   Image,
   Menu,
   PlugZap,
+  ShieldCheck,
   Settings,
   ShoppingCart,
   Sprout,
@@ -16,6 +17,8 @@ import {
 
 import type {
   CredentialVaultRepository,
+  ControlClient,
+  ControlSession,
   GatewayClient,
   HostPermissionsRepository,
   LocalDataRepository,
@@ -24,6 +27,7 @@ import type {
 } from '@one-vegetable/core';
 
 import Button from './components/ui/Button.vue';
+import AuthGate from './components/AuthGate.vue';
 import OnboardingDialog from './components/OnboardingDialog.vue';
 import { provideServices } from './lib/services';
 
@@ -34,6 +38,7 @@ const props = defineProps<{
   permissions?: HostPermissionsRepository;
   localData?: LocalDataRepository;
   onboarding?: OnboardingRepository;
+  control?: ControlClient;
   mode: 'mock' | 'extension' | 'bff';
 }>();
 provideServices({
@@ -43,7 +48,8 @@ provideServices({
   ...(props.permissions ? { permissions: props.permissions } : {}),
   ...(props.localData ? { localData: props.localData } : {}),
   ...(props.onboarding ? { onboarding: props.onboarding } : {}),
-  ...(props.vault ? { vault: props.vault } : {})
+  ...(props.vault ? { vault: props.vault } : {}),
+  ...(props.control ? { control: props.control } : {})
 });
 
 type PageId =
@@ -55,13 +61,14 @@ type PageId =
   | 'logistics'
   | 'insights'
   | 'capabilities'
+  | 'admin'
   | 'settings';
 interface NavigationItem {
   id: PageId;
   label: string;
   icon: Component;
 }
-const items: NavigationItem[] = [
+const baseItems: NavigationItem[] = [
   { id: 'dashboard', label: '总览', icon: Home },
   { id: 'products', label: '商品', icon: Boxes },
   { id: 'photos', label: '图库', icon: Image },
@@ -70,8 +77,16 @@ const items: NavigationItem[] = [
   { id: 'logistics', label: '国际物流', icon: Truck },
   { id: 'insights', label: '数据洞察', icon: BarChart3 },
   { id: 'capabilities', label: 'API 能力', icon: PlugZap },
+  { id: 'admin', label: '管理后台', icon: ShieldCheck },
   { id: 'settings', label: '设置', icon: Settings }
 ];
+const session = ref<ControlSession | null>(null);
+const authLoading = ref(props.mode === 'bff' && props.control !== undefined);
+const items = computed(() =>
+  baseItems.filter(
+    (item) => item.id !== 'admin' || props.mode === 'extension' || session.value?.principal.role === 'admin'
+  )
+);
 const page = ref<PageId>('dashboard');
 const sidebarOpen = ref(false);
 const workspaceReady = ref(props.mode !== 'extension' || props.onboarding === undefined);
@@ -84,15 +99,38 @@ const views: Record<PageId, Component> = {
   logistics: defineAsyncComponent(() => import('./views/LogisticsView.vue')),
   insights: defineAsyncComponent(() => import('./views/InsightsView.vue')),
   capabilities: defineAsyncComponent(() => import('./views/CapabilitiesView.vue')),
+  admin: defineAsyncComponent(() => import('./views/AdminView.vue')),
   settings: defineAsyncComponent(() => import('./views/SettingsView.vue'))
 };
 const activeView = computed(() => views[page.value]);
+
+onMounted(async () => {
+  if (props.mode !== 'bff' || !props.control) return;
+  try {
+    session.value = await props.control.session();
+  } catch {
+    session.value = null;
+  } finally {
+    authLoading.value = false;
+  }
+});
+
+async function logout(): Promise<void> {
+  if (!props.control) return;
+  await props.control.logout();
+  session.value = null;
+  page.value = 'dashboard';
+}
 </script>
 
 <template>
   <div class="min-h-screen bg-background text-foreground">
+    <div v-if="authLoading" class="grid min-h-screen place-items-center text-sm text-muted-foreground">
+      正在检查本地会话…
+    </div>
+    <AuthGate v-else-if="mode === 'bff' && control && !session" @authenticated="session = $event" />
     <OnboardingDialog @ready="workspaceReady = true" />
-    <template v-if="workspaceReady">
+    <template v-if="!authLoading && (mode !== 'bff' || session) && workspaceReady">
       <aside
         class="fixed inset-y-0 left-0 z-40 w-60 border-r bg-slate-950 text-slate-100 transition-transform lg:translate-x-0"
         :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
@@ -151,6 +189,10 @@ const activeView = computed(() => views[page.value]);
             <span class="size-2 rounded-full bg-emerald-500" />{{
               mode === 'mock' ? '契约 Mock 在线' : mode === 'bff' ? 'BFF 在线' : '扩展后台在线'
             }}
+            <span v-if="session">{{ session.principal.username }}</span>
+            <Button v-if="mode === 'bff' && session" variant="outline" size="sm" @click="logout">
+              退出
+            </Button>
           </div>
         </header>
         <main class="p-4 lg:p-7"><component :is="activeView" /></main>

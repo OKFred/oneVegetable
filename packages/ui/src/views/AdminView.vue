@@ -1,0 +1,266 @@
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue';
+import { RefreshCw, ShieldCheck, UserPlus } from '@lucide/vue';
+
+import { API_CAPABILITIES } from '@one-vegetable/core';
+import type { ControlAuditEvent, ControlSystemInfo, ControlUser, ControlUserRole } from '@one-vegetable/core';
+
+import Card from '../components/ui/Card.vue';
+import Button from '../components/ui/Button.vue';
+import Input from '../components/ui/Input.vue';
+import PageHeader from '../components/PageHeader.vue';
+import { useServices } from '../lib/services';
+
+const { control, mode } = useServices();
+const users = ref<ControlUser[]>([]);
+const auditEvents = ref<ControlAuditEvent[]>([]);
+const system = ref<ControlSystemInfo | null>(null);
+const policy = ref<Record<string, unknown> | null>(null);
+const error = ref('');
+const loading = ref(false);
+const username = ref('');
+const password = ref('');
+const role = ref<ControlUserRole>('user');
+const remark = ref('');
+const requestIdFilter = ref('');
+
+const capabilitySummary = computed(() => ({
+  total: API_CAPABILITIES.length,
+  readable: API_CAPABILITIES.filter(
+    (capability) => capability.enabled && capability.lifecycle === 'active' && capability.risk === 'read'
+  ).length,
+  mutationsLocked: API_CAPABILITIES.filter((capability) => capability.risk === 'mutation').length,
+  restricted: API_CAPABILITIES.filter((capability) => capability.restricted).length
+}));
+
+onMounted(refresh);
+
+async function refresh(): Promise<void> {
+  if (!control) return;
+  loading.value = true;
+  error.value = '';
+  try {
+    const [userPage, auditPage, systemInfo, policyInfo] = await Promise.all([
+      control.listUsers(),
+      control.listAudit({
+        ...(requestIdFilter.value ? { requestIdFilter: requestIdFilter.value } : {})
+      }),
+      control.system(),
+      control.policySummary()
+    ]);
+    users.value = userPage.items;
+    auditEvents.value = auditPage.items;
+    system.value = systemInfo;
+    policy.value = policyInfo;
+  } catch (cause: unknown) {
+    error.value = cause instanceof Error ? cause.message : '管理数据加载失败';
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function createUser(): Promise<void> {
+  if (!control) return;
+  error.value = '';
+  try {
+    await control.createUser({
+      username: username.value,
+      password: password.value,
+      role: role.value,
+      remark: remark.value || null
+    });
+    username.value = '';
+    password.value = '';
+    remark.value = '';
+    await refresh();
+  } catch (cause: unknown) {
+    error.value = cause instanceof Error ? cause.message : '创建用户失败';
+  }
+}
+
+async function toggleStatus(user: ControlUser): Promise<void> {
+  if (!control) return;
+  try {
+    await control.updateUser({
+      userId: user.id,
+      role: user.role,
+      status: user.status === 'active' ? 'disabled' : 'active',
+      revision: user.revision,
+      remark: user.remark
+    });
+    await refresh();
+  } catch (cause: unknown) {
+    error.value = cause instanceof Error ? cause.message : '更新用户失败';
+  }
+}
+
+function formatTime(value: number): string {
+  return new Date(value).toLocaleString('zh-CN', { hour12: false });
+}
+</script>
+
+<template>
+  <PageHeader
+    eyebrow="Access control"
+    title="管理后台"
+    description="管理本地账号、只读策略矩阵、requestId 诊断与 append-only 审计。页面隐藏不是权限边界，BFF 会重新授权。"
+  >
+    <Button v-if="control" variant="outline" size="sm" :disabled="loading" @click="refresh">
+      <RefreshCw class="size-4" />刷新
+    </Button>
+  </PageHeader>
+
+  <Card v-if="mode === 'extension'" class="border-emerald-200 bg-emerald-50 p-5">
+    <div class="flex gap-3">
+      <ShieldCheck class="size-5 text-emerald-700" />
+      <div>
+        <h2 class="font-semibold text-emerald-950">本机管理员</h2>
+        <p class="mt-1 text-sm text-emerald-800">
+          插件固定使用本机管理员身份；它不等于 BFF 管理员会话，因此用户管理、服务端审计和会话撤销不可用。
+        </p>
+      </div>
+    </div>
+  </Card>
+
+  <p v-if="error" class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+    {{ error }}
+  </p>
+
+  <template v-if="control">
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <Card class="p-5">
+        <p class="text-xs text-muted-foreground">运行时 / 环境</p>
+        <p class="mt-2 font-semibold">{{ system?.runtime ?? '—' }} / {{ system?.environment ?? '—' }}</p>
+      </Card>
+      <Card class="p-5">
+        <p class="text-xs text-muted-foreground">数据库 / Schema</p>
+        <p class="mt-2 font-semibold">{{ system?.database ?? '—' }} / v{{ system?.schemaVersion ?? '—' }}</p>
+      </Card>
+      <Card class="p-5">
+        <p class="text-xs text-muted-foreground">API Prefix</p>
+        <p class="mt-2 font-mono text-sm font-semibold">{{ system?.apiPrefix ?? '—' }}</p>
+      </Card>
+      <Card class="p-5">
+        <p class="text-xs text-muted-foreground">Alibaba Gateway</p>
+        <p class="mt-2 font-semibold">{{ system?.gatewayMode ?? '—' }}</p>
+      </Card>
+    </div>
+
+    <div class="mt-5 grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+      <Card class="overflow-hidden">
+        <div class="border-b p-5"><h2 class="font-semibold">用户管理</h2></div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-muted/60 text-xs text-muted-foreground">
+              <tr>
+                <th class="p-3">用户</th>
+                <th class="p-3">角色</th>
+                <th class="p-3">状态</th>
+                <th class="p-3">Revision</th>
+                <th class="p-3">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="user in users" :key="user.id" class="border-t">
+                <td class="p-3">
+                  <p class="font-medium">{{ user.username }}</p>
+                  <p class="text-xs text-muted-foreground">{{ user.remark || '无备注' }}</p>
+                </td>
+                <td class="p-3">{{ user.role }}</td>
+                <td class="p-3">{{ user.status }}</td>
+                <td class="p-3">{{ user.revision }}</td>
+                <td class="p-3">
+                  <Button variant="outline" size="sm" @click="toggleStatus(user)">{{
+                    user.status === 'active' ? '停用' : '启用'
+                  }}</Button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Card class="p-5">
+        <h2 class="flex items-center gap-2 font-semibold"><UserPlus class="size-4" />创建用户</h2>
+        <form class="mt-4 space-y-3" @submit.prevent="createUser">
+          <Input v-model="username" placeholder="用户名" />
+          <Input v-model="password" type="password" placeholder="至少 12 字节密码" />
+          <select v-model="role" class="h-9 w-full rounded-md border bg-background px-3 text-sm">
+            <option value="user">普通用户（只读）</option>
+            <option value="admin">管理员</option>
+          </select>
+          <Input v-model="remark" placeholder="备注（可选，最多 500 字符）" />
+          <Button class="w-full" type="submit">创建</Button>
+        </form>
+      </Card>
+    </div>
+
+    <div class="mt-5 grid gap-5 xl:grid-cols-2">
+      <Card class="p-5">
+        <h2 class="font-semibold">策略矩阵（只读）</h2>
+        <pre
+          class="mt-3 max-h-72 overflow-auto rounded-lg bg-slate-950 p-4 text-xs leading-5 text-slate-200"
+          >{{ JSON.stringify(policy, null, 2) }}</pre>
+      </Card>
+      <Card class="p-5">
+        <h2 class="font-semibold">能力状态</h2>
+        <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+          <div class="rounded-lg bg-muted p-3">
+            目录总数 <strong class="float-right">{{ capabilitySummary.total }}</strong>
+          </div>
+          <div class="rounded-lg bg-muted p-3">
+            可读 active <strong class="float-right">{{ capabilitySummary.readable }}</strong>
+          </div>
+          <div class="rounded-lg bg-muted p-3">
+            写能力关闭 <strong class="float-right">{{ capabilitySummary.mutationsLocked }}</strong>
+          </div>
+          <div class="rounded-lg bg-muted p-3">
+            资格受限 <strong class="float-right">{{ capabilitySummary.restricted }}</strong>
+          </div>
+        </div>
+        <p class="mt-3 text-xs text-muted-foreground">
+          管理员也不能绕过 capability、资格、聚石塔限制或 mutation flag。
+        </p>
+      </Card>
+    </div>
+
+    <Card class="mt-5 overflow-hidden">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b p-5">
+        <div>
+          <h2 class="font-semibold">审计与请求诊断</h2>
+          <p class="text-xs text-muted-foreground">
+            按 requestId 精确关联，不展示密码、Token、Cookie 或文件 Base64。
+          </p>
+        </div>
+        <form class="flex gap-2" @submit.prevent="refresh">
+          <Input v-model="requestIdFilter" class="w-72" placeholder="requestId（UUID v4）" />
+          <Button variant="outline" type="submit">查询</Button>
+        </form>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-muted/60 text-muted-foreground">
+            <tr>
+              <th class="p-3">时间</th>
+              <th class="p-3">requestId</th>
+              <th class="p-3">主体</th>
+              <th class="p-3">动作</th>
+              <th class="p-3">结果</th>
+              <th class="p-3">原因</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="event in auditEvents" :key="event.id" class="border-t">
+              <td class="whitespace-nowrap p-3">{{ formatTime(event.eventTimeUtc) }}</td>
+              <td class="p-3 font-mono">{{ event.requestId }}</td>
+              <td class="p-3">{{ event.actorId ?? 'anonymous' }}</td>
+              <td class="p-3">{{ event.action }}</td>
+              <td class="p-3">{{ event.outcome }}</td>
+              <td class="p-3">{{ event.reasonCode }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  </template>
+</template>
