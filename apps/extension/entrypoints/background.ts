@@ -2,6 +2,9 @@ import { browser } from 'wxt/browser';
 
 import {
   AlibabaClient,
+  ALIBABA_GATEWAY,
+  createCredentialVault,
+  CredentialVaultError,
   downloadPhotoForUpload,
   findCapability,
   GatewayException,
@@ -10,15 +13,21 @@ import {
   listCapabilities,
   LogisticsAdapter,
   normalizeGatewayError,
-  migrateGatewaySettings,
+  inspectCredentialStorage,
+  resealCredentialVault,
   sanitizeDiagnosticMessage,
   SETTINGS_STORAGE_KEY,
+  unlockCredentialVault,
   PhotoAdapter,
   RfqAdapter,
   TradeAdapter,
   validateCapabilityRequest,
   validateCapabilityResponse,
   type ApiCapability,
+  type CredentialVaultRecord,
+  type CredentialVaultRequest,
+  type CredentialVaultResponse,
+  type CredentialVaultStatus,
   type DiagnosticEntry,
   type DiagnosticsSnapshot,
   type GatewaySettings,
@@ -124,11 +133,167 @@ export default defineBackground(() => {
   // WebExtension runtime listeners support returning a promise for the response.
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   browser.runtime.onMessage.addListener((value: unknown) => {
+    const vaultMessage = asCredentialVaultRequest(value);
+    if (vaultMessage) return handleCredentialVaultRequest(vaultMessage);
     const message = asRuntimeRequest(value);
     if (!message) return undefined;
     return handleRequest(message);
   });
 });
+
+let unlockedVault:
+  | {
+      key: CryptoKey;
+      record: CredentialVaultRecord;
+      settings: GatewaySettings;
+    }
+  | undefined;
+
+async function handleCredentialVaultRequest(
+  message: CredentialVaultRequest
+): Promise<CredentialVaultResponse> {
+  try {
+    const data = await executeCredentialVaultOperation(message.operation, message.payload);
+    return { id: message.id, ok: true, data };
+  } catch (error: unknown) {
+    return { id: message.id, ok: false, error: normalizeVaultError(error) };
+  }
+}
+
+async function executeCredentialVaultOperation(operation: string, payload: unknown): Promise<unknown> {
+  const stored = await browser.storage.local.get(SETTINGS_STORAGE_KEY);
+  const present = Object.prototype.hasOwnProperty.call(stored, SETTINGS_STORAGE_KEY);
+  const state = inspectCredentialStorage(stored[SETTINGS_STORAGE_KEY], present);
+
+  switch (operation) {
+    case 'status':
+      return credentialVaultStatus(state);
+    case 'get-settings':
+      return editableSettings(state);
+    case 'unlock': {
+      if (state.kind !== 'vault') throw vaultStateError(state.kind);
+      const unlocked = await unlockCredentialVault(state.record, requiredVaultString(payload, 'passphrase'));
+      unlockedVault = { ...unlocked, record: state.record };
+      return credentialVaultStatus(state);
+    }
+    case 'lock':
+      unlockedVault = undefined;
+      return credentialVaultStatus(state);
+    case 'create': {
+      if (state.kind !== 'empty') throw new Error('只有空保险库可以创建新凭证');
+      const request = asRecord(payload);
+      const settings = requiredGatewaySettings(request.settings);
+      const created = await createCredentialVault(settings, requiredString(request, 'passphrase'));
+      await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: created.record });
+      unlockedVault = { ...created, settings };
+      return credentialVaultStatus({ kind: 'vault', record: created.record });
+    }
+    case 'migrate': {
+      if (state.kind !== 'legacy') throw new Error('当前没有待迁移的旧版明文凭证');
+      const created = await createCredentialVault(state.settings, requiredVaultString(payload, 'passphrase'));
+      await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: created.record });
+      unlockedVault = { ...created, settings: state.settings };
+      return credentialVaultStatus({ kind: 'vault', record: created.record });
+    }
+    case 'save': {
+      const current = getUnlockedVault(state);
+      const patch = asRecord(payload);
+      const settings: GatewaySettings = {
+        appKey: optionalVaultString(patch.appKey) ?? current.settings.appKey,
+        appSecret: optionalVaultString(patch.appSecret) ?? current.settings.appSecret,
+        accessToken: optionalVaultString(patch.accessToken) ?? current.settings.accessToken,
+        endpoint: requiredString(patch, 'endpoint'),
+        signMethod: requiredSignMethod(patch.signMethod)
+      };
+      const record = await resealCredentialVault(current.record, settings, current.key);
+      await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: record });
+      unlockedVault = { ...current, record, settings };
+      return credentialVaultStatus({ kind: 'vault', record });
+    }
+    case 'rotate': {
+      const current = getUnlockedVault(state);
+      const created = await createCredentialVault(
+        current.settings,
+        requiredVaultString(payload, 'newPassphrase')
+      );
+      await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: created.record });
+      unlockedVault = { ...created, settings: current.settings };
+      return credentialVaultStatus({ kind: 'vault', record: created.record });
+    }
+    default:
+      throw new Error('不支持的保险库操作');
+  }
+}
+
+function credentialVaultStatus(state: ReturnType<typeof inspectCredentialStorage>): CredentialVaultStatus {
+  const activeVault = state.kind === 'vault' ? matchingUnlockedVault(state.record) : undefined;
+  const settings = state.kind === 'legacy' ? state.settings : activeVault?.settings;
+  const effectiveState = state.kind === 'vault' ? (activeVault ? 'unlocked' : 'locked') : state.kind;
+  return {
+    state: effectiveState,
+    hasAppKey: Boolean(settings?.appKey),
+    hasAppSecret: Boolean(settings?.appSecret),
+    hasAccessToken: Boolean(settings?.accessToken),
+    appKey: settings?.appKey ?? '',
+    endpoint: settings?.endpoint ?? ALIBABA_GATEWAY,
+    signMethod: settings?.signMethod ?? 'hmac'
+  };
+}
+
+function editableSettings(state: ReturnType<typeof inspectCredentialStorage>): GatewaySettings {
+  const settings =
+    state.kind === 'legacy'
+      ? state.settings
+      : state.kind === 'vault'
+        ? matchingUnlockedVault(state.record)?.settings
+        : undefined;
+  if (!settings && state.kind === 'vault') throw vaultStateError('vault');
+  return {
+    appKey: settings?.appKey ?? '',
+    appSecret: '',
+    accessToken: '',
+    endpoint: settings?.endpoint ?? ALIBABA_GATEWAY,
+    signMethod: settings?.signMethod ?? 'hmac'
+  };
+}
+
+function getUnlockedVault(
+  state: ReturnType<typeof inspectCredentialStorage>
+): NonNullable<typeof unlockedVault> {
+  if (state.kind !== 'vault') throw vaultStateError(state.kind);
+  const activeVault = matchingUnlockedVault(state.record);
+  if (!activeVault) throw vaultStateError(state.kind);
+  return activeVault;
+}
+
+function matchingUnlockedVault(record: CredentialVaultRecord): NonNullable<typeof unlockedVault> | undefined {
+  if (!unlockedVault) return undefined;
+  return unlockedVault.record.kdf.salt === record.kdf.salt &&
+    unlockedVault.record.cipher.iv === record.cipher.iv &&
+    unlockedVault.record.cipher.ciphertext === record.cipher.ciphertext
+    ? unlockedVault
+    : undefined;
+}
+
+function vaultStateError(kind: ReturnType<typeof inspectCredentialStorage>['kind']): GatewayException {
+  const details =
+    kind === 'legacy'
+      ? ['CREDENTIAL_VAULT_MIGRATION_REQUIRED', '旧版明文凭证必须先迁移到加密保险库']
+      : kind === 'invalid'
+        ? ['CREDENTIAL_VAULT_INVALID', '凭证存储格式无效，请清除本地数据后重新配置']
+        : kind === 'empty'
+          ? ['CREDENTIAL_VAULT_EMPTY', '请先创建凭证保险库']
+          : ['CREDENTIAL_VAULT_LOCKED', '凭证保险库已锁定，请先在设置中解锁'];
+  const [code, message] = details as [string, string];
+  return new GatewayException({ code, message, retryable: false });
+}
+
+function normalizeVaultError(error: unknown): ReturnType<typeof normalizeGatewayError> {
+  if (error instanceof CredentialVaultError) {
+    return { code: error.code, message: error.message, retryable: false };
+  }
+  return normalizeGatewayError(error);
+}
 
 async function handleRequest(message: RuntimeRequest): Promise<RuntimeResponse> {
   if (message.operation === 'getDiagnostics' || message.operation === 'clearDiagnostics') {
@@ -494,11 +659,52 @@ function readResultTraceId(value: unknown): string | null {
 
 async function loadSettings(): Promise<GatewaySettings> {
   const stored = await browser.storage.local.get(SETTINGS_STORAGE_KEY);
-  const migrated = migrateGatewaySettings(stored[SETTINGS_STORAGE_KEY]);
-  if (migrated.migrated) {
-    await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: migrated.persistedValue });
+  const present = Object.prototype.hasOwnProperty.call(stored, SETTINGS_STORAGE_KEY);
+  const state = inspectCredentialStorage(stored[SETTINGS_STORAGE_KEY], present);
+  return getUnlockedVault(state).settings;
+}
+
+function asCredentialVaultRequest(value: unknown): CredentialVaultRequest | null {
+  if (!isRecord(value) || value.kind !== 'credential-vault-request' || typeof value.id !== 'string') {
+    return null;
   }
-  return migrated.settings;
+  if (
+    value.operation !== 'status' &&
+    value.operation !== 'get-settings' &&
+    value.operation !== 'create' &&
+    value.operation !== 'migrate' &&
+    value.operation !== 'unlock' &&
+    value.operation !== 'lock' &&
+    value.operation !== 'save' &&
+    value.operation !== 'rotate'
+  ) {
+    return null;
+  }
+  return value as unknown as CredentialVaultRequest;
+}
+
+function requiredVaultString(value: unknown, key: string): string {
+  return requiredString(asRecord(value), key);
+}
+
+function optionalVaultString(value: unknown): string | undefined {
+  return typeof value === 'string' && value !== '' ? value : undefined;
+}
+
+function requiredGatewaySettings(value: unknown): GatewaySettings {
+  const record = asRecord(value);
+  return {
+    appKey: requiredString(record, 'appKey'),
+    appSecret: requiredString(record, 'appSecret'),
+    accessToken: requiredString(record, 'accessToken'),
+    endpoint: requiredString(record, 'endpoint'),
+    signMethod: requiredSignMethod(record.signMethod)
+  };
+}
+
+function requiredSignMethod(value: unknown): GatewaySettings['signMethod'] {
+  if (value === 'hmac' || value === 'md5' || value === 'hmac-sha256') return value;
+  throw new Error('签名算法无效');
 }
 
 function asRuntimeRequest(value: unknown): RuntimeRequest | null {

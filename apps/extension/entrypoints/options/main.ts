@@ -7,13 +7,17 @@ import {
   approximateStorageBytes,
   completeOnboarding,
   createLocalDataInventory,
-  migrateGatewaySettings,
   normalizeGatewayError,
   ONBOARDING_STORAGE_KEY,
-  persistGatewaySettings,
   readOnboardingState,
   SETTINGS_STORAGE_KEY,
+  type CredentialVaultOperation,
+  type CredentialVaultRepository,
+  type CredentialVaultRequest,
+  type CredentialVaultResponse,
+  type CredentialVaultStatus,
   type GatewayClient,
+  type GatewaySettings,
   type HostPermissionsRepository,
   type LocalDataCategory,
   type LocalDataRepository,
@@ -29,19 +33,53 @@ import { OneVegetableApp } from '@one-vegetable/ui';
 import '@one-vegetable/ui/styles.css';
 
 const settings: SettingsRepository = {
-  async load() {
-    const stored = await browser.storage.local.get(SETTINGS_STORAGE_KEY);
-    const migrated = migrateGatewaySettings(stored[SETTINGS_STORAGE_KEY]);
-    if (migrated.migrated) {
-      await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: migrated.persistedValue });
-    }
-    return migrated.settings;
-  },
+  load: () => requestVault('get-settings', undefined),
   async save(value) {
     await ensureOptionalHostPermission(value.endpoint, '自定义网关');
-    await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: persistGatewaySettings(value) });
+    await requestVault('save', value);
   }
 };
+
+const vault: CredentialVaultRepository = {
+  status: () => requestVault('status', undefined),
+  create: async (passphrase, value) => {
+    await ensureOptionalHostPermission(value.endpoint, '自定义网关');
+    return requestVault('create', { passphrase, settings: value });
+  },
+  migrate: (passphrase) => requestVault('migrate', { passphrase }),
+  unlock: (passphrase) => requestVault('unlock', { passphrase }),
+  lock: () => requestVault('lock', undefined),
+  rotate: (newPassphrase) => requestVault('rotate', { newPassphrase })
+};
+
+interface VaultOperationMap {
+  status: { request: undefined; response: CredentialVaultStatus };
+  'get-settings': { request: undefined; response: GatewaySettings };
+  create: {
+    request: { passphrase: string; settings: GatewaySettings };
+    response: CredentialVaultStatus;
+  };
+  migrate: { request: { passphrase: string }; response: CredentialVaultStatus };
+  unlock: { request: { passphrase: string }; response: CredentialVaultStatus };
+  lock: { request: undefined; response: CredentialVaultStatus };
+  save: { request: GatewaySettings; response: CredentialVaultStatus };
+  rotate: { request: { newPassphrase: string }; response: CredentialVaultStatus };
+}
+
+async function requestVault<K extends CredentialVaultOperation>(
+  operation: K,
+  payload: VaultOperationMap[K]['request']
+): Promise<VaultOperationMap[K]['response']> {
+  const message: CredentialVaultRequest = {
+    id: crypto.randomUUID(),
+    kind: 'credential-vault-request',
+    operation,
+    ...(payload === undefined ? {} : { payload })
+  };
+  const response: CredentialVaultResponse = await browser.runtime.sendMessage(message);
+  if (!response.ok) throw new GatewayException(response.error);
+  return response.data as VaultOperationMap[K]['response'];
+}
 
 const permissions: HostPermissionsRepository = {
   async list() {
@@ -192,6 +230,7 @@ const app = createApp(OneVegetableApp, {
   permissions,
   localData,
   onboarding,
+  vault,
   mode: 'extension'
 });
 app.use(VueQueryPlugin, {

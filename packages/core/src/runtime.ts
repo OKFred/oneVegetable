@@ -17,6 +17,11 @@ export {
   readOnboardingState
 } from './privacy';
 export type {
+  CredentialVaultOperation,
+  CredentialVaultRepository,
+  CredentialVaultRequest,
+  CredentialVaultResponse,
+  CredentialVaultStatus,
   GatewayClient,
   GatewaySettings,
   HostPermissionsRepository,

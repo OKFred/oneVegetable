@@ -15,6 +15,7 @@ import {
 } from '@lucide/vue';
 
 import type {
+  CredentialVaultRepository,
   GatewayClient,
   HostPermissionsRepository,
   LocalDataRepository,
@@ -29,6 +30,7 @@ import { provideServices } from './lib/services';
 const props = defineProps<{
   gateway: GatewayClient;
   settings: SettingsRepository;
+  vault?: CredentialVaultRepository;
   permissions?: HostPermissionsRepository;
   localData?: LocalDataRepository;
   onboarding?: OnboardingRepository;
@@ -40,7 +42,8 @@ provideServices({
   mode: props.mode,
   ...(props.permissions ? { permissions: props.permissions } : {}),
   ...(props.localData ? { localData: props.localData } : {}),
-  ...(props.onboarding ? { onboarding: props.onboarding } : {})
+  ...(props.onboarding ? { onboarding: props.onboarding } : {}),
+  ...(props.vault ? { vault: props.vault } : {})
 });
 
 type PageId =

@@ -1,6 +1,7 @@
 import { inject, provide, type InjectionKey } from 'vue';
 
 import type {
+  CredentialVaultRepository,
   GatewayClient,
   HostPermissionsRepository,
   LocalDataRepository,
@@ -11,6 +12,7 @@ import type {
 export interface AppServices {
   gateway: GatewayClient;
   settings: SettingsRepository;
+  vault?: CredentialVaultRepository;
   permissions?: HostPermissionsRepository;
   localData?: LocalDataRepository;
   onboarding?: OnboardingRepository;

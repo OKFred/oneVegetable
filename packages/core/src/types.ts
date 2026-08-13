@@ -344,6 +344,40 @@ export interface SettingsRepository {
   save(settings: GatewaySettings): Promise<void>;
 }
 
+export type CredentialVaultState = 'empty' | 'legacy' | 'locked' | 'unlocked' | 'invalid';
+
+export interface CredentialVaultStatus {
+  state: CredentialVaultState;
+  hasAppKey: boolean;
+  hasAppSecret: boolean;
+  hasAccessToken: boolean;
+  appKey: string;
+  endpoint: string;
+  signMethod: SignMethod;
+}
+
+export interface CredentialVaultRepository {
+  status(): Promise<CredentialVaultStatus>;
+  create(passphrase: string, settings: GatewaySettings): Promise<CredentialVaultStatus>;
+  migrate(passphrase: string): Promise<CredentialVaultStatus>;
+  unlock(passphrase: string): Promise<CredentialVaultStatus>;
+  lock(): Promise<CredentialVaultStatus>;
+  rotate(newPassphrase: string): Promise<CredentialVaultStatus>;
+}
+
+export type CredentialVaultOperation =
+  'status' | 'get-settings' | 'create' | 'migrate' | 'unlock' | 'lock' | 'save' | 'rotate';
+
+export interface CredentialVaultRequest {
+  id: string;
+  kind: 'credential-vault-request';
+  operation: CredentialVaultOperation;
+  payload?: unknown;
+}
+
+export type CredentialVaultResponse =
+  { id: string; ok: true; data: unknown } | { id: string; ok: false; error: GatewayError };
+
 export interface HostPermissionsRepository {
   list(): Promise<string[]>;
   revoke(origin: string): Promise<boolean>;
