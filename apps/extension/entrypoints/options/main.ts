@@ -4,12 +4,20 @@ import { browser } from 'wxt/browser';
 
 import {
   GatewayException,
+  approximateStorageBytes,
+  completeOnboarding,
+  createLocalDataInventory,
   migrateGatewaySettings,
   normalizeGatewayError,
+  ONBOARDING_STORAGE_KEY,
   persistGatewaySettings,
+  readOnboardingState,
   SETTINGS_STORAGE_KEY,
   type GatewayClient,
   type HostPermissionsRepository,
+  type LocalDataCategory,
+  type LocalDataRepository,
+  type OnboardingRepository,
   type OperationId,
   type RequestOf,
   type ResponseOf,
@@ -47,7 +55,91 @@ const permissions: HostPermissionsRepository = {
   }
 };
 
+const onboarding: OnboardingRepository = {
+  async load() {
+    const stored = await browser.storage.local.get(ONBOARDING_STORAGE_KEY);
+    return readOnboardingState(stored[ONBOARDING_STORAGE_KEY]);
+  },
+  async complete() {
+    const state = completeOnboarding();
+    await browser.storage.local.set({ [ONBOARDING_STORAGE_KEY]: state });
+    return state;
+  }
+};
+
+const localData: LocalDataRepository = {
+  async inspect() {
+    const [local, session] = await Promise.all([
+      browser.storage.local.get(null),
+      browser.storage.session.get(null)
+    ]);
+    const drafts = localStorageEntries().filter(([key]) => isDraftKey(key));
+    const preferences = Object.fromEntries(
+      Object.entries(local).filter(([key]) => key !== SETTINGS_STORAGE_KEY)
+    );
+    const categories: LocalDataCategory[] = [
+      {
+        id: 'credentials',
+        label: '开放平台凭证与网关设置',
+        storage: 'chrome.storage.local',
+        itemCount: SETTINGS_STORAGE_KEY in local ? 1 : 0,
+        approximateBytes: approximateStorageBytes(local[SETTINGS_STORAGE_KEY]),
+        sensitive: true,
+        retention: '保留到用户覆盖、清除扩展数据或卸载扩展'
+      },
+      {
+        id: 'drafts',
+        label: '商品与 RFQ 本地草稿',
+        storage: 'localStorage',
+        itemCount: drafts.length,
+        approximateBytes: approximateStorageBytes(Object.fromEntries(drafts)),
+        sensitive: true,
+        retention: '保留到草稿被删除、清除扩展数据或卸载扩展'
+      },
+      {
+        id: 'diagnostics',
+        label: '脱敏会话诊断',
+        storage: 'chrome.storage.session',
+        itemCount: Array.isArray(session.diagnosticEntries) ? session.diagnosticEntries.length : 0,
+        approximateBytes: approximateStorageBytes(session),
+        sensitive: false,
+        retention: '仅当前浏览器会话，最多 100 条'
+      },
+      {
+        id: 'preferences',
+        label: '首次使用与界面偏好',
+        storage: 'chrome.storage.local',
+        itemCount: Object.keys(preferences).length,
+        approximateBytes: approximateStorageBytes(preferences),
+        sensitive: false,
+        retention: '保留到清除扩展数据或卸载扩展'
+      }
+    ];
+    return createLocalDataInventory(categories);
+  },
+  async clearAll() {
+    const granted = await permissions.list();
+    await Promise.all([
+      browser.storage.local.clear(),
+      browser.storage.session.clear(),
+      ...granted.map((origin) => browser.permissions.remove({ origins: [origin] }))
+    ]);
+    globalThis.localStorage.clear();
+  }
+};
+
 const REQUIRED_HOST_PERMISSIONS = new Set(['https://eco.taobao.com/*', 'https://*.alibaba.com/*']);
+
+function localStorageEntries(): [string, string][] {
+  return Array.from({ length: globalThis.localStorage.length }, (_, index) => {
+    const key = globalThis.localStorage.key(index) ?? '';
+    return [key, globalThis.localStorage.getItem(key) ?? ''] as [string, string];
+  }).filter(([key]) => key !== '');
+}
+
+function isDraftKey(key: string): boolean {
+  return key === 'one-vegetable-product-schema-draft' || key.startsWith('one-vegetable:rfq-draft:');
+}
 
 class ExtensionGatewayClient implements GatewayClient {
   async request<K extends OperationId>(operation: K, payload: RequestOf<K>): Promise<ResponseOf<K>> {
@@ -98,6 +190,8 @@ const app = createApp(OneVegetableApp, {
   gateway: new ExtensionGatewayClient(),
   settings,
   permissions,
+  localData,
+  onboarding,
   mode: 'extension'
 });
 app.use(VueQueryPlugin, {

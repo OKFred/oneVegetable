@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>一根青菜 · 隐私说明</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        line-height: 1.7;
+        color: #172033;
+        background: #f7f8fa;
+      }
+      body {
+        margin: 0;
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 48px 24px 72px;
+      }
+      article {
+        border: 1px solid #dfe3e8;
+        border-radius: 16px;
+        background: white;
+        padding: 32px;
+        box-shadow: 0 10px 30px rgb(15 23 42 / 7%);
+      }
+      h1 {
+        margin-top: 0;
+        font-size: 28px;
+      }
+      h2 {
+        margin-top: 28px;
+        font-size: 18px;
+      }
+      code {
+        border-radius: 4px;
+        background: #eef1f4;
+        padding: 2px 5px;
+      }
+      .notice {
+        border-left: 4px solid #10b981;
+        background: #ecfdf5;
+        padding: 12px 16px;
+      }
+      a {
+        color: #047857;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <article>
+        <h1>一根青菜隐私说明</h1>
+        <p>版本：2.0.0 · 更新日期：2026-08-13</p>
+        <p class="notice">
+          本页随扩展离线提供，用于说明当前构建的数据边界；正式上架前仍需把同内容发布到公开、稳定的 HTTPS
+          地址。
+        </p>
+        <h2>收集与存储</h2>
+        <p>
+          扩展不运行自有分析或广告服务。用户主动填写的 App Key、App Secret、Access Token 和网关设置保存在本机
+          <code>chrome.storage.local</code>；商品与 RFQ 草稿保存在扩展自身的 <code>localStorage</code>。
+        </p>
+        <p>
+          最近 100 条脱敏诊断保存在 <code>chrome.storage.session</code>，只包含操作名、耗时、错误码和可用的
+          traceId，不包含请求参数、凭证或响应正文。
+        </p>
+        <h2>数据传输</h2>
+        <p>
+          真实查询由扩展 service worker 向用户配置的 Alibaba.com
+          开放平台网关发送。外部图片转存仅在用户明确操作时下载指定公共 HTTP(S)
+          图片，并上传至其国际站图库（图片银行）。扩展不会出售数据，也不会把数据用于广告、信用评估或与核心功能无关的用途。
+        </p>
+        <h2>权限</h2>
+        <p>
+          <code>storage</code>
+          用于本地设置和会话诊断；正式网关主机权限用于调用开放平台。自定义网关和外部图片来源的主机权限按使用场景请求，可在设置页撤销。
+        </p>
+        <h2>删除与控制</h2>
+        <p>
+          设置页可查看不含具体值的数据清单、撤销额外主机权限并彻底清除扩展本地数据。卸载扩展也会删除其本地存储。
+        </p>
+        <h2>当前验证边界</h2>
+        <p>
+          当前版本没有真实账号验收，所有真实写能力保持关闭。Mock 与自动化测试结果不代表 Alibaba.com
+          已接受真实请求。
+        </p>
+        <p>
+          <a href="https://github.com/OKFred/oneVegetable" target="_blank" rel="noreferrer"
+            >项目主页与问题反馈</a
+          >
+        </p>
+      </article>
+    </main>
+  </body>
+</html>

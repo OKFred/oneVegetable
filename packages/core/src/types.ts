@@ -348,3 +348,34 @@ export interface HostPermissionsRepository {
   list(): Promise<string[]>;
   revoke(origin: string): Promise<boolean>;
 }
+
+export interface OnboardingState {
+  version: 1;
+  completedAt: string | null;
+}
+
+export interface OnboardingRepository {
+  load(): Promise<OnboardingState>;
+  complete(): Promise<OnboardingState>;
+}
+
+export interface LocalDataCategory {
+  id: 'credentials' | 'drafts' | 'diagnostics' | 'preferences';
+  label: string;
+  storage: 'chrome.storage.local' | 'chrome.storage.session' | 'localStorage';
+  itemCount: number;
+  approximateBytes: number;
+  sensitive: boolean;
+  retention: string;
+}
+
+export interface LocalDataInventory {
+  generatedAt: string;
+  totalApproximateBytes: number;
+  categories: LocalDataCategory[];
+}
+
+export interface LocalDataRepository {
+  inspect(): Promise<LocalDataInventory>;
+  clearAll(): Promise<void>;
+}

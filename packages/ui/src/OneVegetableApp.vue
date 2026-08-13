@@ -14,22 +14,33 @@ import {
   Truck
 } from '@lucide/vue';
 
-import type { GatewayClient, HostPermissionsRepository, SettingsRepository } from '@one-vegetable/core';
+import type {
+  GatewayClient,
+  HostPermissionsRepository,
+  LocalDataRepository,
+  OnboardingRepository,
+  SettingsRepository
+} from '@one-vegetable/core';
 
 import Button from './components/ui/Button.vue';
+import OnboardingDialog from './components/OnboardingDialog.vue';
 import { provideServices } from './lib/services';
 
 const props = defineProps<{
   gateway: GatewayClient;
   settings: SettingsRepository;
   permissions?: HostPermissionsRepository;
+  localData?: LocalDataRepository;
+  onboarding?: OnboardingRepository;
   mode: 'mock' | 'extension';
 }>();
 provideServices({
   gateway: props.gateway,
   settings: props.settings,
   mode: props.mode,
-  ...(props.permissions ? { permissions: props.permissions } : {})
+  ...(props.permissions ? { permissions: props.permissions } : {}),
+  ...(props.localData ? { localData: props.localData } : {}),
+  ...(props.onboarding ? { onboarding: props.onboarding } : {})
 });
 
 type PageId =
@@ -76,6 +87,7 @@ const activeView = computed(() => views[page.value]);
 
 <template>
   <div class="min-h-screen bg-background text-foreground">
+    <OnboardingDialog />
     <aside
       class="fixed inset-y-0 left-0 z-40 w-60 border-r bg-slate-950 text-slate-100 transition-transform lg:translate-x-0"
       :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"

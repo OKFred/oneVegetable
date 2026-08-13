@@ -1,11 +1,22 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { Download, Globe2, KeyRound, RotateCcw, Save, ShieldCheck, Trash2 } from '@lucide/vue';
+import {
+  AlertTriangle,
+  Database,
+  Download,
+  Globe2,
+  KeyRound,
+  RotateCcw,
+  Save,
+  ShieldCheck,
+  Trash2
+} from '@lucide/vue';
 
 import {
   ALIBABA_GATEWAY,
   type DiagnosticsSnapshot,
   type GatewaySettings,
+  type LocalDataInventory,
   type SignMethod
 } from '@one-vegetable/core';
 
@@ -15,7 +26,7 @@ import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import { useServices } from '../lib/services';
 
-const { gateway, settings, permissions, mode } = useServices();
+const { gateway, settings, permissions, localData, mode } = useServices();
 const signMethods: SignMethod[] = ['hmac', 'md5', 'hmac-sha256'];
 const model = ref<GatewaySettings>({
   appKey: '',
@@ -32,12 +43,21 @@ const diagnosticsError = ref('');
 const grantedHosts = ref<string[]>([]);
 const permissionsBusy = ref(false);
 const permissionsError = ref('');
+const dataInventory = ref<LocalDataInventory | null>(null);
+const dataBusy = ref(false);
+const dataError = ref('');
+const clearConfirmation = ref('');
 const lastDiagnosticError = computed(() =>
   diagnostics.value?.entries.findLast((entry) => entry.outcome === 'error')
 );
 
 onMounted(async () => {
-  const [storedSettings] = await Promise.all([settings.load(), refreshDiagnostics(), refreshPermissions()]);
+  const [storedSettings] = await Promise.all([
+    settings.load(),
+    refreshDiagnostics(),
+    refreshPermissions(),
+    refreshLocalData()
+  ]);
   model.value = storedSettings;
 });
 
@@ -120,6 +140,67 @@ async function clearDiagnostics(): Promise<void> {
   } finally {
     diagnosticsBusy.value = false;
   }
+}
+
+async function refreshLocalData(): Promise<void> {
+  if (!localData) return;
+  dataBusy.value = true;
+  dataError.value = '';
+  try {
+    dataInventory.value = await localData.inspect();
+  } catch (error: unknown) {
+    dataError.value = error instanceof Error ? error.message : '本地数据清单加载失败';
+  } finally {
+    dataBusy.value = false;
+  }
+}
+
+async function exportLocalDataInventory(): Promise<void> {
+  await refreshLocalData();
+  if (!dataInventory.value) return;
+  downloadJson(
+    dataInventory.value,
+    `one-vegetable-local-data-inventory-${new Date().toISOString().slice(0, 10)}.json`
+  );
+  feedback.value = '已导出不包含具体值的本地数据清单。';
+}
+
+async function clearAllLocalData(): Promise<void> {
+  if (!localData || clearConfirmation.value !== '清除全部数据') return;
+  dataBusy.value = true;
+  dataError.value = '';
+  try {
+    await localData.clearAll();
+    clearConfirmation.value = '';
+    model.value = {
+      appKey: '',
+      appSecret: '',
+      accessToken: '',
+      endpoint: ALIBABA_GATEWAY,
+      signMethod: 'hmac'
+    };
+    await Promise.all([refreshLocalData(), refreshDiagnostics(), refreshPermissions()]);
+    feedback.value = '扩展本地数据和额外主机权限已清除；重新加载后会再次显示首次使用说明。';
+  } catch (error: unknown) {
+    dataError.value = error instanceof Error ? error.message : '扩展本地数据清除失败';
+  } finally {
+    dataBusy.value = false;
+  }
+}
+
+function downloadJson(value: unknown, filename: string): void {
+  const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = globalThis.document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  return `${(bytes / 1024).toFixed(1)} KiB`;
 }
 </script>
 
@@ -241,6 +322,86 @@ async function clearDiagnostics(): Promise<void> {
         <Button variant="outline" :disabled="diagnosticsBusy" @click="clearDiagnostics">
           <Trash2 class="size-4" />清空诊断
         </Button>
+      </div>
+    </Card>
+    <Card v-if="mode === 'extension' && localData" class="p-5">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <Database class="size-4 text-primary" />
+            <h2 class="font-semibold">本地数据与隐私</h2>
+          </div>
+          <p class="mt-2 text-sm text-muted-foreground">
+            清单只包含类别和估算大小，不导出 App Secret、Access Token、草稿正文或诊断内容。
+          </p>
+        </div>
+        <span class="rounded-full bg-muted px-3 py-1 text-xs">
+          {{ formatBytes(dataInventory?.totalApproximateBytes ?? 0) }}
+        </span>
+      </div>
+      <p v-if="dataError" class="mt-3 text-sm text-destructive">{{ dataError }}</p>
+      <div class="mt-4 overflow-x-auto rounded-lg border">
+        <table class="w-full min-w-[620px] text-left text-sm">
+          <thead class="bg-muted/70 text-xs text-muted-foreground">
+            <tr>
+              <th class="px-3 py-2 font-medium">类别</th>
+              <th class="px-3 py-2 font-medium">存储位置</th>
+              <th class="px-3 py-2 font-medium">数量</th>
+              <th class="px-3 py-2 font-medium">大小</th>
+              <th class="px-3 py-2 font-medium">保留时间</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="category in dataInventory?.categories ?? []" :key="category.id" class="border-t">
+              <td class="px-3 py-3">
+                {{ category.label }}
+                <span v-if="category.sensitive" class="ml-1 text-xs text-amber-700">敏感</span>
+              </td>
+              <td class="px-3 py-3">
+                <code class="text-xs">{{ category.storage }}</code>
+              </td>
+              <td class="px-3 py-3">{{ category.itemCount }}</td>
+              <td class="px-3 py-3">{{ formatBytes(category.approximateBytes) }}</td>
+              <td class="px-3 py-3 text-xs text-muted-foreground">{{ category.retention }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-4 flex flex-wrap gap-2">
+        <Button variant="outline" :disabled="dataBusy" @click="refreshLocalData">
+          <RotateCcw class="size-4" />刷新清单
+        </Button>
+        <Button variant="outline" :disabled="dataBusy" @click="exportLocalDataInventory">
+          <Download class="size-4" />导出数据清单
+        </Button>
+      </div>
+      <div class="mt-5 rounded-lg border border-red-200 bg-red-50 p-4">
+        <div class="flex items-start gap-2 text-red-900">
+          <AlertTriangle class="mt-0.5 size-4 shrink-0" />
+          <div>
+            <p class="text-sm font-medium">彻底清除扩展本地数据</p>
+            <p class="mt-1 text-xs leading-5">
+              此操作无法撤销。请输入“清除全部数据”，将删除凭证、设置、草稿、诊断、首次使用状态并撤销额外主机权限。
+            </p>
+          </div>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <Input
+            v-model="clearConfirmation"
+            class="max-w-xs bg-white"
+            aria-label="清除确认短语"
+            autocomplete="off"
+            placeholder="清除全部数据"
+          />
+          <Button
+            variant="outline"
+            class="border-red-300 text-red-800 hover:bg-red-100"
+            :disabled="dataBusy || clearConfirmation !== '清除全部数据'"
+            @click="clearAllLocalData"
+          >
+            <Trash2 class="size-4" />彻底清除
+          </Button>
+        </div>
       </div>
     </Card>
   </div>

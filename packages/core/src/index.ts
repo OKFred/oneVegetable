@@ -4,6 +4,7 @@ export * from './errors';
 export * from './diagnostics';
 export * from './mock-client';
 export * from './photo-transfer';
+export * from './privacy';
 export * from './photo-adapter';
 export * from './product-description';
 export * from './product-description-quality';
