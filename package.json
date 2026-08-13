@@ -16,6 +16,7 @@
     "build:extension": "pnpm --filter @one-vegetable/extension build",
     "check:extension-bundle": "tsx scripts/check-extension-bundle.ts",
     "check:store-compliance": "tsx scripts/check-store-compliance.ts",
+    "capture:store-assets": "pnpm run build:extension && tsx scripts/capture-store-assets.ts",
     "zip:extension": "pnpm run release:extension",
     "release:extension": "pnpm run build:extension && pnpm run check:extension-bundle && pnpm run check:store-compliance && tsx scripts/package-extension.ts",
     "generate": "pnpm run generate:product-contract && pnpm run generate:rfq-contract && pnpm run generate:trade-contract && pnpm run generate:logistics-contract && pnpm run generate:insights-contract && pnpm run generate:photo-contract && pnpm run generate:platform-contract && pnpm run generate:types && pnpm run generate:validators",

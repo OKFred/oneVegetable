@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 interface Manifest {
@@ -34,6 +34,11 @@ const manifest = await readJson<Manifest>(resolve(output, 'manifest.json'));
 const listing = await readJson<Listing>(resolve(root, 'store-listing/listing.json'));
 const privacyHtml = await readFile(resolve(output, 'privacy.html'), 'utf8');
 const privacyPolicy = await readFile(resolve(root, 'docs/privacy-policy.md'), 'utf8');
+const storeIcon = await readFile(resolve(root, 'store-listing/assets/icon-128.png'));
+const screenshotDirectory = resolve(root, 'store-listing/assets/screenshots');
+const screenshots = (await readdir(screenshotDirectory))
+  .filter((file) => file.endsWith('.png'))
+  .toSorted((left, right) => left.localeCompare(right));
 const errors: string[] = [];
 
 if (manifest.manifest_version !== 3) errors.push('manifest_version must be 3');
@@ -64,6 +69,17 @@ if ((listing.permissions ?? []).some((permission) => !permission.justification?.
 if (listing.permissions?.length !== 3) errors.push('store permission inventory must contain three entries');
 if (listing.submissionStatus?.realMutationsEnabled !== false)
   errors.push('real mutations must remain disabled before account smoke tests');
+if (screenshots.length < 1 || screenshots.length > 5)
+  errors.push('store listing must contain between one and five screenshots');
+for (const screenshot of screenshots) {
+  const dimensions = pngDimensions(await readFile(resolve(screenshotDirectory, screenshot)));
+  if (dimensions.width !== 1280 || dimensions.height !== 800) {
+    errors.push(`${screenshot} must be exactly 1280x800`);
+  }
+}
+const iconDimensions = pngDimensions(storeIcon);
+if (iconDimensions.width !== 128 || iconDimensions.height !== 128)
+  errors.push('store icon must be exactly 128x128');
 
 for (const locale of ['zh_CN', 'en']) {
   const messages = await readJson<LocaleMessages>(resolve(output, `_locales/${locale}/messages.json`));
@@ -83,9 +99,19 @@ for (const [file, content] of [
   }
 }
 
-process.stdout.write(`MV3 manifest, 2 locales, 3 permission declarations and privacy disclosures checked\n`);
+process.stdout.write(
+  `MV3 manifest, 2 locales, 3 permission declarations, privacy disclosures and ${screenshots.length} screenshots checked\n`
+);
 if (errors.length > 0) throw new Error(errors.join('\n'));
 
 async function readJson<T>(path: string): Promise<T> {
   return JSON.parse(await readFile(path, 'utf8')) as T;
+}
+
+function pngDimensions(value: Buffer): { width: number; height: number } {
+  const pngSignature = '89504e470d0a1a0a';
+  if (value.length < 24 || value.subarray(0, 8).toString('hex') !== pngSignature) {
+    throw new Error('Store asset is not a valid PNG file');
+  }
+  return { width: value.readUInt32BE(16), height: value.readUInt32BE(20) };
 }

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
+import { copyFile, cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
 
 import { unzipSync, zipSync, type Zippable } from 'fflate';
@@ -58,15 +58,28 @@ await writeFile(
       artifact: artifactName,
       sha256,
       size: archive.byteLength,
-      fileCount: expectedFiles.length
+      fileCount: expectedFiles.length,
+      storeListingDirectory: 'store-listing'
     },
     null,
     2
   )}\n`,
   'utf8'
 );
+const storeArtifactDirectory = resolve(artifactsDirectory, 'store-listing');
+await rm(storeArtifactDirectory, { recursive: true, force: true });
+await mkdir(storeArtifactDirectory, { recursive: true });
+await Promise.all([
+  copyFile(resolve(root, 'docs/privacy-policy.md'), resolve(storeArtifactDirectory, 'privacy-policy.md')),
+  copyFile(resolve(root, 'store-listing/listing.json'), resolve(storeArtifactDirectory, 'listing.json')),
+  copyFile(resolve(root, 'store-listing/zh_CN.md'), resolve(storeArtifactDirectory, 'zh_CN.md')),
+  copyFile(resolve(root, 'store-listing/en.md'), resolve(storeArtifactDirectory, 'en.md')),
+  cp(resolve(root, 'store-listing/assets'), resolve(storeArtifactDirectory, 'assets'), {
+    recursive: true
+  })
+]);
 process.stdout.write(
-  `${basename(artifactPath)}\nsha256 ${sha256}\n${archive.byteLength} bytes, ${expectedFiles.length} files\n`
+  `${basename(artifactPath)}\nsha256 ${sha256}\n${archive.byteLength} bytes, ${expectedFiles.length} files\nstore listing bundle copied\n`
 );
 
 async function collectFiles(directory: string): Promise<string[]> {
