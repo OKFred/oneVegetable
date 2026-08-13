@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, type Component } from 'vue';
 import {
+  BarChart3,
   Boxes,
   Handshake,
   Home,
@@ -23,6 +24,7 @@ import CapabilitiesView from './views/CapabilitiesView.vue';
 import SettingsView from './views/SettingsView.vue';
 import RfqsView from './views/RfqsView.vue';
 import LogisticsView from './views/LogisticsView.vue';
+import InsightsView from './views/InsightsView.vue';
 import Button from './components/ui/Button.vue';
 import { provideServices } from './lib/services';
 
@@ -34,7 +36,15 @@ const props = defineProps<{
 provideServices(props);
 
 type PageId =
-  'dashboard' | 'products' | 'photos' | 'rfqs' | 'orders' | 'logistics' | 'capabilities' | 'settings';
+  | 'dashboard'
+  | 'products'
+  | 'photos'
+  | 'rfqs'
+  | 'orders'
+  | 'logistics'
+  | 'insights'
+  | 'capabilities'
+  | 'settings';
 interface NavigationItem {
   id: PageId;
   label: string;
@@ -47,6 +57,7 @@ const items: NavigationItem[] = [
   { id: 'rfqs', label: 'RFQ', icon: Handshake },
   { id: 'orders', label: '订单', icon: ShoppingCart },
   { id: 'logistics', label: '国际物流', icon: Truck },
+  { id: 'insights', label: '数据洞察', icon: BarChart3 },
   { id: 'capabilities', label: 'API 能力', icon: PlugZap },
   { id: 'settings', label: '设置', icon: Settings }
 ];
@@ -59,6 +70,7 @@ const views: Record<PageId, Component> = {
   rfqs: RfqsView,
   orders: OrdersView,
   logistics: LogisticsView,
+  insights: InsightsView,
   capabilities: CapabilitiesView,
   settings: SettingsView
 };
