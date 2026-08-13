@@ -20,6 +20,10 @@ AES-GCM 同时验证密文完整性。错误口令、被修改的密文和不合
 
 用户可以主动锁定。Chrome 回收或重启 service worker 也会丢弃内存中的密钥，因此后续真实请求返回“保险库已锁定”，直到用户重新输入口令。保险库记录若被其他上下文覆盖，worker 会在使用前比对记录并拒绝继续使用旧的缓存密钥。
 
+已解锁会话默认连续 15 分钟未使用凭证后自动锁定，也可选择 5、30 或 60 分钟。读取或更新凭证会刷新活动时间；只读取保险库状态不会续期。超时判定在每次状态或凭证访问前执行，不依赖在 MV3 中不可靠的长时间定时器。Chrome 本身也可能更早终止空闲 service worker，此时全局变量会自然丢失并立即回到锁定状态。
+
+扩展启动时把 `chrome.storage.local` 和 `chrome.storage.session` 的访问级别设置为 `TRUSTED_CONTEXTS`，阻止网页及扩展内容脚本通过 Storage API 读取。由于该 API 自 Chrome 102 起提供，manifest 明确设置最低 Chrome 版本为 102。参考 [Chrome Storage API](https://developer.chrome.com/docs/extensions/reference/api/storage) 和 [扩展 service worker 生命周期](https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle)。
+
 ## 升级、轮换与恢复
 
 旧版明文设置被识别为“待迁移”后不再参与真实请求。迁移由 service worker 读取旧记录、使用用户新口令加密并原位覆盖；options 页面不会收到旧 App Secret 或 Access Token。
@@ -28,4 +32,4 @@ AES-GCM 同时验证密文完整性。错误口令、被修改的密文和不合
 
 ## 验证范围
 
-单元测试覆盖创建、解锁、重新封装、口令轮换、错误口令和密文篡改。MV3 Playwright 回归覆盖密文中不出现凭证明文、service worker 重启自动锁定、旧口令在轮换后失效、旧版明文迁移和彻底清除。当前仍没有真实 Alibaba.com 账号验收，以上测试不代表上游接受了真实签名请求。
+单元测试覆盖创建、解锁、重新封装、口令轮换、错误口令、密文篡改、状态读取不续期、凭证访问续期和截止点自动锁定。MV3 Playwright 回归覆盖内容脚本无法访问 local/session 存储、密文中不出现凭证明文、锁定策略加密保存、service worker 重启自动锁定、旧口令在轮换后失效、旧版明文迁移和彻底清除。当前仍没有真实 Alibaba.com 账号验收，以上测试不代表上游接受了真实签名请求。

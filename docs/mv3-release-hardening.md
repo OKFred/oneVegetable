@@ -4,7 +4,7 @@
 
 生产 manifest 的默认权限保持为：
 
-- `storage`：加密凭证保险库写入 `chrome.storage.local`，诊断写入 `chrome.storage.session`；保险库口令不保存。
+- `storage`：加密凭证保险库写入 `chrome.storage.local`，诊断写入 `chrome.storage.session`；两者均限制为 `TRUSTED_CONTEXTS`，内容脚本不能访问，保险库口令不保存。
 - `https://eco.taobao.com/*`：国际站正式 HTTPS 网关。
 
 扩展不再申请 `cookies` 或必选 `<all_urls>`。自定义网关和外部图片 URL 使用
@@ -45,4 +45,4 @@ pnpm test:e2e
 pnpm zip:extension
 ```
 
-无账号自动化覆盖权限清单、凭证密文、service worker 重启后自动锁定、口令轮换、旧设置迁移、会话诊断、诊断导出/清空、写能力门禁和完整 Web Mock。发布真实写能力前，仍需逐方法完成账号权限、签名、限流、错误映射与回滚 smoke test。
+无账号自动化覆盖权限清单、内容脚本存储隔离、凭证密文、空闲自动锁定策略、service worker 重启后自动锁定、口令轮换、旧设置迁移、会话诊断、诊断导出/清空、写能力门禁和完整 Web Mock。发布真实写能力前，仍需逐方法完成账号权限、签名、限流、错误映射与回滚 smoke test。

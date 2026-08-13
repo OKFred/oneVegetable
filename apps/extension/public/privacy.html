@@ -67,6 +67,11 @@
           草稿保存在扩展自身的 <code>localStorage</code>。
         </p>
         <p>
+          <code>chrome.storage.local</code> 与 <code>chrome.storage.session</code> 均限制为 Chrome 的
+          <code>TRUSTED_CONTEXTS</code>，网页及扩展内容脚本不能通过 Storage API 读取。已解锁保险库默认连续 15
+          分钟未使用凭证后自动锁定，用户可以在 5、15、30、60 分钟之间选择；只查看状态不会延长计时。
+        </p>
+        <p>
           遗忘保险库口令时无法恢复凭证，用户只能清除扩展本地数据后重新配置。旧版明文凭证不会再用于真实请求，必须先由用户设置口令并在
           service worker 内原位加密迁移。
         </p>

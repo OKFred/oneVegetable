@@ -16,6 +16,8 @@
 
 凭证与设置使用用户口令经 PBKDF2-HMAC-SHA256（600,000 次）派生的 AES-256-GCM 密钥加密后保存在扩展的 `chrome.storage.local`。口令不保存，密钥只在已解锁的 service worker 内存中存在，service worker 重启后保险库自动锁定。草稿保存在扩展自身的 `localStorage`。脱敏诊断保存在 `chrome.storage.session`，浏览器会话结束后不作为长期日志保留。扩展不运行自有分析或广告服务，也不把这些数据发送到开发者自有服务器。
 
+`chrome.storage.local` 与 `chrome.storage.session` 均设置为 Chrome `TRUSTED_CONTEXTS`，网页及扩展内容脚本不能通过 Storage API 读取。保险库默认连续 15 分钟未使用凭证后自动锁定，用户可选择 5、15、30 或 60 分钟；状态查询不刷新计时，实际读取或更新凭证才刷新。service worker 若更早终止，内存密钥会立即丢失。
+
 遗忘保险库口令时无法恢复凭证，用户只能彻底清除扩展本地数据后重新配置。旧版明文凭证不会再用于真实请求；用户设置新口令后，service worker 会直接完成原位加密迁移，不把旧 App Secret 或 Access Token 返回给页面。
 
 ## 数据使用与传输

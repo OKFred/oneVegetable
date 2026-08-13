@@ -36,6 +36,7 @@ const listing = await readJson<Listing>(resolve(root, 'store-listing/listing.jso
 const privacyHtml = await readFile(resolve(output, 'privacy.html'), 'utf8');
 const privacyPolicy = await readFile(resolve(root, 'docs/privacy-policy.md'), 'utf8');
 const credentialVaultSource = await readFile(resolve(root, 'packages/core/src/credential-vault.ts'), 'utf8');
+const backgroundSource = await readFile(resolve(root, 'apps/extension/entrypoints/background.ts'), 'utf8');
 const storeIcon = await readFile(resolve(root, 'store-listing/assets/icon-128.png'));
 const screenshotDirectory = resolve(root, 'store-listing/assets/screenshots');
 const screenshots = (await readdir(screenshotDirectory))
@@ -105,10 +106,21 @@ for (const [file, content] of [
     'Limited Use',
     'PBKDF2-HMAC-SHA256',
     'AES-256-GCM',
+    'TRUSTED_CONTEXTS',
     '口令不保存',
+    '自动锁定',
     '真实写'
   ]) {
     if (!content.includes(phrase)) errors.push(`${file} is missing disclosure phrase: ${phrase}`);
+  }
+}
+
+for (const phrase of [
+  "browser.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })",
+  "browser.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })"
+]) {
+  if (!backgroundSource.includes(phrase)) {
+    errors.push(`background is missing reviewed storage isolation: ${phrase}`);
   }
 }
 
