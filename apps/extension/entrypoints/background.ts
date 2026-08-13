@@ -1,7 +1,6 @@
 import { browser } from 'wxt/browser';
 
 import {
-  ALIBABA_GATEWAY,
   AlibabaClient,
   downloadPhotoForUpload,
   findCapability,
@@ -11,7 +10,9 @@ import {
   listCapabilities,
   LogisticsAdapter,
   normalizeGatewayError,
+  migrateGatewaySettings,
   sanitizeDiagnosticMessage,
+  SETTINGS_STORAGE_KEY,
   PhotoAdapter,
   RfqAdapter,
   TradeAdapter,
@@ -489,15 +490,12 @@ function readResultTraceId(value: unknown): string | null {
 }
 
 async function loadSettings(): Promise<GatewaySettings> {
-  const stored = await browser.storage.local.get('gatewaySettings');
-  const value = asRecord(stored.gatewaySettings);
-  return {
-    appKey: readString(value, ['appKey']) ?? '',
-    appSecret: readString(value, ['appSecret']) ?? '',
-    accessToken: readString(value, ['accessToken']) ?? '',
-    endpoint: readString(value, ['endpoint']) ?? ALIBABA_GATEWAY,
-    signMethod: normalizeSignMethod(readString(value, ['signMethod']))
-  };
+  const stored = await browser.storage.local.get(SETTINGS_STORAGE_KEY);
+  const migrated = migrateGatewaySettings(stored[SETTINGS_STORAGE_KEY]);
+  if (migrated.migrated) {
+    await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: migrated.persistedValue });
+  }
+  return migrated.settings;
 }
 
 function asRuntimeRequest(value: unknown): RuntimeRequest | null {
@@ -580,10 +578,6 @@ function findRecords(record: Record<string, unknown>, keys: string[]): Record<st
 function normalizeDate(value: string | undefined): string {
   const date = value ? new Date(value) : new Date();
   return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
-}
-
-function normalizeSignMethod(value: string | undefined): GatewaySettings['signMethod'] {
-  return value === 'md5' || value === 'hmac-sha256' ? value : 'hmac';
 }
 
 function readTraceId(value: unknown): string | undefined {

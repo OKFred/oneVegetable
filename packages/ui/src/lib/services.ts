@@ -1,10 +1,11 @@
 import { inject, provide, type InjectionKey } from 'vue';
 
-import type { GatewayClient, SettingsRepository } from '@one-vegetable/core';
+import type { GatewayClient, HostPermissionsRepository, SettingsRepository } from '@one-vegetable/core';
 
 export interface AppServices {
   gateway: GatewayClient;
   settings: SettingsRepository;
+  permissions?: HostPermissionsRepository;
   mode: 'mock' | 'extension';
 }
 

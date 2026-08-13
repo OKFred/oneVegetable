@@ -13,7 +13,8 @@ const anchorClick = vi.fn();
 const createObjectUrl = vi.fn(() => 'blob:diagnostics');
 const revokeObjectUrl = vi.fn();
 
-function mountView() {
+function mountView(mode: 'mock' | 'extension' = 'mock') {
+  let grantedHosts = ['https://images.example.com/*'];
   const Host = defineComponent({
     setup() {
       provideServices({
@@ -29,7 +30,15 @@ function mountView() {
             }),
           save: () => Promise.resolve()
         },
-        mode: 'mock'
+        permissions: {
+          list: () => Promise.resolve(grantedHosts),
+          revoke: (origin) => {
+            const hadPermission = grantedHosts.includes(origin);
+            grantedHosts = grantedHosts.filter((item) => item !== origin);
+            return Promise.resolve(hadPermission);
+          }
+        },
+        mode
       });
       return () => h(SettingsView);
     }
@@ -76,6 +85,21 @@ describe('SettingsView diagnostics', () => {
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('0 条');
       expect(wrapper.text()).toContain('诊断记录已清空。');
+    });
+    wrapper.unmount();
+  });
+
+  it('lists and revokes optional host permissions in extension mode', async () => {
+    const wrapper = mountView('extension');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('https://images.example.com/*');
+    });
+
+    const revokeButton = wrapper.get('button[aria-label="撤销 https://images.example.com/*"]');
+    await revokeButton.trigger('click');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('当前没有额外主机权限。');
+      expect(wrapper.text()).toContain('再次使用时会重新请求授权。');
     });
     wrapper.unmount();
   });

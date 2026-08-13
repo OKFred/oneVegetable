@@ -343,3 +343,8 @@ export interface SettingsRepository {
   load(): Promise<GatewaySettings>;
   save(settings: GatewaySettings): Promise<void>;
 }
+
+export interface HostPermissionsRepository {
+  list(): Promise<string[]>;
+  revoke(origin: string): Promise<boolean>;
+}

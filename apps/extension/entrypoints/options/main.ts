@@ -3,11 +3,13 @@ import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { browser } from 'wxt/browser';
 
 import {
-  ALIBABA_GATEWAY,
   GatewayException,
+  migrateGatewaySettings,
   normalizeGatewayError,
+  persistGatewaySettings,
+  SETTINGS_STORAGE_KEY,
   type GatewayClient,
-  type GatewaySettings,
+  type HostPermissionsRepository,
   type OperationId,
   type RequestOf,
   type ResponseOf,
@@ -18,23 +20,30 @@ import {
 import { OneVegetableApp } from '@one-vegetable/ui';
 import '@one-vegetable/ui/styles.css';
 
-const defaults: GatewaySettings = {
-  appKey: '',
-  appSecret: '',
-  accessToken: '',
-  endpoint: ALIBABA_GATEWAY,
-  signMethod: 'hmac'
-};
-
 const settings: SettingsRepository = {
   async load() {
-    const stored = await browser.storage.local.get('gatewaySettings');
-    const value = stored.gatewaySettings;
-    return isPartialSettings(value) ? { ...defaults, ...value } : defaults;
+    const stored = await browser.storage.local.get(SETTINGS_STORAGE_KEY);
+    const migrated = migrateGatewaySettings(stored[SETTINGS_STORAGE_KEY]);
+    if (migrated.migrated) {
+      await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: migrated.persistedValue });
+    }
+    return migrated.settings;
   },
   async save(value) {
     await ensureOptionalHostPermission(value.endpoint, '自定义网关');
-    await browser.storage.local.set({ gatewaySettings: value });
+    await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: persistGatewaySettings(value) });
+  }
+};
+
+const permissions: HostPermissionsRepository = {
+  async list() {
+    const granted = await browser.permissions.getAll();
+    return (granted.origins ?? [])
+      .filter((origin) => origin !== 'https://eco.taobao.com/*')
+      .toSorted((left, right) => left.localeCompare(right));
+  },
+  revoke(origin) {
+    return browser.permissions.remove({ origins: [origin] });
   }
 };
 
@@ -67,7 +76,7 @@ async function ensureOptionalHostPermission(rawUrl: string, purpose: string): Pr
   }
   const officialGateway = url.protocol === 'https:' && url.hostname === 'eco.taobao.com';
   if (officialGateway) return;
-  const origin = `${url.protocol}//${url.hostname}/*`;
+  const origin = `${url.protocol}//${url.host}/*`;
   const permissions = { origins: [origin] };
   if (await browser.permissions.contains(permissions)) return;
   if (await browser.permissions.request(permissions)) return;
@@ -78,11 +87,6 @@ async function ensureOptionalHostPermission(rawUrl: string, purpose: string): Pr
   });
 }
 
-function isPartialSettings(value: unknown): value is Partial<GatewaySettings> {
-  if (typeof value !== 'object' || value === null) return false;
-  return !('endpoint' in value) || typeof value.endpoint === 'string';
-}
-
 window.addEventListener('unhandledrejection', (event) => {
   const error = normalizeGatewayError(event.reason as unknown);
   console.error('[oneVegetable]', error.code, error.message);
@@ -91,6 +95,7 @@ window.addEventListener('unhandledrejection', (event) => {
 const app = createApp(OneVegetableApp, {
   gateway: new ExtensionGatewayClient(),
   settings,
+  permissions,
   mode: 'extension'
 });
 app.use(VueQueryPlugin, {

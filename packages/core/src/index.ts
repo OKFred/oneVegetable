@@ -13,6 +13,7 @@ export * from './trade-adapter';
 export * from './logistics-adapter';
 export * from './insights-adapter';
 export * from './signing';
+export * from './settings-storage';
 export * from './types';
 export * from './validation';
 export { API_CAPABILITIES } from './generated/capabilities';

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { Download, KeyRound, RotateCcw, Save, ShieldCheck, Trash2 } from '@lucide/vue';
+import { Download, Globe2, KeyRound, RotateCcw, Save, ShieldCheck, Trash2 } from '@lucide/vue';
 
 import {
   ALIBABA_GATEWAY,
@@ -15,7 +15,7 @@ import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import { useServices } from '../lib/services';
 
-const { gateway, settings, mode } = useServices();
+const { gateway, settings, permissions, mode } = useServices();
 const signMethods: SignMethod[] = ['hmac', 'md5', 'hmac-sha256'];
 const model = ref<GatewaySettings>({
   appKey: '',
@@ -29,12 +29,15 @@ const feedback = ref('');
 const diagnostics = ref<DiagnosticsSnapshot | null>(null);
 const diagnosticsBusy = ref(false);
 const diagnosticsError = ref('');
+const grantedHosts = ref<string[]>([]);
+const permissionsBusy = ref(false);
+const permissionsError = ref('');
 const lastDiagnosticError = computed(() =>
   diagnostics.value?.entries.findLast((entry) => entry.outcome === 'error')
 );
 
 onMounted(async () => {
-  const [storedSettings] = await Promise.all([settings.load(), refreshDiagnostics()]);
+  const [storedSettings] = await Promise.all([settings.load(), refreshDiagnostics(), refreshPermissions()]);
   model.value = storedSettings;
 });
 
@@ -49,6 +52,34 @@ async function save(): Promise<void> {
     feedback.value = error instanceof Error ? error.message : '设置保存失败';
   } finally {
     saving.value = false;
+  }
+}
+
+async function refreshPermissions(): Promise<void> {
+  if (!permissions) return;
+  permissionsBusy.value = true;
+  permissionsError.value = '';
+  try {
+    grantedHosts.value = await permissions.list();
+  } catch (error: unknown) {
+    permissionsError.value = error instanceof Error ? error.message : '主机权限加载失败';
+  } finally {
+    permissionsBusy.value = false;
+  }
+}
+
+async function revokePermission(origin: string): Promise<void> {
+  if (!permissions) return;
+  permissionsBusy.value = true;
+  permissionsError.value = '';
+  try {
+    const removed = await permissions.revoke(origin);
+    await refreshPermissions();
+    feedback.value = removed ? `已撤销 ${origin}；再次使用时会重新请求授权。` : `${origin} 当前未授权。`;
+  } catch (error: unknown) {
+    permissionsError.value = error instanceof Error ? error.message : '主机权限撤销失败';
+  } finally {
+    permissionsBusy.value = false;
   }
 }
 
@@ -146,6 +177,40 @@ async function clearDiagnostics(): Promise<void> {
         </p>
       </div></Card
     >
+    <Card v-if="mode === 'extension' && permissions" class="p-5">
+      <div class="flex items-center gap-2">
+        <Globe2 class="size-4 text-primary" />
+        <h2 class="font-semibold">主机权限</h2>
+      </div>
+      <p class="mt-2 text-sm text-muted-foreground">
+        正式网关为扩展必选权限；下面只列出曾由自定义网关或外部图片转存按需授予的主机。
+      </p>
+      <p v-if="permissionsError" class="mt-3 text-sm text-destructive">{{ permissionsError }}</p>
+      <p v-else-if="grantedHosts.length === 0" class="mt-3 text-sm text-muted-foreground">
+        当前没有额外主机权限。
+      </p>
+      <ul v-else class="mt-3 grid gap-2">
+        <li
+          v-for="origin in grantedHosts"
+          :key="origin"
+          class="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
+        >
+          <code class="break-all text-xs">{{ origin }}</code>
+          <Button
+            size="sm"
+            variant="outline"
+            :aria-label="`撤销 ${origin}`"
+            :disabled="permissionsBusy"
+            @click="revokePermission(origin)"
+          >
+            <Trash2 class="size-3.5" />撤销
+          </Button>
+        </li>
+      </ul>
+      <Button class="mt-3" variant="outline" :disabled="permissionsBusy" @click="refreshPermissions">
+        <RotateCcw class="size-4" />刷新权限
+      </Button>
+    </Card>
     <Card class="p-5">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
