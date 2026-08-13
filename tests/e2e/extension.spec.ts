@@ -112,4 +112,35 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByRole('button', { name: '刷新' })).toBeDisabled();
   await page.getByRole('button', { name: '下单草稿' }).click();
   await expect(page.getByRole('button', { name: '真实下单保持禁用' })).toBeDisabled();
+
+  await page.getByRole('button', { name: '数据洞察' }).click();
+  await expect(page.getByRole('heading', { name: '数据与供应商洞察' })).toBeVisible();
+  await page.getByRole('button', { name: '合作方能力' }).click();
+  await expect(page.getByText(/CGS 小满签约客户数据查询/)).toBeVisible();
+  await expect(page.getByText(/service worker 会在通用调试入口阻止该方法/)).toBeVisible();
+  await expect(page.locator('input')).toHaveCount(0);
+
+  const partnerCapabilityError = await page.evaluate(async () => {
+    const extension = (
+      globalThis as unknown as {
+        chrome: { runtime: { sendMessage(value: object): Promise<unknown> } };
+      }
+    ).chrome;
+    return extension.runtime.sendMessage({
+      id: 'insights-partner-gate-e2e',
+      kind: 'gateway-request',
+      operation: 'callCapability',
+      payload: {
+        method: 'alibaba.mydata.self.query.cgsokk',
+        parameters: {
+          data_source: 'okkData',
+          social_credit_code: 'documented-placeholder',
+          app_secret: 'must-not-be-sent',
+          app_info: 'alidataservice'
+        }
+      }
+    });
+  });
+  expect(partnerCapabilityError).toMatchObject({ ok: false });
+  expect(JSON.stringify(partnerCapabilityError)).toContain('CGS 小满签约客户');
 });

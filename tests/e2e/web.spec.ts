@@ -115,6 +115,24 @@ test('web mock completes the qualified international logistics workflow', async 
   await expect(page.getByText('北美包邮模板')).toBeVisible();
 });
 
+test('web mock exposes typed data and supplier insights without inferred conclusions', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '数据洞察' }).click();
+  await expect(page.getByRole('heading', { name: '数据与供应商洞察' })).toBeVisible();
+  await expect(page.getByText('18.6%').first()).toBeVisible();
+  await expect(page.getByText(/不生成“提升”“下降”或评级结论/)).toBeVisible();
+
+  await page.getByRole('button', { name: '采购供应商' }).click();
+  await page.getByRole('button', { name: /supplier-enc-001/ }).click();
+  await expect(page.getByText('Portable solar power station 1000W')).toBeVisible();
+  await expect(page.getByText('100003109')).toBeVisible();
+
+  await page.getByRole('button', { name: '合作方能力' }).click();
+  await expect(page.getByText(/CGS 小满签约客户数据查询/)).toBeVisible();
+  await expect(page.getByText(/不会把密钥放入页面或普通设置/)).toBeVisible();
+  await expect(page.locator('input')).toHaveCount(0);
+});
+
 test('web mock supports visual detail editing, PhotoBank transfer and non-blocking guidance', async ({
   page
 }) => {
