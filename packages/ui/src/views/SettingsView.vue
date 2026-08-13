@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { KeyRound, Save, ShieldCheck } from '@lucide/vue';
+import { computed, onMounted, ref } from 'vue';
+import { Download, KeyRound, RotateCcw, Save, ShieldCheck, Trash2 } from '@lucide/vue';
 
-import { ALIBABA_GATEWAY, type GatewaySettings, type SignMethod } from '@one-vegetable/core';
+import {
+  ALIBABA_GATEWAY,
+  type DiagnosticsSnapshot,
+  type GatewaySettings,
+  type SignMethod
+} from '@one-vegetable/core';
 
 import PageHeader from '../components/PageHeader.vue';
 import Button from '../components/ui/Button.vue';
@@ -10,7 +15,7 @@ import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import { useServices } from '../lib/services';
 
-const { settings, mode } = useServices();
+const { gateway, settings, mode } = useServices();
 const signMethods: SignMethod[] = ['hmac', 'md5', 'hmac-sha256'];
 const model = ref<GatewaySettings>({
   appKey: '',
@@ -21,9 +26,16 @@ const model = ref<GatewaySettings>({
 });
 const saving = ref(false);
 const feedback = ref('');
+const diagnostics = ref<DiagnosticsSnapshot | null>(null);
+const diagnosticsBusy = ref(false);
+const diagnosticsError = ref('');
+const lastDiagnosticError = computed(() =>
+  diagnostics.value?.entries.findLast((entry) => entry.outcome === 'error')
+);
 
 onMounted(async () => {
-  model.value = await settings.load();
+  const [storedSettings] = await Promise.all([settings.load(), refreshDiagnostics()]);
+  model.value = storedSettings;
 });
 
 async function save(): Promise<void> {
@@ -37,6 +49,45 @@ async function save(): Promise<void> {
     feedback.value = error instanceof Error ? error.message : '设置保存失败';
   } finally {
     saving.value = false;
+  }
+}
+
+async function refreshDiagnostics(): Promise<void> {
+  diagnosticsBusy.value = true;
+  diagnosticsError.value = '';
+  try {
+    diagnostics.value = await gateway.request('getDiagnostics', undefined);
+  } catch (error: unknown) {
+    diagnosticsError.value = error instanceof Error ? error.message : '诊断加载失败';
+  } finally {
+    diagnosticsBusy.value = false;
+  }
+}
+
+async function exportDiagnostics(): Promise<void> {
+  await refreshDiagnostics();
+  if (!diagnostics.value) return;
+  const blob = new Blob([JSON.stringify(diagnostics.value, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = globalThis.document.createElement('a');
+  link.href = url;
+  link.download = `one-vegetable-diagnostics-${new Date().toISOString().slice(0, 10)}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+  feedback.value = `已导出 ${diagnostics.value.entries.length} 条脱敏诊断。`;
+}
+
+async function clearDiagnostics(): Promise<void> {
+  diagnosticsBusy.value = true;
+  diagnosticsError.value = '';
+  try {
+    await gateway.request('clearDiagnostics', undefined);
+    diagnostics.value = await gateway.request('getDiagnostics', undefined);
+    feedback.value = '诊断记录已清空。';
+  } catch (error: unknown) {
+    diagnosticsError.value = error instanceof Error ? error.message : '诊断清理失败';
+  } finally {
+    diagnosticsBusy.value = false;
   }
 }
 </script>
@@ -95,5 +146,37 @@ async function save(): Promise<void> {
         </p>
       </div></Card
     >
+    <Card class="p-5">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <ShieldCheck class="size-4 text-primary" />
+            <h2 class="font-semibold">脱敏诊断</h2>
+          </div>
+          <p class="mt-2 text-sm text-muted-foreground">
+            仅保留最近 100 条操作名、耗时、错误码和 traceId；不记录请求参数、凭证或响应正文。
+          </p>
+        </div>
+        <span class="rounded-full bg-muted px-3 py-1 text-xs">
+          {{ diagnostics?.entries.length ?? 0 }} 条
+        </span>
+      </div>
+      <div v-if="lastDiagnosticError" class="mt-3 rounded-md bg-amber-50 p-3 text-xs text-amber-800">
+        最近错误：{{ lastDiagnosticError.errorCode }} · {{ lastDiagnosticError.operation }} ·
+        {{ lastDiagnosticError.errorMessage }}
+      </div>
+      <p v-if="diagnosticsError" class="mt-3 text-sm text-destructive">{{ diagnosticsError }}</p>
+      <div class="mt-4 flex flex-wrap gap-2">
+        <Button variant="outline" :disabled="diagnosticsBusy" @click="refreshDiagnostics">
+          <RotateCcw class="size-4" />刷新
+        </Button>
+        <Button variant="outline" :disabled="diagnosticsBusy" @click="exportDiagnostics">
+          <Download class="size-4" />导出诊断
+        </Button>
+        <Button variant="outline" :disabled="diagnosticsBusy" @click="clearDiagnostics">
+          <Trash2 class="size-4" />清空诊断
+        </Button>
+      </div>
+    </Card>
   </div>
 </template>
