@@ -79,5 +79,28 @@ export const auditEvents = sqliteTable(
   ]
 );
 
-export const schema = { schemaMigrations, appMetadata, users, sessions, auditEvents };
-export const CURRENT_SCHEMA_VERSION = 2;
+export const requestEvents = sqliteTable(
+  'request_events',
+  {
+    id: text('id').primaryKey(),
+    eventTimeUtc: integer('event_time_utc').notNull(),
+    requestId: text('request_id').notNull(),
+    environment: text('environment').notNull(),
+    runtime: text('runtime', { enum: ['node', 'cloudflare'] }).notNull(),
+    route: text('route').notNull(),
+    operation: text('operation').notNull(),
+    actorId: text('actor_id'),
+    outcome: text('outcome', { enum: ['success', 'error', 'denied'] }).notNull(),
+    statusCode: integer('status_code').notNull(),
+    durationMilliseconds: integer('duration_milliseconds').notNull()
+  },
+  (table) => [
+    index('request_events_request_id_index').on(table.requestId),
+    index('request_events_time_index').on(table.eventTimeUtc),
+    index('request_events_actor_id_index').on(table.actorId),
+    index('request_events_outcome_index').on(table.outcome)
+  ]
+);
+
+export const schema = { schemaMigrations, appMetadata, users, sessions, auditEvents, requestEvents };
+export const CURRENT_SCHEMA_VERSION = 3;
