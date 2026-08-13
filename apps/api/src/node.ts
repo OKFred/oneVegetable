@@ -1,14 +1,21 @@
 import { serve } from '@hono/node-server';
 
 import { createApiApp } from './app';
+import { applyNodeMigrations, isNodeDatabaseReady, openNodeDatabase } from './db/node-database';
 
 const port = readPort(process.env.ONE_VEGETABLE_PORT);
+const environment = process.env.ONE_VEGETABLE_ENVIRONMENT ?? 'local-node';
+const database = openNodeDatabase(process.env.ONE_VEGETABLE_SQLITE_PATH ?? '.data/one-vegetable.sqlite');
+if (environment === 'local-node' && process.env.ONE_VEGETABLE_AUTO_MIGRATE !== 'false') {
+  applyNodeMigrations(database);
+}
 const app = createApiApp({
   runtime: 'node',
   database: 'sqlite',
-  environment: process.env.ONE_VEGETABLE_ENVIRONMENT ?? 'local-node',
+  environment,
   gatewayMode: readGatewayMode(process.env.ONE_VEGETABLE_GATEWAY_MODE),
-  apiPrefix: process.env.ONE_VEGETABLE_API_PREFIX
+  apiPrefix: process.env.ONE_VEGETABLE_API_PREFIX,
+  ready: () => Promise.resolve(isNodeDatabaseReady(database))
 });
 
 serve({ fetch: app.fetch, port }, (info) => {

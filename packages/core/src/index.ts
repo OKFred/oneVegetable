@@ -1,5 +1,6 @@
 export * from './alibaba-client';
 export * from './api-contract';
+export * from './audit';
 export * from './capability-registry';
 export * from './credential-vault';
 export * from './errors';

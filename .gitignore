@@ -6,6 +6,8 @@ dist/
 coverage/
 .output/
 .wxt/
+.wrangler/
+.data/
 playwright-report/
 test-results/
 artifacts/
