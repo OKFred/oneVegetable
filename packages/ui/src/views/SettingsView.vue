@@ -6,14 +6,19 @@ import {
   Download,
   Globe2,
   KeyRound,
+  LockKeyhole,
   RotateCcw,
   Save,
   ShieldCheck,
-  Trash2
+  Trash2,
+  UnlockKeyhole
 } from '@lucide/vue';
 
 import {
   ALIBABA_GATEWAY,
+  CREDENTIAL_VAULT_ITERATIONS,
+  CREDENTIAL_VAULT_MIN_PASSPHRASE_BYTES,
+  type CredentialVaultStatus,
   type DiagnosticsSnapshot,
   type GatewaySettings,
   type LocalDataInventory,
@@ -26,7 +31,7 @@ import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import { useServices } from '../lib/services';
 
-const { gateway, settings, permissions, localData, mode } = useServices();
+const { gateway, settings, permissions, localData, vault, mode } = useServices();
 const signMethods: SignMethod[] = ['hmac', 'md5', 'hmac-sha256'];
 const model = ref<GatewaySettings>({
   appKey: '',
@@ -47,32 +52,153 @@ const dataInventory = ref<LocalDataInventory | null>(null);
 const dataBusy = ref(false);
 const dataError = ref('');
 const clearConfirmation = ref('');
+const vaultStatus = ref<CredentialVaultStatus | null>(null);
+const vaultPassphrase = ref('');
+const vaultPassphraseConfirmation = ref('');
+const newVaultPassphrase = ref('');
+const newVaultPassphraseConfirmation = ref('');
+const vaultBusy = ref(false);
+const vaultError = ref('');
+const settingsEditable = computed(
+  () => mode === 'mock' || vaultStatus.value?.state === 'empty' || vaultStatus.value?.state === 'unlocked'
+);
 const lastDiagnosticError = computed(() =>
   diagnostics.value?.entries.findLast((entry) => entry.outcome === 'error')
 );
 
 onMounted(async () => {
-  const [storedSettings] = await Promise.all([
-    settings.load(),
+  const [, , , storedSettings] = await Promise.all([
     refreshDiagnostics(),
     refreshPermissions(),
-    refreshLocalData()
+    refreshLocalData(),
+    initializeSettings()
   ]);
-  model.value = storedSettings;
+  if (storedSettings) model.value = storedSettings;
 });
+
+async function initializeSettings(): Promise<GatewaySettings | undefined> {
+  if (mode !== 'extension' || !vault) return settings.load();
+  await refreshVaultStatus();
+  if (vaultStatus.value?.state === 'locked' || vaultStatus.value?.state === 'invalid') return undefined;
+  return settings.load();
+}
 
 async function save(): Promise<void> {
   saving.value = true;
   feedback.value = '';
+  vaultError.value = '';
   try {
-    await settings.save(model.value);
-    feedback.value =
-      mode === 'mock' ? 'Mock 设置已保存在本地浏览器。' : '设置已安全写入 chrome.storage.local。';
+    if (mode === 'extension' && vault && vaultStatus.value?.state === 'empty') {
+      assertMatchingPassphrases(vaultPassphrase.value, vaultPassphraseConfirmation.value);
+      vaultStatus.value = await vault.create(vaultPassphrase.value, model.value);
+      clearVaultPassphrases();
+      feedback.value = '加密凭证保险库已创建并保持解锁。';
+      await refreshLocalData();
+    } else {
+      await settings.save(model.value);
+      feedback.value =
+        mode === 'mock' ? 'Mock 设置已保存在本地浏览器。' : '设置已重新加密写入 chrome.storage.local。';
+      model.value = await settings.load();
+    }
   } catch (error: unknown) {
-    feedback.value = error instanceof Error ? error.message : '设置保存失败';
+    vaultError.value = error instanceof Error ? error.message : '设置保存失败';
   } finally {
     saving.value = false;
   }
+}
+
+async function refreshVaultStatus(): Promise<void> {
+  if (!vault) return;
+  vaultError.value = '';
+  try {
+    vaultStatus.value = await vault.status();
+  } catch (error: unknown) {
+    vaultError.value = error instanceof Error ? error.message : '保险库状态读取失败';
+  }
+}
+
+async function unlockVault(): Promise<void> {
+  if (!vault) return;
+  vaultBusy.value = true;
+  vaultError.value = '';
+  try {
+    vaultStatus.value = await vault.unlock(vaultPassphrase.value);
+    model.value = await settings.load();
+    clearVaultPassphrases();
+    feedback.value = '凭证保险库已解锁；service worker 重启后会自动重新锁定。';
+  } catch (error: unknown) {
+    vaultError.value = error instanceof Error ? error.message : '保险库解锁失败';
+  } finally {
+    vaultBusy.value = false;
+  }
+}
+
+async function migrateVault(): Promise<void> {
+  if (!vault) return;
+  vaultBusy.value = true;
+  vaultError.value = '';
+  try {
+    assertMatchingPassphrases(vaultPassphrase.value, vaultPassphraseConfirmation.value);
+    vaultStatus.value = await vault.migrate(vaultPassphrase.value);
+    model.value = await settings.load();
+    clearVaultPassphrases();
+    feedback.value = '旧版明文凭证已原位迁移到加密保险库。';
+    await refreshLocalData();
+  } catch (error: unknown) {
+    vaultError.value = error instanceof Error ? error.message : '保险库迁移失败';
+  } finally {
+    vaultBusy.value = false;
+  }
+}
+
+async function lockVault(): Promise<void> {
+  if (!vault) return;
+  vaultBusy.value = true;
+  try {
+    vaultStatus.value = await vault.lock();
+    model.value = {
+      appKey: '',
+      appSecret: '',
+      accessToken: '',
+      endpoint: ALIBABA_GATEWAY,
+      signMethod: 'hmac'
+    };
+    feedback.value = '保险库已锁定，页面中的可编辑凭证状态已清空。';
+  } catch (error: unknown) {
+    vaultError.value = error instanceof Error ? error.message : '保险库锁定失败';
+  } finally {
+    vaultBusy.value = false;
+  }
+}
+
+async function rotateVaultPassphrase(): Promise<void> {
+  if (!vault) return;
+  vaultBusy.value = true;
+  vaultError.value = '';
+  try {
+    assertMatchingPassphrases(newVaultPassphrase.value, newVaultPassphraseConfirmation.value);
+    vaultStatus.value = await vault.rotate(newVaultPassphrase.value);
+    clearVaultPassphrases();
+    feedback.value = '保险库已使用新 salt 和新口令重新加密。';
+  } catch (error: unknown) {
+    vaultError.value = error instanceof Error ? error.message : '保险库口令更换失败';
+  } finally {
+    vaultBusy.value = false;
+  }
+}
+
+function assertMatchingPassphrases(passphrase: string, confirmation: string): void {
+  if (new TextEncoder().encode(passphrase).byteLength < CREDENTIAL_VAULT_MIN_PASSPHRASE_BYTES) {
+    throw new Error(`保险库口令至少需要 ${CREDENTIAL_VAULT_MIN_PASSPHRASE_BYTES} 个 UTF-8 字节`);
+  }
+  if (passphrase !== confirmation) throw new Error('两次输入的保险库口令不一致');
+}
+
+function clearVaultPassphrases(): void {
+  vaultPassphrase.value = '';
+  vaultPassphraseConfirmation.value = '';
+  newVaultPassphrase.value = '';
+  newVaultPassphraseConfirmation.value = '';
 }
 
 async function refreshPermissions(): Promise<void> {
@@ -210,7 +336,138 @@ function formatBytes(bytes: number): string {
     description="凭证不会进入页面请求；扩展模式下仅由 MV3 service worker 读取并签名。"
   />
   <div class="grid max-w-3xl gap-4">
-    <Card class="p-5">
+    <p
+      v-if="feedback"
+      class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
+    >
+      {{ feedback }}
+    </p>
+    <Card v-if="mode === 'extension' && vault" class="p-5">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <LockKeyhole class="size-4 text-primary" />
+            <h2 class="font-semibold">凭证保险库</h2>
+          </div>
+          <p class="mt-2 text-sm text-muted-foreground">
+            PBKDF2-HMAC-SHA256 {{ CREDENTIAL_VAULT_ITERATIONS.toLocaleString() }} 次派生 AES-256-GCM
+            密钥；口令不保存，后台重启后需重新解锁。
+          </p>
+        </div>
+        <span class="rounded-full bg-muted px-3 py-1 text-xs">
+          {{
+            vaultStatus === null
+              ? '读取中'
+              : vaultStatus.state === 'unlocked'
+                ? '已解锁'
+                : vaultStatus.state === 'legacy'
+                  ? '待迁移'
+                  : vaultStatus.state === 'empty'
+                    ? '未创建'
+                    : vaultStatus.state === 'invalid'
+                      ? '格式无效'
+                      : '已锁定'
+          }}
+        </span>
+      </div>
+
+      <div v-if="vaultStatus?.state === 'legacy'" class="mt-4 rounded-lg bg-amber-50 p-4 text-amber-900">
+        <p class="text-sm font-medium">发现旧版明文凭证</p>
+        <p class="mt-1 text-xs leading-5">
+          真实请求已停止读取该记录。设置新口令后会在 service worker 内直接加密迁移，页面不会收到旧 App Secret
+          或 Access Token。
+        </p>
+      </div>
+      <div v-else-if="vaultStatus?.state === 'locked'" class="mt-4 rounded-lg border p-4">
+        <p class="text-sm font-medium">输入口令解锁当前浏览器会话</p>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <Input
+            v-model="vaultPassphrase"
+            class="max-w-sm"
+            type="password"
+            aria-label="保险库口令"
+            autocomplete="current-password"
+          />
+          <Button :disabled="vaultBusy || !vaultPassphrase" @click="unlockVault">
+            <UnlockKeyhole class="size-4" />解锁
+          </Button>
+        </div>
+      </div>
+      <div v-else-if="vaultStatus?.state === 'invalid'" class="mt-4 rounded-lg bg-red-50 p-4 text-red-900">
+        <p class="text-sm font-medium">保险库记录无效</p>
+        <p class="mt-1 text-xs leading-5">
+          为避免覆盖无法恢复的数据，当前不提供自动修复。请先备份浏览器配置，再使用下方彻底清除功能重新开始。
+        </p>
+      </div>
+      <div v-else-if="vaultStatus?.state === 'unlocked'" class="mt-4 grid gap-4">
+        <div class="flex flex-wrap gap-2">
+          <Button variant="outline" :disabled="vaultBusy" @click="lockVault">
+            <LockKeyhole class="size-4" />立即锁定
+          </Button>
+        </div>
+        <div class="rounded-lg border p-4">
+          <p class="text-sm font-medium">更换保险库口令</p>
+          <p class="mt-1 text-xs text-muted-foreground">
+            将生成新 salt 和新密钥重新加密，不需要旧口令再次参与。
+          </p>
+          <div class="mt-3 grid gap-2 sm:grid-cols-2">
+            <Input
+              v-model="newVaultPassphrase"
+              type="password"
+              aria-label="新保险库口令"
+              autocomplete="new-password"
+              placeholder="至少 12 个 UTF-8 字节"
+            />
+            <Input
+              v-model="newVaultPassphraseConfirmation"
+              type="password"
+              aria-label="确认新保险库口令"
+              autocomplete="new-password"
+              placeholder="再次输入"
+            />
+          </div>
+          <Button
+            class="mt-3"
+            variant="outline"
+            :disabled="vaultBusy || !newVaultPassphrase || !newVaultPassphraseConfirmation"
+            @click="rotateVaultPassphrase"
+          >
+            <RotateCcw class="size-4" />更换口令
+          </Button>
+        </div>
+      </div>
+
+      <div
+        v-if="vaultStatus?.state === 'empty' || vaultStatus?.state === 'legacy'"
+        class="mt-4 grid gap-2 sm:grid-cols-2"
+      >
+        <Input
+          v-model="vaultPassphrase"
+          type="password"
+          aria-label="新建保险库口令"
+          autocomplete="new-password"
+          placeholder="至少 12 个 UTF-8 字节"
+        />
+        <Input
+          v-model="vaultPassphraseConfirmation"
+          type="password"
+          aria-label="确认保险库口令"
+          autocomplete="new-password"
+          placeholder="再次输入"
+        />
+        <Button
+          v-if="vaultStatus?.state === 'legacy'"
+          class="sm:col-span-2"
+          :disabled="vaultBusy || !vaultPassphrase || !vaultPassphraseConfirmation"
+          @click="migrateVault"
+        >
+          <ShieldCheck class="size-4" />加密并迁移旧凭证
+        </Button>
+      </div>
+      <p v-if="vaultError" class="mt-3 text-sm text-destructive">{{ vaultError }}</p>
+    </Card>
+
+    <Card v-if="settingsEditable" class="p-5">
       <div class="mb-4 flex items-center gap-2">
         <KeyRound class="size-4 text-primary" />
         <h2 class="font-semibold">国际站开放平台凭证</h2>
@@ -225,6 +482,7 @@ function formatBytes(bytes: number): string {
             class="mt-2"
             type="password"
             autocomplete="new-password"
+            :placeholder="vaultStatus?.hasAppSecret ? '已加密保存，留空保持不变' : ''"
         /></label>
         <label class="text-sm font-medium sm:col-span-2"
           >Access Token<Input
@@ -232,6 +490,7 @@ function formatBytes(bytes: number): string {
             class="mt-2"
             type="password"
             autocomplete="new-password"
+            :placeholder="vaultStatus?.hasAccessToken ? '已加密保存，留空保持不变' : ''"
         /></label>
         <label class="text-sm font-medium sm:col-span-2"
           >HTTPS 网关<Input v-model="model.endpoint" class="mt-2"
@@ -245,8 +504,17 @@ function formatBytes(bytes: number): string {
           </select></label
         >
       </div>
-      <p v-if="feedback" class="mt-4 text-sm text-emerald-700">{{ feedback }}</p>
-      <Button class="mt-4" :disabled="saving" @click="save"><Save class="size-4" />保存设置</Button>
+      <Button
+        class="mt-4"
+        :disabled="
+          saving ||
+          (mode === 'extension' &&
+            vaultStatus?.state === 'empty' &&
+            (!vaultPassphrase || !vaultPassphraseConfirmation))
+        "
+        @click="save"
+        ><Save class="size-4" />{{ vaultStatus?.state === 'empty' ? '创建保险库并保存' : '保存设置' }}</Button
+      >
     </Card>
     <Card class="flex items-start gap-3 border-emerald-200 bg-emerald-50 p-5 text-emerald-900"
       ><ShieldCheck class="mt-0.5 size-5 shrink-0" />

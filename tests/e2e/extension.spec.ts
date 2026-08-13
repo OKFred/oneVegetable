@@ -56,12 +56,38 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('button', { name: '开始使用' }).click();
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
   await page.getByRole('button', { name: '设置' }).click();
+  await expect(page.getByRole('heading', { name: '凭证保险库' })).toBeVisible();
+  await expect(page.getByText('未创建', { exact: true })).toBeVisible();
   await page.getByLabel('App Key').fill('e2e-app-key');
-  await page.getByRole('button', { name: '保存设置' }).click();
-  await expect(page.getByText('设置已安全写入 chrome.storage.local。')).toBeVisible();
+  await page.getByLabel('App Secret').fill('e2e-secret');
+  await page.getByLabel('Access Token').fill('e2e-token');
+  await page.getByLabel('新建保险库口令').fill('e2e-vault-password');
+  await page.getByLabel('确认保险库口令').fill('e2e-vault-password');
+  await page.getByRole('button', { name: '创建保险库并保存' }).click();
+  await expect(page.getByText('加密凭证保险库已创建并保持解锁。').first()).toBeVisible();
+  const encryptedSettings = await page.evaluate(async () => {
+    const extension = (
+      globalThis as unknown as {
+        chrome: { storage: { local: { get(key: string): Promise<Record<string, unknown>> } } };
+      }
+    ).chrome;
+    return extension.storage.local.get('gatewaySettings');
+  });
+  expect(encryptedSettings).toMatchObject({
+    gatewaySettings: {
+      version: 2,
+      format: 'PBKDF2-HMAC-SHA256/AES-256-GCM',
+      kdf: { iterations: 600_000, hash: 'SHA-256' }
+    }
+  });
+  expect(JSON.stringify(encryptedSettings)).not.toContain('e2e-app-key');
+  expect(JSON.stringify(encryptedSettings)).not.toContain('e2e-secret');
+  expect(JSON.stringify(encryptedSettings)).not.toContain('e2e-token');
   await page.reload();
   await page.getByRole('button', { name: '设置' }).click();
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
+  await expect(page.getByLabel('App Secret')).toHaveValue('');
+  await expect(page.getByLabel('Access Token')).toHaveValue('');
   await expect(page.getByRole('heading', { name: '主机权限' })).toBeVisible();
   await expect(page.getByText('当前没有额外主机权限。')).toBeVisible();
   await expect(page.getByText('https://*.alibaba.com/*')).toHaveCount(0);
@@ -70,20 +96,10 @@ test('MV3 options page persists settings and exposes the audited catalog', async
     const extension = (
       globalThis as unknown as {
         chrome: {
-          storage: { local: { set(value: object): Promise<void> } };
           runtime: { sendMessage(value: object): Promise<unknown> };
         };
       }
     ).chrome;
-    await extension.storage.local.set({
-      gatewaySettings: {
-        appKey: 'e2e-app-key',
-        appSecret: 'e2e-secret',
-        accessToken: 'e2e-token',
-        endpoint: 'https://eco.taobao.com/router/rest',
-        signMethod: 'hmac'
-      }
-    });
     return extension.runtime.sendMessage({
       id: 'logistics-qualification-e2e',
       kind: 'gateway-request',
@@ -93,20 +109,6 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   expect(qualificationError).toMatchObject({
     ok: false,
     error: { code: 'LOGISTICS_QUALIFICATION_REQUIRED' }
-  });
-  const migratedSettings = await page.evaluate(async () => {
-    const extension = (
-      globalThis as unknown as {
-        chrome: { storage: { local: { get(key: string): Promise<Record<string, unknown>> } } };
-      }
-    ).chrome;
-    return extension.storage.local.get('gatewaySettings');
-  });
-  expect(migratedSettings).toMatchObject({
-    gatewaySettings: {
-      version: 1,
-      settings: { appKey: 'e2e-app-key', appSecret: 'e2e-secret', accessToken: 'e2e-token' }
-    }
   });
 
   const diagnosticsBeforeRestart = await page.evaluate(async () => {
@@ -149,6 +151,31 @@ test('MV3 options page persists settings and exposes the audited catalog', async
     ok: true,
     data: { entries: entriesBeforeRestart }
   });
+
+  await page.reload();
+  await page.getByRole('button', { name: '设置' }).click();
+  await expect(page.getByText('已锁定', { exact: true })).toBeVisible();
+  await page.getByLabel('保险库口令').fill('wrong-vault-password');
+  await page.getByRole('button', { name: '解锁' }).click();
+  await expect(page.getByText(/口令不正确或密文已损坏/)).toBeVisible();
+  await page.getByLabel('保险库口令').fill('e2e-vault-password');
+  await page.getByRole('button', { name: '解锁' }).click();
+  await expect(page.getByText('已解锁', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
+
+  await page.getByLabel('新保险库口令', { exact: true }).fill('e2e-rotated-vault-password');
+  await page.getByLabel('确认新保险库口令', { exact: true }).fill('e2e-rotated-vault-password');
+  await page.getByRole('button', { name: '更换口令' }).click();
+  await expect(page.getByText('保险库已使用新 salt 和新口令重新加密。')).toBeVisible();
+  await page.getByRole('button', { name: '立即锁定' }).click();
+  await expect(page.getByText('已锁定', { exact: true })).toBeVisible();
+  await page.getByLabel('保险库口令').fill('e2e-vault-password');
+  await page.getByRole('button', { name: '解锁' }).click();
+  await expect(page.getByText(/口令不正确或密文已损坏/)).toBeVisible();
+  await page.getByLabel('保险库口令').fill('e2e-rotated-vault-password');
+  await page.getByRole('button', { name: '解锁' }).click();
+  await expect(page.getByText('已解锁', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
 
   await page.getByRole('button', { name: 'API 能力' }).click();
   await expect(page.locator('tbody tr')).toHaveCount(86);
@@ -349,4 +376,44 @@ test('MV3 options page persists settings and exposes the audited catalog', async
 
   await page.reload();
   await expect(page.getByRole('heading', { name: '先确认数据与调用边界' })).toBeVisible();
+  await page.getByRole('checkbox').check();
+  await page.getByRole('button', { name: '开始使用' }).click();
+  await page.evaluate(async () => {
+    const extension = (
+      globalThis as unknown as {
+        chrome: { storage: { local: { set(value: object): Promise<void> } } };
+      }
+    ).chrome;
+    await extension.storage.local.set({
+      gatewaySettings: {
+        version: 1,
+        settings: {
+          appKey: 'legacy-e2e-key',
+          appSecret: 'legacy-e2e-secret',
+          accessToken: 'legacy-e2e-token',
+          endpoint: 'https://eco.taobao.com/router/rest',
+          signMethod: 'hmac'
+        }
+      }
+    });
+  });
+  await page.reload();
+  await page.getByRole('button', { name: '设置' }).click();
+  await expect(page.getByText('待迁移', { exact: true })).toBeVisible();
+  await expect(page.getByText(/真实请求已停止读取该记录/)).toBeVisible();
+  await page.getByLabel('新建保险库口令').fill('migrated-vault-password');
+  await page.getByLabel('确认保险库口令').fill('migrated-vault-password');
+  await page.getByRole('button', { name: '加密并迁移旧凭证' }).click();
+  await expect(page.getByText('旧版明文凭证已原位迁移到加密保险库。').first()).toBeVisible();
+  const migratedEncryptedSettings = await page.evaluate(async () => {
+    const extension = (
+      globalThis as unknown as {
+        chrome: { storage: { local: { get(key: string): Promise<Record<string, unknown>> } } };
+      }
+    ).chrome;
+    return extension.storage.local.get('gatewaySettings');
+  });
+  expect(migratedEncryptedSettings).toMatchObject({ gatewaySettings: { version: 2 } });
+  expect(JSON.stringify(migratedEncryptedSettings)).not.toContain('legacy-e2e-secret');
+  expect(JSON.stringify(migratedEncryptedSettings)).not.toContain('legacy-e2e-token');
 });

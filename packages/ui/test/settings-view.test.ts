@@ -4,7 +4,12 @@ import { defineComponent, h } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ALIBABA_GATEWAY, MockGatewayClient } from '@one-vegetable/core';
+import {
+  ALIBABA_GATEWAY,
+  MockGatewayClient,
+  type CredentialVaultState,
+  type CredentialVaultStatus
+} from '@one-vegetable/core';
 
 import SettingsView from '../src/views/SettingsView.vue';
 import { provideServices } from '../src/lib/services';
@@ -13,9 +18,13 @@ const anchorClick = vi.fn();
 const createObjectUrl = vi.fn(() => 'blob:diagnostics');
 const revokeObjectUrl = vi.fn();
 const clearAllLocalData = vi.fn(() => Promise.resolve());
+const unlockVault = vi.fn(() => Promise.resolve(vaultStatus('unlocked')));
+const migrateVault = vi.fn(() => Promise.resolve(vaultStatus('unlocked')));
+const createVault = vi.fn(() => Promise.resolve(vaultStatus('unlocked')));
 
-function mountView(mode: 'mock' | 'extension' = 'mock') {
+function mountView(mode: 'mock' | 'extension' = 'mock', initialVaultState?: CredentialVaultState) {
   let grantedHosts = ['https://images.example.com/*'];
+  let currentVaultState = initialVaultState;
   const Host = defineComponent({
     setup() {
       provideServices({
@@ -23,7 +32,7 @@ function mountView(mode: 'mock' | 'extension' = 'mock') {
         settings: {
           load: () =>
             Promise.resolve({
-              appKey: '',
+              appKey: currentVaultState === 'unlocked' ? 'configured-key' : '',
               appSecret: '',
               accessToken: '',
               endpoint: ALIBABA_GATEWAY,
@@ -58,6 +67,24 @@ function mountView(mode: 'mock' | 'extension' = 'mock') {
             }),
           clearAll: clearAllLocalData
         },
+        ...(initialVaultState
+          ? {
+              vault: {
+                status: () => Promise.resolve(vaultStatus(currentVaultState ?? 'empty')),
+                create: createVault,
+                migrate: migrateVault,
+                unlock: async (passphrase) => {
+                  currentVaultState = 'unlocked';
+                  return unlockVault(passphrase);
+                },
+                lock: () => {
+                  currentVaultState = 'locked';
+                  return Promise.resolve(vaultStatus('locked'));
+                },
+                rotate: () => Promise.resolve(vaultStatus('unlocked'))
+              }
+            }
+          : {}),
         mode
       });
       return () => h(SettingsView);
@@ -72,6 +99,9 @@ afterEach(() => {
   createObjectUrl.mockClear();
   revokeObjectUrl.mockClear();
   clearAllLocalData.mockClear();
+  unlockVault.mockClear();
+  migrateVault.mockClear();
+  createVault.mockClear();
 });
 
 describe('SettingsView diagnostics', () => {
@@ -148,4 +178,61 @@ describe('SettingsView diagnostics', () => {
     });
     wrapper.unmount();
   });
+
+  it('hides editable credentials while locked and reveals only safe fields after unlock', async () => {
+    const wrapper = mountView('extension', 'locked');
+    await vi.waitFor(() => {
+      expect(wrapper.find('input[aria-label="保险库口令"]').exists()).toBe(true);
+    });
+    expect(wrapper.text()).not.toContain('国际站开放平台凭证');
+
+    await wrapper.get('input[aria-label="保险库口令"]').setValue('correct-vault-password');
+    await wrapper.get('button').trigger('click');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('凭证保险库已解锁');
+    });
+    const credentialsCard = wrapper
+      .findAll('section')
+      .find((candidate) => candidate.text().includes('国际站开放平台凭证'));
+    if (!credentialsCard) throw new Error('Missing credentials card after unlock');
+    const credentialInputs = credentialsCard.findAll('input');
+    expect((credentialInputs[0]?.element as HTMLInputElement | undefined)?.value).toBe('configured-key');
+    expect(unlockVault).toHaveBeenCalledWith('correct-vault-password');
+    expect(credentialInputs[1]?.attributes('placeholder')).toContain('留空保持不变');
+    wrapper.unmount();
+  });
+
+  it('requires matching passphrases before migrating legacy plaintext credentials', async () => {
+    const wrapper = mountView('extension', 'legacy');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('发现旧版明文凭证');
+    });
+    await wrapper.get('input[aria-label="新建保险库口令"]').setValue('migrated-vault-password');
+    await wrapper.get('input[aria-label="确认保险库口令"]').setValue('different-vault-password');
+    await wrapper.get('button').trigger('click');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('两次输入的保险库口令不一致');
+    });
+    expect(migrateVault).not.toHaveBeenCalled();
+
+    await wrapper.get('input[aria-label="确认保险库口令"]').setValue('migrated-vault-password');
+    await wrapper.get('button').trigger('click');
+    await vi.waitFor(() => {
+      expect(migrateVault).toHaveBeenCalledWith('migrated-vault-password');
+      expect(wrapper.text()).toContain('旧版明文凭证已原位迁移');
+    });
+    wrapper.unmount();
+  });
 });
+
+function vaultStatus(state: CredentialVaultState): CredentialVaultStatus {
+  return {
+    state,
+    hasAppKey: state === 'unlocked' || state === 'legacy',
+    hasAppSecret: state === 'unlocked' || state === 'legacy',
+    hasAccessToken: state === 'unlocked' || state === 'legacy',
+    appKey: state === 'unlocked' || state === 'legacy' ? 'configured-key' : '',
+    endpoint: ALIBABA_GATEWAY,
+    signMethod: 'hmac'
+  };
+}
