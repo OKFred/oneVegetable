@@ -11,9 +11,10 @@
   "scripts": {
     "dev:web": "pnpm --filter @one-vegetable/web dev",
     "dev:extension": "pnpm --filter @one-vegetable/extension dev",
-    "build": "pnpm run generate && pnpm -r --if-present build",
+    "build": "pnpm run generate && pnpm -r --if-present build && pnpm run check:extension-bundle",
     "build:web": "pnpm --filter @one-vegetable/web build",
     "build:extension": "pnpm --filter @one-vegetable/extension build",
+    "check:extension-bundle": "tsx scripts/check-extension-bundle.ts",
     "zip:extension": "pnpm --filter @one-vegetable/extension zip",
     "generate": "pnpm run generate:product-contract && pnpm run generate:rfq-contract && pnpm run generate:trade-contract && pnpm run generate:logistics-contract && pnpm run generate:insights-contract && pnpm run generate:photo-contract && pnpm run generate:platform-contract && pnpm run generate:types && pnpm run generate:validators",
     "generate:product-contract": "tsx scripts/generate-product-contract.ts",

@@ -33,6 +33,8 @@ async function save(): Promise<void> {
     await settings.save(model.value);
     feedback.value =
       mode === 'mock' ? 'Mock 设置已保存在本地浏览器。' : '设置已安全写入 chrome.storage.local。';
+  } catch (error: unknown) {
+    feedback.value = error instanceof Error ? error.message : '设置保存失败';
   } finally {
     saving.value = false;
   }
