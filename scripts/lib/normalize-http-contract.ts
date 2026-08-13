@@ -99,6 +99,60 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     ]
   };
   schemas.RfqAttachmentUploadRequest = { $ref: '#/components/schemas/EncodedFilePayload' };
+  schemas.UserRole = { type: 'string', enum: ['admin', 'user'] };
+  schemas.UserStatus = { type: 'string', enum: ['active', 'disabled'] };
+  schemas.AuthBootstrapRequest = objectRequest(['requestId', 'bootstrapToken', 'username', 'password'], {
+    bootstrapToken: { type: 'string' },
+    username: { type: 'string' },
+    password: { type: 'string', minLength: 12, maxLength: 256 },
+    remark: { type: ['string', 'null'], maxLength: 500 }
+  });
+  schemas.AuthLoginRequest = objectRequest(['requestId', 'username', 'password'], {
+    username: { type: 'string' },
+    password: { type: 'string', minLength: 12, maxLength: 256 }
+  });
+  schemas.AuthPasswordChangeRequest = objectRequest(['requestId', 'currentPassword', 'newPassword'], {
+    currentPassword: { type: 'string' },
+    newPassword: { type: 'string', minLength: 12, maxLength: 256 }
+  });
+  schemas.PageRequest = objectRequest([], {
+    page: { type: 'integer', minimum: 1, default: 1 },
+    pageSize: { type: 'integer', minimum: 1, maximum: 100, default: 20 }
+  });
+  schemas.AdminUserCreateRequest = objectRequest(['requestId', 'username', 'password', 'role'], {
+    username: { type: 'string' },
+    password: { type: 'string', minLength: 12, maxLength: 256 },
+    role: { $ref: '#/components/schemas/UserRole' },
+    remark: { type: ['string', 'null'], maxLength: 500 }
+  });
+  schemas.AdminUserUpdateRequest = objectRequest(
+    ['requestId', 'userId', 'role', 'status', 'revision', 'remark'],
+    {
+      userId: { type: 'string', format: 'uuid' },
+      role: { $ref: '#/components/schemas/UserRole' },
+      status: { $ref: '#/components/schemas/UserStatus' },
+      revision: { type: 'integer', minimum: 1 },
+      remark: { type: ['string', 'null'], maxLength: 500 }
+    }
+  );
+  schemas.AdminPasswordResetRequest = objectRequest(['requestId', 'userId', 'revision'], {
+    userId: { type: 'string', format: 'uuid' },
+    revision: { type: 'integer', minimum: 1 },
+    newPassword: { type: 'string', minLength: 12, maxLength: 256 }
+  });
+  schemas.AdminUserTargetRequest = objectRequest(['requestId', 'userId'], {
+    userId: { type: 'string', format: 'uuid' }
+  });
+  schemas.AdminAuditListRequest = objectRequest([], {
+    requestIdFilter: { $ref: '#/components/schemas/RequestId' },
+    actorId: { type: 'string' },
+    action: { type: 'string' },
+    outcome: { type: 'string', enum: ['success', 'error', 'denied'] },
+    fromTimeUtc: { type: 'integer', minimum: 0 },
+    toTimeUtc: { type: 'integer', minimum: 0 },
+    page: { type: 'integer', minimum: 1, default: 1 },
+    pageSize: { type: 'integer', minimum: 1, maximum: 100, default: 20 }
+  });
 
   const requestBody = (schema: string) => ({
     required: true,
@@ -114,6 +168,20 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
         schema: {
           oneOf: [{ $ref: '#/components/schemas/ApiSuccess' }, { $ref: '#/components/schemas/ApiFailure' }]
         }
+      }
+    }
+  });
+  const postOperation = (summary: string, operationId: string, requestSchema: string) => ({
+    post: {
+      summary,
+      operationId,
+      requestBody: requestBody(requestSchema),
+      responses: {
+        '200': envelopeResponse('Operation succeeded'),
+        '400': envelopeResponse('Invalid request'),
+        '401': envelopeResponse('Authentication required'),
+        '403': envelopeResponse('Operation denied'),
+        '409': envelopeResponse('Entity conflict')
       }
     }
   });
@@ -174,10 +242,59 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
           '503': envelopeResponse('Backend unavailable')
         }
       }
-    }
+    },
+    '/auth/session/get': postOperation('Get the current opaque session', 'getAuthSession', 'RequestEnvelope'),
+    '/auth/bootstrap': postOperation(
+      'Create the first local administrator',
+      'bootstrapAdmin',
+      'AuthBootstrapRequest'
+    ),
+    '/auth/login': postOperation('Create an opaque local session', 'login', 'AuthLoginRequest'),
+    '/auth/logout': postOperation('Revoke the current opaque session', 'logout', 'RequestEnvelope'),
+    '/auth/password/change': postOperation(
+      'Change the current user password',
+      'changePassword',
+      'AuthPasswordChangeRequest'
+    ),
+    '/admin/users/list': postOperation('List local users', 'listAdminUsers', 'PageRequest'),
+    '/admin/users/create': postOperation('Create a local user', 'createAdminUser', 'AdminUserCreateRequest'),
+    '/admin/users/update': postOperation('Update a local user', 'updateAdminUser', 'AdminUserUpdateRequest'),
+    '/admin/users/password/reset': postOperation(
+      'Reset a local user password',
+      'resetAdminUserPassword',
+      'AdminPasswordResetRequest'
+    ),
+    '/admin/users/sessions/revoke': postOperation(
+      'Revoke all sessions for a local user',
+      'revokeAdminUserSessions',
+      'AdminUserTargetRequest'
+    ),
+    '/admin/audit-events/list': postOperation(
+      'List append-only audit events',
+      'listAdminAuditEvents',
+      'AdminAuditListRequest'
+    ),
+    '/admin/system/get': postOperation('Get protected system metadata', 'getAdminSystem', 'RequestEnvelope'),
+    '/admin/policy-summary/get': postOperation(
+      'Get the read-only ABAC policy summary',
+      'getAdminPolicySummary',
+      'RequestEnvelope'
+    )
   };
   document.components.responses = {
     ...(document.components.responses ?? {}),
     GatewayFailure: envelopeResponse('Gateway failure')
+  };
+}
+
+function objectRequest(required: string[], properties: Record<string, JsonSchema>): Record<string, unknown> {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['requestId', ...required.filter((name) => name !== 'requestId')],
+    properties: {
+      requestId: { $ref: '#/components/schemas/RequestId' },
+      ...properties
+    }
   };
 }
