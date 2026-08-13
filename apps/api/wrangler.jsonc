@@ -15,6 +15,44 @@
   "vars": {
     "ONE_VEGETABLE_API_PREFIX": "/api/v1",
     "ONE_VEGETABLE_ENVIRONMENT": "local-worker",
-    "ONE_VEGETABLE_GATEWAY_MODE": "mock"
+    "ONE_VEGETABLE_GATEWAY_MODE": "mock",
+    "ONE_VEGETABLE_CORS_ORIGINS": "http://localhost:5173"
+  },
+  "env": {
+    "staging": {
+      "name": "one-vegetable-api-staging",
+      "vars": {
+        "ONE_VEGETABLE_API_PREFIX": "/api/v1",
+        "ONE_VEGETABLE_ENVIRONMENT": "staging",
+        "ONE_VEGETABLE_GATEWAY_MODE": "mock",
+        "ONE_VEGETABLE_CORS_ORIGINS": "https://staging.example.invalid"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "one-vegetable-staging",
+          "database_id": "00000000-0000-0000-0000-000000000002",
+          "migrations_dir": "drizzle"
+        }
+      ]
+    },
+    "production": {
+      "name": "one-vegetable-api-production",
+      "workers_dev": false,
+      "vars": {
+        "ONE_VEGETABLE_API_PREFIX": "/api/v1",
+        "ONE_VEGETABLE_ENVIRONMENT": "production",
+        "ONE_VEGETABLE_GATEWAY_MODE": "disabled",
+        "ONE_VEGETABLE_CORS_ORIGINS": "https://app.example.invalid"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "one-vegetable-production",
+          "database_id": "00000000-0000-0000-0000-000000000003",
+          "migrations_dir": "drizzle"
+        }
+      ]
+    }
   }
 }

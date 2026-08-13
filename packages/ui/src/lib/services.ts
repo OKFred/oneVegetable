@@ -16,7 +16,7 @@ export interface AppServices {
   permissions?: HostPermissionsRepository;
   localData?: LocalDataRepository;
   onboarding?: OnboardingRepository;
-  mode: 'mock' | 'extension';
+  mode: 'mock' | 'extension' | 'bff';
 }
 
 const servicesKey: InjectionKey<AppServices> = Symbol('one-vegetable-services');

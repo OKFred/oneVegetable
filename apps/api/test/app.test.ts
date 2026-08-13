@@ -81,4 +81,31 @@ describe('shared Hono API', () => {
     );
     expect(JSON.stringify(logger.mock.calls)).not.toContain('secret');
   });
+
+  it('allows only explicitly configured browser origins', async () => {
+    const app = createApiApp({
+      runtime: 'node',
+      database: 'sqlite',
+      environment: 'test',
+      gatewayMode: 'mock',
+      allowedOrigins: ['https://web.example.com']
+    });
+    const allowed = await app.request('/api/v1/meta/get', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://web.example.com',
+        'Access-Control-Request-Method': 'POST'
+      }
+    });
+    expect(allowed.headers.get('Access-Control-Allow-Origin')).toBe('https://web.example.com');
+
+    const denied = await app.request('/api/v1/meta/get', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://evil.example.com',
+        'Access-Control-Request-Method': 'POST'
+      }
+    });
+    expect(denied.headers.get('Access-Control-Allow-Origin')).toBeNull();
+  });
 });

@@ -15,6 +15,7 @@ const app = createApiApp({
   environment,
   gatewayMode: readGatewayMode(process.env.ONE_VEGETABLE_GATEWAY_MODE),
   apiPrefix: process.env.ONE_VEGETABLE_API_PREFIX,
+  allowedOrigins: readOrigins(process.env.ONE_VEGETABLE_CORS_ORIGINS),
   ready: () => Promise.resolve(isNodeDatabaseReady(database))
 });
 
@@ -30,4 +31,8 @@ function readPort(value: string | undefined): number {
 
 function readGatewayMode(value: string | undefined): 'mock' | 'disabled' {
   return value === 'disabled' ? 'disabled' : 'mock';
+}
+
+function readOrigins(value: string | undefined): string[] {
+  return value?.split(',').map((origin) => new URL(origin.trim()).origin) ?? [];
 }

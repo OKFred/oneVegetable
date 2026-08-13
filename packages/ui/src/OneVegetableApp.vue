@@ -34,7 +34,7 @@ const props = defineProps<{
   permissions?: HostPermissionsRepository;
   localData?: LocalDataRepository;
   onboarding?: OnboardingRepository;
-  mode: 'mock' | 'extension';
+  mode: 'mock' | 'extension' | 'bff';
 }>();
 provideServices({
   gateway: props.gateway,
@@ -125,9 +125,17 @@ const activeView = computed(() => views[page.value]);
           </button>
         </nav>
         <div class="absolute inset-x-3 bottom-4 rounded-lg border border-slate-800 bg-slate-900 p-3">
-          <p class="text-xs font-medium">{{ mode === 'mock' ? 'Mock 模式' : 'Extension MV3' }}</p>
+          <p class="text-xs font-medium">
+            {{ mode === 'mock' ? 'Mock 模式' : mode === 'bff' ? 'Web + BFF' : 'Extension MV3' }}
+          </p>
           <p class="mt-1 text-[11px] leading-4 text-slate-400">
-            {{ mode === 'mock' ? '不发送真实 API 请求' : '请求由 service worker 签名' }}
+            {{
+              mode === 'mock'
+                ? '不发送真实 API 请求'
+                : mode === 'bff'
+                  ? '请求由双运行时 BFF 代理'
+                  : '请求由 service worker 签名'
+            }}
           </p>
         </div>
       </aside>
@@ -141,7 +149,7 @@ const activeView = computed(() => views[page.value]);
           <p class="hidden text-sm text-muted-foreground sm:block">国际站开放平台运营工作台</p>
           <div class="flex items-center gap-2 text-xs text-muted-foreground">
             <span class="size-2 rounded-full bg-emerald-500" />{{
-              mode === 'mock' ? '契约 Mock 在线' : '扩展后台在线'
+              mode === 'mock' ? '契约 Mock 在线' : mode === 'bff' ? 'BFF 在线' : '扩展后台在线'
             }}
           </div>
         </header>

@@ -13,6 +13,8 @@
     "dev:extension": "pnpm --filter @one-vegetable/extension dev",
     "dev:api": "pnpm --filter @one-vegetable/api dev:node",
     "dev:worker": "pnpm --filter @one-vegetable/api dev:worker",
+    "db:migrate:local": "pnpm --filter @one-vegetable/api exec wrangler d1 migrations apply one-vegetable-local --local",
+    "build:api": "pnpm --filter @one-vegetable/api build",
     "build": "pnpm run generate && pnpm -r --if-present build && pnpm run check:extension-bundle && pnpm run check:store-compliance",
     "build:web": "pnpm --filter @one-vegetable/web build",
     "build:extension": "pnpm --filter @one-vegetable/extension build",

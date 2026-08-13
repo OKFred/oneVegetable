@@ -3,6 +3,7 @@ import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 
 import {
   ALIBABA_GATEWAY,
+  BffGatewayClient,
   MockGatewayClient,
   type GatewaySettings,
   type SettingsRepository
@@ -34,10 +35,19 @@ const settings: SettingsRepository = {
   }
 };
 
+const gatewayMode = import.meta.env.VITE_GATEWAY_MODE === 'bff' ? 'bff' : 'mock';
+const gateway =
+  gatewayMode === 'bff'
+    ? new BffGatewayClient({
+        baseUrl: import.meta.env.VITE_BFF_BASE_URL ?? globalThis.location.origin,
+        apiPrefix: import.meta.env.VITE_BFF_API_PREFIX
+      })
+    : new MockGatewayClient();
+
 const app = createApp(OneVegetableApp, {
-  gateway: new MockGatewayClient(),
+  gateway,
   settings,
-  mode: 'mock'
+  mode: gatewayMode
 });
 app.use(VueQueryPlugin, {
   queryClient: new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000 } } })

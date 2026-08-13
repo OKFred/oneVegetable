@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 
 import {
   createRequestId,
@@ -33,6 +34,7 @@ export interface ApiAppOptions {
   ready?: () => Promise<boolean>;
   clock?: () => number;
   logger?: (context: RequestLogContext) => void;
+  allowedOrigins?: readonly string[];
 }
 
 export interface RequestLogContext {
@@ -65,6 +67,18 @@ export function createApiApp(options: ApiAppOptions): Hono {
   const dynamicGateway = gateway as unknown as DynamicGateway;
   const app = new Hono();
   const api = new Hono();
+
+  api.use(
+    '*',
+    cors({
+      origin: [...(options.allowedOrigins ?? [])],
+      allowMethods: ['GET', 'POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'X-CSRF-Token'],
+      exposeHeaders: ['X-Request-ID'],
+      credentials: true,
+      maxAge: 600
+    })
+  );
 
   api.get('/healthz', (context) => {
     const requestId = createRequestId();

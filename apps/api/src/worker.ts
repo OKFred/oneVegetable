@@ -6,6 +6,7 @@ interface Env {
   ONE_VEGETABLE_API_PREFIX?: string;
   ONE_VEGETABLE_ENVIRONMENT?: string;
   ONE_VEGETABLE_GATEWAY_MODE?: string;
+  ONE_VEGETABLE_CORS_ORIGINS?: string;
 }
 
 export default {
@@ -17,6 +18,13 @@ export default {
       environment: env.ONE_VEGETABLE_ENVIRONMENT ?? 'local-worker',
       gatewayMode: env.ONE_VEGETABLE_GATEWAY_MODE === 'disabled' ? 'disabled' : 'mock',
       apiPrefix: env.ONE_VEGETABLE_API_PREFIX,
+      ...(env.ONE_VEGETABLE_CORS_ORIGINS
+        ? {
+            allowedOrigins: env.ONE_VEGETABLE_CORS_ORIGINS.split(',').map(
+              (origin) => new URL(origin.trim()).origin
+            )
+          }
+        : {}),
       ready: () => isD1DatabaseReady(database)
     }).fetch(request, env);
   }
