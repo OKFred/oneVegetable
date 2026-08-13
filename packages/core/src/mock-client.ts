@@ -11,6 +11,7 @@ import type {
   LogisticsOrderSummary,
   OperationId,
   OperationMap,
+  PhotoGroup,
   Product,
   RequestOf,
   ResponseOf,
@@ -221,10 +222,10 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
         name: 'dehydrator-detail.jpg',
         url: 'https://sc04.alicdn.com/kf/mock-dehydrator-detail.jpg',
         groupId: '2002',
-        width: 1600,
-        height: 1200,
+        width: 640,
+        height: 480,
         fileSize: 348160,
-        referenceCount: 2,
+        referenceCount: 0,
         modifiedAt: '2026-08-09T11:03:00Z'
       }
     ],
@@ -605,6 +606,8 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
 };
 
 export class MockGatewayClient implements GatewayClient {
+  private photoGroups: PhotoGroup[] = structuredClone(MOCK_DATA.listPhotoGroups);
+
   constructor(private readonly latency = 160) {}
 
   async request<K extends OperationId>(operation: K, _request: RequestOf<K>): Promise<ResponseOf<K>> {
@@ -627,6 +630,9 @@ export class MockGatewayClient implements GatewayClient {
     if (operation === 'getCapabilityDefinition') {
       const payload = _request as OperationMap['getCapabilityDefinition']['request'];
       return structuredClone(requireCapabilityDefinition(payload.method));
+    }
+    if (operation === 'listPhotoGroups') {
+      return structuredClone(this.photoGroups);
     }
     if (operation === 'callCapability') {
       const payload = _request as CapabilityCallRequest;
@@ -663,14 +669,20 @@ export class MockGatewayClient implements GatewayClient {
     }
     if (operation === 'operatePhotoGroup') {
       const payload = _request as OperationMap['operatePhotoGroup']['request'];
-      const current = MOCK_DATA.listPhotoGroups.find((group) => group.id === payload.groupId);
-      return {
+      const current = this.photoGroups.find((group) => group.id === payload.groupId);
+      const result: PhotoGroup = {
         ...(current ?? MOCK_DATA.operatePhotoGroup),
         id: payload.operation === 'add' ? `group_${Date.now()}` : (payload.groupId ?? '2003'),
         name: payload.groupName ?? current?.name ?? '已删除分组',
         parentId: payload.operation === 'add' ? payload.groupId : (current?.parentId ?? null),
         level: payload.operation === 'add' ? Math.min((current?.level ?? 0) + 1, 3) : (current?.level ?? 1)
-      } as ResponseOf<K>;
+      };
+      if (payload.operation === 'add') this.photoGroups.push(result);
+      if (payload.operation === 'rename' && current) Object.assign(current, result);
+      if (payload.operation === 'delete') {
+        this.photoGroups = this.photoGroups.filter((group) => group.id !== payload.groupId);
+      }
+      return structuredClone(result);
     }
     if (operation === 'transferPhotoFromUrl') {
       const payload = _request as OperationMap['transferPhotoFromUrl']['request'];
