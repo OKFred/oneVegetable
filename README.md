@@ -6,6 +6,7 @@ Alibaba.com 国际站商品、图库（图片银行）、RFQ、交易、国际�
 
 - `apps/web`：使用 OpenAPI examples 和类型化 MockGatewayClient 的独立演示站。
 - `apps/extension`：WXT 管理的 MV3 扩展，真实 API 请求只由 service worker 发起。
+- `apps/api`：共享 Hono 应用，分别运行于 Node.js + SQLite 和 Cloudflare Workers + D1。
 - `packages/core`：OpenAPI 生成类型、AJV standalone validators、签名器、API 审计目录和网关客户端。
 - `packages/ui`：Web 与扩展复用的 shadcn-vue 风格后台界面。
 - `legacy/v1`：原 Manifest V2 项目及构建产物的只读归档。
@@ -37,6 +38,8 @@ pnpm test
 pnpm build
 pnpm check:extension-bundle
 pnpm test:e2e
+pnpm test:e2e:bff-replay # 重建隔离 D1，启动 Worker/Web，验证认证后的全领域 BFF 读链路
+pnpm check:replay-coverage # 校验所有可真实调用的只读能力都有有效文档回放
 pnpm release:extension # 可复现 ZIP、SHA-256 与 release.json
 pnpm capture:store-assets # 从构建后的扩展刷新 1280×800 商店截图
 ```

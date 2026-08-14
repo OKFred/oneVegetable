@@ -71,6 +71,23 @@ Token，不能写入 `wrangler.jsonc`、D1、日志或审计事件。管理页�
 所有 mutation、文件上传、URL 转存和需要 OneTouch 等额外资格的物流能力仍在出网前拒绝。当前实现仅完成
 Mock、契约和本地双运行时验证，不代表已通过 Alibaba 真实账号验收。
 
+## 本地 BFF 文档回放 E2E
+
+在 Windows 终端执行：
+
+```powershell
+pnpm test:e2e:bff-replay
+```
+
+该命令会删除并重建专用的 `apps/api/.wrangler/bff-replay-e2e` 测试 D1，随后在 8796 端口启动
+Cloudflare Worker，在 4174 端口启动 BFF 模式 Web。Playwright 会通过页面初始化本地管理员，验证商品、
+图库、RFQ、交易、运费模板、数据洞察和能力目录读请求，并确认管理后台显示 `cloudflare + D1 + replay`。
+测试还会直接验证 mutation 在网关调用前返回 403，且响应 Body 与 `X-Request-ID` 保留同一个 requestId。
+
+`pnpm check:replay-coverage` 是更细粒度的契约门禁：所有 active、read、`realCallEnabled` 且无资格限制的
+能力都必须具有请求/响应示例，并能经过签名、文档回放拆包和响应 validator。官方错误示例保留在原始快照，
+仅通过 `docs/alibaba-product-api-overrides.json` 的人工说明层修正。以上流程都不请求 Alibaba。
+
 ## 本地权限与审计
 
 - 密码使用 PBKDF2-HMAC-SHA256（600,000 次），连续 5 次失败锁定 15 分钟。
