@@ -46,8 +46,10 @@ BFF 模式使用 HttpOnly 不透明 session Cookie 和双提交 CSRF。开发时
 
 ## Alibaba 真实只读网关
 
-`ONE_VEGETABLE_GATEWAY_MODE` 支持 `mock`、`disabled` 和 `real`，默认仍为 `mock`。没有真实账号验收前，
-staging 保持 `mock`，production 保持 `disabled`。启用 `real` 时必须同时提供：
+`ONE_VEGETABLE_GATEWAY_MODE` 支持 `mock`、`replay`、`disabled` 和 `real`，默认仍为 `mock`。没有真实账号
+验收前，staging 使用 `replay`，production 保持 `disabled`。`replay` 使用 OpenAPI 文档示例经过真实签名、
+NetworkManager、拆包、契约校验和领域适配器，但不会连接 Alibaba，也不需要任何 Alibaba 凭据。启用
+`real` 时必须同时提供：
 
 ```text
 ONE_VEGETABLE_ALIBABA_APP_KEY=
@@ -86,9 +88,15 @@ Mock、契约和本地双运行时验证，不代表已通过 Alibaba 真实账�
 
 ## staging
 
-staging 与 production 使用独立 D1 和显式 API prefix。仓库中的 database id 是不可部署的占位符，
-首次配置 Cloudflare 项目时必须替换。staging 必须由 Cloudflare Access 保护；CI smoke 使用 service
-token。production 网关固定为 `disabled`，本阶段不部署 production，也不会请求 Alibaba。
+staging 与 production 使用独立 D1 和显式 API prefix。仓库中的 database id、Origin 是不可部署的占位符，
+首次配置 Cloudflare 项目时必须替换。`pnpm check:staging-config` 会在 migration 之前拒绝占位 D1、共享
+database、非 HTTPS Origin、真实 staging 网关、production 非 disabled、mutation flag 或缺失部署凭据；
+`pnpm check:staging-config:local` 仅用于验证仓库结构，允许占位配置。
+
+staging 必须由 Cloudflare Access 保护；CI smoke 会先确认无 Access 凭据的请求被拒绝，再使用 service token
+验证 healthz、readyz、requestId 和 `cloudflare + d1 + staging + replay` metadata。production 网关固定为
+`disabled`，本阶段不部署 production，也不会请求 Alibaba。完整准备清单见
+[staging 近生产验收手册](./staging-readiness.md)。
 
 `BOOTSTRAP_ADMIN_TOKEN` 必须通过 `wrangler secret put BOOTSTRAP_ADMIN_TOKEN --env staging` 注入，不能
 写入 `wrangler.jsonc` 或 CI 日志。Cloudflare Access 保护的是 staging 入口，BFF 本地账号仍会在应用层
