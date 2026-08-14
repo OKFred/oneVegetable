@@ -73,7 +73,7 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       runtime: { type: 'string', enum: ['node', 'cloudflare'] },
       database: { type: 'string', enum: ['sqlite', 'd1'] },
       environment: { type: 'string' },
-      gatewayMode: { type: 'string', enum: ['mock', 'disabled', 'real'] },
+      gatewayMode: { type: 'string', enum: ['mock', 'replay', 'disabled', 'real'] },
       apiPrefix: { type: 'string' },
       version: { type: 'string' }
     }
@@ -104,7 +104,7 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       'mutationEnabled'
     ],
     properties: {
-      source: { const: 'environment' },
+      source: { type: 'string', enum: ['environment', 'documentation-replay'] },
       configured: { type: 'boolean' },
       hasAppKey: { type: 'boolean' },
       hasAppSecret: { type: 'boolean' },
