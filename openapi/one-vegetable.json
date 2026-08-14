@@ -1499,6 +1499,32 @@
           "remark": { "type": ["string", "null"], "maxLength": 500 }
         }
       },
+      "AlibabaGatewayStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source",
+          "configured",
+          "hasAppKey",
+          "hasAppSecret",
+          "hasAccessToken",
+          "endpointOrigin",
+          "signMethod",
+          "realReadEnabled",
+          "mutationEnabled"
+        ],
+        "properties": {
+          "source": { "const": "environment" },
+          "configured": { "type": "boolean" },
+          "hasAppKey": { "type": "boolean" },
+          "hasAppSecret": { "type": "boolean" },
+          "hasAccessToken": { "type": "boolean" },
+          "endpointOrigin": { "type": "string" },
+          "signMethod": { "type": "string", "enum": ["hmac", "md5", "hmac-sha256"] },
+          "realReadEnabled": { "type": "boolean" },
+          "mutationEnabled": { "const": false }
+        }
+      },
       "AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentRequest": {
         "type": "object",
         "additionalProperties": false,

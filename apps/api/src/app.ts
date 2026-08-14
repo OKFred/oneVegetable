@@ -27,6 +27,7 @@ import type { OperationFeatureFlags } from './abac';
 import type { AdminService } from './auth/admin-service';
 import type { AuthenticatedSession, AuthService } from './auth/service';
 import type { RequestEventRepository } from './observability/request-events';
+import type { AlibabaCredentialStatus } from './gateway/credentials';
 
 export type ApiRuntime = 'node' | 'cloudflare';
 export type ApiDatabase = 'sqlite' | 'd1';
@@ -49,6 +50,7 @@ export interface ApiAppOptions {
   featureFlags?: OperationFeatureFlags;
   requestEvents?: RequestEventRepository;
   requestEventRetentionDays?: number;
+  gatewayStatus?: AlibabaCredentialStatus;
 }
 
 export interface RequestLogContext {
@@ -121,6 +123,7 @@ export function createApiApp(options: ApiAppOptions): Hono {
       database: options.database,
       gatewayMode: options.gatewayMode,
       ...(options.requestEvents ? { requestEvents: options.requestEvents } : {}),
+      ...(options.gatewayStatus ? { gatewayStatus: options.gatewayStatus } : {}),
       ...(options.requestEventRetentionDays !== undefined
         ? { requestEventRetentionDays: options.requestEventRetentionDays }
         : {}),

@@ -227,6 +227,16 @@ function formatTime(value: number): string {
         <p class="text-xs text-muted-foreground">Alibaba Gateway</p>
         <p class="mt-2 font-semibold">{{ system?.gatewayMode ?? '—' }}</p>
         <p class="mt-1 text-xs text-muted-foreground">
+          凭据 {{ system?.gatewayStatus.configured ? '完整' : '未配置' }} · 只读真实调用
+          {{ system?.gatewayStatus.realReadEnabled ? '已启用' : '关闭' }}
+        </p>
+        <p
+          v-if="system?.gatewayStatus.endpointOrigin"
+          class="mt-1 truncate font-mono text-xs text-muted-foreground"
+        >
+          {{ system.gatewayStatus.endpointOrigin }} · {{ system.gatewayStatus.signMethod }}
+        </p>
+        <p class="mt-1 text-xs text-muted-foreground">
           请求诊断保留 {{ system?.requestEventRetentionDays ?? '—' }} 天
         </p>
       </Card>

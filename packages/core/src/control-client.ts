@@ -63,6 +63,17 @@ export interface ControlSystemInfo {
   gatewayMode: 'mock' | 'disabled' | 'real';
   schemaVersion: number;
   requestEventRetentionDays: number;
+  gatewayStatus: {
+    source: 'environment';
+    configured: boolean;
+    hasAppKey: boolean;
+    hasAppSecret: boolean;
+    hasAccessToken: boolean;
+    endpointOrigin: string;
+    signMethod: 'hmac' | 'md5' | 'hmac-sha256';
+    realReadEnabled: boolean;
+    mutationEnabled: false;
+  };
 }
 
 export interface ControlRequestEvent {

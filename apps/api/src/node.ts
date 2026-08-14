@@ -33,6 +33,7 @@ const app = createApiApp({
   database: 'sqlite',
   environment,
   gatewayMode,
+  gatewayStatus: credentialProvider.status(),
   ...(gatewayMode === 'real'
     ? { gateway: new AlibabaReadGatewayClient(credentialProvider.requireCredentials()) }
     : {}),

@@ -39,6 +39,7 @@ export default {
       database: 'd1',
       environment: env.ONE_VEGETABLE_ENVIRONMENT ?? 'local-worker',
       gatewayMode,
+      gatewayStatus: credentialProvider.status(),
       ...(gatewayMode === 'real'
         ? { gateway: new AlibabaReadGatewayClient(credentialProvider.requireCredentials()) }
         : {}),

@@ -89,6 +89,32 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       byteLength: { type: 'integer', minimum: 1, maximum: 20971520 }
     }
   };
+  schemas.AlibabaGatewayStatus = {
+    type: 'object',
+    additionalProperties: false,
+    required: [
+      'source',
+      'configured',
+      'hasAppKey',
+      'hasAppSecret',
+      'hasAccessToken',
+      'endpointOrigin',
+      'signMethod',
+      'realReadEnabled',
+      'mutationEnabled'
+    ],
+    properties: {
+      source: { const: 'environment' },
+      configured: { type: 'boolean' },
+      hasAppKey: { type: 'boolean' },
+      hasAppSecret: { type: 'boolean' },
+      hasAccessToken: { type: 'boolean' },
+      endpointOrigin: { type: 'string' },
+      signMethod: { type: 'string', enum: ['hmac', 'md5', 'hmac-sha256'] },
+      realReadEnabled: { type: 'boolean' },
+      mutationEnabled: { const: false }
+    }
+  };
   schemas.PhotoUploadRequest = {
     allOf: [
       { $ref: '#/components/schemas/EncodedFilePayload' },

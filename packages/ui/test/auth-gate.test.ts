@@ -91,9 +91,24 @@ function controlFixture(
         database: 'sqlite',
         gatewayMode: 'mock',
         schemaVersion: 3,
-        requestEventRetentionDays: 30
+        requestEventRetentionDays: 30,
+        gatewayStatus: gatewayStatusFixture()
       }),
     policySummary: () => Promise.resolve({}),
     csrfToken: () => null
+  };
+}
+
+function gatewayStatusFixture() {
+  return {
+    source: 'environment' as const,
+    configured: false,
+    hasAppKey: false,
+    hasAppSecret: false,
+    hasAccessToken: false,
+    endpointOrigin: 'https://eco.taobao.com',
+    signMethod: 'hmac' as const,
+    realReadEnabled: false,
+    mutationEnabled: false as const
   };
 }

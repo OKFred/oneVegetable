@@ -113,7 +113,18 @@ function controlFixture(
         database: 'sqlite',
         gatewayMode: 'mock',
         schemaVersion: 3,
-        requestEventRetentionDays: 30
+        requestEventRetentionDays: 30,
+        gatewayStatus: {
+          source: 'environment',
+          configured: false,
+          hasAppKey: false,
+          hasAppSecret: false,
+          hasAccessToken: false,
+          endpointOrigin: 'https://eco.taobao.com',
+          signMethod: 'hmac',
+          realReadEnabled: false,
+          mutationEnabled: false
+        }
       }),
     policySummary: () => Promise.resolve({ admin: ['system.read'] }),
     csrfToken: () => 'csrf-token'

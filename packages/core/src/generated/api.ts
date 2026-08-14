@@ -383,6 +383,20 @@ export interface components {
             revision: number;
             remark: string | null;
         };
+        AlibabaGatewayStatus: {
+            /** @constant */
+            source: "environment";
+            configured: boolean;
+            hasAppKey: boolean;
+            hasAppSecret: boolean;
+            hasAccessToken: boolean;
+            endpointOrigin: string;
+            /** @enum {string} */
+            signMethod: "hmac" | "md5" | "hmac-sha256";
+            realReadEnabled: boolean;
+            /** @constant */
+            mutationEnabled: false;
+        };
         /** alibaba.icbu.diagnostic.supplier.rank.getpercent request */
         AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentRequest: Record<string, never>;
         /** alibaba.icbu.diagnostic.supplier.rank.getpercent response */

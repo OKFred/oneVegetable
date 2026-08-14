@@ -12,6 +12,7 @@ import type { AdminService } from './admin-service';
 import type { AuthenticatedSession, AuthService } from './service';
 import type { PublicUser, UserRole, UserStatus } from './types';
 import type { RequestEventRepository } from '../observability/request-events';
+import type { AlibabaCredentialStatus } from '../gateway/credentials';
 import { toPublicUser } from './types';
 
 export const SESSION_COOKIE = 'ov_session';
@@ -26,6 +27,7 @@ export interface AuthRoutesOptions {
   runtime: 'node' | 'cloudflare';
   database: 'sqlite' | 'd1';
   gatewayMode: 'mock' | 'disabled' | 'real';
+  gatewayStatus?: AlibabaCredentialStatus;
   allowedOrigins?: readonly string[];
   requestEvents?: RequestEventRepository;
   requestEventRetentionDays?: number;
@@ -229,6 +231,19 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
           apiPrefix: options.apiPrefix,
           database: options.database,
           gatewayMode: options.gatewayMode,
+          gatewayStatus: {
+            ...(options.gatewayStatus ?? {
+              source: 'environment',
+              configured: false,
+              hasAppKey: false,
+              hasAppSecret: false,
+              hasAccessToken: false,
+              endpointOrigin: '',
+              signMethod: 'hmac'
+            }),
+            realReadEnabled: options.gatewayMode === 'real' && options.gatewayStatus?.configured === true,
+            mutationEnabled: false
+          },
           schemaVersion: 3,
           requestEventRetentionDays: options.requestEventRetentionDays ?? 30
         }),
