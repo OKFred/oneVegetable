@@ -7,6 +7,7 @@ import { isD1DatabaseReady, openD1Database } from './db/d1-database';
 import { SqlRequestEventRepository } from './observability/request-events';
 import { AlibabaReadGatewayClient } from './gateway/alibaba-read-gateway';
 import { EnvironmentAlibabaCredentialProvider } from './gateway/credentials';
+import { readRuntimeConfiguration } from './runtime-config';
 
 interface Env {
   DB: D1Database;
@@ -26,7 +27,8 @@ interface Env {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const gatewayMode = readGatewayMode(env.ONE_VEGETABLE_GATEWAY_MODE);
+    const runtimeConfiguration = readRuntimeConfiguration(env, 'local-worker');
+    const { gatewayMode } = runtimeConfiguration;
     const credentialProvider = new EnvironmentAlibabaCredentialProvider(env);
     const database = openD1Database(env.DB);
     const authRepository = new SqlAuthRepository(database.executor);
@@ -37,46 +39,20 @@ export default {
     return await createApiApp({
       runtime: 'cloudflare',
       database: 'd1',
-      environment: env.ONE_VEGETABLE_ENVIRONMENT ?? 'local-worker',
+      environment: runtimeConfiguration.environment,
       gatewayMode,
       gatewayStatus: credentialProvider.status(),
       ...(gatewayMode === 'real'
         ? { gateway: new AlibabaReadGatewayClient(credentialProvider.requireCredentials()) }
         : {}),
-      apiPrefix: env.ONE_VEGETABLE_API_PREFIX,
+      apiPrefix: runtimeConfiguration.apiPrefix,
       authService,
       adminService: new AdminService(authRepository),
-      featureFlags: new StaticOperationFeatureFlags(
-        new Set(
-          env.ONE_VEGETABLE_MUTATION_FLAGS?.split(',')
-            .map((flag) => flag.trim())
-            .filter(Boolean) ?? []
-        )
-      ),
+      featureFlags: new StaticOperationFeatureFlags(new Set(runtimeConfiguration.mutationFlags)),
       requestEvents: new SqlRequestEventRepository(database.executor),
-      requestEventRetentionDays: readRetentionDays(env.ONE_VEGETABLE_REQUEST_RETENTION_DAYS),
-      ...(env.ONE_VEGETABLE_CORS_ORIGINS
-        ? {
-            allowedOrigins: env.ONE_VEGETABLE_CORS_ORIGINS.split(',').map(
-              (origin) => new URL(origin.trim()).origin
-            )
-          }
-        : {}),
+      requestEventRetentionDays: runtimeConfiguration.requestEventRetentionDays,
+      allowedOrigins: runtimeConfiguration.allowedOrigins,
       ready: () => isD1DatabaseReady(database)
     }).fetch(request, env);
   }
 };
-
-function readGatewayMode(value: string | undefined): 'mock' | 'disabled' | 'real' {
-  if (value === undefined || value === 'mock') return 'mock';
-  if (value === 'disabled' || value === 'real') return value;
-  throw new Error('ONE_VEGETABLE_GATEWAY_MODE 无效');
-}
-
-function readRetentionDays(value: string | undefined): number {
-  const days = Number(value ?? 30);
-  if (!Number.isInteger(days) || days < 1 || days > 90) {
-    throw new Error('ONE_VEGETABLE_REQUEST_RETENTION_DAYS 必须为 1–90');
-  }
-  return days;
-}

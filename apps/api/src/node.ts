@@ -12,10 +12,14 @@ import {
   EnvironmentAlibabaCredentialProvider,
   type AlibabaCredentialEnvironment
 } from './gateway/credentials';
+import { readRuntimeConfiguration, type RuntimeConfigurationEnvironment } from './runtime-config';
 
 const port = readPort(process.env.ONE_VEGETABLE_PORT);
-const environment = process.env.ONE_VEGETABLE_ENVIRONMENT ?? 'local-node';
-const gatewayMode = readGatewayMode(process.env.ONE_VEGETABLE_GATEWAY_MODE);
+const runtimeConfiguration = readRuntimeConfiguration(
+  process.env as unknown as RuntimeConfigurationEnvironment,
+  'local-node'
+);
+const { environment, gatewayMode } = runtimeConfiguration;
 const credentialProvider = new EnvironmentAlibabaCredentialProvider(
   process.env as unknown as AlibabaCredentialEnvironment
 );
@@ -37,13 +41,13 @@ const app = createApiApp({
   ...(gatewayMode === 'real'
     ? { gateway: new AlibabaReadGatewayClient(credentialProvider.requireCredentials()) }
     : {}),
-  apiPrefix: process.env.ONE_VEGETABLE_API_PREFIX,
-  allowedOrigins: readOrigins(process.env.ONE_VEGETABLE_CORS_ORIGINS),
+  apiPrefix: runtimeConfiguration.apiPrefix,
+  allowedOrigins: runtimeConfiguration.allowedOrigins,
   authService,
   adminService: new AdminService(authRepository),
-  featureFlags: readFeatureFlags(process.env.ONE_VEGETABLE_MUTATION_FLAGS),
+  featureFlags: new StaticOperationFeatureFlags(new Set(runtimeConfiguration.mutationFlags)),
   requestEvents: new SqlRequestEventRepository(database.executor),
-  requestEventRetentionDays: readRetentionDays(process.env.ONE_VEGETABLE_REQUEST_RETENTION_DAYS),
+  requestEventRetentionDays: runtimeConfiguration.requestEventRetentionDays,
   ready: () => Promise.resolve(isNodeDatabaseReady(database))
 });
 
@@ -55,33 +59,4 @@ function readPort(value: string | undefined): number {
   const port = Number(value ?? 8787);
   if (!Number.isInteger(port) || port < 1 || port > 65_535) throw new Error('ONE_VEGETABLE_PORT 无效');
   return port;
-}
-
-function readGatewayMode(value: string | undefined): 'mock' | 'disabled' | 'real' {
-  if (value === undefined || value === 'mock') return 'mock';
-  if (value === 'disabled' || value === 'real') return value;
-  throw new Error('ONE_VEGETABLE_GATEWAY_MODE 无效');
-}
-
-function readOrigins(value: string | undefined): string[] {
-  return value?.split(',').map((origin) => new URL(origin.trim()).origin) ?? [];
-}
-
-function readFeatureFlags(value: string | undefined): StaticOperationFeatureFlags {
-  return new StaticOperationFeatureFlags(
-    new Set(
-      value
-        ?.split(',')
-        .map((flag) => flag.trim())
-        .filter(Boolean) ?? []
-    )
-  );
-}
-
-function readRetentionDays(value: string | undefined): number {
-  const days = Number(value ?? 30);
-  if (!Number.isInteger(days) || days < 1 || days > 90) {
-    throw new Error('ONE_VEGETABLE_REQUEST_RETENTION_DAYS 必须为 1–90');
-  }
-  return days;
 }
