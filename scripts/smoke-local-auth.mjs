@@ -32,10 +32,28 @@ const system = await post('/api/v1/admin/system/get', {}, { Cookie: cookies });
 if (
   !system.response.ok ||
   system.body.data?.gatewayMode !== 'mock' ||
+  system.body.data?.gatewayStatus?.configured !== false ||
+  system.body.data?.gatewayStatus?.realReadEnabled !== false ||
+  system.body.data?.gatewayStatus?.mutationEnabled !== false ||
   system.body.data?.schemaVersion !== 3 ||
   system.body.data?.requestEventRetentionDays !== 30
 ) {
   throw new Error('管理员系统接口失败');
+}
+const systemJson = JSON.stringify(system.body.data);
+for (const forbiddenKey of ['appKey', 'appSecret', 'accessToken']) {
+  if (systemJson.includes(`"${forbiddenKey}"`)) {
+    throw new Error(`管理员系统接口暴露敏感字段：${forbiddenKey}`);
+  }
+}
+
+const dashboard = await post(
+  '/api/v1/operations/call',
+  { operation: 'getDashboard', payload: {} },
+  { Cookie: cookies }
+);
+if (!dashboard.response.ok || !dashboard.body.ok) {
+  throw new Error('Mock 只读业务调用失败');
 }
 
 const diagnostics = await post(

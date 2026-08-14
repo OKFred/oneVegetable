@@ -44,6 +44,31 @@ BFF 模式使用 HttpOnly 不透明 session Cookie 和双提交 CSRF。开发时
 `ONE_VEGETABLE_CORS_ORIGINS`；mutation 还必须携带匹配的 `Origin` 与 `X-CSRF-Token`。建议通过同源
 反向代理暴露 Web 和 `/api/v1`，跨 Origin 部署时需要 HTTPS 且不能使用通配 CORS。
 
+## Alibaba 真实只读网关
+
+`ONE_VEGETABLE_GATEWAY_MODE` 支持 `mock`、`disabled` 和 `real`，默认仍为 `mock`。没有真实账号验收前，
+staging 保持 `mock`，production 保持 `disabled`。启用 `real` 时必须同时提供：
+
+```text
+ONE_VEGETABLE_ALIBABA_APP_KEY=
+ONE_VEGETABLE_ALIBABA_APP_SECRET=
+ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN=
+ONE_VEGETABLE_ALIBABA_ENDPOINT=https://gw.open.1688.com/openapi/
+ONE_VEGETABLE_ALIBABA_SIGN_METHOD=hmac-sha256
+```
+
+Node 本地值放在未提交的 `.env`；Worker 使用 `wrangler secret put` 注入 App Key、App Secret 和 Access
+Token，不能写入 `wrangler.jsonc`、D1、日志或审计事件。管理页只显示是否配置、端点 Origin 和签名算法，
+不会返回凭据值。
+
+真实网关支持通用 capability 调试器和商品、RFQ、交易、数据洞察、图库（图片银行）、运费模板、旧订单
+查询等专用只读操作。每次请求发送前验证 capability 请求契约，仅允许 active、read、无额外资格限制且
+`realCallEnabled` 的能力；响应漂移会保留原始结果与 traceId，并附带契约告警。只读网络错误使用有限重试，
+所有 attempt 复用同一个 requestId。
+
+所有 mutation、文件上传、URL 转存和需要 OneTouch 等额外资格的物流能力仍在出网前拒绝。当前实现仅完成
+Mock、契约和本地双运行时验证，不代表已通过 Alibaba 真实账号验收。
+
 ## 本地权限与审计
 
 - 密码使用 PBKDF2-HMAC-SHA256（600,000 次），连续 5 次失败锁定 15 分钟。
