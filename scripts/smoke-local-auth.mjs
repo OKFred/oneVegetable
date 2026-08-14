@@ -1,5 +1,7 @@
 const baseUrl = globalThis.process.env.SMOKE_BASE_URL ?? 'http://localhost:8787';
 const bootstrapToken = globalThis.process.env.SMOKE_BOOTSTRAP_TOKEN;
+const expectedGatewayMode = globalThis.process.env.SMOKE_EXPECTED_GATEWAY_MODE ?? 'mock';
+const expectedGatewaySource = expectedGatewayMode === 'replay' ? 'documentation-replay' : 'environment';
 if (!bootstrapToken) throw new Error('SMOKE_BOOTSTRAP_TOKEN 未配置');
 
 const ready = await globalThis.fetch(new globalThis.URL('/api/v1/readyz', baseUrl), {
@@ -31,7 +33,8 @@ if (!session.response.ok || session.body.data?.principal?.role !== 'admin') {
 const system = await post('/api/v1/admin/system/get', {}, { Cookie: cookies });
 if (
   !system.response.ok ||
-  system.body.data?.gatewayMode !== 'mock' ||
+  system.body.data?.gatewayMode !== expectedGatewayMode ||
+  system.body.data?.gatewayStatus?.source !== expectedGatewaySource ||
   system.body.data?.gatewayStatus?.configured !== false ||
   system.body.data?.gatewayStatus?.realReadEnabled !== false ||
   system.body.data?.gatewayStatus?.mutationEnabled !== false ||
