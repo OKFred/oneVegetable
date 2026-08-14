@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 
 import {
   createRequestId,
+  GatewayException,
   isOperationId,
   isRequestId,
   MockGatewayClient,
@@ -71,11 +72,14 @@ interface OperationCallBody extends RequestEnvelope, Record<string, unknown> {
 }
 
 interface DynamicGateway {
-  request(operation: OperationId, request: unknown): Promise<unknown>;
+  request(operation: OperationId, request: unknown, context?: { requestId: string }): Promise<unknown>;
 }
 
 export function createApiApp(options: ApiAppOptions): Hono {
   const apiPrefix = normalizeApiPrefix(options.apiPrefix);
+  if (options.gatewayMode === 'real' && !options.gateway) {
+    throw new Error('real 网关模式必须显式提供 GatewayClient');
+  }
   const gateway = options.gateway ?? new MockGatewayClient();
   const dynamicGateway = gateway as unknown as DynamicGateway;
   const app = new Hono();
@@ -158,7 +162,7 @@ export function createApiApp(options: ApiAppOptions): Hono {
     const startedAt = (options.clock ?? Date.now)();
     const parsed = await parseEnvelope(context, ['requestId', 'operation', 'payload']);
     if (!parsed.ok) return parsed.response;
-    if (options.gatewayMode !== 'mock') {
+    if (options.gatewayMode === 'disabled') {
       logRequest(options, parsed.requestId, 'operations/call', 'denied', 503, startedAt);
       return failure(context, parsed.requestId, 503, {
         code: 'ALIBABA_GATEWAY_DISABLED',
@@ -216,7 +220,9 @@ export function createApiApp(options: ApiAppOptions): Hono {
           });
         }
       }
-      const data = await dynamicGateway.request(parsed.body.operation, parsed.body.payload);
+      const data = await dynamicGateway.request(parsed.body.operation, parsed.body.payload, {
+        requestId: parsed.requestId
+      });
       if (options.authService && authenticated) {
         await auditOperation(
           options.authService,
@@ -238,8 +244,10 @@ export function createApiApp(options: ApiAppOptions): Hono {
       );
       return success(context, parsed.requestId, data);
     } catch (error: unknown) {
-      const status = error instanceof AuthError ? error.status : 500;
-      const code = error instanceof AuthError ? error.code : 'OPERATION_FAILED';
+      const gatewayError = error instanceof GatewayException ? error.gatewayError : null;
+      const status =
+        error instanceof AuthError ? error.status : gatewayError ? gatewayStatus(gatewayError.code) : 500;
+      const code = error instanceof AuthError ? error.code : (gatewayError?.code ?? 'OPERATION_FAILED');
       if (options.authService) {
         await auditOperation(
           options.authService,
@@ -261,8 +269,10 @@ export function createApiApp(options: ApiAppOptions): Hono {
       );
       return failure(context, parsed.requestId, status, {
         code,
-        message: error instanceof Error ? error.message : '操作执行失败',
-        retryable: false
+        message: gatewayError?.message ?? (error instanceof Error ? error.message : '操作执行失败'),
+        retryable: gatewayError?.retryable ?? false,
+        ...(gatewayError?.subCode ? { subCode: gatewayError.subCode } : {}),
+        ...(gatewayError?.traceId ? { traceId: gatewayError.traceId } : {})
       });
     }
   });
@@ -285,6 +295,21 @@ export function createApiApp(options: ApiAppOptions): Hono {
     });
   });
   return app;
+}
+
+function gatewayStatus(code: string): 400 | 403 | 429 | 502 | 504 {
+  if (code === 'REQUEST_CONTRACT_INVALID' || code === 'INVALID_OPERATION_REQUEST') return 400;
+  if (
+    code === 'CAPABILITY_UNKNOWN' ||
+    code === 'CAPABILITY_NOT_ACTIVE' ||
+    code === 'CAPABILITY_RESTRICTED' ||
+    code === 'REAL_MUTATION_DISABLED'
+  ) {
+    return 403;
+  }
+  if (code === 'RATE_LIMITED') return 429;
+  if (code === 'REQUEST_TIMEOUT') return 504;
+  return 502;
 }
 
 async function parseEnvelope(
@@ -358,7 +383,7 @@ function success(context: Context, requestId: string, data: unknown): Response {
 function failure(
   context: Context,
   requestId: string,
-  status: 400 | 401 | 403 | 404 | 409 | 415 | 500 | 503,
+  status: 400 | 401 | 403 | 404 | 409 | 415 | 429 | 500 | 502 | 503 | 504,
   error: GatewayError
 ): Response {
   return respond(context, requestId, status, {

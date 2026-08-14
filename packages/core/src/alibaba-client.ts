@@ -13,6 +13,7 @@ export interface AlibabaClientOptions {
   maxAttempts?: number;
   shouldRetry?: (method: string, error: GatewayError, attempt: number) => boolean;
   wait?: (milliseconds: number) => Promise<void>;
+  requestId?: string;
 }
 
 export class AlibabaClient {
@@ -57,7 +58,8 @@ export class AlibabaClient {
           url: this.#credentials.endpoint,
           method: 'POST',
           body,
-          responseType: 'json'
+          responseType: 'json',
+          ...(this.#options.requestId ? { requestId: this.#options.requestId } : {})
         });
         const transport = getTransportError(response);
         if (transport) throw new GatewayException(transport);

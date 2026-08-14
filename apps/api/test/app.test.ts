@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createRequestId } from '@one-vegetable/core';
+import { createRequestId, GatewayException } from '@one-vegetable/core';
 
 import { createApiApp } from '../src/app';
+
+import type { GatewayClient } from '@one-vegetable/core';
 
 function createTestApp(apiPrefix?: string) {
   return createApiApp({
@@ -108,5 +110,68 @@ describe('shared Hono API', () => {
       }
     });
     expect(denied.headers.get('Access-Control-Allow-Origin')).toBeNull();
+  });
+
+  it('requires an explicit real gateway and forwards the requestId context', async () => {
+    expect(() =>
+      createApiApp({
+        runtime: 'node',
+        database: 'sqlite',
+        environment: 'test',
+        gatewayMode: 'real'
+      })
+    ).toThrow('显式提供');
+
+    const gateway = {
+      request: vi.fn((_operation, _payload, context?: { requestId: string }) => Promise.resolve({ context }))
+    };
+    const app = createApiApp({
+      runtime: 'node',
+      database: 'sqlite',
+      environment: 'test',
+      gatewayMode: 'real',
+      gateway: gateway as unknown as GatewayClient
+    });
+    const requestId = createRequestId();
+    const response = await app.request('/api/v1/operations/call', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ requestId, operation: 'getDashboard', payload: {} })
+    });
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      data: { context: { requestId } }
+    });
+  });
+
+  it('preserves normalized upstream errors and maps them to an HTTP status', async () => {
+    const app = createApiApp({
+      runtime: 'node',
+      database: 'sqlite',
+      environment: 'test',
+      gatewayMode: 'real',
+      gateway: {
+        request: () =>
+          Promise.reject(
+            new GatewayException({
+              code: 'UPSTREAM_UNAVAILABLE',
+              message: 'upstream unavailable',
+              retryable: true,
+              traceId: 'trace-1'
+            })
+          )
+      }
+    });
+    const requestId = createRequestId();
+    const response = await app.request('/api/v1/operations/call', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ requestId, operation: 'getDashboard', payload: {} })
+    });
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toMatchObject({
+      requestId,
+      error: { code: 'UPSTREAM_UNAVAILABLE', retryable: true, traceId: 'trace-1' }
+    });
   });
 });

@@ -7,9 +7,18 @@ import { SqlAuthRepository } from './auth/repository';
 import { AuthService } from './auth/service';
 import { applyNodeMigrations, isNodeDatabaseReady, openNodeDatabase } from './db/node-database';
 import { SqlRequestEventRepository } from './observability/request-events';
+import { AlibabaReadGatewayClient } from './gateway/alibaba-read-gateway';
+import {
+  EnvironmentAlibabaCredentialProvider,
+  type AlibabaCredentialEnvironment
+} from './gateway/credentials';
 
 const port = readPort(process.env.ONE_VEGETABLE_PORT);
 const environment = process.env.ONE_VEGETABLE_ENVIRONMENT ?? 'local-node';
+const gatewayMode = readGatewayMode(process.env.ONE_VEGETABLE_GATEWAY_MODE);
+const credentialProvider = new EnvironmentAlibabaCredentialProvider(
+  process.env as unknown as AlibabaCredentialEnvironment
+);
 const database = openNodeDatabase(process.env.ONE_VEGETABLE_SQLITE_PATH ?? '.data/one-vegetable.sqlite');
 if (environment === 'local-node' && process.env.ONE_VEGETABLE_AUTO_MIGRATE !== 'false') {
   applyNodeMigrations(database);
@@ -23,7 +32,10 @@ const app = createApiApp({
   runtime: 'node',
   database: 'sqlite',
   environment,
-  gatewayMode: readGatewayMode(process.env.ONE_VEGETABLE_GATEWAY_MODE),
+  gatewayMode,
+  ...(gatewayMode === 'real'
+    ? { gateway: new AlibabaReadGatewayClient(credentialProvider.requireCredentials()) }
+    : {}),
   apiPrefix: process.env.ONE_VEGETABLE_API_PREFIX,
   allowedOrigins: readOrigins(process.env.ONE_VEGETABLE_CORS_ORIGINS),
   authService,
@@ -44,8 +56,10 @@ function readPort(value: string | undefined): number {
   return port;
 }
 
-function readGatewayMode(value: string | undefined): 'mock' | 'disabled' {
-  return value === 'disabled' ? 'disabled' : 'mock';
+function readGatewayMode(value: string | undefined): 'mock' | 'disabled' | 'real' {
+  if (value === undefined || value === 'mock') return 'mock';
+  if (value === 'disabled' || value === 'real') return value;
+  throw new Error('ONE_VEGETABLE_GATEWAY_MODE 无效');
 }
 
 function readOrigins(value: string | undefined): string[] {

@@ -5,6 +5,8 @@ import { SqlAuthRepository } from './auth/repository';
 import { AuthService } from './auth/service';
 import { isD1DatabaseReady, openD1Database } from './db/d1-database';
 import { SqlRequestEventRepository } from './observability/request-events';
+import { AlibabaReadGatewayClient } from './gateway/alibaba-read-gateway';
+import { EnvironmentAlibabaCredentialProvider } from './gateway/credentials';
 
 interface Env {
   DB: D1Database;
@@ -15,10 +17,17 @@ interface Env {
   ONE_VEGETABLE_MUTATION_FLAGS?: string;
   ONE_VEGETABLE_REQUEST_RETENTION_DAYS?: string;
   BOOTSTRAP_ADMIN_TOKEN?: string;
+  ONE_VEGETABLE_ALIBABA_APP_KEY?: string;
+  ONE_VEGETABLE_ALIBABA_APP_SECRET?: string;
+  ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN?: string;
+  ONE_VEGETABLE_ALIBABA_ENDPOINT?: string;
+  ONE_VEGETABLE_ALIBABA_SIGN_METHOD?: string;
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    const gatewayMode = readGatewayMode(env.ONE_VEGETABLE_GATEWAY_MODE);
+    const credentialProvider = new EnvironmentAlibabaCredentialProvider(env);
     const database = openD1Database(env.DB);
     const authRepository = new SqlAuthRepository(database.executor);
     const authService = new AuthService({
@@ -29,7 +38,10 @@ export default {
       runtime: 'cloudflare',
       database: 'd1',
       environment: env.ONE_VEGETABLE_ENVIRONMENT ?? 'local-worker',
-      gatewayMode: env.ONE_VEGETABLE_GATEWAY_MODE === 'disabled' ? 'disabled' : 'mock',
+      gatewayMode,
+      ...(gatewayMode === 'real'
+        ? { gateway: new AlibabaReadGatewayClient(credentialProvider.requireCredentials()) }
+        : {}),
       apiPrefix: env.ONE_VEGETABLE_API_PREFIX,
       authService,
       adminService: new AdminService(authRepository),
@@ -53,6 +65,12 @@ export default {
     }).fetch(request, env);
   }
 };
+
+function readGatewayMode(value: string | undefined): 'mock' | 'disabled' | 'real' {
+  if (value === undefined || value === 'mock') return 'mock';
+  if (value === 'disabled' || value === 'real') return value;
+  throw new Error('ONE_VEGETABLE_GATEWAY_MODE 无效');
+}
 
 function readRetentionDays(value: string | undefined): number {
   const days = Number(value ?? 30);
