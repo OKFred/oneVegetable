@@ -1,6 +1,6 @@
 import { normalizeApiPrefix } from '@one-vegetable/core';
 
-export type GatewayMode = 'mock' | 'disabled' | 'real';
+export type GatewayMode = 'mock' | 'replay' | 'disabled' | 'real';
 
 export interface RuntimeConfigurationEnvironment {
   ONE_VEGETABLE_API_PREFIX?: string;
@@ -47,7 +47,7 @@ function readEnvironment(value: string | undefined, fallback: string): string {
 
 function readGatewayMode(value: string | undefined): GatewayMode {
   if (value === undefined || value === '' || value === 'mock') return 'mock';
-  if (value === 'disabled' || value === 'real') return value;
+  if (value === 'replay' || value === 'disabled' || value === 'real') return value;
   throw new Error('ONE_VEGETABLE_GATEWAY_MODE 无效');
 }
 

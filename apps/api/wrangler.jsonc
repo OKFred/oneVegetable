@@ -26,7 +26,7 @@
       "vars": {
         "ONE_VEGETABLE_API_PREFIX": "/api/v1",
         "ONE_VEGETABLE_ENVIRONMENT": "staging",
-        "ONE_VEGETABLE_GATEWAY_MODE": "mock",
+        "ONE_VEGETABLE_GATEWAY_MODE": "replay",
         "ONE_VEGETABLE_CORS_ORIGINS": "https://staging.example.invalid",
         "ONE_VEGETABLE_MUTATION_FLAGS": "",
         "ONE_VEGETABLE_REQUEST_RETENTION_DAYS": "30"

@@ -60,11 +60,11 @@ export interface ControlSystemInfo {
   environment: string;
   apiPrefix: string;
   database: 'sqlite' | 'd1';
-  gatewayMode: 'mock' | 'disabled' | 'real';
+  gatewayMode: 'mock' | 'replay' | 'disabled' | 'real';
   schemaVersion: number;
   requestEventRetentionDays: number;
   gatewayStatus: {
-    source: 'environment';
+    source: 'environment' | 'documentation-replay';
     configured: boolean;
     hasAppKey: boolean;
     hasAppSecret: boolean;

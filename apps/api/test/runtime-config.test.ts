@@ -28,6 +28,16 @@ describe('runtime configuration', () => {
   });
 
   it('rejects unsafe staging and production settings', () => {
+    expect(
+      readRuntimeConfiguration(
+        {
+          ONE_VEGETABLE_ENVIRONMENT: 'staging',
+          ONE_VEGETABLE_GATEWAY_MODE: 'replay',
+          ONE_VEGETABLE_CORS_ORIGINS: 'https://staging.example.com'
+        },
+        'local-worker'
+      ).gatewayMode
+    ).toBe('replay');
     expect(() =>
       readRuntimeConfiguration(
         {

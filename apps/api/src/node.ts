@@ -12,6 +12,7 @@ import {
   EnvironmentAlibabaCredentialProvider,
   type AlibabaCredentialEnvironment
 } from './gateway/credentials';
+import { createDocumentationReplayGateway, documentationReplayStatus } from './gateway/documentation-replay';
 import { readRuntimeConfiguration, type RuntimeConfigurationEnvironment } from './runtime-config';
 
 const port = readPort(process.env.ONE_VEGETABLE_PORT);
@@ -37,10 +38,12 @@ const app = createApiApp({
   database: 'sqlite',
   environment,
   gatewayMode,
-  gatewayStatus: credentialProvider.status(),
+  gatewayStatus: gatewayMode === 'replay' ? documentationReplayStatus() : credentialProvider.status(),
   ...(gatewayMode === 'real'
     ? { gateway: new AlibabaReadGatewayClient(credentialProvider.requireCredentials()) }
-    : {}),
+    : gatewayMode === 'replay'
+      ? { gateway: createDocumentationReplayGateway() }
+      : {}),
   apiPrefix: runtimeConfiguration.apiPrefix,
   allowedOrigins: runtimeConfiguration.allowedOrigins,
   authService,

@@ -11,7 +11,7 @@ export interface AlibabaCredentialEnvironment {
 }
 
 export interface AlibabaCredentialStatus {
-  source: 'environment';
+  source: 'environment' | 'documentation-replay';
   configured: boolean;
   hasAppKey: boolean;
   hasAppSecret: boolean;

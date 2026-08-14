@@ -384,8 +384,8 @@ export interface components {
             remark: string | null;
         };
         AlibabaGatewayStatus: {
-            /** @constant */
-            source: "environment";
+            /** @enum {string} */
+            source: "environment" | "documentation-replay";
             configured: boolean;
             hasAppKey: boolean;
             hasAppSecret: boolean;
@@ -5528,7 +5528,7 @@ export interface components {
             database: "sqlite" | "d1";
             environment: string;
             /** @enum {string} */
-            gatewayMode: "mock" | "disabled" | "real";
+            gatewayMode: "mock" | "replay" | "disabled" | "real";
             apiPrefix: string;
             version: string;
         };

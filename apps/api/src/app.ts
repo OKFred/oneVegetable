@@ -28,11 +28,10 @@ import type { AdminService } from './auth/admin-service';
 import type { AuthenticatedSession, AuthService } from './auth/service';
 import type { RequestEventRepository } from './observability/request-events';
 import type { AlibabaCredentialStatus } from './gateway/credentials';
+import type { GatewayMode } from './runtime-config';
 
 export type ApiRuntime = 'node' | 'cloudflare';
 export type ApiDatabase = 'sqlite' | 'd1';
-export type GatewayMode = 'mock' | 'disabled' | 'real';
-
 export interface ApiAppOptions {
   runtime: ApiRuntime;
   database: ApiDatabase;
@@ -79,8 +78,8 @@ interface DynamicGateway {
 
 export function createApiApp(options: ApiAppOptions): Hono {
   const apiPrefix = normalizeApiPrefix(options.apiPrefix);
-  if (options.gatewayMode === 'real' && !options.gateway) {
-    throw new Error('real 网关模式必须显式提供 GatewayClient');
+  if ((options.gatewayMode === 'real' || options.gatewayMode === 'replay') && !options.gateway) {
+    throw new Error(`${options.gatewayMode} 网关模式必须显式提供 GatewayClient`);
   }
   const gateway = options.gateway ?? new MockGatewayClient();
   const dynamicGateway = gateway as unknown as DynamicGateway;

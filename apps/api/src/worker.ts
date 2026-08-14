@@ -7,6 +7,7 @@ import { isD1DatabaseReady, openD1Database } from './db/d1-database';
 import { SqlRequestEventRepository } from './observability/request-events';
 import { AlibabaReadGatewayClient } from './gateway/alibaba-read-gateway';
 import { EnvironmentAlibabaCredentialProvider } from './gateway/credentials';
+import { createDocumentationReplayGateway, documentationReplayStatus } from './gateway/documentation-replay';
 import { readRuntimeConfiguration } from './runtime-config';
 
 interface Env {
@@ -41,10 +42,12 @@ export default {
       database: 'd1',
       environment: runtimeConfiguration.environment,
       gatewayMode,
-      gatewayStatus: credentialProvider.status(),
+      gatewayStatus: gatewayMode === 'replay' ? documentationReplayStatus() : credentialProvider.status(),
       ...(gatewayMode === 'real'
         ? { gateway: new AlibabaReadGatewayClient(credentialProvider.requireCredentials()) }
-        : {}),
+        : gatewayMode === 'replay'
+          ? { gateway: createDocumentationReplayGateway() }
+          : {}),
       apiPrefix: runtimeConfiguration.apiPrefix,
       authService,
       adminService: new AdminService(authRepository),

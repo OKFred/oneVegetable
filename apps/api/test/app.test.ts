@@ -121,6 +121,14 @@ describe('shared Hono API', () => {
         gatewayMode: 'real'
       })
     ).toThrow('显式提供');
+    expect(() =>
+      createApiApp({
+        runtime: 'cloudflare',
+        database: 'd1',
+        environment: 'staging',
+        gatewayMode: 'replay'
+      })
+    ).toThrow('显式提供');
 
     const gateway = {
       request: vi.fn((_operation, _payload, context?: { requestId: string }) => Promise.resolve({ context }))

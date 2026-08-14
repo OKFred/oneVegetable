@@ -13,6 +13,7 @@ import type { AuthenticatedSession, AuthService } from './service';
 import type { PublicUser, UserRole, UserStatus } from './types';
 import type { RequestEventRepository } from '../observability/request-events';
 import type { AlibabaCredentialStatus } from '../gateway/credentials';
+import type { GatewayMode } from '../runtime-config';
 import { toPublicUser } from './types';
 
 export const SESSION_COOKIE = 'ov_session';
@@ -26,7 +27,7 @@ export interface AuthRoutesOptions {
   environment: string;
   runtime: 'node' | 'cloudflare';
   database: 'sqlite' | 'd1';
-  gatewayMode: 'mock' | 'disabled' | 'real';
+  gatewayMode: GatewayMode;
   gatewayStatus?: AlibabaCredentialStatus;
   allowedOrigins?: readonly string[];
   requestEvents?: RequestEventRepository;
