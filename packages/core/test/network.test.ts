@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { GatewayException } from '../src/errors';
-import { createRequestId, isRequestId, NetworkManager, type NetworkTransport } from '../src/network';
+import {
+  createRequestId,
+  isRequestId,
+  NativeFetchTransport,
+  NetworkManager,
+  type NetworkTransport
+} from '../src/network';
 
 const policies = {
   alibaba: { allowedOrigins: ['https://eco.taobao.com'], maxResponseBytes: 32 },
@@ -10,6 +16,21 @@ const policies = {
 } as const;
 
 describe('NetworkManager', () => {
+  it('invokes a browser-style native fetch with the global receiver', async () => {
+    const receiverBoundFetch = vi.fn(function (this: typeof globalThis) {
+      if (this !== globalThis) throw new TypeError('Illegal invocation');
+      return Promise.resolve(Response.json({ ok: true }));
+    }) as unknown as typeof fetch;
+
+    const response = await new NativeFetchTransport(receiverBoundFetch).send(
+      'https://api.example.com/healthz',
+      { method: 'GET' }
+    );
+
+    expect(response.ok).toBe(true);
+    expect(receiverBoundFetch).toHaveBeenCalledOnce();
+  });
+
   it('generates and reuses one UUID v4 while retrying', async () => {
     const send = vi
       .fn()

@@ -11,7 +11,7 @@ export class NativeFetchTransport implements NetworkTransport {
   readonly #fetch: typeof fetch;
 
   constructor(fetcher: typeof fetch = globalThis.fetch) {
-    this.#fetch = fetcher;
+    this.#fetch = (input, init) => Reflect.apply(fetcher, globalThis, [input, init]);
   }
 
   send(input: RequestInfo | URL, init: RequestInit): Promise<Response> {

@@ -20,7 +20,7 @@ const summary = useQuery({
     description="国际站商品、素材与订单工作台。真实调用只在扩展 service worker 中发生。"
   >
     <span class="rounded-full border bg-card px-3 py-1.5 text-xs text-muted-foreground">
-      {{ mode === 'mock' ? 'OpenAPI Mock' : 'Extension MV3' }}
+      {{ mode === 'mock' ? 'OpenAPI Mock' : mode === 'bff' ? 'BFF 文档回放/代理' : 'Extension MV3' }}
     </span>
   </PageHeader>
   <QueryState :loading="summary.isPending.value" :error="summary.error.value">
@@ -73,7 +73,8 @@ const summary = useQuery({
       <Card class="border-amber-200 bg-amber-50 p-5">
         <h2 class="font-semibold text-amber-900">文档验证模式</h2>
         <p class="mt-2 text-sm leading-6 text-amber-800">
-          当前没有国际站账号，真实接口行为以官方文档为基线。Web 端只运行契约 Mock，不会发送凭证或真实请求。
+          当前没有国际站账号，真实接口行为以官方文档为基线。Web Mock 不出网；BFF 验收环境使用仓库文档回放，
+          不会请求 Alibaba。
         </p>
       </Card>
     </div>
