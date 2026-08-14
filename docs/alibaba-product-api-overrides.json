@@ -1,0 +1,59 @@
+{
+  "checkedAt": "2026-08-15",
+  "overrides": {
+    "alibaba.icbu.category.attribute.get": {
+      "reason": "官方响应示例将 child_attrs 与 units 数组包裹在 string 对象中，与参数表的 String[] 类型不一致。保留元素并移除示例包装。",
+      "responseExample": {
+        "attributes": [
+          {
+            "attr_id": 123,
+            "attribute_values": [
+              {
+                "attr_value_id": 123,
+                "child_attrs": ["123", "456"],
+                "en_name": "type",
+                "sku_value": false
+              }
+            ],
+            "customize_image": false,
+            "customize_value": false,
+            "en_name": "demo",
+            "input_type": "single_select",
+            "required": false,
+            "show_type": "check_box",
+            "sku_attribute": false,
+            "units": ["m", "cm"],
+            "value_type": "string",
+            "car_model": true
+          }
+        ]
+      }
+    },
+    "alibaba.icbu.category.get.new": {
+      "reason": "官方响应示例将 child_ids 与 parent_ids 包裹在 string 对象中，并把 JSON 数组括号混入元素文本；按参数表 String[] 还原。",
+      "responseExample": {
+        "category": {
+          "category_id": 56,
+          "child_ids": ["78", "90"],
+          "leaf_category": false,
+          "level": 2,
+          "name": "Consumer Electronics",
+          "parent_ids": ["12", "34"],
+          "cn_name": "服装"
+        }
+      }
+    },
+    "alibaba.icbu.product.group.get": {
+      "reason": "官方响应示例将 children_id_list 数组包裹在 number 对象中，与参数表 Number[] 类型不一致。保留数值并移除示例包装。",
+      "responseExample": {
+        "product_group": {
+          "children_id_list": [788, 789],
+          "group_id": 456,
+          "group_name": "best seller",
+          "parent_id": 123,
+          "parent_id2": 11
+        }
+      }
+    }
+  }
+}

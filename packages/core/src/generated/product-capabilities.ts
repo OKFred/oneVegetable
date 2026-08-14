@@ -188,12 +188,10 @@ export const PRODUCT_CAPABILITY_DEFINITIONS = {
           "attribute_values": [
             {
               "attr_value_id": 123,
-              "child_attrs": {
-                "string": [
-                  "123",
-                  "456"
-                ]
-              },
+              "child_attrs": [
+                "123",
+                "456"
+              ],
               "en_name": "type",
               "sku_value": false
             }
@@ -205,12 +203,10 @@ export const PRODUCT_CAPABILITY_DEFINITIONS = {
           "required": false,
           "show_type": "check_box",
           "sku_attribute": false,
-          "units": {
-            "string": [
-              "m",
-              "cm"
-            ]
-          },
+          "units": [
+            "m",
+            "cm"
+          ],
           "value_type": "string",
           "car_model": true
         }
@@ -359,21 +355,17 @@ export const PRODUCT_CAPABILITY_DEFINITIONS = {
     "responseExample": {
       "category": {
         "category_id": 56,
-        "child_ids": {
-          "string": [
-            "[78",
-            "90]"
-          ]
-        },
+        "child_ids": [
+          "78",
+          "90"
+        ],
         "leaf_category": false,
         "level": 2,
         "name": "Consumer Electronics",
-        "parent_ids": {
-          "string": [
-            "[12",
-            "34]"
-          ]
-        },
+        "parent_ids": [
+          "12",
+          "34"
+        ],
         "cn_name": "服装"
       }
     },
@@ -1468,12 +1460,10 @@ export const PRODUCT_CAPABILITY_DEFINITIONS = {
     },
     "responseExample": {
       "product_group": {
-        "children_id_list": {
-          "number": [
-            788,
-            789
-          ]
-        },
+        "children_id_list": [
+          788,
+          789
+        ],
         "group_id": 456,
         "group_name": "best seller",
         "parent_id": 123,

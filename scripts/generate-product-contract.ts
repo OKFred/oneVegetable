@@ -36,6 +36,11 @@ interface ProductDefinition {
   responseExample: string | null;
 }
 
+interface ProductContractOverride {
+  reason: string;
+  responseExample?: unknown;
+}
+
 type JsonSchema = Record<string, unknown>;
 
 interface OpenApiDocument {
@@ -54,6 +59,9 @@ const sourceContract = JSON.parse(await readFile(contractPath, 'utf8')) as OpenA
 const snapshot = JSON.parse(await readFile(resolve(root, 'docs/alibaba-product-api-docs.json'), 'utf8')) as {
   definitions: ProductDefinition[];
 };
+const overrideDocument = JSON.parse(
+  await readFile(resolve(root, 'docs/alibaba-product-api-overrides.json'), 'utf8')
+) as { overrides: Record<string, ProductContractOverride> };
 
 function schemaName(method: string): string {
   return method
@@ -175,6 +183,7 @@ document.components.schemas = Object.fromEntries(
 );
 const capabilityMap: Record<string, unknown> = {};
 for (const definition of snapshot.definitions) {
+  const override = overrideDocument.overrides[definition.method];
   const baseName = schemaName(definition.method);
   const requestSchema = `AlibabaProduct${baseName}Request`;
   const responseSchema = `AlibabaProduct${baseName}Response`;
@@ -202,7 +211,10 @@ for (const definition of snapshot.definitions) {
     requestExample: Object.fromEntries(
       definition.requestParams.map((node) => [node.name, exampleValue(node)])
     ),
-    responseExample: responseExample(definition),
+    responseExample:
+      override && Object.hasOwn(override, 'responseExample')
+        ? override.responseExample
+        : responseExample(definition),
     docUrl:
       definition.source === 'catalog'
         ? `https://developer.alibaba.com/docs/api.htm?apiId=${definition.docId ?? ''}`

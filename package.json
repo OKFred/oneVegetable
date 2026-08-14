@@ -55,7 +55,8 @@
     "smoke:local-auth": "node scripts/smoke-local-auth.mjs",
     "check:staging-config": "tsx scripts/check-staging-config.ts",
     "check:staging-config:local": "tsx scripts/check-staging-config.ts --allow-placeholders --skip-deployment-environment",
-    "check": "pnpm run format:check && pnpm run lint && pnpm run check:openapi && pnpm run audit:apis:check && pnpm run typecheck && pnpm run test && pnpm run build",
+    "check:replay-coverage": "tsx scripts/check-documentation-replay.ts",
+    "check": "pnpm run format:check && pnpm run lint && pnpm run check:openapi && pnpm run audit:apis:check && pnpm run check:replay-coverage && pnpm run typecheck && pnpm run test && pnpm run build",
     "prepare": "husky"
   },
   "lint-staged": {
