@@ -1,5 +1,5 @@
+import type { AlibabaClient } from './alibaba-client';
 import type {
-  AlibabaClient,
   ProductCategory,
   ProductCategoryMapping,
   ProductDetail,
@@ -9,7 +9,7 @@ import type {
   ProductSchema,
   ProductScore,
   RequestOf
-} from '@one-vegetable/core';
+} from './types';
 
 export class ProductAdapter {
   constructor(private readonly client: AlibabaClient) {}

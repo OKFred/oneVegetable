@@ -60,7 +60,39 @@ describe('BFF Alibaba read gateway', () => {
     });
   });
 
-  it('rejects mutations and unavailable dedicated operations before any network request', async () => {
+  it('adapts dedicated product reads with the same requestId', async () => {
+    const requestId = createRequestId();
+    const send = vi.fn<NetworkTransport['send']>((_input, init) => {
+      expect(new Headers(init.headers).get('X-Request-ID')).toBe(requestId);
+      return Promise.resolve(
+        Response.json({
+          alibaba_icbu_product_list_response: {
+            products: [
+              {
+                product_id: 'product-1',
+                subject: 'Typed BFF product',
+                group_name: 'BFF group',
+                display: 'online',
+                score: 88,
+                gmt_modified: '2026-08-14T00:00:00Z'
+              }
+            ],
+            total_count: 1
+          }
+        })
+      );
+    });
+    const gateway = new AlibabaReadGatewayClient(credentials, { transport: { send } });
+
+    await expect(
+      gateway.request('listProducts', { page: 1, pageSize: 20 }, { requestId })
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [{ id: 'product-1', subject: 'Typed BFF product', status: 'online' }]
+    });
+  });
+
+  it('rejects mutations and qualification-gated reads before any network request', async () => {
     const send = vi.fn<NetworkTransport['send']>();
     const gateway = new AlibabaReadGatewayClient(credentials, { transport: { send } });
 
@@ -71,8 +103,13 @@ describe('BFF Alibaba read gateway', () => {
         { requestId: createRequestId() }
       )
     ).rejects.toMatchObject({ gatewayError: { code: 'REAL_MUTATION_DISABLED' } });
-    await expect(gateway.request('listProducts', {})).rejects.toMatchObject({
-      gatewayError: { code: 'BFF_REAL_OPERATION_UNAVAILABLE' }
+    await expect(
+      gateway.request('publishProduct', { categoryId: 1, language: 'en_US', schemaXml: '<xml />' })
+    ).rejects.toMatchObject({
+      gatewayError: { code: 'REAL_MUTATION_DISABLED' }
+    });
+    await expect(gateway.request('listLogisticsProducts', undefined)).rejects.toMatchObject({
+      gatewayError: { code: 'LOGISTICS_QUALIFICATION_REQUIRED' }
     });
     expect(send).not.toHaveBeenCalled();
   });

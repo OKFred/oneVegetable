@@ -21,6 +21,7 @@ import {
   SETTINGS_STORAGE_KEY,
   unlockCredentialVault,
   PhotoAdapter,
+  ProductAdapter,
   RfqAdapter,
   TradeAdapter,
   validateCapabilityRequest,
@@ -37,8 +38,6 @@ import {
   type RuntimeRequest,
   type RuntimeResponse
 } from '@one-vegetable/core';
-
-import { ProductAdapter } from '../lib/product-adapter';
 
 const OPERATIONS = new Set<OperationId>([
   'getDashboard',
