@@ -59,6 +59,17 @@ ONE_VEGETABLE_ALIBABA_ENDPOINT=https://gw.open.1688.com/openapi/
 ONE_VEGETABLE_ALIBABA_SIGN_METHOD=hmac-sha256
 ```
 
+临时兼容历史本地 `.env` 变量可写：
+
+```text
+ALI_ACCOUNT=<你的 appKey>
+ALL_PASS=<你的 appSecret>
+ALI_ACCESS_TOKEN=<你的 accessToken，可先为空但仍需确保 real 模式下可用>
+```
+
+系统会优先读取 `ONE_VEGETABLE_ALIBABA_*`，只有对应变量为空时才回退到 `ALI_*`。建议联调前统一改为
+`ONE_VEGETABLE_*`，并清理历史变量。
+
 Node 本地值放在未提交的 `.env`；Worker 使用 `wrangler secret put` 注入 App Key、App Secret 和 Access
 Token，不能写入 `wrangler.jsonc`、D1、日志或审计事件。管理页只显示是否配置、端点 Origin 和签名算法，
 不会返回凭据值。

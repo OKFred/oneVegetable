@@ -8,6 +8,12 @@ export interface AlibabaCredentialEnvironment {
   ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN?: string;
   ONE_VEGETABLE_ALIBABA_ENDPOINT?: string;
   ONE_VEGETABLE_ALIBABA_SIGN_METHOD?: string;
+  // 兼容旧命名（不建议继续使用）
+  ALI_ACCOUNT?: string;
+  ALL_PASS?: string;
+  ALI_APP_KEY?: string;
+  ALI_APP_SECRET?: string;
+  ALI_ACCESS_TOKEN?: string;
 }
 
 export interface AlibabaCredentialStatus {
@@ -45,9 +51,23 @@ export class EnvironmentAlibabaCredentialProvider implements AlibabaCredentialPr
   readonly #signMethod: SignMethod;
 
   constructor(environment: AlibabaCredentialEnvironment) {
-    this.#appKey = readSecret(environment.ONE_VEGETABLE_ALIBABA_APP_KEY);
-    this.#appSecret = readSecret(environment.ONE_VEGETABLE_ALIBABA_APP_SECRET);
-    this.#accessToken = readSecret(environment.ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN);
+    this.#appKey = readSecret(
+      firstNonEmpty(
+        environment.ONE_VEGETABLE_ALIBABA_APP_KEY,
+        environment.ALI_APP_KEY,
+        environment.ALI_ACCOUNT
+      )
+    );
+    this.#appSecret = readSecret(
+      firstNonEmpty(
+        environment.ONE_VEGETABLE_ALIBABA_APP_SECRET,
+        environment.ALI_APP_SECRET,
+        environment.ALL_PASS
+      )
+    );
+    this.#accessToken = readSecret(
+      firstNonEmpty(environment.ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN, environment.ALI_ACCESS_TOKEN)
+    );
     const endpoint = readEndpoint(environment.ONE_VEGETABLE_ALIBABA_ENDPOINT ?? ALIBABA_GATEWAY);
     this.#endpoint = endpoint.href;
     this.#endpointOrigin = endpoint.origin;
@@ -89,6 +109,16 @@ function readSecret(value: string | undefined): string {
     throw new GatewayConfigurationError('ALIBABA_CREDENTIALS_INCOMPLETE', 'Alibaba 服务端凭据长度无效');
   }
   return result;
+}
+
+function firstNonEmpty(...values: (string | undefined)[]): string | undefined {
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (trimmed && trimmed.length > 0) {
+      return trimmed;
+    }
+  }
+  return undefined;
 }
 
 function readEndpoint(value: string): URL {

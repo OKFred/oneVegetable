@@ -27,6 +27,27 @@ describe('server Alibaba credential provider', () => {
     expect(provider.requireCredentials()).toMatchObject({ appKey: 'app-key-value' });
   });
 
+  it('falls back to legacy aliases when canonical vars are absent', () => {
+    const provider = new EnvironmentAlibabaCredentialProvider({
+      ALI_ACCOUNT: 'legacy-account',
+      ALL_PASS: 'legacy-pass',
+      ALI_ACCESS_TOKEN: 'legacy-token'
+    });
+    expect(provider.status()).toMatchObject({
+      configured: true,
+      hasAppKey: true,
+      hasAppSecret: true,
+      hasAccessToken: true,
+      endpointOrigin: 'https://eco.taobao.com',
+      signMethod: 'hmac'
+    });
+    expect(provider.requireCredentials()).toMatchObject({
+      appKey: 'legacy-account',
+      appSecret: 'legacy-pass',
+      accessToken: 'legacy-token'
+    });
+  });
+
   it('fails closed for partial credentials without putting values in the error', () => {
     const provider = new EnvironmentAlibabaCredentialProvider({
       ONE_VEGETABLE_ALIBABA_APP_KEY: 'app-key-value',
@@ -38,6 +59,23 @@ describe('server Alibaba credential provider', () => {
       expect.objectContaining<Partial<GatewayConfigurationError>>({ code: 'ALIBABA_CREDENTIALS_INCOMPLETE' })
     );
     expect(captureError(() => provider.requireCredentials())).not.toContain('app-secret-value');
+  });
+
+  it('prefers canonical env vars over legacy aliases', () => {
+    const provider = new EnvironmentAlibabaCredentialProvider({
+      ONE_VEGETABLE_ALIBABA_APP_KEY: 'canonical-key',
+      ALI_ACCOUNT: 'legacy-account',
+      ONE_VEGETABLE_ALIBABA_APP_SECRET: 'canonical-secret',
+      ALL_PASS: 'legacy-pass',
+      ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN: 'canonical-token',
+      ALI_ACCESS_TOKEN: 'legacy-token'
+    });
+
+    expect(provider.requireCredentials()).toMatchObject({
+      appKey: 'canonical-key',
+      appSecret: 'canonical-secret',
+      accessToken: 'canonical-token'
+    });
   });
 
   it('rejects non-HTTPS endpoints, credential URLs and unsupported signing methods', () => {
