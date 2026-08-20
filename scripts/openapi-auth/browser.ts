@@ -1,3 +1,6 @@
+import { mkdir } from 'node:fs/promises';
+import { dirname } from 'node:path';
+
 import type { BrowserContext, Frame, Locator, Page } from '@playwright/test';
 
 import { callbackMatches } from './config';
@@ -149,7 +152,9 @@ export async function authorizeApplication(
     if (frame !== page.mainFrame()) return;
     try {
       const candidate = new URL(frame.url());
-      if (callbackMatches(application.callbackUrl, candidate)) capturedCallback = candidate;
+      if (callbackMatches(application.callbackUrl, candidate) && isOAuthCallbackCandidate(candidate)) {
+        capturedCallback = candidate;
+      }
     } catch {
       // 导航中的临时 URL 不是有效绝对地址时忽略。
     }
@@ -185,6 +190,7 @@ export async function authorizeApplication(
 }
 
 export async function captureSafeScreenshot(page: Page, path: string): Promise<void> {
+  await mkdir(dirname(path), { recursive: true });
   await page.screenshot({ path, fullPage: false });
 }
 
@@ -367,10 +373,14 @@ async function waitForCallback(frame: Frame, expected: URL, timeoutMilliseconds:
 function callbackFromPage(page: Page, expected: URL): URL | null {
   try {
     const candidate = new URL(page.url());
-    return callbackMatches(expected, candidate) ? candidate : null;
+    return callbackMatches(expected, candidate) && isOAuthCallbackCandidate(candidate) ? candidate : null;
   } catch {
     return null;
   }
+}
+
+function isOAuthCallbackCandidate(url: URL): boolean {
+  return url.searchParams.has('code') || url.searchParams.has('error');
 }
 
 async function clickConsentIfPresent(page: Page): Promise<void> {

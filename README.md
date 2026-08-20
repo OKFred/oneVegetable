@@ -40,6 +40,7 @@ pnpm check:extension-bundle
 pnpm test:e2e
 pnpm test:e2e:bff-replay # 重建隔离 D1，启动 Worker/Web，验证认证后的全领域 BFF 读链路
 pnpm check:replay-coverage # 校验所有可真实调用的只读能力都有有效文档回放
+pnpm openapi:auth         # Windows 本地有头浏览器获取 OpenAPI 授权包
 pnpm release:extension # 可复现 ZIP、SHA-256 与 release.json
 pnpm capture:store-assets # 从构建后的扩展刷新 1280×800 商店截图
 ```
@@ -78,7 +79,7 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 - RC 构建会迁移旧设置、允许查看/撤销额外主机权限、只对只读请求执行有限重试，并生成可复现 ZIP 与 SHA-256。CI 只保存产物，不自动上架。详见 [RC 发布准备说明](docs/rc-release-readiness.md)。
 - 扩展首次使用会显著说明凭证、权限、Mock 与真实验收边界；设置页可导出不含具体值的数据清单并彻底清除本地数据。商店文案、隐私政策、真实扩展截图和仍待人工完成的阻断项见 [Chrome Web Store 提交清单](docs/store-submission.md)。
 - `docs/alibaba-api-audit.json` 是 2026-08-13 的文档审计快照，共 84 个免费且非聚石塔候选 API。特定 ISV/业务资格接口默认关闭。
-- 当前没有真实国际站账号，自动化验证覆盖契约 Mock、签名、适配和 MV3 行为，不代表真实账号 smoke test 已通过。
+- 已提供本地 OpenAPI 授权包获取工具，但真实 API 验收结果仍以显式的 real smoke 报告为准；契约 Mock、签名、Replay 和 MV3 行为不等于真实账号验收。
 
 ## 商品详情 Mock 场景
 
