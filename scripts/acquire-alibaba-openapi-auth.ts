@@ -91,7 +91,13 @@ try {
   await captureSafeScreenshot(page, configuration.screenshotPath);
   screenshotSaved = true;
 
-  const appSecret = await revealAppSecret(frame, configuration.timeoutMilliseconds);
+  const revealed = await revealAppSecret(frame, application, configuration.timeoutMilliseconds);
+  if (revealed.appKey) application = { ...application, appKey: revealed.appKey };
+  selectedApplication = {
+    appName: application.appName,
+    appKeySuffix: application.appKey.slice(-4),
+    status: application.status
+  };
   stage = 'authorization';
   const state = randomUUID();
   const callback = await authorizeApplication(page, application, state, {
@@ -105,8 +111,9 @@ try {
   stage = 'token-exchange';
   const token = await exchangeAuthorizationCode(context.request, {
     appKey: application.appKey,
-    appSecret,
-    code
+    appSecret: revealed.appSecret,
+    code,
+    redirectUri: application.callbackUrl.href
   });
   const capturedAt = new Date();
   const bundle: AlibabaOpenApiCredentialBundle = {
@@ -115,7 +122,7 @@ try {
     application: {
       appName: application.appName,
       appKey: application.appKey,
-      appSecret,
+      appSecret: revealed.appSecret,
       callbackUrl: application.callbackUrl.href,
       status: application.status,
       permissions: application.permissions

@@ -21,7 +21,7 @@ export function validateCallback(callbackUrl: URL, expectedState: string): strin
 
 export async function exchangeAuthorizationCode(
   request: APIRequestContext,
-  input: { appKey: string; appSecret: string; code: string }
+  input: { appKey: string; appSecret: string; code: string; redirectUri: string }
 ): Promise<AlibabaTokenResponse> {
   const response = await request.post(TOKEN_ENDPOINT, {
     form: {
@@ -29,6 +29,7 @@ export async function exchangeAuthorizationCode(
       grant_type: 'authorization_code',
       client_id: input.appKey,
       client_secret: input.appSecret,
+      redirect_uri: input.redirectUri,
       sp: 'icbu'
     },
     timeout: 30_000
