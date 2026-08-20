@@ -202,12 +202,11 @@ export class ProductAdapter {
 function requireSchemaXml(record: Record<string, unknown>, fallbackCode: string): string {
   const xml = readString(record, ['data']);
   if (readBoolean(record, ['biz_success']) !== false && xml?.trim()) return xml;
+  const traceId = readString(record, ['trace_id', 'request_id']);
   throw new GatewayException({
     code: readString(record, ['msg_code']) ?? fallbackCode,
     message: readString(record, ['message']) ?? 'Alibaba 未返回可编辑的商品 Schema',
-    ...(readString(record, ['trace_id', 'request_id'])
-      ? { traceId: readString(record, ['trace_id', 'request_id']) }
-      : {}),
+    ...(traceId ? { traceId } : {}),
     retryable: false
   });
 }
