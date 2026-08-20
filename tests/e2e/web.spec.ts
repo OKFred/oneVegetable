@@ -208,9 +208,17 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
     .click();
   await expect(page.getByRole('dialog', { name: '图片预览' })).toBeVisible();
   await page.getByRole('button', { name: '关闭图片预览' }).click();
-  await page.getByRole('textbox', { name: '外部图片 URL' }).fill('https://images.example.com/detail.jpg');
-  await page.getByRole('button', { name: '下载并存入图库' }).click();
-  await expect(page.getByRole('textbox', { name: '外部图片 URL' })).toHaveValue('');
+  await page.getByRole('button', { name: '上传图片' }).click();
+  const uploadDialog = page.getByRole('dialog', { name: '上传图片到图库' });
+  await expect(uploadDialog).toBeVisible();
+  await expect(uploadDialog.getByText('目标分组：全部图片')).toBeVisible();
+  await uploadDialog
+    .getByRole('textbox', { name: '外部图片 URL' })
+    .fill('https://images.example.com/detail.jpg');
+  await uploadDialog.getByRole('button', { name: '下载并存入图库' }).click();
+  await expect(uploadDialog.getByText(/已转存到图库/)).toBeVisible();
+  await expect(uploadDialog.getByRole('textbox', { name: '外部图片 URL' })).toHaveValue('');
+  await uploadDialog.getByRole('button', { name: '完成' }).click();
   await page.getByRole('button', { name: '完成选择' }).click();
   await expect(page.locator('.ProseMirror img[src*="mock-transferred-image"]')).toBeVisible();
 

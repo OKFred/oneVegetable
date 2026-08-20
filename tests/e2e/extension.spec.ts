@@ -292,9 +292,13 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('button', { name: /更多选填信息/ }).click();
   await page.getByRole('button', { name: /插入图库图片/ }).click();
   await expect(page.getByRole('heading', { name: '国际站图库' })).toBeVisible();
-  await expect(page.locator('input[type="file"]')).toBeEnabled();
-  await expect(page.getByRole('textbox', { name: '外部图片 URL' })).toBeEnabled();
-  await expect(page.getByText(/单张最大 5 MiB/)).toBeVisible();
+  await page.getByRole('button', { name: '上传图片' }).click();
+  const uploadDialog = page.getByRole('dialog', { name: '上传图片到图库' });
+  await expect(uploadDialog).toBeVisible();
+  await expect(uploadDialog.locator('input[type="file"]')).toBeEnabled();
+  await expect(uploadDialog.getByRole('textbox', { name: '外部图片 URL' })).toBeEnabled();
+  await expect(uploadDialog.getByText(/单张最大 5 MiB/)).toBeVisible();
+  await uploadDialog.getByRole('button', { name: '完成' }).click();
   await page.getByRole('button', { name: '完成选择' }).click();
 
   await page.getByRole('button', { name: '图库', exact: true }).click();

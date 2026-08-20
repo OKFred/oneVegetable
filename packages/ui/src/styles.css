@@ -123,6 +123,14 @@ textarea {
   animation: ov-fade-out 140ms ease-in;
 }
 
+.ov-dialog-content[data-state='open'] {
+  animation: ov-dialog-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ov-dialog-content[data-state='closed'] {
+  animation: ov-dialog-out 140ms ease-in;
+}
+
 .ov-modal-enter-active,
 .ov-modal-leave-active {
   transition: opacity 180ms ease;
@@ -218,6 +226,20 @@ summary::marker {
   from {
     opacity: 0;
     transform: scale(0.985);
+  }
+}
+
+@keyframes ov-dialog-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 0.75rem)) scale(0.98);
+  }
+}
+
+@keyframes ov-dialog-out {
+  to {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 0.5rem)) scale(0.985);
   }
 }
 
