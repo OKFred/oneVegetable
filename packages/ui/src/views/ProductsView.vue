@@ -41,6 +41,7 @@ const categoryId = ref('');
 const language = ref('en_US');
 const market = ref<'wholesale' | 'sourcing'>('wholesale');
 const editProductId = ref('');
+const editScoreProductId = ref('');
 const schemaModel = ref<ProductSchemaModel | null>(null);
 const schemaError = ref('');
 const feedback = ref('');
@@ -109,7 +110,7 @@ const publish = useMutation({
       ? `商品 ${result.productId} 已更新`
       : `${draft ? '草稿已保存' : '商品已发布'}：${result.productId}`;
     await queryClient.invalidateQueries({ queryKey: ['products'] });
-    if (editProductId.value) scheduleScoreRefresh(editProductId.value);
+    if (editScoreProductId.value) scheduleScoreRefresh(editScoreProductId.value);
   }
 });
 
@@ -229,6 +230,7 @@ function flattenCategories(items: ProductCategory[], depth = 0): (ProductCategor
 
 function selectProductForSchema(product: Product): void {
   editProductId.value = product.id;
+  editScoreProductId.value = product.encryptedId ?? '';
   if (product.categoryId !== null) categoryId.value = String(product.categoryId);
   schemaModel.value = null;
   schemaError.value = '';
@@ -264,7 +266,7 @@ async function loadSchema(): Promise<void> {
       ...(editProductId.value ? { productId: editProductId.value } : {})
     });
     applySchema(result.xml, '已按当前类目加载官方 Schema');
-    if (editProductId.value) productScore.mutate(editProductId.value);
+    if (editScoreProductId.value) productScore.mutate(editScoreProductId.value);
   } catch (error: unknown) {
     schemaError.value = error instanceof Error ? error.message : '获取 Schema 失败';
   }
@@ -282,7 +284,8 @@ async function loadDraft(): Promise<void> {
     });
     categoryId.value = String(result.categoryId);
     applySchema(result.schemaXml, `已渲染草稿 ${result.id}`);
-    productScore.mutate(editProductId.value);
+    editScoreProductId.value = result.encryptedId ?? '';
+    if (editScoreProductId.value) productScore.mutate(editScoreProductId.value);
   } catch (error: unknown) {
     schemaError.value = error instanceof Error ? error.message : '草稿渲染失败';
   }
@@ -501,11 +504,11 @@ onBeforeUnmount(() => {
             <p class="mt-1 text-xs text-muted-foreground">项目建议与官方提示仅供整改参考，不会禁用提交。</p>
           </div>
           <Button
-            v-if="editProductId"
+            v-if="editScoreProductId"
             variant="outline"
             size="sm"
             :disabled="productScore.isPending.value"
-            @click="productScore.mutate(editProductId)"
+            @click="productScore.mutate(editScoreProductId)"
           >
             <RefreshCw class="size-4" />刷新官方评分
           </Button>
@@ -658,7 +661,13 @@ onBeforeUnmount(() => {
           </div>
           <div class="mt-4 flex items-center justify-between">
             <span class="text-sm">当前质量分 {{ product.score }}</span
-            ><Button size="sm" variant="outline" @click="productScore.mutate(product.id)">重新评分</Button>
+            ><Button
+              size="sm"
+              variant="outline"
+              :disabled="!product.encryptedId"
+              @click="product.encryptedId && productScore.mutate(product.encryptedId)"
+              >重新评分</Button
+            >
           </div>
         </Card>
       </div>

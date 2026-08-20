@@ -6053,6 +6053,7 @@ export interface components {
         };
         Product: {
             id: string;
+            encryptedId: string | null;
             subject: string;
             groupName: string;
             /** @enum {string} */

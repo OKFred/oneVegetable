@@ -36,7 +36,31 @@ describe('ProductAdapter', () => {
 
     expect(result).toMatchObject({
       total: 37,
-      items: [{ id: '123', categoryId: 456, status: 'online' }]
+      items: [
+        {
+          id: '123',
+          encryptedId: 'encrypted-product-id',
+          categoryId: 456,
+          status: 'online'
+        }
+      ]
+    });
+  });
+
+  it('uses the encrypted product id and reads the real nested score response', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method, parameters) => {
+      expect(parameters).toEqual({ product_id: 'encrypted-product-id' });
+      return Promise.resolve({
+        method,
+        data: { result: { boutique_tag: 1, final_score: '4.6' } }
+      });
+    });
+    const adapter = new ProductAdapter({ call });
+
+    await expect(adapter.getScore('encrypted-product-id')).resolves.toEqual({
+      productId: 'encrypted-product-id',
+      score: 4.6,
+      issues: []
     });
   });
 

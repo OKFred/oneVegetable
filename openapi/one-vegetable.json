@@ -9605,9 +9605,19 @@
       },
       "Product": {
         "type": "object",
-        "required": ["id", "subject", "groupName", "status", "score", "updatedAt", "categoryId"],
+        "required": [
+          "id",
+          "encryptedId",
+          "subject",
+          "groupName",
+          "status",
+          "score",
+          "updatedAt",
+          "categoryId"
+        ],
         "properties": {
           "id": { "type": "string" },
+          "encryptedId": { "type": ["string", "null"] },
           "subject": { "type": "string" },
           "groupName": { "type": "string" },
           "status": { "type": "string", "enum": ["online", "offline", "draft", "auditing", "rejected"] },

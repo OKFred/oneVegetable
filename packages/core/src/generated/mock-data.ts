@@ -7,6 +7,7 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
       "items": [
         {
           "id": "10000001",
+          "encryptedId": "mock-encrypted-product-1",
           "subject": "Portable solar power station 1000W",
           "groupName": "Energy storage",
           "status": "online",
@@ -16,6 +17,7 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
         },
         {
           "id": "10000002",
+          "encryptedId": "mock-encrypted-product-2",
           "subject": "Custom recycled cotton canvas tote bag",
           "groupName": "Packaging",
           "status": "draft",
@@ -25,6 +27,7 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
         },
         {
           "id": "10000003",
+          "encryptedId": "mock-encrypted-product-3",
           "subject": "Commercial stainless steel food dehydrator",
           "groupName": "Food machinery",
           "status": "auditing",
@@ -39,6 +42,7 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
     },
     "getProduct": {
       "id": "10000001",
+      "encryptedId": "mock-encrypted-product-1",
       "subject": "Portable solar power station 1000W",
       "groupName": "Energy storage",
       "status": "online",
@@ -108,6 +112,7 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
     },
     "getProductDraft": {
       "id": "10000001",
+      "encryptedId": "mock-encrypted-product-1",
       "subject": "Portable solar power station 1000W",
       "groupName": "Energy storage",
       "status": "draft",

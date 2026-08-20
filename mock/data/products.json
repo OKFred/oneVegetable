@@ -4,6 +4,7 @@
       "items": [
         {
           "id": "10000001",
+          "encryptedId": "mock-encrypted-product-1",
           "subject": "Portable solar power station 1000W",
           "groupName": "Energy storage",
           "status": "online",
@@ -13,6 +14,7 @@
         },
         {
           "id": "10000002",
+          "encryptedId": "mock-encrypted-product-2",
           "subject": "Custom recycled cotton canvas tote bag",
           "groupName": "Packaging",
           "status": "draft",
@@ -22,6 +24,7 @@
         },
         {
           "id": "10000003",
+          "encryptedId": "mock-encrypted-product-3",
           "subject": "Commercial stainless steel food dehydrator",
           "groupName": "Food machinery",
           "status": "auditing",
@@ -36,6 +39,7 @@
     },
     "getProduct": {
       "id": "10000001",
+      "encryptedId": "mock-encrypted-product-1",
       "subject": "Portable solar power station 1000W",
       "groupName": "Energy storage",
       "status": "online",
@@ -75,6 +79,7 @@
     },
     "getProductDraft": {
       "id": "10000001",
+      "encryptedId": "mock-encrypted-product-1",
       "subject": "Portable solar power station 1000W",
       "groupName": "Energy storage",
       "status": "draft",

@@ -25,6 +25,7 @@ export class ProductAdapter {
     const root = unwrap(call.data, call.method);
     const items = findRecords(root, ['products', 'product_list', 'result_list']).map((item) => ({
       id: readString(item, ['id', 'product_id']) ?? '',
+      encryptedId: readString(item, ['product_id']) ?? null,
       subject: readString(item, ['subject', 'product_subject']) ?? '未命名商品',
       groupName: readString(item, ['group_name']) ?? '未分组',
       status: normalizeProductStatus(readString(item, ['display', 'status'])),
@@ -48,6 +49,7 @@ export class ProductAdapter {
     const root = unwrap(call.data, call.method);
     return {
       id: productId,
+      encryptedId: null,
       subject: `商品 ${productId}`,
       groupName: 'Schema 商品',
       status: draft ? 'draft' : 'online',
@@ -165,10 +167,11 @@ export class ProductAdapter {
   async getScore(productId: string): Promise<ProductScore> {
     const call = await this.client.call('alibaba.icbu.product.score.get', { product_id: productId });
     const root = unwrap(call.data, call.method);
+    const result = asRecord(root.result);
     const issueRecords = findRecords(root, ['issues', 'score_items', 'problem_list']);
     return {
       productId,
-      score: readNumber(root, ['score', 'total_score']) ?? 0,
+      score: readNumber(result, ['final_score']) ?? readNumber(root, ['score', 'total_score']) ?? 0,
       issues: issueRecords.map((item) => readString(item, ['message', 'description']) ?? '待优化项')
     };
   }
