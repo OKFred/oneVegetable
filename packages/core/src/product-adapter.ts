@@ -12,7 +12,7 @@ import type {
 } from './types';
 
 export class ProductAdapter {
-  constructor(private readonly client: AlibabaClient) {}
+  constructor(private readonly client: Pick<AlibabaClient, 'call'>) {}
 
   async list(request: RequestOf<'listProducts'>): Promise<ProductPage> {
     const call = await this.client.call('alibaba.icbu.product.list', {
@@ -121,7 +121,7 @@ export class ProductAdapter {
 
   async listCategories(parentId?: number): Promise<ProductCategory[]> {
     const call = await this.client.call('alibaba.icbu.category.get.new', {
-      ...(parentId !== undefined ? { cat_id: parentId } : {})
+      cat_id: parentId ?? 0
     });
     const root = unwrap(call.data, call.method);
     const records = findRecords(root, ['categories', 'category_list', 'result_list']);
@@ -143,7 +143,7 @@ export class ProductAdapter {
   }
 
   async listGroups(): Promise<ProductGroup[]> {
-    const call = await this.client.call('alibaba.icbu.product.group.get', {});
+    const call = await this.client.call('alibaba.icbu.product.group.get', { group_id: -1 });
     const root = unwrap(call.data, call.method);
     return findRecords(root, ['product_group', 'groups', 'result_list']).map(normalizeGroup);
   }
