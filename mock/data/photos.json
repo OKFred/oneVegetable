@@ -1,0 +1,83 @@
+{
+  "photoGroups": [
+    { "id": "-1", "name": "全部图片", "photoCount": 436, "parentId": null, "level": 1 },
+    { "id": "2001", "name": "商品主图", "photoCount": 84, "parentId": null, "level": 1 },
+    { "id": "2002", "name": "详情素材", "photoCount": 137, "parentId": null, "level": 1 }
+  ],
+  "responses": {
+    "listPhotoGroups": [
+      { "id": "-1", "name": "全部图片", "photoCount": 436, "parentId": null, "level": 1 },
+      { "id": "2001", "name": "商品主图", "photoCount": 84, "parentId": null, "level": 1 },
+      { "id": "2002", "name": "详情素材", "photoCount": 137, "parentId": null, "level": 1 }
+    ],
+    "operatePhotoGroup": {
+      "id": "2003",
+      "name": "新建分组",
+      "photoCount": 0,
+      "parentId": null,
+      "level": 1
+    },
+    "listPhotos": {
+      "items": [
+        {
+          "id": "ph_001",
+          "name": "solar-station-front.jpg",
+          "url": "https://sc04.alicdn.com/kf/mock-solar-station.jpg",
+          "groupId": "2001",
+          "width": 1200,
+          "height": 1200,
+          "fileSize": 286720,
+          "referenceCount": 4,
+          "modifiedAt": "2026-08-11T03:20:00Z"
+        },
+        {
+          "id": "ph_002",
+          "name": "canvas-bag-natural.jpg",
+          "url": "https://sc04.alicdn.com/kf/mock-canvas-bag.jpg",
+          "groupId": "2001",
+          "width": 1200,
+          "height": 1200,
+          "fileSize": 198400,
+          "referenceCount": 1,
+          "modifiedAt": "2026-08-10T09:12:00Z"
+        },
+        {
+          "id": "ph_003",
+          "name": "dehydrator-detail.jpg",
+          "url": "https://sc04.alicdn.com/kf/mock-dehydrator-detail.jpg",
+          "groupId": "2002",
+          "width": 640,
+          "height": 480,
+          "fileSize": 348160,
+          "referenceCount": 0,
+          "modifiedAt": "2026-08-09T11:03:00Z"
+        }
+      ],
+      "page": 1,
+      "pageSize": 24,
+      "total": 436
+    },
+    "uploadPhoto": {
+      "id": "ph_new",
+      "name": "uploaded-image.jpg",
+      "url": "https://placehold.co/800x800/155e75/f8fafc?text=Uploaded",
+      "groupId": "-1",
+      "width": 800,
+      "height": 800,
+      "fileSize": 153600,
+      "referenceCount": 0,
+      "modifiedAt": "2026-08-12T04:00:00Z"
+    },
+    "transferPhotoFromUrl": {
+      "id": "ph_transferred",
+      "name": "transferred-image.jpg",
+      "url": "https://sc04.alicdn.com/kf/mock-transferred-image.jpg",
+      "groupId": "2002",
+      "width": 1200,
+      "height": 1200,
+      "fileSize": 245760,
+      "referenceCount": 0,
+      "modifiedAt": "2026-08-12T04:01:00Z"
+    }
+  }
+}

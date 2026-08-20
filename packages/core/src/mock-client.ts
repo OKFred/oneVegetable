@@ -4,6 +4,7 @@ import {
   validateCapabilityRequest,
   validateCapabilityResponse
 } from './capability-registry';
+import { PHOTO_MOCK_DATA, PRODUCT_MOCK_DATA } from './generated/mock-data';
 
 import type {
   CapabilityCallRequest,
@@ -13,42 +14,12 @@ import type {
   OperationId,
   OperationMap,
   PhotoGroup,
-  Product,
   RequestOf,
   ResponseOf,
   RfqSummary,
   TradeOrderSummary
 } from './types';
 import { validateLogisticsOrderInput, validateLogisticsQuoteInput } from './validation';
-
-const PRIMARY_PRODUCT: Product = {
-  id: '10000001',
-  subject: 'Portable solar power station 1000W',
-  groupName: 'Energy storage',
-  status: 'online',
-  score: 92,
-  updatedAt: '2026-08-11T03:20:00Z'
-};
-
-const PRODUCTS: Product[] = [
-  PRIMARY_PRODUCT,
-  {
-    id: '10000002',
-    subject: 'Custom recycled cotton canvas tote bag',
-    groupName: 'Packaging',
-    status: 'draft',
-    score: 76,
-    updatedAt: '2026-08-10T09:12:00Z'
-  },
-  {
-    id: '10000003',
-    subject: 'Commercial stainless steel food dehydrator',
-    groupName: 'Food machinery',
-    status: 'auditing',
-    score: 84,
-    updatedAt: '2026-08-09T11:03:00Z'
-  }
-];
 
 const PRIMARY_RFQ: RfqSummary = {
   id: 'RFQ-20260812-001',
@@ -143,21 +114,12 @@ const PRIMARY_LOGISTICS_ORDER: LogisticsOrderSummary = {
   placedAt: '2026-08-12T03:20:00.000Z'
 };
 
-const MOCK_PRODUCT_SCHEMA_XML = `<itemSchema version="2">
-  <field id="productTitle" name="商品标题" type="input"><rules><rule name="requiredRule" value="true"/><rule name="minLengthRule" value="5"/><rule name="maxLengthRule" value="128"/><rule name="tipRule" value="面向买家的英文商品标题"/></rules><values><value>Portable solar power station 1000W</value></values></field>
-  <field id="scImages" name="商品主图" type="multiInput"><rules><rule name="requiredRule" value="true"/><rule name="maxInputNumRule" value="6"/><rule name="minTargetSizeRule" value="750x750"/></rules><value fileId="ph_001">https://sc04.alicdn.com/kf/mock-solar-station.jpg</value></field>
-  <field id="productDescType" name="详情类型" type="label"><value>2</value></field>
-  <field id="superText" name="商品详情" type="input"><rules><rule name="requiredRule" value="true"/><rule name="valueTypeRule" value="html"/><rule name="tipRule" value="API 仅支持维护普通详情"/></rules><value>&lt;h2&gt;Portable power for every scenario&lt;/h2&gt;&lt;p&gt;Reliable energy storage for camping, emergency backup, and mobile workstations.&lt;/p&gt;&lt;img src=&quot;https://sc04.alicdn.com/kf/mock-solar-station.jpg&quot; alt=&quot;Portable solar power station front view&quot; data-photobank-file-id=&quot;ph_001&quot;&gt;</value></field>
-  <field id="keywords" name="关键词" type="multiInput"><rules><rule name="minInputNumRule" value="2"/><rule name="maxInputNumRule" value="3"/></rules><values><value>solar generator</value><value>portable power station</value></values></field>
-  <field id="condition" name="商品状态" type="singleCheck"><options><option displayName="全新" value="new"/><option displayName="翻新" value="refurbished"/></options><values><value>new</value></values></field>
-  <field id="certifications" name="认证" type="multiCheck"><options><option displayName="CE" value="ce"/><option displayName="RoHS" value="rohs"/><option displayName="FCC" value="fcc"/></options><values><value>ce</value><value>rohs</value></values></field>
-  <field id="dimensions" name="包装尺寸" type="complex"><complex-values><complex-value><field id="length" name="长（cm）" type="input"><rules><rule name="minValueRule" value="1"/><rule name="maxDecimalDigitsRule" value="1"/></rules><values><value>45.5</value></values></field><field id="width" name="宽（cm）" type="input"><values><value>30</value></values></field></complex-value></complex-values></field>
-  <field id="variants" name="销售规格" type="multiComplex"><rules><rule name="serverPriceRule" value="required"/></rules><complex-values><complex-value><field id="model" name="型号" type="input"><rules><rule name="requiredRule" value="true"/></rules><values><value>OV-1000</value></values></field><field id="price" name="价格（USD）" type="input"><rules><rule name="minValueRule" value="1"/><rule name="maxDecimalDigitsRule" value="2"/></rules><values><value>599.00</value></values></field></complex-value></complex-values></field>
-  <field id="notice" name="发布说明" type="label"><values><value>业务规则由提交接口执行最终校验，本地不执行文档返回的代码。</value></values></field>
-  <extension keep="true">Mock 中保留的未知节点</extension>
-</itemSchema>`;
+const MOCK_PRODUCT_SCHEMA_XML = PRODUCT_MOCK_DATA.responses.getProductSchema.xml;
 
 const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
+  ...PRODUCT_MOCK_DATA.responses,
+  ...PHOTO_MOCK_DATA.responses,
+  updateProductDisplay: undefined,
   getDashboard: {
     productCount: 128,
     photoCount: 436,
@@ -182,98 +144,6 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
     ]
   },
   clearDiagnostics: undefined,
-  listProducts: { items: PRODUCTS, page: 1, pageSize: 20, total: 128 },
-  getProduct: {
-    ...PRIMARY_PRODUCT,
-    categoryId: 100003109,
-    language: 'en_US',
-    schemaXml:
-      '<itemSchema><field id="productTitle"><value>Portable solar power station 1000W</value></field></itemSchema>'
-  },
-  getProductSchema: {
-    categoryId: 100003109,
-    language: 'en_US',
-    market: 'wholesale',
-    xml: MOCK_PRODUCT_SCHEMA_XML
-  },
-  publishProduct: { productId: '10000999', traceId: 'mock-publish-trace', success: true },
-  saveProductDraft: { productId: '10000998', traceId: 'mock-draft-trace', success: true },
-  updateProduct: { productId: '10000001', traceId: 'mock-update-trace', success: true },
-  updateProductDisplay: undefined,
-  listPhotoGroups: [
-    { id: '-1', name: '全部图片', photoCount: 436, parentId: null, level: 1 },
-    { id: '2001', name: '商品主图', photoCount: 84, parentId: null, level: 1 },
-    { id: '2002', name: '详情素材', photoCount: 137, parentId: null, level: 1 }
-  ],
-  operatePhotoGroup: {
-    id: '2003',
-    name: '新建分组',
-    photoCount: 0,
-    parentId: null,
-    level: 1
-  },
-  listPhotos: {
-    items: [
-      {
-        id: 'ph_001',
-        name: 'solar-station-front.jpg',
-        url: 'https://sc04.alicdn.com/kf/mock-solar-station.jpg',
-        groupId: '2001',
-        width: 1200,
-        height: 1200,
-        fileSize: 286720,
-        referenceCount: 4,
-        modifiedAt: '2026-08-11T03:20:00Z'
-      },
-      {
-        id: 'ph_002',
-        name: 'canvas-bag-natural.jpg',
-        url: 'https://sc04.alicdn.com/kf/mock-canvas-bag.jpg',
-        groupId: '2001',
-        width: 1200,
-        height: 1200,
-        fileSize: 198400,
-        referenceCount: 1,
-        modifiedAt: '2026-08-10T09:12:00Z'
-      },
-      {
-        id: 'ph_003',
-        name: 'dehydrator-detail.jpg',
-        url: 'https://sc04.alicdn.com/kf/mock-dehydrator-detail.jpg',
-        groupId: '2002',
-        width: 640,
-        height: 480,
-        fileSize: 348160,
-        referenceCount: 0,
-        modifiedAt: '2026-08-09T11:03:00Z'
-      }
-    ],
-    page: 1,
-    pageSize: 24,
-    total: 436
-  },
-  uploadPhoto: {
-    id: 'ph_new',
-    name: 'uploaded-image.jpg',
-    url: 'https://placehold.co/800x800/155e75/f8fafc?text=Uploaded',
-    groupId: '-1',
-    width: 800,
-    height: 800,
-    fileSize: 153600,
-    referenceCount: 0,
-    modifiedAt: '2026-08-12T04:00:00Z'
-  },
-  transferPhotoFromUrl: {
-    id: 'ph_transferred',
-    name: 'transferred-image.jpg',
-    url: 'https://sc04.alicdn.com/kf/mock-transferred-image.jpg',
-    groupId: '2002',
-    width: 1200,
-    height: 1200,
-    fileSize: 245760,
-    referenceCount: 0,
-    modifiedAt: '2026-08-12T04:01:00Z'
-  },
   listOrders: {
     items: [
       {
@@ -319,48 +189,6 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
     data: { message: 'Mock 调用成功；真实扩展会由 service worker 发起请求。' },
     contractValid: true,
     contractIssues: []
-  },
-  listProductCategories: [
-    {
-      id: 100003109,
-      name: 'Consumer Electronics',
-      leaf: false,
-      children: [
-        { id: 100009999, name: 'Portable Power Stations', leaf: true, children: [] },
-        { id: 100009998, name: 'Solar Energy Systems', leaf: true, children: [] }
-      ]
-    },
-    {
-      id: 100001589,
-      name: 'Luggage, Bags & Cases',
-      leaf: true,
-      children: []
-    }
-  ],
-  mapProductCategory: { sourceCategoryId: 100003109, targetCategoryId: 100009999 },
-  getProductLevelSchema: {
-    categoryId: 100009999,
-    language: 'en_US',
-    market: 'wholesale',
-    xml: '<itemSchema><field id="model" name="层级型号" type="singleCheck"><rules><rule name="requiredRule" value="true"/></rules><options><option displayName="标准版" value="standard"/><option displayName="专业版" value="pro"/></options><values><value>standard</value></values></field><field id="voltage" name="电压" type="singleCheck"><options><option displayName="110V" value="110"/><option displayName="220V" value="220"/></options><values><value>220</value></values></field></itemSchema>'
-  },
-  getProductDraft: {
-    ...PRIMARY_PRODUCT,
-    status: 'draft',
-    categoryId: 100003109,
-    language: 'en_US',
-    schemaXml:
-      '<itemSchema><field id="productTitle" name="Product name" type="input"><values><value>Draft portable station</value></values></field></itemSchema>'
-  },
-  listProductGroups: [
-    { id: 1001, name: 'Energy storage', children: [] },
-    { id: 1002, name: 'Packaging', children: [] }
-  ],
-  createProductGroup: { id: 1003, name: 'New group', children: [] },
-  getProductScore: {
-    productId: '10000001',
-    score: 92,
-    issues: ['建议补充更多应用场景图片', '建议完善商品关键词']
   },
   listRfqs: { items: RFQS, page: 1, pageSize: 20, total: 38, source: 'search' },
   listRecommendedRfqs: {
