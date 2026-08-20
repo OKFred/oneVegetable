@@ -7,7 +7,7 @@ interface OperationResult {
   operation: string;
   requestId: string | null;
   statusCode: number;
-  outcome: 'passed' | 'provider-error' | 'denied';
+  outcome: 'passed' | 'permission-denied' | 'provider-error' | 'denied';
   errorCode: string | null;
   mockSentinelDetected: boolean;
 }
@@ -137,12 +137,13 @@ async function captureOperation(response: Response, results: OperationResult[]):
   const responseBody: unknown = await response.json();
   const body = readRecord(responseBody);
   const serialized = JSON.stringify(responseBody);
+  const errorCode = readErrorCode(responseBody);
   results.push({
     operation,
     requestId: readString(body, 'requestId'),
     statusCode: response.status(),
-    outcome: response.ok() ? 'passed' : 'provider-error',
-    errorCode: readErrorCode(responseBody),
+    outcome: response.ok() ? 'passed' : errorCode === '11' ? 'permission-denied' : 'provider-error',
+    errorCode,
     mockSentinelDetected: response.ok() && mockSentinels.some((sentinel) => serialized.includes(sentinel))
   });
 }
