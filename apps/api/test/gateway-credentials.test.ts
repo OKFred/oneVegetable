@@ -27,25 +27,20 @@ describe('server Alibaba credential provider', () => {
     expect(provider.requireCredentials()).toMatchObject({ appKey: 'app-key-value' });
   });
 
-  it('falls back to legacy aliases when canonical vars are absent', () => {
+  it('never treats website login credentials as gateway credentials', () => {
     const provider = new EnvironmentAlibabaCredentialProvider({
-      ALI_ACCOUNT: 'legacy-account',
-      ALL_PASS: 'legacy-pass',
-      ALI_ACCESS_TOKEN: 'legacy-token'
-    });
+      ALI_ACCOUNT: 'website-account',
+      ALL_PASS: 'website-password'
+    } as Record<string, string>);
     expect(provider.status()).toMatchObject({
-      configured: true,
-      hasAppKey: true,
-      hasAppSecret: true,
-      hasAccessToken: true,
+      configured: false,
+      hasAppKey: false,
+      hasAppSecret: false,
+      hasAccessToken: false,
       endpointOrigin: 'https://eco.taobao.com',
       signMethod: 'hmac'
     });
-    expect(provider.requireCredentials()).toMatchObject({
-      appKey: 'legacy-account',
-      appSecret: 'legacy-pass',
-      accessToken: 'legacy-token'
-    });
+    expect(() => provider.requireCredentials()).toThrow('未完整配置');
   });
 
   it('fails closed for partial credentials without putting values in the error', () => {
@@ -61,14 +56,11 @@ describe('server Alibaba credential provider', () => {
     expect(captureError(() => provider.requireCredentials())).not.toContain('app-secret-value');
   });
 
-  it('prefers canonical env vars over legacy aliases', () => {
+  it('uses only canonical environment variables', () => {
     const provider = new EnvironmentAlibabaCredentialProvider({
       ONE_VEGETABLE_ALIBABA_APP_KEY: 'canonical-key',
-      ALI_ACCOUNT: 'legacy-account',
       ONE_VEGETABLE_ALIBABA_APP_SECRET: 'canonical-secret',
-      ALL_PASS: 'legacy-pass',
-      ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN: 'canonical-token',
-      ALI_ACCESS_TOKEN: 'legacy-token'
+      ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN: 'canonical-token'
     });
 
     expect(provider.requireCredentials()).toMatchObject({

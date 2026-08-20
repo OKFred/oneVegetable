@@ -64,7 +64,7 @@ export interface ControlSystemInfo {
   schemaVersion: number;
   requestEventRetentionDays: number;
   gatewayStatus: {
-    source: 'environment' | 'documentation-replay';
+    source: 'environment' | 'credential-bundle' | 'documentation-replay';
     configured: boolean;
     hasAppKey: boolean;
     hasAppSecret: boolean;

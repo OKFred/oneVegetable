@@ -8,10 +8,9 @@ import { AuthService } from './auth/service';
 import { applyNodeMigrations, isNodeDatabaseReady, openNodeDatabase } from './db/node-database';
 import { SqlRequestEventRepository } from './observability/request-events';
 import { AlibabaReadGatewayClient } from './gateway/alibaba-read-gateway';
-import {
-  EnvironmentAlibabaCredentialProvider,
-  type AlibabaCredentialEnvironment
-} from './gateway/credentials';
+import { createNodeAlibabaCredentialProvider } from './gateway/node-credential-bundle';
+
+import type { NodeAlibabaCredentialEnvironment } from './gateway/node-credential-bundle';
 import { createDocumentationReplayGateway, documentationReplayStatus } from './gateway/documentation-replay';
 import { readRuntimeConfiguration, type RuntimeConfigurationEnvironment } from './runtime-config';
 
@@ -21,8 +20,8 @@ const runtimeConfiguration = readRuntimeConfiguration(
   'local-node'
 );
 const { environment, gatewayMode } = runtimeConfiguration;
-const credentialProvider = new EnvironmentAlibabaCredentialProvider(
-  process.env as unknown as AlibabaCredentialEnvironment
+const credentialProvider = createNodeAlibabaCredentialProvider(
+  process.env as unknown as NodeAlibabaCredentialEnvironment
 );
 const database = openNodeDatabase(process.env.ONE_VEGETABLE_SQLITE_PATH ?? '.data/one-vegetable.sqlite');
 if (environment === 'local-node' && process.env.ONE_VEGETABLE_AUTO_MIGRATE !== 'false') {

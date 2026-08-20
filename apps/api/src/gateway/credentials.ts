@@ -8,16 +8,10 @@ export interface AlibabaCredentialEnvironment {
   ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN?: string;
   ONE_VEGETABLE_ALIBABA_ENDPOINT?: string;
   ONE_VEGETABLE_ALIBABA_SIGN_METHOD?: string;
-  // 兼容旧命名（不建议继续使用）
-  ALI_ACCOUNT?: string;
-  ALL_PASS?: string;
-  ALI_APP_KEY?: string;
-  ALI_APP_SECRET?: string;
-  ALI_ACCESS_TOKEN?: string;
 }
 
 export interface AlibabaCredentialStatus {
-  source: 'environment' | 'documentation-replay';
+  source: 'environment' | 'credential-bundle' | 'documentation-replay';
   configured: boolean;
   hasAppKey: boolean;
   hasAppSecret: boolean;
@@ -34,7 +28,11 @@ export interface AlibabaCredentialProvider {
 export class GatewayConfigurationError extends Error {
   constructor(
     readonly code:
-      'ALIBABA_CREDENTIALS_INCOMPLETE' | 'ALIBABA_ENDPOINT_INVALID' | 'ALIBABA_SIGN_METHOD_INVALID',
+      | 'ALIBABA_CREDENTIALS_INCOMPLETE'
+      | 'ALIBABA_CREDENTIAL_FILE_INVALID'
+      | 'ALIBABA_ACCESS_TOKEN_EXPIRED'
+      | 'ALIBABA_ENDPOINT_INVALID'
+      | 'ALIBABA_SIGN_METHOD_INVALID',
     message: string
   ) {
     super(message);
@@ -51,23 +49,9 @@ export class EnvironmentAlibabaCredentialProvider implements AlibabaCredentialPr
   readonly #signMethod: SignMethod;
 
   constructor(environment: AlibabaCredentialEnvironment) {
-    this.#appKey = readSecret(
-      firstNonEmpty(
-        environment.ONE_VEGETABLE_ALIBABA_APP_KEY,
-        environment.ALI_APP_KEY,
-        environment.ALI_ACCOUNT
-      )
-    );
-    this.#appSecret = readSecret(
-      firstNonEmpty(
-        environment.ONE_VEGETABLE_ALIBABA_APP_SECRET,
-        environment.ALI_APP_SECRET,
-        environment.ALL_PASS
-      )
-    );
-    this.#accessToken = readSecret(
-      firstNonEmpty(environment.ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN, environment.ALI_ACCESS_TOKEN)
-    );
+    this.#appKey = readSecret(environment.ONE_VEGETABLE_ALIBABA_APP_KEY);
+    this.#appSecret = readSecret(environment.ONE_VEGETABLE_ALIBABA_APP_SECRET);
+    this.#accessToken = readSecret(environment.ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN);
     const endpoint = readEndpoint(environment.ONE_VEGETABLE_ALIBABA_ENDPOINT ?? ALIBABA_GATEWAY);
     this.#endpoint = endpoint.href;
     this.#endpointOrigin = endpoint.origin;
@@ -111,17 +95,7 @@ function readSecret(value: string | undefined): string {
   return result;
 }
 
-function firstNonEmpty(...values: (string | undefined)[]): string | undefined {
-  for (const value of values) {
-    const trimmed = value?.trim();
-    if (trimmed && trimmed.length > 0) {
-      return trimmed;
-    }
-  }
-  return undefined;
-}
-
-function readEndpoint(value: string): URL {
+export function readEndpoint(value: string): URL {
   let endpoint: URL;
   try {
     endpoint = new URL(value);
@@ -140,7 +114,7 @@ function readEndpoint(value: string): URL {
   return endpoint;
 }
 
-function readSignMethod(value: string | undefined): SignMethod {
+export function readSignMethod(value: string | undefined): SignMethod {
   const normalized = value?.trim().toLocaleLowerCase();
   const method = normalized === undefined || normalized === '' ? 'hmac' : normalized;
   if (method === 'hmac' || method === 'md5' || method === 'hmac-sha256') return method;
