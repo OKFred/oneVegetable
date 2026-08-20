@@ -16,7 +16,7 @@ import {
 } from './openapi-auth/browser';
 import { readOpenApiAuthConfiguration } from './openapi-auth/config';
 import { exchangeAuthorizationCode, expiryFromSeconds, validateCallback } from './openapi-auth/oauth';
-import { atomicWriteJson, safeError } from './openapi-auth/storage';
+import { atomicWriteJson, OpenApiAuthError, safeError } from './openapi-auth/storage';
 import type {
   AlibabaOpenApiCredentialBundle,
   OpenApiAuthDiagnostic,
@@ -76,6 +76,12 @@ try {
   };
 
   if (configuration.callbackUrl) {
+    if (application.source === 'legacy-crosstrade') {
+      throw new OpenApiAuthError(
+        'LEGACY_CALLBACK_UPDATE_UNSUPPORTED',
+        '旧 OAuth 应用的 Callback 不能通过新版应用中心安全修改；请先在对应旧平台确认配置'
+      );
+    }
     stage = 'callback-update';
     const previous = application.callbackUrl.href;
     application = await updateCallbackUrl(
