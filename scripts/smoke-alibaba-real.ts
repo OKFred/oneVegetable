@@ -91,7 +91,7 @@ for (const capability of candidates) {
       { method: capability.method, parameters: plan.parameters },
       { requestId }
     );
-    identifiers = collectSmokeIdentifiers(response.data, identifiers);
+    identifiers = collectSmokeIdentifiers(response.data, identifiers, capability.method);
     const status: SmokeStatus = !response.contractValid
       ? 'contract-drift'
       : isNoData(response.data)
@@ -169,7 +169,7 @@ function result(
 }
 
 function permissionCode(code: string): boolean {
-  return /permission|authorize|access|isv|scope|insufficient|forbidden/i.test(code);
+  return code === '11' || /permission|authorize|access|isv|scope|insufficient|forbidden/i.test(code);
 }
 
 function wait(milliseconds: number): Promise<void> {

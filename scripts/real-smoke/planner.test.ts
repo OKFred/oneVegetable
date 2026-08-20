@@ -32,6 +32,15 @@ describe('real smoke planner', () => {
     ).toEqual({ kind: 'skip', reasonCode: 'MISSING_PREREQUISITE' });
   });
 
+  it('uses the documented seller role and zero-based order page', () => {
+    expect(planSmokeRequest('alibaba.seller.order.list', {}, EMPTY_IDENTIFIERS)).toEqual({
+      kind: 'call',
+      parameters: {
+        param_trade_ecology_order_list_query: { role: 'seller', start_page: 0, page_size: 10 }
+      }
+    });
+  });
+
   it('derives only named identifiers and injects them into detail requests', () => {
     const identifiers = collectSmokeIdentifiers(
       { result: { items: [{ product_id: 123, subject: 'private product title' }] } },
@@ -41,6 +50,26 @@ describe('real smoke planner', () => {
     expect(planSmokeRequest('alibaba.icbu.product.get', {}, identifiers)).toEqual({
       kind: 'call',
       parameters: { language: 'ENGLISH', product_id: '123' }
+    });
+  });
+
+  it('keeps encrypted and numeric product IDs separate for Schema rendering', () => {
+    const identifiers = collectSmokeIdentifiers(
+      { products: [{ id: 987654, product_id: 'encrypted-product-id', category_id: 44 }] },
+      EMPTY_IDENTIFIERS,
+      'alibaba.icbu.product.list'
+    );
+    expect(identifiers.productId).toBe('encrypted-product-id');
+    expect(identifiers.productNumericId).toBe(987654);
+    expect(planSmokeRequest('alibaba.icbu.product.schema.render', {}, identifiers)).toEqual({
+      kind: 'call',
+      parameters: {
+        param_product_top_publish_request: { cat_id: 44, language: 'en_US', product_id: 987654 }
+      }
+    });
+    expect(planSmokeRequest('alibaba.icbu.product.schema.render.draft', {}, identifiers)).toEqual({
+      kind: 'skip',
+      reasonCode: 'MISSING_PREREQUISITE'
     });
   });
 

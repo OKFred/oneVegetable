@@ -1,7 +1,11 @@
 const baseUrl = globalThis.process.env.SMOKE_BASE_URL ?? 'http://localhost:8787';
 const bootstrapToken = globalThis.process.env.SMOKE_BOOTSTRAP_TOKEN;
 const expectedGatewayMode = globalThis.process.env.SMOKE_EXPECTED_GATEWAY_MODE ?? 'mock';
-const expectedGatewaySource = expectedGatewayMode === 'replay' ? 'documentation-replay' : 'environment';
+const expectedGatewaySource =
+  globalThis.process.env.SMOKE_EXPECTED_GATEWAY_SOURCE ??
+  (expectedGatewayMode === 'replay' ? 'documentation-replay' : 'environment');
+const expectedGatewayConfigured = globalThis.process.env.SMOKE_EXPECTED_GATEWAY_CONFIGURED === '1';
+const expectedRealReadEnabled = globalThis.process.env.SMOKE_EXPECTED_REAL_READ_ENABLED === '1';
 if (!bootstrapToken) throw new Error('SMOKE_BOOTSTRAP_TOKEN 未配置');
 
 const ready = await globalThis.fetch(new globalThis.URL('/api/v1/readyz', baseUrl), {
@@ -35,8 +39,8 @@ if (
   !system.response.ok ||
   system.body.data?.gatewayMode !== expectedGatewayMode ||
   system.body.data?.gatewayStatus?.source !== expectedGatewaySource ||
-  system.body.data?.gatewayStatus?.configured !== false ||
-  system.body.data?.gatewayStatus?.realReadEnabled !== false ||
+  system.body.data?.gatewayStatus?.configured !== expectedGatewayConfigured ||
+  system.body.data?.gatewayStatus?.realReadEnabled !== expectedRealReadEnabled ||
   system.body.data?.gatewayStatus?.mutationEnabled !== false ||
   system.body.data?.schemaVersion !== 3 ||
   system.body.data?.requestEventRetentionDays !== 30

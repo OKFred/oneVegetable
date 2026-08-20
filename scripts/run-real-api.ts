@@ -14,8 +14,12 @@ if (!existsSync(credentialFile)) {
   throw new Error('未找到 Alibaba 授权包，请先运行 pnpm openapi:auth');
 }
 
-const command = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
-const child = spawn(command, ['--filter', '@one-vegetable/api', 'dev:node'], {
+const windows = process.platform === 'win32';
+const command = windows ? (process.env.ComSpec ?? 'C:\\Windows\\System32\\cmd.exe') : 'pnpm';
+const args = windows
+  ? ['/d', '/s', '/c', 'pnpm --filter @one-vegetable/api dev:node']
+  : ['--filter', '@one-vegetable/api', 'dev:node'];
+const child = spawn(command, args, {
   cwd: process.cwd(),
   env: {
     ...process.env,

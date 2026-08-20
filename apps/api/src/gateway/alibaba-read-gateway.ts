@@ -245,7 +245,7 @@ async function dashboard(client: AlibabaClient): Promise<{
       location_type: 'ALL_GROUP'
     }),
     client.call('alibaba.seller.order.list', {
-      param_trade_ecology_order_list_query: { current_page: 1, page_size: 1 }
+      param_trade_ecology_order_list_query: { role: 'seller', start_page: 0, page_size: 1 }
     })
   ]);
   return {
@@ -262,7 +262,8 @@ async function dashboard(client: AlibabaClient): Promise<{
 async function listLegacyOrders(client: AlibabaClient, request: RequestOf<'listOrders'>) {
   const call = await client.call('alibaba.seller.order.list', {
     param_trade_ecology_order_list_query: {
-      current_page: request.page ?? 1,
+      role: 'seller',
+      start_page: Math.max(0, (request.page ?? 1) - 1),
       page_size: request.pageSize ?? 20,
       ...(request.status ? { status: request.status } : {})
     }

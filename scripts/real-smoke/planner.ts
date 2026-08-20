@@ -1,5 +1,7 @@
 export interface RealSmokeIdentifiers {
   productId: string | null;
+  productNumericId: number | null;
+  draftProductNumericId: number | null;
   categoryId: number | null;
   groupId: number | null;
   attributeId: number | null;
@@ -17,6 +19,8 @@ export type SmokePlan =
 
 export const EMPTY_IDENTIFIERS: RealSmokeIdentifiers = {
   productId: null,
+  productNumericId: null,
+  draftProductNumericId: null,
   categoryId: null,
   groupId: null,
   attributeId: null,
@@ -59,7 +63,9 @@ export function planSmokeRequest(
     case 'alibaba.icbu.photobank.list':
       return call({ current_page: 1, page_size: 10, location_type: 'ALL_GROUP' });
     case 'alibaba.seller.order.list':
-      return call({ param_trade_ecology_order_list_query: { current_page: 1, page_size: 10 } });
+      return call({
+        param_trade_ecology_order_list_query: { role: 'seller', start_page: 0, page_size: 10 }
+      });
     case 'alibaba.procurement.mysupplier.list':
       return call({ current_page: 0, page_size: 10, type: 'order' });
     case 'alibaba.icbu.product.get':
@@ -87,13 +93,22 @@ export function planSmokeRequest(
         ? call({ param_product_top_publish_request: { cat_id: identifiers.categoryId, language: 'en_US' } })
         : skip();
     case 'alibaba.icbu.product.schema.render':
-    case 'alibaba.icbu.product.schema.render.draft':
-      return identifiers.categoryId && identifiers.productId
+      return identifiers.categoryId && identifiers.productNumericId
         ? call({
             param_product_top_publish_request: {
               cat_id: identifiers.categoryId,
               language: 'en_US',
-              product_id: numericOrString(identifiers.productId)
+              product_id: identifiers.productNumericId
+            }
+          })
+        : skip();
+    case 'alibaba.icbu.product.schema.render.draft':
+      return identifiers.categoryId && identifiers.draftProductNumericId
+        ? call({
+            param_product_top_publish_request: {
+              cat_id: identifiers.categoryId,
+              language: 'en_US',
+              product_id: identifiers.draftProductNumericId
             }
           })
         : skip();
@@ -135,10 +150,17 @@ export function planSmokeRequest(
   }
 }
 
-export function collectSmokeIdentifiers(value: unknown, current: RealSmokeIdentifiers): RealSmokeIdentifiers {
+export function collectSmokeIdentifiers(
+  value: unknown,
+  current: RealSmokeIdentifiers,
+  method?: string
+): RealSmokeIdentifiers {
   const next = { ...current };
   visit(value, 0, (key, candidate) => {
     const normalized = key.toLowerCase();
+    if (method === 'alibaba.icbu.product.list' && !next.productNumericId && normalized === 'id') {
+      next.productNumericId = numberValue(candidate);
+    }
     if (!next.productId && ['product_id', 'productid', 'id_string'].includes(normalized)) {
       next.productId = stringValue(candidate);
     }
@@ -204,11 +226,6 @@ function call(parameters: Record<string, unknown>): SmokePlan {
 
 function skip(): SmokePlan {
   return { kind: 'skip', reasonCode: 'MISSING_PREREQUISITE' };
-}
-
-function numericOrString(value: string): number | string {
-  const number = Number(value);
-  return Number.isSafeInteger(number) ? number : value;
 }
 
 function visit(value: unknown, depth: number, onValue: (key: string, value: unknown) => void): void {
