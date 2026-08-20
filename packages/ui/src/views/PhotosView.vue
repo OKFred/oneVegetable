@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import { FolderOpen, FolderPlus, Pencil, ShieldCheck, Trash2 } from '@lucide/vue';
+import { FolderPlus, Pencil, ShieldCheck, Trash2 } from '@lucide/vue';
 
-import type { Photo, PhotoGroupOperationRequest } from '@one-vegetable/core';
+import type { Photo, PhotoGroup, PhotoGroupOperationRequest } from '@one-vegetable/core';
 
 import PageHeader from '../components/PageHeader.vue';
 import PhotoBankPicker from '../components/PhotoBankPicker.vue';
+import PhotoGroupNavigation from '../components/PhotoGroupNavigation.vue';
 import QueryState from '../components/QueryState.vue';
 import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
@@ -23,25 +24,20 @@ const selectedPhotos = ref<Photo[]>([]);
 const groupName = ref('');
 const governanceFilter = ref<GovernanceFilter>('all');
 const operationMessage = ref('');
-const groups = useQuery({
-  queryKey: ['photo-groups'],
-  queryFn: () => gateway.request('listPhotoGroups', undefined)
-});
+const selectedGroupDefinition = ref<PhotoGroup | null>(null);
+const observedDimensions = ref<Record<string, { width: number; height: number }>>({});
 const photos = useQuery({
   queryKey: ['photos', selectedGroup],
   queryFn: () => gateway.request('listPhotos', { page: 1, pageSize: 24, groupId: selectedGroup.value })
 });
 const groupMutationsEnabled = computed(() => mode === 'mock');
-const selectedGroupDefinition = computed(() =>
-  groups.data.value?.find((group) => group.id === selectedGroup.value)
-);
 const filteredPhotos = computed(() => {
   const items = photos.data.value?.items ?? [];
   if (governanceFilter.value === 'unreferenced') {
     return items.filter((photo) => photo.referenceCount === 0);
   }
   if (governanceFilter.value === 'lowResolution') {
-    return items.filter((photo) => photo.width < 750 || photo.height < 750);
+    return items.filter(isLowResolution);
   }
   return items;
 });
@@ -49,7 +45,7 @@ const governanceCounts = computed(() => {
   const items = photos.data.value?.items ?? [];
   return {
     unreferenced: items.filter((photo) => photo.referenceCount === 0).length,
-    lowResolution: items.filter((photo) => photo.width < 750 || photo.height < 750).length
+    lowResolution: items.filter(isLowResolution).length
   };
 });
 const operateGroup = useMutation({
@@ -76,6 +72,36 @@ function mutateGroup(operation: PhotoGroupOperationRequest['operation']): void {
   });
 }
 
+function selectGroupDefinition(group: PhotoGroup): void {
+  selectedGroupDefinition.value = group.id === '-1' ? null : group;
+}
+
+function rememberDimensions(photo: Photo, event: Event): void {
+  if (!(event.target instanceof HTMLImageElement)) return;
+  if (event.target.naturalWidth < 1 || event.target.naturalHeight < 1) return;
+  observedDimensions.value = {
+    ...observedDimensions.value,
+    [photo.id]: { width: event.target.naturalWidth, height: event.target.naturalHeight }
+  };
+}
+
+function dimensions(photo: Photo): { width: number; height: number } | null {
+  if (photo.width !== null && photo.height !== null) {
+    return { width: photo.width, height: photo.height };
+  }
+  return observedDimensions.value[photo.id] ?? null;
+}
+
+function dimensionsLabel(photo: Photo): string {
+  const value = dimensions(photo);
+  return value ? `${value.width} × ${value.height}` : '尺寸读取中';
+}
+
+function isLowResolution(photo: Photo): boolean {
+  const value = dimensions(photo);
+  return value !== null && (value.width < 750 || value.height < 750);
+}
+
 function fileSize(value: number): string {
   return value >= 1024 * 1024 ? `${(value / 1024 / 1024).toFixed(1)} MiB` : `${Math.ceil(value / 1024)} KiB`;
 }
@@ -83,7 +109,12 @@ function fileSize(value: number): string {
 
 <template>
   <PageHeader title="图库" description="管理国际站图库（图片银行）的分组、发品素材与非阻断治理提示。">
-    <PhotoBankPicker v-model="selectedPhotos" :max="6" button-label="选择或上传素材" />
+    <div class="flex flex-wrap items-center justify-end gap-2">
+      <Badge :variant="mode === 'mock' ? 'secondary' : 'success'">
+        {{ mode === 'mock' ? 'OpenAPI Mock' : mode === 'bff' ? 'BFF 后端查询' : 'Extension API 查询' }}
+      </Badge>
+      <PhotoBankPicker v-model="selectedPhotos" :max="6" button-label="选择或上传素材" />
+    </div>
   </PageHeader>
 
   <div class="mb-5 grid gap-3 md:grid-cols-3">
@@ -104,18 +135,7 @@ function fileSize(value: number): string {
   <div class="grid gap-5 lg:grid-cols-[270px_1fr]">
     <Card class="h-fit p-3">
       <p class="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">图库分组</p>
-      <button
-        v-for="group in groups.data.value ?? []"
-        :key="group.id"
-        class="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
-        :class="selectedGroup === group.id ? 'bg-accent text-accent-foreground' : ''"
-        @click="selectedGroup = group.id"
-      >
-        <span class="flex min-w-0 items-center gap-2" :style="{ paddingLeft: `${(group.level - 1) * 12}px` }">
-          <FolderOpen class="size-4 shrink-0" /><span class="truncate">{{ group.name }}</span>
-        </span>
-        <span class="text-xs text-muted-foreground">{{ group.photoCount }}</span>
-      </button>
+      <PhotoGroupNavigation v-model="selectedGroup" @select="selectGroupDefinition" />
 
       <div class="mt-3 space-y-2 border-t pt-3">
         <Input v-model="groupName" aria-label="图库分组名称" placeholder="分组名称" />
@@ -184,16 +204,21 @@ function fileSize(value: number): string {
       <QueryState :loading="photos.isPending.value" :error="photos.error.value">
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           <Card v-for="photo in filteredPhotos" :key="photo.id" class="overflow-hidden">
-            <img :src="photo.url" :alt="photo.name" class="aspect-square w-full bg-muted object-cover" />
+            <img
+              :src="photo.url"
+              :alt="photo.name"
+              class="aspect-square w-full bg-muted object-cover"
+              @load="rememberDimensions(photo, $event)"
+            />
             <div class="space-y-2 p-3">
               <p class="truncate text-sm font-medium">{{ photo.name }}</p>
               <p class="text-xs text-muted-foreground">
-                {{ photo.width }} × {{ photo.height }} · {{ fileSize(photo.fileSize) }}
+                {{ dimensionsLabel(photo) }} · {{ fileSize(photo.fileSize) }}
               </p>
               <div class="flex flex-wrap gap-1">
                 <Badge variant="secondary">引用 {{ photo.referenceCount }}</Badge>
                 <Badge v-if="photo.referenceCount === 0" variant="outline">建议清理</Badge>
-                <Badge v-if="photo.width < 750 || photo.height < 750" variant="outline">建议换高清图</Badge>
+                <Badge v-if="isLowResolution(photo)" variant="outline">建议换高清图</Badge>
               </div>
               <p class="text-[11px] text-muted-foreground">图库 fileId：{{ photo.id }}</p>
               <p class="text-[11px] text-muted-foreground">

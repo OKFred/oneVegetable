@@ -9532,8 +9532,16 @@
           "name": { "type": "string" },
           "url": { "type": "string", "format": "uri" },
           "groupId": { "type": "string" },
-          "width": { "type": "integer", "minimum": 1 },
-          "height": { "type": "integer", "minimum": 1 },
+          "width": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "Pixel width when known. photobank.list does not return dimensions."
+          },
+          "height": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "Pixel height when known. photobank.list does not return dimensions."
+          },
           "fileSize": { "type": "integer", "minimum": 0, "description": "Image size in bytes." },
           "referenceCount": { "type": "integer", "minimum": 0 },
           "modifiedAt": { "type": "string", "format": "date-time" }

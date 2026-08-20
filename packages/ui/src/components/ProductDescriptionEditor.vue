@@ -163,8 +163,8 @@ function insertPhoto(photos: Photo[]): void {
         src: photo.url,
         alt: photo.name.replace(/\.[^.]+$/, ''),
         'data-photobank-file-id': photo.id,
-        'data-photobank-width': String(photo.width),
-        'data-photobank-height': String(photo.height)
+        'data-photobank-width': photo.width === null ? null : String(photo.width),
+        'data-photobank-height': photo.height === null ? null : String(photo.height)
       }
     })
     .run();

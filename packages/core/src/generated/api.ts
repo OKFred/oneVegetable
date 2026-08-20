@@ -6011,8 +6011,10 @@ export interface components {
             /** Format: uri */
             url: string;
             groupId: string;
-            width: number;
-            height: number;
+            /** @description Pixel width when known. photobank.list does not return dimensions. */
+            width: number | null;
+            /** @description Pixel height when known. photobank.list does not return dimensions. */
+            height: number | null;
             /** @description Image size in bytes. */
             fileSize: number;
             referenceCount: number;

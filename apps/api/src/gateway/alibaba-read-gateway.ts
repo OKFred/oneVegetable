@@ -212,7 +212,7 @@ export class AlibabaReadGatewayClient implements GatewayClient {
       case 'listInsightsSupplierProducts':
         return await insights.listSupplierProducts(request as RequestOf<'listInsightsSupplierProducts'>);
       case 'listPhotoGroups':
-        return await photos.listGroups();
+        return await photos.listGroups(optionalString(record, 'parentId'));
       case 'listPhotos':
         return await photos.list(request as RequestOf<'listPhotos'>);
       case 'listShippingTemplates':

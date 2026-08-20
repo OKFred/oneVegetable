@@ -25,10 +25,11 @@ describe('PhotoAdapter', () => {
       )
     );
 
-    await expect(new PhotoAdapter({ call }).listGroups()).resolves.toEqual([
+    await expect(new PhotoAdapter({ call }).listGroups('100')).resolves.toEqual([
       { id: '100', name: '商品主图', photoCount: 0, parentId: null, level: 1 },
       { id: '101', name: '白底图', photoCount: 0, parentId: '100', level: 2 }
     ]);
+    expect(call).toHaveBeenCalledWith('alibaba.icbu.photobank.group.list', { id: 100 });
   });
 
   it('uses explicit ALL_GROUP and SUB_GROUP list semantics', async () => {
@@ -72,6 +73,39 @@ describe('PhotoAdapter', () => {
       name: 'solar.jpg',
       url: 'https://g03.s.alicdn.com/kf/solar.jpg',
       groupId: '2001'
+    });
+  });
+
+  it('does not fabricate dimensions that photobank.list did not return', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve(
+        response(method, {
+          pagination_query_list: {
+            list: [
+              {
+                id: 'ph_real_1',
+                file_name: 'real-photo.jpg',
+                file_size: 1024,
+                url: '//g03.s.alicdn.com/kf/real-photo.jpg'
+              }
+            ],
+            total: 1
+          }
+        })
+      )
+    );
+
+    await expect(
+      new PhotoAdapter({ call }).list({ page: 1, pageSize: 10, groupId: '-1' })
+    ).resolves.toMatchObject({
+      items: [
+        {
+          id: 'ph_real_1',
+          width: null,
+          height: null,
+          url: 'https://g03.s.alicdn.com/kf/real-photo.jpg'
+        }
+      ]
     });
   });
 

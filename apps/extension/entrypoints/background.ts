@@ -516,7 +516,7 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
     case 'listInsightsSupplierProducts':
       return insights.listSupplierProducts(payload as RequestOf<'listInsightsSupplierProducts'>);
     case 'listPhotoGroups':
-      return photos.listGroups();
+      return photos.listGroups(readString(request, ['parentId']));
     case 'operatePhotoGroup':
       return photos.operateGroup(payload as RequestOf<'operatePhotoGroup'>);
     case 'listPhotos':

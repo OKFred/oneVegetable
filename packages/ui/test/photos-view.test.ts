@@ -58,6 +58,9 @@ describe('PhotosView', () => {
       expect(wrapper.text()).toContain('商品主图');
     });
     await button(wrapper, '商品主图').trigger('click');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('白底主图');
+    });
     await wrapper.get('input[aria-label="图库分组名称"]').setValue('主图新版');
     await button(wrapper, '改名').trigger('click');
     await vi.waitFor(() => {
@@ -73,6 +76,7 @@ describe('PhotosView', () => {
     await wrapper.get('input[aria-label="图库分组名称"]').setValue('真实分组');
 
     expect(button(wrapper, '新增').attributes('disabled')).toBeDefined();
+    expect(wrapper.text()).toContain('Extension API 查询');
     expect(wrapper.text()).toContain('真实分组写操作尚未完成账号 smoke test');
     wrapper.unmount();
   });

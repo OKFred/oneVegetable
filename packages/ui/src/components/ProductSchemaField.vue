@@ -69,8 +69,8 @@ const selectedPhotos = computed(() =>
       name: value.attributes.fileName ?? value.text.split('/').at(-1) ?? '图库素材',
       url: value.text,
       groupId: value.attributes.groupId ?? '-1',
-      width: positiveNumber(value.attributes.width),
-      height: positiveNumber(value.attributes.height),
+      width: positiveNumberOrNull(value.attributes.width),
+      height: positiveNumberOrNull(value.attributes.height),
       fileSize: nonNegativeNumber(value.attributes.fileSize),
       referenceCount: nonNegativeNumber(value.attributes.referenceCount),
       modifiedAt: value.attributes.modifiedAt ?? new Date(0).toISOString()
@@ -122,8 +122,8 @@ function updatePhotos(photos: Photo[]): void {
         fileId: photo.id,
         fileName: photo.name,
         groupId: photo.groupId,
-        width: String(photo.width),
-        height: String(photo.height),
+        ...(photo.width === null ? {} : { width: String(photo.width) }),
+        ...(photo.height === null ? {} : { height: String(photo.height) }),
         fileSize: String(photo.fileSize),
         referenceCount: String(photo.referenceCount),
         modifiedAt: photo.modifiedAt
@@ -132,9 +132,9 @@ function updatePhotos(photos: Photo[]): void {
   });
 }
 
-function positiveNumber(value: string | undefined): number {
+function positiveNumberOrNull(value: string | undefined): number | null {
   const number = Number(value);
-  return Number.isFinite(number) && number > 0 ? number : 1;
+  return Number.isFinite(number) && number > 0 ? number : null;
 }
 
 function nonNegativeNumber(value: string | undefined): number {

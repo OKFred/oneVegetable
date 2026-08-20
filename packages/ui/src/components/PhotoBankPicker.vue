@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import { Check, Download, FolderOpen, ImagePlus, LoaderCircle, Upload, X } from '@lucide/vue';
+import { Check, Download, ImagePlus, LoaderCircle, Upload, X } from '@lucide/vue';
 
 import type { Photo } from '@one-vegetable/core';
 
 import QueryState from './QueryState.vue';
+import PhotoGroupNavigation from './PhotoGroupNavigation.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
@@ -30,11 +31,7 @@ const page = ref(1);
 const pageSize = 12;
 const uploadError = ref('');
 const transferUrl = ref('');
-const groups = useQuery({
-  queryKey: ['photo-groups'],
-  queryFn: () => gateway.request('listPhotoGroups', undefined),
-  enabled: open
-});
+const observedDimensions = ref<Record<string, { width: number; height: number }>>({});
 const photos = useQuery({
   queryKey: ['photos', selectedGroup, page],
   queryFn: () =>
@@ -85,6 +82,8 @@ const transfer = useMutation({
 });
 
 function choose(photo: Photo): void {
+  const observed = observedDimensions.value[photo.id];
+  const selectedPhoto = observed ? { ...photo, ...observed } : photo;
   const exists = selectedIds.value.has(photo.id);
   if (exists) {
     emit(
@@ -94,10 +93,12 @@ function choose(photo: Photo): void {
     return;
   }
   if (props.max === 1) {
-    emit('update:modelValue', [photo]);
+    emit('update:modelValue', [selectedPhoto]);
     return;
   }
-  if (props.modelValue.length < props.max) emit('update:modelValue', [...props.modelValue, photo]);
+  if (props.modelValue.length < props.max) {
+    emit('update:modelValue', [...props.modelValue, selectedPhoto]);
+  }
 }
 
 function changeGroup(groupId: string): void {
@@ -128,6 +129,22 @@ function fileToBase64(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
+
+function rememberDimensions(photo: Photo, event: Event): void {
+  if (!(event.target instanceof HTMLImageElement)) return;
+  if (event.target.naturalWidth < 1 || event.target.naturalHeight < 1) return;
+  observedDimensions.value = {
+    ...observedDimensions.value,
+    [photo.id]: { width: event.target.naturalWidth, height: event.target.naturalHeight }
+  };
+}
+
+function dimensionsLabel(photo: Photo): string {
+  const observed = observedDimensions.value[photo.id];
+  const width = photo.width ?? observed?.width;
+  const height = photo.height ?? observed?.height;
+  return width && height ? `${width}×${height}` : '尺寸读取中';
+}
 </script>
 
 <template>
@@ -138,7 +155,12 @@ function fileToBase64(file: File): Promise<string> {
         :key="photo.id"
         class="group relative overflow-hidden rounded-md border"
       >
-        <img :src="photo.url" :alt="photo.name" class="aspect-square w-full bg-muted object-cover" />
+        <img
+          :src="photo.url"
+          :alt="photo.name"
+          class="aspect-square w-full bg-muted object-cover"
+          @load="rememberDimensions(photo, $event)"
+        />
         <button
           type="button"
           class="absolute right-1 top-1 rounded-full bg-background/90 p-1 opacity-0 shadow group-hover:opacity-100"
@@ -174,17 +196,7 @@ function fileToBase64(file: File): Promise<string> {
           </header>
           <div class="grid min-h-0 flex-1 md:grid-cols-[220px_1fr]">
             <aside class="overflow-auto border-r p-3">
-              <button
-                v-for="group in groups.data.value ?? []"
-                :key="group.id"
-                type="button"
-                class="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
-                :class="selectedGroup === group.id ? 'bg-accent' : ''"
-                @click="changeGroup(group.id)"
-              >
-                <span class="flex items-center gap-2"><FolderOpen class="size-4" />{{ group.name }}</span>
-                <span class="text-xs text-muted-foreground">{{ group.photoCount }}</span>
-              </button>
+              <PhotoGroupNavigation :model-value="selectedGroup" @update:model-value="changeGroup" />
               <label
                 class="mt-4 flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md border text-sm font-medium"
                 :class="uploadsEnabled ? '' : 'cursor-not-allowed opacity-50'"
@@ -239,6 +251,7 @@ function fileToBase64(file: File): Promise<string> {
                       :src="photo.url"
                       :alt="photo.name"
                       class="aspect-square w-full bg-muted object-cover"
+                      @load="rememberDimensions(photo, $event)"
                     />
                     <span
                       v-if="selectedIds.has(photo.id)"
@@ -248,8 +261,7 @@ function fileToBase64(file: File): Promise<string> {
                     <span class="block p-2">
                       <span class="block truncate text-sm font-medium">{{ photo.name }}</span>
                       <span class="text-xs text-muted-foreground"
-                        >{{ photo.width }}×{{ photo.height }} ·
-                        {{ Math.ceil(photo.fileSize / 1024) }} KiB</span
+                        >{{ dimensionsLabel(photo) }} · {{ Math.ceil(photo.fileSize / 1024) }} KiB</span
                       >
                     </span>
                   </button>

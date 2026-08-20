@@ -190,6 +190,27 @@ export const PHOTO_MOCK_DATA: PhotoMockData = {
       "photoCount": 137,
       "parentId": null,
       "level": 1
+    },
+    {
+      "id": "2101",
+      "name": "白底主图",
+      "photoCount": 36,
+      "parentId": "2001",
+      "level": 2
+    },
+    {
+      "id": "2201",
+      "name": "场景详情",
+      "photoCount": 58,
+      "parentId": "2002",
+      "level": 2
+    },
+    {
+      "id": "2211",
+      "name": "户外场景",
+      "photoCount": 18,
+      "parentId": "2201",
+      "level": 3
     }
   ],
   "responses": {
@@ -214,6 +235,27 @@ export const PHOTO_MOCK_DATA: PhotoMockData = {
         "photoCount": 137,
         "parentId": null,
         "level": 1
+      },
+      {
+        "id": "2101",
+        "name": "白底主图",
+        "photoCount": 36,
+        "parentId": "2001",
+        "level": 2
+      },
+      {
+        "id": "2201",
+        "name": "场景详情",
+        "photoCount": 58,
+        "parentId": "2002",
+        "level": 2
+      },
+      {
+        "id": "2211",
+        "name": "户外场景",
+        "photoCount": 18,
+        "parentId": "2201",
+        "level": 3
       }
     ],
     "operatePhotoGroup": {

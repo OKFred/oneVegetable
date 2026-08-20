@@ -126,7 +126,16 @@ export class MockGatewayClient implements GatewayClient {
       return structuredClone(requireCapabilityDefinition(payload.method));
     }
     if (operation === 'listPhotoGroups') {
-      return structuredClone(this.photoGroups);
+      const payload = _request as OperationMap['listPhotoGroups']['request'];
+      if (!payload?.parentId) {
+        return structuredClone(this.photoGroups.filter((group) => group.parentId === null));
+      }
+      const parentId = payload.parentId;
+      return structuredClone(
+        this.photoGroups.filter(
+          (group) => group.id === parentId || isPhotoGroupDescendant(this.photoGroups, group, parentId)
+        )
+      );
     }
     if (operation === 'listProductGroups') {
       const payload = _request as OperationMap['listProductGroups']['request'];
@@ -380,6 +389,15 @@ export class MockGatewayClient implements GatewayClient {
     }
     return structuredClone(MOCK_DATA[operation]);
   }
+}
+
+function isPhotoGroupDescendant(groups: PhotoGroup[], group: PhotoGroup, ancestorId: string): boolean {
+  let parentId = group.parentId;
+  while (parentId) {
+    if (parentId === ancestorId) return true;
+    parentId = groups.find((candidate) => candidate.id === parentId)?.parentId ?? null;
+  }
+  return false;
 }
 
 function findProductGroup(groups: readonly ProductGroup[], groupId: number): ProductGroup | null {

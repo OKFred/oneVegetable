@@ -71,8 +71,8 @@ export class PhotoAdapter {
       name: readString(root, ['file_name']) ?? request.fileName,
       url: normalizeUrl(readString(root, ['photobank_url', 'url'])),
       groupId: request.groupId ?? '-1',
-      width: readInteger(root, ['width']) ?? 1,
-      height: readInteger(root, ['height']) ?? 1,
+      width: readInteger(root, ['width']) ?? null,
+      height: readInteger(root, ['height']) ?? null,
       fileSize: readInteger(root, ['file_size']) ?? bytes.byteLength,
       referenceCount: 0,
       modifiedAt: new Date().toISOString()
@@ -116,8 +116,8 @@ function normalizePhoto(record: Record<string, unknown>): Photo {
     name: readString(record, ['display_name', 'file_name', 'name']) ?? '图片',
     url: normalizeUrl(readString(record, ['url', 'photobank_url'])),
     groupId: readString(record, ['group_id']) ?? '-1',
-    width: readInteger(record, ['width']) ?? 1,
-    height: readInteger(record, ['height']) ?? 1,
+    width: readInteger(record, ['width']) ?? null,
+    height: readInteger(record, ['height']) ?? null,
     fileSize: readInteger(record, ['file_size']) ?? 0,
     referenceCount: readInteger(record, ['reference_count']) ?? 0,
     modifiedAt: normalizeDate(readString(record, ['gmt_modified', 'modified_at']))

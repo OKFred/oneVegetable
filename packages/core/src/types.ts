@@ -210,7 +210,7 @@ export interface OperationMap {
     response: ProductMutationResult;
   };
   updateProductDisplay: { request: ProductDisplayRequest; response: undefined };
-  listPhotoGroups: { request: undefined; response: PhotoGroup[] };
+  listPhotoGroups: { request: { parentId?: string } | undefined; response: PhotoGroup[] };
   operatePhotoGroup: { request: PhotoGroupOperationRequest; response: PhotoGroup };
   listPhotos: { request: PhotoListQuery; response: PhotoPage };
   uploadPhoto: { request: PhotoUploadRequest; response: Photo };
