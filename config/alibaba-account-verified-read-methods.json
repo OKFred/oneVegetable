@@ -1,0 +1,25 @@
+{
+  "checkedAtUtc": "2026-08-20T03:04:00.000Z",
+  "methods": [
+    "alibaba.icbu.category.attribute.get",
+    "alibaba.icbu.category.get.new",
+    "alibaba.icbu.category.schema.level.get",
+    "alibaba.icbu.photobank.group.list",
+    "alibaba.icbu.photobank.list",
+    "alibaba.icbu.product.get",
+    "alibaba.icbu.product.id.decrypt",
+    "alibaba.icbu.product.list",
+    "alibaba.icbu.product.schema.get",
+    "alibaba.icbu.product.schema.render",
+    "alibaba.order.trade.tt.get",
+    "alibaba.seller.assurance.credit.card",
+    "alibaba.seller.order.fund.get",
+    "alibaba.seller.order.list",
+    "alibaba.seller.order.logistics.get",
+    "alibaba.seller.trade.query.drafttype",
+    "alibaba.trade.address.get",
+    "alibaba.trade.fulfillment.channel.get",
+    "alibaba.trade.service.charge.get",
+    "alibaba.wholesale.shippingline.template.list"
+  ]
+}

@@ -3,6 +3,8 @@ import { resolve } from 'node:path';
 
 import { format } from 'prettier';
 
+import { withAlibabaResponseMetadata } from './lib/alibaba-response-contract';
+import { readAccountVerifiedMethods } from './lib/account-verification';
 import { normalizeHttpContract } from './lib/normalize-http-contract';
 
 interface ParamNode {
@@ -41,6 +43,7 @@ interface OpenApiDocument {
 }
 
 const root = resolve(import.meta.dirname, '..');
+const accountVerifiedMethods = await readAccountVerifiedMethods(root);
 const contractPath = resolve(root, 'openapi/one-vegetable.json');
 const registryPath = resolve(root, 'packages/core/src/generated/platform-capabilities.ts');
 const sourceContract = JSON.parse(await readFile(contractPath, 'utf8')) as OpenApiDocument;
@@ -101,7 +104,7 @@ for (const definition of snapshot.definitions) {
     title: `${definition.method} request`
   };
   document.components.schemas[responseSchema] = {
-    ...objectSchema(definition.responseParams),
+    ...withAlibabaResponseMetadata(objectSchema(definition.responseParams)),
     title: `${definition.method} response`
   };
   capabilityMap[definition.method] = {
@@ -111,7 +114,7 @@ for (const definition of snapshot.definitions) {
     lifecycle: definition.lifecycle,
     risk: definition.risk,
     featureArea: definition.featureArea,
-    verification: 'documented',
+    verification: accountVerifiedMethods.has(definition.method) ? 'account-verified' : 'documented',
     realCallEnabled: false,
     restricted: definition.restricted,
     restrictionReason: definition.restrictionReason,

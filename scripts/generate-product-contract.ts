@@ -3,6 +3,8 @@ import { resolve } from 'node:path';
 
 import { format } from 'prettier';
 
+import { applySchemaPatches, withAlibabaResponseMetadata } from './lib/alibaba-response-contract';
+import { readAccountVerifiedMethods } from './lib/account-verification';
 import { normalizeHttpContract } from './lib/normalize-http-contract';
 
 interface ParamNode {
@@ -38,7 +40,9 @@ interface ProductDefinition {
 
 interface ProductContractOverride {
   reason: string;
+  requestSchemaPatches?: Record<string, JsonSchema>;
   responseExample?: unknown;
+  responseSchemaPatches?: Record<string, JsonSchema>;
 }
 
 type JsonSchema = Record<string, unknown>;
@@ -53,6 +57,7 @@ interface OpenApiDocument {
 }
 
 const root = resolve(import.meta.dirname, '..');
+const accountVerifiedMethods = await readAccountVerifiedMethods(root);
 const contractPath = resolve(root, 'openapi/one-vegetable.json');
 const registryPath = resolve(root, 'packages/core/src/generated/product-capabilities.ts');
 const sourceContract = JSON.parse(await readFile(contractPath, 'utf8')) as OpenApiDocument;
@@ -188,11 +193,14 @@ for (const definition of snapshot.definitions) {
   const requestSchema = `AlibabaProduct${baseName}Request`;
   const responseSchema = `AlibabaProduct${baseName}Response`;
   document.components.schemas[requestSchema] = {
-    ...objectSchema(definition.requestParams),
+    ...applySchemaPatches(objectSchema(definition.requestParams), override?.requestSchemaPatches),
     title: `${definition.method} request`
   };
   document.components.schemas[responseSchema] = {
-    ...objectSchema(definition.responseParams),
+    ...applySchemaPatches(
+      withAlibabaResponseMetadata(objectSchema(definition.responseParams)),
+      override?.responseSchemaPatches
+    ),
     title: `${definition.method} response`
   };
   capabilityMap[definition.method] = {
@@ -201,7 +209,7 @@ for (const definition of snapshot.definitions) {
     source: definition.source,
     lifecycle: definition.lifecycle,
     risk: definition.risk,
-    verification: 'documented',
+    verification: accountVerifiedMethods.has(definition.method) ? 'account-verified' : 'documented',
     realCallEnabled: definition.risk === 'read',
     checkedAt: definition.checkedAt,
     updatedAt: definition.updatedAt,

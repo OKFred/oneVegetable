@@ -1554,7 +1554,8 @@
               }
             },
             "description": "供应商排名时间序列容器"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.diagnostic.supplier.rank.getpercent response"
       },
@@ -1590,7 +1591,8 @@
               "return_message": { "type": "string", "description": "msg" }
             },
             "description": "接口返回model"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.mydata.self.query.cgsokk response"
       },
@@ -1635,7 +1637,8 @@
               "total_item": { "type": "number", "description": "总个数" }
             },
             "description": "结果大对象"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.procurement.mysupplier.list response"
       },
@@ -1748,7 +1751,8 @@
               "total_order_count": { "type": "number", "description": "订单数量总计" }
             },
             "description": "返回结果"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.procurement.supplier.items.get response"
       },
@@ -1773,7 +1777,8 @@
               "message": { "type": "string", "description": "message" }
             },
             "description": "接口返回model"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.onetouch.logistics.buyer.info.get response"
       },
@@ -1822,7 +1827,8 @@
               "error_code": { "type": "number", "description": "返回结果编码" }
             },
             "description": "接口返回model"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.onetouch.logistics.express.address.city.list response"
       },
@@ -1886,7 +1892,8 @@
               "error_code": { "type": "number", "description": "返回结果编码" }
             },
             "description": "接口返回model"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.onetouch.logistics.express.address.division.list response"
       },
@@ -1935,7 +1942,8 @@
               "error_code": { "type": "number", "description": "返回结果编码" }
             },
             "description": "接口返回model"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.onetouch.logistics.express.address.province.list response"
       },
@@ -1980,7 +1988,8 @@
               "error_code": { "type": "number", "description": "返回结果编码" }
             },
             "description": "接口返回model"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.onetouch.logistics.express.address.street.list response"
       },
@@ -2362,7 +2371,8 @@
               "error_code": { "type": "number", "description": "返回结果编码" }
             },
             "description": "接口返回model"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.onetouch.logistics.express.charge.calculate response"
       },
@@ -2936,7 +2946,8 @@
               "error_code": { "type": "number", "description": "返回结果编码" }
             },
             "description": "接口返回model"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.onetouch.logistics.express.logistics.order.create response"
       },
@@ -2976,7 +2987,8 @@
               "result_code": { "type": "number", "description": "错误码" }
             },
             "description": "返回结果"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.onetouch.logistics.express.logistics.product.list response"
       },
@@ -3168,7 +3180,8 @@
               "error_code": { "type": "number", "description": "错误码" }
             },
             "description": "返回结果"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.onetouch.logistics.express.logistics.rule.validate response"
       },
@@ -3204,7 +3217,8 @@
               "error_code": { "type": "number", "description": "错误码" }
             },
             "description": "接口返回model"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.onetouch.logistics.express.order.cancel.reason.list response"
       },
@@ -3243,7 +3257,8 @@
               "error_code": { "type": "number", "description": "错误码" }
             },
             "description": "返回结果"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.onetouch.logistics.express.order.cancel response"
       },
@@ -3312,7 +3327,8 @@
               "error_message": { "type": "string", "description": "返回结果描述" }
             },
             "description": "接口返回model"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.onetouch.logistics.express.order.detail.get response"
       },
@@ -3378,7 +3394,8 @@
               "result_code": { "type": "number", "description": "异常码" }
             },
             "description": "结果"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.onetouch.logistics.express.order.list.query response"
       },
@@ -3440,7 +3457,8 @@
               "error_code": { "type": "number", "description": "返回结果编码" }
             },
             "description": "接口返回model"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.onetouch.logistics.express.special.product.type.list response"
       },
@@ -3477,7 +3495,8 @@
               }
             },
             "description": "运费模板列表"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.wholesale.shippingline.template.list response"
       },
@@ -3498,28 +3517,22 @@
         "additionalProperties": false,
         "properties": {
           "groups": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "photo_album_group": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": ["id", "name"],
-                  "properties": {
-                    "id": { "type": "number", "description": "分组 ID" },
-                    "level1": { "type": "number", "description": "一级分组 ID" },
-                    "level2": { "type": "number", "description": "二级分组 ID" },
-                    "level3": { "type": "number", "description": "三级分组 ID" },
-                    "name": { "type": "string", "description": "分组名称" }
-                  }
-                },
-                "description": "图库分组"
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "name"],
+              "properties": {
+                "id": { "type": "number", "description": "分组 ID" },
+                "level1": { "type": "number", "description": "一级分组 ID" },
+                "level2": { "type": "number", "description": "二级分组 ID" },
+                "level3": { "type": "number", "description": "三级分组 ID" },
+                "name": { "type": "string", "description": "分组名称" }
               }
             },
-            "description": "图库分组容器"
-          }
+            "description": "图库分组；真实账号响应直接返回数组"
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.photobank.group.list response"
       },
@@ -3571,7 +3584,8 @@
               }
             },
             "description": "接口返回的数据结果"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.photobank.group.operate response"
       },
@@ -3627,7 +3641,8 @@
             "description": "PaginationQueryList"
           },
           "errorcode": { "type": "string", "description": "error code" },
-          "errormsg": { "type": "string", "description": "error message" }
+          "errormsg": { "type": "string", "description": "error message" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.photobank.list response"
       },
@@ -3660,7 +3675,8 @@
               "file_id": { "type": "number", "description": "图片的唯一识别id" }
             },
             "description": "图片信息"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.photobank.upload response"
       },
@@ -3682,7 +3698,8 @@
         "properties": {
           "result": { "type": "string", "description": "调用结果" },
           "fail_reason": { "type": "string", "description": "失败原因" },
-          "file_url": { "type": "string", "description": "上传后的文件链接" }
+          "file_url": { "type": "string", "description": "上传后的文件链接" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.file.urlposting.upload response"
       },
@@ -3760,7 +3777,8 @@
               }
             },
             "description": "返回结果附加信息"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.risk.send response"
       },
@@ -3786,7 +3804,8 @@
         "additionalProperties": false,
         "properties": {
           "result": { "type": "string", "description": "调用结果" },
-          "fail_reason": { "type": "string", "description": "通知失败原因" }
+          "fail_reason": { "type": "string", "description": "通知失败原因" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.task.status.notify response"
       },
@@ -3842,7 +3861,8 @@
               "description": "属性返回结果"
             },
             "description": "属性返回结果"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.category.attr.get response"
       },
@@ -3910,7 +3930,8 @@
               "description": "类目下的属性和属性值信息"
             },
             "description": "类目下的属性和属性值信息"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.category.attribute.get response"
       },
@@ -3963,7 +3984,8 @@
               "description": "返回值"
             },
             "description": "返回值"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.category.attrvalue.get response"
       },
@@ -3990,7 +4012,7 @@
               "category_id": { "type": "number", "description": "类目ID" },
               "child_ids": {
                 "type": "array",
-                "items": { "type": "string", "description": "子类目ID数组" },
+                "items": { "type": ["number", "string"] },
                 "description": "子类目ID数组"
               },
               "leaf_category": {
@@ -4001,13 +4023,14 @@
               "name": { "type": "string", "description": "类目名称" },
               "parent_ids": {
                 "type": "array",
-                "items": { "type": "string", "description": "父类目ID数组" },
+                "items": { "type": ["number", "string"] },
                 "description": "父类目ID数组"
               },
               "cn_name": { "type": "string", "description": "类目的中文名" }
             },
             "description": "类目信息"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.category.get.new response"
       },
@@ -4050,7 +4073,8 @@
               }
             },
             "description": "类目信息"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.category.get response"
       },
@@ -4072,7 +4096,10 @@
       "AlibabaProductAlibabaIcbuCategoryIdMappingResponse": {
         "type": "object",
         "additionalProperties": false,
-        "properties": { "mapping_result": { "type": "number", "description": "转化的类目id" } },
+        "properties": {
+          "mapping_result": { "type": "number", "description": "转化的类目id" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
         "title": "alibaba.icbu.category.id.mapping response"
       },
       "AlibabaProductAlibabaIcbuCategoryLevelAttrGetRequest": {
@@ -4120,7 +4147,8 @@
               }
             },
             "description": "返回值"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.category.level.attr.get response"
       },
@@ -4171,7 +4199,8 @@
               "description": "发布类目返回数据"
             },
             "description": "发布类目返回数据"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.category.postcat.get response"
       },
@@ -4200,7 +4229,8 @@
               "trace_id": { "type": "string", "description": "用于排查系统错误" }
             },
             "description": "Top返回对象"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.category.schema.level.get response"
       },
@@ -4287,7 +4317,8 @@
         "additionalProperties": false,
         "properties": {
           "product_id": { "type": "number", "description": "产品ID" },
-          "str_product_id": { "type": "string", "description": "加密后的产品id" }
+          "str_product_id": { "type": "string", "description": "加密后的产品id" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.open.product.post response"
       },
@@ -4614,7 +4645,10 @@
       "AlibabaProductAlibabaIcbuProductAddDraftResponse": {
         "type": "object",
         "additionalProperties": false,
-        "properties": { "product_id": { "type": "string", "description": "混淆后的产品ID" } },
+        "properties": {
+          "product_id": { "type": "string", "description": "混淆后的产品ID" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
         "title": "alibaba.icbu.product.add.draft response"
       },
       "AlibabaProductAlibabaIcbuProductAddRequest": {
@@ -4938,7 +4972,10 @@
       "AlibabaProductAlibabaIcbuProductAddResponse": {
         "type": "object",
         "additionalProperties": false,
-        "properties": { "product_id": { "type": "string", "description": "混淆后的产品ID" } },
+        "properties": {
+          "product_id": { "type": "string", "description": "混淆后的产品ID" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
         "title": "alibaba.icbu.product.add response"
       },
       "AlibabaProductAlibabaIcbuProductBatchUpdateDisplayRequest": {
@@ -4958,7 +4995,11 @@
           "trace_id": { "type": "string", "description": "只有出错才会显示，唯一标识这次请求" },
           "sub_error_code": { "type": "string", "description": "如果出错，这里会显示错误码" },
           "sub_error_msg": { "type": "string", "description": "具体出错信息" },
-          "sub_success": { "type": "boolean", "description": "本次操作是否成功，true表示成功，false表示失败" }
+          "sub_success": {
+            "type": "boolean",
+            "description": "本次操作是否成功，true表示成功，false表示失败"
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.product.batch.update.display response"
       },
@@ -5255,7 +5296,8 @@
               "product_id": { "type": "string", "description": "产品ID" }
             },
             "description": "单个商品详情"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.product.get response"
       },
@@ -5287,7 +5329,8 @@
               "group_name": { "type": "string", "description": "分组名称" }
             },
             "description": "创建的分组信息"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.product.group.add response"
       },
@@ -5320,7 +5363,8 @@
               "parent_id2": { "type": "number", "description": "父节点id，父节点处在分组树的二级" }
             },
             "description": "分组信息"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.product.group.get response"
       },
@@ -5337,7 +5381,10 @@
       "AlibabaProductAlibabaIcbuProductIdDecryptResponse": {
         "type": "object",
         "additionalProperties": false,
-        "properties": { "id": { "type": "number", "description": "商品ID" } },
+        "properties": {
+          "id": { "type": "number", "description": "商品ID" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
         "title": "alibaba.icbu.product.id.decrypt response"
       },
       "AlibabaProductAlibabaIcbuProductListRequest": {
@@ -5435,7 +5482,8 @@
             },
             "description": "商品概要信息列表"
           },
-          "total_item": { "type": "number", "description": "总数" }
+          "total_item": { "type": "number", "description": "总数" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.product.list response"
       },
@@ -5464,7 +5512,8 @@
         "properties": {
           "product_id": { "type": "string", "description": "草稿商品 ID" },
           "trace_id": { "type": "string", "description": "调用链路 ID" },
-          "biz_success": { "type": "boolean", "description": "业务是否成功" }
+          "biz_success": { "type": "boolean", "description": "业务是否成功" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.product.schema.add.draft response"
       },
@@ -5493,7 +5542,8 @@
         "properties": {
           "product_id": { "type": "string", "description": "商品 ID" },
           "trace_id": { "type": "string", "description": "调用链路 ID" },
-          "biz_success": { "type": "boolean", "description": "业务是否成功" }
+          "biz_success": { "type": "boolean", "description": "业务是否成功" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.product.schema.add response"
       },
@@ -5527,7 +5577,8 @@
           "trace_id": {
             "type": "string",
             "description": "错误追踪码，请务必打印在日志中，后续排查问题请提交此错误追踪码"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.product.schema.get response"
       },
@@ -5541,7 +5592,7 @@
             "properties": {
               "cat_id": { "type": "number", "description": "类目id" },
               "language": { "type": "string", "description": "返回文案的语种，支持en_US,zh,zh_TW" },
-              "product_id": { "type": "number", "description": "草稿商品明文id" }
+              "product_id": { "type": ["number", "string"] }
             },
             "description": "商品规则渲染请求"
           }
@@ -5562,7 +5613,8 @@
           "trace_id": {
             "type": "string",
             "description": "错误追踪码，请务必打印在日志中，后续排查问题请提交此错误追踪码"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.product.schema.render.draft response"
       },
@@ -5576,7 +5628,7 @@
             "properties": {
               "cat_id": { "type": "number", "description": "类目id" },
               "language": { "type": "string", "description": "返回文案的语种，支持en_US,zh,zh_TW" },
-              "product_id": { "type": "number", "description": "商品明文id" }
+              "product_id": { "type": ["number", "string"] }
             },
             "description": "商品规则渲染请求"
           }
@@ -5597,7 +5649,8 @@
           "trace_id": {
             "type": "string",
             "description": "错误追踪码，请务必打印在日志中，后续排查问题请提交此错误追踪码"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.product.schema.render response"
       },
@@ -5634,7 +5687,8 @@
           "trace_id": {
             "type": "string",
             "description": "错误追踪码，请务必打印在日志中，后续排查问题请提交此错误追踪码"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.product.schema.update response"
       },
@@ -5660,7 +5714,8 @@
               "final_score": { "type": "string", "description": "质量分" }
             },
             "description": "系统自动生成"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.product.score.get response"
       },
@@ -6005,7 +6060,10 @@
       "AlibabaProductAlibabaIcbuProductUpdateFieldResponse": {
         "type": "object",
         "additionalProperties": false,
-        "properties": { "product_id": { "type": "string", "description": "加密后的产品ID" } },
+        "properties": {
+          "product_id": { "type": "string", "description": "加密后的产品ID" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
         "title": "alibaba.icbu.product.update.field response"
       },
       "AlibabaProductAlibabaIcbuProductUpdateRequest": {
@@ -6339,7 +6397,10 @@
       "AlibabaProductAlibabaIcbuProductUpdateResponse": {
         "type": "object",
         "additionalProperties": false,
-        "properties": { "product_id": { "type": "string", "description": "加密后的产品ID" } },
+        "properties": {
+          "product_id": { "type": "string", "description": "加密后的产品ID" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
         "title": "alibaba.icbu.product.update response"
       },
       "AlibabaRfqAlibabaIcbuAnnexUploadRequest": {
@@ -6364,7 +6425,8 @@
           "err_type": { "type": "string", "description": "返回错误码" },
           "message": { "type": "string", "description": "错误信息" },
           "result": { "type": "string", "description": "文件file_str" },
-          "is_success": { "type": "boolean", "description": "是否成功" }
+          "is_success": { "type": "boolean", "description": "是否成功" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.annex.upload response"
       },
@@ -6457,7 +6519,8 @@
               "success": { "type": "boolean", "description": "是否成功" }
             },
             "description": "请求返回结果信息"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.quotation.post response"
       },
@@ -6536,7 +6599,8 @@
               "success": { "type": "boolean", "description": "判断是否成功" }
             },
             "description": "返回结果集"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.rfqdetail.get response"
       },
@@ -6572,7 +6636,8 @@
               }
             },
             "description": "请求返回结果"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.rfq.myequity response"
       },
@@ -6605,7 +6670,8 @@
               "value": { "type": "string", "description": "结果" }
             },
             "description": "alinkappserver系统返回的通用结果类"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.rfq.read response"
       },
@@ -6685,7 +6751,8 @@
               }
             },
             "description": "alinkappserver系统返回的通用结果类"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.rfq.recommend response"
       },
@@ -6793,7 +6860,8 @@
               "success": { "type": "boolean", "description": "是否成功" }
             },
             "description": "返回信息结果集"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.rfq.search response"
       },
@@ -6818,7 +6886,8 @@
               "message": { "type": "string", "description": "错误提示文案" }
             },
             "description": "返回结果"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.check.overseas.admittance response"
       },
@@ -6832,7 +6901,10 @@
       "AlibabaTradeAlibabaIcbuEcologyWriteResponse": {
         "type": "object",
         "additionalProperties": false,
-        "properties": { "value": { "type": "string", "description": "生态准入是否成功" } },
+        "properties": {
+          "value": { "type": "string", "description": "生态准入是否成功" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
         "title": "alibaba.icbu.ecology.write response"
       },
       "AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncRequest": {
@@ -6869,7 +6941,8 @@
               "error_msg": { "type": "string", "description": "错误信息" }
             },
             "description": "返回结果"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.snsoft.account.bill.sync response"
       },
@@ -6907,7 +6980,8 @@
               "error_msg": { "type": "string", "description": "错误信息" }
             },
             "description": "返回结果"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.snsoft.customer.sync response"
       },
@@ -6945,7 +7019,8 @@
               "error_msg": { "type": "string", "description": "错误信息" }
             },
             "description": "返回结果"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.snsoft.sale.order.detail.sync response"
       },
@@ -6983,7 +7058,8 @@
               "error_msg": { "type": "string", "description": "错误信息" }
             },
             "description": "返回结果"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.snsoft.shipment.finalaccount.sync response"
       },
@@ -7047,7 +7123,8 @@
           },
           "successful": { "type": "boolean", "description": "是否成功" },
           "errcode": { "type": "string", "description": "错误码" },
-          "message": { "type": "string", "description": "消息" }
+          "message": { "type": "string", "description": "消息" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.xiaoman.va.list response"
       },
@@ -7205,7 +7282,8 @@
             "additionalProperties": false,
             "properties": { "intention_id": { "type": "string", "description": "意向单ID" } },
             "description": "返回值接口"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.intention.order.save response"
       },
@@ -7277,7 +7355,8 @@
               "remark": { "type": "string", "description": "备注" }
             },
             "description": "对象"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.order.trade.tt.get response"
       },
@@ -7356,7 +7435,8 @@
             "additionalProperties": false,
             "properties": { "address_id": { "type": "string", "description": "地址id" } },
             "description": "{}"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.seller.address.save response"
       },
@@ -7370,7 +7450,8 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "value": { "type": "string", "description": "请注意是json数组 的 jsonstring 字符串" }
+          "value": { "type": "string", "description": "请注意是json数组 的 jsonstring 字符串" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.seller.assurance.credit.card response"
       },
@@ -7383,7 +7464,10 @@
       "AlibabaTradeAlibabaSellerAuthExtendResponse": {
         "type": "object",
         "additionalProperties": false,
-        "properties": { "expire_time": { "type": "number", "description": "过期时间" } },
+        "properties": {
+          "expire_time": { "type": "number", "description": "过期时间" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
         "title": "alibaba.seller.auth.extend response"
       },
       "AlibabaTradeAlibabaSellerOrderFundGetRequest": {
@@ -7587,7 +7671,8 @@
               }
             },
             "description": "资金信息"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.seller.order.fund.get response"
       },
@@ -7720,7 +7805,8 @@
               }
             },
             "description": "返回结果"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.seller.order.list response"
       },
@@ -7807,7 +7893,8 @@
               "tracking_url": { "type": "string", "description": "物流tracking url" }
             },
             "description": "物流信息"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.seller.order.logistics.get response"
       },
@@ -7821,7 +7908,10 @@
       "AlibabaTradeAlibabaSellerTradeDecodeResponse": {
         "type": "object",
         "additionalProperties": false,
-        "properties": { "value": { "type": "number", "description": "明文" } },
+        "properties": {
+          "value": { "type": "number", "description": "明文" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
         "title": "alibaba.seller.trade.decode response"
       },
       "AlibabaTradeAlibabaSellerTradeQueryDrafttypeRequest": {
@@ -7838,7 +7928,8 @@
             "type": "array",
             "items": { "type": "string", "description": "该卖家 支持的订单起草类型" },
             "description": "该卖家 支持的订单起草类型"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.seller.trade.query.drafttype response"
       },
@@ -7852,7 +7943,7 @@
       "AlibabaTradeAlibabaTradeAddressDeleteResponse": {
         "type": "object",
         "additionalProperties": false,
-        "properties": {},
+        "properties": { "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" } },
         "title": "alibaba.trade.address.delete response"
       },
       "AlibabaTradeAlibabaTradeAddressFormSaveRequest": {
@@ -7932,7 +8023,8 @@
         "additionalProperties": false,
         "properties": {
           "address_id": { "type": "number", "description": "地址id" },
-          "snapshot_id": { "type": "string", "description": "地址快照id" }
+          "snapshot_id": { "type": "string", "description": "地址快照id" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.trade.address.form.save response"
       },
@@ -8009,7 +8101,8 @@
               }
             },
             "description": "对象"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.trade.address.get response"
       },
@@ -8087,7 +8180,8 @@
               "description": "value"
             },
             "description": "value"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.trade.address.list.query response"
       },
@@ -8180,7 +8274,8 @@
               "description": "表单"
             },
             "description": "表单"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.trade.address.schema.query response"
       },
@@ -8227,7 +8322,8 @@
               }
             },
             "description": "返回结果"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.trade.fulfillment.channel.get response"
       },
@@ -8408,7 +8504,8 @@
               }
             },
             "description": "返回结果"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.trade.order.create response"
       },
@@ -8559,7 +8656,8 @@
               }
             },
             "description": "返回结果"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.trade.order.modify response"
       },
@@ -8597,7 +8695,8 @@
               }
             },
             "description": "返回结果"
-          }
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.trade.service.charge.get response"
       },
@@ -10106,7 +10205,7 @@
       "source": "catalog",
       "lifecycle": "active",
       "risk": "read",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "checkedAt": "2026-08-12",
       "updatedAt": "2022-08-17",
@@ -10243,7 +10342,7 @@
       "source": "catalog",
       "lifecycle": "active",
       "risk": "read",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "checkedAt": "2026-08-12",
       "updatedAt": "2022-08-17",
@@ -10419,7 +10518,7 @@
       "source": "catalog",
       "lifecycle": "active",
       "risk": "read",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "checkedAt": "2026-08-12",
       "updatedAt": "2024-08-08",
@@ -10943,7 +11042,7 @@
       "source": "catalog",
       "lifecycle": "active",
       "risk": "read",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "checkedAt": "2026-08-12",
       "updatedAt": "2022-09-19",
@@ -11122,7 +11221,7 @@
       "source": "catalog",
       "lifecycle": "active",
       "risk": "read",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "checkedAt": "2026-08-12",
       "updatedAt": "2024-08-08",
@@ -11139,7 +11238,7 @@
       "source": "catalog",
       "lifecycle": "active",
       "risk": "read",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "checkedAt": "2026-08-12",
       "updatedAt": "2022-07-19",
@@ -11248,7 +11347,7 @@
       "source": "catalog",
       "lifecycle": "active",
       "risk": "read",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "checkedAt": "2026-08-12",
       "updatedAt": "2024-08-08",
@@ -11271,7 +11370,7 @@
       "source": "catalog",
       "lifecycle": "active",
       "risk": "read",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "checkedAt": "2026-08-12",
       "updatedAt": "2024-08-08",
@@ -12015,7 +12114,7 @@
       "lifecycle": "active",
       "risk": "read",
       "featureArea": "order",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "restricted": false,
       "restrictionReason": null,
@@ -12072,7 +12171,7 @@
       "lifecycle": "active",
       "risk": "read",
       "featureArea": "finance",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "restricted": false,
       "restrictionReason": null,
@@ -12126,7 +12225,7 @@
       "lifecycle": "active",
       "risk": "read",
       "featureArea": "fulfillment",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "restricted": false,
       "restrictionReason": null,
@@ -12330,7 +12429,7 @@
       "lifecycle": "active",
       "risk": "read",
       "featureArea": "fulfillment",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "restricted": false,
       "restrictionReason": null,
@@ -12363,7 +12462,7 @@
       "lifecycle": "active",
       "risk": "read",
       "featureArea": "finance",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "restricted": false,
       "restrictionReason": null,
@@ -12397,7 +12496,7 @@
       "lifecycle": "active",
       "risk": "read",
       "featureArea": "finance",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "restricted": false,
       "restrictionReason": null,
@@ -12419,7 +12518,7 @@
       "lifecycle": "active",
       "risk": "read",
       "featureArea": "finance",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "restricted": false,
       "restrictionReason": null,
@@ -12475,7 +12574,7 @@
       "lifecycle": "active",
       "risk": "read",
       "featureArea": "address",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "restricted": false,
       "restrictionReason": null,
@@ -12678,7 +12777,7 @@
       "lifecycle": "active",
       "risk": "read",
       "featureArea": "authorization",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "restricted": false,
       "restrictionReason": null,
@@ -13796,7 +13895,7 @@
       "lifecycle": "active",
       "risk": "read",
       "featureArea": "template",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "restricted": false,
       "restrictionReason": null,
@@ -13976,7 +14075,7 @@
       "lifecycle": "active",
       "risk": "read",
       "featureArea": "groups",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "restricted": false,
       "restrictionReason": null,
@@ -13987,11 +14086,7 @@
       "errorCodes": [],
       "requestExample": {},
       "responseExample": {
-        "groups": {
-          "photo_album_group": [
-            { "id": 17590, "level1": 17590, "level2": 0, "level3": 0, "name": "商品主图" }
-          ]
-        }
+        "groups": [{ "id": 17590, "level1": 17590, "level2": 0, "level3": 0, "name": "商品主图" }]
       },
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=30575"
     },
@@ -14034,7 +14129,7 @@
       "lifecycle": "active",
       "risk": "read",
       "featureArea": "assets",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "restricted": false,
       "restrictionReason": null,

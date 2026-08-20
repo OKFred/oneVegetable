@@ -23,7 +23,7 @@ export const PHOTO_CAPABILITY_DEFINITIONS = {
     "lifecycle": "active",
     "risk": "read",
     "featureArea": "groups",
-    "verification": "documented",
+    "verification": "account-verified",
     "realCallEnabled": true,
     "restricted": false,
     "restrictionReason": null,
@@ -34,17 +34,15 @@ export const PHOTO_CAPABILITY_DEFINITIONS = {
     "errorCodes": [],
     "requestExample": {},
     "responseExample": {
-      "groups": {
-        "photo_album_group": [
-          {
-            "id": 17590,
-            "level1": 17590,
-            "level2": 0,
-            "level3": 0,
-            "name": "商品主图"
-          }
-        ]
-      }
+      "groups": [
+        {
+          "id": 17590,
+          "level1": 17590,
+          "level2": 0,
+          "level3": 0,
+          "name": "商品主图"
+        }
+      ]
     },
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=30575"
   },
@@ -91,7 +89,7 @@ export const PHOTO_CAPABILITY_DEFINITIONS = {
     "lifecycle": "active",
     "risk": "read",
     "featureArea": "assets",
-    "verification": "documented",
+    "verification": "account-verified",
     "realCallEnabled": true,
     "restricted": false,
     "restrictionReason": null,

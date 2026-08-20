@@ -35,47 +35,39 @@
       "responseParams": [
         {
           "name": "groups",
-          "type": "Groups",
+          "type": "PhotoAlbumGroup[]",
           "required": false,
-          "description": "图库分组容器",
+          "description": "图库分组；真实账号响应直接返回数组",
           "subParams": [
             {
-              "name": "photo_album_group",
-              "type": "PhotoAlbumGroup[]",
+              "name": "id",
+              "type": "Number",
+              "required": true,
+              "description": "分组 ID"
+            },
+            {
+              "name": "level1",
+              "type": "Number",
               "required": false,
-              "description": "图库分组",
-              "subParams": [
-                {
-                  "name": "id",
-                  "type": "Number",
-                  "required": true,
-                  "description": "分组 ID"
-                },
-                {
-                  "name": "level1",
-                  "type": "Number",
-                  "required": false,
-                  "description": "一级分组 ID"
-                },
-                {
-                  "name": "level2",
-                  "type": "Number",
-                  "required": false,
-                  "description": "二级分组 ID"
-                },
-                {
-                  "name": "level3",
-                  "type": "Number",
-                  "required": false,
-                  "description": "三级分组 ID"
-                },
-                {
-                  "name": "name",
-                  "type": "String",
-                  "required": true,
-                  "description": "分组名称"
-                }
-              ]
+              "description": "一级分组 ID"
+            },
+            {
+              "name": "level2",
+              "type": "Number",
+              "required": false,
+              "description": "二级分组 ID"
+            },
+            {
+              "name": "level3",
+              "type": "Number",
+              "required": false,
+              "description": "三级分组 ID"
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "required": true,
+              "description": "分组名称"
             }
           ]
         }
@@ -83,17 +75,15 @@
       "errorCodes": [],
       "requestExample": null,
       "responseExample": {
-        "groups": {
-          "photo_album_group": [
-            {
-              "id": 17590,
-              "level1": 17590,
-              "level2": 0,
-              "level3": 0,
-              "name": "商品主图"
-            }
-          ]
-        }
+        "groups": [
+          {
+            "id": 17590,
+            "level1": 17590,
+            "level2": 0,
+            "level3": 0,
+            "name": "商品主图"
+          }
+        ]
       }
     },
     {

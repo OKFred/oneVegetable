@@ -30,7 +30,15 @@
       }
     },
     "alibaba.icbu.category.get.new": {
-      "reason": "官方响应示例将 child_ids 与 parent_ids 包裹在 string 对象中，并把 JSON 数组括号混入元素文本；按参数表 String[] 还原。",
+      "reason": "官方响应示例将 child_ids 与 parent_ids 包裹在 string 对象中，并把 JSON 数组括号混入元素文本；真实账号验证表明 child_ids 返回 Number[]，兼容保留 String。",
+      "responseSchemaPatches": {
+        "/properties/category/properties/child_ids/items": {
+          "type": ["number", "string"]
+        },
+        "/properties/category/properties/parent_ids/items": {
+          "type": ["number", "string"]
+        }
+      },
       "responseExample": {
         "category": {
           "category_id": 56,
@@ -52,6 +60,22 @@
           "group_name": "best seller",
           "parent_id": 123,
           "parent_id2": 11
+        }
+      }
+    },
+    "alibaba.icbu.product.schema.render": {
+      "reason": "真实商品 ID 可能超出 JavaScript 安全整数范围；请求以十进制字符串无损传输，同时兼容文档 Number。",
+      "requestSchemaPatches": {
+        "/properties/param_product_top_publish_request/properties/product_id": {
+          "type": ["number", "string"]
+        }
+      }
+    },
+    "alibaba.icbu.product.schema.render.draft": {
+      "reason": "真实草稿商品 ID 可能超出 JavaScript 安全整数范围；请求以十进制字符串无损传输，同时兼容文档 Number。",
+      "requestSchemaPatches": {
+        "/properties/param_product_top_publish_request/properties/product_id": {
+          "type": ["number", "string"]
         }
       }
     }

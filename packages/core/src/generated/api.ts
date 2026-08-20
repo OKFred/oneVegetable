@@ -411,6 +411,8 @@ export interface components {
                     percent?: number;
                 }[];
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.mydata.self.query.cgsokk request */
         AlibabaInsightsAlibabaMydataSelfQueryCgsokkRequest: {
@@ -440,6 +442,8 @@ export interface components {
                 /** @description msg */
                 return_message?: string;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.procurement.mysupplier.list request */
         AlibabaInsightsAlibabaProcurementMysupplierListRequest: {
@@ -469,6 +473,8 @@ export interface components {
                 /** @description 总个数 */
                 total_item: number;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.procurement.supplier.items.get request */
         AlibabaInsightsAlibabaProcurementSupplierItemsGetRequest: {
@@ -542,6 +548,8 @@ export interface components {
                 /** @description 订单数量总计 */
                 total_order_count: number;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.onetouch.logistics.buyer.info.get request */
         AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetRequest: Record<string, never>;
@@ -560,6 +568,8 @@ export interface components {
                 /** @description message */
                 message: string;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.onetouch.logistics.express.address.city.list request */
         AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressCityListRequest: {
@@ -595,6 +605,8 @@ export interface components {
                 /** @description 返回结果编码 */
                 error_code?: number;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.onetouch.logistics.express.address.division.list request */
         AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressDivisionListRequest: {
@@ -645,6 +657,8 @@ export interface components {
                 /** @description 返回结果编码 */
                 error_code?: number;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.onetouch.logistics.express.address.province.list request */
         AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressProvinceListRequest: {
@@ -680,6 +694,8 @@ export interface components {
                 /** @description 返回结果编码 */
                 error_code?: number;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.onetouch.logistics.express.address.street.list request */
         AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressStreetListRequest: {
@@ -707,6 +723,8 @@ export interface components {
                 /** @description 返回结果编码 */
                 error_code?: number;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.onetouch.logistics.express.charge.calculate request */
         AlibabaLogisticsAlibabaOnetouchLogisticsExpressChargeCalculateRequest: {
@@ -991,6 +1009,8 @@ export interface components {
                 /** @description 返回结果编码 */
                 error_code?: number;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.onetouch.logistics.express.logistics.order.create request */
         AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsOrderCreateRequest: {
@@ -1444,6 +1464,8 @@ export interface components {
                 /** @description 返回结果编码 */
                 error_code?: number;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.onetouch.logistics.express.logistics.product.list request */
         AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsProductListRequest: Record<string, never>;
@@ -1473,6 +1495,8 @@ export interface components {
                 /** @description 错误码 */
                 result_code?: number;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.onetouch.logistics.express.logistics.rule.validate request */
         AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsRuleValidateRequest: {
@@ -1604,6 +1628,8 @@ export interface components {
                 /** @description 错误码 */
                 error_code?: number;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.onetouch.logistics.express.order.cancel.reason.list request */
         AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelReasonListRequest: Record<string, never>;
@@ -1625,6 +1651,8 @@ export interface components {
                 /** @description 错误码 */
                 error_code?: number;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.onetouch.logistics.express.order.cancel request */
         AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelRequest: {
@@ -1649,6 +1677,8 @@ export interface components {
                 /** @description 错误码 */
                 error_code?: number;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.onetouch.logistics.express.order.detail.get request */
         AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderDetailGetRequest: {
@@ -1704,6 +1734,8 @@ export interface components {
                 /** @description 返回结果描述 */
                 error_message?: string;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.onetouch.logistics.express.order.list.query request */
         AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderListQueryRequest: {
@@ -1760,6 +1792,8 @@ export interface components {
                 /** @description 异常码 */
                 result_code?: number;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.onetouch.logistics.express.special.product.type.list request */
         AlibabaLogisticsAlibabaOnetouchLogisticsExpressSpecialProductTypeListRequest: Record<string, never>;
@@ -1795,6 +1829,8 @@ export interface components {
                 /** @description 返回结果编码 */
                 error_code?: number;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.wholesale.shippingline.template.list request */
         AlibabaLogisticsAlibabaWholesaleShippinglineTemplateListRequest: {
@@ -1817,6 +1853,8 @@ export interface components {
                     title?: string;
                 }[];
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.photobank.group.list request */
         AlibabaPhotoAlibabaIcbuPhotobankGroupListRequest: {
@@ -1829,22 +1867,21 @@ export interface components {
         };
         /** alibaba.icbu.photobank.group.list response */
         AlibabaPhotoAlibabaIcbuPhotobankGroupListResponse: {
-            /** @description 图库分组容器 */
+            /** @description 图库分组；真实账号响应直接返回数组 */
             groups?: {
-                /** @description 图库分组 */
-                photo_album_group?: {
-                    /** @description 分组 ID */
-                    id: number;
-                    /** @description 一级分组 ID */
-                    level1?: number;
-                    /** @description 二级分组 ID */
-                    level2?: number;
-                    /** @description 三级分组 ID */
-                    level3?: number;
-                    /** @description 分组名称 */
-                    name: string;
-                }[];
-            };
+                /** @description 分组 ID */
+                id: number;
+                /** @description 一级分组 ID */
+                level1?: number;
+                /** @description 二级分组 ID */
+                level2?: number;
+                /** @description 三级分组 ID */
+                level3?: number;
+                /** @description 分组名称 */
+                name: string;
+            }[];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.photobank.group.operate request */
         AlibabaPhotoAlibabaIcbuPhotobankGroupOperateRequest: {
@@ -1876,6 +1913,8 @@ export interface components {
                     id?: number;
                 };
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.photobank.list request */
         AlibabaPhotoAlibabaIcbuPhotobankListRequest: {
@@ -1925,6 +1964,8 @@ export interface components {
             errorcode?: string;
             /** @description error message */
             errormsg?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.photobank.upload request */
         AlibabaPhotoAlibabaIcbuPhotobankUploadRequest: {
@@ -1950,6 +1991,8 @@ export interface components {
                 /** @description 图片的唯一识别id */
                 file_id?: number;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.file.urlposting.upload request */
         AlibabaPlatformAlibabaIcbuFileUrlpostingUploadRequest: {
@@ -1970,6 +2013,8 @@ export interface components {
             fail_reason?: string;
             /** @description 上传后的文件链接 */
             file_url?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.risk.send request */
         AlibabaPlatformAlibabaIcbuRiskSendRequest: {
@@ -2027,6 +2072,8 @@ export interface components {
                     risk_type?: string;
                 }[];
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.task.status.notify request */
         AlibabaPlatformAlibabaIcbuTaskStatusNotifyRequest: {
@@ -2055,6 +2102,8 @@ export interface components {
             result?: string;
             /** @description 通知失败原因 */
             fail_reason?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.category.attr.get request */
         AlibabaProductAlibabaIcbuCategoryAttrGetRequest: {
@@ -2093,6 +2142,8 @@ export interface components {
                 /** @description 该属性的单位 */
                 units?: string[];
             }[];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.category.attribute.get request */
         AlibabaProductAlibabaIcbuCategoryAttributeGetRequest: {
@@ -2137,6 +2188,8 @@ export interface components {
                 /** @description 表示是否车型库属性，如果是，则需要从分层属性接口里获取下一级属性 */
                 car_model?: boolean;
             }[];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.category.attrvalue.get request */
         AlibabaProductAlibabaIcbuCategoryAttrvalueGetRequest: {
@@ -2165,6 +2218,8 @@ export interface components {
                 /** @description 所属类目id */
                 cat_id?: number;
             }[];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.category.get.new request */
         AlibabaProductAlibabaIcbuCategoryGetNewRequest: {
@@ -2178,7 +2233,7 @@ export interface components {
                 /** @description 类目ID */
                 category_id?: number;
                 /** @description 子类目ID数组 */
-                child_ids?: string[];
+                child_ids?: (number | string)[];
                 /** @description 是否叶子类目（只有叶子类目才能发布商品） */
                 leaf_category?: boolean;
                 /** @description 类目层级 */
@@ -2186,10 +2241,12 @@ export interface components {
                 /** @description 类目名称 */
                 name?: string;
                 /** @description 父类目ID数组 */
-                parent_ids?: string[];
+                parent_ids?: (number | string)[];
                 /** @description 类目的中文名 */
                 cn_name?: string;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.category.get request */
         AlibabaProductAlibabaIcbuCategoryGetRequest: {
@@ -2213,6 +2270,8 @@ export interface components {
                 /** @description 子类目ID数组 */
                 child_ids?: number[];
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.category.id.mapping request */
         AlibabaProductAlibabaIcbuCategoryIdMappingRequest: {
@@ -2229,6 +2288,8 @@ export interface components {
         AlibabaProductAlibabaIcbuCategoryIdMappingResponse: {
             /** @description 转化的类目id */
             mapping_result?: number;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.category.level.attr.get request */
         AlibabaProductAlibabaIcbuCategoryLevelAttrGetRequest: {
@@ -2255,6 +2316,8 @@ export interface components {
                 /** @description 返回值所在的属性id，如入参valueId为0，则与入参的attrId一致，否则为所选属性值的下层属性id */
                 property_id?: number;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.category.postcat.get request */
         AlibabaProductAlibabaIcbuCategoryPostcatGetRequest: {
@@ -2281,6 +2344,8 @@ export interface components {
                 /** @description 孩子类目；如果为叶子，则为空 */
                 child_ids?: number[];
             }[];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.category.schema.level.get request */
         AlibabaProductAlibabaIcbuCategorySchemaLevelGetRequest: {
@@ -2306,6 +2371,8 @@ export interface components {
                 /** @description 用于排查系统错误 */
                 trace_id?: string;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.open.product.post request */
         AlibabaProductAlibabaIcbuOpenProductPostRequest: {
@@ -2376,6 +2443,8 @@ export interface components {
             product_id?: number;
             /** @description 加密后的产品id */
             str_product_id?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.product.add.draft request */
         AlibabaProductAlibabaIcbuProductAddDraftRequest: {
@@ -2582,6 +2651,8 @@ export interface components {
         AlibabaProductAlibabaIcbuProductAddDraftResponse: {
             /** @description 混淆后的产品ID */
             product_id?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.product.add request */
         AlibabaProductAlibabaIcbuProductAddRequest: {
@@ -2788,6 +2859,8 @@ export interface components {
         AlibabaProductAlibabaIcbuProductAddResponse: {
             /** @description 混淆后的产品ID */
             product_id?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.product.batch.update.display request */
         AlibabaProductAlibabaIcbuProductBatchUpdateDisplayRequest: {
@@ -2806,6 +2879,8 @@ export interface components {
             sub_error_msg?: string;
             /** @description 本次操作是否成功，true表示成功，false表示失败 */
             sub_success?: boolean;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.product.get request */
         AlibabaProductAlibabaIcbuProductGetRequest: {
@@ -3001,6 +3076,8 @@ export interface components {
                 /** @description 产品ID */
                 product_id?: string;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.product.group.add request */
         AlibabaProductAlibabaIcbuProductGroupAddRequest: {
@@ -3024,6 +3101,8 @@ export interface components {
                 /** @description 分组名称 */
                 group_name?: string;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.product.group.get request */
         AlibabaProductAlibabaIcbuProductGroupGetRequest: {
@@ -3049,6 +3128,8 @@ export interface components {
                 /** @description 父节点id，父节点处在分组树的二级 */
                 parent_id2?: number;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.product.id.decrypt request */
         AlibabaProductAlibabaIcbuProductIdDecryptRequest: {
@@ -3061,6 +3142,8 @@ export interface components {
         AlibabaProductAlibabaIcbuProductIdDecryptResponse: {
             /** @description 商品ID */
             id?: number;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.product.list request */
         AlibabaProductAlibabaIcbuProductListRequest: {
@@ -3147,6 +3230,8 @@ export interface components {
             }[];
             /** @description 总数 */
             total_item?: number;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.product.schema.add.draft request */
         AlibabaProductAlibabaIcbuProductSchemaAddDraftRequest: {
@@ -3168,6 +3253,8 @@ export interface components {
             trace_id?: string;
             /** @description 业务是否成功 */
             biz_success?: boolean;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.product.schema.add request */
         AlibabaProductAlibabaIcbuProductSchemaAddRequest: {
@@ -3189,6 +3276,8 @@ export interface components {
             trace_id?: string;
             /** @description 业务是否成功 */
             biz_success?: boolean;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.product.schema.get request */
         AlibabaProductAlibabaIcbuProductSchemaGetRequest: {
@@ -3212,6 +3301,8 @@ export interface components {
             biz_success?: boolean;
             /** @description 错误追踪码，请务必打印在日志中，后续排查问题请提交此错误追踪码 */
             trace_id?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.product.schema.render.draft request */
         AlibabaProductAlibabaIcbuProductSchemaRenderDraftRequest: {
@@ -3221,8 +3312,7 @@ export interface components {
                 cat_id?: number;
                 /** @description 返回文案的语种，支持en_US,zh,zh_TW */
                 language?: string;
-                /** @description 草稿商品明文id */
-                product_id?: number;
+                product_id?: number | string;
             };
         };
         /** alibaba.icbu.product.schema.render.draft response */
@@ -3237,6 +3327,8 @@ export interface components {
             biz_success?: boolean;
             /** @description 错误追踪码，请务必打印在日志中，后续排查问题请提交此错误追踪码 */
             trace_id?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.product.schema.render request */
         AlibabaProductAlibabaIcbuProductSchemaRenderRequest: {
@@ -3246,8 +3338,7 @@ export interface components {
                 cat_id?: number;
                 /** @description 返回文案的语种，支持en_US,zh,zh_TW */
                 language?: string;
-                /** @description 商品明文id */
-                product_id?: number;
+                product_id?: number | string;
             };
         };
         /** alibaba.icbu.product.schema.render response */
@@ -3262,6 +3353,8 @@ export interface components {
             biz_success?: boolean;
             /** @description 错误追踪码，请务必打印在日志中，后续排查问题请提交此错误追踪码 */
             trace_id?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.product.schema.update request */
         AlibabaProductAlibabaIcbuProductSchemaUpdateRequest: {
@@ -3289,6 +3382,8 @@ export interface components {
             biz_success?: boolean;
             /** @description 错误追踪码，请务必打印在日志中，后续排查问题请提交此错误追踪码 */
             trace_id?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.product.score.get request */
         AlibabaProductAlibabaIcbuProductScoreGetRequest: {
@@ -3304,6 +3399,8 @@ export interface components {
                 /** @description 质量分 */
                 final_score?: string;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.product.update.field request */
         AlibabaProductAlibabaIcbuProductUpdateFieldRequest: {
@@ -3516,6 +3613,8 @@ export interface components {
         AlibabaProductAlibabaIcbuProductUpdateFieldResponse: {
             /** @description 加密后的产品ID */
             product_id?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.product.update request */
         AlibabaProductAlibabaIcbuProductUpdateRequest: {
@@ -3715,6 +3814,8 @@ export interface components {
         AlibabaProductAlibabaIcbuProductUpdateResponse: {
             /** @description 加密后的产品ID */
             product_id?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.annex.upload request */
         AlibabaRfqAlibabaIcbuAnnexUploadRequest: {
@@ -3735,6 +3836,8 @@ export interface components {
             result?: string;
             /** @description 是否成功 */
             is_success?: boolean;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.quotation.post request */
         AlibabaRfqAlibabaIcbuQuotationPostRequest: {
@@ -3806,6 +3909,8 @@ export interface components {
                 /** @description 是否成功 */
                 success?: boolean;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.rfqdetail.get request */
         AlibabaRfqAlibabaIcbuRfqdetailGetRequest: {
@@ -3881,6 +3986,8 @@ export interface components {
                 /** @description 判断是否成功 */
                 success?: boolean;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.rfq.myequity request */
         AlibabaRfqAlibabaIcbuRfqMyequityRequest: Record<string, never>;
@@ -3910,6 +4017,8 @@ export interface components {
                     top_service_count?: number;
                 };
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.rfq.read request */
         AlibabaRfqAlibabaIcbuRfqReadRequest: {
@@ -3931,6 +4040,8 @@ export interface components {
                 /** @description 结果 */
                 value?: string;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.rfq.recommend request */
         AlibabaRfqAlibabaIcbuRfqRecommendRequest: {
@@ -4002,6 +4113,8 @@ export interface components {
                     }[];
                 };
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.rfq.search request */
         AlibabaRfqAlibabaIcbuRfqSearchRequest: {
@@ -4104,6 +4217,8 @@ export interface components {
                 /** @description 是否成功 */
                 success?: boolean;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.check.overseas.admittance request */
         AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceRequest: {
@@ -4123,6 +4238,8 @@ export interface components {
                 /** @description 错误提示文案 */
                 message?: string;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.ecology.write request */
         AlibabaTradeAlibabaIcbuEcologyWriteRequest: {
@@ -4133,6 +4250,8 @@ export interface components {
         AlibabaTradeAlibabaIcbuEcologyWriteResponse: {
             /** @description 生态准入是否成功 */
             value?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.snsoft.account.bill.sync request */
         AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncRequest: {
@@ -4155,6 +4274,8 @@ export interface components {
                 /** @description 错误信息 */
                 error_msg?: string;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.snsoft.customer.sync request */
         AlibabaTradeAlibabaIcbuSnsoftCustomerSyncRequest: {
@@ -4177,6 +4298,8 @@ export interface components {
                 /** @description 错误信息 */
                 error_msg?: string;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.snsoft.sale.order.detail.sync request */
         AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncRequest: {
@@ -4199,6 +4322,8 @@ export interface components {
                 /** @description 错误信息 */
                 error_msg?: string;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.snsoft.shipment.finalaccount.sync request */
         AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncRequest: {
@@ -4221,6 +4346,8 @@ export interface components {
                 /** @description 错误信息 */
                 error_msg?: string;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.icbu.xiaoman.va.list request */
         AlibabaTradeAlibabaIcbuXiaomanVaListRequest: {
@@ -4283,6 +4410,8 @@ export interface components {
             errcode?: string;
             /** @description 消息 */
             message?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.intention.order.save request */
         AlibabaTradeAlibabaIntentionOrderSaveRequest: {
@@ -4454,6 +4583,8 @@ export interface components {
                 /** @description 意向单ID */
                 intention_id?: string;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.order.trade.tt.get request */
         AlibabaTradeAlibabaOrderTradeTtGetRequest: {
@@ -4534,6 +4665,8 @@ export interface components {
                 /** @description 备注 */
                 remark?: string;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.seller.address.save request */
         AlibabaTradeAlibabaSellerAddressSaveRequest: {
@@ -4587,6 +4720,8 @@ export interface components {
                 /** @description 地址id */
                 address_id?: string;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.seller.assurance.credit.card request */
         AlibabaTradeAlibabaSellerAssuranceCreditCardRequest: Record<string, never>;
@@ -4594,6 +4729,8 @@ export interface components {
         AlibabaTradeAlibabaSellerAssuranceCreditCardResponse: {
             /** @description 请注意是json数组 的 jsonstring 字符串 */
             value?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.seller.auth.extend request */
         AlibabaTradeAlibabaSellerAuthExtendRequest: Record<string, never>;
@@ -4601,6 +4738,8 @@ export interface components {
         AlibabaTradeAlibabaSellerAuthExtendResponse: {
             /** @description 过期时间 */
             expire_time?: number;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.seller.order.fund.get request */
         AlibabaTradeAlibabaSellerOrderFundGetRequest: {
@@ -4721,6 +4860,8 @@ export interface components {
                     id?: number;
                 }[];
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.seller.order.list request */
         AlibabaTradeAlibabaSellerOrderListRequest: {
@@ -4807,6 +4948,8 @@ export interface components {
                     total_count?: number;
                 };
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.seller.order.logistics.get request */
         AlibabaTradeAlibabaSellerOrderLogisticsGetRequest: {
@@ -4857,6 +5000,8 @@ export interface components {
                 /** @description 物流tracking url */
                 tracking_url?: string;
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.seller.trade.decode request */
         AlibabaTradeAlibabaSellerTradeDecodeRequest: {
@@ -4867,6 +5012,8 @@ export interface components {
         AlibabaTradeAlibabaSellerTradeDecodeResponse: {
             /** @description 明文 */
             value?: number;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.seller.trade.query.drafttype request */
         AlibabaTradeAlibabaSellerTradeQueryDrafttypeRequest: Record<string, never>;
@@ -4874,6 +5021,8 @@ export interface components {
         AlibabaTradeAlibabaSellerTradeQueryDrafttypeResponse: {
             /** @description 该卖家 支持的订单起草类型 */
             types?: string[];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.trade.address.delete request */
         AlibabaTradeAlibabaTradeAddressDeleteRequest: {
@@ -4881,7 +5030,10 @@ export interface components {
             address_id: number;
         };
         /** alibaba.trade.address.delete response */
-        AlibabaTradeAlibabaTradeAddressDeleteResponse: Record<string, never>;
+        AlibabaTradeAlibabaTradeAddressDeleteResponse: {
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
         /** alibaba.trade.address.form.save request */
         AlibabaTradeAlibabaTradeAddressFormSaveRequest: {
             /** @description 地址请求对象 */
@@ -4941,6 +5093,8 @@ export interface components {
             address_id?: number;
             /** @description 地址快照id */
             snapshot_id?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.trade.address.get request */
         AlibabaTradeAlibabaTradeAddressGetRequest: {
@@ -4986,6 +5140,8 @@ export interface components {
                     id?: string;
                 }[];
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.trade.address.list.query request */
         AlibabaTradeAlibabaTradeAddressListQueryRequest: {
@@ -5048,6 +5204,8 @@ export interface components {
                 /** @description 是否默认地址 */
                 is_default?: boolean;
             }[];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.trade.address.schema.query request */
         AlibabaTradeAlibabaTradeAddressSchemaQueryRequest: {
@@ -5111,6 +5269,8 @@ export interface components {
                 /** @description 表单填写模式 */
                 form_fill_mode?: string;
             }[];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.trade.fulfillment.channel.get request */
         AlibabaTradeAlibabaTradeFulfillmentChannelGetRequest: {
@@ -5146,6 +5306,8 @@ export interface components {
                     currency?: string;
                 };
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.trade.order.create request */
         AlibabaTradeAlibabaTradeOrderCreateRequest: {
@@ -5300,6 +5462,8 @@ export interface components {
                     pay_url: string;
                 };
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.trade.order.modify request */
         AlibabaTradeAlibabaTradeOrderModifyRequest: {
@@ -5435,6 +5599,8 @@ export interface components {
                     pay_url: string;
                 };
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         /** alibaba.trade.service.charge.get request */
         AlibabaTradeAlibabaTradeServiceChargeGetRequest: {
@@ -5463,6 +5629,8 @@ export interface components {
                     logistics_type?: string;
                 }[];
             };
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
         };
         ApiCapability: {
             method: string;

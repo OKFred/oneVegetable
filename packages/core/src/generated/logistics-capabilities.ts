@@ -1055,7 +1055,7 @@ export const LOGISTICS_CAPABILITY_DEFINITIONS = {
     "lifecycle": "active",
     "risk": "read",
     "featureArea": "template",
-    "verification": "documented",
+    "verification": "account-verified",
     "realCallEnabled": true,
     "restricted": false,
     "restrictionReason": null,
