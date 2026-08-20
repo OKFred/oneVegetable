@@ -76,7 +76,9 @@ test('authenticated Web renders real read results without Mock fallback', async 
     await expect(page.getByText('real', { exact: true })).toBeVisible();
     await expect(page.getByText(/凭据 完整 · 只读真实调用 已启用/)).toBeVisible();
 
-    const csrfCookie = (await context.cookies(apiOrigin)).find((cookie) => cookie.name === 'ov_csrf');
+    const csrfCookie = (await context.cookies(`${apiOrigin}/api/v1/operations/call`)).find(
+      (cookie) => cookie.name === 'ov_csrf'
+    );
     if (!csrfCookie) throw new Error('真实 Web 会话缺少 CSRF Cookie');
     const mutationRequestId = crypto.randomUUID();
     const mutationResponse = await page.request.post(`${apiOrigin}/api/v1/operations/call`, {
