@@ -1,7 +1,19 @@
 <script setup lang="ts">
-import { computed, h, ref } from 'vue';
+import { computed, h, ref, watch } from 'vue';
 import { useMutation, useQuery } from '@tanstack/vue-query';
-import { Banknote, ClipboardList, FileSignature, MapPin, RefreshCw, ShieldAlert, Truck } from '@lucide/vue';
+import {
+  Banknote,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Eye,
+  EyeOff,
+  FileSignature,
+  MapPin,
+  RefreshCw,
+  ShieldAlert,
+  Truck
+} from '@lucide/vue';
 
 import type { TradeOrderDraft, TradeOrderSummary } from '@one-vegetable/core';
 
@@ -12,10 +24,12 @@ import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
+import Sheet from '../components/ui/Sheet.vue';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 
 type Workspace = 'orders' | 'finance' | 'addresses' | 'assurance';
+type OrderDrawerTab = 'overview' | 'payment';
 
 const { gateway, mode } = useServices();
 const workspace = ref<Workspace>('orders');
@@ -31,7 +45,10 @@ const draftProductId = ref('');
 const draftSubject = ref('');
 const draftQuantity = ref('1');
 const draftUnitPrice = ref('');
-const mutationBlocked = mode === 'extension';
+const orderSheetOpen = ref(false);
+const orderDrawerTab = ref<OrderDrawerTab>('overview');
+const ttAccountRevealed = ref(false);
+const mutationBlocked = mode !== 'mock';
 
 const orders = useQuery({
   queryKey: computed(() => ['trade-orders', status.value, buyerLoginId.value]),
@@ -46,9 +63,17 @@ const orders = useQuery({
 const selectedOrder = computed(() =>
   (orders.data.value?.items ?? []).find((order) => order.id === selectedOrderId.value)
 );
+const selectedOrderIndex = computed(() =>
+  (orders.data.value?.items ?? []).findIndex((order) => order.id === selectedOrderId.value)
+);
+const hasPreviousOrder = computed(() => selectedOrderIndex.value > 0);
+const hasNextOrder = computed(() => {
+  const items = orders.data.value?.items ?? [];
+  return selectedOrderIndex.value >= 0 && selectedOrderIndex.value < items.length - 1;
+});
 const aggregate = useQuery({
   queryKey: computed(() => ['trade-order-aggregate', selectedOrderId.value]),
-  enabled: computed(() => selectedOrder.value !== undefined),
+  enabled: computed(() => orderSheetOpen.value && selectedOrder.value !== undefined),
   queryFn: () => {
     const order = selectedOrder.value;
     if (!order) throw new Error('请先选择订单');
@@ -67,7 +92,9 @@ const serviceCharge = useQuery({
 });
 const ttAccount = useQuery({
   queryKey: computed(() => ['trade-tt-account', selectedOrderId.value]),
-  enabled: computed(() => selectedOrderId.value !== ''),
+  enabled: computed(
+    () => orderSheetOpen.value && orderDrawerTab.value === 'payment' && selectedOrderId.value !== ''
+  ),
   queryFn: () => gateway.request('getTradeTtAccount', { orderId: selectedOrderId.value })
 });
 const addressSchema = useQuery({
@@ -114,6 +141,29 @@ function orderDraft(): TradeOrderDraft {
 
 function selectOrder(order: TradeOrderSummary): void {
   selectedOrderId.value = order.id;
+  orderDrawerTab.value = 'overview';
+  ttAccountRevealed.value = false;
+  orderSheetOpen.value = true;
+}
+
+function setOrderSheetOpen(open: boolean): void {
+  orderSheetOpen.value = open;
+  if (!open) {
+    orderDrawerTab.value = 'overview';
+    ttAccountRevealed.value = false;
+  }
+}
+
+function moveOrder(offset: -1 | 1): void {
+  const next = (orders.data.value?.items ?? [])[selectedOrderIndex.value + offset];
+  if (next) selectOrder(next);
+}
+
+function maskedAccountNumber(value: string | null): string {
+  if (!value) return '未返回';
+  if (ttAccountRevealed.value) return value;
+  const visible = value.slice(-4);
+  return `${'•'.repeat(Math.max(4, value.length - visible.length))}${visible}`;
 }
 
 function formatDate(value: string | null): string {
@@ -151,6 +201,22 @@ const columns: DataColumn<TradeOrderSummary>[] = [
     accessorKey: 'modifiedAt',
     header: '最后修改',
     cell: (context) => formatDate(context.getValue<string | null>())
+  },
+  {
+    id: 'actions',
+    header: '操作',
+    cell: ({ row }) =>
+      h(
+        Button,
+        {
+          size: 'sm',
+          variant: 'outline',
+          onClick: () => {
+            selectOrder(row.original);
+          }
+        },
+        () => '查看'
+      )
   }
 ];
 
@@ -160,6 +226,10 @@ const workspaces: { id: Workspace; label: string }[] = [
   { id: 'addresses', label: '地址 Schema' },
   { id: 'assurance', label: '信保订单草稿' }
 ];
+
+watch(selectedOrderId, () => {
+  ttAccountRevealed.value = false;
+});
 </script>
 
 <template>
@@ -209,51 +279,16 @@ const workspaces: { id: Workspace; label: string }[] = [
       </p>
     </Card>
     <QueryState :loading="orders.isPending.value" :error="orders.error.value">
-      <DataTable :columns="columns" :data="orders.data.value?.items ?? []" empty-text="暂无匹配订单" />
+      <DataTable
+        :columns="columns"
+        :data="orders.data.value?.items ?? []"
+        empty-text="暂无匹配订单"
+        :get-row-key="(order) => order.id"
+        :active-row-key="orderSheetOpen ? selectedOrderId : undefined"
+        :row-aria-label="(order) => `查看订单 ${order.id}`"
+        @row-activate="selectOrder"
+      />
     </QueryState>
-
-    <Card v-if="selectedOrder" class="mt-5 p-5">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p class="font-semibold">聚合详情 · {{ selectedOrder.id }}</p>
-          <p class="mt-1 text-xs text-muted-foreground">不会调用聚石塔专用的完整详情接口</p>
-        </div>
-        <Badge variant="outline">fullDetail: jushita-only</Badge>
-      </div>
-      <QueryState :loading="aggregate.isPending.value" :error="aggregate.error.value">
-        <div class="mt-4 grid gap-3 md:grid-cols-3">
-          <div class="rounded-lg border p-4">
-            <ClipboardList class="mb-2 size-4 text-primary" />
-            <p class="text-xs text-muted-foreground">订单摘要</p>
-            <p class="mt-1 font-medium">{{ selectedOrder.currency }} {{ selectedOrder.amount }}</p>
-            <p class="mt-1 text-xs">{{ selectedOrder.status }} · {{ formatDate(selectedOrder.createdAt) }}</p>
-          </div>
-          <div class="rounded-lg border p-4">
-            <Banknote class="mb-2 size-4 text-primary" />
-            <p class="text-xs text-muted-foreground">资金</p>
-            <template v-if="aggregate.data.value?.fund">
-              <p class="mt-1 font-medium">
-                {{ aggregate.data.value.fund.currency }} {{ aggregate.data.value.fund.paidAmount }}
-              </p>
-              <p class="mt-1 text-xs">{{ aggregate.data.value.fund.status }}</p>
-            </template>
-            <Badge v-else variant="warning" class="mt-2">当前不可用</Badge>
-          </div>
-          <div class="rounded-lg border p-4">
-            <Truck class="mb-2 size-4 text-primary" />
-            <p class="text-xs text-muted-foreground">物流</p>
-            <template v-if="aggregate.data.value?.logistics">
-              <p class="mt-1 font-medium">{{ aggregate.data.value.logistics.status }}</p>
-              <p class="mt-1 text-xs">
-                {{ aggregate.data.value.logistics.carrier ?? '承运商未返回' }} ·
-                {{ aggregate.data.value.logistics.trackingNumber ?? '单号未返回' }}
-              </p>
-            </template>
-            <Badge v-else variant="warning" class="mt-2">当前不可用</Badge>
-          </div>
-        </div>
-      </QueryState>
-    </Card>
   </template>
 
   <template v-else-if="workspace === 'finance'">
@@ -294,34 +329,6 @@ const workspaces: { id: Workspace; label: string }[] = [
             <p>费率 {{ item.ratio ?? '未返回' }} · 上限 {{ item.maxFee ?? '未返回' }}</p>
             <p class="mt-1 text-xs text-muted-foreground">
               {{ item.exportServiceType ?? '服务类型未返回' }} · {{ item.logisticsType ?? '物流类型未返回' }}
-            </p>
-          </div>
-        </QueryState>
-      </Card>
-      <Card class="p-5 xl:col-span-2">
-        <h2 class="font-semibold">订单 TT 汇款信息</h2>
-        <p class="mt-1 text-xs text-muted-foreground">
-          选择订单后按需读取；账号信息只显示在当前内存中，不写入 localStorage 或扩展 storage。
-        </p>
-        <p v-if="!selectedOrderId" class="mt-4 text-sm text-muted-foreground">
-          请先在“订单与聚合详情”选择订单。
-        </p>
-        <QueryState v-else :loading="ttAccount.isPending.value" :error="ttAccount.error.value">
-          <div v-if="ttAccount.data.value" class="mt-4 grid gap-3 text-sm md:grid-cols-2">
-            <p>
-              <span class="text-muted-foreground">应付：</span>{{ ttAccount.data.value.currency }}
-              {{ ttAccount.data.value.payableAmount }}
-            </p>
-            <p>
-              <span class="text-muted-foreground">收款人：</span
-              >{{ ttAccount.data.value.accountName ?? '未返回' }}
-            </p>
-            <p>
-              <span class="text-muted-foreground">银行：</span>{{ ttAccount.data.value.bankName ?? '未返回' }}
-            </p>
-            <p>
-              <span class="text-muted-foreground">账号：</span
-              ><code>{{ ttAccount.data.value.accountNumber ?? '未返回' }}</code>
             </p>
           </div>
         </QueryState>
@@ -410,9 +417,9 @@ const workspaces: { id: Workspace; label: string }[] = [
           :disabled="mutationBlocked || !draftComplete || createOrder.isPending.value"
           @click="createOrder.mutate()"
         >
-          创建 Mock 信保订单
+          {{ mode === 'mock' ? '创建 Mock 信保订单' : '创建信保订单（未开放）' }}
         </Button>
-        <Badge v-if="mutationBlocked" variant="warning">扩展真实写入已禁用</Badge>
+        <Badge v-if="mutationBlocked" variant="warning">真实写入已禁用</Badge>
         <Badge v-else variant="success">Web Mock</Badge>
       </div>
       <p v-if="createOrder.data.value" class="mt-3 text-sm text-emerald-700">
@@ -423,4 +430,175 @@ const workspaces: { id: Workspace; label: string }[] = [
       </p>
     </Card>
   </template>
+
+  <Sheet
+    :open="orderSheetOpen"
+    :title="selectedOrder ? `订单 ${selectedOrder.id}` : '订单详情'"
+    description="订单摘要、资金、物流与汇款信息均为只读"
+    @update:open="setOrderSheetOpen"
+  >
+    <template #toolbar>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <Badge v-if="selectedOrder" variant="warning">{{ selectedOrder.status }}</Badge>
+          <Badge variant="outline">fullDetail: jushita-only</Badge>
+        </div>
+        <div class="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            :disabled="!hasPreviousOrder"
+            aria-label="查看上一条订单"
+            @click="moveOrder(-1)"
+          >
+            <ChevronLeft class="size-4" />上一条
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            :disabled="!hasNextOrder"
+            aria-label="查看下一条订单"
+            @click="moveOrder(1)"
+          >
+            下一条<ChevronRight class="size-4" />
+          </Button>
+        </div>
+      </div>
+    </template>
+
+    <template v-if="selectedOrder">
+      <div class="mb-5 flex gap-2" role="tablist" aria-label="订单详情分区">
+        <Button
+          size="sm"
+          :variant="orderDrawerTab === 'overview' ? 'default' : 'outline'"
+          role="tab"
+          :aria-selected="orderDrawerTab === 'overview'"
+          @click="orderDrawerTab = 'overview'"
+        >
+          概览
+        </Button>
+        <Button
+          size="sm"
+          :variant="orderDrawerTab === 'payment' ? 'default' : 'outline'"
+          role="tab"
+          :aria-selected="orderDrawerTab === 'payment'"
+          @click="orderDrawerTab = 'payment'"
+        >
+          TT 汇款
+        </Button>
+      </div>
+
+      <section v-if="orderDrawerTab === 'overview'" class="space-y-4" aria-label="订单概览">
+        <Card class="p-4">
+          <div class="flex items-start gap-3">
+            <ClipboardList class="mt-0.5 size-5 text-primary" />
+            <div class="grid flex-1 gap-3 sm:grid-cols-2">
+              <div>
+                <p class="text-xs text-muted-foreground">订单金额</p>
+                <p class="mt-1 text-lg font-semibold">
+                  {{ selectedOrder.currency }} {{ selectedOrder.amount }}
+                </p>
+              </div>
+              <div>
+                <p class="text-xs text-muted-foreground">买家</p>
+                <p class="mt-1 font-medium">{{ selectedOrder.buyerLoginId ?? '未返回' }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-muted-foreground">创建时间</p>
+                <p class="mt-1 text-sm">{{ formatDate(selectedOrder.createdAt) }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-muted-foreground">最后修改</p>
+                <p class="mt-1 text-sm">{{ formatDate(selectedOrder.modifiedAt) }}</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <QueryState :loading="aggregate.isPending.value" :error="aggregate.error.value">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <Card class="p-4">
+              <Banknote class="mb-2 size-5 text-primary" />
+              <p class="text-xs text-muted-foreground">资金</p>
+              <template v-if="aggregate.data.value?.fund">
+                <p class="mt-1 font-semibold">
+                  {{ aggregate.data.value.fund.currency }} {{ aggregate.data.value.fund.paidAmount }}
+                </p>
+                <p class="mt-1 text-sm">{{ aggregate.data.value.fund.status }}</p>
+              </template>
+              <Badge v-else variant="warning" class="mt-2">当前接口不可用</Badge>
+            </Card>
+            <Card class="p-4">
+              <Truck class="mb-2 size-5 text-primary" />
+              <p class="text-xs text-muted-foreground">物流</p>
+              <template v-if="aggregate.data.value?.logistics">
+                <p class="mt-1 font-semibold">{{ aggregate.data.value.logistics.status }}</p>
+                <p class="mt-1 text-sm">
+                  {{ aggregate.data.value.logistics.carrier ?? '承运商未返回' }}
+                </p>
+                <code class="mt-1 block text-xs text-muted-foreground">
+                  {{ aggregate.data.value.logistics.trackingNumber ?? '物流单号未返回' }}
+                </code>
+              </template>
+              <Badge v-else variant="warning" class="mt-2">当前接口不可用</Badge>
+            </Card>
+          </div>
+        </QueryState>
+
+        <Card class="border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <p class="font-medium">完整订单详情不可用</p>
+          <p class="mt-1 leading-6">
+            <code>alibaba.seller.order.get</code> 仅允许聚石塔内调用，本页面不会用 Mock 字段补齐。
+          </p>
+        </Card>
+      </section>
+
+      <section v-else aria-label="TT 汇款信息">
+        <QueryState :loading="ttAccount.isPending.value" :error="ttAccount.error.value">
+          <Card v-if="ttAccount.data.value" class="space-y-4 p-5">
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div>
+                <p class="text-xs text-muted-foreground">应付金额</p>
+                <p class="mt-1 text-lg font-semibold">
+                  {{ ttAccount.data.value.currency }} {{ ttAccount.data.value.payableAmount }}
+                </p>
+              </div>
+              <div>
+                <p class="text-xs text-muted-foreground">收款人</p>
+                <p class="mt-1 font-medium">{{ ttAccount.data.value.accountName ?? '未返回' }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-muted-foreground">银行</p>
+                <p class="mt-1 font-medium">{{ ttAccount.data.value.bankName ?? '未返回' }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-muted-foreground">账号</p>
+                <div class="mt-1 flex items-center gap-2">
+                  <code data-testid="tt-account-number">
+                    {{ maskedAccountNumber(ttAccount.data.value.accountNumber) }}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    :disabled="!ttAccount.data.value.accountNumber"
+                    :aria-label="ttAccountRevealed ? '隐藏完整汇款账号' : '显示完整汇款账号'"
+                    @click="ttAccountRevealed = !ttAccountRevealed"
+                  >
+                    <EyeOff v-if="ttAccountRevealed" class="size-4" />
+                    <Eye v-else class="size-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <p v-if="ttAccount.data.value.guideContent" class="rounded-md bg-muted p-3 text-sm leading-6">
+              {{ ttAccount.data.value.guideContent }}
+            </p>
+          </Card>
+        </QueryState>
+        <p class="mt-4 text-xs leading-5 text-muted-foreground">
+          汇款账号仅保留在当前页面内存中；切换订单或关闭详情后会重新遮罩。
+        </p>
+      </section>
+    </template>
+  </Sheet>
 </template>

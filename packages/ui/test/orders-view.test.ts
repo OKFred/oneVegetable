@@ -34,6 +34,14 @@ function button(wrapper: ReturnType<typeof mountView>, text: string) {
   return result;
 }
 
+function bodyButton(text: string): HTMLButtonElement {
+  const result = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find(
+    (candidate) => candidate.textContent.includes(text) || candidate.getAttribute('aria-label') === text
+  );
+  if (!result) throw new Error(`Missing body button: ${text}`);
+  return result;
+}
+
 describe('OrdersView', () => {
   it('opens the non-Jushita aggregate and shows independent fund and logistics results', async () => {
     const wrapper = mountView();
@@ -41,19 +49,41 @@ describe('OrdersView', () => {
       expect(wrapper.text()).toContain('24668306501026709');
     });
 
-    await button(wrapper, '24668306501026709').trigger('click');
+    const firstRow = wrapper.find('tbody tr');
+    expect(firstRow.attributes('tabindex')).toBe('0');
+    await firstRow.trigger('keydown', { key: 'Enter' });
     await flushPromises();
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('聚合详情 · 24668306501026709');
-      expect(wrapper.text()).toContain('2450.50');
-      expect(wrapper.text()).toContain('fullDetail: jushita-only');
+      expect(document.body.textContent).toContain('订单 24668306501026709');
+      expect(document.body.textContent).toContain('2450.50');
+      expect(document.body.textContent).toContain('fullDetail: jushita-only');
     });
+
+    bodyButton('TT 汇款').click();
+    await flushPromises();
+    await vi.waitFor(() => {
+      expect(document.body.querySelector('[data-testid="tt-account-number"]')?.textContent).not.toContain(
+        '1029200038060'
+      );
+    });
+    bodyButton('显示完整汇款账号').click();
+    await vi.waitFor(() => {
+      expect(document.body.querySelector('[data-testid="tt-account-number"]')?.textContent).toContain(
+        '1029200038060'
+      );
+    });
+    bodyButton('查看下一条订单').click();
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('订单 24668306501026710');
+      expect(document.body.querySelector('[data-testid="tt-account-number"]')).toBeNull();
+    });
+    bodyButton('关闭详情').click();
 
     await button(wrapper, '资金与履约').trigger('click');
     await flushPromises();
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('一达通');
-      expect(wrapper.text()).toContain('1029200038060');
+      expect(wrapper.text()).not.toContain('1029200038060');
     });
     wrapper.unmount();
   });
@@ -98,8 +128,8 @@ describe('OrdersView', () => {
     await flushPromises();
     await button(wrapper, '信保订单草稿').trigger('click');
 
-    expect(wrapper.text()).toContain('扩展真实写入已禁用');
-    expect(button(wrapper, '创建 Mock 信保订单').attributes('disabled')).toBeDefined();
+    expect(wrapper.text()).toContain('真实写入已禁用');
+    expect(button(wrapper, '创建信保订单（未开放）').attributes('disabled')).toBeDefined();
     wrapper.unmount();
   });
 });

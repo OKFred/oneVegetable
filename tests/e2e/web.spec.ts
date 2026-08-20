@@ -73,13 +73,17 @@ test('web mock combines typed trade order capabilities without a Jushita detail 
   await page.getByRole('button', { name: '订单' }).click();
   await expect(page.getByRole('heading', { name: '交易 / 订单工作台' })).toBeVisible();
   await page.getByRole('button', { name: '24668306501026709' }).click();
-  await expect(page.getByText('聚合详情 · 24668306501026709')).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '订单 24668306501026709' })).toBeVisible();
   await expect(page.getByText('fullDetail: jushita-only')).toBeVisible();
   await expect(page.getByText('USD 2450.50').first()).toBeVisible();
+  await page.getByRole('tab', { name: 'TT 汇款' }).click();
+  await expect(page.getByTestId('tt-account-number')).not.toContainText('1029200038060');
+  await page.getByRole('button', { name: '显示完整汇款账号' }).click();
+  await expect(page.getByTestId('tt-account-number')).toContainText('1029200038060');
+  await page.getByRole('button', { name: '关闭详情' }).click();
 
   await page.getByRole('button', { name: '资金与履约' }).click();
   await expect(page.getByText('一达通')).toBeVisible();
-  await expect(page.getByText('1029200038060')).toBeVisible();
 
   await page.getByRole('button', { name: '地址 Schema' }).click();
   await expect(page.getByText('contact.fullName')).toBeVisible();
