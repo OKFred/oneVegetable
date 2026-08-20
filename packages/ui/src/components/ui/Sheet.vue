@@ -16,10 +16,10 @@ withDefaults(
   defineProps<{
     open: boolean;
     title: string;
-    description?: string;
+    description?: string | undefined;
     size?: 'md' | 'lg';
   }>(),
-  { size: 'lg' }
+  { description: undefined, size: 'lg' }
 );
 
 const emit = defineEmits<{ 'update:open': [open: boolean] }>();

@@ -6,6 +6,8 @@ import { chromium, expect, test, type BrowserContext } from '@playwright/test';
 
 let context: BrowserContext;
 
+test.setTimeout(90_000);
+
 test.beforeAll(async () => {
   const extensionPath = resolve(import.meta.dirname, '../../apps/extension/.output/chrome-mv3');
   const manifest = JSON.parse(await readFile(resolve(extensionPath, 'manifest.json'), 'utf8')) as {
@@ -281,9 +283,13 @@ test('MV3 options page persists settings and exposes the audited catalog', async
     );
   });
   await page.getByRole('button', { name: '商品' }).click();
-  await page.getByRole('tab', { name: 'Schema 发品/编辑' }).click();
-  await expect(page.getByText('已恢复浏览器中的未提交表单草稿。')).toBeVisible();
+  await page.getByRole('tab', { name: '商品发布/编辑' }).click();
+  await expect(page.getByText('发现从旧版本迁移的本地草稿')).toBeVisible();
+  await page.getByRole('button', { name: '继续本地草稿' }).click();
+  await page.getByRole('button', { name: /6\. 检查与提交/ }).click();
   await expect(page.getByRole('button', { name: /发布商品/ })).toBeDisabled();
+  await page.getByRole('button', { name: /4\. 商品详情/ }).click();
+  await page.getByRole('button', { name: /更多选填信息/ }).click();
   await page.getByRole('button', { name: /插入图库图片/ }).click();
   await expect(page.getByRole('heading', { name: '国际站图库' })).toBeVisible();
   await expect(page.locator('input[type="file"]')).toBeDisabled();
@@ -323,8 +329,8 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByRole('heading', { name: '交易 / 订单工作台' })).toBeVisible();
   await expect(page.getByText(/完整详情明确标记为不可用/)).toBeVisible();
   await page.getByRole('button', { name: '信保订单草稿' }).click();
-  await expect(page.getByText('扩展真实写入已禁用')).toBeVisible();
-  await expect(page.getByRole('button', { name: '创建 Mock 信保订单' })).toBeDisabled();
+  await expect(page.getByText('真实写入已禁用')).toBeVisible();
+  await expect(page.getByRole('button', { name: '创建信保订单（未开放）' })).toBeDisabled();
 
   await page.getByRole('button', { name: '国际物流' }).click();
   await expect(page.getByRole('heading', { name: '国际物流工作台' })).toBeVisible();

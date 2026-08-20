@@ -61,7 +61,8 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 
 - 正式网关为 `https://eco.taobao.com/router/rest`，支持 `hmac`、`md5` 和 `hmac-sha256`，默认 `hmac`。
 - 商品发布、草稿与更新使用 Schema 流程；新建商品通过 `schema.get` 获取类目模板，编辑已有商品通过 `schema.render` 加载现有值，不再把旧 `product.add/update` 作为主路径。
-- 商品页分为商品列表、Schema 发品/编辑、类目与分组、质量与上下架四个工作区。Schema XML 会解析为七类可视化字段，并保留只读 XML 预览与未知节点。
+- 商品页分为商品列表、商品发布/编辑、类目与分组、质量与上下架四个工作区。商品发布/编辑默认按基础信息、属性规格、图片、详情、交易物流和检查提交六步引导；高级模式保留全部 Schema 字段、只读 XML 预览与未知节点，两种模式共享同一份数据。
+- 本地商品草稿按商品 ID 或新建类目隔离，约 750 ms 防抖保存，最多保留 10 份且自动清理 30 天前记录。发现草稿时必须明确选择继续草稿或重新加载平台数据；发布或更新成功后删除对应草稿。
 - Schema 中 `valueTypeRule=html` 或 `superText` 会使用受限 Tiptap 编辑器；仅维护 `productDescType=2` 的普通详情。智能详情和不受支持的旧 HTML 默认原样只读，查看变化并二次确认后才转换。
 - 主图、SKU 图和详情图复用国际站图库选择器。Web Mock 支持分组/分页选择、本地上传和外部 URL 转存；真实上传、转存和商品更新在账号 smoke test 前保持禁用。
 - 详情整改面板区分 `Alibaba Schema`、`官方提示` 和 `项目建议`。只有 Schema/契约硬错误阻止提交；内容长度、结构、SEO、图片质量和官方评分提示均不阻止提交。
@@ -69,7 +70,7 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 - 审计目录中的 84 个候选方法均已具有方法关联的请求/响应映射和 CSP 安全 standalone validator。非法请求不会出网；响应漂移会保留原始数据、`traceId` 和结构化告警。类型化不等于业务资格或真实账号验收。
 - RFQ 工作台提供市场搜索、推荐、详情、最多 20 个 ID 的已读状态、报价权益和浏览器本地报价草稿。`alibaba.icbu.annex.upload` 按官方 RFQ 分类归入该领域；真实附件上传和提交报价在账号 smoke test 前保持禁用，Web Mock 可走通完整报价流程。
 - 所有真实 mutation 方法均为逐方法 feature flag 关闭，Web Mock 可完整演示写流程；UI 没有自行开启真实写操作的入口。
-- `alibaba.seller.order.get` 需要聚石塔，v2 不提供该调用；订单工作台组合列表、资金和物流，并提供履约通道、服务费率、TT 信息与地址 Schema。敏感交易数据不做页面持久化，真实交易写入继续关闭。详见 [交易域说明](docs/trade-domain.md)。
+- `alibaba.seller.order.get` 需要聚石塔，v2 不提供该调用；订单列表点击整行、订单号或“查看”会打开桌面右侧详情抽屉（移动端全屏），组合摘要、资金、物流与按需加载的 TT 信息。TT 账号默认遮罩且切换订单或关闭后立即重新遮罩；真实交易写入继续关闭。详见 [交易域说明](docs/trade-domain.md)。
 - 国际物流工作台覆盖地址字典、特殊商品属性、运力列表、运费试算、物流订单、面单和下单草稿。14 个 OneTouch 方法因业务资格和账号状态在扩展中默认关闭；Web Mock 可完整回归，运费模板保持独立可查询。详见 [物流域说明](docs/logistics-domain.md)。
 - 数据洞察工作台展示供应商全站排名时间序列，以及买家历史信保供应商与下单商品。页面不推断排名含义、不补造供应商名称，并保持长 ID 为字符串。CGS 小满签约客户接口默认关闭且不提供业务密钥表单。详见 [数据与供应商洞察说明](docs/insights-domain.md)。
 - 图库工作台支持三层分组管理，展示文件大小、引用数量、更新时间与图库 `fileId`，并对未引用和低于 750 × 750 的素材给出非阻断建议。真实分组操作、上传和 URL 转存在账号 smoke test 前保持关闭。详见 [图库域说明](docs/photo-domain.md)。
@@ -83,10 +84,10 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 
 ## 商品详情 Mock 场景
 
-执行 `pnpm dev:web`，进入“商品 → Schema 发品/编辑”：
+执行 `pnpm dev:web`，进入“商品 → 商品发布/编辑”，完成类目选择后点击“开始填写”，再进入“商品详情”步骤：
 
 - 商品 ID 留空：安全的普通详情，可直接可视化编辑。
-- 商品明文 ID 填 `10000002` 后获取 Schema：智能详情只读与显式降级流程。
-- 商品明文 ID 填 `10000003` 后获取 Schema：含未知标签、样式和 iframe 的旧详情转换差异。
+- 高级设置中的商品明文 ID 填 `10000002` 后重新加载：智能详情只读与显式降级流程。
+- 高级设置中的商品明文 ID 填 `10000003` 后重新加载：含未知标签、样式和 iframe 的旧详情转换差异。
 
 图库 URL 转存会先拒绝凭据 URL、本机、回环、私网与 link-local 字面地址，逐跳检查重定向，验证图片 MIME，并以 20 MiB 或 Schema 更小值限制下载。service worker 随后调用 `alibaba.icbu.photobank.upload`，不会使用只能返回 URL 的 `file.urlposting.upload`。

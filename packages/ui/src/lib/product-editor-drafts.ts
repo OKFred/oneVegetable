@@ -33,15 +33,18 @@ export function productEditorDraftKey(productId: string, categoryId: string): st
   return productId.trim() ? `existing:${productId.trim()}` : `new:${categoryId.trim()}`;
 }
 
-export function loadProductEditorDrafts(storage: DraftStorage, now = Date.now()): ProductEditorDraftV2[] {
-  const raw = storage.getItem(PRODUCT_EDITOR_DRAFT_STORAGE_KEY);
+export function loadProductEditorDrafts(
+  draftStorage: DraftStorage,
+  now = Date.now()
+): ProductEditorDraftV2[] {
+  const raw = draftStorage.getItem(PRODUCT_EDITOR_DRAFT_STORAGE_KEY);
   if (!raw) return [];
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw) as unknown;
   } catch {
-    storage.removeItem(PRODUCT_EDITOR_DRAFT_STORAGE_KEY);
+    draftStorage.removeItem(PRODUCT_EDITOR_DRAFT_STORAGE_KEY);
     return [];
   }
 
@@ -51,22 +54,22 @@ export function loadProductEditorDrafts(storage: DraftStorage, now = Date.now())
     .sort((left, right) => right.updatedAtUtc - left.updatedAtUtc)
     .slice(0, MAX_DRAFTS);
 
-  if (retained.length !== drafts.length || !Array.isArray(parsed)) writeDrafts(storage, retained);
+  if (retained.length !== drafts.length || !Array.isArray(parsed)) writeDrafts(draftStorage, retained);
   return retained;
 }
 
 export function findProductEditorDraft(
-  storage: DraftStorage,
+  draftStorage: DraftStorage,
   productId: string,
   categoryId: string,
   now = Date.now()
 ): ProductEditorDraftV2 | null {
   const key = productEditorDraftKey(productId, categoryId);
-  return loadProductEditorDrafts(storage, now).find((draft) => draft.draftKey === key) ?? null;
+  return loadProductEditorDrafts(draftStorage, now).find((draft) => draft.draftKey === key) ?? null;
 }
 
 export function saveProductEditorDraft(
-  storage: DraftStorage,
+  draftStorage: DraftStorage,
   input: Omit<ProductEditorDraftV2, 'schemaVersion' | 'draftKey' | 'kind' | 'updatedAtUtc'>,
   now = Date.now()
 ): ProductEditorDraftV2 {
@@ -82,28 +85,32 @@ export function saveProductEditorDraft(
     categoryId,
     updatedAtUtc: now
   };
-  const drafts = loadProductEditorDrafts(storage, now).filter(
+  const drafts = loadProductEditorDrafts(draftStorage, now).filter(
     (candidate) => candidate.draftKey !== draft.draftKey
   );
   writeDrafts(
-    storage,
+    draftStorage,
     [draft, ...drafts].sort((left, right) => right.updatedAtUtc - left.updatedAtUtc).slice(0, MAX_DRAFTS)
   );
   return draft;
 }
 
-export function removeProductEditorDraft(storage: DraftStorage, draftKey: string, now = Date.now()): void {
+export function removeProductEditorDraft(
+  draftStorage: DraftStorage,
+  draftKey: string,
+  now = Date.now()
+): void {
   writeDrafts(
-    storage,
-    loadProductEditorDrafts(storage, now).filter((draft) => draft.draftKey !== draftKey)
+    draftStorage,
+    loadProductEditorDrafts(draftStorage, now).filter((draft) => draft.draftKey !== draftKey)
   );
 }
 
 export function migrateLegacyProductEditorDraft(
-  storage: DraftStorage,
+  draftStorage: DraftStorage,
   now = Date.now()
 ): ProductEditorDraftV2 | null {
-  const raw = storage.getItem(LEGACY_PRODUCT_EDITOR_DRAFT_STORAGE_KEY);
+  const raw = draftStorage.getItem(LEGACY_PRODUCT_EDITOR_DRAFT_STORAGE_KEY);
   if (!raw) return null;
 
   try {
@@ -111,7 +118,7 @@ export function migrateLegacyProductEditorDraft(
     if (!isRecord(value) || typeof value.xml !== 'string' || typeof value.categoryId !== 'string')
       return null;
     const draft = saveProductEditorDraft(
-      storage,
+      draftStorage,
       {
         productId: null,
         categoryId: value.categoryId,
@@ -123,7 +130,7 @@ export function migrateLegacyProductEditorDraft(
       },
       now
     );
-    storage.removeItem(LEGACY_PRODUCT_EDITOR_DRAFT_STORAGE_KEY);
+    draftStorage.removeItem(LEGACY_PRODUCT_EDITOR_DRAFT_STORAGE_KEY);
     return draft;
   } catch {
     return null;
@@ -163,10 +170,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function writeDrafts(storage: DraftStorage, drafts: ProductEditorDraftV2[]): void {
+function writeDrafts(draftStorage: DraftStorage, drafts: ProductEditorDraftV2[]): void {
   if (drafts.length === 0) {
-    storage.removeItem(PRODUCT_EDITOR_DRAFT_STORAGE_KEY);
+    draftStorage.removeItem(PRODUCT_EDITOR_DRAFT_STORAGE_KEY);
     return;
   }
-  storage.setItem(PRODUCT_EDITOR_DRAFT_STORAGE_KEY, JSON.stringify(drafts));
+  draftStorage.setItem(PRODUCT_EDITOR_DRAFT_STORAGE_KEY, JSON.stringify(drafts));
 }

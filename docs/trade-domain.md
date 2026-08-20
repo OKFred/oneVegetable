@@ -15,8 +15,9 @@
 - 订单列表使用 `alibaba.seller.order.list`。
 - 聚合详情并行组合 `alibaba.seller.order.fund.get` 与 `alibaba.seller.order.logistics.get`。任一接口失败只将对应区块标为不可用，不丢弃其他结果。
 - 完整详情固定显示 `fullDetail: jushita-only`，不会用 Mock 字段冒充真实返回。
-- 资金与履约区提供履约通道、服务费率和按订单读取的 TT 汇款信息。
-- 地址区把官方动态表单 Schema 转为声明式字段，并提供地址簿读取；邮箱、地址和 TT 账号数据只保留在当前页面内存，不写入 localStorage 或 `chrome.storage`。
+- 订单列表支持整行点击、Enter/Space 和显式“查看”按钮；桌面端从右侧打开约 720px 的详情抽屉，窄屏使用全屏。抽屉内的摘要、资金、物流和 TT 区块独立加载，单项失败不会隐藏其他信息。
+- 抽屉头部支持前后订单切换。TT 信息仅在切换到对应页签后按需读取，银行账号默认遮罩，切换订单或关闭抽屉会立即恢复遮罩。
+- 资金与履约区只保留履约通道和服务费率；地址区把官方动态表单 Schema 转为声明式字段，并提供地址簿读取。邮箱、地址和 TT 账号数据只保留在当前页面内存，不写入 localStorage 或 `chrome.storage`。
 - 信保订单草稿可在 Web Mock 演示；扩展中的创建、修改、地址保存与删除仍由 service worker 的 mutation gate 拦截。
 
 ## 离线输入

@@ -522,8 +522,13 @@ watch(categoryOptions, (options) => {
 onMounted(() => {
   if (!('localStorage' in globalThis)) return;
   const migrated = migrateLegacyProductEditorDraft(globalThis.localStorage);
-  if (migrated) migratedDraftKey.value = migrated.draftKey;
-  offerCurrentDraft();
+  if (migrated) {
+    migratedDraftKey.value = migrated.draftKey;
+    categoryId.value = migrated.categoryId;
+    draftCandidate.value = migrated;
+  } else {
+    offerCurrentDraft();
+  }
 });
 
 onBeforeUnmount(() => {

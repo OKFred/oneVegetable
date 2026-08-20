@@ -83,14 +83,14 @@ test('authenticated Web renders real read results without Mock fallback', async 
       )
       .toBe(true);
 
-    const editButtonCount = await page.getByRole('button', { name: '编辑 Schema' }).count();
+    const editButtonCount = await page.getByRole('button', { name: '编辑商品' }).count();
     let renderSucceeded = false;
     for (let index = 0; index < Math.min(editButtonCount, 5); index += 1) {
       if (index > 0) await page.getByRole('tab', { name: '商品列表' }).click();
       const previousAttemptCount = results.filter(
         (result) => result.operation === 'renderProductSchema'
       ).length;
-      await page.getByRole('button', { name: '编辑 Schema' }).nth(index).click();
+      await page.getByRole('button', { name: '编辑商品' }).nth(index).click();
       await expect
         .poll(
           async () =>
@@ -108,12 +108,12 @@ test('authenticated Web renders real read results without Mock fallback', async 
       expect(attempt?.outcome).toBe('provider-error');
     }
     expect(renderSucceeded).toBe(true);
-    await expect(page.getByLabel('商品明文 ID（编辑时）')).toHaveValue(/^[1-9][0-9]*$/);
+    await expect(page.getByLabel('商品明文 ID')).toHaveValue(/^[1-9][0-9]*$/);
     await expectOperation(results, 'renderProductSchema', 'passed');
     await expectNoMockSentinel(results, 'renderProductSchema');
     await expect(page.getByText('已渲染现有商品 Schema')).toBeVisible();
-    await expect(page.getByRole('heading', { name: '可视化商品 Schema' })).toBeVisible();
-    await expect(page.getByText(/\d+ 个顶层字段/)).toBeVisible();
+    await expect(page.getByRole('heading', { name: '编辑商品', exact: true })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: '商品编辑步骤' }).getByRole('button')).toHaveCount(6);
     await expect
       .poll(
         () =>
@@ -129,6 +129,7 @@ test('authenticated Web renders real read results without Mock fallback', async 
         { message: '真实 schema.render 应回填至少一个可编辑字段' }
       )
       .toBeGreaterThan(0);
+    await page.getByRole('button', { name: '高级模式' }).click();
     await expect(page.locator('details pre')).toContainText('<itemSchema');
     await expect(page.getByRole('button', { name: /更新商品/ })).toBeDisabled();
     await expectOperation(results, 'getProductScore', 'passed');
@@ -141,6 +142,13 @@ test('authenticated Web renders real read results without Mock fallback', async 
     await openDomain(page, '订单', '交易 / 订单工作台');
     await expectOperation(results, 'listTradeOrders', 'passed');
     await expectNoMockSentinel(results, 'listTradeOrders');
+    const orderButtons = page.getByRole('button', { name: '查看' });
+    if ((await orderButtons.count()) > 0) {
+      await orderButtons.first().click();
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await expectOperation(results, 'getTradeOrderAggregate', 'observed');
+      await page.getByRole('button', { name: '关闭详情' }).click();
+    }
 
     await openDomain(page, 'RFQ', 'RFQ 工作台');
     await expectOperation(results, 'listRfqs', 'observed');
