@@ -1,7 +1,7 @@
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-import { expect, test, type Page, type Response } from '@playwright/test';
+import { expect, test, type Page, type Request, type Response } from '@playwright/test';
 
 interface OperationResult {
   operation: string;
@@ -39,7 +39,20 @@ test('authenticated Web renders real read results without Mock fallback', async 
   const captureErrors: string[] = [];
   page.on('response', (response) => {
     if (!response.url().endsWith('/api/v1/operations/call')) return;
+    const operation = readString(readRecord(response.request().postDataJSON()), 'operation');
+    if (operation === 'renderProductSchema') return;
     const task = captureOperation(response, results, productSchemaPrerequisites)
+      .catch((cause: unknown) => {
+        captureErrors.push(cause instanceof Error ? cause.message : '无法读取 operation 响应');
+      })
+      .finally(() => captureTasks.delete(task));
+    captureTasks.add(task);
+  });
+  page.on('requestfinished', (request) => {
+    if (!request.url().endsWith('/api/v1/operations/call')) return;
+    const operation = readString(readRecord(request.postDataJSON()), 'operation');
+    if (operation !== 'renderProductSchema') return;
+    const task = captureFinishedOperation(request, results, productSchemaPrerequisites)
       .catch((cause: unknown) => {
         captureErrors.push(cause instanceof Error ? cause.message : '无法读取 operation 响应');
       })
@@ -70,16 +83,53 @@ test('authenticated Web renders real read results without Mock fallback', async 
       )
       .toBe(true);
 
-    await page.getByRole('button', { name: '编辑 Schema' }).first().click();
-    await expect(page.getByLabel('商品/草稿 ID（编辑时）')).toHaveValue(
-      productSchemaPrerequisites.productId ?? ''
-    );
-    await expect(page.getByText('已选择商品及其真实类目，可以获取编辑 Schema。')).toBeVisible();
-    await page.getByRole('button', { name: '获取 Schema' }).click();
-    await expectOperation(results, 'getProductSchema', 'passed');
-    await expectNoMockSentinel(results, 'getProductSchema');
+    const editButtonCount = await page.getByRole('button', { name: '编辑 Schema' }).count();
+    let renderSucceeded = false;
+    for (let index = 0; index < Math.min(editButtonCount, 5); index += 1) {
+      if (index > 0) await page.getByRole('tab', { name: '商品列表' }).click();
+      const previousAttemptCount = results.filter(
+        (result) => result.operation === 'renderProductSchema'
+      ).length;
+      await page.getByRole('button', { name: '编辑 Schema' }).nth(index).click();
+      await expect
+        .poll(
+          async () =>
+            (await page.getByText('已渲染现有商品 Schema').isVisible()) ||
+            results.filter((result) => result.operation === 'renderProductSchema').length >
+              previousAttemptCount,
+          { message: `第 ${index + 1} 个真实商品应返回 schema.render 结果`, timeout: 15_000 }
+        )
+        .toBe(true);
+      const attempt = results.filter((result) => result.operation === 'renderProductSchema').at(-1);
+      if (attempt?.outcome === 'passed') {
+        renderSucceeded = true;
+        break;
+      }
+      expect(attempt?.outcome).toBe('provider-error');
+    }
+    expect(renderSucceeded).toBe(true);
+    await expect(page.getByLabel('商品明文 ID（编辑时）')).toHaveValue(/^[1-9][0-9]*$/);
+    await expectOperation(results, 'renderProductSchema', 'passed');
+    await expectNoMockSentinel(results, 'renderProductSchema');
+    await expect(page.getByText('已渲染现有商品 Schema')).toBeVisible();
     await expect(page.getByRole('heading', { name: '可视化商品 Schema' })).toBeVisible();
     await expect(page.getByText(/\d+ 个顶层字段/)).toBeVisible();
+    await expect
+      .poll(
+        () =>
+          page.locator('input:not([disabled]), textarea:not([disabled]), select:not([disabled])').evaluateAll(
+            (elements) =>
+              elements.filter((element) => {
+                if (element instanceof HTMLInputElement && ['checkbox', 'radio'].includes(element.type)) {
+                  return element.checked;
+                }
+                return 'value' in element && typeof element.value === 'string' && element.value.trim() !== '';
+              }).length
+          ),
+        { message: '真实 schema.render 应回填至少一个可编辑字段' }
+      )
+      .toBeGreaterThan(0);
+    await expect(page.locator('details pre')).toContainText('<itemSchema');
     await expect(page.getByRole('button', { name: /更新商品/ })).toBeDisabled();
     await expectOperation(results, 'getProductScore', 'passed');
 
@@ -140,6 +190,15 @@ test('authenticated Web renders real read results without Mock fallback', async 
 async function openDomain(page: Page, navigation: string, heading: string): Promise<void> {
   await page.getByRole('button', { name: navigation, exact: true }).click();
   await expect(page.getByRole('heading', { name: heading })).toBeVisible();
+}
+
+async function captureFinishedOperation(
+  request: Request,
+  results: OperationResult[],
+  productSchemaPrerequisites: ProductSchemaPrerequisites
+): Promise<void> {
+  const response = await request.response();
+  if (response) await captureOperation(response, results, productSchemaPrerequisites);
 }
 
 async function expectOperation(

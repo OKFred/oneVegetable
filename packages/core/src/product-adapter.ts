@@ -1,4 +1,5 @@
 import type { AlibabaClient } from './alibaba-client';
+import { GatewayException } from './errors';
 import type {
   ProductCategory,
   ProductCategoryMapping,
@@ -90,8 +91,9 @@ export class ProductAdapter {
         product_id: productId
       }
     });
+    const root = unwrap(call.data, call.method);
     return {
-      xml: readString(unwrap(call.data, call.method), ['data']) ?? '',
+      xml: requireSchemaXml(root, 'ALIBABA_SCHEMA_RENDER_FAILED'),
       categoryId: request.categoryId,
       language: request.language,
       market: 'wholesale'
@@ -195,6 +197,19 @@ export class ProductAdapter {
       issues: issueRecords.map((item) => readString(item, ['message', 'description']) ?? '待优化项')
     };
   }
+}
+
+function requireSchemaXml(record: Record<string, unknown>, fallbackCode: string): string {
+  const xml = readString(record, ['data']);
+  if (readBoolean(record, ['biz_success']) !== false && xml?.trim()) return xml;
+  throw new GatewayException({
+    code: readString(record, ['msg_code']) ?? fallbackCode,
+    message: readString(record, ['message']) ?? 'Alibaba 未返回可编辑的商品 Schema',
+    ...(readString(record, ['trace_id', 'request_id'])
+      ? { traceId: readString(record, ['trace_id', 'request_id']) }
+      : {}),
+    retryable: false
+  });
 }
 
 function normalizeCategory(record: Record<string, unknown>): ProductCategory {

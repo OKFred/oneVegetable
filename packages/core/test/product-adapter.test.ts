@@ -98,6 +98,31 @@ describe('ProductAdapter', () => {
     expect(call).not.toHaveBeenCalled();
   });
 
+  it('returns a structured provider error when render has no XML', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve({
+        method,
+        data: {
+          biz_success: false,
+          msg_code: 'PUB_BIZCHECK_PRODUCT_IN_AUDITING',
+          message: 'Product is under review',
+          trace_id: 'render-trace'
+        }
+      })
+    );
+    const adapter = new ProductAdapter({ call });
+
+    await expect(
+      adapter.renderSchema({ categoryId: 456, language: 'en_US', productId: '123' })
+    ).rejects.toMatchObject({
+      gatewayError: {
+        code: 'PUB_BIZCHECK_PRODUCT_IN_AUDITING',
+        traceId: 'render-trace',
+        retryable: false
+      }
+    });
+  });
+
   it('uses cat_id 0 for the documented top-level category query', async () => {
     const call = vi.fn<AlibabaClient['call']>((method) =>
       Promise.resolve(
