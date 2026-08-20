@@ -197,12 +197,14 @@ async function logout(): Promise<void> {
         </header>
         <main class="p-4 lg:p-7"><component :is="activeView" /></main>
       </div>
-      <button
-        v-if="sidebarOpen"
-        class="fixed inset-0 z-30 bg-black/40 lg:hidden"
-        aria-label="关闭导航"
-        @click="sidebarOpen = false"
-      />
+      <Transition name="ov-fade">
+        <button
+          v-if="sidebarOpen"
+          class="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          aria-label="关闭导航"
+          @click="sidebarOpen = false"
+        />
+      </Transition>
     </template>
   </div>
 </template>

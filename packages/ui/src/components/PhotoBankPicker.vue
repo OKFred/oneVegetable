@@ -178,108 +178,110 @@ function dimensionsLabel(photo: Photo): string {
     </Button>
 
     <Teleport to="body">
-      <div
-        v-if="open"
-        class="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4"
-        @click.self="open = false"
-      >
-        <Card class="flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden">
-          <header class="flex items-center justify-between border-b p-4">
-            <div>
-              <h2 class="font-semibold">国际站图库</h2>
-              <p class="mt-1 text-xs text-muted-foreground">
-                已选 {{ modelValue.length }}/{{ max }}；素材 ID 会随商品 Schema 保存。
-              </p>
-            </div>
-            <Button variant="ghost" size="icon" aria-label="关闭图库" @click="open = false"
-              ><X class="size-4"
-            /></Button>
-          </header>
-          <div class="grid min-h-0 flex-1 md:grid-cols-[220px_1fr]">
-            <aside class="overflow-auto border-r p-3">
-              <PhotoGroupNavigation :model-value="selectedGroup" @update:model-value="changeGroup" />
-              <label
-                class="mt-4 flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md border text-sm font-medium"
-                :class="uploadsEnabled ? '' : 'cursor-not-allowed opacity-50'"
-              >
-                <LoaderCircle v-if="upload.isPending.value" class="size-4 animate-spin" />
-                <Upload v-else class="size-4" />本地上传
-                <input
-                  type="file"
-                  accept="image/*"
-                  class="sr-only"
-                  :disabled="!uploadsEnabled || upload.isPending.value"
-                  @change="onFileChange"
-                />
-              </label>
-              <p class="mt-2 text-xs text-muted-foreground">支持图片文件，单张最大 5 MiB。</p>
-              <div class="mt-4 space-y-2 border-t pt-4">
-                <p class="text-xs font-medium">转存外部图片</p>
-                <Input
-                  v-model="transferUrl"
-                  aria-label="外部图片 URL"
-                  placeholder="https://…"
-                  :disabled="!uploadsEnabled"
-                />
-                <Button
-                  class="w-full"
-                  variant="outline"
-                  size="sm"
-                  :disabled="!uploadsEnabled || !transferUrl || transfer.isPending.value"
-                  @click="transfer.mutate()"
-                >
-                  <LoaderCircle v-if="transfer.isPending.value" class="size-4 animate-spin" />
-                  <Download v-else class="size-4" />下载并存入图库
-                </Button>
-                <p class="text-xs text-muted-foreground">仅公共 HTTP(S) 图片，最大 5 MiB。</p>
+      <Transition name="ov-modal">
+        <div
+          v-if="open"
+          class="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4"
+          @click.self="open = false"
+        >
+          <Card class="ov-modal-panel flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden">
+            <header class="flex items-center justify-between border-b p-4">
+              <div>
+                <h2 class="font-semibold">国际站图库</h2>
+                <p class="mt-1 text-xs text-muted-foreground">
+                  已选 {{ modelValue.length }}/{{ max }}；素材 ID 会随商品 Schema 保存。
+                </p>
               </div>
-              <p v-if="uploadError" class="mt-2 text-xs text-destructive">{{ uploadError }}</p>
-            </aside>
-            <main class="min-h-0 overflow-auto p-4">
-              <QueryState :loading="photos.isPending.value" :error="photos.error.value">
-                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  <button
-                    v-for="photo in photos.data.value?.items ?? []"
-                    :key="photo.id"
-                    type="button"
-                    class="relative overflow-hidden rounded-lg border text-left hover:border-primary"
-                    :class="selectedIds.has(photo.id) ? 'ring-2 ring-primary' : ''"
-                    @click="choose(photo)"
+              <Button variant="ghost" size="icon" aria-label="关闭图库" @click="open = false"
+                ><X class="size-4"
+              /></Button>
+            </header>
+            <div class="grid min-h-0 flex-1 md:grid-cols-[220px_1fr]">
+              <aside class="overflow-auto border-r p-3">
+                <PhotoGroupNavigation :model-value="selectedGroup" @update:model-value="changeGroup" />
+                <label
+                  class="mt-4 flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md border text-sm font-medium"
+                  :class="uploadsEnabled ? '' : 'cursor-not-allowed opacity-50'"
+                >
+                  <LoaderCircle v-if="upload.isPending.value" class="size-4 animate-spin" />
+                  <Upload v-else class="size-4" />本地上传
+                  <input
+                    type="file"
+                    accept="image/*"
+                    class="sr-only"
+                    :disabled="!uploadsEnabled || upload.isPending.value"
+                    @change="onFileChange"
+                  />
+                </label>
+                <p class="mt-2 text-xs text-muted-foreground">支持图片文件，单张最大 5 MiB。</p>
+                <div class="mt-4 space-y-2 border-t pt-4">
+                  <p class="text-xs font-medium">转存外部图片</p>
+                  <Input
+                    v-model="transferUrl"
+                    aria-label="外部图片 URL"
+                    placeholder="https://…"
+                    :disabled="!uploadsEnabled"
+                  />
+                  <Button
+                    class="w-full"
+                    variant="outline"
+                    size="sm"
+                    :disabled="!uploadsEnabled || !transferUrl || transfer.isPending.value"
+                    @click="transfer.mutate()"
                   >
-                    <img
-                      :src="photo.url"
-                      :alt="photo.name"
-                      class="aspect-square w-full bg-muted object-cover"
-                      @load="rememberDimensions(photo, $event)"
-                    />
-                    <span
-                      v-if="selectedIds.has(photo.id)"
-                      class="absolute right-2 top-2 rounded-full bg-primary p-1 text-primary-foreground"
-                      ><Check class="size-3"
-                    /></span>
-                    <span class="block p-2">
-                      <span class="block truncate text-sm font-medium">{{ photo.name }}</span>
-                      <span class="text-xs text-muted-foreground"
-                        >{{ dimensionsLabel(photo) }} · {{ Math.ceil(photo.fileSize / 1024) }} KiB</span
-                      >
-                    </span>
-                  </button>
+                    <LoaderCircle v-if="transfer.isPending.value" class="size-4 animate-spin" />
+                    <Download v-else class="size-4" />下载并存入图库
+                  </Button>
+                  <p class="text-xs text-muted-foreground">仅公共 HTTP(S) 图片，最大 5 MiB。</p>
                 </div>
-              </QueryState>
-            </main>
-          </div>
-          <footer class="flex items-center justify-between border-t p-4">
-            <div class="flex items-center gap-2">
-              <Button variant="outline" size="sm" :disabled="page <= 1" @click="page--">上一页</Button>
-              <span class="text-xs text-muted-foreground">{{ page }}/{{ totalPages }}</span>
-              <Button variant="outline" size="sm" :disabled="page >= totalPages" @click="page++"
-                >下一页</Button
-              >
+                <p v-if="uploadError" class="mt-2 text-xs text-destructive">{{ uploadError }}</p>
+              </aside>
+              <main class="min-h-0 overflow-auto p-4">
+                <QueryState :loading="photos.isPending.value" :error="photos.error.value">
+                  <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                    <button
+                      v-for="photo in photos.data.value?.items ?? []"
+                      :key="photo.id"
+                      type="button"
+                      class="relative overflow-hidden rounded-lg border text-left hover:border-primary"
+                      :class="selectedIds.has(photo.id) ? 'ring-2 ring-primary' : ''"
+                      @click="choose(photo)"
+                    >
+                      <img
+                        :src="photo.url"
+                        :alt="photo.name"
+                        class="aspect-square w-full bg-muted object-cover"
+                        @load="rememberDimensions(photo, $event)"
+                      />
+                      <span
+                        v-if="selectedIds.has(photo.id)"
+                        class="absolute right-2 top-2 rounded-full bg-primary p-1 text-primary-foreground"
+                        ><Check class="size-3"
+                      /></span>
+                      <span class="block p-2">
+                        <span class="block truncate text-sm font-medium">{{ photo.name }}</span>
+                        <span class="text-xs text-muted-foreground"
+                          >{{ dimensionsLabel(photo) }} · {{ Math.ceil(photo.fileSize / 1024) }} KiB</span
+                        >
+                      </span>
+                    </button>
+                  </div>
+                </QueryState>
+              </main>
             </div>
-            <Button @click="open = false">完成选择</Button>
-          </footer>
-        </Card>
-      </div>
+            <footer class="flex items-center justify-between border-t p-4">
+              <div class="flex items-center gap-2">
+                <Button variant="outline" size="sm" :disabled="page <= 1" @click="page--">上一页</Button>
+                <span class="text-xs text-muted-foreground">{{ page }}/{{ totalPages }}</span>
+                <Button variant="outline" size="sm" :disabled="page >= totalPages" @click="page++"
+                  >下一页</Button
+                >
+              </div>
+              <Button @click="open = false">完成选择</Button>
+            </footer>
+          </Card>
+        </div>
+      </Transition>
     </Teleport>
   </div>
 </template>

@@ -228,7 +228,7 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
             {{ optionalOpen[currentSection.id] ? '收起选填信息' : `更多选填信息（${hiddenOptionalCount}）` }}
           </Button>
         </div>
-        <div class="space-y-4">
+        <TransitionGroup name="ov-list" tag="div" class="space-y-4">
           <ProductSchemaFieldComponent
             v-for="entry in visibleEntries"
             :key="entry.field.key"
@@ -241,11 +241,12 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
           />
           <p
             v-if="visibleEntries.length === 0"
+            key="empty-fields"
             class="rounded-lg border p-8 text-center text-sm text-muted-foreground"
           >
             当前筛选下没有字段。
           </p>
-        </div>
+        </TransitionGroup>
       </section>
 
       <section v-else aria-labelledby="product-review-title">

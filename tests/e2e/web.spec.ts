@@ -7,7 +7,11 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
   await expect(page.getByText('OpenAPI Mock')).toBeVisible();
 
-  await page.getByRole('button', { name: '商品' }).click();
+  const productNavigation = page.getByRole('button', { name: '商品' });
+  await expect
+    .poll(() => productNavigation.evaluate((element) => getComputedStyle(element).cursor))
+    .toBe('pointer');
+  await productNavigation.click();
   await expect(page.getByRole('heading', { name: '商品管理' })).toBeVisible();
   await expect(page.getByText('Portable solar power station 1000W')).toBeVisible();
 
@@ -15,6 +19,14 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await page.getByRole('button', { name: '开始填写' }).click();
   await expect(page.getByRole('heading', { name: '发布新商品' })).toBeVisible();
   await expect(page.getByText('当前分组：Energy storage / Portable power / Solar generators')).toBeVisible();
+  await expect
+    .poll(() => page.getByLabel('一级分组').evaluate((element) => getComputedStyle(element).cursor))
+    .toBe('pointer');
+  await expect
+    .poll(() =>
+      page.getByText('高级设置', { exact: true }).evaluate((element) => getComputedStyle(element).cursor)
+    )
+    .toBe('pointer');
   await page.getByLabel('一级分组').selectOption({ label: 'Packaging' });
   await page.getByLabel('二级分组').selectOption({ label: 'Reusable bags' });
   await expect(page.getByText('当前分组：Packaging / Reusable bags')).toBeVisible();

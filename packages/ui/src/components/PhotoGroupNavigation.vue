@@ -69,22 +69,24 @@ async function selectGroup(group: PhotoGroup): Promise<void> {
 
 <template>
   <div>
-    <button
-      v-for="group in visibleGroups"
-      :key="group.id"
-      type="button"
-      class="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
-      :class="props.modelValue === group.id ? 'bg-accent text-accent-foreground' : ''"
-      :style="{ paddingLeft: `${8 + (group.level - 1) * 14}px` }"
-      @click="selectGroup(group)"
-    >
-      <span class="flex min-w-0 items-center gap-2">
-        <LoaderCircle v-if="loadingRootIds.includes(group.id)" class="size-4 shrink-0 animate-spin" />
-        <FolderOpen v-else class="size-4 shrink-0" />
-        <span class="truncate">{{ group.name }}</span>
-      </span>
-      <span v-if="group.photoCount > 0" class="text-xs text-muted-foreground">{{ group.photoCount }}</span>
-    </button>
+    <TransitionGroup name="ov-list" tag="div">
+      <button
+        v-for="group in visibleGroups"
+        :key="group.id"
+        type="button"
+        class="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-muted"
+        :class="props.modelValue === group.id ? 'bg-accent text-accent-foreground' : ''"
+        :style="{ paddingLeft: `${8 + (group.level - 1) * 14}px` }"
+        @click="selectGroup(group)"
+      >
+        <span class="flex min-w-0 items-center gap-2">
+          <LoaderCircle v-if="loadingRootIds.includes(group.id)" class="size-4 shrink-0 animate-spin" />
+          <FolderOpen v-else class="size-4 shrink-0" />
+          <span class="truncate">{{ group.name }}</span>
+        </span>
+        <span v-if="group.photoCount > 0" class="text-xs text-muted-foreground">{{ group.photoCount }}</span>
+      </button>
+    </TransitionGroup>
     <p v-if="roots.error.value" class="px-2 py-2 text-xs text-destructive">
       {{ roots.error.value instanceof Error ? roots.error.value.message : '图库分组加载失败' }}
     </p>
