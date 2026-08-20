@@ -32,16 +32,19 @@ export interface GatewayRequestContext {
 export interface AlibabaReadGatewayOptions {
   transport?: NetworkTransport;
   wait?: (milliseconds: number) => Promise<void>;
+  maxAttempts?: 1 | 2 | 3;
 }
 
 export class AlibabaReadGatewayClient implements GatewayClient {
   readonly #credentials: GatewayCredentials;
   readonly #network: NetworkManager;
   readonly #wait: ((milliseconds: number) => Promise<void>) | undefined;
+  readonly #maxAttempts: 1 | 2 | 3;
 
   constructor(credentials: GatewayCredentials, options: AlibabaReadGatewayOptions = {}) {
     this.#credentials = credentials;
     this.#wait = options.wait;
+    this.#maxAttempts = options.maxAttempts ?? 3;
     this.#network = new NetworkManager({
       ...(options.transport ? { transport: options.transport } : {}),
       ...(options.wait ? { wait: options.wait } : {}),
@@ -81,7 +84,7 @@ export class AlibabaReadGatewayClient implements GatewayClient {
 
   private createClient(context?: GatewayRequestContext): AlibabaClient {
     return new AlibabaClient(this.#credentials, this.#network, {
-      maxAttempts: 3,
+      maxAttempts: this.#maxAttempts,
       shouldRetry: (_method, error) => error.retryable,
       ...(this.#wait ? { wait: this.#wait } : {}),
       ...(context ? { requestId: context.requestId } : {})

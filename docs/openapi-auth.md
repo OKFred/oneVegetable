@@ -60,6 +60,19 @@ pnpm dev:api:real
 
 该命令强制使用 `local-node` 与 `real` 网关模式；Worker、staging 和 production 不读取本地授权文件。
 
+## 真实只读 Smoke
+
+真实 Smoke 是显式 opt-in 命令，不进入 CI：
+
+```powershell
+$env:ONE_VEGETABLE_REAL_SMOKE='1'
+pnpm smoke:alibaba:real
+```
+
+脚本只选择 `active + read + realCallEnabled + 非受限` 能力，串行调用且每次间隔至少 300 ms。列表结果中的商品、类目、RFQ、订单和供应商标识会仅在内存中作为详情请求前置参数使用；没有真实前置数据的调用标记为 `skipped-prerequisite`，不会使用文档中的占位 ID。
+
+报告写入 `artifacts/real-smoke/report.json`，只包含 requestId、方法、状态、上游错误码、契约问题和字段类型结构，不保存业务字段值或完整 Alibaba 响应。真实 mutation 不在候选集合中，任何 mutation feature flag 仍保持关闭。
+
 `artifacts/` 已被 Git 忽略，但 Windows 不保证 POSIX `0600` 文件权限完全生效。不要上传、提交、粘贴或通过聊天发送授权包和 Profile。截图在 AppSecret 显示及 OAuth 授权前生成，诊断文件不记录密码、Cookie、CSRF、授权码或 Token。
 
 失败时不写入不完整的授权包，只保存脱敏的 `last-run.json` 和现场截图。CI 不运行该脚本，也不读取 `.env`。

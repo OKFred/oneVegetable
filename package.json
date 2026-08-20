@@ -56,6 +56,7 @@
     "test:e2e": "pnpm build:extension && playwright test",
     "test:e2e:bff-replay": "node scripts/prepare-bff-replay-e2e.mjs && playwright test --config playwright.bff-replay.config.ts",
     "smoke:local-auth": "node scripts/smoke-local-auth.mjs",
+    "smoke:alibaba:real": "tsx scripts/smoke-alibaba-real.ts",
     "check:staging-config": "tsx scripts/check-staging-config.ts",
     "check:staging-config:local": "tsx scripts/check-staging-config.ts --allow-placeholders --skip-deployment-environment",
     "check:replay-coverage": "tsx scripts/check-documentation-replay.ts",
