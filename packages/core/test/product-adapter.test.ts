@@ -11,6 +11,31 @@ function response(method: string, body: Record<string, unknown>) {
 }
 
 describe('ProductAdapter', () => {
+  it('keeps the documented category id on product summaries', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve(
+        response(method, {
+          products: [
+            {
+              id: 123,
+              product_id: 'encrypted-product-id',
+              subject: 'Real product',
+              category_id: 456,
+              status: 'approved',
+              gmt_modified: '2026-08-20 12:30:00'
+            }
+          ],
+          total_item: 1
+        })
+      )
+    );
+    const adapter = new ProductAdapter({ call });
+
+    const result = await adapter.list({ page: 1, pageSize: 20 });
+
+    expect(result.items[0]?.categoryId).toBe(456);
+  });
+
   it('uses cat_id 0 for the documented top-level category query', async () => {
     const call = vi.fn<AlibabaClient['call']>((method) =>
       Promise.resolve(

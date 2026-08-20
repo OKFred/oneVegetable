@@ -29,7 +29,8 @@ export class ProductAdapter {
       groupName: readString(item, ['group_name']) ?? '未分组',
       status: normalizeProductStatus(readString(item, ['status', 'display'])),
       score: readNumber(item, ['score']) ?? 0,
-      updatedAt: normalizeDate(readString(item, ['gmt_modified', 'modified_time']))
+      updatedAt: normalizeDate(readString(item, ['gmt_modified', 'modified_time'])),
+      categoryId: readNumber(item, ['category_id', 'cat_id']) ?? null
     }));
     return {
       items,

@@ -229,9 +229,13 @@ function flattenCategories(items: ProductCategory[], depth = 0): (ProductCategor
 
 function selectProductForSchema(product: Product): void {
   editProductId.value = product.id;
+  if (product.categoryId !== null) categoryId.value = String(product.categoryId);
   schemaModel.value = null;
   schemaError.value = '';
-  feedback.value = '已选择真实商品；请选择其实际类目后获取编辑 Schema。';
+  feedback.value =
+    product.categoryId === null
+      ? '已选择商品；列表未返回类目，请选择实际类目后获取编辑 Schema。'
+      : '已选择商品及其真实类目，可以获取编辑 Schema。';
   workspace.value = 'publisher';
 }
 

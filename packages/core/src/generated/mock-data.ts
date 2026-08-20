@@ -11,7 +11,8 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
           "groupName": "Energy storage",
           "status": "online",
           "score": 92,
-          "updatedAt": "2026-08-11T03:20:00Z"
+          "updatedAt": "2026-08-11T03:20:00Z",
+          "categoryId": 100009999
         },
         {
           "id": "10000002",
@@ -19,7 +20,8 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
           "groupName": "Packaging",
           "status": "draft",
           "score": 76,
-          "updatedAt": "2026-08-10T09:12:00Z"
+          "updatedAt": "2026-08-10T09:12:00Z",
+          "categoryId": 100001589
         },
         {
           "id": "10000003",
@@ -27,7 +29,8 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
           "groupName": "Food machinery",
           "status": "auditing",
           "score": 84,
-          "updatedAt": "2026-08-09T11:03:00Z"
+          "updatedAt": "2026-08-09T11:03:00Z",
+          "categoryId": 100009998
         }
       ],
       "page": 1,

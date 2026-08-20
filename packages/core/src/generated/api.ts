@@ -6060,6 +6060,7 @@ export interface components {
             score: number;
             /** Format: date-time */
             updatedAt: string;
+            categoryId: number | null;
         };
         ProductCategory: {
             id: number;

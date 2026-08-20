@@ -9605,14 +9605,15 @@
       },
       "Product": {
         "type": "object",
-        "required": ["id", "subject", "groupName", "status", "score", "updatedAt"],
+        "required": ["id", "subject", "groupName", "status", "score", "updatedAt", "categoryId"],
         "properties": {
           "id": { "type": "string" },
           "subject": { "type": "string" },
           "groupName": { "type": "string" },
           "status": { "type": "string", "enum": ["online", "offline", "draft", "auditing", "rejected"] },
           "score": { "type": "integer", "minimum": 0, "maximum": 100 },
-          "updatedAt": { "type": "string", "format": "date-time" }
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "categoryId": { "type": ["integer", "null"] }
         }
       },
       "ProductCategory": {
