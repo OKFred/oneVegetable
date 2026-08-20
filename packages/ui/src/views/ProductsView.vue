@@ -28,13 +28,21 @@ import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
+import {
+  findProductEditorDraft,
+  migrateLegacyProductEditorDraft,
+  productEditorDraftKey,
+  removeProductEditorDraft,
+  saveProductEditorDraft,
+  type ProductEditorDraftV2,
+  type ProductEditorMode
+} from '../lib/product-editor-drafts';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 
 type Workspace = 'list' | 'publisher' | 'organization' | 'quality';
-type ProductEditorMode = 'guided' | 'advanced';
+type DraftSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
-const DRAFT_STORAGE_KEY = 'one-vegetable-product-schema-draft';
 const { gateway, mode } = useServices();
 const queryClient = useQueryClient();
 const workspace = ref<Workspace>('list');
@@ -47,7 +55,9 @@ const editScoreProductId = ref('');
 const schemaModel = ref<ProductSchemaModel | null>(null);
 const schemaError = ref('');
 const feedback = ref('');
-const draftRestored = ref(false);
+const draftCandidate = ref<ProductEditorDraftV2 | null>(null);
+const migratedDraftKey = ref<string | null>(null);
+const draftSaveStatus = ref<DraftSaveStatus>('idle');
 const selectedProductIds = ref<string[]>([]);
 const groupName = ref('');
 const imageMetadata = ref<Record<string, ProductDescriptionImageMetadata>>({});
@@ -55,6 +65,7 @@ const categorySearch = ref('');
 const editorMode = ref<ProductEditorMode>('guided');
 const editorStep = ref<ProductEditorStepId>('basics');
 let scoreRefreshTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
+let draftSaveTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 
 const products = useQuery({
   queryKey: ['products', subject],
@@ -123,6 +134,7 @@ const publish = useMutation({
       ? `商品 ${result.productId} 已更新`
       : `${draft ? '草稿已保存' : '商品已发布'}：${result.productId}`;
     await queryClient.invalidateQueries({ queryKey: ['products'] });
+    clearCurrentLocalDraft();
     if (editScoreProductId.value) scheduleScoreRefresh(editScoreProductId.value);
   }
 });
@@ -233,6 +245,8 @@ function flattenCategories(items: ProductCategory[], depth = 0): (ProductCategor
 }
 
 async function selectProductForSchema(product: Product): Promise<void> {
+  cancelDraftSave();
+  draftCandidate.value = null;
   editProductId.value = product.id;
   editScoreProductId.value = product.encryptedId ?? '';
   if (product.categoryId !== null) categoryId.value = String(product.categoryId);
@@ -249,6 +263,8 @@ async function selectProductForSchema(product: Product): Promise<void> {
 }
 
 function startNewProduct(): void {
+  cancelDraftSave();
+  draftCandidate.value = null;
   editProductId.value = '';
   editScoreProductId.value = '';
   schemaModel.value = null;
@@ -257,14 +273,16 @@ function startNewProduct(): void {
   editorMode.value = 'guided';
   editorStep.value = 'basics';
   workspace.value = 'publisher';
+  offerCurrentDraft();
 }
 
-function applySchema(xml: string, message: string): void {
+function applySchema(xml: string, message: string, offerLocalDraft = true): void {
   try {
     schemaModel.value = parseProductSchemaXml(xml);
     schemaError.value = '';
     feedback.value = message;
     editorStep.value = 'basics';
+    if (offerLocalDraft) offerCurrentDraft();
   } catch (error: unknown) {
     schemaError.value = error instanceof Error ? error.message : 'Schema XML 无法解析';
   }
@@ -341,7 +359,7 @@ async function refreshLevelSchema(): Promise<void> {
       language: language.value,
       xml: serializeProductSchemaXml(schemaModel.value)
     });
-    applySchema(result.xml, '层级属性已根据当前选择刷新');
+    applySchema(result.xml, '层级属性已根据当前选择刷新', false);
   } catch (error: unknown) {
     schemaError.value = error instanceof Error ? error.message : '层级属性刷新失败';
   }
@@ -371,6 +389,97 @@ function updateImageStatus(status: ProductDescriptionImageMetadata & { url: stri
   };
 }
 
+function offerCurrentDraft(): void {
+  if (!('localStorage' in globalThis) || !categoryId.value) return;
+  draftCandidate.value = findProductEditorDraft(
+    globalThis.localStorage,
+    editProductId.value,
+    categoryId.value
+  );
+}
+
+function resumeLocalDraft(): void {
+  const draft = draftCandidate.value;
+  if (!draft) return;
+  try {
+    schemaModel.value = parseProductSchemaXml(draft.xml);
+    categoryId.value = draft.categoryId;
+    language.value = draft.language;
+    market.value = draft.market;
+    editorMode.value = draft.mode;
+    editorStep.value = draft.step;
+    draftCandidate.value = null;
+    migratedDraftKey.value = null;
+    draftSaveStatus.value = 'saved';
+    feedback.value = '已继续本地草稿，平台数据尚未被修改。';
+  } catch (error: unknown) {
+    schemaError.value = error instanceof Error ? error.message : '本地草稿无法解析';
+  }
+}
+
+async function reloadPlatformData(): Promise<void> {
+  const draft = draftCandidate.value;
+  if (!draft || !('localStorage' in globalThis)) return;
+  removeProductEditorDraft(globalThis.localStorage, draft.draftKey);
+  draftCandidate.value = null;
+  migratedDraftKey.value = null;
+  draftSaveStatus.value = 'idle';
+  await loadSchema();
+}
+
+function scheduleDraftSave(): void {
+  cancelDraftSave();
+  if (!schemaModel.value || !categoryId.value || draftCandidate.value) return;
+  draftSaveStatus.value = 'saving';
+  draftSaveTimer = globalThis.setTimeout(() => {
+    draftSaveTimer = undefined;
+    saveCurrentLocalDraft();
+  }, 750);
+}
+
+function saveCurrentLocalDraft(): void {
+  if (!schemaModel.value || !schemaPreview.value || !categoryId.value || !('localStorage' in globalThis))
+    return;
+  try {
+    saveProductEditorDraft(globalThis.localStorage, {
+      productId: editProductId.value || null,
+      categoryId: categoryId.value,
+      language: language.value,
+      market: market.value,
+      xml: schemaPreview.value,
+      mode: editorMode.value,
+      step: editorStep.value
+    });
+    draftSaveStatus.value = 'saved';
+  } catch {
+    draftSaveStatus.value = 'error';
+  }
+}
+
+function clearCurrentLocalDraft(): void {
+  cancelDraftSave();
+  if (!('localStorage' in globalThis) || !categoryId.value) return;
+  removeProductEditorDraft(
+    globalThis.localStorage,
+    productEditorDraftKey(editProductId.value, categoryId.value)
+  );
+  draftCandidate.value = null;
+  draftSaveStatus.value = 'idle';
+}
+
+function cancelDraftSave(): void {
+  if (draftSaveTimer === undefined) return;
+  globalThis.clearTimeout(draftSaveTimer);
+  draftSaveTimer = undefined;
+}
+
+function draftSaveLabel(status: DraftSaveStatus): string {
+  if (status === 'saving') return '保存中…';
+  if (status === 'saved') return '已保存到本机';
+  if (status === 'error') return '本地草稿保存失败';
+  return '';
+}
+
 function collectOfficialTips(fields: ProductSchemaField[]): string[] {
   const tips = new Set<string>();
   const visit = (field: ProductSchemaField): void => {
@@ -398,13 +507,10 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : '操作失败';
 }
 
-watch(schemaPreview, (xml) => {
-  if (xml && 'localStorage' in globalThis) {
-    globalThis.localStorage.setItem(
-      DRAFT_STORAGE_KEY,
-      JSON.stringify({ categoryId: categoryId.value, language: language.value, market: market.value, xml })
-    );
-  }
+watch([schemaPreview, categoryId, language, market, editorMode, editorStep], scheduleDraftSave);
+
+watch([categoryId, editProductId], () => {
+  if (!schemaModel.value) offerCurrentDraft();
 });
 
 watch(categoryOptions, (options) => {
@@ -415,24 +521,13 @@ watch(categoryOptions, (options) => {
 
 onMounted(() => {
   if (!('localStorage' in globalThis)) return;
-  const stored = globalThis.localStorage.getItem(DRAFT_STORAGE_KEY);
-  if (!stored) return;
-  try {
-    const draft = JSON.parse(stored) as unknown;
-    if (typeof draft !== 'object' || draft === null || !('xml' in draft)) return;
-    const value = draft as Record<string, unknown>;
-    if (typeof value.xml !== 'string') return;
-    if (typeof value.categoryId === 'string') categoryId.value = value.categoryId;
-    if (typeof value.language === 'string') language.value = value.language;
-    if (value.market === 'wholesale' || value.market === 'sourcing') market.value = value.market;
-    schemaModel.value = parseProductSchemaXml(value.xml);
-    draftRestored.value = true;
-  } catch {
-    globalThis.localStorage.removeItem(DRAFT_STORAGE_KEY);
-  }
+  const migrated = migrateLegacyProductEditorDraft(globalThis.localStorage);
+  if (migrated) migratedDraftKey.value = migrated.draftKey;
+  offerCurrentDraft();
 });
 
 onBeforeUnmount(() => {
+  cancelDraftSave();
   if (scoreRefreshTimer !== undefined) globalThis.clearTimeout(scoreRefreshTimer);
 });
 </script>
@@ -532,7 +627,28 @@ onBeforeUnmount(() => {
           </label>
         </div>
       </details>
-      <p v-if="draftRestored" class="mt-3 text-xs text-muted-foreground">已恢复浏览器中的未提交表单草稿。</p>
+      <div v-if="draftCandidate" class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm">
+        <p class="font-medium text-amber-950">
+          {{ migratedDraftKey === draftCandidate.draftKey ? '发现从旧版本迁移的本地草稿' : '发现本地草稿' }}
+        </p>
+        <p class="mt-1 text-xs text-amber-800">
+          保存于
+          {{
+            new Date(draftCandidate.updatedAtUtc).toLocaleString('zh-CN')
+          }}。请选择后再继续，不会静默覆盖平台表单。
+        </p>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <Button size="sm" @click="resumeLocalDraft">继续本地草稿</Button>
+          <Button size="sm" variant="outline" @click="reloadPlatformData">重新加载平台数据</Button>
+        </div>
+      </div>
+      <p
+        v-if="draftSaveStatus !== 'idle' && !draftCandidate"
+        class="mt-3 text-xs"
+        :class="draftSaveStatus === 'error' ? 'text-destructive' : 'text-muted-foreground'"
+      >
+        本地草稿：{{ draftSaveLabel(draftSaveStatus) }}
+      </p>
       <p v-if="schemaError" class="mt-3 text-sm text-destructive">{{ schemaError }}</p>
     </Card>
 

@@ -15,15 +15,17 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await page.getByRole('button', { name: '开始填写' }).click();
   await expect(page.getByRole('heading', { name: '发布新商品' })).toBeVisible();
   await page.getByLabel('商品标题').fill('Portable solar generator for camping');
-  await page.getByRole('button', { name: /6\. 检查与提交/ }).click();
-  await page.getByRole('button', { name: /保存平台草稿/ }).click();
-  await expect(page.getByText(/草稿已保存/)).toBeVisible();
+  await expect(page.getByText('本地草稿：已保存到本机')).toBeVisible();
 
   await page.reload();
   await page.getByRole('button', { name: '商品' }).click();
   await page.getByRole('tab', { name: '商品发布/编辑' }).click();
-  await expect(page.getByText('已恢复浏览器中的未提交表单草稿。')).toBeVisible();
+  await expect(page.getByText('发现本地草稿', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '继续本地草稿' }).click();
   await expect(page.getByLabel('商品标题')).toHaveValue('Portable solar generator for camping');
+  await page.getByRole('button', { name: /6\. 检查与提交/ }).click();
+  await page.getByRole('button', { name: /保存平台草稿/ }).click();
+  await expect(page.getByText(/草稿已保存/)).toBeVisible();
 
   await page.getByRole('tab', { name: '类目与分组' }).click();
   await expect(page.getByText('Energy storage')).toBeVisible();
