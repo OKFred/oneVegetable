@@ -165,6 +165,12 @@ test('web mock manages gallery groups and exposes non-blocking asset governance'
   await expect(page.getByRole('heading', { name: '图库' })).toBeVisible();
   await expect(page.getByText('图库 fileId：ph_001')).toBeVisible();
   await expect(page.getByRole('button', { name: /低分辨率 1/ })).toBeVisible();
+  await page.getByRole('button', { name: '预览 solar-station-front.jpg' }).click();
+  await expect(page.getByRole('dialog', { name: '图片预览' })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'solar-station-front.jpg' })).toBeVisible();
+  await page.getByRole('button', { name: '放大图片' }).click();
+  await expect(page.getByText('125%')).toBeVisible();
+  await page.getByRole('button', { name: '关闭图片预览' }).click();
   await page.getByRole('button', { name: /商品主图/ }).click();
   await page.getByLabel('图库分组名称').fill('E2E 主图');
   await page.getByRole('button', { name: '改名' }).click();
@@ -196,6 +202,12 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
   await page.getByRole('button', { name: /4\. 商品详情/ }).click();
   await page.getByRole('button', { name: /插入图库图片/ }).click();
   await expect(page.getByRole('heading', { name: '国际站图库' })).toBeVisible();
+  await page
+    .getByRole('button', { name: /预览 .*\.jpg/ })
+    .first()
+    .click();
+  await expect(page.getByRole('dialog', { name: '图片预览' })).toBeVisible();
+  await page.getByRole('button', { name: '关闭图片预览' }).click();
   await page.getByRole('textbox', { name: '外部图片 URL' }).fill('https://images.example.com/detail.jpg');
   await page.getByRole('button', { name: '下载并存入图库' }).click();
   await expect(page.getByRole('textbox', { name: '外部图片 URL' })).toHaveValue('');

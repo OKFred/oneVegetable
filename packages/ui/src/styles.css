@@ -115,6 +115,14 @@ textarea {
   animation: ov-sheet-out 160ms ease-in;
 }
 
+.ov-preview-content[data-state='open'] {
+  animation: ov-preview-in 180ms ease-out;
+}
+
+.ov-preview-content[data-state='closed'] {
+  animation: ov-fade-out 140ms ease-in;
+}
+
 .ov-modal-enter-active,
 .ov-modal-leave-active {
   transition: opacity 180ms ease;
@@ -203,6 +211,13 @@ summary::marker {
 @keyframes ov-sheet-out {
   to {
     transform: translateX(100%);
+  }
+}
+
+@keyframes ov-preview-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
   }
 }
 

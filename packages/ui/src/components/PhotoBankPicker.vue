@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import { Check, Download, ImagePlus, LoaderCircle, Upload, X } from '@lucide/vue';
+import { Check, Download, Eye, ImagePlus, LoaderCircle, Upload, X } from '@lucide/vue';
 
 import { MAX_PHOTOBANK_IMAGE_BYTES, type Photo } from '@one-vegetable/core';
 
 import QueryState from './QueryState.vue';
+import ImagePreview, { type ImagePreviewItem } from './ImagePreview.vue';
 import PhotoGroupNavigation from './PhotoGroupNavigation.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
@@ -32,6 +33,9 @@ const pageSize = 12;
 const uploadError = ref('');
 const transferUrl = ref('');
 const observedDimensions = ref<Record<string, { width: number; height: number }>>({});
+const previewOpen = ref(false);
+const previewIndex = ref(0);
+const previewPhotos = ref<Photo[]>([]);
 const photos = useQuery({
   queryKey: ['photos', selectedGroup, page],
   queryFn: () =>
@@ -146,6 +150,24 @@ function dimensionsLabel(photo: Photo): string {
   const height = photo.height ?? observed?.height;
   return width && height ? `${width}×${height}` : '尺寸读取中';
 }
+
+const previewImages = computed<ImagePreviewItem[]>(() =>
+  previewPhotos.value.map((photo) => ({
+    id: photo.id,
+    src: photo.url,
+    alt: photo.name,
+    description: `${dimensionsLabel(photo)} · ${Math.ceil(photo.fileSize / 1024)} KiB`
+  }))
+);
+
+function showPreview(collection: readonly Photo[], photo: Photo): void {
+  previewPhotos.value = [...collection];
+  previewIndex.value = Math.max(
+    0,
+    collection.findIndex((candidate) => candidate.id === photo.id)
+  );
+  previewOpen.value = true;
+}
 </script>
 
 <template>
@@ -156,12 +178,19 @@ function dimensionsLabel(photo: Photo): string {
         :key="photo.id"
         class="group relative overflow-hidden rounded-md border"
       >
-        <img
-          :src="photo.url"
-          :alt="photo.name"
-          class="aspect-square w-full bg-muted object-cover"
-          @load="rememberDimensions(photo, $event)"
-        />
+        <button
+          type="button"
+          class="block w-full"
+          :aria-label="`预览 ${photo.name}`"
+          @click="showPreview(modelValue, photo)"
+        >
+          <img
+            :src="photo.url"
+            :alt="photo.name"
+            class="aspect-square w-full bg-muted object-cover"
+            @load="rememberDimensions(photo, $event)"
+          />
+        </button>
         <button
           type="button"
           class="absolute right-1 top-1 rounded-full bg-background/90 p-1 opacity-0 shadow group-hover:opacity-100"
@@ -239,32 +268,45 @@ function dimensionsLabel(photo: Photo): string {
               <main class="min-h-0 overflow-auto p-4">
                 <QueryState :loading="photos.isPending.value" :error="photos.error.value">
                   <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                    <button
+                    <div
                       v-for="photo in photos.data.value?.items ?? []"
                       :key="photo.id"
-                      type="button"
-                      class="relative overflow-hidden rounded-lg border text-left hover:border-primary"
+                      class="group relative overflow-hidden rounded-lg border text-left hover:border-primary"
                       :class="selectedIds.has(photo.id) ? 'ring-2 ring-primary' : ''"
-                      @click="choose(photo)"
                     >
-                      <img
-                        :src="photo.url"
-                        :alt="photo.name"
-                        class="aspect-square w-full bg-muted object-cover"
-                        @load="rememberDimensions(photo, $event)"
-                      />
+                      <button
+                        type="button"
+                        class="block w-full text-left"
+                        :aria-label="`${selectedIds.has(photo.id) ? '取消选择' : '选择'} ${photo.name}`"
+                        @click="choose(photo)"
+                      >
+                        <img
+                          :src="photo.url"
+                          :alt="photo.name"
+                          class="aspect-square w-full bg-muted object-cover"
+                          @load="rememberDimensions(photo, $event)"
+                        />
+                        <span class="block p-2">
+                          <span class="block truncate text-sm font-medium">{{ photo.name }}</span>
+                          <span class="text-xs text-muted-foreground"
+                            >{{ dimensionsLabel(photo) }} · {{ Math.ceil(photo.fileSize / 1024) }} KiB</span
+                          >
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        class="absolute left-2 top-2 rounded-full bg-background/90 p-1.5 opacity-0 shadow transition-opacity hover:bg-background group-hover:opacity-100 focus-visible:opacity-100"
+                        :aria-label="`预览 ${photo.name}`"
+                        @click="showPreview(photos.data.value?.items ?? [], photo)"
+                      >
+                        <Eye class="size-4" />
+                      </button>
                       <span
                         v-if="selectedIds.has(photo.id)"
                         class="absolute right-2 top-2 rounded-full bg-primary p-1 text-primary-foreground"
                         ><Check class="size-3"
                       /></span>
-                      <span class="block p-2">
-                        <span class="block truncate text-sm font-medium">{{ photo.name }}</span>
-                        <span class="text-xs text-muted-foreground"
-                          >{{ dimensionsLabel(photo) }} · {{ Math.ceil(photo.fileSize / 1024) }} KiB</span
-                        >
-                      </span>
-                    </button>
+                    </div>
                   </div>
                 </QueryState>
               </main>
@@ -283,5 +325,6 @@ function dimensionsLabel(photo: Photo): string {
         </div>
       </Transition>
     </Teleport>
+    <ImagePreview v-model:open="previewOpen" :images="previewImages" :initial-index="previewIndex" />
   </div>
 </template>

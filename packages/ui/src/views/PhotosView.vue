@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import { FolderPlus, Pencil, ShieldCheck, Trash2 } from '@lucide/vue';
+import { Eye, FolderPlus, Pencil, ShieldCheck, Trash2 } from '@lucide/vue';
 
 import type { Photo, PhotoGroup, PhotoGroupOperationRequest } from '@one-vegetable/core';
 
 import PageHeader from '../components/PageHeader.vue';
+import ImagePreview, { type ImagePreviewItem } from '../components/ImagePreview.vue';
 import PhotoBankPicker from '../components/PhotoBankPicker.vue';
 import PhotoGroupNavigation from '../components/PhotoGroupNavigation.vue';
 import QueryState from '../components/QueryState.vue';
@@ -26,6 +27,8 @@ const governanceFilter = ref<GovernanceFilter>('all');
 const operationMessage = ref('');
 const selectedGroupDefinition = ref<PhotoGroup | null>(null);
 const observedDimensions = ref<Record<string, { width: number; height: number }>>({});
+const previewOpen = ref(false);
+const previewIndex = ref(0);
 const photos = useQuery({
   queryKey: ['photos', selectedGroup],
   queryFn: () => gateway.request('listPhotos', { page: 1, pageSize: 24, groupId: selectedGroup.value })
@@ -48,6 +51,14 @@ const governanceCounts = computed(() => {
     lowResolution: items.filter(isLowResolution).length
   };
 });
+const previewImages = computed<ImagePreviewItem[]>(() =>
+  filteredPhotos.value.map((photo) => ({
+    id: photo.id,
+    src: photo.url,
+    alt: photo.name,
+    description: `${dimensionsLabel(photo)} · ${fileSize(photo.fileSize)}`
+  }))
+);
 const operateGroup = useMutation({
   mutationFn: (request: PhotoGroupOperationRequest) => gateway.request('operatePhotoGroup', request),
   onSuccess: async (group, request) => {
@@ -104,6 +115,14 @@ function isLowResolution(photo: Photo): boolean {
 
 function fileSize(value: number): string {
   return value >= 1024 * 1024 ? `${(value / 1024 / 1024).toFixed(1)} MiB` : `${Math.ceil(value / 1024)} KiB`;
+}
+
+function openPreview(photo: Photo): void {
+  previewIndex.value = Math.max(
+    0,
+    filteredPhotos.value.findIndex((candidate) => candidate.id === photo.id)
+  );
+  previewOpen.value = true;
 }
 </script>
 
@@ -204,12 +223,24 @@ function fileSize(value: number): string {
       <QueryState :loading="photos.isPending.value" :error="photos.error.value">
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           <Card v-for="photo in filteredPhotos" :key="photo.id" class="overflow-hidden">
-            <img
-              :src="photo.url"
-              :alt="photo.name"
-              class="aspect-square w-full bg-muted object-cover"
-              @load="rememberDimensions(photo, $event)"
-            />
+            <button
+              type="button"
+              class="group relative block w-full overflow-hidden bg-muted text-left"
+              :aria-label="`预览 ${photo.name}`"
+              @click="openPreview(photo)"
+            >
+              <img
+                :src="photo.url"
+                :alt="photo.name"
+                class="aspect-square w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                @load="rememberDimensions(photo, $event)"
+              />
+              <span
+                class="absolute inset-0 grid place-items-center bg-black/0 text-white opacity-0 transition group-hover:bg-black/25 group-hover:opacity-100 group-focus-visible:bg-black/25 group-focus-visible:opacity-100"
+              >
+                <span class="rounded-full bg-black/55 p-2 backdrop-blur"><Eye class="size-5" /></span>
+              </span>
+            </button>
             <div class="space-y-2 p-3">
               <p class="truncate text-sm font-medium">{{ photo.name }}</p>
               <p class="text-xs text-muted-foreground">
@@ -233,4 +264,6 @@ function fileSize(value: number): string {
       </QueryState>
     </section>
   </div>
+
+  <ImagePreview v-model:open="previewOpen" :images="previewImages" :initial-index="previewIndex" />
 </template>

@@ -45,6 +45,7 @@ describe('PhotosView', () => {
       expect(wrapper.text()).toContain('图库 fileId：ph_001');
       expect(wrapper.text()).toContain('低分辨率 1');
     });
+    expect(wrapper.find('button[aria-label^="预览 "]').exists()).toBe(true);
     await button(wrapper, '低分辨率 1').trigger('click');
     expect(wrapper.text()).toContain('dehydrator-detail.jpg');
     expect(wrapper.text()).not.toContain('solar-station-front.jpg');
