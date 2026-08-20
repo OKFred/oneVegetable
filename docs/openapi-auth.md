@@ -86,9 +86,9 @@ $env:ONE_VEGETABLE_REAL_WEB_SMOKE='1'
 pnpm smoke:web:real
 ```
 
-脚本使用独立的 `artifacts/real-web-smoke/one-vegetable.sqlite`，自动启动真实 Node BFF 与 BFF 模式 Web，验证管理员初始化、Dashboard、商品、图库、订单、RFQ、数据洞察和管理后台。报告只保存 operation、requestId、HTTP 状态、错误码和 Mock 哨兵检测结果，不保存真实响应内容。
+脚本使用独立的 `artifacts/real-web-smoke/one-vegetable.sqlite`，自动启动真实 Node BFF 与 BFF 模式 Web，验证管理员初始化、Dashboard、商品、图库、订单、RFQ、数据洞察和管理后台。商品验证会从真实列表响应中仅在内存提取明文商品 ID、混淆商品 ID和类目 ID，分别用于 Schema 编辑和评分；这些值不写入报告。报告只保存 operation、requestId、HTTP 状态、错误码和 Mock 哨兵检测结果，不保存真实响应内容。
 
-2026-08-20 的页面验证中，Dashboard、顶级类目、商品分组、商品列表、图库分组、图库列表和订单列表均返回 200；RFQ 与供应商排名按当前账号权限返回拒绝；Mock 哨兵为 0。测试还会尝试一个商品分组写操作，并要求它在出网前以 `MUTATION_FLAG_DISABLED` 被拒绝。
+2026-08-20 的页面验证中，Dashboard、顶级类目、商品分组、商品列表、真实商品 Schema、商品评分、图库分组、图库列表和订单列表均返回 200；真实 Schema 成功解析为 45 个顶层可视化字段。RFQ 与供应商排名按当前账号权限返回拒绝；Mock 哨兵为 0。商品更新按钮在真实模式中保持禁用，测试还会直接尝试一个商品分组写操作，并要求它在出网前以 `MUTATION_FLAG_DISABLED` 被拒绝。
 
 `artifacts/` 已被 Git 忽略，但 Windows 不保证 POSIX `0600` 文件权限完全生效。不要上传、提交、粘贴或通过聊天发送授权包和 Profile。截图在 AppSecret 显示及 OAuth 授权前生成，诊断文件不记录密码、Cookie、CSRF、授权码或 Token。
 

@@ -19,6 +19,11 @@ interface RealWebSmokeReport {
   results: OperationResult[];
 }
 
+interface ProductSchemaPrerequisites {
+  productId: string | null;
+  categoryId: number | null;
+}
+
 const apiOrigin = 'http://127.0.0.1:8797';
 const webOrigin = 'http://127.0.0.1:4175';
 const reportPath = resolve('artifacts/real-web-smoke/report.json');
@@ -26,11 +31,15 @@ const mockSentinels = ['mock-solar-station', 'RFQ-20260812-001', 'Northwind Trad
 
 test('authenticated Web renders real read results without Mock fallback', async ({ page, context }) => {
   const results: OperationResult[] = [];
+  const productSchemaPrerequisites: ProductSchemaPrerequisites = {
+    productId: null,
+    categoryId: null
+  };
   const captureTasks = new Set<Promise<void>>();
   const captureErrors: string[] = [];
   page.on('response', (response) => {
     if (!response.url().endsWith('/api/v1/operations/call')) return;
-    const task = captureOperation(response, results)
+    const task = captureOperation(response, results, productSchemaPrerequisites)
       .catch((cause: unknown) => {
         captureErrors.push(cause instanceof Error ? cause.message : '无法读取 operation 响应');
       })
@@ -54,6 +63,25 @@ test('authenticated Web renders real read results without Mock fallback', async 
     await openDomain(page, '商品', '商品管理');
     await expectOperation(results, 'listProducts', 'passed');
     await expectNoMockSentinel(results, 'listProducts');
+    await expect
+      .poll(
+        () => productSchemaPrerequisites.productId !== null && productSchemaPrerequisites.categoryId !== null,
+        { message: '真实商品列表应提供可用于 Schema 编辑的商品及类目 ID' }
+      )
+      .toBe(true);
+
+    await page.getByRole('button', { name: '编辑 Schema' }).first().click();
+    await expect(page.getByLabel('商品/草稿 ID（编辑时）')).toHaveValue(
+      productSchemaPrerequisites.productId ?? ''
+    );
+    await expect(page.getByText('已选择商品及其真实类目，可以获取编辑 Schema。')).toBeVisible();
+    await page.getByRole('button', { name: '获取 Schema' }).click();
+    await expectOperation(results, 'getProductSchema', 'passed');
+    await expectNoMockSentinel(results, 'getProductSchema');
+    await expect(page.getByRole('heading', { name: '可视化商品 Schema' })).toBeVisible();
+    await expect(page.getByText(/\d+ 个顶层字段/)).toBeVisible();
+    await expect(page.getByRole('button', { name: /更新商品/ })).toBeDisabled();
+    await expectOperation(results, 'getProductScore', 'passed');
 
     await openDomain(page, '图库', '图库');
     await expectOperation(results, 'listPhotoGroups', 'passed');
@@ -131,13 +159,20 @@ async function expectOperation(
     .toBe(true);
 }
 
-async function captureOperation(response: Response, results: OperationResult[]): Promise<void> {
+async function captureOperation(
+  response: Response,
+  results: OperationResult[],
+  productSchemaPrerequisites: ProductSchemaPrerequisites
+): Promise<void> {
   const requestBody = readRecord(response.request().postDataJSON());
   const operation = readString(requestBody, 'operation') ?? 'unknown';
   const responseBody: unknown = await response.json();
   const body = readRecord(responseBody);
   const serialized = JSON.stringify(responseBody);
   const errorCode = readErrorCode(responseBody);
+  if (response.ok() && operation === 'listProducts') {
+    collectProductSchemaPrerequisites(body.data, productSchemaPrerequisites);
+  }
   results.push({
     operation,
     requestId: readString(body, 'requestId'),
@@ -146,6 +181,21 @@ async function captureOperation(response: Response, results: OperationResult[]):
     errorCode,
     mockSentinelDetected: response.ok() && mockSentinels.some((sentinel) => serialized.includes(sentinel))
   });
+}
+
+function collectProductSchemaPrerequisites(value: unknown, prerequisites: ProductSchemaPrerequisites): void {
+  const items = readRecord(value).items;
+  if (!Array.isArray(items)) return;
+  for (const item of items) {
+    const product = readRecord(item);
+    const productId = readString(product, 'id');
+    const categoryId = readNumber(product, 'categoryId');
+    if (productId && categoryId !== null) {
+      prerequisites.productId = productId;
+      prerequisites.categoryId = categoryId;
+      return;
+    }
+  }
 }
 
 async function expectNoMockSentinel(results: readonly OperationResult[], operation: string): Promise<void> {
@@ -169,6 +219,10 @@ function readRecord(value: unknown): Record<string, unknown> {
 
 function readString(record: Record<string, unknown>, key: string): string | null {
   return typeof record[key] === 'string' ? record[key] : null;
+}
+
+function readNumber(record: Record<string, unknown>, key: string): number | null {
+  return typeof record[key] === 'number' && Number.isFinite(record[key]) ? record[key] : null;
 }
 
 async function writeReport(results: readonly OperationResult[]): Promise<void> {
