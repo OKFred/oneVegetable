@@ -51,7 +51,6 @@ export interface RfqMockData {
 }
 
 export interface TradeMockData {
-  primaryTradeOrder: TradeOrderSummary;
   tradeOrders: TradeOrderSummary[];
   responses: OperationResponses<
     | 'listTradeOrders'

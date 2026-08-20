@@ -1,13 +1,4 @@
 {
-  "primaryTradeOrder": {
-    "id": "24668306501026709",
-    "buyerLoginId": "northwind-buyer",
-    "status": "undeliver",
-    "amount": "2450.50",
-    "currency": "USD",
-    "createdAt": "2026-08-09T08:30:00.000Z",
-    "modifiedAt": "2026-08-12T02:15:00.000Z"
-  },
   "tradeOrders": [
     {
       "id": "24668306501026709",

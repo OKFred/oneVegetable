@@ -28,7 +28,6 @@ import { validateLogisticsOrderInput, validateLogisticsQuoteInput } from './vali
 
 const PRIMARY_RFQ = RFQ_MOCK_DATA.primaryRfq;
 const RFQS = RFQ_MOCK_DATA.rfqs;
-const PRIMARY_TRADE_ORDER = TRADE_MOCK_DATA.primaryTradeOrder;
 const TRADE_ORDERS = TRADE_MOCK_DATA.tradeOrders;
 const PRIMARY_LOGISTICS_ORDER = LOGISTICS_MOCK_DATA.primaryLogisticsOrder;
 const MOCK_PRODUCT_SCHEMA_XML = PRODUCT_MOCK_DATA.responses.getProductSchema.xml;
