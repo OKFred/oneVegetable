@@ -44,6 +44,22 @@ OPEN_API_MANUAL_TIMEOUT_MS=600000
 
 成功后生成 `artifacts/openapi-auth/credentials.json`，其中包含 AppKey、AppSecret、Access Token 和可能存在的 Refresh Token。授权码只用于即时交换 Token，不写入磁盘。
 
+授权包包含 Refresh Token 时可刷新：
+
+```powershell
+pnpm openapi:auth:refresh
+```
+
+刷新失败或没有 Refresh Token 时重新运行 `pnpm openapi:auth`。BFF 不会在业务请求中静默刷新 Token。
+
+本地 Node BFF 可直接读取该授权包：
+
+```powershell
+pnpm dev:api:real
+```
+
+该命令强制使用 `local-node` 与 `real` 网关模式；Worker、staging 和 production 不读取本地授权文件。
+
 `artifacts/` 已被 Git 忽略，但 Windows 不保证 POSIX `0600` 文件权限完全生效。不要上传、提交、粘贴或通过聊天发送授权包和 Profile。截图在 AppSecret 显示及 OAuth 授权前生成，诊断文件不记录密码、Cookie、CSRF、授权码或 Token。
 
 失败时不写入不完整的授权包，只保存脱敏的 `last-run.json` 和现场截图。CI 不运行该脚本，也不读取 `.env`。
