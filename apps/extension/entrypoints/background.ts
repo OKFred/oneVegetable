@@ -402,14 +402,12 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
           page_size: 1,
           location_type: 'ALL_GROUP'
         }),
-        client.call('alibaba.seller.order.list', {
-          param_trade_ecology_order_list_query: { current_page: 1, page_size: 1 }
-        })
+        trades.list({ page: 1, pageSize: 1 })
       ]);
       return {
         productCount: readNumber(unwrap(products.data, products.method), ['total_count', 'total']) ?? 0,
         photoCount: readNumber(unwrap(photos.data, photos.method), ['total_count', 'total']) ?? 0,
-        pendingOrderCount: readNumber(unwrap(orders.data, orders.method), ['total_count', 'total']) ?? 0,
+        pendingOrderCount: orders.total,
         enabledCapabilityCount: listCapabilities().filter((item) => item.enabled).length
       };
     }
@@ -527,28 +525,25 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
       });
     }
     case 'listOrders': {
-      const call = await client.call('alibaba.seller.order.list', {
-        param_trade_ecology_order_list_query: {
-          current_page: readNumber(request, ['page']) ?? 1,
-          page_size: readNumber(request, ['pageSize']) ?? 20,
-          status: readString(request, ['status'])
-        }
-      });
-      const root = unwrap(call.data, call.method);
-      const items = findRecords(root, ['orders', 'order_list', 'result_list']).map((item) => ({
-        id: readString(item, ['e_trade_id', 'order_id']) ?? '',
-        buyerName: readString(item, ['buyer_name', 'buyer_login_id']) ?? '未知买家',
-        amount: readNumber(item, ['total_amount', 'amount']) ?? 0,
-        currency: readString(item, ['currency']) ?? 'USD',
-        status: readString(item, ['status', 'order_status']) ?? 'unknown',
-        createdAt: normalizeDate(readString(item, ['gmt_create', 'create_time'])),
-        detailAvailability: 'summary_only'
-      }));
-      return {
-        items,
+      const status = readString(request, ['status']);
+      const page = await trades.list({
         page: readNumber(request, ['page']) ?? 1,
         pageSize: readNumber(request, ['pageSize']) ?? 20,
-        total: readNumber(root, ['total_count', 'total']) ?? items.length
+        ...(status ? { status } : {})
+      });
+      return {
+        items: page.items.map((item) => ({
+          id: item.id,
+          buyerName: item.buyerLoginId ?? '未知买家',
+          amount: Number(item.amount),
+          currency: item.currency,
+          status: item.status,
+          createdAt: item.createdAt ?? '',
+          detailAvailability: 'summary_only'
+        })),
+        page: page.page,
+        pageSize: page.pageSize,
+        total: page.total
       };
     }
     case 'getOrderFund': {
@@ -788,30 +783,6 @@ function requiredStringArray(record: Record<string, unknown>, key: string): stri
     throw new Error(`缺少必填参数 ${key}`);
   }
   return value;
-}
-
-function findRecords(record: Record<string, unknown>, keys: string[]): Record<string, unknown>[] {
-  const visit = (value: unknown, depth: number): Record<string, unknown>[] | null => {
-    if (depth > 5) return null;
-    if (Array.isArray(value) && value.every(isRecord)) return value;
-    if (!isRecord(value)) return null;
-    for (const key of keys)
-      if (key in value) {
-        const result = visit(value[key], depth + 1);
-        if (result) return result;
-      }
-    for (const child of Object.values(value)) {
-      const result = visit(child, depth + 1);
-      if (result) return result;
-    }
-    return null;
-  };
-  return visit(record, 0) ?? [];
-}
-
-function normalizeDate(value: string | undefined): string {
-  const date = value ? new Date(value) : new Date();
-  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
 }
 
 function readTraceId(value: unknown): string | undefined {
