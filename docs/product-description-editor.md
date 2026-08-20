@@ -30,4 +30,4 @@ URL 转存只在扩展 service worker 下载。校验覆盖凭据 URL、localhos
 
 ## 无账号验证
 
-Web Mock 内置普通详情、`mock-smart` 智能详情、`mock-legacy` 历史详情、图片选择、上传、URL 转存和官方评分。MV3 E2E 只验证查询入口与真实写按钮保持禁用；取得账号后才逐方法增加真实 smoke test。
+Web Mock 内置普通详情、商品 `10000002` 的智能详情、商品 `10000003` 的历史详情、图片选择、上传、URL 转存和官方评分。MV3 E2E 只验证查询入口与真实写按钮保持禁用；取得账号后才逐方法增加真实 smoke test。

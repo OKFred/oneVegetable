@@ -96,13 +96,13 @@ export class MockGatewayClient implements GatewayClient {
     if (operation === 'getProductSchema' || operation === 'renderProductSchema') {
       const payload = _request as
         OperationMap['getProductSchema']['request'] | OperationMap['renderProductSchema']['request'];
-      if (payload.productId === 'mock-smart') {
+      if (payload.productId === 'mock-smart' || payload.productId === '10000002') {
         return {
           ...structuredClone(MOCK_DATA.getProductSchema),
           xml: descriptionSchemaVariant('smart')
         } as ResponseOf<K>;
       }
-      if (payload.productId === 'mock-legacy') {
+      if (payload.productId === 'mock-legacy' || payload.productId === '10000003') {
         return {
           ...structuredClone(MOCK_DATA.getProductSchema),
           xml: descriptionSchemaVariant('legacy')

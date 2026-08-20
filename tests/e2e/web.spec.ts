@@ -175,7 +175,7 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
   await page.getByRole('button', { name: '完成选择' }).click();
   await expect(page.locator('.ProseMirror img[src*="mock-transferred-image"]')).toBeVisible();
 
-  await page.getByLabel('商品/草稿 ID（编辑时）').fill('mock-smart');
+  await page.getByLabel('商品明文 ID（编辑时）').fill('10000002');
   await page.getByRole('button', { name: '获取 Schema' }).click();
   await expect(page.getByText('智能详情', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: '查看转换变化' }).click();

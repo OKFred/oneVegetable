@@ -9,6 +9,7 @@ import {
   productSchemaFieldText,
   serializeProductSchemaXml,
   validateProductSchemaModel,
+  validateProductSchemaRenderInput,
   validateSchemaPublishInput,
   type Product,
   type ProductCategory,
@@ -216,7 +217,7 @@ const columns: DataColumn<Product>[] = [
           size: 'sm',
           variant: 'outline',
           onClick: () => {
-            selectProductForSchema(row.original);
+            void selectProductForSchema(row.original);
           }
         },
         () => '编辑 Schema'
@@ -228,7 +229,7 @@ function flattenCategories(items: ProductCategory[], depth = 0): (ProductCategor
   return items.flatMap((item) => [{ ...item, depth }, ...flattenCategories(item.children, depth + 1)]);
 }
 
-function selectProductForSchema(product: Product): void {
+async function selectProductForSchema(product: Product): Promise<void> {
   editProductId.value = product.id;
   editScoreProductId.value = product.encryptedId ?? '';
   if (product.categoryId !== null) categoryId.value = String(product.categoryId);
@@ -237,8 +238,9 @@ function selectProductForSchema(product: Product): void {
   feedback.value =
     product.categoryId === null
       ? '已选择商品；列表未返回类目，请选择实际类目后获取编辑 Schema。'
-      : '已选择商品及其真实类目，可以获取编辑 Schema。';
+      : '已选择商品及其真实类目，正在渲染现有商品 Schema。';
   workspace.value = 'publisher';
+  if (product.categoryId !== null) await loadSchema();
 }
 
 function applySchema(xml: string, message: string): void {
@@ -253,23 +255,46 @@ function applySchema(xml: string, message: string): void {
 
 async function loadSchema(): Promise<void> {
   schemaError.value = '';
-  const parsedCategoryId = Number(categoryId.value);
-  if (!categoryId.value || !Number.isSafeInteger(parsedCategoryId) || parsedCategoryId <= 0) {
+  const parsedCategoryId = await resolveCategoryId();
+  if (parsedCategoryId === null) {
     schemaError.value = '请先选择有效类目';
     return;
   }
   try {
-    const result = await gateway.request('getProductSchema', {
-      categoryId: parsedCategoryId,
-      language: language.value,
-      market: market.value,
-      ...(editProductId.value ? { productId: editProductId.value } : {})
-    });
-    applySchema(result.xml, '已按当前类目加载官方 Schema');
+    const result = editProductId.value
+      ? await renderExistingProductSchema(parsedCategoryId)
+      : await gateway.request('getProductSchema', {
+          categoryId: parsedCategoryId,
+          language: language.value,
+          market: market.value
+        });
+    applySchema(result.xml, editProductId.value ? '已渲染现有商品 Schema' : '已按当前类目加载官方 Schema');
     if (editScoreProductId.value) productScore.mutate(editScoreProductId.value);
   } catch (error: unknown) {
     schemaError.value = error instanceof Error ? error.message : '获取 Schema 失败';
   }
+}
+
+async function resolveCategoryId(): Promise<number | null> {
+  if (!categoryId.value) {
+    const result = await categories.refetch();
+    const options = flattenCategories(result.data ?? []);
+    const preferred = options.find((category) => category.leaf) ?? options[0];
+    if (preferred) categoryId.value = String(preferred.id);
+  }
+  const parsed = Number(categoryId.value);
+  return categoryId.value && Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+async function renderExistingProductSchema(parsedCategoryId: number) {
+  const request = {
+    categoryId: parsedCategoryId,
+    language: language.value,
+    productId: editProductId.value
+  };
+  const validation = validateProductSchemaRenderInput(request);
+  if (!validation.valid) throw new Error(validation.errors.join('；'));
+  return gateway.request('renderProductSchema', request);
 }
 
 async function loadDraft(): Promise<void> {
@@ -460,7 +485,7 @@ onBeforeUnmount(() => {
         </label>
         <label class="text-sm font-medium">语言<Input v-model="language" class="mt-2" /></label>
         <label class="text-sm font-medium"
-          >商品/草稿 ID（编辑时）
+          >商品明文 ID（编辑时）
           <Input v-model="editProductId" class="mt-2" placeholder="可留空" />
         </label>
       </div>

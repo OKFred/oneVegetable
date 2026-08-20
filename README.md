@@ -60,7 +60,7 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 ## API 与验证边界
 
 - 正式网关为 `https://eco.taobao.com/router/rest`，支持 `hmac`、`md5` 和 `hmac-sha256`，默认 `hmac`。
-- 商品发布、草稿与更新使用 Schema 流程；不再把旧 `product.add/update` 作为主路径。
+- 商品发布、草稿与更新使用 Schema 流程；新建商品通过 `schema.get` 获取类目模板，编辑已有商品通过 `schema.render` 加载现有值，不再把旧 `product.add/update` 作为主路径。
 - 商品页分为商品列表、Schema 发品/编辑、类目与分组、质量与上下架四个工作区。Schema XML 会解析为七类可视化字段，并保留只读 XML 预览与未知节点。
 - Schema 中 `valueTypeRule=html` 或 `superText` 会使用受限 Tiptap 编辑器；仅维护 `productDescType=2` 的普通详情。智能详情和不受支持的旧 HTML 默认原样只读，查看变化并二次确认后才转换。
 - 主图、SKU 图和详情图复用国际站图库选择器。Web Mock 支持分组/分页选择、本地上传和外部 URL 转存；真实上传、转存和商品更新在账号 smoke test 前保持禁用。
@@ -86,7 +86,7 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 执行 `pnpm dev:web`，进入“商品 → Schema 发品/编辑”：
 
 - 商品 ID 留空：安全的普通详情，可直接可视化编辑。
-- 商品 ID 填 `mock-smart` 后获取 Schema：智能详情只读与显式降级流程。
-- 商品 ID 填 `mock-legacy` 后获取 Schema：含未知标签、样式和 iframe 的旧详情转换差异。
+- 商品明文 ID 填 `10000002` 后获取 Schema：智能详情只读与显式降级流程。
+- 商品明文 ID 填 `10000003` 后获取 Schema：含未知标签、样式和 iframe 的旧详情转换差异。
 
 图库 URL 转存会先拒绝凭据 URL、本机、回环、私网与 link-local 字面地址，逐跳检查重定向，验证图片 MIME，并以 20 MiB 或 Schema 更小值限制下载。service worker 随后调用 `alibaba.icbu.photobank.upload`，不会使用只能返回 URL 的 `file.urlposting.upload`。
