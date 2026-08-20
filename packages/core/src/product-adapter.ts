@@ -27,7 +27,7 @@ export class ProductAdapter {
       id: readString(item, ['id', 'product_id']) ?? '',
       subject: readString(item, ['subject', 'product_subject']) ?? '未命名商品',
       groupName: readString(item, ['group_name']) ?? '未分组',
-      status: normalizeProductStatus(readString(item, ['status', 'display'])),
+      status: normalizeProductStatus(readString(item, ['display', 'status'])),
       score: readNumber(item, ['score']) ?? 0,
       updatedAt: normalizeDate(readString(item, ['gmt_modified', 'modified_time'])),
       categoryId: readNumber(item, ['category_id', 'cat_id']) ?? null
@@ -36,7 +36,7 @@ export class ProductAdapter {
       items,
       page: request.page ?? 1,
       pageSize: request.pageSize ?? 20,
-      total: readNumber(root, ['total_count', 'total']) ?? items.length
+      total: readNumber(root, ['total_item', 'total_count', 'total']) ?? items.length
     };
   }
 
@@ -202,7 +202,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function unwrap(value: unknown, method: string): Record<string, unknown> {
   const record = asRecord(value);
-  return asRecord(record[`${method.replaceAll('.', '_')}_response`]);
+  const responseKey = `${method.replaceAll('.', '_')}_response`;
+  return responseKey in record ? asRecord(record[responseKey]) : record;
 }
 
 function readString(record: Record<string, unknown>, keys: string[]): string | undefined {
@@ -249,7 +250,13 @@ function normalizeProductStatus(
   value: string | undefined
 ): 'online' | 'offline' | 'draft' | 'auditing' | 'rejected' {
   const normalized = value?.toLowerCase();
-  if (normalized?.includes('online') || normalized === 'true') return 'online';
+  if (
+    normalized?.includes('online') ||
+    normalized === 'true' ||
+    normalized === 'y' ||
+    normalized === 'approved'
+  )
+    return 'online';
   if (normalized?.includes('audit')) return 'auditing';
   if (normalized?.includes('reject')) return 'rejected';
   if (normalized?.includes('draft')) return 'draft';
