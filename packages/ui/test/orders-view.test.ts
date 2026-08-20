@@ -3,9 +3,9 @@
 import { defineComponent, h } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { MockGatewayClient } from '@one-vegetable/core';
+import { APP_PREFERENCES_STORAGE_KEY, MockGatewayClient } from '@one-vegetable/core';
 
 import { provideServices } from '../src/lib/services';
 import OrdersView from '../src/views/OrdersView.vue';
@@ -43,6 +43,31 @@ function bodyButton(text: string): HTMLButtonElement {
 }
 
 describe('OrdersView', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('uses the preferred language for fulfillment and address Schema requests', async () => {
+    localStorage.setItem(APP_PREFERENCES_STORAGE_KEY, JSON.stringify({ language: 'en_US' }));
+    const request = vi.spyOn(MockGatewayClient.prototype, 'request');
+    const wrapper = mountView();
+    await flushPromises();
+
+    await button(wrapper, '资金与履约').trigger('click');
+    await vi.waitFor(() => {
+      expect(request).toHaveBeenCalledWith('listTradeFulfillmentChannels', { language: 'en_US' });
+    });
+
+    await button(wrapper, '地址 Schema').trigger('click');
+    await vi.waitFor(() => {
+      expect(request).toHaveBeenCalledWith('getTradeAddressSchema', {
+        countryCode: 'US',
+        language: 'en_US'
+      });
+    });
+    wrapper.unmount();
+  });
+
   it('opens the non-Jushita aggregate and shows independent fund and logistics results', async () => {
     const wrapper = mountView();
     await vi.waitFor(() => {

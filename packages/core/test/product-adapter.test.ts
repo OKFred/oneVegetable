@@ -32,7 +32,7 @@ describe('ProductAdapter', () => {
     );
     const adapter = new ProductAdapter({ call });
 
-    const result = await adapter.list({ page: 1, pageSize: 20 });
+    const result = await adapter.list({ page: 1, pageSize: 20, language: 'zh_CN' });
 
     expect(result).toMatchObject({
       total: 37,
@@ -44,6 +44,26 @@ describe('ProductAdapter', () => {
           status: 'online'
         }
       ]
+    });
+    expect(call).toHaveBeenCalledWith(
+      'alibaba.icbu.product.list',
+      expect.objectContaining({ language: 'CHINESE' })
+    );
+  });
+
+  it('uses the selected language when rendering a platform draft', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method, parameters) => {
+      expect(parameters).toEqual({
+        param_product_top_publish_request: { product_id: '123', language: 'zh_CN' }
+      });
+      return Promise.resolve({ method, data: { data: '<itemSchema />' } });
+    });
+    const adapter = new ProductAdapter({ call });
+
+    await expect(adapter.get('123', true, 'zh_CN')).resolves.toMatchObject({
+      id: '123',
+      language: 'zh_CN',
+      schemaXml: '<itemSchema />'
     });
   });
 

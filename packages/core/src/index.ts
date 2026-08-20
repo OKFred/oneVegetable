@@ -11,6 +11,7 @@ export * from './encoded-file';
 export * from './mock-client';
 export * from './network';
 export * from './photo-transfer';
+export * from './preferences';
 export * from './privacy';
 export * from './photo-adapter';
 export * from './product-description';

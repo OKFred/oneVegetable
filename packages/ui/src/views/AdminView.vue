@@ -247,7 +247,7 @@ function formatTime(value: number): string {
         <div class="border-b p-5"><h2 class="font-semibold">用户管理</h2></div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm">
-            <thead class="bg-muted/60 text-xs text-muted-foreground">
+            <thead class="whitespace-nowrap bg-muted/60 text-xs text-muted-foreground">
               <tr>
                 <th class="p-3">用户</th>
                 <th class="p-3">角色</th>
@@ -358,7 +358,7 @@ function formatTime(value: number): string {
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-left text-xs">
-          <thead class="bg-muted/60 text-muted-foreground">
+          <thead class="whitespace-nowrap bg-muted/60 text-muted-foreground">
             <tr>
               <th class="p-3">时间</th>
               <th class="p-3">requestId</th>
@@ -393,7 +393,7 @@ function formatTime(value: number): string {
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-left text-xs">
-          <thead class="bg-muted/60 text-muted-foreground">
+          <thead class="whitespace-nowrap bg-muted/60 text-muted-foreground">
             <tr>
               <th class="p-3">时间</th>
               <th class="p-3">requestId</th>

@@ -1,4 +1,4 @@
-import type { ProductEditorStepId } from '@one-vegetable/core';
+import { isAlibabaLanguage, type AlibabaLanguage, type ProductEditorStepId } from '@one-vegetable/core';
 
 export const PRODUCT_EDITOR_DRAFT_STORAGE_KEY = 'one-vegetable-product-editor-drafts-v2';
 export const LEGACY_PRODUCT_EDITOR_DRAFT_STORAGE_KEY = 'one-vegetable-product-schema-draft';
@@ -15,7 +15,7 @@ export interface ProductEditorDraftV2 {
   kind: 'new' | 'existing';
   productId: string | null;
   categoryId: string;
-  language: string;
+  language: AlibabaLanguage;
   market: 'wholesale' | 'sourcing';
   xml: string;
   mode: ProductEditorMode;
@@ -122,7 +122,7 @@ export function migrateLegacyProductEditorDraft(
       {
         productId: null,
         categoryId: value.categoryId,
-        language: typeof value.language === 'string' ? value.language : 'en_US',
+        language: isAlibabaLanguage(value.language) ? value.language : 'en_US',
         market: value.market === 'sourcing' ? 'sourcing' : 'wholesale',
         xml: value.xml,
         mode: 'guided',
@@ -145,7 +145,7 @@ function isProductEditorDraft(value: unknown): value is ProductEditorDraftV2 {
     (value.kind === 'new' || value.kind === 'existing') &&
     (value.productId === null || typeof value.productId === 'string') &&
     typeof value.categoryId === 'string' &&
-    typeof value.language === 'string' &&
+    isAlibabaLanguage(value.language) &&
     (value.market === 'wholesale' || value.market === 'sourcing') &&
     typeof value.xml === 'string' &&
     (value.mode === 'guided' || value.mode === 'advanced') &&

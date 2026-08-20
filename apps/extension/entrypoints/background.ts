@@ -11,6 +11,7 @@ import {
   GatewayException,
   getCapabilityDefinition,
   InsightsAdapter,
+  isAlibabaLanguage,
   isRequestId,
   listCapabilities,
   LogisticsAdapter,
@@ -27,6 +28,7 @@ import {
   validateCapabilityRequest,
   validateCapabilityResponse,
   type ApiCapability,
+  type AlibabaLanguage,
   type CredentialVaultRequest,
   type CredentialVaultResponse,
   type CredentialVaultStatus,
@@ -438,7 +440,11 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
     case 'getProductLevelSchema':
       return products.getLevelSchema(payload as RequestOf<'getProductLevelSchema'>);
     case 'getProductDraft':
-      return products.get(requiredString(request, 'productId'), true);
+      return products.get(
+        requiredString(request, 'productId'),
+        true,
+        requiredAlibabaLanguage(request, 'language')
+      );
     case 'listProductGroups':
       return products.listGroups(readNumber(request, ['parentId']));
     case 'createProductGroup':
@@ -773,6 +779,12 @@ function requiredString(record: Record<string, unknown>, key: string): string {
   const value = readString(record, [key]);
   if (!value) throw new Error(`缺少必填参数 ${key}`);
   return value;
+}
+
+function requiredAlibabaLanguage(record: Record<string, unknown>, key: string): AlibabaLanguage {
+  const value = requiredString(record, key);
+  if (isAlibabaLanguage(value)) return value;
+  throw new Error(`${key} 仅支持 zh_CN 或 en_US`);
 }
 
 function requiredNumber(record: Record<string, unknown>, key: string): number {

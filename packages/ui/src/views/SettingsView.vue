@@ -32,8 +32,10 @@ import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import { useServices } from '../lib/services';
+import { useAppPreferences } from '../lib/preferences';
 
 const { gateway, settings, permissions, localData, vault, mode } = useServices();
+const { language: preferredLanguage } = useAppPreferences();
 const signMethods: SignMethod[] = ['hmac', 'md5', 'hmac-sha256'];
 const model = ref<GatewaySettings>({
   appKey: '',
@@ -357,6 +359,10 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   return `${(bytes / 1024).toFixed(1)} KiB`;
 }
+
+function confirmLanguagePreference(): void {
+  feedback.value = `接口语言偏好已保存为 ${preferredLanguage.value}。`;
+}
 </script>
 
 <template>
@@ -371,6 +377,29 @@ function formatBytes(bytes: number): string {
     >
       {{ feedback }}
     </p>
+    <Card class="p-5">
+      <div class="flex items-start gap-3">
+        <Globe2 class="mt-0.5 size-5 shrink-0 text-primary" />
+        <div class="min-w-0 flex-1">
+          <h2 class="font-semibold">接口语言偏好</h2>
+          <p class="mt-1 text-sm leading-6 text-muted-foreground">
+            用于商品 Schema、平台草稿、履约通道和地址 Schema 等支持 language 参数的请求；不改变当前界面语言。
+          </p>
+          <label class="mt-3 block max-w-xs text-sm font-medium">
+            偏好语言
+            <select
+              v-model="preferredLanguage"
+              class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
+              aria-label="偏好语言"
+              @change="confirmLanguagePreference"
+            >
+              <option value="zh_CN">简体中文（zh_CN）</option>
+              <option value="en_US">English（en_US）</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    </Card>
     <Card v-if="mode === 'extension' && vault" class="p-5">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -671,7 +700,7 @@ function formatBytes(bytes: number): string {
       <p v-if="dataError" class="mt-3 text-sm text-destructive">{{ dataError }}</p>
       <div class="mt-4 overflow-x-auto rounded-lg border">
         <table class="w-full min-w-[620px] text-left text-sm">
-          <thead class="bg-muted/70 text-xs text-muted-foreground">
+          <thead class="whitespace-nowrap bg-muted/70 text-xs text-muted-foreground">
             <tr>
               <th class="px-3 py-2 font-medium">类别</th>
               <th class="px-3 py-2 font-medium">存储位置</th>

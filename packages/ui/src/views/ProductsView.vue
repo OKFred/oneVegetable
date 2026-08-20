@@ -12,6 +12,7 @@ import {
   validateProductSchemaRenderInput,
   validateSchemaPublishInput,
   type Product,
+  type AlibabaLanguage,
   type ProductCategory,
   type ProductDescriptionImageMetadata,
   type ProductEditorStepId,
@@ -38,17 +39,19 @@ import {
   type ProductEditorMode
 } from '../lib/product-editor-drafts';
 import { useServices } from '../lib/services';
+import { useAppPreferences } from '../lib/preferences';
 import type { DataColumn } from '../lib/table';
 
 type Workspace = 'list' | 'publisher' | 'organization' | 'quality';
 type DraftSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 const { gateway, mode } = useServices();
+const { language: preferredLanguage } = useAppPreferences();
 const queryClient = useQueryClient();
 const workspace = ref<Workspace>('list');
 const subject = ref('');
 const categoryId = ref('');
-const language = ref('en_US');
+const language = ref<AlibabaLanguage>(preferredLanguage.value);
 const market = ref<'wholesale' | 'sourcing'>('wholesale');
 const editProductId = ref('');
 const editScoreProductId = ref('');
@@ -68,8 +71,14 @@ let scoreRefreshTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 let draftSaveTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 
 const products = useQuery({
-  queryKey: ['products', subject],
-  queryFn: () => gateway.request('listProducts', { page: 1, pageSize: 20, subject: subject.value })
+  queryKey: ['products', subject, language],
+  queryFn: () =>
+    gateway.request('listProducts', {
+      page: 1,
+      pageSize: 20,
+      subject: subject.value,
+      language: language.value
+    })
 });
 const categories = useQuery({
   queryKey: ['product-categories'],
@@ -625,7 +634,17 @@ onBeforeUnmount(() => {
               <option value="sourcing">sourcing</option>
             </select>
           </label>
-          <label class="text-sm font-medium">语言<Input v-model="language" class="mt-2" /></label>
+          <label class="text-sm font-medium">
+            语言
+            <select
+              v-model="language"
+              class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
+              aria-label="商品表单语言"
+            >
+              <option value="zh_CN">简体中文（zh_CN）</option>
+              <option value="en_US">English（en_US）</option>
+            </select>
+          </label>
           <label class="text-sm font-medium">
             商品明文 ID
             <Input v-model="editProductId" class="mt-2" placeholder="新建商品时留空" />

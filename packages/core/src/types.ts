@@ -18,6 +18,7 @@ import type {
   PlatformCapabilityRequestMap,
   PlatformCapabilityResponseMap
 } from './generated/platform-capabilities';
+import type { AlibabaLanguage } from './preferences';
 
 export type DashboardSummary = components['schemas']['DashboardSummary'];
 export type DiagnosticEntry = components['schemas']['DiagnosticEntry'];
@@ -128,6 +129,7 @@ export interface ProductListQuery {
   pageSize?: number;
   subject?: string;
   groupId?: number;
+  language?: AlibabaLanguage;
 }
 
 export interface PhotoListQuery {

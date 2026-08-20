@@ -5,6 +5,7 @@ import { browser } from 'wxt/browser';
 import {
   GatewayException,
   approximateStorageBytes,
+  APP_PREFERENCES_STORAGE_KEY,
   completeOnboarding,
   createLocalDataInventory,
   normalizeGatewayError,
@@ -123,10 +124,12 @@ const localData: LocalDataRepository = {
       browser.storage.local.get(null),
       browser.storage.session.get(null)
     ]);
-    const drafts = localStorageEntries().filter(([key]) => isDraftKey(key));
-    const preferences = Object.fromEntries(
-      Object.entries(local).filter(([key]) => key !== SETTINGS_STORAGE_KEY)
-    );
+    const localEntries = localStorageEntries();
+    const drafts = localEntries.filter(([key]) => isDraftKey(key));
+    const preferences = Object.fromEntries([
+      ...Object.entries(local).filter(([key]) => key !== SETTINGS_STORAGE_KEY),
+      ...localEntries.filter(([key]) => key === APP_PREFERENCES_STORAGE_KEY)
+    ]);
     const categories: LocalDataCategory[] = [
       {
         id: 'credentials',

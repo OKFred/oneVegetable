@@ -2,10 +2,11 @@
 
 import { defineComponent, h } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   ALIBABA_GATEWAY,
+  APP_PREFERENCES_STORAGE_KEY,
   MockGatewayClient,
   type CredentialVaultState,
   type CredentialVaultStatus,
@@ -27,6 +28,10 @@ const createVault = vi.fn((_passphrase: string, _settings: GatewaySettings) =>
 const updateVaultPolicy = vi.fn((idleTimeoutMinutes: number) =>
   Promise.resolve(vaultStatus('unlocked', idleTimeoutMinutes))
 );
+
+beforeEach(() => {
+  localStorage.clear();
+});
 
 function mountView(mode: 'mock' | 'extension' = 'mock', initialVaultState?: CredentialVaultState) {
   let grantedHosts = ['https://images.example.com/*'];
@@ -113,6 +118,21 @@ afterEach(() => {
 });
 
 describe('SettingsView diagnostics', () => {
+  it('persists the preferred Alibaba request language outside the credential vault', async () => {
+    const wrapper = mountView('extension', 'locked');
+    await flushPromises();
+
+    const language = wrapper.get('select[aria-label="偏好语言"]');
+    expect((language.element as HTMLSelectElement).value).toBe('en_US');
+    await language.setValue('zh_CN');
+
+    expect(JSON.parse(localStorage.getItem(APP_PREFERENCES_STORAGE_KEY) ?? '{}')).toEqual({
+      language: 'zh_CN'
+    });
+    expect(wrapper.text()).toContain('接口语言偏好已保存为 zh_CN');
+    wrapper.unmount();
+  });
+
   it('exports a redacted snapshot and clears the session log', async () => {
     Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectUrl });
     Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectUrl });

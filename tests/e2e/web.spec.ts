@@ -242,3 +242,15 @@ test('web mock exports and clears the typed diagnostics snapshot', async ({ page
   await expect(page.getByText('诊断记录已清空。')).toBeVisible();
   await expect(page.getByText('0 条', { exact: true })).toBeVisible();
 });
+
+test('web mock persists the API language preference for product editing', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '设置' }).click();
+  await page.getByLabel('偏好语言').selectOption('zh_CN');
+  await expect(page.getByText('接口语言偏好已保存为 zh_CN')).toBeVisible();
+
+  await page.getByRole('button', { name: '商品' }).click();
+  await page.getByRole('tab', { name: '商品发布/编辑' }).click();
+  await page.getByText('高级设置', { exact: true }).click();
+  await expect(page.getByLabel('商品表单语言')).toHaveValue('zh_CN');
+});

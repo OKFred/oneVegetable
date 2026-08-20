@@ -26,12 +26,14 @@ import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import Sheet from '../components/ui/Sheet.vue';
 import { useServices } from '../lib/services';
+import { useAppPreferences } from '../lib/preferences';
 import type { DataColumn } from '../lib/table';
 
 type Workspace = 'orders' | 'finance' | 'addresses' | 'assurance';
 type OrderDrawerTab = 'overview' | 'payment';
 
 const { gateway, mode } = useServices();
+const { language: preferredLanguage } = useAppPreferences();
 const workspace = ref<Workspace>('orders');
 const status = ref('');
 const buyerLoginId = ref('');
@@ -81,9 +83,9 @@ const aggregate = useQuery({
   }
 });
 const fulfillmentChannels = useQuery({
-  queryKey: ['trade-fulfillment-channels'],
+  queryKey: computed(() => ['trade-fulfillment-channels', preferredLanguage.value]),
   enabled: computed(() => workspace.value === 'finance'),
-  queryFn: () => gateway.request('listTradeFulfillmentChannels', { language: 'zh_CN' })
+  queryFn: () => gateway.request('listTradeFulfillmentChannels', { language: preferredLanguage.value })
 });
 const serviceCharge = useQuery({
   queryKey: computed(() => ['trade-service-charge', serviceCurrency.value]),
@@ -98,12 +100,12 @@ const ttAccount = useQuery({
   queryFn: () => gateway.request('getTradeTtAccount', { orderId: selectedOrderId.value })
 });
 const addressSchema = useQuery({
-  queryKey: computed(() => ['trade-address-schema', addressCountry.value]),
+  queryKey: computed(() => ['trade-address-schema', addressCountry.value, preferredLanguage.value]),
   enabled: computed(() => workspace.value === 'addresses' && addressCountry.value.trim() !== ''),
   queryFn: () =>
     gateway.request('getTradeAddressSchema', {
       countryCode: addressCountry.value.trim().toUpperCase(),
-      language: 'zh_CN'
+      language: preferredLanguage.value
     })
 });
 const addresses = useQuery({

@@ -38,11 +38,15 @@ function activateRow(row: TData, event: MouseEvent | KeyboardEvent): void {
 </script>
 
 <template>
-  <div class="overflow-hidden rounded-lg border">
+  <div class="overflow-x-auto rounded-lg border">
     <table class="w-full text-sm">
       <thead class="bg-muted/70 text-left text-xs uppercase tracking-wide text-muted-foreground">
         <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
-          <th v-for="header in headerGroup.headers" :key="header.id" class="h-10 px-4 font-medium">
+          <th
+            v-for="header in headerGroup.headers"
+            :key="header.id"
+            class="h-10 whitespace-nowrap px-4 font-medium"
+          >
             <FlexRender v-if="!header.isPlaceholder" :header="header" />
           </th>
         </tr>

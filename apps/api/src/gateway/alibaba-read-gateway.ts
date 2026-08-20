@@ -4,6 +4,7 @@ import {
   GatewayException,
   getCapabilityDefinition,
   InsightsAdapter,
+  isAlibabaLanguage,
   listCapabilities,
   LogisticsAdapter,
   NetworkManager,
@@ -17,6 +18,7 @@ import {
 
 import type {
   CapabilityCallRequest,
+  AlibabaLanguage,
   GatewayClient,
   GatewayCredentials,
   NetworkTransport,
@@ -163,7 +165,11 @@ export class AlibabaReadGatewayClient implements GatewayClient {
       case 'getProductLevelSchema':
         return await products.getLevelSchema(request as RequestOf<'getProductLevelSchema'>);
       case 'getProductDraft':
-        return await products.get(requiredString(record, 'productId'), true);
+        return await products.get(
+          requiredString(record, 'productId'),
+          true,
+          requiredAlibabaLanguage(record, 'language')
+        );
       case 'listProductGroups':
         return await products.listGroups(optionalNumber(record, 'parentId'));
       case 'getProductScore':
@@ -343,6 +349,12 @@ function readString(record: Record<string, unknown>, key: string): string {
 
 function requiredString(record: Record<string, unknown>, key: string): string {
   return readString(record, key);
+}
+
+function requiredAlibabaLanguage(record: Record<string, unknown>, key: string): AlibabaLanguage {
+  const value = requiredString(record, key);
+  if (isAlibabaLanguage(value)) return value;
+  throw gatewayError('INVALID_OPERATION_REQUEST', `${key} 仅支持 zh_CN 或 en_US`);
 }
 
 function optionalString(record: Record<string, unknown>, key: string): string | undefined {

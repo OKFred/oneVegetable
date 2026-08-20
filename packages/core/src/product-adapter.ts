@@ -1,5 +1,6 @@
 import type { AlibabaClient } from './alibaba-client';
 import { GatewayException } from './errors';
+import { productListLanguage, type AlibabaLanguage } from './preferences';
 import type {
   ProductCategory,
   ProductCategoryMapping,
@@ -17,7 +18,7 @@ export class ProductAdapter {
 
   async list(request: RequestOf<'listProducts'>): Promise<ProductPage> {
     const call = await this.client.call('alibaba.icbu.product.list', {
-      language: 'ENGLISH',
+      language: productListLanguage(request.language ?? 'en_US'),
       current_page: request.page ?? 1,
       page_size: request.pageSize ?? 20,
       ...(request.subject ? { subject: request.subject } : {}),
@@ -42,10 +43,10 @@ export class ProductAdapter {
     };
   }
 
-  async get(productId: string, draft = false): Promise<ProductDetail> {
+  async get(productId: string, draft = false, language: AlibabaLanguage = 'en_US'): Promise<ProductDetail> {
     const method = draft ? 'alibaba.icbu.product.schema.render.draft' : 'alibaba.icbu.product.schema.render';
     const call = await this.client.call(method, {
-      param_product_top_publish_request: { product_id: productId, language: 'en_US' }
+      param_product_top_publish_request: { product_id: productId, language }
     });
     const root = unwrap(call.data, call.method);
     return {
@@ -57,7 +58,7 @@ export class ProductAdapter {
       score: 0,
       updatedAt: new Date().toISOString(),
       categoryId: 0,
-      language: 'en_US',
+      language,
       schemaXml: readString(root, ['data']) ?? ''
     };
   }

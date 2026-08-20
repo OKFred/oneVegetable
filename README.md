@@ -62,6 +62,7 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 - 正式网关为 `https://eco.taobao.com/router/rest`，支持 `hmac`、`md5` 和 `hmac-sha256`，默认 `hmac`。
 - 商品发布、草稿与更新使用 Schema 流程；新建商品通过 `schema.get` 获取类目模板，编辑已有商品通过 `schema.render` 加载现有值，不再把旧 `product.add/update` 作为主路径。
 - 商品页分为商品列表、商品发布/编辑、类目与分组、质量与上下架四个工作区。商品发布/编辑默认按基础信息、属性规格、图片、详情、交易物流和检查提交六步引导；高级模式保留全部 Schema 字段、只读 XML 预览与未知节点，两种模式共享同一份数据。
+- 设置页提供 `zh_CN` / `en_US` 接口语言偏好；商品列表、Schema、平台草稿、履约通道和地址 Schema 等支持语言参数的请求使用该偏好，商品草稿仍保留创建时的语言上下文。
 - 本地商品草稿按商品 ID 或新建类目隔离，约 750 ms 防抖保存，最多保留 10 份且自动清理 30 天前记录。发现草稿时必须明确选择继续草稿或重新加载平台数据；发布或更新成功后删除对应草稿。
 - Schema 中 `valueTypeRule=html` 或 `superText` 会使用受限 Tiptap 编辑器；仅维护 `productDescType=2` 的普通详情。智能详情和不受支持的旧 HTML 默认原样只读，查看变化并二次确认后才转换。
 - 主图、SKU 图和详情图复用国际站图库选择器。Web Mock 支持分组/分页选择、本地上传和外部 URL 转存；真实上传、转存和商品更新在账号 smoke test 前保持禁用。
