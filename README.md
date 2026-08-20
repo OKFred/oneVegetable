@@ -4,7 +4,7 @@ Alibaba.com 国际站商品、图库（图片银行）、RFQ、交易、国际�
 
 ## 工程结构
 
-- `apps/web`：使用 OpenAPI examples 和类型化 MockGatewayClient 的独立演示站。
+- `apps/web`：独立演示站；默认只使用 `mock/data` 生成的类型化 Mock，显式切到 BFF 后不会静默回退。
 - `apps/extension`：WXT 管理的 MV3 扩展，真实 API 请求只由 service worker 发起。
 - `apps/api`：共享 Hono 应用，分别运行于 Node.js + SQLite 和 Cloudflare Workers + D1。
 - `packages/core`：OpenAPI 生成类型、AJV standalone validators、签名器、API 审计目录和网关客户端。
@@ -79,7 +79,7 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 - RC 构建会迁移旧设置、允许查看/撤销额外主机权限、只对只读请求执行有限重试，并生成可复现 ZIP 与 SHA-256。CI 只保存产物，不自动上架。详见 [RC 发布准备说明](docs/rc-release-readiness.md)。
 - 扩展首次使用会显著说明凭证、权限、Mock 与真实验收边界；设置页可导出不含具体值的数据清单并彻底清除本地数据。商店文案、隐私政策、真实扩展截图和仍待人工完成的阻断项见 [Chrome Web Store 提交清单](docs/store-submission.md)。
 - `docs/alibaba-api-audit.json` 是 2026-08-13 的文档审计快照，共 84 个免费且非聚石塔候选 API。特定 ISV/业务资格接口默认关闭。
-- 已提供本地 OpenAPI 授权包获取工具，但真实 API 验收结果仍以显式的 real smoke 报告为准；契约 Mock、签名、Replay 和 MV3 行为不等于真实账号验收。
+- 已提供本地 OpenAPI 授权包获取工具，但真实 API 验收结果仍以显式的 real smoke 报告为准；契约 Mock、签名、Replay 和 MV3 行为不等于真实账号验收。2026-08-20 最新一轮真实只读 Smoke 为 35 项候选中 21 项通过、5 项权限不足、1 项上游错误、8 项缺少前置数据，契约漂移为 0。
 
 ## 商品详情 Mock 场景
 

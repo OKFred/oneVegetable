@@ -1,5 +1,5 @@
 {
-  "checkedAtUtc": "2026-08-20T03:04:00.000Z",
+  "checkedAtUtc": "2026-08-20T04:31:04.954Z",
   "methods": [
     "alibaba.icbu.category.attribute.get",
     "alibaba.icbu.category.get.new",
@@ -11,6 +11,7 @@
     "alibaba.icbu.product.list",
     "alibaba.icbu.product.schema.get",
     "alibaba.icbu.product.schema.render",
+    "alibaba.icbu.product.score.get",
     "alibaba.order.trade.tt.get",
     "alibaba.seller.assurance.credit.card",
     "alibaba.seller.order.fund.get",

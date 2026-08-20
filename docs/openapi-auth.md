@@ -75,7 +75,7 @@ pnpm smoke:alibaba:real
 
 报告写入 `artifacts/real-smoke/report.json`，只包含 requestId、方法、状态、上游错误码、契约问题和字段类型结构，不保存业务字段值或完整 Alibaba 响应。真实 mutation 不在候选集合中，任何 mutation feature flag 仍保持关闭。
 
-2026-08-20 的本地账号验证结果为：35 个候选中 20 个通过、5 个因权限包不足被拒绝、2 个返回 Alibaba 远端错误、8 个因缺少真实前置数据跳过，契约漂移为 0。该账号的逐项结果仍只保存在本地报告；仓库仅记录已通过方法的 `account-verified` 状态和不含账号数据的契约修正。
+2026-08-20 最新一轮本地账号验证结果为：35 个候选中 21 个通过、5 个因权限包不足被拒绝、1 个返回 Alibaba 远端错误、8 个因缺少真实前置数据跳过，契约漂移为 0。`alibaba.icbu.product.score.get` 在本轮新增为账号验证通过。该账号的逐项结果仍只保存在本地报告；仓库仅记录已通过方法的 `account-verified` 状态和不含账号数据的契约修正。
 
 `artifacts/` 已被 Git 忽略，但 Windows 不保证 POSIX `0600` 文件权限完全生效。不要上传、提交、粘贴或通过聊天发送授权包和 Profile。截图在 AppSecret 显示及 OAuth 授权前生成，诊断文件不记录密码、Cookie、CSRF、授权码或 Token。
 
