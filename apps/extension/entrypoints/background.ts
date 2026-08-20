@@ -109,7 +109,6 @@ const MUTATION_OPERATIONS = new Set<OperationId>([
   'saveProductDraft',
   'updateProduct',
   'updateProductDisplay',
-  'operatePhotoGroup',
   'createProductGroup',
   'uploadRfqAttachment',
   'submitRfqQuotation',

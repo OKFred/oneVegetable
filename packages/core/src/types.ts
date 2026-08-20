@@ -195,6 +195,12 @@ export interface ProductDisplayRequest {
 
 export type PhotoUploadRequest = components['schemas']['PhotoUploadRequest'];
 
+export interface PhotoGroupOperationResult {
+  operation: PhotoGroupOperationRequest['operation'];
+  groupId: string;
+  group: PhotoGroup | null;
+}
+
 export interface OperationMap {
   getDashboard: { request: undefined; response: DashboardSummary };
   getDiagnostics: { request: undefined; response: DiagnosticsSnapshot };
@@ -211,7 +217,7 @@ export interface OperationMap {
   };
   updateProductDisplay: { request: ProductDisplayRequest; response: undefined };
   listPhotoGroups: { request: { parentId?: string } | undefined; response: PhotoGroup[] };
-  operatePhotoGroup: { request: PhotoGroupOperationRequest; response: PhotoGroup };
+  operatePhotoGroup: { request: PhotoGroupOperationRequest; response: PhotoGroupOperationResult };
   listPhotos: { request: PhotoListQuery; response: PhotoPage };
   uploadPhoto: { request: PhotoUploadRequest; response: Photo };
   transferPhotoFromUrl: { request: PhotoTransferRequest; response: Photo };

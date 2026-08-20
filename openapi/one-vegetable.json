@@ -9569,6 +9569,16 @@
           "groupName": { "type": ["string", "null"], "maxLength": 128 }
         }
       },
+      "PhotoGroupOperationResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["operation", "groupId", "group"],
+        "properties": {
+          "operation": { "type": "string", "enum": ["add", "rename", "delete"] },
+          "groupId": { "type": "string" },
+          "group": { "oneOf": [{ "$ref": "#/components/schemas/PhotoGroup" }, { "type": "null" }] }
+        }
+      },
       "PhotoPage": {
         "allOf": [
           { "$ref": "#/components/schemas/PageMeta" },
@@ -14126,8 +14136,8 @@
       "lifecycle": "active",
       "risk": "mutation",
       "featureArea": "groups",
-      "verification": "documented",
-      "realCallEnabled": false,
+      "verification": "account-verified",
+      "realCallEnabled": true,
       "restricted": false,
       "restrictionReason": null,
       "checkedAt": "2026-08-13",

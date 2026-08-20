@@ -231,7 +231,7 @@ function formatTime(value: number): string {
           {{ system?.gatewayStatus.realReadEnabled ? '已启用' : '关闭' }}
         </p>
         <p class="mt-1 text-xs text-muted-foreground">
-          图库上传 / URL 转存 {{ system?.gatewayStatus.mutationEnabled ? '已启用' : '关闭' }}
+          图库分组 / 上传 / URL 转存 {{ system?.gatewayStatus.mutationEnabled ? '已启用' : '关闭' }}
         </p>
         <p
           v-if="system?.gatewayStatus.endpointOrigin"

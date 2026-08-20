@@ -304,26 +304,8 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('button', { name: '图库', exact: true }).click();
   await expect(page.getByRole('heading', { name: '图库' })).toBeVisible();
   await page.getByLabel('图库分组名称').fill('真实分组');
-  await expect(page.getByRole('button', { name: '新增' })).toBeDisabled();
-  await expect(page.getByText(/真实分组写操作尚未完成账号 smoke test/)).toBeVisible();
-
-  const photoMutationError = await page.evaluate(async () => {
-    const extension = (
-      globalThis as unknown as {
-        chrome: { runtime: { sendMessage(value: object): Promise<unknown> } };
-      }
-    ).chrome;
-    return extension.runtime.sendMessage({
-      requestId: crypto.randomUUID(),
-      kind: 'gateway-request',
-      operation: 'operatePhotoGroup',
-      payload: { operation: 'add', groupId: null, groupName: '真实分组' }
-    });
-  });
-  expect(photoMutationError).toMatchObject({
-    ok: false,
-    error: { code: 'REAL_MUTATION_DISABLED' }
-  });
+  await expect(page.getByRole('button', { name: '新增' })).toBeEnabled();
+  await expect(page.getByText(/真实分组新增、改名和删除已完成账号验证/)).toBeVisible();
 
   await page.getByRole('button', { name: 'RFQ' }).click();
   await expect(page.getByRole('heading', { name: 'RFQ 工作台' })).toBeVisible();

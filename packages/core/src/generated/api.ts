@@ -6034,6 +6034,12 @@ export interface components {
             groupId: string | null;
             groupName: string | null;
         };
+        PhotoGroupOperationResult: {
+            /** @enum {string} */
+            operation: "add" | "rename" | "delete";
+            groupId: string;
+            group: components["schemas"]["PhotoGroup"] | null;
+        };
         PhotoPage: components["schemas"]["PageMeta"] & {
             items: components["schemas"]["Photo"][];
         };

@@ -137,4 +137,57 @@ describe('PhotoAdapter', () => {
     ).rejects.toThrow('groupId');
     expect(call).not.toHaveBeenCalled();
   });
+
+  it('maps a group operation to the official request and normalizes its result', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve(
+        response(method, {
+          photo_group_result: {
+            photobank_group: {
+              id: 312577503,
+              level1: 312577503,
+              level2: 0,
+              level3: 0,
+              name: '详情图'
+            }
+          }
+        })
+      )
+    );
+
+    await expect(
+      new PhotoAdapter(client(call)).operateGroup({
+        operation: 'add',
+        groupId: null,
+        groupName: '详情图'
+      })
+    ).resolves.toEqual({
+      operation: 'add',
+      groupId: '312577503',
+      group: {
+        id: '312577503',
+        name: '详情图',
+        photoCount: 0,
+        parentId: null,
+        level: 1
+      }
+    });
+    expect(call).toHaveBeenCalledWith('alibaba.icbu.photobank.group.operate', {
+      photo_group_operation_request: { operation: 'add', group_name: '详情图' }
+    });
+  });
+
+  it('accepts a successful delete response without fabricating a group', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve(response(method, { photo_group_result: { success: true } }))
+    );
+
+    await expect(
+      new PhotoAdapter(client(call)).operateGroup({
+        operation: 'delete',
+        groupId: '312577503',
+        groupName: null
+      })
+    ).resolves.toEqual({ operation: 'delete', groupId: '312577503', group: null });
+  });
 });

@@ -14,6 +14,7 @@ import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
+import ModalDialog from '../components/ui/ModalDialog.vue';
 import { useServices } from '../lib/services';
 
 type GovernanceFilter = 'all' | 'unreferenced' | 'lowResolution';
@@ -29,11 +30,11 @@ const selectedGroupDefinition = ref<PhotoGroup | null>(null);
 const observedDimensions = ref<Record<string, { width: number; height: number }>>({});
 const previewOpen = ref(false);
 const previewIndex = ref(0);
+const deleteDialogOpen = ref(false);
 const photos = useQuery({
   queryKey: ['photos', selectedGroup],
   queryFn: () => gateway.request('listPhotos', { page: 1, pageSize: 24, groupId: selectedGroup.value })
 });
-const groupMutationsEnabled = computed(() => mode === 'mock');
 const filteredPhotos = computed(() => {
   const items = photos.data.value?.items ?? [];
   if (governanceFilter.value === 'unreferenced') {
@@ -61,10 +62,13 @@ const previewImages = computed<ImagePreviewItem[]>(() =>
 );
 const operateGroup = useMutation({
   mutationFn: (request: PhotoGroupOperationRequest) => gateway.request('operatePhotoGroup', request),
-  onSuccess: async (group, request) => {
+  onSuccess: async (result, request) => {
     operationMessage.value =
-      request.operation === 'delete' ? `已删除 ${group.name}` : `分组已保存：${group.name}`;
+      request.operation === 'delete'
+        ? '已删除所选分组'
+        : `分组已保存：${result.group?.name ?? request.groupName ?? result.groupId}`;
     if (request.operation === 'delete') selectedGroup.value = '-1';
+    deleteDialogOpen.value = false;
     groupName.value = '';
     await queryClient.invalidateQueries({ queryKey: ['photo-groups'] });
   },
@@ -162,7 +166,7 @@ function openPreview(photo: Photo): void {
           <Button
             size="sm"
             variant="outline"
-            :disabled="!groupMutationsEnabled || !groupName.trim()"
+            :disabled="operateGroup.isPending.value || !groupName.trim()"
             title="新增子分组"
             @click="mutateGroup('add')"
             ><FolderPlus class="size-3" />新增</Button
@@ -170,20 +174,20 @@ function openPreview(photo: Photo): void {
           <Button
             size="sm"
             variant="outline"
-            :disabled="!groupMutationsEnabled || selectedGroup === '-1' || !groupName.trim()"
+            :disabled="operateGroup.isPending.value || selectedGroup === '-1' || !groupName.trim()"
             @click="mutateGroup('rename')"
             ><Pencil class="size-3" />改名</Button
           >
           <Button
             size="sm"
             variant="outline"
-            :disabled="!groupMutationsEnabled || selectedGroup === '-1'"
-            @click="mutateGroup('delete')"
+            :disabled="operateGroup.isPending.value || selectedGroup === '-1'"
+            @click="deleteDialogOpen = true"
             ><Trash2 class="size-3" />删除</Button
           >
         </div>
-        <p v-if="!groupMutationsEnabled" class="text-xs text-amber-700">
-          真实分组写操作尚未完成账号 smoke test。
+        <p v-if="mode !== 'mock'" class="text-xs text-emerald-700">
+          真实分组新增、改名和删除已完成账号验证；删除前会要求再次确认。
         </p>
         <p v-if="operationMessage" class="text-xs text-muted-foreground">{{ operationMessage }}</p>
       </div>
@@ -264,6 +268,27 @@ function openPreview(photo: Photo): void {
       </QueryState>
     </section>
   </div>
+
+  <ModalDialog
+    v-model:open="deleteDialogOpen"
+    title="删除图库分组"
+    :description="`确定删除“${selectedGroupDefinition?.name ?? '所选分组'}”吗？该请求会直接提交到国际站，平台拒绝时页面会显示错误。`"
+    size="sm"
+  >
+    <p class="text-sm leading-6 text-muted-foreground">
+      这是国际站真实写操作。当前分组 ID：{{ selectedGroupDefinition?.id ?? selectedGroup }}。
+    </p>
+    <template #footer>
+      <div class="flex justify-end gap-2">
+        <Button variant="outline" :disabled="operateGroup.isPending.value" @click="deleteDialogOpen = false">
+          取消
+        </Button>
+        <Button variant="destructive" :disabled="operateGroup.isPending.value" @click="mutateGroup('delete')">
+          {{ operateGroup.isPending.value ? '正在删除…' : '确认删除' }}
+        </Button>
+      </div>
+    </template>
+  </ModalDialog>
 
   <ImagePreview v-model:open="previewOpen" :images="previewImages" :initial-index="previewIndex" />
 </template>

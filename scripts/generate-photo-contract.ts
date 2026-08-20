@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { format } from 'prettier';
 
 import { withAlibabaResponseMetadata } from './lib/alibaba-response-contract';
-import { readAccountVerifiedMethods } from './lib/account-verification';
+import { readAccountVerifiedMethods, readAccountVerifiedMutationMethods } from './lib/account-verification';
 import { normalizeHttpContract } from './lib/normalize-http-contract';
 
 interface ParamNode {
@@ -45,6 +45,7 @@ interface OpenApiDocument {
 
 const root = resolve(import.meta.dirname, '..');
 const accountVerifiedMethods = await readAccountVerifiedMethods(root);
+const accountVerifiedMutationMethods = await readAccountVerifiedMutationMethods(root);
 const contractPath = resolve(root, 'openapi/one-vegetable.json');
 const registryPath = resolve(root, 'packages/core/src/generated/photo-capabilities.ts');
 const sourceContract = JSON.parse(await readFile(contractPath, 'utf8')) as OpenApiDocument;
@@ -127,8 +128,13 @@ for (const definition of snapshot.definitions) {
     lifecycle: definition.lifecycle,
     risk: definition.risk,
     featureArea: definition.featureArea,
-    verification: accountVerifiedMethods.has(definition.method) ? 'account-verified' : 'documented',
-    realCallEnabled: !definition.restricted && definition.risk === 'read',
+    verification:
+      accountVerifiedMethods.has(definition.method) || accountVerifiedMutationMethods.has(definition.method)
+        ? 'account-verified'
+        : 'documented',
+    realCallEnabled:
+      !definition.restricted &&
+      (definition.risk === 'read' || accountVerifiedMutationMethods.has(definition.method)),
     restricted: definition.restricted,
     restrictionReason: definition.restrictionReason,
     checkedAt: definition.checkedAt,
@@ -165,6 +171,16 @@ document.components.schemas.PhotoGroupOperationRequest = {
     groupName: { type: ['string', 'null'], maxLength: 128 }
   }
 };
+document.components.schemas.PhotoGroupOperationResult = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['operation', 'groupId', 'group'],
+  properties: {
+    operation: { type: 'string', enum: ['add', 'rename', 'delete'] },
+    groupId: { type: 'string' },
+    group: { oneOf: [{ $ref: '#/components/schemas/PhotoGroup' }, { type: 'null' }] }
+  }
+};
 
 const gatewayFailureResponses = {
   '4XX': { $ref: '#/components/responses/GatewayFailure' },
@@ -183,7 +199,9 @@ document.paths['/photo-groups/operate'] = {
     responses: {
       '200': {
         description: 'Affected gallery group',
-        content: { 'application/json': { schema: { $ref: '#/components/schemas/PhotoGroup' } } }
+        content: {
+          'application/json': { schema: { $ref: '#/components/schemas/PhotoGroupOperationResult' } }
+        }
       },
       ...gatewayFailureResponses
     }

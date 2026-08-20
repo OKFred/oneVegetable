@@ -45,7 +45,7 @@ describe('typed gallery capability domain', () => {
     }
   });
 
-  it('enables reads and keeps mutations closed before account verification', () => {
+  it('enables reads and only account-verified mutations', () => {
     expect(getCapabilityDefinition('alibaba.icbu.photobank.list')).toMatchObject({
       risk: 'read',
       realCallEnabled: true
@@ -56,7 +56,8 @@ describe('typed gallery capability domain', () => {
     });
     expect(getCapabilityDefinition('alibaba.icbu.photobank.group.operate')).toMatchObject({
       risk: 'mutation',
-      realCallEnabled: false
+      verification: 'account-verified',
+      realCallEnabled: true
     });
   });
 });

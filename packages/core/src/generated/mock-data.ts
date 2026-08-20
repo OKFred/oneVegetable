@@ -259,11 +259,15 @@ export const PHOTO_MOCK_DATA: PhotoMockData = {
       }
     ],
     "operatePhotoGroup": {
-      "id": "2003",
-      "name": "新建分组",
-      "photoCount": 0,
-      "parentId": null,
-      "level": 1
+      "operation": "add",
+      "groupId": "2003",
+      "group": {
+        "id": "2003",
+        "name": "新建分组",
+        "photoCount": 0,
+        "parentId": null,
+        "level": 1
+      }
     },
     "listPhotos": {
       "items": [

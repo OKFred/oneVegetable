@@ -128,6 +128,46 @@ describe('BFF Alibaba read gateway', () => {
     });
   });
 
+  it('operates a gallery group through the dedicated mutation operation', async () => {
+    const requestId = createRequestId();
+    const send = vi.fn<NetworkTransport['send']>((_input, init) => {
+      expect(new Headers(init.headers).get('X-Request-ID')).toBe(requestId);
+      if (!(init.body instanceof URLSearchParams)) throw new Error('expected URLSearchParams');
+      expect(init.body.get('method')).toBe('alibaba.icbu.photobank.group.operate');
+      expect(init.body.get('photo_group_operation_request')).toBe(
+        JSON.stringify({ operation: 'add', group_name: '详情图' })
+      );
+      return Promise.resolve(
+        Response.json({
+          alibaba_icbu_photobank_group_operate_response: {
+            photo_group_result: {
+              photobank_group: {
+                id: 312577503,
+                level1: 312577503,
+                level2: 0,
+                level3: 0,
+                name: '详情图'
+              }
+            }
+          }
+        })
+      );
+    });
+    const gateway = new AlibabaReadGatewayClient(credentials, { transport: { send } });
+
+    await expect(
+      gateway.request(
+        'operatePhotoGroup',
+        { operation: 'add', groupId: null, groupName: '详情图' },
+        { requestId }
+      )
+    ).resolves.toMatchObject({
+      operation: 'add',
+      groupId: '312577503',
+      group: { id: '312577503', name: '详情图' }
+    });
+  });
+
   it('rejects mutations and qualification-gated reads before any network request', async () => {
     const send = vi.fn<NetworkTransport['send']>();
     const gateway = new AlibabaReadGatewayClient(credentials, { transport: { send } });

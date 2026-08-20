@@ -74,11 +74,18 @@ describe('typed product capability domain', () => {
     expect(result.contractIssues.length).toBeGreaterThan(0);
   });
 
-  it('marks deprecated methods and keeps every real mutation feature flag disabled', () => {
+  it('marks deprecated methods and only enables account-verified mutations', () => {
     expect(getCapabilityDefinition('alibaba.icbu.product.add')?.lifecycle).toBe('deprecated');
     const mutations = listCapabilityDefinitions().filter((item) => item.risk === 'mutation');
     expect(mutations.length).toBeGreaterThan(0);
-    expect(new Set(mutations.map((item) => item.realCallEnabled))).toEqual(new Set([false]));
+    expect(mutations.filter((item) => item.realCallEnabled).map((item) => item.method)).toEqual([
+      'alibaba.icbu.photobank.group.operate'
+    ]);
+    expect(
+      mutations
+        .filter((item) => item.realCallEnabled)
+        .every((item) => item.verification === 'account-verified')
+    ).toBe(true);
   });
 
   it('offers a method-correlated call helper', async () => {

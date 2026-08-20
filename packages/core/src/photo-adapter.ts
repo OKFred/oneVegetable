@@ -3,6 +3,7 @@ import { MAX_PHOTOBANK_IMAGE_BYTES, PHOTO_CONTENT_TYPES, validateEncodedFile } f
 import type {
   Photo,
   PhotoGroup,
+  PhotoGroupOperationResult,
   PhotoGroupOperationRequest,
   PhotoPage,
   PhotoUploadRequest,
@@ -19,7 +20,7 @@ export class PhotoAdapter {
     return findRecords(unwrap(call.data, call.method), ['photo_album_group']).map(normalizeGroup);
   }
 
-  async operateGroup(request: PhotoGroupOperationRequest): Promise<PhotoGroup> {
+  async operateGroup(request: PhotoGroupOperationRequest): Promise<PhotoGroupOperationResult> {
     assertGroupOperation(request);
     const call = await this.client.call('alibaba.icbu.photobank.group.operate', {
       photo_group_operation_request: {
@@ -30,8 +31,16 @@ export class PhotoAdapter {
     });
     const root = unwrap(call.data, call.method);
     const record = findRecord(root, ['photobank_group']);
+    if (request.operation === 'delete') {
+      return {
+        operation: request.operation,
+        groupId: request.groupId ?? '',
+        group: record ? normalizeGroup(record) : null
+      };
+    }
     if (!record) throw new Error('图库分组操作未返回分组信息');
-    return normalizeGroup(record);
+    const group = normalizeGroup(record);
+    return { operation: request.operation, groupId: group.id, group };
   }
 
   async list(request: RequestOf<'listPhotos'>): Promise<PhotoPage> {

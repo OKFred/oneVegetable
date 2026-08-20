@@ -17,11 +17,15 @@
       { "id": "2211", "name": "户外场景", "photoCount": 18, "parentId": "2201", "level": 3 }
     ],
     "operatePhotoGroup": {
-      "id": "2003",
-      "name": "新建分组",
-      "photoCount": 0,
-      "parentId": null,
-      "level": 1
+      "operation": "add",
+      "groupId": "2003",
+      "group": {
+        "id": "2003",
+        "name": "新建分组",
+        "photoCount": 0,
+        "parentId": null,
+        "level": 1
+      }
     },
     "listPhotos": {
       "items": [

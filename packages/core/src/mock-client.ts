@@ -180,7 +180,14 @@ export class MockGatewayClient implements GatewayClient {
       const payload = _request as OperationMap['operatePhotoGroup']['request'];
       const current = this.photoGroups.find((group) => group.id === payload.groupId);
       const result: PhotoGroup = {
-        ...(current ?? MOCK_DATA.operatePhotoGroup),
+        ...(current ??
+          MOCK_DATA.operatePhotoGroup.group ?? {
+            id: '2003',
+            name: '新建分组',
+            photoCount: 0,
+            parentId: null,
+            level: 1
+          }),
         id: payload.operation === 'add' ? `group_${Date.now()}` : (payload.groupId ?? '2003'),
         name: payload.groupName ?? current?.name ?? '已删除分组',
         parentId: payload.operation === 'add' ? payload.groupId : (current?.parentId ?? null),
@@ -191,7 +198,11 @@ export class MockGatewayClient implements GatewayClient {
       if (payload.operation === 'delete') {
         this.photoGroups = this.photoGroups.filter((group) => group.id !== payload.groupId);
       }
-      return structuredClone(result);
+      return structuredClone({
+        operation: payload.operation,
+        groupId: result.id,
+        group: payload.operation === 'delete' ? null : result
+      });
     }
     if (operation === 'transferPhotoFromUrl') {
       const payload = _request as OperationMap['transferPhotoFromUrl']['request'];

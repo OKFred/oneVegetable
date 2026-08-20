@@ -71,14 +71,38 @@ describe('PhotosView', () => {
     wrapper.unmount();
   });
 
-  it('keeps real group mutations disabled before account verification', async () => {
+  it('enables account-verified group mutations outside Mock mode', async () => {
     const wrapper = mountView('extension');
     await flushPromises();
     await wrapper.get('input[aria-label="图库分组名称"]').setValue('真实分组');
 
-    expect(button(wrapper, '新增').attributes('disabled')).toBeDefined();
+    expect(button(wrapper, '新增').attributes('disabled')).toBeUndefined();
     expect(wrapper.text()).toContain('Extension API 查询');
-    expect(wrapper.text()).toContain('真实分组写操作尚未完成账号 smoke test');
+    expect(wrapper.text()).toContain('真实分组新增、改名和删除已完成账号验证');
+    wrapper.unmount();
+  });
+
+  it('requires confirmation before deleting a real gallery group', async () => {
+    const wrapper = mountView('extension');
+    await flushPromises();
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('商品主图');
+    });
+    await button(wrapper, '商品主图').trigger('click');
+    await button(wrapper, '删除').trigger('click');
+
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('删除图库分组');
+    });
+    expect(document.body.textContent).toContain('这是国际站真实写操作');
+    const confirm = Array.from(document.body.querySelectorAll('button')).find((candidate) =>
+      candidate.textContent.includes('确认删除')
+    );
+    if (!(confirm instanceof HTMLButtonElement)) throw new Error('Missing delete confirmation button');
+    confirm.click();
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('已删除所选分组');
+    });
     wrapper.unmount();
   });
 });

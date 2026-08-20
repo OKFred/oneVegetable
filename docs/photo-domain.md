@@ -23,7 +23,7 @@
 - `group.list` 不传 `id` 时读取一级分组；选择一级分组后以其 `id` 懒加载当前分组及全部子分组。页面不再依赖一次请求返回完整树。
 - 页面只调用严格类型的 runtime message，不能访问 App Secret 或直接访问 Alibaba 网关。
 - 查询分组和素材属于只读能力；分组操作、上传和 URL 转存属于真实写能力。
-- `photobank.upload` 已完成真实账号 Smoke；本地 Node BFF 通过专用 operation flag 开放上传和 URL 转存，扩展以本机管理员身份开放这两项。分组新增、改名和删除仍保持关闭。
+- `photobank.upload` 与 `photobank.group.operate` 已完成真实账号 Smoke；本地 Node BFF 通过专用 operation flag 开放上传、URL 转存和分组操作，扩展以本机管理员身份开放这些能力。
 - 响应 Schema 漂移由通用能力调试器返回原始数据、`traceId` 与契约告警，不伪造成功结果。
 
 ## 素材治理
@@ -43,7 +43,7 @@
 继续用于无账号完整流程演示。2026-08-21 又以 multipart 上传了 8,612 字节 PNG，并通过后续列表查询确认
 `fileId=33167520316`，因此 `photobank.upload` 已完成当前账号验证；测试素材保留在用户图库中，文件名以
 `one-vegetable-smoke-` 开头。URL 转存复用同一上传接口并已通过下载、SSRF、类型和大小测试，但没有单独
-执行真实外部 URL Smoke。`group.operate` 尚未真实验收，继续关闭。
+执行真实外部 URL Smoke。2026-08-21 又完成 `group.operate` 的新增、改名、删除闭环验证，临时分组已清理；真实删除成功响应没有返回文档示例中的分组对象，因此稳定内部结果在删除时明确使用 `group: null`，不伪造分组字段。
 
 官方上传接口要求 multipart 文件字段，应用对 Web/BFF 仍使用 JSON Base64 契约，在 BFF 或扩展后台解码、
 校验文件头后再转换为 multipart。官方原图上限为 5 MiB，图库本地上传和 URL 转存都使用该限制；文件内容、
