@@ -10,6 +10,8 @@ import {
   isProductSchemaImageField,
   isProductSchemaFieldReadOnly,
   isProductSchemaHtmlField,
+  isProductEditorFieldRequired,
+  productEditorFieldDomId,
   productSchemaFieldText,
   productSchemaFieldTexts,
   type ProductSchemaField,
@@ -27,11 +29,15 @@ import PhotoBankPicker from './PhotoBankPicker.vue';
 
 const ProductDescriptionEditor = defineAsyncComponent(() => import('./ProductDescriptionEditor.vue'));
 
-const props = defineProps<{
-  field: ProductSchemaField;
-  issues: ProductSchemaFieldIssue[];
-  productDescriptionType: string | undefined;
-}>();
+const props = withDefaults(
+  defineProps<{
+    field: ProductSchemaField;
+    issues: ProductSchemaFieldIssue[];
+    productDescriptionType: string | undefined;
+    showTechnical?: boolean;
+  }>(),
+  { showTechnical: true }
+);
 const emit = defineEmits<{
   update: [field: ProductSchemaField];
   imageStatus: [status: ProductDescriptionImageMetadata & { url: string }];
@@ -44,6 +50,7 @@ const fieldText = computed(() => productSchemaFieldText(props.field));
 const fieldTexts = computed(() => productSchemaFieldTexts(props.field));
 const imageField = computed(() => isProductSchemaImageField(props.field));
 const htmlField = computed(() => isProductSchemaHtmlField(props.field));
+const required = computed(() => isProductEditorFieldRequired(props.field));
 const imageLimit = computed(() => {
   const value = Number(
     props.field.rules.find((rule) => rule.name === 'maxInputNumRule')?.value ??
@@ -148,17 +155,29 @@ function removeInstance(index: number): void {
 </script>
 
 <template>
-  <div v-if="field.type === 'label'" class="rounded-lg border bg-muted/50 p-3 text-sm">
+  <div
+    v-if="field.type === 'label'"
+    :id="productEditorFieldDomId(field.key)"
+    :data-field-key="field.key"
+    class="rounded-lg border bg-muted/50 p-3 text-sm"
+  >
     <p class="font-medium">{{ field.name }}</p>
     <p class="mt-1 text-muted-foreground">
       {{ fieldTexts.join('；') }}
     </p>
   </div>
 
-  <fieldset v-else class="space-y-2 rounded-lg border p-4" :disabled="readOnly">
+  <fieldset
+    v-else
+    :id="productEditorFieldDomId(field.key)"
+    :data-field-key="field.key"
+    class="space-y-2 rounded-lg border p-4"
+    :disabled="readOnly"
+  >
     <div class="flex flex-wrap items-center gap-2">
       <legend class="text-sm font-medium">{{ field.name }}</legend>
-      <Badge variant="outline">{{ field.type }}</Badge>
+      <Badge v-if="required" variant="warning">必填</Badge>
+      <Badge v-if="showTechnical" variant="outline">{{ field.type }}</Badge>
       <Badge v-if="readOnly" variant="secondary">只读</Badge>
       <Badge v-if="disabled" variant="secondary">已禁用</Badge>
     </div>
@@ -218,6 +237,7 @@ function removeInstance(index: number): void {
         :field="child"
         :issues="issues"
         :product-description-type="productDescriptionType"
+        :show-technical="showTechnical"
         @update="updateComplexChild(index, $event)"
         @image-status="emit('imageStatus', $event)"
       />
@@ -240,6 +260,7 @@ function removeInstance(index: number): void {
           :field="child"
           :issues="issues"
           :product-description-type="productDescriptionType"
+          :show-technical="showTechnical"
           @update="updateInstanceChild(instanceIndex, childIndex, $event)"
           @image-status="emit('imageStatus', $event)"
         />

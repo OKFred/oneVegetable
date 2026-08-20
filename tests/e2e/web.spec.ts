@@ -11,16 +11,17 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await expect(page.getByRole('heading', { name: '商品管理' })).toBeVisible();
   await expect(page.getByText('Portable solar power station 1000W')).toBeVisible();
 
-  await page.getByRole('tab', { name: 'Schema 发品/编辑' }).click();
-  await page.getByRole('button', { name: '获取 Schema' }).click();
-  await expect(page.getByRole('heading', { name: '可视化商品 Schema' })).toBeVisible();
+  await page.getByRole('tab', { name: '商品发布/编辑' }).click();
+  await page.getByRole('button', { name: '开始填写' }).click();
+  await expect(page.getByRole('heading', { name: '发布新商品' })).toBeVisible();
   await page.getByLabel('商品标题').fill('Portable solar generator for camping');
-  await page.getByRole('button', { name: '保存草稿' }).click();
+  await page.getByRole('button', { name: /6\. 检查与提交/ }).click();
+  await page.getByRole('button', { name: /保存平台草稿/ }).click();
   await expect(page.getByText(/草稿已保存/)).toBeVisible();
 
   await page.reload();
   await page.getByRole('button', { name: '商品' }).click();
-  await page.getByRole('tab', { name: 'Schema 发品/编辑' }).click();
+  await page.getByRole('tab', { name: '商品发布/编辑' }).click();
   await expect(page.getByText('已恢复浏览器中的未提交表单草稿。')).toBeVisible();
   await expect(page.getByLabel('商品标题')).toHaveValue('Portable solar generator for camping');
 
@@ -163,14 +164,17 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
   });
   await page.reload();
   await page.getByRole('button', { name: '商品' }).click();
-  await page.getByRole('tab', { name: 'Schema 发品/编辑' }).click();
-  await page.getByRole('button', { name: '获取 Schema' }).click();
+  await page.getByRole('tab', { name: '商品发布/编辑' }).click();
+  await page.getByRole('button', { name: '开始填写' }).click();
+  await page.getByRole('button', { name: /4\. 商品详情/ }).click();
 
   await expect(page.locator('.ProseMirror')).toBeVisible();
-  await expect(page.getByRole('heading', { name: '详情整改建议' })).toBeVisible();
+  await page.getByRole('button', { name: /6\. 检查与提交/ }).click();
+  await expect(page.getByRole('heading', { name: '内容优化建议' })).toBeVisible();
   await expect(page.getByText(/英文正文约 .*少于项目建议的 150 个/)).toBeVisible();
-  await expect(page.getByRole('button', { name: /保存草稿/ })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /保存平台草稿/ })).toBeEnabled();
 
+  await page.getByRole('button', { name: /4\. 商品详情/ }).click();
   await page.getByRole('button', { name: /插入图库图片/ }).click();
   await expect(page.getByRole('heading', { name: '国际站图库' })).toBeVisible();
   await page.getByRole('textbox', { name: '外部图片 URL' }).fill('https://images.example.com/detail.jpg');
@@ -179,8 +183,11 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
   await page.getByRole('button', { name: '完成选择' }).click();
   await expect(page.locator('.ProseMirror img[src*="mock-transferred-image"]')).toBeVisible();
 
-  await page.getByLabel('商品明文 ID（编辑时）').fill('10000002');
-  await page.getByRole('button', { name: '获取 Schema' }).click();
+  await page.getByText('高级设置', { exact: true }).click();
+  await page.getByLabel('商品明文 ID').fill('10000002');
+  await page.getByRole('button', { name: '重新加载商品表单' }).click();
+  await expect(page.getByLabel('商品标题')).toHaveValue(/.+/);
+  await page.getByRole('button', { name: /4\. 商品详情/ }).click();
   await expect(page.getByText('智能详情', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: '查看转换变化' }).click();
   await expect(page.getByText(/智能详情将降级为 API 可维护的普通详情/)).toBeVisible();

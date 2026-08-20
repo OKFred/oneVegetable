@@ -103,6 +103,10 @@ export function isProductEditorFieldRecommended(field: ProductSchemaField): bool
   return hasOfficialTip(field);
 }
 
+export function productEditorFieldDomId(fieldKey: string): string {
+  return `product-field-${encodeURIComponent(fieldKey)}`;
+}
+
 function normalizeFieldId(value: string): string {
   return value.toLocaleLowerCase().replace(/[^a-z0-9]/g, '');
 }

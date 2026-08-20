@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, h, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import { Layers3, RefreshCw, Save, Search, Send, ShieldAlert } from '@lucide/vue';
+import { Layers3, RefreshCw, Search } from '@lucide/vue';
 
 import {
   analyzeProductDescriptionQuality,
@@ -14,7 +14,7 @@ import {
   type Product,
   type ProductCategory,
   type ProductDescriptionImageMetadata,
-  type ProductDescriptionQualityIssue,
+  type ProductEditorStepId,
   type ProductSchemaField,
   type ProductSchemaModel,
   withProductSchemaFieldText
@@ -22,7 +22,7 @@ import {
 
 import DataTable from '../components/DataTable.vue';
 import PageHeader from '../components/PageHeader.vue';
-import ProductSchemaFieldComponent from '../components/ProductSchemaField.vue';
+import ProductEditorWizard from '../components/ProductEditorWizard.vue';
 import QueryState from '../components/QueryState.vue';
 import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
@@ -32,6 +32,7 @@ import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 
 type Workspace = 'list' | 'publisher' | 'organization' | 'quality';
+type ProductEditorMode = 'guided' | 'advanced';
 
 const DRAFT_STORAGE_KEY = 'one-vegetable-product-schema-draft';
 const { gateway, mode } = useServices();
@@ -50,6 +51,9 @@ const draftRestored = ref(false);
 const selectedProductIds = ref<string[]>([]);
 const groupName = ref('');
 const imageMetadata = ref<Record<string, ProductDescriptionImageMetadata>>({});
+const categorySearch = ref('');
+const editorMode = ref<ProductEditorMode>('guided');
+const editorStep = ref<ProductEditorStepId>('basics');
 let scoreRefreshTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 
 const products = useQuery({
@@ -66,6 +70,14 @@ const groups = useQuery({
 });
 
 const categoryOptions = computed(() => flattenCategories(categories.data.value ?? []));
+const filteredCategoryOptions = computed(() => {
+  const query = categorySearch.value.trim().toLocaleLowerCase();
+  return query
+    ? categoryOptions.value.filter(
+        (category) => category.name.toLocaleLowerCase().includes(query) || String(category.id).includes(query)
+      )
+    : categoryOptions.value;
+});
 const schemaIssues = computed(() => (schemaModel.value ? validateProductSchemaModel(schemaModel.value) : []));
 const blockingSchemaIssues = computed(() => schemaIssues.value.filter((issue) => issue.severity === 'error'));
 const schemaPreview = computed(() => {
@@ -141,15 +153,6 @@ const qualityIssues = computed(() =>
     imageMetadata: imageMetadata.value
   })
 );
-const advisoryIssues = computed(() =>
-  qualityIssues.value.filter((issue) => issue.source !== 'alibaba-schema' || issue.level !== 'error')
-);
-const issuesBySource = computed(() => ({
-  'alibaba-schema': qualityIssues.value.filter((issue) => issue.source === 'alibaba-schema'),
-  official: qualityIssues.value.filter((issue) => issue.source === 'official'),
-  project: qualityIssues.value.filter((issue) => issue.source === 'project')
-}));
-
 const batchDisplay = useMutation({
   mutationFn: (display: 'online' | 'offline') =>
     gateway.request('updateProductDisplay', { productIds: selectedProductIds.value, display }),
@@ -220,7 +223,7 @@ const columns: DataColumn<Product>[] = [
             void selectProductForSchema(row.original);
           }
         },
-        () => '编辑 Schema'
+        () => '编辑商品'
       )
   }
 ];
@@ -240,7 +243,20 @@ async function selectProductForSchema(product: Product): Promise<void> {
       ? '已选择商品；列表未返回类目，请选择实际类目后获取编辑 Schema。'
       : '已选择商品及其真实类目，正在渲染现有商品 Schema。';
   workspace.value = 'publisher';
+  editorMode.value = 'guided';
+  editorStep.value = 'basics';
   if (product.categoryId !== null) await loadSchema();
+}
+
+function startNewProduct(): void {
+  editProductId.value = '';
+  editScoreProductId.value = '';
+  schemaModel.value = null;
+  schemaError.value = '';
+  feedback.value = '请选择叶子类目并开始填写商品信息。';
+  editorMode.value = 'guided';
+  editorStep.value = 'basics';
+  workspace.value = 'publisher';
 }
 
 function applySchema(xml: string, message: string): void {
@@ -248,6 +264,7 @@ function applySchema(xml: string, message: string): void {
     schemaModel.value = parseProductSchemaXml(xml);
     schemaError.value = '';
     feedback.value = message;
+    editorStep.value = 'basics';
   } catch (error: unknown) {
     schemaError.value = error instanceof Error ? error.message : 'Schema XML 无法解析';
   }
@@ -377,12 +394,6 @@ function scheduleScoreRefresh(productId: string): void {
   }, 5000);
 }
 
-function sourceLabel(source: ProductDescriptionQualityIssue['source']): string {
-  if (source === 'alibaba-schema') return 'Alibaba Schema';
-  if (source === 'official') return '官方提示';
-  return '项目建议';
-}
-
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : '操作失败';
 }
@@ -436,7 +447,7 @@ onBeforeUnmount(() => {
     <Button
       v-for="item in [
         ['list', '商品列表'],
-        ['publisher', 'Schema 发品/编辑'],
+        ['publisher', '商品发布/编辑'],
         ['organization', '类目与分组'],
         ['quality', '质量与上下架']
       ] as const"
@@ -454,11 +465,12 @@ onBeforeUnmount(() => {
   </p>
 
   <template v-if="workspace === 'list'">
-    <div class="mb-4 flex max-w-md items-center gap-2">
-      <div class="relative flex-1">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="relative min-w-64 max-w-md flex-1">
         <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
         <Input v-model="subject" class="pl-9" placeholder="按标题搜索" />
       </div>
+      <Button @click="startNewProduct">发布新商品</Button>
     </div>
     <QueryState :loading="products.isPending.value" :error="products.error.value">
       <DataTable :columns="columns" :data="products.data.value?.items ?? []" empty-text="没有匹配商品" />
@@ -467,147 +479,86 @@ onBeforeUnmount(() => {
 
   <template v-else-if="workspace === 'publisher'">
     <Card class="mb-5 p-5">
-      <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <label class="text-sm font-medium"
-          >类目
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 class="font-semibold">{{ editProductId ? '编辑已有商品' : '发布新商品' }}</h2>
+          <p class="mt-1 text-sm text-muted-foreground">
+            {{ editProductId ? `商品 ${editProductId}` : '先选择叶子类目，再加载平台表单。' }}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" @click="startNewProduct">重新新建</Button>
+      </div>
+      <div class="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <label class="text-sm font-medium">
+          搜索类目
+          <Input v-model="categorySearch" class="mt-2" placeholder="输入类目名称或 ID" />
+        </label>
+        <label class="text-sm font-medium">
+          商品类目
           <select v-model="categoryId" class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm">
-            <option v-for="category in categoryOptions" :key="category.id" :value="String(category.id)">
+            <option
+              v-for="category in filteredCategoryOptions"
+              :key="category.id"
+              :value="String(category.id)"
+            >
               {{ '—'.repeat(category.depth) }} {{ category.name }}
             </option>
           </select>
         </label>
-        <label class="text-sm font-medium"
-          >市场
-          <select v-model="market" class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm">
-            <option value="wholesale">wholesale</option>
-            <option value="sourcing">sourcing</option>
-          </select>
-        </label>
-        <label class="text-sm font-medium">语言<Input v-model="language" class="mt-2" /></label>
-        <label class="text-sm font-medium"
-          >商品明文 ID（编辑时）
-          <Input v-model="editProductId" class="mt-2" placeholder="可留空" />
-        </label>
       </div>
       <div class="mt-4 flex flex-wrap gap-2">
-        <Button @click="loadSchema"><Layers3 class="size-4" />获取 Schema</Button>
-        <Button variant="outline" @click="loadDraft"><RefreshCw class="size-4" />渲染草稿</Button>
+        <Button @click="loadSchema">
+          <Layers3 class="size-4" />{{ editProductId ? '重新加载商品表单' : '开始填写' }}
+        </Button>
+        <Button variant="outline" @click="loadDraft"><RefreshCw class="size-4" />加载平台草稿</Button>
         <Button variant="outline" :disabled="!schemaModel" @click="refreshLevelSchema">
           <RefreshCw class="size-4" />刷新层级属性
         </Button>
       </div>
+      <details class="mt-4 rounded-lg border p-3">
+        <summary class="cursor-pointer text-sm font-medium">高级设置</summary>
+        <div class="mt-3 grid gap-3 md:grid-cols-3">
+          <label class="text-sm font-medium">
+            市场
+            <select v-model="market" class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm">
+              <option value="wholesale">wholesale</option>
+              <option value="sourcing">sourcing</option>
+            </select>
+          </label>
+          <label class="text-sm font-medium">语言<Input v-model="language" class="mt-2" /></label>
+          <label class="text-sm font-medium">
+            商品明文 ID
+            <Input v-model="editProductId" class="mt-2" placeholder="新建商品时留空" />
+          </label>
+        </div>
+      </details>
       <p v-if="draftRestored" class="mt-3 text-xs text-muted-foreground">已恢复浏览器中的未提交表单草稿。</p>
       <p v-if="schemaError" class="mt-3 text-sm text-destructive">{{ schemaError }}</p>
     </Card>
 
-    <Card v-if="schemaModel" class="p-5">
-      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 class="font-semibold">可视化商品 Schema</h2>
-          <p class="mt-1 text-xs text-muted-foreground">{{ schemaModel.fields.length }} 个顶层字段</p>
-        </div>
-        <Badge :variant="blockingSchemaIssues.length ? 'destructive' : 'success'">
-          {{ blockingSchemaIssues.length ? `${blockingSchemaIssues.length} 个阻断问题` : '本地规则通过' }}
-        </Badge>
-        <Badge variant="warning">{{ advisoryIssues.length }} 条非阻断建议</Badge>
-      </div>
-      <div class="space-y-4">
-        <ProductSchemaFieldComponent
-          v-for="(field, index) in schemaModel.fields"
-          :key="field.key"
-          :field="field"
-          :issues="schemaIssues"
-          :product-description-type="productDescriptionType"
-          @update="updateRootField(index, $event)"
-          @image-status="updateImageStatus"
-        />
-      </div>
-      <div class="mt-5 rounded-lg border p-4">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h3 class="font-semibold">详情整改建议</h3>
-            <p class="mt-1 text-xs text-muted-foreground">项目建议与官方提示仅供整改参考，不会禁用提交。</p>
-          </div>
-          <Button
-            v-if="editScoreProductId"
-            variant="outline"
-            size="sm"
-            :disabled="productScore.isPending.value"
-            @click="productScore.mutate(editScoreProductId)"
-          >
-            <RefreshCw class="size-4" />刷新官方评分
-          </Button>
-        </div>
-        <p v-if="productScore.error.value" class="mt-3 text-xs text-amber-700">
-          官方评分暂时不可用，不影响编辑或提交：{{ errorMessage(productScore.error.value) }}
-        </p>
-        <div class="mt-4 grid gap-3 lg:grid-cols-3">
-          <section
-            v-for="source in ['alibaba-schema', 'official', 'project'] as const"
-            :key="source"
-            class="rounded-md bg-muted/40 p-3"
-          >
-            <div class="flex items-center justify-between">
-              <h4 class="text-sm font-medium">{{ sourceLabel(source) }}</h4>
-              <Badge
-                :variant="
-                  source === 'alibaba-schema' && issuesBySource[source].length ? 'destructive' : 'secondary'
-                "
-              >
-                {{ issuesBySource[source].length }}
-              </Badge>
-            </div>
-            <p v-if="!issuesBySource[source].length" class="mt-3 text-xs text-muted-foreground">暂无问题</p>
-            <ul v-else class="mt-3 space-y-3 text-xs">
-              <li v-for="issue in issuesBySource[source]" :key="`${issue.code}:${issue.message}`">
-                <p :class="issue.level === 'error' ? 'font-medium text-destructive' : 'font-medium'">
-                  {{ issue.message }}
-                </p>
-                <p class="mt-1 text-muted-foreground">{{ issue.remediation }}</p>
-              </li>
-            </ul>
-          </section>
-        </div>
-      </div>
-      <div v-if="schemaModel.warnings.length" class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-        <p class="font-medium">服务端规则提示</p>
-        <ul class="mt-1 list-disc pl-5">
-          <li v-for="warning in schemaModel.warnings" :key="warning">{{ warning }}</li>
-        </ul>
-      </div>
-      <div
-        v-if="realMutationDisabled"
-        class="mt-4 flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800"
-      >
-        <ShieldAlert class="mt-0.5 size-4 shrink-0" />真实写操作需逐方法完成账号 smoke
-        test，当前真实模式保持关闭且没有自行开启入口。
-      </div>
-      <div class="mt-5 flex flex-wrap gap-2">
-        <Button
-          :disabled="publish.isPending.value || realMutationDisabled || blockingSchemaIssues.length > 0"
-          @click="publish.mutate(false)"
-        >
-          <Send class="size-4" />{{ editProductId ? '更新商品' : '发布商品' }} ·
-          {{ advisoryIssues.length }} 条建议
-        </Button>
-        <Button
-          v-if="!editProductId"
-          variant="outline"
-          :disabled="publish.isPending.value || realMutationDisabled || blockingSchemaIssues.length > 0"
-          @click="publish.mutate(true)"
-          ><Save class="size-4" />保存草稿</Button
-        >
-      </div>
-      <p v-if="publish.error.value" class="mt-3 text-sm text-destructive">
-        {{ errorMessage(publish.error.value) }}
-      </p>
-      <details class="mt-5 rounded-lg border p-3">
-        <summary class="cursor-pointer text-sm font-medium">高级 XML 预览（只读）</summary>
-        <pre
-          class="mt-3 max-h-80 overflow-auto whitespace-pre-wrap bg-slate-950 p-3 text-xs text-slate-100"
-          >{{ schemaPreview }}</pre>
-      </details>
-    </Card>
+    <ProductEditorWizard
+      v-if="schemaModel"
+      v-model:mode="editorMode"
+      v-model:step="editorStep"
+      :model="schemaModel"
+      :issues="schemaIssues"
+      :quality-issues="qualityIssues"
+      :product-description-type="productDescriptionType"
+      :mutation-disabled="realMutationDisabled"
+      :submit-pending="publish.isPending.value"
+      :editing="Boolean(editProductId)"
+      :score-available="Boolean(editScoreProductId)"
+      :score-pending="productScore.isPending.value"
+      :score-error="productScore.error.value ? errorMessage(productScore.error.value) : undefined"
+      :schema-preview="schemaPreview"
+      @update-field="updateRootField"
+      @image-status="updateImageStatus"
+      @refresh-score="productScore.mutate(editScoreProductId)"
+      @submit="publish.mutate($event)"
+    />
+    <p v-if="publish.error.value" class="mt-3 text-sm text-destructive">
+      {{ errorMessage(publish.error.value) }}
+    </p>
   </template>
 
   <template v-else-if="workspace === 'organization'">
