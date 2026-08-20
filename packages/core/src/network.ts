@@ -37,6 +37,7 @@ export interface NetworkRequest {
   method?: 'GET' | 'POST';
   headers?: Readonly<Record<string, string>>;
   body?: BodyInit | null;
+  bodySizeBytes?: number;
   responseType?: NetworkResponseType;
   signal?: AbortSignal;
   maxAttempts?: number;
@@ -115,7 +116,7 @@ export class NetworkManager {
     const url = new URL(input.url);
     const policy = this.#policies[input.service];
     assertAllowedUrl(url, policy);
-    assertRequestSize(input.body, policy.maxRequestBytes);
+    assertRequestSize(input.body, policy.maxRequestBytes, input.bodySizeBytes);
 
     const maxAttempts = Math.max(1, Math.min(3, input.maxAttempts ?? 1));
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -217,9 +218,20 @@ function assertAllowedUrl(url: URL, policy: NetworkServicePolicy): void {
   }
 }
 
-function assertRequestSize(body: BodyInit | null | undefined, maxBytes: number | undefined): void {
+function assertRequestSize(
+  body: BodyInit | null | undefined,
+  maxBytes: number | undefined,
+  declaredBytes: number | undefined
+): void {
   if (maxBytes === undefined || body === undefined || body === null) return;
-  let bytes: number | undefined;
+  if (declaredBytes !== undefined && (!Number.isSafeInteger(declaredBytes) || declaredBytes < 0)) {
+    throw new GatewayException({
+      code: 'NETWORK_REQUEST_SIZE_INVALID',
+      message: '请求体大小声明无效',
+      retryable: false
+    });
+  }
+  let bytes = declaredBytes;
   if (typeof body === 'string') bytes = new TextEncoder().encode(body).byteLength;
   else if (body instanceof URLSearchParams) bytes = new TextEncoder().encode(body.toString()).byteLength;
   else if (body instanceof ArrayBuffer) bytes = body.byteLength;

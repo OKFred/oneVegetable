@@ -111,7 +111,9 @@ Cloudflare Worker，在 4174 端口启动 BFF 模式 Web。Playwright 会通过�
   Alibaba 原始响应或文件内容。管理员可按 requestId 精确关联请求诊断与操作审计。
 - `ONE_VEGETABLE_REQUEST_RETENTION_DAYS` 控制请求诊断留存，默认 30 天、允许 1–90 天；清理接口只删除
   超过留存窗口的 `request_events`，不会删除 append-only 的 `audit_events`。管理页执行清理前需要二次确认。
-- `ONE_VEGETABLE_MUTATION_FLAGS` 默认空值。没有真实账号验收前不要添加 `operation:*` 或
+- `ONE_VEGETABLE_MUTATION_FLAGS` 默认空值。`pnpm dev:api:real` 仅在本地 Node 子进程中默认注入
+  `operation:uploadPhoto,operation:transferPhotoFromUrl`；这是已完成真实上传 Smoke 的图库专用例外。
+  其他能力没有真实账号验收前不要添加 `operation:*` 或
   `capability:*` 写能力标记。
 
 ## staging

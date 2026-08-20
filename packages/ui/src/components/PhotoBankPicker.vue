@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import { Check, Download, ImagePlus, LoaderCircle, Upload, X } from '@lucide/vue';
 
-import type { Photo } from '@one-vegetable/core';
+import { MAX_PHOTOBANK_IMAGE_BYTES, type Photo } from '@one-vegetable/core';
 
 import QueryState from './QueryState.vue';
 import PhotoGroupNavigation from './PhotoGroupNavigation.vue';
@@ -44,7 +44,7 @@ const photos = useQuery({
 });
 const selectedIds = computed(() => new Set(props.modelValue.map((photo) => photo.id)));
 const totalPages = computed(() => Math.max(1, Math.ceil((photos.data.value?.total ?? 0) / pageSize)));
-const uploadsEnabled = computed(() => mode === 'mock');
+const uploadsEnabled = computed(() => ['mock', 'bff', 'extension'].includes(mode));
 
 const upload = useMutation({
   mutationFn: async (file: File) =>
@@ -109,7 +109,8 @@ function changeGroup(groupId: string): void {
 function onFileChange(event: Event): void {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
-  if (file) upload.mutate(file);
+  if (file && file.size <= MAX_PHOTOBANK_IMAGE_BYTES) upload.mutate(file);
+  else if (file) uploadError.value = '图库图片不能超过 5 MiB';
   input.value = '';
 }
 
@@ -211,9 +212,7 @@ function dimensionsLabel(photo: Photo): string {
                   @change="onFileChange"
                 />
               </label>
-              <p v-if="!uploadsEnabled" class="mt-2 text-xs text-amber-700">
-                真实上传尚未完成账号 smoke test。
-              </p>
+              <p class="mt-2 text-xs text-muted-foreground">支持图片文件，单张最大 5 MiB。</p>
               <div class="mt-4 space-y-2 border-t pt-4">
                 <p class="text-xs font-medium">转存外部图片</p>
                 <Input
@@ -232,7 +231,7 @@ function dimensionsLabel(photo: Photo): string {
                   <LoaderCircle v-if="transfer.isPending.value" class="size-4 animate-spin" />
                   <Download v-else class="size-4" />下载并存入图库
                 </Button>
-                <p class="text-xs text-muted-foreground">仅公共 HTTP(S) 图片，最大 20 MiB。</p>
+                <p class="text-xs text-muted-foreground">仅公共 HTTP(S) 图片，最大 5 MiB。</p>
               </div>
               <p v-if="uploadError" class="mt-2 text-xs text-destructive">{{ uploadError }}</p>
             </aside>

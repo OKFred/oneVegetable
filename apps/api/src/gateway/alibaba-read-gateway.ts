@@ -1,5 +1,6 @@
 import {
   AlibabaClient,
+  downloadPhotoForUpload,
   findCapability,
   GatewayException,
   getCapabilityDefinition,
@@ -215,6 +216,12 @@ export class AlibabaReadGatewayClient implements GatewayClient {
         return await photos.listGroups(optionalString(record, 'parentId'));
       case 'listPhotos':
         return await photos.list(request as RequestOf<'listPhotos'>);
+      case 'uploadPhoto':
+        return await photos.upload(request as RequestOf<'uploadPhoto'>);
+      case 'transferPhotoFromUrl': {
+        const downloaded = await downloadPhotoForUpload(request as RequestOf<'transferPhotoFromUrl'>);
+        return await photos.upload(downloaded);
+      }
       case 'listShippingTemplates':
         return await logistics.listShippingTemplates();
       case 'listOrders':

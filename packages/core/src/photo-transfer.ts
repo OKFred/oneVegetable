@@ -1,7 +1,8 @@
 import { createRequestId, NativeFetchTransport, NetworkManager } from './network';
+import { MAX_PHOTOBANK_IMAGE_BYTES } from './encoded-file';
 import type { PhotoTransferRequest, PhotoUploadRequest } from './types';
 
-export const MAX_TRANSFER_IMAGE_BYTES = 20 * 1024 * 1024;
+export const MAX_TRANSFER_IMAGE_BYTES = MAX_PHOTOBANK_IMAGE_BYTES;
 const MAX_REDIRECTS = 5;
 const ALLOWED_IMAGE_CONTENT_TYPES = new Set([
   'image/jpeg',

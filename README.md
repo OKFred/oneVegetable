@@ -65,7 +65,7 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 - 设置页提供 `zh_CN` / `en_US` 接口语言偏好；商品列表、Schema、平台草稿、履约通道和地址 Schema 等支持语言参数的请求使用该偏好，商品草稿仍保留创建时的语言上下文。
 - 本地商品草稿按商品 ID 或新建类目隔离，约 750 ms 防抖保存，最多保留 10 份且自动清理 30 天前记录。发现草稿时必须明确选择继续草稿或重新加载平台数据；发布或更新成功后删除对应草稿。
 - Schema 中 `valueTypeRule=html` 或 `superText` 会使用受限 Tiptap 编辑器；仅维护 `productDescType=2` 的普通详情。智能详情和不受支持的旧 HTML 默认原样只读，查看变化并二次确认后才转换。
-- 主图、SKU 图和详情图复用国际站图库选择器。Web Mock 支持分组/分页选择、本地上传和外部 URL 转存；真实上传、转存和商品更新在账号 smoke test 前保持禁用。
+- 主图、SKU 图和详情图复用国际站图库选择器。真实图库查询、本地上传和外部 URL 转存已接通；Web/BFF 仍使用 JSON Base64 契约，后台校验后按官方要求转换为 multipart，单张上限 5 MiB。商品更新和图库分组写入继续关闭。
 - 详情整改面板区分 `Alibaba Schema`、`官方提示` 和 `项目建议`。只有 Schema/契约硬错误阻止提交；内容长度、结构、SEO、图片质量和官方评分提示均不阻止提交。
 - `openapi/one-vegetable.json` 是运行时唯一契约；商品、RFQ、交易、物流、洞察、图库和平台协作文档 JSON 是离线生成输入。商品快照包含 25 个目录 API 和 2 个文章来源 Schema 发布 API；RFQ 快照包含 7 个目录 API；交易分类的 27 个方法中，26 个进入类型化快照；物流快照包含 14 个官方物流分类方法和 1 个商品域运费模板方法；洞察快照包含 2 个数据接口和 2 个采购供应商接口；图库快照包含 4 个官方目录 API；平台协作快照包含最后 3 个目录 API。接口契约详情以淘宝开放平台详情页为主，免费/授权/聚石塔/业务资格等准入标签以 Alibaba.com 国际站目录和文章为准；新增领域前必须执行双源差异审计。详见 [Alibaba OpenAPI 文档源策略](docs/alibaba-api-document-sources.md)。CI 不访问官方文档站。
 - 审计目录中的 84 个候选方法均已具有方法关联的请求/响应映射和 CSP 安全 standalone validator。非法请求不会出网；响应漂移会保留原始数据、`traceId` 和结构化告警。类型化不等于业务资格或真实账号验收。
@@ -74,7 +74,7 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 - `alibaba.seller.order.get` 需要聚石塔，v2 不提供该调用；订单列表点击整行、订单号或“查看”会打开桌面右侧详情抽屉（移动端全屏），组合摘要、资金、物流与按需加载的 TT 信息。TT 账号默认遮罩且切换订单或关闭后立即重新遮罩；真实交易写入继续关闭。详见 [交易域说明](docs/trade-domain.md)。
 - 国际物流工作台覆盖地址字典、特殊商品属性、运力列表、运费试算、物流订单、面单和下单草稿。14 个 OneTouch 方法因业务资格和账号状态在扩展中默认关闭；Web Mock 可完整回归，运费模板保持独立可查询。详见 [物流域说明](docs/logistics-domain.md)。
 - 数据洞察工作台展示供应商全站排名时间序列，以及买家历史信保供应商与下单商品。页面不推断排名含义、不补造供应商名称，并保持长 ID 为字符串。CGS 小满签约客户接口默认关闭且不提供业务密钥表单。详见 [数据与供应商洞察说明](docs/insights-domain.md)。
-- 图库工作台复用按官方 `id` 参数懒加载的三层分组导航，展示文件大小、引用数量、更新时间与图库 `fileId`。真实账号已验证分组和素材读取；官方列表不提供尺寸时由浏览器读取自然尺寸后再给出低于 750 × 750 的非阻断建议，避免误报。真实分组操作、上传和 URL 转存在账号 smoke test 前保持关闭。详见 [图库域说明](docs/photo-domain.md)。
+- 图库工作台复用按官方 `id` 参数懒加载的三层分组导航，展示文件大小、引用数量、更新时间与图库 `fileId`。真实账号已验证分组、素材读取和 multipart 上传；官方列表不提供尺寸时由浏览器读取自然尺寸后再给出低于 750 × 750 的非阻断建议，避免误报。URL 转存复用已验证上传链路，分组写操作继续关闭。详见 [图库域说明](docs/photo-domain.md)。
 - 普通文件转存、天鹿风控和 URL 爬取任务通知归为平台协作能力。文件转存不会冒充图库入库；风控和任务回调不提供页面采集或发送入口，并由 service worker 二次门禁。详见 [平台协作能力说明](docs/platform-domain.md)。
 - MV3 默认只申请 `storage` 和正式网关主机权限；自定义网关与外部图片来源在用户执行对应操作时按需申请主机权限。设置页可导出或清空最多 100 条会话级脱敏诊断，且构建会执行权限与体积预算检查。详见 [MV3 发布加固说明](docs/mv3-release-hardening.md)。
 - 开放平台凭证使用用户口令派生的 AES-256-GCM 密钥加密保存；local/session 存储对内容脚本不可见，口令不落盘，默认空闲 15 分钟或 service worker 重启后自动锁定，旧版明文设置必须显式迁移。遗忘口令只能清除后重新配置，威胁模型与恢复边界见 [凭证保险库说明](docs/credential-vault.md)。
@@ -91,4 +91,6 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 - 高级设置中的商品明文 ID 填 `10000002` 后重新加载：智能详情只读与显式降级流程。
 - 高级设置中的商品明文 ID 填 `10000003` 后重新加载：含未知标签、样式和 iframe 的旧详情转换差异。
 
-图库 URL 转存会先拒绝凭据 URL、本机、回环、私网与 link-local 字面地址，逐跳检查重定向，验证图片 MIME，并以 20 MiB 或 Schema 更小值限制下载。service worker 随后调用 `alibaba.icbu.photobank.upload`，不会使用只能返回 URL 的 `file.urlposting.upload`。
+图库 URL 转存会先拒绝凭据 URL、本机、回环、私网与 link-local 字面地址，逐跳检查重定向，验证图片 MIME，并以官方 5 MiB 或 Schema 更小值限制下载。service worker 或本地 Node BFF 随后调用 `alibaba.icbu.photobank.upload`，不会使用只能返回 URL 的 `file.urlposting.upload`。
+
+应用运行时 Mock 数据只维护在 [`mock/data`](mock/data)，再由生成脚本产出共享 TypeScript fixture；组件、适配器和真实 Smoke 脚本不内嵌应用 Mock 数据。

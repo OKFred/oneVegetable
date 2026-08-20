@@ -1,5 +1,5 @@
 import type { AlibabaClient } from './alibaba-client';
-import { PHOTO_CONTENT_TYPES, validateEncodedFile } from './encoded-file';
+import { MAX_PHOTOBANK_IMAGE_BYTES, PHOTO_CONTENT_TYPES, validateEncodedFile } from './encoded-file';
 import type {
   Photo,
   PhotoGroup,
@@ -10,7 +10,7 @@ import type {
 } from './types';
 
 export class PhotoAdapter {
-  constructor(private readonly client: Pick<AlibabaClient, 'call'>) {}
+  constructor(private readonly client: Pick<AlibabaClient, 'call' | 'callWithFile'>) {}
 
   async listGroups(parentId?: string): Promise<PhotoGroup[]> {
     const call = await this.client.call('alibaba.icbu.photobank.group.list', {
@@ -57,18 +57,28 @@ export class PhotoAdapter {
   async upload(request: PhotoUploadRequest): Promise<Photo> {
     const bytes = validateEncodedFile(request, {
       allowedContentTypes: PHOTO_CONTENT_TYPES,
+      maxBytes: MAX_PHOTOBANK_IMAGE_BYTES,
       requireImageSignature: true
     });
-    const call = await this.client.call('alibaba.icbu.photobank.upload', {
-      image_bytes: request.contentBase64,
-      file_name: request.fileName.trim(),
-      ...(request.groupId && request.groupId !== '-1' ? { group_id: request.groupId } : {})
-    });
+    const fileName = request.fileName.trim();
+    const call = await this.client.callWithFile(
+      'alibaba.icbu.photobank.upload',
+      {
+        file_name: fileName,
+        ...(request.groupId && request.groupId !== '-1' ? { group_id: request.groupId } : {})
+      },
+      {
+        fieldName: 'image_bytes',
+        fileName,
+        contentType: request.contentType,
+        bytes
+      }
+    );
     const root = findRecord(unwrap(call.data, call.method), ['upload_image_response']);
     if (!root) throw new Error('图库上传未返回素材信息');
     return {
       id: readString(root, ['file_id', 'id']) ?? '',
-      name: readString(root, ['file_name']) ?? request.fileName,
+      name: readString(root, ['file_name']) ?? fileName,
       url: normalizeUrl(readString(root, ['photobank_url', 'url'])),
       groupId: request.groupId ?? '-1',
       width: readInteger(root, ['width']) ?? null,
@@ -126,7 +136,8 @@ function normalizePhoto(record: Record<string, unknown>): Photo {
 
 function unwrap(value: unknown, method: string): Record<string, unknown> {
   const record = asRecord(value);
-  return asRecord(record[`${method.replaceAll('.', '_')}_response`]);
+  const wrapped = record[`${method.replaceAll('.', '_')}_response`];
+  return isRecord(wrapped) ? wrapped : record;
 }
 
 function findRecord(record: Record<string, unknown>, keys: string[]): Record<string, unknown> | null {

@@ -72,7 +72,7 @@ export interface ControlSystemInfo {
     endpointOrigin: string;
     signMethod: 'hmac' | 'md5' | 'hmac-sha256';
     realReadEnabled: boolean;
-    mutationEnabled: false;
+    mutationEnabled: boolean;
   };
 }
 

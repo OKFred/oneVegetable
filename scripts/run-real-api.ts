@@ -25,6 +25,8 @@ const child = spawn(command, args, {
     ...process.env,
     ONE_VEGETABLE_ENVIRONMENT: 'local-node',
     ONE_VEGETABLE_GATEWAY_MODE: 'real',
+    ONE_VEGETABLE_MUTATION_FLAGS:
+      process.env.ONE_VEGETABLE_MUTATION_FLAGS ?? 'operation:uploadPhoto,operation:transferPhotoFromUrl',
     ONE_VEGETABLE_ALIBABA_CREDENTIAL_FILE: credentialFile
   },
   stdio: 'inherit',

@@ -9,6 +9,13 @@ export interface AlibabaCallResult {
   traceId?: string;
 }
 
+export interface AlibabaFilePart {
+  fieldName: string;
+  fileName: string;
+  contentType: string;
+  bytes: Uint8Array;
+}
+
 export interface AlibabaClientOptions {
   maxAttempts?: number;
   shouldRetry?: (method: string, error: GatewayError, attempt: number) => boolean;
@@ -36,8 +43,7 @@ export class AlibabaClient {
             allowedOrigins: [new URL(credentials.endpoint).origin],
             timeoutMilliseconds: 30_000,
             maxRequestBytes: 30 * 1024 * 1024,
-            maxResponseBytes: 30 * 1024 * 1024,
-            defaultHeaders: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' }
+            maxResponseBytes: 30 * 1024 * 1024
           },
           bff: { allowedOrigins: [] },
           'external-photo': { allowedOrigins: [] }
@@ -57,6 +63,7 @@ export class AlibabaClient {
           service: 'alibaba',
           url: this.#credentials.endpoint,
           method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
           body,
           responseType: 'json',
           ...(this.#options.requestId ? { requestId: this.#options.requestId } : {})
@@ -77,6 +84,105 @@ export class AlibabaClient {
       }
     }
     throw new GatewayException({ code: 'RETRY_EXHAUSTED', message: '请求重试已耗尽', retryable: false });
+  }
+
+  async callWithFile(
+    method: string,
+    parameters: Readonly<Record<string, unknown>>,
+    file: AlibabaFilePart
+  ): Promise<AlibabaCallResult> {
+    const bytes = new Uint8Array(file.bytes);
+    const signedParameters = createAlibabaRequest(this.#credentials, method, parameters);
+    const multipart = encodeMultipartBody(signedParameters, file, bytes);
+
+    const response = await this.#network.request({
+      service: 'alibaba',
+      url: this.#credentials.endpoint,
+      method: 'POST',
+      headers: { 'Content-Type': multipart.contentType },
+      body: multipart.body,
+      bodySizeBytes: multipart.body.byteLength,
+      responseType: 'text',
+      ...(this.#options.requestId ? { requestId: this.#options.requestId } : {})
+    });
+    if (!response.ok) {
+      throw multipartTransportError(response);
+    }
+    const transport = getTransportError(response);
+    if (transport) throw new GatewayException(transport);
+    const data = parseMultipartJson(response.data, response.headers);
+    const apiError = getAlibabaError(data);
+    if (apiError) throw new GatewayException(apiError);
+    return { method, data };
+  }
+}
+
+function encodeMultipartBody(
+  fields: Readonly<Record<string, string>>,
+  file: AlibabaFilePart,
+  bytes: Uint8Array
+): { body: ArrayBuffer; contentType: string } {
+  if (!/^[a-z0-9.+-]+\/[a-z0-9.+-]+$/i.test(file.contentType)) {
+    throw new Error('multipart 文件 Content-Type 无效');
+  }
+  const boundary = `----oneVegetable${crypto.randomUUID().replaceAll('-', '')}`;
+  const encoder = new TextEncoder();
+  const chunks: Uint8Array[] = [];
+  for (const [name, value] of Object.entries(fields)) {
+    chunks.push(
+      encoder.encode(
+        `--${boundary}\r\nContent-Disposition: form-data; name="${multipartToken(name)}"\r\n\r\n${value}\r\n`
+      )
+    );
+  }
+  chunks.push(
+    encoder.encode(
+      `--${boundary}\r\nContent-Disposition: form-data; name="${multipartToken(file.fieldName)}"; filename="${multipartToken(file.fileName)}"\r\nContent-Type: ${file.contentType}\r\n\r\n`
+    ),
+    bytes,
+    encoder.encode(`\r\n--${boundary}--\r\n`)
+  );
+  const size = chunks.reduce((total, chunk) => total + chunk.byteLength, 0);
+  const body = new ArrayBuffer(size);
+  const output = new Uint8Array(body);
+  let offset = 0;
+  for (const chunk of chunks) {
+    output.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { body, contentType: `multipart/form-data; boundary=${boundary}` };
+}
+
+function multipartToken(value: string): string {
+  return value.replace(/["\r\n]/g, '_');
+}
+
+function multipartTransportError(response: NetworkResponse): GatewayException {
+  const contentType = response.headers.get('content-type')?.split(';')[0]?.trim() ?? 'unknown';
+  return new GatewayException({
+    code: response.status >= 500 ? 'UPSTREAM_UNAVAILABLE' : 'NETWORK_ERROR',
+    message: `Alibaba 文件上传返回 HTTP ${response.status}（${contentType}）`,
+    retryable: response.status >= 500 || response.status === 429
+  });
+}
+
+function parseMultipartJson(value: unknown, headers: Headers): unknown {
+  if (typeof value !== 'string') {
+    throw new GatewayException({
+      code: 'INVALID_JSON_RESPONSE',
+      message: 'Alibaba 文件上传响应格式无效',
+      retryable: false
+    });
+  }
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    const contentType = headers.get('content-type')?.split(';')[0]?.trim() ?? 'unknown';
+    throw new GatewayException({
+      code: 'INVALID_JSON_RESPONSE',
+      message: `Alibaba 文件上传响应不是 JSON（Content-Type: ${contentType}）`,
+      retryable: false
+    });
   }
 }
 

@@ -6042,7 +6042,7 @@ export interface components {
             url: string;
             groupId: string;
             fileName?: string;
-            /** @description Optional smaller Schema-derived limit. The service worker always caps downloads at 20 MiB. */
+            /** @description Optional smaller Schema-derived limit. PhotoBank uploads are capped at 5 MiB. */
             maxBytes?: number;
         };
         PhotoUploadRequest: components["schemas"]["EncodedFilePayload"] & {

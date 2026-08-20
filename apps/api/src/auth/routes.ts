@@ -29,6 +29,7 @@ export interface AuthRoutesOptions {
   database: 'sqlite' | 'd1';
   gatewayMode: GatewayMode;
   gatewayStatus?: AlibabaCredentialStatus;
+  mutationEnabled?: boolean;
   allowedOrigins?: readonly string[];
   requestEvents?: RequestEventRepository;
   requestEventRetentionDays?: number;
@@ -243,7 +244,7 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
               signMethod: 'hmac'
             }),
             realReadEnabled: options.gatewayMode === 'real' && options.gatewayStatus?.configured === true,
-            mutationEnabled: false
+            mutationEnabled: options.mutationEnabled === true
           },
           schemaVersion: 3,
           requestEventRetentionDays: options.requestEventRetentionDays ?? 30

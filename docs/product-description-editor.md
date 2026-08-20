@@ -30,7 +30,7 @@
 2. 本地上传成功后自动选中。
 3. 下载公共 HTTP(S) 图片后上传 PhotoBank，并自动插入。
 
-URL 转存只在扩展 service worker 下载。校验覆盖凭据 URL、localhost、本地域名、回环、私网、link-local、逐跳重定向、图片 Content-Type 和流式大小上限。绝对上限为 20 MiB；Schema 限制更小时使用更小值。真实写操作仍受 mutation flag 控制。
+URL 转存在扩展 service worker 或本地 Node BFF 下载。校验覆盖凭据 URL、localhost、本地域名、回环、私网、link-local、逐跳重定向、图片 Content-Type 和流式大小上限。图库上传的官方上限为 5 MiB；Schema 限制更小时使用更小值。真实上传和 URL 转存已按当前账号开放，其他商品写操作仍受 mutation flag 控制。
 
 ## 整改等级
 

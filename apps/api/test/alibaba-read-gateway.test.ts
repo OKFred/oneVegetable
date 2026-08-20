@@ -92,6 +92,42 @@ describe('BFF Alibaba read gateway', () => {
     });
   });
 
+  it('uploads a validated gallery image with the multipart transport', async () => {
+    const requestId = createRequestId();
+    const send = vi.fn<NetworkTransport['send']>((_input, init) => {
+      expect(new Headers(init.headers).get('X-Request-ID')).toBe(requestId);
+      expect(new Headers(init.headers).get('Content-Type')).toMatch(/^multipart\/form-data; boundary=/);
+      expect(init.body).toBeInstanceOf(ArrayBuffer);
+      return Promise.resolve(
+        Response.json({
+          upload_image_response: {
+            file_id: 33167520316,
+            file_name: 'smoke.png',
+            photobank_url: 'http://sc04.alicdn.com/kf/smoke.png'
+          }
+        })
+      );
+    });
+    const gateway = new AlibabaReadGatewayClient(credentials, { transport: { send } });
+
+    await expect(
+      gateway.request(
+        'uploadPhoto',
+        {
+          fileName: 'smoke.png',
+          contentBase64: 'iVBORw0KGgo=',
+          contentType: 'image/png',
+          byteLength: 8
+        },
+        { requestId }
+      )
+    ).resolves.toMatchObject({
+      id: '33167520316',
+      name: 'smoke.png',
+      url: 'https://sc04.alicdn.com/kf/smoke.png'
+    });
+  });
+
   it('rejects mutations and qualification-gated reads before any network request', async () => {
     const send = vi.fn<NetworkTransport['send']>();
     const gateway = new AlibabaReadGatewayClient(credentials, { transport: { send } });

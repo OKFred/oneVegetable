@@ -3,6 +3,7 @@ import type { components } from './generated/api';
 export type EncodedFilePayload = components['schemas']['EncodedFilePayload'];
 
 export const MAX_ENCODED_FILE_BYTES = 20 * 1024 * 1024;
+export const MAX_PHOTOBANK_IMAGE_BYTES = 5 * 1024 * 1024;
 
 const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const IMAGE_SIGNATURES: Readonly<Record<string, (bytes: Uint8Array) => boolean>> = {

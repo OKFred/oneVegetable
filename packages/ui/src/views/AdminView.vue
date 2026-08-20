@@ -230,6 +230,9 @@ function formatTime(value: number): string {
           凭据 {{ system?.gatewayStatus.configured ? '完整' : '未配置' }} · 只读真实调用
           {{ system?.gatewayStatus.realReadEnabled ? '已启用' : '关闭' }}
         </p>
+        <p class="mt-1 text-xs text-muted-foreground">
+          图库上传 / URL 转存 {{ system?.gatewayStatus.mutationEnabled ? '已启用' : '关闭' }}
+        </p>
         <p
           v-if="system?.gatewayStatus.endpointOrigin"
           class="mt-1 truncate font-mono text-xs text-muted-foreground"
@@ -322,7 +325,8 @@ function formatTime(value: number): string {
             可读 active <strong class="float-right">{{ capabilitySummary.readable }}</strong>
           </div>
           <div class="rounded-lg bg-muted p-3">
-            写能力关闭 <strong class="float-right">{{ capabilitySummary.mutationsLocked }}</strong>
+            通用调试器写能力关闭
+            <strong class="float-right">{{ capabilitySummary.mutationsLocked }}</strong>
           </div>
           <div class="rounded-lg bg-muted p-3">
             资格受限 <strong class="float-right">{{ capabilitySummary.restricted }}</strong>

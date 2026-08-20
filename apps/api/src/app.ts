@@ -121,6 +121,9 @@ export function createApiApp(options: ApiAppOptions): Hono {
       runtime: options.runtime,
       database: options.database,
       gatewayMode: options.gatewayMode,
+      mutationEnabled: ['uploadPhoto', 'transferPhotoFromUrl'].some((operation) =>
+        featureFlags.isEnabled(`operation:${operation}`)
+      ),
       ...(options.requestEvents ? { requestEvents: options.requestEvents } : {}),
       ...(options.gatewayStatus ? { gatewayStatus: options.gatewayStatus } : {}),
       ...(options.requestEventRetentionDays !== undefined

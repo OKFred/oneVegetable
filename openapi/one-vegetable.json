@@ -9591,8 +9591,8 @@
           "maxBytes": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 20971520,
-            "description": "Optional smaller Schema-derived limit. The service worker always caps downloads at 20 MiB."
+            "maximum": 5242880,
+            "description": "Optional smaller Schema-derived limit. PhotoBank uploads are capped at 5 MiB."
           }
         }
       },

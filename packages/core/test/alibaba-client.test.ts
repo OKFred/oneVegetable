@@ -48,6 +48,42 @@ describe('AlibabaClient retry policy', () => {
   });
 });
 
+describe('Alibaba multipart upload', () => {
+  it('sends the binary field as multipart and excludes it from the signature fields', async () => {
+    const send = vi.fn((_input: RequestInfo | URL, init: RequestInit) => {
+      expect(init.body).toBeInstanceOf(ArrayBuffer);
+      const body = new TextDecoder().decode(init.body as ArrayBuffer);
+      expect(body).toContain('name="method"\r\n\r\nalibaba.icbu.photobank.upload');
+      expect(body).toContain('name="file_name"\r\n\r\nsmoke.png');
+      expect(body).toContain('name="image_bytes"; filename="smoke.png"');
+      expect(new Headers(init.headers).get('content-type')).toMatch(
+        /^multipart\/form-data; boundary=----oneVegetable/
+      );
+      return Promise.resolve(
+        Response.json({
+          alibaba_icbu_photobank_upload_response: {
+            upload_image_response: { file_id: 1, file_name: 'smoke.png', photobank_url: 'https://img' }
+          }
+        })
+      );
+    });
+    const client = new AlibabaClient(credentials, network(send));
+
+    await expect(
+      client.callWithFile(
+        'alibaba.icbu.photobank.upload',
+        { file_name: 'smoke.png' },
+        {
+          fieldName: 'image_bytes',
+          fileName: 'smoke.png',
+          contentType: 'image/png',
+          bytes: new Uint8Array([1, 2, 3, 4])
+        }
+      )
+    ).resolves.toMatchObject({ method: 'alibaba.icbu.photobank.upload' });
+  });
+});
+
 describe('gateway transport error categories', () => {
   it('maps client timeouts separately from generic network failures', () => {
     const error = new GatewayException({
