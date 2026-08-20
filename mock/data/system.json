@@ -1,0 +1,41 @@
+{
+  "responses": {
+    "listOrders": {
+      "items": [
+        {
+          "id": "ORD-202608-0012",
+          "buyerName": "Northwind Trading",
+          "amount": 2450.5,
+          "currency": "USD",
+          "status": "awaiting_shipment",
+          "createdAt": "2026-08-09T08:30:00Z",
+          "detailAvailability": "summary_only"
+        },
+        {
+          "id": "ORD-202608-0011",
+          "buyerName": "Contoso Retail",
+          "amount": 980,
+          "currency": "USD",
+          "status": "paid",
+          "createdAt": "2026-08-08T02:10:00Z",
+          "detailAvailability": "summary_only"
+        }
+      ],
+      "page": 1,
+      "pageSize": 20,
+      "total": 24
+    },
+    "getOrderFund": {
+      "orderId": "ORD-202608-0012",
+      "paidAmount": 2450.5,
+      "currency": "USD",
+      "status": "paid"
+    },
+    "getOrderLogistics": {
+      "orderId": "ORD-202608-0012",
+      "status": "awaiting_shipment",
+      "carrier": null,
+      "trackingNumber": null
+    }
+  }
+}

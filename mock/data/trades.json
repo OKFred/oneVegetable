@@ -1,0 +1,172 @@
+{
+  "primaryTradeOrder": {
+    "id": "24668306501026709",
+    "buyerLoginId": "northwind-buyer",
+    "status": "undeliver",
+    "amount": "2450.50",
+    "currency": "USD",
+    "createdAt": "2026-08-09T08:30:00.000Z",
+    "modifiedAt": "2026-08-12T02:15:00.000Z"
+  },
+  "tradeOrders": [
+    {
+      "id": "24668306501026709",
+      "buyerLoginId": "northwind-buyer",
+      "status": "undeliver",
+      "amount": "2450.50",
+      "currency": "USD",
+      "createdAt": "2026-08-09T08:30:00.000Z",
+      "modifiedAt": "2026-08-12T02:15:00.000Z"
+    },
+    {
+      "id": "24668306501026710",
+      "buyerLoginId": "contoso-retail",
+      "status": "paid",
+      "amount": "980",
+      "currency": "USD",
+      "createdAt": "2026-08-08T02:10:00.000Z",
+      "modifiedAt": "2026-08-10T06:40:00.000Z"
+    },
+    {
+      "id": "24668306501026711",
+      "buyerLoginId": "adventure-works",
+      "status": "trade_success",
+      "amount": "12780.75",
+      "currency": "EUR",
+      "createdAt": "2026-08-05T11:20:00.000Z",
+      "modifiedAt": "2026-08-12T09:05:00.000Z"
+    }
+  ],
+  "responses": {
+    "listTradeOrders": {
+      "items": [],
+      "page": 1,
+      "pageSize": 20,
+      "total": 3,
+      "documentTimeZoneUnverified": true
+    },
+    "getTradeOrderAggregate": {
+      "order": {
+        "id": "24668306501026709",
+        "buyerLoginId": "northwind-buyer",
+        "status": "undeliver",
+        "amount": "2450.50",
+        "currency": "USD",
+        "createdAt": "2026-08-09T08:30:00.000Z",
+        "modifiedAt": "2026-08-12T02:15:00.000Z"
+      },
+      "fund": {
+        "orderId": "24668306501026709",
+        "paidAmount": "2450.50",
+        "currency": "USD",
+        "status": "PAID"
+      },
+      "logistics": {
+        "orderId": "24668306501026709",
+        "status": "UNDELIVERED",
+        "carrier": null,
+        "trackingNumber": null
+      },
+      "availability": {
+        "order": "available",
+        "fund": "available",
+        "logistics": "available",
+        "fullDetail": "jushita-only"
+      }
+    },
+    "getTradeOrderFund": {
+      "orderId": "24668306501026709",
+      "paidAmount": "2450.50",
+      "currency": "USD",
+      "status": "PAID"
+    },
+    "getTradeOrderLogistics": {
+      "orderId": "24668306501026709",
+      "status": "UNDELIVERED",
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "listTradeFulfillmentChannels": [
+      { "code": "TAO", "name": "一达通", "enabled": true, "unavailableReason": null },
+      { "code": "TAD", "name": "小单履约", "enabled": false, "unavailableReason": "当前订单金额不符合策略" }
+    ],
+    "getTradeServiceCharge": {
+      "currency": "USD",
+      "items": [
+        {
+          "ratio": "0.01",
+          "maxFee": "100",
+          "exportServiceType": "onetouch_service",
+          "logisticsType": "useCaiNiaoLogistics"
+        }
+      ]
+    },
+    "getTradeTtAccount": {
+      "orderId": "24668306501026709",
+      "payableAmount": "2450.50",
+      "currency": "USD",
+      "accountName": "Alibaba.com Singapore E-Commerce Private Limited",
+      "accountNumber": "1029200038060",
+      "bankName": "Citibank, N.A., Hong Kong Branch",
+      "guideContent": "汇款附言中请填写订单号。"
+    },
+    "getTradeAddressSchema": {
+      "fields": [
+        {
+          "id": "contact.fullName",
+          "label": "联系人",
+          "type": "text",
+          "required": true,
+          "readOnly": false,
+          "pattern": "^.+$",
+          "maxLength": 128,
+          "options": []
+        },
+        {
+          "id": "address.country.code",
+          "label": "国家/地区",
+          "type": "select",
+          "required": true,
+          "readOnly": false,
+          "pattern": null,
+          "maxLength": null,
+          "options": [{ "label": "United States", "value": "US" }]
+        },
+        {
+          "id": "address.address",
+          "label": "地址",
+          "type": "textarea",
+          "required": true,
+          "readOnly": false,
+          "pattern": null,
+          "maxLength": 256,
+          "options": []
+        }
+      ]
+    },
+    "listTradeAddresses": [
+      {
+        "id": "120384173001",
+        "label": "Northwind warehouse",
+        "values": {
+          "contact.fullName": "Alex Morgan",
+          "contact.mobileNo": "3534534251",
+          "address.country.code": "US",
+          "address.city.name": "Seattle",
+          "address.address": "1st Avenue 700"
+        }
+      }
+    ],
+    "saveTradeAddress": {
+      "id": "120384173001",
+      "label": "Northwind warehouse",
+      "values": {
+        "contact.fullName": "Alex Morgan",
+        "address.country.code": "US",
+        "address.address": "1st Avenue 700"
+      }
+    },
+    "createTradeOrder": { "id": "24668306501026999", "success": true },
+    "modifyTradeOrder": { "id": "24668306501026709", "success": true }
+  }
+}

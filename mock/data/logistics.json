@@ -1,0 +1,92 @@
+{
+  "primaryLogisticsOrder": {
+    "orderNumber": "ALS00201756002",
+    "status": "created",
+    "freightAmount": "109.20",
+    "currency": "CNY",
+    "placedAt": "2026-08-12T03:20:00.000Z"
+  },
+  "responses": {
+    "listLogisticsAddressNodes": [
+      { "id": "330000", "code": "330000", "name": "浙江省", "level": "province" },
+      { "id": "310000", "code": "310000", "name": "上海市", "level": "province" }
+    ],
+    "listLogisticsSpecialProductTypes": [
+      {
+        "code": "battery",
+        "name": "电池",
+        "children": [
+          {
+            "code": "inlayBattery",
+            "name": "内置/配置电池",
+            "children": [{ "code": "oneLessHundredWh", "name": "单块电池≤100Wh", "children": [] }]
+          }
+        ]
+      }
+    ],
+    "listLogisticsProducts": [
+      {
+        "code": "EX_ASP_ePacket",
+        "name": "邮政 e 邮宝",
+        "warehouseCode": "ASP_YH_SZJC",
+        "enabled": true,
+        "unavailableReason": null
+      },
+      {
+        "code": "EX_ASP_standard3C",
+        "name": "标准快递（带电）",
+        "warehouseCode": "ASP_YH_SZJC",
+        "enabled": false,
+        "unavailableReason": "当前目的国暂不可用"
+      }
+    ],
+    "calculateLogisticsQuote": {
+      "options": [
+        {
+          "productCode": "EX_ASP_ePacket",
+          "productName": "邮政 e 邮宝",
+          "totalAmount": "109.20",
+          "currency": "CNY",
+          "estimatedDays": "7-12 business days",
+          "warehouseCode": "ASP_YH_SZJC",
+          "available": true,
+          "unavailableReason": null
+        }
+      ],
+      "issues": []
+    },
+    "listLogisticsOrders": {
+      "items": [
+        {
+          "orderNumber": "ALS00201756002",
+          "status": "created",
+          "freightAmount": "109.20",
+          "currency": "CNY",
+          "placedAt": "2026-08-12T03:20:00.000Z"
+        }
+      ],
+      "page": 1,
+      "pageSize": 20,
+      "total": 1
+    },
+    "getLogisticsOrder": {
+      "order": {
+        "orderNumber": "ALS00201756002",
+        "status": "created",
+        "freightAmount": "109.20",
+        "currency": "CNY",
+        "placedAt": "2026-08-12T03:20:00.000Z"
+      },
+      "warehouseName": "越航深圳仓",
+      "warehouseAddress": "深圳市龙岗区坂田仓库",
+      "labelUrl": null,
+      "labelBase64": "JVBERi0xLjQKJU1vY2sgbGFiZWw=",
+      "trackingNumber": "YT202608120001"
+    },
+    "listShippingTemplates": [
+      { "id": "123", "name": "快捷模板" },
+      { "id": "124", "name": "北美包邮模板" }
+    ],
+    "createLogisticsOrder": { "orderNumber": "ALS00201756999", "success": true }
+  }
+}
