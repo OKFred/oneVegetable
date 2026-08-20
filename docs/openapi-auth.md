@@ -75,7 +75,20 @@ pnpm smoke:alibaba:real
 
 报告写入 `artifacts/real-smoke/report.json`，只包含 requestId、方法、状态、上游错误码、契约问题和字段类型结构，不保存业务字段值或完整 Alibaba 响应。真实 mutation 不在候选集合中，任何 mutation feature flag 仍保持关闭。
 
-2026-08-20 最新一轮本地账号验证结果为：35 个候选中 21 个通过、5 个因权限包不足被拒绝、1 个返回 Alibaba 远端错误、8 个因缺少真实前置数据跳过，契约漂移为 0。`alibaba.icbu.product.score.get` 在本轮新增为账号验证通过。该账号的逐项结果仍只保存在本地报告；仓库仅记录已通过方法的 `account-verified` 状态和不含账号数据的契约修正。
+2026-08-20 最新一轮本地账号验证结果为：35 个候选中 22 个通过、5 个因权限包不足被拒绝、1 个返回 Alibaba 远端错误、7 个因缺少真实前置数据跳过，契约漂移为 0。商品评分和根商品分组查询已新增为账号验证通过。该账号的逐项结果仍只保存在本地报告；仓库仅记录已通过方法的 `account-verified` 状态和不含账号数据的契约修正。
+
+## 真实 Web 页面 Smoke
+
+页面级 Smoke 同样需要显式 opt-in，且只允许在 Windows 本地运行：
+
+```powershell
+$env:ONE_VEGETABLE_REAL_WEB_SMOKE='1'
+pnpm smoke:web:real
+```
+
+脚本使用独立的 `artifacts/real-web-smoke/one-vegetable.sqlite`，自动启动真实 Node BFF 与 BFF 模式 Web，验证管理员初始化、Dashboard、商品、图库、订单、RFQ、数据洞察和管理后台。报告只保存 operation、requestId、HTTP 状态、错误码和 Mock 哨兵检测结果，不保存真实响应内容。
+
+2026-08-20 的页面验证中，Dashboard、顶级类目、商品分组、商品列表、图库分组、图库列表和订单列表均返回 200；RFQ 与供应商排名按当前账号权限返回拒绝；Mock 哨兵为 0。测试还会尝试一个商品分组写操作，并要求它在出网前以 `MUTATION_FLAG_DISABLED` 被拒绝。
 
 `artifacts/` 已被 Git 忽略，但 Windows 不保证 POSIX `0600` 文件权限完全生效。不要上传、提交、粘贴或通过聊天发送授权包和 Profile。截图在 AppSecret 显示及 OAuth 授权前生成，诊断文件不记录密码、Cookie、CSRF、授权码或 Token。
 

@@ -1,5 +1,5 @@
 {
-  "checkedAtUtc": "2026-08-20T04:31:04.954Z",
+  "checkedAtUtc": "2026-08-20T05:16:29.691Z",
   "methods": [
     "alibaba.icbu.category.attribute.get",
     "alibaba.icbu.category.get.new",
@@ -7,6 +7,7 @@
     "alibaba.icbu.photobank.group.list",
     "alibaba.icbu.photobank.list",
     "alibaba.icbu.product.get",
+    "alibaba.icbu.product.group.get",
     "alibaba.icbu.product.id.decrypt",
     "alibaba.icbu.product.list",
     "alibaba.icbu.product.schema.get",
