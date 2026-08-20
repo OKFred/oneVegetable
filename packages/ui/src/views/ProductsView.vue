@@ -37,7 +37,7 @@ const { gateway, mode } = useServices();
 const queryClient = useQueryClient();
 const workspace = ref<Workspace>('list');
 const subject = ref('');
-const categoryId = ref('100009999');
+const categoryId = ref('');
 const language = ref('en_US');
 const market = ref<'wholesale' | 'sourcing'>('wholesale');
 const editProductId = ref('');
@@ -74,7 +74,7 @@ const schemaPreview = computed(() => {
     return '';
   }
 });
-const extensionMutationDisabled = computed(() => mode === 'extension');
+const realMutationDisabled = computed(() => mode !== 'mock');
 const productDescriptionType = computed(() => {
   const typeField = schemaModel.value?.fields.find((field) => field.id === 'productDescType');
   return typeField ? productSchemaFieldText(typeField) : undefined;
@@ -204,11 +204,35 @@ const columns: DataColumn<Product>[] = [
     accessorKey: 'updatedAt',
     header: '更新时间',
     cell: (context) => new Date(context.getValue<string>()).toLocaleString('zh-CN')
+  },
+  {
+    id: 'actions',
+    header: '操作',
+    cell: ({ row }) =>
+      h(
+        Button,
+        {
+          size: 'sm',
+          variant: 'outline',
+          onClick: () => {
+            selectProductForSchema(row.original);
+          }
+        },
+        () => '编辑 Schema'
+      )
   }
 ];
 
 function flattenCategories(items: ProductCategory[], depth = 0): (ProductCategory & { depth: number })[] {
   return items.flatMap((item) => [{ ...item, depth }, ...flattenCategories(item.children, depth + 1)]);
+}
+
+function selectProductForSchema(product: Product): void {
+  editProductId.value = product.id;
+  schemaModel.value = null;
+  schemaError.value = '';
+  feedback.value = '已选择真实商品；请选择其实际类目后获取编辑 Schema。';
+  workspace.value = 'publisher';
 }
 
 function applySchema(xml: string, message: string): void {
@@ -223,9 +247,14 @@ function applySchema(xml: string, message: string): void {
 
 async function loadSchema(): Promise<void> {
   schemaError.value = '';
+  const parsedCategoryId = Number(categoryId.value);
+  if (!categoryId.value || !Number.isSafeInteger(parsedCategoryId) || parsedCategoryId <= 0) {
+    schemaError.value = '请先选择有效类目';
+    return;
+  }
   try {
     const result = await gateway.request('getProductSchema', {
-      categoryId: Number(categoryId.value),
+      categoryId: parsedCategoryId,
       language: language.value,
       market: market.value,
       ...(editProductId.value ? { productId: editProductId.value } : {})
@@ -333,6 +362,12 @@ watch(schemaPreview, (xml) => {
       JSON.stringify({ categoryId: categoryId.value, language: language.value, market: market.value, xml })
     );
   }
+});
+
+watch(categoryOptions, (options) => {
+  if (categoryId.value || options.length === 0) return;
+  const preferred = options.find((category) => category.leaf) ?? options[0];
+  if (preferred) categoryId.value = String(preferred.id);
 });
 
 onMounted(() => {
@@ -509,15 +544,15 @@ onBeforeUnmount(() => {
         </ul>
       </div>
       <div
-        v-if="extensionMutationDisabled"
+        v-if="realMutationDisabled"
         class="mt-4 flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800"
       >
         <ShieldAlert class="mt-0.5 size-4 shrink-0" />真实写操作需逐方法完成账号 smoke
-        test，扩展内保持关闭且没有自行开启入口。
+        test，当前真实模式保持关闭且没有自行开启入口。
       </div>
       <div class="mt-5 flex flex-wrap gap-2">
         <Button
-          :disabled="publish.isPending.value || extensionMutationDisabled || blockingSchemaIssues.length > 0"
+          :disabled="publish.isPending.value || realMutationDisabled || blockingSchemaIssues.length > 0"
           @click="publish.mutate(false)"
         >
           <Send class="size-4" />{{ editProductId ? '更新商品' : '发布商品' }} ·
@@ -526,7 +561,7 @@ onBeforeUnmount(() => {
         <Button
           v-if="!editProductId"
           variant="outline"
-          :disabled="publish.isPending.value || extensionMutationDisabled || blockingSchemaIssues.length > 0"
+          :disabled="publish.isPending.value || realMutationDisabled || blockingSchemaIssues.length > 0"
           @click="publish.mutate(true)"
           ><Save class="size-4" />保存草稿</Button
         >
@@ -567,12 +602,10 @@ onBeforeUnmount(() => {
         </ul>
         <div class="flex gap-2">
           <Input v-model="groupName" aria-label="新分组名称" placeholder="新分组名称" />
-          <Button :disabled="!groupName || extensionMutationDisabled" @click="createGroup.mutate()"
-            >创建</Button
-          >
+          <Button :disabled="!groupName || realMutationDisabled" @click="createGroup.mutate()">创建</Button>
         </div>
-        <p v-if="extensionMutationDisabled" class="mt-2 text-xs text-amber-700">
-          扩展中的真实分组写操作尚未解锁。
+        <p v-if="realMutationDisabled" class="mt-2 text-xs text-amber-700">
+          当前真实模式中的分组写操作尚未解锁。
         </p>
       </Card>
     </div>
@@ -587,19 +620,19 @@ onBeforeUnmount(() => {
         </div>
         <div class="flex gap-2">
           <Button
-            :disabled="!selectedProductIds.length || extensionMutationDisabled"
+            :disabled="!selectedProductIds.length || realMutationDisabled"
             @click="batchDisplay.mutate('online')"
             >批量上架</Button
           >
           <Button
             variant="outline"
-            :disabled="!selectedProductIds.length || extensionMutationDisabled"
+            :disabled="!selectedProductIds.length || realMutationDisabled"
             @click="batchDisplay.mutate('offline')"
             >批量下架</Button
           >
         </div>
       </div>
-      <p v-if="extensionMutationDisabled" class="mt-3 text-xs text-amber-700">
+      <p v-if="realMutationDisabled" class="mt-3 text-xs text-amber-700">
         真实上下架按钮在 smoke test 前保持禁用。
       </p>
     </Card>
