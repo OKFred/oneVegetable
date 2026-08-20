@@ -78,6 +78,26 @@ export class ProductAdapter {
     };
   }
 
+  async renderSchema(request: RequestOf<'renderProductSchema'>): Promise<ProductSchema> {
+    const productId = Number(request.productId);
+    if (!Number.isSafeInteger(productId) || productId <= 0) {
+      throw new Error('商品明文 ID 必须是安全范围内的正整数');
+    }
+    const call = await this.client.call('alibaba.icbu.product.schema.render', {
+      param_product_top_publish_request: {
+        cat_id: request.categoryId,
+        language: request.language,
+        product_id: productId
+      }
+    });
+    return {
+      xml: readString(unwrap(call.data, call.method), ['data']) ?? '',
+      categoryId: request.categoryId,
+      language: request.language,
+      market: 'wholesale'
+    };
+  }
+
   async getLevelSchema(request: RequestOf<'getProductLevelSchema'>): Promise<ProductSchema> {
     const call = await this.client.call('alibaba.icbu.category.schema.level.get', {
       cat_id: request.categoryId,

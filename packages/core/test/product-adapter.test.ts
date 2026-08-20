@@ -64,6 +64,40 @@ describe('ProductAdapter', () => {
     });
   });
 
+  it('renders an existing product with its documented numeric id and category', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method, parameters) => {
+      expect(method).toBe('alibaba.icbu.product.schema.render');
+      expect(parameters).toEqual({
+        param_product_top_publish_request: {
+          cat_id: 456,
+          language: 'en_US',
+          product_id: 123
+        }
+      });
+      return Promise.resolve({ method, data: { biz_success: true, data: '<itemSchema />' } });
+    });
+    const adapter = new ProductAdapter({ call });
+
+    await expect(
+      adapter.renderSchema({ categoryId: 456, language: 'en_US', productId: '123' })
+    ).resolves.toEqual({
+      xml: '<itemSchema />',
+      categoryId: 456,
+      language: 'en_US',
+      market: 'wholesale'
+    });
+  });
+
+  it('rejects an unsafe plaintext product id before calling Alibaba', async () => {
+    const call = vi.fn<AlibabaClient['call']>();
+    const adapter = new ProductAdapter({ call });
+
+    await expect(
+      adapter.renderSchema({ categoryId: 456, language: 'en_US', productId: '9007199254740992' })
+    ).rejects.toThrow('商品明文 ID 必须是安全范围内的正整数');
+    expect(call).not.toHaveBeenCalled();
+  });
+
   it('uses cat_id 0 for the documented top-level category query', async () => {
     const call = vi.fn<AlibabaClient['call']>((method) =>
       Promise.resolve(

@@ -9715,6 +9715,16 @@
           "market": { "type": "string" }
         }
       },
+      "ProductSchemaRenderRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["categoryId", "language", "productId"],
+        "properties": {
+          "categoryId": { "type": "integer" },
+          "language": { "type": "string", "default": "en_US" },
+          "productId": { "type": "string", "pattern": "^[1-9][0-9]*$" }
+        }
+      },
       "ProductSchemaRequest": {
         "type": "object",
         "additionalProperties": false,

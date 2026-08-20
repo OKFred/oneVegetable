@@ -5,6 +5,7 @@ import {
   validateCapabilityCallRequest,
   validateLogisticsOrderDraft,
   validateLogisticsQuoteRequest,
+  validateProductSchemaRenderRequest,
   validateProductSchemaRequest,
   validateSchemaPublishRequest
 } from '../generated/validators-core';
@@ -14,6 +15,7 @@ import type {
   LogisticsOrderDraft,
   LogisticsQuoteRequest,
   ProductSchemaRequest,
+  ProductSchemaRenderRequest,
   SchemaPublishRequest
 } from '../types';
 
@@ -47,6 +49,13 @@ function runValidator<T>(
 
 export const validateProductSchemaInput = (value: unknown, locale?: 'en' | 'zh') =>
   runValidator<ProductSchemaRequest>(validateProductSchemaRequest as StandaloneValidator, value, locale);
+
+export const validateProductSchemaRenderInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<ProductSchemaRenderRequest>(
+    validateProductSchemaRenderRequest as StandaloneValidator,
+    value,
+    locale
+  );
 
 export const validateSchemaPublishInput = (value: unknown, locale?: 'en' | 'zh') =>
   runValidator<SchemaPublishRequest>(validateSchemaPublishRequest as StandaloneValidator, value, locale);

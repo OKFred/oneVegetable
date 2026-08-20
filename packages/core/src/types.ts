@@ -26,6 +26,7 @@ export type Product = components['schemas']['Product'];
 export type ProductDetail = components['schemas']['ProductDetail'];
 export type ProductPage = components['schemas']['ProductPage'];
 export type ProductSchemaRequest = components['schemas']['ProductSchemaRequest'];
+export type ProductSchemaRenderRequest = components['schemas']['ProductSchemaRenderRequest'];
 export type ProductSchema = components['schemas']['ProductSchema'];
 export type SchemaPublishRequest = components['schemas']['SchemaPublishRequest'];
 export type ProductMutationResult = components['schemas']['ProductMutationResult'];
@@ -199,6 +200,7 @@ export interface OperationMap {
   listProducts: { request: ProductListQuery; response: ProductPage };
   getProduct: { request: { productId: string }; response: ProductDetail };
   getProductSchema: { request: ProductSchemaRequest; response: ProductSchema };
+  renderProductSchema: { request: ProductSchemaRenderRequest; response: ProductSchema };
   publishProduct: { request: SchemaPublishRequest; response: ProductMutationResult };
   saveProductDraft: { request: SchemaPublishRequest; response: ProductMutationResult };
   updateProduct: {

@@ -46,6 +46,7 @@ const OPERATIONS = new Set<OperationId>([
   'listProducts',
   'getProduct',
   'getProductSchema',
+  'renderProductSchema',
   'publishProduct',
   'saveProductDraft',
   'updateProduct',
@@ -417,6 +418,8 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
       return products.get(requiredString(request, 'productId'));
     case 'getProductSchema':
       return products.getSchema(payload as RequestOf<'getProductSchema'>);
+    case 'renderProductSchema':
+      return products.renderSchema(payload as RequestOf<'renderProductSchema'>);
     case 'publishProduct':
       return products.mutate('alibaba.icbu.product.schema.add', payload as RequestOf<'publishProduct'>);
     case 'saveProductDraft':
@@ -662,6 +665,7 @@ function diagnosticMethod(operation: OperationId, payload: unknown): string | nu
   if (operation === 'callCapability') return readString(asRecord(payload), ['method']) ?? null;
   const methods: Partial<Record<OperationId, string>> = {
     listProducts: 'alibaba.icbu.product.list',
+    renderProductSchema: 'alibaba.icbu.product.schema.render',
     listPhotoGroups: 'alibaba.icbu.photobank.group.list',
     listPhotos: 'alibaba.icbu.photobank.list',
     listTradeOrders: 'alibaba.seller.order.list',

@@ -40,6 +40,7 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
   ...LOGISTICS_MOCK_DATA.responses,
   ...INSIGHTS_MOCK_DATA.responses,
   ...SYSTEM_MOCK_DATA.responses,
+  renderProductSchema: structuredClone(PRODUCT_MOCK_DATA.responses.getProductSchema),
   updateProductDisplay: undefined,
   deleteTradeAddress: undefined,
   getDashboard: {
@@ -92,8 +93,9 @@ export class MockGatewayClient implements GatewayClient {
 
   async request<K extends OperationId>(operation: K, _request: RequestOf<K>): Promise<ResponseOf<K>> {
     await new Promise<void>((resolve) => setTimeout(resolve, this.latency));
-    if (operation === 'getProductSchema') {
-      const payload = _request as OperationMap['getProductSchema']['request'];
+    if (operation === 'getProductSchema' || operation === 'renderProductSchema') {
+      const payload = _request as
+        OperationMap['getProductSchema']['request'] | OperationMap['renderProductSchema']['request'];
       if (payload.productId === 'mock-smart') {
         return {
           ...structuredClone(MOCK_DATA.getProductSchema),

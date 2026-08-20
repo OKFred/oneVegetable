@@ -33,6 +33,7 @@ if (!schemas) throw new Error('OpenAPI components.schemas is missing');
 
 const coreValidators: Record<string, object | undefined> = {
   validateProductSchemaRequest: schemas.ProductSchemaRequest,
+  validateProductSchemaRenderRequest: schemas.ProductSchemaRenderRequest,
   validateSchemaPublishRequest: schemas.SchemaPublishRequest,
   validateCapabilityCallRequest: schemas.CapabilityCallRequest,
   validateLogisticsQuoteRequest: schemas.LogisticsQuoteRequest,

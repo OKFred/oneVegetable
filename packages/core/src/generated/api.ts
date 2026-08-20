@@ -6107,6 +6107,12 @@ export interface components {
             language: string;
             market: string;
         };
+        ProductSchemaRenderRequest: {
+            categoryId: number;
+            /** @default en_US */
+            language: string;
+            productId: string;
+        };
         ProductSchemaRequest: {
             categoryId: number;
             /** @default en_US */
