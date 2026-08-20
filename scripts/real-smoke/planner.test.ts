@@ -41,6 +41,13 @@ describe('real smoke planner', () => {
     });
   });
 
+  it('uses the documented root sentinel when no real product group is known', () => {
+    expect(planSmokeRequest('alibaba.icbu.product.group.get', {}, EMPTY_IDENTIFIERS)).toEqual({
+      kind: 'call',
+      parameters: { extra_context: {}, group_id: -1 }
+    });
+  });
+
   it('derives only named identifiers and injects them into detail requests', () => {
     const identifiers = collectSmokeIdentifiers(
       { result: { items: [{ product_id: 123, subject: 'private product title' }] } },

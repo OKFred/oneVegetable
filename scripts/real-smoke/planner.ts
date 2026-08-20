@@ -76,7 +76,7 @@ export function planSmokeRequest(
     case 'alibaba.icbu.product.score.get':
       return identifiers.productId ? call({ product_id: identifiers.productId }) : skip();
     case 'alibaba.icbu.product.group.get':
-      return identifiers.groupId ? call({ extra_context: {}, group_id: identifiers.groupId }) : skip();
+      return call({ extra_context: {}, group_id: identifiers.groupId ?? -1 });
     case 'alibaba.icbu.category.attribute.get':
       return identifiers.categoryId ? call({ cat_id: identifiers.categoryId }) : skip();
     case 'alibaba.icbu.category.id.mapping':
