@@ -24,11 +24,12 @@ export function readRuntimeConfiguration(
   input: RuntimeConfigurationEnvironment,
   defaultEnvironment: 'local-node' | 'local-worker'
 ): RuntimeConfiguration {
+  const environment = readEnvironment(input.ONE_VEGETABLE_ENVIRONMENT, defaultEnvironment);
   const configuration: RuntimeConfiguration = {
     apiPrefix: normalizeApiPrefix(input.ONE_VEGETABLE_API_PREFIX),
-    environment: readEnvironment(input.ONE_VEGETABLE_ENVIRONMENT, defaultEnvironment),
+    environment,
     gatewayMode: readGatewayMode(input.ONE_VEGETABLE_GATEWAY_MODE),
-    allowedOrigins: readOrigins(input.ONE_VEGETABLE_CORS_ORIGINS),
+    allowedOrigins: readOrigins(input.ONE_VEGETABLE_CORS_ORIGINS, environment),
     mutationFlags: readMutationFlags(input.ONE_VEGETABLE_MUTATION_FLAGS),
     requestEventRetentionDays: readRetentionDays(input.ONE_VEGETABLE_REQUEST_RETENTION_DAYS)
   };
@@ -51,8 +52,12 @@ function readGatewayMode(value: string | undefined): GatewayMode {
   throw new Error('ONE_VEGETABLE_GATEWAY_MODE 无效');
 }
 
-function readOrigins(value: string | undefined): readonly string[] {
-  if (!value?.trim()) return [];
+function readOrigins(value: string | undefined, environment: string): readonly string[] {
+  if (!value?.trim()) {
+    return environment === 'local-node' || environment === 'local-worker'
+      ? ['http://localhost:5173', 'http://127.0.0.1:5173']
+      : [];
+  }
   const origins = value.split(',').map((rawOrigin) => {
     const origin = new URL(rawOrigin.trim());
     if (origin.href !== `${origin.origin}/`) {

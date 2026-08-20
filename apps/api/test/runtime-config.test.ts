@@ -8,7 +8,7 @@ describe('runtime configuration', () => {
       apiPrefix: '/api/v1',
       environment: 'local-node',
       gatewayMode: 'mock',
-      allowedOrigins: [],
+      allowedOrigins: ['http://localhost:5173', 'http://127.0.0.1:5173'],
       requestEventRetentionDays: 30
     });
     expect(
