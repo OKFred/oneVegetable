@@ -2,7 +2,12 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { classifyProductSchemaFields, productEditorStepForField } from '../src/product-editor';
+import {
+  classifyProductSchemaFields,
+  isProductSchemaGroupField,
+  productEditorStepForField,
+  productSchemaGroupLevel
+} from '../src/product-editor';
 import { parseProductSchemaXml } from '../src/product-schema';
 
 const XML = `<itemSchema>
@@ -59,5 +64,25 @@ describe('product editor field classifier', () => {
       recommended: false,
       optional: true
     });
+  });
+
+  it('recognizes scalar and three-level product group fields', () => {
+    const model = parseProductSchemaXml(`<itemSchema>
+      <field id="productGroup" name="Product group" type="complex">
+        <complex-value>
+          <field id="first_group_id" name="First" type="input"><value>1001</value></field>
+          <field id="second_group_id" name="Second" type="input"><value>1101</value></field>
+        </complex-value>
+      </field>
+      <field id="group_id" name="Legacy group" type="input"><value>1002</value></field>
+    </itemSchema>`);
+
+    expect(model.fields.every(isProductSchemaGroupField)).toBe(true);
+    expect(model.fields[0]?.instances[0]?.map(productSchemaGroupLevel)).toEqual([1, 2]);
+    expect(
+      classifyProductSchemaFields(model.fields)
+        .flatMap((section) => section.fields)
+        .every((entry) => entry.recommended && !entry.optional)
+    ).toBe(true);
   });
 });

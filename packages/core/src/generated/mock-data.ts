@@ -56,7 +56,7 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
       "categoryId": 100003109,
       "language": "en_US",
       "market": "wholesale",
-      "xml": "<itemSchema version=\"2\">\n  <field id=\"productTitle\" name=\"商品标题\" type=\"input\"><rules><rule name=\"requiredRule\" value=\"true\"/><rule name=\"minLengthRule\" value=\"5\"/><rule name=\"maxLengthRule\" value=\"128\"/><rule name=\"tipRule\" value=\"面向买家的英文商品标题\"/></rules><values><value>Portable solar power station 1000W</value></values></field>\n  <field id=\"scImages\" name=\"商品主图\" type=\"multiInput\"><rules><rule name=\"requiredRule\" value=\"true\"/><rule name=\"maxInputNumRule\" value=\"6\"/><rule name=\"minTargetSizeRule\" value=\"750x750\"/></rules><value fileId=\"ph_001\">https://sc04.alicdn.com/kf/mock-solar-station.jpg</value></field>\n  <field id=\"productDescType\" name=\"详情类型\" type=\"label\"><value>2</value></field>\n  <field id=\"superText\" name=\"商品详情\" type=\"input\"><rules><rule name=\"requiredRule\" value=\"true\"/><rule name=\"valueTypeRule\" value=\"html\"/><rule name=\"tipRule\" value=\"API 仅支持维护普通详情\"/></rules><value>&lt;h2&gt;Portable power for every scenario&lt;/h2&gt;&lt;p&gt;Reliable energy storage for camping, emergency backup, and mobile workstations.&lt;/p&gt;&lt;img src=&quot;https://sc04.alicdn.com/kf/mock-solar-station.jpg&quot; alt=&quot;Portable solar power station front view&quot; data-photobank-file-id=&quot;ph_001&quot;&gt;</value></field>\n  <field id=\"keywords\" name=\"关键词\" type=\"multiInput\"><rules><rule name=\"minInputNumRule\" value=\"2\"/><rule name=\"maxInputNumRule\" value=\"3\"/></rules><values><value>solar generator</value><value>portable power station</value></values></field>\n  <field id=\"condition\" name=\"商品状态\" type=\"singleCheck\"><options><option displayName=\"全新\" value=\"new\"/><option displayName=\"翻新\" value=\"refurbished\"/></options><values><value>new</value></values></field>\n  <field id=\"certifications\" name=\"认证\" type=\"multiCheck\"><options><option displayName=\"CE\" value=\"ce\"/><option displayName=\"RoHS\" value=\"rohs\"/><option displayName=\"FCC\" value=\"fcc\"/></options><values><value>ce</value><value>rohs</value></values></field>\n  <field id=\"dimensions\" name=\"包装尺寸\" type=\"complex\"><complex-values><complex-value><field id=\"length\" name=\"长（cm）\" type=\"input\"><rules><rule name=\"minValueRule\" value=\"1\"/><rule name=\"maxDecimalDigitsRule\" value=\"1\"/></rules><values><value>45.5</value></values></field><field id=\"width\" name=\"宽（cm）\" type=\"input\"><values><value>30</value></values></field></complex-value></complex-values></field>\n  <field id=\"variants\" name=\"销售规格\" type=\"multiComplex\"><rules><rule name=\"serverPriceRule\" value=\"required\"/></rules><complex-values><complex-value><field id=\"model\" name=\"型号\" type=\"input\"><rules><rule name=\"requiredRule\" value=\"true\"/></rules><values><value>OV-1000</value></values></field><field id=\"price\" name=\"价格（USD）\" type=\"input\"><rules><rule name=\"minValueRule\" value=\"1\"/><rule name=\"maxDecimalDigitsRule\" value=\"2\"/></rules><values><value>599.00</value></values></field></complex-value></complex-values></field>\n  <field id=\"notice\" name=\"发布说明\" type=\"label\"><values><value>业务规则由提交接口执行最终校验，本地不执行文档返回的代码。</value></values></field>\n  <extension keep=\"true\">Mock 中保留的未知节点</extension>\n</itemSchema>"
+      "xml": "<itemSchema version=\"2\">\n  <field id=\"productTitle\" name=\"商品标题\" type=\"input\"><rules><rule name=\"requiredRule\" value=\"true\"/><rule name=\"minLengthRule\" value=\"5\"/><rule name=\"maxLengthRule\" value=\"128\"/><rule name=\"tipRule\" value=\"面向买家的英文商品标题\"/></rules><values><value>Portable solar power station 1000W</value></values></field>\n  <field id=\"scImages\" name=\"商品主图\" type=\"multiInput\"><rules><rule name=\"requiredRule\" value=\"true\"/><rule name=\"maxInputNumRule\" value=\"6\"/><rule name=\"minTargetSizeRule\" value=\"750x750\"/></rules><value fileId=\"ph_001\">https://sc04.alicdn.com/kf/mock-solar-station.jpg</value></field>\n  <field id=\"productDescType\" name=\"详情类型\" type=\"label\"><value>2</value></field>\n  <field id=\"superText\" name=\"商品详情\" type=\"input\"><rules><rule name=\"requiredRule\" value=\"true\"/><rule name=\"valueTypeRule\" value=\"html\"/><rule name=\"tipRule\" value=\"API 仅支持维护普通详情\"/></rules><value>&lt;h2&gt;Portable power for every scenario&lt;/h2&gt;&lt;p&gt;Reliable energy storage for camping, emergency backup, and mobile workstations.&lt;/p&gt;&lt;img src=&quot;https://sc04.alicdn.com/kf/mock-solar-station.jpg&quot; alt=&quot;Portable solar power station front view&quot; data-photobank-file-id=&quot;ph_001&quot;&gt;</value></field>\n  <field id=\"productGroup\" name=\"商品分组\" type=\"complex\"><complex-value><field id=\"first_group_id\" name=\"一级分组\" type=\"input\"><value>1001</value></field><field id=\"second_group_id\" name=\"二级分组\" type=\"input\"><value>1101</value></field><field id=\"third_group_id\" name=\"三级分组\" type=\"input\"><value>1111</value></field></complex-value><fields><field id=\"first_group_id\" name=\"一级分组\" type=\"input\"/><field id=\"second_group_id\" name=\"二级分组\" type=\"input\"/><field id=\"third_group_id\" name=\"三级分组\" type=\"input\"/></fields></field>\n  <field id=\"keywords\" name=\"关键词\" type=\"multiInput\"><rules><rule name=\"minInputNumRule\" value=\"2\"/><rule name=\"maxInputNumRule\" value=\"3\"/></rules><values><value>solar generator</value><value>portable power station</value></values></field>\n  <field id=\"condition\" name=\"商品状态\" type=\"singleCheck\"><options><option displayName=\"全新\" value=\"new\"/><option displayName=\"翻新\" value=\"refurbished\"/></options><values><value>new</value></values></field>\n  <field id=\"certifications\" name=\"认证\" type=\"multiCheck\"><options><option displayName=\"CE\" value=\"ce\"/><option displayName=\"RoHS\" value=\"rohs\"/><option displayName=\"FCC\" value=\"fcc\"/></options><values><value>ce</value><value>rohs</value></values></field>\n  <field id=\"dimensions\" name=\"包装尺寸\" type=\"complex\"><complex-values><complex-value><field id=\"length\" name=\"长（cm）\" type=\"input\"><rules><rule name=\"minValueRule\" value=\"1\"/><rule name=\"maxDecimalDigitsRule\" value=\"1\"/></rules><values><value>45.5</value></values></field><field id=\"width\" name=\"宽（cm）\" type=\"input\"><values><value>30</value></values></field></complex-value></complex-values></field>\n  <field id=\"variants\" name=\"销售规格\" type=\"multiComplex\"><rules><rule name=\"serverPriceRule\" value=\"required\"/></rules><complex-values><complex-value><field id=\"model\" name=\"型号\" type=\"input\"><rules><rule name=\"requiredRule\" value=\"true\"/></rules><values><value>OV-1000</value></values></field><field id=\"price\" name=\"价格（USD）\" type=\"input\"><rules><rule name=\"minValueRule\" value=\"1\"/><rule name=\"maxDecimalDigitsRule\" value=\"2\"/></rules><values><value>599.00</value></values></field></complex-value></complex-values></field>\n  <field id=\"notice\" name=\"发布说明\" type=\"label\"><values><value>业务规则由提交接口执行最终校验，本地不执行文档返回的代码。</value></values></field>\n  <extension keep=\"true\">Mock 中保留的未知节点</extension>\n</itemSchema>"
     },
     "publishProduct": {
       "productId": "10000999",
@@ -126,12 +126,30 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
       {
         "id": 1001,
         "name": "Energy storage",
-        "children": []
+        "children": [
+          {
+            "id": 1101,
+            "name": "Portable power",
+            "children": [
+              {
+                "id": 1111,
+                "name": "Solar generators",
+                "children": []
+              }
+            ]
+          }
+        ]
       },
       {
         "id": 1002,
         "name": "Packaging",
-        "children": []
+        "children": [
+          {
+            "id": 1201,
+            "name": "Reusable bags",
+            "children": []
+          }
+        ]
       }
     ],
     "createProductGroup": {

@@ -71,7 +71,7 @@ export function classifyProductSchemaFields(fields: readonly ProductSchemaField[
   const byId = new Map(sections.map((section) => [section.id, section]));
   fields.forEach((field, sourceIndex) => {
     const required = isRequired(field);
-    const recommended = hasOfficialTip(field);
+    const recommended = hasOfficialTip(field) || isProductSchemaGroupField(field);
     const entry: ProductEditorFieldEntry = {
       field,
       sourceIndex,
@@ -101,6 +101,21 @@ export function isProductEditorFieldRequired(field: ProductSchemaField): boolean
 
 export function isProductEditorFieldRecommended(field: ProductSchemaField): boolean {
   return hasOfficialTip(field);
+}
+
+export function isProductSchemaGroupField(field: ProductSchemaField): boolean {
+  const normalizedId = normalizeFieldId(field.id);
+  if (normalizedId === 'productgroup' || normalizedId === 'groupid') return true;
+  const children = field.instances[0] ?? field.children;
+  return children.some((child) => productSchemaGroupLevel(child) !== null);
+}
+
+export function productSchemaGroupLevel(field: ProductSchemaField): 1 | 2 | 3 | null {
+  const normalizedId = normalizeFieldId(field.id);
+  if (normalizedId === 'firstgroupid' || normalizedId === 'groupid1') return 1;
+  if (normalizedId === 'secondgroupid' || normalizedId === 'groupid2') return 2;
+  if (normalizedId === 'thirdgroupid' || normalizedId === 'groupid3') return 3;
+  return null;
 }
 
 export function productEditorFieldDomId(fieldKey: string): string {

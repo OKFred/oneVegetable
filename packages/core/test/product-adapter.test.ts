@@ -165,4 +165,38 @@ describe('ProductAdapter', () => {
     await expect(adapter.listGroups()).resolves.toEqual([{ id: 456, name: 'Best sellers', children: [] }]);
     expect(call).toHaveBeenCalledWith('alibaba.icbu.product.group.get', { group_id: -1 });
   });
+
+  it('loads child group names lazily from documented children IDs', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method, parameters) => {
+      const groupId = (parameters as { group_id: number }).group_id;
+      if (groupId === 456) {
+        return Promise.resolve(
+          response(method, {
+            product_group: {
+              group_id: 456,
+              group_name: 'Best sellers',
+              children_id_list: { number: [788, 789] }
+            }
+          })
+        );
+      }
+      return Promise.resolve(
+        response(method, {
+          product_group: {
+            group_id: groupId,
+            group_name: groupId === 788 ? 'Portable power' : 'Solar products'
+          }
+        })
+      );
+    });
+    const adapter = new ProductAdapter({ call });
+
+    await expect(adapter.listGroups(456)).resolves.toEqual([
+      { id: 788, name: 'Portable power', children: [] },
+      { id: 789, name: 'Solar products', children: [] }
+    ]);
+    expect(call).toHaveBeenCalledWith('alibaba.icbu.product.group.get', { group_id: 456 });
+    expect(call).toHaveBeenCalledWith('alibaba.icbu.product.group.get', { group_id: 788 });
+    expect(call).toHaveBeenCalledWith('alibaba.icbu.product.group.get', { group_id: 789 });
+  });
 });

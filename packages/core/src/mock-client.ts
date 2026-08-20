@@ -21,6 +21,7 @@ import type {
   OperationId,
   OperationMap,
   PhotoGroup,
+  ProductGroup,
   RequestOf,
   ResponseOf
 } from './types';
@@ -126,6 +127,12 @@ export class MockGatewayClient implements GatewayClient {
     }
     if (operation === 'listPhotoGroups') {
       return structuredClone(this.photoGroups);
+    }
+    if (operation === 'listProductGroups') {
+      const payload = _request as OperationMap['listProductGroups']['request'];
+      if (payload?.parentId === undefined) return structuredClone(MOCK_DATA.listProductGroups);
+      const parent = findProductGroup(MOCK_DATA.listProductGroups, payload.parentId);
+      return structuredClone(parent?.children ?? []);
     }
     if (operation === 'callCapability') {
       const payload = _request as CapabilityCallRequest;
@@ -373,6 +380,15 @@ export class MockGatewayClient implements GatewayClient {
     }
     return structuredClone(MOCK_DATA[operation]);
   }
+}
+
+function findProductGroup(groups: readonly ProductGroup[], groupId: number): ProductGroup | null {
+  for (const group of groups) {
+    if (group.id === groupId) return group;
+    const nested = findProductGroup(group.children, groupId);
+    if (nested) return nested;
+  }
+  return null;
 }
 
 function descriptionSchemaVariant(variant: 'smart' | 'legacy'): string {

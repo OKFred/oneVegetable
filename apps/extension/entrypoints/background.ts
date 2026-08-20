@@ -440,7 +440,7 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
     case 'getProductDraft':
       return products.get(requiredString(request, 'productId'), true);
     case 'listProductGroups':
-      return products.listGroups();
+      return products.listGroups(readNumber(request, ['parentId']));
     case 'createProductGroup':
       return products.createGroup(payload as RequestOf<'createProductGroup'>);
     case 'getProductScore':

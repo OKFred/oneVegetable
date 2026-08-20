@@ -165,7 +165,7 @@ export class AlibabaReadGatewayClient implements GatewayClient {
       case 'getProductDraft':
         return await products.get(requiredString(record, 'productId'), true);
       case 'listProductGroups':
-        return await products.listGroups();
+        return await products.listGroups(optionalNumber(record, 'parentId'));
       case 'getProductScore':
         return await products.getScore(requiredString(record, 'productId'));
       case 'listRfqs':

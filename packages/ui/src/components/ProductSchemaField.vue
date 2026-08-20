@@ -11,6 +11,7 @@ import {
   isProductSchemaFieldReadOnly,
   isProductSchemaHtmlField,
   isProductEditorFieldRequired,
+  isProductSchemaGroupField,
   productEditorFieldDomId,
   productSchemaFieldText,
   productSchemaFieldTexts,
@@ -26,6 +27,7 @@ import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
 import PhotoBankPicker from './PhotoBankPicker.vue';
+import ProductGroupPicker from './ProductGroupPicker.vue';
 
 const ProductDescriptionEditor = defineAsyncComponent(() => import('./ProductDescriptionEditor.vue'));
 
@@ -50,6 +52,7 @@ const fieldText = computed(() => productSchemaFieldText(props.field));
 const fieldTexts = computed(() => productSchemaFieldTexts(props.field));
 const imageField = computed(() => isProductSchemaImageField(props.field));
 const htmlField = computed(() => isProductSchemaHtmlField(props.field));
+const groupField = computed(() => isProductSchemaGroupField(props.field));
 const required = computed(() => isProductEditorFieldRequired(props.field));
 const imageLimit = computed(() => {
   const value = Number(
@@ -183,8 +186,14 @@ function removeInstance(index: number): void {
     </div>
     <p v-if="tip" class="text-xs text-muted-foreground">{{ tip }}</p>
 
+    <ProductGroupPicker
+      v-if="groupField"
+      :field="field"
+      :show-technical="showTechnical"
+      @update="emit('update', $event)"
+    />
     <ProductDescriptionEditor
-      v-if="htmlField"
+      v-else-if="htmlField"
       :model-value="fieldText"
       :smart-detail="productDescriptionType !== undefined && productDescriptionType !== '2'"
       @update:model-value="updateValue"

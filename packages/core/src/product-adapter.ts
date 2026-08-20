@@ -167,10 +167,25 @@ export class ProductAdapter {
     };
   }
 
-  async listGroups(): Promise<ProductGroup[]> {
-    const call = await this.client.call('alibaba.icbu.product.group.get', { group_id: -1 });
+  async listGroups(parentId?: number): Promise<ProductGroup[]> {
+    const records = await this.loadGroupRecords(parentId ?? -1);
+    if (parentId === undefined) return records.map(normalizeGroup);
+
+    const parent =
+      records.find((record) => readNumber(record, ['group_id', 'id']) === parentId) ?? records[0];
+    if (!parent) return [];
+    const childIds = readNumberList(parent.children_id_list);
+    const children = await Promise.all(childIds.map((groupId) => this.loadGroupRecords(groupId)));
+    return children.flatMap((items) => items.slice(0, 1).map(normalizeGroup));
+  }
+
+  private async loadGroupRecords(groupId: number): Promise<Record<string, unknown>[]> {
+    const call = await this.client.call('alibaba.icbu.product.group.get', { group_id: groupId });
     const root = unwrap(call.data, call.method);
-    return findRecords(root, ['product_group', 'groups', 'result_list']).map(normalizeGroup);
+    const records = findRecords(root, ['product_group', 'groups', 'result_list']);
+    if (records.length > 0) return records;
+    const single = findRecord(root, ['product_group', 'group', 'result']);
+    return single ? [single] : [];
   }
 
   async createGroup(request: RequestOf<'createProductGroup'>): Promise<ProductGroup> {
@@ -266,6 +281,33 @@ function readNumber(record: Record<string, unknown>, keys: string[]): number | u
 function readBoolean(record: Record<string, unknown>, keys: string[]): boolean | undefined {
   for (const key of keys) if (typeof record[key] === 'boolean') return record[key];
   return undefined;
+}
+
+function readNumberList(value: unknown): number[] {
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => {
+      const parsed = typeof item === 'number' || typeof item === 'string' ? Number(item) : Number.NaN;
+      return Number.isSafeInteger(parsed) && parsed > 0 ? [parsed] : [];
+    });
+  }
+  if (!isRecord(value)) return [];
+  return readNumberList(value.number ?? value.numbers ?? value.items);
+}
+
+function findRecord(record: Record<string, unknown>, keys: string[]): Record<string, unknown> | null {
+  const visit = (value: unknown, depth: number): Record<string, unknown> | null => {
+    if (depth > 5 || !isRecord(value)) return null;
+    for (const key of keys) {
+      const candidate = value[key];
+      if (isRecord(candidate)) return candidate;
+    }
+    for (const candidate of Object.values(value)) {
+      const result = visit(candidate, depth + 1);
+      if (result) return result;
+    }
+    return null;
+  };
+  return visit(record, 0);
 }
 
 function findRecords(record: Record<string, unknown>, keys: string[]): Record<string, unknown>[] {

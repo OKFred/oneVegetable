@@ -14,6 +14,11 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await page.getByRole('tab', { name: '商品发布/编辑' }).click();
   await page.getByRole('button', { name: '开始填写' }).click();
   await expect(page.getByRole('heading', { name: '发布新商品' })).toBeVisible();
+  await expect(page.getByText('当前分组：Energy storage / Portable power / Solar generators')).toBeVisible();
+  await page.getByLabel('一级分组').selectOption({ label: 'Packaging' });
+  await page.getByLabel('二级分组').selectOption({ label: 'Reusable bags' });
+  await expect(page.getByText('当前分组：Packaging / Reusable bags')).toBeVisible();
+  await expect(page.getByText('group_id')).toHaveCount(0);
   await page.getByLabel('商品标题').fill('Portable solar generator for camping');
   await expect(page.getByText('本地草稿：已保存到本机')).toBeVisible();
 

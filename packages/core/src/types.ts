@@ -232,7 +232,7 @@ export interface OperationMap {
     request: { productId: string; language: string };
     response: ProductDetail;
   };
-  listProductGroups: { request: undefined; response: ProductGroup[] };
+  listProductGroups: { request: { parentId?: number } | undefined; response: ProductGroup[] };
   createProductGroup: {
     request: { name: string; parentId?: number };
     response: ProductGroup;
