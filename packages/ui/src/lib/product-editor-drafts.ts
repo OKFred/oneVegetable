@@ -1,4 +1,9 @@
-import { isAlibabaLanguage, type AlibabaLanguage, type ProductEditorStepId } from '@one-vegetable/core';
+import {
+  isAlibabaLanguage,
+  type AlibabaLanguage,
+  type ProductEditorStepId,
+  type ProductSchemaSerializationInspection
+} from '@one-vegetable/core';
 
 export const PRODUCT_EDITOR_DRAFT_STORAGE_KEY = 'one-vegetable-product-editor-drafts-v2';
 export const LEGACY_PRODUCT_EDITOR_DRAFT_STORAGE_KEY = 'one-vegetable-product-schema-draft';
@@ -31,6 +36,10 @@ export interface DraftStorage {
 
 export function productEditorDraftKey(productId: string, categoryId: string): string {
   return productId.trim() ? `existing:${productId.trim()}` : `new:${categoryId.trim()}`;
+}
+
+export function shouldPersistProductEditorDraft(inspection: ProductSchemaSerializationInspection): boolean {
+  return inspection.safe && !inspection.noOp;
 }
 
 export function loadProductEditorDrafts(

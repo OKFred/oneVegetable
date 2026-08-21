@@ -106,7 +106,7 @@ export function isProductEditorFieldRecommended(field: ProductSchemaField): bool
 export function isProductSchemaGroupField(field: ProductSchemaField): boolean {
   const normalizedId = normalizeFieldId(field.id);
   if (normalizedId === 'productgroup' || normalizedId === 'groupid') return true;
-  const children = field.instances[0] ?? field.children;
+  const children = field.instances[0]?.fields ?? field.children;
   return children.some((child) => productSchemaGroupLevel(child) !== null);
 }
 

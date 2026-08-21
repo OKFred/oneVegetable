@@ -26,7 +26,7 @@ const emit = defineEmits<{ update: [field: ProductSchemaField] }>();
 const { gateway } = useServices();
 const search = ref('');
 const levelFields = computed(() => {
-  const fields = props.field.instances[0] ?? props.field.children;
+  const fields = props.field.instances[0]?.fields ?? props.field.children;
   return new Map(
     fields.flatMap((field) => {
       const level = productSchemaGroupLevel(field);
@@ -105,9 +105,19 @@ function updateLevel(level: 1 | 2 | 3, value: string): void {
   emit('update', {
     ...props.field,
     children: updateFields(props.field.children),
-    instances: props.field.instances.map((instance, index) =>
-      index === 0 ? updateFields(instance) : instance
-    )
+    instances:
+      props.field.instances.length > 0
+        ? props.field.instances.map((instance, index) =>
+            index === 0 ? { ...instance, fields: updateFields(instance.fields) } : instance
+          )
+        : [
+            {
+              key: `${props.field.key}:instance:new:0`,
+              sourcePath: null,
+              sourceIndex: null,
+              fields: updateFields(props.field.children)
+            }
+          ]
   });
 }
 

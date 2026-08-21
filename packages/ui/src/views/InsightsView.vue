@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, ref } from 'vue';
+import { computed, h, ref, watch } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
 import { BarChart3, Building2, CalendarRange, RefreshCw, ShieldAlert } from '@lucide/vue';
 
@@ -8,6 +8,7 @@ import type { InsightsSupplierProduct } from '@one-vegetable/core';
 import DataTable from '../components/DataTable.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
+import TablePagination from '../components/TablePagination.vue';
 import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
@@ -22,6 +23,10 @@ const workspace = ref<Workspace>('performance');
 const selectedSupplierId = ref('');
 const dateStart = ref('');
 const dateEnd = ref('');
+const supplierPage = ref(1);
+const supplierPageSize = ref(10);
+const supplierProductPage = ref(1);
+const supplierProductPageSize = ref(20);
 
 const rank = useQuery({
   queryKey: ['insights-supplier-rank'],
@@ -29,23 +34,29 @@ const rank = useQuery({
   queryFn: () => gateway.request('getInsightsSupplierRank', undefined)
 });
 const suppliers = useQuery({
-  queryKey: ['insights-suppliers'],
+  queryKey: ['insights-suppliers', supplierPage, supplierPageSize],
   enabled: computed(() => workspace.value === 'suppliers'),
-  queryFn: () => gateway.request('listInsightsSuppliers', { page: 1, pageSize: 50 })
+  queryFn: () =>
+    gateway.request('listInsightsSuppliers', {
+      page: supplierPage.value,
+      pageSize: supplierPageSize.value
+    })
 });
 const supplierProducts = useQuery({
   queryKey: computed(() => [
     'insights-supplier-products',
     selectedSupplierId.value,
     dateStart.value,
-    dateEnd.value
+    dateEnd.value,
+    supplierProductPage.value,
+    supplierProductPageSize.value
   ]),
   enabled: computed(() => workspace.value === 'suppliers' && selectedSupplierId.value !== ''),
   queryFn: () =>
     gateway.request('listInsightsSupplierProducts', {
       supplierId: selectedSupplierId.value,
-      page: 1,
-      pageSize: 50,
+      page: supplierProductPage.value,
+      pageSize: supplierProductPageSize.value,
       ...(dateStart.value ? { dateStart: new Date(`${dateStart.value}T00:00:00.000Z`).toISOString() } : {}),
       ...(dateEnd.value ? { dateEnd: new Date(`${dateEnd.value}T23:59:59.999Z`).toISOString() } : {})
     })
@@ -58,6 +69,15 @@ const maxRankPercent = computed(() =>
 function selectSupplier(id: string): void {
   selectedSupplierId.value = id;
 }
+
+watch([supplierPage, supplierPageSize], () => {
+  selectedSupplierId.value = '';
+  supplierProductPage.value = 1;
+});
+
+watch([selectedSupplierId, dateStart, dateEnd], () => {
+  supplierProductPage.value = 1;
+});
 
 function formatPublishedAt(value: string | null): string {
   if (!value) return '文档未返回';
@@ -185,17 +205,25 @@ const workspaces: { id: Workspace; label: string }[] = [
         </div>
         <p class="mt-2 text-xs text-muted-foreground">官方仅返回加密供应商 ID，不补造公司名称。</p>
         <QueryState :loading="suppliers.isPending.value" :error="suppliers.error.value">
-          <div class="mt-4 space-y-2">
-            <button
-              v-for="supplierId in suppliers.data.value?.supplierIds ?? []"
-              :key="supplierId"
-              class="flex w-full items-center justify-between rounded-lg border p-3 text-left text-sm hover:bg-accent"
-              :class="selectedSupplierId === supplierId ? 'border-primary bg-accent' : ''"
-              @click="selectSupplier(supplierId)"
-            >
-              <code class="break-all text-xs">{{ supplierId }}</code
-              ><span aria-hidden="true">→</span>
-            </button>
+          <div class="mt-4 overflow-hidden rounded-lg border">
+            <div class="space-y-2 p-2">
+              <button
+                v-for="supplierId in suppliers.data.value?.supplierIds ?? []"
+                :key="supplierId"
+                class="flex w-full items-center justify-between rounded-lg border p-3 text-left text-sm hover:bg-accent"
+                :class="selectedSupplierId === supplierId ? 'border-primary bg-accent' : ''"
+                @click="selectSupplier(supplierId)"
+              >
+                <code class="break-all text-xs">{{ supplierId }}</code
+                ><span aria-hidden="true">→</span>
+              </button>
+            </div>
+            <TablePagination
+              v-model:page="supplierPage"
+              v-model:page-size="supplierPageSize"
+              :total="suppliers.data.value?.total ?? 0"
+              :disabled="suppliers.isFetching.value"
+            />
           </div>
         </QueryState>
       </Card>
@@ -225,6 +253,10 @@ const workspaces: { id: Workspace; label: string }[] = [
             <DataTable
               :columns="productColumns"
               :data="supplierProducts.data.value?.items ?? []"
+              v-model:page="supplierProductPage"
+              v-model:page-size="supplierProductPageSize"
+              :total-rows="supplierProducts.data.value?.total ?? 0"
+              :pagination-disabled="supplierProducts.isFetching.value"
               empty-text="暂无历史采购商品"
               min-width="840px"
             />

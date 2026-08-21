@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<itemSchema xmlns:ov="urn:one-vegetable:test" version="2">
+  <!-- 脱敏后的真实布局回归样例，不包含完整商品内容 -->
+  <unknown-node keep="yes" ov:flag="A" />
+  <field id="subject" name="商品标题" type="input">
+    <rules><rule name="requiredRule" value="true" /></rules>
+    <values><value><![CDATA[Sample & safe title]]></value></values>
+  </field>
+  <field id="scImages" name="商品图片" type="multiInput">
+    <rules><rule name="requiredRule" value="true" /><rule name="minInputNumRule" value="6" /></rules>
+    <value fileId="photo-1" inputValue="cover" img="true" fileName="cover.jpg" width="1000">https://sc.example/1.jpg</value>
+    <value fileId="photo-2">https://sc.example/2.jpg</value>
+    <value fileId="photo-3">https://sc.example/3.jpg</value>
+    <value fileId="photo-4">https://sc.example/4.jpg</value>
+    <value fileId="photo-5">https://sc.example/5.jpg</value>
+    <value fileId="photo-6">https://sc.example/6.jpg</value>
+  </field>
+  <field id="keywords" name="关键词" type="multiInput">
+    <rules><rule name="minInputNumRule" value="3" /></rules>
+    <values><value>sample one</value><value>sample two</value><value>sample three</value></values>
+  </field>
+  <field id="superText" name="商品详情" type="input">
+    <rules><rule name="valueTypeRule" value="html" /></rules>
+    <value><![CDATA[<h2>Sample detail</h2><p>Kept as CDATA until edited.</p>]]></value>
+  </field>
+  <field id="shipping" name="发货信息" type="complex">
+    <complex-value data-instance="shipping-0">
+      <field id="deliveryTime" name="发货期" type="input"><value>15</value></field>
+      <field id="deliveryUnit" name="单位" type="input"><value>DAY</value></field>
+    </complex-value>
+    <fields>
+      <field id="deliveryTime" name="发货期" type="input"><value /></field>
+      <field id="deliveryUnit" name="单位" type="input"><value /></field>
+    </fields>
+  </field>
+  <field id="ladderPrice" name="阶梯价" type="multiComplex">
+    <rules><rule name="requiredRule" value="true" /></rules>
+    <complex-values data-instance="tier-0">
+      <field id="quantity" name="数量" type="input"><value>1</value></field>
+      <field id="price" name="价格" type="input"><value>10.50</value></field>
+    </complex-values>
+    <complex-values data-instance="tier-1">
+      <field id="quantity" name="数量" type="input"><value>100</value></field>
+      <field id="price" name="价格" type="input"><value>9.50</value></field>
+    </complex-values>
+    <fields>
+      <field id="quantity" name="数量" type="input"><value /></field>
+      <field id="price" name="价格" type="input"><value /></field>
+    </fields>
+  </field>
+  <field id="duplicate" name="重复字段 A" type="input"><value>first</value></field>
+  <field id="duplicate" name="重复字段 B" type="input"><value>second</value></field>
+  <field id="productKeywords" name="商品关键词" type="complex">
+    <rules>
+      <rule name="requiredRule" value="true" />
+      <rule name="minInputNumRule" value="1" />
+      <rule name="maxInputNumRule" value="3" />
+    </rules>
+    <complex-values data-instance="keyword-0">
+      <field id="productKeywords_0" name="productKeywords_0" type="input"><value>sample keyword one</value></field>
+    </complex-values>
+    <complex-values data-instance="keyword-1">
+      <field id="productKeywords_0" name="productKeywords_0" type="input"><value>sample keyword two</value></field>
+    </complex-values>
+    <fields>
+      <field id="productKeywords_0" name="productKeywords_0" type="input"><value /></field>
+    </fields>
+  </field>
+</itemSchema>

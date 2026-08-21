@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, h, onMounted, ref } from 'vue';
 import { RefreshCw, ShieldCheck, Trash2, UserPlus } from '@lucide/vue';
 
 import { API_CAPABILITIES } from '@one-vegetable/core';
@@ -14,13 +14,24 @@ import type {
 import Card from '../components/ui/Card.vue';
 import Button from '../components/ui/Button.vue';
 import Input from '../components/ui/Input.vue';
+import DataTable from '../components/DataTable.vue';
 import PageHeader from '../components/PageHeader.vue';
 import { useServices } from '../lib/services';
+import type { DataColumn } from '../lib/table';
 
 const { control, mode } = useServices();
 const users = ref<ControlUser[]>([]);
+const usersPage = ref(1);
+const usersPageSize = ref(10);
+const usersTotal = ref(0);
 const auditEvents = ref<ControlAuditEvent[]>([]);
+const auditEventsPage = ref(1);
+const auditEventsPageSize = ref(20);
+const auditEventsTotal = ref(0);
 const requestEvents = ref<ControlRequestEvent[]>([]);
+const requestEventsPage = ref(1);
+const requestEventsPageSize = ref(20);
+const requestEventsTotal = ref(0);
 const system = ref<ControlSystemInfo | null>(null);
 const policy = ref<Record<string, unknown> | null>(null);
 const error = ref('');
@@ -50,22 +61,13 @@ async function refresh(): Promise<void> {
   loading.value = true;
   error.value = '';
   try {
-    const requestFilter = requestIdFilter.value.trim();
-    const [userPage, auditPage, requestEventPage, systemInfo, policyInfo] = await Promise.all([
-      control.listUsers(),
-      control.listAudit({
-        ...(requestFilter ? { requestIdFilter: requestFilter } : {})
-      }),
-      control.listRequestEvents({
-        ...(requestFilter ? { requestIdFilter: requestFilter } : {})
-      }),
+    const [, , , systemInfo, policyInfo] = await Promise.all([
+      loadUsers(),
+      loadAuditEvents(),
+      loadRequestEvents(),
       control.system(),
       control.policySummary()
     ]);
-    users.value = userPage.items;
-    remarkDrafts.value = Object.fromEntries(userPage.items.map((user) => [user.id, user.remark ?? '']));
-    auditEvents.value = auditPage.items;
-    requestEvents.value = requestEventPage.items;
     system.value = systemInfo;
     policy.value = policyInfo;
   } catch (cause: unknown) {
@@ -73,6 +75,91 @@ async function refresh(): Promise<void> {
   } finally {
     loading.value = false;
   }
+}
+
+async function loadUsers(): Promise<void> {
+  if (!control) return;
+  const result = await control.listUsers(usersPage.value, usersPageSize.value);
+  users.value = result.items;
+  usersTotal.value = result.total;
+  remarkDrafts.value = Object.fromEntries(result.items.map((user) => [user.id, user.remark ?? '']));
+}
+
+async function loadAuditEvents(): Promise<void> {
+  if (!control) return;
+  const requestFilter = requestIdFilter.value.trim();
+  const result = await control.listAudit({
+    page: auditEventsPage.value,
+    pageSize: auditEventsPageSize.value,
+    ...(requestFilter ? { requestIdFilter: requestFilter } : {})
+  });
+  auditEvents.value = result.items;
+  auditEventsTotal.value = result.total;
+}
+
+async function loadRequestEvents(): Promise<void> {
+  if (!control) return;
+  const requestFilter = requestIdFilter.value.trim();
+  const result = await control.listRequestEvents({
+    page: requestEventsPage.value,
+    pageSize: requestEventsPageSize.value,
+    ...(requestFilter ? { requestIdFilter: requestFilter } : {})
+  });
+  requestEvents.value = result.items;
+  requestEventsTotal.value = result.total;
+}
+
+async function loadSection(loader: () => Promise<void>, fallbackMessage: string): Promise<void> {
+  loading.value = true;
+  error.value = '';
+  try {
+    await loader();
+  } catch (cause: unknown) {
+    error.value = cause instanceof Error ? cause.message : fallbackMessage;
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function setUsersPage(page: number): Promise<void> {
+  usersPage.value = page;
+  await loadSection(loadUsers, '用户数据加载失败');
+}
+
+async function setUsersPageSize(pageSize: number): Promise<void> {
+  usersPage.value = 1;
+  usersPageSize.value = pageSize;
+  await loadSection(loadUsers, '用户数据加载失败');
+}
+
+async function setAuditEventsPage(page: number): Promise<void> {
+  auditEventsPage.value = page;
+  await loadSection(loadAuditEvents, '操作审计加载失败');
+}
+
+async function setAuditEventsPageSize(pageSize: number): Promise<void> {
+  auditEventsPage.value = 1;
+  auditEventsPageSize.value = pageSize;
+  await loadSection(loadAuditEvents, '操作审计加载失败');
+}
+
+async function setRequestEventsPage(page: number): Promise<void> {
+  requestEventsPage.value = page;
+  await loadSection(loadRequestEvents, '请求诊断加载失败');
+}
+
+async function setRequestEventsPageSize(pageSize: number): Promise<void> {
+  requestEventsPage.value = 1;
+  requestEventsPageSize.value = pageSize;
+  await loadSection(loadRequestEvents, '请求诊断加载失败');
+}
+
+async function applyRequestIdFilter(): Promise<void> {
+  auditEventsPage.value = 1;
+  requestEventsPage.value = 1;
+  await loadSection(async () => {
+    await Promise.all([loadAuditEvents(), loadRequestEvents()]);
+  }, 'requestId 筛选失败');
 }
 
 async function purgeRequestEvents(): Promise<void> {
@@ -174,6 +261,103 @@ async function revokeSessions(user: ControlUser): Promise<void> {
 function formatTime(value: number): string {
   return new Date(value).toLocaleString('zh-CN', { hour12: false });
 }
+
+const userColumns: DataColumn<ControlUser>[] = [
+  {
+    accessorKey: 'username',
+    header: '用户',
+    cell: ({ row }) =>
+      h('div', { class: 'min-w-56' }, [
+        h('p', { class: 'font-medium' }, row.original.username),
+        h('div', { class: 'mt-1 flex gap-1' }, [
+          h(Input, {
+            modelValue: remarkDrafts.value[row.original.id] ?? '',
+            class: 'h-8',
+            placeholder: '备注',
+            'onUpdate:modelValue': (value: string) => {
+              remarkDrafts.value[row.original.id] = value;
+            }
+          }),
+          h(Button, { variant: 'ghost', size: 'sm', onClick: () => saveRemark(row.original) }, () => '保存')
+        ])
+      ])
+  },
+  {
+    accessorKey: 'role',
+    header: '角色',
+    cell: ({ row }) =>
+      h(
+        Button,
+        { variant: 'outline', size: 'sm', onClick: () => toggleRole(row.original) },
+        () => row.original.role
+      )
+  },
+  { accessorKey: 'status', header: '状态' },
+  { accessorKey: 'revision', header: 'Revision' },
+  {
+    id: 'actions',
+    header: '操作',
+    cell: ({ row }) =>
+      h('div', { class: 'flex flex-wrap gap-1' }, [
+        h(Button, { variant: 'outline', size: 'sm', onClick: () => toggleStatus(row.original) }, () =>
+          row.original.status === 'active' ? '停用' : '启用'
+        ),
+        h(
+          Button,
+          { variant: 'outline', size: 'sm', onClick: () => resetPassword(row.original) },
+          () => '重置密码'
+        ),
+        h(
+          Button,
+          { variant: 'outline', size: 'sm', onClick: () => revokeSessions(row.original) },
+          () => '撤销会话'
+        )
+      ])
+  }
+];
+
+const requestEventColumns: DataColumn<ControlRequestEvent>[] = [
+  {
+    accessorKey: 'eventTimeUtc',
+    header: '时间',
+    cell: ({ row }) => h('span', { class: 'whitespace-nowrap' }, formatTime(row.original.eventTimeUtc))
+  },
+  {
+    accessorKey: 'requestId',
+    header: 'requestId',
+    cell: ({ row }) => h('code', { class: 'text-xs' }, row.original.requestId)
+  },
+  { accessorKey: 'actorId', header: '主体', cell: ({ row }) => row.original.actorId ?? 'anonymous' },
+  {
+    id: 'runtimeRoute',
+    header: '运行时 / 路由',
+    cell: ({ row }) => `${row.original.runtime} / ${row.original.route}`
+  },
+  { accessorKey: 'operation', header: 'Operation' },
+  { accessorKey: 'outcome', header: '结果' },
+  {
+    id: 'statusDuration',
+    header: '状态 / 耗时',
+    cell: ({ row }) => `${row.original.statusCode} / ${row.original.durationMilliseconds} ms`
+  }
+];
+
+const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
+  {
+    accessorKey: 'eventTimeUtc',
+    header: '时间',
+    cell: ({ row }) => h('span', { class: 'whitespace-nowrap' }, formatTime(row.original.eventTimeUtc))
+  },
+  {
+    accessorKey: 'requestId',
+    header: 'requestId',
+    cell: ({ row }) => h('code', { class: 'text-xs' }, row.original.requestId)
+  },
+  { accessorKey: 'actorId', header: '主体', cell: ({ row }) => row.original.actorId ?? 'anonymous' },
+  { accessorKey: 'action', header: '动作' },
+  { accessorKey: 'outcome', header: '结果' },
+  { accessorKey: 'reasonCode', header: '原因' }
+];
 </script>
 
 <template>
@@ -248,51 +432,19 @@ function formatTime(value: number): string {
     <div class="mt-5 grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
       <Card class="overflow-hidden">
         <div class="border-b p-5"><h2 class="font-semibold">用户管理</h2></div>
-        <div class="relative max-h-[min(60vh,36rem)] max-w-full overflow-auto">
-          <table class="w-full min-w-[760px] text-left text-sm">
-            <thead
-              class="sticky top-0 z-10 whitespace-nowrap bg-muted text-xs text-muted-foreground shadow-[0_1px_0_hsl(var(--border))]"
-            >
-              <tr>
-                <th class="p-3">用户</th>
-                <th class="p-3">角色</th>
-                <th class="p-3">状态</th>
-                <th class="p-3">Revision</th>
-                <th class="p-3">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="user in users" :key="user.id" class="border-t">
-                <td class="min-w-56 p-3">
-                  <p class="font-medium">{{ user.username }}</p>
-                  <div class="mt-1 flex gap-1">
-                    <Input
-                      :model-value="remarkDrafts[user.id] ?? ''"
-                      class="h-8"
-                      placeholder="备注"
-                      @update:model-value="remarkDrafts[user.id] = $event"
-                    />
-                    <Button variant="ghost" size="sm" @click="saveRemark(user)">保存</Button>
-                  </div>
-                </td>
-                <td class="p-3">
-                  <Button variant="outline" size="sm" @click="toggleRole(user)">{{ user.role }}</Button>
-                </td>
-                <td class="p-3">{{ user.status }}</td>
-                <td class="p-3">{{ user.revision }}</td>
-                <td class="p-3">
-                  <div class="flex flex-wrap gap-1">
-                    <Button variant="outline" size="sm" @click="toggleStatus(user)">{{
-                      user.status === 'active' ? '停用' : '启用'
-                    }}</Button>
-                    <Button variant="outline" size="sm" @click="resetPassword(user)">重置密码</Button>
-                    <Button variant="outline" size="sm" @click="revokeSessions(user)">撤销会话</Button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          :columns="userColumns"
+          :data="users"
+          :page="usersPage"
+          :page-size="usersPageSize"
+          :total-rows="usersTotal"
+          :pagination-disabled="loading"
+          max-height="min(60vh, 36rem)"
+          min-width="760px"
+          empty-text="暂无用户"
+          @update:page="setUsersPage"
+          @update:page-size="setUsersPageSize"
+        />
       </Card>
 
       <Card class="p-5">
@@ -349,7 +501,7 @@ function formatTime(value: number): string {
           </p>
         </div>
         <div class="flex flex-wrap gap-2">
-          <form class="flex gap-2" @submit.prevent="refresh">
+          <form class="flex gap-2" @submit.prevent="applyRequestIdFilter">
             <Input v-model="requestIdFilter" class="w-72" placeholder="requestId（UUID v4）" />
             <Button variant="outline" type="submit">查询</Button>
           </form>
@@ -362,33 +514,20 @@ function formatTime(value: number): string {
           </Button>
         </div>
       </div>
-      <div class="relative max-h-[min(60vh,36rem)] max-w-full overflow-auto">
-        <table class="w-full min-w-[980px] text-left text-xs">
-          <thead
-            class="sticky top-0 z-10 whitespace-nowrap bg-muted text-muted-foreground shadow-[0_1px_0_hsl(var(--border))]"
-          >
-            <tr>
-              <th class="p-3">时间</th>
-              <th class="p-3">requestId</th>
-              <th class="p-3">主体</th>
-              <th class="p-3">运行时 / 路由</th>
-              <th class="p-3">Operation</th>
-              <th class="p-3">结果</th>
-              <th class="p-3">状态 / 耗时</th>
-            </tr>
-          </thead>
-          <tbody data-testid="request-events">
-            <tr v-for="event in requestEvents" :key="event.id" class="border-t">
-              <td class="whitespace-nowrap p-3">{{ formatTime(event.eventTimeUtc) }}</td>
-              <td class="p-3 font-mono">{{ event.requestId }}</td>
-              <td class="p-3">{{ event.actorId ?? 'anonymous' }}</td>
-              <td class="p-3">{{ event.runtime }} / {{ event.route }}</td>
-              <td class="p-3">{{ event.operation }}</td>
-              <td class="p-3">{{ event.outcome }}</td>
-              <td class="p-3">{{ event.statusCode }} / {{ event.durationMilliseconds }} ms</td>
-            </tr>
-          </tbody>
-        </table>
+      <div data-testid="request-events">
+        <DataTable
+          :columns="requestEventColumns"
+          :data="requestEvents"
+          :page="requestEventsPage"
+          :page-size="requestEventsPageSize"
+          :total-rows="requestEventsTotal"
+          :pagination-disabled="loading"
+          max-height="min(60vh, 36rem)"
+          min-width="980px"
+          empty-text="暂无请求诊断"
+          @update:page="setRequestEventsPage"
+          @update:page-size="setRequestEventsPageSize"
+        />
       </div>
     </Card>
 
@@ -399,32 +538,19 @@ function formatTime(value: number): string {
           记录主体、动作、结果和拒绝原因；与请求诊断共用 requestId。
         </p>
       </div>
-      <div class="relative max-h-[min(60vh,36rem)] max-w-full overflow-auto">
-        <table class="w-full min-w-[900px] text-left text-xs">
-          <thead
-            class="sticky top-0 z-10 whitespace-nowrap bg-muted text-muted-foreground shadow-[0_1px_0_hsl(var(--border))]"
-          >
-            <tr>
-              <th class="p-3">时间</th>
-              <th class="p-3">requestId</th>
-              <th class="p-3">主体</th>
-              <th class="p-3">动作</th>
-              <th class="p-3">结果</th>
-              <th class="p-3">原因</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="event in auditEvents" :key="event.id" class="border-t">
-              <td class="whitespace-nowrap p-3">{{ formatTime(event.eventTimeUtc) }}</td>
-              <td class="p-3 font-mono">{{ event.requestId }}</td>
-              <td class="p-3">{{ event.actorId ?? 'anonymous' }}</td>
-              <td class="p-3">{{ event.action }}</td>
-              <td class="p-3">{{ event.outcome }}</td>
-              <td class="p-3">{{ event.reasonCode }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        :columns="auditEventColumns"
+        :data="auditEvents"
+        :page="auditEventsPage"
+        :page-size="auditEventsPageSize"
+        :total-rows="auditEventsTotal"
+        :pagination-disabled="loading"
+        max-height="min(60vh, 36rem)"
+        min-width="900px"
+        empty-text="暂无操作审计"
+        @update:page="setAuditEventsPage"
+        @update:page-size="setAuditEventsPageSize"
+      />
     </Card>
   </template>
 </template>

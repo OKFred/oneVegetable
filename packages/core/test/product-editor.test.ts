@@ -78,7 +78,7 @@ describe('product editor field classifier', () => {
     </itemSchema>`);
 
     expect(model.fields.every(isProductSchemaGroupField)).toBe(true);
-    expect(model.fields[0]?.instances[0]?.map(productSchemaGroupLevel)).toEqual([1, 2]);
+    expect(model.fields[0]?.instances[0]?.fields.map(productSchemaGroupLevel)).toEqual([1, 2]);
     expect(
       classifyProductSchemaFields(model.fields)
         .flatMap((section) => section.fields)

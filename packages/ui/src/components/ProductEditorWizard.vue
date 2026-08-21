@@ -10,9 +10,12 @@ import {
   type ProductEditorStepId,
   type ProductSchemaField,
   type ProductSchemaFieldIssue,
-  type ProductSchemaModel
+  type ProductSchemaModel,
+  type ProductSchemaOfficialHint,
+  type ProductSchemaSerializationInspection
 } from '@one-vegetable/core';
 
+import OfficialHintContent from './OfficialHintContent.vue';
 import ProductSchemaFieldComponent from './ProductSchemaField.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
@@ -25,6 +28,7 @@ const props = defineProps<{
   model: ProductSchemaModel;
   issues: ProductSchemaFieldIssue[];
   qualityIssues: ProductDescriptionQualityIssue[];
+  officialHints: ProductSchemaOfficialHint[];
   productDescriptionType: string | undefined;
   mode: ProductEditorMode;
   step: ProductEditorStepId;
@@ -35,6 +39,7 @@ const props = defineProps<{
   scorePending: boolean;
   scoreError: string | undefined;
   schemaPreview: string;
+  schemaInspection: ProductSchemaSerializationInspection;
 }>();
 
 const emit = defineEmits<{
@@ -77,9 +82,49 @@ const hiddenOptionalCount = computed(
 );
 const issuesBySource = computed(() => ({
   'alibaba-schema': props.qualityIssues.filter((issue) => issue.source === 'alibaba-schema'),
-  official: props.qualityIssues.filter((issue) => issue.source === 'official'),
   project: props.qualityIssues.filter((issue) => issue.source === 'project')
 }));
+const officialHintGroups = computed(() => {
+  const groups = new Map<
+    string,
+    {
+      id: string;
+      label: string;
+      hints: ProductSchemaOfficialHint[];
+      fieldKeys: Set<string>;
+    }
+  >();
+  for (const hint of props.officialHints) {
+    const id = hint.rootFieldKey ?? `${hint.source}:${hint.rootFieldName}`;
+    const existing = groups.get(id);
+    if (existing) {
+      existing.hints.push(hint);
+      for (const fieldKey of hint.fieldKeys) existing.fieldKeys.add(fieldKey);
+      continue;
+    }
+    groups.set(id, {
+      id,
+      label: hint.rootFieldName,
+      hints: [hint],
+      fieldKeys: new Set(hint.fieldKeys)
+    });
+  }
+  return [...groups.values()].map((group) => ({
+    id: group.id,
+    label: group.label,
+    hints: group.hints,
+    fieldCount: group.fieldKeys.size
+  }));
+});
+const serializationLabel = computed(() => {
+  if (!props.schemaInspection.safe) return '结构异常';
+  return props.schemaInspection.noOp ? '原样' : '安全补丁';
+});
+const changedFieldNames = computed(() =>
+  props.schemaInspection.changedFieldKeys.map(
+    (key) => props.model.fields.find((field) => field.key === key)?.name ?? key
+  )
+);
 
 function sectionIssueCount(sectionId: ProductEditorStepId): number {
   if (sectionId === 'review') return blockingIssues.value.length;
@@ -100,7 +145,7 @@ function collectFieldReferences(field: ProductSchemaField): string[] {
   const values = [field.key, field.id];
   for (const child of field.children) values.push(...collectFieldReferences(child));
   for (const instance of field.instances) {
-    for (const child of instance) values.push(...collectFieldReferences(child));
+    for (const child of instance.fields) values.push(...collectFieldReferences(child));
   }
   return values;
 }
@@ -111,14 +156,21 @@ function moveStep(offset: -1 | 1): void {
   search.value = '';
 }
 
-function sourceLabel(source: ProductDescriptionQualityIssue['source']): string {
+function sourceLabel(source: 'alibaba-schema' | 'project'): string {
   if (source === 'alibaba-schema') return '平台必填与格式';
-  if (source === 'official') return '官方提示';
   return '内容优化建议';
 }
 
 async function focusIssue(issue: ProductDescriptionQualityIssue): Promise<void> {
-  for (const reference of issue.fieldIds) {
+  await focusReferences(issue.fieldIds);
+}
+
+async function focusOfficialHint(hint: ProductSchemaOfficialHint): Promise<void> {
+  await focusReferences(hint.fieldKeys);
+}
+
+async function focusReferences(references: string[]): Promise<void> {
+  for (const reference of references) {
     const target = findField(reference);
     if (!target) continue;
     optionalOpen.value = { ...optionalOpen.value, [target.sectionId]: true };
@@ -149,7 +201,7 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
     if (found) return found;
   }
   for (const instance of field.instances) {
-    for (const child of instance) {
+    for (const child of instance.fields) {
       const found = findNestedField(child, reference);
       if (found) return found;
     }
@@ -268,9 +320,18 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
         <p v-if="scoreError" class="mt-3 text-xs text-amber-700">
           官方评分暂时不可用，不影响编辑或提交：{{ scoreError }}
         </p>
-        <div class="mt-5 grid gap-4 lg:grid-cols-3">
+        <div
+          v-if="!schemaInspection.safe"
+          class="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive"
+        >
+          <p class="font-medium">Schema XML 结构异常，已阻止提交</p>
+          <ul class="mt-2 list-disc pl-5">
+            <li v-for="diff in schemaInspection.structuralDiffs" :key="diff">{{ diff }}</li>
+          </ul>
+        </div>
+        <div class="mt-5 grid gap-4 lg:grid-cols-2">
           <section
-            v-for="source in ['alibaba-schema', 'official', 'project'] as const"
+            v-for="source in ['alibaba-schema', 'project'] as const"
             :key="source"
             class="rounded-lg border p-4"
           >
@@ -298,6 +359,39 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
               </li>
             </ul>
           </section>
+
+          <section class="rounded-lg border p-4 lg:col-span-2" aria-labelledby="official-hints-title">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h4 id="official-hints-title" class="font-medium">官方提示</h4>
+                <p class="mt-1 text-xs text-muted-foreground">
+                  已按字段合并重复内容；展开后可查看官方链接和 Schema 示例。
+                </p>
+              </div>
+              <Badge variant="secondary">{{ officialHints.length }}</Badge>
+            </div>
+            <p v-if="officialHintGroups.length === 0" class="mt-4 text-sm text-muted-foreground">暂无问题</p>
+            <div v-else class="mt-4 space-y-4">
+              <section v-for="group in officialHintGroups" :key="group.id" class="rounded-lg bg-muted/35 p-3">
+                <div class="mb-3 flex flex-wrap items-center gap-2">
+                  <h5 class="font-medium">{{ group.label }}</h5>
+                  <Badge variant="outline">{{ group.hints.length }} 条</Badge>
+                  <span v-if="group.fieldCount" class="text-xs text-muted-foreground">
+                    影响 {{ group.fieldCount }} 个字段
+                  </span>
+                  <span v-else class="text-xs text-muted-foreground">平台评分</span>
+                </div>
+                <div class="space-y-2">
+                  <OfficialHintContent
+                    v-for="hint in group.hints"
+                    :key="hint.id"
+                    :hint="hint"
+                    @locate="focusOfficialHint(hint)"
+                  />
+                </div>
+              </section>
+            </div>
+          </section>
         </div>
         <div v-if="model.warnings.length" class="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-900">
           <p class="font-medium">提交时需由平台最终检查</p>
@@ -313,7 +407,9 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
         </Button>
         <div v-if="currentSection?.id === 'review'" class="flex flex-wrap gap-2">
           <Button
-            :disabled="submitPending || mutationDisabled || blockingIssues.length > 0"
+            :disabled="
+              submitPending || mutationDisabled || blockingIssues.length > 0 || !schemaInspection.safe
+            "
             @click="emit('submit', false)"
           >
             <Send class="size-4" />{{ editing ? '更新商品' : '发布商品' }} ·
@@ -322,7 +418,9 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
           <Button
             v-if="!editing"
             variant="outline"
-            :disabled="submitPending || mutationDisabled || blockingIssues.length > 0"
+            :disabled="
+              submitPending || mutationDisabled || blockingIssues.length > 0 || !schemaInspection.safe
+            "
             @click="emit('submit', true)"
           >
             <Save class="size-4" />保存平台草稿
@@ -351,14 +449,32 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
         </ul>
       </div>
       <details class="mt-5 rounded-lg border p-3">
-        <summary class="cursor-pointer text-sm font-medium">Schema XML 预览（只读）</summary>
+        <summary class="flex cursor-pointer items-center gap-2 text-sm font-medium">
+          Schema XML 预览（只读）
+          <Badge
+            :variant="
+              schemaInspection.safe ? (schemaInspection.noOp ? 'secondary' : 'success') : 'destructive'
+            "
+          >
+            {{ serializationLabel }}
+          </Badge>
+        </summary>
+        <p v-if="changedFieldNames.length" class="mt-3 text-xs text-muted-foreground">
+          实际变化字段：{{ changedFieldNames.join('、') }}
+        </p>
+        <div
+          v-if="!schemaInspection.safe"
+          class="mt-3 rounded-md bg-destructive/10 p-3 text-xs text-destructive"
+        >
+          <p v-for="diff in schemaInspection.structuralDiffs" :key="diff">{{ diff }}</p>
+        </div>
         <pre
           class="mt-3 max-h-80 overflow-auto whitespace-pre-wrap bg-slate-950 p-3 text-xs text-slate-100"
           >{{ schemaPreview }}</pre>
       </details>
       <div class="mt-5 flex flex-wrap gap-2">
         <Button
-          :disabled="submitPending || mutationDisabled || blockingIssues.length > 0"
+          :disabled="submitPending || mutationDisabled || blockingIssues.length > 0 || !schemaInspection.safe"
           @click="emit('submit', false)"
         >
           <Send class="size-4" />{{ editing ? '更新商品' : '发布商品' }} · {{ advisoryIssues.length }} 条建议
@@ -366,7 +482,7 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
         <Button
           v-if="!editing"
           variant="outline"
-          :disabled="submitPending || mutationDisabled || blockingIssues.length > 0"
+          :disabled="submitPending || mutationDisabled || blockingIssues.length > 0 || !schemaInspection.safe"
           @click="emit('submit', true)"
         >
           <Save class="size-4" />保存平台草稿

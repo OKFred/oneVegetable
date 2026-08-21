@@ -16,7 +16,7 @@ describe('AdminView', () => {
   it('correlates request diagnostics and requires a second click before retention cleanup', async () => {
     const listRequestEvents = vi.fn<ControlClient['listRequestEvents']>(() =>
       Promise.resolve({
-        total: 1,
+        total: 41,
         items: [
           {
             id: 'request-event-1',
@@ -42,13 +42,22 @@ describe('AdminView', () => {
 
     expect(wrapper.get('[data-testid="request-events"]').text()).toContain('admin/system/get');
     expect(wrapper.get('[data-testid="request-events"]').text()).toContain('200 / 12 ms');
+    expect(wrapper.get('[data-testid="request-events"]').text()).toContain('第 1 / 3 页');
     expect(wrapper.text()).toContain('请求诊断保留 30 天');
+
+    await wrapper.get('[data-testid="request-events"]').get('button[aria-label="下一页"]').trigger('click');
+    await flushPromises();
+    expect(listRequestEvents).toHaveBeenLastCalledWith({ page: 2, pageSize: 20 });
 
     const filter = wrapper.get('input[placeholder="requestId（UUID v4）"]');
     await filter.setValue(requestId);
     filter.element.closest('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await flushPromises();
-    expect(listRequestEvents).toHaveBeenLastCalledWith({ requestIdFilter: requestId });
+    expect(listRequestEvents).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 20,
+      requestIdFilter: requestId
+    });
 
     const purge = wrapper.get('[data-testid="purge-request-events"]');
     await purge.trigger('click');

@@ -5,9 +5,12 @@ import { Layers3, LayoutGrid, List, RefreshCw, Search } from '@lucide/vue';
 
 import {
   analyzeProductDescriptionQuality,
+  collectProductSchemaOfficialHints,
+  createProductScoreOfficialHints,
+  inspectProductSchemaSerialization,
+  markProductSchemaFieldTouched,
   parseProductSchemaXml,
   productSchemaFieldText,
-  serializeProductSchemaXml,
   validateProductSchemaModel,
   validateProductSchemaRenderInput,
   validateSchemaPublishInput,
@@ -17,7 +20,9 @@ import {
   type ProductDescriptionImageMetadata,
   type ProductEditorStepId,
   type ProductSchemaField,
+  type ProductSchemaOfficialHint,
   type ProductSchemaModel,
+  type ProductSchemaSerializationInspection,
   type ProductScore,
   withProductSchemaFieldText
 } from '@one-vegetable/core';
@@ -27,6 +32,7 @@ import PageHeader from '../components/PageHeader.vue';
 import ProductEditorWizard from '../components/ProductEditorWizard.vue';
 import QueryState from '../components/QueryState.vue';
 import ScoreProgress from '../components/ScoreProgress.vue';
+import TablePagination from '../components/TablePagination.vue';
 import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
@@ -37,6 +43,7 @@ import {
   productEditorDraftKey,
   removeProductEditorDraft,
   saveProductEditorDraft,
+  shouldPersistProductEditorDraft,
   type ProductEditorDraftV2,
   type ProductEditorMode
 } from '../lib/product-editor-drafts';
@@ -53,6 +60,8 @@ const { language: preferredLanguage } = useAppPreferences();
 const queryClient = useQueryClient();
 const workspace = ref<Workspace>('list');
 const subject = ref('');
+const productPage = ref(1);
+const productPageSize = ref(20);
 const categoryId = ref('');
 const language = ref<AlibabaLanguage>(preferredLanguage.value);
 const market = ref<'wholesale' | 'sourcing'>('wholesale');
@@ -76,13 +85,14 @@ const productScoreErrors = ref<Record<string, string>>({});
 const pendingProductScoreId = ref('');
 let scoreRefreshTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 let draftSaveTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
+const sourceIsLocalDraft = ref(false);
 
 const products = useQuery({
-  queryKey: ['products', subject, language],
+  queryKey: ['products', subject, language, productPage, productPageSize],
   queryFn: () =>
     gateway.request('listProducts', {
-      page: 1,
-      pageSize: 20,
+      page: productPage.value,
+      pageSize: productPageSize.value,
       subject: subject.value,
       language: language.value
     })
@@ -107,14 +117,23 @@ const filteredCategoryOptions = computed(() => {
 });
 const schemaIssues = computed(() => (schemaModel.value ? validateProductSchemaModel(schemaModel.value) : []));
 const blockingSchemaIssues = computed(() => schemaIssues.value.filter((issue) => issue.severity === 'error'));
-const schemaPreview = computed(() => {
-  if (!schemaModel.value) return '';
+const schemaInspection = computed<ProductSchemaSerializationInspection>(() => {
+  if (!schemaModel.value) {
+    return { xml: '', noOp: true, changedFieldKeys: [], structuralDiffs: [], safe: true };
+  }
   try {
-    return serializeProductSchemaXml(schemaModel.value);
-  } catch {
-    return '';
+    return inspectProductSchemaSerialization(schemaModel.value);
+  } catch (error: unknown) {
+    return {
+      xml: schemaModel.value.sourceXml,
+      noOp: false,
+      changedFieldKeys: [],
+      structuralDiffs: [errorMessage(error)],
+      safe: false
+    };
   }
 });
+const schemaPreview = computed(() => schemaInspection.value.xml);
 const realMutationDisabled = computed(() => mode !== 'mock');
 const productDescriptionType = computed(() => {
   const typeField = schemaModel.value?.fields.find((field) => field.id === 'productDescType');
@@ -132,10 +151,12 @@ const productDescriptionHtml = computed(() => {
 const publish = useMutation({
   mutationFn: async (draft: boolean) => {
     if (!schemaModel.value) throw new Error('请先获取商品 Schema');
+    const inspection = inspectProductSchemaSerialization(schemaModel.value);
+    if (!inspection.safe) throw new Error(`Schema XML 结构异常：${inspection.structuralDiffs.join('；')}`);
     const base = {
       categoryId: Number(categoryId.value),
       language: language.value,
-      schemaXml: serializeProductSchemaXml(schemaModel.value)
+      schemaXml: inspection.xml
     };
     const validation = validateSchemaPublishInput(base);
     if (!validation.valid) throw new Error(validation.errors.join('；'));
@@ -187,12 +208,15 @@ const productScore = useMutation({
   }
 });
 
+const officialHints = computed<ProductSchemaOfficialHint[]>(() => [
+  ...(schemaModel.value ? collectProductSchemaOfficialHints(schemaModel.value.fields) : []),
+  ...createProductScoreOfficialHints(productScore.data.value?.issues ?? [])
+]);
 const qualityIssues = computed(() =>
   analyzeProductDescriptionQuality({
     html: productDescriptionHtml.value,
     schemaIssues: schemaIssues.value,
-    officialTips: schemaModel.value ? collectOfficialTips(schemaModel.value.fields) : [],
-    officialScoreIssues: productScore.data.value?.issues ?? [],
+    officialHints: officialHints.value,
     imageMetadata: imageMetadata.value
   })
 );
@@ -401,6 +425,7 @@ function startNewProduct(): void {
 function applySchema(xml: string, message: string, offerLocalDraft = true): void {
   try {
     schemaModel.value = parseProductSchemaXml(xml);
+    sourceIsLocalDraft.value = false;
     schemaError.value = '';
     feedback.value = message;
     editorStep.value = 'basics';
@@ -479,7 +504,7 @@ async function refreshLevelSchema(): Promise<void> {
     const result = await gateway.request('getProductLevelSchema', {
       categoryId: Number(categoryId.value),
       language: language.value,
-      xml: serializeProductSchemaXml(schemaModel.value)
+      xml: guardedSchemaXml(schemaModel.value)
     });
     applySchema(result.xml, '层级属性已根据当前选择刷新', false);
   } catch (error: unknown) {
@@ -492,7 +517,7 @@ function updateRootField(index: number, field: ProductSchemaField): void {
   const isDescription =
     field.id === 'superText' ||
     field.rules.some((rule) => rule.name === 'valueTypeRule' && rule.value.toLocaleLowerCase() === 'html');
-  schemaModel.value = {
+  let nextModel: ProductSchemaModel = {
     ...schemaModel.value,
     fields: schemaModel.value.fields.map((current, currentIndex) => {
       if (currentIndex === index) return field;
@@ -502,6 +527,13 @@ function updateRootField(index: number, field: ProductSchemaField): void {
       return current;
     })
   };
+  nextModel = markProductSchemaFieldTouched(nextModel, field.key);
+  if (isDescription) {
+    const typeField = nextModel.fields.find((current) => current.id === 'productDescType');
+    if (typeField) nextModel = markProductSchemaFieldTouched(nextModel, typeField.key);
+  }
+  schemaModel.value = nextModel;
+  reconcileDraftAfterFieldChange();
 }
 
 function updateImageStatus(status: ProductDescriptionImageMetadata & { url: string }): void {
@@ -525,6 +557,7 @@ function resumeLocalDraft(): void {
   if (!draft) return;
   try {
     schemaModel.value = parseProductSchemaXml(draft.xml);
+    sourceIsLocalDraft.value = true;
     categoryId.value = draft.categoryId;
     language.value = draft.language;
     market.value = draft.market;
@@ -559,6 +592,25 @@ function scheduleDraftSave(): void {
   }, 750);
 }
 
+function reconcileDraftAfterFieldChange(): void {
+  const inspection = schemaInspection.value;
+  cancelDraftSave();
+  if (!inspection.safe) {
+    draftSaveStatus.value = 'idle';
+    return;
+  }
+  if (!shouldPersistProductEditorDraft(inspection)) {
+    if (sourceIsLocalDraft.value) {
+      draftSaveStatus.value = 'saved';
+      return;
+    }
+    removeCurrentLocalDraft();
+    draftSaveStatus.value = 'idle';
+    return;
+  }
+  scheduleDraftSave();
+}
+
 function saveCurrentLocalDraft(): void {
   if (!schemaModel.value || !schemaPreview.value || !categoryId.value || !('localStorage' in globalThis))
     return;
@@ -589,6 +641,14 @@ function clearCurrentLocalDraft(): void {
   draftSaveStatus.value = 'idle';
 }
 
+function removeCurrentLocalDraft(): void {
+  if (!('localStorage' in globalThis) || !categoryId.value) return;
+  removeProductEditorDraft(
+    globalThis.localStorage,
+    productEditorDraftKey(editProductId.value, categoryId.value)
+  );
+}
+
 function cancelDraftSave(): void {
   if (draftSaveTimer === undefined) return;
   globalThis.clearTimeout(draftSaveTimer);
@@ -600,21 +660,6 @@ function draftSaveLabel(status: DraftSaveStatus): string {
   if (status === 'saved') return '已保存到本机';
   if (status === 'error') return '本地草稿保存失败';
   return '';
-}
-
-function collectOfficialTips(fields: ProductSchemaField[]): string[] {
-  const tips = new Set<string>();
-  const visit = (field: ProductSchemaField): void => {
-    for (const rule of field.rules) {
-      if ((rule.name === 'tipRule' || rule.name === 'devTipRule') && rule.value.trim()) {
-        tips.add(rule.value.trim());
-      }
-    }
-    for (const child of field.children) visit(child);
-    for (const instance of field.instances) for (const child of instance) visit(child);
-  };
-  for (const field of fields) visit(field);
-  return [...tips];
 }
 
 function scheduleScoreRefresh(productId: string): void {
@@ -629,10 +674,18 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : '操作失败';
 }
 
-watch([schemaPreview, categoryId, language, market, editorMode, editorStep], scheduleDraftSave);
+function guardedSchemaXml(model: ProductSchemaModel): string {
+  const inspection = inspectProductSchemaSerialization(model);
+  if (!inspection.safe) throw new Error(`Schema XML 结构异常：${inspection.structuralDiffs.join('；')}`);
+  return inspection.xml;
+}
 
 watch([categoryId, editProductId], () => {
   if (!schemaModel.value) offerCurrentDraft();
+});
+
+watch([subject, language], () => {
+  productPage.value = 1;
 });
 
 watch(categoryOptions, (options) => {
@@ -698,6 +751,10 @@ onBeforeUnmount(() => {
       <DataTable
         :columns="columns"
         :data="products.data.value?.items ?? []"
+        v-model:page="productPage"
+        v-model:page-size="productPageSize"
+        :total-rows="products.data.value?.total ?? 0"
+        :pagination-disabled="products.isFetching.value"
         empty-text="没有匹配商品"
         min-width="960px"
       />
@@ -801,6 +858,7 @@ onBeforeUnmount(() => {
       :model="schemaModel"
       :issues="schemaIssues"
       :quality-issues="qualityIssues"
+      :official-hints="officialHints"
       :product-description-type="productDescriptionType"
       :mutation-disabled="realMutationDisabled"
       :submit-pending="publish.isPending.value"
@@ -809,6 +867,7 @@ onBeforeUnmount(() => {
       :score-pending="productScore.isPending.value"
       :score-error="productScore.error.value ? errorMessage(productScore.error.value) : undefined"
       :schema-preview="schemaPreview"
+      :schema-inspection="schemaInspection"
       @update-field="updateRootField"
       @image-status="updateImageStatus"
       @refresh-score="productScore.mutate(editScoreProductId)"
@@ -900,59 +959,71 @@ onBeforeUnmount(() => {
         v-if="qualityViewMode === 'list'"
         :data="products.data.value?.items ?? []"
         :columns="qualityColumns"
+        v-model:page="productPage"
+        v-model:page-size="productPageSize"
+        :total-rows="products.data.value?.total ?? 0"
+        :pagination-disabled="products.isFetching.value"
         empty-text="暂无商品"
       />
-      <div v-else class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        <Card
-          v-for="product in products.data.value?.items ?? []"
-          :key="product.id"
-          class="p-4"
-          :aria-label="`商品质量 ${product.subject}`"
-        >
-          <div class="flex items-start gap-3">
-            <input
-              type="checkbox"
-              :aria-label="`选择 ${product.subject}`"
-              :checked="selectedProductIds.includes(product.id)"
-              @change="toggleProduct(product.id, ($event.target as HTMLInputElement).checked)"
-            />
-            <div class="min-w-0 flex-1">
-              <p class="font-medium">{{ product.subject }}</p>
-              <p class="mt-1 text-xs text-muted-foreground">{{ product.id }}</p>
+      <div v-else class="overflow-hidden rounded-lg border">
+        <div class="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-3">
+          <Card
+            v-for="product in products.data.value?.items ?? []"
+            :key="product.id"
+            class="p-4"
+            :aria-label="`商品质量 ${product.subject}`"
+          >
+            <div class="flex items-start gap-3">
+              <input
+                type="checkbox"
+                :aria-label="`选择 ${product.subject}`"
+                :checked="selectedProductIds.includes(product.id)"
+                @change="toggleProduct(product.id, ($event.target as HTMLInputElement).checked)"
+              />
+              <div class="min-w-0 flex-1">
+                <p class="font-medium">{{ product.subject }}</p>
+                <p class="mt-1 text-xs text-muted-foreground">{{ product.id }}</p>
+              </div>
+              <Badge :variant="statusVariant(product.status)">{{ product.status }}</Badge>
             </div>
-            <Badge :variant="statusVariant(product.status)">{{ product.status }}</Badge>
-          </div>
-          <div class="mt-4 space-y-3">
-            <ScoreProgress
-              v-if="scoreForProduct(product)"
-              label="产品分"
-              :value="scoreForProduct(product)?.score ?? 0"
-              :max="5"
-            />
-            <div v-else class="flex items-center justify-between gap-3 text-sm">
-              <span class="text-muted-foreground">产品分</span>
-              <span>未查询</span>
+            <div class="mt-4 space-y-3">
+              <ScoreProgress
+                v-if="scoreForProduct(product)"
+                label="产品分"
+                :value="scoreForProduct(product)?.score ?? 0"
+                :max="5"
+              />
+              <div v-else class="flex items-center justify-between gap-3 text-sm">
+                <span class="text-muted-foreground">产品分</span>
+                <span>未查询</span>
+              </div>
+              <ScoreProgress v-if="product.score > 0" label="质量分" :value="product.score" :max="100" />
+              <ul
+                v-if="scoreForProduct(product)?.issues.length"
+                class="list-disc space-y-1 pl-5 text-xs text-amber-700 dark:text-amber-400"
+              >
+                <li v-for="issue in scoreForProduct(product)?.issues ?? []" :key="issue">{{ issue }}</li>
+              </ul>
+              <p v-if="scoreErrorForProduct(product)" class="text-xs text-destructive">
+                产品分查询失败：{{ scoreErrorForProduct(product) }}
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                class="w-full"
+                :disabled="!product.encryptedId || isProductScorePending(product)"
+                @click="queryProductScore(product)"
+                >{{ isProductScorePending(product) ? '查询中…' : '查询产品分' }}</Button
+              >
             </div>
-            <ScoreProgress v-if="product.score > 0" label="质量分" :value="product.score" :max="100" />
-            <ul
-              v-if="scoreForProduct(product)?.issues.length"
-              class="list-disc space-y-1 pl-5 text-xs text-amber-700 dark:text-amber-400"
-            >
-              <li v-for="issue in scoreForProduct(product)?.issues ?? []" :key="issue">{{ issue }}</li>
-            </ul>
-            <p v-if="scoreErrorForProduct(product)" class="text-xs text-destructive">
-              产品分查询失败：{{ scoreErrorForProduct(product) }}
-            </p>
-            <Button
-              size="sm"
-              variant="outline"
-              class="w-full"
-              :disabled="!product.encryptedId || isProductScorePending(product)"
-              @click="queryProductScore(product)"
-              >{{ isProductScorePending(product) ? '查询中…' : '查询产品分' }}</Button
-            >
-          </div>
-        </Card>
+          </Card>
+        </div>
+        <TablePagination
+          v-model:page="productPage"
+          v-model:page-size="productPageSize"
+          :total="products.data.value?.total ?? 0"
+          :disabled="products.isFetching.value"
+        />
       </div>
     </QueryState>
   </template>

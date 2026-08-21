@@ -69,8 +69,12 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
 
   await page.getByRole('button', { name: 'API 能力' }).click();
   await expect(page.getByRole('heading', { name: 'API 能力目录' })).toBeVisible();
-  await expect(page.locator('tbody tr')).toHaveCount(86);
+  await expect(page.locator('tbody tr')).toHaveCount(10);
+  await expect(page.getByText('共 86 条，当前 1–10 条')).toBeVisible();
+  await page.getByRole('button', { name: '下一页' }).click();
+  await expect(page.getByText('第 2 / 9 页')).toBeVisible();
   await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.category.attr.get');
+  await expect(page.getByText('第 1 / 1 页')).toBeVisible();
   await page.getByRole('button', { name: 'alibaba.icbu.category.attr.get' }).click();
   await expect(page.getByText(/已 deprecated/)).toBeVisible();
   await page.getByRole('button', { name: '调用能力' }).click();
@@ -145,6 +149,7 @@ test('web mock completes the qualified international logistics workflow', async 
   await page.getByRole('button', { name: '物流订单', exact: true }).click();
   await page.getByRole('button', { name: 'ALS00201756002' }).click();
   await expect(page.getByText(/Base64 数据已返回/)).toBeVisible();
+  await page.getByRole('button', { name: '关闭详情' }).click();
 
   await page.getByRole('button', { name: '地址与模板' }).click();
   await expect(page.getByText('浙江省')).toBeVisible();
@@ -284,6 +289,28 @@ test('web mock exports and clears the typed diagnostics snapshot', async ({ page
   await page.getByRole('button', { name: '清空诊断' }).click();
   await expect(page.getByText('诊断记录已清空。')).toBeVisible();
   await expect(page.getByText('0 条', { exact: true })).toBeVisible();
+});
+
+test('web mock groups official product hints and locates their fields from review', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => {
+    localStorage.clear();
+  });
+  await page.reload();
+  await page.getByRole('button', { name: '商品' }).click();
+  await page.getByRole('tab', { name: '商品发布/编辑' }).click();
+  await page.getByRole('button', { name: '开始填写' }).click();
+  await page.getByRole('button', { name: /6\. 检查与提交/ }).click();
+
+  const officialHints = page.locator('section[aria-labelledby="official-hints-title"]');
+  await expect(officialHints.getByRole('heading', { name: '官方提示' })).toBeVisible();
+  await expect(officialHints.getByRole('heading', { name: '商品标题' })).toBeVisible();
+  await expect(officialHints.getByRole('heading', { name: '商品详情' })).toBeVisible();
+  await expect(officialHints.getByText('面向买家的英文商品标题')).toBeVisible();
+  await expect(officialHints.getByText('API 仅支持维护普通详情')).toBeVisible();
+
+  await officialHints.getByRole('button', { name: '定位字段：商品标题' }).click();
+  await expect(page.getByLabel('商品标题')).toBeFocused();
 });
 
 test('web mock persists the API language preference for product editing', async ({ page }) => {

@@ -4,6 +4,7 @@
 `real` 网关失败时作为静默回退。
 
 - `products.json`：商品、类目、Schema 发品和质量评分。
+- `product-schema/`：脱敏、最小化的 Schema XML 布局与官方提示回归样例，不保存完整真实商品 XML。
 - `photos.json`：图库（图片银行）分组与素材。
 - `rfqs.json`：RFQ 搜索、详情、权益和报价演示。
 - `trades.json`：交易订单、资金、物流和地址。

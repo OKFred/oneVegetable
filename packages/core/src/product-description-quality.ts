@@ -1,4 +1,5 @@
 import type { ProductSchemaFieldIssue } from './product-schema';
+import type { ProductSchemaOfficialHint } from './product-official-hints';
 import type { ProductDescriptionQualityIssue } from './types';
 
 export interface ProductDescriptionImageMetadata {
@@ -10,8 +11,7 @@ export interface ProductDescriptionImageMetadata {
 export interface ProductDescriptionQualityInput {
   html: string;
   schemaIssues?: ProductSchemaFieldIssue[];
-  officialTips?: string[];
-  officialScoreIssues?: string[];
+  officialHints?: ProductSchemaOfficialHint[];
   imageMetadata?: Readonly<Record<string, ProductDescriptionImageMetadata>>;
 }
 
@@ -20,8 +20,7 @@ export function analyzeProductDescriptionQuality(
 ): ProductDescriptionQualityIssue[] {
   const issues: ProductDescriptionQualityIssue[] = [];
   appendSchemaIssues(input.schemaIssues ?? [], issues);
-  appendOfficialIssues(input.officialTips ?? [], 'schema-tip', issues);
-  appendOfficialIssues(input.officialScoreIssues ?? [], 'product-score', issues);
+  appendOfficialIssues(input.officialHints ?? [], issues);
 
   const document = new DOMParser().parseFromString(input.html, 'text/html');
   const text = normalizeText(document.body.textContent);
@@ -88,19 +87,17 @@ function appendSchemaIssues(
 }
 
 function appendOfficialIssues(
-  messages: string[],
-  codePrefix: string,
+  hints: ProductSchemaOfficialHint[],
   output: ProductDescriptionQualityIssue[]
 ): void {
-  for (const [index, message] of messages.entries()) {
-    if (!message.trim()) continue;
+  for (const hint of hints) {
     output.push({
-      code: `${codePrefix}-${index + 1}`,
+      code: hint.id,
       source: 'official',
       level: 'warning',
-      message,
+      message: hint.summary,
       remediation: '参考官方提示完善内容；该提示不会阻止提交。',
-      fieldIds: []
+      fieldIds: hint.fieldKeys
     });
   }
 }

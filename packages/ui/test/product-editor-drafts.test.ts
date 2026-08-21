@@ -10,12 +10,43 @@ import {
   migrateLegacyProductEditorDraft,
   productEditorDraftKey,
   removeProductEditorDraft,
-  saveProductEditorDraft
+  saveProductEditorDraft,
+  shouldPersistProductEditorDraft
 } from '../src/lib/product-editor-drafts';
 
 const NOW = 1_800_000_000_000;
 
 describe('product editor draft storage', () => {
+  it('persists only safe XML patches and ignores initial source or structural errors', () => {
+    expect(
+      shouldPersistProductEditorDraft({
+        xml: '<source/>',
+        noOp: true,
+        changedFieldKeys: [],
+        structuralDiffs: [],
+        safe: true
+      })
+    ).toBe(false);
+    expect(
+      shouldPersistProductEditorDraft({
+        xml: '<patched/>',
+        noOp: false,
+        changedFieldKeys: ['field:0'],
+        structuralDiffs: [],
+        safe: true
+      })
+    ).toBe(true);
+    expect(
+      shouldPersistProductEditorDraft({
+        xml: '<unsafe/>',
+        noOp: false,
+        changedFieldKeys: ['field:0'],
+        structuralDiffs: ['source binding missing'],
+        safe: false
+      })
+    ).toBe(false);
+  });
+
   beforeEach(() => {
     localStorage.clear();
   });

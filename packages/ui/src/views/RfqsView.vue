@@ -38,6 +38,8 @@ const source = ref<RfqSource>('search');
 const keywords = ref('');
 const country = ref('');
 const unquotedOnly = ref(true);
+const rfqPage = ref(1);
+const rfqPageSize = ref(20);
 const selectedRfqId = ref('');
 const rfqSheetOpen = ref(false);
 const draftSaved = ref(false);
@@ -63,15 +65,23 @@ function emptyDraft(rfq?: RfqSummary): QuotationDraft {
 }
 
 const draft = ref<QuotationDraft>(emptyDraft());
-const listKey = computed(() => ['rfqs', source.value, keywords.value, country.value, unquotedOnly.value]);
+const listKey = computed(() => [
+  'rfqs',
+  source.value,
+  keywords.value,
+  country.value,
+  unquotedOnly.value,
+  rfqPage.value,
+  rfqPageSize.value
+]);
 const rfqs = useQuery({
   queryKey: listKey,
   queryFn: () =>
     source.value === 'recommend'
-      ? gateway.request('listRecommendedRfqs', { page: 1, pageSize: 20 })
+      ? gateway.request('listRecommendedRfqs', { page: rfqPage.value, pageSize: rfqPageSize.value })
       : gateway.request('listRfqs', {
-          page: 1,
-          pageSize: 20,
+          page: rfqPage.value,
+          pageSize: rfqPageSize.value,
           ...(keywords.value ? { keywords: keywords.value } : {}),
           ...(country.value ? { country: country.value } : {}),
           unquotedOnly: unquotedOnly.value
@@ -245,6 +255,10 @@ watch(selectedRfqId, (rfqId) => {
   if (rfqId) restoreDraft(rfqId);
 });
 
+watch([source, keywords, country, unquotedOnly], () => {
+  rfqPage.value = 1;
+});
+
 const columns: DataColumn<RfqSummary>[] = [
   {
     accessorKey: 'subject',
@@ -340,6 +354,11 @@ const columns: DataColumn<RfqSummary>[] = [
     <DataTable
       :columns="columns"
       :data="rfqs.data.value?.items ?? []"
+      v-model:page="rfqPage"
+      v-model:page-size="rfqPageSize"
+      :total-rows="rfqs.data.value?.total ?? 0"
+      :page-size-options="[10, 20]"
+      :pagination-disabled="rfqs.isFetching.value"
       empty-text="没有匹配的 RFQ"
       min-width="840px"
       :get-row-key="(rfq) => rfq.id"

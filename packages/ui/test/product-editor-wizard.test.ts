@@ -3,7 +3,17 @@
 import { mount } from '@vue/test-utils';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { parseProductSchemaXml, validateProductSchemaModel } from '@one-vegetable/core';
+import officialHintFixture from '../../../mock/data/product-schema/official-hints.json';
+
+import {
+  analyzeProductDescriptionQuality,
+  collectProductSchemaOfficialHints,
+  parseProductSchemaXml,
+  validateProductSchemaModel,
+  type ProductDescriptionQualityIssue,
+  type ProductSchemaModel,
+  type ProductSchemaOfficialHint
+} from '@one-vegetable/core';
 
 import ProductEditorWizard from '../src/components/ProductEditorWizard.vue';
 
@@ -16,15 +26,26 @@ const XML = `<itemSchema>
 
 beforeAll(() => {
   HTMLElement.prototype.scrollIntoView = vi.fn();
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    callback(0);
+    return 1;
+  });
 });
 
-function mountWizard(step: 'basics' | 'attributes' | 'review' = 'basics') {
-  const model = parseProductSchemaXml(XML);
+function mountWizard(
+  step: 'basics' | 'attributes' | 'review' = 'basics',
+  options: {
+    model?: ProductSchemaModel;
+    officialHints?: ProductSchemaOfficialHint[];
+    qualityIssues?: ProductDescriptionQualityIssue[];
+  } = {}
+) {
+  const model = options.model ?? parseProductSchemaXml(XML);
   return mount(ProductEditorWizard, {
     props: {
       model,
       issues: validateProductSchemaModel(model),
-      qualityIssues: [
+      qualityIssues: options.qualityIssues ?? [
         {
           code: 'schema-requiredRule',
           source: 'alibaba-schema',
@@ -34,6 +55,7 @@ function mountWizard(step: 'basics' | 'attributes' | 'review' = 'basics') {
           fieldIds: ['productTitle']
         }
       ],
+      officialHints: options.officialHints ?? [],
       productDescriptionType: undefined,
       mode: 'guided',
       step,
@@ -43,7 +65,14 @@ function mountWizard(step: 'basics' | 'attributes' | 'review' = 'basics') {
       scoreAvailable: false,
       scorePending: false,
       scoreError: undefined,
-      schemaPreview: XML
+      schemaPreview: XML,
+      schemaInspection: {
+        xml: XML,
+        noOp: true,
+        changedFieldKeys: [],
+        structuralDiffs: [],
+        safe: true
+      }
     }
   });
 }
@@ -92,5 +121,69 @@ describe('ProductEditorWizard', () => {
     await issueButton.trigger('click');
     expect(review.emitted('update:mode')?.at(-1)).toEqual(['guided']);
     expect(review.emitted('update:step')?.at(-1)).toEqual(['basics']);
+  });
+
+  it('shows XML source safety state and blocks structurally unsafe submissions', async () => {
+    const wrapper = mountWizard();
+    await wrapper.setProps({ mode: 'advanced' });
+    expect(wrapper.text()).toContain('原样');
+
+    await wrapper.setProps({
+      issues: [],
+      mutationDisabled: false,
+      schemaInspection: {
+        xml: XML,
+        noOp: false,
+        changedFieldKeys: ['field:0'],
+        structuralDiffs: [],
+        safe: true
+      }
+    });
+    expect(wrapper.text()).toContain('安全补丁');
+    expect(wrapper.text()).toContain('实际变化字段：Product title');
+    const submit = wrapper.findAll('button').find((button) => button.text().includes('发布商品'));
+    if (!submit) throw new Error('Missing publish button');
+    expect(submit.attributes('disabled')).toBeUndefined();
+
+    await wrapper.setProps({
+      schemaInspection: {
+        xml: XML,
+        noOp: false,
+        changedFieldKeys: ['field:0'],
+        structuralDiffs: ['field:0 无法绑定到源字段'],
+        safe: false
+      }
+    });
+    expect(wrapper.text()).toContain('结构异常');
+    expect(submit.attributes('disabled')).toBeDefined();
+  });
+
+  it('groups official hints, expands safe content and locates the related field', async () => {
+    const model = parseProductSchemaXml(officialHintFixture.schemaXml);
+    const officialHints = collectProductSchemaOfficialHints(model.fields);
+    const qualityIssues = analyzeProductDescriptionQuality({
+      html: '<h2>Product details</h2><p>' + `${'product '.repeat(160)}</p>`,
+      officialHints
+    });
+    const wrapper = mountWizard('review', { model, officialHints, qualityIssues });
+
+    expect(wrapper.text()).toContain('已按字段合并重复内容');
+    expect(wrapper.text()).toContain('商品关键词');
+    expect(wrapper.text()).toContain('2 条');
+    expect(wrapper.text()).not.toContain('<div>');
+
+    const expand = wrapper
+      .findAll('button')
+      .find((button) => button.attributes('aria-label')?.includes('展开官方提示：请准确填写'));
+    if (!expand) throw new Error('Missing official hint expand button');
+    await expand.trigger('click');
+    expect(wrapper.get('a').attributes('href')).toBe('https://service.alibaba.com/page/knowledge?pageId=127');
+
+    const locate = wrapper
+      .findAll('button')
+      .find((button) => button.attributes('aria-label') === '定位字段：商品关键词');
+    if (!locate) throw new Error('Missing official hint locate button');
+    await locate.trigger('click');
+    expect(wrapper.emitted('update:step')?.at(-1)).toEqual(['basics']);
   });
 });

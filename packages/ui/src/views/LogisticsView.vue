@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, ref } from 'vue';
+import { computed, h, ref, watch } from 'vue';
 import { useMutation, useQuery } from '@tanstack/vue-query';
 import { Calculator, ClipboardList, MapPin, PackageCheck, RefreshCw, ShieldAlert, Truck } from '@lucide/vue';
 
@@ -38,6 +38,8 @@ const cargoValue = ref('18.50');
 const cargoMaterial = ref('塑料和电子元件');
 const selectedProductType = ref('battery');
 const orderNumberFilter = ref('');
+const logisticsOrderPage = ref(1);
+const logisticsOrderPageSize = ref(20);
 const selectedOrderNumber = ref('');
 const logisticsOrderSheetOpen = ref(false);
 const addressLevel = ref<'province' | 'city' | 'division' | 'street'>('province');
@@ -66,12 +68,17 @@ const shippingTemplates = useQuery({
   queryFn: () => gateway.request('listShippingTemplates', undefined)
 });
 const orders = useQuery({
-  queryKey: computed(() => ['logistics-orders', orderNumberFilter.value]),
+  queryKey: computed(() => [
+    'logistics-orders',
+    orderNumberFilter.value,
+    logisticsOrderPage.value,
+    logisticsOrderPageSize.value
+  ]),
   enabled: computed(() => mode === 'mock' && workspace.value === 'orders'),
   queryFn: () =>
     gateway.request('listLogisticsOrders', {
-      page: 1,
-      pageSize: 50,
+      page: logisticsOrderPage.value,
+      pageSize: logisticsOrderPageSize.value,
       ...(orderNumberFilter.value.trim() ? { orderNumber: orderNumberFilter.value.trim() } : {})
     })
 });
@@ -204,6 +211,15 @@ function selectLogisticsOrder(order: LogisticsOrderSummary): void {
   selectedOrderNumber.value = order.orderNumber;
   logisticsOrderSheetOpen.value = true;
 }
+
+watch(orderNumberFilter, () => {
+  logisticsOrderPage.value = 1;
+});
+
+watch([logisticsOrderPage, logisticsOrderPageSize], () => {
+  logisticsOrderSheetOpen.value = false;
+  selectedOrderNumber.value = '';
+});
 
 const columns: DataColumn<LogisticsOrderSummary>[] = [
   {
@@ -386,6 +402,10 @@ const workspaces: { id: Workspace; label: string }[] = [
       <DataTable
         :columns="columns"
         :data="orders.data.value?.items ?? []"
+        v-model:page="logisticsOrderPage"
+        v-model:page-size="logisticsOrderPageSize"
+        :total-rows="orders.data.value?.total ?? 0"
+        :pagination-disabled="orders.isFetching.value"
         empty-text="暂无物流订单"
         min-width="720px"
         :get-row-key="(order) => order.orderNumber"

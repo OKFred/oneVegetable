@@ -19,6 +19,7 @@ export * from './product-description';
 export * from './product-description-quality';
 export * from './product-adapter';
 export * from './product-editor';
+export * from './product-official-hints';
 export * from './product-schema';
 export * from './rfq-adapter';
 export * from './trade-adapter';
