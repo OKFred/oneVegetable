@@ -207,6 +207,12 @@ describe('ProductEditorWizard', () => {
     await wrapper.setProps({ platformDraftId: '1600000000001' });
     expect(wrapper.text()).toContain('平台草稿 1600000000001 已创建');
     expect(draft.attributes('disabled')).toBeDefined();
+    const officialEditor = wrapper.get('a');
+    expect(officialEditor.text()).toContain('在国际站继续编辑');
+    expect(officialEditor.attributes('href')).toBe(
+      'https://post.alibaba.com/product/publish.htm?itemId=1600000000001&pubAction=draft'
+    );
+    expect(officialEditor.attributes('rel')).toBe('noopener noreferrer');
 
     const full = wrapper.findAll('button').find((button) => button.text().includes('六步向导'));
     if (!full) throw new Error('Missing full editor action');

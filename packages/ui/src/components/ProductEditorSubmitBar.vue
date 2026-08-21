@@ -33,9 +33,7 @@ const emit = defineEmits<{ submit: [draft: boolean] }>();
     class="sticky bottom-0 z-10 mt-6 flex flex-wrap items-center justify-between gap-3 border-t bg-background/95 py-4 backdrop-blur"
   >
     <div class="min-w-0 text-xs text-muted-foreground">
-      <p v-if="platformDraftId">
-        平台草稿 {{ platformDraftId }} 已创建；后续修改自动保存在本机，不会重复创建。
-      </p>
+      <p v-if="platformDraftId">后续修改自动保存在本机；写回平台请使用上方国际站编辑入口。</p>
       <p v-else-if="blockingCount && quick">
         当前有 {{ blockingCount }} 个 Schema 问题，但仍可尝试保存平台草稿。
       </p>

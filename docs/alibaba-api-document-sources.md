@@ -39,11 +39,12 @@ Alibaba OpenAPI 接口采用双源审计，不把任一站点单独视为完整�
 
 - `docId=27010` 对应的 `alibaba.icbu.product.update.field` 已由国际站官方变更说明列为旧发品链路，不进入快速发品或商品编辑主路径。
 - 首次保存平台草稿使用 `alibaba.icbu.product.schema.add.draft`，首次正式发布使用 `alibaba.icbu.product.schema.add`；正式商品后续完善使用 active 的 `alibaba.icbu.product.schema.update`。
-- 官方文档目前未确认可覆盖既有平台草稿的更新接口。因此一次平台草稿创建成功后，后续编辑只保存本地 V3 草稿，不能重复调用 `schema.add.draft`；重新进入时通过 `schema.render.draft` 读取平台基线。
+- 官方文档目前未提供可覆盖既有平台草稿的 OpenAPI。2026-08-21 真实验证中，`schema.update` 对刚创建的草稿返回 `Record does not exist`，确认它只适用于正式商品记录。因此一次平台草稿创建成功后，后续编辑只保存本地 V3 草稿，不能重复调用 `schema.add.draft`；重新进入时通过 `schema.render.draft` 读取平台基线，并提供国际站官方编辑页入口写回同一草稿。
 - 快速模式允许带 Schema 内容问题保存平台草稿，但 XML 结构安全、请求契约、类目和语言仍是前置条件。直接发布与正式更新仍要求 Schema 硬错误清零。
-- `saveProductDraft` 已接入本地 Node 专用适配器，但 2026-08-21 真实 Smoke 在当前网关返回错误码 `22`（不合法 ApiName），没有获得商品 ID，因此默认 flag 保持关闭。`publishProduct`、`updateProduct`、staging、production 和扩展真实商品写入也继续关闭。一次性报告已记录 mutation attempt 并阻止重试，避免平台状态不明确时制造重复草稿。
+- `saveProductDraft` 使用 `https://open-api.alibaba.com/sync`、HMAC-SHA256 和 Unix 毫秒时间戳。2026-08-21 真实 Smoke 已创建草稿 `1601930390138`，并由 `schema.render.draft` 回读标题与图库素材；本地 Node real 启动脚本据此只开放该新增操作。
+- 同日通过国际站官方编辑页对该草稿同 ID 保存标题变更，再由 `schema.render.draft` 二次回读确认。官方页面使用依赖网页登录态与 CSRF 的站内提交接口，它不是 OpenAPI，不能作为 BFF 或扩展适配器。`publishProduct`、`updateProduct`、staging、production 和扩展真实商品写入继续关闭。
 
-参考：[商品接口变更说明](https://developer.alibaba.com/docs/doc.htm?articleId=119212&docType=1&treeId=456)、[Schema 增量更新接口](https://developer.alibaba.com/docs/api.htm?apiId=50189)。
+参考：[商品接口变更说明](https://developer.alibaba.com/docs/doc.htm?articleId=119212&docType=1&treeId=456)、[Schema 增量更新接口](https://developer.alibaba.com/docs/api.htm?apiId=50189)、[草稿 Schema 回读](https://developer.alibaba.com/docs/api.htm?apiId=50205)。
 
 ## 原生页面行为对照记录
 

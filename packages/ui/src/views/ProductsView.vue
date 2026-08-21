@@ -161,9 +161,6 @@ const productPublishDisabledReason = computed(() =>
 const publish = useMutation({
   mutationFn: async (draft: boolean) => {
     if (!schemaModel.value) throw new Error('请先获取商品 Schema');
-    if (draft && platformDraftId.value) {
-      throw new Error('平台草稿已创建；后续修改已自动保存到本机，不会重复创建平台草稿');
-    }
     const inspection = inspectProductSchemaSerialization(schemaModel.value);
     if (!inspection.safe) throw new Error(`Schema XML 结构异常：${inspection.structuralDiffs.join('；')}`);
     const base = {

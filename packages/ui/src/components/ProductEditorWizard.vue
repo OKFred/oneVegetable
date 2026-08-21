@@ -16,6 +16,7 @@ import {
 } from '@one-vegetable/core';
 
 import OfficialHintContent from './OfficialHintContent.vue';
+import PlatformDraftHandoff from './PlatformDraftHandoff.vue';
 import ProductQuickEditor from './ProductQuickEditor.vue';
 import ProductSchemaFieldComponent from './ProductSchemaField.vue';
 import Badge from './ui/Badge.vue';
@@ -263,6 +264,8 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
         </Button>
       </div>
     </div>
+
+    <PlatformDraftHandoff v-if="platformDraftId" :product-id="platformDraftId" />
 
     <ProductQuickEditor
       v-if="mode === 'quick' && !editing"
