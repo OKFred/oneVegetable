@@ -7,6 +7,7 @@ import {
   Globe2,
   KeyRound,
   LockKeyhole,
+  Moon,
   RotateCcw,
   Save,
   ShieldCheck,
@@ -35,7 +36,7 @@ import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 
 const { gateway, settings, permissions, localData, vault, mode } = useServices();
-const { language: preferredLanguage } = useAppPreferences();
+const { language: preferredLanguage, theme: preferredTheme } = useAppPreferences();
 const signMethods: SignMethod[] = ['hmac', 'md5', 'hmac-sha256'];
 const model = ref<GatewaySettings>({
   appKey: '',
@@ -363,6 +364,11 @@ function formatBytes(bytes: number): string {
 function confirmLanguagePreference(): void {
   feedback.value = `接口语言偏好已保存为 ${preferredLanguage.value}。`;
 }
+
+function confirmThemePreference(): void {
+  const label = { system: '跟随系统', light: '浅色', dark: '深色' }[preferredTheme.value];
+  feedback.value = `界面主题已切换为${label}。`;
+}
 </script>
 
 <template>
@@ -395,6 +401,30 @@ function confirmLanguagePreference(): void {
             >
               <option value="zh_CN">简体中文（zh_CN）</option>
               <option value="en_US">English（en_US）</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    </Card>
+    <Card class="p-5">
+      <div class="flex items-start gap-3">
+        <Moon class="mt-0.5 size-5 shrink-0 text-primary" />
+        <div class="min-w-0 flex-1">
+          <h2 class="font-semibold">界面主题</h2>
+          <p class="mt-1 text-sm leading-6 text-muted-foreground">
+            深色模式会降低夜间使用时的亮度，并保留状态、警告与表格的可读对比度。
+          </p>
+          <label class="mt-3 block max-w-xs text-sm font-medium">
+            主题偏好
+            <select
+              v-model="preferredTheme"
+              class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
+              aria-label="主题偏好"
+              @change="confirmThemePreference"
+            >
+              <option value="system">跟随系统</option>
+              <option value="light">浅色</option>
+              <option value="dark">深色</option>
             </select>
           </label>
         </div>
@@ -698,9 +728,11 @@ function confirmLanguagePreference(): void {
         </span>
       </div>
       <p v-if="dataError" class="mt-3 text-sm text-destructive">{{ dataError }}</p>
-      <div class="mt-4 overflow-x-auto rounded-lg border">
+      <div class="relative mt-4 max-h-[min(60vh,36rem)] max-w-full overflow-auto rounded-lg border">
         <table class="w-full min-w-[620px] text-left text-sm">
-          <thead class="whitespace-nowrap bg-muted/70 text-xs text-muted-foreground">
+          <thead
+            class="sticky top-0 z-10 whitespace-nowrap bg-muted text-xs text-muted-foreground shadow-[0_1px_0_hsl(var(--border))]"
+          >
             <tr>
               <th class="px-3 py-2 font-medium">类别</th>
               <th class="px-3 py-2 font-medium">存储位置</th>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref, type Component } from 'vue';
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue';
 import {
   BarChart3,
   Boxes,
@@ -7,11 +7,13 @@ import {
   Home,
   Image,
   Menu,
+  Moon,
   PlugZap,
   ShieldCheck,
   Settings,
   ShoppingCart,
   Sprout,
+  Sun,
   Truck
 } from '@lucide/vue';
 
@@ -29,6 +31,7 @@ import type {
 import Button from './components/ui/Button.vue';
 import AuthGate from './components/AuthGate.vue';
 import OnboardingDialog from './components/OnboardingDialog.vue';
+import { applyAppTheme, useAppPreferences } from './lib/preferences';
 import { provideServices } from './lib/services';
 
 const props = defineProps<{
@@ -81,6 +84,8 @@ const baseItems: NavigationItem[] = [
   { id: 'settings', label: '设置', icon: Settings }
 ];
 const session = ref<ControlSession | null>(null);
+const { theme: themePreference } = useAppPreferences();
+const darkTheme = ref(applyAppTheme(themePreference.value) === 'dark');
 const authLoading = ref(props.mode === 'bff' && props.control !== undefined);
 const items = computed(() =>
   baseItems.filter(
@@ -103,8 +108,20 @@ const views: Record<PageId, Component> = {
   settings: defineAsyncComponent(() => import('./views/SettingsView.vue'))
 };
 const activeView = computed(() => views[page.value]);
+const colorScheme = globalThis.matchMedia('(prefers-color-scheme: dark)');
+
+function syncTheme(): void {
+  darkTheme.value = applyAppTheme(themePreference.value) === 'dark';
+}
+
+function toggleTheme(): void {
+  themePreference.value = darkTheme.value ? 'light' : 'dark';
+}
+
+watch(themePreference, syncTheme);
 
 onMounted(async () => {
+  colorScheme.addEventListener('change', syncTheme);
   if (props.mode !== 'bff' || !props.control) return;
   try {
     session.value = await props.control.session();
@@ -113,6 +130,10 @@ onMounted(async () => {
   } finally {
     authLoading.value = false;
   }
+});
+
+onBeforeUnmount(() => {
+  colorScheme.removeEventListener('change', syncTheme);
 });
 
 async function logout(): Promise<void> {
@@ -186,6 +207,16 @@ async function logout(): Promise<void> {
           /></Button>
           <p class="hidden text-sm text-muted-foreground sm:block">国际站开放平台运营工作台</p>
           <div class="flex items-center gap-2 text-xs text-muted-foreground">
+            <Button
+              variant="ghost"
+              size="icon"
+              :aria-label="darkTheme ? '切换到浅色模式' : '切换到夜间模式'"
+              :title="darkTheme ? '切换到浅色模式' : '切换到夜间模式'"
+              @click="toggleTheme"
+            >
+              <Sun v-if="darkTheme" class="size-4" />
+              <Moon v-else class="size-4" />
+            </Button>
             <span class="size-2 rounded-full bg-emerald-500" />{{
               mode === 'mock' ? '契约 Mock 在线' : mode === 'bff' ? 'BFF 在线' : '扩展后台在线'
             }}

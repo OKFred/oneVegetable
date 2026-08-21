@@ -31,6 +31,8 @@ const updateVaultPolicy = vi.fn((idleTimeoutMinutes: number) =>
 
 beforeEach(() => {
   localStorage.clear();
+  document.documentElement.classList.remove('dark');
+  delete document.documentElement.dataset.theme;
 });
 
 function mountView(mode: 'mock' | 'extension' = 'mock', initialVaultState?: CredentialVaultState) {
@@ -127,9 +129,28 @@ describe('SettingsView diagnostics', () => {
     await language.setValue('zh_CN');
 
     expect(JSON.parse(localStorage.getItem(APP_PREFERENCES_STORAGE_KEY) ?? '{}')).toEqual({
-      language: 'zh_CN'
+      language: 'zh_CN',
+      theme: 'system'
     });
     expect(wrapper.text()).toContain('接口语言偏好已保存为 zh_CN');
+    wrapper.unmount();
+  });
+
+  it('persists and applies the preferred interface theme', async () => {
+    const wrapper = mountView();
+    await flushPromises();
+
+    const theme = wrapper.get('select[aria-label="主题偏好"]');
+    expect((theme.element as HTMLSelectElement).value).toBe('system');
+    await theme.setValue('dark');
+
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(JSON.parse(localStorage.getItem(APP_PREFERENCES_STORAGE_KEY) ?? '{}')).toEqual({
+      language: 'en_US',
+      theme: 'dark'
+    });
+    expect(wrapper.text()).toContain('界面主题已切换为深色');
     wrapper.unmount();
   });
 
