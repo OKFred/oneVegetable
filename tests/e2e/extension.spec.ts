@@ -226,17 +226,20 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByLabel('空闲自动锁定时间')).toHaveValue('5');
 
   await page.getByRole('button', { name: 'API 能力' }).click();
-  await expect(page.locator('tbody tr')).toHaveCount(86);
+  await expect(page.locator('tbody tr')).toHaveCount(10);
+  await expect(page.getByText('共 86 条，当前 1–10 条')).toBeVisible();
   await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.product.schema.add');
   await page.getByRole('button', { name: 'alibaba.icbu.product.schema.add', exact: true }).click();
   await expect(page.getByText(/真实写能力尚未通过账号 smoke test/)).toBeVisible();
   await expect(page.getByRole('button', { name: '调用能力' })).toBeDisabled();
+  await page.getByLabel('关闭详情').click();
 
   await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.risk.send');
   await page.getByRole('button', { name: 'alibaba.icbu.risk.send' }).click();
   await expect(page.getByText(/WUA、UMID、IMEI、IMSI、MAC/)).toBeVisible();
   await expect(page.getByLabel('只读文档参数示例')).toBeVisible();
   await expect(page.getByRole('button', { name: '调用能力' })).toBeDisabled();
+  await page.getByLabel('关闭详情').click();
 
   const platformGateErrors = await page.evaluate(async () => {
     const extension = (
@@ -290,6 +293,11 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByRole('button', { name: /发布商品/ })).toBeDisabled();
   await page.getByRole('button', { name: /4\. 商品详情/ }).click();
   await page.getByRole('button', { name: /更多选填信息/ }).click();
+  await page.getByRole('button', { name: '详情模板' }).click();
+  const templateDialog = page.getByRole('dialog', { name: '商品详情模板' });
+  await expect(templateDialog.getByText('Company profile')).toBeVisible();
+  await expect(templateDialog.getByRole('button', { name: '新建共享模板' })).toHaveCount(0);
+  await page.getByRole('button', { name: '关闭商品详情模板' }).click();
   await page.getByRole('button', { name: /插入图库图片/ }).click();
   await expect(page.getByRole('heading', { name: '国际站图库' })).toBeVisible();
   await page.getByRole('button', { name: '上传图片' }).click();

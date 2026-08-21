@@ -41,6 +41,7 @@ pnpm test:e2e
 pnpm test:e2e:bff-replay # 重建隔离 D1，启动 Worker/Web，验证认证后的全领域 BFF 读链路
 pnpm check:replay-coverage # 校验所有可真实调用的只读能力都有有效文档回放
 pnpm openapi:auth         # Windows 本地有头浏览器获取 OpenAPI 授权包
+pnpm smoke:product:draft:real # 显式 opt-in 后创建并回读一条真实平台草稿
 pnpm release:extension # 可复现 ZIP、SHA-256 与 release.json
 pnpm capture:store-assets # 从构建后的扩展刷新 1280×800 商店截图
 ```
@@ -61,17 +62,17 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 
 - 正式网关为 `https://eco.taobao.com/router/rest`，支持 `hmac`、`md5` 和 `hmac-sha256`，默认 `hmac`。
 - 商品发布、草稿与更新使用 Schema 流程；新建商品通过 `schema.get` 获取类目模板，编辑已有商品通过 `schema.render` 加载现有值，不再把旧 `product.add/update` 作为主路径。
-- 商品页分为商品列表、商品发布/编辑、类目与分组、质量与上下架四个工作区。商品发布/编辑默认按基础信息、属性规格、图片、详情、交易物流和检查提交六步引导；高级模式保留全部 Schema 字段、只读 XML 预览与未知节点，两种模式共享同一份数据。
+- 商品页分为商品列表、商品发布/编辑、类目与分组、质量与上下架四个工作区。新建商品默认进入单页“快速发布”，优先填写必填与核心字段并保存平台草稿；六步向导和高级 Schema 模式完整保留，三种模式共享同一份编辑会话。
 - 设置页提供 `zh_CN` / `en_US` 接口语言偏好；商品列表、Schema、平台草稿、履约通道和地址 Schema 等支持语言参数的请求使用该偏好，商品草稿仍保留创建时的语言上下文。
-- 本地商品草稿按商品 ID 或新建类目隔离，约 750 ms 防抖保存，最多保留 10 份且自动清理 30 天前记录。发现草稿时必须明确选择继续草稿或重新加载平台数据；发布或更新成功后删除对应草稿。
-- Schema 中 `valueTypeRule=html` 或 `superText` 会使用受限 Tiptap 编辑器；仅维护 `productDescType=2` 的普通详情。智能详情和不受支持的旧 HTML 默认原样只读，查看变化并二次确认后才转换。
+- 本地商品草稿使用 V3 结构，按商品 ID 或新建类目隔离，约 750 ms 防抖保存，并记录编辑模式与已创建的平台草稿 ID。最多保留 10 份且自动清理 30 天前记录；平台草稿创建后不会重复调用 `schema.add.draft`。
+- Schema 中 `valueTypeRule=html` 或 `superText` 会使用受限 Tiptap 编辑器；仅维护 `productDescType=2` 的普通详情。编辑器提供中英文公司、物流、包装与服务内置模板，以及 BFF 审计共享模板，支持插入、追加和预览后覆盖；智能详情和不受支持的旧 HTML 必须先确认转换。
 - 主图、SKU 图和详情图复用国际站图库选择器。真实图库查询、本地上传和外部 URL 转存已接通；Web/BFF 仍使用 JSON Base64 契约，后台校验后按官方要求转换为 multipart，单张上限 5 MiB。商品更新和图库分组写入继续关闭。
 - 详情整改面板区分 `Alibaba Schema`、`官方提示` 和 `项目建议`。只有 Schema/契约硬错误阻止提交；内容长度、结构、SEO、图片质量和官方评分提示均不阻止提交。
 - 商品编辑以 `schema.render` XML 为权威源文档：无编辑时原样返回，编辑时只应用安全字段补丁，结构异常会在出网前阻断。详见 [商品 Schema XML 安全边界](docs/product-schema-xml-safety.md)。
 - `openapi/one-vegetable.json` 是运行时唯一契约；商品、RFQ、交易、物流、洞察、图库和平台协作文档 JSON 是离线生成输入。商品快照包含 25 个目录 API 和 2 个文章来源 Schema 发布 API；RFQ 快照包含 7 个目录 API；交易分类的 27 个方法中，26 个进入类型化快照；物流快照包含 14 个官方物流分类方法和 1 个商品域运费模板方法；洞察快照包含 2 个数据接口和 2 个采购供应商接口；图库快照包含 4 个官方目录 API；平台协作快照包含最后 3 个目录 API。接口契约详情以淘宝开放平台详情页为主，免费/授权/聚石塔/业务资格等准入标签以 Alibaba.com 国际站目录和文章为准；新增领域前必须执行双源差异审计。详见 [Alibaba OpenAPI 文档源策略](docs/alibaba-api-document-sources.md)。CI 不访问官方文档站。
 - 审计目录中的 84 个候选方法均已具有方法关联的请求/响应映射和 CSP 安全 standalone validator。非法请求不会出网；响应漂移会保留原始数据、`traceId` 和结构化告警。类型化不等于业务资格或真实账号验收。
 - RFQ 工作台提供市场搜索、推荐、详情、最多 20 个 ID 的已读状态、报价权益和浏览器本地报价草稿。`alibaba.icbu.annex.upload` 按官方 RFQ 分类归入该领域；真实附件上传和提交报价在账号 smoke test 前保持禁用，Web Mock 可走通完整报价流程。
-- 所有真实 mutation 方法均为逐方法 feature flag 关闭，Web Mock 可完整演示写流程；UI 没有自行开启真实写操作的入口。
+- 真实 mutation 继续逐方法门禁。当前仅 Windows 本地 Node BFF 可通过服务端 flag 开放 `saveProductDraft`；正式发布、商品更新、staging、production 和扩展商品写入仍关闭，UI 没有自行开启入口。
 - `alibaba.seller.order.get` 需要聚石塔，v2 不提供该调用；订单列表点击整行、订单号或“查看”会打开桌面右侧详情抽屉（移动端全屏），组合摘要、资金、物流与按需加载的 TT 信息。TT 账号默认遮罩且切换订单或关闭后立即重新遮罩；真实交易写入继续关闭。详见 [交易域说明](docs/trade-domain.md)。
 - 国际物流工作台覆盖地址字典、特殊商品属性、运力列表、运费试算、物流订单、面单和下单草稿。14 个 OneTouch 方法因业务资格和账号状态在扩展中默认关闭；Web Mock 可完整回归，运费模板保持独立可查询。详见 [物流域说明](docs/logistics-domain.md)。
 - 数据洞察工作台展示供应商全站排名时间序列，以及买家历史信保供应商与下单商品。页面不推断排名含义、不补造供应商名称，并保持长 ID 为字符串。CGS 小满签约客户接口默认关闭且不提供业务密钥表单。详见 [数据与供应商洞察说明](docs/insights-domain.md)。

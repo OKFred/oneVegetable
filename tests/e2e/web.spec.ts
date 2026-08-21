@@ -40,9 +40,11 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await expect(page.getByText('发现本地草稿', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: '继续本地草稿' }).click();
   await expect(page.getByLabel('商品标题')).toHaveValue('Portable solar generator for camping');
-  await page.getByRole('button', { name: /6\. 检查与提交/ }).click();
   await page.getByRole('button', { name: /保存平台草稿/ }).click();
   await expect(page.getByText(/草稿已保存/)).toBeVisible();
+  await page.getByRole('button', { name: /六步向导/ }).click();
+  await page.getByRole('button', { name: /6\. 检查与提交/ }).click();
+  await expect(page.getByRole('heading', { name: '检查与提交' })).toBeVisible();
 
   await page.getByRole('tab', { name: '类目与分组' }).click();
   await expect(page.getByText('Energy storage')).toBeVisible();
@@ -206,9 +208,38 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
   await page.getByRole('button', { name: '商品' }).click();
   await page.getByRole('tab', { name: '商品发布/编辑' }).click();
   await page.getByRole('button', { name: '开始填写' }).click();
+  await page.getByRole('button', { name: /六步向导/ }).click();
   await page.getByRole('button', { name: /4\. 商品详情/ }).click();
 
   await expect(page.locator('.ProseMirror')).toBeVisible();
+  await page.getByRole('button', { name: '详情模板' }).click();
+  let templateDialog = page.getByRole('dialog', { name: '商品详情模板' });
+  const companyTemplate = templateDialog.locator('article').filter({ hasText: 'Company profile' });
+  await companyTemplate.getByRole('button', { name: '追加末尾' }).click();
+  await expect(page.locator('.ProseMirror')).toContainText('About Us');
+
+  await page.getByRole('button', { name: '详情模板' }).click();
+  templateDialog = page.getByRole('dialog', { name: '商品详情模板' });
+  const shippingTemplate = templateDialog.locator('article').filter({ hasText: 'Shipping and delivery' });
+  await shippingTemplate.getByRole('button', { name: '覆盖全文' }).click();
+  const replaceDialog = page.getByRole('dialog', { name: '确认覆盖商品详情' });
+  await expect(replaceDialog.getByRole('heading', { name: '当前详情' })).toBeVisible();
+  await expect(replaceDialog.getByText('覆盖后：Shipping and delivery')).toBeVisible();
+  await replaceDialog.getByRole('button', { name: '确认覆盖全文' }).click();
+  await expect(page.locator('.ProseMirror')).toContainText('Shipping and Delivery');
+
+  await page.getByRole('button', { name: '详情模板' }).click();
+  templateDialog = page.getByRole('dialog', { name: '商品详情模板' });
+  await templateDialog.getByRole('button', { name: '新建共享模板' }).click();
+  const editorDialog = page.getByRole('dialog', { name: '新建共享详情模板' });
+  await editorDialog.getByLabel('模板名称').fill('E2E custom details');
+  await editorDialog.getByLabel('安全 HTML').fill('<h2>E2E custom section</h2><p>Shared content</p>');
+  await editorDialog.getByRole('button', { name: '保存共享模板' }).click();
+  await expect(
+    page.getByRole('dialog', { name: '商品详情模板' }).getByText('E2E custom details')
+  ).toBeVisible();
+  await page.getByRole('button', { name: '关闭商品详情模板' }).click();
+
   await page.getByRole('button', { name: /6\. 检查与提交/ }).click();
   await expect(page.getByRole('heading', { name: '内容优化建议' })).toBeVisible();
   await expect(page.getByText(/英文正文约 .*少于项目建议的 150 个/)).toBeVisible();
@@ -300,6 +331,7 @@ test('web mock groups official product hints and locates their fields from revie
   await page.getByRole('button', { name: '商品' }).click();
   await page.getByRole('tab', { name: '商品发布/编辑' }).click();
   await page.getByRole('button', { name: '开始填写' }).click();
+  await page.getByRole('button', { name: /六步向导/ }).click();
   await page.getByRole('button', { name: /6\. 检查与提交/ }).click();
 
   const officialHints = page.locator('section[aria-labelledby="official-hints-title"]');
