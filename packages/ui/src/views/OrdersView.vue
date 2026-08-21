@@ -37,6 +37,8 @@ const { language: preferredLanguage } = useAppPreferences();
 const workspace = ref<Workspace>('orders');
 const status = ref('');
 const buyerLoginId = ref('');
+const orderPage = ref(1);
+const orderPageSize = ref(20);
 const selectedOrderId = ref('');
 const serviceCurrency = ref('USD');
 const addressCountry = ref('US');
@@ -53,11 +55,17 @@ const ttAccountRevealed = ref(false);
 const mutationBlocked = mode !== 'mock';
 
 const orders = useQuery({
-  queryKey: computed(() => ['trade-orders', status.value, buyerLoginId.value]),
+  queryKey: computed(() => [
+    'trade-orders',
+    status.value,
+    buyerLoginId.value,
+    orderPage.value,
+    orderPageSize.value
+  ]),
   queryFn: () =>
     gateway.request('listTradeOrders', {
-      page: 1,
-      pageSize: 50,
+      page: orderPage.value,
+      pageSize: orderPageSize.value,
       ...(status.value ? { status: status.value } : {}),
       ...(buyerLoginId.value ? { buyerLoginId: buyerLoginId.value } : {})
     })
@@ -232,6 +240,15 @@ const workspaces: { id: Workspace; label: string }[] = [
 watch(selectedOrderId, () => {
   ttAccountRevealed.value = false;
 });
+
+watch([status, buyerLoginId], () => {
+  orderPage.value = 1;
+});
+
+watch([orderPage, orderPageSize], () => {
+  setOrderSheetOpen(false);
+  selectedOrderId.value = '';
+});
 </script>
 
 <template>
@@ -284,6 +301,10 @@ watch(selectedOrderId, () => {
       <DataTable
         :columns="columns"
         :data="orders.data.value?.items ?? []"
+        v-model:page="orderPage"
+        v-model:page-size="orderPageSize"
+        :total-rows="orders.data.value?.total ?? 0"
+        :pagination-disabled="orders.isFetching.value"
         empty-text="暂无匹配订单"
         min-width="900px"
         :get-row-key="(order) => order.id"

@@ -32,6 +32,7 @@ import PageHeader from '../components/PageHeader.vue';
 import ProductEditorWizard from '../components/ProductEditorWizard.vue';
 import QueryState from '../components/QueryState.vue';
 import ScoreProgress from '../components/ScoreProgress.vue';
+import TablePagination from '../components/TablePagination.vue';
 import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
@@ -59,6 +60,8 @@ const { language: preferredLanguage } = useAppPreferences();
 const queryClient = useQueryClient();
 const workspace = ref<Workspace>('list');
 const subject = ref('');
+const productPage = ref(1);
+const productPageSize = ref(20);
 const categoryId = ref('');
 const language = ref<AlibabaLanguage>(preferredLanguage.value);
 const market = ref<'wholesale' | 'sourcing'>('wholesale');
@@ -85,11 +88,11 @@ let draftSaveTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 const sourceIsLocalDraft = ref(false);
 
 const products = useQuery({
-  queryKey: ['products', subject, language],
+  queryKey: ['products', subject, language, productPage, productPageSize],
   queryFn: () =>
     gateway.request('listProducts', {
-      page: 1,
-      pageSize: 20,
+      page: productPage.value,
+      pageSize: productPageSize.value,
       subject: subject.value,
       language: language.value
     })
@@ -681,6 +684,10 @@ watch([categoryId, editProductId], () => {
   if (!schemaModel.value) offerCurrentDraft();
 });
 
+watch([subject, language], () => {
+  productPage.value = 1;
+});
+
 watch(categoryOptions, (options) => {
   if (categoryId.value || options.length === 0) return;
   const preferred = options.find((category) => category.leaf) ?? options[0];
@@ -744,6 +751,10 @@ onBeforeUnmount(() => {
       <DataTable
         :columns="columns"
         :data="products.data.value?.items ?? []"
+        v-model:page="productPage"
+        v-model:page-size="productPageSize"
+        :total-rows="products.data.value?.total ?? 0"
+        :pagination-disabled="products.isFetching.value"
         empty-text="没有匹配商品"
         min-width="960px"
       />
@@ -948,59 +959,71 @@ onBeforeUnmount(() => {
         v-if="qualityViewMode === 'list'"
         :data="products.data.value?.items ?? []"
         :columns="qualityColumns"
+        v-model:page="productPage"
+        v-model:page-size="productPageSize"
+        :total-rows="products.data.value?.total ?? 0"
+        :pagination-disabled="products.isFetching.value"
         empty-text="暂无商品"
       />
-      <div v-else class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        <Card
-          v-for="product in products.data.value?.items ?? []"
-          :key="product.id"
-          class="p-4"
-          :aria-label="`商品质量 ${product.subject}`"
-        >
-          <div class="flex items-start gap-3">
-            <input
-              type="checkbox"
-              :aria-label="`选择 ${product.subject}`"
-              :checked="selectedProductIds.includes(product.id)"
-              @change="toggleProduct(product.id, ($event.target as HTMLInputElement).checked)"
-            />
-            <div class="min-w-0 flex-1">
-              <p class="font-medium">{{ product.subject }}</p>
-              <p class="mt-1 text-xs text-muted-foreground">{{ product.id }}</p>
+      <div v-else class="overflow-hidden rounded-lg border">
+        <div class="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-3">
+          <Card
+            v-for="product in products.data.value?.items ?? []"
+            :key="product.id"
+            class="p-4"
+            :aria-label="`商品质量 ${product.subject}`"
+          >
+            <div class="flex items-start gap-3">
+              <input
+                type="checkbox"
+                :aria-label="`选择 ${product.subject}`"
+                :checked="selectedProductIds.includes(product.id)"
+                @change="toggleProduct(product.id, ($event.target as HTMLInputElement).checked)"
+              />
+              <div class="min-w-0 flex-1">
+                <p class="font-medium">{{ product.subject }}</p>
+                <p class="mt-1 text-xs text-muted-foreground">{{ product.id }}</p>
+              </div>
+              <Badge :variant="statusVariant(product.status)">{{ product.status }}</Badge>
             </div>
-            <Badge :variant="statusVariant(product.status)">{{ product.status }}</Badge>
-          </div>
-          <div class="mt-4 space-y-3">
-            <ScoreProgress
-              v-if="scoreForProduct(product)"
-              label="产品分"
-              :value="scoreForProduct(product)?.score ?? 0"
-              :max="5"
-            />
-            <div v-else class="flex items-center justify-between gap-3 text-sm">
-              <span class="text-muted-foreground">产品分</span>
-              <span>未查询</span>
+            <div class="mt-4 space-y-3">
+              <ScoreProgress
+                v-if="scoreForProduct(product)"
+                label="产品分"
+                :value="scoreForProduct(product)?.score ?? 0"
+                :max="5"
+              />
+              <div v-else class="flex items-center justify-between gap-3 text-sm">
+                <span class="text-muted-foreground">产品分</span>
+                <span>未查询</span>
+              </div>
+              <ScoreProgress v-if="product.score > 0" label="质量分" :value="product.score" :max="100" />
+              <ul
+                v-if="scoreForProduct(product)?.issues.length"
+                class="list-disc space-y-1 pl-5 text-xs text-amber-700 dark:text-amber-400"
+              >
+                <li v-for="issue in scoreForProduct(product)?.issues ?? []" :key="issue">{{ issue }}</li>
+              </ul>
+              <p v-if="scoreErrorForProduct(product)" class="text-xs text-destructive">
+                产品分查询失败：{{ scoreErrorForProduct(product) }}
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                class="w-full"
+                :disabled="!product.encryptedId || isProductScorePending(product)"
+                @click="queryProductScore(product)"
+                >{{ isProductScorePending(product) ? '查询中…' : '查询产品分' }}</Button
+              >
             </div>
-            <ScoreProgress v-if="product.score > 0" label="质量分" :value="product.score" :max="100" />
-            <ul
-              v-if="scoreForProduct(product)?.issues.length"
-              class="list-disc space-y-1 pl-5 text-xs text-amber-700 dark:text-amber-400"
-            >
-              <li v-for="issue in scoreForProduct(product)?.issues ?? []" :key="issue">{{ issue }}</li>
-            </ul>
-            <p v-if="scoreErrorForProduct(product)" class="text-xs text-destructive">
-              产品分查询失败：{{ scoreErrorForProduct(product) }}
-            </p>
-            <Button
-              size="sm"
-              variant="outline"
-              class="w-full"
-              :disabled="!product.encryptedId || isProductScorePending(product)"
-              @click="queryProductScore(product)"
-              >{{ isProductScorePending(product) ? '查询中…' : '查询产品分' }}</Button
-            >
-          </div>
-        </Card>
+          </Card>
+        </div>
+        <TablePagination
+          v-model:page="productPage"
+          v-model:page-size="productPageSize"
+          :total="products.data.value?.total ?? 0"
+          :disabled="products.isFetching.value"
+        />
       </div>
     </QueryState>
   </template>
