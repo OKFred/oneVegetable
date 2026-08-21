@@ -19,7 +19,9 @@
 pnpm generate:mock-data
 ```
 
-生成结果位于 `packages/core/src/generated/mock-data.ts`，会通过 TypeScript 对照 `OperationMap` 检查结构。
+生成结果位于 `packages/core/src/generated/mock-data.ts`；内置详情模板单独生成到
+`packages/core/src/generated/product-description-templates.ts`，避免扩展只用模板时引入全部 Mock。生成物会通过
+TypeScript 对照共享契约检查结构。
 `pnpm generate:check` 会阻止源数据与生成结果发生漂移。不要手工编辑生成文件。
 
 OpenAPI 中的官方请求/响应 examples 继续用于契约、validator 和 documentation replay，不属于此目录的

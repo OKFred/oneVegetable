@@ -4,7 +4,8 @@ import { defineComponent, h } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ALIBABA_GATEWAY, MockGatewayClient } from '@one-vegetable/core';
+import { ALIBABA_GATEWAY } from '@one-vegetable/core';
+import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import OnboardingDialog from '../src/components/OnboardingDialog.vue';
 import { provideServices } from '../src/lib/services';

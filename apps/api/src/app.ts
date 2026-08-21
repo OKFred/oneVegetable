@@ -6,10 +6,10 @@ import {
   GatewayException,
   isOperationId,
   isRequestId,
-  MockGatewayClient,
   normalizeApiPrefix,
   validateOperationAvailabilityInput
 } from '@one-vegetable/core';
+import { MockGatewayClient } from '@one-vegetable/core/mock';
 import {
   authorizeOperation,
   extensionAdminPrincipal,

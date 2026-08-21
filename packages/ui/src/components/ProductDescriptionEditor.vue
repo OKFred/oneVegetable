@@ -24,8 +24,8 @@ import {
   Underline as UnderlineIcon
 } from '@lucide/vue';
 
+import { sanitizeProductDescriptionHtml } from '@one-vegetable/core/browser';
 import {
-  sanitizeProductDescriptionHtml,
   type Photo,
   type ProductDescriptionImageMetadata,
   type ProductDescriptionSanitizationChange

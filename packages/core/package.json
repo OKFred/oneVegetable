@@ -5,8 +5,10 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./browser": "./src/product-description-browser.ts",
     "./mock": "./src/mock-client.ts",
-    "./runtime": "./src/runtime.ts"
+    "./runtime": "./src/runtime.ts",
+    "./templates": "./src/product-description-template-client.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

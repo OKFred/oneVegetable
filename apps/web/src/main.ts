@@ -5,14 +5,16 @@ import {
   ALIBABA_GATEWAY,
   BffControlClient,
   BffGatewayClient,
-  BffProductDescriptionTemplateClient,
-  CompositeProductDescriptionTemplateClient,
-  MemoryProductDescriptionTemplateClient,
-  MockGatewayClient,
   PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA,
   type GatewaySettings,
   type SettingsRepository
 } from '@one-vegetable/core';
+import { MockGatewayClient } from '@one-vegetable/core/mock';
+import {
+  BffProductDescriptionTemplateClient,
+  CompositeProductDescriptionTemplateClient,
+  MemoryProductDescriptionTemplateClient
+} from '@one-vegetable/core/templates';
 import { OneVegetableApp } from '@one-vegetable/ui';
 import '@one-vegetable/ui/styles.css';
 

@@ -2,8 +2,8 @@
 import { computed, ref, watch } from 'vue';
 import { Archive, ArchiveRestore, FilePlus2, LayoutTemplate, Pencil } from '@lucide/vue';
 
+import { sanitizeProductDescriptionHtml } from '@one-vegetable/core/browser';
 import {
-  sanitizeProductDescriptionHtml,
   type ProductDescriptionTemplate,
   type ProductDescriptionTemplateCategory,
   type ProductDescriptionTemplateLanguage

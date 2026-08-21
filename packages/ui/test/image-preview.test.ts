@@ -4,7 +4,7 @@ import { defineComponent, h, nextTick, ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 
-import { MockGatewayClient } from '@one-vegetable/core';
+import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import ImagePreview from '../src/components/ImagePreview.vue';
 

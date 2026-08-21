@@ -5,11 +5,9 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { describe, expect, it } from 'vitest';
 
-import {
-  MemoryProductDescriptionTemplateClient,
-  MockGatewayClient,
-  PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA
-} from '@one-vegetable/core';
+import { PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA } from '@one-vegetable/core';
+import { MockGatewayClient } from '@one-vegetable/core/mock';
+import { MemoryProductDescriptionTemplateClient } from '@one-vegetable/core/templates';
 
 import ProductDescriptionEditor from '../src/components/ProductDescriptionEditor.vue';
 import { provideServices } from '../src/lib/services';

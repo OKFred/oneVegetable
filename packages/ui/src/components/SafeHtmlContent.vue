@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watchEffect } from 'vue';
 
-import { sanitizeProductDescriptionHtml } from '@one-vegetable/core';
+import { sanitizeProductDescriptionHtml } from '@one-vegetable/core/browser';
 
 const props = defineProps<{ html: string }>();
 const container = ref<HTMLElement | null>(null);

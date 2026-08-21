@@ -1,37 +1,16 @@
-export const PRODUCT_DESCRIPTION_TAGS = [
-  'p',
-  'br',
-  'h2',
-  'h3',
-  'h4',
-  'strong',
-  'em',
-  'u',
-  'ul',
-  'ol',
-  'li',
-  'blockquote',
-  'table',
-  'tbody',
-  'tr',
-  'th',
-  'td',
-  'a',
-  'img',
-  'hr'
-] as const;
+import { parseFragment, serialize } from 'parse5';
 
-export interface ProductDescriptionSanitizationChange {
-  type: 'removed-element' | 'unwrapped-element' | 'removed-attribute' | 'removed-url' | 'secured-link';
-  target: string;
-  detail: string;
-}
+import { PRODUCT_DESCRIPTION_TAGS } from './product-description-contract';
+import { isPhotoBankUrl } from './product-description-url';
 
-export interface SanitizedProductDescription {
-  html: string;
-  supported: boolean;
-  changes: ProductDescriptionSanitizationChange[];
-}
+import type { DefaultTreeAdapterTypes, Token } from 'parse5';
+import type {
+  ProductDescriptionSanitizationChange,
+  SanitizedProductDescription
+} from './product-description-contract';
+
+export * from './product-description-contract';
+export { isPhotoBankUrl } from './product-description-url';
 
 const ALLOWED_TAGS = new Set<string>(PRODUCT_DESCRIPTION_TAGS);
 const DROP_WITH_CONTENT = new Set([
@@ -63,17 +42,6 @@ export function sanitizeProductDescriptionHtml(html: string): SanitizedProductDe
   const changes: ProductDescriptionSanitizationChange[] = [];
   sanitizeChildren(fragment, changes);
   return { html: serialize(fragment), supported: changes.length === 0, changes };
-}
-
-export function isPhotoBankUrl(rawUrl: string): boolean {
-  try {
-    const normalized = rawUrl.startsWith('//') ? `https:${rawUrl}` : rawUrl;
-    const url = new URL(normalized);
-    const hostname = url.hostname.toLocaleLowerCase();
-    return url.protocol === 'https:' && (hostname === 'alicdn.com' || hostname.endsWith('.alicdn.com'));
-  } catch {
-    return false;
-  }
 }
 
 function sanitizeChildren(
@@ -207,6 +175,3 @@ function isHttpUrl(rawUrl: string): boolean {
     return false;
   }
 }
-import { parseFragment, serialize } from 'parse5';
-
-import type { DefaultTreeAdapterTypes, Token } from 'parse5';
