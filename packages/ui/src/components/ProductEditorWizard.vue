@@ -10,7 +10,8 @@ import {
   type ProductEditorStepId,
   type ProductSchemaField,
   type ProductSchemaFieldIssue,
-  type ProductSchemaModel
+  type ProductSchemaModel,
+  type ProductSchemaSerializationInspection
 } from '@one-vegetable/core';
 
 import ProductSchemaFieldComponent from './ProductSchemaField.vue';
@@ -35,6 +36,7 @@ const props = defineProps<{
   scorePending: boolean;
   scoreError: string | undefined;
   schemaPreview: string;
+  schemaInspection: ProductSchemaSerializationInspection;
 }>();
 
 const emit = defineEmits<{
@@ -80,6 +82,15 @@ const issuesBySource = computed(() => ({
   official: props.qualityIssues.filter((issue) => issue.source === 'official'),
   project: props.qualityIssues.filter((issue) => issue.source === 'project')
 }));
+const serializationLabel = computed(() => {
+  if (!props.schemaInspection.safe) return '结构异常';
+  return props.schemaInspection.noOp ? '原样' : '安全补丁';
+});
+const changedFieldNames = computed(() =>
+  props.schemaInspection.changedFieldKeys.map(
+    (key) => props.model.fields.find((field) => field.key === key)?.name ?? key
+  )
+);
 
 function sectionIssueCount(sectionId: ProductEditorStepId): number {
   if (sectionId === 'review') return blockingIssues.value.length;
@@ -268,6 +279,15 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
         <p v-if="scoreError" class="mt-3 text-xs text-amber-700">
           官方评分暂时不可用，不影响编辑或提交：{{ scoreError }}
         </p>
+        <div
+          v-if="!schemaInspection.safe"
+          class="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive"
+        >
+          <p class="font-medium">Schema XML 结构异常，已阻止提交</p>
+          <ul class="mt-2 list-disc pl-5">
+            <li v-for="diff in schemaInspection.structuralDiffs" :key="diff">{{ diff }}</li>
+          </ul>
+        </div>
         <div class="mt-5 grid gap-4 lg:grid-cols-3">
           <section
             v-for="source in ['alibaba-schema', 'official', 'project'] as const"
@@ -313,7 +333,9 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
         </Button>
         <div v-if="currentSection?.id === 'review'" class="flex flex-wrap gap-2">
           <Button
-            :disabled="submitPending || mutationDisabled || blockingIssues.length > 0"
+            :disabled="
+              submitPending || mutationDisabled || blockingIssues.length > 0 || !schemaInspection.safe
+            "
             @click="emit('submit', false)"
           >
             <Send class="size-4" />{{ editing ? '更新商品' : '发布商品' }} ·
@@ -322,7 +344,9 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
           <Button
             v-if="!editing"
             variant="outline"
-            :disabled="submitPending || mutationDisabled || blockingIssues.length > 0"
+            :disabled="
+              submitPending || mutationDisabled || blockingIssues.length > 0 || !schemaInspection.safe
+            "
             @click="emit('submit', true)"
           >
             <Save class="size-4" />保存平台草稿
@@ -351,14 +375,32 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
         </ul>
       </div>
       <details class="mt-5 rounded-lg border p-3">
-        <summary class="cursor-pointer text-sm font-medium">Schema XML 预览（只读）</summary>
+        <summary class="flex cursor-pointer items-center gap-2 text-sm font-medium">
+          Schema XML 预览（只读）
+          <Badge
+            :variant="
+              schemaInspection.safe ? (schemaInspection.noOp ? 'secondary' : 'success') : 'destructive'
+            "
+          >
+            {{ serializationLabel }}
+          </Badge>
+        </summary>
+        <p v-if="changedFieldNames.length" class="mt-3 text-xs text-muted-foreground">
+          实际变化字段：{{ changedFieldNames.join('、') }}
+        </p>
+        <div
+          v-if="!schemaInspection.safe"
+          class="mt-3 rounded-md bg-destructive/10 p-3 text-xs text-destructive"
+        >
+          <p v-for="diff in schemaInspection.structuralDiffs" :key="diff">{{ diff }}</p>
+        </div>
         <pre
           class="mt-3 max-h-80 overflow-auto whitespace-pre-wrap bg-slate-950 p-3 text-xs text-slate-100"
           >{{ schemaPreview }}</pre>
       </details>
       <div class="mt-5 flex flex-wrap gap-2">
         <Button
-          :disabled="submitPending || mutationDisabled || blockingIssues.length > 0"
+          :disabled="submitPending || mutationDisabled || blockingIssues.length > 0 || !schemaInspection.safe"
           @click="emit('submit', false)"
         >
           <Send class="size-4" />{{ editing ? '更新商品' : '发布商品' }} · {{ advisoryIssues.length }} 条建议
@@ -366,7 +408,7 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
         <Button
           v-if="!editing"
           variant="outline"
-          :disabled="submitPending || mutationDisabled || blockingIssues.length > 0"
+          :disabled="submitPending || mutationDisabled || blockingIssues.length > 0 || !schemaInspection.safe"
           @click="emit('submit', true)"
         >
           <Save class="size-4" />保存平台草稿

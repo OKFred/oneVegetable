@@ -5,9 +5,10 @@ import { Layers3, LayoutGrid, List, RefreshCw, Search } from '@lucide/vue';
 
 import {
   analyzeProductDescriptionQuality,
+  inspectProductSchemaSerialization,
+  markProductSchemaFieldTouched,
   parseProductSchemaXml,
   productSchemaFieldText,
-  serializeProductSchemaXml,
   validateProductSchemaModel,
   validateProductSchemaRenderInput,
   validateSchemaPublishInput,
@@ -18,6 +19,7 @@ import {
   type ProductEditorStepId,
   type ProductSchemaField,
   type ProductSchemaModel,
+  type ProductSchemaSerializationInspection,
   type ProductScore,
   withProductSchemaFieldText
 } from '@one-vegetable/core';
@@ -37,6 +39,7 @@ import {
   productEditorDraftKey,
   removeProductEditorDraft,
   saveProductEditorDraft,
+  shouldPersistProductEditorDraft,
   type ProductEditorDraftV2,
   type ProductEditorMode
 } from '../lib/product-editor-drafts';
@@ -76,6 +79,7 @@ const productScoreErrors = ref<Record<string, string>>({});
 const pendingProductScoreId = ref('');
 let scoreRefreshTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 let draftSaveTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
+const sourceIsLocalDraft = ref(false);
 
 const products = useQuery({
   queryKey: ['products', subject, language],
@@ -107,14 +111,23 @@ const filteredCategoryOptions = computed(() => {
 });
 const schemaIssues = computed(() => (schemaModel.value ? validateProductSchemaModel(schemaModel.value) : []));
 const blockingSchemaIssues = computed(() => schemaIssues.value.filter((issue) => issue.severity === 'error'));
-const schemaPreview = computed(() => {
-  if (!schemaModel.value) return '';
+const schemaInspection = computed<ProductSchemaSerializationInspection>(() => {
+  if (!schemaModel.value) {
+    return { xml: '', noOp: true, changedFieldKeys: [], structuralDiffs: [], safe: true };
+  }
   try {
-    return serializeProductSchemaXml(schemaModel.value);
-  } catch {
-    return '';
+    return inspectProductSchemaSerialization(schemaModel.value);
+  } catch (error: unknown) {
+    return {
+      xml: schemaModel.value.sourceXml,
+      noOp: false,
+      changedFieldKeys: [],
+      structuralDiffs: [errorMessage(error)],
+      safe: false
+    };
   }
 });
+const schemaPreview = computed(() => schemaInspection.value.xml);
 const realMutationDisabled = computed(() => mode !== 'mock');
 const productDescriptionType = computed(() => {
   const typeField = schemaModel.value?.fields.find((field) => field.id === 'productDescType');
@@ -132,10 +145,12 @@ const productDescriptionHtml = computed(() => {
 const publish = useMutation({
   mutationFn: async (draft: boolean) => {
     if (!schemaModel.value) throw new Error('请先获取商品 Schema');
+    const inspection = inspectProductSchemaSerialization(schemaModel.value);
+    if (!inspection.safe) throw new Error(`Schema XML 结构异常：${inspection.structuralDiffs.join('；')}`);
     const base = {
       categoryId: Number(categoryId.value),
       language: language.value,
-      schemaXml: serializeProductSchemaXml(schemaModel.value)
+      schemaXml: inspection.xml
     };
     const validation = validateSchemaPublishInput(base);
     if (!validation.valid) throw new Error(validation.errors.join('；'));
@@ -401,6 +416,7 @@ function startNewProduct(): void {
 function applySchema(xml: string, message: string, offerLocalDraft = true): void {
   try {
     schemaModel.value = parseProductSchemaXml(xml);
+    sourceIsLocalDraft.value = false;
     schemaError.value = '';
     feedback.value = message;
     editorStep.value = 'basics';
@@ -479,7 +495,7 @@ async function refreshLevelSchema(): Promise<void> {
     const result = await gateway.request('getProductLevelSchema', {
       categoryId: Number(categoryId.value),
       language: language.value,
-      xml: serializeProductSchemaXml(schemaModel.value)
+      xml: guardedSchemaXml(schemaModel.value)
     });
     applySchema(result.xml, '层级属性已根据当前选择刷新', false);
   } catch (error: unknown) {
@@ -492,7 +508,7 @@ function updateRootField(index: number, field: ProductSchemaField): void {
   const isDescription =
     field.id === 'superText' ||
     field.rules.some((rule) => rule.name === 'valueTypeRule' && rule.value.toLocaleLowerCase() === 'html');
-  schemaModel.value = {
+  let nextModel: ProductSchemaModel = {
     ...schemaModel.value,
     fields: schemaModel.value.fields.map((current, currentIndex) => {
       if (currentIndex === index) return field;
@@ -502,6 +518,13 @@ function updateRootField(index: number, field: ProductSchemaField): void {
       return current;
     })
   };
+  nextModel = markProductSchemaFieldTouched(nextModel, field.key);
+  if (isDescription) {
+    const typeField = nextModel.fields.find((current) => current.id === 'productDescType');
+    if (typeField) nextModel = markProductSchemaFieldTouched(nextModel, typeField.key);
+  }
+  schemaModel.value = nextModel;
+  reconcileDraftAfterFieldChange();
 }
 
 function updateImageStatus(status: ProductDescriptionImageMetadata & { url: string }): void {
@@ -525,6 +548,7 @@ function resumeLocalDraft(): void {
   if (!draft) return;
   try {
     schemaModel.value = parseProductSchemaXml(draft.xml);
+    sourceIsLocalDraft.value = true;
     categoryId.value = draft.categoryId;
     language.value = draft.language;
     market.value = draft.market;
@@ -559,6 +583,25 @@ function scheduleDraftSave(): void {
   }, 750);
 }
 
+function reconcileDraftAfterFieldChange(): void {
+  const inspection = schemaInspection.value;
+  cancelDraftSave();
+  if (!inspection.safe) {
+    draftSaveStatus.value = 'idle';
+    return;
+  }
+  if (!shouldPersistProductEditorDraft(inspection)) {
+    if (sourceIsLocalDraft.value) {
+      draftSaveStatus.value = 'saved';
+      return;
+    }
+    removeCurrentLocalDraft();
+    draftSaveStatus.value = 'idle';
+    return;
+  }
+  scheduleDraftSave();
+}
+
 function saveCurrentLocalDraft(): void {
   if (!schemaModel.value || !schemaPreview.value || !categoryId.value || !('localStorage' in globalThis))
     return;
@@ -587,6 +630,14 @@ function clearCurrentLocalDraft(): void {
   );
   draftCandidate.value = null;
   draftSaveStatus.value = 'idle';
+}
+
+function removeCurrentLocalDraft(): void {
+  if (!('localStorage' in globalThis) || !categoryId.value) return;
+  removeProductEditorDraft(
+    globalThis.localStorage,
+    productEditorDraftKey(editProductId.value, categoryId.value)
+  );
 }
 
 function cancelDraftSave(): void {
@@ -629,7 +680,11 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : '操作失败';
 }
 
-watch([schemaPreview, categoryId, language, market, editorMode, editorStep], scheduleDraftSave);
+function guardedSchemaXml(model: ProductSchemaModel): string {
+  const inspection = inspectProductSchemaSerialization(model);
+  if (!inspection.safe) throw new Error(`Schema XML 结构异常：${inspection.structuralDiffs.join('；')}`);
+  return inspection.xml;
+}
 
 watch([categoryId, editProductId], () => {
   if (!schemaModel.value) offerCurrentDraft();
@@ -809,6 +864,7 @@ onBeforeUnmount(() => {
       :score-pending="productScore.isPending.value"
       :score-error="productScore.error.value ? errorMessage(productScore.error.value) : undefined"
       :schema-preview="schemaPreview"
+      :schema-inspection="schemaInspection"
       @update-field="updateRootField"
       @image-status="updateImageStatus"
       @refresh-score="productScore.mutate(editScoreProductId)"

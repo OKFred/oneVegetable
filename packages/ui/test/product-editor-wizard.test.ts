@@ -43,7 +43,14 @@ function mountWizard(step: 'basics' | 'attributes' | 'review' = 'basics') {
       scoreAvailable: false,
       scorePending: false,
       scoreError: undefined,
-      schemaPreview: XML
+      schemaPreview: XML,
+      schemaInspection: {
+        xml: XML,
+        noOp: true,
+        changedFieldKeys: [],
+        structuralDiffs: [],
+        safe: true
+      }
     }
   });
 }
@@ -92,5 +99,40 @@ describe('ProductEditorWizard', () => {
     await issueButton.trigger('click');
     expect(review.emitted('update:mode')?.at(-1)).toEqual(['guided']);
     expect(review.emitted('update:step')?.at(-1)).toEqual(['basics']);
+  });
+
+  it('shows XML source safety state and blocks structurally unsafe submissions', async () => {
+    const wrapper = mountWizard();
+    await wrapper.setProps({ mode: 'advanced' });
+    expect(wrapper.text()).toContain('原样');
+
+    await wrapper.setProps({
+      issues: [],
+      mutationDisabled: false,
+      schemaInspection: {
+        xml: XML,
+        noOp: false,
+        changedFieldKeys: ['field:0'],
+        structuralDiffs: [],
+        safe: true
+      }
+    });
+    expect(wrapper.text()).toContain('安全补丁');
+    expect(wrapper.text()).toContain('实际变化字段：Product title');
+    const submit = wrapper.findAll('button').find((button) => button.text().includes('发布商品'));
+    if (!submit) throw new Error('Missing publish button');
+    expect(submit.attributes('disabled')).toBeUndefined();
+
+    await wrapper.setProps({
+      schemaInspection: {
+        xml: XML,
+        noOp: false,
+        changedFieldKeys: ['field:0'],
+        structuralDiffs: ['field:0 无法绑定到源字段'],
+        safe: false
+      }
+    });
+    expect(wrapper.text()).toContain('结构异常');
+    expect(submit.attributes('disabled')).toBeDefined();
   });
 });
