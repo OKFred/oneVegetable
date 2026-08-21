@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { defineComponent, h, nextTick, ref, type Ref } from 'vue';
+import { defineComponent, h, ref, type Ref } from 'vue';
 import { mount, type DOMWrapper, type VueWrapper } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 

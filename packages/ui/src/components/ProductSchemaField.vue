@@ -39,7 +39,7 @@ const props = withDefaults(
     showTechnical?: boolean;
     labelOverride?: string;
   }>(),
-  { showTechnical: true }
+  { showTechnical: true, labelOverride: '' }
 );
 const emit = defineEmits<{
   update: [field: ProductSchemaField];
@@ -47,7 +47,7 @@ const emit = defineEmits<{
 }>();
 
 const fieldIssues = computed(() => props.issues.filter((issue) => issue.fieldKey === props.field.key));
-const displayName = computed(() => props.labelOverride ?? props.field.name);
+const displayName = computed(() => props.labelOverride || props.field.name);
 const disabled = computed(() => isProductSchemaFieldDisabled(props.field));
 const readOnly = computed(() => isProductSchemaFieldReadOnly(props.field));
 const fieldText = computed(() => productSchemaFieldText(props.field));
