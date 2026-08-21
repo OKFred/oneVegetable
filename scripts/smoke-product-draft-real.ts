@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { loadEnvFile } from 'node:process';
 
 import {
+  cloneProductSchemaInstance,
   GatewayException,
   inspectProductSchemaSerialization,
   isProductSchemaImageField,
@@ -20,10 +21,13 @@ import {
 import { AlibabaReadGatewayClient } from '../apps/api/src/gateway/alibaba-read-gateway';
 import { createNodeAlibabaCredentialProvider } from '../apps/api/src/gateway/node-credential-bundle';
 import { atomicWriteJson } from './openapi-auth/storage';
+import { installNodeXmlDomGlobals } from './node-xml-dom';
 
 const CATEGORY_ID = 201712702;
 const LANGUAGE = 'en_US' as const;
 const TITLE_MARKER = '[oneVegetable-draft-smoke-20260821]';
+
+installNodeXmlDomGlobals();
 
 if (existsSync('.env')) loadEnvFile('.env');
 if (process.env.ONE_VEGETABLE_REAL_PRODUCT_DRAFT_SMOKE !== '1') {
@@ -75,27 +79,13 @@ try {
   model = updateRankedField(model, titleFieldRank, (field) =>
     withProductSchemaFieldText(field, `${TITLE_MARKER} API draft validation`)
   );
-  model = updateRankedField(model, imageFieldRank, (field) => ({
-    ...field,
-    values: [
-      {
-        text: photo.url,
-        attributes: { fileId: photo.id },
-        metadata: {
-          fileName: photo.name,
-          groupId: photo.groupId,
-          ...(photo.width === null ? {} : { width: String(photo.width) }),
-          ...(photo.height === null ? {} : { height: String(photo.height) }),
-          fileSize: String(photo.fileSize),
-          referenceCount: String(photo.referenceCount),
-          modifiedAt: photo.modifiedAt
-        }
-      }
-    ]
-  }));
+  model = applySmokeImage(model, photo);
   const inspection = inspectProductSchemaSerialization(model);
   if (!inspection.safe) {
-    throw new Error(`草稿 Schema 序列化结构异常：${inspection.structuralDiffs.join('；')}`);
+    const mismatchSummary = summarizeSerializationMismatch(model, inspection.xml);
+    throw new Error(
+      `草稿 Schema 序列化结构异常：${inspection.structuralDiffs.join('；')}；${mismatchSummary}`
+    );
   }
 
   await writeReport('mutation-started', {
@@ -220,11 +210,80 @@ function titleFieldRank(field: ProductSchemaField): number {
 }
 
 function imageFieldRank(field: ProductSchemaField): number {
+  if (field.type === 'complex' || field.type === 'multiComplex') return Number.POSITIVE_INFINITY;
   const id = field.id.toLocaleLowerCase();
   if (id === 'scimages') return 0;
   if (/main.*image|image.*main|product.*image/.test(id)) return 1;
   if (isProductSchemaImageField(field)) return 2;
   return Number.POSITIVE_INFINITY;
+}
+
+function applySmokeImage(
+  model: ProductSchemaModel,
+  photo: ResponseOf<'listPhotos'>['items'][number]
+): ProductSchemaModel {
+  const rootIndex = model.fields.findIndex((field) => field.id.toLocaleLowerCase() === 'scimages');
+  const root = rootIndex >= 0 ? model.fields[rootIndex] : undefined;
+  if (root && (root.type === 'complex' || root.type === 'multiComplex')) {
+    const instance = root.instances[0] ?? cloneProductSchemaInstance(root);
+    const target = instance.fields
+      .flatMap(flattenFields)
+      .toSorted((left, right) => imageSlotFieldRank(left) - imageSlotFieldRank(right))[0];
+    if (!target || !Number.isFinite(imageSlotFieldRank(target))) {
+      throw new Error('商品图片复合字段中没有找到可写图片槽');
+    }
+    const updatedInstance = {
+      ...instance,
+      fields: instance.fields.map((field) =>
+        replaceField(field, target.key, (candidate) => withSmokePhoto(candidate, photo))
+      )
+    };
+    const updatedRoot = {
+      ...root,
+      instances:
+        root.instances.length > 0
+          ? root.instances.map((candidate, index) => (index === 0 ? updatedInstance : candidate))
+          : [updatedInstance]
+    };
+    return markProductSchemaFieldTouched(
+      {
+        ...model,
+        fields: model.fields.map((field, index) => (index === rootIndex ? updatedRoot : field))
+      },
+      root.key
+    );
+  }
+  return updateRankedField(model, imageFieldRank, (field) => withSmokePhoto(field, photo));
+}
+
+function imageSlotFieldRank(field: ProductSchemaField): number {
+  const match = /^scimages_(\d+)$/u.exec(field.id.toLocaleLowerCase());
+  if (match?.[1] !== undefined) return Number(match[1]);
+  return isProductSchemaImageField(field) ? 100 : Number.POSITIVE_INFINITY;
+}
+
+function withSmokePhoto(
+  field: ProductSchemaField,
+  photo: ResponseOf<'listPhotos'>['items'][number]
+): ProductSchemaField {
+  return {
+    ...field,
+    values: [
+      {
+        text: photo.url,
+        attributes: { fileId: photo.id },
+        metadata: {
+          fileName: photo.name,
+          groupId: photo.groupId,
+          ...(photo.width === null ? {} : { width: String(photo.width) }),
+          ...(photo.height === null ? {} : { height: String(photo.height) }),
+          fileSize: String(photo.fileSize),
+          referenceCount: String(photo.referenceCount),
+          modifiedAt: photo.modifiedAt
+        }
+      }
+    ]
+  };
 }
 
 async function assertNoPreviousMutationAttempt(path: string): Promise<void> {
@@ -280,4 +339,46 @@ function errorRecord(error: unknown): Record<string, unknown> {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function summarizeSerializationMismatch(model: ProductSchemaModel, xml: string): string {
+  const roundTrip = parseProductSchemaXml(xml);
+  const differences = model.fields.flatMap((expected, index) =>
+    summarizeFieldDifferences(expected, roundTrip.fields[index])
+  );
+  return differences.length > 0 ? differences.slice(0, 8).join('；') : '未定位到字段级差异';
+}
+
+function summarizeFieldDifferences(
+  expected: ProductSchemaField,
+  actual: ProductSchemaField | undefined
+): string[] {
+  if (!actual) return [`${expected.key}(${expected.id}) 回读缺失`];
+  const expectedTexts = expected.values.map((value) => value.text);
+  const actualTexts = actual.values.map((value) => value.text);
+  const expectedAttributes = expected.values.map((value) => value.attributes);
+  const actualAttributes = actual.values.map((value) => value.attributes);
+  const differences: string[] = [];
+  if (
+    expected.id !== actual.id ||
+    expected.type !== actual.type ||
+    JSON.stringify(expectedTexts) !== JSON.stringify(actualTexts) ||
+    JSON.stringify(expectedAttributes) !== JSON.stringify(actualAttributes) ||
+    expected.instances.length !== actual.instances.length
+  ) {
+    differences.push(
+      `${expected.key}(${expected.id}/${expected.type}) values ${expected.values.length}→${actual.values.length} ` +
+        `textEqual=${JSON.stringify(expectedTexts) === JSON.stringify(actualTexts)} ` +
+        `attributesEqual=${JSON.stringify(expectedAttributes) === JSON.stringify(actualAttributes)} ` +
+        `instances ${expected.instances.length}→${actual.instances.length} ` +
+        `children=${expected.children.map((field) => `${field.id}/${field.type}`).join(',') || '-'}`
+    );
+  }
+  expected.instances.forEach((instance, instanceIndex) => {
+    const actualInstance = actual.instances[instanceIndex];
+    instance.fields.forEach((field, fieldIndex) => {
+      differences.push(...summarizeFieldDifferences(field, actualInstance?.fields[fieldIndex]));
+    });
+  });
+  return differences;
 }

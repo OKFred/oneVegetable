@@ -241,14 +241,17 @@ export function inspectProductSchemaSerialization(
   const xml = new XMLSerializer().serializeToString(document);
   try {
     const roundTrip = parseProductSchemaXml(xml);
-    if (
-      roundTrip.fields.length !== model.fields.length ||
-      roundTrip.fields.some((field, index) => {
-        const expected = model.fields[index];
-        return !expected || !fieldSemanticsEqual(field, expected);
-      })
-    ) {
-      structuralDiffs.push('安全补丁后的字段值无法无损回读');
+    const mismatchedFieldKeys = model.fields.flatMap((expected, index) => {
+      const actual = roundTrip.fields[index];
+      return actual && fieldSemanticsEqual(actual, expected) ? [] : [expected.key];
+    });
+    if (roundTrip.fields.length !== model.fields.length) {
+      structuralDiffs.push(
+        `安全补丁后的根字段数量无法无损回读：${model.fields.length} → ${roundTrip.fields.length}`
+      );
+    }
+    if (mismatchedFieldKeys.length > 0) {
+      structuralDiffs.push(`安全补丁后的字段值无法无损回读：${mismatchedFieldKeys.join('、')}`);
     }
   } catch (error: unknown) {
     structuralDiffs.push(`安全补丁后的 XML 无法解析：${errorMessage(error)}`);

@@ -41,7 +41,7 @@ Alibaba OpenAPI 接口采用双源审计，不把任一站点单独视为完整�
 - 首次保存平台草稿使用 `alibaba.icbu.product.schema.add.draft`，首次正式发布使用 `alibaba.icbu.product.schema.add`；正式商品后续完善使用 active 的 `alibaba.icbu.product.schema.update`。
 - 官方文档目前未确认可覆盖既有平台草稿的更新接口。因此一次平台草稿创建成功后，后续编辑只保存本地 V3 草稿，不能重复调用 `schema.add.draft`；重新进入时通过 `schema.render.draft` 读取平台基线。
 - 快速模式允许带 Schema 内容问题保存平台草稿，但 XML 结构安全、请求契约、类目和语言仍是前置条件。直接发布与正式更新仍要求 Schema 硬错误清零。
-- 本地真实网关只单独开放 `operation:saveProductDraft`；`publishProduct`、`updateProduct`、staging、production 和扩展真实商品写入继续关闭。真实 Smoke 采用一次性报告锁，避免失败重试制造重复草稿。
+- `saveProductDraft` 已接入本地 Node 专用适配器，但 2026-08-21 真实 Smoke 在当前网关返回错误码 `22`（不合法 ApiName），没有获得商品 ID，因此默认 flag 保持关闭。`publishProduct`、`updateProduct`、staging、production 和扩展真实商品写入也继续关闭。一次性报告已记录 mutation attempt 并阻止重试，避免平台状态不明确时制造重复草稿。
 
 参考：[商品接口变更说明](https://developer.alibaba.com/docs/doc.htm?articleId=119212&docType=1&treeId=456)、[Schema 增量更新接口](https://developer.alibaba.com/docs/api.htm?apiId=50189)。
 

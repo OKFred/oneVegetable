@@ -50,6 +50,9 @@ importers:
       jsdom:
         specifier: 30.0.1
         version: 30.0.1(@noble/hashes@2.3.0)
+      linkedom:
+        specifier: 0.18.13
+        version: 0.18.13
       lint-staged:
         specifier: 17.3.0
         version: 17.3.0
