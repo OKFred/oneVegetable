@@ -67,14 +67,14 @@ const selectedPhotos = computed(() =>
     .filter((value) => value.text && value.attributes.fileId)
     .map((value): Photo => ({
       id: value.attributes.fileId ?? '',
-      name: value.attributes.fileName ?? value.text.split('/').at(-1) ?? '图库素材',
+      name: value.metadata.fileName ?? value.text.split('/').at(-1) ?? '图库素材',
       url: value.text,
-      groupId: value.attributes.groupId ?? '-1',
-      width: positiveNumberOrNull(value.attributes.width),
-      height: positiveNumberOrNull(value.attributes.height),
-      fileSize: nonNegativeNumber(value.attributes.fileSize),
-      referenceCount: nonNegativeNumber(value.attributes.referenceCount),
-      modifiedAt: value.attributes.modifiedAt ?? new Date(0).toISOString()
+      groupId: value.metadata.groupId ?? '-1',
+      width: positiveNumberOrNull(value.metadata.width),
+      height: positiveNumberOrNull(value.metadata.height),
+      fileSize: nonNegativeNumber(value.metadata.fileSize),
+      referenceCount: nonNegativeNumber(value.metadata.referenceCount),
+      modifiedAt: value.metadata.modifiedAt ?? new Date(0).toISOString()
     }))
 );
 const tip = computed(
@@ -93,7 +93,12 @@ function updateValue(value: string | string[]): void {
 function updateInstanceChild(instanceIndex: number, childIndex: number, child: ProductSchemaField): void {
   const instances = props.field.instances.map((instance, currentInstanceIndex) =>
     currentInstanceIndex === instanceIndex
-      ? instance.map((value, currentChildIndex) => (currentChildIndex === childIndex ? child : value))
+      ? {
+          ...instance,
+          fields: instance.fields.map((value, currentChildIndex) =>
+            currentChildIndex === childIndex ? child : value
+          )
+        }
       : instance
   );
   emit('update', { ...props.field, instances });
@@ -105,8 +110,18 @@ function updateComplexChild(index: number, child: ProductSchemaField): void {
     updateInstanceChild(0, index, child);
     return;
   }
-  const children = props.field.children.map((value, childIndex) => (childIndex === index ? child : value));
-  emit('update', { ...props.field, children });
+  const fields = props.field.children.map((value, childIndex) => (childIndex === index ? child : value));
+  emit('update', {
+    ...props.field,
+    instances: [
+      {
+        key: `${props.field.key}:instance:new:0`,
+        sourcePath: null,
+        sourceIndex: null,
+        fields
+      }
+    ]
+  });
 }
 
 function toggleOption(value: string, checked: boolean): void {
@@ -120,7 +135,9 @@ function updatePhotos(photos: Photo[]): void {
     values: photos.map((photo) => ({
       text: photo.url,
       attributes: {
-        fileId: photo.id,
+        fileId: photo.id
+      },
+      metadata: {
         fileName: photo.name,
         groupId: photo.groupId,
         ...(photo.width === null ? {} : { width: String(photo.width) }),
@@ -242,7 +259,7 @@ function removeInstance(index: number): void {
     </div>
     <div v-else-if="field.type === 'complex'" class="space-y-3 border-l-2 pl-3">
       <ProductSchemaField
-        v-for="(child, index) in field.instances[0] ?? field.children"
+        v-for="(child, index) in field.instances[0]?.fields ?? field.children"
         :key="child.key"
         :field="child"
         :issues="issues"
@@ -255,7 +272,7 @@ function removeInstance(index: number): void {
     <div v-else-if="field.type === 'multiComplex'" class="space-y-3">
       <div
         v-for="(instance, instanceIndex) in field.instances"
-        :key="`${field.key}:${instanceIndex}`"
+        :key="instance.key"
         class="space-y-3 rounded-lg bg-muted/40 p-3"
       >
         <div class="flex justify-between text-xs font-medium text-muted-foreground">
@@ -265,7 +282,7 @@ function removeInstance(index: number): void {
           </Button>
         </div>
         <ProductSchemaField
-          v-for="(child, childIndex) in instance"
+          v-for="(child, childIndex) in instance.fields"
           :key="child.key"
           :field="child"
           :issues="issues"

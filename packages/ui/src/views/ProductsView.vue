@@ -611,7 +611,7 @@ function collectOfficialTips(fields: ProductSchemaField[]): string[] {
       }
     }
     for (const child of field.children) visit(child);
-    for (const instance of field.instances) for (const child of instance) visit(child);
+    for (const instance of field.instances) for (const child of instance.fields) visit(child);
   };
   for (const field of fields) visit(field);
   return [...tips];

@@ -10,6 +10,28 @@ export interface ProductSchemaOption {
 export interface ProductSchemaValue {
   text: string;
   attributes: Record<string, string>;
+  metadata: ProductSchemaValueMetadata;
+}
+
+export interface ProductSchemaValueMetadata {
+  fileName?: string;
+  groupId?: string;
+  width?: string;
+  height?: string;
+  fileSize?: string;
+  referenceCount?: string;
+  modifiedAt?: string;
+}
+
+export type ProductSchemaValueLayout = 'direct-value' | 'wrapped-values' | 'none';
+export type ProductSchemaComplexLayout =
+  'direct-complex-value' | 'wrapped-complex-values' | 'repeated-complex-values' | 'none';
+
+export interface ProductSchemaInstance {
+  key: string;
+  sourcePath: string | null;
+  sourceIndex: number | null;
+  fields: ProductSchemaField[];
 }
 
 export interface ProductSchemaDependExpression {
@@ -32,6 +54,8 @@ export interface ProductSchemaRule {
 
 export interface ProductSchemaField {
   key: string;
+  sourcePath: string;
+  sourceIndex: number;
   id: string;
   name: string;
   type: ProductSchemaFieldType;
@@ -40,13 +64,16 @@ export interface ProductSchemaField {
   options: ProductSchemaOption[];
   rules: ProductSchemaRule[];
   children: ProductSchemaField[];
-  instances: ProductSchemaField[][];
+  instances: ProductSchemaInstance[];
+  valueLayout: ProductSchemaValueLayout;
+  complexLayout: ProductSchemaComplexLayout;
 }
 
 export interface ProductSchemaModel {
   sourceXml: string;
   fields: ProductSchemaField[];
   warnings: string[];
+  touchedFieldKeys: string[];
 }
 
 export interface ProductSchemaFieldIssue {
@@ -103,6 +130,16 @@ const NON_VALIDATING_RULES = new Set([
   'maxImageSizeRule'
 ]);
 
+const VALUE_METADATA_ATTRIBUTES = new Set([
+  'fileName',
+  'groupId',
+  'width',
+  'height',
+  'fileSize',
+  'referenceCount',
+  'modifiedAt'
+]);
+
 export function parseProductSchemaXml(xml: string): ProductSchemaModel {
   const document = parseXml(xml);
   const parserError = document.querySelector('parsererror');
@@ -111,8 +148,11 @@ export function parseProductSchemaXml(xml: string): ProductSchemaModel {
   const root = document.documentElement;
   return {
     sourceXml: xml,
-    fields: schemaFieldElements(root).map((field, index) => parseField(field, `field:${index}`, warnings)),
-    warnings
+    fields: schemaFieldElements(root).map((field, index) =>
+      parseField(field, `field:${index}`, index, warnings)
+    ),
+    warnings,
+    touchedFieldKeys: []
   };
 }
 
@@ -133,9 +173,16 @@ export function validateProductSchemaModel(model: ProductSchemaModel): ProductSc
   return issues;
 }
 
-export function cloneProductSchemaInstance(field: ProductSchemaField): ProductSchemaField[] {
-  const template = field.instances[0] ?? field.children;
-  return template.map((child, index) => resetField(child, `${field.key}:instance:new:${index}`));
+export function cloneProductSchemaInstance(field: ProductSchemaField): ProductSchemaInstance {
+  const sequence = nextInstanceSequence(field);
+  const key = `${field.key}:instance:new:${sequence}`;
+  const template = field.instances[0]?.fields ?? field.children;
+  return {
+    key,
+    sourcePath: null,
+    sourceIndex: null,
+    fields: template.map((child, index) => resetField(child, `${key}:field:${index}`))
+  };
 }
 
 export function productSchemaFieldText(field: ProductSchemaField): string {
@@ -149,9 +196,10 @@ export function productSchemaFieldTexts(field: ProductSchemaField): string[] {
 export function withProductSchemaFieldText(
   field: ProductSchemaField,
   text: string,
-  attributes = field.values[0]?.attributes ?? {}
+  attributes = field.values[0]?.attributes ?? {},
+  metadata = field.values[0]?.metadata ?? {}
 ): ProductSchemaField {
-  return { ...field, values: [{ text, attributes: { ...attributes } }] };
+  return { ...field, values: [{ text, attributes: { ...attributes }, metadata: { ...metadata } }] };
 }
 
 export function withProductSchemaFieldTexts(field: ProductSchemaField, texts: string[]): ProductSchemaField {
@@ -159,7 +207,8 @@ export function withProductSchemaFieldTexts(field: ProductSchemaField, texts: st
     ...field,
     values: texts.map((text, index) => ({
       text,
-      attributes: { ...(field.values[index]?.attributes ?? {}) }
+      attributes: { ...(field.values[index]?.attributes ?? {}) },
+      metadata: { ...(field.values[index]?.metadata ?? {}) }
     }))
   };
 }
@@ -190,7 +239,12 @@ export function isProductSchemaFieldDisabled(field: ProductSchemaField): boolean
   return hasActiveBooleanRule(field, 'disableRule');
 }
 
-function parseField(element: Element, key: string, warnings: string[]): ProductSchemaField {
+function parseField(
+  element: Element,
+  key: string,
+  sourceIndex: number,
+  warnings: string[]
+): ProductSchemaField {
   const rawType = element.getAttribute('type') ?? 'label';
   const type = FIELD_TYPES.has(rawType as ProductSchemaFieldType)
     ? (rawType as ProductSchemaFieldType)
@@ -215,21 +269,26 @@ function parseField(element: Element, key: string, warnings: string[]): ProductS
     attributes: attributesOf(option)
   }));
   const instanceElements = complexInstanceElements(element);
-  const instances = instanceElements.map((complex, instanceIndex) =>
-    schemaFieldElements(complex).map((child, childIndex) =>
-      parseField(child, `${key}:instance:${instanceIndex}:field:${childIndex}`, warnings)
+  const instances = instanceElements.map((complex, instanceIndex): ProductSchemaInstance => ({
+    key: `${key}:instance:${instanceIndex}`,
+    sourcePath: `${key}:instance:${instanceIndex}`,
+    sourceIndex: instanceIndex,
+    fields: schemaFieldElements(complex).map((child, childIndex) =>
+      parseField(child, `${key}:instance:${instanceIndex}:field:${childIndex}`, childIndex, warnings)
     )
-  );
+  }));
   const fieldsContainer = firstDirectChild(element, 'fields');
   const templateElements = fieldsContainer
     ? directChildren(fieldsContainer, 'field')
     : directChildren(element, 'field');
   const templateFields = templateElements.map((child, childIndex) =>
-    parseField(child, `${key}:template:${childIndex}`, warnings)
+    parseField(child, `${key}:template:${childIndex}`, childIndex, warnings)
   );
 
   return {
     key,
+    sourcePath: key,
+    sourceIndex,
     id: element.getAttribute('id') ?? key,
     name: element.getAttribute('name') ?? element.getAttribute('id') ?? key,
     type,
@@ -237,8 +296,11 @@ function parseField(element: Element, key: string, warnings: string[]): ProductS
     attributes: attributesOf(element),
     options,
     rules,
-    children: templateFields.length > 0 ? templateFields : (instances[0] ?? []),
-    instances
+    children: templateFields.length > 0 ? templateFields : (instances[0]?.fields ?? []),
+    instances,
+    valueLayout:
+      directValues.length > 0 ? 'direct-value' : wrappedValues.length > 0 ? 'wrapped-values' : 'none',
+    complexLayout: complexValueLayout(element)
   };
 }
 
@@ -261,7 +323,16 @@ function parseRule(rule: Element): ProductSchemaRule {
 }
 
 function parseValue(value: Element): ProductSchemaValue {
-  return { text: value.textContent, attributes: attributesOf(value) };
+  const attributes: Record<string, string> = {};
+  const metadata: ProductSchemaValueMetadata = {};
+  for (const [name, attributeValue] of Object.entries(attributesOf(value))) {
+    if (VALUE_METADATA_ATTRIBUTES.has(name)) {
+      metadata[name as keyof ProductSchemaValueMetadata] = attributeValue;
+    } else {
+      attributes[name] = attributeValue;
+    }
+  }
+  return { text: value.textContent, attributes, metadata };
 }
 
 function validateField(
@@ -317,7 +388,7 @@ function validateField(
     }
   }
   for (const instance of field.instances) {
-    for (const child of instance) validateField(child, issues, fieldValues, childInheritedRules);
+    for (const child of instance.fields) validateField(child, issues, fieldValues, childInheritedRules);
   }
 }
 
@@ -450,7 +521,10 @@ function updateComplexField(document: XMLDocument, target: Element, field: Produ
       ? pluralContainers
       : directInstances;
   const template = existing[0]?.cloneNode(true) as Element | undefined;
-  const instances = field.type === 'complex' ? [field.instances[0] ?? field.children] : field.instances;
+  const instances =
+    field.type === 'complex'
+      ? [field.instances[0]?.fields ?? field.children]
+      : field.instances.map((instance) => instance.fields);
 
   for (const instance of existing) instance.remove();
   const wrapper = usesWrappedLayout ? pluralContainers[0] : null;
@@ -491,10 +565,22 @@ function resetField(field: ProductSchemaField, key: string): ProductSchemaField 
   return {
     ...structuredClone(field),
     key,
-    values: field.values.length > 0 ? [{ text: '', attributes: {} }] : [],
+    sourcePath: key,
+    sourceIndex: -1,
+    values: field.values.length > 0 ? [{ text: '', attributes: {}, metadata: {} }] : [],
     children: field.children.map((child, index) => resetField(child, `${key}:child:${index}`)),
     instances: []
   };
+}
+
+function nextInstanceSequence(field: ProductSchemaField): number {
+  const prefix = `${field.key}:instance:new:`;
+  const used = field.instances.flatMap((instance) => {
+    if (!instance.key.startsWith(prefix)) return [];
+    const sequence = Number(instance.key.slice(prefix.length));
+    return Number.isSafeInteger(sequence) && sequence >= 0 ? [sequence] : [];
+  });
+  return used.length === 0 ? 0 : Math.max(...used) + 1;
 }
 
 function collectFieldValues(fields: ProductSchemaField[]): ReadonlyMap<string, string[]> {
@@ -503,7 +589,7 @@ function collectFieldValues(fields: ProductSchemaField[]): ReadonlyMap<string, s
     const existing = result.get(field.id) ?? [];
     result.set(field.id, [...existing, ...productSchemaFieldTexts(field)]);
     if (field.instances.length === 0) for (const child of field.children) visit(child);
-    for (const instance of field.instances) for (const child of instance) visit(child);
+    for (const instance of field.instances) for (const child of instance.fields) visit(child);
   };
   for (const field of fields) visit(field);
   return result;
@@ -574,6 +660,18 @@ function complexInstanceElements(element: Element): Element[] {
     : plural.filter((container) => schemaFieldElements(container).length > 0);
 }
 
+function complexValueLayout(element: Element): ProductSchemaComplexLayout {
+  if (directChildren(element, 'complex-value').length > 0) return 'direct-complex-value';
+  const plural = directChildren(element, 'complex-values');
+  if (plural.some((container) => directChildren(container, 'complex-value').length > 0)) {
+    return 'wrapped-complex-values';
+  }
+  if (plural.some((container) => schemaFieldElements(container).length > 0)) {
+    return 'repeated-complex-values';
+  }
+  return 'none';
+}
+
 function schemaFieldElements(element: Element): Element[] {
   const fieldsContainer = firstDirectChild(element, 'fields');
   return fieldsContainer ? directChildren(fieldsContainer, 'field') : directChildren(element, 'field');
@@ -590,7 +688,7 @@ function findFieldElement(
 function valuesForWrite(field: ProductSchemaField): ProductSchemaValue[] {
   if (field.values.length > 0) return field.values;
   if (field.type === 'multiInput' || field.type === 'multiCheck') return [];
-  return [{ text: '', attributes: {} }];
+  return [{ text: '', attributes: {}, metadata: {} }];
 }
 
 function replaceAttributes(element: Element, attributes: Record<string, string>): void {

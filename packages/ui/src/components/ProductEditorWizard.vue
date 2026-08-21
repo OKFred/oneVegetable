@@ -100,7 +100,7 @@ function collectFieldReferences(field: ProductSchemaField): string[] {
   const values = [field.key, field.id];
   for (const child of field.children) values.push(...collectFieldReferences(child));
   for (const instance of field.instances) {
-    for (const child of instance) values.push(...collectFieldReferences(child));
+    for (const child of instance.fields) values.push(...collectFieldReferences(child));
   }
   return values;
 }
@@ -149,7 +149,7 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
     if (found) return found;
   }
   for (const instance of field.instances) {
-    for (const child of instance) {
+    for (const child of instance.fields) {
       const found = findNestedField(child, reference);
       if (found) return found;
     }

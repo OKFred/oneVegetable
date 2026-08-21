@@ -65,7 +65,7 @@ describe('ProductGroupPicker', () => {
 
 function groupValues(field: ProductSchemaField | undefined): string[] {
   if (!field) return [];
-  return (field.instances[0] ?? field.children)
+  return (field.instances[0]?.fields ?? field.children)
     .filter((child) => productSchemaGroupLevel(child) !== null)
     .map(productSchemaFieldText);
 }

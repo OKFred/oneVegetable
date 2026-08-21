@@ -56,11 +56,11 @@ describe('product Schema XML engine', () => {
     const model = parseProductSchemaXml(XML);
     const sku = at(model.fields, 5);
     const second = cloneProductSchemaInstance(sku);
-    second[0] = withProductSchemaFieldText(at(second, 0), 'SKU-2');
+    second.fields[0] = withProductSchemaFieldText(at(second.fields, 0), 'SKU-2');
     sku.instances.push(second);
     let roundTrip = parseProductSchemaXml(serializeProductSchemaXml(model));
     expect(at(roundTrip.fields, 5).instances).toHaveLength(2);
-    expect(productSchemaFieldText(at(at(at(roundTrip.fields, 5).instances, 1), 0))).toBe('SKU-2');
+    expect(productSchemaFieldText(at(at(at(roundTrip.fields, 5).instances, 1).fields, 0))).toBe('SKU-2');
     at(roundTrip.fields, 5).instances.splice(0, 1);
     roundTrip = parseProductSchemaXml(serializeProductSchemaXml(roundTrip));
     expect(at(roundTrip.fields, 5).instances).toHaveLength(1);
@@ -69,9 +69,8 @@ describe('product Schema XML engine', () => {
   it('validates local rules and never executes server expressions', () => {
     const model = parseProductSchemaXml(XML);
     model.fields[0] = withProductSchemaFieldText(at(model.fields, 0), '');
-    at(model.fields, 4).instances[0] = [
-      withProductSchemaFieldText(at(at(at(model.fields, 4).instances, 0), 0), '101')
-    ];
+    const packageInstance = at(at(model.fields, 4).instances, 0);
+    packageInstance.fields[0] = withProductSchemaFieldText(at(packageInstance.fields, 0), '101');
     const issues = validateProductSchemaModel(model);
     expect(issues.some((issue) => issue.rule === 'requiredRule' && issue.severity === 'error')).toBe(true);
     expect(issues.some((issue) => issue.rule === 'maxValueRule' && issue.severity === 'error')).toBe(true);
@@ -85,13 +84,15 @@ describe('product Schema XML engine', () => {
     expect(image.values).toEqual([
       {
         text: 'https://photobank.example/cover.jpg',
-        attributes: { fileId: 'photo-1', inputValue: 'cover', img: 'true' }
+        attributes: { fileId: 'photo-1', inputValue: 'cover', img: 'true' },
+        metadata: {}
       }
     ]);
 
     image.values[0] = {
       text: 'https://photobank.example/updated.jpg',
-      attributes: { ...at(image.values, 0).attributes }
+      attributes: { ...at(image.values, 0).attributes },
+      metadata: {}
     };
     const serialized = serializeProductSchemaXml(model);
     expect(serialized).toContain('<value fileId="photo-1" inputValue="cover" img="true">');
@@ -120,7 +121,7 @@ describe('product Schema XML engine', () => {
     ]);
     expect(validateProductSchemaModel(model).some((issue) => issue.rule === 'minLengthRule')).toBe(false);
 
-    title.values[0] = { text: 'a中', attributes: {} };
+    title.values[0] = { text: 'a中', attributes: {}, metadata: {} };
     expect(validateProductSchemaModel(model).some((issue) => issue.rule === 'minLengthRule')).toBe(true);
   });
 
@@ -138,6 +139,6 @@ describe('product Schema XML engine', () => {
     expect(issues.filter((issue) => issue.rule === 'regxRule')).toHaveLength(1);
     const roundTrip = parseProductSchemaXml(serializeProductSchemaXml(model));
     expect(at(roundTrip.fields, 0).instances).toHaveLength(2);
-    expect(productSchemaFieldText(at(at(at(roundTrip.fields, 0).instances, 1), 0))).toBe('SKU-2');
+    expect(productSchemaFieldText(at(at(at(roundTrip.fields, 0).instances, 1).fields, 0))).toBe('SKU-2');
   });
 });
