@@ -1,5 +1,6 @@
 import {
   AlibabaClient,
+  DashboardAdapter,
   downloadPhotoForUpload,
   findCapability,
   GatewayException,
@@ -136,6 +137,7 @@ export class AlibabaReadGatewayClient implements GatewayClient {
     client: AlibabaClient
   ): Promise<ResponseOf<K>> {
     const products = new ProductAdapter(client);
+    const dashboard = new DashboardAdapter(client);
     const rfqs = new RfqAdapter(client);
     const trades = new TradeAdapter(client);
     const logistics = new LogisticsAdapter(client);
@@ -144,7 +146,7 @@ export class AlibabaReadGatewayClient implements GatewayClient {
     const record = readRecord(request);
     switch (operation) {
       case 'getDashboard':
-        return await dashboard(client);
+        return await dashboard.get();
       case 'getDiagnostics':
         return {
           generatedAt: new Date().toISOString(),
@@ -246,34 +248,6 @@ export class AlibabaReadGatewayClient implements GatewayClient {
         throw gatewayError('REAL_MUTATION_DISABLED', 'BFF 真实写能力保持关闭');
     }
   }
-}
-
-async function dashboard(client: AlibabaClient): Promise<{
-  productCount: number;
-  photoCount: number;
-  pendingOrderCount: number;
-  enabledCapabilityCount: number;
-}> {
-  const [products, photos, orders] = await Promise.all([
-    client.call('alibaba.icbu.product.list', { language: 'ENGLISH', current_page: 1, page_size: 1 }),
-    client.call('alibaba.icbu.photobank.list', {
-      current_page: 1,
-      page_size: 1,
-      location_type: 'ALL_GROUP'
-    }),
-    client.call('alibaba.seller.order.list', {
-      param_trade_ecology_order_list_query: { role: 'seller', start_page: 0, page_size: 1 }
-    })
-  ]);
-  return {
-    productCount:
-      optionalNumber(readRecord(unwrapAlibabaResponse(products.data, products.method)), 'total_count') ?? 0,
-    photoCount:
-      optionalNumber(readRecord(unwrapAlibabaResponse(photos.data, photos.method)), 'total_count') ?? 0,
-    pendingOrderCount:
-      optionalNumber(readRecord(unwrapAlibabaResponse(orders.data, orders.method)), 'total_count') ?? 0,
-    enabledCapabilityCount: listCapabilities().filter((item) => item.enabled).length
-  };
 }
 
 async function listLegacyOrders(client: AlibabaClient, request: RequestOf<'listOrders'>) {

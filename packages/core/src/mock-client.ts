@@ -47,7 +47,7 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
   getDashboard: {
     productCount: 128,
     photoCount: 436,
-    pendingOrderCount: 6,
+    orderCount: 6,
     enabledCapabilityCount: listCapabilities().filter((item) => item.enabled).length
   },
   getDiagnostics: {

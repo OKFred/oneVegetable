@@ -7,6 +7,7 @@ export * from './credential-vault';
 export * from './control-client';
 export * from './errors';
 export * from './diagnostics';
+export * from './dashboard-adapter';
 export * from './encoded-file';
 export * from './mock-client';
 export * from './network';

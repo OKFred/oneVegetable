@@ -5752,9 +5752,9 @@ export interface components {
             contractIssues: components["schemas"]["CapabilityContractIssue"][];
         };
         DashboardSummary: {
-            productCount: number;
-            photoCount: number;
-            pendingOrderCount: number;
+            productCount: number | null;
+            photoCount: number | null;
+            orderCount: number | null;
             enabledCapabilityCount: number;
         };
         DiagnosticEntry: {

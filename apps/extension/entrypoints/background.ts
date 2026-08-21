@@ -6,6 +6,7 @@ import {
   createCredentialVault,
   CredentialVaultError,
   CredentialVaultSession,
+  DashboardAdapter,
   downloadPhotoForUpload,
   findCapability,
   GatewayException,
@@ -386,6 +387,7 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
     shouldRetry: (method, error) => error.retryable && findCapability(method)?.risk === 'read'
   });
   const products = new ProductAdapter(client);
+  const dashboard = new DashboardAdapter(client);
   const rfqs = new RfqAdapter(client);
   const trades = new TradeAdapter(client);
   const logistics = new LogisticsAdapter(client);
@@ -395,21 +397,7 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
 
   switch (operation) {
     case 'getDashboard': {
-      const [products, photos, orders] = await Promise.all([
-        client.call('alibaba.icbu.product.list', { language: 'ENGLISH', current_page: 1, page_size: 1 }),
-        client.call('alibaba.icbu.photobank.list', {
-          current_page: 1,
-          page_size: 1,
-          location_type: 'ALL_GROUP'
-        }),
-        trades.list({ page: 1, pageSize: 1 })
-      ]);
-      return {
-        productCount: readNumber(unwrap(products.data, products.method), ['total_count', 'total']) ?? 0,
-        photoCount: readNumber(unwrap(photos.data, photos.method), ['total_count', 'total']) ?? 0,
-        pendingOrderCount: orders.total,
-        enabledCapabilityCount: listCapabilities().filter((item) => item.enabled).length
-      };
+      return dashboard.get();
     }
     case 'listProducts':
       return products.list(payload as RequestOf<'listProducts'>);

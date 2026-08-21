@@ -9006,11 +9006,11 @@
       "DashboardSummary": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["productCount", "photoCount", "pendingOrderCount", "enabledCapabilityCount"],
+        "required": ["productCount", "photoCount", "orderCount", "enabledCapabilityCount"],
         "properties": {
-          "productCount": { "type": "integer", "minimum": 0 },
-          "photoCount": { "type": "integer", "minimum": 0 },
-          "pendingOrderCount": { "type": "integer", "minimum": 0 },
+          "productCount": { "type": ["integer", "null"], "minimum": 0 },
+          "photoCount": { "type": ["integer", "null"], "minimum": 0 },
+          "orderCount": { "type": ["integer", "null"], "minimum": 0 },
           "enabledCapabilityCount": { "type": "integer", "minimum": 0 }
         }
       },
