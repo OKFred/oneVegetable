@@ -286,6 +286,28 @@ test('web mock exports and clears the typed diagnostics snapshot', async ({ page
   await expect(page.getByText('0 条', { exact: true })).toBeVisible();
 });
 
+test('web mock groups official product hints and locates their fields from review', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => {
+    localStorage.clear();
+  });
+  await page.reload();
+  await page.getByRole('button', { name: '商品' }).click();
+  await page.getByRole('tab', { name: '商品发布/编辑' }).click();
+  await page.getByRole('button', { name: '开始填写' }).click();
+  await page.getByRole('button', { name: /6\. 检查与提交/ }).click();
+
+  const officialHints = page.locator('section[aria-labelledby="official-hints-title"]');
+  await expect(officialHints.getByRole('heading', { name: '官方提示' })).toBeVisible();
+  await expect(officialHints.getByRole('heading', { name: '商品标题' })).toBeVisible();
+  await expect(officialHints.getByRole('heading', { name: '商品详情' })).toBeVisible();
+  await expect(officialHints.getByText('面向买家的英文商品标题')).toBeVisible();
+  await expect(officialHints.getByText('API 仅支持维护普通详情')).toBeVisible();
+
+  await officialHints.getByRole('button', { name: '定位字段：商品标题' }).click();
+  await expect(page.getByLabel('商品标题')).toBeFocused();
+});
+
 test('web mock persists the API language preference for product editing', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: '设置' }).click();
