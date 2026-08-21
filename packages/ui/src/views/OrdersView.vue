@@ -285,6 +285,7 @@ watch(selectedOrderId, () => {
         :columns="columns"
         :data="orders.data.value?.items ?? []"
         empty-text="暂无匹配订单"
+        min-width="900px"
         :get-row-key="(order) => order.id"
         :active-row-key="orderSheetOpen ? selectedOrderId : undefined"
         :row-aria-label="(order) => `查看订单 ${order.id}`"

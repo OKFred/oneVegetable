@@ -226,6 +226,7 @@ const workspaces: { id: Workspace; label: string }[] = [
               :columns="productColumns"
               :data="supplierProducts.data.value?.items ?? []"
               empty-text="暂无历史采购商品"
+              min-width="840px"
             />
           </QueryState>
         </template>

@@ -248,9 +248,11 @@ function formatTime(value: number): string {
     <div class="mt-5 grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
       <Card class="overflow-hidden">
         <div class="border-b p-5"><h2 class="font-semibold">用户管理</h2></div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-sm">
-            <thead class="whitespace-nowrap bg-muted/60 text-xs text-muted-foreground">
+        <div class="relative max-h-[min(60vh,36rem)] max-w-full overflow-auto">
+          <table class="w-full min-w-[760px] text-left text-sm">
+            <thead
+              class="sticky top-0 z-10 whitespace-nowrap bg-muted text-xs text-muted-foreground shadow-[0_1px_0_hsl(var(--border))]"
+            >
               <tr>
                 <th class="p-3">用户</th>
                 <th class="p-3">角色</th>
@@ -360,9 +362,11 @@ function formatTime(value: number): string {
           </Button>
         </div>
       </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs">
-          <thead class="whitespace-nowrap bg-muted/60 text-muted-foreground">
+      <div class="relative max-h-[min(60vh,36rem)] max-w-full overflow-auto">
+        <table class="w-full min-w-[980px] text-left text-xs">
+          <thead
+            class="sticky top-0 z-10 whitespace-nowrap bg-muted text-muted-foreground shadow-[0_1px_0_hsl(var(--border))]"
+          >
             <tr>
               <th class="p-3">时间</th>
               <th class="p-3">requestId</th>
@@ -395,9 +399,11 @@ function formatTime(value: number): string {
           记录主体、动作、结果和拒绝原因；与请求诊断共用 requestId。
         </p>
       </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs">
-          <thead class="whitespace-nowrap bg-muted/60 text-muted-foreground">
+      <div class="relative max-h-[min(60vh,36rem)] max-w-full overflow-auto">
+        <table class="w-full min-w-[900px] text-left text-xs">
+          <thead
+            class="sticky top-0 z-10 whitespace-nowrap bg-muted text-muted-foreground shadow-[0_1px_0_hsl(var(--border))]"
+          >
             <tr>
               <th class="p-3">时间</th>
               <th class="p-3">requestId</th>

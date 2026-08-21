@@ -8,6 +8,8 @@ const props = defineProps<{
   columns: DataColumn<TData>[];
   data: TData[];
   emptyText?: string;
+  maxHeight?: string;
+  minWidth?: string;
   getRowKey?: (row: TData) => string;
   activeRowKey?: string | undefined;
   rowAriaLabel?: (row: TData) => string;
@@ -38,9 +40,14 @@ function activateRow(row: TData, event: MouseEvent | KeyboardEvent): void {
 </script>
 
 <template>
-  <div class="overflow-x-auto rounded-lg border">
-    <table class="w-full text-sm">
-      <thead class="bg-muted/70 text-left text-xs uppercase tracking-wide text-muted-foreground">
+  <div
+    class="relative max-w-full overflow-auto rounded-lg border"
+    :style="{ maxHeight: maxHeight ?? 'min(60vh, 640px)' }"
+  >
+    <table class="w-full text-sm" :style="{ minWidth: minWidth ?? '720px' }">
+      <thead
+        class="sticky top-0 z-10 bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground shadow-[0_1px_0_hsl(var(--border))]"
+      >
         <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
           <th
             v-for="header in headerGroup.headers"

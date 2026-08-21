@@ -189,7 +189,7 @@ const columns: DataColumn<ApiCapability>[] = [
     </select>
   </div>
   <QueryState :loading="capabilities.isPending.value" :error="capabilities.error.value">
-    <DataTable :columns="columns" :data="filtered" empty-text="没有匹配的 API" />
+    <DataTable :columns="columns" :data="filtered" empty-text="没有匹配的 API" min-width="1080px" />
   </QueryState>
 
   <Card v-if="selected" class="mt-5 p-5">

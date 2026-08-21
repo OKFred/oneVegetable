@@ -334,7 +334,12 @@ const columns: DataColumn<RfqSummary>[] = [
   </div>
 
   <QueryState :loading="rfqs.isPending.value" :error="rfqs.error.value">
-    <DataTable :columns="columns" :data="rfqs.data.value?.items ?? []" empty-text="没有匹配的 RFQ" />
+    <DataTable
+      :columns="columns"
+      :data="rfqs.data.value?.items ?? []"
+      empty-text="没有匹配的 RFQ"
+      min-width="840px"
+    />
   </QueryState>
 
   <div v-if="selectedRfqId" class="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(380px,0.8fr)]">

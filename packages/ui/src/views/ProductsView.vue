@@ -582,7 +582,12 @@ onBeforeUnmount(() => {
       <Button @click="startNewProduct">发布新商品</Button>
     </div>
     <QueryState :loading="products.isPending.value" :error="products.error.value">
-      <DataTable :columns="columns" :data="products.data.value?.items ?? []" empty-text="没有匹配商品" />
+      <DataTable
+        :columns="columns"
+        :data="products.data.value?.items ?? []"
+        empty-text="没有匹配商品"
+        min-width="960px"
+      />
     </QueryState>
   </template>
 

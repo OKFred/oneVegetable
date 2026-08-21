@@ -373,7 +373,12 @@ const workspaces: { id: Workspace; label: string }[] = [
       </div>
     </Card>
     <QueryState :loading="orders.isPending.value && !qualificationBlocked" :error="orders.error.value">
-      <DataTable :columns="columns" :data="orders.data.value?.items ?? []" empty-text="暂无物流订单" />
+      <DataTable
+        :columns="columns"
+        :data="orders.data.value?.items ?? []"
+        empty-text="暂无物流订单"
+        min-width="720px"
+      />
     </QueryState>
     <Card v-if="orderDetail.data.value" class="mt-4 p-5">
       <div class="flex items-center justify-between gap-2">
