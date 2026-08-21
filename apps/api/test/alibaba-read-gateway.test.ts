@@ -189,4 +189,37 @@ describe('BFF Alibaba read gateway', () => {
     });
     expect(send).not.toHaveBeenCalled();
   });
+
+  it('exposes only the dedicated platform-draft mutation path', async () => {
+    const send = vi.fn<NetworkTransport['send']>((_input, init) => {
+      if (!(init.body instanceof URLSearchParams)) throw new Error('expected URLSearchParams');
+      expect(init.body.get('method')).toBe('alibaba.icbu.product.schema.add.draft');
+      return Promise.resolve(
+        Response.json({
+          alibaba_icbu_product_schema_add_draft_response: {
+            biz_success: true,
+            product_id: '1600000000123',
+            trace_id: 'draft-trace'
+          }
+        })
+      );
+    });
+    const gateway = new AlibabaReadGatewayClient(credentials, { transport: { send }, maxAttempts: 1 });
+
+    await expect(
+      gateway.request(
+        'saveProductDraft',
+        { categoryId: 201712702, language: 'en_US', schemaXml: '<itemSchema />' },
+        { requestId: createRequestId() }
+      )
+    ).resolves.toEqual({ productId: '1600000000123', traceId: 'draft-trace', success: true });
+    await expect(
+      gateway.request('updateProduct', {
+        categoryId: 201712702,
+        language: 'en_US',
+        productId: '1600000000123',
+        schemaXml: '<itemSchema />'
+      })
+    ).rejects.toMatchObject({ gatewayError: { code: 'REAL_MUTATION_DISABLED' } });
+  });
 });

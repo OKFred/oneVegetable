@@ -108,6 +108,52 @@ describe('ProductAdapter', () => {
     });
   });
 
+  it('accepts a product mutation only with explicit biz_success and product_id', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve(
+        response(method, {
+          biz_success: true,
+          product_id: '1600000000123',
+          trace_id: 'mutation-trace'
+        })
+      )
+    );
+    const adapter = new ProductAdapter({ call });
+
+    await expect(
+      adapter.mutate('alibaba.icbu.product.schema.add.draft', {
+        categoryId: 456,
+        language: 'en_US',
+        schemaXml: '<itemSchema />'
+      })
+    ).resolves.toEqual({ productId: '1600000000123', traceId: 'mutation-trace', success: true });
+  });
+
+  it('does not infer mutation success when Alibaba omits confirmation fields', async () => {
+    const missingSuccess = new ProductAdapter({
+      call: vi.fn<AlibabaClient['call']>((method) =>
+        Promise.resolve(response(method, { product_id: '1600000000123', trace_id: 'missing-success' }))
+      )
+    });
+    const missingProductId = new ProductAdapter({
+      call: vi.fn<AlibabaClient['call']>((method) =>
+        Promise.resolve(response(method, { biz_success: true, trace_id: 'missing-product' }))
+      )
+    });
+    const request = { categoryId: 456, language: 'en_US' as const, schemaXml: '<itemSchema />' };
+
+    await expect(
+      missingSuccess.mutate('alibaba.icbu.product.schema.add.draft', request)
+    ).rejects.toMatchObject({
+      gatewayError: { code: 'ALIBABA_PRODUCT_MUTATION_UNCONFIRMED', traceId: 'missing-success' }
+    });
+    await expect(
+      missingProductId.mutate('alibaba.icbu.product.schema.add.draft', request)
+    ).rejects.toMatchObject({
+      gatewayError: { code: 'ALIBABA_PRODUCT_ID_MISSING', traceId: 'missing-product' }
+    });
+  });
+
   it('rejects an unsafe plaintext product id before calling Alibaba', async () => {
     const call = vi.fn<AlibabaClient['call']>();
     const adapter = new ProductAdapter({ call });

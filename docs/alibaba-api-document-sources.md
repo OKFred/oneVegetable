@@ -35,6 +35,16 @@ Alibaba OpenAPI 接口采用双源审计，不把任一站点单独视为完整�
 
 每次开始新的领域迭代前，先对两套目录执行差异审计，再决定新增、保留、废弃或默认关闭的方法；不能沿用旧快照数量作为固定目标。
 
+## 快速发品与旧接口取舍
+
+- `docId=27010` 对应的 `alibaba.icbu.product.update.field` 已由国际站官方变更说明列为旧发品链路，不进入快速发品或商品编辑主路径。
+- 首次保存平台草稿使用 `alibaba.icbu.product.schema.add.draft`，首次正式发布使用 `alibaba.icbu.product.schema.add`；正式商品后续完善使用 active 的 `alibaba.icbu.product.schema.update`。
+- 官方文档目前未确认可覆盖既有平台草稿的更新接口。因此一次平台草稿创建成功后，后续编辑只保存本地 V3 草稿，不能重复调用 `schema.add.draft`；重新进入时通过 `schema.render.draft` 读取平台基线。
+- 快速模式允许带 Schema 内容问题保存平台草稿，但 XML 结构安全、请求契约、类目和语言仍是前置条件。直接发布与正式更新仍要求 Schema 硬错误清零。
+- 本地真实网关只单独开放 `operation:saveProductDraft`；`publishProduct`、`updateProduct`、staging、production 和扩展真实商品写入继续关闭。真实 Smoke 采用一次性报告锁，避免失败重试制造重复草稿。
+
+参考：[商品接口变更说明](https://developer.alibaba.com/docs/doc.htm?articleId=119212&docType=1&treeId=456)、[Schema 增量更新接口](https://developer.alibaba.com/docs/api.htm?apiId=50189)。
+
 ## 原生页面行为对照记录
 
 2026-08-21 对照国际站商品管理页时观察到：关键词输入提示采用 384 字符口径，原生页面展示的产品分为 `4.9/6.0`。当前公共接口与项目 UI 的产品分契约仍为 `0–5`，两者可能属于不同评分口径；在获得正式接口文档或真实响应证据前不自动换算，也不修改现有业务契约。此记录仅用于后续差异审计。
