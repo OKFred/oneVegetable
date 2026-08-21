@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, h, onMounted, ref } from 'vue';
 import {
   AlertTriangle,
   Database,
@@ -24,16 +24,19 @@ import {
   type CredentialVaultStatus,
   type DiagnosticsSnapshot,
   type GatewaySettings,
+  type LocalDataCategory,
   type LocalDataInventory,
   type SignMethod
 } from '@one-vegetable/core';
 
+import DataTable from '../components/DataTable.vue';
 import PageHeader from '../components/PageHeader.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
+import type { DataColumn } from '../lib/table';
 
 const { gateway, settings, permissions, localData, vault, mode } = useServices();
 const { language: preferredLanguage, theme: preferredTheme } = useAppPreferences();
@@ -78,6 +81,36 @@ const vaultActivitySummary = computed(() => {
   const remainingMinutes = Math.max(1, Math.ceil(status.idleRemainingSeconds / 60));
   return `最近活动：${lastActivity}；状态快照剩余约 ${remainingMinutes} 分钟。`;
 });
+
+const localDataColumns: DataColumn<LocalDataCategory>[] = [
+  {
+    accessorKey: 'label',
+    header: '类别',
+    cell: ({ row }) =>
+      h('span', [
+        row.original.label,
+        row.original.sensitive
+          ? h('span', { class: 'ml-1 text-xs text-amber-700 dark:text-amber-400' }, '敏感')
+          : null
+      ])
+  },
+  {
+    accessorKey: 'storage',
+    header: '存储位置',
+    cell: ({ row }) => h('code', { class: 'text-xs' }, row.original.storage)
+  },
+  { accessorKey: 'itemCount', header: '数量' },
+  {
+    accessorKey: 'approximateBytes',
+    header: '大小',
+    cell: ({ row }) => formatBytes(row.original.approximateBytes)
+  },
+  {
+    accessorKey: 'retention',
+    header: '保留时间',
+    cell: ({ row }) => h('span', { class: 'text-xs text-muted-foreground' }, row.original.retention)
+  }
+];
 
 onMounted(async () => {
   const [, , , storedSettings] = await Promise.all([
@@ -728,35 +761,14 @@ function confirmThemePreference(): void {
         </span>
       </div>
       <p v-if="dataError" class="mt-3 text-sm text-destructive">{{ dataError }}</p>
-      <div class="relative mt-4 max-h-[min(60vh,36rem)] max-w-full overflow-auto rounded-lg border">
-        <table class="w-full min-w-[620px] text-left text-sm">
-          <thead
-            class="sticky top-0 z-10 whitespace-nowrap bg-muted text-xs text-muted-foreground shadow-[0_1px_0_hsl(var(--border))]"
-          >
-            <tr>
-              <th class="px-3 py-2 font-medium">类别</th>
-              <th class="px-3 py-2 font-medium">存储位置</th>
-              <th class="px-3 py-2 font-medium">数量</th>
-              <th class="px-3 py-2 font-medium">大小</th>
-              <th class="px-3 py-2 font-medium">保留时间</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="category in dataInventory?.categories ?? []" :key="category.id" class="border-t">
-              <td class="px-3 py-3">
-                {{ category.label }}
-                <span v-if="category.sensitive" class="ml-1 text-xs text-amber-700">敏感</span>
-              </td>
-              <td class="px-3 py-3">
-                <code class="text-xs">{{ category.storage }}</code>
-              </td>
-              <td class="px-3 py-3">{{ category.itemCount }}</td>
-              <td class="px-3 py-3">{{ formatBytes(category.approximateBytes) }}</td>
-              <td class="px-3 py-3 text-xs text-muted-foreground">{{ category.retention }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        class="mt-4"
+        :columns="localDataColumns"
+        :data="dataInventory?.categories ?? []"
+        max-height="min(60vh, 36rem)"
+        min-width="620px"
+        empty-text="暂无本地数据"
+      />
       <div class="mt-4 flex flex-wrap gap-2">
         <Button variant="outline" :disabled="dataBusy" @click="refreshLocalData">
           <RotateCcw class="size-4" />刷新清单
