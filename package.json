@@ -62,6 +62,8 @@
     "smoke:photobank:group:real": "tsx scripts/smoke-photobank-group-real.ts",
     "smoke:product:draft:real": "tsx scripts/smoke-product-draft-real.ts",
     "smoke:product:draft:verify": "tsx scripts/verify-product-draft-edit-real.ts",
+    "smoke:product:mutations:real": "tsx scripts/smoke-product-mutations-real.ts",
+    "recover:product:title:real": "tsx scripts/recover-product-title-real.ts",
     "smoke:web:real": "tsx scripts/prepare-real-web-smoke.ts && playwright test --config playwright.real.config.ts",
     "check:staging-config": "tsx scripts/check-staging-config.ts",
     "check:staging-config:local": "tsx scripts/check-staging-config.ts --allow-placeholders --skip-deployment-environment",
