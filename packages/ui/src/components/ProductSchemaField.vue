@@ -28,6 +28,7 @@ import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
 import PhotoBankPicker from './PhotoBankPicker.vue';
 import ProductGroupPicker from './ProductGroupPicker.vue';
+import SafeHtmlContent from './SafeHtmlContent.vue';
 
 const ProductDescriptionEditor = defineAsyncComponent(() => import('./ProductDescriptionEditor.vue'));
 
@@ -184,7 +185,7 @@ function removeInstance(index: number): void {
       <Badge v-if="readOnly" variant="secondary">只读</Badge>
       <Badge v-if="disabled" variant="secondary">已禁用</Badge>
     </div>
-    <p v-if="tip" class="text-xs text-muted-foreground">{{ tip }}</p>
+    <SafeHtmlContent v-if="tip" :html="tip" class="text-xs text-muted-foreground" />
 
     <ProductGroupPicker
       v-if="groupField"

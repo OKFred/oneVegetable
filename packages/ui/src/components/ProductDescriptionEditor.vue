@@ -72,6 +72,7 @@ const PhotoBankImage = Image.extend({
 const inspection = computed(() => sanitizeProductDescriptionHtml(props.modelValue));
 const converted = ref(false);
 const reviewingConversion = ref(false);
+const readOnlyView = ref<'preview' | 'source'>('preview');
 const linkUrl = ref('');
 const pickedPhotos = ref<Photo[]>([]);
 const requiresConversion = computed(() => props.smartDetail || !inspection.value.supported);
@@ -124,7 +125,7 @@ watch(editable, (value) => editor.value?.setEditable(value));
 watch(
   () => props.modelValue,
   (value) => {
-    if (!editable.value || !editor.value) return;
+    if (!editor.value) return;
     const safeHtml = sanitizeProductDescriptionHtml(value).html;
     if (safeHtml !== editor.value.getHTML())
       editor.value.commands.setContent(safeHtml, { emitUpdate: false });
@@ -191,9 +192,56 @@ function reportImageStatus(event: Event, loaded: boolean): void {
       <p class="text-xs text-muted-foreground">
         API 只能维护普通详情。确认转换前保留原始内容，不修改商品 Schema。
       </p>
-      <pre class="max-h-52 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs">{{
-        modelValue
-      }}</pre>
+      <div class="flex w-fit rounded-md bg-muted p-1" role="tablist" aria-label="平台原始详情视图">
+        <button
+          type="button"
+          role="tab"
+          class="rounded px-3 py-1.5 text-xs font-medium transition-colors"
+          :class="readOnlyView === 'preview' ? 'bg-background shadow-sm' : 'text-muted-foreground'"
+          :aria-selected="readOnlyView === 'preview'"
+          @click="readOnlyView = 'preview'"
+        >
+          安全预览
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class="rounded px-3 py-1.5 text-xs font-medium transition-colors"
+          :class="readOnlyView === 'source' ? 'bg-background shadow-sm' : 'text-muted-foreground'"
+          :aria-selected="readOnlyView === 'source'"
+          @click="readOnlyView = 'source'"
+        >
+          原始 HTML
+        </button>
+      </div>
+      <div v-if="readOnlyView === 'preview'" role="tabpanel" aria-label="平台原始详情安全预览">
+        <EditorContent
+          v-if="editor && inspection.html"
+          :editor="editor"
+          class="product-description-editor product-description-preview max-h-[32rem] overflow-auto rounded-md border bg-background p-4"
+          @load.capture="reportImageStatus($event, true)"
+          @error.capture="reportImageStatus($event, false)"
+        />
+        <p
+          v-else-if="!inspection.html"
+          class="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground"
+        >
+          原始详情经过安全过滤后没有可展示的内容。
+        </p>
+        <p v-else class="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+          正在准备详情预览…
+        </p>
+        <p class="mt-2 text-xs text-muted-foreground">
+          预览会加载国际站图库图片；脚本、iframe、事件和不受支持的样式不会执行。
+          <span v-if="inspection.changes.length">已安全处理 {{ inspection.changes.length }} 项内容。</span>
+        </p>
+      </div>
+      <pre
+        v-else
+        role="tabpanel"
+        aria-label="平台原始详情 HTML 源码"
+        class="max-h-80 overflow-auto whitespace-pre-wrap rounded-md bg-slate-950 p-3 text-xs text-slate-100"
+        >{{ modelValue }}</pre>
       <Button variant="outline" size="sm" @click="reviewingConversion = true">
         <Braces class="size-4" />查看转换变化
       </Button>
@@ -314,6 +362,10 @@ function reportImageStatus(event: Event, loaded: boolean): void {
 .product-description-editor :deep(.ProseMirror) {
   min-height: 14rem;
   outline: none;
+}
+
+.product-description-preview :deep(.ProseMirror) {
+  min-height: 0;
 }
 
 .product-description-editor :deep(h2),

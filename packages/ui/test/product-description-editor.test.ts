@@ -46,7 +46,9 @@ describe('ProductDescriptionEditor', () => {
     expect(wrapper.text()).toContain('智能详情');
     expect(model.value).toBe(original);
 
-    await wrapper.get('button').trigger('click');
+    const review = wrapper.findAll('button').find((button) => button.text().includes('查看转换变化'));
+    if (!review) throw new Error('Missing conversion review button');
+    await review.trigger('click');
     expect(wrapper.text()).toContain('智能详情将降级为 API 可维护的普通详情');
     expect(model.value).toBe(original);
 
@@ -61,11 +63,25 @@ describe('ProductDescriptionEditor', () => {
 
   it('shows unsupported HTML changes before generating safe ordinary detail', async () => {
     const { model, wrapper } = mountEditor(
-      '<div class="legacy"><h1 style="color:red">Legacy title</h1><script>alert(1)</script></div>'
+      '<div class="legacy"><h2 style="color:red">Legacy title</h2><img src="https://sc04.alicdn.com/kf/legacy.jpg" alt="Legacy image"><script>alert(1)</script></div>'
     );
     expect(wrapper.text()).toContain('旧详情含不支持的 HTML');
     expect(model.value).toContain('<script>');
-    await wrapper.get('button').trigger('click');
+    await flushPromises();
+    await nextTick();
+    const preview = wrapper.get('[aria-label="平台原始详情安全预览"]');
+    expect(preview.text()).toContain('Legacy title');
+    expect(preview.find('img[alt="Legacy image"]').exists()).toBe(true);
+    expect(preview.text()).not.toContain('alert(1)');
+
+    await wrapper.get('button[role="tab"][aria-selected="false"]').trigger('click');
+    expect(wrapper.get('[aria-label="平台原始详情 HTML 源码"]').text()).toContain(
+      '<script>alert(1)</script>'
+    );
+
+    const review = wrapper.findAll('button').find((button) => button.text().includes('查看转换变化'));
+    if (!review) throw new Error('Missing conversion review button');
+    await review.trigger('click');
     expect(wrapper.text()).toContain('删除不允许的 <script> 元素及内容');
     wrapper.unmount();
   });
