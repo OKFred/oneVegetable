@@ -41,8 +41,9 @@ const props = withDefaults(
     showTechnical?: boolean;
     labelOverride?: string;
     officialHints?: ProductSchemaOfficialHint[] | undefined;
+    language?: 'zh_CN' | 'en_US';
   }>(),
-  { showTechnical: true, labelOverride: '', officialHints: undefined }
+  { showTechnical: true, labelOverride: '', officialHints: undefined, language: 'en_US' }
 );
 const emit = defineEmits<{
   update: [field: ProductSchemaField];
@@ -312,6 +313,7 @@ function removeInstance(index: number): void {
       v-else-if="htmlField"
       :model-value="fieldText"
       :smart-detail="productDescriptionType !== undefined && productDescriptionType !== '2'"
+      :language="language"
       @update:model-value="updateValue"
       @image-status="emit('imageStatus', $event)"
     />
@@ -436,6 +438,7 @@ function removeInstance(index: number): void {
         :product-description-type="productDescriptionType"
         :show-technical="showTechnical"
         :official-hints="officialHintsForNestedField(child)"
+        :language="language"
         @update="updateComplexChild(index, $event)"
         @image-status="emit('imageStatus', $event)"
       />
@@ -465,6 +468,7 @@ function removeInstance(index: number): void {
           :product-description-type="productDescriptionType"
           :show-technical="showTechnical"
           :official-hints="officialHintsForNestedField(child)"
+          :language="language"
           v-bind="keywordComplex ? { labelOverride: `关键词 ${instanceIndex + 1}` } : {}"
           @update="updateInstanceChild(instanceIndex, childIndex, $event)"
           @image-status="emit('imageStatus', $event)"

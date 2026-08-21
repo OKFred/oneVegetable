@@ -20,19 +20,23 @@ import ProductFieldsPanel from './ProductFieldsPanel.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 
-const props = defineProps<{
-  model: ProductSchemaModel;
-  issues: ProductSchemaFieldIssue[];
-  qualityIssues: ProductDescriptionQualityIssue[];
-  productDescriptionType: string | undefined;
-  submitPending: boolean;
-  schemaInspection: ProductSchemaSerializationInspection;
-  publishDisabled: boolean;
-  draftDisabled: boolean;
-  publishDisabledReason: string;
-  draftDisabledReason: string;
-  platformDraftId: string | null;
-}>();
+const props = withDefaults(
+  defineProps<{
+    model: ProductSchemaModel;
+    issues: ProductSchemaFieldIssue[];
+    qualityIssues: ProductDescriptionQualityIssue[];
+    productDescriptionType: string | undefined;
+    language?: 'zh_CN' | 'en_US';
+    submitPending: boolean;
+    schemaInspection: ProductSchemaSerializationInspection;
+    publishDisabled: boolean;
+    draftDisabled: boolean;
+    publishDisabledReason: string;
+    draftDisabledReason: string;
+    platformDraftId: string | null;
+  }>(),
+  { language: 'en_US' }
+);
 
 const emit = defineEmits<{
   updateField: [sourceIndex: number, field: ProductSchemaField];
@@ -96,6 +100,7 @@ function groupEntries(entries: ProductEditorFieldEntry[]) {
           :entries="group.entries"
           :issues="issues"
           :product-description-type="productDescriptionType"
+          :language="language"
           @update-field="(index, field) => emit('updateField', index, field)"
           @image-status="emit('imageStatus', $event)"
         />
@@ -125,6 +130,7 @@ function groupEntries(entries: ProductEditorFieldEntry[]) {
               :entries="group.entries"
               :issues="issues"
               :product-description-type="productDescriptionType"
+              :language="language"
               @update-field="(index, field) => emit('updateField', index, field)"
               @image-status="emit('imageStatus', $event)"
             />

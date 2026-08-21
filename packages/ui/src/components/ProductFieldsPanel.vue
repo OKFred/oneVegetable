@@ -8,12 +8,16 @@ import type {
   ProductSchemaFieldIssue
 } from '@one-vegetable/core';
 
-defineProps<{
-  entries: ProductEditorFieldEntry[];
-  issues: ProductSchemaFieldIssue[];
-  productDescriptionType: string | undefined;
-  showTechnical?: boolean;
-}>();
+withDefaults(
+  defineProps<{
+    entries: ProductEditorFieldEntry[];
+    issues: ProductSchemaFieldIssue[];
+    productDescriptionType: string | undefined;
+    language?: 'zh_CN' | 'en_US';
+    showTechnical?: boolean;
+  }>(),
+  { language: 'en_US', showTechnical: false }
+);
 
 const emit = defineEmits<{
   updateField: [sourceIndex: number, field: ProductSchemaField];
@@ -29,6 +33,7 @@ const emit = defineEmits<{
       :field="entry.field"
       :issues="issues"
       :product-description-type="productDescriptionType"
+      :language="language"
       :show-technical="showTechnical"
       @update="emit('updateField', entry.sourceIndex, $event)"
       @image-status="emit('imageStatus', $event)"

@@ -32,6 +32,7 @@ const props = withDefaults(
     qualityIssues: ProductDescriptionQualityIssue[];
     officialHints: ProductSchemaOfficialHint[];
     productDescriptionType: string | undefined;
+    language?: 'zh_CN' | 'en_US';
     mode: ProductEditorMode;
     step: ProductEditorStepId;
     mutationDisabled?: boolean;
@@ -50,6 +51,7 @@ const props = withDefaults(
   }>(),
   {
     mutationDisabled: false,
+    language: 'en_US',
     publishDisabledReason: '',
     draftDisabledReason: '',
     platformDraftId: null
@@ -268,6 +270,7 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
       :issues="issues"
       :quality-issues="qualityIssues"
       :product-description-type="productDescriptionType"
+      :language="language"
       :submit-pending="submitPending"
       :schema-inspection="schemaInspection"
       :publish-disabled="resolvedPublishDisabled"
@@ -330,6 +333,7 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
             :field="entry.field"
             :issues="issues"
             :product-description-type="productDescriptionType"
+            :language="language"
             :show-technical="false"
             @update="emit('updateField', entry.sourceIndex, $event)"
             @image-status="emit('imageStatus', $event)"
@@ -481,6 +485,7 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
           :field="field"
           :issues="issues"
           :product-description-type="productDescriptionType"
+          :language="language"
           @update="emit('updateField', index, $event)"
           @image-status="emit('imageStatus', $event)"
         />

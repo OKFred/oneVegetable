@@ -39,3 +39,4 @@ export { LOGISTICS_CAPABILITY_DEFINITIONS } from './generated/logistics-capabili
 export { INSIGHTS_CAPABILITY_DEFINITIONS } from './generated/insights-capabilities';
 export { PHOTO_CAPABILITY_DEFINITIONS } from './generated/photo-capabilities';
 export { PLATFORM_CAPABILITY_DEFINITIONS } from './generated/platform-capabilities';
+export { PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA } from './generated/mock-data';

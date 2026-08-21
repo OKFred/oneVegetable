@@ -6,8 +6,10 @@ import {
   BffControlClient,
   BffGatewayClient,
   BffProductDescriptionTemplateClient,
+  CompositeProductDescriptionTemplateClient,
   MemoryProductDescriptionTemplateClient,
   MockGatewayClient,
+  PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA,
   type GatewaySettings,
   type SettingsRepository
 } from '@one-vegetable/core';
@@ -64,19 +66,28 @@ const bffTemplates =
         csrfToken: () => control?.csrfToken() ?? readCookie('ov_csrf')
       })
     : undefined;
+const bundledTemplates = new MemoryProductDescriptionTemplateClient(
+  PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA.templates,
+  { writable: false, actorId: 'system:bundled' }
+);
 const mockTemplates =
-  gatewayMode === 'mock' ? new MemoryProductDescriptionTemplateClient([], { writable: true }) : undefined;
+  gatewayMode === 'mock'
+    ? new CompositeProductDescriptionTemplateClient(
+        bundledTemplates,
+        new MemoryProductDescriptionTemplateClient([], { writable: true })
+      )
+    : undefined;
+const productDescriptionTemplates = bffTemplates
+  ? new CompositeProductDescriptionTemplateClient(bundledTemplates, bffTemplates)
+  : mockTemplates;
 
 const app = createApp(OneVegetableApp, {
   gateway,
   settings,
   mode: gatewayMode,
   ...(control ? { control } : {}),
-  ...(bffTemplates
-    ? { productDescriptionTemplates: bffTemplates, operationAvailability: bffTemplates }
-    : mockTemplates
-      ? { productDescriptionTemplates: mockTemplates }
-      : {})
+  ...(productDescriptionTemplates ? { productDescriptionTemplates } : {}),
+  ...(bffTemplates ? { operationAvailability: bffTemplates } : {})
 });
 app.use(VueQueryPlugin, {
   queryClient: new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000 } } })

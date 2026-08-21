@@ -6,6 +6,11 @@ import type {
   RfqSummary,
   TradeOrderSummary
 } from './types';
+import type { ProductDescriptionTemplate } from './product-description-template';
+
+export interface ProductDescriptionTemplateMockData {
+  templates: ProductDescriptionTemplate[];
+}
 
 type OperationResponses<K extends OperationId> = {
   [P in K]: OperationMap[P]['response'];

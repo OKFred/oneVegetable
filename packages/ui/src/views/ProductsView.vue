@@ -874,6 +874,7 @@ onBeforeUnmount(() => {
       :quality-issues="qualityIssues"
       :official-hints="officialHints"
       :product-description-type="productDescriptionType"
+      :language="language"
       :publish-disabled="productPublishDisabled"
       :draft-disabled="platformDraftDisabled"
       :publish-disabled-reason="productPublishDisabledReason"

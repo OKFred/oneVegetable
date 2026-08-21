@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   BffProductDescriptionTemplateClient,
+  CompositeProductDescriptionTemplateClient,
   MemoryProductDescriptionTemplateClient
 } from '../src/product-description-template-client';
 
@@ -87,6 +88,29 @@ describe('product description template clients', () => {
         html: '<p>Denied</p>'
       })
     ).rejects.toMatchObject({ gatewayError: { code: 'TEMPLATE_WRITE_UNAVAILABLE' } });
+  });
+
+  it('merges bundled and shared templates while delegating writes to the shared provider', async () => {
+    const bundled = new MemoryProductDescriptionTemplateClient([templateFixture()], { writable: false });
+    const shared = new MemoryProductDescriptionTemplateClient([], {
+      actorId: 'mock:editor',
+      clock: () => 20
+    });
+    const client = new CompositeProductDescriptionTemplateClient(bundled, shared);
+
+    const created = await client.create({
+      name: 'Custom service',
+      category: 'service',
+      language: 'en_US',
+      html: '<h2>Support</h2>'
+    });
+    await expect(client.list({ language: 'en_US' })).resolves.toMatchObject({
+      total: 2,
+      items: [{ creatorId: 'system:bundled' }, { id: created.id, creatorId: 'mock:editor' }]
+    });
+    await expect(client.archive(templateFixture().id, 1)).rejects.toMatchObject({
+      gatewayError: { code: 'TEMPLATE_NOT_FOUND' }
+    });
   });
 });
 

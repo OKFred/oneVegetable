@@ -32,6 +32,7 @@ import {
 } from '@one-vegetable/core';
 
 import PhotoBankPicker from './PhotoBankPicker.vue';
+import ProductDescriptionTemplatePanel from './ProductDescriptionTemplatePanel.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
@@ -40,8 +41,9 @@ const props = withDefaults(
   defineProps<{
     modelValue: string;
     smartDetail?: boolean;
+    language?: 'zh_CN' | 'en_US';
   }>(),
-  { smartDetail: false }
+  { smartDetail: false, language: 'en_US' }
 );
 const emit = defineEmits<{
   'update:modelValue': [html: string];
@@ -169,6 +171,21 @@ function insertPhoto(photos: Photo[]): void {
       }
     })
     .run();
+}
+
+function applyTemplate(payload: { mode: 'insert' | 'append' | 'replace'; html: string }): void {
+  if (!editor.value || !editable.value) return;
+  const html = sanitizeProductDescriptionHtml(payload.html).html;
+  if (payload.mode === 'replace') {
+    editor.value.commands.setContent(html);
+    emit('update:modelValue', html);
+    return;
+  }
+  if (payload.mode === 'append') {
+    editor.value.commands.insertContentAt(editor.value.state.doc.content.size, html);
+  } else {
+    editor.value.commands.insertContent(html);
+  }
 }
 
 function reportImageStatus(event: Event, loaded: boolean): void {
@@ -342,6 +359,11 @@ function reportImageStatus(event: Event, loaded: boolean): void {
           :max="1"
           button-label="插入图库图片"
           @update:model-value="insertPhoto"
+        />
+        <ProductDescriptionTemplatePanel
+          :language="language"
+          :current-html="modelValue"
+          @apply="applyTemplate"
         />
       </div>
       <EditorContent

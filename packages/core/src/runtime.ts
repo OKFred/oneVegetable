@@ -10,6 +10,10 @@ export {
 } from './credential-vault';
 export { ALIBABA_GATEWAY } from './signing';
 export { APP_PREFERENCES_STORAGE_KEY } from './preferences';
+export {
+  MemoryProductDescriptionTemplateClient,
+  PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA
+} from './runtime-templates';
 export { migrateGatewaySettings, persistGatewaySettings, SETTINGS_STORAGE_KEY } from './settings-storage';
 export {
   approximateStorageBytes,

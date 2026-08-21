@@ -2,6 +2,8 @@ import { browser } from 'wxt/browser';
 
 import {
   GatewayException,
+  MemoryProductDescriptionTemplateClient,
+  PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA,
   approximateStorageBytes,
   APP_PREFERENCES_STORAGE_KEY,
   completeOnboarding,
@@ -249,6 +251,10 @@ async function mountOptionsApp(): Promise<void> {
     localData,
     onboarding,
     vault,
+    productDescriptionTemplates: new MemoryProductDescriptionTemplateClient(
+      PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA.templates,
+      { writable: false, actorId: 'system:bundled' }
+    ),
     mode: 'extension'
   });
   app.use(VueQueryPlugin, {
