@@ -726,13 +726,30 @@ function insertComplexInstance(target: Element, instance: Element, layout: Produ
 
 function resetField(field: ProductSchemaField, key: string): ProductSchemaField {
   return {
-    ...structuredClone(field),
     key,
     sourcePath: key,
     sourceIndex: -1,
+    id: field.id,
+    name: field.name,
+    type: field.type,
     values: field.values.length > 0 ? [{ text: '', attributes: {}, metadata: {} }] : [],
+    attributes: { ...field.attributes },
+    options: field.options.map((option) => ({
+      ...option,
+      attributes: { ...option.attributes }
+    })),
+    rules: field.rules.map((rule) => ({
+      ...rule,
+      attributes: { ...rule.attributes },
+      dependGroups: rule.dependGroups.map((group) => ({
+        ...group,
+        expressions: group.expressions.map((expression) => ({ ...expression }))
+      }))
+    })),
     children: field.children.map((child, index) => resetField(child, `${key}:child:${index}`)),
-    instances: []
+    instances: [],
+    valueLayout: field.valueLayout,
+    complexLayout: field.complexLayout
   };
 }
 

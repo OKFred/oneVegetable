@@ -50,4 +50,20 @@
   </field>
   <field id="duplicate" name="重复字段 A" type="input"><value>first</value></field>
   <field id="duplicate" name="重复字段 B" type="input"><value>second</value></field>
+  <field id="productKeywords" name="商品关键词" type="complex">
+    <rules>
+      <rule name="requiredRule" value="true" />
+      <rule name="minInputNumRule" value="1" />
+      <rule name="maxInputNumRule" value="3" />
+    </rules>
+    <complex-values data-instance="keyword-0">
+      <field id="productKeywords_0" name="productKeywords_0" type="input"><value>sample keyword one</value></field>
+    </complex-values>
+    <complex-values data-instance="keyword-1">
+      <field id="productKeywords_0" name="productKeywords_0" type="input"><value>sample keyword two</value></field>
+    </complex-values>
+    <fields>
+      <field id="productKeywords_0" name="productKeywords_0" type="input"><value /></field>
+    </fields>
+  </field>
 </itemSchema>

@@ -95,6 +95,26 @@ describe('product Schema XML engine', () => {
     expect(productSchemaFieldText(at(at(resultTiers, 1).fields, 0))).toBe('500');
   });
 
+  it('patches repeatable complex product keywords without changing their XML field type', () => {
+    const model = parseProductSchemaXml(REAL_LAYOUT_XML);
+    const keywords = at(model.fields, 8);
+    keywords.instances.splice(0, 1);
+    const added = cloneProductSchemaInstance(keywords);
+    added.fields[0] = withProductSchemaFieldText(at(added.fields, 0), 'new keyword');
+    keywords.instances.push(added);
+
+    const inspection = inspectProductSchemaSerialization(model);
+    expect(inspection).toMatchObject({ noOp: false, safe: true, changedFieldKeys: ['field:8'] });
+    expect(inspection.xml).toContain('<field id="productKeywords" name="商品关键词" type="complex">');
+    const roundTrip = parseProductSchemaXml(inspection.xml);
+    const result = at(roundTrip.fields, 8);
+    expect(result.type).toBe('complex');
+    expect(result.instances.map((instance) => productSchemaFieldText(at(instance.fields, 0)))).toEqual([
+      'sample keyword two',
+      'new keyword'
+    ]);
+  });
+
   it('blocks serialization when a field no longer maps to its source node', () => {
     const model = parseProductSchemaXml(REAL_LAYOUT_XML);
     at(model.fields, 0).sourceIndex = 999;
