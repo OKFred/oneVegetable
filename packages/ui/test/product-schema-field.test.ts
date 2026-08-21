@@ -2,11 +2,18 @@
 
 import { defineComponent, h, ref, type Ref } from 'vue';
 import { mount, type DOMWrapper, type VueWrapper } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { parseProductSchemaXml, type ProductSchemaField } from '@one-vegetable/core';
 
 import ProductSchemaFieldComponent from '../src/components/ProductSchemaField.vue';
+
+beforeAll(() => {
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    callback(0);
+    return 1;
+  });
+});
 
 describe('ProductSchemaField', () => {
   it('edits multiInput values as stable addable and removable rows', async () => {
@@ -76,6 +83,19 @@ describe('ProductSchemaField', () => {
       'one',
       'three'
     ]);
+  });
+
+  it('uses the structured official hint renderer beside a field', async () => {
+    const field = parseField(`<field id="productTitle" name="商品名称" type="input">
+      <rules><rule name="tipRule" value="&lt;div&gt;避免堆砌关键词，查看&lt;a href=&quot;//service.alibaba.com/help&quot;&gt;标题规范&lt;/a&gt;&lt;/div&gt;"/></rules>
+      <value>Portable product</value>
+    </field>`);
+    const { wrapper } = mountField(field);
+
+    expect(wrapper.text()).toContain('避免堆砌关键词');
+    expect(wrapper.find('a').exists()).toBe(false);
+    await wrapper.get('button[aria-label^="展开官方提示"]').trigger('click');
+    expect(wrapper.get('a').attributes('href')).toBe('https://service.alibaba.com/help');
   });
 });
 

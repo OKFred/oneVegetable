@@ -5,6 +5,8 @@ import { Layers3, LayoutGrid, List, RefreshCw, Search } from '@lucide/vue';
 
 import {
   analyzeProductDescriptionQuality,
+  collectProductSchemaOfficialHints,
+  createProductScoreOfficialHints,
   inspectProductSchemaSerialization,
   markProductSchemaFieldTouched,
   parseProductSchemaXml,
@@ -18,6 +20,7 @@ import {
   type ProductDescriptionImageMetadata,
   type ProductEditorStepId,
   type ProductSchemaField,
+  type ProductSchemaOfficialHint,
   type ProductSchemaModel,
   type ProductSchemaSerializationInspection,
   type ProductScore,
@@ -202,12 +205,15 @@ const productScore = useMutation({
   }
 });
 
+const officialHints = computed<ProductSchemaOfficialHint[]>(() => [
+  ...(schemaModel.value ? collectProductSchemaOfficialHints(schemaModel.value.fields) : []),
+  ...createProductScoreOfficialHints(productScore.data.value?.issues ?? [])
+]);
 const qualityIssues = computed(() =>
   analyzeProductDescriptionQuality({
     html: productDescriptionHtml.value,
     schemaIssues: schemaIssues.value,
-    officialTips: schemaModel.value ? collectOfficialTips(schemaModel.value.fields) : [],
-    officialScoreIssues: productScore.data.value?.issues ?? [],
+    officialHints: officialHints.value,
     imageMetadata: imageMetadata.value
   })
 );
@@ -653,21 +659,6 @@ function draftSaveLabel(status: DraftSaveStatus): string {
   return '';
 }
 
-function collectOfficialTips(fields: ProductSchemaField[]): string[] {
-  const tips = new Set<string>();
-  const visit = (field: ProductSchemaField): void => {
-    for (const rule of field.rules) {
-      if ((rule.name === 'tipRule' || rule.name === 'devTipRule') && rule.value.trim()) {
-        tips.add(rule.value.trim());
-      }
-    }
-    for (const child of field.children) visit(child);
-    for (const instance of field.instances) for (const child of instance.fields) visit(child);
-  };
-  for (const field of fields) visit(field);
-  return [...tips];
-}
-
 function scheduleScoreRefresh(productId: string): void {
   if (scoreRefreshTimer !== undefined) globalThis.clearTimeout(scoreRefreshTimer);
   scoreRefreshTimer = globalThis.setTimeout(() => {
@@ -856,6 +847,7 @@ onBeforeUnmount(() => {
       :model="schemaModel"
       :issues="schemaIssues"
       :quality-issues="qualityIssues"
+      :official-hints="officialHints"
       :product-description-type="productDescriptionType"
       :mutation-disabled="realMutationDisabled"
       :submit-pending="publish.isPending.value"

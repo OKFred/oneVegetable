@@ -6,6 +6,7 @@ import { Plus, Trash2 } from '@lucide/vue';
 
 import {
   cloneProductSchemaInstance,
+  collectProductSchemaOfficialHints,
   isProductSchemaFieldDisabled,
   isProductSchemaImageField,
   isProductSchemaFieldReadOnly,
@@ -25,9 +26,9 @@ import {
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
+import OfficialHintContent from './OfficialHintContent.vue';
 import PhotoBankPicker from './PhotoBankPicker.vue';
 import ProductGroupPicker from './ProductGroupPicker.vue';
-import SafeHtmlContent from './SafeHtmlContent.vue';
 
 const ProductDescriptionEditor = defineAsyncComponent(() => import('./ProductDescriptionEditor.vue'));
 
@@ -95,9 +96,7 @@ const selectedPhotos = computed(() =>
       modifiedAt: value.metadata.modifiedAt ?? new Date(0).toISOString()
     }))
 );
-const tip = computed(
-  () => props.field.rules.find((rule) => rule.name === 'tipRule' || rule.name === 'devTipRule')?.value
-);
+const officialHints = computed(() => collectProductSchemaOfficialHints([props.field], { recursive: false }));
 
 function updateValue(value: string): void {
   emit('update', withProductSchemaFieldText(props.field, value));
@@ -268,7 +267,15 @@ function removeInstance(index: number): void {
       <Badge v-if="readOnly" variant="secondary">只读</Badge>
       <Badge v-if="disabled" variant="secondary">已禁用</Badge>
     </div>
-    <SafeHtmlContent v-if="tip" :html="tip" class="text-xs text-muted-foreground" />
+    <div v-if="officialHints.length" class="space-y-2">
+      <OfficialHintContent
+        v-for="hint in officialHints"
+        :key="hint.id"
+        :hint="hint"
+        compact
+        :show-locate="false"
+      />
+    </div>
 
     <ProductGroupPicker
       v-if="groupField"

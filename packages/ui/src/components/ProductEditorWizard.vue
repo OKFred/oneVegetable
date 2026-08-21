@@ -11,9 +11,11 @@ import {
   type ProductSchemaField,
   type ProductSchemaFieldIssue,
   type ProductSchemaModel,
+  type ProductSchemaOfficialHint,
   type ProductSchemaSerializationInspection
 } from '@one-vegetable/core';
 
+import OfficialHintContent from './OfficialHintContent.vue';
 import ProductSchemaFieldComponent from './ProductSchemaField.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
@@ -26,6 +28,7 @@ const props = defineProps<{
   model: ProductSchemaModel;
   issues: ProductSchemaFieldIssue[];
   qualityIssues: ProductDescriptionQualityIssue[];
+  officialHints: ProductSchemaOfficialHint[];
   productDescriptionType: string | undefined;
   mode: ProductEditorMode;
   step: ProductEditorStepId;
@@ -79,9 +82,40 @@ const hiddenOptionalCount = computed(
 );
 const issuesBySource = computed(() => ({
   'alibaba-schema': props.qualityIssues.filter((issue) => issue.source === 'alibaba-schema'),
-  official: props.qualityIssues.filter((issue) => issue.source === 'official'),
   project: props.qualityIssues.filter((issue) => issue.source === 'project')
 }));
+const officialHintGroups = computed(() => {
+  const groups = new Map<
+    string,
+    {
+      id: string;
+      label: string;
+      hints: ProductSchemaOfficialHint[];
+      fieldKeys: Set<string>;
+    }
+  >();
+  for (const hint of props.officialHints) {
+    const id = hint.rootFieldKey ?? `${hint.source}:${hint.rootFieldName}`;
+    const existing = groups.get(id);
+    if (existing) {
+      existing.hints.push(hint);
+      for (const fieldKey of hint.fieldKeys) existing.fieldKeys.add(fieldKey);
+      continue;
+    }
+    groups.set(id, {
+      id,
+      label: hint.rootFieldName,
+      hints: [hint],
+      fieldKeys: new Set(hint.fieldKeys)
+    });
+  }
+  return [...groups.values()].map((group) => ({
+    id: group.id,
+    label: group.label,
+    hints: group.hints,
+    fieldCount: group.fieldKeys.size
+  }));
+});
 const serializationLabel = computed(() => {
   if (!props.schemaInspection.safe) return '结构异常';
   return props.schemaInspection.noOp ? '原样' : '安全补丁';
@@ -122,14 +156,21 @@ function moveStep(offset: -1 | 1): void {
   search.value = '';
 }
 
-function sourceLabel(source: ProductDescriptionQualityIssue['source']): string {
+function sourceLabel(source: 'alibaba-schema' | 'project'): string {
   if (source === 'alibaba-schema') return '平台必填与格式';
-  if (source === 'official') return '官方提示';
   return '内容优化建议';
 }
 
 async function focusIssue(issue: ProductDescriptionQualityIssue): Promise<void> {
-  for (const reference of issue.fieldIds) {
+  await focusReferences(issue.fieldIds);
+}
+
+async function focusOfficialHint(hint: ProductSchemaOfficialHint): Promise<void> {
+  await focusReferences(hint.fieldKeys);
+}
+
+async function focusReferences(references: string[]): Promise<void> {
+  for (const reference of references) {
     const target = findField(reference);
     if (!target) continue;
     optionalOpen.value = { ...optionalOpen.value, [target.sectionId]: true };
@@ -288,9 +329,9 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
             <li v-for="diff in schemaInspection.structuralDiffs" :key="diff">{{ diff }}</li>
           </ul>
         </div>
-        <div class="mt-5 grid gap-4 lg:grid-cols-3">
+        <div class="mt-5 grid gap-4 lg:grid-cols-2">
           <section
-            v-for="source in ['alibaba-schema', 'official', 'project'] as const"
+            v-for="source in ['alibaba-schema', 'project'] as const"
             :key="source"
             class="rounded-lg border p-4"
           >
@@ -317,6 +358,39 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
                 <p class="mt-1 text-xs text-muted-foreground">{{ issue.remediation }}</p>
               </li>
             </ul>
+          </section>
+
+          <section class="rounded-lg border p-4 lg:col-span-2" aria-labelledby="official-hints-title">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h4 id="official-hints-title" class="font-medium">官方提示</h4>
+                <p class="mt-1 text-xs text-muted-foreground">
+                  已按字段合并重复内容；展开后可查看官方链接和 Schema 示例。
+                </p>
+              </div>
+              <Badge variant="secondary">{{ officialHints.length }}</Badge>
+            </div>
+            <p v-if="officialHintGroups.length === 0" class="mt-4 text-sm text-muted-foreground">暂无问题</p>
+            <div v-else class="mt-4 space-y-4">
+              <section v-for="group in officialHintGroups" :key="group.id" class="rounded-lg bg-muted/35 p-3">
+                <div class="mb-3 flex flex-wrap items-center gap-2">
+                  <h5 class="font-medium">{{ group.label }}</h5>
+                  <Badge variant="outline">{{ group.hints.length }} 条</Badge>
+                  <span v-if="group.fieldCount" class="text-xs text-muted-foreground">
+                    影响 {{ group.fieldCount }} 个字段
+                  </span>
+                  <span v-else class="text-xs text-muted-foreground">平台评分</span>
+                </div>
+                <div class="space-y-2">
+                  <OfficialHintContent
+                    v-for="hint in group.hints"
+                    :key="hint.id"
+                    :hint="hint"
+                    @locate="focusOfficialHint(hint)"
+                  />
+                </div>
+              </section>
+            </div>
           </section>
         </div>
         <div v-if="model.warnings.length" class="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-900">
