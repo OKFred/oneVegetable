@@ -7,12 +7,20 @@ import {
   isOperationId,
   isRequestId,
   MockGatewayClient,
-  normalizeApiPrefix
+  normalizeApiPrefix,
+  validateOperationAvailabilityInput
 } from '@one-vegetable/core';
-import { authorizeOperation, operationIsMutation, StaticOperationFeatureFlags } from './abac';
+import {
+  authorizeOperation,
+  extensionAdminPrincipal,
+  operationIsMutation,
+  StaticOperationFeatureFlags
+} from './abac';
 import { AuthError } from './auth/service';
 import { authenticateMutation, authenticateRequest, registerAuthRoutes } from './auth/routes';
 import { markRequestOperation, readRequestContext } from './observability/request-context';
+import { registerProductDescriptionTemplateRoutes } from './product-description-templates/routes';
+import { ProductDescriptionTemplateService } from './product-description-templates/service';
 
 import type {
   ApiResponse,
@@ -29,6 +37,7 @@ import type { AuthenticatedSession, AuthService } from './auth/service';
 import type { RequestEventRepository } from './observability/request-events';
 import type { AlibabaCredentialStatus } from './gateway/credentials';
 import type { GatewayMode } from './runtime-config';
+import type { ProductDescriptionTemplateRepository } from './product-description-templates/repository';
 
 export type ApiRuntime = 'node' | 'cloudflare';
 export type ApiDatabase = 'sqlite' | 'd1';
@@ -50,6 +59,7 @@ export interface ApiAppOptions {
   requestEvents?: RequestEventRepository;
   requestEventRetentionDays?: number;
   gatewayStatus?: AlibabaCredentialStatus;
+  productDescriptionTemplates?: ProductDescriptionTemplateRepository;
 }
 
 export interface RequestLogContext {
@@ -134,6 +144,17 @@ export function createApiApp(options: ApiAppOptions): Hono {
     });
   }
 
+  if (options.authService && options.productDescriptionTemplates) {
+    registerProductDescriptionTemplateRoutes(api, {
+      authService: options.authService,
+      service: new ProductDescriptionTemplateService(
+        options.productDescriptionTemplates,
+        options.authService
+      ),
+      ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
+    });
+  }
+
   api.get('/readyz', async (context) => {
     const requestId = createRequestId();
     const ready = await (options.ready?.() ?? Promise.resolve(true));
@@ -161,6 +182,54 @@ export function createApiApp(options: ApiAppOptions): Hono {
     };
     logRequest(options, parsed.requestId, 'meta/get', 'success', 200, startedAt);
     return success(context, parsed.requestId, data);
+  });
+
+  api.post('/operations/availability/get', async (context) => {
+    const startedAt = (options.clock ?? Date.now)();
+    const parsed = await parseEnvelope(context, ['requestId', 'operations']);
+    if (!parsed.ok) return parsed.response;
+    const validation = validateOperationAvailabilityInput(parsed.body);
+    if (!validation.valid || !validation.data) {
+      return failure(context, parsed.requestId, 400, {
+        code: 'INVALID_OPERATION_AVAILABILITY_REQUEST',
+        message: validation.errors.join('；') || 'operations 无效',
+        retryable: false
+      });
+    }
+    try {
+      const principal = options.authService
+        ? (await authenticateRequest(context, options.authService)).principal
+        : extensionAdminPrincipal();
+      const items = validation.data.operations.map((operation) => {
+        if (!isOperationId(operation)) {
+          return { operation, allowed: false, reasonCode: 'OPERATION_UNKNOWN' };
+        }
+        if (options.gatewayMode === 'disabled') {
+          return { operation, allowed: false, reasonCode: 'ALIBABA_GATEWAY_DISABLED' };
+        }
+        const decision = authorizeOperation(principal, operation, {}, featureFlags);
+        return { operation, allowed: decision.allowed, reasonCode: decision.reasonCode };
+      });
+      logRequest(
+        options,
+        parsed.requestId,
+        'operations/availability/get',
+        'success',
+        200,
+        startedAt,
+        principal.actorId
+      );
+      return success(context, parsed.requestId, { items });
+    } catch (error: unknown) {
+      const status = error instanceof AuthError ? error.status : 500;
+      const code = error instanceof AuthError ? error.code : 'OPERATION_AVAILABILITY_FAILED';
+      logRequest(options, parsed.requestId, 'operations/availability/get', 'denied', status, startedAt);
+      return failure(context, parsed.requestId, status, {
+        code,
+        message: error instanceof Error ? error.message : '读取 operation 状态失败',
+        retryable: false
+      });
+    }
   });
 
   api.post('/operations/call', async (context) => {

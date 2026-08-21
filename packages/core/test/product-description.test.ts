@@ -1,10 +1,13 @@
-// @vitest-environment jsdom
-
 import { describe, expect, it } from 'vitest';
 
 import { isPhotoBankUrl, sanitizeProductDescriptionHtml } from '../src/product-description';
 
 describe('product description HTML sanitizer', () => {
+  it('runs without browser DOM globals so Node and Workers share the same sanitizer', () => {
+    expect(globalThis.DOMParser).toBeUndefined();
+    expect(sanitizeProductDescriptionHtml('<p>Portable</p>').html).toBe('<p>Portable</p>');
+  });
+
   it('keeps the fixed safe tag set and removes scripts, event handlers, styles and unknown wrappers', () => {
     const result = sanitizeProductDescriptionHtml(
       '<div class="legacy"><h2 style="color:red" onclick="alert(1)">Title</h2><script>alert(1)</script><p><strong>Safe</strong></p></div>'

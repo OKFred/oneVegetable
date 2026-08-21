@@ -29,3 +29,48 @@ export interface ProductDescriptionTemplatePage {
   pageSize: number;
   total: number;
 }
+
+export interface ProductDescriptionTemplateListRequest {
+  requestId: string;
+  page?: number;
+  pageSize?: number;
+  language?: ProductDescriptionTemplateLanguage;
+  category?: ProductDescriptionTemplateCategory;
+  status?: ProductDescriptionTemplateStatus;
+}
+
+export interface ProductDescriptionTemplateCreateRequest {
+  requestId: string;
+  name: string;
+  category: ProductDescriptionTemplateCategory;
+  language: ProductDescriptionTemplateLanguage;
+  html: string;
+  remark?: string | null;
+}
+
+export interface ProductDescriptionTemplateUpdateRequest {
+  requestId: string;
+  id: string;
+  name: string;
+  category: ProductDescriptionTemplateCategory;
+  language: ProductDescriptionTemplateLanguage;
+  html: string;
+  revision: number;
+  remark: string | null;
+}
+
+export interface ProductDescriptionTemplateStatusRequest {
+  requestId: string;
+  id: string;
+  revision: number;
+}
+
+export interface OperationAvailability {
+  operation: string;
+  allowed: boolean;
+  reasonCode: string | null;
+}
+
+export interface OperationAvailabilityResult {
+  items: OperationAvailability[];
+}

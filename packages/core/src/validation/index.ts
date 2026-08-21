@@ -5,6 +5,11 @@ import {
   validateCapabilityCallRequest,
   validateLogisticsOrderDraft,
   validateLogisticsQuoteRequest,
+  validateOperationAvailabilityRequest,
+  validateProductDescriptionTemplateCreateRequest,
+  validateProductDescriptionTemplateListRequest,
+  validateProductDescriptionTemplateStatusRequest,
+  validateProductDescriptionTemplateUpdateRequest,
   validateProductSchemaRenderRequest,
   validateProductSchemaRequest,
   validateSchemaPublishRequest
@@ -18,6 +23,12 @@ import type {
   ProductSchemaRenderRequest,
   SchemaPublishRequest
 } from '../types';
+import type {
+  ProductDescriptionTemplateCreateRequest,
+  ProductDescriptionTemplateListRequest,
+  ProductDescriptionTemplateStatusRequest,
+  ProductDescriptionTemplateUpdateRequest
+} from '../product-description-template';
 
 export interface ValidationResult<T> {
   valid: boolean;
@@ -68,3 +79,38 @@ export const validateLogisticsQuoteInput = (value: unknown, locale?: 'en' | 'zh'
 
 export const validateLogisticsOrderInput = (value: unknown, locale?: 'en' | 'zh') =>
   runValidator<LogisticsOrderDraft>(validateLogisticsOrderDraft as StandaloneValidator, value, locale);
+
+export const validateOperationAvailabilityInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<{ requestId: string; operations: string[] }>(
+    validateOperationAvailabilityRequest as StandaloneValidator,
+    value,
+    locale
+  );
+
+export const validateProductDescriptionTemplateListInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<ProductDescriptionTemplateListRequest>(
+    validateProductDescriptionTemplateListRequest as StandaloneValidator,
+    value,
+    locale
+  );
+
+export const validateProductDescriptionTemplateCreateInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<ProductDescriptionTemplateCreateRequest>(
+    validateProductDescriptionTemplateCreateRequest as StandaloneValidator,
+    value,
+    locale
+  );
+
+export const validateProductDescriptionTemplateUpdateInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<ProductDescriptionTemplateUpdateRequest>(
+    validateProductDescriptionTemplateUpdateRequest as StandaloneValidator,
+    value,
+    locale
+  );
+
+export const validateProductDescriptionTemplateStatusInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<ProductDescriptionTemplateStatusRequest>(
+    validateProductDescriptionTemplateStatusRequest as StandaloneValidator,
+    value,
+    locale
+  );

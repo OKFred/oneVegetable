@@ -9,6 +9,7 @@ import { AlibabaReadGatewayClient } from './gateway/alibaba-read-gateway';
 import { EnvironmentAlibabaCredentialProvider } from './gateway/credentials';
 import { createDocumentationReplayGateway, documentationReplayStatus } from './gateway/documentation-replay';
 import { readRuntimeConfiguration } from './runtime-config';
+import { SqlProductDescriptionTemplateRepository } from './product-description-templates/repository';
 
 interface Env {
   DB: D1Database;
@@ -53,6 +54,7 @@ export default {
       adminService: new AdminService(authRepository),
       featureFlags: new StaticOperationFeatureFlags(new Set(runtimeConfiguration.mutationFlags)),
       requestEvents: new SqlRequestEventRepository(database.executor),
+      productDescriptionTemplates: new SqlProductDescriptionTemplateRepository(database.executor),
       requestEventRetentionDays: runtimeConfiguration.requestEventRetentionDays,
       allowedOrigins: runtimeConfiguration.allowedOrigins,
       ready: () => isD1DatabaseReady(database)
