@@ -18,6 +18,7 @@ import {
   productSchemaFieldTexts,
   type ProductSchemaField,
   type ProductSchemaFieldIssue,
+  type ProductSchemaOfficialHint,
   type Photo,
   type ProductDescriptionImageMetadata,
   withProductSchemaFieldText
@@ -39,8 +40,9 @@ const props = withDefaults(
     productDescriptionType: string | undefined;
     showTechnical?: boolean;
     labelOverride?: string;
+    officialHints?: ProductSchemaOfficialHint[] | undefined;
   }>(),
-  { showTechnical: true, labelOverride: '' }
+  { showTechnical: true, labelOverride: '', officialHints: undefined }
 );
 const emit = defineEmits<{
   update: [field: ProductSchemaField];
@@ -96,10 +98,33 @@ const selectedPhotos = computed(() =>
       modifiedAt: value.metadata.modifiedAt ?? new Date(0).toISOString()
     }))
 );
-const officialHints = computed(() => collectProductSchemaOfficialHints([props.field], { recursive: false }));
+const availableOfficialHints = computed(() => {
+  const collected = collectProductSchemaOfficialHints([props.field]);
+  if (!props.officialHints) return collected;
+  return [...new Map([...props.officialHints, ...collected].map((hint) => [hint.id, hint])).values()];
+});
+const displayedOfficialHints = computed(() =>
+  availableOfficialHints.value.filter((hint) => hint.fieldKeys.includes(props.field.key))
+);
 
 function updateValue(value: string): void {
   emit('update', withProductSchemaFieldText(props.field, value));
+}
+
+function officialHintsForNestedField(field: ProductSchemaField): ProductSchemaOfficialHint[] {
+  const references = new Set(collectNestedFieldKeys(field));
+  return availableOfficialHints.value.filter((hint) =>
+    hint.fieldKeys.some((fieldKey) => references.has(fieldKey))
+  );
+}
+
+function collectNestedFieldKeys(field: ProductSchemaField): string[] {
+  const keys = [field.key];
+  for (const child of field.children) keys.push(...collectNestedFieldKeys(child));
+  for (const instance of field.instances) {
+    for (const child of instance.fields) keys.push(...collectNestedFieldKeys(child));
+  }
+  return keys;
 }
 
 function itemRuleLimit(name: 'minInputNumRule' | 'maxInputNumRule', fallback: number): number {
@@ -267,9 +292,9 @@ function removeInstance(index: number): void {
       <Badge v-if="readOnly" variant="secondary">只读</Badge>
       <Badge v-if="disabled" variant="secondary">已禁用</Badge>
     </div>
-    <div v-if="officialHints.length" class="space-y-2">
+    <div v-if="displayedOfficialHints.length" class="space-y-2">
       <OfficialHintContent
-        v-for="hint in officialHints"
+        v-for="hint in displayedOfficialHints"
         :key="hint.id"
         :hint="hint"
         compact
@@ -410,6 +435,7 @@ function removeInstance(index: number): void {
         :issues="issues"
         :product-description-type="productDescriptionType"
         :show-technical="showTechnical"
+        :official-hints="officialHintsForNestedField(child)"
         @update="updateComplexChild(index, $event)"
         @image-status="emit('imageStatus', $event)"
       />
@@ -438,6 +464,7 @@ function removeInstance(index: number): void {
           :issues="issues"
           :product-description-type="productDescriptionType"
           :show-technical="showTechnical"
+          :official-hints="officialHintsForNestedField(child)"
           v-bind="keywordComplex ? { labelOverride: `关键词 ${instanceIndex + 1}` } : {}"
           @update="updateInstanceChild(instanceIndex, childIndex, $event)"
           @image-status="emit('imageStatus', $event)"

@@ -138,15 +138,64 @@ function visitNestedFields(
   rootName: string,
   output: Map<string, MutableOfficialHint>
 ): void {
-  const directChildren = field.instances.length > 0 ? [] : field.children;
-  for (const child of directChildren) {
+  if (field.instances.length === 0) {
+    for (const child of field.children) {
+      collectFieldRules(child, rootField, rootIdentity, rootName, output);
+      visitNestedFields(child, rootField, rootIdentity, rootName, output);
+    }
+    return;
+  }
+
+  const visibleFields = field.instances.flatMap((instance) => instance.fields);
+  const firstInstanceFields = field.instances[0]?.fields;
+  if (field.children !== firstInstanceFields) {
+    const visiblePool = flattenFields(visibleFields);
+    const visitedTemplates = new Set<string>();
+    for (const template of field.children) {
+      collectTemplateRules(
+        template,
+        visiblePool,
+        rootField,
+        rootIdentity,
+        rootName,
+        output,
+        visitedTemplates
+      );
+    }
+  }
+
+  for (const child of visibleFields) {
     collectFieldRules(child, rootField, rootIdentity, rootName, output);
     visitNestedFields(child, rootField, rootIdentity, rootName, output);
   }
-  for (const instance of field.instances) {
+}
+
+function collectTemplateRules(
+  template: ProductSchemaField,
+  visiblePool: ProductSchemaField[],
+  rootField: ProductSchemaField,
+  rootIdentity: string,
+  rootName: string,
+  output: Map<string, MutableOfficialHint>,
+  visited: Set<string>
+): void {
+  if (visited.has(template.key)) return;
+  visited.add(template.key);
+  const matchingFields = visiblePool.filter((field) => field.id === template.id);
+  collectFieldRules(
+    template,
+    rootField,
+    rootIdentity,
+    rootName,
+    output,
+    matchingFields.length > 0 ? matchingFields : [template]
+  );
+  for (const child of template.children) {
+    collectTemplateRules(child, visiblePool, rootField, rootIdentity, rootName, output, visited);
+  }
+  for (const instance of template.instances) {
     for (const child of instance.fields) {
-      collectFieldRules(child, rootField, rootIdentity, rootName, output);
-      visitNestedFields(child, rootField, rootIdentity, rootName, output);
+      collectTemplateRules(child, visiblePool, rootField, rootIdentity, rootName, output, visited);
     }
   }
 }
@@ -156,7 +205,8 @@ function collectFieldRules(
   rootField: ProductSchemaField,
   rootIdentity: string,
   rootName: string,
-  output: Map<string, MutableOfficialHint>
+  output: Map<string, MutableOfficialHint>,
+  referenceFields: ProductSchemaField[] = [field]
 ): void {
   for (const rule of field.rules) {
     if (!isOfficialHintRule(rule) || !rule.value.trim()) continue;
@@ -166,9 +216,7 @@ function collectFieldRules(
     const key = `${rootIdentity}\u0000${comparisonText}`;
     const existing = output.get(key);
     if (existing) {
-      appendUnique(existing.fieldKeys, field.key);
-      appendUnique(existing.fieldIds, field.id);
-      appendUnique(existing.fieldNames, displayFieldName(field));
+      appendFieldReferences(existing, referenceFields);
       appendUnique(existing.ruleNames, rule.name);
       existing.occurrenceCount += 1;
       continue;
@@ -180,14 +228,33 @@ function collectFieldRules(
       rootFieldKey: rootField.key,
       rootFieldId: rootField.id,
       rootFieldName: rootName,
-      fieldKeys: [field.key],
-      fieldIds: field.id ? [field.id] : [],
-      fieldNames: [displayFieldName(field)],
+      fieldKeys: referenceFields.map((reference) => reference.key),
+      fieldIds: uniqueStrings(referenceFields.map((reference) => reference.id)),
+      fieldNames: uniqueStrings(referenceFields.map(displayFieldName)),
       ruleNames: [rule.name],
       ...sanitized,
       occurrenceCount: 1
     });
   }
+}
+
+function appendFieldReferences(hint: MutableOfficialHint, fields: ProductSchemaField[]): void {
+  for (const field of fields) {
+    appendUnique(hint.fieldKeys, field.key);
+    appendUnique(hint.fieldIds, field.id);
+    appendUnique(hint.fieldNames, displayFieldName(field));
+  }
+}
+
+function flattenFields(fields: ProductSchemaField[]): ProductSchemaField[] {
+  const flattened: ProductSchemaField[] = [];
+  const visit = (field: ProductSchemaField): void => {
+    flattened.push(field);
+    for (const child of field.children) visit(child);
+    for (const instance of field.instances) for (const child of instance.fields) visit(child);
+  };
+  for (const field of fields) visit(field);
+  return flattened;
 }
 
 function isOfficialHintRule(
@@ -308,6 +375,10 @@ function displayFieldName(field: ProductSchemaField): string {
 
 function appendUnique<T extends string>(values: T[], value: T): void {
   if (value && !values.includes(value)) values.push(value);
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
 }
 
 function stableHash(value: string): string {

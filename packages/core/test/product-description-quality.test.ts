@@ -95,6 +95,7 @@ describe('product description quality suggestions', () => {
     expect(hints.map((hint) => hint.rootFieldName)).toEqual([
       '商品关键词',
       '商品关键词',
+      '商品属性',
       '产品视频',
       '关联商品证书',
       '不安全提示'
@@ -102,6 +103,11 @@ describe('product description quality suggestions', () => {
     expect(keywordFormat?.occurrenceCount).toBe(2);
     expect(keywordFormat?.fieldKeys).toHaveLength(2);
     expect(keywordFormat?.fieldIds).toEqual(['productKeywords_0', 'productKeywords_1']);
+
+    const categoryProperty = hints.find((hint) => hint.rootFieldId === 'icbuCatProp');
+    expect(categoryProperty?.occurrenceCount).toBe(2);
+    expect(categoryProperty?.fieldIds).toEqual(['p-material', 'p-style']);
+    expect(categoryProperty?.fieldKeys.every((key) => key.includes(':instance:'))).toBe(true);
   });
 
   it('renders instructional Schema XML as code instead of interpreting it as HTML', () => {

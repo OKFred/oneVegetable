@@ -97,6 +97,17 @@ describe('ProductSchemaField', () => {
     await wrapper.get('button[aria-label^="展开官方提示"]').trigger('click');
     expect(wrapper.get('a').attributes('href')).toBe('https://service.alibaba.com/help');
   });
+
+  it('maps template-only official rules onto visible complex instance fields', () => {
+    const field = parseField(`<field id="attributes" name="商品属性" type="complex">
+      <complex-value><field id="material" name="材质" type="input"><value>cotton</value></field></complex-value>
+      <fields><field id="material" name="材质" type="input"><rules><rule name="tipRule" value="请填写准确材质"/></rules></field></fields>
+    </field>`);
+    const { wrapper } = mountField(field);
+
+    expect(wrapper.text()).toContain('请填写准确材质');
+    expect(wrapper.find('[data-field-key="field:0:instance:0:field:0"]').exists()).toBe(true);
+  });
 });
 
 function parseField(xml: string): ProductSchemaField {
