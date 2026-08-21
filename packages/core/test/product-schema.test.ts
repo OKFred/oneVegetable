@@ -105,6 +105,35 @@ describe('product Schema XML engine', () => {
     expect(() => serializeProductSchemaXml(model)).toThrow(ProductSchemaSerializationError);
   });
 
+  it('counts populated complex instances and never validates fields templates as user data', () => {
+    const model = parseProductSchemaXml(REAL_LAYOUT_XML);
+    const issues = validateProductSchemaModel(model);
+
+    expect(issues.some((issue) => issue.fieldKey === 'field:1' && issue.severity === 'error')).toBe(false);
+    expect(issues.some((issue) => issue.fieldKey === 'field:2' && issue.severity === 'error')).toBe(false);
+    expect(issues.some((issue) => issue.fieldKey === 'field:5' && issue.severity === 'error')).toBe(false);
+
+    const templateOnly = parseProductSchemaXml(`<itemSchema>
+      <field id="tiers" name="Tiers" type="multiComplex">
+        <fields><field id="price" name="Price" type="input"><rules><rule name="requiredRule" value="true"/></rules><value/></field></fields>
+      </field>
+    </itemSchema>`);
+    expect(validateProductSchemaModel(templateOnly)).toEqual([]);
+  });
+
+  it('deduplicates identical issues while retaining genuinely empty fields', () => {
+    const model = parseProductSchemaXml(`<itemSchema>
+      <field id="color" name="Color" type="input">
+        <rules><rule name="requiredRule" value="true"/><rule name="requiredRule" value="true"/></rules>
+        <value/>
+      </field>
+    </itemSchema>`);
+    const issues = validateProductSchemaModel(model);
+
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toMatchObject({ fieldKey: 'field:0', rule: 'requiredRule' });
+  });
+
   it('parses all seven field types and keeps unknown rules as warnings', () => {
     const model = parseProductSchemaXml(XML);
     expect(model.fields.map((field) => field.type)).toEqual([

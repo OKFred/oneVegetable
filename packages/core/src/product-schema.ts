@@ -267,7 +267,13 @@ export function validateProductSchemaModel(model: ProductSchemaModel): ProductSc
   const issues: ProductSchemaFieldIssue[] = [];
   const fieldValues = collectFieldValues(model.fields);
   for (const field of model.fields) validateField(field, issues, fieldValues, []);
-  return issues;
+  const seen = new Set<string>();
+  return issues.filter((issue) => {
+    const key = `${issue.fieldKey}\u0000${issue.severity}\u0000${issue.rule}\u0000${issue.message}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function cloneProductSchemaInstance(field: ProductSchemaField): ProductSchemaInstance {
@@ -450,7 +456,7 @@ function validateField(
   const rules = [...inheritedRules, ...field.rules];
   const activeRules = rules.filter((rule) => ruleApplies(rule, fieldValues));
   const disabled = activeRules.some((rule) => rule.name === 'disableRule' && isTruthy(rule.value));
-  const values = productSchemaFieldTexts(field);
+  const values = effectiveFieldValues(field);
   const nonEmpty = values.filter((value) => value.trim() !== '');
 
   if (!disabled) {
@@ -483,16 +489,13 @@ function validateField(
       ) {
         pushError(issues, field, rule.name, `${field.name} 最多填写 ${numericRule} 项`);
       }
-      for (const value of nonEmpty) validateScalarRule(field, rule, value, issues);
+      if (field.type !== 'complex' && field.type !== 'multiComplex') {
+        for (const value of nonEmpty) validateScalarRule(field, rule, value, issues);
+      }
     }
   }
 
   const childInheritedRules = activeRules.filter((rule) => INHERITED_RULES.has(rule.name));
-  if (field.instances.length === 0) {
-    for (const child of field.children) {
-      validateField(child, issues, fieldValues, childInheritedRules);
-    }
-  }
   for (const instance of field.instances) {
     for (const child of instance.fields) validateField(child, issues, fieldValues, childInheritedRules);
   }
@@ -747,12 +750,23 @@ function collectFieldValues(fields: ProductSchemaField[]): ReadonlyMap<string, s
   const result = new Map<string, string[]>();
   const visit = (field: ProductSchemaField): void => {
     const existing = result.get(field.id) ?? [];
-    result.set(field.id, [...existing, ...productSchemaFieldTexts(field)]);
-    if (field.instances.length === 0) for (const child of field.children) visit(child);
+    result.set(field.id, [...existing, ...effectiveFieldValues(field)]);
     for (const instance of field.instances) for (const child of instance.fields) visit(child);
   };
   for (const field of fields) visit(field);
   return result;
+}
+
+function effectiveFieldValues(field: ProductSchemaField): string[] {
+  if (field.type !== 'complex' && field.type !== 'multiComplex') return productSchemaFieldTexts(field);
+  return field.instances.flatMap((instance) =>
+    instance.fields.some((child) => fieldHasContent(child)) ? [instance.key] : []
+  );
+}
+
+function fieldHasContent(field: ProductSchemaField): boolean {
+  if (productSchemaFieldTexts(field).some((value) => value.trim() !== '')) return true;
+  return field.instances.some((instance) => instance.fields.some((child) => fieldHasContent(child)));
 }
 
 function ruleApplies(rule: ProductSchemaRule, fieldValues: ReadonlyMap<string, string[]>): boolean {
