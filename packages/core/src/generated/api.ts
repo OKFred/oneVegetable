@@ -5956,6 +5956,18 @@ export interface components {
             name: string;
             children: components["schemas"]["LogisticsSpecialProductType"][];
         };
+        OperationAvailability: {
+            operation: string;
+            allowed: boolean;
+            reasonCode: string | null;
+        };
+        OperationAvailabilityRequest: {
+            requestId: components["schemas"]["RequestId"];
+            operations: string[];
+        };
+        OperationAvailabilityResult: {
+            items: components["schemas"]["OperationAvailability"][];
+        };
         OperationCallRequest: {
             requestId: components["schemas"]["RequestId"];
             operation: string;
@@ -6090,6 +6102,72 @@ export interface components {
             message: string;
             remediation: string;
             fieldIds: string[];
+        };
+        ProductDescriptionTemplate: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @enum {string} */
+            category: "company" | "logistics" | "packaging" | "service" | "custom";
+            /** @enum {string} */
+            language: "zh_CN" | "en_US";
+            html: string;
+            /** @enum {string} */
+            status: "active" | "archived";
+            createTimeUtc: number;
+            updateTimeUtc: number;
+            creatorId: string;
+            updaterId: string;
+            revision: number;
+            remark: string | null;
+        };
+        ProductDescriptionTemplateCreateRequest: {
+            requestId: components["schemas"]["RequestId"];
+            name: string;
+            /** @enum {string} */
+            category: "company" | "logistics" | "packaging" | "service" | "custom";
+            /** @enum {string} */
+            language: "zh_CN" | "en_US";
+            html: string;
+            remark?: string | null;
+        };
+        ProductDescriptionTemplateListRequest: {
+            requestId: components["schemas"]["RequestId"];
+            /** @default 1 */
+            page: number;
+            /** @default 20 */
+            pageSize: number;
+            /** @enum {string} */
+            language?: "zh_CN" | "en_US";
+            /** @enum {string} */
+            category?: "company" | "logistics" | "packaging" | "service" | "custom";
+            /** @enum {string} */
+            status?: "active" | "archived";
+        };
+        ProductDescriptionTemplatePage: {
+            items: components["schemas"]["ProductDescriptionTemplate"][];
+            page: number;
+            pageSize: number;
+            total: number;
+        };
+        ProductDescriptionTemplateStatusRequest: {
+            requestId: components["schemas"]["RequestId"];
+            /** Format: uuid */
+            id: string;
+            revision: number;
+        };
+        ProductDescriptionTemplateUpdateRequest: {
+            requestId: components["schemas"]["RequestId"];
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @enum {string} */
+            category: "company" | "logistics" | "packaging" | "service" | "custom";
+            /** @enum {string} */
+            language: "zh_CN" | "en_US";
+            html: string;
+            revision: number;
+            remark: string | null;
         };
         ProductDetail: components["schemas"]["Product"] & {
             categoryId: number;

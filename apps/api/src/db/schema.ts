@@ -102,5 +102,37 @@ export const requestEvents = sqliteTable(
   ]
 );
 
-export const schema = { schemaMigrations, appMetadata, users, sessions, auditEvents, requestEvents };
-export const CURRENT_SCHEMA_VERSION = 3;
+export const productDescriptionTemplates = sqliteTable(
+  'product_description_templates',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    category: text('category', {
+      enum: ['company', 'logistics', 'packaging', 'service', 'custom']
+    }).notNull(),
+    language: text('language', { enum: ['zh_CN', 'en_US'] }).notNull(),
+    html: text('html').notNull(),
+    status: text('status', { enum: ['active', 'archived'] }).notNull(),
+    createTimeUtc: integer('create_time_utc').notNull(),
+    updateTimeUtc: integer('update_time_utc').notNull(),
+    creatorId: text('creator_id').notNull(),
+    updaterId: text('updater_id').notNull(),
+    revision: integer('revision').notNull().default(1),
+    remark: text('remark')
+  },
+  (table) => [
+    index('product_description_templates_language_status_index').on(table.language, table.status),
+    index('product_description_templates_category_index').on(table.category)
+  ]
+);
+
+export const schema = {
+  schemaMigrations,
+  appMetadata,
+  users,
+  sessions,
+  auditEvents,
+  requestEvents,
+  productDescriptionTemplates
+};
+export const CURRENT_SCHEMA_VERSION = 4;

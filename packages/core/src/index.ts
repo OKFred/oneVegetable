@@ -17,6 +17,7 @@ export * from './privacy';
 export * from './photo-adapter';
 export * from './product-description';
 export * from './product-description-quality';
+export * from './product-description-template';
 export * from './product-adapter';
 export * from './product-editor';
 export * from './product-official-hints';
