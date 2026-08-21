@@ -31,7 +31,7 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
           "subject": "Commercial stainless steel food dehydrator",
           "groupName": "Food machinery",
           "status": "auditing",
-          "score": 84,
+          "score": 0,
           "updatedAt": "2026-08-09T11:03:00Z",
           "categoryId": 100009998
         }
@@ -158,8 +158,8 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
       "children": []
     },
     "getProductScore": {
-      "productId": "10000001",
-      "score": 92,
+      "productId": "mock-encrypted-product-1",
+      "score": 4.6,
       "issues": [
         "建议补充更多应用场景图片",
         "建议完善商品关键词"

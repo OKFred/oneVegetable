@@ -51,8 +51,18 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await expect(page.getByText(/分组“New group”已创建/)).toBeVisible();
 
   await page.getByRole('tab', { name: '质量与上下架' }).click();
-  await page.getByRole('button', { name: '重新评分' }).first().click();
-  await expect(page.getByText(/建议补充更多应用场景图片/)).toBeVisible();
+  const firstProductQuality = page.getByLabel('商品质量 Portable solar power station 1000W');
+  const zeroQualityProduct = page.getByLabel('商品质量 Commercial stainless steel food dehydrator');
+  await expect(firstProductQuality.getByText('质量分')).toBeVisible();
+  await expect(zeroQualityProduct.getByText('质量分')).toHaveCount(0);
+  await firstProductQuality.getByRole('button', { name: '查询产品分' }).click();
+  await expect(firstProductQuality.getByText('4.6/5')).toBeVisible();
+  await expect(firstProductQuality.getByText(/建议补充更多应用场景图片/)).toBeVisible();
+  await page.getByRole('button', { name: '列表' }).click();
+  const scoredProductRow = page.getByRole('row', { name: /Portable solar power station 1000W/ });
+  await expect(scoredProductRow).toContainText('4.6/5');
+  await expect(scoredProductRow).toContainText('92/100');
+  await page.getByRole('button', { name: '卡片' }).click();
   await page.getByLabel('选择 Portable solar power station 1000W').check();
   await page.getByRole('button', { name: '批量下架' }).click();
   await expect(page.getByText(/1 个商品已下架/)).toBeVisible();
@@ -243,6 +253,7 @@ test('web mock exposes the final platform contracts with protocol safeguards', a
   await expect(page.getByLabel('只读文档参数示例')).toBeVisible();
   await expect(page.getByRole('button', { name: '调用能力' })).toBeDisabled();
 
+  await page.getByLabel('关闭详情').click();
   await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.file.urlposting.upload');
   await page.getByRole('button', { name: 'alibaba.icbu.file.urlposting.upload' }).click();
   await expect(page.getByText(/不返回图库 fileId/)).toBeVisible();

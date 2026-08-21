@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, h, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import { Layers3, RefreshCw, Search } from '@lucide/vue';
+import { Layers3, LayoutGrid, List, RefreshCw, Search } from '@lucide/vue';
 
 import {
   analyzeProductDescriptionQuality,
@@ -18,6 +18,7 @@ import {
   type ProductEditorStepId,
   type ProductSchemaField,
   type ProductSchemaModel,
+  type ProductScore,
   withProductSchemaFieldText
 } from '@one-vegetable/core';
 
@@ -25,6 +26,7 @@ import DataTable from '../components/DataTable.vue';
 import PageHeader from '../components/PageHeader.vue';
 import ProductEditorWizard from '../components/ProductEditorWizard.vue';
 import QueryState from '../components/QueryState.vue';
+import ScoreProgress from '../components/ScoreProgress.vue';
 import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
@@ -44,6 +46,7 @@ import type { DataColumn } from '../lib/table';
 
 type Workspace = 'list' | 'publisher' | 'organization' | 'quality';
 type DraftSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+type QualityViewMode = 'cards' | 'list';
 
 const { gateway, mode } = useServices();
 const { language: preferredLanguage } = useAppPreferences();
@@ -67,6 +70,10 @@ const imageMetadata = ref<Record<string, ProductDescriptionImageMetadata>>({});
 const categorySearch = ref('');
 const editorMode = ref<ProductEditorMode>('guided');
 const editorStep = ref<ProductEditorStepId>('basics');
+const qualityViewMode = ref<QualityViewMode>('cards');
+const productScores = ref<Record<string, ProductScore>>({});
+const productScoreErrors = ref<Record<string, string>>({});
+const pendingProductScoreId = ref('');
 let scoreRefreshTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 let draftSaveTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 
@@ -162,7 +169,22 @@ const categoryMapping = useMutation({
 });
 
 const productScore = useMutation({
-  mutationFn: (productId: string) => gateway.request('getProductScore', { productId })
+  mutationFn: (productId: string) => gateway.request('getProductScore', { productId }),
+  onMutate: (productId) => {
+    pendingProductScoreId.value = productId;
+    productScoreErrors.value = Object.fromEntries(
+      Object.entries(productScoreErrors.value).filter(([key]) => key !== productId)
+    );
+  },
+  onSuccess: (result, productId) => {
+    productScores.value = { ...productScores.value, [productId]: result };
+  },
+  onError: (error, productId) => {
+    productScoreErrors.value = { ...productScoreErrors.value, [productId]: errorMessage(error) };
+  },
+  onSettled: (_result, _error, productId) => {
+    if (pendingProductScoreId.value === productId) pendingProductScoreId.value = '';
+  }
 });
 
 const qualityIssues = computed(() =>
@@ -245,6 +267,97 @@ const columns: DataColumn<Product>[] = [
           }
         },
         () => '编辑商品'
+      )
+  }
+];
+
+function scoreForProduct(product: Product): ProductScore | undefined {
+  return product.encryptedId ? productScores.value[product.encryptedId] : undefined;
+}
+
+function scoreErrorForProduct(product: Product): string | undefined {
+  return product.encryptedId ? productScoreErrors.value[product.encryptedId] : undefined;
+}
+
+function isProductScorePending(product: Product): boolean {
+  return Boolean(product.encryptedId && pendingProductScoreId.value === product.encryptedId);
+}
+
+function queryProductScore(product: Product): void {
+  if (product.encryptedId) productScore.mutate(product.encryptedId);
+}
+
+function formatProductScore(score: number): string {
+  return Number.isInteger(score) ? String(score) : score.toFixed(1);
+}
+
+const qualityColumns: DataColumn<Product>[] = [
+  {
+    id: 'select',
+    header: '选择',
+    cell: ({ row }) =>
+      h('input', {
+        type: 'checkbox',
+        'aria-label': `选择 ${row.original.subject}`,
+        checked: selectedProductIds.value.includes(row.original.id),
+        onChange: (event: Event) => {
+          toggleProduct(row.original.id, (event.target as HTMLInputElement).checked);
+        }
+      })
+  },
+  {
+    accessorKey: 'subject',
+    header: '商品',
+    cell: (context) => h('div', { class: 'font-medium' }, context.getValue<string>())
+  },
+  {
+    accessorKey: 'status',
+    header: '状态',
+    cell: (context) =>
+      h(Badge, { variant: statusVariant(context.getValue<Product['status']>()) }, () =>
+        context.getValue<string>()
+      )
+  },
+  {
+    id: 'productScore',
+    header: '产品分',
+    cell: ({ row }) => {
+      const score = scoreForProduct(row.original);
+      return h('div', { class: 'space-y-0.5' }, [
+        h(
+          'span',
+          { class: 'font-medium tabular-nums' },
+          score ? `${formatProductScore(score.score)}/5` : '未查询'
+        ),
+        score?.issues.length
+          ? h('p', { class: 'text-xs text-amber-700 dark:text-amber-400' }, `${score.issues.length} 项建议`)
+          : null
+      ]);
+    }
+  },
+  {
+    accessorKey: 'score',
+    header: '质量分',
+    cell: (context) => {
+      const score = context.getValue<number>();
+      return score > 0 ? `${score}/100` : '—';
+    }
+  },
+  {
+    id: 'scoreAction',
+    header: '操作',
+    cell: ({ row }) =>
+      h(
+        Button,
+        {
+          size: 'sm',
+          variant: 'outline',
+          disabled: !row.original.encryptedId || isProductScorePending(row.original),
+          onClick: () => {
+            queryProductScore(row.original);
+          }
+        },
+        () => (isProductScorePending(row.original) ? '查询中…' : '查询产品分')
       )
   }
 ];
@@ -746,7 +859,25 @@ onBeforeUnmount(() => {
           <h2 class="font-semibold">批量上下架</h2>
           <p class="mt-1 text-sm text-muted-foreground">已选 {{ selectedProductIds.length }} 个商品</p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="flex rounded-md border border-border p-0.5" aria-label="质量视图">
+            <Button
+              size="sm"
+              :variant="qualityViewMode === 'cards' ? 'secondary' : 'ghost'"
+              :aria-pressed="qualityViewMode === 'cards'"
+              @click="qualityViewMode = 'cards'"
+            >
+              <LayoutGrid class="size-4" />卡片
+            </Button>
+            <Button
+              size="sm"
+              :variant="qualityViewMode === 'list' ? 'secondary' : 'ghost'"
+              :aria-pressed="qualityViewMode === 'list'"
+              @click="qualityViewMode = 'list'"
+            >
+              <List class="size-4" />列表
+            </Button>
+          </div>
           <Button
             :disabled="!selectedProductIds.length || realMutationDisabled"
             @click="batchDisplay.mutate('online')"
@@ -765,8 +896,19 @@ onBeforeUnmount(() => {
       </p>
     </Card>
     <QueryState :loading="products.isPending.value" :error="products.error.value">
-      <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        <Card v-for="product in products.data.value?.items ?? []" :key="product.id" class="p-4">
+      <DataTable
+        v-if="qualityViewMode === 'list'"
+        :data="products.data.value?.items ?? []"
+        :columns="qualityColumns"
+        empty-text="暂无商品"
+      />
+      <div v-else class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <Card
+          v-for="product in products.data.value?.items ?? []"
+          :key="product.id"
+          class="p-4"
+          :aria-label="`商品质量 ${product.subject}`"
+        >
           <div class="flex items-start gap-3">
             <input
               type="checkbox"
@@ -780,26 +922,38 @@ onBeforeUnmount(() => {
             </div>
             <Badge :variant="statusVariant(product.status)">{{ product.status }}</Badge>
           </div>
-          <div class="mt-4 flex items-center justify-between">
-            <span class="text-sm">当前质量分 {{ product.score }}</span
-            ><Button
+          <div class="mt-4 space-y-3">
+            <ScoreProgress
+              v-if="scoreForProduct(product)"
+              label="产品分"
+              :value="scoreForProduct(product)?.score ?? 0"
+              :max="5"
+            />
+            <div v-else class="flex items-center justify-between gap-3 text-sm">
+              <span class="text-muted-foreground">产品分</span>
+              <span>未查询</span>
+            </div>
+            <ScoreProgress v-if="product.score > 0" label="质量分" :value="product.score" :max="100" />
+            <ul
+              v-if="scoreForProduct(product)?.issues.length"
+              class="list-disc space-y-1 pl-5 text-xs text-amber-700 dark:text-amber-400"
+            >
+              <li v-for="issue in scoreForProduct(product)?.issues ?? []" :key="issue">{{ issue }}</li>
+            </ul>
+            <p v-if="scoreErrorForProduct(product)" class="text-xs text-destructive">
+              产品分查询失败：{{ scoreErrorForProduct(product) }}
+            </p>
+            <Button
               size="sm"
               variant="outline"
-              :disabled="!product.encryptedId"
-              @click="product.encryptedId && productScore.mutate(product.encryptedId)"
-              >重新评分</Button
+              class="w-full"
+              :disabled="!product.encryptedId || isProductScorePending(product)"
+              @click="queryProductScore(product)"
+              >{{ isProductScorePending(product) ? '查询中…' : '查询产品分' }}</Button
             >
           </div>
         </Card>
       </div>
     </QueryState>
-    <Card v-if="productScore.data.value" class="mt-5 p-5">
-      <h2 class="font-semibold">
-        商品 {{ productScore.data.value.productId }}：{{ productScore.data.value.score }} 分
-      </h2>
-      <ul class="mt-3 list-disc space-y-1 pl-5 text-sm">
-        <li v-for="issue in productScore.data.value.issues" :key="issue">{{ issue }}</li>
-      </ul>
-    </Card>
   </template>
 </template>

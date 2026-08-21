@@ -356,7 +356,7 @@ document.components.schemas.ProductScore = {
   required: ['productId', 'score', 'issues'],
   properties: {
     productId: { type: 'string' },
-    score: { type: 'number' },
+    score: { type: 'number', minimum: 0, maximum: 5 },
     issues: { type: 'array', items: { type: 'string' } },
     qualityIssues: {
       type: 'array',
