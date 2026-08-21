@@ -7,9 +7,13 @@ import {
   analyzeProductDescriptionQuality,
   collectProductSchemaOfficialHints,
   createProductScoreOfficialHints,
+  inspectProductSchemaPatchSerialization,
   inspectProductSchemaSerialization,
   parseProductSchemaXml,
+  validateProductDisplayInput,
+  validateProductGroupCreateInput,
   validateProductSchemaRenderInput,
+  validateProductSchemaUpdateInput,
   validateSchemaPublishInput,
   type Product,
   type ProductCategory,
@@ -86,6 +90,7 @@ const migratedDraftKey = ref<string | null>(null);
 const draftSaveStatus = ref<DraftSaveStatus>('idle');
 const selectedProductIds = ref<string[]>([]);
 const groupName = ref('');
+const groupParentId = ref('-1');
 const imageMetadata = ref<Record<string, ProductDescriptionImageMetadata>>({});
 const categorySearch = ref('');
 const qualityViewMode = ref<QualityViewMode>('cards');
@@ -117,8 +122,13 @@ const groups = useQuery({
 const productMutationAvailability = useQuery({
   queryKey: ['product-mutation-availability'],
   queryFn: () =>
-    operationAvailability?.get(['saveProductDraft', 'publishProduct', 'updateProduct']) ??
-    Promise.resolve({ items: [] }),
+    operationAvailability?.get([
+      'saveProductDraft',
+      'publishProduct',
+      'updateProduct',
+      'updateProductDisplay',
+      'createProductGroup'
+    ]) ?? Promise.resolve({ items: [] }),
   enabled: computed(() => mode === 'bff' && operationAvailability !== undefined),
   staleTime: 10_000
 });
@@ -132,13 +142,18 @@ const filteredCategoryOptions = computed(() => {
       )
     : categoryOptions.value;
 });
-const realMutationDisabled = computed(() => mode !== 'mock');
 const availabilityByOperation = computed(
   () =>
     new Map(
       (productMutationAvailability.data.value?.items ?? []).map((item) => [item.operation, item] as const)
     )
 );
+function dedicatedMutationAllowed(operation: string): boolean {
+  if (mode === 'mock') return true;
+  return availabilityByOperation.value.get(operation)?.allowed === true;
+}
+const productGroupMutationDisabled = computed(() => !dedicatedMutationAllowed('createProductGroup'));
+const productDisplayMutationDisabled = computed(() => !dedicatedMutationAllowed('updateProductDisplay'));
 const platformDraftDisabled = computed(() => {
   if (mode === 'mock') return false;
   return availabilityByOperation.value.get('saveProductDraft')?.allowed !== true;
@@ -161,6 +176,27 @@ const productPublishDisabledReason = computed(() =>
 const publish = useMutation({
   mutationFn: async (draft: boolean) => {
     if (!schemaModel.value) throw new Error('请先获取商品 Schema');
+    if (editProductId.value) {
+      const patch = inspectProductSchemaPatchSerialization(schemaModel.value);
+      if (!patch.safe) throw new Error(`Schema XML 结构异常：${patch.structuralDiffs.join('；')}`);
+      if (patch.noOp || patch.changedFieldKeys.length === 0) throw new Error('没有需要提交的商品字段变更');
+      const changedFieldKeys = new Set(patch.changedFieldKeys);
+      const changedErrors = blockingSchemaIssues.value.filter((issue) =>
+        [...changedFieldKeys].some(
+          (fieldKey) => issue.fieldKey === fieldKey || issue.fieldKey.startsWith(`${fieldKey}:`)
+        )
+      );
+      if (changedErrors.length > 0) throw new Error('请先修正本次修改字段中的阻断问题');
+      const request = {
+        productId: editProductId.value,
+        categoryId: Number(categoryId.value),
+        language: language.value,
+        schemaPatchXml: patch.xml
+      };
+      const validation = validateProductSchemaUpdateInput(request);
+      if (!validation.valid || !validation.data) throw new Error(validation.errors.join('；'));
+      return gateway.request('updateProduct', validation.data);
+    }
     const inspection = inspectProductSchemaSerialization(schemaModel.value);
     if (!inspection.safe) throw new Error(`Schema XML 结构异常：${inspection.structuralDiffs.join('；')}`);
     const base = {
@@ -171,9 +207,6 @@ const publish = useMutation({
     const validation = validateSchemaPublishInput(base);
     if (!validation.valid) throw new Error(validation.errors.join('；'));
     if (!draft && blockingSchemaIssues.value.length > 0) throw new Error('请先修正表单中的阻断问题');
-    if (editProductId.value) {
-      return gateway.request('updateProduct', { ...base, productId: editProductId.value });
-    }
     return draft ? gateway.request('saveProductDraft', base) : gateway.request('publishProduct', base);
   },
   onSuccess: async (result, draft) => {
@@ -192,7 +225,14 @@ const publish = useMutation({
 });
 
 const createGroup = useMutation({
-  mutationFn: () => gateway.request('createProductGroup', { name: groupName.value }),
+  mutationFn: () => {
+    const validation = validateProductGroupCreateInput({
+      name: groupName.value.trim(),
+      parentId: Number(groupParentId.value)
+    });
+    if (!validation.valid || !validation.data) throw new Error(validation.errors.join('；'));
+    return gateway.request('createProductGroup', validation.data);
+  },
   onSuccess: async (result) => {
     feedback.value = `分组“${result.name}”已创建`;
     groupName.value = '';
@@ -235,15 +275,69 @@ const qualityIssues = computed(() =>
     imageMetadata: imageMetadata.value
   })
 );
+const selectedProducts = computed(() =>
+  (products.data.value?.items ?? []).filter((product) => selectedProductIds.value.includes(product.id))
+);
+const selectedEncryptedProductIds = computed(() =>
+  selectedProducts.value.flatMap((product) => (product.encryptedId ? [product.encryptedId] : []))
+);
+const selectedProductMissingEncryptedId = computed(
+  () => selectedProducts.value.length !== selectedEncryptedProductIds.value.length
+);
 const batchDisplay = useMutation({
-  mutationFn: (display: 'online' | 'offline') =>
-    gateway.request('updateProductDisplay', { productIds: selectedProductIds.value, display }),
-  onSuccess: async (_result, display) => {
-    feedback.value = `${selectedProductIds.value.length} 个商品已${display === 'online' ? '上架' : '下架'}`;
+  mutationFn: (display: 'online' | 'offline') => {
+    const validation = validateProductDisplayInput({
+      encryptedProductIds: selectedEncryptedProductIds.value,
+      display
+    });
+    if (!validation.valid || !validation.data) throw new Error(validation.errors.join('；'));
+    return gateway.request('updateProductDisplay', validation.data);
+  },
+  onSuccess: async (result, display) => {
+    feedback.value = `${result.encryptedProductIds.length} 个商品已${display === 'online' ? '上架' : '下架'}`;
     selectedProductIds.value = [];
     await queryClient.invalidateQueries({ queryKey: ['products'] });
   }
 });
+
+function submitProduct(draft: boolean): void {
+  if (editProductId.value && mode !== 'mock') {
+    const changedNames = (schemaModel.value?.fields ?? [])
+      .filter((field) => schemaInspection.value.changedFieldKeys.includes(field.key))
+      .map((field) => field.name || field.id);
+    if (changedNames.length === 0) {
+      feedback.value = '没有需要提交的商品字段变更';
+      return;
+    }
+    const confirmed = globalThis.confirm(
+      `将增量更新商品 ${editProductId.value} 的 ${changedNames.length} 个字段：\n${changedNames.join('、')}`
+    );
+    if (!confirmed) return;
+  }
+  publish.mutate(draft);
+}
+
+function submitProductGroup(): void {
+  if (
+    mode !== 'mock' &&
+    !globalThis.confirm(`将在所选父级下创建真实商品分组“${groupName.value.trim()}”，是否继续？`)
+  ) {
+    return;
+  }
+  createGroup.mutate();
+}
+
+function submitBatchDisplay(display: 'online' | 'offline'): void {
+  if (
+    mode !== 'mock' &&
+    !globalThis.confirm(
+      `将把 ${selectedProductIds.value.length} 个真实商品${display === 'online' ? '上架' : '下架'}，是否继续？`
+    )
+  ) {
+    return;
+  }
+  batchDisplay.mutate(display);
+}
 
 function statusVariant(status: Product['status']): 'success' | 'warning' | 'secondary' | 'destructive' {
   if (status === 'online') return 'success';
@@ -887,7 +981,7 @@ onBeforeUnmount(() => {
       @update-field="updateRootField"
       @image-status="updateImageStatus"
       @refresh-score="productScore.mutate(editScoreProductId)"
-      @submit="publish.mutate($event)"
+      @submit="submitProduct"
     />
     <p v-if="publish.error.value" class="mt-3 text-sm text-destructive">
       {{ errorMessage(publish.error.value) }}
@@ -916,12 +1010,31 @@ onBeforeUnmount(() => {
             {{ group.name }} <span class="text-muted-foreground">#{{ group.id }}</span>
           </li>
         </ul>
+        <label class="mb-3 block text-sm">
+          <span class="text-muted-foreground">上级分组</span>
+          <select
+            v-model="groupParentId"
+            class="mt-1 h-9 w-full cursor-pointer rounded-md border bg-background px-3 text-sm"
+          >
+            <option value="-1">一级分组</option>
+            <option v-for="group in groups.data.value ?? []" :key="group.id" :value="String(group.id)">
+              {{ group.name }}
+            </option>
+          </select>
+        </label>
         <div class="flex gap-2">
           <Input v-model="groupName" aria-label="新分组名称" placeholder="新分组名称" />
-          <Button :disabled="!groupName || realMutationDisabled" @click="createGroup.mutate()">创建</Button>
+          <Button
+            :disabled="!groupName.trim() || productGroupMutationDisabled || createGroup.isPending.value"
+            @click="submitProductGroup"
+            >创建</Button
+          >
         </div>
-        <p v-if="realMutationDisabled" class="mt-2 text-xs text-amber-700">
-          当前真实模式中的分组写操作尚未解锁。
+        <p v-if="productGroupMutationDisabled" class="mt-2 text-xs text-amber-700 dark:text-amber-400">
+          当前环境尚未开放真实商品分组新增。
+        </p>
+        <p v-if="createGroup.error.value" class="mt-2 text-xs text-destructive">
+          {{ errorMessage(createGroup.error.value) }}
         </p>
       </Card>
     </div>
@@ -954,20 +1067,36 @@ onBeforeUnmount(() => {
             </Button>
           </div>
           <Button
-            :disabled="!selectedProductIds.length || realMutationDisabled"
-            @click="batchDisplay.mutate('online')"
+            :disabled="
+              !selectedProductIds.length ||
+              productDisplayMutationDisabled ||
+              selectedProductMissingEncryptedId ||
+              batchDisplay.isPending.value
+            "
+            @click="submitBatchDisplay('online')"
             >批量上架</Button
           >
           <Button
             variant="outline"
-            :disabled="!selectedProductIds.length || realMutationDisabled"
-            @click="batchDisplay.mutate('offline')"
+            :disabled="
+              !selectedProductIds.length ||
+              productDisplayMutationDisabled ||
+              selectedProductMissingEncryptedId ||
+              batchDisplay.isPending.value
+            "
+            @click="submitBatchDisplay('offline')"
             >批量下架</Button
           >
         </div>
       </div>
-      <p v-if="realMutationDisabled" class="mt-3 text-xs text-amber-700">
-        真实上下架按钮在 smoke test 前保持禁用。
+      <p v-if="productDisplayMutationDisabled" class="mt-3 text-xs text-amber-700 dark:text-amber-400">
+        当前环境尚未开放真实商品上下架。
+      </p>
+      <p v-else-if="selectedProductMissingEncryptedId" class="mt-3 text-xs text-destructive">
+        选中的商品缺少平台混淆 ID，不能执行上下架。
+      </p>
+      <p v-if="batchDisplay.error.value" class="mt-3 text-xs text-destructive">
+        {{ errorMessage(batchDisplay.error.value) }}
       </p>
     </Card>
     <QueryState :loading="products.isPending.value" :error="products.error.value">

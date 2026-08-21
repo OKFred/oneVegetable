@@ -75,7 +75,16 @@ const currentSection = computed(
   () => sections.value.find((section) => section.id === props.step) ?? sections.value[0]
 );
 const currentStepIndex = computed(() => sections.value.findIndex((section) => section.id === props.step));
-const blockingIssues = computed(() => props.issues.filter((issue) => issue.severity === 'error'));
+const blockingIssues = computed(() => {
+  const issues = props.issues.filter((issue) => issue.severity === 'error');
+  if (!props.editing) return issues;
+  const changedFieldKeys = props.schemaInspection.changedFieldKeys;
+  return issues.filter((issue) =>
+    changedFieldKeys.some(
+      (fieldKey) => issue.fieldKey === fieldKey || issue.fieldKey.startsWith(`${fieldKey}:`)
+    )
+  );
+});
 const resolvedPublishDisabled = computed(() => props.publishDisabled || props.mutationDisabled);
 const resolvedDraftDisabled = computed(() => props.draftDisabled || props.mutationDisabled);
 const advisoryIssues = computed(() =>

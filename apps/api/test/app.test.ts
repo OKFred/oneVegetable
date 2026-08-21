@@ -152,6 +152,35 @@ describe('shared Hono API', () => {
     });
   });
 
+  it('rejects invalid dedicated product mutation payloads before the gateway', async () => {
+    const gateway = { request: vi.fn() };
+    const app = createApiApp({
+      runtime: 'node',
+      database: 'sqlite',
+      environment: 'test',
+      gatewayMode: 'real',
+      gateway: gateway
+    });
+    const requestId = createRequestId();
+    const response = await app.request('/api/v1/operations/call', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        requestId,
+        operation: 'updateProductDisplay',
+        payload: { productIds: ['plain-id'], display: 'hidden' }
+      })
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      requestId,
+      ok: false,
+      error: { code: 'INVALID_OPERATION_PAYLOAD' }
+    });
+    expect(gateway.request).not.toHaveBeenCalled();
+  });
+
   it('preserves normalized upstream errors and maps them to an HTTP status', async () => {
     const app = createApiApp({
       runtime: 'node',
