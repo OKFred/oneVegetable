@@ -1,7 +1,7 @@
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-import { expect, test, type Page, type Request, type Response } from '@playwright/test';
+import { expect, test, type BrowserContext, type Page, type Request, type Response } from '@playwright/test';
 
 interface OperationResult {
   operation: string;
@@ -17,6 +17,65 @@ interface RealWebSmokeReport {
   capturedAtUtc: string;
   gatewaySource: 'credential-bundle';
   results: OperationResult[];
+  targetProductSchema: TargetProductSchemaResult | null;
+}
+
+interface TargetProductSchemaResult {
+  productId: string;
+  categoryId: number;
+  language: 'zh_CN';
+  requestId: string;
+  sourceByteLength: number;
+  fieldCount: number;
+  blockingIssueCount: number;
+  blockingIssues: TargetProductSchemaIssue[];
+  noOp: boolean;
+  safe: boolean;
+}
+
+interface TargetProductSchemaIssue {
+  fieldKey: string;
+  fieldId: string | null;
+  fieldName: string | null;
+  fieldType: string | null;
+  rule: string;
+  ruleValue: string | null;
+  ruleAttributes: Record<string, string>;
+  message: string;
+  valueCount: number;
+  nonEmptyValueCount: number;
+}
+
+interface BrowserSchemaField {
+  key: string;
+  id: string;
+  name: string;
+  type: string;
+  values: { text: string }[];
+  rules: { name: string; value: string; attributes: Record<string, string> }[];
+  children: BrowserSchemaField[];
+  instances: { fields: BrowserSchemaField[] }[];
+}
+
+interface BrowserSchemaModel {
+  fields: BrowserSchemaField[];
+}
+
+interface BrowserSchemaInspection {
+  xml: string;
+  noOp: boolean;
+  safe: boolean;
+}
+
+interface BrowserSchemaModule {
+  parseProductSchemaXml(xml: string): BrowserSchemaModel;
+  inspectProductSchemaSerialization(model: BrowserSchemaModel): BrowserSchemaInspection;
+  validateProductSchemaModel(model: BrowserSchemaModel): {
+    fieldKey: string;
+    severity: string;
+    rule: string;
+    message: string;
+  }[];
 }
 
 interface ProductSchemaPrerequisites {
@@ -37,6 +96,7 @@ test('authenticated Web renders real read results without Mock fallback', async 
   };
   const captureTasks = new Set<Promise<void>>();
   const captureErrors: string[] = [];
+  let targetProductSchema: TargetProductSchemaResult | null = null;
   page.on('response', (response) => {
     if (!response.url().endsWith('/api/v1/operations/call')) return;
     const operation = readString(readRecord(response.request().postDataJSON()), 'operation');
@@ -72,6 +132,7 @@ test('authenticated Web renders real read results without Mock fallback', async 
     await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
     await expect(page.getByText('BFF 在线')).toBeVisible();
     await expectOperation(results, 'getDashboard', 'passed');
+    targetProductSchema = await inspectTargetProductSchema(page, context, results);
 
     await openDomain(page, '商品', '商品管理');
     await expectOperation(results, 'listProducts', 'passed');
@@ -131,6 +192,15 @@ test('authenticated Web renders real read results without Mock fallback', async 
       .toBeGreaterThan(0);
     await page.getByRole('button', { name: '高级模式' }).click();
     await expect(page.locator('details pre')).toContainText('<itemSchema');
+    await expect(
+      page
+        .locator('details summary')
+        .filter({ hasText: 'Schema XML 预览' })
+        .getByText('原样', { exact: true })
+    ).toBeVisible();
+    expect(
+      await page.evaluate(() => globalThis.localStorage.getItem('one-vegetable-product-editor-drafts-v2'))
+    ).toBeNull();
     await expect(page.getByRole('button', { name: /更新商品/ })).toBeDisabled();
     await expectOperation(results, 'getProductScore', 'passed');
 
@@ -189,11 +259,133 @@ test('authenticated Web renders real read results without Mock fallback', async 
     });
   } finally {
     await Promise.all(captureTasks);
-    await writeReport(results);
+    await writeReport(results, targetProductSchema);
   }
 
   expect(captureErrors).toEqual([]);
 });
+
+async function inspectTargetProductSchema(
+  page: Page,
+  context: BrowserContext,
+  results: OperationResult[]
+): Promise<TargetProductSchemaResult> {
+  const productId = '1601928079741';
+  const categoryId = 201712702;
+  const requestId = crypto.randomUUID();
+  const csrfCookie = (await context.cookies(`${apiOrigin}/api/v1/operations/call`)).find(
+    (cookie) => cookie.name === 'ov_csrf'
+  );
+  if (!csrfCookie) throw new Error('真实 Web 会话缺少 CSRF Cookie');
+  const response = await page.request.post(`${apiOrigin}/api/v1/operations/call`, {
+    headers: { Origin: webOrigin, 'X-CSRF-Token': csrfCookie.value },
+    data: {
+      requestId,
+      operation: 'renderProductSchema',
+      payload: { productId, categoryId, language: 'zh_CN' }
+    }
+  });
+  const body: unknown = await response.json();
+  results.push({
+    operation: 'renderProductSchema:target',
+    requestId,
+    statusCode: response.status(),
+    outcome: response.ok() ? 'passed' : 'provider-error',
+    errorCode: readErrorCode(body),
+    mockSentinelDetected: false
+  });
+  expect(response.ok()).toBe(true);
+  const xml = readString(readRecord(readRecord(body).data), 'xml');
+  if (!xml) throw new Error('目标商品 schema.render 未返回 XML');
+  const schemaResult = await inspectXmlWithBrowserDom(page, xml);
+  expect(schemaResult.safe).toBe(true);
+  expect(schemaResult.noOp).toBe(true);
+  return {
+    productId,
+    categoryId,
+    language: 'zh_CN',
+    requestId,
+    sourceByteLength: new TextEncoder().encode(xml).byteLength,
+    fieldCount: schemaResult.fieldCount,
+    blockingIssueCount: schemaResult.blockingIssueCount,
+    blockingIssues: schemaResult.blockingIssues,
+    noOp: schemaResult.noOp,
+    safe: schemaResult.safe
+  };
+}
+
+async function inspectXmlWithBrowserDom(
+  page: Page,
+  xml: string
+): Promise<{
+  fieldCount: number;
+  blockingIssueCount: number;
+  blockingIssues: TargetProductSchemaIssue[];
+  noOp: boolean;
+  safe: boolean;
+}> {
+  const modulePath = resolve('packages/core/src/product-schema.ts').replaceAll('\\', '/');
+  const moduleUrl = `${webOrigin}/@fs/${modulePath}`;
+  return page.evaluate(
+    async ({ sourceXml, sourceModuleUrl }) => {
+      const moduleValue: unknown = await import(sourceModuleUrl);
+      if (typeof moduleValue !== 'object' || moduleValue === null) {
+        throw new Error('无法加载商品 Schema 浏览器模块');
+      }
+      const candidate = moduleValue as Partial<BrowserSchemaModule>;
+      if (
+        typeof candidate.parseProductSchemaXml !== 'function' ||
+        typeof candidate.inspectProductSchemaSerialization !== 'function' ||
+        typeof candidate.validateProductSchemaModel !== 'function'
+      ) {
+        throw new Error('商品 Schema 浏览器模块接口不完整');
+      }
+      const schemaModule = candidate as BrowserSchemaModule;
+      const model = schemaModule.parseProductSchemaXml(sourceXml);
+      const inspection = schemaModule.inspectProductSchemaSerialization(model);
+      const findField = (fields: BrowserSchemaField[], key: string): BrowserSchemaField | null => {
+        for (const field of fields) {
+          if (field.key === key) return field;
+          const child = findField(field.children, key);
+          if (child) return child;
+          for (const instance of field.instances) {
+            const instanceField = findField(instance.fields, key);
+            if (instanceField) return instanceField;
+          }
+        }
+        return null;
+      };
+      const blockingIssues = schemaModule
+        .validateProductSchemaModel(model)
+        .filter((issue) => issue.severity === 'error')
+        .map(({ fieldKey, rule, message }) => {
+          const field = findField(model.fields, fieldKey);
+          const fieldRule = field?.rules.find((candidate) => candidate.name === rule);
+          return {
+            fieldKey,
+            fieldId: field?.id ?? null,
+            fieldName: field?.name ?? null,
+            fieldType: field?.type ?? null,
+            rule,
+            ruleValue: fieldRule?.value ?? null,
+            ruleAttributes: fieldRule?.attributes ?? {},
+            message,
+            valueCount: field?.values.length ?? 0,
+            nonEmptyValueCount: field?.values.filter((value) => value.text.trim() !== '').length ?? 0
+          };
+        });
+      if (inspection.xml !== sourceXml) throw new Error('无编辑序列化未原样返回源 XML');
+      return {
+        fieldCount: model.fields.length,
+        blockingIssueCount: blockingIssues.length,
+        blockingIssues,
+        noOp: inspection.noOp,
+        safe: inspection.safe
+      };
+    },
+    { sourceXml: xml, sourceModuleUrl: moduleUrl }
+  );
+}
 
 async function openDomain(page: Page, navigation: string, heading: string): Promise<void> {
   await page.getByRole('button', { name: navigation, exact: true }).click();
@@ -292,12 +484,16 @@ function readNumber(record: Record<string, unknown>, key: string): number | null
   return typeof record[key] === 'number' && Number.isFinite(record[key]) ? record[key] : null;
 }
 
-async function writeReport(results: readonly OperationResult[]): Promise<void> {
+async function writeReport(
+  results: readonly OperationResult[],
+  targetProductSchema: TargetProductSchemaResult | null
+): Promise<void> {
   const report: RealWebSmokeReport = {
     schemaVersion: 1,
     capturedAtUtc: new Date().toISOString(),
     gatewaySource: 'credential-bundle',
-    results: [...results]
+    results: [...results],
+    targetProductSchema
   };
   const temporaryPath = `${reportPath}.tmp`;
   await mkdir(resolve(reportPath, '..'), { recursive: true });
