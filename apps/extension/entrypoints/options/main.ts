@@ -1,5 +1,3 @@
-import { createApp } from 'vue';
-import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { browser } from 'wxt/browser';
 
 import {
@@ -30,7 +28,6 @@ import {
   type RuntimeResponse,
   type SettingsRepository
 } from '@one-vegetable/core/runtime';
-import { OneVegetableApp } from '@one-vegetable/ui';
 import '@one-vegetable/ui/styles.css';
 
 const settings: SettingsRepository = {
@@ -239,16 +236,25 @@ window.addEventListener('unhandledrejection', (event) => {
   console.error('[oneVegetable]', error.code, error.message);
 });
 
-const app = createApp(OneVegetableApp, {
-  gateway: new ExtensionGatewayClient(),
-  settings,
-  permissions,
-  localData,
-  onboarding,
-  vault,
-  mode: 'extension'
-});
-app.use(VueQueryPlugin, {
-  queryClient: new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000 } } })
-});
-app.mount('#app');
+async function mountOptionsApp(): Promise<void> {
+  const [{ createApp }, { QueryClient, VueQueryPlugin }, { OneVegetableApp }] = await Promise.all([
+    import('vue'),
+    import('@tanstack/vue-query'),
+    import('@one-vegetable/ui')
+  ]);
+  const app = createApp(OneVegetableApp, {
+    gateway: new ExtensionGatewayClient(),
+    settings,
+    permissions,
+    localData,
+    onboarding,
+    vault,
+    mode: 'extension'
+  });
+  app.use(VueQueryPlugin, {
+    queryClient: new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000 } } })
+  });
+  app.mount('#app');
+}
+
+void mountOptionsApp();
