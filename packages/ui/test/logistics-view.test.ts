@@ -34,6 +34,10 @@ function button(wrapper: ReturnType<typeof mountView>, text: string) {
   return result;
 }
 
+function bodyText(): string {
+  return document.body.textContent;
+}
+
 describe('LogisticsView', () => {
   it('completes the Web Mock quote and creates an order from the selected product', async () => {
     const wrapper = mountView();
@@ -68,9 +72,10 @@ describe('LogisticsView', () => {
     });
     await button(wrapper, 'ALS00201756002').trigger('click');
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('Base64 数据已返回');
-      expect(wrapper.text()).toContain('YT202608120001');
+      expect(bodyText()).toContain('Base64 数据已返回');
+      expect(bodyText()).toContain('YT202608120001');
     });
+    expect(document.body.querySelector('[role="dialog"]')).not.toBeNull();
 
     await button(wrapper, '地址与模板').trigger('click');
     await vi.waitFor(() => {

@@ -10,8 +10,8 @@ import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
 import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
-import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
+import Sheet from '../components/ui/Sheet.vue';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 
@@ -19,6 +19,7 @@ const { gateway, mode } = useServices();
 const search = ref('');
 const domain = ref('all');
 const selected = ref<ApiCapability | null>(null);
+const capabilitySheetOpen = ref(false);
 const definition = ref<CapabilityDefinition | null>(null);
 const definitionMethod = ref('');
 const definitionError = ref('');
@@ -82,6 +83,7 @@ const call = useMutation({
 async function selectCapability(capability: ApiCapability): Promise<void> {
   const sequence = ++selectionSequence;
   selected.value = capability;
+  capabilitySheetOpen.value = true;
   definition.value = null;
   definitionMethod.value = '';
   definitionError.value = '';
@@ -189,94 +191,110 @@ const columns: DataColumn<ApiCapability>[] = [
     </select>
   </div>
   <QueryState :loading="capabilities.isPending.value" :error="capabilities.error.value">
-    <DataTable :columns="columns" :data="filtered" empty-text="没有匹配的 API" min-width="1080px" />
+    <DataTable
+      :columns="columns"
+      :data="filtered"
+      empty-text="没有匹配的 API"
+      min-width="1080px"
+      :get-row-key="(capability) => capability.method"
+      :active-row-key="capabilitySheetOpen ? selected?.method : undefined"
+      :row-aria-label="(capability) => `查看 API ${capability.method}`"
+      @row-activate="selectCapability"
+    />
   </QueryState>
 
-  <Card v-if="selected" class="mt-5 p-5">
-    <div class="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <p class="font-mono text-sm font-semibold">{{ selected.method }}</p>
-        <p class="mt-1 text-xs text-muted-foreground">
-          检查日期 {{ selected.checkedAt }} · 文档更新 {{ selected.updatedAt ?? '未知' }}
-        </p>
+  <Sheet
+    :open="capabilitySheetOpen"
+    :title="selected?.method ?? 'API 能力详情'"
+    description="能力定义、调用参数与响应结果"
+    @update:open="capabilitySheetOpen = $event"
+  >
+    <div v-if="selected">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p class="font-mono text-sm font-semibold">{{ selected.method }}</p>
+          <p class="mt-1 text-xs text-muted-foreground">
+            检查日期 {{ selected.checkedAt }} · 文档更新 {{ selected.updatedAt ?? '未知' }}
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <Badge variant="outline">{{ selected.source }}</Badge>
+          <Badge variant="outline">{{ selected.verification }}</Badge>
+          <Badge :variant="selected.risk === 'mutation' ? 'warning' : 'success'">{{ selected.risk }}</Badge>
+        </div>
       </div>
-      <div class="flex flex-wrap gap-2">
-        <Badge variant="outline">{{ selected.source }}</Badge>
-        <Badge variant="outline">{{ selected.verification }}</Badge>
-        <Badge :variant="selected.risk === 'mutation' ? 'warning' : 'success'">{{ selected.risk }}</Badge>
+
+      <div
+        v-if="selected.lifecycle === 'deprecated'"
+        class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800"
+      >
+        该接口已 deprecated，仅在通用调试器保留类型化兼容；商品专用页面不会调用它。
       </div>
-    </div>
-
-    <div
-      v-if="selected.lifecycle === 'deprecated'"
-      class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800"
-    >
-      该接口已 deprecated，仅在通用调试器保留类型化兼容；商品专用页面不会调用它。
-    </div>
-    <div v-if="realCallBlocked" class="mt-4 flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-      <ShieldAlert class="mt-0.5 size-4 shrink-0" />该真实写能力尚未通过账号 smoke test，扩展中不可调用。
-    </div>
-    <div
-      v-if="selected.restricted"
-      class="mt-4 flex gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800"
-    >
-      <ShieldAlert class="mt-0.5 size-4 shrink-0" />{{
-        selected.restrictionReason ?? '该能力需要专用业务上下文。'
-      }}
-    </div>
-    <div v-if="platformNotice" class="mt-3 rounded-lg bg-slate-100 p-3 text-sm text-slate-700">
-      {{ platformNotice }}
-    </div>
-    <p v-if="definitionError" class="mt-3 text-sm text-destructive">{{ definitionError }}</p>
-    <p v-if="definition" class="mt-4 text-sm text-muted-foreground">{{ definition.description }}</p>
-    <div v-if="definition" class="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-      <code class="rounded bg-muted p-2">request: {{ definition.requestSchema }}</code>
-      <code class="rounded bg-muted p-2">response: {{ definition.responseSchema }}</code>
-    </div>
-    <pre
-      v-if="platformProtocolRestricted"
-      aria-label="只读文档参数示例"
-      class="mt-4 max-h-64 overflow-auto rounded-md border bg-slate-950 p-3 font-mono text-xs text-slate-100"
-      >{{ parameters }}</pre>
-    <textarea
-      v-else
-      v-model="parameters"
-      aria-label="调用参数 JSON"
-      class="mt-4 min-h-40 w-full rounded-md border bg-slate-950 p-3 font-mono text-xs text-slate-100 outline-none focus:ring-2 focus:ring-ring"
-      spellcheck="false"
-    />
-    <ul v-if="validationErrors.length" class="mt-2 text-sm text-destructive">
-      <li v-for="error in validationErrors" :key="error">{{ error }}</li>
-    </ul>
-
-    <div
-      v-if="call.data.value && !call.data.value.contractValid"
-      class="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800"
-    >
-      <p class="font-medium">响应契约漂移 · traceId {{ call.data.value.traceId }}</p>
-      <ul class="mt-1 list-disc pl-5">
-        <li v-for="issue in call.data.value.contractIssues" :key="`${issue.instancePath}:${issue.keyword}`">
-          {{ issue.instancePath }} {{ issue.message }}
-        </li>
+      <div v-if="realCallBlocked" class="mt-4 flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+        <ShieldAlert class="mt-0.5 size-4 shrink-0" />该真实写能力尚未通过账号 smoke test，扩展中不可调用。
+      </div>
+      <div
+        v-if="selected.restricted"
+        class="mt-4 flex gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800"
+      >
+        <ShieldAlert class="mt-0.5 size-4 shrink-0" />{{
+          selected.restrictionReason ?? '该能力需要专用业务上下文。'
+        }}
+      </div>
+      <div v-if="platformNotice" class="mt-3 rounded-lg bg-slate-100 p-3 text-sm text-slate-700">
+        {{ platformNotice }}
+      </div>
+      <p v-if="definitionError" class="mt-3 text-sm text-destructive">{{ definitionError }}</p>
+      <p v-if="definition" class="mt-4 text-sm text-muted-foreground">{{ definition.description }}</p>
+      <div v-if="definition" class="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+        <code class="rounded bg-muted p-2">request: {{ definition.requestSchema }}</code>
+        <code class="rounded bg-muted p-2">response: {{ definition.responseSchema }}</code>
+      </div>
+      <pre
+        v-if="platformProtocolRestricted"
+        aria-label="只读文档参数示例"
+        class="mt-4 max-h-64 overflow-auto rounded-md border bg-slate-950 p-3 font-mono text-xs text-slate-100"
+        >{{ parameters }}</pre>
+      <textarea
+        v-else
+        v-model="parameters"
+        aria-label="调用参数 JSON"
+        class="mt-4 min-h-40 w-full rounded-md border bg-slate-950 p-3 font-mono text-xs text-slate-100 outline-none focus:ring-2 focus:ring-ring"
+        spellcheck="false"
+      />
+      <ul v-if="validationErrors.length" class="mt-2 text-sm text-destructive">
+        <li v-for="error in validationErrors" :key="error">{{ error }}</li>
       </ul>
-      <p class="mt-2 text-xs">原始响应仍保留在下方，便于结合 traceId 排查。</p>
+
+      <div
+        v-if="call.data.value && !call.data.value.contractValid"
+        class="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800"
+      >
+        <p class="font-medium">响应契约漂移 · traceId {{ call.data.value.traceId }}</p>
+        <ul class="mt-1 list-disc pl-5">
+          <li v-for="issue in call.data.value.contractIssues" :key="`${issue.instancePath}:${issue.keyword}`">
+            {{ issue.instancePath }} {{ issue.message }}
+          </li>
+        </ul>
+        <p class="mt-2 text-xs">原始响应仍保留在下方，便于结合 traceId 排查。</p>
+      </div>
+      <pre v-if="call.data.value" class="mt-3 max-h-96 overflow-auto rounded-md bg-muted p-3 text-xs">{{
+        JSON.stringify(call.data.value, null, 2)
+      }}</pre>
+      <p v-if="call.error.value" class="mt-2 text-sm text-destructive">{{ call.error.value.message }}</p>
+      <Button
+        class="mt-3"
+        :disabled="
+          selected.restricted ||
+          !selected.enabled ||
+          realCallBlocked ||
+          call.isPending.value ||
+          !definition ||
+          definitionMethod !== selected.method
+        "
+        @click="call.mutate()"
+        ><Play class="size-4" />调用能力</Button
+      >
     </div>
-    <pre v-if="call.data.value" class="mt-3 max-h-96 overflow-auto rounded-md bg-muted p-3 text-xs">{{
-      JSON.stringify(call.data.value, null, 2)
-    }}</pre>
-    <p v-if="call.error.value" class="mt-2 text-sm text-destructive">{{ call.error.value.message }}</p>
-    <Button
-      class="mt-3"
-      :disabled="
-        selected.restricted ||
-        !selected.enabled ||
-        realCallBlocked ||
-        call.isPending.value ||
-        !definition ||
-        definitionMethod !== selected.method
-      "
-      @click="call.mutate()"
-      ><Play class="size-4" />调用能力</Button
-    >
-  </Card>
+  </Sheet>
 </template>

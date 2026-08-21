@@ -12,6 +12,7 @@ import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
+import Sheet from '../components/ui/Sheet.vue';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 
@@ -38,6 +39,7 @@ const keywords = ref('');
 const country = ref('');
 const unquotedOnly = ref(true);
 const selectedRfqId = ref('');
+const rfqSheetOpen = ref(false);
 const draftSaved = ref(false);
 const attachmentError = ref('');
 const attachmentName = ref('');
@@ -140,6 +142,7 @@ function quotationPayload(): RfqQuotationRequest {
 
 function selectRfq(rfq: RfqSummary): void {
   selectedRfqId.value = rfq.id;
+  rfqSheetOpen.value = true;
 }
 
 function draftKey(rfqId: string): string {
@@ -339,135 +342,157 @@ const columns: DataColumn<RfqSummary>[] = [
       :data="rfqs.data.value?.items ?? []"
       empty-text="没有匹配的 RFQ"
       min-width="840px"
+      :get-row-key="(rfq) => rfq.id"
+      :active-row-key="rfqSheetOpen ? selectedRfqId : undefined"
+      :row-aria-label="(rfq) => `查看 RFQ ${rfq.subject}`"
+      @row-activate="selectRfq"
     />
   </QueryState>
 
-  <div v-if="selectedRfqId" class="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(380px,0.8fr)]">
-    <Card class="p-5">
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">RFQ 详情</p>
-          <h2 class="mt-1 text-xl font-semibold">
-            {{ detail.data.value?.subject ?? selectedSummary?.subject }}
-          </h2>
-        </div>
+  <Sheet
+    :open="rfqSheetOpen"
+    :title="detail.data.value?.subject ?? selectedSummary?.subject ?? 'RFQ 详情'"
+    :description="selectedRfqId ? `RFQ ${selectedRfqId}` : undefined"
+    @update:open="rfqSheetOpen = $event"
+  >
+    <template #toolbar>
+      <div class="flex flex-wrap items-center justify-between gap-2">
         <Badge :variant="detail.data.value?.recommended ? 'success' : 'outline'">
-          {{ detail.data.value?.recommended ? '推荐' : '市场' }}
+          {{ detail.data.value?.recommended ? '推荐 RFQ' : 'RFQ 市场' }}
         </Badge>
+        <span class="text-xs text-muted-foreground">详情与报价草稿集中在当前侧栏</span>
       </div>
-      <QueryState :loading="detail.isPending.value" :error="detail.error.value">
-        <p class="mt-4 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-          {{ detail.data.value?.description || '文档响应未提供详细描述。' }}
-        </p>
-        <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+    </template>
+
+    <div v-if="selectedRfqId" class="space-y-5">
+      <Card class="p-5">
+        <div class="flex items-start justify-between gap-3">
           <div>
-            <dt class="text-xs text-muted-foreground">类目</dt>
-            <dd>{{ detail.data.value?.categoryName ?? '—' }}</dd>
+            <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">RFQ 详情</p>
+            <p class="mt-1 text-sm text-muted-foreground">采购要求、贸易条款和买家附件</p>
           </div>
+        </div>
+        <QueryState :loading="detail.isPending.value" :error="detail.error.value">
+          <p class="mt-4 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+            {{ detail.data.value?.description || '文档响应未提供详细描述。' }}
+          </p>
+          <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+            <div>
+              <dt class="text-xs text-muted-foreground">类目</dt>
+              <dd>{{ detail.data.value?.categoryName ?? '—' }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-muted-foreground">目的港</dt>
+              <dd>{{ detail.data.value?.destinationPort ?? '—' }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-muted-foreground">付款条款</dt>
+              <dd>{{ detail.data.value?.paymentTerms ?? '—' }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-muted-foreground">运输条款</dt>
+              <dd>{{ detail.data.value?.shippingTerms ?? '—' }}</dd>
+            </div>
+          </dl>
+          <div v-if="detail.data.value?.attachments.length" class="mt-5 rounded-lg bg-muted p-3">
+            <p class="text-xs font-medium text-muted-foreground">买家附件</p>
+            <a
+              v-for="attachment in detail.data.value.attachments"
+              :key="attachment.url"
+              :href="attachment.url"
+              class="mt-2 flex items-center gap-2 text-sm text-primary hover:underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <FileText class="size-4" />{{ attachment.name }}
+            </a>
+          </div>
+        </QueryState>
+      </Card>
+
+      <Card class="p-5">
+        <div class="flex items-start justify-between gap-3">
           <div>
-            <dt class="text-xs text-muted-foreground">目的港</dt>
-            <dd>{{ detail.data.value?.destinationPort ?? '—' }}</dd>
+            <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">报价草稿</p>
+            <p class="mt-1 text-sm text-muted-foreground">草稿仅保存在当前浏览器，不会提前出网。</p>
           </div>
-          <div>
-            <dt class="text-xs text-muted-foreground">付款条款</dt>
-            <dd>{{ detail.data.value?.paymentTerms ?? '—' }}</dd>
-          </div>
-          <div>
-            <dt class="text-xs text-muted-foreground">运输条款</dt>
-            <dd>{{ detail.data.value?.shippingTerms ?? '—' }}</dd>
-          </div>
-        </dl>
-        <div v-if="detail.data.value?.attachments.length" class="mt-5 rounded-lg bg-muted p-3">
-          <p class="text-xs font-medium text-muted-foreground">买家附件</p>
-          <a
-            v-for="attachment in detail.data.value.attachments"
-            :key="attachment.url"
-            :href="attachment.url"
-            class="mt-2 flex items-center gap-2 text-sm text-primary hover:underline"
-            target="_blank"
-            rel="noreferrer"
+          <Badge v-if="draftSaved" variant="success">已保存</Badge>
+        </div>
+
+        <div v-if="mutationBlocked" class="mt-4 flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+          <ShieldAlert class="mt-0.5 size-4 shrink-0" />可保存草稿；Web Mock 可体验附件上传与完整报价流程。
+        </div>
+
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          <label class="text-xs text-muted-foreground sm:col-span-2"
+            >给买家留言
+            <textarea
+              v-model="draft.message"
+              class="mt-1 min-h-24 w-full rounded-md border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+            />
+          </label>
+          <label class="text-xs text-muted-foreground"
+            >商品名称<Input v-model="draft.itemName" class="mt-1"
+          /></label>
+          <label class="text-xs text-muted-foreground"
+            >有效期<Input v-model="draft.expiresAt" class="mt-1" type="date"
+          /></label>
+          <label class="text-xs text-muted-foreground"
+            >单价<Input v-model="draft.unitPrice" class="mt-1" placeholder="599.00"
+          /></label>
+          <label class="text-xs text-muted-foreground"
+            >币种<Input v-model="draft.currency" class="mt-1"
+          /></label>
+          <label class="text-xs text-muted-foreground"
+            >数量<Input v-model="draft.quantity" class="mt-1"
+          /></label>
+          <label class="text-xs text-muted-foreground"
+            >数量单位<Input v-model="draft.quantityUnit" class="mt-1"
+          /></label>
+          <label class="text-xs text-muted-foreground"
+            >贸易条款<Input v-model="draft.shippingTerms" class="mt-1"
+          /></label>
+          <label class="text-xs text-muted-foreground"
+            >装运港<Input v-model="draft.port" class="mt-1"
+          /></label>
+          <label class="text-xs text-muted-foreground"
+            >付款条款<Input v-model="draft.paymentTerms" class="mt-1"
+          /></label>
+          <label class="text-xs text-muted-foreground"
+            >备注<Input v-model="draft.remark" class="mt-1"
+          /></label>
+        </div>
+
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+          <Button variant="outline" @click="saveDraft"><Save class="size-4" />保存草稿</Button>
+          <label
+            class="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border bg-background px-4 text-sm font-medium hover:bg-accent"
+            :class="mutationBlocked ? 'pointer-events-none opacity-50' : ''"
           >
-            <FileText class="size-4" />{{ attachment.name }}
-          </a>
+            <Paperclip class="size-4" />{{ attachmentName || '报价附件' }}
+            <input type="file" class="sr-only" :disabled="mutationBlocked" @change="selectAttachment" />
+          </label>
+          <Button
+            :disabled="mutationBlocked || !draftComplete || submitQuotation.isPending.value"
+            @click="submitQuotation.mutate()"
+          >
+            <Send class="size-4" />提交报价
+          </Button>
         </div>
-      </QueryState>
-    </Card>
-
-    <Card class="p-5">
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">报价草稿</p>
-          <p class="mt-1 text-sm text-muted-foreground">草稿仅保存在当前浏览器，不会提前出网。</p>
-        </div>
-        <Badge v-if="draftSaved" variant="success">已保存</Badge>
-      </div>
-
-      <div v-if="mutationBlocked" class="mt-4 flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-        <ShieldAlert class="mt-0.5 size-4 shrink-0" />可保存草稿；Web Mock 可体验附件上传与完整报价流程。
-      </div>
-
-      <div class="mt-4 grid gap-3 sm:grid-cols-2">
-        <label class="text-xs text-muted-foreground sm:col-span-2"
-          >给买家留言
-          <textarea
-            v-model="draft.message"
-            class="mt-1 min-h-24 w-full rounded-md border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-          />
-        </label>
-        <label class="text-xs text-muted-foreground"
-          >商品名称<Input v-model="draft.itemName" class="mt-1"
-        /></label>
-        <label class="text-xs text-muted-foreground"
-          >有效期<Input v-model="draft.expiresAt" class="mt-1" type="date"
-        /></label>
-        <label class="text-xs text-muted-foreground"
-          >单价<Input v-model="draft.unitPrice" class="mt-1" placeholder="599.00"
-        /></label>
-        <label class="text-xs text-muted-foreground"
-          >币种<Input v-model="draft.currency" class="mt-1"
-        /></label>
-        <label class="text-xs text-muted-foreground"
-          >数量<Input v-model="draft.quantity" class="mt-1"
-        /></label>
-        <label class="text-xs text-muted-foreground"
-          >数量单位<Input v-model="draft.quantityUnit" class="mt-1"
-        /></label>
-        <label class="text-xs text-muted-foreground"
-          >贸易条款<Input v-model="draft.shippingTerms" class="mt-1"
-        /></label>
-        <label class="text-xs text-muted-foreground">装运港<Input v-model="draft.port" class="mt-1" /></label>
-        <label class="text-xs text-muted-foreground"
-          >付款条款<Input v-model="draft.paymentTerms" class="mt-1"
-        /></label>
-        <label class="text-xs text-muted-foreground">备注<Input v-model="draft.remark" class="mt-1" /></label>
-      </div>
-
-      <div class="mt-4 flex flex-wrap items-center gap-2">
-        <Button variant="outline" @click="saveDraft"><Save class="size-4" />保存草稿</Button>
-        <label
-          class="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border bg-background px-4 text-sm font-medium hover:bg-accent"
-          :class="mutationBlocked ? 'pointer-events-none opacity-50' : ''"
+        <p v-if="attachmentError" class="mt-2 text-sm text-destructive">{{ attachmentError }}</p>
+        <p v-if="uploadAttachment.error.value" class="mt-2 text-sm text-destructive">
+          {{ uploadAttachment.error.value.message }}
+        </p>
+        <p v-if="submitQuotation.error.value" class="mt-2 text-sm text-destructive">
+          {{ submitQuotation.error.value.message }}
+        </p>
+        <p
+          v-if="submitQuotation.data.value"
+          class="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800"
         >
-          <Paperclip class="size-4" />{{ attachmentName || '报价附件' }}
-          <input type="file" class="sr-only" :disabled="mutationBlocked" @change="selectAttachment" />
-        </label>
-        <Button
-          :disabled="mutationBlocked || !draftComplete || submitQuotation.isPending.value"
-          @click="submitQuotation.mutate()"
-        >
-          <Send class="size-4" />提交报价
-        </Button>
-      </div>
-      <p v-if="attachmentError" class="mt-2 text-sm text-destructive">{{ attachmentError }}</p>
-      <p v-if="uploadAttachment.error.value" class="mt-2 text-sm text-destructive">
-        {{ uploadAttachment.error.value.message }}
-      </p>
-      <p v-if="submitQuotation.error.value" class="mt-2 text-sm text-destructive">
-        {{ submitQuotation.error.value.message }}
-      </p>
-      <p v-if="submitQuotation.data.value" class="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">
-        Mock 报价提交成功，报价 ID：{{ submitQuotation.data.value.quotationId }}
-      </p>
-    </Card>
-  </div>
+          Mock 报价提交成功，报价 ID：{{ submitQuotation.data.value.quotationId }}
+        </p>
+      </Card>
+    </div>
+  </Sheet>
 </template>

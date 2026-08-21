@@ -34,10 +34,16 @@ function methodButton(wrapper: ReturnType<typeof mountView>, method: string) {
   return result;
 }
 
-function callButton(wrapper: ReturnType<typeof mountView>) {
-  const result = wrapper.findAll('button').find((candidate) => candidate.text().includes('调用能力'));
+function callButton() {
+  const result = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find((candidate) =>
+    candidate.textContent.includes('调用能力')
+  );
   if (!result) throw new Error('Missing call button');
   return result;
+}
+
+function bodyText(): string {
+  return document.body.textContent;
 }
 
 describe('CapabilitiesView platform safeguards', () => {
@@ -49,12 +55,13 @@ describe('CapabilitiesView platform safeguards', () => {
     });
     await methodButton(wrapper, 'alibaba.icbu.risk.send').trigger('click');
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('WUA、UMID、IMEI、IMSI、MAC');
+      expect(bodyText()).toContain('WUA、UMID、IMEI、IMSI、MAC');
     });
 
-    expect(wrapper.find('pre[aria-label="只读文档参数示例"]').exists()).toBe(true);
-    expect(wrapper.find('textarea[aria-label="调用参数 JSON"]').exists()).toBe(false);
-    expect(callButton(wrapper).attributes('disabled')).toBeDefined();
+    expect(document.body.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(document.body.querySelector('pre[aria-label="只读文档参数示例"]')).not.toBeNull();
+    expect(document.body.querySelector('textarea[aria-label="调用参数 JSON"]')).toBeNull();
+    expect(callButton().disabled).toBe(true);
     wrapper.unmount();
   });
 
@@ -66,11 +73,11 @@ describe('CapabilitiesView platform safeguards', () => {
     });
     await methodButton(wrapper, 'alibaba.icbu.file.urlposting.upload').trigger('click');
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('不返回图库 fileId');
+      expect(bodyText()).toContain('不返回图库 fileId');
     });
 
-    expect(wrapper.find('textarea[aria-label="调用参数 JSON"]').exists()).toBe(true);
-    expect(wrapper.text()).toContain('扩展中不可调用');
+    expect(document.body.querySelector('textarea[aria-label="调用参数 JSON"]')).not.toBeNull();
+    expect(bodyText()).toContain('扩展中不可调用');
     wrapper.unmount();
   });
 });

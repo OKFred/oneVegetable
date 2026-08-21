@@ -12,6 +12,7 @@ import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
+import Sheet from '../components/ui/Sheet.vue';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 
@@ -38,6 +39,7 @@ const cargoMaterial = ref('塑料和电子元件');
 const selectedProductType = ref('battery');
 const orderNumberFilter = ref('');
 const selectedOrderNumber = ref('');
+const logisticsOrderSheetOpen = ref(false);
 const addressLevel = ref<'province' | 'city' | 'division' | 'street'>('province');
 const addressParentId = ref('330000');
 const addressSearchText = ref('仓前');
@@ -78,6 +80,9 @@ const orderDetail = useQuery({
   enabled: computed(() => mode === 'mock' && selectedOrderNumber.value !== ''),
   queryFn: () => gateway.request('getLogisticsOrder', { orderNumber: selectedOrderNumber.value })
 });
+const selectedLogisticsOrder = computed(() =>
+  (orders.data.value?.items ?? []).find((order) => order.orderNumber === selectedOrderNumber.value)
+);
 const addressNodes = useQuery({
   queryKey: computed(() => [
     'logistics-address-nodes',
@@ -195,6 +200,11 @@ function formatDate(value: string | null): string {
   return value ? new Date(value).toLocaleString('zh-CN') : '文档未返回';
 }
 
+function selectLogisticsOrder(order: LogisticsOrderSummary): void {
+  selectedOrderNumber.value = order.orderNumber;
+  logisticsOrderSheetOpen.value = true;
+}
+
 const columns: DataColumn<LogisticsOrderSummary>[] = [
   {
     accessorKey: 'orderNumber',
@@ -205,7 +215,7 @@ const columns: DataColumn<LogisticsOrderSummary>[] = [
         {
           class: 'font-mono text-xs text-primary hover:underline',
           onClick: () => {
-            selectedOrderNumber.value = row.original.orderNumber;
+            selectLogisticsOrder(row.original);
           }
         },
         row.original.orderNumber
@@ -378,29 +388,51 @@ const workspaces: { id: Workspace; label: string }[] = [
         :data="orders.data.value?.items ?? []"
         empty-text="暂无物流订单"
         min-width="720px"
+        :get-row-key="(order) => order.orderNumber"
+        :active-row-key="logisticsOrderSheetOpen ? selectedOrderNumber : undefined"
+        :row-aria-label="(order) => `查看物流订单 ${order.orderNumber}`"
+        @row-activate="selectLogisticsOrder"
       />
     </QueryState>
-    <Card v-if="orderDetail.data.value" class="mt-4 p-5">
-      <div class="flex items-center justify-between gap-2">
-        <div>
-          <p class="font-semibold">订单详情 · {{ orderDetail.data.value.order.orderNumber }}</p>
-          <p class="mt-1 text-xs text-muted-foreground">
-            {{ orderDetail.data.value.warehouseName ?? '仓库未返回' }} ·
-            {{ orderDetail.data.value.trackingNumber ?? '追踪号未返回' }}
-          </p>
+    <Sheet
+      :open="logisticsOrderSheetOpen"
+      :title="selectedOrderNumber ? `物流订单 ${selectedOrderNumber}` : '物流订单详情'"
+      description="仓库、追踪信息与面单数据"
+      @update:open="logisticsOrderSheetOpen = $event"
+    >
+      <template #toolbar>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <Badge v-if="selectedLogisticsOrder" variant="outline">{{ selectedLogisticsOrder.status }}</Badge>
+          <span v-if="selectedLogisticsOrder" class="text-sm font-medium">
+            {{ selectedLogisticsOrder.currency }} {{ selectedLogisticsOrder.freightAmount }}
+          </span>
         </div>
-        <Badge variant="outline">{{ orderDetail.data.value.order.status }}</Badge>
-      </div>
-      <div class="mt-4 rounded-lg border p-4 text-sm">
-        <p v-if="orderDetail.data.value.labelUrl">
-          面单：<a class="text-primary underline" :href="orderDetail.data.value.labelUrl" target="_blank"
-            >HTTPS 地址</a
-          >
-        </p>
-        <p v-else-if="orderDetail.data.value.labelBase64">面单：Base64 数据已返回（不写入持久化存储）</p>
-        <p v-else>面单：文档响应未返回</p>
-      </div>
-    </Card>
+      </template>
+      <QueryState :loading="orderDetail.isPending.value" :error="orderDetail.error.value">
+        <Card v-if="orderDetail.data.value" class="p-5">
+          <div>
+            <p class="font-semibold">订单信息</p>
+            <p class="mt-1 text-xs text-muted-foreground">
+              {{ orderDetail.data.value.warehouseName ?? '仓库未返回' }} ·
+              {{ orderDetail.data.value.trackingNumber ?? '追踪号未返回' }}
+            </p>
+          </div>
+          <div class="mt-4 rounded-lg border p-4 text-sm">
+            <p v-if="orderDetail.data.value.labelUrl">
+              面单：<a
+                class="text-primary underline"
+                :href="orderDetail.data.value.labelUrl"
+                target="_blank"
+                rel="noreferrer"
+                >HTTPS 地址</a
+              >
+            </p>
+            <p v-else-if="orderDetail.data.value.labelBase64">面单：Base64 数据已返回（不写入持久化存储）</p>
+            <p v-else>面单：文档响应未返回</p>
+          </div>
+        </Card>
+      </QueryState>
+    </Sheet>
   </template>
 
   <template v-else-if="workspace === 'addresses'">
