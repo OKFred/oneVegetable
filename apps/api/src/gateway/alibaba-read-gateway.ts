@@ -1,5 +1,6 @@
 import {
   AlibabaClient,
+  ALIBABA_SYNC_GATEWAY,
   DashboardAdapter,
   downloadPhotoForUpload,
   findCapability,
@@ -54,7 +55,7 @@ export class AlibabaReadGatewayClient implements GatewayClient {
       ...(options.wait ? { wait: options.wait } : {}),
       policies: {
         alibaba: {
-          allowedOrigins: [new URL(credentials.endpoint).origin],
+          allowedOrigins: [new URL(credentials.endpoint).origin, new URL(ALIBABA_SYNC_GATEWAY).origin],
           timeoutMilliseconds: 30_000,
           maxRequestBytes: 30 * 1024 * 1024,
           maxResponseBytes: 30 * 1024 * 1024,
@@ -81,15 +82,20 @@ export class AlibabaReadGatewayClient implements GatewayClient {
     }
     const client = this.createClient(context);
     if (operation !== 'callCapability') {
-      return this.requestDedicated(operation, request, client);
+      return this.requestDedicated(operation, request, client, this.createClient(context, 'sync'));
     }
     return this.callCapability(request as CapabilityCallRequest, client, context) as Promise<ResponseOf<K>>;
   }
 
-  private createClient(context?: GatewayRequestContext): AlibabaClient {
-    return new AlibabaClient(this.#credentials, this.#network, {
+  private createClient(context?: GatewayRequestContext, protocol: 'top' | 'sync' = 'top'): AlibabaClient {
+    const credentials =
+      protocol === 'sync'
+        ? { ...this.#credentials, endpoint: ALIBABA_SYNC_GATEWAY, signMethod: 'hmac-sha256' as const }
+        : this.#credentials;
+    return new AlibabaClient(credentials, this.#network, {
       maxAttempts: this.#maxAttempts,
       shouldRetry: (_method, error) => error.retryable,
+      protocol,
       ...(this.#wait ? { wait: this.#wait } : {}),
       ...(context ? { requestId: context.requestId } : {})
     });
@@ -134,9 +140,10 @@ export class AlibabaReadGatewayClient implements GatewayClient {
   private async requestDedicated<K extends OperationId>(
     operation: K,
     request: RequestOf<K>,
-    client: AlibabaClient
+    client: AlibabaClient,
+    mutationClient: AlibabaClient
   ): Promise<ResponseOf<K>> {
-    const products = new ProductAdapter(client);
+    const products = new ProductAdapter(client, mutationClient);
     const dashboard = new DashboardAdapter(client);
     const rfqs = new RfqAdapter(client);
     const trades = new TradeAdapter(client);
@@ -161,6 +168,8 @@ export class AlibabaReadGatewayClient implements GatewayClient {
         return await products.getSchema(request as RequestOf<'getProductSchema'>);
       case 'renderProductSchema':
         return await products.renderSchema(request as RequestOf<'renderProductSchema'>);
+      case 'saveProductDraft':
+        return await products.saveDraft(request as RequestOf<'saveProductDraft'>);
       case 'listProductCategories':
         return await products.listCategories(optionalNumber(record, 'parentId'));
       case 'mapProductCategory':

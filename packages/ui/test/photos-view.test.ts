@@ -5,7 +5,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { describe, expect, it, vi } from 'vitest';
 
-import { MockGatewayClient } from '@one-vegetable/core';
+import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import { provideServices } from '../src/lib/services';
 import PhotosView from '../src/views/PhotosView.vue';

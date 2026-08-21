@@ -5,7 +5,9 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { describe, expect, it } from 'vitest';
 
-import { MockGatewayClient } from '@one-vegetable/core';
+import { PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA } from '@one-vegetable/core';
+import { MockGatewayClient } from '@one-vegetable/core/mock';
+import { MemoryProductDescriptionTemplateClient } from '@one-vegetable/core/templates';
 
 import ProductDescriptionEditor from '../src/components/ProductDescriptionEditor.vue';
 import { provideServices } from '../src/lib/services';
@@ -17,12 +19,17 @@ function mountEditor(html: string, smartDetail = false) {
       provideServices({
         gateway: new MockGatewayClient(0),
         settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
+        productDescriptionTemplates: new MemoryProductDescriptionTemplateClient(
+          PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA.templates,
+          { writable: false }
+        ),
         mode: 'mock'
       });
       return () =>
         h(ProductDescriptionEditor, {
           modelValue: model.value,
           smartDetail,
+          language: 'en_US',
           'onUpdate:modelValue': (value: string) => {
             model.value = value;
           }
@@ -103,7 +110,51 @@ describe('ProductDescriptionEditor', () => {
     expect(model.value).toContain('https://sc04.alicdn.com/');
     wrapper.unmount();
   });
+
+  it('appends templates and previews replacements before changing the description', async () => {
+    const { model, wrapper } = mountEditor('<p>Original details</p>');
+    await flushPromises();
+    await clickButton('详情模板');
+    await flushPromises();
+    expect(document.body.textContent).toContain('Company profile');
+
+    await clickButton('追加末尾', templateCard('Company profile'));
+    await nextTick();
+    expect(model.value).toContain('Original details');
+    expect(model.value).toContain('About Us');
+
+    await clickButton('详情模板');
+    await flushPromises();
+    await clickButton('覆盖全文', templateCard('Shipping and delivery'));
+    await nextTick();
+    expect(document.body.textContent).toContain('当前详情');
+    expect(document.body.textContent).toContain('覆盖后：Shipping and delivery');
+    expect(model.value).toContain('Original details');
+
+    await clickButton('确认覆盖全文');
+    await nextTick();
+    expect(model.value).not.toContain('Original details');
+    expect(model.value).toContain('Shipping and Delivery');
+    wrapper.unmount();
+  });
 });
+
+function templateCard(name: string): HTMLElement {
+  const card = [...document.body.querySelectorAll<HTMLElement>('article')].find((element) =>
+    element.textContent.includes(name)
+  );
+  if (!card) throw new Error(`Missing template card: ${name}`);
+  return card;
+}
+
+async function clickButton(label: string, container: ParentNode = document.body): Promise<void> {
+  const button = [...container.querySelectorAll<HTMLButtonElement>('button')].find((candidate) =>
+    candidate.textContent.includes(label)
+  );
+  if (!button) throw new Error(`Missing button: ${label}`);
+  button.click();
+  await nextTick();
+}
 
 function settings() {
   return {

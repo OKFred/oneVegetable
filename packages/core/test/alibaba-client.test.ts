@@ -46,6 +46,25 @@ describe('AlibabaClient retry policy', () => {
     });
     expect(send).toHaveBeenCalledOnce();
   });
+
+  it('uses the sync gateway protocol when requested', async () => {
+    const send = vi.fn().mockResolvedValue(Response.json({ result: true }));
+    const client = new AlibabaClient(credentials, network(send), {
+      protocol: 'sync',
+      requestId: '11111111-1111-4111-8111-111111111111'
+    });
+
+    await client.call('alibaba.icbu.product.schema.add.draft', {
+      param_product_top_publish_request: { cat_id: '123', version: 'trade.1.1' }
+    });
+
+    const init = send.mock.calls[0]?.[1] as RequestInit | undefined;
+    expect(init?.body).toBeInstanceOf(URLSearchParams);
+    const params = init?.body as URLSearchParams;
+    expect(params.get('sign_method')).toBe('sha256');
+    expect(params.get('timestamp')).toMatch(/^\d{13}$/u);
+    expect(params.get('sign')).toMatch(/^[0-9A-F]{64}$/u);
+  });
 });
 
 describe('Alibaba multipart upload', () => {

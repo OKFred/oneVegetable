@@ -8,23 +8,15 @@ import {
   collectProductSchemaOfficialHints,
   createProductScoreOfficialHints,
   inspectProductSchemaSerialization,
-  markProductSchemaFieldTouched,
   parseProductSchemaXml,
-  productSchemaFieldText,
-  validateProductSchemaModel,
   validateProductSchemaRenderInput,
   validateSchemaPublishInput,
   type Product,
-  type AlibabaLanguage,
   type ProductCategory,
   type ProductDescriptionImageMetadata,
-  type ProductEditorStepId,
-  type ProductSchemaField,
   type ProductSchemaOfficialHint,
   type ProductSchemaModel,
-  type ProductSchemaSerializationInspection,
-  type ProductScore,
-  withProductSchemaFieldText
+  type ProductScore
 } from '@one-vegetable/core';
 
 import DataTable from '../components/DataTable.vue';
@@ -40,13 +32,14 @@ import Input from '../components/ui/Input.vue';
 import {
   findProductEditorDraft,
   migrateLegacyProductEditorDraft,
+  migrateProductEditorDraftsV2,
   productEditorDraftKey,
   removeProductEditorDraft,
   saveProductEditorDraft,
   shouldPersistProductEditorDraft,
-  type ProductEditorDraftV2,
-  type ProductEditorMode
+  type ProductEditorDraftV3
 } from '../lib/product-editor-drafts';
+import { useProductEditorSession } from '../composables/use-product-editor-session';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import type { DataColumn } from '../lib/table';
@@ -55,30 +48,46 @@ type Workspace = 'list' | 'publisher' | 'organization' | 'quality';
 type DraftSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type QualityViewMode = 'cards' | 'list';
 
-const { gateway, mode } = useServices();
+const { gateway, mode, operationAvailability } = useServices();
 const { language: preferredLanguage } = useAppPreferences();
 const queryClient = useQueryClient();
 const workspace = ref<Workspace>('list');
 const subject = ref('');
 const productPage = ref(1);
 const productPageSize = ref(20);
-const categoryId = ref('');
-const language = ref<AlibabaLanguage>(preferredLanguage.value);
-const market = ref<'wholesale' | 'sourcing'>('wholesale');
-const editProductId = ref('');
+const {
+  model: schemaModel,
+  categoryId,
+  language,
+  market,
+  productId: editProductId,
+  platformDraftId,
+  mode: editorMode,
+  step: editorStep,
+  issues: schemaIssues,
+  blockingIssues: blockingSchemaIssues,
+  inspection: schemaInspection,
+  preview: schemaPreview,
+  descriptionType: productDescriptionType,
+  descriptionHtml: productDescriptionHtml,
+  updateRootField,
+  reset: resetEditorSession
+} = useProductEditorSession({
+  language: preferredLanguage.value,
+  onFieldChange: () => {
+    reconcileDraftAfterFieldChange();
+  }
+});
 const editScoreProductId = ref('');
-const schemaModel = ref<ProductSchemaModel | null>(null);
 const schemaError = ref('');
 const feedback = ref('');
-const draftCandidate = ref<ProductEditorDraftV2 | null>(null);
+const draftCandidate = ref<ProductEditorDraftV3 | null>(null);
 const migratedDraftKey = ref<string | null>(null);
 const draftSaveStatus = ref<DraftSaveStatus>('idle');
 const selectedProductIds = ref<string[]>([]);
 const groupName = ref('');
 const imageMetadata = ref<Record<string, ProductDescriptionImageMetadata>>({});
 const categorySearch = ref('');
-const editorMode = ref<ProductEditorMode>('guided');
-const editorStep = ref<ProductEditorStepId>('basics');
 const qualityViewMode = ref<QualityViewMode>('cards');
 const productScores = ref<Record<string, ProductScore>>({});
 const productScoreErrors = ref<Record<string, string>>({});
@@ -105,6 +114,14 @@ const groups = useQuery({
   queryKey: ['product-groups'],
   queryFn: () => gateway.request('listProductGroups', undefined)
 });
+const productMutationAvailability = useQuery({
+  queryKey: ['product-mutation-availability'],
+  queryFn: () =>
+    operationAvailability?.get(['saveProductDraft', 'publishProduct', 'updateProduct']) ??
+    Promise.resolve({ items: [] }),
+  enabled: computed(() => mode === 'bff' && operationAvailability !== undefined),
+  staleTime: 10_000
+});
 
 const categoryOptions = computed(() => flattenCategories(categories.data.value ?? []));
 const filteredCategoryOptions = computed(() => {
@@ -115,38 +132,31 @@ const filteredCategoryOptions = computed(() => {
       )
     : categoryOptions.value;
 });
-const schemaIssues = computed(() => (schemaModel.value ? validateProductSchemaModel(schemaModel.value) : []));
-const blockingSchemaIssues = computed(() => schemaIssues.value.filter((issue) => issue.severity === 'error'));
-const schemaInspection = computed<ProductSchemaSerializationInspection>(() => {
-  if (!schemaModel.value) {
-    return { xml: '', noOp: true, changedFieldKeys: [], structuralDiffs: [], safe: true };
-  }
-  try {
-    return inspectProductSchemaSerialization(schemaModel.value);
-  } catch (error: unknown) {
-    return {
-      xml: schemaModel.value.sourceXml,
-      noOp: false,
-      changedFieldKeys: [],
-      structuralDiffs: [errorMessage(error)],
-      safe: false
-    };
-  }
-});
-const schemaPreview = computed(() => schemaInspection.value.xml);
 const realMutationDisabled = computed(() => mode !== 'mock');
-const productDescriptionType = computed(() => {
-  const typeField = schemaModel.value?.fields.find((field) => field.id === 'productDescType');
-  return typeField ? productSchemaFieldText(typeField) : undefined;
+const availabilityByOperation = computed(
+  () =>
+    new Map(
+      (productMutationAvailability.data.value?.items ?? []).map((item) => [item.operation, item] as const)
+    )
+);
+const platformDraftDisabled = computed(() => {
+  if (mode === 'mock') return false;
+  return availabilityByOperation.value.get('saveProductDraft')?.allowed !== true;
 });
-const productDescriptionHtml = computed(() => {
-  const description = schemaModel.value?.fields.find(
-    (field) =>
-      field.id === 'superText' ||
-      field.rules.some((rule) => rule.name === 'valueTypeRule' && rule.value.toLocaleLowerCase() === 'html')
-  );
-  return description ? productSchemaFieldText(description) : '';
+const productPublishDisabled = computed(() => {
+  if (mode === 'mock') return false;
+  const operation = editProductId.value ? 'updateProduct' : 'publishProduct';
+  return availabilityByOperation.value.get(operation)?.allowed !== true;
 });
+const platformDraftDisabledReason = computed(() =>
+  mutationDisabledReason('saveProductDraft', '当前环境未开放平台草稿写入')
+);
+const productPublishDisabledReason = computed(() =>
+  mutationDisabledReason(
+    editProductId.value ? 'updateProduct' : 'publishProduct',
+    editProductId.value ? '当前环境未开放商品更新' : '当前环境未开放正式发布'
+  )
+);
 
 const publish = useMutation({
   mutationFn: async (draft: boolean) => {
@@ -160,7 +170,7 @@ const publish = useMutation({
     };
     const validation = validateSchemaPublishInput(base);
     if (!validation.valid) throw new Error(validation.errors.join('；'));
-    if (blockingSchemaIssues.value.length > 0) throw new Error('请先修正表单中的阻断问题');
+    if (!draft && blockingSchemaIssues.value.length > 0) throw new Error('请先修正表单中的阻断问题');
     if (editProductId.value) {
       return gateway.request('updateProduct', { ...base, productId: editProductId.value });
     }
@@ -171,7 +181,12 @@ const publish = useMutation({
       ? `商品 ${result.productId} 已更新`
       : `${draft ? '草稿已保存' : '商品已发布'}：${result.productId}`;
     await queryClient.invalidateQueries({ queryKey: ['products'] });
-    clearCurrentLocalDraft();
+    if (draft && !editProductId.value) {
+      platformDraftId.value = result.productId;
+      saveCurrentLocalDraft();
+    } else {
+      clearCurrentLocalDraft();
+    }
     if (editScoreProductId.value) scheduleScoreRefresh(editScoreProductId.value);
   }
 });
@@ -393,31 +408,28 @@ function flattenCategories(items: ProductCategory[], depth = 0): (ProductCategor
 async function selectProductForSchema(product: Product): Promise<void> {
   cancelDraftSave();
   draftCandidate.value = null;
-  editProductId.value = product.id;
+  resetEditorSession({
+    productId: product.id,
+    ...(product.categoryId !== null ? { categoryId: String(product.categoryId) } : {}),
+    mode: 'guided'
+  });
   editScoreProductId.value = product.encryptedId ?? '';
-  if (product.categoryId !== null) categoryId.value = String(product.categoryId);
-  schemaModel.value = null;
   schemaError.value = '';
   feedback.value =
     product.categoryId === null
       ? '已选择商品；列表未返回类目，请选择实际类目后获取编辑 Schema。'
       : '已选择商品及其真实类目，正在渲染现有商品 Schema。';
   workspace.value = 'publisher';
-  editorMode.value = 'guided';
-  editorStep.value = 'basics';
   if (product.categoryId !== null) await loadSchema();
 }
 
 function startNewProduct(): void {
   cancelDraftSave();
   draftCandidate.value = null;
-  editProductId.value = '';
+  resetEditorSession({ mode: 'quick' });
   editScoreProductId.value = '';
-  schemaModel.value = null;
   schemaError.value = '';
   feedback.value = '请选择叶子类目并开始填写商品信息。';
-  editorMode.value = 'guided';
-  editorStep.value = 'basics';
   workspace.value = 'publisher';
   offerCurrentDraft();
 }
@@ -512,30 +524,6 @@ async function refreshLevelSchema(): Promise<void> {
   }
 }
 
-function updateRootField(index: number, field: ProductSchemaField): void {
-  if (!schemaModel.value) return;
-  const isDescription =
-    field.id === 'superText' ||
-    field.rules.some((rule) => rule.name === 'valueTypeRule' && rule.value.toLocaleLowerCase() === 'html');
-  let nextModel: ProductSchemaModel = {
-    ...schemaModel.value,
-    fields: schemaModel.value.fields.map((current, currentIndex) => {
-      if (currentIndex === index) return field;
-      if (isDescription && current.id === 'productDescType') {
-        return withProductSchemaFieldText(current, '2');
-      }
-      return current;
-    })
-  };
-  nextModel = markProductSchemaFieldTouched(nextModel, field.key);
-  if (isDescription) {
-    const typeField = nextModel.fields.find((current) => current.id === 'productDescType');
-    if (typeField) nextModel = markProductSchemaFieldTouched(nextModel, typeField.key);
-  }
-  schemaModel.value = nextModel;
-  reconcileDraftAfterFieldChange();
-}
-
 function updateImageStatus(status: ProductDescriptionImageMetadata & { url: string }): void {
   imageMetadata.value = {
     ...imageMetadata.value,
@@ -563,6 +551,7 @@ function resumeLocalDraft(): void {
     market.value = draft.market;
     editorMode.value = draft.mode;
     editorStep.value = draft.step;
+    platformDraftId.value = draft.platformDraftId;
     draftCandidate.value = null;
     migratedDraftKey.value = null;
     draftSaveStatus.value = 'saved';
@@ -579,6 +568,13 @@ async function reloadPlatformData(): Promise<void> {
   draftCandidate.value = null;
   migratedDraftKey.value = null;
   draftSaveStatus.value = 'idle';
+  if (draft.platformDraftId) {
+    editProductId.value = draft.platformDraftId;
+    await loadDraft();
+    editProductId.value = '';
+    platformDraftId.value = draft.platformDraftId;
+    return;
+  }
   await loadSchema();
 }
 
@@ -622,7 +618,8 @@ function saveCurrentLocalDraft(): void {
       market: market.value,
       xml: schemaPreview.value,
       mode: editorMode.value,
-      step: editorStep.value
+      step: editorStep.value,
+      platformDraftId: platformDraftId.value
     });
     draftSaveStatus.value = 'saved';
   } catch {
@@ -674,6 +671,13 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : '操作失败';
 }
 
+function mutationDisabledReason(operation: string, fallback: string): string {
+  if (mode === 'mock') return '';
+  if (productMutationAvailability.isPending.value) return '正在读取当前账号的操作权限…';
+  const reasonCode = availabilityByOperation.value.get(operation)?.reasonCode;
+  return reasonCode ? `${fallback}（${reasonCode}）` : fallback;
+}
+
 function guardedSchemaXml(model: ProductSchemaModel): string {
   const inspection = inspectProductSchemaSerialization(model);
   if (!inspection.safe) throw new Error(`Schema XML 结构异常：${inspection.structuralDiffs.join('；')}`);
@@ -696,6 +700,13 @@ watch(categoryOptions, (options) => {
 
 onMounted(() => {
   if (!('localStorage' in globalThis)) return;
+  const migratedV2 = migrateProductEditorDraftsV2(globalThis.localStorage);
+  if (migratedV2[0]) {
+    migratedDraftKey.value = migratedV2[0].draftKey;
+    categoryId.value = migratedV2[0].categoryId;
+    draftCandidate.value = migratedV2[0];
+    return;
+  }
   const migrated = migrateLegacyProductEditorDraft(globalThis.localStorage);
   if (migrated) {
     migratedDraftKey.value = migrated.draftKey;
@@ -860,7 +871,12 @@ onBeforeUnmount(() => {
       :quality-issues="qualityIssues"
       :official-hints="officialHints"
       :product-description-type="productDescriptionType"
-      :mutation-disabled="realMutationDisabled"
+      :language="language"
+      :publish-disabled="productPublishDisabled"
+      :draft-disabled="platformDraftDisabled"
+      :publish-disabled-reason="productPublishDisabledReason"
+      :draft-disabled-reason="platformDraftDisabledReason"
+      :platform-draft-id="platformDraftId"
       :submit-pending="publish.isPending.value"
       :editing="Boolean(editProductId)"
       :score-available="Boolean(editScoreProductId)"

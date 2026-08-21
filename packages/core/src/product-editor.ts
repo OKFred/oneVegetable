@@ -28,6 +28,11 @@ export interface ProductEditorSection {
   fields: ProductEditorFieldEntry[];
 }
 
+export interface ProductQuickPublishFields {
+  essential: ProductEditorFieldEntry[];
+  remaining: ProductEditorFieldEntry[];
+}
+
 const STEP_COPY: Record<ProductEditorStepId, Pick<ProductEditorSection, 'title' | 'description'>> = {
   basics: { title: '基础信息与类目', description: '设置标题、关键词、品牌和商品身份信息' },
   attributes: { title: '商品属性与规格', description: '填写类目属性、型号、材质和规格组合' },
@@ -61,6 +66,8 @@ const KNOWN_FIELD_STEPS = new Map<string, ProductEditorStepId>([
 const BASIC_PATTERN = /(title|subject|keyword|brand|model|producttype|group)/i;
 const TRADE_PATTERN =
   /(price|moq|minorder|quantity|unit|package|packing|delivery|leadtime|shipping|freight|port|supply)/i;
+const QUICK_CORE_PATTERN =
+  /(title|subject|keyword|group|image|photo|supertext|description|price|moq|minorder|minimumorder|package|packing|delivery|leadtime)/i;
 
 export function classifyProductSchemaFields(fields: readonly ProductSchemaField[]): ProductEditorSection[] {
   const sections = PRODUCT_EDITOR_STEP_IDS.map((id): ProductEditorSection => ({
@@ -93,6 +100,21 @@ export function productEditorStepForField(field: ProductSchemaField): ProductEdi
   if (TRADE_PATTERN.test(field.id) || TRADE_PATTERN.test(field.name)) return 'trade';
   if (BASIC_PATTERN.test(field.id) || BASIC_PATTERN.test(field.name)) return 'basics';
   return 'attributes';
+}
+
+export function selectQuickPublishFields(fields: readonly ProductSchemaField[]): ProductQuickPublishFields {
+  const entries = classifyProductSchemaFields(fields)
+    .filter((section) => section.id !== 'review')
+    .flatMap((section) => section.fields)
+    .sort((left, right) => left.sourceIndex - right.sourceIndex);
+  const essential = entries.filter(
+    (entry) => entry.required || QUICK_CORE_PATTERN.test(`${entry.field.id} ${entry.field.name}`)
+  );
+  const essentialIndexes = new Set(essential.map((entry) => entry.sourceIndex));
+  return {
+    essential,
+    remaining: entries.filter((entry) => !essentialIndexes.has(entry.sourceIndex))
+  };
 }
 
 export function isProductEditorFieldRequired(field: ProductSchemaField): boolean {

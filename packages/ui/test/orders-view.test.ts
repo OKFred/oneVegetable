@@ -5,7 +5,8 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { APP_PREFERENCES_STORAGE_KEY, MockGatewayClient } from '@one-vegetable/core';
+import { APP_PREFERENCES_STORAGE_KEY } from '@one-vegetable/core';
+import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import { provideServices } from '../src/lib/services';
 import OrdersView from '../src/views/OrdersView.vue';

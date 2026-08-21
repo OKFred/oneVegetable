@@ -13,6 +13,7 @@ import {
   SYSTEM_MOCK_DATA,
   TRADE_MOCK_DATA
 } from './generated/mock-data';
+export { isOperationId, OPERATION_IDS } from './operation-id';
 
 import type {
   CapabilityCallRequest,
@@ -78,13 +79,6 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
     contractIssues: []
   }
 };
-
-export const OPERATION_IDS = Object.freeze(Object.keys(MOCK_DATA) as OperationId[]);
-const OPERATION_ID_SET: ReadonlySet<string> = new Set(OPERATION_IDS);
-
-export function isOperationId(value: unknown): value is OperationId {
-  return typeof value === 'string' && OPERATION_ID_SET.has(value);
-}
 
 export class MockGatewayClient implements GatewayClient {
   private photoGroups: PhotoGroup[] = structuredClone(MOCK_DATA.listPhotoGroups);

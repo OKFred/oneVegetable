@@ -13,6 +13,7 @@ import { createNodeAlibabaCredentialProvider } from './gateway/node-credential-b
 import type { NodeAlibabaCredentialEnvironment } from './gateway/node-credential-bundle';
 import { createDocumentationReplayGateway, documentationReplayStatus } from './gateway/documentation-replay';
 import { readRuntimeConfiguration, type RuntimeConfigurationEnvironment } from './runtime-config';
+import { SqlProductDescriptionTemplateRepository } from './product-description-templates/repository';
 
 const port = readPort(process.env.ONE_VEGETABLE_PORT);
 const runtimeConfiguration = readRuntimeConfiguration(
@@ -49,6 +50,7 @@ const app = createApiApp({
   adminService: new AdminService(authRepository),
   featureFlags: new StaticOperationFeatureFlags(new Set(runtimeConfiguration.mutationFlags)),
   requestEvents: new SqlRequestEventRepository(database.executor),
+  productDescriptionTemplates: new SqlProductDescriptionTemplateRepository(database.executor),
   requestEventRetentionDays: runtimeConfiguration.requestEventRetentionDays,
   ready: () => Promise.resolve(isNodeDatabaseReady(database))
 });

@@ -6,12 +6,12 @@ import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  MockGatewayClient,
   parseProductSchemaXml,
   productSchemaFieldText,
   productSchemaGroupLevel,
   type ProductSchemaField
 } from '@one-vegetable/core';
+import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import ProductGroupPicker from '../src/components/ProductGroupPicker.vue';
 import { provideServices } from '../src/lib/services';

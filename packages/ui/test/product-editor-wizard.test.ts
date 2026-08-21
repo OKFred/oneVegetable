@@ -38,6 +38,7 @@ function mountWizard(
     model?: ProductSchemaModel;
     officialHints?: ProductSchemaOfficialHint[];
     qualityIssues?: ProductDescriptionQualityIssue[];
+    mode?: 'quick' | 'guided' | 'advanced';
   } = {}
 ) {
   const model = options.model ?? parseProductSchemaXml(XML);
@@ -57,7 +58,7 @@ function mountWizard(
       ],
       officialHints: options.officialHints ?? [],
       productDescriptionType: undefined,
-      mode: 'guided',
+      mode: options.mode ?? 'guided',
       step,
       mutationDisabled: true,
       submitPending: false,
@@ -185,5 +186,37 @@ describe('ProductEditorWizard', () => {
     if (!locate) throw new Error('Missing official hint locate button');
     await locate.trigger('click');
     expect(wrapper.emitted('update:step')?.at(-1)).toEqual(['basics']);
+  });
+
+  it('offers a fast draft-first page while keeping full and advanced modes available', async () => {
+    const wrapper = mountWizard('basics', { mode: 'quick' });
+    await wrapper.setProps({ mutationDisabled: false, publishDisabled: false, draftDisabled: false });
+
+    expect(wrapper.text()).toContain('最快发品路径');
+    expect(wrapper.text()).toContain('Product title');
+    expect(wrapper.text()).toContain('Unknown required');
+    expect(wrapper.text()).not.toContain('Unknown optional');
+    const draft = wrapper.findAll('button').find((button) => button.text().includes('保存平台草稿'));
+    const publish = wrapper.findAll('button').find((button) => button.text().includes('直接发布'));
+    if (!draft || !publish) throw new Error('Missing quick publish actions');
+    expect(draft.attributes('disabled')).toBeUndefined();
+    expect(publish.attributes('disabled')).toBeDefined();
+
+    await draft.trigger('click');
+    expect(wrapper.emitted('submit')?.at(-1)).toEqual([true]);
+    await wrapper.setProps({ platformDraftId: '1600000000001' });
+    expect(wrapper.text()).toContain('平台草稿 1600000000001 已创建');
+    expect(draft.attributes('disabled')).toBeDefined();
+    const officialEditor = wrapper.get('a');
+    expect(officialEditor.text()).toContain('在国际站继续编辑');
+    expect(officialEditor.attributes('href')).toBe(
+      'https://post.alibaba.com/product/publish.htm?itemId=1600000000001&pubAction=draft'
+    );
+    expect(officialEditor.attributes('rel')).toBe('noopener noreferrer');
+
+    const full = wrapper.findAll('button').find((button) => button.text().includes('六步向导'));
+    if (!full) throw new Error('Missing full editor action');
+    await full.trigger('click');
+    expect(wrapper.emitted('update:mode')?.at(-1)).toEqual(['guided']);
   });
 });

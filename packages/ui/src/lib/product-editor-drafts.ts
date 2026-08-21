@@ -5,17 +5,18 @@ import {
   type ProductSchemaSerializationInspection
 } from '@one-vegetable/core';
 
-export const PRODUCT_EDITOR_DRAFT_STORAGE_KEY = 'one-vegetable-product-editor-drafts-v2';
+export const PRODUCT_EDITOR_DRAFT_STORAGE_KEY = 'one-vegetable-product-editor-drafts-v3';
+export const PRODUCT_EDITOR_DRAFT_V2_STORAGE_KEY = 'one-vegetable-product-editor-drafts-v2';
 export const LEGACY_PRODUCT_EDITOR_DRAFT_STORAGE_KEY = 'one-vegetable-product-schema-draft';
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 const MAX_DRAFTS = 10;
 const MAX_AGE_MILLISECONDS = 30 * 24 * 60 * 60 * 1000;
 
-export type ProductEditorMode = 'guided' | 'advanced';
+export type ProductEditorMode = 'quick' | 'guided' | 'advanced';
 
-export interface ProductEditorDraftV2 {
-  schemaVersion: 2;
+export interface ProductEditorDraftV3 {
+  schemaVersion: 3;
   draftKey: string;
   kind: 'new' | 'existing';
   productId: string | null;
@@ -25,6 +26,7 @@ export interface ProductEditorDraftV2 {
   xml: string;
   mode: ProductEditorMode;
   step: ProductEditorStepId;
+  platformDraftId: string | null;
   updatedAtUtc: number;
 }
 
@@ -45,7 +47,7 @@ export function shouldPersistProductEditorDraft(inspection: ProductSchemaSeriali
 export function loadProductEditorDrafts(
   draftStorage: DraftStorage,
   now = Date.now()
-): ProductEditorDraftV2[] {
+): ProductEditorDraftV3[] {
   const raw = draftStorage.getItem(PRODUCT_EDITOR_DRAFT_STORAGE_KEY);
   if (!raw) return [];
 
@@ -72,20 +74,20 @@ export function findProductEditorDraft(
   productId: string,
   categoryId: string,
   now = Date.now()
-): ProductEditorDraftV2 | null {
+): ProductEditorDraftV3 | null {
   const key = productEditorDraftKey(productId, categoryId);
   return loadProductEditorDrafts(draftStorage, now).find((draft) => draft.draftKey === key) ?? null;
 }
 
 export function saveProductEditorDraft(
   draftStorage: DraftStorage,
-  input: Omit<ProductEditorDraftV2, 'schemaVersion' | 'draftKey' | 'kind' | 'updatedAtUtc'>,
+  input: Omit<ProductEditorDraftV3, 'schemaVersion' | 'draftKey' | 'kind' | 'updatedAtUtc'>,
   now = Date.now()
-): ProductEditorDraftV2 {
+): ProductEditorDraftV3 {
   const normalizedProductId = input.productId?.trim();
   const productId = normalizedProductId?.length ? normalizedProductId : null;
   const categoryId = input.categoryId.trim();
-  const draft: ProductEditorDraftV2 = {
+  const draft: ProductEditorDraftV3 = {
     ...input,
     schemaVersion: SCHEMA_VERSION,
     draftKey: productEditorDraftKey(productId ?? '', categoryId),
@@ -118,7 +120,7 @@ export function removeProductEditorDraft(
 export function migrateLegacyProductEditorDraft(
   draftStorage: DraftStorage,
   now = Date.now()
-): ProductEditorDraftV2 | null {
+): ProductEditorDraftV3 | null {
   const raw = draftStorage.getItem(LEGACY_PRODUCT_EDITOR_DRAFT_STORAGE_KEY);
   if (!raw) return null;
 
@@ -135,7 +137,8 @@ export function migrateLegacyProductEditorDraft(
         market: value.market === 'sourcing' ? 'sourcing' : 'wholesale',
         xml: value.xml,
         mode: 'guided',
-        step: 'basics'
+        step: 'basics',
+        platformDraftId: null
       },
       now
     );
@@ -146,10 +149,70 @@ export function migrateLegacyProductEditorDraft(
   }
 }
 
-function isProductEditorDraft(value: unknown): value is ProductEditorDraftV2 {
+export function migrateProductEditorDraftsV2(
+  draftStorage: DraftStorage,
+  now = Date.now()
+): ProductEditorDraftV3[] {
+  const raw = draftStorage.getItem(PRODUCT_EDITOR_DRAFT_V2_STORAGE_KEY);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    const migrated = parsed.filter(isProductEditorDraftV2).map((draft) => ({
+      productId: draft.productId,
+      categoryId: draft.categoryId,
+      language: draft.language,
+      market: draft.market,
+      xml: draft.xml,
+      mode: draft.mode,
+      step: draft.step,
+      platformDraftId: null
+    }));
+    const results = migrated.map((draft, index) => saveProductEditorDraft(draftStorage, draft, now + index));
+    draftStorage.removeItem(PRODUCT_EDITOR_DRAFT_V2_STORAGE_KEY);
+    return results;
+  } catch {
+    return [];
+  }
+}
+
+function isProductEditorDraft(value: unknown): value is ProductEditorDraftV3 {
   if (!isRecord(value)) return false;
   return (
     value.schemaVersion === SCHEMA_VERSION &&
+    typeof value.draftKey === 'string' &&
+    (value.kind === 'new' || value.kind === 'existing') &&
+    (value.productId === null || typeof value.productId === 'string') &&
+    typeof value.categoryId === 'string' &&
+    isAlibabaLanguage(value.language) &&
+    (value.market === 'wholesale' || value.market === 'sourcing') &&
+    typeof value.xml === 'string' &&
+    (value.mode === 'quick' || value.mode === 'guided' || value.mode === 'advanced') &&
+    isProductEditorStep(value.step) &&
+    (value.platformDraftId === null || typeof value.platformDraftId === 'string') &&
+    typeof value.updatedAtUtc === 'number' &&
+    Number.isSafeInteger(value.updatedAtUtc)
+  );
+}
+
+interface ProductEditorDraftV2 {
+  schemaVersion: 2;
+  draftKey: string;
+  kind: 'new' | 'existing';
+  productId: string | null;
+  categoryId: string;
+  language: AlibabaLanguage;
+  market: 'wholesale' | 'sourcing';
+  xml: string;
+  mode: 'guided' | 'advanced';
+  step: ProductEditorStepId;
+  updatedAtUtc: number;
+}
+
+function isProductEditorDraftV2(value: unknown): value is ProductEditorDraftV2 {
+  if (!isRecord(value)) return false;
+  return (
+    value.schemaVersion === 2 &&
     typeof value.draftKey === 'string' &&
     (value.kind === 'new' || value.kind === 'existing') &&
     (value.productId === null || typeof value.productId === 'string') &&
@@ -179,7 +242,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function writeDrafts(draftStorage: DraftStorage, drafts: ProductEditorDraftV2[]): void {
+function writeDrafts(draftStorage: DraftStorage, drafts: ProductEditorDraftV3[]): void {
   if (drafts.length === 0) {
     draftStorage.removeItem(PRODUCT_EDITOR_DRAFT_STORAGE_KEY);
     return;

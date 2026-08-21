@@ -50,7 +50,12 @@ export function openNodeDatabase(path: string): NodeDatabaseHandle {
 }
 
 export function applyNodeMigrations(handle: NodeDatabaseHandle): void {
-  for (const name of ['0001_foundation.sql', '0002_auth_abac_audit.sql', '0003_request_observability.sql']) {
+  for (const name of [
+    '0001_foundation.sql',
+    '0002_auth_abac_audit.sql',
+    '0003_request_observability.sql',
+    '0004_product_description_templates.sql'
+  ]) {
     const migration = readFileSync(new URL(`../../drizzle/${name}`, import.meta.url), 'utf8');
     handle.connection.exec(migration);
   }

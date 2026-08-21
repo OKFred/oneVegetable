@@ -6,7 +6,8 @@ import {
   classifyProductSchemaFields,
   isProductSchemaGroupField,
   productEditorStepForField,
-  productSchemaGroupLevel
+  productSchemaGroupLevel,
+  selectQuickPublishFields
 } from '../src/product-editor';
 import { parseProductSchemaXml } from '../src/product-schema';
 
@@ -84,5 +85,22 @@ describe('product editor field classifier', () => {
         .flatMap((section) => section.fields)
         .every((entry) => entry.recommended && !entry.optional)
     ).toBe(true);
+  });
+
+  it('keeps all required fields and fast-path commerce fields in original order', () => {
+    const fields = parseProductSchemaXml(XML).fields;
+    const selected = selectQuickPublishFields(fields);
+
+    expect(selected.essential.map((entry) => entry.field.id)).toEqual([
+      'productTitle',
+      'scImages',
+      'superText',
+      'minimumOrderQuantity',
+      'unknownRequired'
+    ]);
+    expect(selected.remaining.map((entry) => entry.field.id)).toEqual(['material', 'unknownOptional']);
+    expect([...selected.essential, ...selected.remaining].map((entry) => entry.sourceIndex).sort()).toEqual(
+      fields.map((_, index) => index)
+    );
   });
 });

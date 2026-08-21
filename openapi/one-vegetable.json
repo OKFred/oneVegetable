@@ -9430,6 +9430,39 @@
           }
         }
       },
+      "OperationAvailability": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["operation", "allowed", "reasonCode"],
+        "properties": {
+          "operation": { "type": "string", "minLength": 1 },
+          "allowed": { "type": "boolean" },
+          "reasonCode": { "type": ["string", "null"] }
+        }
+      },
+      "OperationAvailabilityRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "operations"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "operations": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      },
+      "OperationAvailabilityResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items"],
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/OperationAvailability" } }
+        }
+      },
       "OperationCallRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -9672,6 +9705,115 @@
           "message": { "type": "string" },
           "remediation": { "type": "string" },
           "fieldIds": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "ProductDescriptionTemplate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "category",
+          "language",
+          "html",
+          "status",
+          "createTimeUtc",
+          "updateTimeUtc",
+          "creatorId",
+          "updaterId",
+          "revision",
+          "remark"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "category": {
+            "type": "string",
+            "enum": ["company", "logistics", "packaging", "service", "custom"]
+          },
+          "language": { "type": "string", "enum": ["zh_CN", "en_US"] },
+          "html": { "type": "string", "maxLength": 262144 },
+          "status": { "type": "string", "enum": ["active", "archived"] },
+          "createTimeUtc": { "type": "integer", "minimum": 0 },
+          "updateTimeUtc": { "type": "integer", "minimum": 0 },
+          "creatorId": { "type": "string", "minLength": 1 },
+          "updaterId": { "type": "string", "minLength": 1 },
+          "revision": { "type": "integer", "minimum": 1 },
+          "remark": { "type": ["string", "null"], "maxLength": 500 }
+        }
+      },
+      "ProductDescriptionTemplateCreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "name", "category", "language", "html"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "category": {
+            "type": "string",
+            "enum": ["company", "logistics", "packaging", "service", "custom"]
+          },
+          "language": { "type": "string", "enum": ["zh_CN", "en_US"] },
+          "html": { "type": "string", "maxLength": 262144 },
+          "remark": { "type": ["string", "null"], "maxLength": 500 }
+        }
+      },
+      "ProductDescriptionTemplateListRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "page": { "type": "integer", "minimum": 1, "default": 1 },
+          "pageSize": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 },
+          "language": { "type": "string", "enum": ["zh_CN", "en_US"] },
+          "category": {
+            "type": "string",
+            "enum": ["company", "logistics", "packaging", "service", "custom"]
+          },
+          "status": { "type": "string", "enum": ["active", "archived"] }
+        }
+      },
+      "ProductDescriptionTemplatePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items", "page", "pageSize", "total"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ProductDescriptionTemplate" }
+          },
+          "page": { "type": "integer", "minimum": 1 },
+          "pageSize": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "total": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "ProductDescriptionTemplateStatusRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "id", "revision"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "id": { "type": "string", "format": "uuid" },
+          "revision": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "ProductDescriptionTemplateUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "id", "name", "category", "language", "html", "revision", "remark"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "category": {
+            "type": "string",
+            "enum": ["company", "logistics", "packaging", "service", "custom"]
+          },
+          "language": { "type": "string", "enum": ["zh_CN", "en_US"] },
+          "html": { "type": "string", "maxLength": 262144 },
+          "revision": { "type": "integer", "minimum": 1 },
+          "remark": { "type": ["string", "null"], "maxLength": 500 }
         }
       },
       "ProductDetail": {

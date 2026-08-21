@@ -14,7 +14,10 @@ import type {
 } from './types';
 
 export class ProductAdapter {
-  constructor(private readonly client: Pick<AlibabaClient, 'call'>) {}
+  constructor(
+    private readonly client: Pick<AlibabaClient, 'call'>,
+    private readonly mutationClient: Pick<AlibabaClient, 'call'> = client
+  ) {}
 
   async list(request: RequestOf<'listProducts'>): Promise<ProductPage> {
     const call = await this.client.call('alibaba.icbu.product.list', {
@@ -45,8 +48,12 @@ export class ProductAdapter {
 
   async get(productId: string, draft = false, language: AlibabaLanguage = 'en_US'): Promise<ProductDetail> {
     const method = draft ? 'alibaba.icbu.product.schema.render.draft' : 'alibaba.icbu.product.schema.render';
+    const numericProductId = Number(productId);
+    if (!Number.isSafeInteger(numericProductId) || numericProductId <= 0) {
+      throw new Error('商品明文 ID 必须是安全范围内的正整数');
+    }
     const call = await this.client.call(method, {
-      param_product_top_publish_request: { product_id: productId, language }
+      param_product_top_publish_request: { product_id: numericProductId, language }
     });
     const root = unwrap(call.data, call.method);
     return {
@@ -122,20 +129,48 @@ export class ProductAdapter {
       | 'alibaba.icbu.product.schema.update',
     request: RequestOf<'publishProduct'> & { productId?: string }
   ): Promise<ProductMutationResult> {
-    const call = await this.client.call(method, {
+    const call = await this.mutationClient.call(method, {
       param_product_top_publish_request: {
-        cat_id: request.categoryId,
+        cat_id: String(request.categoryId),
         language: request.language,
+        publish_type: 'default',
+        version: 'trade.1.1',
         ...(request.productId ? { product_id: request.productId } : {}),
         xml: request.schemaXml
       }
     });
     const root = unwrap(call.data, method);
+    const productId = readString(root, ['product_id'])?.trim() ?? '';
+    const traceId = readString(root, ['trace_id', 'request_id']) ?? crypto.randomUUID();
+    if (readExplicitBoolean(root, 'biz_success') !== true || productId === '') {
+      throw new GatewayException({
+        code:
+          readString(root, ['msg_code', 'error_code']) ??
+          (productId === '' ? 'ALIBABA_PRODUCT_ID_MISSING' : 'ALIBABA_PRODUCT_MUTATION_UNCONFIRMED'),
+        message:
+          readString(root, ['message', 'msg']) ??
+          'Alibaba 未明确返回 biz_success=true 和非空 product_id，不能确认商品写入成功',
+        traceId,
+        retryable: false
+      });
+    }
     return {
-      productId: readString(root, ['product_id']) ?? request.productId ?? '',
-      traceId: readString(root, ['trace_id']) ?? crypto.randomUUID(),
-      success: readBoolean(root, ['biz_success', 'success']) ?? true
+      productId,
+      traceId,
+      success: true
     };
+  }
+
+  async saveDraft(request: RequestOf<'saveProductDraft'>): Promise<ProductMutationResult> {
+    if (request.productId) {
+      throw new GatewayException({
+        code: 'ALIBABA_DRAFT_UPDATE_UNSUPPORTED',
+        message: 'Alibaba OpenAPI 未提供覆盖保存既有平台草稿的接口，请在国际站官方编辑页继续编辑',
+        traceId: crypto.randomUUID(),
+        retryable: false
+      });
+    }
+    return this.mutate('alibaba.icbu.product.schema.add.draft', request);
   }
 
   async updateDisplay(request: RequestOf<'updateProductDisplay'>): Promise<void> {
@@ -281,6 +316,14 @@ function readNumber(record: Record<string, unknown>, keys: string[]): number | u
 
 function readBoolean(record: Record<string, unknown>, keys: string[]): boolean | undefined {
   for (const key of keys) if (typeof record[key] === 'boolean') return record[key];
+  return undefined;
+}
+
+function readExplicitBoolean(record: Record<string, unknown>, key: string): boolean | undefined {
+  const value = record[key];
+  if (typeof value === 'boolean') return value;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
   return undefined;
 }
 

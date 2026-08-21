@@ -189,4 +189,66 @@ describe('BFF Alibaba read gateway', () => {
     });
     expect(send).not.toHaveBeenCalled();
   });
+
+  it('exposes only the dedicated platform-draft mutation path', async () => {
+    const send = vi.fn<NetworkTransport['send']>((input, init) => {
+      if (!(init.body instanceof URLSearchParams)) throw new Error('expected URLSearchParams');
+      const requestUrl = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      expect(new URL(requestUrl).origin).toBe('https://open-api.alibaba.com');
+      expect(init.body.get('sign_method')).toBe('sha256');
+      expect(init.body.get('timestamp')).toMatch(/^\d{13}$/u);
+      const method = init.body.get('method');
+      const request = JSON.parse(init.body.get('param_product_top_publish_request') ?? '{}') as Record<
+        string,
+        unknown
+      >;
+      expect(request).toMatchObject({
+        cat_id: '201712702',
+        language: 'en_US',
+        publish_type: 'default',
+        version: 'trade.1.1',
+        xml: '<itemSchema />'
+      });
+      expect(method).toBe('alibaba.icbu.product.schema.add.draft');
+      return Promise.resolve(
+        Response.json({
+          alibaba_icbu_product_schema_add_draft_response: {
+            biz_success: true,
+            product_id: '1600000000123',
+            trace_id: 'draft-trace'
+          }
+        })
+      );
+    });
+    const gateway = new AlibabaReadGatewayClient(credentials, { transport: { send }, maxAttempts: 1 });
+
+    await expect(
+      gateway.request(
+        'saveProductDraft',
+        { categoryId: 201712702, language: 'en_US', schemaXml: '<itemSchema />' },
+        { requestId: createRequestId() }
+      )
+    ).resolves.toEqual({ productId: '1600000000123', traceId: 'draft-trace', success: true });
+    await expect(
+      gateway.request(
+        'saveProductDraft',
+        {
+          categoryId: 201712702,
+          language: 'en_US',
+          productId: '1600000000123',
+          schemaXml: '<itemSchema />'
+        },
+        { requestId: createRequestId() }
+      )
+    ).rejects.toMatchObject({ gatewayError: { code: 'ALIBABA_DRAFT_UPDATE_UNSUPPORTED' } });
+    expect(send).toHaveBeenCalledTimes(1);
+    await expect(
+      gateway.request('updateProduct', {
+        categoryId: 201712702,
+        language: 'en_US',
+        productId: '1600000000123',
+        schemaXml: '<itemSchema />'
+      })
+    ).rejects.toMatchObject({ gatewayError: { code: 'REAL_MUTATION_DISABLED' } });
+  });
 });

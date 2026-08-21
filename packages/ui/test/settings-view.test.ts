@@ -7,11 +7,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ALIBABA_GATEWAY,
   APP_PREFERENCES_STORAGE_KEY,
-  MockGatewayClient,
   type CredentialVaultState,
   type CredentialVaultStatus,
   type GatewaySettings
 } from '@one-vegetable/core';
+import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import SettingsView from '../src/views/SettingsView.vue';
 import { provideServices } from '../src/lib/services';

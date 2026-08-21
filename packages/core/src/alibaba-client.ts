@@ -1,6 +1,6 @@
 import { GatewayException, normalizeGatewayError } from './errors';
 import { NetworkManager, type NetworkResponse } from './network';
-import { createAlibabaRequest } from './signing';
+import { createAlibabaRequest, createAlibabaSyncRequest } from './signing';
 import type { GatewayCredentials, GatewayError } from './types';
 
 export interface AlibabaCallResult {
@@ -21,6 +21,7 @@ export interface AlibabaClientOptions {
   shouldRetry?: (method: string, error: GatewayError, attempt: number) => boolean;
   wait?: (milliseconds: number) => Promise<void>;
   requestId?: string;
+  protocol?: 'top' | 'sync';
 }
 
 export class AlibabaClient {
@@ -58,7 +59,11 @@ export class AlibabaClient {
     const maxAttempts = Math.max(1, Math.min(3, this.#options.maxAttempts ?? 1));
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        const body = new URLSearchParams(createAlibabaRequest(this.#credentials, method, parameters));
+        const requestParameters =
+          this.#options.protocol === 'sync'
+            ? createAlibabaSyncRequest(this.#credentials, method, parameters)
+            : createAlibabaRequest(this.#credentials, method, parameters);
+        const body = new URLSearchParams(requestParameters);
         const response = await this.#network.request({
           service: 'alibaba',
           url: this.#credentials.endpoint,
