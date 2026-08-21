@@ -5,6 +5,8 @@ import {
   ALIBABA_GATEWAY,
   BffControlClient,
   BffGatewayClient,
+  BffProductDescriptionTemplateClient,
+  MemoryProductDescriptionTemplateClient,
   MockGatewayClient,
   type GatewaySettings,
   type SettingsRepository
@@ -54,12 +56,27 @@ const gateway =
         csrfToken: () => control?.csrfToken() ?? readCookie('ov_csrf')
       })
     : new MockGatewayClient();
+const bffTemplates =
+  gatewayMode === 'bff'
+    ? new BffProductDescriptionTemplateClient({
+        baseUrl: bffBaseUrl,
+        apiPrefix: import.meta.env.VITE_BFF_API_PREFIX,
+        csrfToken: () => control?.csrfToken() ?? readCookie('ov_csrf')
+      })
+    : undefined;
+const mockTemplates =
+  gatewayMode === 'mock' ? new MemoryProductDescriptionTemplateClient([], { writable: true }) : undefined;
 
 const app = createApp(OneVegetableApp, {
   gateway,
   settings,
   mode: gatewayMode,
-  ...(control ? { control } : {})
+  ...(control ? { control } : {}),
+  ...(bffTemplates
+    ? { productDescriptionTemplates: bffTemplates, operationAvailability: bffTemplates }
+    : mockTemplates
+      ? { productDescriptionTemplates: mockTemplates }
+      : {})
 });
 app.use(VueQueryPlugin, {
   queryClient: new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000 } } })

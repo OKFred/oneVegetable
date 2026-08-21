@@ -16,31 +16,45 @@ import {
 } from '@one-vegetable/core';
 
 import OfficialHintContent from './OfficialHintContent.vue';
+import ProductQuickEditor from './ProductQuickEditor.vue';
 import ProductSchemaFieldComponent from './ProductSchemaField.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
 import Input from './ui/Input.vue';
 
-type ProductEditorMode = 'guided' | 'advanced';
+type ProductEditorMode = 'quick' | 'guided' | 'advanced';
 
-const props = defineProps<{
-  model: ProductSchemaModel;
-  issues: ProductSchemaFieldIssue[];
-  qualityIssues: ProductDescriptionQualityIssue[];
-  officialHints: ProductSchemaOfficialHint[];
-  productDescriptionType: string | undefined;
-  mode: ProductEditorMode;
-  step: ProductEditorStepId;
-  mutationDisabled: boolean;
-  submitPending: boolean;
-  editing: boolean;
-  scoreAvailable: boolean;
-  scorePending: boolean;
-  scoreError: string | undefined;
-  schemaPreview: string;
-  schemaInspection: ProductSchemaSerializationInspection;
-}>();
+const props = withDefaults(
+  defineProps<{
+    model: ProductSchemaModel;
+    issues: ProductSchemaFieldIssue[];
+    qualityIssues: ProductDescriptionQualityIssue[];
+    officialHints: ProductSchemaOfficialHint[];
+    productDescriptionType: string | undefined;
+    mode: ProductEditorMode;
+    step: ProductEditorStepId;
+    mutationDisabled?: boolean;
+    publishDisabled?: boolean;
+    draftDisabled?: boolean;
+    publishDisabledReason?: string;
+    draftDisabledReason?: string;
+    platformDraftId?: string | null;
+    submitPending: boolean;
+    editing: boolean;
+    scoreAvailable: boolean;
+    scorePending: boolean;
+    scoreError: string | undefined;
+    schemaPreview: string;
+    schemaInspection: ProductSchemaSerializationInspection;
+  }>(),
+  {
+    mutationDisabled: false,
+    publishDisabledReason: '',
+    draftDisabledReason: '',
+    platformDraftId: null
+  }
+);
 
 const emit = defineEmits<{
   'update:mode': [mode: ProductEditorMode];
@@ -59,6 +73,8 @@ const currentSection = computed(
 );
 const currentStepIndex = computed(() => sections.value.findIndex((section) => section.id === props.step));
 const blockingIssues = computed(() => props.issues.filter((issue) => issue.severity === 'error'));
+const resolvedPublishDisabled = computed(() => props.publishDisabled || props.mutationDisabled);
+const resolvedDraftDisabled = computed(() => props.draftDisabled || props.mutationDisabled);
 const advisoryIssues = computed(() =>
   props.qualityIssues.filter((issue) => issue.source !== 'alibaba-schema' || issue.level !== 'error')
 );
@@ -222,6 +238,14 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
       </div>
       <div class="flex gap-2" role="group" aria-label="商品编辑模式">
         <Button
+          v-if="!editing"
+          size="sm"
+          :variant="mode === 'quick' ? 'default' : 'outline'"
+          @click="emit('update:mode', 'quick')"
+        >
+          快速发布
+        </Button>
+        <Button
           size="sm"
           :variant="mode === 'guided' ? 'default' : 'outline'"
           @click="emit('update:mode', 'guided')"
@@ -238,7 +262,26 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
       </div>
     </div>
 
-    <template v-if="mode === 'guided'">
+    <ProductQuickEditor
+      v-if="mode === 'quick' && !editing"
+      :model="model"
+      :issues="issues"
+      :quality-issues="qualityIssues"
+      :product-description-type="productDescriptionType"
+      :submit-pending="submitPending"
+      :schema-inspection="schemaInspection"
+      :publish-disabled="resolvedPublishDisabled"
+      :draft-disabled="resolvedDraftDisabled"
+      :publish-disabled-reason="publishDisabledReason"
+      :draft-disabled-reason="draftDisabledReason"
+      :platform-draft-id="platformDraftId"
+      @update-field="(index, field) => emit('updateField', index, field)"
+      @image-status="emit('imageStatus', $event)"
+      @submit="emit('submit', $event)"
+      @open-full="emit('update:mode', 'guided')"
+    />
+
+    <template v-else-if="mode === 'guided'">
       <nav class="my-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-6" aria-label="商品编辑步骤">
         <button
           v-for="(section, index) in sections"
@@ -408,7 +451,7 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
         <div v-if="currentSection?.id === 'review'" class="flex flex-wrap gap-2">
           <Button
             :disabled="
-              submitPending || mutationDisabled || blockingIssues.length > 0 || !schemaInspection.safe
+              submitPending || resolvedPublishDisabled || blockingIssues.length > 0 || !schemaInspection.safe
             "
             @click="emit('submit', false)"
           >
@@ -419,7 +462,7 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
             v-if="!editing"
             variant="outline"
             :disabled="
-              submitPending || mutationDisabled || blockingIssues.length > 0 || !schemaInspection.safe
+              submitPending || resolvedDraftDisabled || Boolean(platformDraftId) || !schemaInspection.safe
             "
             @click="emit('submit', true)"
           >
@@ -474,7 +517,9 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
       </details>
       <div class="mt-5 flex flex-wrap gap-2">
         <Button
-          :disabled="submitPending || mutationDisabled || blockingIssues.length > 0 || !schemaInspection.safe"
+          :disabled="
+            submitPending || resolvedPublishDisabled || blockingIssues.length > 0 || !schemaInspection.safe
+          "
           @click="emit('submit', false)"
         >
           <Send class="size-4" />{{ editing ? '更新商品' : '发布商品' }} · {{ advisoryIssues.length }} 条建议
@@ -482,7 +527,9 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
         <Button
           v-if="!editing"
           variant="outline"
-          :disabled="submitPending || mutationDisabled || blockingIssues.length > 0 || !schemaInspection.safe"
+          :disabled="
+            submitPending || resolvedDraftDisabled || Boolean(platformDraftId) || !schemaInspection.safe
+          "
           @click="emit('submit', true)"
         >
           <Save class="size-4" />保存平台草稿
@@ -490,8 +537,12 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
       </div>
     </template>
 
-    <div v-if="mutationDisabled" class="mt-4 flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-      <ShieldAlert class="mt-0.5 size-4 shrink-0" />真实写操作尚未逐方法验收，当前按钮保持禁用。
+    <div
+      v-if="resolvedPublishDisabled || resolvedDraftDisabled"
+      class="mt-4 flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
+    >
+      <ShieldAlert class="mt-0.5 size-4 shrink-0" />
+      {{ draftDisabledReason || publishDisabledReason || '当前真实写操作尚未开放。' }}
     </div>
   </Card>
 </template>

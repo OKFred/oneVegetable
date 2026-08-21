@@ -7,6 +7,8 @@ import type {
   HostPermissionsRepository,
   LocalDataRepository,
   OnboardingRepository,
+  OperationAvailabilityClient,
+  ProductDescriptionTemplateClient,
   SettingsRepository
 } from '@one-vegetable/core';
 
@@ -18,6 +20,8 @@ export interface AppServices {
   localData?: LocalDataRepository;
   onboarding?: OnboardingRepository;
   control?: ControlClient;
+  productDescriptionTemplates?: ProductDescriptionTemplateClient;
+  operationAvailability?: OperationAvailabilityClient;
   mode: 'mock' | 'extension' | 'bff';
 }
 

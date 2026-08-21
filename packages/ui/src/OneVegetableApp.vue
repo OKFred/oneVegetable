@@ -25,6 +25,8 @@ import type {
   HostPermissionsRepository,
   LocalDataRepository,
   OnboardingRepository,
+  OperationAvailabilityClient,
+  ProductDescriptionTemplateClient,
   SettingsRepository
 } from '@one-vegetable/core';
 
@@ -42,6 +44,8 @@ const props = defineProps<{
   localData?: LocalDataRepository;
   onboarding?: OnboardingRepository;
   control?: ControlClient;
+  productDescriptionTemplates?: ProductDescriptionTemplateClient;
+  operationAvailability?: OperationAvailabilityClient;
   mode: 'mock' | 'extension' | 'bff';
 }>();
 provideServices({
@@ -52,7 +56,11 @@ provideServices({
   ...(props.localData ? { localData: props.localData } : {}),
   ...(props.onboarding ? { onboarding: props.onboarding } : {}),
   ...(props.vault ? { vault: props.vault } : {}),
-  ...(props.control ? { control: props.control } : {})
+  ...(props.control ? { control: props.control } : {}),
+  ...(props.productDescriptionTemplates
+    ? { productDescriptionTemplates: props.productDescriptionTemplates }
+    : {}),
+  ...(props.operationAvailability ? { operationAvailability: props.operationAvailability } : {})
 });
 
 type PageId =

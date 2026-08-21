@@ -5,9 +5,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   LEGACY_PRODUCT_EDITOR_DRAFT_STORAGE_KEY,
   PRODUCT_EDITOR_DRAFT_STORAGE_KEY,
+  PRODUCT_EDITOR_DRAFT_V2_STORAGE_KEY,
   findProductEditorDraft,
   loadProductEditorDrafts,
   migrateLegacyProductEditorDraft,
+  migrateProductEditorDraftsV2,
   productEditorDraftKey,
   removeProductEditorDraft,
   saveProductEditorDraft,
@@ -85,14 +87,47 @@ describe('product editor draft storage', () => {
     const migrated = migrateLegacyProductEditorDraft(localStorage, NOW);
 
     expect(migrated).toMatchObject({
-      schemaVersion: 2,
+      schemaVersion: 3,
       draftKey: 'new:509',
       kind: 'new',
       categoryId: '509',
       market: 'sourcing',
-      xml: '<legacy/>'
+      xml: '<legacy/>',
+      platformDraftId: null
     });
     expect(localStorage.getItem(LEGACY_PRODUCT_EDITOR_DRAFT_STORAGE_KEY)).toBeNull();
+  });
+
+  it('migrates isolated V2 drafts to V3 without losing mode or XML', () => {
+    localStorage.setItem(
+      PRODUCT_EDITOR_DRAFT_V2_STORAGE_KEY,
+      JSON.stringify([
+        {
+          schemaVersion: 2,
+          draftKey: 'new:509',
+          kind: 'new',
+          productId: null,
+          categoryId: '509',
+          language: 'en_US',
+          market: 'wholesale',
+          xml: '<v2/>',
+          mode: 'advanced',
+          step: 'description',
+          updatedAtUtc: NOW
+        }
+      ])
+    );
+
+    expect(migrateProductEditorDraftsV2(localStorage, NOW)).toMatchObject([
+      {
+        schemaVersion: 3,
+        draftKey: 'new:509',
+        xml: '<v2/>',
+        mode: 'advanced',
+        platformDraftId: null
+      }
+    ]);
+    expect(localStorage.getItem(PRODUCT_EDITOR_DRAFT_V2_STORAGE_KEY)).toBeNull();
   });
 });
 
@@ -106,7 +141,8 @@ function saveDraft(input: { productId: string | null; categoryId: string; xml: s
       market: 'wholesale',
       xml: input.xml,
       mode: 'guided',
-      step: 'basics'
+      step: 'basics',
+      platformDraftId: null
     },
     input.now
   );
