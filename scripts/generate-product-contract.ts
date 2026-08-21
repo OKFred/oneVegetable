@@ -350,6 +350,55 @@ document.components.schemas.ProductGroup = {
     children: { type: 'array', items: { $ref: '#/components/schemas/ProductGroup' } }
   }
 };
+document.components.schemas.ProductGroupCreateRequest = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['name', 'parentId'],
+  properties: {
+    name: { type: 'string', minLength: 1, maxLength: 80 },
+    parentId: { type: 'integer', minimum: -1 }
+  }
+};
+document.components.schemas.ProductSchemaUpdateRequest = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['productId', 'categoryId', 'language', 'schemaPatchXml'],
+  properties: {
+    productId: { type: 'string', pattern: '^[1-9][0-9]*$' },
+    categoryId: { type: 'integer', minimum: 1 },
+    language: { type: 'string', enum: ['zh_CN', 'en_US'] },
+    schemaPatchXml: { type: 'string', minLength: 1 }
+  }
+};
+document.components.schemas.ProductDisplayRequest = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['encryptedProductIds', 'display'],
+  properties: {
+    encryptedProductIds: {
+      type: 'array',
+      minItems: 1,
+      maxItems: 100,
+      uniqueItems: true,
+      items: { type: 'string', minLength: 1 }
+    },
+    display: { type: 'string', enum: ['online', 'offline'] }
+  }
+};
+document.components.schemas.ProductDisplayMutationResult = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['encryptedProductIds', 'display', 'traceId', 'success'],
+  properties: {
+    encryptedProductIds: {
+      type: 'array',
+      items: { type: 'string' }
+    },
+    display: { type: 'string', enum: ['online', 'offline'] },
+    traceId: { type: 'string' },
+    success: { type: 'boolean' }
+  }
+};
 document.components.schemas.ProductScore = {
   type: 'object',
   additionalProperties: false,
@@ -440,12 +489,7 @@ document.paths['/product-groups'] = {
       required: true,
       content: {
         'application/json': {
-          schema: {
-            type: 'object',
-            additionalProperties: false,
-            required: ['name'],
-            properties: { name: { type: 'string' }, parentId: { type: 'number' } }
-          }
+          schema: { $ref: '#/components/schemas/ProductGroupCreateRequest' }
         }
       }
     },

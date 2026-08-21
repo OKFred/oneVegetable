@@ -6174,10 +6174,26 @@ export interface components {
             language: string;
             schemaXml: string;
         };
+        ProductDisplayMutationResult: {
+            encryptedProductIds: string[];
+            /** @enum {string} */
+            display: "online" | "offline";
+            traceId: string;
+            success: boolean;
+        };
+        ProductDisplayRequest: {
+            encryptedProductIds: string[];
+            /** @enum {string} */
+            display: "online" | "offline";
+        };
         ProductGroup: {
             id: number;
             name: string;
             children: components["schemas"]["ProductGroup"][];
+        };
+        ProductGroupCreateRequest: {
+            name: string;
+            parentId: number;
         };
         ProductMutationResult: {
             productId: string;
@@ -6206,6 +6222,13 @@ export interface components {
             /** @enum {string} */
             market: "wholesale" | "sourcing";
             productId?: string;
+        };
+        ProductSchemaUpdateRequest: {
+            productId: string;
+            categoryId: number;
+            /** @enum {string} */
+            language: "zh_CN" | "en_US";
+            schemaPatchXml: string;
         };
         ProductScore: {
             productId: string;

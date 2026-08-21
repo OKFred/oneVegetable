@@ -5,6 +5,7 @@ import type {
   ProductCategory,
   ProductCategoryMapping,
   ProductDetail,
+  ProductDisplayMutationResult,
   ProductGroup,
   ProductMutationResult,
   ProductPage,
@@ -140,25 +141,7 @@ export class ProductAdapter {
       }
     });
     const root = unwrap(call.data, method);
-    const productId = readString(root, ['product_id'])?.trim() ?? '';
-    const traceId = readString(root, ['trace_id', 'request_id']) ?? crypto.randomUUID();
-    if (readExplicitBoolean(root, 'biz_success') !== true || productId === '') {
-      throw new GatewayException({
-        code:
-          readString(root, ['msg_code', 'error_code']) ??
-          (productId === '' ? 'ALIBABA_PRODUCT_ID_MISSING' : 'ALIBABA_PRODUCT_MUTATION_UNCONFIRMED'),
-        message:
-          readString(root, ['message', 'msg']) ??
-          'Alibaba 未明确返回 biz_success=true 和非空 product_id，不能确认商品写入成功',
-        traceId,
-        retryable: false
-      });
-    }
-    return {
-      productId,
-      traceId,
-      success: true
-    };
+    return requireProductMutationResult(root);
   }
 
   async saveDraft(request: RequestOf<'saveProductDraft'>): Promise<ProductMutationResult> {
@@ -173,11 +156,42 @@ export class ProductAdapter {
     return this.mutate('alibaba.icbu.product.schema.add.draft', request);
   }
 
-  async updateDisplay(request: RequestOf<'updateProductDisplay'>): Promise<void> {
-    await this.client.call('alibaba.icbu.product.batch.update.display', {
-      product_id_list: request.productIds.join(','),
-      new_display: request.display === 'online' ? 'true' : 'false'
+  async update(request: RequestOf<'updateProduct'>): Promise<ProductMutationResult> {
+    const productId = requireNumericProductId(request.productId);
+    const method = 'alibaba.icbu.product.schema.update';
+    const call = await this.client.call(method, {
+      param_product_top_publish_request: {
+        cat_id: request.categoryId,
+        language: request.language,
+        product_id: productId,
+        xml: request.schemaPatchXml
+      }
     });
+    return requireProductMutationResult(unwrap(call.data, method));
+  }
+
+  async updateDisplay(request: RequestOf<'updateProductDisplay'>): Promise<ProductDisplayMutationResult> {
+    const method = 'alibaba.icbu.product.batch.update.display';
+    const call = await this.client.call(method, {
+      product_id_list: request.encryptedProductIds.join(','),
+      new_display: request.display === 'online' ? 'on' : 'off'
+    });
+    const root = unwrap(call.data, method);
+    const traceId = readString(root, ['trace_id', 'request_id']) ?? crypto.randomUUID();
+    if (readExplicitBoolean(root, 'sub_success') !== true) {
+      throw new GatewayException({
+        code: readString(root, ['sub_error_code', 'error_code']) ?? 'ALIBABA_DISPLAY_UPDATE_UNCONFIRMED',
+        message: readString(root, ['sub_error_msg', 'message']) ?? 'Alibaba 未明确确认商品上下架成功',
+        traceId,
+        retryable: false
+      });
+    }
+    return {
+      encryptedProductIds: [...request.encryptedProductIds],
+      display: request.display,
+      traceId,
+      success: true
+    };
   }
 
   async listCategories(parentId?: number): Promise<ProductCategory[]> {
@@ -204,13 +218,15 @@ export class ProductAdapter {
   }
 
   async listGroups(parentId?: number): Promise<ProductGroup[]> {
-    const records = await this.loadGroupRecords(parentId ?? -1);
-    if (parentId === undefined) return records.map(normalizeGroup);
-
+    const targetParentId = parentId ?? -1;
+    const records = await this.loadGroupRecords(targetParentId);
     const parent =
-      records.find((record) => readNumber(record, ['group_id', 'id']) === parentId) ?? records[0];
+      records.find((record) => readNumber(record, ['group_id', 'id']) === targetParentId) ?? records[0];
     if (!parent) return [];
     const childIds = readNumberList(parent.children_id_list);
+    if (childIds.length === 0 && targetParentId === -1) {
+      return records.filter((record) => readNumber(record, ['group_id', 'id']) !== -1).map(normalizeGroup);
+    }
     const children = await Promise.all(childIds.map((groupId) => this.loadGroupRecords(groupId)));
     return children.flatMap((items) => items.slice(0, 1).map(normalizeGroup));
   }
@@ -225,14 +241,28 @@ export class ProductAdapter {
   }
 
   async createGroup(request: RequestOf<'createProductGroup'>): Promise<ProductGroup> {
-    const call = await this.client.call('alibaba.icbu.product.group.add', {
+    const method = 'alibaba.icbu.product.group.add';
+    const call = await this.client.call(method, {
       group_name: request.name,
-      ...(request.parentId !== undefined ? { parent_id: request.parentId } : {})
+      parent_id: request.parentId,
+      extra_context: {}
     });
-    const root = unwrap(call.data, call.method);
+    const root = unwrap(call.data, method);
+    const created = findRecord(root, ['product_group']);
+    const groupId = created ? readNumber(created, ['group_id', 'id']) : null;
+    const groupName = created ? readString(created, ['group_name', 'name']) : null;
+    const parentId = created ? readNumber(created, ['parent_id']) : null;
+    if (!groupId || groupName !== request.name || parentId !== request.parentId) {
+      throw new GatewayException({
+        code: 'ALIBABA_PRODUCT_GROUP_CREATE_UNCONFIRMED',
+        message: 'Alibaba 未返回与请求一致的商品分组 ID、名称和父级',
+        traceId: readString(root, ['trace_id', 'request_id']) ?? crypto.randomUUID(),
+        retryable: false
+      });
+    }
     return {
-      id: readNumber(root, ['group_id', 'id']) ?? 0,
-      name: request.name,
+      id: groupId,
+      name: groupName,
       children: []
     };
   }
@@ -260,6 +290,32 @@ function requireSchemaXml(record: Record<string, unknown>, fallbackCode: string)
     ...(traceId ? { traceId } : {}),
     retryable: false
   });
+}
+
+function requireNumericProductId(productId: string): number {
+  const numericProductId = Number(productId);
+  if (!Number.isSafeInteger(numericProductId) || numericProductId <= 0) {
+    throw new Error('商品明文 ID 必须是安全范围内的正整数');
+  }
+  return numericProductId;
+}
+
+function requireProductMutationResult(root: Record<string, unknown>): ProductMutationResult {
+  const productId = readString(root, ['product_id'])?.trim() ?? '';
+  const traceId = readString(root, ['trace_id', 'request_id']) ?? crypto.randomUUID();
+  if (readExplicitBoolean(root, 'biz_success') !== true || productId === '') {
+    throw new GatewayException({
+      code:
+        readString(root, ['msg_code', 'error_code']) ??
+        (productId === '' ? 'ALIBABA_PRODUCT_ID_MISSING' : 'ALIBABA_PRODUCT_MUTATION_UNCONFIRMED'),
+      message:
+        readString(root, ['message', 'msg']) ??
+        'Alibaba 未明确返回 biz_success=true 和非空 product_id，不能确认商品写入成功',
+      traceId,
+      retryable: false
+    });
+  }
+  return { productId, traceId, success: true };
 }
 
 function normalizeCategory(record: Record<string, unknown>): ProductCategory {

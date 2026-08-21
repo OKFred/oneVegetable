@@ -30,7 +30,10 @@ export type ProductSchemaRequest = components['schemas']['ProductSchemaRequest']
 export type ProductSchemaRenderRequest = components['schemas']['ProductSchemaRenderRequest'];
 export type ProductSchema = components['schemas']['ProductSchema'];
 export type SchemaPublishRequest = components['schemas']['SchemaPublishRequest'];
+export type ProductSchemaUpdateRequest = components['schemas']['ProductSchemaUpdateRequest'];
 export type ProductMutationResult = components['schemas']['ProductMutationResult'];
+export type ProductDisplayRequest = components['schemas']['ProductDisplayRequest'];
+export type ProductDisplayMutationResult = components['schemas']['ProductDisplayMutationResult'];
 export type Photo = components['schemas']['Photo'];
 export type PhotoGroup = components['schemas']['PhotoGroup'];
 export type PhotoPage = components['schemas']['PhotoPage'];
@@ -53,6 +56,7 @@ export type CapabilityCallResult = CapabilityResponseEnvelope;
 export type ProductCategory = components['schemas']['ProductCategory'];
 export type ProductCategoryMapping = components['schemas']['ProductCategoryMapping'];
 export type ProductGroup = components['schemas']['ProductGroup'];
+export type ProductGroupCreateRequest = components['schemas']['ProductGroupCreateRequest'];
 export type ProductScore = components['schemas']['ProductScore'];
 export type RfqSummary = components['schemas']['RfqSummary'];
 export type RfqPage = components['schemas']['RfqPage'];
@@ -188,11 +192,6 @@ export interface InsightsSupplierProductListQuery extends InsightsSupplierListQu
   dateEnd?: string;
 }
 
-export interface ProductDisplayRequest {
-  productIds: string[];
-  display: 'online' | 'offline';
-}
-
 export type PhotoUploadRequest = components['schemas']['PhotoUploadRequest'];
 
 export interface PhotoGroupOperationResult {
@@ -212,10 +211,10 @@ export interface OperationMap {
   publishProduct: { request: SchemaPublishRequest; response: ProductMutationResult };
   saveProductDraft: { request: SchemaPublishRequest; response: ProductMutationResult };
   updateProduct: {
-    request: SchemaPublishRequest & { productId: string };
+    request: ProductSchemaUpdateRequest;
     response: ProductMutationResult;
   };
-  updateProductDisplay: { request: ProductDisplayRequest; response: undefined };
+  updateProductDisplay: { request: ProductDisplayRequest; response: ProductDisplayMutationResult };
   listPhotoGroups: { request: { parentId?: string } | undefined; response: PhotoGroup[] };
   operatePhotoGroup: { request: PhotoGroupOperationRequest; response: PhotoGroupOperationResult };
   listPhotos: { request: PhotoListQuery; response: PhotoPage };
@@ -241,10 +240,7 @@ export interface OperationMap {
     response: ProductDetail;
   };
   listProductGroups: { request: { parentId?: number } | undefined; response: ProductGroup[] };
-  createProductGroup: {
-    request: { name: string; parentId?: number };
-    response: ProductGroup;
-  };
+  createProductGroup: { request: ProductGroupCreateRequest; response: ProductGroup };
   getProductScore: { request: { productId: string }; response: ProductScore };
   listRfqs: { request: RfqListQuery; response: RfqPage };
   listRecommendedRfqs: {

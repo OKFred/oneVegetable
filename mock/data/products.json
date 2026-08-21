@@ -58,6 +58,12 @@
     "publishProduct": { "productId": "10000999", "traceId": "mock-publish-trace", "success": true },
     "saveProductDraft": { "productId": "10000998", "traceId": "mock-draft-trace", "success": true },
     "updateProduct": { "productId": "10000001", "traceId": "mock-update-trace", "success": true },
+    "updateProductDisplay": {
+      "encryptedProductIds": ["mock-encrypted-product-1"],
+      "display": "offline",
+      "traceId": "mock-display-trace",
+      "success": true
+    },
     "listProductCategories": [
       {
         "id": 100003109,

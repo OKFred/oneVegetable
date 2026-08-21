@@ -266,6 +266,54 @@ export function inspectProductSchemaSerialization(
   };
 }
 
+export function inspectProductSchemaPatchSerialization(
+  model: ProductSchemaModel
+): ProductSchemaSerializationInspection {
+  const fullInspection = inspectProductSchemaSerialization(model);
+  if (!fullInspection.safe) return fullInspection;
+  if (fullInspection.noOp) return { ...fullInspection, xml: '' };
+
+  const changedKeys = new Set(fullInspection.changedFieldKeys);
+  const changedFields = model.fields.filter((field) => changedKeys.has(field.key));
+  const document = parseXml(fullInspection.xml);
+  const sourceFields = schemaFieldElements(document.documentElement);
+  const patchRoot = document.documentElement.cloneNode(false) as Element;
+  const structuralDiffs: string[] = [];
+
+  for (const field of changedFields) {
+    const source = sourceFields[field.sourceIndex];
+    if (!source) {
+      structuralDiffs.push(`${field.key} 的增量节点不存在`);
+      continue;
+    }
+    patchRoot.append(source.cloneNode(true));
+  }
+
+  const xml = new XMLSerializer().serializeToString(patchRoot);
+  try {
+    const roundTrip = parseProductSchemaXml(xml);
+    if (roundTrip.fields.length !== changedFields.length) {
+      structuralDiffs.push(`增量 XML 根字段数量不一致：${changedFields.length} → ${roundTrip.fields.length}`);
+    }
+    for (const [index, expected] of changedFields.entries()) {
+      const actual = roundTrip.fields[index];
+      if (!actual || !fieldSemanticsEqual(actual, expected)) {
+        structuralDiffs.push(`${expected.key} 无法从增量 XML 无损回读`);
+      }
+    }
+  } catch (error: unknown) {
+    structuralDiffs.push(`增量 XML 无法解析：${errorMessage(error)}`);
+  }
+
+  return {
+    xml,
+    noOp: false,
+    changedFieldKeys: [...fullInspection.changedFieldKeys],
+    structuralDiffs: uniqueStrings(structuralDiffs),
+    safe: structuralDiffs.length === 0
+  };
+}
+
 export function validateProductSchemaModel(model: ProductSchemaModel): ProductSchemaFieldIssue[] {
   const issues: ProductSchemaFieldIssue[] = [];
   const fieldValues = collectFieldValues(model.fields);

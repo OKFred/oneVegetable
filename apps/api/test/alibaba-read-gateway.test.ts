@@ -190,14 +190,36 @@ describe('BFF Alibaba read gateway', () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it('exposes only the dedicated platform-draft mutation path', async () => {
+  it('uses dedicated and explicit product draft and incremental update paths', async () => {
     const send = vi.fn<NetworkTransport['send']>((input, init) => {
       if (!(init.body instanceof URLSearchParams)) throw new Error('expected URLSearchParams');
       const requestUrl = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      const method = init.body.get('method');
+
+      if (method === 'alibaba.icbu.product.schema.update') {
+        expect(new URL(requestUrl).origin).toBe('https://eco.taobao.com');
+        expect(init.body.get('param_product_top_publish_request')).toBe(
+          JSON.stringify({
+            cat_id: 201712702,
+            language: 'en_US',
+            product_id: 1600000000123,
+            xml: '<itemSchema><field id="subject" /></itemSchema>'
+          })
+        );
+        return Promise.resolve(
+          Response.json({
+            alibaba_icbu_product_schema_update_response: {
+              biz_success: true,
+              product_id: '1600000000123',
+              trace_id: 'update-trace'
+            }
+          })
+        );
+      }
+
       expect(new URL(requestUrl).origin).toBe('https://open-api.alibaba.com');
       expect(init.body.get('sign_method')).toBe('sha256');
       expect(init.body.get('timestamp')).toMatch(/^\d{13}$/u);
-      const method = init.body.get('method');
       const request = JSON.parse(init.body.get('param_product_top_publish_request') ?? '{}') as Record<
         string,
         unknown
@@ -243,12 +265,17 @@ describe('BFF Alibaba read gateway', () => {
     ).rejects.toMatchObject({ gatewayError: { code: 'ALIBABA_DRAFT_UPDATE_UNSUPPORTED' } });
     expect(send).toHaveBeenCalledTimes(1);
     await expect(
-      gateway.request('updateProduct', {
-        categoryId: 201712702,
-        language: 'en_US',
-        productId: '1600000000123',
-        schemaXml: '<itemSchema />'
-      })
-    ).rejects.toMatchObject({ gatewayError: { code: 'REAL_MUTATION_DISABLED' } });
+      gateway.request(
+        'updateProduct',
+        {
+          categoryId: 201712702,
+          language: 'en_US',
+          productId: '1600000000123',
+          schemaPatchXml: '<itemSchema><field id="subject" /></itemSchema>'
+        },
+        { requestId: createRequestId() }
+      )
+    ).resolves.toEqual({ productId: '1600000000123', traceId: 'update-trace', success: true });
+    expect(send).toHaveBeenCalledTimes(2);
   });
 });

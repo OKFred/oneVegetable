@@ -170,6 +170,10 @@ export class AlibabaReadGatewayClient implements GatewayClient {
         return await products.renderSchema(request as RequestOf<'renderProductSchema'>);
       case 'saveProductDraft':
         return await products.saveDraft(request as RequestOf<'saveProductDraft'>);
+      case 'updateProduct':
+        return await products.update(request as RequestOf<'updateProduct'>);
+      case 'updateProductDisplay':
+        return await products.updateDisplay(request as RequestOf<'updateProductDisplay'>);
       case 'listProductCategories':
         return await products.listCategories(optionalNumber(record, 'parentId'));
       case 'mapProductCategory':
@@ -184,6 +188,8 @@ export class AlibabaReadGatewayClient implements GatewayClient {
         );
       case 'listProductGroups':
         return await products.listGroups(optionalNumber(record, 'parentId'));
+      case 'createProductGroup':
+        return await products.createGroup(request as RequestOf<'createProductGroup'>);
       case 'getProductScore':
         return await products.getScore(requiredString(record, 'productId'));
       case 'listRfqs':

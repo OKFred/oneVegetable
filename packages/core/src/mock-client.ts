@@ -43,7 +43,6 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
   ...INSIGHTS_MOCK_DATA.responses,
   ...SYSTEM_MOCK_DATA.responses,
   renderProductSchema: structuredClone(PRODUCT_MOCK_DATA.responses.getProductSchema),
-  updateProductDisplay: undefined,
   deleteTradeAddress: undefined,
   getDashboard: {
     productCount: 128,
