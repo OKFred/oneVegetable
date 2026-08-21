@@ -12,20 +12,27 @@ const props = withDefaults(
     emptyText?: string;
     maxHeight?: string;
     minWidth?: string;
-    getRowKey?: (row: TData) => string;
-    activeRowKey?: string | undefined;
-    rowAriaLabel?: (row: TData) => string;
+    getRowKey?: ((row: TData) => string) | null;
+    activeRowKey?: string | null | undefined;
+    rowAriaLabel?: ((row: TData) => string) | null;
     pagination?: boolean;
     page?: number;
     pageSize?: number;
-    totalRows?: number;
+    totalRows?: number | null;
     pageSizeOptions?: readonly number[];
     paginationDisabled?: boolean;
   }>(),
   {
+    emptyText: '暂无数据',
+    maxHeight: 'min(60vh, 640px)',
+    minWidth: '720px',
+    getRowKey: null,
+    activeRowKey: null,
+    rowAriaLabel: null,
     pagination: true,
     page: 1,
     pageSize: 10,
+    totalRows: null,
     pageSizeOptions: () => [10, 20, 50],
     paginationDisabled: false
   }
@@ -36,10 +43,10 @@ const emit = defineEmits<{
   'update:pageSize': [pageSize: number];
 }>();
 const data = computed(() => props.data);
-const manualPagination = computed(() => !props.pagination || props.totalRows !== undefined);
+const manualPagination = computed(() => !props.pagination || props.totalRows !== null);
 const internalPagination = ref<PaginationState>({ pageIndex: 0, pageSize: props.pageSize });
 const paginationState = computed<PaginationState>(() =>
-  props.totalRows === undefined
+  props.totalRows === null
     ? internalPagination.value
     : { pageIndex: Math.max(0, props.page - 1), pageSize: props.pageSize }
 );
@@ -48,7 +55,7 @@ const rowCount = computed(() => Math.max(0, props.totalRows ?? data.value.length
 
 function updatePagination(updater: Updater<PaginationState>): void {
   const next = typeof updater === 'function' ? updater(paginationState.value) : updater;
-  if (props.totalRows !== undefined) {
+  if (props.totalRows !== null) {
     if (next.pageSize !== props.pageSize) emit('update:pageSize', next.pageSize);
     if (next.pageIndex + 1 !== props.page) emit('update:page', next.pageIndex + 1);
     return;
@@ -70,7 +77,7 @@ const currentPage = computed(() => table.atoms.pagination.get().pageIndex + 1);
 const currentPageSize = computed(() => table.atoms.pagination.get().pageSize);
 
 watch(data, () => {
-  if (props.totalRows === undefined && internalPagination.value.pageIndex !== 0) {
+  if (props.totalRows === null && internalPagination.value.pageIndex !== 0) {
     internalPagination.value = { ...internalPagination.value, pageIndex: 0 };
   }
 });
@@ -78,7 +85,7 @@ watch(data, () => {
 watch(
   () => props.pageSize,
   (pageSize) => {
-    if (props.totalRows === undefined && pageSize !== internalPagination.value.pageSize) {
+    if (props.totalRows === null && pageSize !== internalPagination.value.pageSize) {
       internalPagination.value = { pageIndex: 0, pageSize };
     }
   }
@@ -111,8 +118,8 @@ function setPageSize(pageSize: number): void {
 
 <template>
   <div class="max-w-full overflow-hidden rounded-lg border">
-    <div class="relative max-w-full overflow-auto" :style="{ maxHeight: maxHeight ?? 'min(60vh, 640px)' }">
-      <table class="w-full text-sm" :style="{ minWidth: minWidth ?? '720px' }">
+    <div class="relative max-w-full overflow-auto" :style="{ maxHeight }">
+      <table class="w-full text-sm" :style="{ minWidth }">
         <thead
           class="sticky top-0 z-10 bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground shadow-[0_1px_0_hsl(var(--border))]"
         >
@@ -149,7 +156,7 @@ function setPageSize(pageSize: number): void {
           </tr>
           <tr v-if="table.getRowModel().rows.length === 0">
             <td :colspan="columns.length" class="h-32 text-center text-muted-foreground">
-              {{ emptyText ?? '暂无数据' }}
+              {{ emptyText }}
             </td>
           </tr>
         </tbody>

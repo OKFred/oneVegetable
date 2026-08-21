@@ -34,6 +34,14 @@ function methodButton(wrapper: ReturnType<typeof mountView>, method: string) {
   return result;
 }
 
+async function filterMethod(wrapper: ReturnType<typeof mountView>, method: string): Promise<void> {
+  await wrapper.get('input[placeholder="搜索 API 方法"]').setValue(method);
+  await vi.waitFor(() => {
+    expect(wrapper.text()).toContain(method);
+    expect(wrapper.text()).toContain('第 1 / 1 页');
+  });
+}
+
 function callButton() {
   const result = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find((candidate) =>
     candidate.textContent.includes('调用能力')
@@ -50,9 +58,7 @@ describe('CapabilitiesView platform safeguards', () => {
   it('shows risk protocol parameters read-only and explains sensitive data handling', async () => {
     const wrapper = mountView();
     await flushPromises();
-    await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('alibaba.icbu.risk.send');
-    });
+    await filterMethod(wrapper, 'alibaba.icbu.risk.send');
     await methodButton(wrapper, 'alibaba.icbu.risk.send').trigger('click');
     await vi.waitFor(() => {
       expect(bodyText()).toContain('WUA、UMID、IMEI、IMSI、MAC');
@@ -68,9 +74,7 @@ describe('CapabilitiesView platform safeguards', () => {
   it('keeps generic file transfer separate from the gallery and closed in the extension', async () => {
     const wrapper = mountView('extension');
     await flushPromises();
-    await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('alibaba.icbu.file.urlposting.upload');
-    });
+    await filterMethod(wrapper, 'alibaba.icbu.file.urlposting.upload');
     await methodButton(wrapper, 'alibaba.icbu.file.urlposting.upload').trigger('click');
     await vi.waitFor(() => {
       expect(bodyText()).toContain('不返回图库 fileId');
