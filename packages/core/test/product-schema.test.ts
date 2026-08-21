@@ -1,15 +1,24 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import {
   cloneProductSchemaInstance,
+  inspectProductSchemaSerialization,
   parseProductSchemaXml,
+  ProductSchemaSerializationError,
   productSchemaFieldText,
   serializeProductSchemaXml,
   validateProductSchemaModel,
   withProductSchemaFieldText
 } from '../src/product-schema';
+
+const REAL_LAYOUT_XML = readFileSync(
+  resolve(process.cwd(), 'mock/data/product-schema/real-layout-minimal.xml'),
+  'utf8'
+);
 
 const XML = `<itemSchema data-version="1">
   <unknown keep="yes" />
@@ -29,6 +38,73 @@ function at<T>(values: T[], index: number): T {
 }
 
 describe('product Schema XML engine', () => {
+  it('returns the authoritative source XML byte-for-byte when nothing changed', () => {
+    const model = parseProductSchemaXml(REAL_LAYOUT_XML);
+    const inspection = inspectProductSchemaSerialization(model);
+
+    expect(inspection).toMatchObject({ noOp: true, safe: true, changedFieldKeys: [] });
+    expect(inspection.xml).toBe(REAL_LAYOUT_XML);
+    expect(serializeProductSchemaXml(model)).toBe(REAL_LAYOUT_XML);
+  });
+
+  it('patches one duplicate-id field while preserving unknown nodes, namespaces and untouched CDATA', () => {
+    const model = parseProductSchemaXml(REAL_LAYOUT_XML);
+    model.fields[6] = withProductSchemaFieldText(at(model.fields, 6), 'first-updated');
+    const inspection = inspectProductSchemaSerialization(model);
+
+    expect(inspection).toMatchObject({ noOp: false, safe: true, changedFieldKeys: ['field:6'] });
+    expect(inspection.xml).toContain('ov:flag="A"');
+    expect(inspection.xml).toContain('脱敏后的真实布局回归样例');
+    expect(inspection.xml).toContain('<![CDATA[<h2>Sample detail</h2>');
+    const roundTrip = parseProductSchemaXml(inspection.xml);
+    expect(productSchemaFieldText(at(roundTrip.fields, 6))).toBe('first-updated');
+    expect(productSchemaFieldText(at(roundTrip.fields, 7))).toBe('second');
+  });
+
+  it('keeps official image attributes but excludes gallery display metadata from a patched value', () => {
+    const model = parseProductSchemaXml(REAL_LAYOUT_XML);
+    const images = at(model.fields, 1);
+    expect(at(images.values, 0)).toMatchObject({
+      attributes: { fileId: 'photo-1', inputValue: 'cover', img: 'true' },
+      metadata: { fileName: 'cover.jpg', width: '1000' }
+    });
+    images.values[0] = {
+      ...at(images.values, 0),
+      text: 'https://sc.example/updated.jpg'
+    };
+
+    const xml = serializeProductSchemaXml(model);
+    expect(xml).toContain('fileId="photo-1" inputValue="cover" img="true"');
+    expect(xml).not.toContain('fileName="cover.jpg"');
+    expect(xml).not.toContain('width="1000"');
+  });
+
+  it('deletes a source-bound middle instance and appends a template-backed instance safely', () => {
+    const model = parseProductSchemaXml(REAL_LAYOUT_XML);
+    const tiers = at(model.fields, 5);
+    tiers.instances.splice(0, 1);
+    const added = cloneProductSchemaInstance(tiers);
+    added.fields[0] = withProductSchemaFieldText(at(added.fields, 0), '500');
+    added.fields[1] = withProductSchemaFieldText(at(added.fields, 1), '8.50');
+    tiers.instances.push(added);
+
+    const roundTrip = parseProductSchemaXml(serializeProductSchemaXml(model));
+    const resultTiers = at(roundTrip.fields, 5).instances;
+    expect(resultTiers).toHaveLength(2);
+    expect(productSchemaFieldText(at(at(resultTiers, 0).fields, 0))).toBe('100');
+    expect(productSchemaFieldText(at(at(resultTiers, 1).fields, 0))).toBe('500');
+  });
+
+  it('blocks serialization when a field no longer maps to its source node', () => {
+    const model = parseProductSchemaXml(REAL_LAYOUT_XML);
+    at(model.fields, 0).sourceIndex = 999;
+    const inspection = inspectProductSchemaSerialization(model);
+
+    expect(inspection.safe).toBe(false);
+    expect(inspection.structuralDiffs).toContain('field:0 无法绑定到源字段');
+    expect(() => serializeProductSchemaXml(model)).toThrow(ProductSchemaSerializationError);
+  });
+
   it('parses all seven field types and keeps unknown rules as warnings', () => {
     const model = parseProductSchemaXml(XML);
     expect(model.fields.map((field) => field.type)).toEqual([

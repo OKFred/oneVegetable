@@ -83,6 +83,24 @@ export interface ProductSchemaFieldIssue {
   message: string;
 }
 
+export interface ProductSchemaSerializationInspection {
+  xml: string;
+  noOp: boolean;
+  changedFieldKeys: string[];
+  structuralDiffs: string[];
+  safe: boolean;
+}
+
+export class ProductSchemaSerializationError extends Error {
+  readonly inspection: ProductSchemaSerializationInspection;
+
+  constructor(inspection: ProductSchemaSerializationInspection) {
+    super(`商品 Schema XML 存在结构异常：${inspection.structuralDiffs.join('；')}`);
+    this.name = 'ProductSchemaSerializationError';
+    this.inspection = inspection;
+  }
+}
+
 const FIELD_TYPES = new Set<ProductSchemaFieldType>([
   'input',
   'multiInput',
@@ -157,13 +175,92 @@ export function parseProductSchemaXml(xml: string): ProductSchemaModel {
 }
 
 export function serializeProductSchemaXml(model: ProductSchemaModel): string {
+  const inspection = inspectProductSchemaSerialization(model);
+  if (!inspection.safe) throw new ProductSchemaSerializationError(inspection);
+  return inspection.xml;
+}
+
+export function inspectProductSchemaSerialization(
+  model: ProductSchemaModel
+): ProductSchemaSerializationInspection {
+  const structuralDiffs: string[] = [];
+  let sourceModel: ProductSchemaModel;
+  try {
+    sourceModel = parseProductSchemaXml(model.sourceXml);
+  } catch (error: unknown) {
+    return unsafeInspection(model.sourceXml, errorMessage(error));
+  }
+
+  if (model.fields.length !== sourceModel.fields.length) {
+    structuralDiffs.push('根字段数量发生变化');
+  }
+  const changedFields = model.fields.filter((field) => {
+    const sourceField = sourceModel.fields[field.sourceIndex];
+    if (sourceField === undefined) {
+      structuralDiffs.push(`${field.key} 无法绑定到源字段`);
+      return true;
+    }
+    if (sourceField.id !== field.id || sourceField.type !== field.type) {
+      structuralDiffs.push(`${field.key} 无法绑定到源字段`);
+      return true;
+    }
+    return !fieldSemanticsEqual(field, sourceField);
+  });
+
+  if (structuralDiffs.length > 0) {
+    return {
+      xml: model.sourceXml,
+      noOp: false,
+      changedFieldKeys: changedFields.map((field) => field.key),
+      structuralDiffs: uniqueStrings(structuralDiffs),
+      safe: false
+    };
+  }
+  if (changedFields.length === 0) {
+    return {
+      xml: model.sourceXml,
+      noOp: true,
+      changedFieldKeys: [],
+      structuralDiffs: [],
+      safe: true
+    };
+  }
+
   const document = parseXml(model.sourceXml);
   const targetFields = schemaFieldElements(document.documentElement);
-  model.fields.forEach((field, index) => {
-    const target = findFieldElement(targetFields, field, index);
-    if (target) updateField(document, target, field);
-  });
-  return new XMLSerializer().serializeToString(document);
+  for (const field of changedFields) {
+    const sourceField = sourceModel.fields[field.sourceIndex];
+    const target = targetFields[field.sourceIndex];
+    if (!sourceField || !target) {
+      structuralDiffs.push(`${field.key} 的源节点不存在`);
+      continue;
+    }
+    updateField(document, target, field, sourceField, structuralDiffs);
+  }
+
+  const xml = new XMLSerializer().serializeToString(document);
+  try {
+    const roundTrip = parseProductSchemaXml(xml);
+    if (
+      roundTrip.fields.length !== model.fields.length ||
+      roundTrip.fields.some((field, index) => {
+        const expected = model.fields[index];
+        return !expected || !fieldSemanticsEqual(field, expected);
+      })
+    ) {
+      structuralDiffs.push('安全补丁后的字段值无法无损回读');
+    }
+  } catch (error: unknown) {
+    structuralDiffs.push(`安全补丁后的 XML 无法解析：${errorMessage(error)}`);
+  }
+
+  return {
+    xml,
+    noOp: false,
+    changedFieldKeys: changedFields.map((field) => field.key),
+    structuralDiffs: uniqueStrings(structuralDiffs),
+    safe: structuralDiffs.length === 0
+  };
 }
 
 export function validateProductSchemaModel(model: ProductSchemaModel): ProductSchemaFieldIssue[] {
@@ -183,6 +280,15 @@ export function cloneProductSchemaInstance(field: ProductSchemaField): ProductSc
     sourceIndex: null,
     fields: template.map((child, index) => resetField(child, `${key}:field:${index}`))
   };
+}
+
+export function markProductSchemaFieldTouched(
+  model: ProductSchemaModel,
+  fieldKey: string
+): ProductSchemaModel {
+  return model.touchedFieldKeys.includes(fieldKey)
+    ? model
+    : { ...model, touchedFieldKeys: [...model.touchedFieldKeys, fieldKey] };
 }
 
 export function productSchemaFieldText(field: ProductSchemaField): string {
@@ -478,87 +584,141 @@ function validateValueTypeRule(
   if (!valid) pushError(issues, field, rule.name, `${field.name} 类型不正确`);
 }
 
-function updateField(document: XMLDocument, target: Element, field: ProductSchemaField): void {
-  if (field.type !== 'complex' && field.type !== 'multiComplex') updateScalarField(document, target, field);
+function updateField(
+  document: XMLDocument,
+  target: Element,
+  field: ProductSchemaField,
+  sourceField: ProductSchemaField,
+  structuralDiffs: string[]
+): void {
   if (field.type === 'complex' || field.type === 'multiComplex') {
-    updateComplexField(document, target, field);
+    updateComplexField(document, target, field, sourceField, structuralDiffs);
+    return;
   }
+  if (!valuesEqual(field.values, sourceField.values)) updateScalarField(document, target, field);
 }
 
 function updateScalarField(document: XMLDocument, target: Element, field: ProductSchemaField): void {
   const directValueNodes = directChildren(target, 'value');
   let valuesElement = firstDirectChild(target, 'values');
-  const usesDirectValues = directValueNodes.length > 0 || !valuesElement;
-  const existingNodes = usesDirectValues ? directValueNodes : directChildren(valuesElement, 'value');
-  const template = existingNodes[0]?.cloneNode(true) as Element | undefined;
-  for (const value of existingNodes) value.remove();
-
-  const values = valuesForWrite(field);
-  if (!usesDirectValues && !valuesElement) {
-    valuesElement = document.createElement('values');
+  const usesWrappedValues = field.valueLayout === 'wrapped-values' || Boolean(valuesElement);
+  const parent = usesWrappedValues ? (valuesElement ?? document.createElement('values')) : target;
+  if (usesWrappedValues && !valuesElement) {
+    valuesElement = parent;
     target.append(valuesElement);
   }
-  for (const value of values) {
-    const node = (template?.cloneNode(true) as Element | undefined) ?? document.createElement('value');
-    replaceAttributes(node, value.attributes);
-    node.textContent = value.text;
-    if (usesDirectValues) target.append(node);
-    else valuesElement?.append(node);
-  }
-}
+  const existingNodes = usesWrappedValues ? directChildren(parent, 'value') : directValueNodes;
+  const template = existingNodes[0];
+  const values = valuesForWrite(field);
 
-function updateComplexField(document: XMLDocument, target: Element, field: ProductSchemaField): void {
-  const directInstances = directChildren(target, 'complex-value');
-  const pluralContainers = directChildren(target, 'complex-values');
-  const wrappedInstances =
-    pluralContainers.length === 1 ? directChildren(pluralContainers[0] ?? null, 'complex-value') : [];
-  const usesWrappedLayout = wrappedInstances.length > 0;
-  const usesRepeatedPluralLayout =
-    !usesWrappedLayout && pluralContainers.some((container) => schemaFieldElements(container).length > 0);
-  const existing = usesWrappedLayout
-    ? wrappedInstances
-    : usesRepeatedPluralLayout
-      ? pluralContainers
-      : directInstances;
-  const template = existing[0]?.cloneNode(true) as Element | undefined;
-  const instances =
-    field.type === 'complex'
-      ? [field.instances[0]?.fields ?? field.children]
-      : field.instances.map((instance) => instance.fields);
-
-  for (const instance of existing) instance.remove();
-  const wrapper = usesWrappedLayout ? pluralContainers[0] : null;
-
-  for (const instance of instances) {
-    const nodeName =
-      usesRepeatedPluralLayout || (existing.length === 0 && field.type === 'multiComplex')
-        ? 'complex-values'
-        : 'complex-value';
-    const instanceNode =
-      (template?.cloneNode(true) as Element | undefined) ?? document.createElement(nodeName);
-    updateComplexInstance(document, instanceNode, instance);
-    if (usesWrappedLayout) wrapper?.append(instanceNode);
-    else target.append(instanceNode);
-  }
-}
-
-function updateComplexInstance(document: XMLDocument, target: Element, fields: ProductSchemaField[]): void {
-  let fieldsParent = firstDirectChild(target, 'fields');
-  const targetFields = fieldsParent ? directChildren(fieldsParent, 'field') : directChildren(target, 'field');
-  if (targetFields.length === 0 && fieldsParent === null && directChildren(target, 'fields').length > 0) {
-    fieldsParent = firstDirectChild(target, 'fields');
-  }
-  fields.forEach((field, index) => {
-    let targetField = findFieldElement(targetFields, field, index);
-    if (!targetField) {
-      targetField = document.createElement('field');
-      targetField.setAttribute('id', field.id);
-      targetField.setAttribute('name', field.name);
-      targetField.setAttribute('type', field.type);
-      (fieldsParent ?? target).append(targetField);
+  values.forEach((value, index) => {
+    let node = existingNodes[index];
+    if (!node) {
+      node = (template?.cloneNode(true) as Element | undefined) ?? document.createElement('value');
+      parent.append(node);
     }
-    updateField(document, targetField, field);
+    syncAttributes(node, value.attributes);
+    setValueText(node, value.text, document);
   });
+  for (const node of existingNodes.slice(values.length)) node.remove();
+}
+
+function updateComplexField(
+  document: XMLDocument,
+  target: Element,
+  field: ProductSchemaField,
+  sourceField: ProductSchemaField,
+  structuralDiffs: string[]
+): void {
+  const sourceNodes = complexInstanceElements(target);
+  const retainedSourceIndexes = new Set(
+    field.instances.flatMap((instance) => (instance.sourceIndex === null ? [] : [instance.sourceIndex]))
+  );
+
+  let previousSourceIndex = -1;
+  field.instances.forEach((instance) => {
+    if (instance.sourceIndex === null) return;
+    if (instance.sourceIndex <= previousSourceIndex) {
+      structuralDiffs.push(`${field.key} 的已有复合实例顺序发生变化`);
+    }
+    previousSourceIndex = instance.sourceIndex;
+  });
+
+  field.instances.forEach((instance) => {
+    if (instance.sourceIndex === null) {
+      const created = createComplexInstanceNode(document, target, field, sourceNodes[0]);
+      updateComplexInstance(
+        document,
+        created,
+        instance.fields,
+        sourceField.instances[0]?.fields ?? sourceField.children,
+        structuralDiffs
+      );
+      insertComplexInstance(target, created, field.complexLayout);
+      return;
+    }
+    const node = sourceNodes[instance.sourceIndex];
+    const sourceInstance = sourceField.instances[instance.sourceIndex];
+    if (!node || !sourceInstance) {
+      structuralDiffs.push(`${instance.key} 的源实例不存在`);
+      return;
+    }
+    updateComplexInstance(document, node, instance.fields, sourceInstance.fields, structuralDiffs);
+  });
+
+  sourceNodes.forEach((node, index) => {
+    if (!retainedSourceIndexes.has(index)) node.remove();
+  });
+}
+
+function updateComplexInstance(
+  document: XMLDocument,
+  target: Element,
+  fields: ProductSchemaField[],
+  sourceFields: ProductSchemaField[],
+  structuralDiffs: string[]
+): void {
+  const fieldsParent = firstDirectChild(target, 'fields');
+  const targetFields = fieldsParent ? directChildren(fieldsParent, 'field') : directChildren(target, 'field');
+  fields.forEach((field, index) => {
+    const targetField = targetFields[index];
+    const sourceField = sourceFields[index];
+    if (!targetField || !sourceField || targetField.getAttribute('id') !== field.id) {
+      structuralDiffs.push(`${field.key} 无法绑定到复合实例子字段`);
+      return;
+    }
+    updateField(document, targetField, field, sourceField, structuralDiffs);
+  });
+}
+
+function createComplexInstanceNode(
+  document: XMLDocument,
+  target: Element,
+  field: ProductSchemaField,
+  sourceTemplate: Element | undefined
+): Element {
+  if (sourceTemplate) return sourceTemplate.cloneNode(true) as Element;
+  const nodeName = field.complexLayout === 'repeated-complex-values' ? 'complex-values' : 'complex-value';
+  const node = document.createElement(nodeName);
+  const fieldTemplate = firstDirectChild(target, 'fields');
+  for (const templateField of directChildren(fieldTemplate, 'field')) {
+    node.append(templateField.cloneNode(true));
+  }
+  return node;
+}
+
+function insertComplexInstance(target: Element, instance: Element, layout: ProductSchemaComplexLayout): void {
+  if (layout === 'wrapped-complex-values') {
+    const wrapper = directChildren(target, 'complex-values').find(
+      (candidate) => directChildren(candidate, 'complex-value').length > 0
+    );
+    if (wrapper) {
+      wrapper.append(instance);
+      return;
+    }
+  }
+  const template = firstDirectChild(target, 'fields');
+  target.insertBefore(instance, template);
 }
 
 function resetField(field: ProductSchemaField, key: string): ProductSchemaField {
@@ -677,23 +837,85 @@ function schemaFieldElements(element: Element): Element[] {
   return fieldsContainer ? directChildren(fieldsContainer, 'field') : directChildren(element, 'field');
 }
 
-function findFieldElement(
-  elements: Element[],
-  field: ProductSchemaField,
-  fallbackIndex: number
-): Element | undefined {
-  return elements.find((element) => element.getAttribute('id') === field.id) ?? elements[fallbackIndex];
-}
-
 function valuesForWrite(field: ProductSchemaField): ProductSchemaValue[] {
   if (field.values.length > 0) return field.values;
   if (field.type === 'multiInput' || field.type === 'multiCheck') return [];
   return [{ text: '', attributes: {}, metadata: {} }];
 }
 
-function replaceAttributes(element: Element, attributes: Record<string, string>): void {
-  for (const attribute of Array.from(element.attributes)) element.removeAttribute(attribute.name);
-  for (const [name, value] of Object.entries(attributes)) element.setAttribute(name, value);
+function fieldSemanticsEqual(left: ProductSchemaField, right: ProductSchemaField): boolean {
+  if (left.id !== right.id || left.type !== right.type || !valuesEqual(left.values, right.values))
+    return false;
+  if (left.instances.length !== right.instances.length) return false;
+  return left.instances.every((instance, index) => {
+    const other = right.instances[index];
+    if (!other) return false;
+    return fieldListsEqual(instance.fields, other.fields);
+  });
+}
+
+function fieldListsEqual(left: ProductSchemaField[], right: ProductSchemaField[]): boolean {
+  return (
+    left.length === right.length &&
+    left.every((field, index) => {
+      const other = right[index];
+      return other ? fieldSemanticsEqual(field, other) : false;
+    })
+  );
+}
+
+function valuesEqual(left: ProductSchemaValue[], right: ProductSchemaValue[]): boolean {
+  return (
+    left.length === right.length &&
+    left.every((value, index) => {
+      const other = right[index];
+      return other ? value.text === other.text && recordsEqual(value.attributes, other.attributes) : false;
+    })
+  );
+}
+
+function recordsEqual(left: Record<string, string>, right: Record<string, string>): boolean {
+  const leftEntries = Object.entries(left);
+  return (
+    leftEntries.length === Object.keys(right).length &&
+    leftEntries.every(([key, value]) => right[key] === value)
+  );
+}
+
+function syncAttributes(element: Element, attributes: Record<string, string>): void {
+  for (const attribute of Array.from(element.attributes)) {
+    if (!(attribute.name in attributes)) element.removeAttribute(attribute.name);
+  }
+  for (const [name, value] of Object.entries(attributes)) {
+    if (element.getAttribute(name) !== value) element.setAttribute(name, value);
+  }
+}
+
+function setValueText(element: Element, text: string, document: XMLDocument): void {
+  const onlyChild = element.childNodes.length === 1 ? element.firstChild : null;
+  if (onlyChild?.nodeType === 4) {
+    onlyChild.nodeValue = text;
+    return;
+  }
+  element.replaceChildren(document.createTextNode(text));
+}
+
+function unsafeInspection(xml: string, message: string): ProductSchemaSerializationInspection {
+  return {
+    xml,
+    noOp: false,
+    changedFieldKeys: [],
+    structuralDiffs: [message],
+    safe: false
+  };
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : '未知错误';
 }
 
 function parseXml(xml: string): XMLDocument {
