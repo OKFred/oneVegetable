@@ -54,7 +54,7 @@ describe('ProductAdapter', () => {
   it('uses the selected language when rendering a platform draft', async () => {
     const call = vi.fn<AlibabaClient['call']>((method, parameters) => {
       expect(parameters).toEqual({
-        param_product_top_publish_request: { product_id: '123', language: 'zh_CN' }
+        param_product_top_publish_request: { product_id: 123, language: 'zh_CN' }
       });
       return Promise.resolve({ method, data: { data: '<itemSchema />' } });
     });
@@ -109,16 +109,25 @@ describe('ProductAdapter', () => {
   });
 
   it('accepts a product mutation only with explicit biz_success and product_id', async () => {
-    const call = vi.fn<AlibabaClient['call']>((method) =>
-      Promise.resolve(
+    const call = vi.fn<AlibabaClient['call']>((method, parameters) => {
+      expect(parameters).toEqual({
+        param_product_top_publish_request: {
+          cat_id: '456',
+          language: 'en_US',
+          publish_type: 'default',
+          version: 'trade.1.1',
+          xml: '<itemSchema />'
+        }
+      });
+      return Promise.resolve(
         response(method, {
           biz_success: true,
           product_id: '1600000000123',
           trace_id: 'mutation-trace'
         })
-      )
-    );
-    const adapter = new ProductAdapter({ call });
+      );
+    });
+    const adapter = new ProductAdapter({ call: vi.fn() }, { call });
 
     await expect(
       adapter.mutate('alibaba.icbu.product.schema.add.draft', {
@@ -127,6 +136,21 @@ describe('ProductAdapter', () => {
         schemaXml: '<itemSchema />'
       })
     ).resolves.toEqual({ productId: '1600000000123', traceId: 'mutation-trace', success: true });
+  });
+
+  it('rejects attempts to overwrite a platform draft before calling Alibaba', async () => {
+    const call = vi.fn<AlibabaClient['call']>();
+    const adapter = new ProductAdapter({ call: vi.fn() }, { call });
+
+    await expect(
+      adapter.saveDraft({
+        categoryId: 456,
+        language: 'zh_CN',
+        productId: '1600000000123',
+        schemaXml: '<itemSchema />'
+      })
+    ).rejects.toMatchObject({ gatewayError: { code: 'ALIBABA_DRAFT_UPDATE_UNSUPPORTED' } });
+    expect(call).not.toHaveBeenCalled();
   });
 
   it('does not infer mutation success when Alibaba omits confirmation fields', async () => {

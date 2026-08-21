@@ -3,6 +3,7 @@ import { browser } from 'wxt/browser';
 import {
   AlibabaClient,
   ALIBABA_GATEWAY,
+  ALIBABA_SYNC_GATEWAY,
   createCredentialVault,
   CredentialVaultError,
   CredentialVaultSession,
@@ -386,7 +387,15 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
     maxAttempts: 3,
     shouldRetry: (method, error) => error.retryable && findCapability(method)?.risk === 'read'
   });
-  const products = new ProductAdapter(client);
+  const mutationClient = AlibabaClient.create(
+    { ...settings, endpoint: ALIBABA_SYNC_GATEWAY, signMethod: 'hmac-sha256' },
+    {
+      maxAttempts: 1,
+      protocol: 'sync',
+      shouldRetry: () => false
+    }
+  );
+  const products = new ProductAdapter(client, mutationClient);
   const dashboard = new DashboardAdapter(client);
   const rfqs = new RfqAdapter(client);
   const trades = new TradeAdapter(client);
@@ -410,10 +419,7 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
     case 'publishProduct':
       return products.mutate('alibaba.icbu.product.schema.add', payload as RequestOf<'publishProduct'>);
     case 'saveProductDraft':
-      return products.mutate(
-        'alibaba.icbu.product.schema.add.draft',
-        payload as RequestOf<'saveProductDraft'>
-      );
+      return products.saveDraft(payload as RequestOf<'saveProductDraft'>);
     case 'updateProduct':
       return products.mutate('alibaba.icbu.product.schema.update', payload as RequestOf<'updateProduct'>);
     case 'updateProductDisplay':

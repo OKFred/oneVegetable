@@ -6,6 +6,7 @@ import { bytesToHex } from '@noble/hashes/utils.js';
 import type { GatewayCredentials, SignMethod } from './types';
 
 export const ALIBABA_GATEWAY = 'https://eco.taobao.com/router/rest';
+export const ALIBABA_SYNC_GATEWAY = 'https://open-api.alibaba.com/sync';
 
 export function formatAlibabaTimestamp(now: Date): string {
   const chinaTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
@@ -70,5 +71,29 @@ export function createAlibabaRequest(
   return {
     ...parameters,
     sign: signAlibabaParameters(parameters, credentials.appSecret, credentials.signMethod)
+  };
+}
+
+export function createAlibabaSyncRequest(
+  credentials: GatewayCredentials,
+  method: string,
+  businessParameters: Readonly<Record<string, unknown>>,
+  now = new Date()
+): Record<string, string> {
+  const parameters = serializeAlibabaParameters({
+    app_key: credentials.appKey,
+    format: 'json',
+    method,
+    session: credentials.accessToken,
+    sign_method: 'sha256',
+    simplify: 'true',
+    timestamp: String(now.getTime()),
+    v: '2.0',
+    ...businessParameters
+  });
+
+  return {
+    ...parameters,
+    sign: signAlibabaParameters(parameters, credentials.appSecret, 'hmac-sha256')
   };
 }

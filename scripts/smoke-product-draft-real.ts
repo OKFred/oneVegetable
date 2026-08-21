@@ -38,7 +38,8 @@ if (process.env.ONE_VEGETABLE_REAL_PRODUCT_DRAFT_SMOKE !== '1') {
 
 const reportPath = resolve(
   process.cwd(),
-  process.env.ONE_VEGETABLE_REAL_PRODUCT_DRAFT_OUTPUT ?? 'artifacts/real-smoke/product-draft-20260821.json'
+  process.env.ONE_VEGETABLE_REAL_PRODUCT_DRAFT_OUTPUT ??
+    'artifacts/real-smoke/product-draft-sync-20260821.json'
 );
 await assertNoPreviousMutationAttempt(reportPath);
 
@@ -63,7 +64,7 @@ const OPERATION_METHODS: Record<SmokeOperation, string> = {
   saveProductDraft: 'alibaba.icbu.product.schema.add.draft',
   getProductDraft: 'alibaba.icbu.product.schema.render.draft'
 };
-const requests: { operation: SmokeOperation; requestId: string }[] = [];
+const requests: { operation: SmokeOperation; requestId: string; method: string }[] = [];
 
 try {
   const schema = await call('getProductSchema', {
@@ -149,7 +150,7 @@ try {
 
 async function call<K extends SmokeOperation>(operation: K, payload: RequestOf<K>): Promise<ResponseOf<K>> {
   const requestId = randomUUID();
-  requests.push({ operation, requestId });
+  requests.push({ operation, requestId, method: OPERATION_METHODS[operation] });
   return gateway.request(operation, payload, { requestId });
 }
 
@@ -293,6 +294,10 @@ async function assertNoPreviousMutationAttempt(path: string): Promise<void> {
     status === 'mutation-failed' ||
     status === 'created-unverified' ||
     status === 'created-contract-drift' ||
+    status === 'created-edit-preflight-failed' ||
+    status === 'created-edit-failed' ||
+    status === 'created-edit-unverified' ||
+    status === 'created-edit-contract-drift' ||
     status === 'passed'
   ) {
     throw new Error(`真实草稿 Smoke 已存在 ${status} 记录；为避免重复草稿，本脚本拒绝再次执行`);
@@ -317,7 +322,7 @@ async function writeReport(status: string, detail: Record<string, unknown>): Pro
     language: LANGUAGE,
     titleMarker: TITLE_MARKER,
     requests,
-    calledMethods: requests.map(({ operation }) => OPERATION_METHODS[operation]),
+    calledMethods: requests.map(({ method }) => method),
     ...detail
   });
 }
