@@ -69,8 +69,12 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
 
   await page.getByRole('button', { name: 'API 能力' }).click();
   await expect(page.getByRole('heading', { name: 'API 能力目录' })).toBeVisible();
-  await expect(page.locator('tbody tr')).toHaveCount(86);
+  await expect(page.locator('tbody tr')).toHaveCount(10);
+  await expect(page.getByText('共 86 条，当前 1–10 条')).toBeVisible();
+  await page.getByRole('button', { name: '下一页' }).click();
+  await expect(page.getByText('第 2 / 9 页')).toBeVisible();
   await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.category.attr.get');
+  await expect(page.getByText('第 1 / 1 页')).toBeVisible();
   await page.getByRole('button', { name: 'alibaba.icbu.category.attr.get' }).click();
   await expect(page.getByText(/已 deprecated/)).toBeVisible();
   await page.getByRole('button', { name: '调用能力' }).click();
@@ -145,6 +149,7 @@ test('web mock completes the qualified international logistics workflow', async 
   await page.getByRole('button', { name: '物流订单', exact: true }).click();
   await page.getByRole('button', { name: 'ALS00201756002' }).click();
   await expect(page.getByText(/Base64 数据已返回/)).toBeVisible();
+  await page.getByRole('button', { name: '关闭详情' }).click();
 
   await page.getByRole('button', { name: '地址与模板' }).click();
   await expect(page.getByText('浙江省')).toBeVisible();
