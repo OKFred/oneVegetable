@@ -1,7 +1,7 @@
 <script setup lang="ts">
 defineOptions({ name: 'ProductSchemaField' });
 
-import { computed, defineAsyncComponent } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import { Plus, Trash2 } from '@lucide/vue';
 
 import {
@@ -19,8 +19,7 @@ import {
   type ProductSchemaFieldIssue,
   type Photo,
   type ProductDescriptionImageMetadata,
-  withProductSchemaFieldText,
-  withProductSchemaFieldTexts
+  withProductSchemaFieldText
 } from '@one-vegetable/core';
 
 import Badge from './ui/Badge.vue';
@@ -38,6 +37,7 @@ const props = withDefaults(
     issues: ProductSchemaFieldIssue[];
     productDescriptionType: string | undefined;
     showTechnical?: boolean;
+    labelOverride?: string;
   }>(),
   { showTechnical: true }
 );
@@ -47,6 +47,7 @@ const emit = defineEmits<{
 }>();
 
 const fieldIssues = computed(() => props.issues.filter((issue) => issue.fieldKey === props.field.key));
+const displayName = computed(() => props.labelOverride ?? props.field.name);
 const disabled = computed(() => isProductSchemaFieldDisabled(props.field));
 const readOnly = computed(() => isProductSchemaFieldReadOnly(props.field));
 const fieldText = computed(() => productSchemaFieldText(props.field));
@@ -55,6 +56,23 @@ const imageField = computed(() => isProductSchemaImageField(props.field));
 const htmlField = computed(() => isProductSchemaHtmlField(props.field));
 const groupField = computed(() => isProductSchemaGroupField(props.field));
 const required = computed(() => isProductEditorFieldRequired(props.field));
+const minimumItems = computed(() => itemRuleLimit('minInputNumRule', 0));
+const maximumItems = computed(() => itemRuleLimit('maxInputNumRule', Number.POSITIVE_INFINITY));
+const repeatableComplex = computed(
+  () =>
+    props.field.type === 'multiComplex' ||
+    (props.field.type === 'complex' &&
+      props.field.rules.some((rule) => rule.name === 'minInputNumRule' || rule.name === 'maxInputNumRule'))
+);
+const keywordComplex = computed(
+  () => props.field.type === 'complex' && /keyword|关键词/i.test(`${props.field.id} ${props.field.name}`)
+);
+const unmatchedOptionValues = computed(() =>
+  props.field.values
+    .map((value, index) => ({ value, index }))
+    .filter(({ value }) => !props.field.options.some((option) => option.value === value.text))
+);
+const manualOptionValue = ref('');
 const imageLimit = computed(() => {
   const value = Number(
     props.field.rules.find((rule) => rule.name === 'maxInputNumRule')?.value ??
@@ -81,13 +99,38 @@ const tip = computed(
   () => props.field.rules.find((rule) => rule.name === 'tipRule' || rule.name === 'devTipRule')?.value
 );
 
-function updateValue(value: string | string[]): void {
-  emit(
-    'update',
-    Array.isArray(value)
-      ? withProductSchemaFieldTexts(props.field, value)
-      : withProductSchemaFieldText(props.field, value)
-  );
+function updateValue(value: string): void {
+  emit('update', withProductSchemaFieldText(props.field, value));
+}
+
+function itemRuleLimit(name: 'minInputNumRule' | 'maxInputNumRule', fallback: number): number {
+  const value = Number(props.field.rules.find((rule) => rule.name === name)?.value);
+  return Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
+function updateMultiValue(index: number, text: string): void {
+  emit('update', {
+    ...props.field,
+    values: props.field.values.map((value, currentIndex) =>
+      currentIndex === index ? { ...value, text } : value
+    )
+  });
+}
+
+function addMultiValue(): void {
+  if (props.field.values.length >= maximumItems.value) return;
+  emit('update', {
+    ...props.field,
+    values: [...props.field.values, { text: '', attributes: {}, metadata: {} }]
+  });
+}
+
+function removeMultiValue(index: number): void {
+  if (props.field.values.length <= minimumItems.value) return;
+  emit('update', {
+    ...props.field,
+    values: props.field.values.filter((_, currentIndex) => currentIndex !== index)
+  });
 }
 
 function updateInstanceChild(instanceIndex: number, childIndex: number, child: ProductSchemaField): void {
@@ -125,8 +168,29 @@ function updateComplexChild(index: number, child: ProductSchemaField): void {
 }
 
 function toggleOption(value: string, checked: boolean): void {
-  const current = fieldTexts.value;
-  updateValue(checked ? [...new Set([...current, value])] : current.filter((item) => item !== value));
+  if (checked && !fieldTexts.value.includes(value)) {
+    emit('update', {
+      ...props.field,
+      values: [...props.field.values, { text: value, attributes: {}, metadata: {} }]
+    });
+    return;
+  }
+  if (!checked) {
+    emit('update', {
+      ...props.field,
+      values: props.field.values.filter((item) => item.text !== value)
+    });
+  }
+}
+
+function addManualOption(): void {
+  const value = manualOptionValue.value.trim();
+  if (!value || fieldTexts.value.includes(value) || props.field.values.length >= maximumItems.value) return;
+  emit('update', {
+    ...props.field,
+    values: [...props.field.values, { text: value, attributes: {}, metadata: {} }]
+  });
+  manualOptionValue.value = '';
 }
 
 function updatePhotos(photos: Photo[]): void {
@@ -161,6 +225,7 @@ function nonNegativeNumber(value: string | undefined): number {
 }
 
 function addInstance(): void {
+  if (props.field.instances.length >= maximumItems.value) return;
   emit('update', {
     ...props.field,
     instances: [...props.field.instances, cloneProductSchemaInstance(props.field)]
@@ -168,6 +233,7 @@ function addInstance(): void {
 }
 
 function removeInstance(index: number): void {
+  if (props.field.instances.length <= minimumItems.value) return;
   emit('update', {
     ...props.field,
     instances: props.field.instances.filter((_, currentIndex) => currentIndex !== index)
@@ -196,7 +262,7 @@ function removeInstance(index: number): void {
     :disabled="readOnly"
   >
     <div class="flex flex-wrap items-center gap-2">
-      <legend class="text-sm font-medium">{{ field.name }}</legend>
+      <legend class="text-sm font-medium">{{ displayName }}</legend>
       <Badge v-if="required" variant="warning">必填</Badge>
       <Badge v-if="showTechnical" variant="outline">{{ field.type }}</Badge>
       <Badge v-if="readOnly" variant="secondary">只读</Badge>
@@ -226,16 +292,43 @@ function removeInstance(index: number): void {
     <Input
       v-else-if="field.type === 'input'"
       :model-value="fieldText"
-      :aria-label="field.name"
+      :aria-label="displayName"
       @update:model-value="updateValue"
     />
-    <textarea
-      v-else-if="field.type === 'multiInput'"
-      :value="fieldTexts.join('\n')"
-      :aria-label="field.name"
-      class="min-h-24 w-full rounded-md border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-      @input="updateValue(($event.target as HTMLTextAreaElement).value.split('\n'))"
-    />
+    <div v-else-if="field.type === 'multiInput'" class="space-y-2">
+      <div v-for="(value, index) in field.values" :key="`${field.key}:value:${index}`" class="flex gap-2">
+        <Input
+          :model-value="value.text"
+          :aria-label="`${displayName} 第 ${index + 1} 项`"
+          :placeholder="`${displayName} 第 ${index + 1} 项`"
+          @update:model-value="updateMultiValue(index, $event)"
+        />
+        <Button
+          variant="ghost"
+          size="icon"
+          :aria-label="`删除 ${displayName} 第 ${index + 1} 项`"
+          :disabled="field.values.length <= minimumItems"
+          @click="removeMultiValue(index)"
+        >
+          <Trash2 class="size-4" />
+        </Button>
+      </div>
+      <p v-if="field.values.length === 0" class="text-xs text-muted-foreground">尚未填写任何项目。</p>
+      <Button
+        variant="outline"
+        size="sm"
+        :disabled="field.values.length >= maximumItems"
+        @click="addMultiValue"
+      >
+        <Plus class="size-3" />新增 {{ displayName }}
+      </Button>
+      <p
+        v-if="field.rules.some((rule) => rule.name === 'valueAttributeRule')"
+        class="text-xs text-amber-700 dark:text-amber-400"
+      >
+        该字段包含 Alibaba 值属性规则；已有值会保留属性，新项目仍需由提交接口校验。
+      </p>
+    </div>
     <div v-else-if="field.type === 'singleCheck'" class="flex flex-wrap gap-3">
       <label v-for="option in field.options" :key="option.value" class="flex items-center gap-2 text-sm">
         <input
@@ -247,17 +340,62 @@ function removeInstance(index: number): void {
         />{{ option.label }}
       </label>
     </div>
-    <div v-else-if="field.type === 'multiCheck'" class="flex flex-wrap gap-3">
-      <label v-for="option in field.options" :key="option.value" class="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          :value="option.value"
-          :checked="fieldTexts.includes(option.value)"
-          @change="toggleOption(option.value, ($event.target as HTMLInputElement).checked)"
-        />{{ option.label }}
-      </label>
+    <div v-else-if="field.type === 'multiCheck'" class="space-y-3">
+      <div v-if="field.options.length" class="flex flex-wrap gap-3">
+        <label v-for="option in field.options" :key="option.value" class="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            :value="option.value"
+            :checked="fieldTexts.includes(option.value)"
+            @change="toggleOption(option.value, ($event.target as HTMLInputElement).checked)"
+          />{{ option.label }}
+        </label>
+      </div>
+      <div v-if="unmatchedOptionValues.length" class="space-y-2">
+        <p class="text-xs text-muted-foreground">Schema 未提供以下已选值的显示名称：</p>
+        <div
+          v-for="entry in unmatchedOptionValues"
+          :key="`${field.key}:fallback:${entry.index}`"
+          class="flex gap-2"
+        >
+          <Input
+            :model-value="entry.value.text"
+            :aria-label="`${displayName} 已选值 ${entry.index + 1}`"
+            @update:model-value="updateMultiValue(entry.index, $event)"
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            :aria-label="`删除 ${displayName} 已选值 ${entry.index + 1}`"
+            :disabled="field.values.length <= minimumItems"
+            @click="removeMultiValue(entry.index)"
+          >
+            <Trash2 class="size-4" />
+          </Button>
+        </div>
+      </div>
+      <div v-if="field.options.length === 0" class="space-y-2">
+        <p class="text-xs text-amber-700 dark:text-amber-400">
+          Alibaba Schema 未返回候选项；这里维护原始值，提交前仍由平台校验。
+        </p>
+        <div class="flex gap-2">
+          <Input
+            v-model="manualOptionValue"
+            :aria-label="`新增 ${displayName} 原始值`"
+            placeholder="输入 Schema 原始值"
+            @keydown.enter.prevent="addManualOption"
+          />
+          <Button
+            variant="outline"
+            :disabled="!manualOptionValue.trim() || field.values.length >= maximumItems"
+            @click="addManualOption"
+          >
+            <Plus class="size-3" />新增
+          </Button>
+        </div>
+      </div>
     </div>
-    <div v-else-if="field.type === 'complex'" class="space-y-3 border-l-2 pl-3">
+    <div v-else-if="field.type === 'complex' && !repeatableComplex" class="space-y-3 border-l-2 pl-3">
       <ProductSchemaField
         v-for="(child, index) in field.instances[0]?.fields ?? field.children"
         :key="child.key"
@@ -269,15 +407,20 @@ function removeInstance(index: number): void {
         @image-status="emit('imageStatus', $event)"
       />
     </div>
-    <div v-else-if="field.type === 'multiComplex'" class="space-y-3">
+    <div v-else-if="repeatableComplex" class="space-y-3">
       <div
         v-for="(instance, instanceIndex) in field.instances"
         :key="instance.key"
         class="space-y-3 rounded-lg bg-muted/40 p-3"
       >
         <div class="flex justify-between text-xs font-medium text-muted-foreground">
-          <span>{{ field.name }} #{{ instanceIndex + 1 }}</span>
-          <Button variant="ghost" size="sm" @click="removeInstance(instanceIndex)">
+          <span>{{ displayName }} #{{ instanceIndex + 1 }}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            :disabled="field.instances.length <= minimumItems"
+            @click="removeInstance(instanceIndex)"
+          >
             <Trash2 class="size-3" />删除
           </Button>
         </div>
@@ -288,12 +431,19 @@ function removeInstance(index: number): void {
           :issues="issues"
           :product-description-type="productDescriptionType"
           :show-technical="showTechnical"
+          v-bind="keywordComplex ? { labelOverride: `关键词 ${instanceIndex + 1}` } : {}"
           @update="updateInstanceChild(instanceIndex, childIndex, $event)"
           @image-status="emit('imageStatus', $event)"
         />
       </div>
-      <Button variant="outline" size="sm" @click="addInstance">
-        <Plus class="size-3" />新增 {{ field.name }}
+      <p v-if="field.instances.length === 0" class="text-xs text-muted-foreground">尚未填写任何项目。</p>
+      <Button
+        variant="outline"
+        size="sm"
+        :disabled="field.instances.length >= maximumItems"
+        @click="addInstance"
+      >
+        <Plus class="size-3" />新增 {{ keywordComplex ? '关键词' : displayName }}
       </Button>
     </div>
 
