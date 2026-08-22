@@ -82,6 +82,13 @@ const lifecycle = new ProductMutationLifecycleService(repository, lifecycleGatew
 let activeJob: ProductMutationJob | null = null;
 let displayNeedsRecovery = false;
 
+class ProductDisplayReviewPendingError extends Error {
+  constructor() {
+    super('目标商品已进入平台审核，等待最终恢复上架，禁止重复提交');
+    this.name = 'ProductDisplayReviewPendingError';
+  }
+}
+
 try {
   const previous = readPreviousState();
   if (previous?.displayNeedsRecovery === true) {
@@ -112,17 +119,23 @@ try {
     process.stdout.write(`真实商品上下架生命周期 Smoke 通过，商品已恢复上架；报告：${reportPath}\n`);
   }
 } catch (error: unknown) {
-  const recoveryErrors: string[] = [];
-  try {
-    await recoverOnlineBaseline();
-  } catch (recoveryError: unknown) {
-    recoveryErrors.push(safeMessage(recoveryError));
+  if (error instanceof ProductDisplayReviewPendingError) {
+    await writeReport('pending-review', { error: safeMessage(error) });
+    process.stderr.write(`商品正在平台审核，已停止重复写入；稍后重跑只读确认：${reportPath}\n`);
+    process.exitCode = 2;
+  } else {
+    const recoveryErrors: string[] = [];
+    try {
+      await recoverOnlineBaseline();
+    } catch (recoveryError: unknown) {
+      recoveryErrors.push(safeMessage(recoveryError));
+    }
+    await writeReport(recoveryErrors.length === 0 ? 'failed-recovered' : 'failed-recovery-required', {
+      error: safeMessage(error),
+      recoveryErrors
+    });
+    throw new Error(`真实商品上下架生命周期 Smoke 失败；报告：${reportPath}`, { cause: error });
   }
-  await writeReport(recoveryErrors.length === 0 ? 'failed-recovered' : 'failed-recovery-required', {
-    error: safeMessage(error),
-    recoveryErrors
-  });
-  throw new Error(`真实商品上下架生命周期 Smoke 失败；报告：${reportPath}`, { cause: error });
 } finally {
   database.connection.close();
 }
@@ -155,6 +168,9 @@ async function waitForJob(
       id: current.id,
       expectedRevision: current.revision
     });
+    if (current.status === 'auditing') {
+      throw new ProductDisplayReviewPendingError();
+    }
   }
   throw new Error(`商品上下架任务未在限定时间内进入 ${expected}`);
 }
@@ -162,8 +178,41 @@ async function waitForJob(
 async function recoverOnlineBaseline(): Promise<void> {
   const current = await requireTargetProduct();
   if (current.status === 'online') {
+    if (
+      activeJob?.operation === 'updateProductDisplay' &&
+      activeJob.targetDisplay === 'online' &&
+      ['submitted', 'verifying', 'auditing', 'recovery-required'].includes(activeJob.status)
+    ) {
+      activeJob = await lifecycle.refresh({
+        requestId: randomUUID(),
+        actor: ACTOR,
+        id: activeJob.id,
+        expectedRevision: activeJob.revision
+      });
+      if (activeJob.status !== 'verified') {
+        throw new Error(`上架回读后任务状态仍为 ${activeJob.status}`);
+      }
+    }
     displayNeedsRecovery = false;
     return;
+  }
+  if (current.status === 'rejected') {
+    throw new Error('目标商品审核不通过，禁止自动重复上架，请先在国际站后台处理审核问题');
+  }
+  if (
+    activeJob?.operation === 'updateProductDisplay' &&
+    activeJob.targetDisplay === 'online' &&
+    ['submitted', 'verifying', 'auditing', 'recovery-required'].includes(activeJob.status)
+  ) {
+    if (activeJob.status !== 'auditing') {
+      activeJob = await lifecycle.refresh({
+        requestId: randomUUID(),
+        actor: ACTOR,
+        id: activeJob.id,
+        expectedRevision: activeJob.revision
+      });
+    }
+    throw new ProductDisplayReviewPendingError();
   }
   if (
     activeJob?.operation === 'updateProductDisplay' &&

@@ -36,6 +36,12 @@ describe('Node SQLite repository', () => {
       remark: 'local default'
     });
 
+    const migratedHandle = handle;
+    expect(() => {
+      applyNodeMigrations(migratedHandle);
+    }).not.toThrow();
+    await expect(repository.get(created.key)).resolves.toEqual(created);
+
     now += 25;
     const updated = await repository.update({
       key: created.key,

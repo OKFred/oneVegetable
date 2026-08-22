@@ -50,16 +50,29 @@ export function openNodeDatabase(path: string): NodeDatabaseHandle {
 }
 
 export function applyNodeMigrations(handle: NodeDatabaseHandle): void {
-  for (const name of [
+  const names = [
     '0001_foundation.sql',
     '0002_auth_abac_audit.sql',
     '0003_request_observability.sql',
     '0004_product_description_templates.sql',
     '0005_product_mutation_jobs.sql',
     '0006_product_display_mutation_jobs.sql'
-  ]) {
+  ] as const;
+  for (const name of names) {
+    const version = Number.parseInt(name.slice(0, 4), 10);
+    if (hasMigration(handle, version)) continue;
     const migration = readFileSync(new URL(`../../drizzle/${name}`, import.meta.url), 'utf8');
-    handle.connection.exec(migration);
+    handle.connection.exec('BEGIN IMMEDIATE');
+    try {
+      handle.connection.exec(migration);
+      if (!hasMigration(handle, version)) {
+        throw new Error(`Migration ${name} did not record schema version ${version}`);
+      }
+      handle.connection.exec('COMMIT');
+    } catch (error: unknown) {
+      handle.connection.exec('ROLLBACK');
+      throw error;
+    }
   }
 }
 
@@ -85,4 +98,15 @@ function toSqlInputValue(value: SqlPrimitive): SQLInputValue {
     return value;
   }
   throw new Error('SQLite 参数类型无效');
+}
+
+function hasMigration(handle: NodeDatabaseHandle, version: number): boolean {
+  try {
+    const row = handle.connection
+      .prepare('SELECT version FROM schema_migrations WHERE version = ?')
+      .get(version);
+    return row?.version === version;
+  } catch {
+    return false;
+  }
 }

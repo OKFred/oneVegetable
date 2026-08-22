@@ -347,6 +347,23 @@ export class ProductMutationLifecycleService {
       )[0];
       if (!product) throw new ProductDisplayTargetMismatchError();
       const expected = current.status === 'recovering' ? current.originalDisplay : current.targetDisplay;
+      if (product.status === 'auditing') {
+        const status = current.status === 'recovering' ? 'recovering' : 'auditing';
+        const updated = await this.#repository.transition({
+          id: current.id,
+          expectedRevision: current.revision,
+          status,
+          actorId: input.actor.actorId,
+          reasonCode:
+            status === 'recovering'
+              ? 'PRODUCT_DISPLAY_RECOVERY_PLATFORM_AUDITING'
+              : 'PRODUCT_DISPLAY_PLATFORM_AUDITING',
+          message: '平台已进入商品审核，等待最终上下架状态；审核完成前不会重复提交',
+          checked: true
+        });
+        await this.#audit(updated, input.requestId, input.actor.actorId, status, current.revision);
+        return updated;
+      }
       const matched = product.status === expected;
       const timedOut = this.#clock() - current.submittedTimeUtc >= DISPLAY_VERIFICATION_TIMEOUT_MILLISECONDS;
       const status: ProductMutationJobStatus = matched
@@ -418,7 +435,7 @@ export class ProductMutationLifecycleService {
         !product ||
         !expectedProductId ||
         product.id !== expectedProductId ||
-        (product.status !== 'online' && product.status !== 'offline')
+        !['online', 'offline', 'auditing'].includes(product.status)
       ) {
         throw new ProductDisplayTargetMismatchError();
       }

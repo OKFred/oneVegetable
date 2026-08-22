@@ -51,6 +51,31 @@ describe('ProductAdapter', () => {
     );
   });
 
+  it('keeps a modified product in auditing even while display is N', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve({
+        method,
+        data: {
+          products: [
+            {
+              id: 123,
+              product_id: 'encrypted-product-id',
+              subject: 'Pending product',
+              status: 'modified',
+              display: 'N'
+            }
+          ],
+          total_item: 1
+        }
+      })
+    );
+    const adapter = new ProductAdapter({ call });
+
+    await expect(adapter.list({ page: 1, pageSize: 20 })).resolves.toMatchObject({
+      items: [{ id: '123', status: 'auditing' }]
+    });
+  });
+
   it('uses the selected language when rendering a platform draft', async () => {
     const call = vi.fn<AlibabaClient['call']>((method, parameters) => {
       expect(parameters).toEqual({

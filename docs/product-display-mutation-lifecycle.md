@@ -8,6 +8,7 @@
 
 - `submitted`：任务已持久化，尚未得到 Alibaba 明确接受。
 - `verifying`：Alibaba 已明确接受，等待商品列表回读。
+- `auditing`：上下架变更触发平台商品审核；等待审核完成，期间不会重复提交。
 - `verified`：商品列表状态与目标状态一致。
 - `recovery-required`：限定时间内未确认目标状态，需要人工确认或恢复。
 - `recovering`：已请求恢复操作前状态，等待回读。
@@ -42,5 +43,13 @@ pnpm smoke:product:display:real
 - `ONE_VEGETABLE_REAL_PRODUCT_DISPLAY_DATABASE`
 
 报告和 SQLite 任务库默认保存在忽略目录 `artifacts/real-smoke/`。若进程在恢复前中断，以相同配置再次运行时，脚本只优先恢复上架并退出；确认恢复后再单独启动新一轮 Smoke。
+
+商品列表的 `status=new/modified` 优先映射为审核中，即使此时 `display=N` 也不能当成普通下架并重复请求上架。Smoke 遇到审核态会保留恢复标记并退出；稍后重跑时只查询状态，直到确认 Active/online。
+
+## 2026-08-22 真实账号记录
+
+单商品下架请求已得到 `sub_success=true`，并由商品列表回读为下架；随后的上架请求也得到明确受理，但商品进入国际站 `Pending` 审核。官方后台此时显示 Active 0、Pending 1，商品行操作被禁用；OpenAPI 列表返回 `status=modified` 与非上架 display。
+
+随后官方后台恢复为 Active 1、Pending 0，OpenAPI 列表再次回读为 online；两条持久任务最终均为 `verified`，恢复标记已清除。因此该方法记为当前账号验证通过，但验收同时证明上架可能经过异步审核，不能按同步接口对待，也不能在 Pending 阶段重复提交。
 
 真实 Smoke 不进入 CI。`pnpm dev:api:real` 默认仍不启用 `operation:updateProductDisplay`，页面真实按钮只有在本地显式 feature flag 开启时才可用；staging 和 production 继续禁止商品 mutation。

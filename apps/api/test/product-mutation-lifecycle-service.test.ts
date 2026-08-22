@@ -167,6 +167,42 @@ describe('product mutation lifecycle service', () => {
     ).resolves.toMatchObject({ status: 'verified' });
   });
 
+  it('keeps an accepted activation in auditing without retrying the mutation', async () => {
+    const { service, gateway } = createService();
+    gateway.list.mockResolvedValue(productPage('offline'));
+    gateway.updateDisplay.mockResolvedValue({
+      encryptedProductIds: ['encrypted-1'],
+      display: 'online',
+      traceId: 'display-trace',
+      success: true
+    });
+    const submitted = await service.submitDisplay({
+      requestId: 'dfbd8605-8cc7-4ac5-852d-927c5b0c524a',
+      actor: ACTOR,
+      request: {
+        productIds: [REQUEST.productId],
+        encryptedProductIds: ['encrypted-1'],
+        display: 'online'
+      }
+    });
+    const job = submitted.jobs[0];
+    if (!job) throw new Error('Missing display job');
+    gateway.list.mockResolvedValue(productPage('auditing'));
+
+    await expect(
+      service.refresh({
+        requestId: '7cc248df-80e2-4094-9941-3e08e2a7b139',
+        actor: ACTOR,
+        id: job.id,
+        expectedRevision: job.revision
+      })
+    ).resolves.toMatchObject({
+      status: 'auditing',
+      reasonCode: 'PRODUCT_DISPLAY_PLATFORM_AUDITING'
+    });
+    expect(gateway.updateDisplay).toHaveBeenCalledTimes(1);
+  });
+
   it('requires explicit recovery after a display readback timeout and verifies the original state', async () => {
     let now = 10_000;
     const { service, gateway } = createService(() => now);
@@ -306,7 +342,7 @@ function createService(clock: () => number = Date.now): {
   };
 }
 
-function productPage(status: 'online' | 'offline'): ProductPage {
+function productPage(status: 'online' | 'offline' | 'auditing'): ProductPage {
   return {
     items: [
       {

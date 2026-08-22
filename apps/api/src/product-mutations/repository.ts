@@ -281,9 +281,9 @@ function assertTransition(from: ProductMutationJobStatus, to: ProductMutationJob
   const allowed: Record<ProductMutationJobStatus, readonly ProductMutationJobStatus[]> = {
     submitted: ['auditing', 'verifying', 'recovery-required', 'recovering', 'failed'],
     auditing: ['auditing', 'verified', 'recovery-required'],
-    verifying: ['verifying', 'verified', 'recovery-required', 'recovering'],
+    verifying: ['auditing', 'verifying', 'verified', 'recovery-required', 'recovering'],
     verified: [],
-    'recovery-required': ['recovery-required', 'verified', 'recovering', 'failed'],
+    'recovery-required': ['auditing', 'recovery-required', 'verified', 'recovering', 'failed'],
     recovering: ['recovering', 'recovered', 'recovery-required'],
     recovered: [],
     failed: []

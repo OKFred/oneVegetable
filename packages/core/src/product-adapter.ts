@@ -34,7 +34,7 @@ export class ProductAdapter {
       encryptedId: readString(item, ['product_id']) ?? null,
       subject: readString(item, ['subject', 'product_subject']) ?? '未命名商品',
       groupName: readString(item, ['group_name']) ?? '未分组',
-      status: normalizeProductStatus(readString(item, ['display', 'status'])),
+      status: normalizeProductStatus(readString(item, ['display']), readString(item, ['status'])),
       score: readNumber(item, ['score']) ?? 0,
       updatedAt: normalizeDate(readString(item, ['gmt_modified', 'modified_time'])),
       categoryId: readNumber(item, ['category_id', 'cat_id']) ?? null
@@ -426,19 +426,19 @@ function findRecords(record: Record<string, unknown>, keys: string[]): Record<st
 }
 
 function normalizeProductStatus(
-  value: string | undefined
+  display: string | undefined,
+  lifecycle: string | undefined
 ): 'online' | 'offline' | 'draft' | 'auditing' | 'rejected' {
-  const normalized = value?.toLowerCase();
-  if (
-    normalized?.includes('online') ||
-    normalized === 'true' ||
-    normalized === 'y' ||
-    normalized === 'approved'
-  )
+  const normalizedLifecycle = lifecycle?.toLowerCase();
+  if (normalizedLifecycle === 'new' || normalizedLifecycle === 'modified') return 'auditing';
+  if (normalizedLifecycle?.includes('audit') || normalizedLifecycle?.includes('pending')) {
+    return 'auditing';
+  }
+  if (normalizedLifecycle === 'tbd' || normalizedLifecycle?.includes('reject')) return 'rejected';
+  if (normalizedLifecycle === 'sketch' || normalizedLifecycle?.includes('draft')) return 'draft';
+  const normalizedDisplay = display?.toLowerCase() ?? normalizedLifecycle;
+  if (normalizedDisplay?.includes('online') || normalizedDisplay === 'true' || normalizedDisplay === 'y')
     return 'online';
-  if (normalized?.includes('audit')) return 'auditing';
-  if (normalized?.includes('reject')) return 'rejected';
-  if (normalized?.includes('draft')) return 'draft';
   return 'offline';
 }
 
