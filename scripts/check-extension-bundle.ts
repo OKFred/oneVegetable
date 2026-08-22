@@ -42,7 +42,7 @@ for (const chunk of eagerPageChunks) {
 if (eagerOptionBytes > 250_000) {
   errors.push(`Options eager JavaScript exceeds 250 KB: ${eagerOptionBytes}`);
 }
-if (totalBytes > 3_200_000) errors.push(`Unpacked extension exceeds 3.2 MB: ${totalBytes}`);
+if (totalBytes > 3_250_000) errors.push(`Unpacked extension exceeds 3.25 MB: ${totalBytes}`);
 if (sizes.some((entry) => entry.file.endsWith('.map'))) errors.push('Production source maps are not allowed');
 if (manifest.permissions?.includes('cookies')) errors.push('cookies permission is not allowed');
 if (manifest.host_permissions?.includes('<all_urls>'))

@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 
 import {
   cloneProductSchemaInstance,
+  inspectProductSchemaPatchSerialization,
   inspectProductSchemaSerialization,
   parseProductSchemaXml,
   ProductSchemaSerializationError,
@@ -59,6 +60,40 @@ describe('product Schema XML engine', () => {
     const roundTrip = parseProductSchemaXml(inspection.xml);
     expect(productSchemaFieldText(at(roundTrip.fields, 6))).toBe('first-updated');
     expect(productSchemaFieldText(at(roundTrip.fields, 7))).toBe('second');
+  });
+
+  it('serializes an unchanged model as an empty incremental patch', () => {
+    const model = parseProductSchemaXml(REAL_LAYOUT_XML);
+    const inspection = inspectProductSchemaPatchSerialization(model);
+
+    expect(inspection).toMatchObject({ noOp: true, safe: true, changedFieldKeys: [] });
+    expect(inspection.xml).toBe('');
+  });
+
+  it('serializes only changed root fields for a Schema incremental update', () => {
+    const model = parseProductSchemaXml(REAL_LAYOUT_XML);
+    model.fields[6] = withProductSchemaFieldText(at(model.fields, 6), 'first-updated');
+    const inspection = inspectProductSchemaPatchSerialization(model);
+
+    expect(inspection).toMatchObject({ noOp: false, safe: true, changedFieldKeys: ['field:6'] });
+    expect(inspection.xml).toContain('first-updated');
+    expect(inspection.xml).not.toContain('second');
+    expect(inspection.xml).not.toContain('<![CDATA[<h2>Sample detail</h2>');
+
+    const patchModel = parseProductSchemaXml(inspection.xml);
+    expect(patchModel.fields).toHaveLength(1);
+    expect(productSchemaFieldText(at(patchModel.fields, 0))).toBe('first-updated');
+  });
+
+  it('rejects an incremental patch when a changed field no longer maps to its source node', () => {
+    const model = parseProductSchemaXml(REAL_LAYOUT_XML);
+    model.fields[0] = withProductSchemaFieldText(at(model.fields, 0), 'updated title');
+    at(model.fields, 0).sourceIndex = 999;
+
+    const inspection = inspectProductSchemaPatchSerialization(model);
+
+    expect(inspection.safe).toBe(false);
+    expect(inspection.structuralDiffs).toContain('field:0 无法绑定到源字段');
   });
 
   it('keeps official image attributes but excludes gallery display metadata from a patched value', () => {

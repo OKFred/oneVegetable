@@ -178,6 +178,75 @@ describe('ProductAdapter', () => {
     });
   });
 
+  it('updates only the supplied product Schema patch through the documented TOP client', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method, parameters) => {
+      expect(method).toBe('alibaba.icbu.product.schema.update');
+      expect(parameters).toEqual({
+        param_product_top_publish_request: {
+          cat_id: 456,
+          language: 'en_US',
+          product_id: 1600000000123,
+          xml: '<itemSchema><field id="productTitle"><value>Updated</value></field></itemSchema>'
+        }
+      });
+      return Promise.resolve(
+        response(method, {
+          biz_success: true,
+          product_id: 1600000000123,
+          trace_id: 'update-trace'
+        })
+      );
+    });
+    const syncCall = vi.fn<AlibabaClient['call']>();
+    const adapter = new ProductAdapter({ call }, { call: syncCall });
+
+    await expect(
+      adapter.update({
+        productId: '1600000000123',
+        categoryId: 456,
+        language: 'en_US',
+        schemaPatchXml: '<itemSchema><field id="productTitle"><value>Updated</value></field></itemSchema>'
+      })
+    ).resolves.toEqual({ productId: '1600000000123', traceId: 'update-trace', success: true });
+    expect(syncCall).not.toHaveBeenCalled();
+  });
+
+  it('uses encrypted IDs and on/off values for product display mutations', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method, parameters) => {
+      expect(method).toBe('alibaba.icbu.product.batch.update.display');
+      expect(parameters).toEqual({ product_id_list: 'encrypted-1,encrypted-2', new_display: 'off' });
+      return Promise.resolve(response(method, { sub_success: true, trace_id: 'display-trace' }));
+    });
+    const adapter = new ProductAdapter({ call });
+
+    await expect(
+      adapter.updateDisplay({ encryptedProductIds: ['encrypted-1', 'encrypted-2'], display: 'offline' })
+    ).resolves.toEqual({
+      encryptedProductIds: ['encrypted-1', 'encrypted-2'],
+      display: 'offline',
+      traceId: 'display-trace',
+      success: true
+    });
+  });
+
+  it('rejects a product display response without explicit success', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve(
+        response(method, {
+          sub_success: false,
+          sub_error_code: 'SERVICE_INTERNAL_ERROR',
+          sub_error_msg: 'invalid display value',
+          trace_id: 'display-failed'
+        })
+      )
+    );
+    const adapter = new ProductAdapter({ call });
+
+    await expect(
+      adapter.updateDisplay({ encryptedProductIds: ['encrypted-1'], display: 'online' })
+    ).rejects.toMatchObject({ gatewayError: { code: 'SERVICE_INTERNAL_ERROR', traceId: 'display-failed' } });
+  });
+
   it('rejects an unsafe plaintext product id before calling Alibaba', async () => {
     const call = vi.fn<AlibabaClient['call']>();
     const adapter = new ProductAdapter({ call });
@@ -288,5 +357,23 @@ describe('ProductAdapter', () => {
     expect(call).toHaveBeenCalledWith('alibaba.icbu.product.group.get', { group_id: 456 });
     expect(call).toHaveBeenCalledWith('alibaba.icbu.product.group.get', { group_id: 788 });
     expect(call).toHaveBeenCalledWith('alibaba.icbu.product.group.get', { group_id: 789 });
+  });
+
+  it('creates a product group only when Alibaba confirms its parent, name and id', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method, parameters) => {
+      expect(parameters).toEqual({ group_name: 'Smoke child', parent_id: 916243313, extra_context: {} });
+      return Promise.resolve(
+        response(method, {
+          product_group: { group_id: 987654321, group_name: 'Smoke child', parent_id: 916243313 }
+        })
+      );
+    });
+    const adapter = new ProductAdapter({ call });
+
+    await expect(adapter.createGroup({ name: 'Smoke child', parentId: 916243313 })).resolves.toEqual({
+      id: 987654321,
+      name: 'Smoke child',
+      children: []
+    });
   });
 });

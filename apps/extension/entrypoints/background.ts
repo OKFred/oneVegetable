@@ -421,7 +421,7 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
     case 'saveProductDraft':
       return products.saveDraft(payload as RequestOf<'saveProductDraft'>);
     case 'updateProduct':
-      return products.mutate('alibaba.icbu.product.schema.update', payload as RequestOf<'updateProduct'>);
+      return products.update(payload as RequestOf<'updateProduct'>);
     case 'updateProductDisplay':
       return products.updateDisplay(payload as RequestOf<'updateProductDisplay'>);
     case 'listProductCategories':

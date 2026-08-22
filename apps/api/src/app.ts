@@ -7,7 +7,10 @@ import {
   isOperationId,
   isRequestId,
   normalizeApiPrefix,
-  validateOperationAvailabilityInput
+  validateOperationAvailabilityInput,
+  validateProductDisplayInput,
+  validateProductGroupCreateInput,
+  validateProductSchemaUpdateInput
 } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 import {
@@ -131,9 +134,15 @@ export function createApiApp(options: ApiAppOptions): Hono {
       runtime: options.runtime,
       database: options.database,
       gatewayMode: options.gatewayMode,
-      mutationEnabled: ['saveProductDraft', 'operatePhotoGroup', 'uploadPhoto', 'transferPhotoFromUrl'].some(
-        (operation) => featureFlags.isEnabled(`operation:${operation}`)
-      ),
+      mutationEnabled: [
+        'saveProductDraft',
+        'updateProduct',
+        'updateProductDisplay',
+        'createProductGroup',
+        'operatePhotoGroup',
+        'uploadPhoto',
+        'transferPhotoFromUrl'
+      ].some((operation) => featureFlags.isEnabled(`operation:${operation}`)),
       ...(options.requestEvents ? { requestEvents: options.requestEvents } : {}),
       ...(options.gatewayStatus ? { gatewayStatus: options.gatewayStatus } : {}),
       ...(options.requestEventRetentionDays !== undefined
@@ -249,6 +258,15 @@ export function createApiApp(options: ApiAppOptions): Hono {
       return failure(context, parsed.requestId, 400, {
         code: 'INVALID_OPERATION_REQUEST',
         message: 'operation 或 payload 无效',
+        retryable: false
+      });
+    }
+    const payloadErrors = validateDedicatedProductMutation(parsed.body.operation, parsed.body.payload);
+    if (payloadErrors.length > 0) {
+      logRequest(options, parsed.requestId, parsed.body.operation, 'error', 400, startedAt);
+      return failure(context, parsed.requestId, 400, {
+        code: 'INVALID_OPERATION_PAYLOAD',
+        message: payloadErrors.join('；'),
         retryable: false
       });
     }
@@ -444,6 +462,22 @@ async function parseEnvelope(
 
 function isOperationBody(body: Record<string, unknown>): body is OperationCallBody {
   return isOperationId(body.operation) && isRecord(body.payload);
+}
+
+function validateDedicatedProductMutation(
+  operation: OperationId,
+  payload: Record<string, unknown>
+): string[] {
+  switch (operation) {
+    case 'updateProduct':
+      return validateProductSchemaUpdateInput(payload).errors;
+    case 'updateProductDisplay':
+      return validateProductDisplayInput(payload).errors;
+    case 'createProductGroup':
+      return validateProductGroupCreateInput(payload).errors;
+    default:
+      return [];
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

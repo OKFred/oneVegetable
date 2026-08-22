@@ -73,6 +73,14 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
       "traceId": "mock-update-trace",
       "success": true
     },
+    "updateProductDisplay": {
+      "encryptedProductIds": [
+        "mock-encrypted-product-1"
+      ],
+      "display": "offline",
+      "traceId": "mock-display-trace",
+      "success": true
+    },
     "listProductCategories": [
       {
         "id": 100003109,

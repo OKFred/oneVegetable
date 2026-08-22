@@ -24,6 +24,7 @@ export interface ProductMockData {
     | 'publishProduct'
     | 'saveProductDraft'
     | 'updateProduct'
+    | 'updateProductDisplay'
     | 'listProductCategories'
     | 'mapProductCategory'
     | 'getProductLevelSchema'

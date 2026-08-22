@@ -6,12 +6,15 @@ import {
   validateLogisticsOrderDraft,
   validateLogisticsQuoteRequest,
   validateOperationAvailabilityRequest,
+  validateProductDisplayRequest,
+  validateProductGroupCreateRequest,
   validateProductDescriptionTemplateCreateRequest,
   validateProductDescriptionTemplateListRequest,
   validateProductDescriptionTemplateStatusRequest,
   validateProductDescriptionTemplateUpdateRequest,
   validateProductSchemaRenderRequest,
   validateProductSchemaRequest,
+  validateProductSchemaUpdateRequest,
   validateSchemaPublishRequest
 } from '../generated/validators-core';
 
@@ -19,8 +22,11 @@ import type {
   CapabilityCallRequest,
   LogisticsOrderDraft,
   LogisticsQuoteRequest,
+  ProductDisplayRequest,
+  ProductGroupCreateRequest,
   ProductSchemaRequest,
   ProductSchemaRenderRequest,
+  ProductSchemaUpdateRequest,
   SchemaPublishRequest
 } from '../types';
 import type {
@@ -70,6 +76,23 @@ export const validateProductSchemaRenderInput = (value: unknown, locale?: 'en' |
 
 export const validateSchemaPublishInput = (value: unknown, locale?: 'en' | 'zh') =>
   runValidator<SchemaPublishRequest>(validateSchemaPublishRequest as StandaloneValidator, value, locale);
+
+export const validateProductSchemaUpdateInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<ProductSchemaUpdateRequest>(
+    validateProductSchemaUpdateRequest as StandaloneValidator,
+    value,
+    locale
+  );
+
+export const validateProductDisplayInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<ProductDisplayRequest>(validateProductDisplayRequest as StandaloneValidator, value, locale);
+
+export const validateProductGroupCreateInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<ProductGroupCreateRequest>(
+    validateProductGroupCreateRequest as StandaloneValidator,
+    value,
+    locale
+  );
 
 export const validateCapabilityCallInput = (value: unknown, locale?: 'en' | 'zh') =>
   runValidator<CapabilityCallRequest>(validateCapabilityCallRequest as StandaloneValidator, value, locale);

@@ -29,7 +29,7 @@
 - 后台入口不超过 1.8 MB；
 - options/popup 页面入口 chunk 单个不超过 800 KB；
 - options HTML 直接引用的 JavaScript 总量不超过 250 KB；
-- 解压后的扩展总量不超过 3.2 MB，且不包含 source map；
+- 解压后的扩展总量不超过 3.25 MB，且不包含 source map；该预算包含商品写操作的构建期 AJV standalone validators。
 - manifest 不重新引入 `cookies` 或必选 `<all_urls>`；
 - 正式网关权限没有被误删。
 
