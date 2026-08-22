@@ -1,5 +1,4 @@
-import { DOMParser } from 'linkedom';
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { GatewayException } from '@one-vegetable/core';
 import { applyNodeMigrations, openNodeDatabase } from '../src/db/node-database';
@@ -22,14 +21,6 @@ const REQUEST = {
 } as const;
 
 let handle: NodeDatabaseHandle | undefined;
-
-beforeAll(() => {
-  vi.stubGlobal('DOMParser', DOMParser);
-});
-
-afterAll(() => {
-  vi.unstubAllGlobals();
-});
 
 afterEach(() => {
   handle?.connection.close();

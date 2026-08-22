@@ -76,6 +76,10 @@ export interface ProductSchemaModel {
   touchedFieldKeys: string[];
 }
 
+export interface ProductSchemaXmlParser {
+  parseFromString(xml: string, mimeType: 'application/xml'): XMLDocument;
+}
+
 export interface ProductSchemaFieldIssue {
   fieldKey: string;
   severity: 'error' | 'warning';
@@ -158,8 +162,8 @@ const VALUE_METADATA_ATTRIBUTES = new Set([
   'modifiedAt'
 ]);
 
-export function parseProductSchemaXml(xml: string): ProductSchemaModel {
-  const document = parseXml(xml);
+export function parseProductSchemaXml(xml: string, parser?: ProductSchemaXmlParser): ProductSchemaModel {
+  const document = parseXml(xml, parser);
   const parserError = document.querySelector('parsererror');
   if (parserError) throw new Error(`商品 Schema XML 无法解析：${parserError.textContent}`);
   const warnings: string[] = [];
@@ -1000,8 +1004,8 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : '未知错误';
 }
 
-function parseXml(xml: string): XMLDocument {
-  return new DOMParser().parseFromString(xml, 'application/xml');
+function parseXml(xml: string, parser?: ProductSchemaXmlParser): XMLDocument {
+  return (parser ?? new DOMParser()).parseFromString(xml, 'application/xml');
 }
 
 function directChildren(element: Element | null, name: string): Element[] {

@@ -34,6 +34,23 @@ export interface ProductMutationJobPage {
   total: number;
 }
 
+export interface ProductMutationJobListRequest {
+  requestId: string;
+  page?: number;
+  pageSize?: number;
+  productId?: string;
+  status?: ProductMutationJobStatus;
+}
+
+export interface ProductMutationJobGetRequest {
+  requestId: string;
+  id: string;
+}
+
+export interface ProductMutationJobRefreshRequest extends ProductMutationJobGetRequest {
+  revision: number;
+}
+
 export function productMutationJobIsBlocking(status: ProductMutationJobStatus): boolean {
   return status === 'submitted' || status === 'auditing' || status === 'recovery-required';
 }

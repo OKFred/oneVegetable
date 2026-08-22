@@ -1,7 +1,12 @@
 import { parseProductSchemaXml } from './product-schema';
 
 import type { ProductMutationFieldExpectation } from './product-mutation-job';
-import type { ProductSchemaField, ProductSchemaInstance, ProductSchemaValue } from './product-schema';
+import type {
+  ProductSchemaField,
+  ProductSchemaInstance,
+  ProductSchemaValue,
+  ProductSchemaXmlParser
+} from './product-schema';
 
 export interface ProductMutationFingerprintSet {
   payloadFingerprint: string;
@@ -15,9 +20,10 @@ export interface ProductMutationFingerprintComparison {
 }
 
 export async function createProductMutationFingerprints(
-  schemaPatchXml: string
+  schemaPatchXml: string,
+  parser?: ProductSchemaXmlParser
 ): Promise<ProductMutationFingerprintSet> {
-  const model = parseProductSchemaXml(schemaPatchXml);
+  const model = parseProductSchemaXml(schemaPatchXml, parser);
   if (model.fields.length === 0) throw new Error('商品增量 XML 不包含字段');
   const fieldIds = new Set<string>();
   const fieldExpectations: ProductMutationFieldExpectation[] = [];
@@ -38,9 +44,10 @@ export async function createProductMutationFingerprints(
 
 export async function compareProductMutationFingerprints(
   renderedSchemaXml: string,
-  expectations: readonly ProductMutationFieldExpectation[]
+  expectations: readonly ProductMutationFieldExpectation[],
+  parser?: ProductSchemaXmlParser
 ): Promise<ProductMutationFingerprintComparison> {
-  const model = parseProductSchemaXml(renderedSchemaXml);
+  const model = parseProductSchemaXml(renderedSchemaXml, parser);
   const renderedFields = new Map(model.fields.map((field) => [field.id, field] as const));
   const missingFieldIds: string[] = [];
   const mismatchedFieldIds: string[] = [];

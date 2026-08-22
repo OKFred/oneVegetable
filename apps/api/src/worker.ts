@@ -10,6 +10,7 @@ import { EnvironmentAlibabaCredentialProvider } from './gateway/credentials';
 import { createDocumentationReplayGateway, documentationReplayStatus } from './gateway/documentation-replay';
 import { readRuntimeConfiguration } from './runtime-config';
 import { SqlProductDescriptionTemplateRepository } from './product-description-templates/repository';
+import { SqlProductMutationJobRepository } from './product-mutations/repository';
 
 interface Env {
   DB: D1Database;
@@ -55,6 +56,7 @@ export default {
       featureFlags: new StaticOperationFeatureFlags(new Set(runtimeConfiguration.mutationFlags)),
       requestEvents: new SqlRequestEventRepository(database.executor),
       productDescriptionTemplates: new SqlProductDescriptionTemplateRepository(database.executor),
+      productMutationJobs: new SqlProductMutationJobRepository(database.executor),
       requestEventRetentionDays: runtimeConfiguration.requestEventRetentionDays,
       allowedOrigins: runtimeConfiguration.allowedOrigins,
       ready: () => isD1DatabaseReady(database)

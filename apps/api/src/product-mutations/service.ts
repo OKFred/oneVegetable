@@ -3,6 +3,7 @@ import {
   createProductMutationFingerprints,
   GatewayException
 } from '@one-vegetable/core';
+import { DOMParser as ServerDomParser } from 'linkedom';
 
 import type {
   ProductMutationJob,
@@ -11,11 +12,18 @@ import type {
   ProductMutationResult,
   ProductSchema,
   ProductSchemaRenderRequest,
-  ProductSchemaUpdateRequest
+  ProductSchemaUpdateRequest,
+  ProductSchemaXmlParser
 } from '@one-vegetable/core';
 import type { AuthService } from '../auth/service';
 import type { AuthPrincipal } from '../auth/types';
 import type { ProductMutationJobListQuery, ProductMutationJobRepository } from './repository';
+
+const SERVER_XML_PARSER: ProductSchemaXmlParser = {
+  parseFromString(xml) {
+    return new ServerDomParser().parseFromString(xml, 'text/xml') as unknown as XMLDocument;
+  }
+};
 
 export interface ProductMutationGateway {
   update(request: ProductSchemaUpdateRequest, requestId: string): Promise<ProductMutationResult>;
@@ -46,7 +54,10 @@ export class ProductMutationLifecycleService {
   }): Promise<ProductMutationSubmissionResult> {
     const blocking = await this.#repository.findBlocking(input.request.productId);
     if (blocking) throw new ProductMutationAlreadyInProgressError(blocking);
-    const fingerprints = await createProductMutationFingerprints(input.request.schemaPatchXml);
+    const fingerprints = await createProductMutationFingerprints(
+      input.request.schemaPatchXml,
+      SERVER_XML_PARSER
+    );
     let job = await this.#repository.create({
       requestId: input.requestId,
       productId: input.request.productId,
@@ -104,7 +115,11 @@ export class ProductMutationLifecycleService {
         },
         input.requestId
       );
-      const comparison = await compareProductMutationFingerprints(rendered.xml, current.fieldExpectations);
+      const comparison = await compareProductMutationFingerprints(
+        rendered.xml,
+        current.fieldExpectations,
+        SERVER_XML_PARSER
+      );
       const status: ProductMutationJobStatus = comparison.matched ? 'verified' : 'recovery-required';
       const reasonCode = comparison.matched
         ? 'PRODUCT_MUTATION_READBACK_MATCHED'
