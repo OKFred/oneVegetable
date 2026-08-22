@@ -132,14 +132,26 @@ export const productMutationJobs = sqliteTable(
     id: text('id').primaryKey(),
     requestId: text('request_id').notNull(),
     productId: text('product_id').notNull(),
-    operation: text('operation', { enum: ['updateProduct'] }).notNull(),
+    operation: text('operation', { enum: ['updateProduct', 'updateProductDisplay'] }).notNull(),
     status: text('status', {
-      enum: ['submitted', 'auditing', 'verified', 'recovery-required', 'failed']
+      enum: [
+        'submitted',
+        'auditing',
+        'verifying',
+        'verified',
+        'recovery-required',
+        'recovering',
+        'recovered',
+        'failed'
+      ]
     }).notNull(),
-    categoryId: integer('category_id').notNull(),
-    language: text('language', { enum: ['zh_CN', 'en_US'] }).notNull(),
+    categoryId: integer('category_id'),
+    language: text('language', { enum: ['zh_CN', 'en_US'] }),
     payloadFingerprint: text('payload_fingerprint').notNull(),
     fieldExpectationsJson: text('field_expectations_json').notNull(),
+    encryptedProductId: text('encrypted_product_id'),
+    targetDisplay: text('target_display', { enum: ['online', 'offline'] }),
+    originalDisplay: text('original_display', { enum: ['online', 'offline'] }),
     traceId: text('trace_id'),
     reasonCode: text('reason_code'),
     message: text('message'),
@@ -154,7 +166,11 @@ export const productMutationJobs = sqliteTable(
     remark: text('remark')
   },
   (table) => [
-    uniqueIndex('product_mutation_jobs_request_id_unique').on(table.requestId),
+    uniqueIndex('product_mutation_jobs_request_target_unique').on(
+      table.requestId,
+      table.productId,
+      table.operation
+    ),
     index('product_mutation_jobs_product_time_index').on(table.productId, table.submittedTimeUtc),
     index('product_mutation_jobs_status_time_index').on(table.status, table.updateTimeUtc)
   ]
@@ -170,4 +186,4 @@ export const schema = {
   productDescriptionTemplates,
   productMutationJobs
 };
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;

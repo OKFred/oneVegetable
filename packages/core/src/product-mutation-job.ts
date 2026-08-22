@@ -1,8 +1,16 @@
 import type { EntityAuditFields } from './audit';
 
-export type ProductMutationJobOperation = 'updateProduct';
+export type ProductMutationJobOperation = 'updateProduct' | 'updateProductDisplay';
 
-export type ProductMutationJobStatus = 'submitted' | 'auditing' | 'verified' | 'recovery-required' | 'failed';
+export type ProductMutationJobStatus =
+  | 'submitted'
+  | 'auditing'
+  | 'verifying'
+  | 'verified'
+  | 'recovery-required'
+  | 'recovering'
+  | 'recovered'
+  | 'failed';
 
 export interface ProductMutationFieldExpectation {
   fieldId: string;
@@ -15,10 +23,13 @@ export interface ProductMutationJob extends EntityAuditFields {
   productId: string;
   operation: ProductMutationJobOperation;
   status: ProductMutationJobStatus;
-  categoryId: number;
-  language: 'zh_CN' | 'en_US';
+  categoryId: number | null;
+  language: 'zh_CN' | 'en_US' | null;
   payloadFingerprint: string;
   fieldExpectations: ProductMutationFieldExpectation[];
+  encryptedProductId: string | null;
+  targetDisplay: 'online' | 'offline' | null;
+  originalDisplay: 'online' | 'offline' | null;
   traceId: string | null;
   reasonCode: string | null;
   message: string | null;
@@ -51,10 +62,18 @@ export interface ProductMutationJobRefreshRequest extends ProductMutationJobGetR
   revision: number;
 }
 
+export type ProductMutationJobRecoverRequest = ProductMutationJobRefreshRequest;
+
 export function productMutationJobIsBlocking(status: ProductMutationJobStatus): boolean {
-  return status === 'submitted' || status === 'auditing' || status === 'recovery-required';
+  return (
+    status === 'submitted' ||
+    status === 'auditing' ||
+    status === 'verifying' ||
+    status === 'recovery-required' ||
+    status === 'recovering'
+  );
 }
 
 export function productMutationJobIsTerminal(status: ProductMutationJobStatus): boolean {
-  return status === 'verified' || status === 'failed';
+  return status === 'verified' || status === 'recovered' || status === 'failed';
 }

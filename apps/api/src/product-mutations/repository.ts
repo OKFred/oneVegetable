@@ -11,7 +11,13 @@ import type {
 import type { SqlExecutor, SqlPrimitive } from '../db/sql-executor';
 
 const FINGERPRINT_PATTERN = /^[0-9a-f]{64}$/u;
-const BLOCKING_STATUSES: readonly ProductMutationJobStatus[] = ['submitted', 'auditing', 'recovery-required'];
+const BLOCKING_STATUSES: readonly ProductMutationJobStatus[] = [
+  'submitted',
+  'auditing',
+  'verifying',
+  'recovery-required',
+  'recovering'
+];
 
 export interface ProductMutationJobCreateInput {
   requestId: string;
@@ -35,6 +41,17 @@ export interface ProductMutationJobTransitionInput {
   checked?: boolean;
 }
 
+export interface ProductDisplayMutationJobCreateInput {
+  requestId: string;
+  productId: string;
+  encryptedProductId: string;
+  targetDisplay: 'online' | 'offline';
+  originalDisplay: 'online' | 'offline';
+  payloadFingerprint: string;
+  actorId: string;
+  remark?: string | null;
+}
+
 export interface ProductMutationJobListQuery {
   page: number;
   pageSize: number;
@@ -48,6 +65,7 @@ export interface ProductMutationJobRepository {
   findBlocking(productId: string): Promise<ProductMutationJob | null>;
   list(query: ProductMutationJobListQuery): Promise<{ items: ProductMutationJob[]; total: number }>;
   create(input: ProductMutationJobCreateInput): Promise<ProductMutationJob>;
+  createDisplay(input: ProductDisplayMutationJobCreateInput): Promise<ProductMutationJob>;
   transition(input: ProductMutationJobTransitionInput): Promise<ProductMutationJob>;
 }
 
@@ -84,7 +102,8 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
   async findBlocking(productId: string): Promise<ProductMutationJob | null> {
     const rows = await this.#executor.query(
       `SELECT * FROM product_mutation_jobs
-       WHERE product_id = ? AND status IN ('submitted', 'auditing', 'recovery-required')
+       WHERE product_id = ?
+         AND status IN ('submitted', 'auditing', 'verifying', 'recovery-required', 'recovering')
        ORDER BY submitted_time_utc DESC LIMIT 1`,
       [normalizeProductId(productId)]
     );
@@ -134,10 +153,12 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
       await this.#executor.execute(
         `INSERT INTO product_mutation_jobs (
           id, request_id, product_id, operation, status, category_id, language,
-          payload_fingerprint, field_expectations_json, trace_id, reason_code, message,
+          payload_fingerprint, field_expectations_json,
+          encrypted_product_id, target_display, original_display,
+          trace_id, reason_code, message,
           submitted_time_utc, last_checked_time_utc, completed_time_utc,
           create_time_utc, update_time_utc, creator_id, updater_id, revision, remark
-        ) VALUES (?, ?, ?, 'updateProduct', 'submitted', ?, ?, ?, ?, NULL, NULL, NULL,
+        ) VALUES (?, ?, ?, 'updateProduct', 'submitted', ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL,
           ?, NULL, NULL, ?, ?, ?, ?, ?, ?)`,
         [
           id,
@@ -159,7 +180,56 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
     } catch (error: unknown) {
       if (
         error instanceof Error &&
-        /product_mutation_jobs_(open_product|request_id)_unique|UNIQUE constraint failed/iu.test(
+        /product_mutation_jobs_(open_product|request_target)_unique|UNIQUE constraint failed/iu.test(
+          error.message
+        )
+      ) {
+        throw new ProductMutationJobConflictError();
+      }
+      throw error;
+    }
+    return this.#require(id);
+  }
+
+  async createDisplay(input: ProductDisplayMutationJobCreateInput): Promise<ProductMutationJob> {
+    const now = this.#clock();
+    const audit = createEntityAuditFields(input.actorId, now, input.remark);
+    const id = crypto.randomUUID();
+    const productId = normalizeProductId(input.productId);
+    const encryptedProductId = normalizeEncryptedProductId(input.encryptedProductId);
+    if (!FINGERPRINT_PATTERN.test(input.payloadFingerprint)) throw new Error('写入载荷指纹无效');
+    try {
+      await this.#executor.execute(
+        `INSERT INTO product_mutation_jobs (
+          id, request_id, product_id, operation, status, category_id, language,
+          payload_fingerprint, field_expectations_json,
+          encrypted_product_id, target_display, original_display,
+          trace_id, reason_code, message,
+          submitted_time_utc, last_checked_time_utc, completed_time_utc,
+          create_time_utc, update_time_utc, creator_id, updater_id, revision, remark
+        ) VALUES (?, ?, ?, 'updateProductDisplay', 'submitted', NULL, NULL, ?, '[]', ?, ?, ?,
+          NULL, NULL, NULL, ?, NULL, NULL, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          input.requestId,
+          productId,
+          input.payloadFingerprint,
+          encryptedProductId,
+          input.targetDisplay,
+          input.originalDisplay,
+          now,
+          audit.createTimeUtc,
+          audit.updateTimeUtc,
+          audit.creatorId,
+          audit.updaterId,
+          audit.revision,
+          audit.remark
+        ]
+      );
+    } catch (error: unknown) {
+      if (
+        error instanceof Error &&
+        /product_mutation_jobs_(open_product|request_target)_unique|UNIQUE constraint failed/iu.test(
           error.message
         )
       ) {
@@ -177,7 +247,7 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
     assertTransition(current.status, input.status);
     const now = this.#clock();
     const audit = updateEntityAuditFields(current, input.actorId, now, current.remark);
-    const terminal = input.status === 'verified' || input.status === 'failed';
+    const terminal = input.status === 'verified' || input.status === 'recovered' || input.status === 'failed';
     const result = await this.#executor.execute(
       `UPDATE product_mutation_jobs SET status = ?, trace_id = ?, reason_code = ?, message = ?,
        last_checked_time_utc = ?, completed_time_utc = ?, update_time_utc = ?, updater_id = ?, revision = ?
@@ -209,17 +279,20 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
 
 function assertTransition(from: ProductMutationJobStatus, to: ProductMutationJobStatus): void {
   const allowed: Record<ProductMutationJobStatus, readonly ProductMutationJobStatus[]> = {
-    submitted: ['auditing', 'recovery-required', 'failed'],
+    submitted: ['auditing', 'verifying', 'recovery-required', 'failed'],
     auditing: ['auditing', 'verified', 'recovery-required'],
+    verifying: ['verifying', 'verified', 'recovery-required'],
     verified: [],
-    'recovery-required': ['recovery-required', 'verified', 'failed'],
+    'recovery-required': ['recovery-required', 'verified', 'recovering', 'failed'],
+    recovering: ['recovering', 'recovered', 'recovery-required'],
+    recovered: [],
     failed: []
   };
   if (!allowed[from].includes(to)) throw new Error(`商品写入任务不能从 ${from} 变更为 ${to}`);
 }
 
 function assertStatus(value: string): asserts value is ProductMutationJobStatus {
-  if (![...BLOCKING_STATUSES, 'verified', 'failed'].some((candidate) => candidate === value)) {
+  if (![...BLOCKING_STATUSES, 'verified', 'recovered', 'failed'].some((candidate) => candidate === value)) {
     throw new Error('商品写入任务状态无效');
   }
 }
@@ -262,12 +335,24 @@ function toEntity(row: Record<string, unknown>): ProductMutationJob {
     id: readString(row, 'id'),
     requestId: readString(row, 'request_id'),
     productId: readString(row, 'product_id'),
-    operation: readEnum(row, 'operation', ['updateProduct']),
-    status: readEnum(row, 'status', ['submitted', 'auditing', 'verified', 'recovery-required', 'failed']),
-    categoryId: readNumber(row, 'category_id'),
-    language: readEnum(row, 'language', ['zh_CN', 'en_US']),
+    operation: readEnum(row, 'operation', ['updateProduct', 'updateProductDisplay']),
+    status: readEnum(row, 'status', [
+      'submitted',
+      'auditing',
+      'verifying',
+      'verified',
+      'recovery-required',
+      'recovering',
+      'recovered',
+      'failed'
+    ]),
+    categoryId: readNullableNumber(row, 'category_id'),
+    language: readNullableEnum(row, 'language', ['zh_CN', 'en_US']),
     payloadFingerprint: readString(row, 'payload_fingerprint'),
     fieldExpectations: parseExpectations(readString(row, 'field_expectations_json')),
+    encryptedProductId: readNullableString(row, 'encrypted_product_id'),
+    targetDisplay: readNullableEnum(row, 'target_display', ['online', 'offline']),
+    originalDisplay: readNullableEnum(row, 'original_display', ['online', 'offline']),
     traceId: readNullableString(row, 'trace_id'),
     reasonCode: readNullableString(row, 'reason_code'),
     message: readNullableString(row, 'message'),
@@ -291,6 +376,7 @@ function parseExpectations(value: string): ProductMutationFieldExpectation[] {
     throw new Error('数据库字段 field_expectations_json 无效');
   }
   if (!Array.isArray(parsed)) throw new Error('数据库字段 field_expectations_json 无效');
+  if (parsed.length === 0) return [];
   return normalizeExpectations(
     parsed.map((item) => {
       if (typeof item !== 'object' || item === null || Array.isArray(item)) {
@@ -338,4 +424,20 @@ function readEnum<const T extends string>(
   const value = readString(row, key);
   if (!allowed.some((candidate) => candidate === value)) throw new Error(`数据库字段 ${key} 无效`);
   return value as T;
+}
+
+function readNullableEnum<const T extends string>(
+  row: Record<string, unknown>,
+  key: string,
+  allowed: readonly T[]
+): T | null {
+  return row[key] === null ? null : readEnum(row, key, allowed);
+}
+
+function normalizeEncryptedProductId(value: string): string {
+  const productId = value.trim();
+  if (!productId || productId.length > 256 || productId.includes(',')) {
+    throw new Error('商品混淆 ID 无效');
+  }
+  return productId;
 }

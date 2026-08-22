@@ -41,6 +41,9 @@ describe('product mutation job repository', () => {
     });
     expect(JSON.stringify(created)).not.toContain('<field');
     expect(await repository.findBlocking(created.productId)).toMatchObject({ id: created.id });
+    if (created.categoryId === null || created.language === null) {
+      throw new Error('Schema 更新任务缺少类目或语言');
+    }
 
     await expect(
       repository.create({
@@ -113,5 +116,64 @@ describe('product mutation job repository', () => {
         actorId: 'user-1'
       })
     ).rejects.toThrow('不能从 submitted 变更为 verified');
+  });
+
+  it('persists display state snapshots without storing a gateway response', async () => {
+    handle = openNodeDatabase(':memory:');
+    applyNodeMigrations(handle);
+    let now = 1_723_456_789_100;
+    const repository = new SqlProductMutationJobRepository(handle.executor, () => now);
+    const created = await repository.createDisplay({
+      requestId: '53215cc3-8f1d-4519-b8de-72f36361ba98',
+      productId: '1601928079741',
+      encryptedProductId: 'AAEz7fWKAJllV4DtZ4FKW45E',
+      targetDisplay: 'offline',
+      originalDisplay: 'online',
+      payloadFingerprint: 'c'.repeat(64),
+      actorId: 'admin-1'
+    });
+    expect(created).toMatchObject({
+      operation: 'updateProductDisplay',
+      status: 'submitted',
+      categoryId: null,
+      language: null,
+      encryptedProductId: 'AAEz7fWKAJllV4DtZ4FKW45E',
+      targetDisplay: 'offline',
+      originalDisplay: 'online',
+      fieldExpectations: []
+    });
+    now += 10;
+    const verifying = await repository.transition({
+      id: created.id,
+      expectedRevision: created.revision,
+      status: 'verifying',
+      actorId: 'admin-1',
+      traceId: 'display-trace'
+    });
+    now += 10;
+    const recoveryRequired = await repository.transition({
+      id: verifying.id,
+      expectedRevision: verifying.revision,
+      status: 'recovery-required',
+      actorId: 'admin-1',
+      checked: true
+    });
+    now += 10;
+    const recovering = await repository.transition({
+      id: recoveryRequired.id,
+      expectedRevision: recoveryRequired.revision,
+      status: 'recovering',
+      actorId: 'admin-1'
+    });
+    now += 10;
+    await expect(
+      repository.transition({
+        id: recovering.id,
+        expectedRevision: recovering.revision,
+        status: 'recovered',
+        actorId: 'admin-1',
+        checked: true
+      })
+    ).resolves.toMatchObject({ status: 'recovered', completedTimeUtc: now });
   });
 });
