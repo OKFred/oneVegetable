@@ -9,7 +9,7 @@ import { AuthService } from '../src/auth/service';
 import { applyNodeMigrations, openNodeDatabase } from '../src/db/node-database';
 import { SqlProductMutationJobRepository } from '../src/product-mutations/repository';
 
-import type { GatewayClient, OperationId } from '@one-vegetable/core';
+import type { OperationId } from '@one-vegetable/core';
 import type { NodeDatabaseHandle } from '../src/db/node-database';
 
 const PATCH = `<itemSchema><field id="subject" type="input"><values><value>Updated title</value></values></field></itemSchema>`;
