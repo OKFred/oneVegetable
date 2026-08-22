@@ -40,6 +40,7 @@ export interface ProductMutationJobListQuery {
   pageSize: number;
   productId?: string;
   status?: ProductMutationJobStatus;
+  actorId?: string;
 }
 
 export interface ProductMutationJobRepository {
@@ -104,6 +105,10 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
       assertStatus(query.status);
       filters.push('status = ?');
       parameters.push(query.status);
+    }
+    if (query.actorId !== undefined) {
+      filters.push('creator_id = ?');
+      parameters.push(query.actorId);
     }
     const where = filters.length > 0 ? ` WHERE ${filters.join(' AND ')}` : '';
     const offset = (query.page - 1) * query.pageSize;
@@ -204,7 +209,7 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
 
 function assertTransition(from: ProductMutationJobStatus, to: ProductMutationJobStatus): void {
   const allowed: Record<ProductMutationJobStatus, readonly ProductMutationJobStatus[]> = {
-    submitted: ['auditing', 'failed'],
+    submitted: ['auditing', 'recovery-required', 'failed'],
     auditing: ['auditing', 'verified', 'recovery-required'],
     verified: [],
     'recovery-required': ['recovery-required', 'verified', 'failed'],
