@@ -10,6 +10,7 @@ import {
   inspectProductSchemaPatchSerialization,
   inspectProductSchemaSerialization,
   parseProductSchemaXml,
+  productMutationJobIsBlocking,
   validateProductDisplayInput,
   validateProductGroupCreateInput,
   validateProductSchemaRenderInput,
@@ -141,7 +142,9 @@ const productMutationHistory = useQuery({
       return { items: [], page: 1, pageSize: 20, total: 0 };
     }
     const page = await productMutationJobs.list({ productId: editProductId.value, pageSize: 20 });
-    const pending = page.items.find((job) => job.status === 'submitted' || job.status === 'auditing');
+    const pending = page.items.find(
+      (job) => job.operation === 'updateProduct' && (job.status === 'submitted' || job.status === 'auditing')
+    );
     if (!pending) return page;
     const refreshed = await productMutationJobs.refresh(pending.id, pending.revision);
     return {
@@ -154,6 +157,31 @@ const productMutationHistory = useQuery({
     query.state.data?.items.some((job) => job.status === 'submitted' || job.status === 'auditing')
       ? 15_000
       : false,
+  staleTime: 0
+});
+const displayMutationHistory = useQuery({
+  queryKey: ['product-display-mutation-jobs'],
+  queryFn: async () => {
+    if (!productMutationJobs) return [];
+    const page = await productMutationJobs.list({ pageSize: 100 });
+    const displayJobs = page.items.filter((job) => job.operation === 'updateProductDisplay');
+    const refreshed: ProductMutationJob[] = [];
+    for (const job of displayJobs) {
+      if (!productMutationJobIsBlocking(job.status)) {
+        refreshed.push(job);
+        continue;
+      }
+      try {
+        refreshed.push(await productMutationJobs.refresh(job.id, job.revision));
+      } catch {
+        refreshed.push(job);
+      }
+    }
+    return refreshed;
+  },
+  enabled: computed(() => mode === 'bff' && productMutationJobs !== undefined),
+  refetchInterval: (query) =>
+    query.state.data?.some((job) => productMutationJobIsBlocking(job.status)) ? 15_000 : false,
   staleTime: 0
 });
 
@@ -173,7 +201,7 @@ const availabilityByOperation = computed(
     )
 );
 const currentProductMutationJob = computed<ProductMutationJob | null>(
-  () => productMutationHistory.data.value?.items[0] ?? null
+  () => productMutationHistory.data.value?.items.find((job) => job.operation === 'updateProduct') ?? null
 );
 const productMutationBlocksSubmit = computed(() => {
   const job = currentProductMutationJob.value;
@@ -336,9 +364,30 @@ const selectedEncryptedProductIds = computed(() =>
 const selectedProductMissingEncryptedId = computed(
   () => selectedProducts.value.length !== selectedEncryptedProductIds.value.length
 );
+const selectedDisplayMutationBlocked = computed(() =>
+  (displayMutationHistory.data.value ?? []).some(
+    (job) => selectedProductIds.value.includes(job.productId) && productMutationJobIsBlocking(job.status)
+  )
+);
+const latestDisplayMutationJobs = computed(() => (displayMutationHistory.data.value ?? []).slice(0, 5));
+const refreshDisplayMutation = useMutation({
+  mutationFn: (job: ProductMutationJob) => {
+    if (!productMutationJobs) throw new Error('当前模式不支持持久商品写入任务');
+    return productMutationJobs.refresh(job.id, job.revision);
+  },
+  onSuccess: () => queryClient.invalidateQueries({ queryKey: ['product-display-mutation-jobs'] })
+});
+const recoverDisplayMutation = useMutation({
+  mutationFn: (job: ProductMutationJob) => {
+    if (!productMutationJobs) throw new Error('当前模式不支持持久商品写入任务');
+    return productMutationJobs.recover(job.id, job.revision);
+  },
+  onSuccess: () => queryClient.invalidateQueries({ queryKey: ['product-display-mutation-jobs'] })
+});
 const batchDisplay = useMutation({
   mutationFn: (display: 'online' | 'offline') => {
     const validation = validateProductDisplayInput({
+      productIds: selectedProducts.value.map((product) => product.id),
       encryptedProductIds: selectedEncryptedProductIds.value,
       display
     });
@@ -346,8 +395,11 @@ const batchDisplay = useMutation({
     return gateway.request('updateProductDisplay', validation.data);
   },
   onSuccess: async (result, display) => {
-    feedback.value = `${result.encryptedProductIds.length} 个商品已${display === 'online' ? '上架' : '下架'}`;
+    feedback.value = result.jobs?.length
+      ? `${result.jobs.length} 个商品已提交${display === 'online' ? '上架' : '下架'}，正在回读确认`
+      : `${result.encryptedProductIds.length} 个商品已${display === 'online' ? '上架' : '下架'}`;
     selectedProductIds.value = [];
+    await queryClient.invalidateQueries({ queryKey: ['product-display-mutation-jobs'] });
     await queryClient.invalidateQueries({ queryKey: ['products'] });
   }
 });
@@ -389,6 +441,18 @@ function submitBatchDisplay(display: 'online' | 'offline'): void {
     return;
   }
   batchDisplay.mutate(display);
+}
+
+function recoverDisplayJob(job: ProductMutationJob): void {
+  if (
+    mode !== 'mock' &&
+    !globalThis.confirm(
+      `将把商品 ${job.productId} 恢复为本次操作前的${job.originalDisplay === 'online' ? '上架' : '下架'}状态，是否继续？`
+    )
+  ) {
+    return;
+  }
+  recoverDisplayMutation.mutate(job);
 }
 
 function statusVariant(status: Product['status']): 'success' | 'warning' | 'secondary' | 'destructive' {
@@ -639,7 +703,8 @@ async function renderExistingProductSchema(parsedCategoryId: number) {
   const result = await gateway.request('renderProductSchema', request);
   if (productMutationJobs) {
     const history = await productMutationJobs.list({ productId: editProductId.value, pageSize: 20 });
-    acknowledgedMutationJobId.value = history.items[0]?.id ?? '';
+    acknowledgedMutationJobId.value =
+      history.items.find((job) => job.operation === 'updateProduct')?.id ?? '';
     queryClient.setQueryData(['product-mutation-jobs', editProductId.value], history);
   }
   return result;
@@ -837,6 +902,8 @@ function productMutationDisabledReason(job: ProductMutationJob | null): string {
   if (job.status === 'submitted' || job.status === 'auditing') {
     return '商品正在平台审核中，请勿重复提交；本地草稿会继续保留';
   }
+  if (job.status === 'verifying') return '上下架请求已接受，正在等待商品列表回读';
+  if (job.status === 'recovering') return '原状态恢复请求已接受，正在等待商品列表回读';
   if (job.status === 'recovery-required') {
     return '平台回读与提交内容不一致，请先人工确认并恢复商品';
   }
@@ -846,16 +913,21 @@ function productMutationDisabledReason(job: ProductMutationJob | null): string {
 function productMutationStatusLabel(status: ProductMutationJob['status']): string {
   if (status === 'submitted') return '已提交';
   if (status === 'auditing') return '平台审核中';
+  if (status === 'verifying') return '回读确认中';
   if (status === 'verified') return '回读已验证';
   if (status === 'recovery-required') return '需要人工恢复';
+  if (status === 'recovering') return '正在恢复原状态';
+  if (status === 'recovered') return '原状态已恢复';
   return '提交失败';
 }
 
 function productMutationStatusVariant(
   status: ProductMutationJob['status']
 ): 'success' | 'warning' | 'secondary' | 'destructive' {
-  if (status === 'verified') return 'success';
-  if (status === 'submitted' || status === 'auditing') return 'warning';
+  if (status === 'verified' || status === 'recovered') return 'success';
+  if (status === 'submitted' || status === 'auditing' || status === 'verifying' || status === 'recovering') {
+    return 'warning';
+  }
   return 'destructive';
 }
 
@@ -1224,6 +1296,7 @@ onBeforeUnmount(() => {
               !selectedProductIds.length ||
               productDisplayMutationDisabled ||
               selectedProductMissingEncryptedId ||
+              selectedDisplayMutationBlocked ||
               batchDisplay.isPending.value
             "
             @click="submitBatchDisplay('online')"
@@ -1235,6 +1308,7 @@ onBeforeUnmount(() => {
               !selectedProductIds.length ||
               productDisplayMutationDisabled ||
               selectedProductMissingEncryptedId ||
+              selectedDisplayMutationBlocked ||
               batchDisplay.isPending.value
             "
             @click="submitBatchDisplay('offline')"
@@ -1248,8 +1322,77 @@ onBeforeUnmount(() => {
       <p v-else-if="selectedProductMissingEncryptedId" class="mt-3 text-xs text-destructive">
         选中的商品缺少平台混淆 ID，不能执行上下架。
       </p>
+      <p v-else-if="selectedDisplayMutationBlocked" class="mt-3 text-xs text-amber-700 dark:text-amber-400">
+        选中的商品仍有未完成或待恢复的上下架任务，请先确认任务状态。
+      </p>
       <p v-if="batchDisplay.error.value" class="mt-3 text-xs text-destructive">
         {{ errorMessage(batchDisplay.error.value) }}
+      </p>
+    </Card>
+    <Card v-if="latestDisplayMutationJobs.length" class="mb-5 p-5">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="font-semibold">最近上下架任务</h2>
+          <p class="mt-1 text-sm text-muted-foreground">
+            Alibaba 明确接受后仍需通过商品列表回读，才会标记为完成。
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          :disabled="displayMutationHistory.isFetching.value"
+          @click="displayMutationHistory.refetch()"
+        >
+          <RefreshCw class="size-4" />
+          {{ displayMutationHistory.isFetching.value ? '检查中…' : '刷新全部' }}
+        </Button>
+      </div>
+      <div class="mt-4 space-y-3">
+        <div
+          v-for="job in latestDisplayMutationJobs"
+          :key="job.id"
+          class="rounded-lg border border-border p-3"
+        >
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="font-mono text-sm">{{ job.productId }}</span>
+                <Badge :variant="productMutationStatusVariant(job.status)">
+                  {{ productMutationStatusLabel(job.status) }}
+                </Badge>
+              </div>
+              <p class="mt-1 text-xs text-muted-foreground">
+                {{ job.originalDisplay === 'online' ? '上架' : '下架' }} →
+                {{ job.targetDisplay === 'online' ? '上架' : '下架' }} · requestId
+                <span class="font-mono">{{ job.requestId }}</span>
+              </p>
+              <p v-if="job.message" class="mt-2 text-sm text-muted-foreground">{{ job.message }}</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                :disabled="refreshDisplayMutation.isPending.value"
+                @click="refreshDisplayMutation.mutate(job)"
+                >查询状态</Button
+              >
+              <Button
+                v-if="job.status === 'recovery-required'"
+                size="sm"
+                variant="destructive"
+                :disabled="recoverDisplayMutation.isPending.value"
+                @click="recoverDisplayJob(job)"
+                >恢复原状态</Button
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+      <p v-if="refreshDisplayMutation.error.value" class="mt-3 text-xs text-destructive">
+        {{ errorMessage(refreshDisplayMutation.error.value) }}
+      </p>
+      <p v-if="recoverDisplayMutation.error.value" class="mt-3 text-xs text-destructive">
+        {{ errorMessage(recoverDisplayMutation.error.value) }}
       </p>
     </Card>
     <QueryState :loading="products.isPending.value" :error="products.error.value">
