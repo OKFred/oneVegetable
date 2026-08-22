@@ -9,6 +9,7 @@ import {
 } from '../src/product-mutations/service';
 
 import type { NodeDatabaseHandle } from '../src/db/node-database';
+import type { AuthService } from '../src/auth/service';
 import type { ProductMutationGateway } from '../src/product-mutations/service';
 
 const ACTOR = { actorId: 'admin-1', username: 'admin', role: 'admin', source: 'bff' } as const;
@@ -48,7 +49,7 @@ describe('product mutation lifecycle service', () => {
   });
 
   it('keeps an accepted update auditing while Alibaba review blocks render', async () => {
-    const { service, gateway } = createService();
+    const { service, gateway, audit } = createService();
     const submitted = await service.submitUpdate({
       requestId: '358f0f24-aab5-4822-91df-a20602bcf5e5',
       actor: ACTOR,
@@ -72,6 +73,9 @@ describe('product mutation lifecycle service', () => {
       reasonCode: 'PUB_BIZCHECK_PRODUCT_IN_AUDITING'
     });
     expect(refreshed.lastCheckedTimeUtc).not.toBeNull();
+    expect(audit).toHaveBeenLastCalledWith(
+      expect.objectContaining({ requestId: 'ee17b803-7bb2-494d-963d-0c87c3050acf' })
+    );
   });
 
   it('verifies matching readback and marks mismatches as recovery required', async () => {
@@ -127,6 +131,7 @@ function createService(): {
     update: ReturnType<typeof vi.fn<ProductMutationGateway['update']>>;
     render: ReturnType<typeof vi.fn<ProductMutationGateway['render']>>;
   };
+  audit: ReturnType<typeof vi.fn<AuthService['audit']>>;
 } {
   handle = openNodeDatabase(':memory:');
   applyNodeMigrations(handle);
@@ -139,5 +144,11 @@ function createService(): {
     }),
     render: vi.fn<ProductMutationGateway['render']>()
   };
-  return { service: new ProductMutationLifecycleService(repository, gateway), gateway };
+  const audit = vi.fn<AuthService['audit']>().mockResolvedValue(undefined);
+  const authService = { audit } as unknown as AuthService;
+  return {
+    service: new ProductMutationLifecycleService(repository, gateway, authService),
+    gateway,
+    audit
+  };
 }

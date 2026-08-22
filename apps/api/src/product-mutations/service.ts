@@ -67,7 +67,7 @@ export class ProductMutationLifecycleService {
       fieldExpectations: fingerprints.fieldExpectations,
       actorId: input.actor.actorId
     });
-    await this.#audit(job, input.actor.actorId, 'submitted', null);
+    await this.#audit(job, input.requestId, input.actor.actorId, 'submitted', null);
     try {
       const result = await this.#gateway.update(input.request, input.requestId);
       job = await this.#repository.transition({
@@ -79,7 +79,7 @@ export class ProductMutationLifecycleService {
         reasonCode: 'ALIBABA_MUTATION_ACCEPTED',
         message: 'Alibaba 已接受更新，等待平台审核和回读确认'
       });
-      await this.#audit(job, input.actor.actorId, 'auditing', 1);
+      await this.#audit(job, input.requestId, input.actor.actorId, 'auditing', 1);
       return { ...result, job };
     } catch (error: unknown) {
       const details = errorDetails(error);
@@ -92,7 +92,7 @@ export class ProductMutationLifecycleService {
         reasonCode: details.code,
         message: details.message
       });
-      await this.#audit(failed, input.actor.actorId, 'failed', job.revision);
+      await this.#audit(failed, input.requestId, input.actor.actorId, 'failed', job.revision);
       throw error;
     }
   }
@@ -136,7 +136,7 @@ export class ProductMutationLifecycleService {
         message,
         checked: true
       });
-      await this.#audit(updated, input.actor.actorId, status, current.revision);
+      await this.#audit(updated, input.requestId, input.actor.actorId, status, current.revision);
       return updated;
     } catch (error: unknown) {
       const details = errorDetails(error);
@@ -152,7 +152,7 @@ export class ProductMutationLifecycleService {
         message: details.message,
         checked: true
       });
-      await this.#audit(updated, input.actor.actorId, status, current.revision);
+      await this.#audit(updated, input.requestId, input.actor.actorId, status, current.revision);
       return updated;
     }
   }
@@ -179,13 +179,14 @@ export class ProductMutationLifecycleService {
 
   #audit(
     job: ProductMutationJob,
+    requestId: string,
     actorId: string,
     status: ProductMutationJobStatus,
     revisionBefore: number | null
   ): Promise<unknown> {
     return (
       this.#authService?.audit({
-        requestId: job.requestId,
+        requestId,
         actorId,
         action: `product-mutation.${status}`,
         resourceKind: 'product-mutation-job',
