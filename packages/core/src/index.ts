@@ -23,6 +23,7 @@ export type * from './product-description-template-client-types';
 export * from './product-adapter';
 export * from './product-editor';
 export * from './product-official-hints';
+export * from './product-mutation-job';
 export * from './product-schema';
 export * from './rfq-adapter';
 export * from './trade-adapter';
