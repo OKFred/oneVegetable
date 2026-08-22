@@ -236,6 +236,42 @@ describe('product mutation lifecycle service', () => {
     ).rejects.toBeInstanceOf(ProductDisplayNoChangeError);
     expect(gateway.updateDisplay).not.toHaveBeenCalled();
   });
+
+  it('can restore the original display state before verification finishes', async () => {
+    const { service, gateway } = createService();
+    gateway.list.mockResolvedValue(productPage('online'));
+    gateway.updateDisplay.mockResolvedValue({
+      encryptedProductIds: ['encrypted-1'],
+      display: 'offline',
+      traceId: 'display-trace',
+      success: true
+    });
+    const submitted = await service.submitDisplay({
+      requestId: '3100aa3b-b47e-46a2-b556-c363f832ec09',
+      actor: ACTOR,
+      request: {
+        productIds: [REQUEST.productId],
+        encryptedProductIds: ['encrypted-1'],
+        display: 'offline'
+      }
+    });
+    const job = submitted.jobs[0];
+    if (!job) throw new Error('Missing display job');
+    gateway.updateDisplay.mockResolvedValueOnce({
+      encryptedProductIds: ['encrypted-1'],
+      display: 'online',
+      traceId: 'early-recovery-trace',
+      success: true
+    });
+    await expect(
+      service.recover({
+        requestId: '08005235-3034-4bf9-a87e-7699c511125d',
+        actor: ACTOR,
+        id: job.id,
+        expectedRevision: job.revision
+      })
+    ).resolves.toMatchObject({ status: 'recovering', originalDisplay: 'online' });
+  });
 });
 
 function createService(clock: () => number = Date.now): {

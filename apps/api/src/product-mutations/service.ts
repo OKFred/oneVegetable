@@ -260,7 +260,7 @@ export class ProductMutationLifecycleService {
     if (current.revision !== input.expectedRevision) throw new ProductMutationRevisionConflictError();
     if (
       current.operation !== 'updateProductDisplay' ||
-      current.status !== 'recovery-required' ||
+      !['submitted', 'verifying', 'recovery-required'].includes(current.status) ||
       current.encryptedProductId === null ||
       current.originalDisplay === null
     ) {

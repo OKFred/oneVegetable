@@ -279,9 +279,9 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
 
 function assertTransition(from: ProductMutationJobStatus, to: ProductMutationJobStatus): void {
   const allowed: Record<ProductMutationJobStatus, readonly ProductMutationJobStatus[]> = {
-    submitted: ['auditing', 'verifying', 'recovery-required', 'failed'],
+    submitted: ['auditing', 'verifying', 'recovery-required', 'recovering', 'failed'],
     auditing: ['auditing', 'verified', 'recovery-required'],
-    verifying: ['verifying', 'verified', 'recovery-required'],
+    verifying: ['verifying', 'verified', 'recovery-required', 'recovering'],
     verified: [],
     'recovery-required': ['recovery-required', 'verified', 'recovering', 'failed'],
     recovering: ['recovering', 'recovered', 'recovery-required'],
