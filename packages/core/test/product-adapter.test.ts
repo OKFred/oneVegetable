@@ -76,6 +76,45 @@ describe('ProductAdapter', () => {
     });
   });
 
+  it('expands documented category child_ids into selectable root categories', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method, parameters) => {
+      const categoryId = (parameters as { cat_id: number }).cat_id;
+      const categories: Record<number, Record<string, unknown>> = {
+        0: { category_id: 0, name: '', leaf_category: false, child_ids: { number: [10, 20] } },
+        10: { category_id: 10, name: 'Apparel', leaf_category: false, child_ids: { string: ['11'] } },
+        20: { category_id: 20, name: 'Bags', leaf_category: true, child_ids: [] }
+      };
+      return Promise.resolve(response(method, { category: categories[categoryId] ?? {} }));
+    });
+    const adapter = new ProductAdapter({ call });
+
+    await expect(adapter.listCategories()).resolves.toEqual([
+      { id: 10, name: 'Apparel', leaf: false, children: [] },
+      { id: 20, name: 'Bags', leaf: true, children: [] }
+    ]);
+  });
+
+  it('returns the selected category with one loaded child level', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method, parameters) => {
+      const categoryId = (parameters as { cat_id: number }).cat_id;
+      const categories: Record<number, Record<string, unknown>> = {
+        10: { category_id: 10, name: 'Apparel', leaf_category: false, child_ids: { number: [11] } },
+        11: { category_id: 11, name: 'Dresses', leaf_category: true, child_ids: [] }
+      };
+      return Promise.resolve(response(method, { category: categories[categoryId] ?? {} }));
+    });
+    const adapter = new ProductAdapter({ call });
+
+    await expect(adapter.listCategories(10)).resolves.toEqual([
+      {
+        id: 10,
+        name: 'Apparel',
+        leaf: false,
+        children: [{ id: 11, name: 'Dresses', leaf: true, children: [] }]
+      }
+    ]);
+  });
+
   it('uses the selected language when rendering a platform draft', async () => {
     const call = vi.fn<AlibabaClient['call']>((method, parameters) => {
       expect(parameters).toEqual({

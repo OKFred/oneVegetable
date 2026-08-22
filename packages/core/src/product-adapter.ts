@@ -195,14 +195,31 @@ export class ProductAdapter {
   }
 
   async listCategories(parentId?: number): Promise<ProductCategory[]> {
-    const call = await this.client.call('alibaba.icbu.category.get.new', {
-      cat_id: parentId ?? 0
-    });
+    const parent = await this.loadCategoryRecord(parentId ?? 0);
+    if (!parent) return [];
+    const childIds = [...new Set(readNumberList(parent.child_ids))];
+    const children = (
+      await mapWithConcurrency(childIds, 6, async (categoryId) => {
+        const child = await this.loadCategoryRecord(categoryId);
+        return child ? normalizeCategory(child) : null;
+      })
+    ).filter((category): category is ProductCategory => category !== null);
+    const normalizedParent = normalizeCategory(parent);
+    if (parentId === undefined) {
+      if (children.length > 0) return children;
+      return normalizedParent.id > 0 && normalizedParent.name.trim() !== '' ? [normalizedParent] : [];
+    }
+    return [{ ...normalizedParent, children }];
+  }
+
+  private async loadCategoryRecord(categoryId: number): Promise<Record<string, unknown> | null> {
+    const method = 'alibaba.icbu.category.get.new';
+    const call = await this.client.call(method, { cat_id: categoryId });
     const root = unwrap(call.data, call.method);
+    const category = findRecord(root, ['category']);
+    if (category) return category;
     const records = findRecords(root, ['categories', 'category_list', 'result_list']);
-    if (records.length > 0) return records.map(normalizeCategory);
-    const category = asRecord(root.category);
-    return Object.keys(category).length > 0 ? [normalizeCategory(category)] : [];
+    return records[0] ?? null;
   }
 
   async mapCategory(categoryId: number): Promise<ProductCategoryMapping> {
@@ -391,7 +408,27 @@ function readNumberList(value: unknown): number[] {
     });
   }
   if (!isRecord(value)) return [];
-  return readNumberList(value.number ?? value.numbers ?? value.items);
+  return readNumberList(value.number ?? value.numbers ?? value.string ?? value.strings ?? value.items);
+}
+
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  mapper: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  const worker = async (): Promise<void> => {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      const item = items[index];
+      if (item !== undefined) results[index] = await mapper(item, index);
+    }
+  };
+  const workerCount = Math.min(Math.max(1, concurrency), items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
 }
 
 function findRecord(record: Record<string, unknown>, keys: string[]): Record<string, unknown> | null {
