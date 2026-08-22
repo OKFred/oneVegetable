@@ -9,6 +9,7 @@ import type {
   OnboardingRepository,
   OperationAvailabilityClient,
   ProductDescriptionTemplateClient,
+  ProductMutationJobClient,
   SettingsRepository
 } from '@one-vegetable/core';
 
@@ -21,6 +22,7 @@ export interface AppServices {
   onboarding?: OnboardingRepository;
   control?: ControlClient;
   productDescriptionTemplates?: ProductDescriptionTemplateClient;
+  productMutationJobs?: ProductMutationJobClient;
   operationAvailability?: OperationAvailabilityClient;
   mode: 'mock' | 'extension' | 'bff';
 }

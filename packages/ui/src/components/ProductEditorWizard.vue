@@ -559,7 +559,10 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
       class="mt-4 flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
     >
       <ShieldAlert class="mt-0.5 size-4 shrink-0" />
-      {{ draftDisabledReason || publishDisabledReason || '当前真实写操作尚未开放。' }}
+      {{
+        (editing ? publishDisabledReason : draftDisabledReason || publishDisabledReason) ||
+        '当前真实写操作尚未开放。'
+      }}
     </div>
   </Card>
 </template>

@@ -27,6 +27,7 @@ import type {
   OnboardingRepository,
   OperationAvailabilityClient,
   ProductDescriptionTemplateClient,
+  ProductMutationJobClient,
   SettingsRepository
 } from '@one-vegetable/core';
 
@@ -45,6 +46,7 @@ const props = defineProps<{
   onboarding?: OnboardingRepository;
   control?: ControlClient;
   productDescriptionTemplates?: ProductDescriptionTemplateClient;
+  productMutationJobs?: ProductMutationJobClient;
   operationAvailability?: OperationAvailabilityClient;
   mode: 'mock' | 'extension' | 'bff';
 }>();
@@ -60,6 +62,7 @@ provideServices({
   ...(props.productDescriptionTemplates
     ? { productDescriptionTemplates: props.productDescriptionTemplates }
     : {}),
+  ...(props.productMutationJobs ? { productMutationJobs: props.productMutationJobs } : {}),
   ...(props.operationAvailability ? { operationAvailability: props.operationAvailability } : {})
 });
 
