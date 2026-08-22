@@ -112,9 +112,17 @@ try {
 
   await writeReport('display-off-started', { titleNeedsRecovery: false, displayNeedsRecovery: true });
   displayNeedsRecovery = true;
-  await call('updateProductDisplay', { encryptedProductIds: [encryptedProductId], display: 'offline' });
+  await call('updateProductDisplay', {
+    productIds: [productId],
+    encryptedProductIds: [encryptedProductId],
+    display: 'offline'
+  });
   await waitForDisplay('offline');
-  await call('updateProductDisplay', { encryptedProductIds: [encryptedProductId], display: 'online' });
+  await call('updateProductDisplay', {
+    productIds: [productId],
+    encryptedProductIds: [encryptedProductId],
+    display: 'online'
+  });
   await waitForDisplay('online');
   displayNeedsRecovery = false;
 
@@ -137,7 +145,11 @@ try {
   }
   if (displayNeedsRecovery) {
     try {
-      await call('updateProductDisplay', { encryptedProductIds: [encryptedProductId], display: 'online' });
+      await call('updateProductDisplay', {
+        productIds: [productId],
+        encryptedProductIds: [encryptedProductId],
+        display: 'online'
+      });
       await waitForDisplay('online');
       displayNeedsRecovery = false;
     } catch (recoveryError: unknown) {

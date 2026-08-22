@@ -118,6 +118,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/product-mutation-jobs/recover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore the original product display state for a recovery-required job */
+        post: operations["recoverProductMutationJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/session/get": {
         parameters: {
             query?: never;
@@ -6231,8 +6248,10 @@ export interface components {
             display: "online" | "offline";
             traceId: string;
             success: boolean;
+            jobs?: components["schemas"]["ProductMutationJob"][];
         };
         ProductDisplayRequest: {
+            productIds: string[];
             encryptedProductIds: string[];
             /** @enum {string} */
             display: "online" | "offline";
@@ -6256,14 +6275,19 @@ export interface components {
             requestId: components["schemas"]["RequestId"];
             productId: string;
             /** @enum {string} */
-            operation: "updateProduct";
+            operation: "updateProduct" | "updateProductDisplay";
             /** @enum {string} */
-            status: "submitted" | "auditing" | "verified" | "recovery-required" | "failed";
-            categoryId: number;
-            /** @enum {string} */
-            language: "zh_CN" | "en_US";
+            status: "submitted" | "auditing" | "verifying" | "verified" | "recovery-required" | "recovering" | "recovered" | "failed";
+            categoryId: number | null;
+            /** @enum {string|null} */
+            language: "zh_CN" | "en_US" | null;
             payloadFingerprint: string;
             fieldExpectations: components["schemas"]["ProductMutationFieldExpectation"][];
+            encryptedProductId: string | null;
+            /** @enum {string|null} */
+            targetDisplay: "online" | "offline" | null;
+            /** @enum {string|null} */
+            originalDisplay: "online" | "offline" | null;
             traceId: string | null;
             reasonCode: string | null;
             message: string | null;
@@ -6290,7 +6314,7 @@ export interface components {
             pageSize: number;
             productId?: string;
             /** @enum {string} */
-            status?: "submitted" | "auditing" | "verified" | "recovery-required" | "failed";
+            status?: "submitted" | "auditing" | "verifying" | "verified" | "recovery-required" | "recovering" | "recovered" | "failed";
         };
         ProductMutationJobPage: {
             items: components["schemas"]["ProductMutationJob"][];
@@ -6857,6 +6881,71 @@ export interface operations {
         };
     };
     refreshProductMutationJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductMutationJobRefreshRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    recoverProductMutationJob: {
         parameters: {
             query?: never;
             header?: never;

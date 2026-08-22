@@ -220,7 +220,11 @@ describe('ProductAdapter', () => {
     const adapter = new ProductAdapter({ call });
 
     await expect(
-      adapter.updateDisplay({ encryptedProductIds: ['encrypted-1', 'encrypted-2'], display: 'offline' })
+      adapter.updateDisplay({
+        productIds: ['1', '2'],
+        encryptedProductIds: ['encrypted-1', 'encrypted-2'],
+        display: 'offline'
+      })
     ).resolves.toEqual({
       encryptedProductIds: ['encrypted-1', 'encrypted-2'],
       display: 'offline',
@@ -243,7 +247,11 @@ describe('ProductAdapter', () => {
     const adapter = new ProductAdapter({ call });
 
     await expect(
-      adapter.updateDisplay({ encryptedProductIds: ['encrypted-1'], display: 'online' })
+      adapter.updateDisplay({
+        productIds: ['1'],
+        encryptedProductIds: ['encrypted-1'],
+        display: 'online'
+      })
     ).rejects.toMatchObject({ gatewayError: { code: 'SERVICE_INTERNAL_ERROR', traceId: 'display-failed' } });
   });
 

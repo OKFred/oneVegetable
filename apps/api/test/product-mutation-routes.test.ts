@@ -9,7 +9,7 @@ import { AuthService } from '../src/auth/service';
 import { applyNodeMigrations, openNodeDatabase } from '../src/db/node-database';
 import { SqlProductMutationJobRepository } from '../src/product-mutations/repository';
 
-import type { OperationId } from '@one-vegetable/core';
+import type { GatewayClient, OperationId } from '@one-vegetable/core';
 import type { NodeDatabaseHandle } from '../src/db/node-database';
 
 const PATCH = `<itemSchema><field id="subject" type="input"><values><value>Updated title</value></values></field></itemSchema>`;
@@ -112,6 +112,96 @@ describe('product mutation lifecycle routes', () => {
     });
     expect(refreshed.status).toBe(200);
     await expect(refreshed.json()).resolves.toMatchObject({ data: { status: 'verified' } });
+  });
+
+  it('persists a display mutation and verifies it through the real product-list shape', async () => {
+    database = openNodeDatabase(':memory:');
+    applyNodeMigrations(database);
+    const authRepository = new SqlAuthRepository(database.executor);
+    const authService = new AuthService({
+      repository: authRepository,
+      bootstrapToken: 'bootstrap-secret-that-is-long'
+    });
+    const session = await authService.bootstrap({
+      requestId: createRequestId(),
+      bootstrapToken: 'bootstrap-secret-that-is-long',
+      username: 'admin',
+      password: 'correct-password-value'
+    });
+    let display: 'online' | 'offline' = 'online';
+    const gatewayRequest = vi.fn((operation: OperationId) => {
+      if (operation === 'listProducts') {
+        return Promise.resolve({
+          items: [
+            {
+              id: '1601928079741',
+              encryptedId: 'encrypted-1',
+              subject: 'Smoke product',
+              groupName: 'Smoke',
+              status: display,
+              score: 0,
+              updatedAt: '2026-08-22T00:00:00.000Z',
+              categoryId: 201712702
+            }
+          ],
+          page: 1,
+          pageSize: 100,
+          total: 1
+        });
+      }
+      if (operation === 'updateProductDisplay') {
+        return Promise.resolve({
+          encryptedProductIds: ['encrypted-1'],
+          display: 'offline',
+          traceId: 'display-trace',
+          success: true
+        });
+      }
+      return Promise.reject(new Error(`unexpected operation: ${operation}`));
+    });
+    const app = createApiApp({
+      runtime: 'node',
+      database: 'sqlite',
+      environment: 'test',
+      gatewayMode: 'real',
+      gateway: { request: gatewayRequest as GatewayClient['request'] },
+      authService,
+      adminService: new AdminService(authRepository),
+      featureFlags: new StaticOperationFeatureFlags(new Set(['operation:updateProductDisplay'])),
+      productMutationJobs: new SqlProductMutationJobRepository(database.executor),
+      allowedOrigins: ['http://localhost']
+    });
+    const submitted = await app.request('/api/v1/operations/call', {
+      method: 'POST',
+      headers: authHeaders(session.sessionToken, session.session.csrfToken),
+      body: JSON.stringify({
+        requestId: createRequestId(),
+        operation: 'updateProductDisplay',
+        payload: {
+          productIds: ['1601928079741'],
+          encryptedProductIds: ['encrypted-1'],
+          display: 'offline'
+        }
+      })
+    });
+    expect(submitted.status).toBe(200);
+    const submittedBody = (await submitted.json()) as {
+      data: { jobs: { id: string; revision: number; status: string }[] };
+    };
+    expect(submittedBody.data.jobs).toMatchObject([{ status: 'verifying' }]);
+    const job = submittedBody.data.jobs[0];
+    if (!job) throw new Error('Missing display mutation job');
+
+    display = 'offline';
+    const refreshed = await app.request('/api/v1/product-mutation-jobs/refresh', {
+      method: 'POST',
+      headers: authHeaders(session.sessionToken),
+      body: JSON.stringify({ requestId: createRequestId(), id: job.id, revision: job.revision })
+    });
+    expect(refreshed.status).toBe(200);
+    await expect(refreshed.json()).resolves.toMatchObject({
+      data: { operation: 'updateProductDisplay', status: 'verified', targetDisplay: 'offline' }
+    });
   });
 });
 

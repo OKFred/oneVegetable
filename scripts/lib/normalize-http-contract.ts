@@ -212,6 +212,9 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       'language',
       'payloadFingerprint',
       'fieldExpectations',
+      'encryptedProductId',
+      'targetDisplay',
+      'originalDisplay',
       'traceId',
       'reasonCode',
       'message',
@@ -229,20 +232,31 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       id: { type: 'string', format: 'uuid' },
       requestId: { $ref: '#/components/schemas/RequestId' },
       productId: { type: 'string', pattern: '^[1-9][0-9]*$' },
-      operation: { type: 'string', enum: ['updateProduct'] },
+      operation: { type: 'string', enum: ['updateProduct', 'updateProductDisplay'] },
       status: {
         type: 'string',
-        enum: ['submitted', 'auditing', 'verified', 'recovery-required', 'failed']
+        enum: [
+          'submitted',
+          'auditing',
+          'verifying',
+          'verified',
+          'recovery-required',
+          'recovering',
+          'recovered',
+          'failed'
+        ]
       },
-      categoryId: { type: 'integer', minimum: 1 },
-      language: { type: 'string', enum: ['zh_CN', 'en_US'] },
+      categoryId: { type: ['integer', 'null'], minimum: 1 },
+      language: { type: ['string', 'null'], enum: ['zh_CN', 'en_US', null] },
       payloadFingerprint: { type: 'string', pattern: '^[0-9a-f]{64}$' },
       fieldExpectations: {
         type: 'array',
-        minItems: 1,
         maxItems: 128,
         items: { $ref: '#/components/schemas/ProductMutationFieldExpectation' }
       },
+      encryptedProductId: { type: ['string', 'null'] },
+      targetDisplay: { type: ['string', 'null'], enum: ['online', 'offline', null] },
+      originalDisplay: { type: ['string', 'null'], enum: ['online', 'offline', null] },
       traceId: { type: ['string', 'null'] },
       reasonCode: { type: ['string', 'null'] },
       message: { type: ['string', 'null'] },
@@ -263,7 +277,16 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     productId: { type: 'string', pattern: '^[1-9][0-9]*$' },
     status: {
       type: 'string',
-      enum: ['submitted', 'auditing', 'verified', 'recovery-required', 'failed']
+      enum: [
+        'submitted',
+        'auditing',
+        'verifying',
+        'verified',
+        'recovery-required',
+        'recovering',
+        'recovered',
+        'failed'
+      ]
     }
   });
   schemas.ProductMutationJobGetRequest = objectRequest(['requestId', 'id'], {
@@ -289,6 +312,16 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     const properties = productMutationResult.properties;
     if (typeof properties === 'object' && properties !== null) {
       (properties as Record<string, unknown>).job = { $ref: '#/components/schemas/ProductMutationJob' };
+    }
+  }
+  const productDisplayMutationResult = schemas.ProductDisplayMutationResult;
+  if (typeof productDisplayMutationResult === 'object') {
+    const properties = productDisplayMutationResult.properties;
+    if (typeof properties === 'object' && properties !== null) {
+      (properties as Record<string, unknown>).jobs = {
+        type: 'array',
+        items: { $ref: '#/components/schemas/ProductMutationJob' }
+      };
     }
   }
 
@@ -394,6 +427,11 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     '/product-mutation-jobs/refresh': postOperation(
       'Refresh one product mutation job from Alibaba readback',
       'refreshProductMutationJob',
+      'ProductMutationJobRefreshRequest'
+    ),
+    '/product-mutation-jobs/recover': postOperation(
+      'Restore the original product display state for a recovery-required job',
+      'recoverProductMutationJob',
       'ProductMutationJobRefreshRequest'
     ),
     '/auth/session/get': postOperation('Get the current opaque session', 'getAuthSession', 'RequestEnvelope'),

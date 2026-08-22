@@ -374,8 +374,15 @@ document.components.schemas.ProductSchemaUpdateRequest = {
 document.components.schemas.ProductDisplayRequest = {
   type: 'object',
   additionalProperties: false,
-  required: ['encryptedProductIds', 'display'],
+  required: ['productIds', 'encryptedProductIds', 'display'],
   properties: {
+    productIds: {
+      type: 'array',
+      minItems: 1,
+      maxItems: 100,
+      uniqueItems: true,
+      items: { type: 'string', pattern: '^[1-9][0-9]*$' }
+    },
     encryptedProductIds: {
       type: 'array',
       minItems: 1,

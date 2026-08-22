@@ -5,7 +5,7 @@ import { BffProductMutationJobClient } from '../src/product-mutation-job-client'
 import type { NetworkTransport } from '../src/network';
 
 describe('product mutation job BFF client', () => {
-  it('uses centralized POST transport and validates list and refresh responses', async () => {
+  it('uses centralized POST transport and validates list, refresh and recovery responses', async () => {
     const send = vi.fn<NetworkTransport['send']>((input, init) => {
       const url =
         input instanceof URL ? input : typeof input === 'string' ? new URL(input) : new URL(input.url);
@@ -28,13 +28,15 @@ describe('product mutation job BFF client', () => {
 
     await expect(client.list({ productId: '1601928079741' })).resolves.toMatchObject({ total: 1 });
     await expect(client.refresh(jobFixture().id, 2)).resolves.toMatchObject({ status: 'auditing' });
+    await expect(client.recover(jobFixture().id, 2)).resolves.toMatchObject({ status: 'auditing' });
     expect(
       send.mock.calls.map(([input]) =>
         input instanceof URL ? input.href : typeof input === 'string' ? input : input.url
       )
     ).toEqual([
       'https://staging.example.com/api/v1/product-mutation-jobs/list',
-      'https://staging.example.com/api/v1/product-mutation-jobs/refresh'
+      'https://staging.example.com/api/v1/product-mutation-jobs/refresh',
+      'https://staging.example.com/api/v1/product-mutation-jobs/recover'
     ]);
   });
 });
@@ -50,6 +52,9 @@ function jobFixture() {
     language: 'en_US',
     payloadFingerprint: 'a'.repeat(64),
     fieldExpectations: [{ fieldId: 'subject', fingerprint: 'b'.repeat(64) }],
+    encryptedProductId: null,
+    targetDisplay: null,
+    originalDisplay: null,
     traceId: 'trace-1',
     reasonCode: 'ALIBABA_MUTATION_ACCEPTED',
     message: '等待审核',

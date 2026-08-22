@@ -6,10 +6,14 @@ import {
   validateProductMutationJobRefreshInput
 } from '@one-vegetable/core';
 
-import { authenticateRequest } from '../auth/routes';
+import { authenticateMutation, authenticateRequest } from '../auth/routes';
 import { AuthError } from '../auth/service';
 import { EntityVersionConflictError } from '../db/repository';
-import { ProductMutationJobAccessError, ProductMutationRevisionConflictError } from './service';
+import {
+  ProductMutationJobAccessError,
+  ProductMutationRecoveryNotAvailableError,
+  ProductMutationRevisionConflictError
+} from './service';
 
 import type { GatewayError } from '@one-vegetable/core';
 import type { Context, Hono } from 'hono';
@@ -19,6 +23,7 @@ import type { ProductMutationLifecycleService } from './service';
 export interface ProductMutationRoutesOptions {
   authService: AuthService;
   service: ProductMutationLifecycleService;
+  allowedOrigins?: readonly string[];
 }
 
 export function registerProductMutationRoutes(api: Hono, options: ProductMutationRoutesOptions): void {
@@ -61,6 +66,20 @@ export function registerProductMutationRoutes(api: Hono, options: ProductMutatio
       return success(context, input.requestId, result);
     })
   );
+
+  api.post('/product-mutation-jobs/recover', async (context) =>
+    handle(context, async (body) => {
+      const input = valid(validateProductMutationJobRefreshInput(body));
+      const authenticated = await authenticateMutation(context, options);
+      const result = await options.service.recover({
+        requestId: input.requestId,
+        actor: authenticated.principal,
+        id: input.id,
+        expectedRevision: input.revision
+      });
+      return success(context, input.requestId, result);
+    })
+  );
 }
 
 async function handle(context: Context, action: (body: unknown) => Promise<Response>): Promise<Response> {
@@ -84,6 +103,9 @@ async function handle(context: Context, action: (body: unknown) => Promise<Respo
     }
     if (error instanceof ProductMutationJobAccessError) {
       return failure(context, requestId, 404, 'PRODUCT_MUTATION_JOB_NOT_FOUND', error.message);
+    }
+    if (error instanceof ProductMutationRecoveryNotAvailableError) {
+      return failure(context, requestId, 409, 'PRODUCT_MUTATION_RECOVERY_NOT_AVAILABLE', error.message);
     }
     return failure(
       context,

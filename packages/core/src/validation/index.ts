@@ -92,8 +92,21 @@ export const validateProductSchemaUpdateInput = (value: unknown, locale?: 'en' |
     locale
   );
 
-export const validateProductDisplayInput = (value: unknown, locale?: 'en' | 'zh') =>
-  runValidator<ProductDisplayRequest>(validateProductDisplayRequest as StandaloneValidator, value, locale);
+export const validateProductDisplayInput = (
+  value: unknown,
+  locale?: 'en' | 'zh'
+): ValidationResult<ProductDisplayRequest> => {
+  const result = runValidator<ProductDisplayRequest>(
+    validateProductDisplayRequest as StandaloneValidator,
+    value,
+    locale
+  );
+  if (!result.valid || !result.data) return result;
+  if (result.data.productIds.length !== result.data.encryptedProductIds.length) {
+    return { valid: false, errors: ['/productIds 必须与 /encryptedProductIds 一一对应'] };
+  }
+  return result;
+};
 
 export const validateProductGroupCreateInput = (value: unknown, locale?: 'en' | 'zh') =>
   runValidator<ProductGroupCreateRequest>(

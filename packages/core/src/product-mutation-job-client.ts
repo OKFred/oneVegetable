@@ -21,6 +21,7 @@ export interface ProductMutationJobClient {
   list(input?: ProductMutationJobListInput): Promise<ProductMutationJobPage>;
   get(id: string): Promise<ProductMutationJob>;
   refresh(id: string, revision: number): Promise<ProductMutationJob>;
+  recover(id: string, revision: number): Promise<ProductMutationJob>;
 }
 
 export interface BffProductMutationJobClientOptions {
@@ -76,6 +77,12 @@ export class BffProductMutationJobClient implements ProductMutationJobClient {
     return data;
   }
 
+  async recover(id: string, revision: number): Promise<ProductMutationJob> {
+    const data = await this.#call('/product-mutation-jobs/recover', { id, revision });
+    if (!isProductMutationJob(data)) throw invalidResponse();
+    return data;
+  }
+
   async #call(path: string, body: Record<string, unknown>): Promise<unknown> {
     const requestId = createRequestId();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -113,15 +120,27 @@ function isProductMutationJob(value: unknown): value is ProductMutationJob {
     typeof value.id === 'string' &&
     typeof value.requestId === 'string' &&
     typeof value.productId === 'string' &&
-    value.operation === 'updateProduct' &&
-    isEnum(value.status, ['submitted', 'auditing', 'verified', 'recovery-required', 'failed']) &&
-    isPositiveInteger(value.categoryId) &&
-    isEnum(value.language, ['zh_CN', 'en_US']) &&
+    isEnum(value.operation, ['updateProduct', 'updateProductDisplay']) &&
+    isEnum(value.status, [
+      'submitted',
+      'auditing',
+      'verifying',
+      'verified',
+      'recovery-required',
+      'recovering',
+      'recovered',
+      'failed'
+    ]) &&
+    (value.categoryId === null || isPositiveInteger(value.categoryId)) &&
+    (value.language === null || isEnum(value.language, ['zh_CN', 'en_US'])) &&
     typeof value.payloadFingerprint === 'string' &&
     Array.isArray(value.fieldExpectations) &&
     value.fieldExpectations.every(
       (item) => isRecord(item) && typeof item.fieldId === 'string' && typeof item.fingerprint === 'string'
     ) &&
+    isNullableString(value.encryptedProductId) &&
+    (value.targetDisplay === null || isEnum(value.targetDisplay, ['online', 'offline'])) &&
+    (value.originalDisplay === null || isEnum(value.originalDisplay, ['online', 'offline'])) &&
     isNullableString(value.traceId) &&
     isNullableString(value.reasonCode) &&
     isNullableString(value.message) &&

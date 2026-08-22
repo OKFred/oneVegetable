@@ -26,6 +26,8 @@ import { registerProductDescriptionTemplateRoutes } from './product-description-
 import { ProductDescriptionTemplateService } from './product-description-templates/service';
 import { registerProductMutationRoutes } from './product-mutations/routes';
 import {
+  ProductDisplayNoChangeError,
+  ProductDisplayTargetMismatchError,
   ProductMutationAlreadyInProgressError,
   ProductMutationLifecycleService
 } from './product-mutations/service';
@@ -37,6 +39,10 @@ import type {
   GatewayError,
   OperationId,
   ProbeResponse,
+  ProductDisplayMutationResult,
+  ProductDisplayRequest,
+  ProductListQuery,
+  ProductPage,
   ProductMutationResult,
   ProductSchema,
   ProductSchemaRenderRequest,
@@ -123,9 +129,18 @@ export function createApiApp(options: ApiAppOptions): Hono {
             return (await dynamicGateway.request('renderProductSchema', request, {
               requestId
             })) as ProductSchema;
+          },
+          async updateDisplay(request: ProductDisplayRequest, requestId: string) {
+            return (await dynamicGateway.request('updateProductDisplay', request, {
+              requestId
+            })) as ProductDisplayMutationResult;
+          },
+          async list(request: ProductListQuery, requestId: string) {
+            return (await dynamicGateway.request('listProducts', request, { requestId })) as ProductPage;
           }
         },
-        options.authService
+        options.authService,
+        options.clock
       )
     : undefined;
 
@@ -196,7 +211,8 @@ export function createApiApp(options: ApiAppOptions): Hono {
   if (options.authService && productMutations) {
     registerProductMutationRoutes(api, {
       authService: options.authService,
-      service: productMutations
+      service: productMutations,
+      ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
     });
   }
 
@@ -348,16 +364,25 @@ export function createApiApp(options: ApiAppOptions): Hono {
           });
         }
       }
-      const data =
-        parsed.body.operation === 'updateProduct' && productMutations
+      const data = productMutations
+        ? parsed.body.operation === 'updateProduct'
           ? await productMutations.submitUpdate({
               requestId: parsed.requestId,
               actor: authenticated?.principal ?? extensionAdminPrincipal(),
               request: parsed.body.payload as unknown as ProductSchemaUpdateRequest
             })
-          : await dynamicGateway.request(parsed.body.operation, parsed.body.payload, {
-              requestId: parsed.requestId
-            });
+          : parsed.body.operation === 'updateProductDisplay'
+            ? await productMutations.submitDisplay({
+                requestId: parsed.requestId,
+                actor: authenticated?.principal ?? extensionAdminPrincipal(),
+                request: parsed.body.payload as unknown as ProductDisplayRequest
+              })
+            : await dynamicGateway.request(parsed.body.operation, parsed.body.payload, {
+                requestId: parsed.requestId
+              })
+        : await dynamicGateway.request(parsed.body.operation, parsed.body.payload, {
+            requestId: parsed.requestId
+          });
       if (options.authService && authenticated) {
         await auditOperation(
           options.authService,
@@ -385,15 +410,22 @@ export function createApiApp(options: ApiAppOptions): Hono {
           ? error.status
           : error instanceof ProductMutationAlreadyInProgressError
             ? 409
-            : gatewayError
-              ? gatewayStatus(gatewayError.code)
-              : 500;
+            : error instanceof ProductDisplayNoChangeError ||
+                error instanceof ProductDisplayTargetMismatchError
+              ? 409
+              : gatewayError
+                ? gatewayStatus(gatewayError.code)
+                : 500;
       const code =
         error instanceof AuthError
           ? error.code
           : error instanceof ProductMutationAlreadyInProgressError
             ? 'PRODUCT_MUTATION_IN_PROGRESS'
-            : (gatewayError?.code ?? 'OPERATION_FAILED');
+            : error instanceof ProductDisplayNoChangeError
+              ? 'PRODUCT_DISPLAY_NO_CHANGE'
+              : error instanceof ProductDisplayTargetMismatchError
+                ? 'PRODUCT_DISPLAY_TARGET_MISMATCH'
+                : (gatewayError?.code ?? 'OPERATION_FAILED');
       if (options.authService) {
         await auditOperation(
           options.authService,
