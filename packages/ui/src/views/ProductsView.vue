@@ -27,6 +27,7 @@ import {
 
 import DataTable from '../components/DataTable.vue';
 import PageHeader from '../components/PageHeader.vue';
+import ProductCategoryPicker from '../components/ProductCategoryPicker.vue';
 import ProductEditorWizard from '../components/ProductEditorWizard.vue';
 import QueryState from '../components/QueryState.vue';
 import ScoreProgress from '../components/ScoreProgress.vue';
@@ -95,6 +96,10 @@ const groupName = ref('');
 const groupParentId = ref('-1');
 const imageMetadata = ref<Record<string, ProductDescriptionImageMetadata>>({});
 const categorySearch = ref('');
+const categoryTree = ref<ProductCategory[]>([]);
+const currentCategory = ref<ProductCategory | null>(null);
+const categoryLoadingId = ref<number | null>(null);
+const categoryLoadError = ref('');
 const qualityViewMode = ref<QualityViewMode>('cards');
 const productScores = ref<Record<string, ProductScore>>({});
 const productScoreErrors = ref<Record<string, string>>({});
@@ -115,8 +120,9 @@ const products = useQuery({
     })
 });
 const categories = useQuery({
-  queryKey: ['product-categories'],
-  queryFn: () => gateway.request('listProductCategories', {})
+  queryKey: ['product-categories', 'tree-v2'],
+  queryFn: () => gateway.request('listProductCategories', {}),
+  staleTime: 10 * 60 * 1000
 });
 const groups = useQuery({
   queryKey: ['product-groups'],
@@ -185,15 +191,20 @@ const displayMutationHistory = useQuery({
   staleTime: 0
 });
 
-const categoryOptions = computed(() => flattenCategories(categories.data.value ?? []));
-const filteredCategoryOptions = computed(() => {
-  const query = categorySearch.value.trim().toLocaleLowerCase();
-  return query
-    ? categoryOptions.value.filter(
-        (category) => category.name.toLocaleLowerCase().includes(query) || String(category.id).includes(query)
-      )
-    : categoryOptions.value;
-});
+const categoryOptions = computed(() => flattenCategories(categoryTree.value));
+const selectedCategory = computed(
+  () =>
+    categoryOptions.value.find((category) => String(category.id) === categoryId.value) ??
+    (currentCategory.value && String(currentCategory.value.id) === categoryId.value
+      ? currentCategory.value
+      : null)
+);
+const categorySelectionReady = computed(
+  () => categoryId.value !== '' && (editProductId.value !== '' || selectedCategory.value?.leaf === true)
+);
+const categoryPickerError = computed(
+  () => categoryLoadError.value || (categories.error.value ? errorMessage(categories.error.value) : '')
+);
 const availabilityByOperation = computed(
   () =>
     new Map(
@@ -615,6 +626,85 @@ function flattenCategories(items: ProductCategory[], depth = 0): (ProductCategor
   return items.flatMap((item) => [{ ...item, depth }, ...flattenCategories(item.children, depth + 1)]);
 }
 
+function findCategory(items: ProductCategory[], categoryIdToFind: number): ProductCategory | null {
+  for (const item of items) {
+    if (item.id === categoryIdToFind) return item;
+    const child = findCategory(item.children, categoryIdToFind);
+    if (child) return child;
+  }
+  return null;
+}
+
+function mergeCategoryRoots(current: ProductCategory[], incoming: ProductCategory[]): ProductCategory[] {
+  return incoming.map((category) => {
+    const existing = findCategory(current, category.id);
+    return existing && existing.children.length > 0 ? { ...category, children: existing.children } : category;
+  });
+}
+
+function replaceCategoryNode(items: ProductCategory[], replacement: ProductCategory): ProductCategory[] {
+  return items.map((item) => {
+    if (item.id === replacement.id) return replacement;
+    return { ...item, children: replaceCategoryNode(item.children, replacement) };
+  });
+}
+
+async function loadCategoryBranch(categoryIdToLoad: number): Promise<ProductCategory | null> {
+  categoryLoadingId.value = categoryIdToLoad;
+  categoryLoadError.value = '';
+  try {
+    const result = await gateway.request('listProductCategories', {
+      parentId: categoryIdToLoad
+    });
+    const parent = result.find((category) => category.id === categoryIdToLoad) ?? null;
+    if (!parent) throw new Error(`平台未返回类目 ${categoryIdToLoad}`);
+    categoryTree.value = replaceCategoryNode(categoryTree.value, parent);
+    if (categoryId.value === String(parent.id)) currentCategory.value = parent;
+    return parent;
+  } catch (error: unknown) {
+    categoryLoadError.value = errorMessage(error);
+    return null;
+  } finally {
+    categoryLoadingId.value = null;
+  }
+}
+
+async function selectCategory(categoryIdToSelect: number): Promise<void> {
+  const category = findCategory(categoryTree.value, categoryIdToSelect);
+  currentCategory.value = category;
+  schemaModel.value = null;
+  schemaError.value = '';
+  if (category?.leaf) {
+    feedback.value = `已选择叶子类目：${category.name}`;
+    return;
+  }
+  const loaded = await loadCategoryBranch(categoryIdToSelect);
+  if (!loaded) return;
+  feedback.value = loaded.leaf
+    ? `已选择叶子类目：${loaded.name}`
+    : `已加载“${loaded.name}”的 ${loaded.children.length} 个下级类目，请继续选择。`;
+}
+
+async function ensureCurrentCategory(categoryIdToLoad: number): Promise<void> {
+  const existing = findCategory(categoryTree.value, categoryIdToLoad);
+  if (existing) {
+    currentCategory.value = existing;
+    return;
+  }
+  const loaded = await loadCategoryBranch(categoryIdToLoad);
+  if (loaded) currentCategory.value = loaded;
+}
+
+async function retryCategories(): Promise<void> {
+  const parsed = Number(categoryId.value);
+  if (Number.isSafeInteger(parsed) && parsed > 0 && selectedCategory.value?.leaf === false) {
+    await selectCategory(parsed);
+    return;
+  }
+  categoryLoadError.value = '';
+  await categories.refetch();
+}
+
 async function selectProductForSchema(product: Product): Promise<void> {
   cancelDraftSave();
   draftCandidate.value = null;
@@ -631,15 +721,20 @@ async function selectProductForSchema(product: Product): Promise<void> {
       ? '已选择商品；列表未返回类目，请选择实际类目后获取编辑 Schema。'
       : '已选择商品及其真实类目，正在渲染现有商品 Schema。';
   workspace.value = 'publisher';
-  if (product.categoryId !== null) await loadSchema();
+  if (product.categoryId !== null) {
+    await Promise.all([ensureCurrentCategory(product.categoryId), loadSchema()]);
+  }
 }
 
 function startNewProduct(): void {
   cancelDraftSave();
   draftCandidate.value = null;
   acknowledgedMutationJobId.value = '';
-  resetEditorSession({ mode: 'quick' });
+  resetEditorSession({ categoryId: '', mode: 'quick' });
   editScoreProductId.value = '';
+  currentCategory.value = null;
+  categorySearch.value = '';
+  categoryLoadError.value = '';
   schemaError.value = '';
   feedback.value = '请选择叶子类目并开始填写商品信息。';
   workspace.value = 'publisher';
@@ -661,9 +756,9 @@ function applySchema(xml: string, message: string, offerLocalDraft = true): void
 
 async function loadSchema(): Promise<void> {
   schemaError.value = '';
-  const parsedCategoryId = await resolveCategoryId();
+  const parsedCategoryId = resolveCategoryId();
   if (parsedCategoryId === null) {
-    schemaError.value = '请先选择有效类目';
+    if (!schemaError.value) schemaError.value = '请先选择有效类目';
     return;
   }
   try {
@@ -681,15 +776,14 @@ async function loadSchema(): Promise<void> {
   }
 }
 
-async function resolveCategoryId(): Promise<number | null> {
-  if (!categoryId.value) {
-    const result = await categories.refetch();
-    const options = flattenCategories(result.data ?? []);
-    const preferred = options.find((category) => category.leaf) ?? options[0];
-    if (preferred) categoryId.value = String(preferred.id);
-  }
+function resolveCategoryId(): number | null {
   const parsed = Number(categoryId.value);
-  return categoryId.value && Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+  if (!categoryId.value || !Number.isSafeInteger(parsed) || parsed <= 0) return null;
+  if (!editProductId.value && selectedCategory.value?.leaf !== true) {
+    schemaError.value = '请选择可发布的叶子类目；选择上级类目后会自动加载下一级';
+    return null;
+  }
+  return parsed;
 }
 
 async function renderExistingProductSchema(parsedCategoryId: number) {
@@ -949,11 +1043,13 @@ watch([subject, language], () => {
   productPage.value = 1;
 });
 
-watch(categoryOptions, (options) => {
-  if (categoryId.value || options.length === 0) return;
-  const preferred = options.find((category) => category.leaf) ?? options[0];
-  if (preferred) categoryId.value = String(preferred.id);
-});
+watch(
+  () => categories.data.value,
+  (items) => {
+    if (items) categoryTree.value = mergeCategoryRoots(categoryTree.value, items);
+  },
+  { immediate: true }
+);
 
 onMounted(() => {
   if (!('localStorage' in globalThis)) return;
@@ -1040,26 +1136,21 @@ onBeforeUnmount(() => {
         </div>
         <Button variant="outline" size="sm" @click="startNewProduct">重新新建</Button>
       </div>
-      <div class="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-        <label class="text-sm font-medium">
-          搜索类目
-          <Input v-model="categorySearch" class="mt-2" placeholder="输入类目名称或 ID" />
-        </label>
-        <label class="text-sm font-medium">
-          商品类目
-          <select v-model="categoryId" class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm">
-            <option
-              v-for="category in filteredCategoryOptions"
-              :key="category.id"
-              :value="String(category.id)"
-            >
-              {{ '—'.repeat(category.depth) }} {{ category.name }}
-            </option>
-          </select>
-        </label>
-      </div>
+      <ProductCategoryPicker
+        v-model="categoryId"
+        v-model:search="categorySearch"
+        class="mt-5"
+        :categories="categoryTree"
+        :current-category="currentCategory"
+        :loading="categories.isPending.value"
+        :loading-category-id="categoryLoadingId"
+        :error="categoryPickerError"
+        :disabled="Boolean(editProductId)"
+        @select="selectCategory"
+        @retry="retryCategories"
+      />
       <div class="mt-4 flex flex-wrap gap-2">
-        <Button @click="loadSchema">
+        <Button :disabled="!categorySelectionReady || categoryLoadingId !== null" @click="loadSchema">
           <Layers3 class="size-4" />{{ editProductId ? '重新加载商品表单' : '开始填写' }}
         </Button>
         <Button variant="outline" @click="loadDraft"><RefreshCw class="size-4" />加载平台草稿</Button>
