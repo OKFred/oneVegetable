@@ -18,6 +18,7 @@ import {
   type Product,
   type ProductCategory,
   type ProductDescriptionImageMetadata,
+  type ProductMutationJob,
   type ProductSchemaOfficialHint,
   type ProductSchemaModel,
   type ProductScore
@@ -52,7 +53,7 @@ type Workspace = 'list' | 'publisher' | 'organization' | 'quality';
 type DraftSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type QualityViewMode = 'cards' | 'list';
 
-const { gateway, mode, operationAvailability } = useServices();
+const { gateway, mode, operationAvailability, productMutationJobs } = useServices();
 const { language: preferredLanguage } = useAppPreferences();
 const queryClient = useQueryClient();
 const workspace = ref<Workspace>('list');
@@ -100,6 +101,7 @@ const pendingProductScoreId = ref('');
 let scoreRefreshTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 let draftSaveTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 const sourceIsLocalDraft = ref(false);
+const acknowledgedMutationJobId = ref('');
 
 const products = useQuery({
   queryKey: ['products', subject, language, productPage, productPageSize],
@@ -132,6 +134,28 @@ const productMutationAvailability = useQuery({
   enabled: computed(() => mode === 'bff' && operationAvailability !== undefined),
   staleTime: 10_000
 });
+const productMutationHistory = useQuery({
+  queryKey: ['product-mutation-jobs', editProductId],
+  queryFn: async () => {
+    if (!productMutationJobs || !editProductId.value) {
+      return { items: [], page: 1, pageSize: 20, total: 0 };
+    }
+    const page = await productMutationJobs.list({ productId: editProductId.value, pageSize: 20 });
+    const pending = page.items.find((job) => job.status === 'submitted' || job.status === 'auditing');
+    if (!pending) return page;
+    const refreshed = await productMutationJobs.refresh(pending.id, pending.revision);
+    return {
+      ...page,
+      items: page.items.map((job) => (job.id === refreshed.id ? refreshed : job))
+    };
+  },
+  enabled: computed(() => mode === 'bff' && productMutationJobs !== undefined && editProductId.value !== ''),
+  refetchInterval: (query) =>
+    query.state.data?.items.some((job) => job.status === 'submitted' || job.status === 'auditing')
+      ? 15_000
+      : false,
+  staleTime: 0
+});
 
 const categoryOptions = computed(() => flattenCategories(categories.data.value ?? []));
 const filteredCategoryOptions = computed(() => {
@@ -148,6 +172,17 @@ const availabilityByOperation = computed(
       (productMutationAvailability.data.value?.items ?? []).map((item) => [item.operation, item] as const)
     )
 );
+const currentProductMutationJob = computed<ProductMutationJob | null>(
+  () => productMutationHistory.data.value?.items[0] ?? null
+);
+const productMutationBlocksSubmit = computed(() => {
+  const job = currentProductMutationJob.value;
+  if (!job) return false;
+  if (job.status === 'submitted' || job.status === 'auditing' || job.status === 'recovery-required') {
+    return true;
+  }
+  return job.status === 'verified' && acknowledgedMutationJobId.value !== job.id;
+});
 function dedicatedMutationAllowed(operation: string): boolean {
   if (mode === 'mock') return true;
   return availabilityByOperation.value.get(operation)?.allowed === true;
@@ -159,6 +194,7 @@ const platformDraftDisabled = computed(() => {
   return availabilityByOperation.value.get('saveProductDraft')?.allowed !== true;
 });
 const productPublishDisabled = computed(() => {
+  if (editProductId.value && productMutationBlocksSubmit.value) return true;
   if (mode === 'mock') return false;
   const operation = editProductId.value ? 'updateProduct' : 'publishProduct';
   return availabilityByOperation.value.get(operation)?.allowed !== true;
@@ -167,10 +203,12 @@ const platformDraftDisabledReason = computed(() =>
   mutationDisabledReason('saveProductDraft', '当前环境未开放平台草稿写入')
 );
 const productPublishDisabledReason = computed(() =>
-  mutationDisabledReason(
-    editProductId.value ? 'updateProduct' : 'publishProduct',
-    editProductId.value ? '当前环境未开放商品更新' : '当前环境未开放正式发布'
-  )
+  productMutationBlocksSubmit.value
+    ? productMutationDisabledReason(currentProductMutationJob.value)
+    : mutationDisabledReason(
+        editProductId.value ? 'updateProduct' : 'publishProduct',
+        editProductId.value ? '当前环境未开放商品更新' : '当前环境未开放正式发布'
+      )
 );
 
 const publish = useMutation({
@@ -210,6 +248,20 @@ const publish = useMutation({
     return draft ? gateway.request('saveProductDraft', base) : gateway.request('publishProduct', base);
   },
   onSuccess: async (result, draft) => {
+    if (editProductId.value && result.job) {
+      feedback.value = `商品 ${result.productId} 已提交平台审核；审核完成并回读一致后才算更新成功。`;
+      saveCurrentLocalDraft();
+      queryClient.setQueryData(['product-mutation-jobs', editProductId.value], {
+        items: [result.job],
+        page: 1,
+        pageSize: 20,
+        total: 1
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ['product-mutation-jobs', editProductId.value]
+      });
+      return;
+    }
     feedback.value = editProductId.value
       ? `商品 ${result.productId} 已更新`
       : `${draft ? '草稿已保存' : '商品已发布'}：${result.productId}`;
@@ -502,6 +554,7 @@ function flattenCategories(items: ProductCategory[], depth = 0): (ProductCategor
 async function selectProductForSchema(product: Product): Promise<void> {
   cancelDraftSave();
   draftCandidate.value = null;
+  acknowledgedMutationJobId.value = '';
   resetEditorSession({
     productId: product.id,
     ...(product.categoryId !== null ? { categoryId: String(product.categoryId) } : {}),
@@ -520,6 +573,7 @@ async function selectProductForSchema(product: Product): Promise<void> {
 function startNewProduct(): void {
   cancelDraftSave();
   draftCandidate.value = null;
+  acknowledgedMutationJobId.value = '';
   resetEditorSession({ mode: 'quick' });
   editScoreProductId.value = '';
   schemaError.value = '';
@@ -582,7 +636,13 @@ async function renderExistingProductSchema(parsedCategoryId: number) {
   };
   const validation = validateProductSchemaRenderInput(request);
   if (!validation.valid) throw new Error(validation.errors.join('；'));
-  return gateway.request('renderProductSchema', request);
+  const result = await gateway.request('renderProductSchema', request);
+  if (productMutationJobs) {
+    const history = await productMutationJobs.list({ productId: editProductId.value, pageSize: 20 });
+    acknowledgedMutationJobId.value = history.items[0]?.id ?? '';
+    queryClient.setQueryData(['product-mutation-jobs', editProductId.value], history);
+  }
+  return result;
 }
 
 async function loadDraft(): Promise<void> {
@@ -772,6 +832,37 @@ function mutationDisabledReason(operation: string, fallback: string): string {
   return reasonCode ? `${fallback}（${reasonCode}）` : fallback;
 }
 
+function productMutationDisabledReason(job: ProductMutationJob | null): string {
+  if (!job) return '商品写入状态尚未就绪';
+  if (job.status === 'submitted' || job.status === 'auditing') {
+    return '商品正在平台审核中，请勿重复提交；本地草稿会继续保留';
+  }
+  if (job.status === 'recovery-required') {
+    return '平台回读与提交内容不一致，请先人工确认并恢复商品';
+  }
+  return '更新已验证，请重新加载商品表单后再继续增量编辑';
+}
+
+function productMutationStatusLabel(status: ProductMutationJob['status']): string {
+  if (status === 'submitted') return '已提交';
+  if (status === 'auditing') return '平台审核中';
+  if (status === 'verified') return '回读已验证';
+  if (status === 'recovery-required') return '需要人工恢复';
+  return '提交失败';
+}
+
+function productMutationStatusVariant(
+  status: ProductMutationJob['status']
+): 'success' | 'warning' | 'secondary' | 'destructive' {
+  if (status === 'verified') return 'success';
+  if (status === 'submitted' || status === 'auditing') return 'warning';
+  return 'destructive';
+}
+
+function formatMutationTime(value: number | null): string {
+  return value === null ? '尚未检查' : new Date(value).toLocaleString();
+}
+
 function guardedSchemaXml(model: ProductSchemaModel): string {
   const inspection = inspectProductSchemaSerialization(model);
   if (!inspection.safe) throw new Error(`Schema XML 结构异常：${inspection.structuralDiffs.join('；')}`);
@@ -955,6 +1046,68 @@ onBeforeUnmount(() => {
       </p>
       <p v-if="schemaError" class="mt-3 text-sm text-destructive">{{ schemaError }}</p>
     </Card>
+
+    <Card v-if="currentProductMutationJob" class="mb-5 border-amber-300 p-5 dark:border-amber-800">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="font-semibold">商品更新状态</h2>
+            <Badge :variant="productMutationStatusVariant(currentProductMutationJob.status)">
+              {{ productMutationStatusLabel(currentProductMutationJob.status) }}
+            </Badge>
+          </div>
+          <p class="mt-2 text-sm text-muted-foreground">
+            {{ currentProductMutationJob.message || '等待下一次平台状态检查。' }}
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          :disabled="productMutationHistory.isFetching.value"
+          @click="productMutationHistory.refetch()"
+        >
+          <RefreshCw class="size-4" />
+          {{ productMutationHistory.isFetching.value ? '检查中…' : '查询平台状态' }}
+        </Button>
+      </div>
+      <dl class="mt-4 grid gap-3 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <dt>商品 ID</dt>
+          <dd class="mt-1 font-mono text-foreground">{{ currentProductMutationJob.productId }}</dd>
+        </div>
+        <div>
+          <dt>requestId</dt>
+          <dd class="mt-1 break-all font-mono text-foreground">{{ currentProductMutationJob.requestId }}</dd>
+        </div>
+        <div>
+          <dt>提交时间</dt>
+          <dd class="mt-1 text-foreground">
+            {{ formatMutationTime(currentProductMutationJob.submittedTimeUtc) }}
+          </dd>
+        </div>
+        <div>
+          <dt>最近检查</dt>
+          <dd class="mt-1 text-foreground">
+            {{ formatMutationTime(currentProductMutationJob.lastCheckedTimeUtc) }}
+          </dd>
+        </div>
+      </dl>
+      <p
+        v-if="currentProductMutationJob.status === 'recovery-required'"
+        class="mt-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive"
+      >
+        请先在国际站后台核对商品内容。本地草稿不会自动删除，也不会自动重复提交或覆盖平台商品。
+      </p>
+      <p
+        v-else-if="currentProductMutationJob.status === 'verified'"
+        class="mt-4 rounded-md bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+      >
+        平台回读已经匹配。重新加载商品表单后，才会以最新平台内容继续下一次增量编辑。
+      </p>
+    </Card>
+    <p v-if="productMutationHistory.error.value" class="mb-4 text-sm text-destructive">
+      {{ errorMessage(productMutationHistory.error.value) }}
+    </p>
 
     <ProductEditorWizard
       v-if="schemaModel"

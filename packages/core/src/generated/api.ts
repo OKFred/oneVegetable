@@ -67,6 +67,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/product-mutation-jobs/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** List durable product mutation jobs */
+        post: operations["listProductMutationJobs"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/product-mutation-jobs/get": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Get one durable product mutation job */
+        post: operations["getProductMutationJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/product-mutation-jobs/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh one product mutation job from Alibaba readback */
+        post: operations["refreshProductMutationJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/session/get": {
         parameters: {
             query?: never;
@@ -6195,10 +6246,69 @@ export interface components {
             name: string;
             parentId: number;
         };
+        ProductMutationFieldExpectation: {
+            fieldId: string;
+            fingerprint: string;
+        };
+        ProductMutationJob: {
+            /** Format: uuid */
+            id: string;
+            requestId: components["schemas"]["RequestId"];
+            productId: string;
+            /** @enum {string} */
+            operation: "updateProduct";
+            /** @enum {string} */
+            status: "submitted" | "auditing" | "verified" | "recovery-required" | "failed";
+            categoryId: number;
+            /** @enum {string} */
+            language: "zh_CN" | "en_US";
+            payloadFingerprint: string;
+            fieldExpectations: components["schemas"]["ProductMutationFieldExpectation"][];
+            traceId: string | null;
+            reasonCode: string | null;
+            message: string | null;
+            submittedTimeUtc: number;
+            lastCheckedTimeUtc: number | null;
+            completedTimeUtc: number | null;
+            createTimeUtc: number;
+            updateTimeUtc: number;
+            creatorId: string;
+            updaterId: string;
+            revision: number;
+            remark: string | null;
+        };
+        ProductMutationJobGetRequest: {
+            requestId: components["schemas"]["RequestId"];
+            /** Format: uuid */
+            id: string;
+        };
+        ProductMutationJobListRequest: {
+            requestId: components["schemas"]["RequestId"];
+            /** @default 1 */
+            page: number;
+            /** @default 20 */
+            pageSize: number;
+            productId?: string;
+            /** @enum {string} */
+            status?: "submitted" | "auditing" | "verified" | "recovery-required" | "failed";
+        };
+        ProductMutationJobPage: {
+            items: components["schemas"]["ProductMutationJob"][];
+            page: number;
+            pageSize: number;
+            total: number;
+        };
+        ProductMutationJobRefreshRequest: {
+            requestId: components["schemas"]["RequestId"];
+            /** Format: uuid */
+            id: string;
+            revision: number;
+        };
         ProductMutationResult: {
             productId: string;
             traceId: string;
             success: boolean;
+            job?: components["schemas"]["ProductMutationJob"];
         };
         ProductPage: components["schemas"]["PageMeta"] & {
             items: components["schemas"]["Product"][];
@@ -6606,6 +6716,201 @@ export interface operations {
             };
             /** @description Backend unavailable */
             503: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    listProductMutationJobs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductMutationJobListRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    getProductMutationJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductMutationJobGetRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    refreshProductMutationJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductMutationJobRefreshRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
                 headers: {
                     "X-Request-ID"?: components["schemas"]["RequestId"];
                     [name: string]: unknown;

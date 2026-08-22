@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { format } from 'prettier';
@@ -6,6 +6,7 @@ import { format } from 'prettier';
 import { withAlibabaResponseMetadata } from './lib/alibaba-response-contract';
 import { readAccountVerifiedMethods } from './lib/account-verification';
 import { normalizeHttpContract } from './lib/normalize-http-contract';
+import { writeTextFileWithRetry } from './lib/safe-write';
 
 interface ParamNode {
   name: string;
@@ -664,7 +665,7 @@ if (process.argv.includes('--check')) {
   }
 } else {
   await Promise.all([
-    writeFile(contractPath, contractOutput, 'utf8'),
-    writeFile(registryPath, registry, 'utf8')
+    writeTextFileWithRetry(contractPath, contractOutput),
+    writeTextFileWithRetry(registryPath, registry)
   ]);
 }

@@ -5,6 +5,7 @@ import {
   ALIBABA_GATEWAY,
   BffControlClient,
   BffGatewayClient,
+  BffProductMutationJobClient,
   PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA,
   type GatewaySettings,
   type SettingsRepository
@@ -68,6 +69,14 @@ const bffTemplates =
         csrfToken: () => control?.csrfToken() ?? readCookie('ov_csrf')
       })
     : undefined;
+const productMutationJobs =
+  gatewayMode === 'bff'
+    ? new BffProductMutationJobClient({
+        baseUrl: bffBaseUrl,
+        apiPrefix: import.meta.env.VITE_BFF_API_PREFIX,
+        csrfToken: () => control?.csrfToken() ?? readCookie('ov_csrf')
+      })
+    : undefined;
 const bundledTemplates = new MemoryProductDescriptionTemplateClient(
   PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA.templates,
   { writable: false, actorId: 'system:bundled' }
@@ -89,6 +98,7 @@ const app = createApp(OneVegetableApp, {
   mode: gatewayMode,
   ...(control ? { control } : {}),
   ...(productDescriptionTemplates ? { productDescriptionTemplates } : {}),
+  ...(productMutationJobs ? { productMutationJobs } : {}),
   ...(bffTemplates ? { operationAvailability: bffTemplates } : {})
 });
 app.use(VueQueryPlugin, {

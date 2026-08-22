@@ -12,6 +12,9 @@ import {
   validateProductDescriptionTemplateListRequest,
   validateProductDescriptionTemplateStatusRequest,
   validateProductDescriptionTemplateUpdateRequest,
+  validateProductMutationJobGetRequest,
+  validateProductMutationJobListRequest,
+  validateProductMutationJobRefreshRequest,
   validateProductSchemaRenderRequest,
   validateProductSchemaRequest,
   validateProductSchemaUpdateRequest,
@@ -35,6 +38,11 @@ import type {
   ProductDescriptionTemplateStatusRequest,
   ProductDescriptionTemplateUpdateRequest
 } from '../product-description-template';
+import type {
+  ProductMutationJobGetRequest,
+  ProductMutationJobListRequest,
+  ProductMutationJobRefreshRequest
+} from '../product-mutation-job';
 
 export interface ValidationResult<T> {
   valid: boolean;
@@ -134,6 +142,27 @@ export const validateProductDescriptionTemplateUpdateInput = (value: unknown, lo
 export const validateProductDescriptionTemplateStatusInput = (value: unknown, locale?: 'en' | 'zh') =>
   runValidator<ProductDescriptionTemplateStatusRequest>(
     validateProductDescriptionTemplateStatusRequest as StandaloneValidator,
+    value,
+    locale
+  );
+
+export const validateProductMutationJobListInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<ProductMutationJobListRequest>(
+    validateProductMutationJobListRequest as StandaloneValidator,
+    value,
+    locale
+  );
+
+export const validateProductMutationJobGetInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<ProductMutationJobGetRequest>(
+    validateProductMutationJobGetRequest as StandaloneValidator,
+    value,
+    locale
+  );
+
+export const validateProductMutationJobRefreshInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<ProductMutationJobRefreshRequest>(
+    validateProductMutationJobRefreshRequest as StandaloneValidator,
     value,
     locale
   );

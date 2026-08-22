@@ -126,6 +126,40 @@ export const productDescriptionTemplates = sqliteTable(
   ]
 );
 
+export const productMutationJobs = sqliteTable(
+  'product_mutation_jobs',
+  {
+    id: text('id').primaryKey(),
+    requestId: text('request_id').notNull(),
+    productId: text('product_id').notNull(),
+    operation: text('operation', { enum: ['updateProduct'] }).notNull(),
+    status: text('status', {
+      enum: ['submitted', 'auditing', 'verified', 'recovery-required', 'failed']
+    }).notNull(),
+    categoryId: integer('category_id').notNull(),
+    language: text('language', { enum: ['zh_CN', 'en_US'] }).notNull(),
+    payloadFingerprint: text('payload_fingerprint').notNull(),
+    fieldExpectationsJson: text('field_expectations_json').notNull(),
+    traceId: text('trace_id'),
+    reasonCode: text('reason_code'),
+    message: text('message'),
+    submittedTimeUtc: integer('submitted_time_utc').notNull(),
+    lastCheckedTimeUtc: integer('last_checked_time_utc'),
+    completedTimeUtc: integer('completed_time_utc'),
+    createTimeUtc: integer('create_time_utc').notNull(),
+    updateTimeUtc: integer('update_time_utc').notNull(),
+    creatorId: text('creator_id').notNull(),
+    updaterId: text('updater_id').notNull(),
+    revision: integer('revision').notNull().default(1),
+    remark: text('remark')
+  },
+  (table) => [
+    uniqueIndex('product_mutation_jobs_request_id_unique').on(table.requestId),
+    index('product_mutation_jobs_product_time_index').on(table.productId, table.submittedTimeUtc),
+    index('product_mutation_jobs_status_time_index').on(table.status, table.updateTimeUtc)
+  ]
+);
+
 export const schema = {
   schemaMigrations,
   appMetadata,
@@ -133,6 +167,7 @@ export const schema = {
   sessions,
   auditEvents,
   requestEvents,
-  productDescriptionTemplates
+  productDescriptionTemplates,
+  productMutationJobs
 };
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;

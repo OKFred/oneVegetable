@@ -24,6 +24,11 @@ import { authenticateMutation, authenticateRequest, registerAuthRoutes } from '.
 import { markRequestOperation, readRequestContext } from './observability/request-context';
 import { registerProductDescriptionTemplateRoutes } from './product-description-templates/routes';
 import { ProductDescriptionTemplateService } from './product-description-templates/service';
+import { registerProductMutationRoutes } from './product-mutations/routes';
+import {
+  ProductMutationAlreadyInProgressError,
+  ProductMutationLifecycleService
+} from './product-mutations/service';
 
 import type {
   ApiResponse,
@@ -31,7 +36,11 @@ import type {
   GatewayClient,
   GatewayError,
   OperationId,
-  ProbeResponse
+  ProbeResponse,
+  ProductMutationResult,
+  ProductSchema,
+  ProductSchemaRenderRequest,
+  ProductSchemaUpdateRequest
 } from '@one-vegetable/core';
 import type { Context } from 'hono';
 import type { OperationFeatureFlags } from './abac';
@@ -41,6 +50,7 @@ import type { RequestEventRepository } from './observability/request-events';
 import type { AlibabaCredentialStatus } from './gateway/credentials';
 import type { GatewayMode } from './runtime-config';
 import type { ProductDescriptionTemplateRepository } from './product-description-templates/repository';
+import type { ProductMutationJobRepository } from './product-mutations/repository';
 
 export type ApiRuntime = 'node' | 'cloudflare';
 export type ApiDatabase = 'sqlite' | 'd1';
@@ -63,6 +73,7 @@ export interface ApiAppOptions {
   requestEventRetentionDays?: number;
   gatewayStatus?: AlibabaCredentialStatus;
   productDescriptionTemplates?: ProductDescriptionTemplateRepository;
+  productMutationJobs?: ProductMutationJobRepository;
 }
 
 export interface RequestLogContext {
@@ -99,6 +110,24 @@ export function createApiApp(options: ApiAppOptions): Hono {
   const app = new Hono();
   const api = new Hono();
   const featureFlags = options.featureFlags ?? new StaticOperationFeatureFlags();
+  const productMutations = options.productMutationJobs
+    ? new ProductMutationLifecycleService(
+        options.productMutationJobs,
+        {
+          async update(request: ProductSchemaUpdateRequest, requestId: string) {
+            return (await dynamicGateway.request('updateProduct', request, {
+              requestId
+            })) as ProductMutationResult;
+          },
+          async render(request: ProductSchemaRenderRequest, requestId: string) {
+            return (await dynamicGateway.request('renderProductSchema', request, {
+              requestId
+            })) as ProductSchema;
+          }
+        },
+        options.authService
+      )
+    : undefined;
 
   api.use('*', async (context, next) => {
     const startedAt = (options.clock ?? Date.now)();
@@ -161,6 +190,13 @@ export function createApiApp(options: ApiAppOptions): Hono {
         options.authService
       ),
       ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
+    });
+  }
+
+  if (options.authService && productMutations) {
+    registerProductMutationRoutes(api, {
+      authService: options.authService,
+      service: productMutations
     });
   }
 
@@ -312,9 +348,16 @@ export function createApiApp(options: ApiAppOptions): Hono {
           });
         }
       }
-      const data = await dynamicGateway.request(parsed.body.operation, parsed.body.payload, {
-        requestId: parsed.requestId
-      });
+      const data =
+        parsed.body.operation === 'updateProduct' && productMutations
+          ? await productMutations.submitUpdate({
+              requestId: parsed.requestId,
+              actor: authenticated?.principal ?? extensionAdminPrincipal(),
+              request: parsed.body.payload as unknown as ProductSchemaUpdateRequest
+            })
+          : await dynamicGateway.request(parsed.body.operation, parsed.body.payload, {
+              requestId: parsed.requestId
+            });
       if (options.authService && authenticated) {
         await auditOperation(
           options.authService,
@@ -338,8 +381,19 @@ export function createApiApp(options: ApiAppOptions): Hono {
     } catch (error: unknown) {
       const gatewayError = error instanceof GatewayException ? error.gatewayError : null;
       const status =
-        error instanceof AuthError ? error.status : gatewayError ? gatewayStatus(gatewayError.code) : 500;
-      const code = error instanceof AuthError ? error.code : (gatewayError?.code ?? 'OPERATION_FAILED');
+        error instanceof AuthError
+          ? error.status
+          : error instanceof ProductMutationAlreadyInProgressError
+            ? 409
+            : gatewayError
+              ? gatewayStatus(gatewayError.code)
+              : 500;
+      const code =
+        error instanceof AuthError
+          ? error.code
+          : error instanceof ProductMutationAlreadyInProgressError
+            ? 'PRODUCT_MUTATION_IN_PROGRESS'
+            : (gatewayError?.code ?? 'OPERATION_FAILED');
       if (options.authService) {
         await auditOperation(
           options.authService,

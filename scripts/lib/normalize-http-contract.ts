@@ -190,6 +190,107 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     page: { type: 'integer', minimum: 1, default: 1 },
     pageSize: { type: 'integer', minimum: 1, maximum: 100, default: 20 }
   });
+  schemas.ProductMutationFieldExpectation = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['fieldId', 'fingerprint'],
+    properties: {
+      fieldId: { type: 'string', minLength: 1, maxLength: 128 },
+      fingerprint: { type: 'string', pattern: '^[0-9a-f]{64}$' }
+    }
+  };
+  schemas.ProductMutationJob = {
+    type: 'object',
+    additionalProperties: false,
+    required: [
+      'id',
+      'requestId',
+      'productId',
+      'operation',
+      'status',
+      'categoryId',
+      'language',
+      'payloadFingerprint',
+      'fieldExpectations',
+      'traceId',
+      'reasonCode',
+      'message',
+      'submittedTimeUtc',
+      'lastCheckedTimeUtc',
+      'completedTimeUtc',
+      'createTimeUtc',
+      'updateTimeUtc',
+      'creatorId',
+      'updaterId',
+      'revision',
+      'remark'
+    ],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      requestId: { $ref: '#/components/schemas/RequestId' },
+      productId: { type: 'string', pattern: '^[1-9][0-9]*$' },
+      operation: { type: 'string', enum: ['updateProduct'] },
+      status: {
+        type: 'string',
+        enum: ['submitted', 'auditing', 'verified', 'recovery-required', 'failed']
+      },
+      categoryId: { type: 'integer', minimum: 1 },
+      language: { type: 'string', enum: ['zh_CN', 'en_US'] },
+      payloadFingerprint: { type: 'string', pattern: '^[0-9a-f]{64}$' },
+      fieldExpectations: {
+        type: 'array',
+        minItems: 1,
+        maxItems: 128,
+        items: { $ref: '#/components/schemas/ProductMutationFieldExpectation' }
+      },
+      traceId: { type: ['string', 'null'] },
+      reasonCode: { type: ['string', 'null'] },
+      message: { type: ['string', 'null'] },
+      submittedTimeUtc: { type: 'integer', minimum: 0 },
+      lastCheckedTimeUtc: { type: ['integer', 'null'], minimum: 0 },
+      completedTimeUtc: { type: ['integer', 'null'], minimum: 0 },
+      createTimeUtc: { type: 'integer', minimum: 0 },
+      updateTimeUtc: { type: 'integer', minimum: 0 },
+      creatorId: { type: 'string' },
+      updaterId: { type: 'string' },
+      revision: { type: 'integer', minimum: 1 },
+      remark: { type: ['string', 'null'], maxLength: 500 }
+    }
+  };
+  schemas.ProductMutationJobListRequest = objectRequest([], {
+    page: { type: 'integer', minimum: 1, default: 1 },
+    pageSize: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+    productId: { type: 'string', pattern: '^[1-9][0-9]*$' },
+    status: {
+      type: 'string',
+      enum: ['submitted', 'auditing', 'verified', 'recovery-required', 'failed']
+    }
+  });
+  schemas.ProductMutationJobGetRequest = objectRequest(['requestId', 'id'], {
+    id: { type: 'string', format: 'uuid' }
+  });
+  schemas.ProductMutationJobRefreshRequest = objectRequest(['requestId', 'id', 'revision'], {
+    id: { type: 'string', format: 'uuid' },
+    revision: { type: 'integer', minimum: 1 }
+  });
+  schemas.ProductMutationJobPage = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['items', 'page', 'pageSize', 'total'],
+    properties: {
+      items: { type: 'array', items: { $ref: '#/components/schemas/ProductMutationJob' } },
+      page: { type: 'integer', minimum: 1 },
+      pageSize: { type: 'integer', minimum: 1 },
+      total: { type: 'integer', minimum: 0 }
+    }
+  };
+  const productMutationResult = schemas.ProductMutationResult;
+  if (typeof productMutationResult === 'object') {
+    const properties = productMutationResult.properties;
+    if (typeof properties === 'object' && properties !== null) {
+      (properties as Record<string, unknown>).job = { $ref: '#/components/schemas/ProductMutationJob' };
+    }
+  }
 
   const requestBody = (schema: string) => ({
     required: true,
@@ -280,6 +381,21 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
         }
       }
     },
+    '/product-mutation-jobs/list': postOperation(
+      'List durable product mutation jobs',
+      'listProductMutationJobs',
+      'ProductMutationJobListRequest'
+    ),
+    '/product-mutation-jobs/get': postOperation(
+      'Get one durable product mutation job',
+      'getProductMutationJob',
+      'ProductMutationJobGetRequest'
+    ),
+    '/product-mutation-jobs/refresh': postOperation(
+      'Refresh one product mutation job from Alibaba readback',
+      'refreshProductMutationJob',
+      'ProductMutationJobRefreshRequest'
+    ),
     '/auth/session/get': postOperation('Get the current opaque session', 'getAuthSession', 'RequestEnvelope'),
     '/auth/bootstrap': postOperation(
       'Create the first local administrator',

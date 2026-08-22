@@ -45,7 +45,10 @@ const coreValidators: Record<string, object | undefined> = {
   validateProductDescriptionTemplateListRequest: schemas.ProductDescriptionTemplateListRequest,
   validateProductDescriptionTemplateCreateRequest: schemas.ProductDescriptionTemplateCreateRequest,
   validateProductDescriptionTemplateUpdateRequest: schemas.ProductDescriptionTemplateUpdateRequest,
-  validateProductDescriptionTemplateStatusRequest: schemas.ProductDescriptionTemplateStatusRequest
+  validateProductDescriptionTemplateStatusRequest: schemas.ProductDescriptionTemplateStatusRequest,
+  validateProductMutationJobListRequest: schemas.ProductMutationJobListRequest,
+  validateProductMutationJobGetRequest: schemas.ProductMutationJobGetRequest,
+  validateProductMutationJobRefreshRequest: schemas.ProductMutationJobRefreshRequest
 };
 
 const domains: CapabilityDomain[] = ['product', 'rfq', 'trade', 'logistics', 'insights', 'photo', 'platform'];
