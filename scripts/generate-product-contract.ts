@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { format } from 'prettier';
 
 import { applySchemaPatches, withAlibabaResponseMetadata } from './lib/alibaba-response-contract';
-import { readAccountVerifiedMethods } from './lib/account-verification';
+import { readAccountVerifiedMethods, readAccountVerifiedMutationMethods } from './lib/account-verification';
 import { normalizeHttpContract } from './lib/normalize-http-contract';
 import { writeTextFileWithRetry } from './lib/safe-write';
 
@@ -59,6 +59,7 @@ interface OpenApiDocument {
 
 const root = resolve(import.meta.dirname, '..');
 const accountVerifiedMethods = await readAccountVerifiedMethods(root);
+const accountVerifiedMutationMethods = await readAccountVerifiedMutationMethods(root);
 const contractPath = resolve(root, 'openapi/one-vegetable.json');
 const registryPath = resolve(root, 'packages/core/src/generated/product-capabilities.ts');
 const sourceContract = JSON.parse(await readFile(contractPath, 'utf8')) as OpenApiDocument;
@@ -210,8 +211,11 @@ for (const definition of snapshot.definitions) {
     source: definition.source,
     lifecycle: definition.lifecycle,
     risk: definition.risk,
-    verification: accountVerifiedMethods.has(definition.method) ? 'account-verified' : 'documented',
-    realCallEnabled: definition.risk === 'read',
+    verification:
+      accountVerifiedMethods.has(definition.method) || accountVerifiedMutationMethods.has(definition.method)
+        ? 'account-verified'
+        : 'documented',
+    realCallEnabled: definition.risk === 'read' || accountVerifiedMutationMethods.has(definition.method),
     checkedAt: definition.checkedAt,
     updatedAt: definition.updatedAt,
     title: definition.title,

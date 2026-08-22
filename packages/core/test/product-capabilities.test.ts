@@ -78,9 +78,12 @@ describe('typed product capability domain', () => {
     expect(getCapabilityDefinition('alibaba.icbu.product.add')?.lifecycle).toBe('deprecated');
     const mutations = listCapabilityDefinitions().filter((item) => item.risk === 'mutation');
     expect(mutations.length).toBeGreaterThan(0);
-    expect(mutations.filter((item) => item.realCallEnabled).map((item) => item.method)).toEqual([
-      'alibaba.icbu.photobank.group.operate'
-    ]);
+    expect(
+      mutations
+        .filter((item) => item.realCallEnabled)
+        .map((item) => item.method)
+        .sort()
+    ).toEqual(['alibaba.icbu.photobank.group.operate', 'alibaba.icbu.product.batch.update.display']);
     expect(
       mutations
         .filter((item) => item.realCallEnabled)
