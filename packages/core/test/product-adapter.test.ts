@@ -115,6 +115,28 @@ describe('ProductAdapter', () => {
     ]);
   });
 
+  it('reuses category records across lazy tree requests', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method, parameters) => {
+      const categoryId = (parameters as { cat_id: number }).cat_id;
+      const categories: Record<number, Record<string, unknown>> = {
+        0: { category_id: 0, name: '', leaf_category: false, child_ids: { number: [10] } },
+        10: { category_id: 10, name: 'Apparel', leaf_category: false, child_ids: { number: [11] } },
+        11: { category_id: 11, name: 'Dresses', leaf_category: true, child_ids: [] }
+      };
+      return Promise.resolve(response(method, { category: categories[categoryId] ?? {} }));
+    });
+    const categoryCache = new Map<number, Record<string, unknown>>();
+    const adapter = new ProductAdapter({ call }, undefined, categoryCache);
+
+    await adapter.listCategories();
+    await adapter.listCategories(10);
+
+    expect(call.mock.calls.filter(([, parameters]) => parameters.cat_id === 10)).toHaveLength(1);
+    expect(categoryCache.has(0)).toBe(true);
+    expect(categoryCache.has(10)).toBe(true);
+    expect(categoryCache.has(11)).toBe(true);
+  });
+
   it('uses the selected language when rendering a platform draft', async () => {
     const call = vi.fn<AlibabaClient['call']>((method, parameters) => {
       expect(parameters).toEqual({

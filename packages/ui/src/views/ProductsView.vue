@@ -678,6 +678,10 @@ async function selectCategory(categoryIdToSelect: number): Promise<void> {
     feedback.value = `已选择叶子类目：${category.name}`;
     return;
   }
+  if (category && category.children.length > 0) {
+    feedback.value = `请选择“${category.name}”下的可发布类目。`;
+    return;
+  }
   const loaded = await loadCategoryBranch(categoryIdToSelect);
   if (!loaded) return;
   feedback.value = loaded.leaf

@@ -43,6 +43,7 @@ export interface AlibabaReadGatewayOptions {
 export class AlibabaReadGatewayClient implements GatewayClient {
   readonly #credentials: GatewayCredentials;
   readonly #network: NetworkManager;
+  readonly #productCategoryCache = new Map<number, Record<string, unknown>>();
   readonly #wait: ((milliseconds: number) => Promise<void>) | undefined;
   readonly #maxAttempts: 1 | 2 | 3;
 
@@ -143,7 +144,7 @@ export class AlibabaReadGatewayClient implements GatewayClient {
     client: AlibabaClient,
     mutationClient: AlibabaClient
   ): Promise<ResponseOf<K>> {
-    const products = new ProductAdapter(client, mutationClient);
+    const products = new ProductAdapter(client, mutationClient, this.#productCategoryCache);
     const dashboard = new DashboardAdapter(client);
     const rfqs = new RfqAdapter(client);
     const trades = new TradeAdapter(client);

@@ -14,10 +14,16 @@ import type {
   RequestOf
 } from './types';
 
+export interface ProductCategoryCache {
+  get(categoryId: number): Record<string, unknown> | undefined;
+  set(categoryId: number, record: Record<string, unknown>): void;
+}
+
 export class ProductAdapter {
   constructor(
     private readonly client: Pick<AlibabaClient, 'call'>,
-    private readonly mutationClient: Pick<AlibabaClient, 'call'> = client
+    private readonly mutationClient: Pick<AlibabaClient, 'call'> = client,
+    private readonly categoryCache?: ProductCategoryCache
   ) {}
 
   async list(request: RequestOf<'listProducts'>): Promise<ProductPage> {
@@ -199,7 +205,7 @@ export class ProductAdapter {
     if (!parent) return [];
     const childIds = [...new Set(readNumberList(parent.child_ids))];
     const children = (
-      await mapWithConcurrency(childIds, 6, async (categoryId) => {
+      await mapWithConcurrency(childIds, 4, async (categoryId) => {
         const child = await this.loadCategoryRecord(categoryId);
         return child ? normalizeCategory(child) : null;
       })
@@ -213,13 +219,20 @@ export class ProductAdapter {
   }
 
   private async loadCategoryRecord(categoryId: number): Promise<Record<string, unknown> | null> {
+    const cached = this.categoryCache?.get(categoryId);
+    if (cached) return cached;
     const method = 'alibaba.icbu.category.get.new';
     const call = await this.client.call(method, { cat_id: categoryId });
     const root = unwrap(call.data, call.method);
     const category = findRecord(root, ['category']);
-    if (category) return category;
+    if (category) {
+      this.categoryCache?.set(categoryId, category);
+      return category;
+    }
     const records = findRecords(root, ['categories', 'category_list', 'result_list']);
-    return records[0] ?? null;
+    const record = records[0] ?? null;
+    if (record) this.categoryCache?.set(categoryId, record);
+    return record;
   }
 
   async mapCategory(categoryId: number): Promise<ProductCategoryMapping> {
