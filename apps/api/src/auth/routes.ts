@@ -75,6 +75,15 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
       const body = await readBody(context, ['requestId']);
       const requestId = readRequestId(body);
       const authenticated = await authenticateRequest(context, options.authService);
+      const csrfToken = getCookie(context, CSRF_COOKIE);
+      if (csrfToken) {
+        try {
+          await options.authService.assertCsrf(authenticated.session, csrfToken);
+          setCsrfCookie(context, options, csrfToken);
+        } catch {
+          // A stale CSRF cookie must not invalidate an otherwise valid read-only session.
+        }
+      }
       return success(context, requestId, {
         principal: authenticated.principal,
         user: publicUser(authenticated),
@@ -507,11 +516,20 @@ function setSessionCookies(
     path: options.apiPrefix,
     maxAge: 8 * 60 * 60
   });
+  setCsrfCookie(context, options, csrfToken);
+}
+
+function setCsrfCookie(
+  context: Context,
+  options: Pick<AuthRoutesOptions, 'environment'>,
+  csrfToken: string
+): void {
+  const secure = options.environment !== 'local-node' && options.environment !== 'test';
   setCookie(context, CSRF_COOKIE, csrfToken, {
     httpOnly: false,
     secure,
     sameSite: 'Strict',
-    path: options.apiPrefix,
+    path: '/',
     maxAge: 8 * 60 * 60
   });
 }
@@ -521,12 +539,19 @@ function clearSessionCookies(
   options: Pick<AuthRoutesOptions, 'apiPrefix' | 'environment'>
 ): void {
   const secure = options.environment !== 'local-node' && options.environment !== 'test';
-  for (const name of [SESSION_COOKIE, CSRF_COOKIE]) {
-    setCookie(context, name, '', {
-      httpOnly: name === SESSION_COOKIE,
+  setCookie(context, SESSION_COOKIE, '', {
+    httpOnly: true,
+    secure,
+    sameSite: 'Strict',
+    path: options.apiPrefix,
+    maxAge: 0
+  });
+  for (const path of ['/', options.apiPrefix]) {
+    setCookie(context, CSRF_COOKIE, '', {
+      httpOnly: false,
       secure,
       sameSite: 'Strict',
-      path: options.apiPrefix,
+      path,
       maxAge: 0
     });
   }

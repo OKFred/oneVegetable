@@ -73,11 +73,32 @@ describe('authentication and ABAC routes', () => {
     });
     expect(response.status).toBe(200);
     expect(response.headers.get('X-Request-ID')).toBe(requestId);
-    const cookies = response.headers.getSetCookie().join(';');
+    const setCookies = response.headers.getSetCookie();
+    const cookies = setCookies.join(';');
     expect(cookies).toContain('ov_session=');
     expect(cookies).toContain('HttpOnly');
     expect(cookies).toContain('ov_csrf=');
+    expect(setCookies.find((cookie) => cookie.startsWith('ov_session='))).toContain('Path=/api/v1');
+    expect(setCookies.find((cookie) => cookie.startsWith('ov_csrf='))).toContain('Path=/');
     expect(JSON.stringify(await response.json())).not.toContain('password');
+  });
+
+  it('migrates an authenticated legacy CSRF cookie to the web-visible root path', async () => {
+    const { app, authService } = fixture();
+    const login = await bootstrap(authService);
+    const response = await app.request('/api/v1/auth/session/get', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        Cookie: `ov_session=${login.sessionToken}; ov_csrf=${login.session.csrfToken}`
+      },
+      body: JSON.stringify({ requestId: createRequestId() })
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.getSetCookie().find((cookie) => cookie.startsWith('ov_csrf='))).toContain(
+      'Path=/'
+    );
   });
 
   it('rejects weak passwords and oversized remarks as contract errors', async () => {
