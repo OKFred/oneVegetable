@@ -3,18 +3,28 @@
 import { defineComponent, h } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  GatewayException,
+  type GatewayClient,
+  type OperationId,
+  type RequestOf,
+  type ResponseOf
+} from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import { provideServices } from '../src/lib/services';
 import RfqsView from '../src/views/RfqsView.vue';
 
-function mountView(mode: 'mock' | 'extension' = 'mock') {
+function mountView(
+  mode: 'mock' | 'extension' | 'bff' = 'mock',
+  gateway: GatewayClient = new MockGatewayClient(0)
+) {
   const Host = defineComponent({
     setup() {
       provideServices({
-        gateway: new MockGatewayClient(0),
+        gateway,
         settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
         mode
       });
@@ -27,6 +37,10 @@ function mountView(mode: 'mock' | 'extension' = 'mock') {
     global: { plugins: [[VueQueryPlugin, { queryClient }]] }
   });
 }
+
+afterEach(() => {
+  globalThis.document.body.innerHTML = '';
+});
 
 function bodyText(): string {
   return document.body.textContent;
@@ -101,12 +115,87 @@ describe('RfqsView', () => {
     await rfqButton.trigger('click');
     await flushPromises();
 
-    expect(bodyText()).toContain('真实附件上传和提交报价尚未通过账号 smoke test');
+    expect(bodyText()).toContain('尚未完成附件上传和报价提交验收');
+    expect(bodyButton('提交报价').disabled).toBe(true);
+    expect(document.body.querySelector<HTMLInputElement>('input[type="file"]')?.disabled).toBe(true);
+    wrapper.unmount();
+  });
+
+  it('stops RFQ requests after the real account is denied the API package', async () => {
+    const gateway = new TrackingGateway(true);
+    const wrapper = mountView('bff', gateway);
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('当前应用未获得 RFQ API 包权限');
+      expect(wrapper.text()).toContain('isv.permission-api-package-limit');
+    });
+    expect(gateway.calls).toEqual(['getRfqEquity']);
+    expect(wrapper.find('button').text()).not.toContain('RFQ 市场');
+    wrapper.unmount();
+  });
+
+  it('applies search filters explicitly instead of querying for every keystroke', async () => {
+    const gateway = new TrackingGateway();
+    const wrapper = mountView('mock', gateway);
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Portable solar power stations');
+    });
+    const initialSearches = gateway.calls.filter((operation) => operation === 'listRfqs').length;
+
+    await wrapper.get('input[placeholder="搜索采购标题或描述"]').setValue('battery');
+    await flushPromises();
+    expect(gateway.calls.filter((operation) => operation === 'listRfqs')).toHaveLength(initialSearches);
+
+    bodyButton('查询').click();
+    await flushPromises();
+    await vi.waitFor(() => {
+      expect(gateway.calls.filter((operation) => operation === 'listRfqs')).toHaveLength(initialSearches + 1);
+    });
+    wrapper.unmount();
+  });
+
+  it('keeps BFF attachment and quotation controls disabled before account validation', async () => {
+    const wrapper = mountView('bff');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Portable solar power stations');
+      expect(wrapper.text()).toContain('尚未完成附件上传和报价提交验收');
+    });
+    const rfqButton = wrapper
+      .findAll('button')
+      .find((candidate) => candidate.text().includes('Portable solar power stations'));
+    if (!rfqButton) throw new Error('Missing RFQ row');
+    await rfqButton.trigger('click');
+    await flushPromises();
+
     expect(bodyButton('提交报价').disabled).toBe(true);
     expect(document.body.querySelector<HTMLInputElement>('input[type="file"]')?.disabled).toBe(true);
     wrapper.unmount();
   });
 });
+
+class TrackingGateway extends MockGatewayClient {
+  readonly calls: OperationId[] = [];
+
+  constructor(private readonly denyRfqPackage = false) {
+    super(0);
+  }
+
+  override request<K extends OperationId>(operation: K, request: RequestOf<K>): Promise<ResponseOf<K>> {
+    this.calls.push(operation);
+    if (this.denyRfqPackage && operation === 'getRfqEquity') {
+      return Promise.reject(
+        new GatewayException({
+          code: '11',
+          subCode: 'isv.permission-api-package-limit',
+          message: 'RFQ API package permission denied',
+          traceId: 'rfq-test-trace',
+          retryable: false
+        })
+      );
+    }
+    return super.request(operation, request);
+  }
+}
 
 function settings() {
   return {

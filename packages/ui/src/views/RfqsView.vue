@@ -3,7 +3,13 @@ import { computed, h, ref, watch } from 'vue';
 import { useMutation, useQuery } from '@tanstack/vue-query';
 import { FileText, Paperclip, Save, Search, Send, ShieldAlert, Sparkles } from '@lucide/vue';
 
-import type { RfqAttachmentUploadRequest, RfqQuotationRequest, RfqSummary } from '@one-vegetable/core';
+import {
+  normalizeGatewayError,
+  type GatewayError,
+  type RfqAttachmentUploadRequest,
+  type RfqQuotationRequest,
+  type RfqSummary
+} from '@one-vegetable/core';
 
 import DataTable from '../components/DataTable.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -38,6 +44,7 @@ const source = ref<RfqSource>('search');
 const keywords = ref('');
 const country = ref('');
 const unquotedOnly = ref(true);
+const appliedFilters = ref({ keywords: '', country: '', unquotedOnly: true });
 const rfqPage = ref(1);
 const rfqPageSize = ref(20);
 const selectedRfqId = ref('');
@@ -65,32 +72,49 @@ function emptyDraft(rfq?: RfqSummary): QuotationDraft {
 }
 
 const draft = ref<QuotationDraft>(emptyDraft());
+const equity = useQuery({
+  queryKey: ['rfq-equity'],
+  queryFn: () => gateway.request('getRfqEquity', undefined),
+  staleTime: 5 * 60 * 1000
+});
+const equityPermissionDenied = computed(() => isRfqPermissionDenied(equity.error.value));
+const rfqAccessReady = computed(() => mode === 'mock' || equity.isSuccess.value);
 const listKey = computed(() => [
   'rfqs',
   source.value,
-  keywords.value,
-  country.value,
-  unquotedOnly.value,
+  appliedFilters.value.keywords,
+  appliedFilters.value.country,
+  appliedFilters.value.unquotedOnly,
   rfqPage.value,
   rfqPageSize.value
 ]);
 const rfqs = useQuery({
   queryKey: listKey,
+  enabled: computed(() => rfqAccessReady.value && !equityPermissionDenied.value),
   queryFn: () =>
     source.value === 'recommend'
       ? gateway.request('listRecommendedRfqs', { page: rfqPage.value, pageSize: rfqPageSize.value })
       : gateway.request('listRfqs', {
           page: rfqPage.value,
           pageSize: rfqPageSize.value,
-          ...(keywords.value ? { keywords: keywords.value } : {}),
-          ...(country.value ? { country: country.value } : {}),
-          unquotedOnly: unquotedOnly.value
+          ...(appliedFilters.value.keywords ? { keywords: appliedFilters.value.keywords } : {}),
+          ...(appliedFilters.value.country ? { country: appliedFilters.value.country } : {}),
+          unquotedOnly: appliedFilters.value.unquotedOnly
         })
 });
-const equity = useQuery({
-  queryKey: ['rfq-equity'],
-  queryFn: () => gateway.request('getRfqEquity', undefined)
+const rfqPackageDenied = computed(
+  () => equityPermissionDenied.value || isRfqPermissionDenied(rfqs.error.value)
+);
+const rfqAccessError = computed<GatewayError | null>(() => {
+  const error = rfqPackageDenied.value
+    ? [equity.error.value, rfqs.error.value].find(isRfqPermissionDenied)
+    : equity.error.value;
+  return error ? normalizeGatewayError(error) : null;
 });
+const rfqWorkspaceReady = computed(() => rfqAccessReady.value && !rfqPackageDenied.value);
+const rfqListLoading = computed(
+  () => !rfqPackageDenied.value && ((mode !== 'mock' && equity.isPending.value) || rfqs.isPending.value)
+);
 const visibleRfqIds = computed(() => (rfqs.data.value?.items ?? []).map((rfq) => rfq.id));
 const readStatus = useQuery({
   queryKey: computed(() => ['rfq-read-status', ...visibleRfqIds.value]),
@@ -102,11 +126,10 @@ const detail = useQuery({
   enabled: computed(() => selectedRfqId.value !== ''),
   queryFn: () => gateway.request('getRfq', { rfqId: selectedRfqId.value })
 });
-
 const selectedSummary = computed(() =>
   (rfqs.data.value?.items ?? []).find((rfq) => rfq.id === selectedRfqId.value)
 );
-const mutationBlocked = computed(() => mode === 'extension');
+const realMutationBlocked = computed(() => mode !== 'mock');
 const draftComplete = computed(
   () =>
     selectedRfqId.value !== '' &&
@@ -187,8 +210,8 @@ async function selectAttachment(event: Event): Promise<void> {
   attachmentError.value = '';
   const input = event.target;
   if (!(input instanceof HTMLInputElement) || !input.files?.[0]) return;
-  if (mutationBlocked.value) {
-    attachmentError.value = '扩展中的真实附件上传尚未通过账号 smoke test。';
+  if (realMutationBlocked.value) {
+    attachmentError.value = '真实附件上传尚未完成账号验收';
     input.value = '';
     return;
   }
@@ -255,9 +278,29 @@ watch(selectedRfqId, (rfqId) => {
   if (rfqId) restoreDraft(rfqId);
 });
 
-watch([source, keywords, country, unquotedOnly], () => {
+watch(source, () => {
   rfqPage.value = 1;
 });
+
+function applySearch(): void {
+  appliedFilters.value = {
+    keywords: keywords.value.trim(),
+    country: country.value.trim().toUpperCase(),
+    unquotedOnly: unquotedOnly.value
+  };
+  rfqPage.value = 1;
+}
+
+function isRfqPermissionDenied(error: unknown): boolean {
+  if (!error) return false;
+  const normalized = normalizeGatewayError(error);
+  return (
+    normalized.code === '11' &&
+    /permission|api-package-limit|authorize|scope|access|forbidden/i.test(
+      normalized.subCode ?? normalized.message
+    )
+  );
+}
 
 const columns: DataColumn<RfqSummary>[] = [
   {
@@ -307,211 +350,296 @@ const columns: DataColumn<RfqSummary>[] = [
 
 <template>
   <PageHeader title="RFQ 工作台" description="RFQ 搜索、推荐、详情、已读状态与报价草稿均使用类型化契约。">
-    <Badge variant="outline">文档验证 · 未做账号验收</Badge>
+    <Badge
+      :variant="
+        mode === 'mock'
+          ? 'secondary'
+          : rfqPackageDenied
+            ? 'warning'
+            : rfqWorkspaceReady
+              ? 'success'
+              : 'outline'
+      "
+    >
+      {{
+        mode === 'mock'
+          ? '契约 Mock'
+          : rfqPackageDenied
+            ? '当前账号无 RFQ 权限'
+            : rfqWorkspaceReady
+              ? 'RFQ 权限预检通过'
+              : '正在检查 RFQ 权限'
+      }}
+    </Badge>
   </PageHeader>
 
-  <Card
-    v-if="mutationBlocked"
-    class="mb-4 flex gap-2 border-amber-200 bg-amber-50 p-4 text-sm text-amber-800"
-  >
-    <ShieldAlert class="mt-0.5 size-4 shrink-0" />真实附件上传和提交报价尚未通过账号 smoke
-    test，扩展中保持禁用；RFQ 查询仍由 service worker 发起。
+  <Card v-if="rfqPackageDenied" class="mb-4 border-amber-300 p-5 dark:border-amber-800">
+    <div class="flex items-start gap-3">
+      <ShieldAlert class="mt-0.5 size-5 shrink-0 text-amber-600" />
+      <div class="min-w-0 flex-1">
+        <h2 class="font-semibold">当前应用未获得 RFQ API 包权限</h2>
+        <p class="mt-2 text-sm leading-6 text-muted-foreground">
+          Alibaba 返回 {{ rfqAccessError?.code ?? '11' }} /
+          {{
+            rfqAccessError?.subCode ?? 'isv.permission-api-package-limit'
+          }}。页面已停止继续请求搜索、推荐、详情和已读状态，避免重复失败。
+        </p>
+        <p v-if="rfqAccessError?.traceId" class="mt-2 break-all font-mono text-xs text-muted-foreground">
+          traceId：{{ rfqAccessError.traceId }}
+        </p>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" :disabled="equity.isFetching.value" @click="equity.refetch()">
+            {{ equity.isFetching.value ? '检测中…' : '重新检测权限' }}
+          </Button>
+          <a
+            href="https://developer.alibaba.com/docs/api.htm?apiId=32084"
+            class="inline-flex h-8 items-center rounded-md px-3 text-xs font-medium text-primary hover:underline"
+            target="_blank"
+            rel="noreferrer"
+          >
+            查看 RFQ 接口文档
+          </a>
+        </div>
+      </div>
+    </div>
   </Card>
 
-  <div class="mb-4 grid gap-3 md:grid-cols-3">
-    <Card class="p-4">
-      <p class="text-xs text-muted-foreground">剩余报价权益</p>
-      <p class="mt-1 text-2xl font-semibold">{{ equity.data.value?.remainingQuotes ?? '—' }}</p>
-    </Card>
-    <Card class="p-4">
-      <p class="text-xs text-muted-foreground">剩余置顶权益</p>
-      <p class="mt-1 text-2xl font-semibold">{{ equity.data.value?.remainingTopQuotes ?? '—' }}</p>
-    </Card>
-    <Card class="p-4">
-      <p class="text-xs text-muted-foreground">市场表现分</p>
-      <p class="mt-1 text-2xl font-semibold">{{ equity.data.value?.score ?? '—' }}</p>
-    </Card>
-  </div>
-
-  <div class="mb-4 flex flex-wrap items-center gap-2">
-    <Button :variant="source === 'search' ? 'default' : 'outline'" @click="source = 'search'">
-      <Search class="size-4" />RFQ 市场
-    </Button>
-    <Button :variant="source === 'recommend' ? 'default' : 'outline'" @click="source = 'recommend'">
-      <Sparkles class="size-4" />推荐 RFQ
-    </Button>
-    <div v-if="source === 'search'" class="relative min-w-64 flex-1">
-      <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-      <Input v-model="keywords" class="pl-9" placeholder="搜索采购标题或描述" />
-    </div>
-    <Input v-if="source === 'search'" v-model="country" class="w-32" placeholder="国家代码" />
-    <label v-if="source === 'search'" class="flex items-center gap-2 text-sm text-muted-foreground">
-      <input v-model="unquotedOnly" type="checkbox" />仅看可报价
-    </label>
-  </div>
-
-  <QueryState :loading="rfqs.isPending.value" :error="rfqs.error.value">
-    <DataTable
-      :columns="columns"
-      :data="rfqs.data.value?.items ?? []"
-      v-model:page="rfqPage"
-      v-model:page-size="rfqPageSize"
-      :total-rows="rfqs.data.value?.total ?? 0"
-      :page-size-options="[10, 20]"
-      :pagination-disabled="rfqs.isFetching.value"
-      empty-text="没有匹配的 RFQ"
-      min-width="840px"
-      :get-row-key="(rfq) => rfq.id"
-      :active-row-key="rfqSheetOpen ? selectedRfqId : undefined"
-      :row-aria-label="(rfq) => `查看 RFQ ${rfq.subject}`"
-      @row-activate="selectRfq"
-    />
-  </QueryState>
-
-  <Sheet
-    :open="rfqSheetOpen"
-    :title="detail.data.value?.subject ?? selectedSummary?.subject ?? 'RFQ 详情'"
-    :description="selectedRfqId ? `RFQ ${selectedRfqId}` : undefined"
-    @update:open="rfqSheetOpen = $event"
-  >
-    <template #toolbar>
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <Badge :variant="detail.data.value?.recommended ? 'success' : 'outline'">
-          {{ detail.data.value?.recommended ? '推荐 RFQ' : 'RFQ 市场' }}
-        </Badge>
-        <span class="text-xs text-muted-foreground">详情与报价草稿集中在当前侧栏</span>
+  <Card v-else-if="mode !== 'mock' && equity.error.value" class="mb-4 border-destructive p-5">
+    <div class="flex items-start gap-3">
+      <ShieldAlert class="mt-0.5 size-5 shrink-0 text-destructive" />
+      <div>
+        <h2 class="font-semibold">RFQ 权限检查失败</h2>
+        <p class="mt-2 text-sm text-muted-foreground">{{ rfqAccessError?.message ?? '请稍后重试。' }}</p>
+        <Button class="mt-4" variant="outline" size="sm" @click="equity.refetch()">重新检测</Button>
       </div>
-    </template>
+    </div>
+  </Card>
 
-    <div v-if="selectedRfqId" class="space-y-5">
-      <Card class="p-5">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">RFQ 详情</p>
-            <p class="mt-1 text-sm text-muted-foreground">采购要求、贸易条款和买家附件</p>
-          </div>
-        </div>
-        <QueryState :loading="detail.isPending.value" :error="detail.error.value">
-          <p class="mt-4 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-            {{ detail.data.value?.description || '文档响应未提供详细描述。' }}
-          </p>
-          <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2">
-            <div>
-              <dt class="text-xs text-muted-foreground">类目</dt>
-              <dd>{{ detail.data.value?.categoryName ?? '—' }}</dd>
-            </div>
-            <div>
-              <dt class="text-xs text-muted-foreground">目的港</dt>
-              <dd>{{ detail.data.value?.destinationPort ?? '—' }}</dd>
-            </div>
-            <div>
-              <dt class="text-xs text-muted-foreground">付款条款</dt>
-              <dd>{{ detail.data.value?.paymentTerms ?? '—' }}</dd>
-            </div>
-            <div>
-              <dt class="text-xs text-muted-foreground">运输条款</dt>
-              <dd>{{ detail.data.value?.shippingTerms ?? '—' }}</dd>
-            </div>
-          </dl>
-          <div v-if="detail.data.value?.attachments.length" class="mt-5 rounded-lg bg-muted p-3">
-            <p class="text-xs font-medium text-muted-foreground">买家附件</p>
-            <a
-              v-for="attachment in detail.data.value.attachments"
-              :key="attachment.url"
-              :href="attachment.url"
-              class="mt-2 flex items-center gap-2 text-sm text-primary hover:underline"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <FileText class="size-4" />{{ attachment.name }}
-            </a>
-          </div>
-        </QueryState>
+  <template v-if="rfqWorkspaceReady">
+    <Card
+      v-if="realMutationBlocked"
+      class="mb-4 flex items-start gap-3 border-amber-300 p-4 text-sm dark:border-amber-800"
+    >
+      <ShieldAlert class="mt-0.5 size-4 shrink-0 text-amber-600" />
+      <div>
+        <p class="font-medium">真实报价写操作保持关闭</p>
+        <p class="mt-1 text-xs leading-5 text-muted-foreground">
+          当前账号尚未完成附件上传和报价提交验收，本地报价草稿不受影响。
+        </p>
+      </div>
+    </Card>
+
+    <div class="mb-4 grid gap-3 md:grid-cols-3">
+      <Card class="p-4">
+        <p class="text-xs text-muted-foreground">剩余报价权益</p>
+        <p class="mt-1 text-2xl font-semibold">{{ equity.data.value?.remainingQuotes ?? '—' }}</p>
       </Card>
-
-      <Card class="p-5">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">报价草稿</p>
-            <p class="mt-1 text-sm text-muted-foreground">草稿仅保存在当前浏览器，不会提前出网。</p>
-          </div>
-          <Badge v-if="draftSaved" variant="success">已保存</Badge>
-        </div>
-
-        <div v-if="mutationBlocked" class="mt-4 flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-          <ShieldAlert class="mt-0.5 size-4 shrink-0" />可保存草稿；Web Mock 可体验附件上传与完整报价流程。
-        </div>
-
-        <div class="mt-4 grid gap-3 sm:grid-cols-2">
-          <label class="text-xs text-muted-foreground sm:col-span-2"
-            >给买家留言
-            <textarea
-              v-model="draft.message"
-              class="mt-1 min-h-24 w-full rounded-md border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-            />
-          </label>
-          <label class="text-xs text-muted-foreground"
-            >商品名称<Input v-model="draft.itemName" class="mt-1"
-          /></label>
-          <label class="text-xs text-muted-foreground"
-            >有效期<Input v-model="draft.expiresAt" class="mt-1" type="date"
-          /></label>
-          <label class="text-xs text-muted-foreground"
-            >单价<Input v-model="draft.unitPrice" class="mt-1" placeholder="599.00"
-          /></label>
-          <label class="text-xs text-muted-foreground"
-            >币种<Input v-model="draft.currency" class="mt-1"
-          /></label>
-          <label class="text-xs text-muted-foreground"
-            >数量<Input v-model="draft.quantity" class="mt-1"
-          /></label>
-          <label class="text-xs text-muted-foreground"
-            >数量单位<Input v-model="draft.quantityUnit" class="mt-1"
-          /></label>
-          <label class="text-xs text-muted-foreground"
-            >贸易条款<Input v-model="draft.shippingTerms" class="mt-1"
-          /></label>
-          <label class="text-xs text-muted-foreground"
-            >装运港<Input v-model="draft.port" class="mt-1"
-          /></label>
-          <label class="text-xs text-muted-foreground"
-            >付款条款<Input v-model="draft.paymentTerms" class="mt-1"
-          /></label>
-          <label class="text-xs text-muted-foreground"
-            >备注<Input v-model="draft.remark" class="mt-1"
-          /></label>
-        </div>
-
-        <div class="mt-4 flex flex-wrap items-center gap-2">
-          <Button variant="outline" @click="saveDraft"><Save class="size-4" />保存草稿</Button>
-          <label
-            class="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border bg-background px-4 text-sm font-medium hover:bg-accent"
-            :class="mutationBlocked ? 'pointer-events-none opacity-50' : ''"
-          >
-            <Paperclip class="size-4" />{{ attachmentName || '报价附件' }}
-            <input type="file" class="sr-only" :disabled="mutationBlocked" @change="selectAttachment" />
-          </label>
-          <Button
-            :disabled="mutationBlocked || !draftComplete || submitQuotation.isPending.value"
-            @click="submitQuotation.mutate()"
-          >
-            <Send class="size-4" />提交报价
-          </Button>
-        </div>
-        <p v-if="attachmentError" class="mt-2 text-sm text-destructive">{{ attachmentError }}</p>
-        <p v-if="uploadAttachment.error.value" class="mt-2 text-sm text-destructive">
-          {{ uploadAttachment.error.value.message }}
-        </p>
-        <p v-if="submitQuotation.error.value" class="mt-2 text-sm text-destructive">
-          {{ submitQuotation.error.value.message }}
-        </p>
-        <p
-          v-if="submitQuotation.data.value"
-          class="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800"
-        >
-          Mock 报价提交成功，报价 ID：{{ submitQuotation.data.value.quotationId }}
-        </p>
+      <Card class="p-4">
+        <p class="text-xs text-muted-foreground">剩余置顶权益</p>
+        <p class="mt-1 text-2xl font-semibold">{{ equity.data.value?.remainingTopQuotes ?? '—' }}</p>
+      </Card>
+      <Card class="p-4">
+        <p class="text-xs text-muted-foreground">市场表现分</p>
+        <p class="mt-1 text-2xl font-semibold">{{ equity.data.value?.score ?? '—' }}</p>
       </Card>
     </div>
-  </Sheet>
+
+    <div class="mb-4 flex flex-wrap items-center gap-2">
+      <Button :variant="source === 'search' ? 'default' : 'outline'" @click="source = 'search'">
+        <Search class="size-4" />RFQ 市场
+      </Button>
+      <Button :variant="source === 'recommend' ? 'default' : 'outline'" @click="source = 'recommend'">
+        <Sparkles class="size-4" />推荐 RFQ
+      </Button>
+      <div v-if="source === 'search'" class="relative min-w-64 flex-1">
+        <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+        <Input v-model="keywords" class="pl-9" placeholder="搜索采购标题或描述" @keyup.enter="applySearch" />
+      </div>
+      <Input
+        v-if="source === 'search'"
+        v-model="country"
+        class="w-32"
+        placeholder="国家代码"
+        @keyup.enter="applySearch"
+      />
+      <label v-if="source === 'search'" class="flex items-center gap-2 text-sm text-muted-foreground">
+        <input v-model="unquotedOnly" type="checkbox" />仅看可报价
+      </label>
+      <Button v-if="source === 'search'" variant="outline" @click="applySearch">
+        <Search class="size-4" />查询
+      </Button>
+    </div>
+
+    <QueryState :loading="rfqListLoading" :error="rfqs.error.value">
+      <DataTable
+        :columns="columns"
+        :data="rfqs.data.value?.items ?? []"
+        v-model:page="rfqPage"
+        v-model:page-size="rfqPageSize"
+        :total-rows="rfqs.data.value?.total ?? 0"
+        :page-size-options="[10, 20]"
+        :pagination-disabled="rfqs.isFetching.value"
+        empty-text="没有匹配的 RFQ"
+        min-width="840px"
+        :get-row-key="(rfq) => rfq.id"
+        :active-row-key="rfqSheetOpen ? selectedRfqId : undefined"
+        :row-aria-label="(rfq) => `查看 RFQ ${rfq.subject}`"
+        @row-activate="selectRfq"
+      />
+    </QueryState>
+
+    <Sheet
+      :open="rfqSheetOpen"
+      :title="detail.data.value?.subject ?? selectedSummary?.subject ?? 'RFQ 详情'"
+      :description="selectedRfqId ? `RFQ ${selectedRfqId}` : undefined"
+      @update:open="rfqSheetOpen = $event"
+    >
+      <template #toolbar>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <Badge :variant="detail.data.value?.recommended ? 'success' : 'outline'">
+            {{ detail.data.value?.recommended ? '推荐 RFQ' : 'RFQ 市场' }}
+          </Badge>
+          <span class="text-xs text-muted-foreground">详情与报价草稿集中在当前侧栏</span>
+        </div>
+      </template>
+
+      <div v-if="selectedRfqId" class="space-y-5">
+        <Card class="p-5">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">RFQ 详情</p>
+              <p class="mt-1 text-sm text-muted-foreground">采购要求、贸易条款和买家附件</p>
+            </div>
+          </div>
+          <QueryState :loading="detail.isPending.value" :error="detail.error.value">
+            <p class="mt-4 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+              {{ detail.data.value?.description || '文档响应未提供详细描述。' }}
+            </p>
+            <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+              <div>
+                <dt class="text-xs text-muted-foreground">类目</dt>
+                <dd>{{ detail.data.value?.categoryName ?? '—' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-muted-foreground">目的港</dt>
+                <dd>{{ detail.data.value?.destinationPort ?? '—' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-muted-foreground">付款条款</dt>
+                <dd>{{ detail.data.value?.paymentTerms ?? '—' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-muted-foreground">运输条款</dt>
+                <dd>{{ detail.data.value?.shippingTerms ?? '—' }}</dd>
+              </div>
+            </dl>
+            <div v-if="detail.data.value?.attachments.length" class="mt-5 rounded-lg bg-muted p-3">
+              <p class="text-xs font-medium text-muted-foreground">买家附件</p>
+              <a
+                v-for="attachment in detail.data.value.attachments"
+                :key="attachment.url"
+                :href="attachment.url"
+                class="mt-2 flex items-center gap-2 text-sm text-primary hover:underline"
+                target="_blank"
+                rel="noreferrer"
+              >
+                <FileText class="size-4" />{{ attachment.name }}
+              </a>
+            </div>
+          </QueryState>
+        </Card>
+
+        <Card class="p-5">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">报价草稿</p>
+              <p class="mt-1 text-sm text-muted-foreground">草稿仅保存在当前浏览器，不会提前出网。</p>
+            </div>
+            <Badge v-if="draftSaved" variant="success">已保存</Badge>
+          </div>
+
+          <div
+            v-if="realMutationBlocked"
+            class="mt-4 flex gap-2 rounded-lg border border-amber-300 p-3 text-sm"
+          >
+            <ShieldAlert
+              class="mt-0.5 size-4 shrink-0 text-amber-600"
+            />可保存本地草稿；真实附件与报价按当前操作权限禁用。
+          </div>
+
+          <div class="mt-4 grid gap-3 sm:grid-cols-2">
+            <label class="text-xs text-muted-foreground sm:col-span-2"
+              >给买家留言
+              <textarea
+                v-model="draft.message"
+                class="mt-1 min-h-24 w-full rounded-md border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+              />
+            </label>
+            <label class="text-xs text-muted-foreground"
+              >商品名称<Input v-model="draft.itemName" class="mt-1"
+            /></label>
+            <label class="text-xs text-muted-foreground"
+              >有效期<Input v-model="draft.expiresAt" class="mt-1" type="date"
+            /></label>
+            <label class="text-xs text-muted-foreground"
+              >单价<Input v-model="draft.unitPrice" class="mt-1" placeholder="599.00"
+            /></label>
+            <label class="text-xs text-muted-foreground"
+              >币种<Input v-model="draft.currency" class="mt-1"
+            /></label>
+            <label class="text-xs text-muted-foreground"
+              >数量<Input v-model="draft.quantity" class="mt-1"
+            /></label>
+            <label class="text-xs text-muted-foreground"
+              >数量单位<Input v-model="draft.quantityUnit" class="mt-1"
+            /></label>
+            <label class="text-xs text-muted-foreground"
+              >贸易条款<Input v-model="draft.shippingTerms" class="mt-1"
+            /></label>
+            <label class="text-xs text-muted-foreground"
+              >装运港<Input v-model="draft.port" class="mt-1"
+            /></label>
+            <label class="text-xs text-muted-foreground"
+              >付款条款<Input v-model="draft.paymentTerms" class="mt-1"
+            /></label>
+            <label class="text-xs text-muted-foreground"
+              >备注<Input v-model="draft.remark" class="mt-1"
+            /></label>
+          </div>
+
+          <div class="mt-4 flex flex-wrap items-center gap-2">
+            <Button variant="outline" @click="saveDraft"><Save class="size-4" />保存草稿</Button>
+            <label
+              class="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border bg-background px-4 text-sm font-medium hover:bg-accent"
+              :class="realMutationBlocked ? 'pointer-events-none opacity-50' : ''"
+            >
+              <Paperclip class="size-4" />{{ attachmentName || '报价附件' }}
+              <input type="file" class="sr-only" :disabled="realMutationBlocked" @change="selectAttachment" />
+            </label>
+            <Button
+              :disabled="realMutationBlocked || !draftComplete || submitQuotation.isPending.value"
+              @click="submitQuotation.mutate()"
+            >
+              <Send class="size-4" />提交报价
+            </Button>
+          </div>
+          <p v-if="attachmentError" class="mt-2 text-sm text-destructive">{{ attachmentError }}</p>
+          <p v-if="uploadAttachment.error.value" class="mt-2 text-sm text-destructive">
+            {{ uploadAttachment.error.value.message }}
+          </p>
+          <p v-if="submitQuotation.error.value" class="mt-2 text-sm text-destructive">
+            {{ submitQuotation.error.value.message }}
+          </p>
+          <p
+            v-if="submitQuotation.data.value"
+            class="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800"
+          >
+            {{ mode === 'mock' ? 'Mock 报价提交成功' : '报价提交成功' }}，报价 ID：{{
+              submitQuotation.data.value.quotationId
+            }}
+          </p>
+        </Card>
+      </div>
+    </Sheet>
+  </template>
 </template>
