@@ -57,7 +57,7 @@ async function finish(): Promise<void> {
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">首次使用</p>
         <h1 id="onboarding-title" class="mt-2 text-2xl font-semibold">先确认数据与调用边界</h1>
         <p class="mt-2 text-sm leading-6 text-muted-foreground">
-          当前版本无需真实账号即可查看能力目录和本地编辑；真实查询需要开放平台凭证，所有真实写操作仍保持关闭。
+          无需开放平台凭证即可查看能力目录和本地编辑；真实查询需要用户自己的凭证，图库分组管理、图片上传和外部图片转存已开放，其他真实写操作保持关闭。
         </p>
         <div class="mt-5 grid gap-3 sm:grid-cols-2">
           <div class="rounded-lg border p-4">
@@ -77,10 +77,9 @@ async function finish(): Promise<void> {
           </div>
           <div class="rounded-lg border p-4">
             <FlaskConical class="size-5 text-emerald-700" />
-            <p class="mt-2 font-medium">Mock 不等于真实验收</p>
+            <p class="mt-2 font-medium">本地验证不等于平台授权</p>
             <p class="mt-1 text-xs leading-5 text-muted-foreground">
-              Web Mock、契约验证和浏览器回归不证明国际站已接受请求；账号、业务资格和真实响应仍需后续 smoke
-              test。
+              本地演示、契约验证和浏览器回归不代表国际站已授予接口权限；实际可用能力以当前账号、业务资格和平台响应为准。
             </p>
           </div>
           <div class="rounded-lg border p-4">
@@ -93,7 +92,7 @@ async function finish(): Promise<void> {
         </div>
         <label class="mt-5 flex items-start gap-3 rounded-lg bg-muted p-4 text-sm leading-6">
           <input v-model="acknowledged" type="checkbox" class="mt-1 size-4 accent-emerald-600" />
-          <span>我已理解当前没有真实账号验收，真实写操作保持关闭，并知晓本地数据与主机权限的用途。</span>
+          <span>我已理解接口可用性取决于账号权限与业务资格，并知晓本地数据、真实写入和主机权限的用途。</span>
         </label>
         <p v-if="error" class="mt-3 text-sm text-destructive">{{ error }}</p>
         <div class="mt-5 flex flex-wrap items-center justify-between gap-3">

@@ -26,11 +26,11 @@ function formatMetric(value: number | null | undefined): string {
         ? '国际站商品、素材与订单工作台。真实请求由本地 BFF 代理。'
         : mode === 'extension'
           ? '国际站商品、素材与订单工作台。真实请求由扩展 service worker 发起。'
-          : '国际站商品、素材与订单工作台。当前使用契约 Mock。'
+          : '国际站商品、素材与订单工作台。当前使用本地契约演示数据。'
     "
   >
     <span class="rounded-full border bg-card px-3 py-1.5 text-xs text-muted-foreground">
-      {{ mode === 'mock' ? 'OpenAPI Mock' : mode === 'bff' ? 'BFF 文档回放/代理' : 'Extension MV3' }}
+      {{ mode === 'mock' ? 'OpenAPI 演示' : mode === 'bff' ? 'BFF 文档回放/代理' : 'Extension MV3' }}
     </span>
   </PageHeader>
   <QueryState :loading="summary.isPending.value" :error="summary.error.value">
@@ -84,12 +84,12 @@ function formatMetric(value: number | null | undefined): string {
       </Card>
       <Card class="border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/40">
         <h2 class="font-semibold text-amber-900 dark:text-amber-100">
-          {{ mode === 'mock' ? '契约 Mock 模式' : mode === 'bff' ? 'BFF 网关模式' : '扩展网关模式' }}
+          {{ mode === 'mock' ? '契约演示模式' : mode === 'bff' ? 'BFF 网关模式' : '扩展网关模式' }}
         </h2>
         <p class="mt-2 text-sm leading-6 text-amber-800 dark:text-amber-200">
           {{
             mode === 'mock'
-              ? '当前数据来自本地 Mock，不会请求 Alibaba。'
+              ? '当前数据来自本地契约演示，不会请求 Alibaba。'
               : mode === 'bff'
                 ? '数据由本地 BFF 聚合；网关来源、凭据状态与请求诊断可在管理页查看。'
                 : '数据由扩展 service worker 聚合，页面不会接触 App Secret。'

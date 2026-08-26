@@ -54,11 +54,11 @@ describe('LogisticsView', () => {
     });
 
     await button(wrapper, '下单草稿').trigger('click');
-    const create = button(wrapper, '提交 Mock 物流订单');
+    const create = button(wrapper, '提交演示物流订单');
     expect(create.attributes('disabled')).toBeUndefined();
     await create.trigger('click');
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('Mock 下单成功');
+      expect(wrapper.text()).toContain('演示下单成功');
       expect(wrapper.text()).toContain('ALS00201756999');
     });
     wrapper.unmount();

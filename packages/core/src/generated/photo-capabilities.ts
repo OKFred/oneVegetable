@@ -100,11 +100,11 @@ export const PHOTO_CAPABILITY_DEFINITIONS = {
     "errorCodes": [],
     "requestExample": {},
     "responseExample": {
-      "trace_id": "mock-photo-trace",
+      "trace_id": "example-photo-trace",
       "pagination_query_list": {
         "list": [
           {
-            "url": "https://sc04.alicdn.com/kf/mock-solar-station.jpg",
+            "url": "https://sc04.alicdn.com/kf/example-product-image.jpg",
             "id": "ph_001",
             "file_name": "solar-station.jpg",
             "gmt_modified": "2026-08-12T03:20:00.000Z",
@@ -167,7 +167,7 @@ export const PHOTO_CAPABILITY_DEFINITIONS = {
     "responseExample": {
       "upload_image_response": {
         "file_name": "solar-station.jpg",
-        "photobank_url": "https://sc04.alicdn.com/kf/mock-solar-station.jpg",
+        "photobank_url": "https://sc04.alicdn.com/kf/example-product-image.jpg",
         "file_id": 73826382
       }
     },

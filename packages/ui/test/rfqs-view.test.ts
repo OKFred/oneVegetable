@@ -97,7 +97,7 @@ describe('RfqsView', () => {
     submit.click();
     await flushPromises();
     await vi.waitFor(() => {
-      expect(bodyText()).toContain('Mock 报价提交成功');
+      expect(bodyText()).toContain('演示报价提交成功');
     });
     wrapper.unmount();
   });

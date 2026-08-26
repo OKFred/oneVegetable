@@ -8,7 +8,7 @@ import type {
 } from './types';
 import type { ProductDescriptionTemplate } from './product-description-template';
 
-export interface ProductDescriptionTemplateMockData {
+export interface BundledProductDescriptionTemplateData {
   templates: ProductDescriptionTemplate[];
 }
 

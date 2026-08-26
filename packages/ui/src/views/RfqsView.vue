@@ -363,7 +363,7 @@ const columns: DataColumn<RfqSummary>[] = [
     >
       {{
         mode === 'mock'
-          ? '契约 Mock'
+          ? '契约演示'
           : rfqPackageDenied
             ? '当前账号无 RFQ 权限'
             : rfqWorkspaceReady
@@ -634,7 +634,7 @@ const columns: DataColumn<RfqSummary>[] = [
             v-if="submitQuotation.data.value"
             class="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800"
           >
-            {{ mode === 'mock' ? 'Mock 报价提交成功' : '报价提交成功' }}，报价 ID：{{
+            {{ mode === 'mock' ? '演示报价提交成功' : '报价提交成功' }}，报价 ID：{{
               submitQuotation.data.value.quotationId
             }}
           </p>

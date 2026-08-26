@@ -6,7 +6,7 @@ import {
   BffControlClient,
   BffGatewayClient,
   BffProductMutationJobClient,
-  PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA,
+  BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA,
   type GatewaySettings,
   type SettingsRepository
 } from '@one-vegetable/core';
@@ -78,7 +78,7 @@ const productMutationJobs =
       })
     : undefined;
 const bundledTemplates = new MemoryProductDescriptionTemplateClient(
-  PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA.templates,
+  BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates,
   { writable: false, actorId: 'system:bundled' }
 );
 const mockTemplates =

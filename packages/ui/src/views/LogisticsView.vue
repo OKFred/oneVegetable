@@ -45,10 +45,10 @@ const logisticsOrderSheetOpen = ref(false);
 const addressLevel = ref<'province' | 'city' | 'division' | 'street'>('province');
 const addressParentId = ref('330000');
 const addressSearchText = ref('仓前');
-const consignorPerson = ref('Mock Seller');
+const consignorPerson = ref('演示发货人');
 const consignorMobile = ref('13800000000');
 const consignorAddress = ref('阿里西溪园区');
-const consigneePerson = ref('Mock Buyer');
+const consigneePerson = ref('演示收货人');
 const consigneeMobile = ref('12025550123');
 const consigneeAddress = ref('700 New Road');
 
@@ -272,7 +272,7 @@ const workspaces: { id: Workspace; label: string }[] = [
     <div class="text-sm leading-5">
       <p>OneTouch 国际物流接口需要业务资格，本项目尚无真实账号完成验收。</p>
       <p class="mt-1 text-xs">
-        Web Mock 可完整试算和下单；扩展内不会发出这些请求。运费模板属于商品域免费接口，可独立查询。
+        Web 本地演示可完整试算和下单；扩展内不会发出这些请求。运费模板属于商品域免费接口，可独立查询。
       </p>
     </div>
   </Card>
@@ -555,9 +555,7 @@ const workspaces: { id: Workspace; label: string }[] = [
           :disabled="qualificationBlocked || !selectedQuote || createOrder.isPending.value"
           @click="createOrder.mutate()"
         >
-          <PackageCheck class="size-4" />{{
-            qualificationBlocked ? '真实下单保持禁用' : '提交 Mock 物流订单'
-          }}
+          <PackageCheck class="size-4" />{{ qualificationBlocked ? '真实下单保持禁用' : '提交演示物流订单' }}
         </Button>
         <p v-if="!selectedQuote" class="mt-2 text-xs text-amber-700">请先在“运费试算”生成可用方案。</p>
         <p v-if="createOrder.error.value" class="mt-3 text-sm text-destructive">
@@ -573,7 +571,7 @@ const workspaces: { id: Workspace; label: string }[] = [
           v-if="createOrder.data.value"
           class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4"
         >
-          <Badge variant="success">Mock 下单成功</Badge>
+          <Badge variant="success">演示下单成功</Badge>
           <p class="mt-3 font-mono text-sm">{{ createOrder.data.value.orderNumber }}</p>
         </div>
         <p v-else class="mt-4 text-sm text-muted-foreground">本工作台不会持久化草稿中的个人信息。</p>

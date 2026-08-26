@@ -143,7 +143,7 @@ async function save(): Promise<void> {
     } else {
       await settings.save(model.value);
       feedback.value =
-        mode === 'mock' ? 'Mock 设置已保存在本地浏览器。' : '设置已重新加密写入 chrome.storage.local。';
+        mode === 'mock' ? '演示设置已保存在本地浏览器。' : '设置已重新加密写入 chrome.storage.local。';
       model.value = await settings.load();
     }
   } catch (error: unknown) {

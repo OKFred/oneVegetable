@@ -140,11 +140,11 @@ describe('OrdersView', () => {
     for (const [placeholder, value] of Object.entries(values)) {
       await wrapper.get(`input[placeholder="${placeholder}"]`).setValue(value);
     }
-    const create = button(wrapper, '创建 Mock 信保订单');
+    const create = button(wrapper, '创建演示信保订单');
     expect(create.attributes('disabled')).toBeUndefined();
     await create.trigger('click');
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('Mock 创建成功');
+      expect(wrapper.text()).toContain('演示订单创建成功');
     });
     wrapper.unmount();
   });

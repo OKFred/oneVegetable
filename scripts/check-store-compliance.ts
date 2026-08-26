@@ -21,7 +21,10 @@ interface Listing {
   supportUrl?: string;
   homepageUrl?: string;
   permissions?: { permission?: string; justification?: string }[];
-  submissionStatus?: { realMutationsEnabled?: boolean };
+  submissionStatus?: {
+    enabledRealMutations?: string[];
+    otherRealMutationsEnabled?: boolean;
+  };
 }
 
 interface LocaleMessages {
@@ -35,6 +38,8 @@ const manifest = await readJson<Manifest>(resolve(output, 'manifest.json'));
 const listing = await readJson<Listing>(resolve(root, 'store-listing/listing.json'));
 const privacyHtml = await readFile(resolve(output, 'privacy.html'), 'utf8');
 const privacyPolicy = await readFile(resolve(root, 'docs/privacy-policy.md'), 'utf8');
+const zhListing = await readFile(resolve(root, 'store-listing/zh_CN.md'), 'utf8');
+const enListing = await readFile(resolve(root, 'store-listing/en.md'), 'utf8');
 const credentialVaultSource = await readFile(resolve(root, 'packages/core/src/credential-vault.ts'), 'utf8');
 const backgroundSource = await readFile(resolve(root, 'apps/extension/entrypoints/background.ts'), 'utf8');
 const storeIcon = await readFile(resolve(root, 'store-listing/assets/icon-128.png'));
@@ -73,8 +78,16 @@ if ((listing.permissions ?? []).some((permission) => !permission.justification?.
   errors.push('every store permission declaration needs a justification');
 }
 if (listing.permissions?.length !== 3) errors.push('store permission inventory must contain three entries');
-if (listing.submissionStatus?.realMutationsEnabled !== false)
-  errors.push('real mutations must remain disabled before account smoke tests');
+const enabledRealMutations = listing.submissionStatus?.enabledRealMutations ?? [];
+if (
+  JSON.stringify(enabledRealMutations) !==
+  JSON.stringify(['operatePhotoGroup', 'uploadPhoto', 'transferPhotoFromUrl'])
+) {
+  errors.push('store listing must disclose the exact reviewed gallery mutation set');
+}
+if (listing.submissionStatus?.otherRealMutationsEnabled !== false) {
+  errors.push('unreviewed real mutations must remain disabled');
+}
 if (screenshots.length < 1 || screenshots.length > 5)
   errors.push('store listing must contain between one and five screenshots');
 for (const screenshot of screenshots) {
@@ -94,6 +107,17 @@ for (const locale of ['zh_CN', 'en']) {
   if (!name) errors.push(`${locale} extension name is missing`);
   if (!description || description.length > 132)
     errors.push(`${locale} extension description must contain 1-132 characters`);
+}
+
+for (const [file, content] of [
+  ['privacy.html', privacyHtml],
+  ['docs/privacy-policy.md', privacyPolicy],
+  ['store-listing/zh_CN.md', zhListing],
+  ['store-listing/en.md', enListing]
+] as const) {
+  if (/\bmock\b|测试账号|test account|smoke test|真实账号验收/iu.test(content)) {
+    errors.push(`${file} contains internal test or demonstration terminology`);
+  }
 }
 
 for (const [file, content] of [

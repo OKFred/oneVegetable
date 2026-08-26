@@ -231,7 +231,9 @@ const columns: DataColumn<ApiCapability>[] = [
         该接口已 deprecated，仅在通用调试器保留类型化兼容；商品专用页面不会调用它。
       </div>
       <div v-if="realCallBlocked" class="mt-4 flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-        <ShieldAlert class="mt-0.5 size-4 shrink-0" />该真实写能力尚未通过账号 smoke test，扩展中不可调用。
+        <ShieldAlert
+          class="mt-0.5 size-4 shrink-0"
+        />该真实写能力未在当前扩展版本开放，后台会在出网前拒绝调用。
       </div>
       <div
         v-if="selected.restricted"

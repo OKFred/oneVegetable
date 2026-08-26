@@ -6,7 +6,7 @@ export default defineConfig({
   vite: () => ({ plugins: [tailwindcss()] }),
   manifest: {
     name: '__MSG_extName__',
-    version: '2.0.0',
+    version: '2.0.1',
     description: '__MSG_extDescription__',
     default_locale: 'zh_CN',
     minimum_chrome_version: '102',

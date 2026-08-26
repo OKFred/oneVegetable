@@ -132,8 +132,7 @@ const workspaces: { id: Workspace; label: string }[] = [
   <Card class="mb-4 flex items-start gap-3 border-blue-200 bg-blue-50 p-4 text-blue-950">
     <ShieldAlert class="mt-0.5 size-4 shrink-0" />
     <p class="text-sm leading-5">
-      本页结果仅按官方字段展示，不把排名百分比解释成官方经营诊断，也不推断供应商质量。采购供应商接口需要买家授权身份；没有真实账号时仅验证契约
-      Mock。
+      本页结果仅按官方字段展示，不把排名百分比解释成官方经营诊断，也不推断供应商质量。采购供应商接口需要买家授权身份；未获得权限时仅提供本地契约演示。
     </p>
   </Card>
 
@@ -277,13 +276,13 @@ const workspaces: { id: Workspace; label: string }[] = [
       </div>
       <p class="mt-4 text-sm leading-6 text-muted-foreground">
         官方标记为免费且不需要用户授权，但接口名称和说明限定 CGS 小满签约客户，请求还要求独立业务
-        <code>app_secret</code>。因此本项目只保留类型、Mock
-        和审计记录，不提供调用表单，也不会把密钥放入页面或普通设置。
+        <code>app_secret</code
+        >。因此本项目只保留类型、演示契约和审计记录，不提供调用表单，也不会把密钥放入页面或普通设置。
       </p>
       <p class="mt-3 text-xs text-muted-foreground">
         {{
           mode === 'mock'
-            ? 'Mock 模式也不模拟真实企业数据。'
+            ? '本地演示模式不模拟真实企业数据。'
             : '扩展 service worker 会在通用调试入口阻止该方法。'
         }}
       </p>

@@ -11,4 +11,4 @@ Key features:
 - Search audited and typed Open Platform capabilities.
 - Inspect and clear local data, session diagnostics and optional host grants.
 
-The extension runs no advertising or analytics service. Credentials are encrypted on the user's device with a user passphrase; extension content scripts cannot access storage, the passphrase is not stored, and only an unlocked service worker decrypts credentials for request signing. The vault locks after the configured idle period. Version 2.0.0 has not completed real-account acceptance, so real mutations remain disabled; Mock and automated results do not claim Alibaba.com acceptance.
+The extension runs no advertising or analytics service. Credentials are encrypted on the user's device with a user passphrase; extension content scripts cannot access storage, the passphrase is not stored, and only an unlocked service worker decrypts credentials for request signing. The vault locks after the configured idle period. Requests are sent only after a user action: gallery group management, image upload, and external-image transfer are enabled, while other write operations are blocked before network access.

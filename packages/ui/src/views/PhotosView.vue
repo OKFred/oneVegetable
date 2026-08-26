@@ -139,7 +139,7 @@ function handleUploaded(photo: Photo): void {
   <PageHeader title="图库" description="管理国际站图库（图片银行）的分组、发品素材与非阻断治理提示。">
     <div class="flex flex-wrap items-center justify-end gap-2">
       <Badge :variant="mode === 'mock' ? 'secondary' : 'success'">
-        {{ mode === 'mock' ? 'OpenAPI Mock' : mode === 'bff' ? 'BFF 后端查询' : 'Extension API 查询' }}
+        {{ mode === 'mock' ? 'OpenAPI 演示' : mode === 'bff' ? 'BFF 后端查询' : 'Extension API 查询' }}
       </Badge>
       <Button @click="uploadDialogOpen = true"><Upload class="size-4" />上传图片</Button>
     </div>

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "extensionVersion": "2.0.0",
+  "extensionVersion": "2.0.1",
   "singlePurpose": "A user-operated local workspace for managing Alibaba.com international products, gallery assets, RFQs, trade and logistics through documented Open Platform APIs.",
   "category": "productivity",
   "defaultLocale": "zh_CN",
@@ -35,9 +35,9 @@
     "humanReviewByDefault": false
   },
   "submissionStatus": {
-    "accountRegistration": "pending",
-    "privacyPolicyPublication": "pending-until-merged-to-master",
-    "realAccountSmokeTest": "pending",
-    "realMutationsEnabled": false
+    "accountRegistration": "confirmed-by-existing-store-item",
+    "privacyPolicyPublication": "publish-with-release",
+    "enabledRealMutations": ["operatePhotoGroup", "uploadPhoto", "transferPhotoFromUrl"],
+    "otherRealMutationsEnabled": false
   }
 }

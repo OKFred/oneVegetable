@@ -214,7 +214,7 @@ async function logout(): Promise<void> {
         </nav>
         <div class="absolute inset-x-3 bottom-4 rounded-lg border border-slate-800 bg-slate-900 p-3">
           <p class="text-xs font-medium">
-            {{ mode === 'mock' ? 'Mock 模式' : mode === 'bff' ? 'Web + BFF' : 'Extension MV3' }}
+            {{ mode === 'mock' ? '本地演示' : mode === 'bff' ? 'Web + BFF' : 'Extension MV3' }}
           </p>
           <p class="mt-1 text-[11px] leading-4 text-slate-400">
             {{
@@ -247,7 +247,7 @@ async function logout(): Promise<void> {
               <Moon v-else class="size-4" />
             </Button>
             <span class="size-2 rounded-full bg-emerald-500" />{{
-              mode === 'mock' ? '契约 Mock 在线' : mode === 'bff' ? 'BFF 在线' : '扩展后台在线'
+              mode === 'mock' ? '契约演示在线' : mode === 'bff' ? 'BFF 在线' : '扩展后台在线'
             }}
             <span v-if="session">{{ session.principal.username }}</span>
             <Button v-if="mode === 'bff' && session" variant="outline" size="sm" @click="logout">

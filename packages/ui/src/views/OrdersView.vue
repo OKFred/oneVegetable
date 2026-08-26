@@ -424,7 +424,7 @@ watch([orderPage, orderPageSize], () => {
         <div>
           <h2 class="font-semibold">信保订单草稿</h2>
           <p class="mt-1 text-sm text-muted-foreground">
-            Web Mock 可验证草稿交互；扩展中的创建和修改始终禁用，直到取得账号并逐方法完成 smoke test。
+            Web 本地演示可验证草稿交互；扩展中的创建和修改保持禁用，以当前开放能力说明为准。
           </p>
         </div>
       </div>
@@ -441,13 +441,13 @@ watch([orderPage, orderPageSize], () => {
           :disabled="mutationBlocked || !draftComplete || createOrder.isPending.value"
           @click="createOrder.mutate()"
         >
-          {{ mode === 'mock' ? '创建 Mock 信保订单' : '创建信保订单（未开放）' }}
+          {{ mode === 'mock' ? '创建演示信保订单' : '创建信保订单（未开放）' }}
         </Button>
         <Badge v-if="mutationBlocked" variant="warning">真实写入已禁用</Badge>
-        <Badge v-else variant="success">Web Mock</Badge>
+        <Badge v-else variant="success">Web 演示</Badge>
       </div>
       <p v-if="createOrder.data.value" class="mt-3 text-sm text-emerald-700">
-        Mock 创建成功：{{ createOrder.data.value.id }}
+        演示订单创建成功：{{ createOrder.data.value.id }}
       </p>
       <p v-if="createOrder.error.value" class="mt-3 text-sm text-destructive">
         {{ createOrder.error.value.message }}
@@ -572,7 +572,7 @@ watch([orderPage, orderPageSize], () => {
         <Card class="border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <p class="font-medium">完整订单详情不可用</p>
           <p class="mt-1 leading-6">
-            <code>alibaba.seller.order.get</code> 仅允许聚石塔内调用，本页面不会用 Mock 字段补齐。
+            <code>alibaba.seller.order.get</code> 仅允许聚石塔内调用，本页面不会用演示字段补齐。
           </p>
         </Card>
       </section>

@@ -372,7 +372,7 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
   if (MUTATION_OPERATIONS.has(operation)) {
     throw new GatewayException({
       code: 'REAL_MUTATION_DISABLED',
-      message: '真实写操作尚未通过账号 smoke test，当前扩展版本保持禁用',
+      message: '该真实写操作未开放，后台已在出网前拒绝',
       retryable: false
     });
   }
@@ -812,6 +812,6 @@ function assertCallable(capability: ApiCapability | undefined): asserts capabili
   if (capability.restricted) throw new Error(capability.restrictionReason ?? 'API 需要额外业务权限');
   if (!capability.enabled) throw new Error('API 尚未完成契约、适配器与测试，当前不可调用');
   if (!capability.realCallEnabled) {
-    throw new Error('该写能力尚未通过真实账号 smoke test，扩展中的真实调用保持禁用');
+    throw new Error('该写能力未开放，后台已在出网前拒绝');
   }
 }

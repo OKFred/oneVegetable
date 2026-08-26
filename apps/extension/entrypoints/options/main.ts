@@ -3,7 +3,7 @@ import { browser } from 'wxt/browser';
 import {
   GatewayException,
   BundledProductDescriptionTemplateClient,
-  PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA,
+  BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA,
   approximateStorageBytes,
   APP_PREFERENCES_STORAGE_KEY,
   completeOnboarding,
@@ -252,7 +252,7 @@ async function mountOptionsApp(): Promise<void> {
     onboarding,
     vault,
     productDescriptionTemplates: new BundledProductDescriptionTemplateClient(
-      PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA.templates
+      BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates
     ),
     mode: 'extension'
   });

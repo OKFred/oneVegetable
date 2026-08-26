@@ -81,7 +81,7 @@ describe('CapabilitiesView platform safeguards', () => {
     });
 
     expect(document.body.querySelector('textarea[aria-label="调用参数 JSON"]')).not.toBeNull();
-    expect(bodyText()).toContain('扩展中不可调用');
+    expect(bodyText()).toContain('出网前拒绝调用');
     wrapper.unmount();
   });
 });

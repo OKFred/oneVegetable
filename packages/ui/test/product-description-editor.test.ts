@@ -5,7 +5,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { describe, expect, it } from 'vitest';
 
-import { PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA } from '@one-vegetable/core';
+import { BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 import { MemoryProductDescriptionTemplateClient } from '@one-vegetable/core/templates';
 
@@ -20,7 +20,7 @@ function mountEditor(html: string, smartDetail = false) {
         gateway: new MockGatewayClient(0),
         settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
         productDescriptionTemplates: new MemoryProductDescriptionTemplateClient(
-          PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA.templates,
+          BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates,
           { writable: false }
         ),
         mode: 'mock'

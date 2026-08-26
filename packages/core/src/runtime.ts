@@ -12,7 +12,7 @@ export { ALIBABA_GATEWAY } from './signing';
 export { APP_PREFERENCES_STORAGE_KEY } from './preferences';
 export {
   BundledProductDescriptionTemplateClient,
-  PRODUCT_DESCRIPTION_TEMPLATE_MOCK_DATA
+  BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA
 } from './runtime-templates';
 export { migrateGatewaySettings, persistGatewaySettings, SETTINGS_STORAGE_KEY } from './settings-storage';
 export {

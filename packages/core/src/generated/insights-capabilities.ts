@@ -157,7 +157,7 @@ export const INSIGHTS_CAPABILITY_DEFINITIONS = {
             "id": 10000001,
             "price_range": "599~699",
             "price_unit": 1,
-            "product_detail_url": "https://www.alibaba.com/product-detail/mock.html",
+            "product_detail_url": "https://www.alibaba.com/product-detail/example.html",
             "publish_time": "2026-08-01",
             "sku": {
               "attributes": [
