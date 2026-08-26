@@ -3,6 +3,7 @@
 **/.output/**
 **/.wxt/**
 **/coverage/**
+apps/extension/public/privacy.html
 legacy/**
 packages/core/src/generated/**
 pnpm-lock.yaml
