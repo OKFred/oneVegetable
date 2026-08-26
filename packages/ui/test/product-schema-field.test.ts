@@ -23,6 +23,10 @@ describe('ProductSchemaField', () => {
     </field>`);
     const { wrapper, current } = mountField(field);
 
+    expect(wrapper.get('[data-testid="multi-input-values"]').classes()).toEqual(
+      expect.arrayContaining(['grid', 'md:grid-cols-2', 'xl:grid-cols-3'])
+    );
+
     await wrapper.get('input[aria-label="关键词 第 2 项"]').setValue('updated two');
     expect(current.value.values[1]).toMatchObject({
       text: 'updated two',
@@ -71,6 +75,9 @@ describe('ProductSchemaField', () => {
     const { wrapper, current } = mountField(field, false);
 
     expect(wrapper.find('textarea').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="repeatable-complex-values"]').classes()).toEqual(
+      expect.arrayContaining(['grid', 'md:grid-cols-2', 'xl:grid-cols-3'])
+    );
     expect(wrapper.get('input[aria-label="关键词 1"]').element).toBeInstanceOf(HTMLInputElement);
     await buttonWithText(wrapper, '新增 关键词').trigger('click');
     expect(current.value.instances).toHaveLength(3);

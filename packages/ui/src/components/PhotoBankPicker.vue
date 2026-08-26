@@ -129,11 +129,11 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
 
 <template>
   <div class="space-y-3">
-    <div v-if="modelValue.length" class="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+    <div v-if="modelValue.length" data-testid="selected-photo-strip" class="flex gap-2 overflow-auto pb-1">
       <div
         v-for="photo in modelValue"
         :key="photo.id"
-        class="group relative overflow-hidden rounded-md border"
+        class="group relative aspect-square w-24 shrink-0 overflow-hidden rounded-md border"
       >
         <button
           type="button"
@@ -144,7 +144,7 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
           <img
             :src="photo.url"
             :alt="photo.name"
-            class="aspect-square w-full bg-muted object-cover"
+            class="size-full bg-muted object-cover"
             @load="rememberDimensions(photo, $event)"
           />
         </button>

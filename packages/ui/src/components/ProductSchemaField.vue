@@ -330,22 +330,25 @@ function removeInstance(index: number): void {
       @update:model-value="updateValue"
     />
     <div v-else-if="field.type === 'multiInput'" class="space-y-2">
-      <div v-for="(value, index) in field.values" :key="`${field.key}:value:${index}`" class="flex gap-2">
-        <Input
-          :model-value="value.text"
-          :aria-label="`${displayName} 第 ${index + 1} 项`"
-          :placeholder="`${displayName} 第 ${index + 1} 项`"
-          @update:model-value="updateMultiValue(index, $event)"
-        />
-        <Button
-          variant="ghost"
-          size="icon"
-          :aria-label="`删除 ${displayName} 第 ${index + 1} 项`"
-          :disabled="field.values.length <= minimumItems"
-          @click="removeMultiValue(index)"
-        >
-          <Trash2 class="size-4" />
-        </Button>
+      <div data-testid="multi-input-values" class="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+        <div v-for="(value, index) in field.values" :key="`${field.key}:value:${index}`" class="flex gap-1">
+          <Input
+            :model-value="value.text"
+            :aria-label="`${displayName} 第 ${index + 1} 项`"
+            :placeholder="`${displayName} 第 ${index + 1} 项`"
+            @update:model-value="updateMultiValue(index, $event)"
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            class="shrink-0"
+            :aria-label="`删除 ${displayName} 第 ${index + 1} 项`"
+            :disabled="field.values.length <= minimumItems"
+            @click="removeMultiValue(index)"
+          >
+            <Trash2 class="size-4" />
+          </Button>
+        </div>
       </div>
       <p v-if="field.values.length === 0" class="text-xs text-muted-foreground">尚未填写任何项目。</p>
       <Button
@@ -387,25 +390,28 @@ function removeInstance(index: number): void {
       </div>
       <div v-if="unmatchedOptionValues.length" class="space-y-2">
         <p class="text-xs text-muted-foreground">Schema 未提供以下已选值的显示名称：</p>
-        <div
-          v-for="entry in unmatchedOptionValues"
-          :key="`${field.key}:fallback:${entry.index}`"
-          class="flex gap-2"
-        >
-          <Input
-            :model-value="entry.value.text"
-            :aria-label="`${displayName} 已选值 ${entry.index + 1}`"
-            @update:model-value="updateMultiValue(entry.index, $event)"
-          />
-          <Button
-            variant="ghost"
-            size="icon"
-            :aria-label="`删除 ${displayName} 已选值 ${entry.index + 1}`"
-            :disabled="field.values.length <= minimumItems"
-            @click="removeMultiValue(entry.index)"
+        <div class="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          <div
+            v-for="entry in unmatchedOptionValues"
+            :key="`${field.key}:fallback:${entry.index}`"
+            class="flex gap-1"
           >
-            <Trash2 class="size-4" />
-          </Button>
+            <Input
+              :model-value="entry.value.text"
+              :aria-label="`${displayName} 已选值 ${entry.index + 1}`"
+              @update:model-value="updateMultiValue(entry.index, $event)"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              class="shrink-0"
+              :aria-label="`删除 ${displayName} 已选值 ${entry.index + 1}`"
+              :disabled="field.values.length <= minimumItems"
+              @click="removeMultiValue(entry.index)"
+            >
+              <Trash2 class="size-4" />
+            </Button>
+          </div>
         </div>
       </div>
       <div v-if="field.options.length === 0" class="space-y-2">
@@ -445,34 +451,39 @@ function removeInstance(index: number): void {
     </div>
     <div v-else-if="repeatableComplex" class="space-y-3">
       <div
-        v-for="(instance, instanceIndex) in field.instances"
-        :key="instance.key"
-        class="space-y-3 rounded-lg bg-muted/40 p-3"
+        data-testid="repeatable-complex-values"
+        :class="keywordComplex ? 'grid gap-3 md:grid-cols-2 xl:grid-cols-3' : 'grid gap-3 xl:grid-cols-2'"
       >
-        <div class="flex justify-between text-xs font-medium text-muted-foreground">
-          <span>{{ displayName }} #{{ instanceIndex + 1 }}</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            :disabled="field.instances.length <= minimumItems"
-            @click="removeInstance(instanceIndex)"
-          >
-            <Trash2 class="size-3" />删除
-          </Button>
+        <div
+          v-for="(instance, instanceIndex) in field.instances"
+          :key="instance.key"
+          class="min-w-0 space-y-3 rounded-lg bg-muted/40 p-3"
+        >
+          <div class="flex justify-between text-xs font-medium text-muted-foreground">
+            <span>{{ displayName }} #{{ instanceIndex + 1 }}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              :disabled="field.instances.length <= minimumItems"
+              @click="removeInstance(instanceIndex)"
+            >
+              <Trash2 class="size-3" />删除
+            </Button>
+          </div>
+          <ProductSchemaField
+            v-for="(child, childIndex) in instance.fields"
+            :key="child.key"
+            :field="child"
+            :issues="issues"
+            :product-description-type="productDescriptionType"
+            :show-technical="showTechnical"
+            :official-hints="officialHintsForNestedField(child)"
+            :language="language"
+            v-bind="keywordComplex ? { labelOverride: `关键词 ${instanceIndex + 1}` } : {}"
+            @update="updateInstanceChild(instanceIndex, childIndex, $event)"
+            @image-status="emit('imageStatus', $event)"
+          />
         </div>
-        <ProductSchemaField
-          v-for="(child, childIndex) in instance.fields"
-          :key="child.key"
-          :field="child"
-          :issues="issues"
-          :product-description-type="productDescriptionType"
-          :show-technical="showTechnical"
-          :official-hints="officialHintsForNestedField(child)"
-          :language="language"
-          v-bind="keywordComplex ? { labelOverride: `关键词 ${instanceIndex + 1}` } : {}"
-          @update="updateInstanceChild(instanceIndex, childIndex, $event)"
-          @image-status="emit('imageStatus', $event)"
-        />
       </div>
       <p v-if="field.instances.length === 0" class="text-xs text-muted-foreground">尚未填写任何项目。</p>
       <Button
