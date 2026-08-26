@@ -35,6 +35,19 @@ function button(wrapper: ReturnType<typeof mountView>, text: string) {
 }
 
 describe('PhotosView', () => {
+  it('opens uploading as a dedicated workflow instead of a selection picker', async () => {
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain('选择或上传素材');
+    await button(wrapper, '上传图片').trigger('click');
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('上传图片到图库');
+      expect(document.body.textContent).toContain('不会自动选入商品');
+    });
+    wrapper.unmount();
+  });
+
   it('shows file metadata and non-blocking governance filters', async () => {
     const wrapper = mountView();
     await flushPromises();

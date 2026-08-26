@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import { Eye, FolderPlus, Pencil, ShieldCheck, Trash2 } from '@lucide/vue';
+import { Eye, FolderPlus, Pencil, ShieldCheck, Trash2, Upload } from '@lucide/vue';
 
 import type { Photo, PhotoGroup, PhotoGroupOperationRequest } from '@one-vegetable/core';
 
 import PageHeader from '../components/PageHeader.vue';
 import ImagePreview, { type ImagePreviewItem } from '../components/ImagePreview.vue';
-import PhotoBankPicker from '../components/PhotoBankPicker.vue';
 import PhotoGroupNavigation from '../components/PhotoGroupNavigation.vue';
+import PhotoUploadDialog from '../components/PhotoUploadDialog.vue';
 import QueryState from '../components/QueryState.vue';
 import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
@@ -22,7 +22,6 @@ type GovernanceFilter = 'all' | 'unreferenced' | 'lowResolution';
 const { gateway, mode } = useServices();
 const queryClient = useQueryClient();
 const selectedGroup = ref('-1');
-const selectedPhotos = ref<Photo[]>([]);
 const groupName = ref('');
 const governanceFilter = ref<GovernanceFilter>('all');
 const operationMessage = ref('');
@@ -31,6 +30,8 @@ const observedDimensions = ref<Record<string, { width: number; height: number }>
 const previewOpen = ref(false);
 const previewIndex = ref(0);
 const deleteDialogOpen = ref(false);
+const uploadDialogOpen = ref(false);
+const selectedGroupName = computed(() => selectedGroupDefinition.value?.name ?? '全部图片');
 const photos = useQuery({
   queryKey: ['photos', selectedGroup],
   queryFn: () => gateway.request('listPhotos', { page: 1, pageSize: 24, groupId: selectedGroup.value })
@@ -128,6 +129,10 @@ function openPreview(photo: Photo): void {
   );
   previewOpen.value = true;
 }
+
+function handleUploaded(photo: Photo): void {
+  operationMessage.value = `已上传到图库：${photo.name}`;
+}
 </script>
 
 <template>
@@ -136,7 +141,7 @@ function openPreview(photo: Photo): void {
       <Badge :variant="mode === 'mock' ? 'secondary' : 'success'">
         {{ mode === 'mock' ? 'OpenAPI Mock' : mode === 'bff' ? 'BFF 后端查询' : 'Extension API 查询' }}
       </Badge>
-      <PhotoBankPicker v-model="selectedPhotos" :max="6" button-label="选择或上传素材" />
+      <Button @click="uploadDialogOpen = true"><Upload class="size-4" />上传图片</Button>
     </div>
   </PageHeader>
 
@@ -289,6 +294,13 @@ function openPreview(photo: Photo): void {
       </div>
     </template>
   </ModalDialog>
+
+  <PhotoUploadDialog
+    v-model:open="uploadDialogOpen"
+    :group-id="selectedGroup"
+    :group-name="selectedGroupName"
+    @uploaded="handleUploaded"
+  />
 
   <ImagePreview v-model:open="previewOpen" :images="previewImages" :initial-index="previewIndex" />
 </template>

@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import { Check, Download, Eye, ImagePlus, LoaderCircle, Upload, X } from '@lucide/vue';
+import { useQuery } from '@tanstack/vue-query';
+import { Check, Eye, ImagePlus, Upload, X } from '@lucide/vue';
 
-import { MAX_PHOTOBANK_IMAGE_BYTES, type Photo, type PhotoGroup } from '@one-vegetable/core';
+import type { Photo, PhotoGroup } from '@one-vegetable/core';
 
 import QueryState from './QueryState.vue';
 import ImagePreview, { type ImagePreviewItem } from './ImagePreview.vue';
 import PhotoGroupNavigation from './PhotoGroupNavigation.vue';
+import PhotoUploadDialog from './PhotoUploadDialog.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
-import Input from './ui/Input.vue';
-import ModalDialog from './ui/ModalDialog.vue';
 import { useServices } from '../lib/services';
 
 const props = withDefaults(
@@ -25,17 +24,14 @@ const props = withDefaults(
 );
 const emit = defineEmits<{ 'update:modelValue': [photos: Photo[]] }>();
 
-const { gateway, mode } = useServices();
-const queryClient = useQueryClient();
+const { gateway } = useServices();
 const open = ref(false);
 const uploadDialogOpen = ref(false);
 const selectedGroup = ref('-1');
 const selectedGroupName = ref('全部图片');
 const page = ref(1);
 const pageSize = 12;
-const uploadFeedback = ref<{ kind: 'success' | 'error'; message: string } | null>(null);
-const transferUrl = ref('');
-const fileInput = ref<HTMLInputElement | null>(null);
+const uploadNotice = ref('');
 const observedDimensions = ref<Record<string, { width: number; height: number }>>({});
 const previewOpen = ref(false);
 const previewIndex = ref(0);
@@ -52,51 +48,9 @@ const photos = useQuery({
 });
 const selectedIds = computed(() => new Set(props.modelValue.map((photo) => photo.id)));
 const totalPages = computed(() => Math.max(1, Math.ceil((photos.data.value?.total ?? 0) / pageSize)));
-const uploadsEnabled = computed(() => ['mock', 'bff', 'extension'].includes(mode));
 
 watch(open, (value) => {
   if (!value) uploadDialogOpen.value = false;
-});
-
-const upload = useMutation({
-  mutationFn: async (file: File) =>
-    gateway.request('uploadPhoto', {
-      fileName: file.name,
-      contentBase64: await fileToBase64(file),
-      contentType: file.type,
-      byteLength: file.size,
-      groupId: selectedGroup.value
-    }),
-  onMutate: () => {
-    uploadFeedback.value = null;
-  },
-  onSuccess: async (photo) => {
-    choose(photo);
-    uploadFeedback.value = { kind: 'success', message: `已上传到图库：${photo.name}` };
-    await queryClient.invalidateQueries({ queryKey: ['photos'] });
-  },
-  onError: (error: Error) => {
-    uploadFeedback.value = { kind: 'error', message: error.message };
-  }
-});
-const transfer = useMutation({
-  mutationFn: () =>
-    gateway.request('transferPhotoFromUrl', {
-      url: transferUrl.value,
-      groupId: selectedGroup.value
-    }),
-  onMutate: () => {
-    uploadFeedback.value = null;
-  },
-  onSuccess: async (photo) => {
-    choose(photo);
-    transferUrl.value = '';
-    uploadFeedback.value = { kind: 'success', message: `已转存到图库：${photo.name}` };
-    await queryClient.invalidateQueries({ queryKey: ['photos'] });
-  },
-  onError: (error: Error) => {
-    uploadFeedback.value = { kind: 'error', message: error.message };
-  }
 });
 
 function choose(photo: Photo): void {
@@ -129,37 +83,13 @@ function selectGroup(group: PhotoGroup): void {
 }
 
 function openUploadDialog(): void {
-  uploadFeedback.value = null;
+  uploadNotice.value = '';
   uploadDialogOpen.value = true;
 }
 
-function chooseLocalFile(): void {
-  fileInput.value?.click();
-}
-
-function onFileChange(event: Event): void {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  if (file && file.size <= MAX_PHOTOBANK_IMAGE_BYTES) upload.mutate(file);
-  else if (file) uploadFeedback.value = { kind: 'error', message: '图库图片不能超过 5 MiB' };
-  input.value = '';
-}
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => {
-      reject(new Error('读取图片文件失败'));
-    };
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') {
-        reject(new Error('读取图片文件失败'));
-        return;
-      }
-      resolve(reader.result.slice(reader.result.indexOf(',') + 1));
-    };
-    reader.readAsDataURL(file);
-  });
+function handleUploaded(photo: Photo): void {
+  page.value = 1;
+  uploadNotice.value = `“${photo.name}”已存入图库，请在素材列表中选择。`;
 }
 
 function rememberDimensions(photo: Photo, event: Event): void {
@@ -243,14 +173,14 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
           <Card class="ov-modal-panel flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden">
             <header class="flex items-center justify-between border-b p-4">
               <div>
-                <h2 class="font-semibold">国际站图库</h2>
+                <h2 class="font-semibold">选择图库素材</h2>
                 <p class="mt-1 text-xs text-muted-foreground">
-                  已选 {{ modelValue.length }}/{{ max }}；素材 ID 会随商品 Schema 保存。
+                  仅点击素材才会选入商品；已选 {{ modelValue.length }}/{{ max }}。
                 </p>
               </div>
               <div class="flex items-center gap-2">
-                <Button variant="outline" size="sm" :disabled="!uploadsEnabled" @click="openUploadDialog">
-                  <Upload class="size-4" />上传图片
+                <Button variant="outline" size="sm" @click="openUploadDialog">
+                  <Upload class="size-4" />上传新素材
                 </Button>
                 <Button variant="ghost" size="icon" aria-label="关闭图库" @click="open = false"
                   ><X class="size-4"
@@ -266,10 +196,17 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
                 />
                 <div class="mt-4 rounded-md bg-muted p-3 text-xs leading-5 text-muted-foreground">
                   <p class="font-medium text-foreground">当前分组：{{ selectedGroupName }}</p>
-                  <p class="mt-1">选择分组后，可通过右上角“上传图片”将素材直接存入该位置。</p>
+                  <p class="mt-1">此处只负责选择已有素材；上传新素材是独立操作。</p>
                 </div>
               </aside>
               <main class="min-h-0 overflow-auto p-4">
+                <p
+                  v-if="uploadNotice"
+                  class="mb-3 rounded-md border p-3 text-xs text-emerald-700"
+                  role="status"
+                >
+                  {{ uploadNotice }}
+                </p>
                 <QueryState :loading="photos.isPending.value" :error="photos.error.value">
                   <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                     <div
@@ -330,89 +267,12 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
       </Transition>
     </Teleport>
 
-    <ModalDialog
+    <PhotoUploadDialog
       v-model:open="uploadDialogOpen"
-      title="上传图片到图库"
-      :description="`目标分组：${selectedGroupName}`"
-      size="md"
-    >
-      <div class="space-y-5">
-        <section class="rounded-lg border p-4">
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <h3 class="text-sm font-semibold">从本机选择图片</h3>
-              <p class="mt-1 text-xs leading-5 text-muted-foreground">
-                支持 JPEG、PNG、GIF、WebP、BMP、AVIF，单张最大 5 MiB；选择后立即上传。
-              </p>
-            </div>
-            <Upload class="mt-0.5 size-5 shrink-0 text-primary" />
-          </div>
-          <Button
-            class="mt-4 w-full"
-            :disabled="!uploadsEnabled || upload.isPending.value"
-            @click="chooseLocalFile"
-          >
-            <LoaderCircle v-if="upload.isPending.value" class="size-4 animate-spin" />
-            <Upload v-else class="size-4" />
-            {{ upload.isPending.value ? '正在上传…' : '选择本地图片' }}
-          </Button>
-          <input
-            ref="fileInput"
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/avif"
-            class="sr-only"
-            :disabled="!uploadsEnabled || upload.isPending.value"
-            @change="onFileChange"
-          />
-        </section>
-
-        <section class="rounded-lg border p-4">
-          <div>
-            <h3 class="text-sm font-semibold">从外部 URL 转存</h3>
-            <p class="mt-1 text-xs leading-5 text-muted-foreground">
-              后端下载公共 HTTP(S) 图片并存入图库，不接受 localhost、私网或超过 5 MiB 的地址。
-            </p>
-          </div>
-          <div class="mt-4 flex flex-col gap-2 sm:flex-row">
-            <Input
-              v-model="transferUrl"
-              class="flex-1"
-              aria-label="外部图片 URL"
-              placeholder="https://…"
-              :disabled="!uploadsEnabled || transfer.isPending.value"
-            />
-            <Button
-              variant="outline"
-              :disabled="!uploadsEnabled || !transferUrl || transfer.isPending.value"
-              @click="transfer.mutate()"
-            >
-              <LoaderCircle v-if="transfer.isPending.value" class="size-4 animate-spin" />
-              <Download v-else class="size-4" />
-              {{ transfer.isPending.value ? '正在转存…' : '下载并存入图库' }}
-            </Button>
-          </div>
-        </section>
-
-        <p
-          v-if="uploadFeedback"
-          class="rounded-lg border p-3 text-sm"
-          :class="
-            uploadFeedback.kind === 'success'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-              : 'border-red-200 bg-red-50 text-red-800'
-          "
-          :role="uploadFeedback.kind === 'error' ? 'alert' : 'status'"
-        >
-          {{ uploadFeedback.message }}
-        </p>
-      </div>
-
-      <template #footer>
-        <div class="flex justify-end">
-          <Button variant="outline" @click="uploadDialogOpen = false">完成</Button>
-        </div>
-      </template>
-    </ModalDialog>
+      :group-id="selectedGroup"
+      :group-name="selectedGroupName"
+      @uploaded="handleUploaded"
+    />
 
     <ImagePreview v-model:open="previewOpen" :images="previewImages" :initial-index="previewIndex" />
   </div>
