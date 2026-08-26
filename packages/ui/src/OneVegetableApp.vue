@@ -34,6 +34,7 @@ import type {
 import Button from './components/ui/Button.vue';
 import AuthGate from './components/AuthGate.vue';
 import OnboardingDialog from './components/OnboardingDialog.vue';
+import { pageHash, parsePageHash, type PageId } from './lib/hash-router';
 import { applyAppTheme, useAppPreferences } from './lib/preferences';
 import { provideServices } from './lib/services';
 
@@ -66,17 +67,6 @@ provideServices({
   ...(props.operationAvailability ? { operationAvailability: props.operationAvailability } : {})
 });
 
-type PageId =
-  | 'dashboard'
-  | 'products'
-  | 'photos'
-  | 'rfqs'
-  | 'orders'
-  | 'logistics'
-  | 'insights'
-  | 'capabilities'
-  | 'admin'
-  | 'settings';
 interface NavigationItem {
   id: PageId;
   label: string;
@@ -103,7 +93,7 @@ const items = computed(() =>
     (item) => item.id !== 'admin' || props.mode === 'extension' || session.value?.principal.role === 'admin'
   )
 );
-const page = ref<PageId>('dashboard');
+const page = ref<PageId>(parsePageHash(globalThis.location.hash) ?? 'dashboard');
 const sidebarOpen = ref(false);
 const workspaceReady = ref(props.mode !== 'extension' || props.onboarding === undefined);
 const views: Record<PageId, Component> = {
@@ -129,29 +119,58 @@ function toggleTheme(): void {
   themePreference.value = darkTheme.value ? 'light' : 'dark';
 }
 
+function isPageAllowed(nextPage: PageId): boolean {
+  return nextPage !== 'admin' || props.mode === 'extension' || session.value?.principal.role === 'admin';
+}
+
+function replacePage(nextPage: PageId): void {
+  page.value = nextPage;
+  const nextHash = pageHash(nextPage);
+  if (globalThis.location.hash !== nextHash) {
+    globalThis.history.replaceState(null, '', nextHash);
+  }
+}
+
+function syncPageFromHash(): void {
+  if (authLoading.value) return;
+
+  const requestedPage = parsePageHash(globalThis.location.hash);
+  replacePage(requestedPage && isPageAllowed(requestedPage) ? requestedPage : 'dashboard');
+  sidebarOpen.value = false;
+}
+
+function handleAuthenticated(nextSession: ControlSession): void {
+  session.value = nextSession;
+  syncPageFromHash();
+}
+
 watch(themePreference, syncTheme);
 
 onMounted(async () => {
   colorScheme.addEventListener('change', syncTheme);
-  if (props.mode !== 'bff' || !props.control) return;
-  try {
-    session.value = await props.control.session();
-  } catch {
-    session.value = null;
-  } finally {
-    authLoading.value = false;
+  globalThis.addEventListener('hashchange', syncPageFromHash);
+  if (props.mode === 'bff' && props.control) {
+    try {
+      session.value = await props.control.session();
+    } catch {
+      session.value = null;
+    } finally {
+      authLoading.value = false;
+    }
   }
+  syncPageFromHash();
 });
 
 onBeforeUnmount(() => {
   colorScheme.removeEventListener('change', syncTheme);
+  globalThis.removeEventListener('hashchange', syncPageFromHash);
 });
 
 async function logout(): Promise<void> {
   if (!props.control) return;
   await props.control.logout();
   session.value = null;
-  page.value = 'dashboard';
+  replacePage('dashboard');
 }
 </script>
 
@@ -160,7 +179,7 @@ async function logout(): Promise<void> {
     <div v-if="authLoading" class="grid min-h-screen place-items-center text-sm text-muted-foreground">
       正在检查本地会话…
     </div>
-    <AuthGate v-else-if="mode === 'bff' && control && !session" @authenticated="session = $event" />
+    <AuthGate v-else-if="mode === 'bff' && control && !session" @authenticated="handleAuthenticated" />
     <OnboardingDialog @ready="workspaceReady = true" />
     <template v-if="!authLoading && (mode !== 'bff' || session) && workspaceReady">
       <aside
@@ -177,22 +196,21 @@ async function logout(): Promise<void> {
           </div>
         </div>
         <nav class="space-y-1 p-3">
-          <button
+          <a
             v-for="item in items"
             :key="item.id"
+            :href="pageHash(item.id)"
+            :aria-current="page === item.id ? 'page' : undefined"
             class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors"
             :class="
               page === item.id
                 ? 'bg-emerald-500 text-slate-950'
                 : 'text-slate-300 hover:bg-slate-900 hover:text-white'
             "
-            @click="
-              page = item.id;
-              sidebarOpen = false;
-            "
+            @click="sidebarOpen = false"
           >
             <component :is="item.icon" class="size-4" />{{ item.label }}
-          </button>
+          </a>
         </nav>
         <div class="absolute inset-x-3 bottom-4 rounded-lg border border-slate-800 bg-slate-900 p-3">
           <p class="text-xs font-medium">

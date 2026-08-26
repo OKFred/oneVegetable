@@ -1,0 +1,131 @@
+// @vitest-environment jsdom
+
+import { flushPromises, shallowMount } from '@vue/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { ALIBABA_GATEWAY, type ControlClient, type ControlSession } from '@one-vegetable/core';
+import { MockGatewayClient } from '@one-vegetable/core/mock';
+
+import OneVegetableApp from '../src/OneVegetableApp.vue';
+import { PAGE_IDS, pageHash } from '../src/lib/hash-router';
+
+vi.mock('../src/views/DashboardView.vue', () => ({ default: { template: '<div />' } }));
+vi.mock('../src/views/ProductsView.vue', () => ({ default: { template: '<div />' } }));
+vi.mock('../src/views/PhotosView.vue', () => ({ default: { template: '<div />' } }));
+vi.mock('../src/views/RfqsView.vue', () => ({ default: { template: '<div />' } }));
+vi.mock('../src/views/OrdersView.vue', () => ({ default: { template: '<div />' } }));
+vi.mock('../src/views/LogisticsView.vue', () => ({ default: { template: '<div />' } }));
+vi.mock('../src/views/InsightsView.vue', () => ({ default: { template: '<div />' } }));
+vi.mock('../src/views/CapabilitiesView.vue', () => ({ default: { template: '<div />' } }));
+vi.mock('../src/views/AdminView.vue', () => ({ default: { template: '<div />' } }));
+vi.mock('../src/views/SettingsView.vue', () => ({ default: { template: '<div />' } }));
+
+const settings = {
+  load: () =>
+    Promise.resolve({
+      appKey: '',
+      appSecret: '',
+      accessToken: '',
+      endpoint: ALIBABA_GATEWAY,
+      signMethod: 'hmac' as const
+    }),
+  save: () => Promise.resolve()
+};
+
+beforeEach(() => {
+  vi.stubGlobal('matchMedia', () => ({
+    matches: false,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn()
+  }));
+});
+
+afterEach(() => {
+  globalThis.history.replaceState(null, '', '#/dashboard');
+  vi.unstubAllGlobals();
+});
+
+describe('OneVegetableApp hash navigation', () => {
+  it('renders stable links and follows hash changes', async () => {
+    globalThis.history.replaceState(null, '', '#/products');
+    const wrapper = shallowMount(OneVegetableApp, {
+      props: {
+        gateway: new MockGatewayClient(0),
+        settings,
+        mode: 'mock'
+      }
+    });
+    await flushPromises();
+
+    const links = wrapper.findAll('nav a');
+    expect(links.map((link) => link.attributes('href'))).toEqual(
+      PAGE_IDS.filter((page) => page !== 'admin').map(pageHash)
+    );
+    expect(wrapper.get('nav a[href="#/products"]').attributes('aria-current')).toBe('page');
+
+    globalThis.history.replaceState(null, '', '#/orders');
+    globalThis.dispatchEvent(new HashChangeEvent('hashchange'));
+    await flushPromises();
+
+    expect(wrapper.get('nav a[href="#/orders"]').attributes('aria-current')).toBe('page');
+    expect(wrapper.get('nav a[href="#/products"]').attributes('aria-current')).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it('canonicalizes an unknown path to the dashboard', async () => {
+    globalThis.history.replaceState(null, '', '#/missing');
+    const wrapper = shallowMount(OneVegetableApp, {
+      props: {
+        gateway: new MockGatewayClient(0),
+        settings,
+        mode: 'mock'
+      }
+    });
+    await flushPromises();
+
+    expect(globalThis.location.hash).toBe('#/dashboard');
+    expect(wrapper.get('nav a[href="#/dashboard"]').attributes('aria-current')).toBe('page');
+    wrapper.unmount();
+  });
+
+  it('rejects the admin path for a regular BFF user', async () => {
+    globalThis.history.replaceState(null, '', '#/admin');
+    const wrapper = shallowMount(OneVegetableApp, {
+      props: {
+        gateway: new MockGatewayClient(0),
+        settings,
+        control: regularUserControl(),
+        mode: 'bff'
+      }
+    });
+    await flushPromises();
+
+    expect(globalThis.location.hash).toBe('#/dashboard');
+    expect(wrapper.find('nav a[href="#/admin"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+});
+
+function regularUserControl(): ControlClient {
+  const session: ControlSession = {
+    principal: { actorId: 'user-1', username: 'member', role: 'user', source: 'bff' },
+    user: {
+      id: 'user-1',
+      username: 'member',
+      role: 'user',
+      status: 'active',
+      lockedUntilUtc: null,
+      createTimeUtc: 1,
+      updateTimeUtc: 1,
+      creatorId: 'system:bootstrap',
+      updaterId: 'system:bootstrap',
+      revision: 1,
+      remark: null
+    },
+    absoluteExpiresTimeUtc: 10_000,
+    idleExpiresTimeUtc: 5_000
+  };
+  return {
+    session: () => Promise.resolve(session)
+  } as unknown as ControlClient;
+}
