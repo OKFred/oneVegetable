@@ -502,11 +502,19 @@ function confirmThemePreference(): void {
       <div v-else-if="vaultStatus?.state === 'locked'" class="mt-4 rounded-lg border p-4">
         <p class="text-sm font-medium">
           {{
-            vaultStatus.lockReason === 'idle' ? '保险库已因空闲超时自动锁定' : '输入口令解锁当前浏览器会话'
+            vaultStatus.lockReason === 'idle'
+              ? '保险库已因空闲超时自动锁定'
+              : vaultStatus.lockReason === 'worker-restart'
+                ? '扩展后台已重新启动，需要重新解锁'
+                : '保险库已手动锁定'
           }}
         </p>
-        <p v-if="vaultStatus.lockReason === 'idle'" class="mt-1 text-xs text-muted-foreground">
-          页面与后台中的解锁状态已清除，重新输入口令后才能继续真实查询。
+        <p class="mt-1 text-xs text-muted-foreground">
+          {{
+            vaultStatus.lockReason === 'worker-restart'
+              ? 'MV3 service worker 被浏览器回收或扩展更新后，内存密钥不会保留；本地加密凭据仍然安全保存。'
+              : '页面与后台中的解锁状态已清除，重新输入口令后才能继续真实查询。'
+          }}
         </p>
         <div class="mt-3 flex flex-wrap gap-2">
           <Input

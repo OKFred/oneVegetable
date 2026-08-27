@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ALIBABA_GATEWAY,
   APP_PREFERENCES_STORAGE_KEY,
+  type CredentialVaultLockReason,
   type CredentialVaultState,
   type CredentialVaultStatus,
   type GatewaySettings
@@ -35,7 +36,11 @@ beforeEach(() => {
   delete document.documentElement.dataset.theme;
 });
 
-function mountView(mode: 'mock' | 'extension' = 'mock', initialVaultState?: CredentialVaultState) {
+function mountView(
+  mode: 'mock' | 'extension' = 'mock',
+  initialVaultState?: CredentialVaultState,
+  initialLockReason: CredentialVaultLockReason = 'manual'
+) {
   let grantedHosts = ['https://images.example.com/*'];
   let currentVaultState = initialVaultState;
   const Host = defineComponent({
@@ -83,7 +88,8 @@ function mountView(mode: 'mock' | 'extension' = 'mock', initialVaultState?: Cred
         ...(initialVaultState
           ? {
               vault: {
-                status: () => Promise.resolve(vaultStatus(currentVaultState ?? 'empty')),
+                status: () =>
+                  Promise.resolve(vaultStatus(currentVaultState ?? 'empty', 15, initialLockReason)),
                 create: createVault,
                 migrate: migrateVault,
                 unlock: async (passphrase) => {
@@ -262,6 +268,16 @@ describe('SettingsView diagnostics', () => {
     wrapper.unmount();
   });
 
+  it('explains that a worker restart cleared only the in-memory decryption key', async () => {
+    const wrapper = mountView('extension', 'locked', 'worker-restart');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('扩展后台已重新启动，需要重新解锁');
+    });
+    expect(wrapper.text()).toContain('内存密钥不会保留');
+    expect(wrapper.text()).toContain('本地加密凭据仍然安全保存');
+    wrapper.unmount();
+  });
+
   it('requires matching passphrases before migrating legacy plaintext credentials', async () => {
     const wrapper = mountView('extension', 'legacy');
     await vi.waitFor(() => {
@@ -285,7 +301,11 @@ describe('SettingsView diagnostics', () => {
   });
 });
 
-function vaultStatus(state: CredentialVaultState, idleTimeoutMinutes = 15): CredentialVaultStatus {
+function vaultStatus(
+  state: CredentialVaultState,
+  idleTimeoutMinutes = 15,
+  lockReason: CredentialVaultLockReason = 'manual'
+): CredentialVaultStatus {
   return {
     state,
     hasAppKey: state === 'unlocked' || state === 'legacy',
@@ -297,6 +317,6 @@ function vaultStatus(state: CredentialVaultState, idleTimeoutMinutes = 15): Cred
     idleTimeoutMinutes: state === 'unlocked' ? idleTimeoutMinutes : null,
     lastActivityAt: state === 'unlocked' ? '2026-08-13T08:00:00.000Z' : null,
     idleRemainingSeconds: state === 'unlocked' ? idleTimeoutMinutes * 60 : null,
-    lockReason: state === 'locked' ? 'manual' : null
+    lockReason: state === 'locked' ? lockReason : null
   };
 }

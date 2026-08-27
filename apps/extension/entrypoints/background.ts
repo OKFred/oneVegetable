@@ -259,7 +259,7 @@ function credentialVaultStatus(state: ReturnType<typeof inspectCredentialStorage
     idleTimeoutMinutes: activeVault?.policy.idleTimeoutMinutes ?? null,
     lastActivityAt: activeSession ? new Date(activeSession.lastActivityAt).toISOString() : null,
     idleRemainingSeconds: activeSession?.remainingSeconds ?? null,
-    lockReason: effectiveState === 'locked' ? vaultSession.lockReason : null
+    lockReason: effectiveState === 'locked' ? (vaultSession.lockReason ?? 'worker-restart') : null
   };
 }
 
@@ -296,7 +296,12 @@ function vaultStateError(kind: ReturnType<typeof inspectCredentialStorage>['kind
           ? ['CREDENTIAL_VAULT_EMPTY', '请先创建凭证保险库']
           : vaultSession.lockReason === 'idle'
             ? ['CREDENTIAL_VAULT_IDLE_TIMEOUT', '凭证保险库因空闲超时已自动锁定，请重新解锁']
-            : ['CREDENTIAL_VAULT_LOCKED', '凭证保险库已锁定，请先在设置中解锁'];
+            : vaultSession.lockReason === 'manual'
+              ? ['CREDENTIAL_VAULT_LOCKED', '凭证保险库已手动锁定，请先在设置中解锁']
+              : [
+                  'CREDENTIAL_VAULT_WORKER_RESTARTED',
+                  '扩展后台已重新启动，内存中的解密密钥已清除，请在设置中重新解锁'
+                ];
   const [code, message] = details as [string, string];
   return new GatewayException({ code, message, retryable: false });
 }

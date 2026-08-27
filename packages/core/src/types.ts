@@ -348,7 +348,7 @@ export interface SettingsRepository {
 }
 
 export type CredentialVaultState = 'empty' | 'legacy' | 'locked' | 'unlocked' | 'invalid';
-export type CredentialVaultLockReason = 'idle' | 'manual' | null;
+export type CredentialVaultLockReason = 'idle' | 'manual' | 'worker-restart' | null;
 
 export interface CredentialVaultPolicy {
   idleTimeoutMinutes: number;

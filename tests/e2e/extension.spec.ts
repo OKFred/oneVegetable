@@ -191,6 +191,23 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.reload();
   await page.getByRole('link', { name: '设置' }).click();
   await expect(page.getByText('已锁定', { exact: true })).toBeVisible();
+  await expect(page.getByText('扩展后台已重新启动，需要重新解锁')).toBeVisible();
+  const lockedGatewayResponse = await page.evaluate(async () => {
+    const extension = (
+      globalThis as unknown as {
+        chrome: { runtime: { sendMessage(value: object): Promise<unknown> } };
+      }
+    ).chrome;
+    return extension.runtime.sendMessage({
+      requestId: crypto.randomUUID(),
+      kind: 'gateway-request',
+      operation: 'getDashboard'
+    });
+  });
+  expect(lockedGatewayResponse).toMatchObject({
+    ok: false,
+    error: { code: 'CREDENTIAL_VAULT_WORKER_RESTARTED' }
+  });
   await page.getByLabel('保险库口令').fill('wrong-vault-password');
   await page.getByRole('button', { name: '解锁' }).click();
   await expect(page.getByText(/口令不正确或密文已损坏/)).toBeVisible();
