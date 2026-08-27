@@ -104,6 +104,8 @@ function controlFixture(
   const user = sessionFixture().user;
   return {
     session: () => Promise.resolve(sessionFixture()),
+    bootstrapStatus: () =>
+      Promise.resolve({ initialized: true, bootstrapTokenConfigured: true, bootstrapAvailable: false }),
     bootstrap: () => Promise.resolve(sessionFixture()),
     login: () => Promise.resolve(sessionFixture()),
     logout: () => Promise.resolve(),

@@ -58,6 +58,38 @@ function authHeaders(sessionToken: string, csrfToken?: string): Record<string, s
 }
 
 describe('authentication and ABAC routes', () => {
+  it('exposes bootstrap availability without a session and closes it after initialization', async () => {
+    const { app, authService } = fixture();
+    const beforeRequestId = createRequestId();
+    const before = await app.request('/api/v1/auth/bootstrap/status/get', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ requestId: beforeRequestId })
+    });
+
+    expect(before.status).toBe(200);
+    await expect(before.json()).resolves.toMatchObject({
+      requestId: beforeRequestId,
+      ok: true,
+      data: {
+        initialized: false,
+        bootstrapTokenConfigured: true,
+        bootstrapAvailable: true
+      }
+    });
+
+    await bootstrap(authService);
+    const after = await app.request('/api/v1/auth/bootstrap/status/get', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ requestId: createRequestId() })
+    });
+    await expect(after.json()).resolves.toMatchObject({
+      ok: true,
+      data: { initialized: true, bootstrapTokenConfigured: true, bootstrapAvailable: false }
+    });
+  });
+
   it('bootstraps through JSON and returns opaque session and CSRF cookies', async () => {
     const { app } = fixture();
     const requestId = createRequestId();

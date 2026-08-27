@@ -152,6 +152,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/bootstrap/status/get": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Get local administrator bootstrap availability */
+        post: operations["getAuthBootstrapStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/bootstrap": {
         parameters: {
             query?: never;
@@ -5747,6 +5764,17 @@ export interface components {
             password: string;
             remark?: string | null;
         };
+        AuthBootstrapStatus: {
+            initialized: boolean;
+            bootstrapTokenConfigured: boolean;
+            bootstrapAvailable: boolean;
+        };
+        AuthBootstrapStatusResponse: {
+            requestId: components["schemas"]["RequestId"];
+            /** @constant */
+            ok: true;
+            data: components["schemas"]["AuthBootstrapStatus"];
+        };
         AuthLoginRequest: {
             requestId: components["schemas"]["RequestId"];
             username: string;
@@ -7076,6 +7104,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    getAuthBootstrapStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestEnvelope"];
+            };
+        };
+        responses: {
+            /** @description Bootstrap availability */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthBootstrapStatusResponse"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiFailure"];
                 };
             };
         };

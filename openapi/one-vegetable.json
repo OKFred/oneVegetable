@@ -568,6 +568,37 @@
         }
       }
     },
+    "/auth/bootstrap/status/get": {
+      "post": {
+        "summary": "Get local administrator bootstrap availability",
+        "operationId": "getAuthBootstrapStatus",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RequestEnvelope" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Bootstrap availability",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/AuthBootstrapStatusResponse" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiFailure" } } }
+          }
+        }
+      }
+    },
     "/auth/bootstrap": {
       "post": {
         "summary": "Create the first local administrator",
@@ -9110,6 +9141,26 @@
           "username": { "type": "string" },
           "password": { "type": "string", "minLength": 12, "maxLength": 256 },
           "remark": { "type": ["string", "null"], "maxLength": 500 }
+        }
+      },
+      "AuthBootstrapStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["initialized", "bootstrapTokenConfigured", "bootstrapAvailable"],
+        "properties": {
+          "initialized": { "type": "boolean" },
+          "bootstrapTokenConfigured": { "type": "boolean" },
+          "bootstrapAvailable": { "type": "boolean" }
+        }
+      },
+      "AuthBootstrapStatusResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "ok", "data"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "ok": { "const": true },
+          "data": { "$ref": "#/components/schemas/AuthBootstrapStatus" }
         }
       },
       "AuthLoginRequest": {

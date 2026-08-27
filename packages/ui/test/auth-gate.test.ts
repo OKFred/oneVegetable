@@ -34,28 +34,8 @@ describe('AuthGate', () => {
   it('logs in through the control client without exposing a registration action', async () => {
     const login = vi.fn(() => Promise.resolve(session));
     const control = controlFixture(login);
-    const Host = defineComponent({
-      setup() {
-        provideServices({
-          gateway: new MockGatewayClient(0),
-          settings: {
-            load: () =>
-              Promise.resolve({
-                appKey: '',
-                appSecret: '',
-                accessToken: '',
-                endpoint: ALIBABA_GATEWAY,
-                signMethod: 'hmac'
-              }),
-            save: () => Promise.resolve()
-          },
-          control,
-          mode: 'bff'
-        });
-        return () => h(AuthGate);
-      }
-    });
-    const wrapper = mount(Host);
+    const wrapper = mountAuthGate(control);
+    await flushPromises();
     const inputs = wrapper.findAll('input');
     await inputs[0]?.setValue('admin');
     await inputs[1]?.setValue('correct-password-value');
@@ -65,15 +45,82 @@ describe('AuthGate', () => {
     expect(login).toHaveBeenCalledWith('admin', 'correct-password-value');
     expect(wrapper.findComponent(AuthGate).emitted('authenticated')?.[0]).toEqual([session]);
     expect(wrapper.text()).not.toContain('注册账号');
+    expect(wrapper.text()).not.toContain('初始化管理员');
+    expect(wrapper.text()).toContain('不是 Alibaba 国际站登录账号');
+  });
+
+  it('offers one-time administrator initialization only before the workspace is initialized', async () => {
+    const bootstrap = vi.fn(() => Promise.resolve(session));
+    const control = controlFixture(
+      () => Promise.resolve(session),
+      {
+        initialized: false,
+        bootstrapTokenConfigured: true,
+        bootstrapAvailable: true
+      },
+      bootstrap
+    );
+    const wrapper = mountAuthGate(control);
+    await flushPromises();
+    const initializeButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('初始化管理员'));
+    if (!initializeButton) throw new Error('missing administrator initialization action');
+    await initializeButton.trigger('click');
+    const inputs = wrapper.findAll('input');
+    await inputs[0]?.setValue('bootstrap-secret-that-is-long');
+    await inputs[1]?.setValue('admin');
+    await inputs[2]?.setValue('correct-password-value');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+
+    expect(bootstrap).toHaveBeenCalledWith({
+      bootstrapToken: 'bootstrap-secret-that-is-long',
+      username: 'admin',
+      password: 'correct-password-value',
+      remark: '首个本地管理员'
+    });
   });
 });
 
+function mountAuthGate(control: ControlClient) {
+  const Host = defineComponent({
+    setup() {
+      provideServices({
+        gateway: new MockGatewayClient(0),
+        settings: {
+          load: () =>
+            Promise.resolve({
+              appKey: '',
+              appSecret: '',
+              accessToken: '',
+              endpoint: ALIBABA_GATEWAY,
+              signMethod: 'hmac'
+            }),
+          save: () => Promise.resolve()
+        },
+        control,
+        mode: 'bff'
+      });
+      return () => h(AuthGate);
+    }
+  });
+  return mount(Host);
+}
+
 function controlFixture(
-  login: (username: string, password: string) => Promise<ControlSession>
+  login: (username: string, password: string) => Promise<ControlSession>,
+  bootstrapStatus = {
+    initialized: true,
+    bootstrapTokenConfigured: true,
+    bootstrapAvailable: false
+  },
+  bootstrap: ControlClient['bootstrap'] = () => Promise.resolve(session)
 ): ControlClient {
   return {
     session: () => Promise.resolve(session),
-    bootstrap: () => Promise.resolve(session),
+    bootstrapStatus: () => Promise.resolve(bootstrapStatus),
+    bootstrap,
     login,
     logout: () => Promise.resolve(),
     listUsers: () => Promise.resolve({ items: [], total: 0 }),

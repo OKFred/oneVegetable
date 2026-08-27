@@ -127,6 +127,26 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
   schemas.RfqAttachmentUploadRequest = { $ref: '#/components/schemas/EncodedFilePayload' };
   schemas.UserRole = { type: 'string', enum: ['admin', 'user'] };
   schemas.UserStatus = { type: 'string', enum: ['active', 'disabled'] };
+  schemas.AuthBootstrapStatus = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['initialized', 'bootstrapTokenConfigured', 'bootstrapAvailable'],
+    properties: {
+      initialized: { type: 'boolean' },
+      bootstrapTokenConfigured: { type: 'boolean' },
+      bootstrapAvailable: { type: 'boolean' }
+    }
+  };
+  schemas.AuthBootstrapStatusResponse = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['requestId', 'ok', 'data'],
+    properties: {
+      requestId: { $ref: '#/components/schemas/RequestId' },
+      ok: { const: true },
+      data: { $ref: '#/components/schemas/AuthBootstrapStatus' }
+    }
+  };
   schemas.AuthBootstrapRequest = objectRequest(['requestId', 'bootstrapToken', 'username', 'password'], {
     bootstrapToken: { type: 'string' },
     username: { type: 'string' },
@@ -435,6 +455,40 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       'ProductMutationJobRefreshRequest'
     ),
     '/auth/session/get': postOperation('Get the current opaque session', 'getAuthSession', 'RequestEnvelope'),
+    '/auth/bootstrap/status/get': {
+      post: {
+        summary: 'Get local administrator bootstrap availability',
+        operationId: 'getAuthBootstrapStatus',
+        requestBody: requestBody('RequestEnvelope'),
+        responses: {
+          '200': {
+            description: 'Bootstrap availability',
+            headers: {
+              'X-Request-ID': { schema: { $ref: '#/components/schemas/RequestId' } }
+            },
+            content: {
+              'application/json': {
+                schema: {
+                  oneOf: [
+                    { $ref: '#/components/schemas/AuthBootstrapStatusResponse' },
+                    { $ref: '#/components/schemas/ApiFailure' }
+                  ]
+                }
+              }
+            }
+          },
+          '400': {
+            description: 'Invalid request',
+            headers: {
+              'X-Request-ID': { schema: { $ref: '#/components/schemas/RequestId' } }
+            },
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ApiFailure' } }
+            }
+          }
+        }
+      }
+    },
     '/auth/bootstrap': postOperation(
       'Create the first local administrator',
       'bootstrapAdmin',

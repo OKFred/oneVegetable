@@ -5,6 +5,37 @@ import { BffControlClient } from '../src/control-client';
 import type { NetworkTransport } from '../src/network';
 
 describe('BffControlClient', () => {
+  it('reads local administrator bootstrap availability through a POST body', async () => {
+    const send = vi.fn<NetworkTransport['send']>((input, init) => {
+      const url =
+        input instanceof URL ? input : typeof input === 'string' ? new URL(input) : new URL(input.url);
+      expect(url.pathname).toBe('/api/v1/auth/bootstrap/status/get');
+      if (typeof init.body !== 'string') throw new Error('expected JSON body');
+      const body = JSON.parse(init.body) as { requestId: string };
+      return Promise.resolve(
+        Response.json({
+          requestId: body.requestId,
+          ok: true,
+          data: {
+            initialized: true,
+            bootstrapTokenConfigured: true,
+            bootstrapAvailable: false
+          }
+        })
+      );
+    });
+    const client = new BffControlClient({
+      baseUrl: 'https://staging.example.com',
+      transport: { send }
+    });
+
+    await expect(client.bootstrapStatus()).resolves.toEqual({
+      initialized: true,
+      bootstrapTokenConfigured: true,
+      bootstrapAvailable: false
+    });
+  });
+
   it('uses JSON POST bodies and keeps the login CSRF token for later mutations', async () => {
     const send = vi.fn<NetworkTransport['send']>((input, init) => {
       const url =

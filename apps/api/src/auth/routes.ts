@@ -37,6 +37,14 @@ export interface AuthRoutesOptions {
 }
 
 export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void {
+  api.post('/auth/bootstrap/status/get', async (context) => {
+    return handle(context, async () => {
+      const body = await readBody(context, ['requestId']);
+      const requestId = readRequestId(body);
+      return success(context, requestId, await options.authService.bootstrapStatus());
+    });
+  });
+
   api.post('/auth/bootstrap', async (context) => {
     return handle(context, async () => {
       const body = await readBody(context, ['requestId', 'bootstrapToken', 'username', 'password', 'remark']);

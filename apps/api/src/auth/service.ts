@@ -56,6 +56,20 @@ export class AuthService {
     this.#clock = options.clock ?? Date.now;
   }
 
+  async bootstrapStatus(): Promise<{
+    initialized: boolean;
+    bootstrapTokenConfigured: boolean;
+    bootstrapAvailable: boolean;
+  }> {
+    const initialized = (await this.#repository.countUsers()) > 0;
+    const bootstrapTokenConfigured = Boolean(this.#bootstrapToken);
+    return {
+      initialized,
+      bootstrapTokenConfigured,
+      bootstrapAvailable: !initialized && bootstrapTokenConfigured
+    };
+  }
+
   async bootstrap(input: {
     requestId: string;
     bootstrapToken: string;

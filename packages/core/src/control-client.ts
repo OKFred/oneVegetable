@@ -31,6 +31,12 @@ export interface ControlSession {
   idleExpiresTimeUtc: UnixEpochMilliseconds;
 }
 
+export interface ControlBootstrapStatus {
+  initialized: boolean;
+  bootstrapTokenConfigured: boolean;
+  bootstrapAvailable: boolean;
+}
+
 interface AuthenticationResult {
   user: ControlUser;
   session: {
@@ -97,6 +103,7 @@ export interface PageResult<T> {
 
 export interface ControlClient {
   session(): Promise<ControlSession>;
+  bootstrapStatus(): Promise<ControlBootstrapStatus>;
   bootstrap(input: {
     bootstrapToken: string;
     username: string;
@@ -200,6 +207,10 @@ export class BffControlClient implements ControlClient {
 
   session(): Promise<ControlSession> {
     return this.#call('/auth/session/get', {});
+  }
+
+  bootstrapStatus(): Promise<ControlBootstrapStatus> {
+    return this.#call('/auth/bootstrap/status/get', {});
   }
 
   async bootstrap(input: {
