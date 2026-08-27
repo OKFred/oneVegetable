@@ -146,31 +146,56 @@ test('authenticated Web renders real read results without Mock fallback', async 
       )
       .toBe(true);
 
-    const editButtonCount = await page.getByRole('button', { name: '编辑商品' }).count();
+    const productRows = page.getByRole('row').filter({ has: page.getByRole('button', { name: '编辑商品' }) });
+    const editableProductIndexes: number[] = [];
+    for (let index = 0; index < (await productRows.count()); index += 1) {
+      if (!/auditing|draft|rejected/iu.test(await productRows.nth(index).innerText())) {
+        editableProductIndexes.push(index);
+      }
+    }
     let renderSucceeded = false;
-    for (let index = 0; index < Math.min(editButtonCount, 5); index += 1) {
-      if (index > 0) await page.getByRole('tab', { name: '商品列表' }).click();
+    let scoreSucceeded = false;
+    for (const [attemptIndex, productIndex] of editableProductIndexes.slice(0, 5).entries()) {
+      if (attemptIndex > 0) await page.getByRole('tab', { name: '商品列表' }).click();
       const previousAttemptCount = results.filter(
         (result) => result.operation === 'renderProductSchema'
       ).length;
-      await page.getByRole('button', { name: '编辑商品' }).nth(index).click();
+      const previousScoreAttemptCount = results.filter(
+        (result) => result.operation === 'getProductScore'
+      ).length;
+      await productRows.nth(productIndex).getByRole('button', { name: '编辑商品' }).click();
       await expect
         .poll(
           async () =>
             (await page.getByText('已渲染现有商品 Schema').isVisible()) ||
             results.filter((result) => result.operation === 'renderProductSchema').length >
               previousAttemptCount,
-          { message: `第 ${index + 1} 个真实商品应返回 schema.render 结果`, timeout: 15_000 }
+          { message: `第 ${attemptIndex + 1} 个真实商品应返回 schema.render 结果`, timeout: 15_000 }
         )
         .toBe(true);
       const attempt = results.filter((result) => result.operation === 'renderProductSchema').at(-1);
       if (attempt?.outcome === 'passed') {
         renderSucceeded = true;
-        break;
+        await expect
+          .poll(
+            () =>
+              results.filter((result) => result.operation === 'getProductScore').length >
+              previousScoreAttemptCount,
+            { message: `第 ${attemptIndex + 1} 个真实商品应返回产品分结果`, timeout: 15_000 }
+          )
+          .toBe(true);
+        const scoreAttempt = results.filter((result) => result.operation === 'getProductScore').at(-1);
+        if (scoreAttempt?.outcome === 'passed') {
+          scoreSucceeded = true;
+          break;
+        }
+        expect(scoreAttempt?.outcome).toBe('provider-error');
+        continue;
       }
       expect(attempt?.outcome).toBe('provider-error');
     }
     expect(renderSucceeded).toBe(true);
+    expect(scoreSucceeded).toBe(true);
     await expect(page.getByLabel('商品明文 ID')).toHaveValue(/^[1-9][0-9]*$/);
     await expectOperation(results, 'renderProductSchema', 'passed');
     await expectNoMockSentinel(results, 'renderProductSchema');

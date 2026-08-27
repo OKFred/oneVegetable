@@ -57,15 +57,15 @@ const requests: { operation: OperationId; requestId: string }[] = readRequestEnt
 await main();
 
 async function main(): Promise<void> {
+  if (allowMutation && isAcceptedPublishReport(previousReport)) {
+    await verifyAcceptedPublish(readAcceptedPublish(previousReport));
+    return;
+  }
   if (allowMutation && previousReport?.status === 'passed') {
     process.stdout.write(
       `真实商品发布 Smoke 已通过：${requiredReportString(previousReport, 'productId')}；不会重复创建。\n`
     );
     process.stdout.write(`脱敏报告：${reportPath}\n`);
-    return;
-  }
-  if (allowMutation && isAcceptedPublishReport(previousReport)) {
-    await verifyAcceptedPublish(readAcceptedPublish(previousReport));
     return;
   }
   if (allowMutation) assertNoPreviousPublishAttempt(previousReport);
@@ -186,6 +186,7 @@ async function listProducts(): Promise<Product[]> {
 
 async function verifyAcceptedPublish(context: AcceptedPublishContext): Promise<void> {
   const visible = await waitForPublishedProduct(context.productId, context.titleMarker);
+  let productStatus = visible?.status ?? null;
   let cleanup: Record<string, unknown> = { attempted: false, reason: '商品尚未处于 online 状态' };
   if (visible?.status === 'online' && visible.encryptedId && cleanupOnlineProduct) {
     const result = await call('updateProductDisplay', {
@@ -200,19 +201,20 @@ async function verifyAcceptedPublish(context: AcceptedPublishContext): Promise<v
       traceId: result.traceId,
       verifiedOffline: offline
     };
+    if (offline) productStatus = 'offline';
   }
 
   await writeReport(visible ? 'passed' : 'accepted-unverified', {
     ...context,
     mutationAttempted: true,
     readBackVisible: visible !== null,
-    productStatus: visible?.status ?? null,
+    productStatus,
     titleRoundTrip: visible?.subject.includes(context.titleMarker) ?? false,
     cleanup
   });
   process.stdout.write(
     visible
-      ? `真实商品发布已被平台接受并回读：${context.productId}（${visible.status}）。\n`
+      ? `真实商品发布已被平台接受并回读：${context.productId}（当前 ${productStatus}）。\n`
       : `真实商品发布已被平台接受：${context.productId}；暂未在列表回读，禁止重复创建。\n`
   );
   process.stdout.write(`脱敏报告：${reportPath}\n`);
@@ -401,7 +403,10 @@ interface AcceptedPublishContext {
 }
 
 function isAcceptedPublishReport(report: Record<string, unknown> | null): report is Record<string, unknown> {
-  return report?.status === 'publish-accepted' || report?.status === 'accepted-unverified';
+  if (report?.status === 'publish-accepted' || report?.status === 'accepted-unverified') return true;
+  if (report?.status !== 'passed' || !cleanupOnlineProduct) return false;
+  const cleanup = isRecord(report.cleanup) ? report.cleanup : null;
+  return cleanup?.attempted !== true;
 }
 
 function readAcceptedPublish(report: Record<string, unknown>): AcceptedPublishContext {
