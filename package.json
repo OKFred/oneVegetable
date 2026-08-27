@@ -68,6 +68,7 @@
     "smoke:photobank:group:real": "tsx scripts/smoke-photobank-group-real.ts",
     "smoke:product:draft:real": "tsx scripts/smoke-product-draft-real.ts",
     "smoke:product:draft:verify": "tsx scripts/verify-product-draft-edit-real.ts",
+    "smoke:product:publish:real": "tsx scripts/smoke-product-publish-real.ts",
     "smoke:product:mutations:real": "tsx scripts/smoke-product-mutations-real.ts",
     "smoke:product:display:real": "tsx scripts/smoke-product-display-lifecycle-real.ts",
     "recover:product:title:real": "tsx scripts/recover-product-title-real.ts",
