@@ -57,6 +57,12 @@ describe('OneVegetableApp hash navigation', () => {
     });
     await flushPromises();
 
+    expect(wrapper.get('nav').attributes('aria-label')).toBe('主导航');
+    expect(wrapper.get('aside').attributes('aria-hidden')).toBe('true');
+    expect(wrapper.get('aside').attributes('inert')).toBe('true');
+    expect(wrapper.get('[aria-label="打开主导航"]').attributes('aria-controls')).toBe(
+      'app-primary-navigation'
+    );
     const links = wrapper.findAll('nav a');
     expect(links.map((link) => link.attributes('href'))).toEqual(
       PAGE_IDS.filter((page) => page !== 'admin').map(pageHash)

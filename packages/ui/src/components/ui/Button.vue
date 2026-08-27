@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '../../lib/utils';
@@ -37,8 +37,15 @@ const props = withDefaults(
   { variant: 'default', size: 'default', class: '', type: 'button' }
 );
 const classes = computed(() => cn(buttonVariants({ variant: props.variant, size: props.size }), props.class));
+const element = ref<HTMLButtonElement | null>(null);
+
+function focus(): void {
+  element.value?.focus();
+}
+
+defineExpose({ focus });
 </script>
 
 <template>
-  <button :type="type" :class="classes"><slot /></button>
+  <button ref="element" :type="type" :class="classes"><slot /></button>
 </template>

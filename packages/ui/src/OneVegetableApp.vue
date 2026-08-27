@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue';
+import {
+  computed,
+  defineAsyncComponent,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+  type Component
+} from 'vue';
 import {
   BarChart3,
   Boxes,
@@ -73,6 +82,9 @@ interface NavigationItem {
   label: string;
   icon: Component;
 }
+interface FocusableButton {
+  focus: () => void;
+}
 const baseItems: NavigationItem[] = [
   { id: 'dashboard', label: '总览', icon: Home },
   { id: 'products', label: '商品', icon: Boxes },
@@ -96,6 +108,8 @@ const items = computed(() =>
 );
 const page = ref<PageId>(parsePageHash(globalThis.location.hash) ?? 'dashboard');
 const sidebarOpen = ref(false);
+const sidebarPanel = ref<HTMLElement | null>(null);
+const sidebarToggle = ref<FocusableButton | null>(null);
 const workspaceReady = ref(props.mode !== 'extension' || props.onboarding === undefined);
 const views: Record<PageId, Component> = {
   dashboard: defineAsyncComponent(() => import('./views/DashboardView.vue')),
@@ -111,6 +125,8 @@ const views: Record<PageId, Component> = {
 };
 const activeView = computed(() => views[page.value]);
 const colorScheme = globalThis.matchMedia('(prefers-color-scheme: dark)');
+const desktopNavigationQuery = globalThis.matchMedia('(min-width: 1024px)');
+const desktopNavigation = ref(desktopNavigationQuery.matches);
 
 function syncTheme(): void {
   darkTheme.value = applyAppTheme(themePreference.value) === 'dark';
@@ -118,6 +134,31 @@ function syncTheme(): void {
 
 function toggleTheme(): void {
   themePreference.value = darkTheme.value ? 'light' : 'dark';
+}
+
+function syncDesktopNavigation(): void {
+  desktopNavigation.value = desktopNavigationQuery.matches;
+}
+
+async function openSidebar(): Promise<void> {
+  sidebarOpen.value = true;
+  await nextTick();
+  sidebarPanel.value?.querySelector<HTMLElement>('nav a')?.focus();
+}
+
+async function closeSidebar(restoreFocus = false): Promise<void> {
+  if (!sidebarOpen.value) return;
+  sidebarOpen.value = false;
+  if (restoreFocus) {
+    await nextTick();
+    sidebarToggle.value?.focus();
+  }
+}
+
+function handleGlobalKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Escape' || !sidebarOpen.value || desktopNavigation.value) return;
+  event.preventDefault();
+  void closeSidebar(true);
 }
 
 function isPageAllowed(nextPage: PageId): boolean {
@@ -153,8 +194,10 @@ watch(themePreference, syncTheme);
 
 onMounted(async () => {
   colorScheme.addEventListener('change', syncTheme);
+  desktopNavigationQuery.addEventListener('change', syncDesktopNavigation);
   globalThis.addEventListener('hashchange', syncPageFromHash);
   globalThis.addEventListener('popstate', syncPageFromHash);
+  globalThis.addEventListener('keydown', handleGlobalKeydown);
   if (props.mode === 'bff' && props.control) {
     try {
       session.value = await props.control.session();
@@ -169,8 +212,10 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   colorScheme.removeEventListener('change', syncTheme);
+  desktopNavigationQuery.removeEventListener('change', syncDesktopNavigation);
   globalThis.removeEventListener('hashchange', syncPageFromHash);
   globalThis.removeEventListener('popstate', syncPageFromHash);
+  globalThis.removeEventListener('keydown', handleGlobalKeydown);
 });
 
 async function logout(): Promise<void> {
@@ -190,8 +235,12 @@ async function logout(): Promise<void> {
     <OnboardingDialog @ready="workspaceReady = true" />
     <template v-if="!authLoading && (mode !== 'bff' || session) && workspaceReady">
       <aside
+        id="app-primary-navigation"
+        ref="sidebarPanel"
         class="fixed inset-y-0 left-0 z-40 w-60 border-r bg-slate-950 text-slate-100 transition-transform lg:translate-x-0"
         :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+        :aria-hidden="!sidebarOpen && !desktopNavigation ? 'true' : undefined"
+        :inert="!sidebarOpen && !desktopNavigation"
       >
         <div class="flex h-16 items-center gap-3 border-b border-slate-800 px-5">
           <span class="flex size-9 items-center justify-center rounded-lg bg-emerald-500 text-slate-950"
@@ -204,7 +253,7 @@ async function logout(): Promise<void> {
             </p>
           </div>
         </div>
-        <nav class="space-y-1 p-3">
+        <nav class="space-y-1 p-3" aria-label="主导航">
           <a
             v-for="item in items"
             :key="item.id"
@@ -240,7 +289,15 @@ async function logout(): Promise<void> {
         <header
           class="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/90 px-4 backdrop-blur lg:px-7"
         >
-          <Button variant="ghost" size="icon" class="lg:hidden" @click="sidebarOpen = true"
+          <Button
+            ref="sidebarToggle"
+            variant="ghost"
+            size="icon"
+            class="lg:hidden"
+            aria-label="打开主导航"
+            aria-controls="app-primary-navigation"
+            :aria-expanded="sidebarOpen"
+            @click="openSidebar"
             ><Menu class="size-5"
           /></Button>
           <p class="hidden text-sm text-muted-foreground sm:block">国际站开放平台运营工作台</p>
@@ -271,7 +328,7 @@ async function logout(): Promise<void> {
           v-if="sidebarOpen"
           class="fixed inset-0 z-30 bg-black/40 lg:hidden"
           aria-label="关闭导航"
-          @click="sidebarOpen = false"
+          @click="closeSidebar(true)"
         />
       </Transition>
     </template>

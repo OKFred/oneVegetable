@@ -91,7 +91,13 @@ async function finish(): Promise<void> {
           </div>
         </div>
         <label class="mt-5 flex items-start gap-3 rounded-lg bg-muted p-4 text-sm leading-6">
-          <input v-model="acknowledged" type="checkbox" class="mt-1 size-4 accent-emerald-600" />
+          <input
+            v-model="acknowledged"
+            name="acknowledgedDataBoundaries"
+            type="checkbox"
+            class="mt-1 size-4 accent-emerald-600"
+            required
+          />
           <span>我已理解接口可用性取决于账号权限与业务资格，并知晓本地数据、真实写入和主机权限的用途。</span>
         </label>
         <p v-if="error" class="mt-3 text-sm text-destructive">{{ error }}</p>

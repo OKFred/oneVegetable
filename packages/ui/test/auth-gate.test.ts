@@ -37,6 +37,8 @@ describe('AuthGate', () => {
     const wrapper = mountAuthGate(control);
     await flushPromises();
     const inputs = wrapper.findAll('input');
+    expect(inputs.map((input) => input.attributes('name'))).toEqual(['username', 'password']);
+    expect(inputs.every((input) => input.attributes('required') !== undefined)).toBe(true);
     await inputs[0]?.setValue('admin');
     await inputs[1]?.setValue('correct-password-value');
     await wrapper.get('form').trigger('submit');

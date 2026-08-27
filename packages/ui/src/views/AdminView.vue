@@ -450,13 +450,37 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
       <Card class="p-5">
         <h2 class="flex items-center gap-2 font-semibold"><UserPlus class="size-4" />创建用户</h2>
         <form class="mt-4 space-y-3" @submit.prevent="createUser">
-          <Input v-model="username" placeholder="用户名" />
-          <Input v-model="password" type="password" placeholder="至少 12 字节密码" />
-          <select v-model="role" class="h-9 w-full rounded-md border bg-background px-3 text-sm">
-            <option value="user">普通用户（只读）</option>
-            <option value="admin">管理员</option>
-          </select>
-          <Input v-model="remark" placeholder="备注（可选，最多 500 字符）" />
+          <label class="block space-y-1 text-sm">
+            <span>用户名</span>
+            <Input v-model="username" name="username" autocomplete="username" required />
+          </label>
+          <label class="block space-y-1 text-sm">
+            <span>初始密码</span>
+            <Input
+              v-model="password"
+              name="password"
+              type="password"
+              autocomplete="new-password"
+              placeholder="至少 12 字节密码"
+              required
+            />
+          </label>
+          <label class="block space-y-1 text-sm">
+            <span>角色</span>
+            <select
+              v-model="role"
+              name="role"
+              class="h-9 w-full rounded-md border bg-background px-3 text-sm"
+              required
+            >
+              <option value="user">普通用户（只读）</option>
+              <option value="admin">管理员</option>
+            </select>
+          </label>
+          <label class="block space-y-1 text-sm">
+            <span>备注（可选）</span>
+            <Input v-model="remark" name="remark" maxlength="500" placeholder="最多 500 字符" />
+          </label>
           <Button class="w-full" type="submit">创建</Button>
         </form>
       </Card>
@@ -502,7 +526,13 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
         </div>
         <div class="flex flex-wrap gap-2">
           <form class="flex gap-2" @submit.prevent="applyRequestIdFilter">
-            <Input v-model="requestIdFilter" class="w-72" placeholder="requestId（UUID v4）" />
+            <Input
+              v-model="requestIdFilter"
+              name="requestId"
+              class="w-72"
+              aria-label="按 requestId 查询"
+              placeholder="requestId（UUID v4）"
+            />
             <Button variant="outline" type="submit">查询</Button>
           </form>
           <Button

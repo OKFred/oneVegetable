@@ -177,7 +177,7 @@ const columns: DataColumn<ApiCapability>[] = [
   <div class="mb-4 flex flex-wrap gap-2">
     <div class="relative min-w-72 flex-1">
       <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-      <Input v-model="search" class="pl-9" placeholder="搜索 API 方法" />
+      <Input v-model="search" class="pl-9" aria-label="搜索 API 方法" placeholder="搜索 API 方法" />
     </div>
     <select v-model="domain" class="h-9 rounded-md border bg-background px-3 text-sm">
       <option value="all">全部业务域</option>

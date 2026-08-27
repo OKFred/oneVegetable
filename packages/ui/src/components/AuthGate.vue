@@ -128,18 +128,20 @@ async function submit(): Promise<void> {
 
         <label v-if="mode === 'bootstrap'" class="block space-y-1.5 text-sm">
           <span>一次性 Bootstrap Token</span>
-          <Input v-model="bootstrapToken" type="password" autocomplete="off" />
+          <Input v-model="bootstrapToken" name="bootstrapToken" type="password" autocomplete="off" required />
         </label>
         <label class="block space-y-1.5 text-sm">
           <span>工作台用户名</span>
-          <Input v-model="username" autocomplete="username" />
+          <Input v-model="username" name="username" autocomplete="username" required />
         </label>
         <label class="block space-y-1.5 text-sm">
           <span>工作台密码</span>
           <Input
             v-model="password"
+            name="password"
             type="password"
             :autocomplete="mode === 'bootstrap' ? 'new-password' : 'current-password'"
+            required
           />
           <span class="text-xs text-slate-500">12–256 个 UTF-8 字节</span>
         </label>
