@@ -44,6 +44,8 @@ Web+BFF 会合并内置模板与共享模板。所有有效登录用户都可创
 
 URL 转存在扩展 service worker 或本地 Node BFF 下载。校验覆盖凭据 URL、localhost、本地域名、回环、私网、link-local、逐跳重定向、图片 Content-Type 和流式大小上限。图库上传的官方上限为 5 MiB；Schema 限制更小时使用更小值。真实上传和 URL 转存已按当前账号开放；商品草稿、正式发布和更新继续分别受独立 mutation flag 控制。
 
+2026-08-28，本地 Node BFF 的正式发布链路已通过真实账号验收：`schema.add` 返回明确成功和商品 ID，列表随后回读到一致的标题标记，平台状态为 `auditing`。`pnpm dev:api:real` 现在开放本地受保护的 `publishProduct`，页面仍要求管理员会话、CSRF、operation flag、无损 XML 和零 Schema 硬错误；扩展、staging 与 production 不随本次验收开放真实发布。
+
 ## 整改等级
 
 - `Alibaba Schema`：必填、类型、长度、正则和 Schema 图片规则等硬错误，阻止提交。

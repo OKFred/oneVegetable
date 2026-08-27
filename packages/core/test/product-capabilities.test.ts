@@ -83,7 +83,11 @@ describe('typed product capability domain', () => {
         .filter((item) => item.realCallEnabled)
         .map((item) => item.method)
         .sort()
-    ).toEqual(['alibaba.icbu.photobank.group.operate', 'alibaba.icbu.product.batch.update.display']);
+    ).toEqual([
+      'alibaba.icbu.photobank.group.operate',
+      'alibaba.icbu.product.batch.update.display',
+      'alibaba.icbu.product.schema.add'
+    ]);
     expect(
       mutations
         .filter((item) => item.realCallEnabled)
