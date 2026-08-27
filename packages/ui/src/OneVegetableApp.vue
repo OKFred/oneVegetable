@@ -136,7 +136,11 @@ function syncPageFromHash(): void {
   if (authLoading.value) return;
 
   const requestedPage = parsePageHash(globalThis.location.hash);
-  replacePage(requestedPage && isPageAllowed(requestedPage) ? requestedPage : 'dashboard');
+  if (requestedPage && isPageAllowed(requestedPage)) {
+    page.value = requestedPage;
+  } else {
+    replacePage('dashboard');
+  }
   sidebarOpen.value = false;
 }
 
@@ -150,6 +154,7 @@ watch(themePreference, syncTheme);
 onMounted(async () => {
   colorScheme.addEventListener('change', syncTheme);
   globalThis.addEventListener('hashchange', syncPageFromHash);
+  globalThis.addEventListener('popstate', syncPageFromHash);
   if (props.mode === 'bff' && props.control) {
     try {
       session.value = await props.control.session();
@@ -165,6 +170,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   colorScheme.removeEventListener('change', syncTheme);
   globalThis.removeEventListener('hashchange', syncPageFromHash);
+  globalThis.removeEventListener('popstate', syncPageFromHash);
 });
 
 async function logout(): Promise<void> {

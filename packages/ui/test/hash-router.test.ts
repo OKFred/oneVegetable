@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { PAGE_IDS, pageHash, parsePageHash } from '../src/lib/hash-router';
+import { PAGE_IDS, pageHash, parseAppHash, parsePageHash } from '../src/lib/hash-router';
 
 describe('hash router', () => {
   it('round-trips every application page', () => {
@@ -14,7 +14,12 @@ describe('hash router', () => {
     expect(parsePageHash('#/orders?source=dashboard')).toBe('orders');
   });
 
-  it.each(['', '#', '#products', '#/', '#/unknown', '#/products/details'])(
+  it('keeps the page identity for deep routes', () => {
+    expect(parsePageHash('#/products/details')).toBe('products');
+    expect(parseAppHash('#/products/details')).toEqual({ page: 'products', segments: ['details'] });
+  });
+
+  it.each(['', '#', '#products', '#/', '#/unknown', '#/products/%E0%A4%A'])(
     'rejects invalid hash %s',
     (hash) => {
       expect(parsePageHash(hash)).toBeNull();

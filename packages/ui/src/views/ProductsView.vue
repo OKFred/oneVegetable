@@ -10,6 +10,7 @@ import {
   inspectProductSchemaPatchSerialization,
   inspectProductSchemaSerialization,
   parseProductSchemaXml,
+  PRODUCT_EDITOR_STEP_IDS,
   productMutationJobIsBlocking,
   validateProductDisplayInput,
   validateProductGroupCreateInput,
@@ -19,6 +20,7 @@ import {
   type Product,
   type ProductCategory,
   type ProductDescriptionImageMetadata,
+  type ProductEditorStepId,
   type ProductMutationJob,
   type ProductSchemaOfficialHint,
   type ProductSchemaModel,
@@ -44,9 +46,11 @@ import {
   removeProductEditorDraft,
   saveProductEditorDraft,
   shouldPersistProductEditorDraft,
-  type ProductEditorDraftV3
+  type ProductEditorDraftV3,
+  type ProductEditorMode
 } from '../lib/product-editor-drafts';
 import { useProductEditorSession } from '../composables/use-product-editor-session';
+import { appHash, parseAppHash } from '../lib/hash-router';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import type { DataColumn } from '../lib/table';
@@ -54,6 +58,10 @@ import type { DataColumn } from '../lib/table';
 type Workspace = 'list' | 'publisher' | 'organization' | 'quality';
 type DraftSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type QualityViewMode = 'cards' | 'list';
+
+const workspaceIds = new Set<Workspace>(['list', 'publisher', 'organization', 'quality']);
+const editorModes = new Set<ProductEditorMode>(['quick', 'guided', 'advanced']);
+const editorStepIds = new Set<ProductEditorStepId>(PRODUCT_EDITOR_STEP_IDS);
 
 const { gateway, mode, operationAvailability, productMutationJobs } = useServices();
 const { language: preferredLanguage } = useAppPreferences();
@@ -99,6 +107,7 @@ const categorySearch = ref('');
 const categoryTree = ref<ProductCategory[]>([]);
 const currentCategory = ref<ProductCategory | null>(null);
 const categoryLoadingId = ref<number | null>(null);
+let applyingProductRoute = false;
 const categoryLoadError = ref('');
 const qualityViewMode = ref<QualityViewMode>('cards');
 const productScores = ref<Record<string, ProductScore>>({});
@@ -690,10 +699,20 @@ async function selectCategory(categoryIdToSelect: number): Promise<void> {
 }
 
 async function ensureCurrentCategory(categoryIdToLoad: number): Promise<void> {
-  const existing = findCategory(categoryTree.value, categoryIdToLoad);
+  let existing = findCategory(categoryTree.value, categoryIdToLoad);
   if (existing) {
     currentCategory.value = existing;
     return;
+  }
+  const roots = await categories.refetch();
+  if (roots.data) {
+    categoryTree.value = mergeCategoryRoots(categoryTree.value, roots.data);
+    existing = findCategory(categoryTree.value, categoryIdToLoad);
+    if (existing) {
+      currentCategory.value = existing;
+      categoryLoadError.value = '';
+      return;
+    }
   }
   const loaded = await loadCategoryBranch(categoryIdToLoad);
   if (loaded) currentCategory.value = loaded;
@@ -725,6 +744,7 @@ async function selectProductForSchema(product: Product): Promise<void> {
       ? '已选择商品；列表未返回类目，请选择实际类目后获取编辑 Schema。'
       : '已选择商品及其真实类目，正在渲染现有商品 Schema。';
   workspace.value = 'publisher';
+  updateProductHash('push');
   if (product.categoryId !== null) {
     await Promise.all([ensureCurrentCategory(product.categoryId), loadSchema()]);
   }
@@ -742,7 +762,91 @@ function startNewProduct(): void {
   schemaError.value = '';
   feedback.value = '请选择叶子类目并开始填写商品信息。';
   workspace.value = 'publisher';
+  updateProductHash('push');
   offerCurrentDraft();
+}
+
+function setWorkspace(nextWorkspace: Workspace): void {
+  workspace.value = nextWorkspace;
+  updateProductHash('push');
+}
+
+function setEditorMode(nextMode: ProductEditorMode): void {
+  editorMode.value = nextMode;
+  updateProductHash('push');
+}
+
+function setEditorStep(nextStep: ProductEditorStepId): void {
+  editorStep.value = nextStep;
+  updateProductHash('push');
+}
+
+function updateProductHash(historyMode: 'push' | 'replace'): void {
+  if (applyingProductRoute) return;
+  const segments: string[] = [workspace.value];
+  if (workspace.value === 'publisher') {
+    segments.push(editorMode.value, editorStep.value, editProductId.value || 'new');
+    if (categoryId.value) segments.push(categoryId.value);
+  }
+  const nextHash = appHash('products', ...segments);
+  if (globalThis.location.hash === nextHash) return;
+  globalThis.history[historyMode === 'push' ? 'pushState' : 'replaceState'](null, '', nextHash);
+}
+
+async function syncProductsFromHash(): Promise<boolean> {
+  const route = parseAppHash(globalThis.location.hash);
+  if (route?.page !== 'products' || route.segments.length === 0) return false;
+  const requestedWorkspace = route.segments[0];
+  const nextWorkspace =
+    requestedWorkspace && workspaceIds.has(requestedWorkspace as Workspace)
+      ? (requestedWorkspace as Workspace)
+      : 'list';
+  applyingProductRoute = true;
+  try {
+    workspace.value = nextWorkspace;
+    if (nextWorkspace !== 'publisher') return true;
+
+    const requestedMode = route.segments[1];
+    const nextMode =
+      requestedMode && editorModes.has(requestedMode as ProductEditorMode)
+        ? (requestedMode as ProductEditorMode)
+        : 'quick';
+    const requestedStep = route.segments[2];
+    const nextStep =
+      requestedStep && editorStepIds.has(requestedStep as ProductEditorStepId)
+        ? (requestedStep as ProductEditorStepId)
+        : 'basics';
+    const nextProductId = route.segments[3] === 'new' ? '' : (route.segments[3] ?? '');
+    const nextCategoryId = route.segments[4] ?? '';
+    const needsSchemaReload =
+      nextCategoryId !== '' &&
+      (editProductId.value !== nextProductId ||
+        categoryId.value !== nextCategoryId ||
+        schemaModel.value === null);
+
+    if (needsSchemaReload) {
+      cancelDraftSave();
+      draftCandidate.value = null;
+      acknowledgedMutationJobId.value = '';
+      resetEditorSession({ productId: nextProductId, categoryId: nextCategoryId, mode: nextMode });
+      editScoreProductId.value = '';
+      currentCategory.value = null;
+      const numericCategoryId = Number(nextCategoryId);
+      if (Number.isSafeInteger(numericCategoryId) && numericCategoryId > 0) {
+        await ensureCurrentCategory(numericCategoryId);
+        await loadSchema();
+      }
+    }
+    editorMode.value = nextMode;
+    editorStep.value = nextStep;
+    return true;
+  } finally {
+    applyingProductRoute = false;
+  }
+}
+
+function handleProductRouteChange(): void {
+  void syncProductsFromHash();
 }
 
 function applySchema(xml: string, message: string, offerLocalDraft = true): void {
@@ -752,6 +856,7 @@ function applySchema(xml: string, message: string, offerLocalDraft = true): void
     schemaError.value = '';
     feedback.value = message;
     editorStep.value = 'basics';
+    updateProductHash('replace');
     if (offerLocalDraft) offerCurrentDraft();
   } catch (error: unknown) {
     schemaError.value = error instanceof Error ? error.message : 'Schema XML 无法解析';
@@ -873,6 +978,7 @@ function resumeLocalDraft(): void {
     migratedDraftKey.value = null;
     draftSaveStatus.value = 'saved';
     feedback.value = '已继续本地草稿，平台数据尚未被修改。';
+    updateProductHash('replace');
   } catch (error: unknown) {
     schemaError.value = error instanceof Error ? error.message : '本地草稿无法解析';
   }
@@ -1041,6 +1147,7 @@ function guardedSchemaXml(model: ProductSchemaModel): string {
 
 watch([categoryId, editProductId], () => {
   if (!schemaModel.value) offerCurrentDraft();
+  if (workspace.value === 'publisher') updateProductHash('replace');
 });
 
 watch([subject, language], () => {
@@ -1055,7 +1162,10 @@ watch(
   { immediate: true }
 );
 
-onMounted(() => {
+onMounted(async () => {
+  globalThis.addEventListener('hashchange', handleProductRouteChange);
+  globalThis.addEventListener('popstate', handleProductRouteChange);
+  if (await syncProductsFromHash()) return;
   if (!('localStorage' in globalThis)) return;
   const migratedV2 = migrateProductEditorDraftsV2(globalThis.localStorage);
   if (migratedV2[0]) {
@@ -1075,6 +1185,8 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  globalThis.removeEventListener('hashchange', handleProductRouteChange);
+  globalThis.removeEventListener('popstate', handleProductRouteChange);
   cancelDraftSave();
   if (scoreRefreshTimer !== undefined) globalThis.clearTimeout(scoreRefreshTimer);
 });
@@ -1098,7 +1210,7 @@ onBeforeUnmount(() => {
       :variant="workspace === item[0] ? 'default' : 'outline'"
       role="tab"
       :aria-selected="workspace === item[0]"
-      @click="workspace = item[0]"
+      @click="setWorkspace(item[0])"
       >{{ item[1] }}</Button
     >
   </div>
@@ -1278,8 +1390,8 @@ onBeforeUnmount(() => {
 
     <ProductEditorWizard
       v-if="schemaModel"
-      v-model:mode="editorMode"
-      v-model:step="editorStep"
+      :mode="editorMode"
+      :step="editorStep"
       :model="schemaModel"
       :issues="schemaIssues"
       :quality-issues="qualityIssues"
@@ -1298,6 +1410,8 @@ onBeforeUnmount(() => {
       :score-error="productScore.error.value ? errorMessage(productScore.error.value) : undefined"
       :schema-preview="schemaPreview"
       :schema-inspection="schemaInspection"
+      @update:mode="setEditorMode"
+      @update:step="setEditorStep"
       @update-field="updateRootField"
       @image-status="updateImageStatus"
       @refresh-score="productScore.mutate(editScoreProductId)"

@@ -46,6 +46,7 @@ function bodyButton(text: string): HTMLButtonElement {
 describe('OrdersView', () => {
   beforeEach(() => {
     localStorage.clear();
+    globalThis.history.replaceState(null, '', '#/orders');
   });
 
   it('uses the preferred language for fulfillment and address Schema requests', async () => {
@@ -111,6 +112,21 @@ describe('OrdersView', () => {
       expect(wrapper.text()).toContain('一达通');
       expect(wrapper.text()).not.toContain('1029200038060');
     });
+    wrapper.unmount();
+  });
+
+  it('restores the selected order and drawer section from a deep hash route', async () => {
+    globalThis.history.replaceState(null, '', '#/orders/orders/24668306501026709/payment');
+    const wrapper = mountView();
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('订单 24668306501026709');
+      expect(document.body.querySelector('[aria-label="TT 汇款信息"]')).not.toBeNull();
+    });
+    expect(globalThis.location.hash).toBe('#/orders/orders/24668306501026709/payment');
+
+    bodyButton('关闭详情').click();
+    await flushPromises();
+    expect(globalThis.location.hash).toBe('#/orders/orders');
     wrapper.unmount();
   });
 

@@ -7,7 +7,7 @@ import { ALIBABA_GATEWAY, type ControlClient, type ControlSession } from '@one-v
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import OneVegetableApp from '../src/OneVegetableApp.vue';
-import { PAGE_IDS, pageHash } from '../src/lib/hash-router';
+import { appHash, PAGE_IDS, pageHash, parseAppHash } from '../src/lib/hash-router';
 
 vi.mock('../src/views/DashboardView.vue', () => ({ default: { template: '<div />' } }));
 vi.mock('../src/views/ProductsView.vue', () => ({ default: { template: '<div />' } }));
@@ -47,7 +47,7 @@ afterEach(() => {
 
 describe('OneVegetableApp hash navigation', () => {
   it('renders stable links and follows hash changes', async () => {
-    globalThis.history.replaceState(null, '', '#/products');
+    globalThis.history.replaceState(null, '', '#/products/publisher/guided/details/product-1');
     const wrapper = shallowMount(OneVegetableApp, {
       props: {
         gateway: new MockGatewayClient(0),
@@ -62,6 +62,7 @@ describe('OneVegetableApp hash navigation', () => {
       PAGE_IDS.filter((page) => page !== 'admin').map(pageHash)
     );
     expect(wrapper.get('nav a[href="#/products"]').attributes('aria-current')).toBe('page');
+    expect(globalThis.location.hash).toBe('#/products/publisher/guided/details/product-1');
 
     globalThis.history.replaceState(null, '', '#/orders');
     globalThis.dispatchEvent(new HashChangeEvent('hashchange'));
@@ -70,6 +71,15 @@ describe('OneVegetableApp hash navigation', () => {
     expect(wrapper.get('nav a[href="#/orders"]').attributes('aria-current')).toBe('page');
     expect(wrapper.get('nav a[href="#/products"]').attributes('aria-current')).toBeUndefined();
     wrapper.unmount();
+  });
+
+  it('encodes and parses deep route segments without changing the page identity', () => {
+    const hash = appHash('orders', 'orders', 'order/with spaces', 'payment');
+    expect(hash).toBe('#/orders/orders/order%2Fwith%20spaces/payment');
+    expect(parseAppHash(hash)).toEqual({
+      page: 'orders',
+      segments: ['orders', 'order/with spaces', 'payment']
+    });
   });
 
   it('canonicalizes an unknown path to the dashboard', async () => {

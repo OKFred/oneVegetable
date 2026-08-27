@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, ref, watch } from 'vue';
+import { computed, h, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useMutation, useQuery } from '@tanstack/vue-query';
 import {
   Banknote,
@@ -25,6 +25,7 @@ import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import Sheet from '../components/ui/Sheet.vue';
+import { appHash, parseAppHash } from '../lib/hash-router';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import type { DataColumn } from '../lib/table';
@@ -154,14 +155,32 @@ function selectOrder(order: TradeOrderSummary): void {
   orderDrawerTab.value = 'overview';
   ttAccountRevealed.value = false;
   orderSheetOpen.value = true;
+  updateOrdersHash();
 }
 
 function setOrderSheetOpen(open: boolean): void {
   orderSheetOpen.value = open;
   if (!open) {
+    selectedOrderId.value = '';
     orderDrawerTab.value = 'overview';
     ttAccountRevealed.value = false;
   }
+  updateOrdersHash();
+}
+
+function setWorkspace(nextWorkspace: Workspace): void {
+  workspace.value = nextWorkspace;
+  orderSheetOpen.value = false;
+  selectedOrderId.value = '';
+  orderDrawerTab.value = 'overview';
+  ttAccountRevealed.value = false;
+  updateOrdersHash();
+}
+
+function setOrderDrawerTab(tab: OrderDrawerTab): void {
+  orderDrawerTab.value = tab;
+  ttAccountRevealed.value = false;
+  updateOrdersHash();
 }
 
 function moveOrder(offset: -1 | 1): void {
@@ -236,6 +255,37 @@ const workspaces: { id: Workspace; label: string }[] = [
   { id: 'addresses', label: '地址 Schema' },
   { id: 'assurance', label: '信保订单草稿' }
 ];
+const workspaceIds = new Set<Workspace>(workspaces.map(({ id }) => id));
+
+function updateOrdersHash(): void {
+  const segments: string[] = [workspace.value];
+  if (workspace.value === 'orders' && orderSheetOpen.value && selectedOrderId.value) {
+    segments.push(selectedOrderId.value, orderDrawerTab.value);
+  }
+  const nextHash = appHash('orders', ...segments);
+  if (globalThis.location.hash !== nextHash) globalThis.history.pushState(null, '', nextHash);
+}
+
+function syncOrdersFromHash(): void {
+  const route = parseAppHash(globalThis.location.hash);
+  if (route?.page !== 'orders') return;
+  const requestedWorkspace = route.segments[0];
+  workspace.value =
+    requestedWorkspace && workspaceIds.has(requestedWorkspace as Workspace)
+      ? (requestedWorkspace as Workspace)
+      : 'orders';
+  const requestedOrderId = route.segments[1] ?? '';
+  if (workspace.value === 'orders' && requestedOrderId) {
+    selectedOrderId.value = requestedOrderId;
+    orderDrawerTab.value = route.segments[2] === 'payment' ? 'payment' : 'overview';
+    orderSheetOpen.value = true;
+  } else {
+    selectedOrderId.value = '';
+    orderDrawerTab.value = 'overview';
+    orderSheetOpen.value = false;
+  }
+  ttAccountRevealed.value = false;
+}
 
 watch(selectedOrderId, () => {
   ttAccountRevealed.value = false;
@@ -247,7 +297,17 @@ watch([status, buyerLoginId], () => {
 
 watch([orderPage, orderPageSize], () => {
   setOrderSheetOpen(false);
-  selectedOrderId.value = '';
+});
+
+onMounted(() => {
+  globalThis.addEventListener('hashchange', syncOrdersFromHash);
+  globalThis.addEventListener('popstate', syncOrdersFromHash);
+  syncOrdersFromHash();
+});
+
+onBeforeUnmount(() => {
+  globalThis.removeEventListener('hashchange', syncOrdersFromHash);
+  globalThis.removeEventListener('popstate', syncOrdersFromHash);
 });
 </script>
 
@@ -270,7 +330,7 @@ watch([orderPage, orderPageSize], () => {
       :key="item.id"
       size="sm"
       :variant="workspace === item.id ? 'default' : 'outline'"
-      @click="workspace = item.id"
+      @click="setWorkspace(item.id)"
     >
       {{ item.label }}
     </Button>
@@ -497,7 +557,7 @@ watch([orderPage, orderPageSize], () => {
           :variant="orderDrawerTab === 'overview' ? 'default' : 'outline'"
           role="tab"
           :aria-selected="orderDrawerTab === 'overview'"
-          @click="orderDrawerTab = 'overview'"
+          @click="setOrderDrawerTab('overview')"
         >
           概览
         </Button>
@@ -506,7 +566,7 @@ watch([orderPage, orderPageSize], () => {
           :variant="orderDrawerTab === 'payment' ? 'default' : 'outline'"
           role="tab"
           :aria-selected="orderDrawerTab === 'payment'"
-          @click="orderDrawerTab = 'payment'"
+          @click="setOrderDrawerTab('payment')"
         >
           TT 汇款
         </Button>

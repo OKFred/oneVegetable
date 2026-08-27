@@ -110,6 +110,7 @@ test('web mock combines typed trade order capabilities without a Jushita detail 
   await expect(page.getByText('fullDetail: jushita-only')).toBeVisible();
   await expect(page.getByText('USD 2450.50').first()).toBeVisible();
   await page.getByRole('tab', { name: 'TT 汇款' }).click();
+  await expect(page).toHaveURL(/#\/orders\/orders\/24668306501026709\/payment$/u);
   await expect(page.getByTestId('tt-account-number')).not.toContainText('1029200038060');
   await page.getByRole('button', { name: '显示完整汇款账号' }).click();
   await expect(page.getByTestId('tt-account-number')).toContainText('1029200038060');
@@ -131,6 +132,23 @@ test('web mock combines typed trade order capabilities without a Jushita detail 
   await page.getByPlaceholder('单价').fill('599');
   await page.getByRole('button', { name: '创建演示信保订单' }).click();
   await expect(page.getByText(/演示订单创建成功/)).toBeVisible();
+});
+
+test('web mock restores product workspace and wizard step from the hash route', async ({ page }) => {
+  await page.goto('/#/products/publisher/guided/review/new/100009999');
+  await expect(page.getByRole('heading', { name: '商品管理' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '检查与提交' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: '商品发布/编辑' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('button', { name: /6\. 检查与提交/ })).toHaveAttribute('aria-current', 'step');
+
+  await page.getByRole('button', { name: /4\. 商品详情/ }).click();
+  await expect(page).toHaveURL(/#\/products\/publisher\/guided\/description\/new\/100009999$/u);
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: '检查与提交' })).toBeVisible();
+  await page.goForward();
+  await expect(page.getByRole('heading', { name: '商品详情' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '商品详情' })).toBeVisible();
 });
 
 test('web mock completes the qualified international logistics workflow', async ({ page }) => {
