@@ -60,6 +60,7 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
     entries: [
       {
         id: 'mock-diagnostic-1',
+        requestId: '3d7c8523-93cc-48b7-a615-a23d2976c516',
         timestamp: '2026-08-13T03:59:59.000Z',
         operation: 'listProducts',
         method: 'alibaba.icbu.product.list',

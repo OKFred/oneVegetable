@@ -6,6 +6,7 @@ import { ExternalLink, Play, Search, ShieldAlert } from '@lucide/vue';
 import { type ApiCapability, type CapabilityDefinition } from '@one-vegetable/core';
 
 import DataTable from '../components/DataTable.vue';
+import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
 import Badge from '../components/ui/Badge.vue';
@@ -283,7 +284,7 @@ const columns: DataColumn<ApiCapability>[] = [
       <pre v-if="call.data.value" class="mt-3 max-h-96 overflow-auto rounded-md bg-muted p-3 text-xs">{{
         JSON.stringify(call.data.value, null, 2)
       }}</pre>
-      <p v-if="call.error.value" class="mt-2 text-sm text-destructive">{{ call.error.value.message }}</p>
+      <ErrorNotice v-if="call.error.value" class="mt-3" :error="call.error.value" compact />
       <Button
         class="mt-3"
         :disabled="

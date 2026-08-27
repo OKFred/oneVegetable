@@ -30,6 +30,7 @@ import {
 } from '@one-vegetable/core';
 
 import DataTable from '../components/DataTable.vue';
+import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
@@ -52,13 +53,13 @@ const saving = ref(false);
 const feedback = ref('');
 const diagnostics = ref<DiagnosticsSnapshot | null>(null);
 const diagnosticsBusy = ref(false);
-const diagnosticsError = ref('');
+const diagnosticsError = ref<unknown>(null);
 const grantedHosts = ref<string[]>([]);
 const permissionsBusy = ref(false);
-const permissionsError = ref('');
+const permissionsError = ref<unknown>(null);
 const dataInventory = ref<LocalDataInventory | null>(null);
 const dataBusy = ref(false);
-const dataError = ref('');
+const dataError = ref<unknown>(null);
 const clearConfirmation = ref('');
 const vaultStatus = ref<CredentialVaultStatus | null>(null);
 const vaultPassphrase = ref('');
@@ -66,7 +67,7 @@ const vaultPassphraseConfirmation = ref('');
 const newVaultPassphrase = ref('');
 const newVaultPassphraseConfirmation = ref('');
 const vaultBusy = ref(false);
-const vaultError = ref('');
+const vaultError = ref<unknown>(null);
 const idleTimeoutMinutes = ref(CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES);
 const settingsEditable = computed(
   () => mode === 'mock' || vaultStatus.value?.state === 'empty' || vaultStatus.value?.state === 'unlocked'
@@ -132,7 +133,7 @@ async function initializeSettings(): Promise<GatewaySettings | undefined> {
 async function save(): Promise<void> {
   saving.value = true;
   feedback.value = '';
-  vaultError.value = '';
+  vaultError.value = null;
   try {
     if (mode === 'extension' && vault && vaultStatus.value?.state === 'empty') {
       assertMatchingPassphrases(vaultPassphrase.value, vaultPassphraseConfirmation.value);
@@ -147,7 +148,7 @@ async function save(): Promise<void> {
       model.value = await settings.load();
     }
   } catch (error: unknown) {
-    vaultError.value = error instanceof Error ? error.message : '设置保存失败';
+    vaultError.value = userVisibleCause(error, '设置保存失败');
   } finally {
     saving.value = false;
   }
@@ -155,25 +156,25 @@ async function save(): Promise<void> {
 
 async function refreshVaultStatus(): Promise<void> {
   if (!vault) return;
-  vaultError.value = '';
+  vaultError.value = null;
   try {
     applyVaultStatus(await vault.status());
   } catch (error: unknown) {
-    vaultError.value = error instanceof Error ? error.message : '保险库状态读取失败';
+    vaultError.value = userVisibleCause(error, '保险库状态读取失败');
   }
 }
 
 async function unlockVault(): Promise<void> {
   if (!vault) return;
   vaultBusy.value = true;
-  vaultError.value = '';
+  vaultError.value = null;
   try {
     applyVaultStatus(await vault.unlock(vaultPassphrase.value));
     model.value = await settings.load();
     clearVaultPassphrases();
     feedback.value = '凭证保险库已解锁；service worker 重启后会自动重新锁定。';
   } catch (error: unknown) {
-    vaultError.value = error instanceof Error ? error.message : '保险库解锁失败';
+    vaultError.value = userVisibleCause(error, '保险库解锁失败');
   } finally {
     vaultBusy.value = false;
   }
@@ -182,7 +183,7 @@ async function unlockVault(): Promise<void> {
 async function migrateVault(): Promise<void> {
   if (!vault) return;
   vaultBusy.value = true;
-  vaultError.value = '';
+  vaultError.value = null;
   try {
     assertMatchingPassphrases(vaultPassphrase.value, vaultPassphraseConfirmation.value);
     applyVaultStatus(await vault.migrate(vaultPassphrase.value));
@@ -191,7 +192,7 @@ async function migrateVault(): Promise<void> {
     feedback.value = '旧版明文凭证已原位迁移到加密保险库。';
     await refreshLocalData();
   } catch (error: unknown) {
-    vaultError.value = error instanceof Error ? error.message : '保险库迁移失败';
+    vaultError.value = userVisibleCause(error, '保险库迁移失败');
   } finally {
     vaultBusy.value = false;
   }
@@ -211,7 +212,7 @@ async function lockVault(): Promise<void> {
     };
     feedback.value = '保险库已锁定，页面中的可编辑凭证状态已清空。';
   } catch (error: unknown) {
-    vaultError.value = error instanceof Error ? error.message : '保险库锁定失败';
+    vaultError.value = userVisibleCause(error, '保险库锁定失败');
   } finally {
     vaultBusy.value = false;
   }
@@ -220,14 +221,14 @@ async function lockVault(): Promise<void> {
 async function rotateVaultPassphrase(): Promise<void> {
   if (!vault) return;
   vaultBusy.value = true;
-  vaultError.value = '';
+  vaultError.value = null;
   try {
     assertMatchingPassphrases(newVaultPassphrase.value, newVaultPassphraseConfirmation.value);
     applyVaultStatus(await vault.rotate(newVaultPassphrase.value));
     clearVaultPassphrases();
     feedback.value = '保险库已使用新 salt 和新口令重新加密。';
   } catch (error: unknown) {
-    vaultError.value = error instanceof Error ? error.message : '保险库口令更换失败';
+    vaultError.value = userVisibleCause(error, '保险库口令更换失败');
   } finally {
     vaultBusy.value = false;
   }
@@ -236,12 +237,12 @@ async function rotateVaultPassphrase(): Promise<void> {
 async function updateVaultPolicy(): Promise<void> {
   if (!vault) return;
   vaultBusy.value = true;
-  vaultError.value = '';
+  vaultError.value = null;
   try {
     applyVaultStatus(await vault.updatePolicy(idleTimeoutMinutes.value));
     feedback.value = `保险库将在连续 ${idleTimeoutMinutes.value} 分钟未使用凭证后自动锁定。`;
   } catch (error: unknown) {
-    vaultError.value = error instanceof Error ? error.message : '空闲锁定策略保存失败';
+    vaultError.value = userVisibleCause(error, '空闲锁定策略保存失败');
   } finally {
     vaultBusy.value = false;
   }
@@ -269,11 +270,11 @@ function clearVaultPassphrases(): void {
 async function refreshPermissions(): Promise<void> {
   if (!permissions) return;
   permissionsBusy.value = true;
-  permissionsError.value = '';
+  permissionsError.value = null;
   try {
     grantedHosts.value = await permissions.list();
   } catch (error: unknown) {
-    permissionsError.value = error instanceof Error ? error.message : '主机权限加载失败';
+    permissionsError.value = userVisibleCause(error, '主机权限加载失败');
   } finally {
     permissionsBusy.value = false;
   }
@@ -282,13 +283,13 @@ async function refreshPermissions(): Promise<void> {
 async function revokePermission(origin: string): Promise<void> {
   if (!permissions) return;
   permissionsBusy.value = true;
-  permissionsError.value = '';
+  permissionsError.value = null;
   try {
     const removed = await permissions.revoke(origin);
     await refreshPermissions();
     feedback.value = removed ? `已撤销 ${origin}；再次使用时会重新请求授权。` : `${origin} 当前未授权。`;
   } catch (error: unknown) {
-    permissionsError.value = error instanceof Error ? error.message : '主机权限撤销失败';
+    permissionsError.value = userVisibleCause(error, '主机权限撤销失败');
   } finally {
     permissionsBusy.value = false;
   }
@@ -296,11 +297,11 @@ async function revokePermission(origin: string): Promise<void> {
 
 async function refreshDiagnostics(): Promise<void> {
   diagnosticsBusy.value = true;
-  diagnosticsError.value = '';
+  diagnosticsError.value = null;
   try {
     diagnostics.value = await gateway.request('getDiagnostics', undefined);
   } catch (error: unknown) {
-    diagnosticsError.value = error instanceof Error ? error.message : '诊断加载失败';
+    diagnosticsError.value = userVisibleCause(error, '诊断加载失败');
   } finally {
     diagnosticsBusy.value = false;
   }
@@ -321,13 +322,13 @@ async function exportDiagnostics(): Promise<void> {
 
 async function clearDiagnostics(): Promise<void> {
   diagnosticsBusy.value = true;
-  diagnosticsError.value = '';
+  diagnosticsError.value = null;
   try {
     await gateway.request('clearDiagnostics', undefined);
     diagnostics.value = await gateway.request('getDiagnostics', undefined);
     feedback.value = '诊断记录已清空。';
   } catch (error: unknown) {
-    diagnosticsError.value = error instanceof Error ? error.message : '诊断清理失败';
+    diagnosticsError.value = userVisibleCause(error, '诊断清理失败');
   } finally {
     diagnosticsBusy.value = false;
   }
@@ -336,11 +337,11 @@ async function clearDiagnostics(): Promise<void> {
 async function refreshLocalData(): Promise<void> {
   if (!localData) return;
   dataBusy.value = true;
-  dataError.value = '';
+  dataError.value = null;
   try {
     dataInventory.value = await localData.inspect();
   } catch (error: unknown) {
-    dataError.value = error instanceof Error ? error.message : '本地数据清单加载失败';
+    dataError.value = userVisibleCause(error, '本地数据清单加载失败');
   } finally {
     dataBusy.value = false;
   }
@@ -359,7 +360,7 @@ async function exportLocalDataInventory(): Promise<void> {
 async function clearAllLocalData(): Promise<void> {
   if (!localData || clearConfirmation.value !== '清除全部数据') return;
   dataBusy.value = true;
-  dataError.value = '';
+  dataError.value = null;
   try {
     await localData.clearAll();
     clearConfirmation.value = '';
@@ -373,10 +374,14 @@ async function clearAllLocalData(): Promise<void> {
     await Promise.all([refreshLocalData(), refreshDiagnostics(), refreshPermissions()]);
     feedback.value = '扩展本地数据和额外主机权限已清除；重新加载后会再次显示首次使用说明。';
   } catch (error: unknown) {
-    dataError.value = error instanceof Error ? error.message : '扩展本地数据清除失败';
+    dataError.value = userVisibleCause(error, '扩展本地数据清除失败');
   } finally {
     dataBusy.value = false;
   }
+}
+
+function userVisibleCause(cause: unknown, fallbackMessage: string): Error {
+  return cause instanceof Error ? cause : new Error(fallbackMessage);
 }
 
 function downloadJson(value: unknown, filename: string): void {
@@ -625,7 +630,7 @@ function confirmThemePreference(): void {
           <ShieldCheck class="size-4" />加密并迁移旧凭证
         </Button>
       </div>
-      <p v-if="vaultError" class="mt-3 text-sm text-destructive">{{ vaultError }}</p>
+      <ErrorNotice v-if="vaultError" class="mt-3" :error="vaultError" compact />
     </Card>
 
     <Card v-if="settingsEditable" class="p-5">
@@ -695,7 +700,7 @@ function confirmThemePreference(): void {
       <p class="mt-2 text-sm text-muted-foreground">
         正式网关为扩展必选权限；下面只列出曾由自定义网关或外部图片转存按需授予的主机。
       </p>
-      <p v-if="permissionsError" class="mt-3 text-sm text-destructive">{{ permissionsError }}</p>
+      <ErrorNotice v-if="permissionsError" class="mt-3" :error="permissionsError" compact />
       <p v-else-if="grantedHosts.length === 0" class="mt-3 text-sm text-muted-foreground">
         当前没有额外主机权限。
       </p>
@@ -729,7 +734,7 @@ function confirmThemePreference(): void {
             <h2 class="font-semibold">脱敏诊断</h2>
           </div>
           <p class="mt-2 text-sm text-muted-foreground">
-            仅保留最近 100 条操作名、耗时、错误码和 traceId；不记录请求参数、凭证或响应正文。
+            仅保留最近 100 条操作名、requestId、耗时、错误码和 traceId；不记录请求参数、凭证或响应正文。
           </p>
         </div>
         <span aria-label="诊断记录数量" class="rounded-full bg-muted px-3 py-1 text-xs">
@@ -739,8 +744,11 @@ function confirmThemePreference(): void {
       <div v-if="lastDiagnosticError" class="mt-3 rounded-md bg-amber-50 p-3 text-xs text-amber-800">
         最近错误：{{ lastDiagnosticError.errorCode }} · {{ lastDiagnosticError.operation }} ·
         {{ lastDiagnosticError.errorMessage }}
+        <span class="mt-1 block break-all font-mono text-[11px]">
+          requestId：{{ lastDiagnosticError.requestId }}
+        </span>
       </div>
-      <p v-if="diagnosticsError" class="mt-3 text-sm text-destructive">{{ diagnosticsError }}</p>
+      <ErrorNotice v-if="diagnosticsError" class="mt-3" :error="diagnosticsError" compact />
       <div class="mt-4 flex flex-wrap gap-2">
         <Button variant="outline" :disabled="diagnosticsBusy" @click="refreshDiagnostics">
           <RotateCcw class="size-4" />刷新
@@ -768,7 +776,7 @@ function confirmThemePreference(): void {
           {{ formatBytes(dataInventory?.totalApproximateBytes ?? 0) }}
         </span>
       </div>
-      <p v-if="dataError" class="mt-3 text-sm text-destructive">{{ dataError }}</p>
+      <ErrorNotice v-if="dataError" class="mt-3" :error="dataError" compact />
       <DataTable
         class="mt-4"
         :columns="localDataColumns"

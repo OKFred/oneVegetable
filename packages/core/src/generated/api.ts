@@ -5855,6 +5855,11 @@ export interface components {
         };
         DiagnosticEntry: {
             id: string;
+            /**
+             * Format: uuid
+             * @description Application request identifier used to correlate the visible error
+             */
+            requestId: string;
             /** Format: date-time */
             timestamp: string;
             operation: string;

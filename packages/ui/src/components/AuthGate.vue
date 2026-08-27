@@ -5,6 +5,7 @@ import { Info, KeyRound, Sprout } from '@lucide/vue';
 import type { ControlBootstrapStatus, ControlSession } from '@one-vegetable/core';
 
 import { useServices } from '../lib/services';
+import ErrorNotice from './ErrorNotice.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
 import Input from './ui/Input.vue';
@@ -15,10 +16,10 @@ const mode = ref<'login' | 'bootstrap'>('login');
 const username = ref('');
 const password = ref('');
 const bootstrapToken = ref('');
-const error = ref('');
+const error = ref<unknown>(null);
 const submitting = ref(false);
 const bootstrapStatus = ref<ControlBootstrapStatus | null>(null);
-const bootstrapStatusError = ref('');
+const bootstrapStatusError = ref<unknown>(null);
 const checkingBootstrapStatus = ref(true);
 const bootstrapAvailable = computed(() => bootstrapStatus.value?.bootstrapAvailable === true);
 
@@ -27,14 +28,14 @@ onMounted(refreshBootstrapStatus);
 async function refreshBootstrapStatus(): Promise<void> {
   if (!control) return;
   checkingBootstrapStatus.value = true;
-  bootstrapStatusError.value = '';
+  bootstrapStatusError.value = null;
   try {
     bootstrapStatus.value = await control.bootstrapStatus();
     if (!bootstrapStatus.value.bootstrapAvailable) mode.value = 'login';
   } catch (cause: unknown) {
     bootstrapStatus.value = null;
     mode.value = 'login';
-    bootstrapStatusError.value = cause instanceof Error ? cause.message : '无法确认管理员初始化状态';
+    bootstrapStatusError.value = cause instanceof Error ? cause : new Error('无法确认管理员初始化状态');
   } finally {
     checkingBootstrapStatus.value = false;
   }
@@ -42,7 +43,7 @@ async function refreshBootstrapStatus(): Promise<void> {
 
 async function submit(): Promise<void> {
   if (!control) return;
-  error.value = '';
+  error.value = null;
   submitting.value = true;
   try {
     const session =
@@ -56,7 +57,7 @@ async function submit(): Promise<void> {
           });
     emit('authenticated', session);
   } catch (cause: unknown) {
-    error.value = cause instanceof Error ? cause.message : '认证失败';
+    error.value = cause instanceof Error ? cause : new Error('认证失败');
   } finally {
     submitting.value = false;
   }
@@ -119,12 +120,12 @@ async function submit(): Promise<void> {
         >
           工作台尚未初始化，且服务端未配置一次性 Bootstrap Token。请先配置服务端环境变量。
         </p>
-        <p
+        <ErrorNotice
           v-else-if="bootstrapStatusError"
-          class="rounded-md border border-amber-900/60 bg-amber-950/30 p-3 text-xs text-amber-200"
-        >
-          无法确认管理员初始化状态，初始化入口已暂时隐藏：{{ bootstrapStatusError }}
-        </p>
+          :error="bootstrapStatusError"
+          fallback="无法确认管理员初始化状态"
+          compact
+        />
 
         <label v-if="mode === 'bootstrap'" class="block space-y-1.5 text-sm">
           <span>一次性 Bootstrap Token</span>
@@ -145,9 +146,7 @@ async function submit(): Promise<void> {
           />
           <span class="text-xs text-slate-500">12–256 个 UTF-8 字节</span>
         </label>
-        <p v-if="error" class="rounded-md border border-red-900 bg-red-950/40 p-3 text-xs text-red-300">
-          {{ error }}
-        </p>
+        <ErrorNotice v-if="error" :error="error" fallback="认证失败" compact />
         <Button class="w-full" type="submit" :disabled="submitting">
           <KeyRound class="size-4" />{{ submitting ? '处理中…' : mode === 'login' ? '登录' : '创建管理员' }}
         </Button>

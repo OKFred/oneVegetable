@@ -6,6 +6,7 @@ import { Calculator, ClipboardList, MapPin, PackageCheck, RefreshCw, ShieldAlert
 import type { LogisticsOrderSummary, LogisticsQuoteRequest } from '@one-vegetable/core';
 
 import DataTable from '../components/DataTable.vue';
+import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
 import Badge from '../components/ui/Badge.vue';
@@ -396,9 +397,12 @@ const workspaces: { id: Workspace; label: string }[] = [
         >
           <Calculator class="size-4" />{{ quoteBlocked ? '业务资格待验收' : '开始试算' }}
         </Button>
-        <p v-if="calculateQuote.error.value" class="mt-3 text-sm text-destructive">
-          {{ calculateQuote.error.value.message }}
-        </p>
+        <ErrorNotice
+          v-if="calculateQuote.error.value"
+          class="mt-3"
+          :error="calculateQuote.error.value"
+          compact
+        />
       </Card>
       <Card class="p-5">
         <h2 class="font-semibold">可用方案</h2>
@@ -600,9 +604,7 @@ const workspaces: { id: Workspace; label: string }[] = [
           <PackageCheck class="size-4" />{{ createOrderBlocked ? '真实下单保持禁用' : '提交物流订单' }}
         </Button>
         <p v-if="!selectedQuote" class="mt-2 text-xs text-amber-700">请先在“运费试算”生成可用方案。</p>
-        <p v-if="createOrder.error.value" class="mt-3 text-sm text-destructive">
-          {{ createOrder.error.value.message }}
-        </p>
+        <ErrorNotice v-if="createOrder.error.value" class="mt-3" :error="createOrder.error.value" compact />
       </Card>
       <Card class="p-5">
         <div class="flex items-center gap-2">

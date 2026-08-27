@@ -12,6 +12,7 @@ import {
 } from '@one-vegetable/core';
 
 import DataTable from '../components/DataTable.vue';
+import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
 import Badge from '../components/ui/Badge.vue';
@@ -646,12 +647,18 @@ const columns: DataColumn<RfqSummary>[] = [
             </Button>
           </div>
           <p v-if="attachmentError" class="mt-2 text-sm text-destructive">{{ attachmentError }}</p>
-          <p v-if="uploadAttachment.error.value" class="mt-2 text-sm text-destructive">
-            {{ uploadAttachment.error.value.message }}
-          </p>
-          <p v-if="submitQuotation.error.value" class="mt-2 text-sm text-destructive">
-            {{ submitQuotation.error.value.message }}
-          </p>
+          <ErrorNotice
+            v-if="uploadAttachment.error.value"
+            class="mt-2"
+            :error="uploadAttachment.error.value"
+            compact
+          />
+          <ErrorNotice
+            v-if="submitQuotation.error.value"
+            class="mt-2"
+            :error="submitQuotation.error.value"
+            compact
+          />
           <p
             v-if="submitQuotation.data.value"
             class="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800"

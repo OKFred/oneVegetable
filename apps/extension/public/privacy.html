@@ -29,7 +29,7 @@
         <li>用户主动填写的 App Key、App Secret、Access Token、签名算法和网关地址；</li>
         <li>用户主动创建的商品 Schema 草稿和 RFQ 报价草稿；</li>
         <li>从用户 Alibaba.com 开放平台账号按需查询的商品、图库、RFQ、交易、物流和数据洞察响应；</li>
-        <li>最近 100 条会话级脱敏诊断，包括操作名、耗时、错误码和可用的 traceId。</li>
+        <li>最近 100 条会话级脱敏诊断，包括操作名、requestId、耗时、错误码和可用的 traceId。</li>
       </ul>
       <p>凭证与设置使用用户口令经 PBKDF2-HMAC-SHA256（600,000 次）派生的 AES-256-GCM 密钥加密后保存在扩展的 <code>chrome.storage.local</code>。口令不保存，密钥只在已解锁的 service worker 内存中存在，service worker 重启后保险库自动锁定。草稿保存在扩展自身的 <code>localStorage</code>。脱敏诊断保存在 <code>chrome.storage.session</code>，浏览器会话结束后不作为长期日志保留。扩展不运行自有分析或广告服务，也不把这些数据发送到开发者自有服务器。</p>
       <p><code>chrome.storage.local</code> 与 <code>chrome.storage.session</code> 均设置为 Chrome <code>TRUSTED_CONTEXTS</code>，网页及扩展内容脚本不能通过 Storage API 读取。保险库默认连续 15 分钟未使用凭证后自动锁定，用户可选择 5、15、30 或 60 分钟；状态查询不刷新计时，实际读取或更新凭证才刷新。service worker 若更早终止，内存密钥会立即丢失。</p>

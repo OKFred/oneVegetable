@@ -29,6 +29,7 @@ import {
 } from '@one-vegetable/core';
 
 import DataTable from '../components/DataTable.vue';
+import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
 import ProductCategoryPicker from '../components/ProductCategoryPicker.vue';
 import ProductEditorLoading from '../components/ProductEditorLoading.vue';
@@ -1378,9 +1379,12 @@ onBeforeUnmount(() => {
         平台回读已经匹配。重新加载商品表单后，才会以最新平台内容继续下一次增量编辑。
       </p>
     </Card>
-    <p v-if="productMutationHistory.error.value" class="mb-4 text-sm text-destructive">
-      {{ errorMessage(productMutationHistory.error.value) }}
-    </p>
+    <ErrorNotice
+      v-if="productMutationHistory.error.value"
+      class="mb-4"
+      :error="productMutationHistory.error.value"
+      compact
+    />
 
     <ProductEditorWizard
       v-if="schemaModel"
@@ -1411,9 +1415,7 @@ onBeforeUnmount(() => {
       @refresh-score="productScore.mutate(editScoreProductId)"
       @submit="submitProduct"
     />
-    <p v-if="publish.error.value" class="mt-3 text-sm text-destructive">
-      {{ errorMessage(publish.error.value) }}
-    </p>
+    <ErrorNotice v-if="publish.error.value" class="mt-3" :error="publish.error.value" compact />
   </template>
 
   <template v-else-if="workspace === 'organization'">
@@ -1461,9 +1463,7 @@ onBeforeUnmount(() => {
         <p v-if="productGroupMutationDisabled" class="mt-2 text-xs text-amber-700 dark:text-amber-400">
           当前环境尚未开放真实商品分组新增。
         </p>
-        <p v-if="createGroup.error.value" class="mt-2 text-xs text-destructive">
-          {{ errorMessage(createGroup.error.value) }}
-        </p>
+        <ErrorNotice v-if="createGroup.error.value" class="mt-2" :error="createGroup.error.value" compact />
       </Card>
     </div>
   </template>
@@ -1528,9 +1528,7 @@ onBeforeUnmount(() => {
       <p v-else-if="selectedDisplayMutationBlocked" class="mt-3 text-xs text-amber-700 dark:text-amber-400">
         选中的商品仍有未完成或待恢复的上下架任务，请先确认任务状态。
       </p>
-      <p v-if="batchDisplay.error.value" class="mt-3 text-xs text-destructive">
-        {{ errorMessage(batchDisplay.error.value) }}
-      </p>
+      <ErrorNotice v-if="batchDisplay.error.value" class="mt-3" :error="batchDisplay.error.value" compact />
     </Card>
     <Card v-if="latestDisplayMutationJobs.length" class="mb-5 p-5">
       <div class="flex flex-wrap items-center justify-between gap-3">
@@ -1591,12 +1589,18 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </div>
-      <p v-if="refreshDisplayMutation.error.value" class="mt-3 text-xs text-destructive">
-        {{ errorMessage(refreshDisplayMutation.error.value) }}
-      </p>
-      <p v-if="recoverDisplayMutation.error.value" class="mt-3 text-xs text-destructive">
-        {{ errorMessage(recoverDisplayMutation.error.value) }}
-      </p>
+      <ErrorNotice
+        v-if="refreshDisplayMutation.error.value"
+        class="mt-3"
+        :error="refreshDisplayMutation.error.value"
+        compact
+      />
+      <ErrorNotice
+        v-if="recoverDisplayMutation.error.value"
+        class="mt-3"
+        :error="recoverDisplayMutation.error.value"
+        compact
+      />
     </Card>
     <QueryState :loading="products.isPending.value" :error="products.error.value">
       <DataTable

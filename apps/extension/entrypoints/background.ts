@@ -302,6 +302,7 @@ async function handleRequest(message: RuntimeRequest): Promise<RuntimeResponse> 
   try {
     const data = await executeOperation(message.operation, message.payload);
     await safelyRecordDiagnostic({
+      requestId: message.requestId,
       operation: message.operation,
       method: diagnosticMethod(message.operation, message.payload),
       outcome: 'success',
@@ -314,6 +315,7 @@ async function handleRequest(message: RuntimeRequest): Promise<RuntimeResponse> 
   } catch (error: unknown) {
     const normalized = normalizeGatewayError(error);
     await safelyRecordDiagnostic({
+      requestId: message.requestId,
       operation: message.operation,
       method: diagnosticMethod(message.operation, message.payload),
       outcome: 'error',
@@ -625,6 +627,7 @@ function isDiagnosticEntry(value: unknown): value is DiagnosticEntry {
   if (!isRecord(value)) return false;
   return (
     typeof value.id === 'string' &&
+    isRequestId(value.requestId) &&
     typeof value.timestamp === 'string' &&
     typeof value.operation === 'string' &&
     (typeof value.method === 'string' || value.method === null) &&

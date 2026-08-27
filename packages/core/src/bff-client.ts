@@ -60,13 +60,16 @@ export class BffGatewayClient implements GatewayClient {
       responseType: 'json'
     });
     if (!isApiResponse(response.data) || response.data.requestId !== response.requestId) {
-      throw new GatewayException({
-        code: 'INVALID_BFF_RESPONSE',
-        message: 'BFF 响应契约或 requestId 无效',
-        retryable: false
-      });
+      throw new GatewayException(
+        {
+          code: 'INVALID_BFF_RESPONSE',
+          message: 'BFF 响应契约或 requestId 无效',
+          retryable: false
+        },
+        response.requestId
+      );
     }
-    if (!response.data.ok) throw new GatewayException(response.data.error);
+    if (!response.data.ok) throw new GatewayException(response.data.error, response.data.requestId);
     return response.data.data as ResponseOf<K>;
   }
 }

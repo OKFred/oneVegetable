@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { GatewayException } from '../src/errors';
+import { describeUserVisibleError, GatewayException } from '../src/errors';
 import {
   createRequestId,
   isRequestId,
@@ -58,9 +58,10 @@ describe('NetworkManager', () => {
     await expect(
       manager.request({ service: 'bff', url: 'https://api.example.com/x', requestId: 'unsafe' })
     ).rejects.toMatchObject({ gatewayError: { code: 'INVALID_REQUEST_ID' } });
+    const requestId = createRequestId();
     await expect(
-      manager.request({ service: 'bff', url: 'https://evil.example/x', requestId: createRequestId() })
-    ).rejects.toMatchObject({ gatewayError: { code: 'NETWORK_URL_DENIED' } });
+      manager.request({ service: 'bff', url: 'https://evil.example/x', requestId })
+    ).rejects.toMatchObject({ requestId, gatewayError: { code: 'NETWORK_URL_DENIED' } });
   });
 
   it('bounds request and response bodies', async () => {
@@ -79,8 +80,28 @@ describe('NetworkManager', () => {
   });
 
   it('keeps GatewayException intact', () => {
-    const error = new GatewayException({ code: 'CUSTOM', message: 'custom', retryable: false });
+    const requestId = createRequestId();
+    const error = new GatewayException({ code: 'CUSTOM', message: 'custom', retryable: false }, requestId);
     expect(error.gatewayError.code).toBe('CUSTOM');
+    expect(describeUserVisibleError(error)).toEqual({
+      code: 'CUSTOM',
+      message: 'custom',
+      requestId,
+      retryable: false,
+      traceId: null
+    });
+  });
+
+  it('attaches the reused requestId to transport failures', async () => {
+    const requestId = createRequestId();
+    const manager = createManager(vi.fn().mockRejectedValue(new TypeError('connection refused')));
+
+    await expect(
+      manager.request({ service: 'bff', url: 'https://api.example.com/x', requestId })
+    ).rejects.toMatchObject({
+      requestId,
+      gatewayError: { code: 'GATEWAY_ERROR', message: 'connection refused' }
+    });
   });
 });
 

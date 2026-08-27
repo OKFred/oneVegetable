@@ -1,4 +1,4 @@
-import { GatewayException } from './errors';
+import { GatewayException, withGatewayRequestId } from './errors';
 
 export type NetworkServiceId = 'alibaba' | 'bff' | 'external-photo';
 export type NetworkResponseType = 'json' | 'text' | 'bytes';
@@ -107,16 +107,23 @@ export class NetworkManager {
   async request(input: NetworkRequest): Promise<NetworkResponse> {
     const requestId = input.requestId ?? createRequestId();
     if (!isRequestId(requestId)) {
-      throw new GatewayException({
-        code: 'INVALID_REQUEST_ID',
-        message: 'requestId 必须是 UUID v4',
-        retryable: false
-      });
+      throw new GatewayException(
+        {
+          code: 'INVALID_REQUEST_ID',
+          message: 'requestId 必须是 UUID v4',
+          retryable: false
+        },
+        requestId
+      );
     }
     const url = new URL(input.url);
     const policy = this.#policies[input.service];
-    assertAllowedUrl(url, policy);
-    assertRequestSize(input.body, policy.maxRequestBytes, input.bodySizeBytes);
+    try {
+      assertAllowedUrl(url, policy);
+      assertRequestSize(input.body, policy.maxRequestBytes, input.bodySizeBytes);
+    } catch (error: unknown) {
+      throw withGatewayRequestId(error, requestId);
+    }
 
     const maxAttempts = Math.max(1, Math.min(3, input.maxAttempts ?? 1));
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -167,22 +174,28 @@ export class NetworkManager {
           outcome: 'error'
         });
         if (isAbortError(error)) {
-          throw new GatewayException({
-            code: 'REQUEST_TIMEOUT',
-            message: '网络请求超时或已取消',
-            retryable: true
-          });
+          throw new GatewayException(
+            {
+              code: 'REQUEST_TIMEOUT',
+              message: '网络请求超时或已取消',
+              retryable: true
+            },
+            requestId
+          );
         }
         if (attempt < maxAttempts) {
           await this.#wait(250 * 2 ** (attempt - 1));
           continue;
         }
-        throw error;
+        throw withGatewayRequestId(error, requestId);
       } finally {
         clearTimeout(timeout);
       }
     }
-    throw new GatewayException({ code: 'RETRY_EXHAUSTED', message: '请求重试已耗尽', retryable: false });
+    throw new GatewayException(
+      { code: 'RETRY_EXHAUSTED', message: '请求重试已耗尽', retryable: false },
+      requestId
+    );
   }
 
   #log(input: NetworkRequest, url: URL, response: NetworkResponse): void {

@@ -18,6 +18,7 @@ import {
 import type { TradeOrderDraft, TradeOrderSummary } from '@one-vegetable/core';
 
 import DataTable from '../components/DataTable.vue';
+import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
 import Badge from '../components/ui/Badge.vue';
@@ -520,9 +521,7 @@ onBeforeUnmount(() => {
       <p v-if="createOrder.data.value" class="mt-3 text-sm text-emerald-700">
         演示订单创建成功：{{ createOrder.data.value.id }}
       </p>
-      <p v-if="createOrder.error.value" class="mt-3 text-sm text-destructive">
-        {{ createOrder.error.value.message }}
-      </p>
+      <ErrorNotice v-if="createOrder.error.value" class="mt-3" :error="createOrder.error.value" compact />
     </Card>
   </template>
 

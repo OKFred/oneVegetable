@@ -9410,6 +9410,7 @@
         "additionalProperties": false,
         "required": [
           "id",
+          "requestId",
           "timestamp",
           "operation",
           "method",
@@ -9421,6 +9422,11 @@
         ],
         "properties": {
           "id": { "type": "string" },
+          "requestId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Application request identifier used to correlate the visible error"
+          },
           "timestamp": { "type": "string", "format": "date-time" },
           "operation": { "type": "string" },
           "method": { "type": ["string", "null"] },

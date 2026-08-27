@@ -89,13 +89,16 @@ async function requestVault<K extends CredentialVaultOperation>(
   };
   const response: CredentialVaultResponse = await browser.runtime.sendMessage(message);
   if (response.requestId !== message.requestId) {
-    throw new GatewayException({
-      code: 'INVALID_RUNTIME_RESPONSE',
-      message: '保险库响应 requestId 不匹配',
-      retryable: false
-    });
+    throw new GatewayException(
+      {
+        code: 'INVALID_RUNTIME_RESPONSE',
+        message: '保险库响应 requestId 不匹配',
+        retryable: false
+      },
+      message.requestId
+    );
   }
-  if (!response.ok) throw new GatewayException(response.error);
+  if (!response.ok) throw new GatewayException(response.error, response.requestId);
   return response.data as VaultOperationMap[K]['response'];
 }
 
@@ -212,7 +215,17 @@ class ExtensionGatewayClient implements GatewayClient {
       payload
     };
     const response: RuntimeResponse<K> = await browser.runtime.sendMessage(message);
-    if (!response.ok) throw new GatewayException(response.error);
+    if (response.requestId !== message.requestId) {
+      throw new GatewayException(
+        {
+          code: 'INVALID_RUNTIME_RESPONSE',
+          message: '扩展后台响应 requestId 不匹配',
+          retryable: false
+        },
+        message.requestId
+      );
+    }
+    if (!response.ok) throw new GatewayException(response.error, response.requestId);
     return response.data;
   }
 }

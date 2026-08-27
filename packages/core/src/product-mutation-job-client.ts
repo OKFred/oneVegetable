@@ -97,8 +97,10 @@ export class BffProductMutationJobClient implements ProductMutationJobClient {
       body: JSON.stringify({ requestId, ...body }),
       responseType: 'json'
     });
-    if (!isApiResponse(response.data) || response.data.requestId !== requestId) throw invalidResponse();
-    if (!response.data.ok) throw new GatewayException(response.data.error);
+    if (!isApiResponse(response.data) || response.data.requestId !== requestId) {
+      throw new GatewayException(invalidResponse().gatewayError, response.requestId);
+    }
+    if (!response.data.ok) throw new GatewayException(response.data.error, response.data.requestId);
     return response.data.data;
   }
 }

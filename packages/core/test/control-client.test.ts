@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { BffControlClient } from '../src/control-client';
+import { GatewayException } from '../src/errors';
 
 import type { NetworkTransport } from '../src/network';
 
@@ -92,6 +93,35 @@ describe('BffControlClient', () => {
       }
     });
     await expect(client.session()).rejects.toThrow('requestId');
+  });
+
+  it('preserves the control requestId on authentication errors', async () => {
+    const client = new BffControlClient({
+      baseUrl: 'https://staging.example.com',
+      transport: {
+        send: (_input, init) => {
+          if (typeof init.body !== 'string') throw new Error('expected JSON body');
+          const body = JSON.parse(init.body) as { requestId: string };
+          return Promise.resolve(
+            Response.json({
+              requestId: body.requestId,
+              ok: false,
+              error: { code: 'AUTH_INVALID', message: '账号或密码错误', retryable: false }
+            })
+          );
+        }
+      }
+    });
+
+    try {
+      await client.login('admin', 'wrong-password-value');
+      throw new Error('expected the login request to fail');
+    } catch (error: unknown) {
+      expect(error).toBeInstanceOf(GatewayException);
+      if (!(error instanceof GatewayException)) throw error;
+      expect(error.requestId).toMatch(/^[0-9a-f-]{36}$/u);
+      expect(error.gatewayError.code).toBe('AUTH_INVALID');
+    }
   });
 
   it('uses the request diagnostics routes and carries filters in the JSON body', async () => {

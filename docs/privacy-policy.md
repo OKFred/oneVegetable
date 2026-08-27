@@ -12,7 +12,7 @@
 - 用户主动填写的 App Key、App Secret、Access Token、签名算法和网关地址；
 - 用户主动创建的商品 Schema 草稿和 RFQ 报价草稿；
 - 从用户 Alibaba.com 开放平台账号按需查询的商品、图库、RFQ、交易、物流和数据洞察响应；
-- 最近 100 条会话级脱敏诊断，包括操作名、耗时、错误码和可用的 traceId。
+- 最近 100 条会话级脱敏诊断，包括操作名、requestId、耗时、错误码和可用的 traceId。
 
 凭证与设置使用用户口令经 PBKDF2-HMAC-SHA256（600,000 次）派生的 AES-256-GCM 密钥加密后保存在扩展的 `chrome.storage.local`。口令不保存，密钥只在已解锁的 service worker 内存中存在，service worker 重启后保险库自动锁定。草稿保存在扩展自身的 `localStorage`。脱敏诊断保存在 `chrome.storage.session`，浏览器会话结束后不作为长期日志保留。扩展不运行自有分析或广告服务，也不把这些数据发送到开发者自有服务器。
 

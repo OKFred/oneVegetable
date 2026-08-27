@@ -12,7 +12,7 @@ oneVegetable is a user-operated local Alibaba.com operations workspace for manag
 - App Key, App Secret, Access Token, signature algorithm, and gateway address entered by the user;
 - product Schema drafts and RFQ quotation drafts created by the user;
 - product, gallery, RFQ, trade, logistics, and data insight responses requested from the user's Alibaba.com Open Platform account;
-- up to 100 recent session-scoped redacted diagnostics containing operation names, durations, error codes, and available traceIds.
+- up to 100 recent session-scoped redacted diagnostics containing operation names, requestIds, durations, error codes, and available traceIds.
 
 Credentials and settings are encrypted in `chrome.storage.local` with an AES-256-GCM key derived from the user's passphrase using PBKDF2-HMAC-SHA256 with 600,000 iterations. The passphrase is not stored. The key exists only in the unlocked service worker memory, and the vault automatically locks after a service worker restart. Drafts are stored in the extension's own `localStorage`. Redacted diagnostics are stored in `chrome.storage.session` and are not retained as long-term logs after the browser session ends. The extension runs no first-party analytics or advertising service and does not send this data to a developer-operated server.
 

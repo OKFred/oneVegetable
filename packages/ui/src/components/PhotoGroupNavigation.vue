@@ -5,6 +5,7 @@ import { FolderOpen, LoaderCircle } from '@lucide/vue';
 
 import type { PhotoGroup } from '@one-vegetable/core';
 
+import ErrorNotice from './ErrorNotice.vue';
 import { useServices } from '../lib/services';
 
 const props = defineProps<{ modelValue: string }>();
@@ -87,9 +88,13 @@ async function selectGroup(group: PhotoGroup): Promise<void> {
         <span v-if="group.photoCount > 0" class="text-xs text-muted-foreground">{{ group.photoCount }}</span>
       </button>
     </TransitionGroup>
-    <p v-if="roots.error.value" class="px-2 py-2 text-xs text-destructive">
-      {{ roots.error.value instanceof Error ? roots.error.value.message : '图库分组加载失败' }}
-    </p>
+    <ErrorNotice
+      v-if="roots.error.value"
+      class="mx-2 my-2"
+      :error="roots.error.value"
+      fallback="图库分组加载失败"
+      compact
+    />
     <p v-if="error" class="px-2 py-2 text-xs text-destructive">{{ error }}</p>
   </div>
 </template>

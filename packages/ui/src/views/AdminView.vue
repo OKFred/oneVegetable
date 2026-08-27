@@ -15,6 +15,7 @@ import Card from '../components/ui/Card.vue';
 import Button from '../components/ui/Button.vue';
 import Input from '../components/ui/Input.vue';
 import DataTable from '../components/DataTable.vue';
+import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
@@ -34,7 +35,7 @@ const requestEventsPageSize = ref(20);
 const requestEventsTotal = ref(0);
 const system = ref<ControlSystemInfo | null>(null);
 const policy = ref<Record<string, unknown> | null>(null);
-const error = ref('');
+const error = ref<unknown>(null);
 const notice = ref('');
 const loading = ref(false);
 const username = ref('');
@@ -59,7 +60,7 @@ onMounted(refresh);
 async function refresh(): Promise<void> {
   if (!control) return;
   loading.value = true;
-  error.value = '';
+  error.value = null;
   try {
     const [, , , systemInfo, policyInfo] = await Promise.all([
       loadUsers(),
@@ -71,7 +72,7 @@ async function refresh(): Promise<void> {
     system.value = systemInfo;
     policy.value = policyInfo;
   } catch (cause: unknown) {
-    error.value = cause instanceof Error ? cause.message : '管理数据加载失败';
+    error.value = userVisibleCause(cause, '管理数据加载失败');
   } finally {
     loading.value = false;
   }
@@ -111,11 +112,11 @@ async function loadRequestEvents(): Promise<void> {
 
 async function loadSection(loader: () => Promise<void>, fallbackMessage: string): Promise<void> {
   loading.value = true;
-  error.value = '';
+  error.value = null;
   try {
     await loader();
   } catch (cause: unknown) {
-    error.value = cause instanceof Error ? cause.message : fallbackMessage;
+    error.value = userVisibleCause(cause, fallbackMessage);
   } finally {
     loading.value = false;
   }
@@ -169,20 +170,20 @@ async function purgeRequestEvents(): Promise<void> {
     notice.value = '再次点击“确认清理”后，才会删除超过留存周期的请求诊断记录。';
     return;
   }
-  error.value = '';
+  error.value = null;
   try {
     const result = await control.purgeRequestEvents();
     purgeArmed.value = false;
     notice.value = `已清理 ${result.deletedCount} 条请求诊断；保留最近 ${result.retentionDays} 天。`;
     await refresh();
   } catch (cause: unknown) {
-    error.value = cause instanceof Error ? cause.message : '清理请求诊断失败';
+    error.value = userVisibleCause(cause, '清理请求诊断失败');
   }
 }
 
 async function createUser(): Promise<void> {
   if (!control) return;
-  error.value = '';
+  error.value = null;
   try {
     await control.createUser({
       username: username.value,
@@ -195,7 +196,7 @@ async function createUser(): Promise<void> {
     remark.value = '';
     await refresh();
   } catch (cause: unknown) {
-    error.value = cause instanceof Error ? cause.message : '创建用户失败';
+    error.value = userVisibleCause(cause, '创建用户失败');
   }
 }
 
@@ -217,7 +218,7 @@ async function updateUser(
   patch: Partial<Pick<ControlUser, 'role' | 'status' | 'remark'>>
 ): Promise<void> {
   if (!control) return;
-  error.value = '';
+  error.value = null;
   try {
     await control.updateUser({
       userId: user.id,
@@ -228,13 +229,13 @@ async function updateUser(
     });
     await refresh();
   } catch (cause: unknown) {
-    error.value = cause instanceof Error ? cause.message : '更新用户失败';
+    error.value = userVisibleCause(cause, '更新用户失败');
   }
 }
 
 async function resetPassword(user: ControlUser): Promise<void> {
   if (!control) return;
-  error.value = '';
+  error.value = null;
   try {
     const result = await control.resetPassword(user.id, user.revision);
     notice.value = result.temporaryPassword
@@ -242,20 +243,24 @@ async function resetPassword(user: ControlUser): Promise<void> {
       : `${user.username} 的密码已重置`;
     await refresh();
   } catch (cause: unknown) {
-    error.value = cause instanceof Error ? cause.message : '重置密码失败';
+    error.value = userVisibleCause(cause, '重置密码失败');
   }
 }
 
 async function revokeSessions(user: ControlUser): Promise<void> {
   if (!control) return;
-  error.value = '';
+  error.value = null;
   try {
     await control.revokeSessions(user.id);
     notice.value = `${user.username} 的所有会话已撤销`;
     await refresh();
   } catch (cause: unknown) {
-    error.value = cause instanceof Error ? cause.message : '撤销会话失败';
+    error.value = userVisibleCause(cause, '撤销会话失败');
   }
+}
+
+function userVisibleCause(cause: unknown, fallbackMessage: string): Error {
+  return cause instanceof Error ? cause : new Error(fallbackMessage);
 }
 
 function formatTime(value: number): string {
@@ -383,9 +388,7 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
     </div>
   </Card>
 
-  <p v-if="error" class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-    {{ error }}
-  </p>
+  <ErrorNotice v-if="error" class="mb-4" :error="error" fallback="管理操作失败" />
   <p
     v-if="notice"
     class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"

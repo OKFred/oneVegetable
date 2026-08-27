@@ -230,6 +230,9 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByLabel('保险库口令').fill('wrong-vault-password');
   await page.getByRole('button', { name: '解锁' }).click();
   await expect(page.getByText(/口令不正确或密文已损坏/)).toBeVisible();
+  await expect(page.getByText(/requestId:/u)).toBeVisible();
+  await expect(page.getByRole('button', { name: '复制 requestId' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '导出脱敏诊断' })).toBeVisible();
   await page.getByLabel('保险库口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '解锁' }).click();
   await expect(page.getByText('已解锁', { exact: true })).toBeVisible();
@@ -415,9 +418,10 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   const exportedDiagnostics = await readFile(downloadPath, 'utf8');
   expect(exportedDiagnostics).not.toContain('e2e-secret');
   expect(exportedDiagnostics).not.toContain('e2e-token');
-  const snapshot = JSON.parse(exportedDiagnostics) as { entries: unknown[] };
+  const snapshot = JSON.parse(exportedDiagnostics) as { entries: { requestId?: unknown }[] };
   expect(snapshot.entries.length).toBeGreaterThan(0);
   expect(snapshot.entries.length).toBeLessThanOrEqual(100);
+  expect(snapshot.entries.every((entry) => typeof entry.requestId === 'string')).toBe(true);
 
   await page.getByRole('button', { name: '清空诊断' }).click();
   await expect(page.getByText('诊断记录已清空。')).toBeVisible();
