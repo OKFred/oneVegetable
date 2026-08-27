@@ -22,31 +22,7 @@ describe('ProductsView product mutation lifecycle', () => {
       refresh,
       recover: vi.fn(() => Promise.resolve(job))
     };
-    const Host = defineComponent({
-      setup() {
-        provideServices({
-          gateway: new MockGatewayClient(0),
-          settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
-          operationAvailability: {
-            get: (operations) =>
-              Promise.resolve({
-                items: operations.map((operation) => ({
-                  operation,
-                  allowed: operation === 'updateProduct',
-                  reasonCode: operation === 'updateProduct' ? 'TEST_ALLOWED' : 'TEST_DISABLED'
-                }))
-              })
-          },
-          productMutationJobs,
-          mode: 'bff'
-        });
-        return () => h(ProductsView);
-      }
-    });
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const wrapper = mount(Host, {
-      global: { plugins: [[VueQueryPlugin, { queryClient }]] }
-    });
+    const wrapper = mountProductsView(productMutationJobs, 'updateProduct');
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('Portable solar power station 1000W');
     });
@@ -83,31 +59,7 @@ describe('ProductsView product mutation lifecycle', () => {
       recover
     };
     const confirm = vi.spyOn(globalThis, 'confirm').mockReturnValue(true);
-    const Host = defineComponent({
-      setup() {
-        provideServices({
-          gateway: new MockGatewayClient(0),
-          settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
-          operationAvailability: {
-            get: (operations) =>
-              Promise.resolve({
-                items: operations.map((operation) => ({
-                  operation,
-                  allowed: operation === 'updateProductDisplay',
-                  reasonCode: operation === 'updateProductDisplay' ? 'TEST_ALLOWED' : 'TEST_DISABLED'
-                }))
-              })
-          },
-          productMutationJobs,
-          mode: 'bff'
-        });
-        return () => h(ProductsView);
-      }
-    });
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const wrapper = mount(Host, {
-      global: { plugins: [[VueQueryPlugin, { queryClient }]] }
-    });
+    const wrapper = mountProductsView(productMutationJobs, 'updateProductDisplay');
     const quality = wrapper.findAll('button').find((button) => button.text().includes('质量与上下架'));
     if (!quality) throw new Error('Missing quality workspace button');
     await quality.trigger('click');
@@ -125,6 +77,37 @@ describe('ProductsView product mutation lifecycle', () => {
     wrapper.unmount();
   });
 });
+
+function mountProductsView(
+  productMutationJobs: ProductMutationJobClient,
+  allowedOperation: 'updateProduct' | 'updateProductDisplay'
+) {
+  const Host = defineComponent({
+    setup() {
+      provideServices({
+        gateway: new MockGatewayClient(0),
+        settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
+        operationAvailability: {
+          get: (operations) =>
+            Promise.resolve({
+              items: operations.map((operation) => ({
+                operation,
+                allowed: operation === allowedOperation,
+                reasonCode: operation === allowedOperation ? 'TEST_ALLOWED' : 'TEST_DISABLED'
+              }))
+            })
+        },
+        productMutationJobs,
+        mode: 'bff'
+      });
+      return () => h(ProductsView);
+    }
+  });
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return mount(Host, {
+    global: { plugins: [[VueQueryPlugin, { queryClient }]] }
+  });
+}
 
 function jobFixture(): ProductMutationJob {
   return {
