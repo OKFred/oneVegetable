@@ -12,6 +12,7 @@ import {
   validateOperationAvailabilityInput,
   validateProductDisplayInput,
   validateProductGroupCreateInput,
+  validateSchemaPublishInput,
   validateProductSchemaUpdateInput
 } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
@@ -561,6 +562,9 @@ function validateDedicatedProductMutation(
   payload: Record<string, unknown>
 ): string[] {
   switch (operation) {
+    case 'publishProduct':
+    case 'saveProductDraft':
+      return validateSchemaPublishInput(payload).errors;
     case 'updateProduct':
       return validateProductSchemaUpdateInput(payload).errors;
     case 'updateProductDisplay':

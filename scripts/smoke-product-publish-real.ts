@@ -39,7 +39,7 @@ const reportPath = resolve(
   process.env.ONE_VEGETABLE_REAL_PRODUCT_PUBLISH_OUTPUT ??
     'artifacts/real-smoke/product-publish-20260828.json'
 );
-if (allowMutation) await assertNoPreviousPublishAttempt(reportPath);
+const previousReport = await readReport(reportPath);
 
 const credentialFile = resolve(
   process.cwd(),
@@ -52,106 +52,106 @@ const provider = createNodeAlibabaCredentialProvider(
   { workingDirectory: process.cwd() }
 );
 const gateway = new AlibabaReadGatewayClient(provider.requireCredentials(), { maxAttempts: 1 });
-const requests: { operation: OperationId; requestId: string }[] = [];
+const requests: { operation: OperationId; requestId: string }[] = readRequestEntries(previousReport);
 
-try {
-  const candidate = await selectPublishCandidate();
-  const title = findTitleField(candidate.model);
-  const originalTitle = productSchemaFieldText(title.field).trim();
-  if (!originalTitle) throw new Error('源商品标题为空，不能构造发布 Smoke');
-  const smokeTitle = createSmokeTitle(originalTitle, title.field);
-  const model = updateField(candidate.model, title.field.key, title.rootKey, (field) =>
-    withProductSchemaFieldText(field, smokeTitle)
-  );
-  const inspection = inspectProductSchemaSerialization(model);
-  if (!inspection.safe) {
-    throw new Error(`发布 Schema XML 结构异常：${inspection.structuralDiffs.join('；')}`);
-  }
-  const blockingIssues = validateProductSchemaModel(model).filter((issue) => issue.severity === 'error');
-  const preflight = {
-    sourceProductId: candidate.product.id,
-    categoryId: candidate.product.categoryId,
-    language: LANGUAGE,
-    titleMarker: TITLE_MARKER,
-    changedFieldCount: inspection.changedFieldKeys.length,
-    blockingIssueCount: blockingIssues.length,
-    blockingIssueRules: [...new Set(blockingIssues.map((issue) => issue.rule))]
-  };
-  if (blockingIssues.length > 0) {
-    await writeReport('preflight-blocked', { ...preflight, mutationAttempted: false });
-    throw new Error(`发布前仍有 ${blockingIssues.length} 个 Schema 硬错误，拒绝真实提交`);
-  }
+await main();
 
-  if (!allowMutation) {
-    await writeReport('preflight-ready', { ...preflight, mutationAttempted: false });
-    process.stdout.write(`真实发品预检通过；设置 ONE_VEGETABLE_REAL_PRODUCT_PUBLISH_SMOKE=1 后执行提交。\n`);
+async function main(): Promise<void> {
+  if (allowMutation && previousReport?.status === 'passed') {
+    process.stdout.write(
+      `真实商品发布 Smoke 已通过：${requiredReportString(previousReport, 'productId')}；不会重复创建。\n`
+    );
     process.stdout.write(`脱敏报告：${reportPath}\n`);
-    process.exit(0);
+    return;
   }
+  if (allowMutation && isAcceptedPublishReport(previousReport)) {
+    await verifyAcceptedPublish(readAcceptedPublish(previousReport));
+    return;
+  }
+  if (allowMutation) assertNoPreviousPublishAttempt(previousReport);
 
-  await writeReport('publish-started', { ...preflight, mutationAttempted: true });
-  const published = await call('publishProduct', {
-    categoryId: candidate.product.categoryId,
-    language: LANGUAGE,
-    schemaXml: inspection.xml
-  });
-  await writeReport('publish-accepted', {
-    ...preflight,
-    mutationAttempted: true,
-    productId: published.productId,
-    traceId: published.traceId
-  });
-
-  const visible = await waitForPublishedProduct(published.productId, smokeTitle);
-  let cleanup: Record<string, unknown> = { attempted: false, reason: '商品尚未处于 online 状态' };
-  if (visible?.status === 'online' && visible.encryptedId && cleanupOnlineProduct) {
-    const result = await call('updateProductDisplay', {
-      productIds: [visible.id],
-      encryptedProductIds: [visible.encryptedId],
-      display: 'offline'
-    });
-    const offline = await waitForProductStatus(visible.id, 'offline');
-    cleanup = {
-      attempted: true,
-      accepted: result.success,
-      traceId: result.traceId,
-      verifiedOffline: offline
+  try {
+    const candidate = await selectPublishCandidate();
+    const title = findTitleField(candidate.model);
+    const originalTitle = productSchemaFieldText(title.field).trim();
+    if (!originalTitle) throw new Error('源商品标题为空，不能构造发布 Smoke');
+    const smokeTitle = createSmokeTitle(originalTitle, title.field);
+    const model = updateField(candidate.model, title.field.key, title.rootKey, (field) =>
+      withProductSchemaFieldText(field, smokeTitle)
+    );
+    const inspection = inspectProductSchemaSerialization(model);
+    if (!inspection.safe) {
+      throw new Error(`发布 Schema XML 结构异常：${inspection.structuralDiffs.join('；')}`);
+    }
+    const blockingIssues = validateProductSchemaModel(model).filter((issue) => issue.severity === 'error');
+    const preflight = {
+      sourceProductId: candidate.product.id,
+      categoryId: candidate.product.categoryId,
+      language: LANGUAGE,
+      titleMarker: TITLE_MARKER,
+      changedFieldCount: inspection.changedFieldKeys.length,
+      blockingIssueCount: blockingIssues.length,
+      blockingIssueRules: [...new Set(blockingIssues.map((issue) => issue.rule))]
     };
-  }
+    if (blockingIssues.length > 0) {
+      await writeReport('preflight-blocked', { ...preflight, mutationAttempted: false });
+      throw new Error(`发布前仍有 ${blockingIssues.length} 个 Schema 硬错误，拒绝真实提交`);
+    }
 
-  await writeReport(visible ? 'passed' : 'accepted-unverified', {
-    ...preflight,
-    mutationAttempted: true,
-    productId: published.productId,
-    traceId: published.traceId,
-    readBackVisible: visible !== null,
-    productStatus: visible?.status ?? null,
-    titleRoundTrip: visible?.title === smokeTitle,
-    cleanup
-  });
-  process.stdout.write(
-    visible
-      ? `真实商品发布已被平台接受并回读：${published.productId}（${visible.status}）。\n`
-      : `真实商品发布已被平台接受：${published.productId}；暂未在列表回读，禁止重复创建。\n`
-  );
-  process.stdout.write(`脱敏报告：${reportPath}\n`);
-} catch (error: unknown) {
-  const previous = await readReportStatus(reportPath);
-  if (!['publish-accepted', 'passed', 'accepted-unverified'].includes(previous ?? '')) {
-    await writeReport(previous === 'publish-started' ? 'publish-failed' : 'preflight-failed', {
-      mutationAttempted: previous === 'publish-started',
-      error: errorRecord(error)
+    if (!allowMutation) {
+      await writeReport('preflight-ready', { ...preflight, mutationAttempted: false });
+      process.stdout.write(
+        `真实发品预检通过；设置 ONE_VEGETABLE_REAL_PRODUCT_PUBLISH_SMOKE=1 后执行提交。\n`
+      );
+      process.stdout.write(`脱敏报告：${reportPath}\n`);
+      return;
+    }
+
+    await writeReport('publish-started', { ...preflight, mutationAttempted: true });
+    const published = await call('publishProduct', {
+      categoryId: candidate.product.categoryId,
+      language: LANGUAGE,
+      schemaXml: inspection.xml
     });
+    await writeReport('publish-accepted', {
+      ...preflight,
+      mutationAttempted: true,
+      productId: published.productId,
+      traceId: published.traceId
+    });
+    await verifyAcceptedPublish({
+      ...preflight,
+      productId: published.productId,
+      traceId: published.traceId
+    });
+  } catch (error: unknown) {
+    const previous = await readReportStatus(reportPath);
+    if (!['publish-accepted', 'passed', 'accepted-unverified'].includes(previous ?? '')) {
+      await writeReport(previous === 'publish-started' ? 'publish-failed' : 'preflight-failed', {
+        mutationAttempted: previous === 'publish-started',
+        error: errorRecord(error)
+      });
+    }
+    throw error;
   }
-  throw error;
 }
 
-async function selectPublishCandidate(): Promise<{ product: Product; model: ProductSchemaModel }> {
+type PublishSourceProduct = Product & { categoryId: number };
+
+async function selectPublishCandidate(): Promise<{
+  product: PublishSourceProduct;
+  model: ProductSchemaModel;
+}> {
   const preferredId =
     nonEmpty(process.env.ONE_VEGETABLE_REAL_PRODUCT_PUBLISH_SOURCE_ID) ?? DEFAULT_SOURCE_PRODUCT_ID;
   const products = await listProducts();
   const candidates = products
-    .filter((product) => product.categoryId > 0 && ['online', 'offline'].includes(product.status))
+    .filter(
+      (product): product is PublishSourceProduct =>
+        product.categoryId !== null &&
+        product.categoryId > 0 &&
+        ['online', 'offline'].includes(product.status)
+    )
     .toSorted((left, right) => Number(right.id === preferredId) - Number(left.id === preferredId));
   const failures: string[] = [];
   for (const product of candidates.slice(0, 12)) {
@@ -182,6 +182,40 @@ async function listProducts(): Promise<Product[]> {
     if (page * result.pageSize >= result.total) break;
   }
   return items;
+}
+
+async function verifyAcceptedPublish(context: AcceptedPublishContext): Promise<void> {
+  const visible = await waitForPublishedProduct(context.productId, context.titleMarker);
+  let cleanup: Record<string, unknown> = { attempted: false, reason: '商品尚未处于 online 状态' };
+  if (visible?.status === 'online' && visible.encryptedId && cleanupOnlineProduct) {
+    const result = await call('updateProductDisplay', {
+      productIds: [visible.id],
+      encryptedProductIds: [visible.encryptedId],
+      display: 'offline'
+    });
+    const offline = await waitForProductStatus(visible.id, 'offline');
+    cleanup = {
+      attempted: true,
+      accepted: result.success,
+      traceId: result.traceId,
+      verifiedOffline: offline
+    };
+  }
+
+  await writeReport(visible ? 'passed' : 'accepted-unverified', {
+    ...context,
+    mutationAttempted: true,
+    readBackVisible: visible !== null,
+    productStatus: visible?.status ?? null,
+    titleRoundTrip: visible?.subject.includes(context.titleMarker) ?? false,
+    cleanup
+  });
+  process.stdout.write(
+    visible
+      ? `真实商品发布已被平台接受并回读：${context.productId}（${visible.status}）。\n`
+      : `真实商品发布已被平台接受：${context.productId}；暂未在列表回读，禁止重复创建。\n`
+  );
+  process.stdout.write(`脱敏报告：${reportPath}\n`);
 }
 
 function findTitleField(model: ProductSchemaModel): {
@@ -255,20 +289,33 @@ function replaceField(
   };
 }
 
-async function waitForPublishedProduct(productId: string, title: string): Promise<Product | null> {
-  for (let attempt = 0; attempt < 24; attempt += 1) {
-    const products = await listProducts();
-    const product = products.find((item) => item.id === productId);
-    if (product?.title === title) return product;
+async function waitForPublishedProduct(productId: string, titleMarker: string): Promise<Product | null> {
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    try {
+      const result = await call('listProducts', {
+        page: 1,
+        pageSize: 100,
+        subject: titleMarker,
+        language: LANGUAGE
+      });
+      const product = result.items.find((item) => item.id === productId);
+      if (product?.subject.includes(titleMarker)) return product;
+    } catch (error: unknown) {
+      if (!verificationMayRetry(error)) throw error;
+    }
     await delay(5_000);
   }
   return null;
 }
 
 async function waitForProductStatus(productId: string, status: 'offline'): Promise<boolean> {
-  for (let attempt = 0; attempt < 24; attempt += 1) {
-    const product = (await listProducts()).find((item) => item.id === productId);
-    if (product?.status === status) return true;
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    try {
+      const product = (await listProducts()).find((item) => item.id === productId);
+      if (product?.status === status) return true;
+    } catch (error: unknown) {
+      if (!verificationMayRetry(error)) throw error;
+    }
     await delay(5_000);
   }
   return false;
@@ -280,8 +327,8 @@ async function call<K extends OperationId>(operation: K, payload: RequestOf<K>):
   return gateway.request(operation, payload, { requestId });
 }
 
-async function assertNoPreviousPublishAttempt(path: string): Promise<void> {
-  const status = await readReportStatus(path);
+function assertNoPreviousPublishAttempt(report: Record<string, unknown> | null): void {
+  const status = typeof report?.status === 'string' ? report.status : null;
   if (
     status &&
     ['publish-started', 'publish-failed', 'publish-accepted', 'passed', 'accepted-unverified'].includes(
@@ -293,9 +340,14 @@ async function assertNoPreviousPublishAttempt(path: string): Promise<void> {
 }
 
 async function readReportStatus(path: string): Promise<string | null> {
+  const value = await readReport(path);
+  return typeof value?.status === 'string' ? value.status : null;
+}
+
+async function readReport(path: string): Promise<Record<string, unknown> | null> {
   try {
     const value = JSON.parse(await readFile(path, 'utf8')) as unknown;
-    return isRecord(value) && typeof value.status === 'string' ? value.status : null;
+    return isRecord(value) ? value : null;
   } catch {
     return null;
   }
@@ -325,6 +377,71 @@ function errorRecord(error: unknown): Record<string, unknown> {
 
 function errorCode(error: unknown): string {
   return error instanceof GatewayException ? error.gatewayError.code : 'UNEXPECTED_ERROR';
+}
+
+function verificationMayRetry(error: unknown): boolean {
+  return (
+    error instanceof GatewayException &&
+    (error.gatewayError.retryable ||
+      error.gatewayError.code === '15' ||
+      error.gatewayError.subCode === '000000')
+  );
+}
+
+interface AcceptedPublishContext {
+  sourceProductId: string;
+  categoryId: number;
+  language: typeof LANGUAGE;
+  titleMarker: string;
+  changedFieldCount: number;
+  blockingIssueCount: number;
+  blockingIssueRules: string[];
+  productId: string;
+  traceId: string;
+}
+
+function isAcceptedPublishReport(report: Record<string, unknown> | null): report is Record<string, unknown> {
+  return report?.status === 'publish-accepted' || report?.status === 'accepted-unverified';
+}
+
+function readAcceptedPublish(report: Record<string, unknown>): AcceptedPublishContext {
+  return {
+    sourceProductId: requiredReportString(report, 'sourceProductId'),
+    categoryId: requiredReportNumber(report, 'categoryId'),
+    language: LANGUAGE,
+    titleMarker: requiredReportString(report, 'titleMarker'),
+    changedFieldCount: requiredReportNumber(report, 'changedFieldCount'),
+    blockingIssueCount: requiredReportNumber(report, 'blockingIssueCount'),
+    blockingIssueRules: Array.isArray(report.blockingIssueRules)
+      ? report.blockingIssueRules.filter((value): value is string => typeof value === 'string')
+      : [],
+    productId: requiredReportString(report, 'productId'),
+    traceId: requiredReportString(report, 'traceId')
+  };
+}
+
+function readRequestEntries(
+  report: Record<string, unknown> | null
+): { operation: OperationId; requestId: string }[] {
+  if (!Array.isArray(report?.requests)) return [];
+  return report.requests.flatMap((entry) => {
+    if (!isRecord(entry) || typeof entry.operation !== 'string' || typeof entry.requestId !== 'string') {
+      return [];
+    }
+    return [{ operation: entry.operation as OperationId, requestId: entry.requestId }];
+  });
+}
+
+function requiredReportString(report: Record<string, unknown>, key: string): string {
+  const value = report[key];
+  if (typeof value !== 'string' || value.trim() === '') throw new Error(`真实发布报告缺少 ${key}`);
+  return value;
+}
+
+function requiredReportNumber(report: Record<string, unknown>, key: string): number {
+  const value = report[key];
+  if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`真实发布报告缺少 ${key}`);
+  return value;
 }
 
 function safeMessage(error: unknown): string {
