@@ -1,10 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
 
+const workerOrigin = 'http://127.0.0.1:8796';
+
 test('authenticated Web uses Worker, D1 and documentation replay across every domain', async ({ page }) => {
   const successfulOperations = new Set<string>();
   const failedOperations: string[] = [];
+  const operationOrigins = new Set<string>();
   page.on('response', (response) => {
     if (!response.url().endsWith('/api/v1/operations/call')) return;
+    operationOrigins.add(new URL(response.url()).origin);
     const request = response.request().postDataJSON() as { operation?: unknown } | null;
     const operation = typeof request?.operation === 'string' ? request.operation : 'unknown';
     if (response.ok()) successfulOperations.add(operation);
@@ -12,7 +16,7 @@ test('authenticated Web uses Worker, D1 and documentation replay across every do
   });
 
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: '一根青菜 BFF' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '登录运营工作台' })).toBeVisible();
 
   await page.getByRole('button', { name: '初始化管理员' }).click();
   await page.getByLabel('一次性 Bootstrap Token').fill('bff-replay-e2e-bootstrap');
@@ -21,7 +25,7 @@ test('authenticated Web uses Worker, D1 and documentation replay across every do
   await page.getByRole('button', { name: '创建管理员' }).click();
 
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
-  await expect(page.getByText('BFF 在线')).toBeVisible();
+  await expect(page.getByTestId('data-source-status')).toHaveText(/文档 Replay/);
   await expect(page.getByText('replay-admin')).toBeVisible();
   await expectOperation(successfulOperations, 'getDashboard');
 
@@ -40,6 +44,7 @@ test('authenticated Web uses Worker, D1 and documentation replay across every do
   await expect(page.getByText('replay', { exact: true })).toBeVisible();
   await expect(page.getByText('d1 / v3', { exact: true })).toBeVisible();
   expect(failedOperations).toEqual([]);
+  expect([...operationOrigins]).toEqual([workerOrigin]);
 });
 
 test('BFF replay rejects a write operation while preserving its requestId', async ({ request }) => {
@@ -79,7 +84,7 @@ test('BFF replay rejects a write operation while preserving its requestId', asyn
     data: {
       requestId,
       operation: 'createProductGroup',
-      payload: { name: 'must-not-be-created' }
+      payload: { name: 'must-not-be-created', parentId: -1 }
     }
   });
   const body = (await response.json()) as {
@@ -99,7 +104,7 @@ async function openDomain(
   heading: string,
   operations: readonly string[]
 ): Promise<void> {
-  await page.getByRole('button', { name: navigation, exact: true }).click();
+  await page.getByRole('link', { name: navigation, exact: true }).click();
   await expect(page.getByRole('heading', { name: heading })).toBeVisible();
   for (const operation of operations) await expectOperation(successfulOperations, operation);
 }

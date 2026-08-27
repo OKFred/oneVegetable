@@ -4,10 +4,22 @@ import { expect, test, type Page } from '@playwright/test';
 
 import rootPackage from '../../package.json' with { type: 'json' };
 
+test('web mock labels its in-process source and never calls the BFF', async ({ page }) => {
+  const bffRequests: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/v1/')) bffRequests.push(request.url());
+  });
+
+  await page.goto('/');
+  await expect(page.getByTestId('data-source-status')).toHaveText(/本地 Mock/);
+  await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
+  expect(bffRequests).toEqual([]);
+});
+
 test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
-  await expect(page.getByText('OpenAPI 演示')).toBeVisible();
+  await expect(page.getByTestId('data-source-status')).toHaveText(/本地 Mock/);
 
   const productNavigation = page.getByRole('link', { name: '商品' });
   await expect

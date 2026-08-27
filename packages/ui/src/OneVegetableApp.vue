@@ -325,7 +325,9 @@ async function logout(): Promise<void> {
               <Sun v-if="darkTheme" class="size-4" />
               <Moon v-else class="size-4" />
             </Button>
-            <span class="size-2 rounded-full" :class="dataSource.dotClass" />{{ dataSource.label }}
+            <span data-testid="data-source-status" class="inline-flex items-center gap-2">
+              <span class="size-2 rounded-full" :class="dataSource.dotClass" />{{ dataSource.label }}
+            </span>
             <span v-if="session">{{ session.principal.username }}</span>
             <Button v-if="mode === 'bff' && session" variant="outline" size="sm" @click="logout">
               退出
