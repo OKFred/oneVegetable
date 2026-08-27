@@ -41,7 +41,9 @@ const output = resolve(root, 'apps/extension/.output/chrome-mv3');
 const manifest = await readJson<Manifest>(resolve(output, 'manifest.json'));
 const listing = await readJson<Listing>(resolve(root, 'store-listing/listing.json'));
 const privacyHtml = await readFile(resolve(output, 'privacy.html'), 'utf8');
+const privacyEnglishHtml = await readFile(resolve(output, 'privacy-en.html'), 'utf8');
 const privacyPolicy = await readFile(resolve(root, 'docs/privacy-policy.md'), 'utf8');
+const privacyEnglishPolicy = await readFile(resolve(root, 'docs/privacy-policy.en.md'), 'utf8');
 const zhListing = await readFile(resolve(root, 'store-listing/zh_CN.md'), 'utf8');
 const enListing = await readFile(resolve(root, 'store-listing/en.md'), 'utf8');
 const credentialVaultSource = await readFile(resolve(root, 'packages/core/src/credential-vault.ts'), 'utf8');
@@ -118,12 +120,43 @@ for (const locale of ['zh_CN', 'en']) {
 
 for (const [file, content] of [
   ['privacy.html', privacyHtml],
+  ['privacy-en.html', privacyEnglishHtml],
   ['docs/privacy-policy.md', privacyPolicy],
+  ['docs/privacy-policy.en.md', privacyEnglishPolicy],
   ['store-listing/zh_CN.md', zhListing],
   ['store-listing/en.md', enListing]
 ] as const) {
   if (/\bmock\b|测试账号|test account|smoke test|真实账号验收/iu.test(content)) {
     errors.push(`${file} contains internal test or demonstration terminology`);
+  }
+}
+
+for (const [file, content, language, canonical] of [
+  [
+    'privacy.html',
+    privacyHtml,
+    'zh-CN',
+    'https://github.com/OKFred/oneVegetable/blob/master/docs/privacy-policy.md'
+  ],
+  [
+    'privacy-en.html',
+    privacyEnglishHtml,
+    'en',
+    'https://github.com/OKFred/oneVegetable/blob/master/docs/privacy-policy.en.md'
+  ]
+] as const) {
+  if (!content.includes(`<html lang="${language}">`)) errors.push(`${file} is missing its language metadata`);
+  if (!content.includes(`<link rel="canonical" href="${canonical}">`)) {
+    errors.push(`${file} is missing its canonical URL`);
+  }
+  if (!content.includes('Content-Security-Policy') || !content.includes("default-src 'none'")) {
+    errors.push(`${file} is missing a restrictive CSP`);
+  }
+  if (!content.includes('hreflang="zh-CN"') || !content.includes('hreflang="en"')) {
+    errors.push(`${file} is missing bilingual alternate links`);
+  }
+  if (/<script\b|\son[a-z]+\s*=|javascript:/iu.test(content)) {
+    errors.push(`${file} must remain a script-free static page`);
   }
 }
 
@@ -141,6 +174,25 @@ for (const [file, content] of [
     '口令不保存',
     '自动锁定',
     '真实写'
+  ]) {
+    if (!content.includes(phrase)) errors.push(`${file} is missing disclosure phrase: ${phrase}`);
+  }
+}
+
+for (const [file, content] of [
+  ['privacy-en.html', privacyEnglishHtml],
+  ['docs/privacy-policy.en.md', privacyEnglishPolicy]
+] as const) {
+  for (const phrase of [
+    'chrome.storage.local',
+    'chrome.storage.session',
+    'Limited Use',
+    'PBKDF2-HMAC-SHA256',
+    'AES-256-GCM',
+    'TRUSTED_CONTEXTS',
+    'passphrase is not stored',
+    'automatically locks',
+    'real write'
   ]) {
     if (!content.includes(phrase)) errors.push(`${file} is missing disclosure phrase: ${phrase}`);
   }
@@ -167,7 +219,7 @@ for (const phrase of [
 }
 
 process.stdout.write(
-  `MV3 manifest, 2 locales, 3 permission declarations, privacy disclosures and ${screenshots.length} screenshots checked\n`
+  `MV3 manifest, 2 locales, bilingual static privacy disclosures, 3 permission declarations and ${screenshots.length} screenshots checked\n`
 );
 if (errors.length > 0) throw new Error(errors.join('\n'));
 

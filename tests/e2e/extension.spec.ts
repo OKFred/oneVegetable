@@ -69,6 +69,25 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   expect(storageProbe.result?.value).toEqual({ localAvailable: false, sessionAvailable: false });
   await storageProbePage.close();
   await context.unroute('https://storage-probe.alibaba.com/**');
+
+  const privacyPage = await context.newPage();
+  await privacyPage.goto(`chrome-extension://${extensionId}/privacy.html`);
+  await expect(privacyPage.locator('html')).toHaveAttribute('lang', 'zh-CN');
+  await expect(privacyPage.getByRole('heading', { name: '一根青菜隐私政策' })).toBeVisible();
+  await expect(privacyPage.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute(
+    'content',
+    /default-src 'none'/u
+  );
+  await expect(privacyPage.locator('link[rel="canonical"]')).toHaveAttribute(
+    'href',
+    'https://github.com/OKFred/oneVegetable/blob/master/docs/privacy-policy.md'
+  );
+  await expect(privacyPage.locator('script')).toHaveCount(0);
+  await privacyPage.getByRole('link', { name: 'English' }).click();
+  await expect(privacyPage.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(privacyPage.getByRole('heading', { name: 'oneVegetable Privacy Policy' })).toBeVisible();
+  await privacyPage.close();
+
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/options.html`);
 

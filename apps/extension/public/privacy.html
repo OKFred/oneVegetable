@@ -1,1 +1,55 @@
-<!doctype html><meta charset=utf-8><title>一根青菜隐私说明</title><h1>一根青菜隐私说明</h1><p>扩展不含广告或分析。App Key、App Secret、Access Token 经 PBKDF2-HMAC-SHA256（600,000 次）派生的 AES-256-GCM 密钥加密存入 chrome.storage.local；口令不保存并自动锁定。chrome.storage.local 与 chrome.storage.session 仅限 TRUSTED_CONTEXTS，诊断不含凭证或正文。</p><p>请求只发往用户配置的 Alibaba.com 网关；外部图片仅在用户操作时转存至图库（图片银行）。遵守 Limited Use，不用于广告、信用评估或转售。</p><p>用户可清除本地数据和撤销权限；卸载会删除存储。遗忘口令须重新配置。本地加密不能防护被控制的设备；图库相关写入仅在用户主动操作后发起，其他真实写能力在出网前关闭。</p>
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'">
+    <title>一根青菜隐私政策</title>
+    <meta name="description" content="一根青菜隐私政策">
+    <link rel="canonical" href="https://github.com/OKFred/oneVegetable/blob/master/docs/privacy-policy.md">
+    <link rel="alternate" hreflang="zh-CN" href="privacy.html">
+    <link rel="alternate" hreflang="en" href="privacy-en.html">
+    <link rel="alternate" hreflang="x-default" href="privacy-en.html">
+    <link rel="stylesheet" href="privacy.css">
+  </head>
+  <body>
+    <main>
+      <nav class="language-switcher" aria-label="Language">
+        <span aria-current="page">简体中文</span>
+        <a href="privacy-en.html" hreflang="en" lang="en">English</a>
+      </nav>
+      <h1>一根青菜隐私政策</h1>
+      <p>生效日期：2026-08-13<br>
+适用版本：2.0.1</p>
+      <h2>单一用途</h2>
+      <p>一根青菜是一款由用户主动操作的 Alibaba.com 国际站本地运营工作台，用于管理商品、图库（图片银行）、RFQ、交易、国际物流和相关开放平台能力。扩展不提供广告、跟踪或与该用途无关的数据服务。</p>
+      <h2>处理的数据</h2>
+      <ul>
+        <li>用户主动填写的 App Key、App Secret、Access Token、签名算法和网关地址；</li>
+        <li>用户主动创建的商品 Schema 草稿和 RFQ 报价草稿；</li>
+        <li>从用户 Alibaba.com 开放平台账号按需查询的商品、图库、RFQ、交易、物流和数据洞察响应；</li>
+        <li>最近 100 条会话级脱敏诊断，包括操作名、耗时、错误码和可用的 traceId。</li>
+      </ul>
+      <p>凭证与设置使用用户口令经 PBKDF2-HMAC-SHA256（600,000 次）派生的 AES-256-GCM 密钥加密后保存在扩展的 <code>chrome.storage.local</code>。口令不保存，密钥只在已解锁的 service worker 内存中存在，service worker 重启后保险库自动锁定。草稿保存在扩展自身的 <code>localStorage</code>。脱敏诊断保存在 <code>chrome.storage.session</code>，浏览器会话结束后不作为长期日志保留。扩展不运行自有分析或广告服务，也不把这些数据发送到开发者自有服务器。</p>
+      <p><code>chrome.storage.local</code> 与 <code>chrome.storage.session</code> 均设置为 Chrome <code>TRUSTED_CONTEXTS</code>，网页及扩展内容脚本不能通过 Storage API 读取。保险库默认连续 15 分钟未使用凭证后自动锁定，用户可选择 5、15、30 或 60 分钟；状态查询不刷新计时，实际读取或更新凭证才刷新。service worker 若更早终止，内存密钥会立即丢失。</p>
+      <p>遗忘保险库口令时无法恢复凭证，用户只能彻底清除扩展本地数据后重新配置。旧版明文凭证不会再用于真实请求；用户设置新口令后，service worker 会直接完成原位加密迁移，不把旧 App Secret 或 Access Token 返回给页面。</p>
+      <h2>数据使用与传输</h2>
+      <p>真实查询仅在用户操作后，由扩展 service worker 通过 HTTPS 向用户配置的 Alibaba.com 开放平台网关发送。外部图片转存仅在用户明确操作时下载指定公共 HTTP(S) 图片，再上传到用户自己的国际站图库。</p>
+      <p>扩展对用户数据的使用遵守 Chrome Web Store User Data Policy（包括 Limited Use 要求）：数据只用于提供或改进公开说明的单一用途，不用于个性化广告、信用评估或数据转售。除非用户明确授权技术支持、安全调查或法律要求，开发者不会允许人工读取用户数据。</p>
+      <h2>权限说明</h2>
+      <ul>
+        <li><code>storage</code>：保存本地凭证、设置、首次使用状态和会话诊断；</li>
+        <li><code>https://eco.taobao.com/*</code>：调用 Alibaba.com 国际站正式 HTTPS 开放平台网关；</li>
+        <li>可选 <code>http://*/*</code>、<code>https://*/*</code>：只在用户配置自定义网关或主动转存外部图片时，按具体主机请求 Chrome 授权。用户可以在设置页逐项撤销。</li>
+      </ul>
+      <p>扩展不申请 cookies、浏览历史、标签页或必选 <code>&lt;all_urls&gt;</code> 权限。图库分组管理、图片上传和外部图片转存仅在用户主动操作后发起；其他真实写能力在扩展后台出网前保持关闭。</p>
+      <h2>数据控制与保留</h2>
+      <p>设置页可以锁定保险库、更换口令、查看不包含具体值的数据清单、导出该清单、清空会话诊断、撤销额外主机权限，以及彻底删除扩展的凭证、设置、草稿和诊断。卸载扩展也会删除 Chrome 管理的扩展本地存储。</p>
+      <h2>安全与限制</h2>
+      <p>扩展页面采用 Manifest V3 CSP，不执行远程代码。App Secret 仅由扩展 service worker 解密并用于签名。本地加密降低静态存储泄露风险，但无法保护已解锁的运行时、被恶意软件控制的浏览器或用户设备；高安全要求应迁移到用户控制的 BFF。平台权限、业务资格和接口可用性仍由 Alibaba.com 账号及开放平台实时判定，扩展不会在权限不足时伪造成功结果。</p>
+      <h2>联系与变更</h2>
+      <p>项目主页和问题反馈：<a href="https://github.com/OKFred/oneVegetable" rel="noopener noreferrer">github.com/OKFred/oneVegetable</a>。如果数据实践发生实质变化，扩展会在处理新增数据前更新显著披露并重新取得用户确认。</p>
+    </main>
+  </body>
+</html>

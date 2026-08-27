@@ -42,7 +42,9 @@
   - 关闭的移动端导航不再进入 Tab 顺序；打开后聚焦首个入口，Escape 关闭并将焦点还给菜单按钮。
   - 本地登录、管理员创建与首次确认表单补齐可访问名称、`name` 和必填语义。
   - Playwright 使用 axe-core 检查 Dashboard、商品列表和移动端导航；同时修正浅色主题辅助文字及主按钮对比度。
-- 将隐私协议改为构建期生成的中英文静态页面，避免运行时 `innerHTML` 注入，并补 CSP、语言和 canonical 元数据。
+- 将隐私协议改为构建期生成的中英文静态页面，避免运行时 `innerHTML` 注入，并补 CSP、语言和 canonical 元数据。（已完成，2026-08-28）
+  - 中英文 Markdown 分别生成 `privacy.html` 与 `privacy-en.html`，两页均无脚本并提供语言切换。
+  - 页面声明限制性 CSP、`lang`、canonical 和 hreflang；构建与商店合规检查会阻止页面或政策文档漂移。
 - 为用户可见错误统一提供 requestId 复制和脱敏诊断导出入口。
 - 清理 OpenAPI 警告基线，让新增告警在 CI 中可识别。
 - 评估使用 Chrome Web Store 官方 API 上传草稿包；正式提交和发布继续保留人工确认。

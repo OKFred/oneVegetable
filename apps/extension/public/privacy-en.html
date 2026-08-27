@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'">
+    <title>oneVegetable Privacy Policy</title>
+    <meta name="description" content="oneVegetable Privacy Policy">
+    <link rel="canonical" href="https://github.com/OKFred/oneVegetable/blob/master/docs/privacy-policy.en.md">
+    <link rel="alternate" hreflang="zh-CN" href="privacy.html">
+    <link rel="alternate" hreflang="en" href="privacy-en.html">
+    <link rel="alternate" hreflang="x-default" href="privacy-en.html">
+    <link rel="stylesheet" href="privacy.css">
+  </head>
+  <body>
+    <main>
+      <nav class="language-switcher" aria-label="Language">
+        <span aria-current="page">English</span>
+        <a href="privacy.html" hreflang="zh-CN" lang="zh-CN">简体中文</a>
+      </nav>
+      <h1>oneVegetable Privacy Policy</h1>
+      <p>Effective date: August 13, 2026<br>
+Applicable version: 2.0.1</p>
+      <h2>Single purpose</h2>
+      <p>oneVegetable is a user-operated local Alibaba.com operations workspace for managing products, the gallery (Photo Bank), RFQs, trades, international logistics, and related Open Platform capabilities. The extension does not provide advertising, tracking, or data services unrelated to this purpose.</p>
+      <h2>Data processed</h2>
+      <ul>
+        <li>App Key, App Secret, Access Token, signature algorithm, and gateway address entered by the user;</li>
+        <li>product Schema drafts and RFQ quotation drafts created by the user;</li>
+        <li>product, gallery, RFQ, trade, logistics, and data insight responses requested from the user&#39;s Alibaba.com Open Platform account;</li>
+        <li>up to 100 recent session-scoped redacted diagnostics containing operation names, durations, error codes, and available traceIds.</li>
+      </ul>
+      <p>Credentials and settings are encrypted in <code>chrome.storage.local</code> with an AES-256-GCM key derived from the user&#39;s passphrase using PBKDF2-HMAC-SHA256 with 600,000 iterations. The passphrase is not stored. The key exists only in the unlocked service worker memory, and the vault automatically locks after a service worker restart. Drafts are stored in the extension&#39;s own <code>localStorage</code>. Redacted diagnostics are stored in <code>chrome.storage.session</code> and are not retained as long-term logs after the browser session ends. The extension runs no first-party analytics or advertising service and does not send this data to a developer-operated server.</p>
+      <p>Both <code>chrome.storage.local</code> and <code>chrome.storage.session</code> use Chrome <code>TRUSTED_CONTEXTS</code>; web pages and extension content scripts cannot read them through the Storage API. By default, the vault automatically locks after credentials have not been used for 15 consecutive minutes. The user may select 5, 15, 30, or 60 minutes. Status checks do not extend the timer; only an actual credential read or update does. If the service worker terminates sooner, the in-memory key is lost immediately.</p>
+      <p>A forgotten vault passphrase cannot be recovered. The user must erase all extension-local data and configure the credentials again. Legacy plaintext credentials are never used for real requests. After the user creates a new passphrase, the service worker performs the encryption migration in place without returning the old App Secret or Access Token to a page.</p>
+      <h2>Data use and transfer</h2>
+      <p>Real queries are sent only after a user action. The extension service worker sends them over HTTPS to the Alibaba.com Open Platform gateway configured by the user. An external image is downloaded from the specified public HTTP(S) URL and uploaded to the user&#39;s own international gallery only after the user explicitly starts that transfer.</p>
+      <p>Use of user data follows the Chrome Web Store User Data Policy, including the Limited Use requirements. Data is used only to provide or improve the disclosed single purpose and is not used for personalized advertising, credit assessment, or data resale. The developer does not permit a person to read user data unless the user explicitly authorizes technical support, a security investigation requires it, or the law requires it.</p>
+      <h2>Permissions</h2>
+      <ul>
+        <li><code>storage</code>: stores local credentials, settings, onboarding state, and session diagnostics;</li>
+        <li><code>https://eco.taobao.com/*</code>: calls the official Alibaba.com HTTPS Open Platform gateway;</li>
+        <li>optional <code>http://*/*</code> and <code>https://*/*</code>: Chrome access is requested for a specific host only when the user configures a custom gateway or explicitly transfers an external image. The user can revoke each grant in Settings.</li>
+      </ul>
+      <p>The extension does not request cookies, browsing history, tabs, or a required <code>&lt;all_urls&gt;</code> permission. Gallery group management, image upload, and external image transfer occur only after an explicit user action. Other real write operations remain blocked before any network request leaves the extension background.</p>
+      <h2>Data control and retention</h2>
+      <p>Settings lets the user lock the vault, change the passphrase, inspect and export an inventory that contains no secret values, clear session diagnostics, revoke extra host permissions, and permanently erase credentials, settings, drafts, and diagnostics. Uninstalling the extension also removes extension-local storage managed by Chrome.</p>
+      <h2>Security and limitations</h2>
+      <p>Extension pages use a Manifest V3 CSP and do not execute remote code. App Secret is decrypted and used for signing only by the extension service worker. Local encryption reduces static-storage exposure but cannot protect an unlocked runtime, a browser controlled by malware, or the user&#39;s compromised device. Higher-security deployments should use a BFF controlled by the user. Alibaba.com determines platform permissions, business qualifications, and current API availability. The extension does not fabricate successful results when access is unavailable.</p>
+      <h2>Contact and changes</h2>
+      <p>Project homepage and issue tracker: <a href="https://github.com/OKFred/oneVegetable" rel="noopener noreferrer">github.com/OKFred/oneVegetable</a>. If data practices change materially, the extension will update its prominent disclosure and obtain user consent before processing newly disclosed data.</p>
+    </main>
+  </body>
+</html>

@@ -71,6 +71,10 @@ await rm(storeArtifactDirectory, { recursive: true, force: true });
 await mkdir(storeArtifactDirectory, { recursive: true });
 await Promise.all([
   copyFile(resolve(root, 'docs/privacy-policy.md'), resolve(storeArtifactDirectory, 'privacy-policy.md')),
+  copyFile(
+    resolve(root, 'docs/privacy-policy.en.md'),
+    resolve(storeArtifactDirectory, 'privacy-policy.en.md')
+  ),
   copyFile(resolve(root, 'store-listing/listing.json'), resolve(storeArtifactDirectory, 'listing.json')),
   copyFile(resolve(root, 'store-listing/zh_CN.md'), resolve(storeArtifactDirectory, 'zh_CN.md')),
   copyFile(resolve(root, 'store-listing/en.md'), resolve(storeArtifactDirectory, 'en.md')),
