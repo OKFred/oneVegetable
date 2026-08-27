@@ -1,0 +1,51 @@
+<!doctype html>
+<head>
+  <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="/favicon.png" />
+  <title>ERP terms & conditions</title>
+  <script>
+    /*   "use strict";
+  (()=>{  //观察dom 变化
+	const targetNode = document.children[0]; // 观察器的配置（需要观察什么变动）
+	const config = {childList: true }; // 当观察到变动时执行的回调函数
+	const callback = (mutationsList)=>{
+		for(let mutation of mutationsList){
+			if (mutation.type === 'childList' && (!! mutation.addedNodes.length)){
+        if (mutation.addedNodes[0].tagName==='BODY'){
+              let theBody=mutation.addedNodes[0];
+              theBody.innerHTML='';
+              observer.disconnect(); // 停止观察
+              observer=undefined;
+        }
+			};
+		};
+	}; // 创建一个观察器实例并传入回调函数
+	let observer = new MutationObserver(callback); // 以上述配置开始观察目标节点
+	observer.observe(targetNode, config);
+})(); */
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="root"></div>
+</body>
+<script>
+  async function addon(nodeType, url) {
+    let res = await fetch(url);
+    let result = await res.text();
+    let node = document.createElementNS('http://www.w3.org/1999/xhtml', nodeType);
+    node.innerHTML = result;
+    if (result === 'not found') return console.log('文件不存在');
+    document.body.appendChild(node);
+  }
+</script>
+<script>
+  (async function getPageData() {
+    const locale = navigator.languages.some((s) => s.includes('zh')) ? 'zhCN' : 'enUS';
+    let res = await fetch(`${location.origin}/rest/${locale}.json`);
+    let data = await res.json();
+    if (!data || !data.status) return;
+    document.getElementById('root').innerHTML = data.result;
+    return;
+  })();
+</script>
