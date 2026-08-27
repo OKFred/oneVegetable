@@ -55,6 +55,28 @@ function bodyText(): string {
 }
 
 describe('CapabilitiesView platform safeguards', () => {
+  it('shows the four verification dimensions and filters historical account results', async () => {
+    const wrapper = mountView();
+    await flushPromises();
+
+    await wrapper.get('select[aria-label="账号验证快照"]').setValue('permission-denied');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('alibaba.icbu.rfq.search');
+      expect(wrapper.text()).toContain('账号无权限');
+    });
+
+    await filterMethod(wrapper, 'alibaba.icbu.rfq.search');
+    await methodButton(wrapper, 'alibaba.icbu.rfq.search').trigger('click');
+    await vi.waitFor(() => {
+      expect(bodyText()).toContain('isv.permission-api-package-limit');
+    });
+
+    expect(bodyText()).toContain('CI 已覆盖');
+    expect(bodyText()).toContain('Mock 数据');
+    expect(bodyText()).toContain('只表示当时验证凭据');
+    wrapper.unmount();
+  });
+
   it('shows risk protocol parameters read-only and explains sensitive data handling', async () => {
     const wrapper = mountView();
     await flushPromises();

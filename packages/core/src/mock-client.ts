@@ -4,6 +4,7 @@ import {
   validateCapabilityRequest,
   validateCapabilityResponse
 } from './capability-registry';
+import { listCapabilitiesWithAccountVerification } from './account-verification';
 import {
   INSIGHTS_MOCK_DATA,
   LOGISTICS_MOCK_DATA,
@@ -79,7 +80,7 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
     ]
   },
   clearDiagnostics: undefined,
-  listCapabilities: listCapabilities(),
+  listCapabilities: listCapabilitiesWithAccountVerification(),
   getCapabilityDefinition: requireCapabilityDefinition('alibaba.icbu.product.list'),
   callCapability: {
     method: 'alibaba.icbu.product.list',

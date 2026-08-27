@@ -9,7 +9,7 @@ import {
   getCapabilityDefinition,
   InsightsAdapter,
   isAlibabaLanguage,
-  listCapabilities,
+  listCapabilitiesWithAccountVerification,
   LogisticsAdapter,
   NetworkManager,
   PhotoAdapter,
@@ -75,7 +75,7 @@ export class AlibabaReadGatewayClient implements GatewayClient {
     request: RequestOf<K>,
     context?: GatewayRequestContext
   ): Promise<ResponseOf<K>> {
-    if (operation === 'listCapabilities') return listCapabilities();
+    if (operation === 'listCapabilities') return listCapabilitiesWithAccountVerification();
     if (operation === 'getCapabilityDefinition') {
       const method = readString(readRecord(request), 'method');
       const definition = getCapabilityDefinition(method);

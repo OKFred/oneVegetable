@@ -13,12 +13,15 @@ import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
 import Input from '../components/ui/Input.vue';
 import Sheet from '../components/ui/Sheet.vue';
+import { capabilityMatrix, type CapabilityMatrixCell } from '../lib/capability-matrix';
+import { resolveDataSource } from '../lib/data-source';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 
-const { gateway, mode } = useServices();
+const { gateway, mode, runtime } = useServices();
 const search = ref('');
 const domain = ref('all');
+const accountVerification = ref('all');
 const selected = ref<ApiCapability | null>(null);
 const capabilitySheetOpen = ref(false);
 const definition = ref<CapabilityDefinition | null>(null);
@@ -31,10 +34,15 @@ const capabilities = useQuery({
   queryKey: ['capabilities'],
   queryFn: () => gateway.request('listCapabilities', undefined)
 });
+const dataSource = computed(() => resolveDataSource(mode, runtime));
 const filtered = computed(() =>
   (capabilities.data.value ?? []).filter((item) => {
     const matchesSearch = item.method.toLowerCase().includes(search.value.toLowerCase());
-    return matchesSearch && (domain.value === 'all' || item.domain === domain.value);
+    const matchesDomain = domain.value === 'all' || item.domain === domain.value;
+    const matchesAccount =
+      accountVerification.value === 'all' ||
+      (item.accountVerificationStatus ?? 'not-tested') === accountVerification.value;
+    return matchesSearch && matchesDomain && matchesAccount;
   })
 );
 const catalogCount = computed(
@@ -42,6 +50,40 @@ const catalogCount = computed(
 );
 const articleCount = computed(
   () => (capabilities.data.value ?? []).filter((item) => item.source === 'article').length
+);
+const accountPassedCount = computed(
+  () =>
+    (capabilities.data.value ?? []).filter((item) =>
+      ['passed', 'no-data'].includes(item.accountVerificationStatus ?? 'not-tested')
+    ).length
+);
+const accountDeniedCount = computed(
+  () =>
+    (capabilities.data.value ?? []).filter((item) => item.accountVerificationStatus === 'permission-denied')
+      .length
+);
+const accountNotTestedCount = computed(
+  () =>
+    (capabilities.data.value ?? []).filter(
+      (item) => (item.accountVerificationStatus ?? 'not-tested') === 'not-tested'
+    ).length
+);
+const accountSnapshotDate = computed(
+  () =>
+    (capabilities.data.value ?? [])
+      .find((item) => item.accountVerificationCheckedAt)
+      ?.accountVerificationCheckedAt?.slice(0, 10) ?? null
+);
+const accountSnapshotNotice = computed(() => {
+  if (mode === 'extension') {
+    return '扩展发布包不内置历史账号验证结果；请在 Web + BFF 模式查看脱敏快照。';
+  }
+  return accountSnapshotDate.value
+    ? `账号快照检查于 ${accountSnapshotDate.value}，只表示当时验证凭据的结果，不代表当前配置凭据。`
+    : '账号快照尚未生成。';
+});
+const selectedMatrix = computed(() =>
+  selected.value ? capabilityMatrix(selected.value, dataSource.value) : null
 );
 const realCallBlocked = computed(() => mode === 'extension' && selected.value?.realCallEnabled === false);
 const platformProtocolRestricted = computed(
@@ -138,14 +180,24 @@ const columns: DataColumn<ApiCapability>[] = [
       )
   },
   {
-    id: 'state',
-    header: '状态',
-    cell: ({ row }) =>
-      h(
-        Badge,
-        { variant: row.original.restricted ? 'warning' : row.original.enabled ? 'success' : 'outline' },
-        () => (row.original.restricted ? '受限' : row.original.enabled ? '已类型化' : '待接入')
-      )
+    id: 'contract',
+    header: '契约',
+    cell: ({ row }) => matrixBadge(capabilityMatrix(row.original, dataSource.value).contract)
+  },
+  {
+    id: 'replay',
+    header: 'Replay',
+    cell: ({ row }) => matrixBadge(capabilityMatrix(row.original, dataSource.value).replay)
+  },
+  {
+    id: 'account',
+    header: '账号快照',
+    cell: ({ row }) => matrixBadge(capabilityMatrix(row.original, dataSource.value).account)
+  },
+  {
+    id: 'current',
+    header: '当前运行',
+    cell: ({ row }) => matrixBadge(capabilityMatrix(row.original, dataSource.value).current)
   },
   {
     id: 'docs',
@@ -163,6 +215,10 @@ const columns: DataColumn<ApiCapability>[] = [
       )
   }
 ];
+
+function matrixBadge(cell: CapabilityMatrixCell) {
+  return h(Badge, { variant: cell.variant, title: cell.detail }, () => cell.label);
+}
 </script>
 
 <template>
@@ -190,13 +246,38 @@ const columns: DataColumn<ApiCapability>[] = [
         {{ item }}
       </option>
     </select>
+    <select
+      v-model="accountVerification"
+      aria-label="账号验证快照"
+      class="h-9 rounded-md border bg-background px-3 text-sm"
+    >
+      <option value="all">全部账号结果</option>
+      <option value="passed">账号通过</option>
+      <option value="no-data">合法空结果</option>
+      <option value="permission-denied">账号无权限</option>
+      <option value="contract-drift">契约漂移</option>
+      <option value="provider-error">上游错误</option>
+      <option value="skipped-prerequisite">缺前置数据</option>
+      <option value="not-tested">未测试</option>
+    </select>
+  </div>
+  <div class="mb-4 rounded-lg border bg-card p-3 text-sm">
+    <div class="flex flex-wrap items-center gap-2">
+      <Badge variant="success">账号通过/空结果 {{ accountPassedCount }}</Badge>
+      <Badge variant="warning">无权限 {{ accountDeniedCount }}</Badge>
+      <Badge variant="outline">未测试 {{ accountNotTestedCount }}</Badge>
+      <Badge variant="secondary">当前：{{ dataSource.label }}</Badge>
+    </div>
+    <p class="mt-2 text-xs text-muted-foreground">
+      {{ accountSnapshotNotice }} 当前运行列展示应用数据源和调用门禁，实际权限以本次调用结果为准。
+    </p>
   </div>
   <QueryState :loading="capabilities.isPending.value" :error="capabilities.error.value">
     <DataTable
       :columns="columns"
       :data="filtered"
       empty-text="没有匹配的 API"
-      min-width="1080px"
+      min-width="1520px"
       :get-row-key="(capability) => capability.method"
       :active-row-key="capabilitySheetOpen ? selected?.method : undefined"
       :row-aria-label="(capability) => `查看 API ${capability.method}`"
@@ -220,8 +301,27 @@ const columns: DataColumn<ApiCapability>[] = [
         </div>
         <div class="flex flex-wrap gap-2">
           <Badge variant="outline">{{ selected.source }}</Badge>
-          <Badge variant="outline">{{ selected.verification }}</Badge>
+          <Badge variant="outline">文档：{{ selected.verification }}</Badge>
           <Badge :variant="selected.risk === 'mutation' ? 'warning' : 'success'">{{ selected.risk }}</Badge>
+        </div>
+      </div>
+
+      <div v-if="selectedMatrix" class="mt-4 grid gap-2 sm:grid-cols-2">
+        <div
+          v-for="item in [
+            { name: '契约', cell: selectedMatrix.contract },
+            { name: 'Replay', cell: selectedMatrix.replay },
+            { name: '账号快照', cell: selectedMatrix.account },
+            { name: '当前运行', cell: selectedMatrix.current }
+          ]"
+          :key="item.name"
+          class="rounded-lg border bg-muted/30 p-3"
+        >
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-medium text-muted-foreground">{{ item.name }}</span>
+            <Badge :variant="item.cell.variant">{{ item.cell.label }}</Badge>
+          </div>
+          <p class="mt-2 text-xs leading-5 text-muted-foreground">{{ item.cell.detail }}</p>
         </div>
       </div>
 

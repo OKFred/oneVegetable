@@ -1,7 +1,6 @@
 import type { ErrorObject } from 'ajv';
 
 import { API_CAPABILITIES } from './generated/capabilities';
-import { ACCOUNT_VERIFICATION_SNAPSHOT } from './generated/account-verification';
 import { PRODUCT_CAPABILITY_DEFINITIONS } from './generated/product-capabilities';
 import { RFQ_CAPABILITY_DEFINITIONS } from './generated/rfq-capabilities';
 import { TRADE_CAPABILITY_DEFINITIONS } from './generated/trade-capabilities';
@@ -57,10 +56,6 @@ const methods: CapabilityMethod[] = [
   ...platformMethods
 ];
 type ValidatorModule = Record<string, unknown>;
-type AccountVerificationResult = (typeof ACCOUNT_VERIFICATION_SNAPSHOT.results)[number];
-const accountVerificationResults: ReadonlyMap<string, AccountVerificationResult> = new Map(
-  ACCOUNT_VERIFICATION_SNAPSHOT.results.map((result) => [result.method, result] as const)
-);
 
 async function validatorFor(
   method: string,
@@ -229,21 +224,11 @@ function articleCapabilities(): ApiCapability[] {
 }
 
 export function listCapabilities(): ApiCapability[] {
-  return [...API_CAPABILITIES, ...articleCapabilities()].map(withAccountVerification);
+  return [...API_CAPABILITIES, ...articleCapabilities()];
 }
 
 export function findCapability(method: string): ApiCapability | undefined {
   return listCapabilities().find((capability) => capability.method === method);
-}
-
-function withAccountVerification(capability: ApiCapability): ApiCapability {
-  const result = accountVerificationResults.get(capability.method);
-  return {
-    ...capability,
-    accountVerificationStatus: result?.status ?? 'not-tested',
-    accountVerificationReasonCode: result?.reasonCode ?? null,
-    accountVerificationCheckedAt: result ? ACCOUNT_VERIFICATION_SNAPSHOT.checkedAtUtc : null
-  };
 }
 
 export async function callCapability<M extends keyof CapabilityRequestMap>(
