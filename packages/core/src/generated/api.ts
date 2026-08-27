@@ -5742,6 +5742,11 @@ export interface components {
             /** @enum {string} */
             verification: "documented" | "account-verified";
             realCallEnabled: boolean;
+            /** @enum {string} */
+            accountVerificationStatus?: "passed" | "no-data" | "permission-denied" | "contract-drift" | "provider-error" | "skipped-prerequisite" | "not-tested";
+            accountVerificationReasonCode?: string | null;
+            /** Format: date-time */
+            accountVerificationCheckedAt?: string | null;
             requestSchema?: string | null;
             responseSchema?: string | null;
         };

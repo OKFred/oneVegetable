@@ -9111,6 +9111,20 @@
           "risk": { "type": "string", "enum": ["read", "mutation"] },
           "verification": { "type": "string", "enum": ["documented", "account-verified"] },
           "realCallEnabled": { "type": "boolean" },
+          "accountVerificationStatus": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "no-data",
+              "permission-denied",
+              "contract-drift",
+              "provider-error",
+              "skipped-prerequisite",
+              "not-tested"
+            ]
+          },
+          "accountVerificationReasonCode": { "type": ["string", "null"], "maxLength": 160 },
+          "accountVerificationCheckedAt": { "type": ["string", "null"], "format": "date-time" },
           "requestSchema": { "type": ["string", "null"] },
           "responseSchema": { "type": ["string", "null"] }
         }
