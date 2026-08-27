@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, h, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import { Layers3, LayoutGrid, List, RefreshCw, Search } from '@lucide/vue';
 
@@ -31,7 +31,7 @@ import {
 import DataTable from '../components/DataTable.vue';
 import PageHeader from '../components/PageHeader.vue';
 import ProductCategoryPicker from '../components/ProductCategoryPicker.vue';
-import ProductEditorWizard from '../components/ProductEditorWizard.vue';
+import ProductEditorLoading from '../components/ProductEditorLoading.vue';
 import QueryState from '../components/QueryState.vue';
 import ScoreProgress from '../components/ScoreProgress.vue';
 import TablePagination from '../components/TablePagination.vue';
@@ -59,6 +59,13 @@ import { appHash, parseAppHash } from '../lib/hash-router';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import type { DataColumn } from '../lib/table';
+
+const ProductEditorWizard = defineAsyncComponent({
+  loader: () => import('../components/ProductEditorWizard.vue'),
+  loadingComponent: ProductEditorLoading,
+  delay: 100,
+  timeout: 30_000
+});
 
 type Workspace = 'list' | 'publisher' | 'organization' | 'quality';
 type DraftSaveStatus = 'idle' | 'saving' | 'saved' | 'error';

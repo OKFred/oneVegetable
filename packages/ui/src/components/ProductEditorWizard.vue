@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue';
+import { computed, defineAsyncComponent, nextTick, ref } from 'vue';
 import { ChevronLeft, ChevronRight, RefreshCw, Save, Search, Send, ShieldAlert } from '@lucide/vue';
 
 import {
@@ -17,12 +17,25 @@ import {
 
 import OfficialHintContent from './OfficialHintContent.vue';
 import PlatformDraftHandoff from './PlatformDraftHandoff.vue';
-import ProductQuickEditor from './ProductQuickEditor.vue';
 import ProductSchemaFieldComponent from './ProductSchemaField.vue';
+import ProductEditorLoading from './ProductEditorLoading.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
 import Input from './ui/Input.vue';
+
+const ProductAdvancedEditor = defineAsyncComponent({
+  loader: () => import('./ProductAdvancedEditor.vue'),
+  loadingComponent: ProductEditorLoading,
+  delay: 100,
+  timeout: 30_000
+});
+const ProductQuickEditor = defineAsyncComponent({
+  loader: () => import('./ProductQuickEditor.vue'),
+  loadingComponent: ProductEditorLoading,
+  delay: 100,
+  timeout: 30_000
+});
 
 type ProductEditorMode = 'quick' | 'guided' | 'advanced';
 
@@ -144,15 +157,6 @@ const officialHintGroups = computed(() => {
     fieldCount: group.fieldKeys.size
   }));
 });
-const serializationLabel = computed(() => {
-  if (!props.schemaInspection.safe) return '结构异常';
-  return props.schemaInspection.noOp ? '原样' : '安全补丁';
-});
-const changedFieldNames = computed(() =>
-  props.schemaInspection.changedFieldKeys.map(
-    (key) => props.model.fields.find((field) => field.key === key)?.name ?? key
-  )
-);
 
 function sectionIssueCount(sectionId: ProductEditorStepId): number {
   if (sectionId === 'review') return blockingIssues.value.length;
@@ -489,70 +493,25 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
       </div>
     </template>
 
-    <template v-else>
-      <div class="mt-5 space-y-4">
-        <ProductSchemaFieldComponent
-          v-for="(field, index) in model.fields"
-          :key="field.key"
-          :field="field"
-          :issues="issues"
-          :product-description-type="productDescriptionType"
-          :language="language"
-          @update="emit('updateField', index, $event)"
-          @image-status="emit('imageStatus', $event)"
-        />
-      </div>
-      <div v-if="model.warnings.length" class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-        <p class="font-medium">服务端规则提示</p>
-        <ul class="mt-1 list-disc pl-5">
-          <li v-for="warning in model.warnings" :key="warning">{{ warning }}</li>
-        </ul>
-      </div>
-      <details class="mt-5 rounded-lg border p-3">
-        <summary class="flex cursor-pointer items-center gap-2 text-sm font-medium">
-          Schema XML 预览（只读）
-          <Badge
-            :variant="
-              schemaInspection.safe ? (schemaInspection.noOp ? 'secondary' : 'success') : 'destructive'
-            "
-          >
-            {{ serializationLabel }}
-          </Badge>
-        </summary>
-        <p v-if="changedFieldNames.length" class="mt-3 text-xs text-muted-foreground">
-          实际变化字段：{{ changedFieldNames.join('、') }}
-        </p>
-        <div
-          v-if="!schemaInspection.safe"
-          class="mt-3 rounded-md bg-destructive/10 p-3 text-xs text-destructive"
-        >
-          <p v-for="diff in schemaInspection.structuralDiffs" :key="diff">{{ diff }}</p>
-        </div>
-        <pre
-          class="mt-3 max-h-80 overflow-auto whitespace-pre-wrap bg-slate-950 p-3 text-xs text-slate-100"
-          >{{ schemaPreview }}</pre>
-      </details>
-      <div class="mt-5 flex flex-wrap gap-2">
-        <Button
-          :disabled="
-            submitPending || resolvedPublishDisabled || blockingIssues.length > 0 || !schemaInspection.safe
-          "
-          @click="emit('submit', false)"
-        >
-          <Send class="size-4" />{{ editing ? '更新商品' : '发布商品' }} · {{ advisoryIssues.length }} 条建议
-        </Button>
-        <Button
-          v-if="!editing"
-          variant="outline"
-          :disabled="
-            submitPending || resolvedDraftDisabled || Boolean(platformDraftId) || !schemaInspection.safe
-          "
-          @click="emit('submit', true)"
-        >
-          <Save class="size-4" />保存平台草稿
-        </Button>
-      </div>
-    </template>
+    <ProductAdvancedEditor
+      v-else
+      :model="model"
+      :issues="issues"
+      :product-description-type="productDescriptionType"
+      :language="language"
+      :submit-pending="submitPending"
+      :editing="editing"
+      :publish-disabled="resolvedPublishDisabled"
+      :draft-disabled="resolvedDraftDisabled"
+      :platform-draft-id="platformDraftId"
+      :blocking-count="blockingIssues.length"
+      :advisory-count="advisoryIssues.length"
+      :schema-preview="schemaPreview"
+      :schema-inspection="schemaInspection"
+      @update-field="(index, field) => emit('updateField', index, field)"
+      @image-status="emit('imageStatus', $event)"
+      @submit="emit('submit', $event)"
+    />
 
     <div
       v-if="resolvedPublishDisabled || resolvedDraftDisabled"

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import officialHintFixture from '../../../mock/data/product-schema/official-hints.json';
@@ -78,6 +78,11 @@ function mountWizard(
   });
 }
 
+async function settleLazyComponents(): Promise<void> {
+  await vi.dynamicImportSettled();
+  await flushPromises();
+}
+
 describe('ProductEditorWizard', () => {
   it('shows six freely navigable steps and hides technical field types in guided mode', async () => {
     const wrapper = mountWizard();
@@ -111,8 +116,16 @@ describe('ProductEditorWizard', () => {
     expect(advanced.emitted('update:mode')?.at(-1)).toEqual(['advanced']);
 
     await advanced.setProps({ mode: 'advanced' });
+    await settleLazyComponents();
     expect(advanced.text()).toContain('Schema XML 预览（只读）');
     expect(advanced.text()).toContain('Product title');
+    expect(advanced.find('pre').exists()).toBe(false);
+
+    const xmlPreview = advanced.get('details');
+    (xmlPreview.element as HTMLDetailsElement).open = true;
+    await xmlPreview.trigger('toggle');
+    await settleLazyComponents();
+    expect(advanced.get('pre').text()).toContain('<itemSchema>');
 
     const review = mountWizard('review');
     const issueButton = review
@@ -127,7 +140,12 @@ describe('ProductEditorWizard', () => {
   it('shows XML source safety state and blocks structurally unsafe submissions', async () => {
     const wrapper = mountWizard();
     await wrapper.setProps({ mode: 'advanced' });
+    await settleLazyComponents();
     expect(wrapper.text()).toContain('原样');
+    const xmlPreview = wrapper.get('details');
+    (xmlPreview.element as HTMLDetailsElement).open = true;
+    await xmlPreview.trigger('toggle');
+    await settleLazyComponents();
 
     await wrapper.setProps({
       issues: [],
@@ -191,6 +209,7 @@ describe('ProductEditorWizard', () => {
   it('offers a fast draft-first page while keeping full and advanced modes available', async () => {
     const wrapper = mountWizard('basics', { mode: 'quick' });
     await wrapper.setProps({ mutationDisabled: false, publishDisabled: false, draftDisabled: false });
+    await settleLazyComponents();
 
     expect(wrapper.text()).toContain('最快发品路径');
     expect(wrapper.text()).toContain('Product title');

@@ -29,9 +29,15 @@ import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
 import OfficialHintContent from './OfficialHintContent.vue';
 import PhotoBankPicker from './PhotoBankPicker.vue';
+import ProductEditorLoading from './ProductEditorLoading.vue';
 import ProductGroupPicker from './ProductGroupPicker.vue';
 
-const ProductDescriptionEditor = defineAsyncComponent(() => import('./ProductDescriptionEditor.vue'));
+const ProductDescriptionEditor = defineAsyncComponent({
+  loader: () => import('./ProductDescriptionEditor.vue'),
+  loadingComponent: ProductEditorLoading,
+  delay: 100,
+  timeout: 30_000
+});
 
 const props = withDefaults(
   defineProps<{
