@@ -28,6 +28,7 @@ import type {
   ResponseOf
 } from './types';
 import { validateLogisticsOrderInput, validateLogisticsQuoteInput } from './validation';
+import { APP_VERSION } from './version';
 
 const PRIMARY_RFQ = RFQ_MOCK_DATA.primaryRfq;
 const RFQS = RFQ_MOCK_DATA.rfqs;
@@ -55,7 +56,7 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
   },
   getDiagnostics: {
     generatedAt: '2026-08-13T04:00:00.000Z',
-    extensionVersion: '2.0.0-mock',
+    extensionVersion: `${APP_VERSION}-mock`,
     entries: [
       {
         id: 'mock-diagnostic-1',
@@ -142,7 +143,7 @@ export class MockGatewayClient implements GatewayClient {
     if (operation === 'getDiagnostics') {
       return {
         generatedAt: new Date().toISOString(),
-        extensionVersion: '2.0.0-mock',
+        extensionVersion: `${APP_VERSION}-mock`,
         entries: structuredClone(this.diagnostics)
       };
     }

@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 
 import {
+  APP_VERSION,
   createRequestId,
   GatewayException,
   isOperationId,
@@ -239,7 +240,7 @@ export function createApiApp(options: ApiAppOptions): Hono {
       environment: options.environment,
       gatewayMode: options.gatewayMode,
       apiPrefix,
-      version: options.version ?? '2.0.0'
+      version: options.version ?? APP_VERSION
     };
     logRequest(options, parsed.requestId, 'meta/get', 'success', 200, startedAt);
     return success(context, parsed.requestId, data);

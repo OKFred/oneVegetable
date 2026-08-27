@@ -35,6 +35,7 @@ export * from './signing';
 export * from './settings-storage';
 export * from './types';
 export * from './validation';
+export * from './version';
 export { API_CAPABILITIES } from './generated/capabilities';
 export { PRODUCT_CAPABILITY_DEFINITIONS } from './generated/product-capabilities';
 export { RFQ_CAPABILITY_DEFINITIONS } from './generated/rfq-capabilities';

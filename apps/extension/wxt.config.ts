@@ -1,12 +1,13 @@
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'wxt';
+import rootPackage from '../../package.json' with { type: 'json' };
 
 export default defineConfig({
   modules: ['@wxt-dev/module-vue'],
   vite: () => ({ plugins: [tailwindcss()] }),
   manifest: {
     name: '__MSG_extName__',
-    version: '2.0.1',
+    version: rootPackage.version,
     description: '__MSG_extDescription__',
     default_locale: 'zh_CN',
     minimum_chrome_version: '102',

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ExternalLink, Sprout } from '@lucide/vue';
+import { APP_VERSION } from '@one-vegetable/core/version';
 
 defineProps<{ openDashboard: () => Promise<void> }>();
 </script>
@@ -12,7 +13,7 @@ defineProps<{ openDashboard: () => Promise<void> }>();
       /></span>
       <div>
         <h1 class="font-semibold">一根青菜</h1>
-        <p class="text-xs text-slate-400">Manifest V3 · v2.0.0</p>
+        <p class="text-xs text-slate-400">Manifest V3 · v{{ APP_VERSION }}</p>
       </div>
     </div>
     <button

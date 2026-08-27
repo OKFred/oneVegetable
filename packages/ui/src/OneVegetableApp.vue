@@ -30,6 +30,7 @@ import type {
   ProductMutationJobClient,
   SettingsRepository
 } from '@one-vegetable/core';
+import { APP_VERSION } from '@one-vegetable/core/version';
 
 import Button from './components/ui/Button.vue';
 import AuthGate from './components/AuthGate.vue';
@@ -192,7 +193,9 @@ async function logout(): Promise<void> {
           /></span>
           <div>
             <p class="font-semibold">一根青菜</p>
-            <p class="text-[10px] uppercase tracking-[0.18em] text-slate-400">oneVegetable 2.0</p>
+            <p class="text-[10px] uppercase tracking-[0.18em] text-slate-400">
+              oneVegetable {{ APP_VERSION }}
+            </p>
           </div>
         </div>
         <nav class="space-y-1 p-3">

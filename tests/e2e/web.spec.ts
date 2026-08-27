@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises';
 
 import { expect, test, type Page } from '@playwright/test';
 
+import rootPackage from '../../package.json' with { type: 'json' };
+
 test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
@@ -321,7 +323,7 @@ test('web mock exports and clears the typed diagnostics snapshot', async ({ page
     entries: unknown[];
     extensionVersion: string;
   };
-  expect(snapshot.extensionVersion).toBe('2.0.0-mock');
+  expect(snapshot.extensionVersion).toBe(`${rootPackage.version}-mock`);
   expect(snapshot.entries).toHaveLength(1);
 
   await page.getByRole('button', { name: '清空诊断' }).click();

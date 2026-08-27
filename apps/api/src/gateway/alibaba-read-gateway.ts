@@ -1,6 +1,7 @@
 import {
   AlibabaClient,
   ALIBABA_SYNC_GATEWAY,
+  APP_VERSION,
   DashboardAdapter,
   downloadPhotoForUpload,
   findCapability,
@@ -158,7 +159,7 @@ export class AlibabaReadGatewayClient implements GatewayClient {
       case 'getDiagnostics':
         return {
           generatedAt: new Date().toISOString(),
-          extensionVersion: '2.0.0-bff',
+          extensionVersion: `${APP_VERSION}-bff`,
           entries: []
         } as ResponseOf<K>;
       case 'listProducts':
