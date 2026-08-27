@@ -1,0 +1,10 @@
+extends:
+  - recommended
+
+rules:
+  # This document is also the runtime schema registry for capability DTOs and
+  # standalone validators, so many components intentionally have no HTTP path.
+  no-unused-components: off
+  # Health probes intentionally have no artificial 4xx response. The project
+  # quality check enforces 4xx responses on every non-probe operation instead.
+  operation-4xx-response: off

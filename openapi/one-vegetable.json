@@ -72,6 +72,20 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -1765,16 +1779,6 @@
     }
   },
   "components": {
-    "parameters": {
-      "Page": { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1, "default": 1 } },
-      "PageSize": {
-        "name": "pageSize",
-        "in": "query",
-        "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
-      },
-      "ProductId": { "name": "productId", "in": "path", "required": true, "schema": { "type": "string" } },
-      "OrderId": { "name": "orderId", "in": "path", "required": true, "schema": { "type": "string" } }
-    },
     "responses": {
       "GatewayFailure": {
         "description": "Gateway failure",

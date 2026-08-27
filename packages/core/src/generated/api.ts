@@ -6644,12 +6644,7 @@ export interface components {
             };
         };
     };
-    parameters: {
-        Page: number;
-        PageSize: number;
-        ProductId: string;
-        OrderId: string;
-    };
+    parameters: never;
     requestBodies: never;
     headers: never;
     pathItems: never;
@@ -6723,6 +6718,16 @@ export interface operations {
         responses: {
             /** @description Backend metadata */
             200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
                 headers: {
                     "X-Request-ID"?: components["schemas"]["RequestId"];
                     [name: string]: unknown;

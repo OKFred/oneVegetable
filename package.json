@@ -41,7 +41,7 @@
     "generate:validators": "tsx scripts/generate-validators.ts",
     "generate:mock-data": "tsx scripts/generate-mock-data.ts",
     "generate:check": "tsx scripts/generate-version.ts --check && tsx scripts/generate-privacy-pages.ts --check && tsx scripts/generate-product-contract.ts --check && tsx scripts/generate-rfq-contract.ts --check && tsx scripts/generate-trade-contract.ts --check && tsx scripts/generate-logistics-contract.ts --check && tsx scripts/generate-insights-contract.ts --check && tsx scripts/generate-photo-contract.ts --check && tsx scripts/generate-platform-contract.ts --check && tsx scripts/generate-types.ts --check && tsx scripts/generate-validators.ts --check && tsx scripts/generate-mock-data.ts --check",
-    "check:openapi": "redocly lint openapi/one-vegetable.json && pnpm run generate:check",
+    "check:openapi": "tsx scripts/check-redocly.ts && tsx scripts/check-openapi-quality.ts && pnpm run generate:check",
     "audit:apis": "tsx scripts/audit-alibaba-api.ts",
     "audit:apis:check": "tsx scripts/audit-alibaba-api.ts --check",
     "snapshot:product-docs": "tsx scripts/snapshot-product-docs.ts",

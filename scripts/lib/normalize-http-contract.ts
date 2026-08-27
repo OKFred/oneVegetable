@@ -418,7 +418,10 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
         summary: 'Get runtime and environment metadata',
         operationId: 'getBackendMeta',
         requestBody: requestBody('RequestEnvelope'),
-        responses: { '200': envelopeResponse('Backend metadata') }
+        responses: {
+          '200': envelopeResponse('Backend metadata'),
+          '400': envelopeResponse('Invalid request')
+        }
       }
     },
     '/operations/call': {
