@@ -21,6 +21,9 @@ pnpm dev:web
 pnpm dev:extension
 ```
 
+Web 只接受 `VITE_GATEWAY_MODE=mock|bff`，拼写错误会直接阻止启动，不会静默转为 Mock。BFF 模式会读取 `/meta/get`，在全局状态和总览中明确显示 `real / replay / mock / disabled`。
+总览的商品、图库和订单指标同时显示逐项可用性：真实返回 `0` 会标记为已确认，不会与未知总数、账号无权限或接口失败混淆。
+
 其他常用命令：
 
 ```bash

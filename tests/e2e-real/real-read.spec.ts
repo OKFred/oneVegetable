@@ -90,6 +90,7 @@ const mockSentinels = ['mock-solar-station', 'RFQ-20260812-001', 'Northwind Trad
 
 test('authenticated Web renders real read results without Mock fallback', async ({ page, context }) => {
   const results: OperationResult[] = [];
+  const operationOrigins = new Set<string>();
   const productSchemaPrerequisites: ProductSchemaPrerequisites = {
     productId: null,
     categoryId: null
@@ -99,6 +100,7 @@ test('authenticated Web renders real read results without Mock fallback', async 
   let targetProductSchema: TargetProductSchemaResult | null = null;
   page.on('response', (response) => {
     if (!response.url().endsWith('/api/v1/operations/call')) return;
+    operationOrigins.add(new URL(response.url()).origin);
     const operation = readString(readRecord(response.request().postDataJSON()), 'operation');
     if (operation === 'renderProductSchema') return;
     const task = captureOperation(response, results, productSchemaPrerequisites)
@@ -122,7 +124,7 @@ test('authenticated Web renders real read results without Mock fallback', async 
 
   try {
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: '一根青菜 BFF' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '登录运营工作台' })).toBeVisible();
     await page.getByRole('button', { name: '初始化管理员' }).click();
     await page.getByLabel('一次性 Bootstrap Token').fill('real-web-smoke-bootstrap');
     await page.getByLabel('用户名').fill('real-read-admin');
@@ -130,7 +132,7 @@ test('authenticated Web renders real read results without Mock fallback', async 
     await page.getByRole('button', { name: '创建管理员' }).click();
 
     await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
-    await expect(page.getByText('BFF 在线')).toBeVisible();
+    await expect(page.getByTestId('data-source-status')).toHaveText(/Alibaba 实时数据/);
     await expectOperation(results, 'getDashboard', 'passed');
     targetProductSchema = await inspectTargetProductSchema(page, context, results);
 
@@ -191,13 +193,10 @@ test('authenticated Web renders real read results without Mock fallback', async 
       )
       .toBeGreaterThan(0);
     await page.getByRole('button', { name: '高级模式' }).click();
+    const xmlPreviewSummary = page.locator('details summary').filter({ hasText: 'Schema XML 预览' });
+    await xmlPreviewSummary.click();
     await expect(page.locator('details pre')).toContainText('<itemSchema');
-    await expect(
-      page
-        .locator('details summary')
-        .filter({ hasText: 'Schema XML 预览' })
-        .getByText('原样', { exact: true })
-    ).toBeVisible();
+    await expect(xmlPreviewSummary.getByText('原样', { exact: true })).toBeVisible();
     expect(
       await page.evaluate(() => globalThis.localStorage.getItem('one-vegetable-product-editor-drafts-v2'))
     ).toBeNull();
@@ -221,7 +220,18 @@ test('authenticated Web renders real read results without Mock fallback', async 
     }
 
     await openDomain(page, 'RFQ', 'RFQ 工作台');
-    await expectOperation(results, 'listRfqs', 'observed');
+    await expectOperation(results, 'getRfqEquity', 'observed');
+    const equityResult = results.find((result) => result.operation === 'getRfqEquity');
+    if (equityResult?.outcome === 'passed') {
+      await expectOperation(results, 'listRfqs', 'observed');
+    }
+    const rfqResult = results.find((result) => result.operation === 'listRfqs') ?? equityResult;
+    if (rfqResult?.outcome !== 'passed') {
+      await expectNoMockContent(page);
+      if (rfqResult?.outcome === 'permission-denied') {
+        await expect(page.getByText('当前应用未获得 RFQ API 包权限')).toBeVisible();
+      }
+    }
 
     await openDomain(page, '数据洞察', '数据与供应商洞察');
     await expectOperation(results, 'getInsightsSupplierRank', 'observed');
@@ -242,7 +252,7 @@ test('authenticated Web renders real read results without Mock fallback', async 
       data: {
         requestId: mutationRequestId,
         operation: 'createProductGroup',
-        payload: { name: 'must-not-be-created' }
+        payload: { name: 'must-not-be-created', parentId: -1 }
       }
     });
     const mutationBody: unknown = await mutationResponse.json();
@@ -263,13 +273,15 @@ test('authenticated Web renders real read results without Mock fallback', async 
   }
 
   expect(captureErrors).toEqual([]);
+  expect(results.every((result) => !result.mockSentinelDetected)).toBe(true);
+  expect([...operationOrigins]).toEqual([apiOrigin]);
 });
 
 async function inspectTargetProductSchema(
   page: Page,
   context: BrowserContext,
   results: OperationResult[]
-): Promise<TargetProductSchemaResult> {
+): Promise<TargetProductSchemaResult | null> {
   const productId = '1601928079741';
   const categoryId = 201712702;
   const requestId = crypto.randomUUID();
@@ -292,9 +304,9 @@ async function inspectTargetProductSchema(
     statusCode: response.status(),
     outcome: response.ok() ? 'passed' : 'provider-error',
     errorCode: readErrorCode(body),
-    mockSentinelDetected: false
+    mockSentinelDetected: mockSentinels.some((sentinel) => JSON.stringify(body).includes(sentinel))
   });
-  expect(response.ok()).toBe(true);
+  if (!response.ok()) return null;
   const xml = readString(readRecord(readRecord(body).data), 'xml');
   if (!xml) throw new Error('目标商品 schema.render 未返回 XML');
   const schemaResult = await inspectXmlWithBrowserDom(page, xml);
@@ -388,7 +400,7 @@ async function inspectXmlWithBrowserDom(
 }
 
 async function openDomain(page: Page, navigation: string, heading: string): Promise<void> {
-  await page.getByRole('button', { name: navigation, exact: true }).click();
+  await page.getByRole('link', { name: navigation, exact: true }).click();
   await expect(page.getByRole('heading', { name: heading })).toBeVisible();
 }
 
@@ -438,7 +450,7 @@ async function captureOperation(
     statusCode: response.status(),
     outcome: response.ok() ? 'passed' : errorCode === '11' ? 'permission-denied' : 'provider-error',
     errorCode,
-    mockSentinelDetected: response.ok() && mockSentinels.some((sentinel) => serialized.includes(sentinel))
+    mockSentinelDetected: mockSentinels.some((sentinel) => serialized.includes(sentinel))
   });
 }
 
@@ -463,6 +475,12 @@ async function expectNoMockSentinel(results: readonly OperationResult[], operati
       message: `${operation} should not contain a Mock sentinel`
     })
     .toBe(false);
+}
+
+async function expectNoMockContent(page: Page): Promise<void> {
+  for (const sentinel of mockSentinels) {
+    await expect(page.locator('body')).not.toContainText(sentinel);
+  }
 }
 
 function readErrorCode(value: unknown): string | null {

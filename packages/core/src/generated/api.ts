@@ -5742,6 +5742,11 @@ export interface components {
             /** @enum {string} */
             verification: "documented" | "account-verified";
             realCallEnabled: boolean;
+            /** @enum {string} */
+            accountVerificationStatus?: "passed" | "no-data" | "permission-denied" | "contract-drift" | "provider-error" | "skipped-prerequisite" | "not-tested";
+            accountVerificationReasonCode?: string | null;
+            /** Format: date-time */
+            accountVerificationCheckedAt?: string | null;
             requestSchema?: string | null;
             responseSchema?: string | null;
         };
@@ -5847,11 +5852,25 @@ export interface components {
             contractValid: boolean;
             contractIssues: components["schemas"]["CapabilityContractIssue"][];
         };
+        DashboardMetricStatus: {
+            /** @enum {string} */
+            state: "available" | "unknown" | "permission-denied" | "error";
+            /** @enum {string} */
+            source: "gateway" | "catalog";
+            reasonCode: string | null;
+        };
+        DashboardMetricStatuses: {
+            productCount: components["schemas"]["DashboardMetricStatus"];
+            photoCount: components["schemas"]["DashboardMetricStatus"];
+            orderCount: components["schemas"]["DashboardMetricStatus"];
+            enabledCapabilityCount: components["schemas"]["DashboardMetricStatus"];
+        };
         DashboardSummary: {
             productCount: number | null;
             photoCount: number | null;
             orderCount: number | null;
             enabledCapabilityCount: number;
+            metricStatuses: components["schemas"]["DashboardMetricStatuses"];
         };
         DiagnosticEntry: {
             id: string;

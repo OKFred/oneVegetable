@@ -21,6 +21,7 @@ import type {
 import type { AlibabaLanguage } from './preferences';
 
 export type DashboardSummary = components['schemas']['DashboardSummary'];
+export type DashboardMetricStatus = components['schemas']['DashboardMetricStatus'];
 export type DiagnosticEntry = components['schemas']['DiagnosticEntry'];
 export type DiagnosticsSnapshot = components['schemas']['DiagnosticsSnapshot'];
 export type Product = components['schemas']['Product'];

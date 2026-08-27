@@ -1,6 +1,7 @@
 import { inject, provide, type InjectionKey } from 'vue';
 
 import type {
+  BackendMeta,
   CredentialVaultRepository,
   ControlClient,
   GatewayClient,
@@ -13,6 +14,13 @@ import type {
   SettingsRepository
 } from '@one-vegetable/core';
 
+import type { RuntimeMetaStatus } from './data-source';
+
+export interface AppRuntimeState {
+  backendMeta: BackendMeta | null;
+  metaStatus: RuntimeMetaStatus;
+}
+
 export interface AppServices {
   gateway: GatewayClient;
   settings: SettingsRepository;
@@ -24,6 +32,7 @@ export interface AppServices {
   productDescriptionTemplates?: ProductDescriptionTemplateClient;
   productMutationJobs?: ProductMutationJobClient;
   operationAvailability?: OperationAvailabilityClient;
+  runtime?: AppRuntimeState;
   mode: 'mock' | 'extension' | 'bff';
 }
 

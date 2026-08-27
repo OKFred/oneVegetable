@@ -118,6 +118,7 @@ describe('OneVegetableApp hash navigation', () => {
 
     expect(globalThis.location.hash).toBe('#/dashboard');
     expect(wrapper.find('nav a[href="#/admin"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain('文档 Replay');
     wrapper.unmount();
   });
 });
@@ -142,6 +143,15 @@ function regularUserControl(): ControlClient {
     idleExpiresTimeUtc: 5_000
   };
   return {
+    backendMeta: () =>
+      Promise.resolve({
+        runtime: 'node',
+        database: 'sqlite',
+        environment: 'test',
+        gatewayMode: 'replay',
+        apiPrefix: '/api/v1',
+        version: '2.0.1'
+      }),
     session: () => Promise.resolve(session)
   } as unknown as ControlClient;
 }

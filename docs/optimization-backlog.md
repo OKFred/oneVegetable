@@ -61,6 +61,18 @@
   - Worker dry-run 显式选择顶层本地环境，避免 Wrangler 对 staging/production 目标不明确。
   - ErrorNotice 改用 core 精确子路径，Web 将契约、HTML 解析和校验代码拆成独立缓存块；最大 JS chunk 从约 607 kB 降至 456 kB，并加入 500 kB 强制预算。
 
+## 下一迭代：真实数据来源透明化
+
+- Web 对 `VITE_GATEWAY_MODE` 使用严格枚举，无效值阻止启动，不再静默转为 Mock。（已完成，2026-08-28）
+- BFF Web 读取 `/meta/get`，全局状态与总览明确区分 `real / replay / mock / disabled / unavailable`。（已完成，2026-08-28）
+- 为总览指标增加逐项来源和可用性，区分“真实为 0”、“上游未提供总数”、“接口失败”和“账号无权限”；只展示稳定原因码，不暴露上游响应正文。（已完成，2026-08-28）
+- 生成能力真实性矩阵，展示契约、Replay、账号验证和当前运行四个独立维度。（已完成，2026-08-28）
+  - 能力目录可按账号验证结果筛选，并明确区分文档验证、CI Replay、脱敏历史账号 smoke 和当前数据源/调用门禁。
+  - 历史账号结果只保存状态、稳定原因码和检查时间，不保存账号、requestId、traceId 或响应内容，也不冒充当前配置凭据的实时权限。
+- 增加 Mock、Replay、Real 三种 Web E2E，确认页面标识与实际出网路径一致，且真实错误不被 Mock 数据覆盖。（已完成，2026-08-28）
+  - 本地 Mock 断言不访问 BFF；Replay 断言所有业务调用进入独立 Worker；Real smoke 断言业务调用只进入本地真实 BFF。
+  - Real smoke 对成功和错误响应都扫描 Mock 哨兵值；RFQ 无权限或上游错误时还会检查页面没有回退为 Mock 列表。
+
 ## 分支约定
 
 - 功能分支从最新 `origin/master` 创建。

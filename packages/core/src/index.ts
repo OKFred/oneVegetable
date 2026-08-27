@@ -1,4 +1,5 @@
 export * from './alibaba-client';
+export * from './account-verification';
 export * from './api-contract';
 export * from './audit';
 export * from './bff-client';

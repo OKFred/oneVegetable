@@ -5,6 +5,7 @@ import {
   nextTick,
   onBeforeUnmount,
   onMounted,
+  reactive,
   ref,
   watch,
   type Component
@@ -45,6 +46,7 @@ import Button from './components/ui/Button.vue';
 import AuthGate from './components/AuthGate.vue';
 import OnboardingDialog from './components/OnboardingDialog.vue';
 import { pageHash, parsePageHash, type PageId } from './lib/hash-router';
+import { resolveDataSource, type RuntimeState } from './lib/data-source';
 import { applyAppTheme, useAppPreferences } from './lib/preferences';
 import { provideServices } from './lib/services';
 
@@ -61,10 +63,15 @@ const props = defineProps<{
   operationAvailability?: OperationAvailabilityClient;
   mode: 'mock' | 'extension' | 'bff';
 }>();
+const runtime = reactive<RuntimeState>({
+  backendMeta: null,
+  metaStatus: props.mode === 'bff' ? 'loading' : 'ready'
+});
 provideServices({
   gateway: props.gateway,
   settings: props.settings,
   mode: props.mode,
+  runtime,
   ...(props.permissions ? { permissions: props.permissions } : {}),
   ...(props.localData ? { localData: props.localData } : {}),
   ...(props.onboarding ? { onboarding: props.onboarding } : {}),
@@ -98,6 +105,7 @@ const baseItems: NavigationItem[] = [
   { id: 'settings', label: '设置', icon: Settings }
 ];
 const session = ref<ControlSession | null>(null);
+const dataSource = computed(() => resolveDataSource(props.mode, runtime));
 const { theme: themePreference } = useAppPreferences();
 const darkTheme = ref(applyAppTheme(themePreference.value) === 'dark');
 const authLoading = ref(props.mode === 'bff' && props.control !== undefined);
@@ -199,6 +207,7 @@ onMounted(async () => {
   globalThis.addEventListener('popstate', syncPageFromHash);
   globalThis.addEventListener('keydown', handleGlobalKeydown);
   if (props.mode === 'bff' && props.control) {
+    void loadBackendMeta(props.control);
     try {
       session.value = await props.control.session();
     } catch {
@@ -209,6 +218,16 @@ onMounted(async () => {
   }
   syncPageFromHash();
 });
+
+async function loadBackendMeta(control: ControlClient): Promise<void> {
+  try {
+    runtime.backendMeta = await control.backendMeta();
+    runtime.metaStatus = 'ready';
+  } catch {
+    runtime.backendMeta = null;
+    runtime.metaStatus = 'error';
+  }
+}
 
 onBeforeUnmount(() => {
   colorScheme.removeEventListener('change', syncTheme);
@@ -272,16 +291,10 @@ async function logout(): Promise<void> {
         </nav>
         <div class="absolute inset-x-3 bottom-4 rounded-lg border border-slate-800 bg-slate-900 p-3">
           <p class="text-xs font-medium">
-            {{ mode === 'mock' ? '本地演示' : mode === 'bff' ? 'Web + BFF' : 'Extension MV3' }}
+            {{ dataSource.label }}
           </p>
           <p class="mt-1 text-[11px] leading-4 text-slate-400">
-            {{
-              mode === 'mock'
-                ? '不发送真实 API 请求'
-                : mode === 'bff'
-                  ? '请求由双运行时 BFF 代理'
-                  : '请求由 service worker 签名'
-            }}
+            {{ dataSource.description }}
           </p>
         </div>
       </aside>
@@ -312,9 +325,9 @@ async function logout(): Promise<void> {
               <Sun v-if="darkTheme" class="size-4" />
               <Moon v-else class="size-4" />
             </Button>
-            <span class="size-2 rounded-full bg-emerald-500" />{{
-              mode === 'mock' ? '契约演示在线' : mode === 'bff' ? 'BFF 在线' : '扩展后台在线'
-            }}
+            <span data-testid="data-source-status" class="inline-flex items-center gap-2">
+              <span class="size-2 rounded-full" :class="dataSource.dotClass" />{{ dataSource.label }}
+            </span>
             <span v-if="session">{{ session.principal.username }}</span>
             <Button v-if="mode === 'bff' && session" variant="outline" size="sm" @click="logout">
               退出

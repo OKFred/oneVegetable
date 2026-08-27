@@ -120,6 +120,15 @@ function controlFixture(
   bootstrap: ControlClient['bootstrap'] = () => Promise.resolve(session)
 ): ControlClient {
   return {
+    backendMeta: () =>
+      Promise.resolve({
+        runtime: 'node',
+        database: 'sqlite',
+        environment: 'test',
+        gatewayMode: 'mock',
+        apiPrefix: '/api/v1',
+        version: '2.0.1'
+      }),
     session: () => Promise.resolve(session),
     bootstrapStatus: () => Promise.resolve(bootstrapStatus),
     bootstrap,
