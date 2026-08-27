@@ -52,7 +52,13 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
     productCount: PRODUCTS.length,
     photoCount: PHOTOS.length,
     orderCount: 6,
-    enabledCapabilityCount: listCapabilities().filter((item) => item.enabled).length
+    enabledCapabilityCount: listCapabilities().filter((item) => item.enabled).length,
+    metricStatuses: {
+      productCount: { state: 'available', source: 'gateway', reasonCode: null },
+      photoCount: { state: 'available', source: 'gateway', reasonCode: null },
+      orderCount: { state: 'available', source: 'gateway', reasonCode: null },
+      enabledCapabilityCount: { state: 'available', source: 'catalog', reasonCode: null }
+    }
   },
   getDiagnostics: {
     generatedAt: '2026-08-13T04:00:00.000Z',

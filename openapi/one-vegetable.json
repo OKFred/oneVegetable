@@ -9398,15 +9398,37 @@
           }
         }
       },
-      "DashboardSummary": {
+      "DashboardMetricStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["state", "source", "reasonCode"],
+        "properties": {
+          "state": { "type": "string", "enum": ["available", "unknown", "permission-denied", "error"] },
+          "source": { "type": "string", "enum": ["gateway", "catalog"] },
+          "reasonCode": { "type": ["string", "null"], "maxLength": 160 }
+        }
+      },
+      "DashboardMetricStatuses": {
         "type": "object",
         "additionalProperties": false,
         "required": ["productCount", "photoCount", "orderCount", "enabledCapabilityCount"],
         "properties": {
+          "productCount": { "$ref": "#/components/schemas/DashboardMetricStatus" },
+          "photoCount": { "$ref": "#/components/schemas/DashboardMetricStatus" },
+          "orderCount": { "$ref": "#/components/schemas/DashboardMetricStatus" },
+          "enabledCapabilityCount": { "$ref": "#/components/schemas/DashboardMetricStatus" }
+        }
+      },
+      "DashboardSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["productCount", "photoCount", "orderCount", "enabledCapabilityCount", "metricStatuses"],
+        "properties": {
           "productCount": { "type": ["integer", "null"], "minimum": 0 },
           "photoCount": { "type": ["integer", "null"], "minimum": 0 },
           "orderCount": { "type": ["integer", "null"], "minimum": 0 },
-          "enabledCapabilityCount": { "type": "integer", "minimum": 0 }
+          "enabledCapabilityCount": { "type": "integer", "minimum": 0 },
+          "metricStatuses": { "$ref": "#/components/schemas/DashboardMetricStatuses" }
         }
       },
       "DiagnosticEntry": {

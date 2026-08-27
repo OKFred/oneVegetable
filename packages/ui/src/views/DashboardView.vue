@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/vue-query';
 import { Boxes, Image, PlugZap, ShoppingCart } from '@lucide/vue';
 
 import { useServices } from '../lib/services';
+import DashboardMetricCard from '../components/DashboardMetricCard.vue';
 import Card from '../components/ui/Card.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
@@ -15,10 +16,6 @@ const summary = useQuery({
   queryKey: ['dashboard'],
   queryFn: () => gateway.request('getDashboard', undefined)
 });
-
-function formatMetric(value: number | null | undefined): string {
-  return value === null || value === undefined ? '—' : value.toLocaleString();
-}
 </script>
 
 <template>
@@ -38,37 +35,42 @@ function formatMetric(value: number | null | undefined): string {
   </PageHeader>
   <QueryState :loading="summary.isPending.value" :error="summary.error.value">
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <Card class="p-5">
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-muted-foreground">商品</span><Boxes class="size-4 text-primary" />
-        </div>
-        <p class="mt-3 text-3xl font-semibold">{{ formatMetric(summary.data.value?.productCount) }}</p>
-        <p class="mt-1 text-xs text-muted-foreground">Schema 发品与更新</p>
-      </Card>
-      <Card class="p-5">
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-muted-foreground">图库</span><Image class="size-4 text-primary" />
-        </div>
-        <p class="mt-3 text-3xl font-semibold">{{ formatMetric(summary.data.value?.photoCount) }}</p>
-        <p class="mt-1 text-xs text-muted-foreground">总数不可确认时显示 —</p>
-      </Card>
-      <Card class="p-5">
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-muted-foreground">订单总数</span
-          ><ShoppingCart class="size-4 text-primary" />
-        </div>
-        <p class="mt-3 text-3xl font-semibold">{{ formatMetric(summary.data.value?.orderCount) }}</p>
-        <p class="mt-1 text-xs text-muted-foreground">订单摘要、资金与物流</p>
-      </Card>
-      <Card class="p-5">
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-muted-foreground">已启用能力</span><PlugZap class="size-4 text-primary" />
-        </div>
-        <p class="mt-3 text-3xl font-semibold">
-          {{ formatMetric(summary.data.value?.enabledCapabilityCount) }}
-        </p>
-        <p class="mt-1 text-xs text-muted-foreground">项目内已启用的合格能力</p>
-      </Card>
+      <DashboardMetricCard
+        title="商品"
+        :value="summary.data.value?.productCount"
+        :status="summary.data.value?.metricStatuses.productCount"
+        description="Schema 发品与更新"
+        :gateway-source-label="dataSource.label"
+      >
+        <template #icon><Boxes class="size-4 text-primary" /></template>
+      </DashboardMetricCard>
+      <DashboardMetricCard
+        title="图库"
+        :value="summary.data.value?.photoCount"
+        :status="summary.data.value?.metricStatuses.photoCount"
+        description="图库素材总数"
+        :gateway-source-label="dataSource.label"
+      >
+        <template #icon><Image class="size-4 text-primary" /></template>
+      </DashboardMetricCard>
+      <DashboardMetricCard
+        title="订单总数"
+        :value="summary.data.value?.orderCount"
+        :status="summary.data.value?.metricStatuses.orderCount"
+        description="订单摘要、资金与物流"
+        :gateway-source-label="dataSource.label"
+      >
+        <template #icon><ShoppingCart class="size-4 text-primary" /></template>
+      </DashboardMetricCard>
+      <DashboardMetricCard
+        title="已启用能力"
+        :value="summary.data.value?.enabledCapabilityCount"
+        :status="summary.data.value?.metricStatuses.enabledCapabilityCount"
+        description="项目内已启用的合格能力"
+        :gateway-source-label="dataSource.label"
+      >
+        <template #icon><PlugZap class="size-4 text-primary" /></template>
+      </DashboardMetricCard>
     </div>
     <div class="mt-5 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
       <Card class="p-5">

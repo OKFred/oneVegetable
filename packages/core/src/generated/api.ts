@@ -5847,11 +5847,25 @@ export interface components {
             contractValid: boolean;
             contractIssues: components["schemas"]["CapabilityContractIssue"][];
         };
+        DashboardMetricStatus: {
+            /** @enum {string} */
+            state: "available" | "unknown" | "permission-denied" | "error";
+            /** @enum {string} */
+            source: "gateway" | "catalog";
+            reasonCode: string | null;
+        };
+        DashboardMetricStatuses: {
+            productCount: components["schemas"]["DashboardMetricStatus"];
+            photoCount: components["schemas"]["DashboardMetricStatus"];
+            orderCount: components["schemas"]["DashboardMetricStatus"];
+            enabledCapabilityCount: components["schemas"]["DashboardMetricStatus"];
+        };
         DashboardSummary: {
             productCount: number | null;
             photoCount: number | null;
             orderCount: number | null;
             enabledCapabilityCount: number;
+            metricStatuses: components["schemas"]["DashboardMetricStatuses"];
         };
         DiagnosticEntry: {
             id: string;

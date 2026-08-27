@@ -24,7 +24,14 @@ describe('MockGatewayClient', () => {
     expect(grouped.items[0]?.groupName).toBe('Energy storage');
 
     const dashboard = await client.request('getDashboard', undefined);
-    expect(dashboard).toMatchObject({ productCount: 3, photoCount: 3 });
+    expect(dashboard).toMatchObject({
+      productCount: 3,
+      photoCount: 3,
+      metricStatuses: {
+        productCount: { state: 'available', source: 'gateway', reasonCode: null },
+        enabledCapabilityCount: { state: 'available', source: 'catalog', reasonCode: null }
+      }
+    });
 
     const result = await client.request('publishProduct', {
       categoryId: 100003109,
