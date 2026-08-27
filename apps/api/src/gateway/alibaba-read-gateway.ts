@@ -96,7 +96,7 @@ export class AlibabaReadGatewayClient implements GatewayClient {
         : this.#credentials;
     return new AlibabaClient(credentials, this.#network, {
       maxAttempts: this.#maxAttempts,
-      shouldRetry: (_method, error) => error.retryable,
+      shouldRetry: (method, error) => error.retryable && getCapabilityDefinition(method)?.risk === 'read',
       protocol,
       ...(this.#wait ? { wait: this.#wait } : {}),
       ...(context ? { requestId: context.requestId } : {})

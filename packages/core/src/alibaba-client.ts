@@ -219,6 +219,8 @@ function getAlibabaError(value: unknown): GatewayError | null {
     return { code: 'ALIBABA_ERROR', message: 'Alibaba API 返回错误', retryable: false };
   }
   const code = 'code' in response ? String(response.code) : 'ALIBABA_ERROR';
+  const subCode =
+    'sub_code' in response && typeof response.sub_code === 'string' ? response.sub_code : undefined;
   const message =
     ('sub_msg' in response && typeof response.sub_msg === 'string' && response.sub_msg) ||
     ('msg' in response && typeof response.msg === 'string' && response.msg) ||
@@ -226,12 +228,10 @@ function getAlibabaError(value: unknown): GatewayError | null {
   return {
     code,
     message,
-    ...('sub_code' in response && typeof response.sub_code === 'string'
-      ? { subCode: response.sub_code }
-      : {}),
+    ...(subCode ? { subCode } : {}),
     ...('request_id' in response && typeof response.request_id === 'string'
       ? { traceId: response.request_id }
       : {}),
-    retryable: false
+    retryable: code === '15' && subCode === '000000'
   };
 }

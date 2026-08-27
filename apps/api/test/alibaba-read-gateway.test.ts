@@ -185,6 +185,24 @@ describe('BFF Alibaba read gateway', () => {
     expect(send).not.toHaveBeenCalled();
   });
 
+  it('does not retry product publishing after a retryable upstream response', async () => {
+    const send = vi.fn<NetworkTransport['send']>(() => Promise.resolve(Response.json({}, { status: 503 })));
+    const gateway = new AlibabaReadGatewayClient(credentials, {
+      transport: { send },
+      maxAttempts: 3,
+      wait: () => Promise.resolve()
+    });
+
+    await expect(
+      gateway.request('publishProduct', {
+        categoryId: 201712702,
+        language: 'en_US',
+        schemaXml: '<itemSchema />'
+      })
+    ).rejects.toMatchObject({ gatewayError: { code: 'UPSTREAM_UNAVAILABLE', retryable: true } });
+    expect(send).toHaveBeenCalledOnce();
+  });
+
   it('uses dedicated and explicit product draft and incremental update paths', async () => {
     const send = vi.fn<NetworkTransport['send']>((input, init) => {
       if (!(init.body instanceof URLSearchParams)) throw new Error('expected URLSearchParams');
