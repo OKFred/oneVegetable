@@ -11,11 +11,13 @@ test.setTimeout(90_000);
 test.beforeAll(async () => {
   const extensionPath = resolve(import.meta.dirname, '../../apps/extension/.output/chrome-mv3');
   const manifest = JSON.parse(await readFile(resolve(extensionPath, 'manifest.json'), 'utf8')) as {
+    background?: { service_worker?: string; type?: string };
     host_permissions?: string[];
     optional_host_permissions?: string[];
     permissions?: string[];
     minimum_chrome_version?: string;
   };
+  expect(manifest.background).toEqual({ service_worker: 'background.js', type: 'module' });
   expect(manifest.permissions).toEqual(['storage']);
   expect(manifest.host_permissions).toEqual(['https://eco.taobao.com/*']);
   expect(manifest.optional_host_permissions).toEqual(['http://*/*', 'https://*/*']);
@@ -89,7 +91,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: '开始使用' }).click();
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
-  await page.getByRole('button', { name: '设置' }).click();
+  await page.getByRole('link', { name: '设置' }).click();
   await expect(page.getByRole('heading', { name: '凭证保险库' })).toBeVisible();
   await expect(page.getByText('未创建', { exact: true })).toBeVisible();
   await page.getByLabel('App Key').fill('e2e-app-key');
@@ -118,7 +120,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   expect(JSON.stringify(encryptedSettings)).not.toContain('e2e-secret');
   expect(JSON.stringify(encryptedSettings)).not.toContain('e2e-token');
   await page.reload();
-  await page.getByRole('button', { name: '设置' }).click();
+  await page.getByRole('link', { name: '设置' }).click();
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
   await expect(page.getByLabel('App Secret')).toHaveValue('');
   await expect(page.getByLabel('Access Token')).toHaveValue('');
@@ -187,7 +189,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   });
 
   await page.reload();
-  await page.getByRole('button', { name: '设置' }).click();
+  await page.getByRole('link', { name: '设置' }).click();
   await expect(page.getByText('已锁定', { exact: true })).toBeVisible();
   await page.getByLabel('保险库口令').fill('wrong-vault-password');
   await page.getByRole('button', { name: '解锁' }).click();
@@ -225,12 +227,12 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
   await expect(page.getByLabel('空闲自动锁定时间')).toHaveValue('5');
 
-  await page.getByRole('button', { name: 'API 能力' }).click();
+  await page.getByRole('link', { name: 'API 能力' }).click();
   await expect(page.locator('tbody tr')).toHaveCount(10);
   await expect(page.getByText('共 86 条，当前 1–10 条')).toBeVisible();
   await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.product.schema.add');
   await page.getByRole('button', { name: 'alibaba.icbu.product.schema.add', exact: true }).click();
-  await expect(page.getByText(/真实写能力尚未通过账号 smoke test/)).toBeVisible();
+  await expect(page.getByText(/该真实写能力未在当前扩展版本开放/)).toBeVisible();
   await expect(page.getByRole('button', { name: '调用能力' })).toBeDisabled();
   await page.getByLabel('关闭详情').click();
 
@@ -272,7 +274,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   expect(platformGateErrors.every((response) => JSON.stringify(response).includes('ok":false'))).toBe(true);
   expect(JSON.stringify(platformGateErrors[0])).toContain('天鹿风控协议');
   expect(JSON.stringify(platformGateErrors[1])).toContain('URL 爬取供应商');
-  expect(JSON.stringify(platformGateErrors[2])).toContain('真实账号 smoke test');
+  expect(JSON.stringify(platformGateErrors[2])).toContain('后台已在出网前拒绝');
 
   await page.evaluate(() => {
     localStorage.setItem(
@@ -285,7 +287,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
       })
     );
   });
-  await page.getByRole('button', { name: '商品' }).click();
+  await page.getByRole('link', { name: '商品' }).click();
   await page.getByRole('tab', { name: '商品发布/编辑' }).click();
   await expect(page.getByText('发现从旧版本迁移的本地草稿')).toBeVisible();
   await page.getByRole('button', { name: '继续本地草稿' }).click();
@@ -299,34 +301,34 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(templateDialog.getByRole('button', { name: '新建共享模板' })).toHaveCount(0);
   await page.getByRole('button', { name: '关闭商品详情模板' }).click();
   await page.getByRole('button', { name: /插入图库图片/ }).click();
-  await expect(page.getByRole('heading', { name: '国际站图库' })).toBeVisible();
-  await page.getByRole('button', { name: '上传图片' }).click();
+  await expect(page.getByRole('heading', { name: '选择图库素材' })).toBeVisible();
+  await page.getByRole('button', { name: '上传新素材' }).click();
   const uploadDialog = page.getByRole('dialog', { name: '上传图片到图库' });
   await expect(uploadDialog).toBeVisible();
   await expect(uploadDialog.locator('input[type="file"]')).toBeEnabled();
   await expect(uploadDialog.getByRole('textbox', { name: '外部图片 URL' })).toBeEnabled();
   await expect(uploadDialog.getByText(/单张最大 5 MiB/)).toBeVisible();
-  await uploadDialog.getByRole('button', { name: '完成' }).click();
+  await uploadDialog.getByRole('button', { name: '关闭上传图片到图库' }).click();
   await page.getByRole('button', { name: '完成选择' }).click();
 
-  await page.getByRole('button', { name: '图库', exact: true }).click();
+  await page.getByRole('link', { name: '图库', exact: true }).click();
   await expect(page.getByRole('heading', { name: '图库' })).toBeVisible();
   await page.getByLabel('图库分组名称').fill('真实分组');
   await expect(page.getByRole('button', { name: '新增' })).toBeEnabled();
   await expect(page.getByText(/真实分组新增、改名和删除已完成账号验证/)).toBeVisible();
 
-  await page.getByRole('button', { name: 'RFQ' }).click();
+  await page.getByRole('link', { name: 'RFQ' }).click();
   await expect(page.getByRole('heading', { name: 'RFQ 工作台' })).toBeVisible();
-  await expect(page.getByText(/真实附件上传和提交报价尚未通过账号 smoke test/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'RFQ 权限检查失败' })).toBeVisible();
 
-  await page.getByRole('button', { name: '订单' }).click();
+  await page.getByRole('link', { name: '订单' }).click();
   await expect(page.getByRole('heading', { name: '交易 / 订单工作台' })).toBeVisible();
   await expect(page.getByText(/完整详情明确标记为不可用/)).toBeVisible();
   await page.getByRole('button', { name: '信保订单草稿' }).click();
   await expect(page.getByText('真实写入已禁用')).toBeVisible();
   await expect(page.getByRole('button', { name: '创建信保订单（未开放）' })).toBeDisabled();
 
-  await page.getByRole('button', { name: '国际物流' }).click();
+  await page.getByRole('link', { name: '国际物流' }).click();
   await expect(page.getByRole('heading', { name: '国际物流工作台' })).toBeVisible();
   await expect(page.getByText(/扩展内不会发出这些请求/)).toBeVisible();
   await expect(page.getByRole('button', { name: '业务资格待验收' })).toBeDisabled();
@@ -335,7 +337,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('button', { name: '下单草稿' }).click();
   await expect(page.getByRole('button', { name: '真实下单保持禁用' })).toBeDisabled();
 
-  await page.getByRole('button', { name: '数据洞察' }).click();
+  await page.getByRole('link', { name: '数据洞察' }).click();
   await expect(page.getByRole('heading', { name: '数据与供应商洞察' })).toBeVisible();
   await page.getByRole('button', { name: '合作方能力' }).click();
   await expect(page.getByText(/CGS 小满签约客户数据查询/)).toBeVisible();
@@ -366,7 +368,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   expect(partnerCapabilityError).toMatchObject({ ok: false });
   expect(JSON.stringify(partnerCapabilityError)).toContain('CGS 小满签约客户');
 
-  await page.getByRole('button', { name: '设置' }).click();
+  await page.getByRole('link', { name: '设置' }).click();
   await expect(page.getByRole('heading', { name: '脱敏诊断' })).toBeVisible();
   await expect(page.getByLabel('诊断记录数量')).toContainText(/\d+ 条/u);
   const downloadPromise = page.waitForEvent('download');
@@ -444,7 +446,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
     });
   });
   await page.reload();
-  await page.getByRole('button', { name: '设置' }).click();
+  await page.getByRole('link', { name: '设置' }).click();
   await expect(page.getByText('待迁移', { exact: true })).toBeVisible();
   await expect(page.getByText(/真实请求已停止读取该记录/)).toBeVisible();
   await page.getByLabel('新建保险库口令').fill('migrated-vault-password');

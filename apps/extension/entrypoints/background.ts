@@ -131,17 +131,20 @@ const QUALIFICATION_GATED_LOGISTICS_OPERATIONS = new Set<OperationId>([
   'createLogisticsOrder'
 ]);
 
-export default defineBackground(() => {
-  const storageAccessReady = restrictStorageToTrustedContexts();
-  // WebExtension runtime listeners support returning a promise for the response.
-  // eslint-disable-next-line @typescript-eslint/no-misused-promises
-  browser.runtime.onMessage.addListener((value: unknown) => {
-    const vaultMessage = asCredentialVaultRequest(value);
-    if (vaultMessage) return handleCredentialVaultRequest(vaultMessage, storageAccessReady);
-    const message = asRuntimeRequest(value);
-    if (!message) return undefined;
-    return handleRequestAfterStorageReady(message, storageAccessReady);
-  });
+export default defineBackground({
+  type: 'module',
+  main() {
+    const storageAccessReady = restrictStorageToTrustedContexts();
+    // WebExtension runtime listeners support returning a promise for the response.
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+    browser.runtime.onMessage.addListener((value: unknown) => {
+      const vaultMessage = asCredentialVaultRequest(value);
+      if (vaultMessage) return handleCredentialVaultRequest(vaultMessage, storageAccessReady);
+      const message = asRuntimeRequest(value);
+      if (!message) return undefined;
+      return handleRequestAfterStorageReady(message, storageAccessReady);
+    });
+  }
 });
 
 async function restrictStorageToTrustedContexts(): Promise<void> {

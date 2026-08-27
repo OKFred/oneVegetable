@@ -2,6 +2,10 @@ import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 interface Manifest {
+  background?: {
+    service_worker?: string;
+    type?: string;
+  };
   manifest_version?: number;
   name?: string;
   version?: string;
@@ -50,6 +54,9 @@ const screenshots = (await readdir(screenshotDirectory))
 const errors: string[] = [];
 
 if (manifest.manifest_version !== 3) errors.push('manifest_version must be 3');
+if (manifest.background?.service_worker !== 'background.js' || manifest.background.type !== 'module') {
+  errors.push('manifest background must remain an ESM service worker');
+}
 if (manifest.name !== '__MSG_extName__') errors.push('manifest name must use __MSG_extName__');
 if (manifest.description !== '__MSG_extDescription__')
   errors.push('manifest description must use __MSG_extDescription__');

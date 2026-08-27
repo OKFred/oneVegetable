@@ -2,6 +2,10 @@ import { readFile, readdir, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 interface Manifest {
+  background?: {
+    service_worker?: string;
+    type?: string;
+  };
   permissions?: string[];
   host_permissions?: string[];
   optional_host_permissions?: string[];
@@ -35,8 +39,11 @@ const eagerOptionBytes = eagerOptionFiles.reduce(
 const totalBytes = sizes.reduce((total, entry) => total + entry.size, 0);
 
 const errors: string[] = [];
-if (!background || background.size > 1_800_000) {
-  errors.push(`background.js exceeds 1.8 MB: ${background?.size ?? 'missing'}`);
+if (!background || background.size > 100_000) {
+  errors.push(`background.js exceeds 100 KB: ${background?.size ?? 'missing'}`);
+}
+if (manifest.background?.service_worker !== 'background.js' || manifest.background.type !== 'module') {
+  errors.push('MV3 background must remain an ESM service worker');
 }
 for (const chunk of eagerPageChunks) {
   if (chunk.size > 800_000) errors.push(`${chunk.file} exceeds the 800 KB eager-page budget: ${chunk.size}`);

@@ -8,11 +8,12 @@
 
 ### 扩展包体收口
 
-- 状态：待完成。
+- 状态：已完成（2026-08-27）。
 - 当前扩展解包体积为 `3,249,839` 字节，距离项目 `3,250,000` 字节门禁仅剩 161 字节。
 - 当前 `background.js` 为 `1,722,095` 字节。源码中的领域 validator 虽使用动态导入，但 classic service worker 构建会将其内联到单文件。
 - 改为 MV3 ESM service worker，使能力定义和 standalone validator 可按领域共享、分块加载。
 - 保留 CSP、无 source map、敏感值扫描及真实 mutation 出网前门禁。
+- 完成后 `background.js` 为 `24,682` 字节，扩展解包体积为 `2,822,416` 字节；七个领域 validator 均为独立 chunk。
 
 ### Mock 验收真实性
 
