@@ -38,7 +38,7 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
       ],
       "page": 1,
       "pageSize": 20,
-      "total": 128
+      "total": 3
     },
     "getProduct": {
       "id": "10000001",
@@ -181,42 +181,42 @@ export const PHOTO_MOCK_DATA: PhotoMockData = {
     {
       "id": "-1",
       "name": "全部图片",
-      "photoCount": 436,
+      "photoCount": 3,
       "parentId": null,
       "level": 1
     },
     {
       "id": "2001",
       "name": "商品主图",
-      "photoCount": 84,
+      "photoCount": 2,
       "parentId": null,
       "level": 1
     },
     {
       "id": "2002",
       "name": "详情素材",
-      "photoCount": 137,
+      "photoCount": 1,
       "parentId": null,
       "level": 1
     },
     {
       "id": "2101",
       "name": "白底主图",
-      "photoCount": 36,
+      "photoCount": 0,
       "parentId": "2001",
       "level": 2
     },
     {
       "id": "2201",
       "name": "场景详情",
-      "photoCount": 58,
+      "photoCount": 0,
       "parentId": "2002",
       "level": 2
     },
     {
       "id": "2211",
       "name": "户外场景",
-      "photoCount": 18,
+      "photoCount": 0,
       "parentId": "2201",
       "level": 3
     }
@@ -226,42 +226,42 @@ export const PHOTO_MOCK_DATA: PhotoMockData = {
       {
         "id": "-1",
         "name": "全部图片",
-        "photoCount": 436,
+        "photoCount": 3,
         "parentId": null,
         "level": 1
       },
       {
         "id": "2001",
         "name": "商品主图",
-        "photoCount": 84,
+        "photoCount": 2,
         "parentId": null,
         "level": 1
       },
       {
         "id": "2002",
         "name": "详情素材",
-        "photoCount": 137,
+        "photoCount": 1,
         "parentId": null,
         "level": 1
       },
       {
         "id": "2101",
         "name": "白底主图",
-        "photoCount": 36,
+        "photoCount": 0,
         "parentId": "2001",
         "level": 2
       },
       {
         "id": "2201",
         "name": "场景详情",
-        "photoCount": 58,
+        "photoCount": 0,
         "parentId": "2002",
         "level": 2
       },
       {
         "id": "2211",
         "name": "户外场景",
-        "photoCount": 18,
+        "photoCount": 0,
         "parentId": "2201",
         "level": 3
       }
@@ -283,6 +283,7 @@ export const PHOTO_MOCK_DATA: PhotoMockData = {
           "id": "ph_001",
           "name": "solar-station-front.jpg",
           "url": "https://sc04.alicdn.com/kf/mock-solar-station.jpg",
+          "previewUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjEyMDAiIHZpZXdCb3g9IjAgMCAxMjAwIDEyMDAiPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJiYWNrZ3JvdW5kIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2RiZWFmZSIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZWNmZGY1IiAvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYm9keSIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMzMzQxNTUiIC8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzBmMTcyYSIgLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxyZWN0IHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjEyMDAiIHJ4PSI3MiIgZmlsbD0idXJsKCNiYWNrZ3JvdW5kKSIgLz4KICA8Y2lyY2xlIGN4PSI5MzAiIGN5PSIyNDUiIHI9IjkyIiBmaWxsPSIjZmJiZjI0IiBvcGFjaXR5PSIwLjkiIC8+CiAgPHBhdGggZD0iTTM4MCAzODVjMC04OCA3Mi0xNjAgMTYwLTE2MGgxMjBjODggMCAxNjAgNzIgMTYwIDE2MHY1NWgtNzh2LTU1YzAtNDUtMzctODItODItODJINTQwYy00NSAwLTgyIDM3LTgyIDgydjU1eiIgZmlsbD0iIzBmMTcyYSIgLz4KICA8cmVjdCB4PSIyNjAiIHk9IjQxMCIgd2lkdGg9IjY4MCIgaGVpZ2h0PSI1MDAiIHJ4PSI2NCIgZmlsbD0idXJsKCNib2R5KSIgLz4KICA8cmVjdCB4PSIzMzAiIHk9IjUwMCIgd2lkdGg9IjI4MCIgaGVpZ2h0PSIxNzAiIHJ4PSIyNCIgZmlsbD0iIzBiMTIyMCIgc3Ryb2tlPSIjNjQ3NDhiIiBzdHJva2Utd2lkdGg9IjEwIiAvPgogIDxyZWN0IHg9IjM2MCIgeT0iNTMwIiB3aWR0aD0iMjIwIiBoZWlnaHQ9IjExMCIgcng9IjEyIiBmaWxsPSIjMjJjNTVlIiBvcGFjaXR5PSIwLjg1IiAvPgogIDxwYXRoIGQ9Ik0zODUgNjA1aDQybDI4LTQ2IDM4IDcwIDI4LTM5aDQyIiBmaWxsPSJub25lIiBzdHJva2U9IiNlY2ZkZjUiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgLz4KICA8Y2lyY2xlIGN4PSI3MzAiIGN5PSI1NjUiIHI9IjQ4IiBmaWxsPSIjMTExODI3IiBzdHJva2U9IiM5NGEzYjgiIHN0cm9rZS13aWR0aD0iMTAiIC8+CiAgPGNpcmNsZSBjeD0iODUwIiBjeT0iNTY1IiByPSI0OCIgZmlsbD0iIzExMTgyNyIgc3Ryb2tlPSIjOTRhM2I4IiBzdHJva2Utd2lkdGg9IjEwIiAvPgogIDxyZWN0IHg9IjY4MiIgeT0iNjkwIiB3aWR0aD0iMjE2IiBoZWlnaHQ9Ijc0IiByeD0iMjQiIGZpbGw9IiMxMTE4MjciIHN0cm9rZT0iIzk0YTNiOCIgc3Ryb2tlLXdpZHRoPSI4IiAvPgogIDxjaXJjbGUgY3g9IjczMCIgY3k9IjcyNyIgcj0iMTMiIGZpbGw9IiMzNGQzOTkiIC8+CiAgPGNpcmNsZSBjeD0iNzkwIiBjeT0iNzI3IiByPSIxMyIgZmlsbD0iI2ZiYmYyNCIgLz4KICA8Y2lyY2xlIGN4PSI4NTAiIGN5PSI3MjciIHI9IjEzIiBmaWxsPSIjNjBhNWZhIiAvPgogIDx0ZXh0IHg9IjYwMCIgeT0iMTAzMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjU4IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjMGYxNzJhIj5Qb3J0YWJsZSBQb3dlciBTdGF0aW9uPC90ZXh0Pgo8L3N2Zz4K",
           "groupId": "2001",
           "width": 1200,
           "height": 1200,
@@ -294,6 +295,7 @@ export const PHOTO_MOCK_DATA: PhotoMockData = {
           "id": "ph_002",
           "name": "canvas-bag-natural.jpg",
           "url": "https://sc04.alicdn.com/kf/mock-canvas-bag.jpg",
+          "previewUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjEyMDAiIHZpZXdCb3g9IjAgMCAxMjAwIDEyMDAiPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJiYWNrZ3JvdW5kIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZjdlZCIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmVmM2M3IiAvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iY2FudmFzIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2U3ZDNhYyIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjYzlhNjZiIiAvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iMTIwMCIgcng9IjcyIiBmaWxsPSJ1cmwoI2JhY2tncm91bmQpIiAvPgogIDxlbGxpcHNlIGN4PSI2MDAiIGN5PSI5MzAiIHJ4PSIzNjAiIHJ5PSI3MiIgZmlsbD0iIzkyNDAwZSIgb3BhY2l0eT0iMC4xNCIgLz4KICA8cGF0aCBkPSJNMzcwIDQyMGg0NjBsOTUgNTAwSDI3NXoiIGZpbGw9InVybCgjY2FudmFzKSIgc3Ryb2tlPSIjOTI0MDBlIiBzdHJva2Utd2lkdGg9IjE0IiBzdHJva2UtbGluZWpvaW49InJvdW5kIiAvPgogIDxwYXRoIGQ9Ik00MzAgNDcwVjM0MGMwLTEwNSA3Ni0xODUgMTcwLTE4NXMxNzAgODAgMTcwIDE4NXYxMzAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzkyNDAwZSIgc3Ryb2tlLXdpZHRoPSIzNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiAvPgogIDxwYXRoIGQ9Ik00NTUgNDcwVjM1MGMwLTg4IDY0LTE1MyAxNDUtMTUzczE0NSA2NSAxNDUgMTUzdjEyMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZjVkZWIzIiBzdHJva2Utd2lkdGg9IjEyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIC8+CiAgPGNpcmNsZSBjeD0iNjAwIiBjeT0iNjY1IiByPSIxMzIiIGZpbGw9IiNmOGZhZmMiIG9wYWNpdHk9IjAuNzIiIC8+CiAgPHBhdGggZD0iTTYwMCA1NzBjNTggMCAxMDUgNDcgMTA1IDEwNXMtNDcgMTA1LTEwNSAxMDUtMTA1LTQ3LTEwNS0xMDUgNDctMTA1IDEwNS0xMDV6IiBmaWxsPSIjMTY2NTM0IiAvPgogIDxwYXRoIGQ9Ik02MDAgNjE1Yy0zNSAwLTYwIDI1LTYwIDU5IDAgMzcgMjcgNjIgNjAgNjIgMTcgMCAzMy02IDQ1LTE3di0zOWgtNTB2LTI0aDc5djc2Yy0xOSAxOS00NSAzMC03NSAzMC01MyAwLTkyLTM3LTkyLTg4IDAtNTAgNDAtODggOTMtODggMjkgMCA1NCAxMCA3MiAyOWwtMjAgMjBjLTE0LTE0LTMxLTIyLTUyLTIyeiIgZmlsbD0iI2VjZmRmNSIgLz4KICA8dGV4dCB4PSI2MDAiIHk9IjEwNTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI1OCIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iIzc4MzUwZiI+UmVjeWNsZWQgQ2FudmFzIFRvdGU8L3RleHQ+Cjwvc3ZnPgo=",
           "groupId": "2001",
           "width": 1200,
           "height": 1200,
@@ -305,6 +307,7 @@ export const PHOTO_MOCK_DATA: PhotoMockData = {
           "id": "ph_003",
           "name": "dehydrator-detail.jpg",
           "url": "https://sc04.alicdn.com/kf/mock-dehydrator-detail.jpg",
+          "previewUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iNDgwIiB2aWV3Qm94PSIwIDAgNjQwIDQ4MCI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImJhY2tncm91bmQiIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZTJlOGYwIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNmOGZhZmMiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJzdGVlbCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjAiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiM5NGEzYjgiIC8+CiAgICAgIDxzdG9wIG9mZnNldD0iMC40OCIgc3RvcC1jb2xvcj0iI2Y4ZmFmYyIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNjQ3NDhiIiAvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSI0ODAiIHJ4PSIyOCIgZmlsbD0idXJsKCNiYWNrZ3JvdW5kKSIgLz4KICA8cmVjdCB4PSIxMjgiIHk9IjU4IiB3aWR0aD0iMzg0IiBoZWlnaHQ9IjMzMCIgcng9IjI0IiBmaWxsPSJ1cmwoI3N0ZWVsKSIgc3Ryb2tlPSIjMzM0MTU1IiBzdHJva2Utd2lkdGg9IjgiIC8+CiAgPHJlY3QgeD0iMTY4IiB5PSIxMTIiIHdpZHRoPSIzMDQiIGhlaWdodD0iMjEwIiByeD0iMTIiIGZpbGw9IiMxMTE4MjciIHN0cm9rZT0iIzQ3NTU2OSIgc3Ryb2tlLXdpZHRoPSI2IiAvPgogIDxwYXRoIGQ9Ik0xOTAgMTU4aDI2ME0xOTAgMjE0aDI2ME0xOTAgMjcwaDI2MCIgc3Ryb2tlPSIjOTRhM2I4IiBzdHJva2Utd2lkdGg9IjYiIC8+CiAgPGNpcmNsZSBjeD0iMjIwIiBjeT0iMzU1IiByPSIxNCIgZmlsbD0iIzIyYzU1ZSIgLz4KICA8Y2lyY2xlIGN4PSIyNjgiIGN5PSIzNTUiIHI9IjE0IiBmaWxsPSIjZjU5ZTBiIiAvPgogIDxyZWN0IHg9IjMzMCIgeT0iMzM4IiB3aWR0aD0iMTIwIiBoZWlnaHQ9IjM0IiByeD0iOSIgZmlsbD0iIzBmMTcyYSIgLz4KICA8dGV4dCB4PSIzOTAiIHk9IjM2MSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE2IiBmaWxsPSIjZTJlOGYwIj42NcKwQzwvdGV4dD4KICA8dGV4dCB4PSIzMjAiIHk9IjQzOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjMwIiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjMGYxNzJhIj5Gb29kIERlaHlkcmF0b3I8L3RleHQ+Cjwvc3ZnPgo=",
           "groupId": "2002",
           "width": 640,
           "height": 480,
@@ -315,15 +318,15 @@ export const PHOTO_MOCK_DATA: PhotoMockData = {
       ],
       "page": 1,
       "pageSize": 24,
-      "total": 436
+      "total": 3
     },
     "uploadPhoto": {
       "id": "ph_new",
       "name": "uploaded-image.jpg",
-      "url": "https://placehold.co/800x800/155e75/f8fafc?text=Uploaded",
+      "url": "https://sc04.alicdn.com/kf/mock-uploaded-image.jpg",
       "groupId": "-1",
-      "width": 800,
-      "height": 800,
+      "width": 1200,
+      "height": 1200,
       "fileSize": 153600,
       "referenceCount": 0,
       "modifiedAt": "2026-08-12T04:00:00Z"

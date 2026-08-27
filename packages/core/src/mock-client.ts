@@ -21,6 +21,7 @@ import type {
   GatewayClient,
   OperationId,
   OperationMap,
+  Photo,
   PhotoGroup,
   ProductGroup,
   RequestOf,
@@ -33,6 +34,8 @@ const RFQS = RFQ_MOCK_DATA.rfqs;
 const TRADE_ORDERS = TRADE_MOCK_DATA.tradeOrders;
 const PRIMARY_LOGISTICS_ORDER = LOGISTICS_MOCK_DATA.primaryLogisticsOrder;
 const MOCK_PRODUCT_SCHEMA_XML = PRODUCT_MOCK_DATA.responses.getProductSchema.xml;
+const PRODUCTS = PRODUCT_MOCK_DATA.responses.listProducts.items;
+const PHOTOS = PHOTO_MOCK_DATA.responses.listPhotos.items;
 
 const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
   ...PRODUCT_MOCK_DATA.responses,
@@ -45,8 +48,8 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
   renderProductSchema: structuredClone(PRODUCT_MOCK_DATA.responses.getProductSchema),
   deleteTradeAddress: undefined,
   getDashboard: {
-    productCount: 128,
-    photoCount: 436,
+    productCount: PRODUCTS.length,
+    photoCount: PHOTOS.length,
     orderCount: 6,
     enabledCapabilityCount: listCapabilities().filter((item) => item.enabled).length
   },
@@ -81,12 +84,45 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
 
 export class MockGatewayClient implements GatewayClient {
   private photoGroups: PhotoGroup[] = structuredClone(MOCK_DATA.listPhotoGroups);
+  private photos: Photo[] = structuredClone(PHOTOS);
   private diagnostics: DiagnosticEntry[] = structuredClone(MOCK_DATA.getDiagnostics.entries);
 
   constructor(private readonly latency = 160) {}
 
   async request<K extends OperationId>(operation: K, _request: RequestOf<K>): Promise<ResponseOf<K>> {
     await new Promise<void>((resolve) => setTimeout(resolve, this.latency));
+    if (operation === 'listProducts') {
+      const payload = _request as OperationMap['listProducts']['request'];
+      const { page, pageSize, start, end } = paginationWindow(payload.page, payload.pageSize, 20);
+      const subject = payload.subject?.trim().toLocaleLowerCase();
+      const groupName = payload.groupId
+        ? findProductGroup(MOCK_DATA.listProductGroups, payload.groupId)?.name
+        : undefined;
+      const candidates = PRODUCTS.filter((product) => {
+        if (subject && !product.subject.toLocaleLowerCase().includes(subject)) return false;
+        return !groupName || product.groupName === groupName;
+      });
+      return {
+        items: structuredClone(candidates.slice(start, end)),
+        page,
+        pageSize,
+        total: candidates.length
+      } as ResponseOf<K>;
+    }
+    if (operation === 'listPhotos') {
+      const payload = _request as OperationMap['listPhotos']['request'];
+      const { page, pageSize, start, end } = paginationWindow(payload.page, payload.pageSize, 24);
+      const candidates =
+        !payload.groupId || payload.groupId === '-1'
+          ? this.photos
+          : this.photos.filter((photo) => photo.groupId === payload.groupId);
+      return {
+        items: structuredClone(candidates.slice(start, end)),
+        page,
+        pageSize,
+        total: candidates.length
+      } as ResponseOf<K>;
+    }
     if (operation === 'getProductSchema' || operation === 'renderProductSchema') {
       const payload = _request as
         OperationMap['getProductSchema']['request'] | OperationMap['renderProductSchema']['request'];
@@ -109,6 +145,12 @@ export class MockGatewayClient implements GatewayClient {
         extensionVersion: '2.0.0-mock',
         entries: structuredClone(this.diagnostics)
       };
+    }
+    if (operation === 'getDashboard') {
+      return {
+        ...structuredClone(MOCK_DATA.getDashboard),
+        photoCount: this.photos.length
+      } as ResponseOf<K>;
     }
     if (operation === 'clearDiagnostics') {
       this.diagnostics = [];
@@ -157,17 +199,20 @@ export class MockGatewayClient implements GatewayClient {
     }
     if (operation === 'uploadPhoto') {
       const payload = _request as OperationMap['uploadPhoto']['request'];
-      return {
+      const photo: Photo = {
         id: `ph_upload_${Date.now()}`,
         name: payload.fileName,
-        url: `https://sc04.alicdn.com/kf/mock-${encodeURIComponent(payload.fileName)}`,
+        url: MOCK_DATA.uploadPhoto.url,
         groupId: payload.groupId ?? '-1',
         width: 1200,
         height: 1200,
         fileSize: payload.byteLength,
         referenceCount: 0,
         modifiedAt: new Date().toISOString()
-      } as ResponseOf<K>;
+      };
+      this.photos.unshift(photo);
+      this.incrementPhotoGroupCount(photo.groupId);
+      return structuredClone(photo);
     }
     if (operation === 'operatePhotoGroup') {
       const payload = _request as OperationMap['operatePhotoGroup']['request'];
@@ -200,11 +245,15 @@ export class MockGatewayClient implements GatewayClient {
     if (operation === 'transferPhotoFromUrl') {
       const payload = _request as OperationMap['transferPhotoFromUrl']['request'];
       const sourceName = new URL(payload.url).pathname.split('/').at(-1);
-      return {
+      const photo: Photo = {
         ...structuredClone(MOCK_DATA.transferPhotoFromUrl),
+        id: `ph_transfer_${Date.now()}`,
         name: payload.fileName ?? sourceName ?? 'transferred-image.jpg',
         groupId: payload.groupId
-      } as ResponseOf<K>;
+      };
+      this.photos.unshift(photo);
+      this.incrementPhotoGroupCount(photo.groupId);
+      return structuredClone(photo);
     }
     if (operation === 'listRfqs' || operation === 'listRecommendedRfqs') {
       const payload = _request as OperationMap['listRfqs']['request'];
@@ -393,6 +442,12 @@ export class MockGatewayClient implements GatewayClient {
     }
     return structuredClone(MOCK_DATA[operation]);
   }
+
+  private incrementPhotoGroupCount(groupId: string): void {
+    for (const group of this.photoGroups) {
+      if (group.id === '-1' || group.id === groupId) group.photoCount += 1;
+    }
+  }
 }
 
 function isPhotoGroupDescendant(groups: PhotoGroup[], group: PhotoGroup, ancestorId: string): boolean {
@@ -411,6 +466,21 @@ function findProductGroup(groups: readonly ProductGroup[], groupId: number): Pro
     if (nested) return nested;
   }
   return null;
+}
+
+function paginationWindow(
+  requestedPage: number | undefined,
+  requestedPageSize: number | undefined,
+  defaultPageSize: number
+): { page: number; pageSize: number; start: number; end: number } {
+  const page = normalizePositiveInteger(requestedPage, 1);
+  const pageSize = normalizePositiveInteger(requestedPageSize, defaultPageSize);
+  const start = (page - 1) * pageSize;
+  return { page, pageSize, start, end: start + pageSize };
+}
+
+function normalizePositiveInteger(value: number | undefined, fallback: number): number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : fallback;
 }
 
 function descriptionSchemaVariant(variant: 'smart' | 'legacy'): string {

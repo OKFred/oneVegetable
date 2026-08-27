@@ -12,6 +12,7 @@ export default defineConfig({
   },
   webServer: {
     command: 'pnpm dev:web --host 127.0.0.1 --port 4173 --strictPort',
+    env: { VITE_GATEWAY_MODE: 'mock' },
     port: 4173,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000

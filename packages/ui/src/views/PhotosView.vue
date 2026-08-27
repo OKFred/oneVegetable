@@ -56,7 +56,7 @@ const governanceCounts = computed(() => {
 const previewImages = computed<ImagePreviewItem[]>(() =>
   filteredPhotos.value.map((photo) => ({
     id: photo.id,
-    src: photo.url,
+    src: photo.previewUrl ?? photo.url,
     alt: photo.name,
     description: `${dimensionsLabel(photo)} · ${fileSize(photo.fileSize)}`
   }))
@@ -239,7 +239,7 @@ function handleUploaded(photo: Photo): void {
               @click="openPreview(photo)"
             >
               <img
-                :src="photo.url"
+                :src="photo.previewUrl ?? photo.url"
                 :alt="photo.name"
                 class="aspect-square w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
                 @load="rememberDimensions(photo, $event)"

@@ -1,20 +1,20 @@
 {
   "photoGroups": [
-    { "id": "-1", "name": "全部图片", "photoCount": 436, "parentId": null, "level": 1 },
-    { "id": "2001", "name": "商品主图", "photoCount": 84, "parentId": null, "level": 1 },
-    { "id": "2002", "name": "详情素材", "photoCount": 137, "parentId": null, "level": 1 },
-    { "id": "2101", "name": "白底主图", "photoCount": 36, "parentId": "2001", "level": 2 },
-    { "id": "2201", "name": "场景详情", "photoCount": 58, "parentId": "2002", "level": 2 },
-    { "id": "2211", "name": "户外场景", "photoCount": 18, "parentId": "2201", "level": 3 }
+    { "id": "-1", "name": "全部图片", "photoCount": 3, "parentId": null, "level": 1 },
+    { "id": "2001", "name": "商品主图", "photoCount": 2, "parentId": null, "level": 1 },
+    { "id": "2002", "name": "详情素材", "photoCount": 1, "parentId": null, "level": 1 },
+    { "id": "2101", "name": "白底主图", "photoCount": 0, "parentId": "2001", "level": 2 },
+    { "id": "2201", "name": "场景详情", "photoCount": 0, "parentId": "2002", "level": 2 },
+    { "id": "2211", "name": "户外场景", "photoCount": 0, "parentId": "2201", "level": 3 }
   ],
   "responses": {
     "listPhotoGroups": [
-      { "id": "-1", "name": "全部图片", "photoCount": 436, "parentId": null, "level": 1 },
-      { "id": "2001", "name": "商品主图", "photoCount": 84, "parentId": null, "level": 1 },
-      { "id": "2002", "name": "详情素材", "photoCount": 137, "parentId": null, "level": 1 },
-      { "id": "2101", "name": "白底主图", "photoCount": 36, "parentId": "2001", "level": 2 },
-      { "id": "2201", "name": "场景详情", "photoCount": 58, "parentId": "2002", "level": 2 },
-      { "id": "2211", "name": "户外场景", "photoCount": 18, "parentId": "2201", "level": 3 }
+      { "id": "-1", "name": "全部图片", "photoCount": 3, "parentId": null, "level": 1 },
+      { "id": "2001", "name": "商品主图", "photoCount": 2, "parentId": null, "level": 1 },
+      { "id": "2002", "name": "详情素材", "photoCount": 1, "parentId": null, "level": 1 },
+      { "id": "2101", "name": "白底主图", "photoCount": 0, "parentId": "2001", "level": 2 },
+      { "id": "2201", "name": "场景详情", "photoCount": 0, "parentId": "2002", "level": 2 },
+      { "id": "2211", "name": "户外场景", "photoCount": 0, "parentId": "2201", "level": 3 }
     ],
     "operatePhotoGroup": {
       "operation": "add",
@@ -33,6 +33,7 @@
           "id": "ph_001",
           "name": "solar-station-front.jpg",
           "url": "https://sc04.alicdn.com/kf/mock-solar-station.jpg",
+          "previewUrl": "mock-asset:solar-station-front.svg",
           "groupId": "2001",
           "width": 1200,
           "height": 1200,
@@ -44,6 +45,7 @@
           "id": "ph_002",
           "name": "canvas-bag-natural.jpg",
           "url": "https://sc04.alicdn.com/kf/mock-canvas-bag.jpg",
+          "previewUrl": "mock-asset:canvas-bag-natural.svg",
           "groupId": "2001",
           "width": 1200,
           "height": 1200,
@@ -55,6 +57,7 @@
           "id": "ph_003",
           "name": "dehydrator-detail.jpg",
           "url": "https://sc04.alicdn.com/kf/mock-dehydrator-detail.jpg",
+          "previewUrl": "mock-asset:dehydrator-detail.svg",
           "groupId": "2002",
           "width": 640,
           "height": 480,
@@ -65,15 +68,15 @@
       ],
       "page": 1,
       "pageSize": 24,
-      "total": 436
+      "total": 3
     },
     "uploadPhoto": {
       "id": "ph_new",
       "name": "uploaded-image.jpg",
-      "url": "https://placehold.co/800x800/155e75/f8fafc?text=Uploaded",
+      "url": "https://sc04.alicdn.com/kf/mock-uploaded-image.jpg",
       "groupId": "-1",
-      "width": 800,
-      "height": 800,
+      "width": 1200,
+      "height": 1200,
       "fileSize": 153600,
       "referenceCount": 0,
       "modifiedAt": "2026-08-12T04:00:00Z"

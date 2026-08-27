@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff7ed" />
+      <stop offset="1" stop-color="#fef3c7" />
+    </linearGradient>
+    <linearGradient id="canvas" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e7d3ac" />
+      <stop offset="1" stop-color="#c9a66b" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="1200" rx="72" fill="url(#background)" />
+  <ellipse cx="600" cy="930" rx="360" ry="72" fill="#92400e" opacity="0.14" />
+  <path d="M370 420h460l95 500H275z" fill="url(#canvas)" stroke="#92400e" stroke-width="14" stroke-linejoin="round" />
+  <path d="M430 470V340c0-105 76-185 170-185s170 80 170 185v130" fill="none" stroke="#92400e" stroke-width="34" stroke-linecap="round" />
+  <path d="M455 470V350c0-88 64-153 145-153s145 65 145 153v120" fill="none" stroke="#f5deb3" stroke-width="12" stroke-linecap="round" />
+  <circle cx="600" cy="665" r="132" fill="#f8fafc" opacity="0.72" />
+  <path d="M600 570c58 0 105 47 105 105s-47 105-105 105-105-47-105-105 47-105 105-105z" fill="#166534" />
+  <path d="M600 615c-35 0-60 25-60 59 0 37 27 62 60 62 17 0 33-6 45-17v-39h-50v-24h79v76c-19 19-45 30-75 30-53 0-92-37-92-88 0-50 40-88 93-88 29 0 54 10 72 29l-20 20c-14-14-31-22-52-22z" fill="#ecfdf5" />
+  <text x="600" y="1050" text-anchor="middle" font-family="Arial, sans-serif" font-size="58" font-weight="700" fill="#78350f">Recycled Canvas Tote</text>
+</svg>

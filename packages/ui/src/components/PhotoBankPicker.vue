@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useQuery } from '@tanstack/vue-query';
+import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { Check, Eye, ImagePlus, Upload, X } from '@lucide/vue';
 
 import type { Photo, PhotoGroup } from '@one-vegetable/core';
@@ -25,6 +25,7 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:modelValue': [photos: Photo[]] }>();
 
 const { gateway } = useServices();
+const queryClient = useQueryClient();
 const open = ref(false);
 const uploadDialogOpen = ref(false);
 const selectedGroup = ref('-1');
@@ -87,9 +88,10 @@ function openUploadDialog(): void {
   uploadDialogOpen.value = true;
 }
 
-function handleUploaded(photo: Photo): void {
+async function handleUploaded(photo: Photo): Promise<void> {
   page.value = 1;
   uploadNotice.value = `“${photo.name}”已存入图库，请在素材列表中选择。`;
+  await queryClient.invalidateQueries({ queryKey: ['photos'] });
 }
 
 function rememberDimensions(photo: Photo, event: Event): void {
@@ -108,10 +110,14 @@ function dimensionsLabel(photo: Photo): string {
   return width && height ? `${width}×${height}` : '尺寸读取中';
 }
 
+function photoPreviewUrl(photo: Photo): string {
+  return photo.previewUrl ?? photo.url;
+}
+
 const previewImages = computed<ImagePreviewItem[]>(() =>
   previewPhotos.value.map((photo) => ({
     id: photo.id,
-    src: photo.url,
+    src: photoPreviewUrl(photo),
     alt: photo.name,
     description: `${dimensionsLabel(photo)} · ${Math.ceil(photo.fileSize / 1024)} KiB`
   }))
@@ -142,7 +148,7 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
           @click="showPreview(modelValue, photo)"
         >
           <img
-            :src="photo.url"
+            :src="photoPreviewUrl(photo)"
             :alt="photo.name"
             class="size-full bg-muted object-cover"
             @load="rememberDimensions(photo, $event)"
@@ -222,7 +228,7 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
                         @click="choose(photo)"
                       >
                         <img
-                          :src="photo.url"
+                          :src="photoPreviewUrl(photo)"
                           :alt="photo.name"
                           class="aspect-square w-full bg-muted object-cover"
                           @load="rememberDimensions(photo, $event)"

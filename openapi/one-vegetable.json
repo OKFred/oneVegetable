@@ -9904,6 +9904,11 @@
           },
           "name": { "type": "string" },
           "url": { "type": "string", "format": "uri" },
+          "previewUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Optional presentation-only preview URL. Product Schema serialization must continue to use url."
+          },
           "groupId": { "type": "string" },
           "width": {
             "type": ["integer", "null"],

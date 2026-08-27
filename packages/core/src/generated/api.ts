@@ -6090,6 +6090,11 @@ export interface components {
             name: string;
             /** Format: uri */
             url: string;
+            /**
+             * Format: uri
+             * @description Optional presentation-only preview URL. Product Schema serialization must continue to use url.
+             */
+            previewUrl?: string;
             groupId: string;
             /** @description Pixel width when known. photobank.list does not return dimensions. */
             width: number | null;

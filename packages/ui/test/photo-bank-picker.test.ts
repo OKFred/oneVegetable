@@ -37,6 +37,7 @@ describe('PhotoBankPicker', () => {
     await vi.waitFor(() => {
       expect(globalThis.document.body.textContent).toContain('已转存到图库');
       expect(globalThis.document.body.textContent).toContain('请在素材列表中选择');
+      expect(globalThis.document.body.textContent).toContain('photo.jpg');
     });
     expect(selected.value).toEqual([]);
     wrapper.unmount();

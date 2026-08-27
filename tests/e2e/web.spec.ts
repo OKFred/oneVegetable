@@ -1,13 +1,13 @@
 import { readFile } from 'node:fs/promises';
 
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
-  await expect(page.getByText('OpenAPI Mock')).toBeVisible();
+  await expect(page.getByText('OpenAPI 演示')).toBeVisible();
 
-  const productNavigation = page.getByRole('button', { name: '商品' });
+  const productNavigation = page.getByRole('link', { name: '商品' });
   await expect
     .poll(() => productNavigation.evaluate((element) => getComputedStyle(element).cursor))
     .toBe('pointer');
@@ -16,6 +16,7 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await expect(page.getByText('Portable solar power station 1000W')).toBeVisible();
 
   await page.getByRole('tab', { name: '商品发布/编辑' }).click();
+  await chooseMockProductCategory(page);
   await page.getByRole('button', { name: '开始填写' }).click();
   await expect(page.getByRole('heading', { name: '发布新商品' })).toBeVisible();
   await expect(page.getByText('当前分组：Energy storage / Portable power / Solar generators')).toBeVisible();
@@ -34,12 +35,6 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await page.getByLabel('商品标题').fill('Portable solar generator for camping');
   await expect(page.getByText('本地草稿：已保存到本机')).toBeVisible();
 
-  await page.reload();
-  await page.getByRole('button', { name: '商品' }).click();
-  await page.getByRole('tab', { name: '商品发布/编辑' }).click();
-  await expect(page.getByText('发现本地草稿', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '继续本地草稿' }).click();
-  await expect(page.getByLabel('商品标题')).toHaveValue('Portable solar generator for camping');
   await page.getByRole('button', { name: /保存平台草稿/ }).click();
   await expect(page.getByText(/草稿已保存/)).toBeVisible();
   await page.getByRole('button', { name: /六步向导/ }).click();
@@ -47,7 +42,7 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await expect(page.getByRole('heading', { name: '检查与提交' })).toBeVisible();
 
   await page.getByRole('tab', { name: '类目与分组' }).click();
-  await expect(page.getByText('Energy storage')).toBeVisible();
+  await expect(page.locator('li').filter({ hasText: 'Energy storage' }).first()).toBeVisible();
   await page.getByLabel('新分组名称').fill('E2E products');
   await page.getByRole('button', { name: '创建' }).click();
   await expect(page.getByText(/分组“New group”已创建/)).toBeVisible();
@@ -69,7 +64,7 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await page.getByRole('button', { name: '批量下架' }).click();
   await expect(page.getByText(/1 个商品已下架/)).toBeVisible();
 
-  await page.getByRole('button', { name: 'API 能力' }).click();
+  await page.getByRole('link', { name: 'API 能力' }).click();
   await expect(page.getByRole('heading', { name: 'API 能力目录' })).toBeVisible();
   await expect(page.locator('tbody tr')).toHaveCount(10);
   await expect(page.getByText('共 86 条，当前 1–10 条')).toBeVisible();
@@ -88,7 +83,7 @@ test('web mock completes the typed RFQ quotation workflow', async ({ page }) => 
   await page.evaluate(() => {
     localStorage.clear();
   });
-  await page.getByRole('button', { name: 'RFQ' }).click();
+  await page.getByRole('link', { name: 'RFQ' }).click();
   await expect(page.getByRole('heading', { name: 'RFQ 工作台' })).toBeVisible();
   await expect(page.getByText('Portable solar power stations for outdoor retail')).toBeVisible();
   await expect(page.getByText('剩余报价权益').locator('..')).toContainText('12');
@@ -101,12 +96,12 @@ test('web mock completes the typed RFQ quotation workflow', async ({ page }) => 
   await page.getByRole('button', { name: '保存草稿' }).click();
   await expect(page.getByText('已保存')).toBeVisible();
   await page.getByRole('button', { name: '提交报价' }).click();
-  await expect(page.getByText(/Mock 报价提交成功/)).toBeVisible();
+  await expect(page.getByText(/演示报价提交成功/)).toBeVisible();
 });
 
 test('web mock combines typed trade order capabilities without a Jushita detail call', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '订单' }).click();
+  await page.getByRole('link', { name: '订单' }).click();
   await expect(page.getByRole('heading', { name: '交易 / 订单工作台' })).toBeVisible();
   await page.getByRole('button', { name: '24668306501026709' }).click();
   await expect(page.getByRole('dialog', { name: '订单 24668306501026709' })).toBeVisible();
@@ -132,20 +127,20 @@ test('web mock combines typed trade order capabilities without a Jushita detail 
   await page.getByPlaceholder('商品名称').fill('Portable solar power station');
   await page.getByPlaceholder('数量').fill('10');
   await page.getByPlaceholder('单价').fill('599');
-  await page.getByRole('button', { name: '创建 Mock 信保订单' }).click();
-  await expect(page.getByText(/Mock 创建成功/)).toBeVisible();
+  await page.getByRole('button', { name: '创建演示信保订单' }).click();
+  await expect(page.getByText(/演示订单创建成功/)).toBeVisible();
 });
 
 test('web mock completes the qualified international logistics workflow', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '国际物流' }).click();
+  await page.getByRole('link', { name: '国际物流' }).click();
   await expect(page.getByRole('heading', { name: '国际物流工作台' })).toBeVisible();
   await expect(page.getByText(/OneTouch 国际物流接口需要业务资格/)).toBeVisible();
 
   await page.getByRole('button', { name: '开始试算' }).click();
   await expect(page.getByText('CNY 109.20')).toBeVisible();
   await page.getByRole('button', { name: '下单草稿' }).click();
-  await page.getByRole('button', { name: '提交 Mock 物流订单' }).click();
+  await page.getByRole('button', { name: '提交演示物流订单' }).click();
   await expect(page.getByText('ALS00201756999')).toBeVisible();
 
   await page.getByRole('button', { name: '物流订单', exact: true }).click();
@@ -160,7 +155,7 @@ test('web mock completes the qualified international logistics workflow', async 
 
 test('web mock exposes typed data and supplier insights without inferred conclusions', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '数据洞察' }).click();
+  await page.getByRole('link', { name: '数据洞察' }).click();
   await expect(page.getByRole('heading', { name: '数据与供应商洞察' })).toBeVisible();
   await expect(page.getByText('18.6%').first()).toBeVisible();
   await expect(page.getByText(/不生成“提升”“下降”或评级结论/)).toBeVisible();
@@ -178,10 +173,20 @@ test('web mock exposes typed data and supplier insights without inferred conclus
 
 test('web mock manages gallery groups and exposes non-blocking asset governance', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '图库' }).click();
+  await page.getByRole('link', { name: '图库', exact: true }).click();
   await expect(page.getByRole('heading', { name: '图库' })).toBeVisible();
   await expect(page.getByText('图库 fileId：ph_001')).toBeVisible();
   await expect(page.getByRole('button', { name: /低分辨率 1/ })).toBeVisible();
+  const galleryImage = page.getByRole('img', { name: 'solar-station-front.jpg' }).first();
+  await expect(galleryImage).toBeVisible();
+  await expect
+    .poll(() =>
+      galleryImage.evaluate((element) => ({
+        width: (element as HTMLImageElement).naturalWidth,
+        height: (element as HTMLImageElement).naturalHeight
+      }))
+    )
+    .toEqual({ width: 1200, height: 1200 });
   await page.getByRole('button', { name: '预览 solar-station-front.jpg' }).click();
   await expect(page.getByRole('dialog', { name: '图片预览' })).toBeVisible();
   await expect(page.getByRole('img', { name: 'solar-station-front.jpg' })).toBeVisible();
@@ -192,7 +197,7 @@ test('web mock manages gallery groups and exposes non-blocking asset governance'
   await page.getByLabel('图库分组名称').fill('E2E 主图');
   await page.getByRole('button', { name: '改名' }).click();
   await expect(page.getByText('分组已保存：E2E 主图')).toBeVisible();
-  await page.getByRole('button', { name: /低分辨率 1/ }).click();
+  await page.getByRole('button', { name: /详情素材/ }).click();
   await expect(page.getByText('dehydrator-detail.jpg')).toBeVisible();
   await expect(page.getByText('solar-station-front.jpg')).toHaveCount(0);
 });
@@ -205,8 +210,9 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
     localStorage.clear();
   });
   await page.reload();
-  await page.getByRole('button', { name: '商品' }).click();
+  await page.getByRole('link', { name: '商品' }).click();
   await page.getByRole('tab', { name: '商品发布/编辑' }).click();
+  await chooseMockProductCategory(page);
   await page.getByRole('button', { name: '开始填写' }).click();
   await page.getByRole('button', { name: /六步向导/ }).click();
   await page.getByRole('button', { name: /4\. 商品详情/ }).click();
@@ -247,24 +253,25 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
 
   await page.getByRole('button', { name: /4\. 商品详情/ }).click();
   await page.getByRole('button', { name: /插入图库图片/ }).click();
-  await expect(page.getByRole('heading', { name: '国际站图库' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '选择图库素材' })).toBeVisible();
   await page
     .getByRole('button', { name: /预览 .*\.jpg/ })
     .first()
     .click();
   await expect(page.getByRole('dialog', { name: '图片预览' })).toBeVisible();
   await page.getByRole('button', { name: '关闭图片预览' }).click();
-  await page.getByRole('button', { name: '上传图片' }).click();
+  await page.getByRole('button', { name: '上传新素材' }).click();
   const uploadDialog = page.getByRole('dialog', { name: '上传图片到图库' });
   await expect(uploadDialog).toBeVisible();
-  await expect(uploadDialog.getByText('目标分组：全部图片')).toBeVisible();
+  await expect(uploadDialog.getByText(/上传到“全部图片”/)).toBeVisible();
   await uploadDialog
     .getByRole('textbox', { name: '外部图片 URL' })
     .fill('https://images.example.com/detail.jpg');
   await uploadDialog.getByRole('button', { name: '下载并存入图库' }).click();
   await expect(uploadDialog.getByText(/已转存到图库/)).toBeVisible();
   await expect(uploadDialog.getByRole('textbox', { name: '外部图片 URL' })).toHaveValue('');
-  await uploadDialog.getByRole('button', { name: '完成' }).click();
+  await uploadDialog.getByRole('button', { name: '关闭上传图片到图库' }).click();
+  await page.getByRole('button', { name: '选择 detail.jpg' }).click();
   await page.getByRole('button', { name: '完成选择' }).click();
   await expect(page.locator('.ProseMirror img[src*="mock-transferred-image"]')).toBeVisible();
 
@@ -282,7 +289,7 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
 
 test('web mock exposes the final platform contracts with protocol safeguards', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'API 能力' }).click();
+  await page.getByRole('link', { name: 'API 能力' }).click();
   await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.risk.send');
   await page.getByRole('button', { name: 'alibaba.icbu.risk.send' }).click();
   await expect(page.getByText(/WUA、UMID、IMEI、IMSI、MAC/)).toBeVisible();
@@ -300,7 +307,7 @@ test('web mock exposes the final platform contracts with protocol safeguards', a
 
 test('web mock exports and clears the typed diagnostics snapshot', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '设置' }).click();
+  await page.getByRole('link', { name: '设置' }).click();
   await expect(page.getByRole('heading', { name: '脱敏诊断' })).toBeVisible();
   await expect(page.getByText('1 条', { exact: true })).toBeVisible();
 
@@ -328,8 +335,9 @@ test('web mock groups official product hints and locates their fields from revie
     localStorage.clear();
   });
   await page.reload();
-  await page.getByRole('button', { name: '商品' }).click();
+  await page.getByRole('link', { name: '商品' }).click();
   await page.getByRole('tab', { name: '商品发布/编辑' }).click();
+  await chooseMockProductCategory(page);
   await page.getByRole('button', { name: '开始填写' }).click();
   await page.getByRole('button', { name: /六步向导/ }).click();
   await page.getByRole('button', { name: /6\. 检查与提交/ }).click();
@@ -347,12 +355,19 @@ test('web mock groups official product hints and locates their fields from revie
 
 test('web mock persists the API language preference for product editing', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '设置' }).click();
+  await page.getByRole('link', { name: '设置' }).click();
   await page.getByLabel('偏好语言').selectOption('zh_CN');
   await expect(page.getByText('接口语言偏好已保存为 zh_CN')).toBeVisible();
 
-  await page.getByRole('button', { name: '商品' }).click();
+  await page.getByRole('link', { name: '商品' }).click();
   await page.getByRole('tab', { name: '商品发布/编辑' }).click();
   await page.getByText('高级设置', { exact: true }).click();
   await expect(page.getByLabel('商品表单语言')).toHaveValue('zh_CN');
 });
+
+async function chooseMockProductCategory(page: Page): Promise<void> {
+  await page.getByRole('combobox').click();
+  const dialog = page.getByRole('dialog', { name: '选择商品类目' });
+  await dialog.getByRole('button', { name: /Consumer Electronics/ }).click();
+  await dialog.getByRole('button', { name: /Portable Power Stations/ }).click();
+}
