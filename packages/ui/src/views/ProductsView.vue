@@ -22,6 +22,7 @@ import {
   type ProductDescriptionImageMetadata,
   type ProductEditorStepId,
   type ProductMutationJob,
+  type OperationId,
   type ProductSchemaOfficialHint,
   type ProductSchemaModel,
   type ProductScore
@@ -50,6 +51,10 @@ import {
   type ProductEditorMode
 } from '../lib/product-editor-drafts';
 import { useProductEditorSession } from '../composables/use-product-editor-session';
+import {
+  operationAvailabilityMessage,
+  useOperationAvailability
+} from '../composables/use-operation-availability';
 import { appHash, parseAppHash } from '../lib/hash-router';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
@@ -63,7 +68,7 @@ const workspaceIds = new Set<Workspace>(['list', 'publisher', 'organization', 'q
 const editorModes = new Set<ProductEditorMode>(['quick', 'guided', 'advanced']);
 const editorStepIds = new Set<ProductEditorStepId>(PRODUCT_EDITOR_STEP_IDS);
 
-const { gateway, mode, operationAvailability, productMutationJobs } = useServices();
+const { gateway, mode, productMutationJobs } = useServices();
 const { language: preferredLanguage } = useAppPreferences();
 const queryClient = useQueryClient();
 const workspace = ref<Workspace>('list');
@@ -137,19 +142,13 @@ const groups = useQuery({
   queryKey: ['product-groups'],
   queryFn: () => gateway.request('listProductGroups', undefined)
 });
-const productMutationAvailability = useQuery({
-  queryKey: ['product-mutation-availability'],
-  queryFn: () =>
-    operationAvailability?.get([
-      'saveProductDraft',
-      'publishProduct',
-      'updateProduct',
-      'updateProductDisplay',
-      'createProductGroup'
-    ]) ?? Promise.resolve({ items: [] }),
-  enabled: computed(() => mode === 'bff' && operationAvailability !== undefined),
-  staleTime: 10_000
-});
+const productOperations = useOperationAvailability([
+  'saveProductDraft',
+  'publishProduct',
+  'updateProduct',
+  'updateProductDisplay',
+  'createProductGroup'
+]);
 const productMutationHistory = useQuery({
   queryKey: ['product-mutation-jobs', editProductId],
   queryFn: async () => {
@@ -214,12 +213,6 @@ const categorySelectionReady = computed(
 const categoryPickerError = computed(
   () => categoryLoadError.value || (categories.error.value ? errorMessage(categories.error.value) : '')
 );
-const availabilityByOperation = computed(
-  () =>
-    new Map(
-      (productMutationAvailability.data.value?.items ?? []).map((item) => [item.operation, item] as const)
-    )
-);
 const currentProductMutationJob = computed<ProductMutationJob | null>(
   () => productMutationHistory.data.value?.items.find((job) => job.operation === 'updateProduct') ?? null
 );
@@ -231,21 +224,18 @@ const productMutationBlocksSubmit = computed(() => {
   }
   return job.status === 'verified' && acknowledgedMutationJobId.value !== job.id;
 });
-function dedicatedMutationAllowed(operation: string): boolean {
-  if (mode === 'mock') return true;
-  return availabilityByOperation.value.get(operation)?.allowed === true;
+function dedicatedMutationAllowed(operation: OperationId): boolean {
+  return productOperations.isAllowed(operation);
 }
 const productGroupMutationDisabled = computed(() => !dedicatedMutationAllowed('createProductGroup'));
 const productDisplayMutationDisabled = computed(() => !dedicatedMutationAllowed('updateProductDisplay'));
 const platformDraftDisabled = computed(() => {
-  if (mode === 'mock') return false;
-  return availabilityByOperation.value.get('saveProductDraft')?.allowed !== true;
+  return !productOperations.isAllowed('saveProductDraft');
 });
 const productPublishDisabled = computed(() => {
   if (editProductId.value && productMutationBlocksSubmit.value) return true;
-  if (mode === 'mock') return false;
   const operation = editProductId.value ? 'updateProduct' : 'publishProduct';
-  return availabilityByOperation.value.get(operation)?.allowed !== true;
+  return !productOperations.isAllowed(operation);
 });
 const platformDraftDisabledReason = computed(() =>
   mutationDisabledReason('saveProductDraft', '当前环境未开放平台草稿写入')
@@ -1094,11 +1084,8 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : '操作失败';
 }
 
-function mutationDisabledReason(operation: string, fallback: string): string {
-  if (mode === 'mock') return '';
-  if (productMutationAvailability.isPending.value) return '正在读取当前账号的操作权限…';
-  const reasonCode = availabilityByOperation.value.get(operation)?.reasonCode;
-  return reasonCode ? `${fallback}（${reasonCode}）` : fallback;
+function mutationDisabledReason(operation: OperationId, fallback: string): string {
+  return operationAvailabilityMessage(productOperations.reasonCode(operation), fallback);
 }
 
 function productMutationDisabledReason(job: ProductMutationJob | null): string {

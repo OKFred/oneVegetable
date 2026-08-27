@@ -12,6 +12,7 @@ import {
   ONBOARDING_STORAGE_KEY,
   readOnboardingState,
   SETTINGS_STORAGE_KEY,
+  StaticOperationAvailabilityClient,
   type CredentialVaultOperation,
   type CredentialVaultRepository,
   type CredentialVaultRequest,
@@ -31,6 +32,11 @@ import {
   type SettingsRepository
 } from '@one-vegetable/core/runtime';
 import '@one-vegetable/ui/styles.css';
+import { resolveExtensionOperationAvailability } from '../../lib/operation-policy';
+
+const operationAvailability = new StaticOperationAvailabilityClient((operation) =>
+  resolveExtensionOperationAvailability(operation)
+);
 
 const settings: SettingsRepository = {
   load: () => requestVault('get-settings', undefined),
@@ -254,6 +260,7 @@ async function mountOptionsApp(): Promise<void> {
     productDescriptionTemplates: new BundledProductDescriptionTemplateClient(
       BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates
     ),
+    operationAvailability,
     mode: 'extension'
   });
   app.use(VueQueryPlugin, {

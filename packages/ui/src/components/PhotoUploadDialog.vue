@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { LoaderCircle } from '@lucide/vue';
 
@@ -8,6 +8,10 @@ import { MAX_PHOTOBANK_IMAGE_BYTES, type Photo } from '@one-vegetable/core';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
 import ModalDialog from './ui/ModalDialog.vue';
+import {
+  operationAvailabilityMessage,
+  useOperationAvailability
+} from '../composables/use-operation-availability';
 import { useServices } from '../lib/services';
 
 const props = withDefaults(
@@ -28,6 +32,18 @@ const queryClient = useQueryClient();
 const fileInput = ref<HTMLInputElement | null>(null);
 const transferUrl = ref('');
 const feedback = ref<{ kind: 'success' | 'error'; message: string } | null>(null);
+const photoMutations = useOperationAvailability(['uploadPhoto', 'transferPhotoFromUrl']);
+const uploadBlocked = computed(() => !photoMutations.isAllowed('uploadPhoto'));
+const transferBlocked = computed(() => !photoMutations.isAllowed('transferPhotoFromUrl'));
+const uploadBlockedReason = computed(() =>
+  operationAvailabilityMessage(photoMutations.reasonCode('uploadPhoto'), '当前环境未开放本地图片上传')
+);
+const transferBlockedReason = computed(() =>
+  operationAvailabilityMessage(
+    photoMutations.reasonCode('transferPhotoFromUrl'),
+    '当前环境未开放外部 URL 转存'
+  )
+);
 
 const upload = useMutation({
   mutationFn: async (file: File) =>
@@ -72,13 +88,18 @@ const transfer = useMutation({
 });
 
 function chooseLocalFile(): void {
+  if (uploadBlocked.value) {
+    feedback.value = { kind: 'error', message: uploadBlockedReason.value };
+    return;
+  }
   fileInput.value?.click();
 }
 
 function onFileChange(event: Event): void {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
-  if (file && file.size <= MAX_PHOTOBANK_IMAGE_BYTES) upload.mutate(file);
+  if (file && uploadBlocked.value) feedback.value = { kind: 'error', message: uploadBlockedReason.value };
+  else if (file && file.size <= MAX_PHOTOBANK_IMAGE_BYTES) upload.mutate(file);
   else if (file) feedback.value = { kind: 'error', message: '图库图片不能超过 5 MiB' };
   input.value = '';
 }
@@ -114,7 +135,7 @@ function fileToBase64(file: File): Promise<string> {
           <h3 class="text-sm font-semibold">从本机上传</h3>
           <p class="mt-1 text-xs text-muted-foreground">支持常见图片格式，单张最大 5 MiB。</p>
         </div>
-        <Button class="w-full" :disabled="upload.isPending.value" @click="chooseLocalFile">
+        <Button class="w-full" :disabled="uploadBlocked || upload.isPending.value" @click="chooseLocalFile">
           <LoaderCircle v-if="upload.isPending.value" class="size-4 animate-spin" />
           {{ upload.isPending.value ? '正在上传…' : '选择本地图片并上传' }}
         </Button>
@@ -123,7 +144,7 @@ function fileToBase64(file: File): Promise<string> {
           type="file"
           accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/avif"
           class="sr-only"
-          :disabled="upload.isPending.value"
+          :disabled="uploadBlocked || upload.isPending.value"
           @change="onFileChange"
         />
       </section>
@@ -139,11 +160,11 @@ function fileToBase64(file: File): Promise<string> {
             class="flex-1"
             aria-label="外部图片 URL"
             placeholder="https://…"
-            :disabled="transfer.isPending.value"
+            :disabled="transferBlocked || transfer.isPending.value"
           />
           <Button
             variant="outline"
-            :disabled="!transferUrl.trim() || transfer.isPending.value"
+            :disabled="transferBlocked || !transferUrl.trim() || transfer.isPending.value"
             @click="transfer.mutate()"
           >
             <LoaderCircle v-if="transfer.isPending.value" class="size-4 animate-spin" />
@@ -151,6 +172,11 @@ function fileToBase64(file: File): Promise<string> {
           </Button>
         </div>
       </section>
+
+      <div v-if="uploadBlocked || transferBlocked" class="rounded-md border border-amber-300 p-3 text-xs">
+        <p v-if="uploadBlocked">{{ uploadBlockedReason }}</p>
+        <p v-if="transferBlocked">{{ transferBlockedReason }}</p>
+      </div>
 
       <p
         v-if="feedback"

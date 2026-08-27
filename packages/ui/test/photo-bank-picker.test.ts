@@ -5,7 +5,12 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ALIBABA_GATEWAY, type Photo } from '@one-vegetable/core';
+import {
+  ALIBABA_GATEWAY,
+  OPERATION_IDS,
+  StaticOperationAvailabilityClient,
+  type Photo
+} from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import PhotoBankPicker from '../src/components/PhotoBankPicker.vue';
@@ -75,6 +80,7 @@ function mountPicker(selected: Ref<Photo[]>, max = 1): VueWrapper {
             }),
           save: () => Promise.resolve()
         },
+        operationAvailability: new StaticOperationAvailabilityClient(new Set(OPERATION_IDS)),
         mode: 'mock'
       });
       return () =>

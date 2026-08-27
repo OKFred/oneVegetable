@@ -25,6 +25,10 @@ import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import Sheet from '../components/ui/Sheet.vue';
+import {
+  operationAvailabilityMessage,
+  useOperationAvailability
+} from '../composables/use-operation-availability';
 import { appHash, parseAppHash } from '../lib/hash-router';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
@@ -53,7 +57,14 @@ const draftUnitPrice = ref('');
 const orderSheetOpen = ref(false);
 const orderDrawerTab = ref<OrderDrawerTab>('overview');
 const ttAccountRevealed = ref(false);
-const mutationBlocked = mode !== 'mock';
+const tradeOrderMutation = useOperationAvailability(['createTradeOrder']);
+const mutationBlocked = computed(() => !tradeOrderMutation.isAllowed('createTradeOrder'));
+const mutationDisabledReason = computed(() =>
+  operationAvailabilityMessage(
+    tradeOrderMutation.reasonCode('createTradeOrder'),
+    '当前环境未开放信保订单创建'
+  )
+);
 
 const orders = useQuery({
   queryKey: computed(() => [
@@ -503,7 +514,7 @@ onBeforeUnmount(() => {
         >
           {{ mode === 'mock' ? '创建演示信保订单' : '创建信保订单（未开放）' }}
         </Button>
-        <Badge v-if="mutationBlocked" variant="warning">真实写入已禁用</Badge>
+        <Badge v-if="mutationBlocked" variant="warning">{{ mutationDisabledReason }}</Badge>
         <Badge v-else variant="success">Web 演示</Badge>
       </div>
       <p v-if="createOrder.data.value" class="mt-3 text-sm text-emerald-700">

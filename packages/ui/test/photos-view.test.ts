@@ -5,17 +5,22 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { describe, expect, it, vi } from 'vitest';
 
+import { OPERATION_IDS, StaticOperationAvailabilityClient, type OperationId } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import { provideServices } from '../src/lib/services';
 import PhotosView from '../src/views/PhotosView.vue';
 
-function mountView(mode: 'mock' | 'extension' = 'mock') {
+function mountView(
+  mode: 'mock' | 'extension' = 'mock',
+  allowedOperations: ReadonlySet<OperationId> = new Set(OPERATION_IDS)
+) {
   const Host = defineComponent({
     setup() {
       provideServices({
         gateway: new MockGatewayClient(0),
         settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
+        operationAvailability: new StaticOperationAvailabilityClient(allowedOperations),
         mode
       });
       return () => h(PhotosView);
@@ -116,6 +121,17 @@ describe('PhotosView', () => {
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('已删除所选分组');
     });
+    wrapper.unmount();
+  });
+
+  it('disables gallery writes with the operation availability reason', async () => {
+    const wrapper = mountView('extension', new Set());
+    await flushPromises();
+    await wrapper.get('input[aria-label="图库分组名称"]').setValue('不可写分组');
+
+    expect(button(wrapper, '新增').attributes('disabled')).toBeDefined();
+    expect(button(wrapper, '上传图片').attributes('disabled')).toBeDefined();
+    expect(wrapper.text()).toContain('当前环境未开放图库分组写入（STATIC_DISABLED）');
     wrapper.unmount();
   });
 });

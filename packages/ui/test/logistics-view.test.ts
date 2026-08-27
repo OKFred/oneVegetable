@@ -5,6 +5,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { describe, expect, it, vi } from 'vitest';
 
+import { OPERATION_IDS, StaticOperationAvailabilityClient } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import { provideServices } from '../src/lib/services';
@@ -16,6 +17,9 @@ function mountView(mode: 'mock' | 'extension' = 'mock') {
       provideServices({
         gateway: new MockGatewayClient(0),
         settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
+        operationAvailability: new StaticOperationAvailabilityClient(
+          new Set(mode === 'mock' ? OPERATION_IDS : [])
+        ),
         mode
       });
       return () => h(LogisticsView);
@@ -54,7 +58,7 @@ describe('LogisticsView', () => {
     });
 
     await button(wrapper, '下单草稿').trigger('click');
-    const create = button(wrapper, '提交演示物流订单');
+    const create = button(wrapper, '提交物流订单');
     expect(create.attributes('disabled')).toBeUndefined();
     await create.trigger('click');
     await vi.waitFor(() => {
@@ -89,7 +93,7 @@ describe('LogisticsView', () => {
     const wrapper = mountView('extension');
     await flushPromises();
 
-    expect(wrapper.text()).toContain('扩展内不会发出这些请求');
+    expect(wrapper.text()).toContain('STATIC_DISABLED');
     expect(button(wrapper, '业务资格待验收').attributes('disabled')).toBeDefined();
     await button(wrapper, '物流订单').trigger('click');
     expect(button(wrapper, '刷新').attributes('disabled')).toBeDefined();

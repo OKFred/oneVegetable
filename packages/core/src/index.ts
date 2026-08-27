@@ -11,6 +11,7 @@ export * from './diagnostics';
 export * from './dashboard-adapter';
 export * from './encoded-file';
 export * from './network';
+export * from './operation-availability';
 export * from './operation-id';
 export * from './photo-transfer';
 export * from './preferences';

@@ -13,14 +13,37 @@ import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import Sheet from '../components/ui/Sheet.vue';
+import {
+  operationAvailabilityMessage,
+  useOperationAvailability
+} from '../composables/use-operation-availability';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 
 type Workspace = 'quote' | 'orders' | 'addresses' | 'draft';
 
-const { gateway, mode } = useServices();
+const { gateway } = useServices();
 const workspace = ref<Workspace>('quote');
-const qualificationBlocked = mode === 'extension';
+const logisticsOperations = useOperationAvailability([
+  'listLogisticsAddressNodes',
+  'listLogisticsSpecialProductTypes',
+  'listLogisticsProducts',
+  'calculateLogisticsQuote',
+  'listLogisticsOrders',
+  'getLogisticsOrder',
+  'listShippingTemplates',
+  'createLogisticsOrder'
+]);
+const quoteBlocked = computed(() => !logisticsOperations.isAllowed('calculateLogisticsQuote'));
+const ordersBlocked = computed(() => !logisticsOperations.isAllowed('listLogisticsOrders'));
+const addressNodesBlocked = computed(() => !logisticsOperations.isAllowed('listLogisticsAddressNodes'));
+const createOrderBlocked = computed(() => !logisticsOperations.isAllowed('createLogisticsOrder'));
+const logisticsRestrictionReason = computed(() =>
+  operationAvailabilityMessage(
+    logisticsOperations.reasonCode('calculateLogisticsQuote'),
+    '当前环境未开放 OneTouch 国际物流试算'
+  )
+);
 const destinationCountryCode = ref('US');
 const destinationZipCode = ref('07005');
 const originZipCode = ref('518000');
@@ -54,17 +77,27 @@ const consigneeAddress = ref('700 New Road');
 
 const logisticsProducts = useQuery({
   queryKey: ['logistics-products'],
-  enabled: computed(() => mode === 'mock' && (workspace.value === 'quote' || workspace.value === 'draft')),
+  enabled: computed(
+    () =>
+      logisticsOperations.isAllowed('listLogisticsProducts') &&
+      (workspace.value === 'quote' || workspace.value === 'draft')
+  ),
   queryFn: () => gateway.request('listLogisticsProducts', undefined)
 });
 const specialProductTypes = useQuery({
   queryKey: ['logistics-special-product-types'],
-  enabled: computed(() => mode === 'mock' && (workspace.value === 'quote' || workspace.value === 'draft')),
+  enabled: computed(
+    () =>
+      logisticsOperations.isAllowed('listLogisticsSpecialProductTypes') &&
+      (workspace.value === 'quote' || workspace.value === 'draft')
+  ),
   queryFn: () => gateway.request('listLogisticsSpecialProductTypes', undefined)
 });
 const shippingTemplates = useQuery({
   queryKey: ['shipping-templates'],
-  enabled: computed(() => workspace.value === 'addresses'),
+  enabled: computed(
+    () => logisticsOperations.isAllowed('listShippingTemplates') && workspace.value === 'addresses'
+  ),
   queryFn: () => gateway.request('listShippingTemplates', undefined)
 });
 const orders = useQuery({
@@ -74,7 +107,7 @@ const orders = useQuery({
     logisticsOrderPage.value,
     logisticsOrderPageSize.value
   ]),
-  enabled: computed(() => mode === 'mock' && workspace.value === 'orders'),
+  enabled: computed(() => !ordersBlocked.value && workspace.value === 'orders'),
   queryFn: () =>
     gateway.request('listLogisticsOrders', {
       page: logisticsOrderPage.value,
@@ -84,7 +117,9 @@ const orders = useQuery({
 });
 const orderDetail = useQuery({
   queryKey: computed(() => ['logistics-order-detail', selectedOrderNumber.value]),
-  enabled: computed(() => mode === 'mock' && selectedOrderNumber.value !== ''),
+  enabled: computed(
+    () => logisticsOperations.isAllowed('getLogisticsOrder') && selectedOrderNumber.value !== ''
+  ),
   queryFn: () => gateway.request('getLogisticsOrder', { orderNumber: selectedOrderNumber.value })
 });
 const selectedLogisticsOrder = computed(() =>
@@ -97,7 +132,7 @@ const addressNodes = useQuery({
     addressParentId.value,
     addressSearchText.value
   ]),
-  enabled: computed(() => mode === 'mock' && workspace.value === 'addresses'),
+  enabled: computed(() => !addressNodesBlocked.value && workspace.value === 'addresses'),
   queryFn: () =>
     gateway.request('listLogisticsAddressNodes', {
       level: addressLevel.value,
@@ -272,7 +307,9 @@ const workspaces: { id: Workspace; label: string }[] = [
     <div class="text-sm leading-5">
       <p>OneTouch 国际物流接口需要业务资格，本项目尚无真实账号完成验收。</p>
       <p class="mt-1 text-xs">
-        Web 本地演示可完整试算和下单；扩展内不会发出这些请求。运费模板属于商品域免费接口，可独立查询。
+        页面按 operation availability 决定是否调用；{{
+          logisticsRestrictionReason
+        }}。运费模板属于商品域免费接口，可独立查询。
       </p>
     </div>
   </Card>
@@ -354,10 +391,10 @@ const workspaces: { id: Workspace; label: string }[] = [
         </div>
         <Button
           class="mt-5"
-          :disabled="qualificationBlocked || calculateQuote.isPending.value"
+          :disabled="quoteBlocked || calculateQuote.isPending.value"
           @click="calculateQuote.mutate()"
         >
-          <Calculator class="size-4" />{{ qualificationBlocked ? '业务资格待验收' : '开始试算' }}
+          <Calculator class="size-4" />{{ quoteBlocked ? '业务资格待验收' : '开始试算' }}
         </Button>
         <p v-if="calculateQuote.error.value" class="mt-3 text-sm text-destructive">
           {{ calculateQuote.error.value.message }}
@@ -391,14 +428,14 @@ const workspaces: { id: Workspace; label: string }[] = [
         <Input v-model="orderNumberFilter" placeholder="按物流订单号过滤" />
         <Button
           variant="outline"
-          :disabled="qualificationBlocked || orders.isFetching.value"
+          :disabled="ordersBlocked || orders.isFetching.value"
           @click="orders.refetch()"
         >
           <RefreshCw class="size-4" />刷新
         </Button>
       </div>
     </Card>
-    <QueryState :loading="orders.isPending.value && !qualificationBlocked" :error="orders.error.value">
+    <QueryState :loading="orders.isPending.value && !ordersBlocked" :error="orders.error.value">
       <DataTable
         :columns="columns"
         :data="orders.data.value?.items ?? []"
@@ -488,8 +525,13 @@ const workspaces: { id: Workspace; label: string }[] = [
             <span class="font-medium">{{ node.name }}</span
             ><code class="ml-2 text-xs text-muted-foreground">{{ node.code }}</code>
           </div>
-          <p v-if="qualificationBlocked" class="text-sm text-muted-foreground">
-            扩展模式不查询 OneTouch 地址字典。
+          <p v-if="addressNodesBlocked" class="text-sm text-muted-foreground">
+            {{
+              operationAvailabilityMessage(
+                logisticsOperations.reasonCode('listLogisticsAddressNodes'),
+                '当前环境不查询 OneTouch 地址字典'
+              )
+            }}
           </p>
         </div>
       </Card>
@@ -552,10 +594,10 @@ const workspaces: { id: Workspace; label: string }[] = [
         </div>
         <Button
           class="mt-5"
-          :disabled="qualificationBlocked || !selectedQuote || createOrder.isPending.value"
+          :disabled="createOrderBlocked || !selectedQuote || createOrder.isPending.value"
           @click="createOrder.mutate()"
         >
-          <PackageCheck class="size-4" />{{ qualificationBlocked ? '真实下单保持禁用' : '提交演示物流订单' }}
+          <PackageCheck class="size-4" />{{ createOrderBlocked ? '真实下单保持禁用' : '提交物流订单' }}
         </Button>
         <p v-if="!selectedQuote" class="mt-2 text-xs text-amber-700">请先在“运费试算”生成可用方案。</p>
         <p v-if="createOrder.error.value" class="mt-3 text-sm text-destructive">

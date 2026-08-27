@@ -8,6 +8,7 @@ import {
   isOperationId,
   isRequestId,
   normalizeApiPrefix,
+  QUALIFICATION_GATED_OPERATION_IDS,
   validateOperationAvailabilityInput,
   validateProductDisplayInput,
   validateProductGroupCreateInput,
@@ -268,6 +269,9 @@ export function createApiApp(options: ApiAppOptions): Hono {
         }
         if (options.gatewayMode === 'disabled') {
           return { operation, allowed: false, reasonCode: 'ALIBABA_GATEWAY_DISABLED' };
+        }
+        if (options.gatewayMode !== 'mock' && QUALIFICATION_GATED_OPERATION_IDS.has(operation)) {
+          return { operation, allowed: false, reasonCode: 'LOGISTICS_QUALIFICATION_REQUIRED' };
         }
         const decision = authorizeOperation(principal, operation, {}, featureFlags);
         return { operation, allowed: decision.allowed, reasonCode: decision.reasonCode };

@@ -42,6 +42,7 @@ import {
   type RuntimeRequest,
   type RuntimeResponse
 } from '@one-vegetable/core';
+import { resolveExtensionOperationAvailability } from '../lib/operation-policy';
 
 const OPERATIONS = new Set<OperationId>([
   'getDashboard',
@@ -104,31 +105,6 @@ const OPERATIONS = new Set<OperationId>([
   'listInsightsSuppliers',
   'listInsightsSupplierProducts',
   'callCapability'
-]);
-
-const MUTATION_OPERATIONS = new Set<OperationId>([
-  'publishProduct',
-  'saveProductDraft',
-  'updateProduct',
-  'updateProductDisplay',
-  'createProductGroup',
-  'uploadRfqAttachment',
-  'submitRfqQuotation',
-  'saveTradeAddress',
-  'deleteTradeAddress',
-  'createTradeOrder',
-  'modifyTradeOrder',
-  'createLogisticsOrder'
-]);
-
-const QUALIFICATION_GATED_LOGISTICS_OPERATIONS = new Set<OperationId>([
-  'listLogisticsAddressNodes',
-  'listLogisticsSpecialProductTypes',
-  'listLogisticsProducts',
-  'calculateLogisticsQuote',
-  'listLogisticsOrders',
-  'getLogisticsOrder',
-  'createLogisticsOrder'
 ]);
 
 export default defineBackground({
@@ -377,17 +353,11 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
 
   const settings = await loadSettings();
   assertCredentials(settings);
-  if (MUTATION_OPERATIONS.has(operation)) {
+  const availability = resolveExtensionOperationAvailability(operation);
+  if (!availability.allowed) {
     throw new GatewayException({
-      code: 'REAL_MUTATION_DISABLED',
-      message: '该真实写操作未开放，后台已在出网前拒绝',
-      retryable: false
-    });
-  }
-  if (QUALIFICATION_GATED_LOGISTICS_OPERATIONS.has(operation)) {
-    throw new GatewayException({
-      code: 'LOGISTICS_QUALIFICATION_REQUIRED',
-      message: 'OneTouch 国际物流能力需要业务资格，当前账号尚未完成资格与真实接口验收',
+      code: availability.reasonCode,
+      message: availability.message,
       retryable: false
     });
   }

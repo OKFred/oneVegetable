@@ -5,7 +5,11 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { describe, expect, it } from 'vitest';
 
-import { BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA } from '@one-vegetable/core';
+import {
+  BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA,
+  OPERATION_IDS,
+  StaticOperationAvailabilityClient
+} from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 import { MemoryProductDescriptionTemplateClient } from '@one-vegetable/core/templates';
 
@@ -23,6 +27,7 @@ function mountEditor(html: string, smartDetail = false) {
           BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates,
           { writable: false }
         ),
+        operationAvailability: new StaticOperationAvailabilityClient(new Set(OPERATION_IDS)),
         mode: 'mock'
       });
       return () =>

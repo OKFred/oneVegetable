@@ -67,6 +67,16 @@ export const OPERATION_IDS: readonly OperationId[] = Object.freeze(
   Object.keys(OPERATION_ID_RECORD) as OperationId[]
 );
 
+export const QUALIFICATION_GATED_OPERATION_IDS: ReadonlySet<OperationId> = new Set([
+  'listLogisticsAddressNodes',
+  'listLogisticsSpecialProductTypes',
+  'listLogisticsProducts',
+  'calculateLogisticsQuote',
+  'listLogisticsOrders',
+  'getLogisticsOrder',
+  'createLogisticsOrder'
+]);
+
 const OPERATION_ID_SET: ReadonlySet<string> = new Set(OPERATION_IDS);
 
 export function isOperationId(value: unknown): value is OperationId {

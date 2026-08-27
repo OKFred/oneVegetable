@@ -5,7 +5,11 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { APP_PREFERENCES_STORAGE_KEY } from '@one-vegetable/core';
+import {
+  APP_PREFERENCES_STORAGE_KEY,
+  OPERATION_IDS,
+  StaticOperationAvailabilityClient
+} from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import { provideServices } from '../src/lib/services';
@@ -17,6 +21,9 @@ function mountView(mode: 'mock' | 'extension' = 'mock') {
       provideServices({
         gateway: new MockGatewayClient(0),
         settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
+        operationAvailability: new StaticOperationAvailabilityClient(
+          new Set(mode === 'mock' ? OPERATION_IDS : [])
+        ),
         mode
       });
       return () => h(OrdersView);
@@ -170,7 +177,7 @@ describe('OrdersView', () => {
     await flushPromises();
     await button(wrapper, '信保订单草稿').trigger('click');
 
-    expect(wrapper.text()).toContain('真实写入已禁用');
+    expect(wrapper.text()).toContain('当前环境未开放信保订单创建（STATIC_DISABLED）');
     expect(button(wrapper, '创建信保订单（未开放）').attributes('disabled')).toBeDefined();
     wrapper.unmount();
   });

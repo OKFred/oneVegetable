@@ -19,6 +19,10 @@ import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import Sheet from '../components/ui/Sheet.vue';
+import {
+  operationAvailabilityMessage,
+  useOperationAvailability
+} from '../composables/use-operation-availability';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 
@@ -78,7 +82,7 @@ const equity = useQuery({
   staleTime: 5 * 60 * 1000
 });
 const equityPermissionDenied = computed(() => isRfqPermissionDenied(equity.error.value));
-const rfqAccessReady = computed(() => mode === 'mock' || equity.isSuccess.value);
+const rfqAccessReady = computed(() => equity.isSuccess.value);
 const listKey = computed(() => [
   'rfqs',
   source.value,
@@ -113,7 +117,7 @@ const rfqAccessError = computed<GatewayError | null>(() => {
 });
 const rfqWorkspaceReady = computed(() => rfqAccessReady.value && !rfqPackageDenied.value);
 const rfqListLoading = computed(
-  () => !rfqPackageDenied.value && ((mode !== 'mock' && equity.isPending.value) || rfqs.isPending.value)
+  () => !rfqPackageDenied.value && (equity.isPending.value || rfqs.isPending.value)
 );
 const visibleRfqIds = computed(() => (rfqs.data.value?.items ?? []).map((rfq) => rfq.id));
 const readStatus = useQuery({
@@ -129,7 +133,17 @@ const detail = useQuery({
 const selectedSummary = computed(() =>
   (rfqs.data.value?.items ?? []).find((rfq) => rfq.id === selectedRfqId.value)
 );
-const realMutationBlocked = computed(() => mode !== 'mock');
+const rfqMutations = useOperationAvailability(['uploadRfqAttachment', 'submitRfqQuotation']);
+const attachmentMutationBlocked = computed(() => !rfqMutations.isAllowed('uploadRfqAttachment'));
+const quotationMutationBlocked = computed(() => !rfqMutations.isAllowed('submitRfqQuotation'));
+const realMutationBlocked = computed(() => attachmentMutationBlocked.value || quotationMutationBlocked.value);
+const mutationAvailabilityReason = computed(() => {
+  const reasonCodes = [
+    rfqMutations.reasonCode('uploadRfqAttachment'),
+    rfqMutations.reasonCode('submitRfqQuotation')
+  ].filter((reasonCode, index, values) => reasonCode && values.indexOf(reasonCode) === index);
+  return operationAvailabilityMessage(reasonCodes.join(', ') || null, '真实附件上传或报价提交未开放');
+});
 const draftComplete = computed(
   () =>
     selectedRfqId.value !== '' &&
@@ -210,8 +224,11 @@ async function selectAttachment(event: Event): Promise<void> {
   attachmentError.value = '';
   const input = event.target;
   if (!(input instanceof HTMLInputElement) || !input.files?.[0]) return;
-  if (realMutationBlocked.value) {
-    attachmentError.value = '真实附件上传尚未完成账号验收';
+  if (attachmentMutationBlocked.value) {
+    attachmentError.value = operationAvailabilityMessage(
+      rfqMutations.reasonCode('uploadRfqAttachment'),
+      '当前环境未开放附件上传'
+    );
     input.value = '';
     return;
   }
@@ -404,7 +421,7 @@ const columns: DataColumn<RfqSummary>[] = [
     </div>
   </Card>
 
-  <Card v-else-if="mode !== 'mock' && equity.error.value" class="mb-4 border-destructive p-5">
+  <Card v-else-if="equity.error.value" class="mb-4 border-destructive p-5">
     <div class="flex items-start gap-3">
       <ShieldAlert class="mt-0.5 size-5 shrink-0 text-destructive" />
       <div>
@@ -424,7 +441,7 @@ const columns: DataColumn<RfqSummary>[] = [
       <div>
         <p class="font-medium">真实报价写操作保持关闭</p>
         <p class="mt-1 text-xs leading-5 text-muted-foreground">
-          当前账号尚未完成附件上传和报价提交验收，本地报价草稿不受影响。
+          {{ mutationAvailabilityReason }}；本地报价草稿不受影响。
         </p>
       </div>
     </Card>
@@ -562,9 +579,9 @@ const columns: DataColumn<RfqSummary>[] = [
             v-if="realMutationBlocked"
             class="mt-4 flex gap-2 rounded-lg border border-amber-300 p-3 text-sm"
           >
-            <ShieldAlert
-              class="mt-0.5 size-4 shrink-0 text-amber-600"
-            />可保存本地草稿；真实附件与报价按当前操作权限禁用。
+            <ShieldAlert class="mt-0.5 size-4 shrink-0 text-amber-600" />可保存本地草稿；{{
+              mutationAvailabilityReason
+            }}。
           </div>
 
           <div class="mt-4 grid gap-3 sm:grid-cols-2">
@@ -611,13 +628,18 @@ const columns: DataColumn<RfqSummary>[] = [
             <Button variant="outline" @click="saveDraft"><Save class="size-4" />保存草稿</Button>
             <label
               class="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border bg-background px-4 text-sm font-medium hover:bg-accent"
-              :class="realMutationBlocked ? 'pointer-events-none opacity-50' : ''"
+              :class="attachmentMutationBlocked ? 'pointer-events-none opacity-50' : ''"
             >
               <Paperclip class="size-4" />{{ attachmentName || '报价附件' }}
-              <input type="file" class="sr-only" :disabled="realMutationBlocked" @change="selectAttachment" />
+              <input
+                type="file"
+                class="sr-only"
+                :disabled="attachmentMutationBlocked"
+                @change="selectAttachment"
+              />
             </label>
             <Button
-              :disabled="realMutationBlocked || !draftComplete || submitQuotation.isPending.value"
+              :disabled="quotationMutationBlocked || !draftComplete || submitQuotation.isPending.value"
               @click="submitQuotation.mutate()"
             >
               <Send class="size-4" />提交报价

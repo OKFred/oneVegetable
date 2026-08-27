@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   BffProductDescriptionTemplateClient,
   CompositeProductDescriptionTemplateClient,
-  MemoryProductDescriptionTemplateClient
+  MemoryProductDescriptionTemplateClient,
+  StaticOperationAvailabilityClient
 } from '../src/product-description-template-client';
 
 import type { NetworkTransport } from '../src/network';
@@ -110,6 +111,20 @@ describe('product description template clients', () => {
     });
     await expect(client.archive(templateFixture().id, 1)).rejects.toMatchObject({
       gatewayError: { code: 'TEMPLATE_NOT_FOUND' }
+    });
+  });
+
+  it('reports deterministic per-operation reasons for local runtime policies', async () => {
+    const client = new StaticOperationAvailabilityClient((operation) => ({
+      allowed: operation === 'listProducts',
+      reasonCode: operation === 'listProducts' ? 'LOCAL_READ_ALLOWED' : 'LOCAL_MUTATION_DISABLED'
+    }));
+
+    await expect(client.get(['listProducts', 'publishProduct'])).resolves.toEqual({
+      items: [
+        { operation: 'listProducts', allowed: true, reasonCode: 'LOCAL_READ_ALLOWED' },
+        { operation: 'publishProduct', allowed: false, reasonCode: 'LOCAL_MUTATION_DISABLED' }
+      ]
     });
   });
 });

@@ -342,12 +342,12 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByRole('heading', { name: '交易 / 订单工作台' })).toBeVisible();
   await expect(page.getByText(/完整详情明确标记为不可用/)).toBeVisible();
   await page.getByRole('button', { name: '信保订单草稿' }).click();
-  await expect(page.getByText('真实写入已禁用')).toBeVisible();
+  await expect(page.getByText(/当前环境未开放信保订单创建.*REAL_MUTATION_DISABLED/)).toBeVisible();
   await expect(page.getByRole('button', { name: '创建信保订单（未开放）' })).toBeDisabled();
 
   await page.getByRole('link', { name: '国际物流' }).click();
   await expect(page.getByRole('heading', { name: '国际物流工作台' })).toBeVisible();
-  await expect(page.getByText(/扩展内不会发出这些请求/)).toBeVisible();
+  await expect(page.getByText(/LOGISTICS_QUALIFICATION_REQUIRED/)).toBeVisible();
   await expect(page.getByRole('button', { name: '业务资格待验收' })).toBeDisabled();
   await page.getByRole('button', { name: '物流订单', exact: true }).click();
   await expect(page.getByRole('button', { name: '刷新' })).toBeDisabled();

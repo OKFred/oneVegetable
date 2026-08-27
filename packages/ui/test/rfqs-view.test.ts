@@ -7,6 +7,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   GatewayException,
+  OPERATION_IDS,
+  StaticOperationAvailabilityClient,
   type GatewayClient,
   type OperationId,
   type RequestOf,
@@ -26,6 +28,9 @@ function mountView(
       provideServices({
         gateway,
         settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
+        operationAvailability: new StaticOperationAvailabilityClient(
+          new Set(mode === 'mock' ? OPERATION_IDS : [])
+        ),
         mode
       });
       return () => h(RfqsView);
@@ -115,7 +120,7 @@ describe('RfqsView', () => {
     await rfqButton.trigger('click');
     await flushPromises();
 
-    expect(bodyText()).toContain('尚未完成附件上传和报价提交验收');
+    expect(bodyText()).toContain('真实附件上传或报价提交未开放');
     expect(bodyButton('提交报价').disabled).toBe(true);
     expect(document.body.querySelector<HTMLInputElement>('input[type="file"]')?.disabled).toBe(true);
     wrapper.unmount();
@@ -158,7 +163,7 @@ describe('RfqsView', () => {
     const wrapper = mountView('bff');
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('Portable solar power stations');
-      expect(wrapper.text()).toContain('尚未完成附件上传和报价提交验收');
+      expect(wrapper.text()).toContain('真实附件上传或报价提交未开放（STATIC_DISABLED）');
     });
     const rfqButton = wrapper
       .findAll('button')

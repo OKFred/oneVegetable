@@ -26,6 +26,7 @@ export type {
   ProductDescriptionTemplateClient,
   ProductDescriptionTemplateListInput
 } from './product-description-template-client-types';
+export { StaticOperationAvailabilityClient } from './operation-availability';
 
 export interface BffProductDescriptionTemplateClientOptions {
   baseUrl: string;
@@ -349,24 +350,6 @@ export class CompositeProductDescriptionTemplateClient implements ProductDescrip
 
   restore(id: string, revision: number): Promise<ProductDescriptionTemplate> {
     return this.shared.restore(id, revision);
-  }
-}
-
-export class StaticOperationAvailabilityClient implements OperationAvailabilityClient {
-  readonly #allowed: ReadonlySet<OperationId>;
-
-  constructor(allowed: ReadonlySet<OperationId>) {
-    this.#allowed = allowed;
-  }
-
-  get(operations: readonly OperationId[]): Promise<OperationAvailabilityResult> {
-    return Promise.resolve({
-      items: operations.map((operation) => ({
-        operation,
-        allowed: this.#allowed.has(operation),
-        reasonCode: this.#allowed.has(operation) ? 'STATIC_ALLOWED' : 'STATIC_DISABLED'
-      }))
-    });
   }
 }
 

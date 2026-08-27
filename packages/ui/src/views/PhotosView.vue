@@ -15,6 +15,10 @@ import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import ModalDialog from '../components/ui/ModalDialog.vue';
+import {
+  operationAvailabilityMessage,
+  useOperationAvailability
+} from '../composables/use-operation-availability';
 import { useServices } from '../lib/services';
 
 type GovernanceFilter = 'all' | 'unreferenced' | 'lowResolution';
@@ -31,6 +35,14 @@ const previewOpen = ref(false);
 const previewIndex = ref(0);
 const deleteDialogOpen = ref(false);
 const uploadDialogOpen = ref(false);
+const photoMutations = useOperationAvailability(['operatePhotoGroup', 'uploadPhoto', 'transferPhotoFromUrl']);
+const groupMutationBlocked = computed(() => !photoMutations.isAllowed('operatePhotoGroup'));
+const uploadDialogBlocked = computed(
+  () => !photoMutations.isAllowed('uploadPhoto') && !photoMutations.isAllowed('transferPhotoFromUrl')
+);
+const groupMutationReason = computed(() =>
+  operationAvailabilityMessage(photoMutations.reasonCode('operatePhotoGroup'), '当前环境未开放图库分组写入')
+);
 const selectedGroupName = computed(() => selectedGroupDefinition.value?.name ?? '全部图片');
 const photos = useQuery({
   queryKey: ['photos', selectedGroup],
@@ -79,6 +91,10 @@ const operateGroup = useMutation({
 });
 
 function mutateGroup(operation: PhotoGroupOperationRequest['operation']): void {
+  if (groupMutationBlocked.value) {
+    operationMessage.value = groupMutationReason.value;
+    return;
+  }
   const current = selectedGroupDefinition.value;
   operateGroup.mutate({
     operation,
@@ -141,7 +157,9 @@ function handleUploaded(photo: Photo): void {
       <Badge :variant="mode === 'mock' ? 'secondary' : 'success'">
         {{ mode === 'mock' ? 'OpenAPI 演示' : mode === 'bff' ? 'BFF 后端查询' : 'Extension API 查询' }}
       </Badge>
-      <Button @click="uploadDialogOpen = true"><Upload class="size-4" />上传图片</Button>
+      <Button :disabled="uploadDialogBlocked" @click="uploadDialogOpen = true"
+        ><Upload class="size-4" />上传图片</Button
+      >
     </div>
   </PageHeader>
 
@@ -171,7 +189,7 @@ function handleUploaded(photo: Photo): void {
           <Button
             size="sm"
             variant="outline"
-            :disabled="operateGroup.isPending.value || !groupName.trim()"
+            :disabled="groupMutationBlocked || operateGroup.isPending.value || !groupName.trim()"
             title="新增子分组"
             @click="mutateGroup('add')"
             ><FolderPlus class="size-3" />新增</Button
@@ -179,21 +197,27 @@ function handleUploaded(photo: Photo): void {
           <Button
             size="sm"
             variant="outline"
-            :disabled="operateGroup.isPending.value || selectedGroup === '-1' || !groupName.trim()"
+            :disabled="
+              groupMutationBlocked ||
+              operateGroup.isPending.value ||
+              selectedGroup === '-1' ||
+              !groupName.trim()
+            "
             @click="mutateGroup('rename')"
             ><Pencil class="size-3" />改名</Button
           >
           <Button
             size="sm"
             variant="outline"
-            :disabled="operateGroup.isPending.value || selectedGroup === '-1'"
+            :disabled="groupMutationBlocked || operateGroup.isPending.value || selectedGroup === '-1'"
             @click="deleteDialogOpen = true"
             ><Trash2 class="size-3" />删除</Button
           >
         </div>
-        <p v-if="mode !== 'mock'" class="text-xs text-emerald-700">
+        <p v-if="mode !== 'mock' && !groupMutationBlocked" class="text-xs text-emerald-700">
           真实分组新增、改名和删除已完成账号验证；删除前会要求再次确认。
         </p>
+        <p v-else-if="groupMutationBlocked" class="text-xs text-amber-700">{{ groupMutationReason }}</p>
         <p v-if="operationMessage" class="text-xs text-muted-foreground">{{ operationMessage }}</p>
       </div>
     </Card>
@@ -288,7 +312,11 @@ function handleUploaded(photo: Photo): void {
         <Button variant="outline" :disabled="operateGroup.isPending.value" @click="deleteDialogOpen = false">
           取消
         </Button>
-        <Button variant="destructive" :disabled="operateGroup.isPending.value" @click="mutateGroup('delete')">
+        <Button
+          variant="destructive"
+          :disabled="groupMutationBlocked || operateGroup.isPending.value"
+          @click="mutateGroup('delete')"
+        >
           {{ operateGroup.isPending.value ? '正在删除…' : '确认删除' }}
         </Button>
       </div>

@@ -160,7 +160,7 @@ test('web mock completes the qualified international logistics workflow', async 
   await page.getByRole('button', { name: '开始试算' }).click();
   await expect(page.getByText('CNY 109.20')).toBeVisible();
   await page.getByRole('button', { name: '下单草稿' }).click();
-  await page.getByRole('button', { name: '提交演示物流订单' }).click();
+  await page.getByRole('button', { name: '提交物流订单' }).click();
   await expect(page.getByText('ALS00201756999')).toBeVisible();
 
   await page.getByRole('button', { name: '物流订单', exact: true }).click();

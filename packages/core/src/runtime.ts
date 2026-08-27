@@ -10,6 +10,9 @@ export {
 } from './credential-vault';
 export { ALIBABA_GATEWAY } from './signing';
 export { APP_PREFERENCES_STORAGE_KEY } from './preferences';
+export { StaticOperationAvailabilityClient } from './operation-availability';
+export { QUALIFICATION_GATED_OPERATION_IDS } from './operation-id';
+export type { OperationAvailabilityClient } from './product-description-template-client-types';
 export {
   BundledProductDescriptionTemplateClient,
   BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA

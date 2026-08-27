@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { createRequestId } from '@one-vegetable/core';
+import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import { StaticOperationFeatureFlags } from '../src/abac';
 import { createApiApp } from '../src/app';
@@ -19,7 +20,7 @@ afterEach(() => {
   database = undefined;
 });
 
-function fixture(flags = new Set<string>()) {
+function fixture(flags = new Set<string>(), gatewayMode: 'mock' | 'replay' = 'mock') {
   database = openNodeDatabase(':memory:');
   applyNodeMigrations(database);
   const repository = new SqlAuthRepository(database.executor);
@@ -32,7 +33,8 @@ function fixture(flags = new Set<string>()) {
     runtime: 'node',
     database: 'sqlite',
     environment: 'test',
-    gatewayMode: 'mock',
+    gatewayMode,
+    ...(gatewayMode === 'replay' ? { gateway: new MockGatewayClient(0) } : {}),
     authService,
     adminService,
     featureFlags: new StaticOperationFeatureFlags(flags),
@@ -192,6 +194,34 @@ describe('shared product description template routes', () => {
           { operation: 'publishProduct', allowed: false, reasonCode: 'MUTATION_FLAG_DISABLED' },
           { operation: 'updateProduct', allowed: false, reasonCode: 'MUTATION_FLAG_DISABLED' },
           { operation: 'missingOperation', allowed: false, reasonCode: 'OPERATION_UNKNOWN' }
+        ]
+      }
+    });
+  });
+
+  it('reports provider qualification gates independently from the UI runtime mode', async () => {
+    const { app, authService } = fixture(new Set(), 'replay');
+    const admin = await bootstrap(authService);
+    const requestId = createRequestId();
+    const response = await app.request('/api/v1/operations/availability/get', {
+      method: 'POST',
+      headers: authHeaders(admin.sessionToken),
+      body: JSON.stringify({
+        requestId,
+        operations: ['calculateLogisticsQuote', 'listShippingTemplates']
+      })
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: {
+        items: [
+          {
+            operation: 'calculateLogisticsQuote',
+            allowed: false,
+            reasonCode: 'LOGISTICS_QUALIFICATION_REQUIRED'
+          },
+          { operation: 'listShippingTemplates', allowed: true, reasonCode: 'READ_ALLOWED' }
         ]
       }
     });

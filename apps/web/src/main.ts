@@ -7,6 +7,8 @@ import {
   BffGatewayClient,
   BffProductMutationJobClient,
   BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA,
+  OPERATION_IDS,
+  StaticOperationAvailabilityClient,
   type GatewaySettings,
   type SettingsRepository
 } from '@one-vegetable/core';
@@ -91,6 +93,11 @@ const mockTemplates =
 const productDescriptionTemplates = bffTemplates
   ? new CompositeProductDescriptionTemplateClient(bundledTemplates, bffTemplates)
   : mockTemplates;
+const operationAvailability =
+  bffTemplates ??
+  new StaticOperationAvailabilityClient(new Set(OPERATION_IDS), {
+    allowedReasonCode: 'MOCK_OPERATION_ALLOWED'
+  });
 
 const app = createApp(OneVegetableApp, {
   gateway,
@@ -99,7 +106,7 @@ const app = createApp(OneVegetableApp, {
   ...(control ? { control } : {}),
   ...(productDescriptionTemplates ? { productDescriptionTemplates } : {}),
   ...(productMutationJobs ? { productMutationJobs } : {}),
-  ...(bffTemplates ? { operationAvailability: bffTemplates } : {})
+  operationAvailability
 });
 app.use(VueQueryPlugin, {
   queryClient: new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000 } } })
