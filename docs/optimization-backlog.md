@@ -52,7 +52,10 @@
   - Redocly 继续执行推荐规则；仅豁免作为运行时契约注册表而未被 HTTP path 引用的 Schema，以及没有人为 4xx 的基础设施探针。
   - 项目级检查明确约束探针只能使用 GET，其余接口只能使用 POST + JSON Body、必须声明 4xx，且不得使用 path/query 参数。
   - 删除历史遗留的分页、商品和订单 URL 参数组件；当前基线为零告警，新增结构问题会直接使质量门禁失败。
-- 评估使用 Chrome Web Store 官方 API 上传草稿包；正式提交和发布继续保留人工确认。
+- 评估使用 Chrome Web Store 官方 API 上传草稿包；正式提交和发布继续保留人工确认。（已完成，2026-08-28）
+  - 使用 V2 `media.upload` 更新既有条目的草稿包，并通过 `fetchStatus` 轮询异步状态；上传 mutation 不自动重试。
+  - 工具要求显式 `--confirm-draft-upload`，不实现 `publish`、不在 CI 默认执行，也不持久化 access token 或 service account key。
+  - 未配置商店认证时可完成发布 ZIP、SHA-256、版本和目标预检；正式提交审核与发布仍由开发者后台人工完成。
 
 ## 分支约定
 

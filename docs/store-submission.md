@@ -1,6 +1,6 @@
 # Chrome Web Store 提交清单
 
-检查日期：2026-08-26
+检查日期：2026-08-28
 
 ## 已自动化验证
 
@@ -45,6 +45,32 @@ pnpm release:extension
 
 商品、RFQ、交易等 Web 本地演示不属于扩展商店审核凭证。真实查询需要审核人员自有的 Alibaba.com 开放平台凭证；商店文案不提供项目开发账号，也不宣称审核人员无需权限即可完成真实网络流程。
 
+## V2 API 草稿包上传
+
+Chrome Web Store V2 API 将“上传包”和“提交发布”拆成两个接口。本项目只封装官方 `media.upload` 和只读 `fetchStatus`；脚本中不存在 `publish` 调用，因此上传成功只会更新开发者后台草稿，不会提交审核或发布。官方要求现有条目的新包必须提升 manifest 版本。
+
+推荐在开发者后台绑定 Google Cloud service account，并使用 `gcloud auth print-access-token --impersonate-service-account=... --scopes=https://www.googleapis.com/auth/chromewebstore` 获取短期 Token。不要在仓库、`.env`、GitHub Actions 日志或发布产物中保存 service account JSON key、OAuth client secret、refresh token 或 access token。
+
+Windows PowerShell 本地流程：
+
+```powershell
+pnpm release:extension
+
+$env:CHROME_WEB_STORE_PUBLISHER_ID = '<Publisher ID>'
+$env:CHROME_WEB_STORE_ITEM_ID = '<32 位扩展 ID>'
+$env:CHROME_WEB_STORE_ACCESS_TOKEN = '<短期 access token>'
+
+# 只校验本地 ZIP、SHA-256、版本和目标，不发网络请求
+pnpm upload:extension:draft
+
+# 明确确认后，仅上传草稿并轮询上传状态
+pnpm upload:extension:draft -- --confirm-draft-upload
+```
+
+成功记录写入已忽略的 `artifacts/chrome-web-store-draft-upload.json`，不包含 Token。CI 继续只生成发布包，不默认访问商店 API。正式提交审核、发布范围和可见性仍在 Chrome Web Store Developer Dashboard 中人工确认。
+
+官方参考：[Chrome Web Store API 使用指南](https://developer.chrome.com/docs/webstore/using-api)、[V2 media.upload](https://developer.chrome.com/docs/webstore/api/reference/rest/v2/media/upload)、[service account 配置](https://developer.chrome.com/docs/webstore/service-accounts)。
+
 ## 当前阻断项
 
 - [x] Chrome Web Store 开发者账号和现有扩展条目已可访问；
@@ -52,4 +78,5 @@ pnpm release:extension
 - [x] 发布包和商店资料不包含项目开发账号、密码、Token 或本地 `.env` 值；
 - [x] 图库查询、分组管理、上传和外部图片转存已完成当前账号验证；其他写能力继续由扩展后台门禁；
 - [x] 用户口令加密保险库已实现并自动锁定；高安全场景仍建议使用用户控制的 BFF；
+- [x] 已提供 V2 API 草稿包上传工具；未配置 Publisher、service account 和短期 Token 时只保留本地预检能力；
 - [ ] 本文件不是法律意见，正式公开发布前仍需项目所有者确认隐私文本和适用地区要求。

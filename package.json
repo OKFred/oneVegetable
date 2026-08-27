@@ -27,6 +27,7 @@
     "capture:store-assets": "pnpm run build:extension && tsx scripts/capture-store-assets.ts",
     "zip:extension": "pnpm run release:extension",
     "release:extension": "pnpm run build:extension && pnpm run check:extension-bundle && pnpm run check:store-compliance && tsx scripts/package-extension.ts",
+    "upload:extension:draft": "tsx scripts/upload-chrome-web-store-draft.ts",
     "generate": "pnpm run generate:version && pnpm run generate:privacy && pnpm run generate:product-contract && pnpm run generate:rfq-contract && pnpm run generate:trade-contract && pnpm run generate:logistics-contract && pnpm run generate:insights-contract && pnpm run generate:photo-contract && pnpm run generate:platform-contract && pnpm run generate:types && pnpm run generate:validators && pnpm run generate:mock-data",
     "generate:version": "tsx scripts/generate-version.ts",
     "generate:privacy": "tsx scripts/generate-privacy-pages.ts",
