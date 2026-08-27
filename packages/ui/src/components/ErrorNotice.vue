@@ -2,12 +2,11 @@
 import { computed, ref } from 'vue';
 import { AlertCircle, Check, Clipboard, Download } from '@lucide/vue';
 
-import {
-  APP_VERSION,
-  describeUserVisibleError,
-  sanitizeDiagnosticMessage,
-  type DiagnosticsSnapshot
-} from '@one-vegetable/core';
+import { sanitizeDiagnosticMessage } from '@one-vegetable/core/diagnostics';
+import { describeUserVisibleError } from '@one-vegetable/core/errors';
+import { APP_VERSION } from '@one-vegetable/core/version';
+
+import type { DiagnosticsSnapshot } from '@one-vegetable/core';
 
 import Button from './ui/Button.vue';
 import { useServices } from '../lib/services';

@@ -56,6 +56,10 @@
   - 使用 V2 `media.upload` 更新既有条目的草稿包，并通过 `fetchStatus` 轮询异步状态；上传 mutation 不自动重试。
   - 工具要求显式 `--confirm-draft-upload`，不实现 `publish`、不在 CI 默认执行，也不持久化 access token 或 service account key。
   - 未配置商店认证时可完成发布 ZIP、SHA-256、版本和目标预检；正式提交审核与发布仍由开发者后台人工完成。
+- 清理全量质量链中的剩余构建和 lint 告警。（已完成，2026-08-28）
+  - 商品 mutation 测试复用单一 Vue 宿主，不再触发测试文件多组件告警。
+  - Worker dry-run 显式选择顶层本地环境，避免 Wrangler 对 staging/production 目标不明确。
+  - ErrorNotice 改用 core 精确子路径，Web 将契约、HTML 解析和校验代码拆成独立缓存块；最大 JS chunk 从约 607 kB 降至 456 kB，并加入 500 kB 强制预算。
 
 ## 分支约定
 

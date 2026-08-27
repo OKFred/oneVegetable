@@ -35,9 +35,13 @@ describe('ProductsView product mutation lifecycle', () => {
       expect(wrapper.text()).toContain(job.requestId);
     });
     expect(refresh).toHaveBeenCalled();
-    await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('检查与提交');
-    });
+    await vi.waitFor(
+      () => {
+        expect(wrapper.text()).not.toContain('正在加载商品编辑功能');
+        expect(wrapper.text()).toContain('检查与提交');
+      },
+      { timeout: 10_000 }
+    );
     const reviewStep = wrapper.findAll('button').find((button) => button.text().includes('检查与提交'));
     if (!reviewStep) throw new Error('Missing review step');
     await reviewStep.trigger('click');
