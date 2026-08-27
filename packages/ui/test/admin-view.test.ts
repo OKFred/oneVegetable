@@ -103,6 +103,15 @@ function controlFixture(
 ): ControlClient {
   const user = sessionFixture().user;
   return {
+    backendMeta: () =>
+      Promise.resolve({
+        runtime: 'node',
+        database: 'sqlite',
+        environment: 'local-node',
+        gatewayMode: 'mock',
+        apiPrefix: '/api/v1',
+        version: '2.0.1'
+      }),
     session: () => Promise.resolve(sessionFixture()),
     bootstrapStatus: () =>
       Promise.resolve({ initialized: true, bootstrapTokenConfigured: true, bootstrapAvailable: false }),

@@ -21,6 +21,8 @@ import {
 import { OneVegetableApp } from '@one-vegetable/ui';
 import '@one-vegetable/ui/styles.css';
 
+import { readWebGatewayMode } from './runtime-config';
+
 const SETTINGS_KEY = 'one-vegetable-mock-settings';
 const defaults: GatewaySettings = {
   appKey: '',
@@ -45,7 +47,7 @@ const settings: SettingsRepository = {
   }
 };
 
-const gatewayMode = import.meta.env.VITE_GATEWAY_MODE === 'bff' ? 'bff' : 'mock';
+const gatewayMode = readWebGatewayMode(import.meta.env.VITE_GATEWAY_MODE);
 const bffBaseUrl = import.meta.env.VITE_BFF_BASE_URL ?? globalThis.location.origin;
 const control =
   gatewayMode === 'bff'

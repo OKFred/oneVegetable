@@ -61,6 +61,14 @@
   - Worker dry-run 显式选择顶层本地环境，避免 Wrangler 对 staging/production 目标不明确。
   - ErrorNotice 改用 core 精确子路径，Web 将契约、HTML 解析和校验代码拆成独立缓存块；最大 JS chunk 从约 607 kB 降至 456 kB，并加入 500 kB 强制预算。
 
+## 下一迭代：真实数据来源透明化
+
+- Web 对 `VITE_GATEWAY_MODE` 使用严格枚举，无效值阻止启动，不再静默转为 Mock。（已完成，2026-08-28）
+- BFF Web 读取 `/meta/get`，全局状态与总览明确区分 `real / replay / mock / disabled / unavailable`。（已完成，2026-08-28）
+- 为总览指标增加逐项来源和可用性，区分“真实为 0”、“接口失败”和“账号无权限”。
+- 生成能力真实性矩阵，展示契约、Replay、账号验证和当前权限四个独立维度。
+- 增加 Mock、Replay、Real 三种 Web E2E，确认页面标识与实际出网路径一致，且真实错误不被 Mock 数据覆盖。
+
 ## 分支约定
 
 - 功能分支从最新 `origin/master` 创建。

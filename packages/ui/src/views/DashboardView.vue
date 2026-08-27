@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
 import { Boxes, Image, PlugZap, ShoppingCart } from '@lucide/vue';
 
@@ -6,8 +7,10 @@ import { useServices } from '../lib/services';
 import Card from '../components/ui/Card.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
+import { resolveDataSource } from '../lib/data-source';
 
-const { gateway, mode } = useServices();
+const { gateway, mode, runtime } = useServices();
+const dataSource = computed(() => resolveDataSource(mode, runtime));
 const summary = useQuery({
   queryKey: ['dashboard'],
   queryFn: () => gateway.request('getDashboard', undefined)
@@ -30,7 +33,7 @@ function formatMetric(value: number | null | undefined): string {
     "
   >
     <span class="rounded-full border bg-card px-3 py-1.5 text-xs text-muted-foreground">
-      {{ mode === 'mock' ? 'OpenAPI 演示' : mode === 'bff' ? 'BFF 文档回放/代理' : 'Extension MV3' }}
+      {{ dataSource.label }}
     </span>
   </PageHeader>
   <QueryState :loading="summary.isPending.value" :error="summary.error.value">
@@ -84,16 +87,10 @@ function formatMetric(value: number | null | undefined): string {
       </Card>
       <Card class="border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/40">
         <h2 class="font-semibold text-amber-900 dark:text-amber-100">
-          {{ mode === 'mock' ? '契约演示模式' : mode === 'bff' ? 'BFF 网关模式' : '扩展网关模式' }}
+          {{ dataSource.label }}
         </h2>
         <p class="mt-2 text-sm leading-6 text-amber-800 dark:text-amber-200">
-          {{
-            mode === 'mock'
-              ? '当前数据来自本地契约演示，不会请求 Alibaba。'
-              : mode === 'bff'
-                ? '数据由本地 BFF 聚合；网关来源、凭据状态与请求诊断可在管理页查看。'
-                : '数据由扩展 service worker 聚合，页面不会接触 App Secret。'
-          }}
+          {{ dataSource.description }}
         </p>
       </Card>
     </div>

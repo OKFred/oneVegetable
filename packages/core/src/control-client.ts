@@ -2,7 +2,7 @@ import { DEFAULT_API_PREFIX, normalizeApiPrefix } from './api-contract';
 import { GatewayException } from './errors';
 import { createRequestId, NetworkManager } from './network';
 
-import type { ApiResponse } from './api-contract';
+import type { ApiResponse, BackendMeta } from './api-contract';
 import type { EntityAuditFields, UnixEpochMilliseconds } from './audit';
 import type { NetworkTransport } from './network';
 
@@ -102,6 +102,7 @@ export interface PageResult<T> {
 }
 
 export interface ControlClient {
+  backendMeta(): Promise<BackendMeta>;
   session(): Promise<ControlSession>;
   bootstrapStatus(): Promise<ControlBootstrapStatus>;
   bootstrap(input: {
@@ -203,6 +204,10 @@ export class BffControlClient implements ControlClient {
 
   csrfToken(): string | null {
     return this.#sessionCsrfToken ?? this.#externalCsrfToken?.() ?? null;
+  }
+
+  backendMeta(): Promise<BackendMeta> {
+    return this.#call('/meta/get', {});
   }
 
   session(): Promise<ControlSession> {
