@@ -179,11 +179,6 @@ describe('BFF Alibaba read gateway', () => {
         { requestId: createRequestId() }
       )
     ).rejects.toMatchObject({ gatewayError: { code: 'REAL_MUTATION_DISABLED' } });
-    await expect(
-      gateway.request('publishProduct', { categoryId: 1, language: 'en_US', schemaXml: '<xml />' })
-    ).rejects.toMatchObject({
-      gatewayError: { code: 'REAL_MUTATION_DISABLED' }
-    });
     await expect(gateway.request('listLogisticsProducts', undefined)).rejects.toMatchObject({
       gatewayError: { code: 'LOGISTICS_QUALIFICATION_REQUIRED' }
     });
@@ -231,13 +226,13 @@ describe('BFF Alibaba read gateway', () => {
         version: 'trade.1.1',
         xml: '<itemSchema />'
       });
-      expect(method).toBe('alibaba.icbu.product.schema.add.draft');
+      expect(method).toMatch(/^alibaba\.icbu\.product\.schema\.add(?:\.draft)?$/u);
       return Promise.resolve(
         Response.json({
-          alibaba_icbu_product_schema_add_draft_response: {
+          [`${method?.replaceAll('.', '_')}_response`]: {
             biz_success: true,
             product_id: '1600000000123',
-            trace_id: 'draft-trace'
+            trace_id: method?.endsWith('.draft') ? 'draft-trace' : 'publish-trace'
           }
         })
       );
@@ -253,6 +248,13 @@ describe('BFF Alibaba read gateway', () => {
     ).resolves.toEqual({ productId: '1600000000123', traceId: 'draft-trace', success: true });
     await expect(
       gateway.request(
+        'publishProduct',
+        { categoryId: 201712702, language: 'en_US', schemaXml: '<itemSchema />' },
+        { requestId: createRequestId() }
+      )
+    ).resolves.toEqual({ productId: '1600000000123', traceId: 'publish-trace', success: true });
+    await expect(
+      gateway.request(
         'saveProductDraft',
         {
           categoryId: 201712702,
@@ -263,7 +265,7 @@ describe('BFF Alibaba read gateway', () => {
         { requestId: createRequestId() }
       )
     ).rejects.toMatchObject({ gatewayError: { code: 'ALIBABA_DRAFT_UPDATE_UNSUPPORTED' } });
-    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledTimes(2);
     await expect(
       gateway.request(
         'updateProduct',
@@ -276,6 +278,6 @@ describe('BFF Alibaba read gateway', () => {
         { requestId: createRequestId() }
       )
     ).resolves.toEqual({ productId: '1600000000123', traceId: 'update-trace', success: true });
-    expect(send).toHaveBeenCalledTimes(2);
+    expect(send).toHaveBeenCalledTimes(3);
   });
 });

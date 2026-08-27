@@ -170,6 +170,11 @@ export class AlibabaReadGatewayClient implements GatewayClient {
         return await products.getSchema(request as RequestOf<'getProductSchema'>);
       case 'renderProductSchema':
         return await products.renderSchema(request as RequestOf<'renderProductSchema'>);
+      case 'publishProduct':
+        return await products.mutate(
+          'alibaba.icbu.product.schema.add',
+          request as RequestOf<'publishProduct'>
+        );
       case 'saveProductDraft':
         return await products.saveDraft(request as RequestOf<'saveProductDraft'>);
       case 'updateProduct':

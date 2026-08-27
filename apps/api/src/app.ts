@@ -181,6 +181,7 @@ export function createApiApp(options: ApiAppOptions): Hono {
       database: options.database,
       gatewayMode: options.gatewayMode,
       mutationEnabled: [
+        'publishProduct',
         'saveProductDraft',
         'updateProduct',
         'updateProductDisplay',

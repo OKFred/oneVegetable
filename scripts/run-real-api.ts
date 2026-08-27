@@ -27,7 +27,7 @@ const child = spawn(command, args, {
     ONE_VEGETABLE_GATEWAY_MODE: 'real',
     ONE_VEGETABLE_MUTATION_FLAGS:
       process.env.ONE_VEGETABLE_MUTATION_FLAGS ??
-      'operation:saveProductDraft,operation:updateProduct,operation:operatePhotoGroup,operation:uploadPhoto,operation:transferPhotoFromUrl',
+      'operation:publishProduct,operation:saveProductDraft,operation:updateProduct,operation:operatePhotoGroup,operation:uploadPhoto,operation:transferPhotoFromUrl',
     ONE_VEGETABLE_ALIBABA_CREDENTIAL_FILE: credentialFile
   },
   stdio: 'inherit',
