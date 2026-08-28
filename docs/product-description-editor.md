@@ -10,6 +10,8 @@
 
 平台明确成功后，队列保存商品 ID、目标和完成状态，已完成项目不能重复提交。Web/BFF、Mock 和扩展继续使用各自 operation availability；批量编排不能绕过单品 mutation flag、管理员会话、CSRF 或扩展写入门禁。真实批量操作仍会在开始前显示数量和目标并要求确认。
 
+真实批量验收使用 `pnpm smoke:product:batch-publish:real`。命令默认只读取一件已验证商品的最新 Schema、生成三条仅标题标记不同的候选并完成全量预检；只有显式设置 `ONE_VEGETABLE_REAL_PRODUCT_BATCH_PUBLISH_SMOKE=1` 才会严格串行调用正式发布。每条提交前、平台明确接受后及列表回读后都会原子更新忽略目录中的脱敏报告；发生不确定中断时拒绝自动重试，避免重复商品。验收商品保留平台返回状态，不自动下架。
+
 ## Schema XML 边界
 
 `schema.get` 和 `schema.render` 返回的 XML 是国际站为类目动态表单定义的规则与当前值，不是给用户直接编辑的商品详情文本。应用必须解析它才能知道字段、层级、必填和校验规则；发布或更新时再把同一份表单模型无损序列化为 XML，提交给 Schema 发布接口。因此 XML 在 Alibaba API 边界必须保留，但界面只暴露可视化控件，高级模式也仅提供只读预览。
