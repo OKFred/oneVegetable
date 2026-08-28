@@ -343,6 +343,54 @@ export function cloneProductSchemaInstance(field: ProductSchemaField): ProductSc
   };
 }
 
+export function isProductSchemaFixedSlotCollection(field: ProductSchemaField): boolean {
+  if (field.type !== 'complex' || field.children.length === 0) return false;
+  const maximum = Number(field.rules.find((rule) => rule.name === 'maxInputNumRule')?.value);
+  if (!Number.isSafeInteger(maximum) || maximum !== field.children.length) return false;
+  return field.children.every((child, index) => {
+    const match = /_(\d+)$/u.exec(child.id);
+    return child.type === 'complex' && Number(match?.[1]) === index;
+  });
+}
+
+export function appendProductSchemaFixedSlot(field: ProductSchemaField): ProductSchemaField {
+  if (!isProductSchemaFixedSlotCollection(field)) return field;
+  const current = field.instances[0];
+  const usedIds = new Set(current?.fields.map((child) => child.id) ?? []);
+  const templateIndex = field.children.findIndex((child) => !usedIds.has(child.id));
+  const template = field.children[templateIndex];
+  if (!template) return field;
+
+  const outerKey = current?.key ?? `${field.key}:instance:new:${nextInstanceSequence(field)}`;
+  const slot = resetField(template, `${outerKey}:field:new:${templateIndex}`);
+  slot.instances = [cloneProductSchemaInstance(slot)];
+  const instance: ProductSchemaInstance = current
+    ? { ...current, fields: [...current.fields, slot] }
+    : {
+        key: outerKey,
+        sourcePath: null,
+        sourceIndex: null,
+        fields: [slot]
+      };
+  return { ...field, instances: [instance, ...field.instances.slice(1)] };
+}
+
+export function removeProductSchemaFixedSlot(
+  field: ProductSchemaField,
+  slotIndex: number
+): ProductSchemaField {
+  if (!isProductSchemaFixedSlotCollection(field)) return field;
+  const current = field.instances[0];
+  if (!current || slotIndex < 0 || slotIndex >= current.fields.length) return field;
+  const fields = current.fields.filter((_, index) => index !== slotIndex);
+  return {
+    ...field,
+    instances: fields.length
+      ? [{ ...current, fields }, ...field.instances.slice(1)]
+      : field.instances.slice(1)
+  };
+}
+
 export function markProductSchemaFieldTouched(
   model: ProductSchemaModel,
   fieldKey: string
@@ -704,13 +752,14 @@ function updateComplexField(
 
   field.instances.forEach((instance) => {
     if (instance.sourceIndex === null) {
-      const created = createComplexInstanceNode(document, target, field, sourceNodes[0]);
+      const created = createComplexInstanceNode(document, target, field, sourceNodes[0], instance.fields);
       updateComplexInstance(
         document,
         created,
         instance.fields,
         sourceField.instances[0]?.fields ?? sourceField.children,
-        structuralDiffs
+        structuralDiffs,
+        schemaFieldElements(target)
       );
       insertComplexInstance(target, created, field.complexLayout);
       return;
@@ -721,7 +770,14 @@ function updateComplexField(
       structuralDiffs.push(`${instance.key} 的源实例不存在`);
       return;
     }
-    updateComplexInstance(document, node, instance.fields, sourceInstance.fields, structuralDiffs);
+    updateComplexInstance(
+      document,
+      node,
+      instance.fields,
+      sourceInstance.fields,
+      structuralDiffs,
+      schemaFieldElements(target)
+    );
   });
 
   sourceNodes.forEach((node, index) => {
@@ -734,33 +790,63 @@ function updateComplexInstance(
   target: Element,
   fields: ProductSchemaField[],
   sourceFields: ProductSchemaField[],
-  structuralDiffs: string[]
+  structuralDiffs: string[],
+  templateFields: Element[]
 ): void {
   const fieldsParent = firstDirectChild(target, 'fields');
   const targetFields = fieldsParent ? directChildren(fieldsParent, 'field') : directChildren(target, 'field');
+  const retainedTargets = new Set<Element>();
   fields.forEach((field, index) => {
-    const targetField = targetFields[index];
-    const sourceField = sourceFields[index];
-    if (!targetField || !sourceField || targetField.getAttribute('id') !== field.id) {
+    const sourceIndex = field.sourceIndex >= 0 ? field.sourceIndex : index;
+    let targetField = targetFields[sourceIndex];
+    let sourceField = sourceFields[sourceIndex];
+    if (targetField?.getAttribute('id') !== field.id || sourceField?.id !== field.id) {
+      targetField = targetFields.find(
+        (candidate) => !retainedTargets.has(candidate) && candidate.getAttribute('id') === field.id
+      );
+      sourceField = sourceFields.find((candidate) => candidate.id === field.id);
+    }
+    if (!targetField) {
+      const template = templateFields.find((candidate) => candidate.getAttribute('id') === field.id);
+      if (template) {
+        targetField = template.cloneNode(true) as Element;
+        (fieldsParent ?? target).append(targetField);
+        sourceField = parseField(template, `${field.key}:source-template`, index, []);
+      }
+    }
+    if (!targetField || !sourceField) {
       structuralDiffs.push(`${field.key} 无法绑定到复合实例子字段`);
       return;
     }
+    retainedTargets.add(targetField);
     updateField(document, targetField, field, sourceField, structuralDiffs);
   });
+  for (const targetField of targetFields) {
+    if (!retainedTargets.has(targetField)) targetField.remove();
+  }
 }
 
 function createComplexInstanceNode(
   document: XMLDocument,
   target: Element,
   field: ProductSchemaField,
-  sourceTemplate: Element | undefined
+  sourceTemplate: Element | undefined,
+  fields: ProductSchemaField[]
 ): Element {
   if (sourceTemplate) return sourceTemplate.cloneNode(true) as Element;
   const nodeName = field.complexLayout === 'repeated-complex-values' ? 'complex-values' : 'complex-value';
   const node = document.createElement(nodeName);
-  const fieldTemplate = firstDirectChild(target, 'fields');
-  for (const templateField of directChildren(fieldTemplate, 'field')) {
-    node.append(templateField.cloneNode(true));
+  const templates = schemaFieldElements(target);
+  const usedTemplates = new Set<Element>();
+  for (const [index, instanceField] of fields.entries()) {
+    const template =
+      templates.find(
+        (candidate) => !usedTemplates.has(candidate) && candidate.getAttribute('id') === instanceField.id
+      ) ?? templates[index];
+    if (template) {
+      usedTemplates.add(template);
+      node.append(template.cloneNode(true));
+    }
   }
   return node;
 }

@@ -5,12 +5,15 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import {
+  appendProductSchemaFixedSlot,
   cloneProductSchemaInstance,
   inspectProductSchemaPatchSerialization,
   inspectProductSchemaSerialization,
+  isProductSchemaFixedSlotCollection,
   parseProductSchemaXml,
   ProductSchemaSerializationError,
   productSchemaFieldText,
+  removeProductSchemaFixedSlot,
   serializeProductSchemaXml,
   validateProductSchemaModel,
   withProductSchemaFieldText
@@ -224,6 +227,58 @@ describe('product Schema XML engine', () => {
     at(roundTrip.fields, 5).instances.splice(0, 1);
     roundTrip = parseProductSchemaXml(serializeProductSchemaXml(roundTrip));
     expect(at(roundTrip.fields, 5).instances).toHaveLength(1);
+  });
+
+  it('serializes only enabled numbered slots for Alibaba ladder fields', () => {
+    const model = parseProductSchemaXml(`<itemSchema>
+      <field id="ladderPrice" name="Quantity price" type="complex">
+        <rules><rule name="minInputNumRule" value="1"/><rule name="maxInputNumRule" value="2"/></rules>
+        <fields>
+          <field id="ladderPrice_0" type="complex"><fields>
+            <field id="quantity" name="MOQ" type="input"><rules><rule name="requiredRule" value="true"/></rules></field>
+            <field id="price" name="Price" type="input"><rules><rule name="requiredRule" value="true"/></rules></field>
+          </fields></field>
+          <field id="ladderPrice_1" type="complex"><fields>
+            <field id="quantity" name="MOQ" type="input"><rules><rule name="requiredRule" value="true"/></rules></field>
+            <field id="price" name="Price" type="input"><rules><rule name="requiredRule" value="true"/></rules></field>
+          </fields></field>
+        </fields>
+      </field>
+    </itemSchema>`);
+    const root = at(model.fields, 0);
+
+    expect(isProductSchemaFixedSlotCollection(root)).toBe(true);
+    model.fields[0] = appendProductSchemaFixedSlot(root);
+    const slot = at(at(at(model.fields, 0).instances, 0).fields, 0);
+    const slotInstance = at(slot.instances, 0);
+    slotInstance.fields[0] = withProductSchemaFieldText(at(slotInstance.fields, 0), '1');
+    slotInstance.fields[1] = withProductSchemaFieldText(at(slotInstance.fields, 1), '199.00');
+
+    const inspection = inspectProductSchemaSerialization(model);
+    expect(inspection).toMatchObject({ safe: true });
+    const roundTrip = parseProductSchemaXml(inspection.xml);
+    const renderedSlots = at(at(roundTrip.fields, 0).instances, 0).fields;
+    expect(renderedSlots.map((field) => field.id)).toEqual(['ladderPrice_0']);
+    expect(productSchemaFieldText(at(at(renderedSlots, 0).instances[0]?.fields ?? [], 0))).toBe('1');
+    expect(inspection.xml.match(/<complex-value>/gu)).toHaveLength(2);
+
+    const sourceBound = parseProductSchemaXml(inspection.xml);
+    sourceBound.fields[0] = appendProductSchemaFixedSlot(at(sourceBound.fields, 0));
+    const secondSlot = at(at(at(sourceBound.fields, 0).instances, 0).fields, 1);
+    const secondSlotInstance = at(secondSlot.instances, 0);
+    secondSlotInstance.fields[0] = withProductSchemaFieldText(at(secondSlotInstance.fields, 0), '10');
+    secondSlotInstance.fields[1] = withProductSchemaFieldText(at(secondSlotInstance.fields, 1), '179.00');
+    let sourceBoundRoundTrip = parseProductSchemaXml(serializeProductSchemaXml(sourceBound));
+    expect(at(at(sourceBoundRoundTrip.fields, 0).instances, 0).fields.map((field) => field.id)).toEqual([
+      'ladderPrice_0',
+      'ladderPrice_1'
+    ]);
+
+    sourceBoundRoundTrip.fields[0] = removeProductSchemaFixedSlot(at(sourceBoundRoundTrip.fields, 0), 0);
+    sourceBoundRoundTrip = parseProductSchemaXml(serializeProductSchemaXml(sourceBoundRoundTrip));
+    expect(at(at(sourceBoundRoundTrip.fields, 0).instances, 0).fields.map((field) => field.id)).toEqual([
+      'ladderPrice_1'
+    ]);
   });
 
   it('validates local rules and never executes server expressions', () => {

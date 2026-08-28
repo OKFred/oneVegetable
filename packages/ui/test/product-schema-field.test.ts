@@ -92,6 +92,39 @@ describe('ProductSchemaField', () => {
     ]);
   });
 
+  it('edits Alibaba numbered ladder slots without creating empty sibling slots', async () => {
+    const field = parseField(`<field id="ladderPeriod" name="Shipping" type="complex">
+      <rules><rule name="minInputNumRule" value="1"/><rule name="maxInputNumRule" value="2"/></rules>
+      <fields>
+        <field id="ladderPeriod_0" type="complex"><fields>
+          <field id="quantity" name="Quantity" type="input"/><field id="day" name="Lead time" type="input"/>
+        </fields></field>
+        <field id="ladderPeriod_1" type="complex"><fields>
+          <field id="quantity" name="Quantity" type="input"/><field id="day" name="Lead time" type="input"/>
+        </fields></field>
+      </fields>
+    </field>`);
+    const { wrapper, current } = mountField(field, false);
+
+    expect(wrapper.get('[data-testid="fixed-slot-values"]').text()).toBe('');
+    await buttonWithText(wrapper, '新增 Shipping').trigger('click');
+    expect(current.value.instances[0]?.fields.map((slot) => slot.id)).toEqual(['ladderPeriod_0']);
+    await wrapper.get('input[aria-label="Quantity"]').setValue('1');
+    await wrapper.get('input[aria-label="Lead time"]').setValue('7');
+    expect(
+      current.value.instances[0]?.fields[0]?.instances[0]?.fields.map((child) => child.values[0]?.text)
+    ).toEqual(['1', '7']);
+
+    await buttonWithText(wrapper, '新增 Shipping').trigger('click');
+    expect(current.value.instances[0]?.fields.map((slot) => slot.id)).toEqual([
+      'ladderPeriod_0',
+      'ladderPeriod_1'
+    ]);
+    expect(buttonWithText(wrapper, '新增 Shipping').attributes('disabled')).toBeDefined();
+    await wrapper.get('button[aria-label="删除 Shipping 第 1 档"]').trigger('click');
+    expect(current.value.instances[0]?.fields.map((slot) => slot.id)).toEqual(['ladderPeriod_1']);
+  });
+
   it('uses the structured official hint renderer beside a field', async () => {
     const field = parseField(`<field id="productTitle" name="商品名称" type="input">
       <rules><rule name="tipRule" value="&lt;div&gt;避免堆砌关键词，查看&lt;a href=&quot;//service.alibaba.com/help&quot;&gt;标题规范&lt;/a&gt;&lt;/div&gt;"/></rules>
