@@ -76,17 +76,17 @@ export interface ProductBatchPublishRunnerOptions {
 }
 
 export function loadProductBatchPublishItems(
-  storage: DraftStorage,
+  draftStorage: DraftStorage,
   now = Date.now()
 ): ProductBatchPublishItem[] {
-  const raw = storage.getItem(PRODUCT_BATCH_PUBLISH_STORAGE_KEY);
+  const raw = draftStorage.getItem(PRODUCT_BATCH_PUBLISH_STORAGE_KEY);
   if (!raw) return [];
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw) as unknown;
   } catch {
-    storage.removeItem(PRODUCT_BATCH_PUBLISH_STORAGE_KEY);
+    draftStorage.removeItem(PRODUCT_BATCH_PUBLISH_STORAGE_KEY);
     return [];
   }
 
@@ -95,17 +95,17 @@ export function loadProductBatchPublishItems(
     .filter((item) => now - item.updatedAtUtc <= MAX_AGE_MILLISECONDS && item.updatedAtUtc <= now + 60_000)
     .sort((left, right) => right.updatedAtUtc - left.updatedAtUtc)
     .slice(0, MAX_ITEMS);
-  if (!Array.isArray(parsed) || retained.length !== parsed.length) writeItems(storage, retained);
+  if (!Array.isArray(parsed) || retained.length !== parsed.length) writeItems(draftStorage, retained);
   return retained;
 }
 
 export function upsertProductBatchPublishItem(
-  storage: DraftStorage,
+  draftStorage: DraftStorage,
   input: ProductBatchPublishItemInput,
   options: { id?: string; now?: number } = {}
 ): ProductBatchPublishItem {
   const now = options.now ?? Date.now();
-  const current = loadProductBatchPublishItems(storage, now);
+  const current = loadProductBatchPublishItems(draftStorage, now);
   const existing = options.id ? current.find((item) => item.id === options.id) : undefined;
   if (!existing && current.length >= MAX_ITEMS) {
     throw new Error(`批量发布队列最多保留 ${MAX_ITEMS} 条商品`);
@@ -129,7 +129,7 @@ export function upsertProductBatchPublishItem(
     updatedAtUtc: now
   };
   writeItems(
-    storage,
+    draftStorage,
     [item, ...current.filter((candidate) => candidate.id !== item.id)]
       .sort((left, right) => right.updatedAtUtc - left.updatedAtUtc)
       .slice(0, MAX_ITEMS)
@@ -138,13 +138,13 @@ export function upsertProductBatchPublishItem(
 }
 
 export function completeProductBatchPublishItem(
-  storage: DraftStorage,
+  draftStorage: DraftStorage,
   id: string,
   target: ProductBatchPublishTarget,
   productId: string,
   now = Date.now()
 ): ProductBatchPublishItem {
-  const items = loadProductBatchPublishItems(storage, now);
+  const items = loadProductBatchPublishItems(draftStorage, now);
   const current = items.find((item) => item.id === id);
   if (!current) throw new Error('批量发布商品不存在或已过期');
   const updated: ProductBatchPublishItem = {
@@ -154,16 +154,20 @@ export function completeProductBatchPublishItem(
     updatedAtUtc: now
   };
   writeItems(
-    storage,
+    draftStorage,
     items.map((item) => (item.id === id ? updated : item))
   );
   return updated;
 }
 
-export function removeProductBatchPublishItem(storage: DraftStorage, id: string, now = Date.now()): void {
+export function removeProductBatchPublishItem(
+  draftStorage: DraftStorage,
+  id: string,
+  now = Date.now()
+): void {
   writeItems(
-    storage,
-    loadProductBatchPublishItems(storage, now).filter((item) => item.id !== id)
+    draftStorage,
+    loadProductBatchPublishItems(draftStorage, now).filter((item) => item.id !== id)
   );
 }
 
@@ -331,12 +335,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function writeItems(storage: DraftStorage, items: readonly ProductBatchPublishItem[]): void {
+function writeItems(draftStorage: DraftStorage, items: readonly ProductBatchPublishItem[]): void {
   if (items.length === 0) {
-    storage.removeItem(PRODUCT_BATCH_PUBLISH_STORAGE_KEY);
+    draftStorage.removeItem(PRODUCT_BATCH_PUBLISH_STORAGE_KEY);
     return;
   }
-  storage.setItem(PRODUCT_BATCH_PUBLISH_STORAGE_KEY, JSON.stringify(items));
+  draftStorage.setItem(PRODUCT_BATCH_PUBLISH_STORAGE_KEY, JSON.stringify(items));
 }
 
 function errorMessage(error: unknown): string {
