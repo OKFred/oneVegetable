@@ -71,6 +71,7 @@ export interface ProductBatchPublishRunnerOptions {
   target: ProductBatchPublishTarget;
   submit: (request: SchemaPublishRequest, item: ProductBatchPublishItem) => Promise<ProductMutationResult>;
   shouldStop?: (() => boolean) | undefined;
+  onStart?: ((item: ProductBatchPublishItem) => void) | undefined;
   onResult?: ((result: ProductBatchPublishRunResult) => void) | undefined;
 }
 
@@ -210,6 +211,7 @@ export async function runProductBatchPublish(
       options.onResult?.(cancelled);
       continue;
     }
+    options.onStart?.(item);
     const preflight = inspectProductBatchPublishItem(item, options.target);
     if (!preflight.ready || !preflight.request) {
       const blocked = resultFor(

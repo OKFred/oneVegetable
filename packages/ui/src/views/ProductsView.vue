@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, h, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import { Layers3, LayoutGrid, List, RefreshCw, Search } from '@lucide/vue';
+import { Layers3, LayoutGrid, List, ListPlus, RefreshCw, Search } from '@lucide/vue';
 
 import {
   analyzeProductDescriptionQuality,
@@ -31,6 +31,7 @@ import {
 import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
+import ProductBatchPublisher from '../components/ProductBatchPublisher.vue';
 import ProductCategoryPicker from '../components/ProductCategoryPicker.vue';
 import ProductEditorLoading from '../components/ProductEditorLoading.vue';
 import QueryState from '../components/QueryState.vue';
@@ -51,6 +52,16 @@ import {
   type ProductEditorDraftV3,
   type ProductEditorMode
 } from '../lib/product-editor-drafts';
+import {
+  completeProductBatchPublishItem,
+  loadProductBatchPublishItems,
+  removeProductBatchPublishItem,
+  runProductBatchPublish,
+  upsertProductBatchPublishItem,
+  type ProductBatchPublishItem,
+  type ProductBatchPublishRunResult,
+  type ProductBatchPublishTarget
+} from '../lib/product-batch-publish';
 import { useProductEditorSession } from '../composables/use-product-editor-session';
 import {
   operationAvailabilityMessage,
@@ -68,11 +79,11 @@ const ProductEditorWizard = defineAsyncComponent({
   timeout: 30_000
 });
 
-type Workspace = 'list' | 'publisher' | 'organization' | 'quality';
+type Workspace = 'list' | 'publisher' | 'batch-publisher' | 'organization' | 'quality';
 type DraftSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type QualityViewMode = 'cards' | 'list';
 
-const workspaceIds = new Set<Workspace>(['list', 'publisher', 'organization', 'quality']);
+const workspaceIds = new Set<Workspace>(['list', 'publisher', 'batch-publisher', 'organization', 'quality']);
 const editorModes = new Set<ProductEditorMode>(['quick', 'guided', 'advanced']);
 const editorStepIds = new Set<ProductEditorStepId>(PRODUCT_EDITOR_STEP_IDS);
 
@@ -130,6 +141,13 @@ let scoreRefreshTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 let draftSaveTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 const sourceIsLocalDraft = ref(false);
 const acknowledgedMutationJobId = ref('');
+const batchItems = ref<ProductBatchPublishItem[]>([]);
+const selectedBatchItemIds = ref<string[]>([]);
+const batchTarget = ref<ProductBatchPublishTarget>('draft');
+const batchResults = ref<Record<string, ProductBatchPublishRunResult>>({});
+const activeBatchItemId = ref('');
+const stopBatchRequested = ref(false);
+const editingBatchItemId = ref('');
 
 const products = useQuery({
   queryKey: ['products', subject, language, productPage, productPageSize],
@@ -208,6 +226,9 @@ const displayMutationHistory = useQuery({
 });
 
 const categoryOptions = computed(() => flattenCategories(categoryTree.value));
+const batchCategoryLabels = computed<Record<string, string>>(() =>
+  Object.fromEntries(categoryOptions.value.map((category) => [String(category.id), category.name]))
+);
 const selectedCategory = computed(
   () =>
     categoryOptions.value.find((category) => String(category.id) === categoryId.value) ??
@@ -311,6 +332,16 @@ const publish = useMutation({
     feedback.value = editProductId.value
       ? `商品 ${result.productId} 已更新`
       : `${draft ? '草稿已保存' : '商品已发布'}：${result.productId}`;
+    if (!editProductId.value && editingBatchItemId.value && 'localStorage' in globalThis) {
+      completeProductBatchPublishItem(
+        globalThis.localStorage,
+        editingBatchItemId.value,
+        draft ? 'draft' : 'publish',
+        result.productId
+      );
+      editingBatchItemId.value = '';
+      reloadBatchItems();
+    }
     await queryClient.invalidateQueries({ queryKey: ['products'] });
     if (draft && !editProductId.value) {
       platformDraftId.value = result.productId;
@@ -319,6 +350,62 @@ const publish = useMutation({
       clearCurrentLocalDraft();
     }
     if (editScoreProductId.value) scheduleScoreRefresh(editScoreProductId.value);
+  }
+});
+
+const batchPublish = useMutation({
+  mutationFn: async (input: { ids: string[]; target: ProductBatchPublishTarget }) => {
+    const selected = batchItems.value.filter(
+      (item) => input.ids.includes(item.id) && item.status === 'queued'
+    );
+    stopBatchRequested.value = false;
+    activeBatchItemId.value = '';
+    batchResults.value = Object.fromEntries(
+      Object.entries(batchResults.value).filter(([itemId]) => !input.ids.includes(itemId))
+    );
+    return runProductBatchPublish({
+      items: selected,
+      target: input.target,
+      shouldStop: () => stopBatchRequested.value,
+      onStart: (item) => {
+        activeBatchItemId.value = item.id;
+      },
+      onResult: (result) => {
+        activeBatchItemId.value = '';
+        batchResults.value = { ...batchResults.value, [result.itemId]: result };
+        if (result.status !== 'succeeded' || !result.productId || !('localStorage' in globalThis)) return;
+        try {
+          completeProductBatchPublishItem(
+            globalThis.localStorage,
+            result.itemId,
+            result.target,
+            result.productId
+          );
+          reloadBatchItems();
+          selectedBatchItemIds.value = selectedBatchItemIds.value.filter(
+            (itemId) => itemId !== result.itemId
+          );
+        } catch (error: unknown) {
+          feedback.value = `平台已接受“${result.title}”，但本地队列状态保存失败：${errorMessage(error)}`;
+        }
+      },
+      submit: (request) =>
+        input.target === 'draft'
+          ? gateway.request('saveProductDraft', request)
+          : gateway.request('publishProduct', request)
+    });
+  },
+  onSuccess: async (results) => {
+    const succeeded = results.filter((result) => result.status === 'succeeded').length;
+    const failed = results.filter((result) => result.status === 'failed').length;
+    const blocked = results.filter((result) => result.status === 'blocked').length;
+    const cancelled = results.filter((result) => result.status === 'cancelled').length;
+    feedback.value = `批量任务完成：成功 ${succeeded}，失败 ${failed}，阻断 ${blocked}，停止 ${cancelled}`;
+    if (succeeded > 0) await queryClient.invalidateQueries({ queryKey: ['products'] });
+  },
+  onSettled: () => {
+    activeBatchItemId.value = '';
+    stopBatchRequested.value = false;
   }
 });
 
@@ -437,6 +524,106 @@ function submitProduct(draft: boolean): void {
     if (!confirmed) return;
   }
   publish.mutate(draft);
+}
+
+function queueCurrentProduct(): void {
+  if (editProductId.value) {
+    feedback.value = '批量发品仅接受新增商品；已有商品请使用单品增量更新。';
+    return;
+  }
+  if (!schemaModel.value || !categoryId.value || !schemaInspection.value.safe) {
+    feedback.value = '请先加载商品表单，并修复 Schema XML 结构问题。';
+    return;
+  }
+  if (!('localStorage' in globalThis)) {
+    feedback.value = '当前环境不支持本地批量队列。';
+    return;
+  }
+  try {
+    const queued = upsertProductBatchPublishItem(
+      globalThis.localStorage,
+      {
+        categoryId: categoryId.value,
+        language: language.value,
+        market: market.value,
+        xml: schemaInspection.value.xml
+      },
+      editingBatchItemId.value ? { id: editingBatchItemId.value } : undefined
+    );
+    editingBatchItemId.value = '';
+    reloadBatchItems();
+    selectedBatchItemIds.value = [...new Set([...selectedBatchItemIds.value, queued.id])];
+    feedback.value = `“${queued.title}”已加入批量发品队列。`;
+    workspace.value = 'batch-publisher';
+    updateProductHash('push');
+  } catch (error: unknown) {
+    feedback.value = errorMessage(error);
+  }
+}
+
+function submitBatchPublish(): void {
+  const selected = batchItems.value.filter(
+    (item) => selectedBatchItemIds.value.includes(item.id) && item.status === 'queued'
+  );
+  if (selected.length === 0) {
+    feedback.value = '请至少选择一个待提交商品。';
+    return;
+  }
+  const operation = batchTarget.value === 'draft' ? 'saveProductDraft' : 'publishProduct';
+  if (!productOperations.isAllowed(operation)) {
+    feedback.value = mutationDisabledReason(
+      operation,
+      batchTarget.value === 'draft' ? '当前环境未开放平台草稿写入' : '当前环境未开放正式发布'
+    );
+    return;
+  }
+  if (
+    mode !== 'mock' &&
+    !globalThis.confirm(
+      batchTarget.value === 'draft'
+        ? `将串行创建 ${selected.length} 条真实 Alibaba 平台草稿，单条失败后继续，是否确认？`
+        : `将串行正式发布 ${selected.length} 个真实 Alibaba 商品，单条失败后继续。发布会产生真实线上商品，是否确认？`
+    )
+  ) {
+    return;
+  }
+  batchPublish.mutate({ ids: selected.map((item) => item.id), target: batchTarget.value });
+}
+
+function stopBatchPublish(): void {
+  stopBatchRequested.value = true;
+  feedback.value = '当前正在提交的商品不会中断；完成后将停止剩余任务。';
+}
+
+function editBatchItem(item: ProductBatchPublishItem): void {
+  cancelDraftSave();
+  draftCandidate.value = null;
+  resetEditorSession({ categoryId: item.categoryId, mode: 'quick' });
+  schemaModel.value = parseProductSchemaXml(item.xml);
+  language.value = item.language;
+  market.value = item.market;
+  editingBatchItemId.value = item.id;
+  currentCategory.value =
+    categoryOptions.value.find((category) => String(category.id) === item.categoryId) ?? null;
+  workspace.value = 'publisher';
+  feedback.value = `正在编辑批量队列中的“${item.title}”；修改后请重新加入队列。`;
+  updateProductHash('push');
+}
+
+function removeBatchItem(item: ProductBatchPublishItem): void {
+  if (!('localStorage' in globalThis)) return;
+  removeProductBatchPublishItem(globalThis.localStorage, item.id);
+  reloadBatchItems();
+  selectedBatchItemIds.value = selectedBatchItemIds.value.filter((itemId) => itemId !== item.id);
+  batchResults.value = Object.fromEntries(
+    Object.entries(batchResults.value).filter(([itemId]) => itemId !== item.id)
+  );
+  feedback.value = `“${item.title}”已从批量队列移除。`;
+}
+
+function reloadBatchItems(): void {
+  if (!('localStorage' in globalThis)) return;
+  batchItems.value = loadProductBatchPublishItems(globalThis.localStorage);
 }
 
 function submitProductGroup(): void {
@@ -752,6 +939,7 @@ function startNewProduct(): void {
   cancelDraftSave();
   draftCandidate.value = null;
   acknowledgedMutationJobId.value = '';
+  editingBatchItemId.value = '';
   resetEditorSession({ categoryId: '', mode: 'quick' });
   editScoreProductId.value = '';
   currentCategory.value = null;
@@ -765,6 +953,7 @@ function startNewProduct(): void {
 }
 
 function setWorkspace(nextWorkspace: Workspace): void {
+  if (nextWorkspace === 'batch-publisher') reloadBatchItems();
   workspace.value = nextWorkspace;
   updateProductHash('push');
 }
@@ -1160,6 +1349,7 @@ watch(
 onMounted(async () => {
   globalThis.addEventListener('hashchange', handleProductRouteChange);
   globalThis.addEventListener('popstate', handleProductRouteChange);
+  reloadBatchItems();
   if (await syncProductsFromHash()) return;
   if (!('localStorage' in globalThis)) return;
   const migratedV2 = migrateProductEditorDraftsV2(globalThis.localStorage);
@@ -1198,6 +1388,7 @@ onBeforeUnmount(() => {
       v-for="item in [
         ['list', '商品列表'],
         ['publisher', '商品发布/编辑'],
+        ['batch-publisher', '批量发品'],
         ['organization', '类目与分组'],
         ['quality', '质量与上下架']
       ] as const"
@@ -1386,6 +1577,24 @@ onBeforeUnmount(() => {
       compact
     />
 
+    <Card
+      v-if="schemaModel && !editProductId"
+      class="mb-4 flex flex-wrap items-center justify-between gap-3 border-dashed p-4"
+    >
+      <div>
+        <p class="font-medium">
+          {{ editingBatchItemId ? '更新批量队列商品' : '加入批量发品队列' }}
+        </p>
+        <p class="mt-1 text-xs text-muted-foreground">
+          保存当前 Schema 快照；同一类目可以加入多个商品，稍后统一保存草稿或正式发布。
+        </p>
+      </div>
+      <Button variant="outline" :disabled="!schemaInspection.safe" @click="queueCurrentProduct">
+        <ListPlus class="size-4" />
+        {{ editingBatchItemId ? '更新队列' : '加入队列' }}
+      </Button>
+    </Card>
+
     <ProductEditorWizard
       v-if="schemaModel"
       :mode="editorMode"
@@ -1416,6 +1625,29 @@ onBeforeUnmount(() => {
       @submit="submitProduct"
     />
     <ErrorNotice v-if="publish.error.value" class="mt-3" :error="publish.error.value" compact />
+  </template>
+
+  <template v-else-if="workspace === 'batch-publisher'">
+    <ProductBatchPublisher
+      :items="batchItems"
+      :selected-ids="selectedBatchItemIds"
+      :target="batchTarget"
+      :results="batchResults"
+      :active-item-id="activeBatchItemId"
+      :running="batchPublish.isPending.value"
+      :draft-allowed="productOperations.isAllowed('saveProductDraft')"
+      :publish-allowed="productOperations.isAllowed('publishProduct')"
+      :draft-disabled-reason="platformDraftDisabledReason"
+      :publish-disabled-reason="mutationDisabledReason('publishProduct', '当前环境未开放正式发布')"
+      :category-labels="batchCategoryLabels"
+      @update:selected-ids="selectedBatchItemIds = $event"
+      @update:target="batchTarget = $event"
+      @run="submitBatchPublish"
+      @stop="stopBatchPublish"
+      @edit="editBatchItem"
+      @remove="removeBatchItem"
+    />
+    <ErrorNotice v-if="batchPublish.error.value" class="mt-3" :error="batchPublish.error.value" compact />
   </template>
 
   <template v-else-if="workspace === 'organization'">
