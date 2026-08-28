@@ -47,14 +47,16 @@ describe('OnboardingDialog', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('先确认数据与调用边界');
-    const button = wrapper.get('button');
-    expect(button.attributes('disabled')).toBeDefined();
+    const settingsButton = wrapper.findAll('button').find((button) => button.text().includes('前往设置凭证'));
+    if (!settingsButton) throw new Error('Missing credential setup action');
+    expect(settingsButton.attributes('disabled')).toBeDefined();
     await wrapper.get('input[type="checkbox"]').setValue(true);
-    expect(button.attributes('disabled')).toBeUndefined();
-    await button.trigger('click');
+    expect(settingsButton.attributes('disabled')).toBeUndefined();
+    await settingsButton.trigger('click');
     await flushPromises();
 
     expect(complete).toHaveBeenCalledOnce();
+    expect(wrapper.findComponent(OnboardingDialog).emitted('ready')).toEqual([['settings']]);
     expect(wrapper.text()).not.toContain('先确认数据与调用边界');
     wrapper.unmount();
   });

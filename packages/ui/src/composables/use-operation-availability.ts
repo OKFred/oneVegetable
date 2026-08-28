@@ -19,6 +19,7 @@ export function useOperationAvailability(operations: readonly OperationId[]) {
           reasonCode: 'OPERATION_AVAILABILITY_UNAVAILABLE'
         }))
       }),
+    networkMode: 'always',
     staleTime: 10_000
   });
   const byOperation = computed(

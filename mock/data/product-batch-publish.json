@@ -1,0 +1,4 @@
+{
+  "validXml": "<itemSchema><field id=\"productTitle\" name=\"商品标题\" type=\"input\"><rules><rule name=\"requiredRule\" value=\"true\"/></rules><values><value>Batch portable power station</value></values></field></itemSchema>",
+  "invalidXml": "<itemSchema><field id=\"productTitle\" name=\"商品标题\" type=\"input\"><rules><rule name=\"requiredRule\" value=\"true\"/></rules><values><value></value></values></field></itemSchema>"
+}

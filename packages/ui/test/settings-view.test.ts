@@ -126,6 +126,49 @@ afterEach(() => {
 });
 
 describe('SettingsView diagnostics', () => {
+  it('imports the local authorization bundle without saving it automatically', async () => {
+    const wrapper = mountView('extension', 'empty');
+    await flushPromises();
+    const input = wrapper.get('input[aria-label="导入授权包 JSON"]');
+    const file = new File(
+      [
+        JSON.stringify({
+          application: { appKey: 'imported-key', appSecret: 'imported-secret' },
+          oauth: { accessToken: 'imported-token' }
+        })
+      ],
+      'credentials.json',
+      { type: 'application/json' }
+    );
+    Object.defineProperty(file, 'text', {
+      configurable: true,
+      value: () =>
+        Promise.resolve(
+          JSON.stringify({
+            application: { appKey: 'imported-key', appSecret: 'imported-secret' },
+            oauth: { accessToken: 'imported-token' }
+          })
+        )
+    });
+    Object.defineProperty(input.element, 'files', { configurable: true, value: [file] });
+    await input.trigger('change');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('尚未保存');
+    expect((wrapper.get('input[aria-label="App Key"]').element as HTMLInputElement).value).toBe(
+      'imported-key'
+    );
+    expect((wrapper.get('input[aria-label="App Secret"]').element as HTMLInputElement).value).toBe(
+      'imported-secret'
+    );
+    expect((wrapper.get('input[aria-label="Access Token"]').element as HTMLInputElement).value).toBe(
+      'imported-token'
+    );
+    expect(wrapper.text()).toContain('尚未保存');
+    expect(createVault).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
   it('persists the preferred Alibaba request language outside the credential vault', async () => {
     const wrapper = mountView('extension', 'locked');
     await flushPromises();
@@ -246,14 +289,11 @@ describe('SettingsView diagnostics', () => {
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('凭证保险库已解锁');
     });
-    const credentialsCard = wrapper
-      .findAll('section')
-      .find((candidate) => candidate.text().includes('国际站开放平台凭证'));
-    if (!credentialsCard) throw new Error('Missing credentials card after unlock');
-    const credentialInputs = credentialsCard.findAll('input');
-    expect((credentialInputs[0]?.element as HTMLInputElement | undefined)?.value).toBe('configured-key');
+    expect((wrapper.get('input[aria-label="App Key"]').element as HTMLInputElement).value).toBe(
+      'configured-key'
+    );
     expect(unlockVault).toHaveBeenCalledWith('correct-vault-password');
-    expect(credentialInputs[1]?.attributes('placeholder')).toContain('留空保持不变');
+    expect(wrapper.get('input[aria-label="App Secret"]').attributes('placeholder')).toContain('留空保持不变');
 
     await wrapper.get('select[aria-label="空闲自动锁定时间"]').setValue('30');
     const policyButton = wrapper

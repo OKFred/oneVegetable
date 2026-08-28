@@ -198,6 +198,11 @@ function handleAuthenticated(nextSession: ControlSession): void {
   syncPageFromHash();
 }
 
+function handleOnboardingReady(destination?: 'settings'): void {
+  workspaceReady.value = true;
+  if (destination === 'settings') replacePage('settings');
+}
+
 watch(themePreference, syncTheme);
 
 onMounted(async () => {
@@ -251,7 +256,7 @@ async function logout(): Promise<void> {
       正在检查本地会话…
     </div>
     <AuthGate v-else-if="mode === 'bff' && control && !session" @authenticated="handleAuthenticated" />
-    <OnboardingDialog @ready="workspaceReady = true" />
+    <OnboardingDialog @ready="handleOnboardingReady" />
     <template v-if="!authLoading && (mode !== 'bff' || session) && workspaceReady">
       <aside
         id="app-primary-navigation"

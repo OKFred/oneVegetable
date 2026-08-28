@@ -4,6 +4,8 @@ import {
   AlertTriangle,
   Database,
   Download,
+  ExternalLink,
+  FileUp,
   Globe2,
   KeyRound,
   LockKeyhole,
@@ -68,7 +70,9 @@ const newVaultPassphrase = ref('');
 const newVaultPassphraseConfirmation = ref('');
 const vaultBusy = ref(false);
 const vaultError = ref<unknown>(null);
+const credentialImportError = ref<unknown>(null);
 const idleTimeoutMinutes = ref(CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES);
+let settingsInitialization: Promise<void> = Promise.resolve();
 const settingsEditable = computed(
   () => mode === 'mock' || vaultStatus.value?.state === 'empty' || vaultStatus.value?.state === 'unlocked'
 );
@@ -114,6 +118,11 @@ const localDataColumns: DataColumn<LocalDataCategory>[] = [
 ];
 
 onMounted(async () => {
+  settingsInitialization = initializeView();
+  await settingsInitialization;
+});
+
+async function initializeView(): Promise<void> {
   const [, , , storedSettings] = await Promise.all([
     refreshDiagnostics(),
     refreshPermissions(),
@@ -121,7 +130,7 @@ onMounted(async () => {
     initializeSettings()
   ]);
   if (storedSettings) model.value = storedSettings;
-});
+}
 
 async function initializeSettings(): Promise<GatewaySettings | undefined> {
   if (mode !== 'extension' || !vault) return settings.load();
@@ -152,6 +161,51 @@ async function save(): Promise<void> {
   } finally {
     saving.value = false;
   }
+}
+
+async function importCredentialBundle(event: Event): Promise<void> {
+  const input = event.currentTarget as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  feedback.value = '';
+  credentialImportError.value = null;
+  try {
+    await settingsInitialization;
+    if (file.size > 256 * 1024) throw new Error('授权包 JSON 不能超过 256 KiB');
+    const imported = readImportedCredentials(JSON.parse(await file.text()) as unknown);
+    model.value = { ...model.value, ...imported };
+    feedback.value =
+      '已从授权包读取 App Key、App Secret 和 Access Token；尚未保存，请设置保险库口令并确认保存。';
+  } catch (error: unknown) {
+    credentialImportError.value = userVisibleCause(error, '授权包导入失败');
+  } finally {
+    input.value = '';
+  }
+}
+
+function readImportedCredentials(
+  value: unknown
+): Pick<GatewaySettings, 'appKey' | 'appSecret' | 'accessToken'> {
+  const root = objectValue(value);
+  const application = objectValue(root.application);
+  const oauth = objectValue(root.oauth);
+  const appKey = importedString(root.appKey) ?? importedString(application.appKey);
+  const appSecret = importedString(root.appSecret) ?? importedString(application.appSecret);
+  const accessToken = importedString(root.accessToken) ?? importedString(oauth.accessToken);
+  if (!appKey || !appSecret || !accessToken) {
+    throw new Error('授权包缺少 App Key、App Secret 或 Access Token');
+  }
+  return { appKey, appSecret, accessToken };
+}
+
+function objectValue(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function importedString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
 async function refreshVaultStatus(): Promise<void> {
@@ -638,15 +692,46 @@ function confirmThemePreference(): void {
         <KeyRound class="size-4 text-primary" />
         <h2 class="font-semibold">国际站开放平台凭证</h2>
       </div>
+      <div class="mb-4 rounded-lg border bg-muted/40 p-4 text-sm leading-6">
+        <p class="font-medium">三步完成真实接口连接</p>
+        <p class="mt-1 text-muted-foreground">
+          App Key 和 App Secret 由 Alibaba 应用中心发放，不能通过 OAuth 自动读取；OAuth 授权用于取得 Access
+          Token。你可以手工填写，也可以导入项目授权工具生成的 credentials.json。
+        </p>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <a
+            href="https://i.alibaba.com/explore/open-api"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent"
+          >
+            <ExternalLink class="size-3.5" />打开 Alibaba 应用中心
+          </a>
+          <label
+            class="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent"
+          >
+            <FileUp class="size-3.5" />一键导入授权包 JSON
+            <input
+              class="sr-only"
+              type="file"
+              accept="application/json,.json"
+              aria-label="导入授权包 JSON"
+              @change="importCredentialBundle"
+            />
+          </label>
+        </div>
+        <ErrorNotice v-if="credentialImportError" class="mt-3" :error="credentialImportError" compact />
+      </div>
       <div class="grid gap-4 sm:grid-cols-2">
         <label class="text-sm font-medium"
-          >App Key<Input v-model="model.appKey" class="mt-2" autocomplete="off"
+          >App Key<Input v-model="model.appKey" class="mt-2" autocomplete="off" aria-label="App Key"
         /></label>
         <label class="text-sm font-medium"
           >App Secret<Input
             v-model="model.appSecret"
             class="mt-2"
             type="password"
+            aria-label="App Secret"
             autocomplete="new-password"
             :placeholder="vaultStatus?.hasAppSecret ? '已加密保存，留空保持不变' : ''"
         /></label>
@@ -655,11 +740,12 @@ function confirmThemePreference(): void {
             v-model="model.accessToken"
             class="mt-2"
             type="password"
+            aria-label="Access Token"
             autocomplete="new-password"
             :placeholder="vaultStatus?.hasAccessToken ? '已加密保存，留空保持不变' : ''"
         /></label>
         <label class="text-sm font-medium sm:col-span-2"
-          >HTTPS 网关<Input v-model="model.endpoint" class="mt-2"
+          >HTTPS 网关<Input v-model="model.endpoint" class="mt-2" aria-label="HTTPS 网关"
         /></label>
         <label class="text-sm font-medium"
           >签名算法<select

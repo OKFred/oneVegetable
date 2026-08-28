@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { defineComponent, h } from 'vue';
 import { flushPromises, shallowMount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -46,6 +47,46 @@ afterEach(() => {
 });
 
 describe('OneVegetableApp hash navigation', () => {
+  it('opens settings when first-time credential setup is selected', async () => {
+    globalThis.history.replaceState(null, '', '#/dashboard');
+    const OnboardingStub = defineComponent({
+      emits: { ready: (_destination?: 'settings') => true },
+      setup(_props, { emit }) {
+        return () =>
+          h(
+            'button',
+            {
+              'data-testid': 'finish-onboarding',
+              onClick: () => {
+                emit('ready', 'settings');
+              }
+            },
+            '前往设置凭证'
+          );
+      }
+    });
+    const wrapper = shallowMount(OneVegetableApp, {
+      props: {
+        gateway: new MockGatewayClient(0),
+        settings,
+        onboarding: {
+          load: () => Promise.resolve({ version: 1 as const, completedAt: null }),
+          complete: () => Promise.resolve({ version: 1 as const, completedAt: '2026-08-28T00:00:00.000Z' })
+        },
+        mode: 'extension'
+      },
+      global: { stubs: { OnboardingDialog: OnboardingStub } }
+    });
+
+    expect(wrapper.find('nav').exists()).toBe(false);
+    await wrapper.get('[data-testid="finish-onboarding"]').trigger('click');
+    await flushPromises();
+
+    expect(globalThis.location.hash).toBe('#/settings');
+    expect(wrapper.get('nav a[href="#/settings"]').attributes('aria-current')).toBe('page');
+    wrapper.unmount();
+  });
+
   it('renders stable links and follows hash changes', async () => {
     globalThis.history.replaceState(null, '', '#/products/publisher/guided/details/product-1');
     const wrapper = shallowMount(OneVegetableApp, {
