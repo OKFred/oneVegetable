@@ -149,7 +149,11 @@ function normalizeFieldId(value: string): string {
 }
 
 function isRequired(field: ProductSchemaField): boolean {
-  return field.rules.some((rule) => rule.name === 'requiredRule' && isTruthy(rule.value));
+  return field.rules.some(
+    (rule) =>
+      (rule.name === 'requiredRule' && isTruthy(rule.value)) ||
+      (rule.name === 'minInputNumRule' && Number(rule.value) > 0)
+  );
 }
 
 function hasOfficialTip(field: ProductSchemaField): boolean {

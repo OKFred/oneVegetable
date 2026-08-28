@@ -103,4 +103,23 @@ describe('product editor field classifier', () => {
       fields.map((_, index) => index)
     );
   });
+
+  it('treats a positive minimum item rule as required in the quick publish path', () => {
+    const fields = parseProductSchemaXml(`<itemSchema>
+      <field id="ladderPeriod" name="Shipping" type="complex">
+        <rules><rule name="minInputNumRule" value="1"/><rule name="maxInputNumRule" value="3"/></rules>
+        <fields><field id="ladderPeriod_0" type="complex"><fields>
+          <field id="quantity" type="input"/><field id="day" type="input"/>
+        </fields></field></fields>
+      </field>
+    </itemSchema>`).fields;
+
+    expect(selectQuickPublishFields(fields).essential.map((entry) => entry.field.id)).toEqual([
+      'ladderPeriod'
+    ]);
+    expect(classifyProductSchemaFields(fields)[4]?.fields[0]).toMatchObject({
+      required: true,
+      optional: false
+    });
+  });
 });
