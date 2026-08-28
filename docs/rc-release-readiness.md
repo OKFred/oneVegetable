@@ -8,7 +8,7 @@
 
 扩展设置现在以版本 2 加密保险库保存：PBKDF2-HMAC-SHA256 使用随机 salt 和 600,000 次迭代派生不可导出的 AES-256-GCM 密钥，随机 96-bit IV 与固定 additional data 为密文提供机密性和完整性。用户口令不写入任何存储，解锁密钥和设置只存在于 service worker 内存，后台重启或用户主动锁定后页面和真实请求都无法读取凭证。
 
-local/session 存储在后台启动时限制为 Chrome `TRUSTED_CONTEXTS`，最低支持 Chrome 102。已解锁保险库默认空闲 15 分钟自动锁定，可配置为 5、15、30 或 60 分钟；策略与凭证一起加密，状态查询不会意外续期。
+local/session 存储在后台启动时限制为 Chrome `TRUSTED_CONTEXTS`，最低支持 Chrome 102。新建保险库默认不启用空闲自动锁定，用户可选择 5、15、30 或 60 分钟；策略与凭证一起加密，状态查询不会意外续期。
 
 旧版 `{ version: 1, settings }` 或扁平 `gatewaySettings` 会显示为“待迁移”，真实请求停止读取。用户设置新口令后，service worker 直接完成原位加密迁移，不把旧 App Secret 或 Access Token 返回给 options 页面。遗忘口令无法恢复，只能彻底清除本地数据后重新配置。
 

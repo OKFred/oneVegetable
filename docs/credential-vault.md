@@ -6,7 +6,7 @@
 
 ## 密钥与密文格式
 
-- 用户口令限制为 12–256 个 UTF-8 字节，口令本身从不写入 Chrome 存储、页面存储或日志；
+- 用户口令限制为 6–256 位，口令本身从不写入 Chrome 存储、页面存储或日志；
 - PBKDF2-HMAC-SHA256 使用每个保险库独立的 16-byte 随机 salt 和 600,000 次迭代；
 - 派生 256-bit、不可导出的 AES-GCM `CryptoKey`；
 - 每次加密使用新的 12-byte 随机 IV、128-bit authentication tag 和固定 additional authenticated data；
@@ -20,7 +20,7 @@ AES-GCM 同时验证密文完整性。错误口令、被修改的密文和不合
 
 用户可以主动锁定。Chrome 回收或重启 service worker 也会丢弃内存中的密钥，因此后续真实请求返回“保险库已锁定”，直到用户重新输入口令。保险库记录若被其他上下文覆盖，worker 会在使用前比对记录并拒绝继续使用旧的缓存密钥。
 
-已解锁会话默认连续 15 分钟未使用凭证后自动锁定，也可选择 5、30 或 60 分钟。读取或更新凭证会刷新活动时间；只读取保险库状态不会续期。超时判定在每次状态或凭证访问前执行，不依赖在 MV3 中不可靠的长时间定时器。Chrome 本身也可能更早终止空闲 service worker，此时全局变量会自然丢失并立即回到锁定状态。
+新建保险库默认不因空闲自动锁定。用户可主动选择 5、15、30 或 60 分钟；已有保险库保留原先保存的策略。启用后，读取或更新凭证会刷新活动时间，只读取保险库状态不会续期。超时判定在每次状态或凭证访问前执行，不依赖在 MV3 中不可靠的长时间定时器。Chrome 本身也可能更早终止空闲 service worker，此时全局变量会自然丢失并立即回到锁定状态。
 
 扩展启动时把 `chrome.storage.local` 和 `chrome.storage.session` 的访问级别设置为 `TRUSTED_CONTEXTS`，阻止网页及扩展内容脚本通过 Storage API 读取。由于该 API 自 Chrome 102 起提供，manifest 明确设置最低 Chrome 版本为 102。参考 [Chrome Storage API](https://developer.chrome.com/docs/extensions/reference/api/storage) 和 [扩展 service worker 生命周期](https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle)。
 
