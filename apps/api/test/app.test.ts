@@ -179,6 +179,26 @@ describe('shared Hono API', () => {
       error: { code: 'INVALID_OPERATION_PAYLOAD' }
     });
     expect(gateway.request).not.toHaveBeenCalled();
+
+    for (const operation of ['publishProduct', 'saveProductDraft'] as const) {
+      const invalidSchemaRequestId = createRequestId();
+      const invalidSchemaResponse = await app.request('/api/v1/operations/call', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          requestId: invalidSchemaRequestId,
+          operation,
+          payload: { categoryId: 201273570, language: 'en_US' }
+        })
+      });
+      expect(invalidSchemaResponse.status).toBe(400);
+      await expect(invalidSchemaResponse.json()).resolves.toMatchObject({
+        requestId: invalidSchemaRequestId,
+        ok: false,
+        error: { code: 'INVALID_OPERATION_PAYLOAD' }
+      });
+    }
+    expect(gateway.request).not.toHaveBeenCalled();
   });
 
   it('preserves normalized upstream errors and maps them to an HTTP status', async () => {

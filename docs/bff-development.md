@@ -112,11 +112,13 @@ Cloudflare Worker，在 4174 端口启动 BFF 模式 Web。Playwright 会通过�
 - `ONE_VEGETABLE_REQUEST_RETENTION_DAYS` 控制请求诊断留存，默认 30 天、允许 1–90 天；清理接口只删除
   超过留存窗口的 `request_events`，不会删除 append-only 的 `audit_events`。管理页执行清理前需要二次确认。
 - `ONE_VEGETABLE_MUTATION_FLAGS` 默认空值。`pnpm dev:api:real` 仅在本地 Node 子进程中默认注入
-  `operation:saveProductDraft,operation:updateProduct,operation:operatePhotoGroup,operation:uploadPhoto,operation:transferPhotoFromUrl`；这些操作已经完成真实账号 Smoke。正式商品增量更新会触发平台审核，审核期间读取 Schema 可能返回 `PUB_BIZCHECK_PRODUCT_IN_AUDITING`，客户端应保留本地草稿并稍后刷新。
+  `operation:publishProduct,operation:saveProductDraft,operation:updateProduct,operation:operatePhotoGroup,operation:uploadPhoto,operation:transferPhotoFromUrl`；这些操作已经完成真实账号 Smoke。新增商品和正式商品增量更新都会触发平台审核，审核期间读取 Schema 可能返回 `PUB_BIZCHECK_PRODUCT_IN_AUDITING`，客户端应保留本地草稿并稍后刷新。
   `saveProductDraft` 只允许首次新增平台草稿；传入既有 `productId` 会在出网前返回
   `ALIBABA_DRAFT_UPDATE_UNSUPPORTED`，避免误用正式商品的 `schema.update` 或重复创建草稿。
   其他能力没有真实账号验收前不要添加 `operation:*` 或
   `capability:*` 写能力标记。
+
+真实正式发布通过 `ONE_VEGETABLE_REAL_PRODUCT_PUBLISH_SMOKE=1 pnpm smoke:product:publish:real` 显式执行。脚本先复用当前账号可渲染且无 Schema 硬错误的商品作为测试模板，只改标题标记；平台返回商品 ID 后立即写入忽略目录中的脱敏报告，后续只能恢复回读，不能重复创建。默认保留 Alibaba 当前发布状态，不主动下架；只有额外设置 `ONE_VEGETABLE_REAL_PRODUCT_PUBLISH_CLEANUP=1` 时才会在回读到 `online` 后下架该次 Smoke 商品。2026-08-28 的验收商品 `1601935651469` 已由列表回读确认标题一致。
 
 ## staging
 

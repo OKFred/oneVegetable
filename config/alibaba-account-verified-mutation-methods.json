@@ -1,4 +1,8 @@
 {
-  "checkedAtUtc": "2026-08-22T08:43:54.313Z",
-  "methods": ["alibaba.icbu.photobank.group.operate", "alibaba.icbu.product.batch.update.display"]
+  "checkedAtUtc": "2026-08-27T19:06:46.457Z",
+  "methods": [
+    "alibaba.icbu.photobank.group.operate",
+    "alibaba.icbu.product.batch.update.display",
+    "alibaba.icbu.product.schema.add"
+  ]
 }

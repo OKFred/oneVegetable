@@ -33,6 +33,34 @@ describe('AlibabaClient retry policy', () => {
     expect(wait.mock.calls).toEqual([[250], [500]]);
   });
 
+  it('classifies Alibaba system errors as retryable for caller-controlled read retries', async () => {
+    const send = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json({
+          error_response: {
+            code: 15,
+            sub_code: '000000',
+            sub_msg: 'System error',
+            request_id: 'system-error-trace'
+          }
+        })
+      )
+      .mockResolvedValueOnce(Response.json({ result: true }));
+    const wait = vi.fn(() => Promise.resolve());
+    const client = new AlibabaClient(credentials, network(send), {
+      maxAttempts: 2,
+      shouldRetry: (method, error) => method === 'alibaba.icbu.product.score.get' && error.retryable,
+      wait
+    });
+
+    await expect(client.call('alibaba.icbu.product.score.get', {})).resolves.toMatchObject({
+      data: { result: true }
+    });
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(wait).toHaveBeenCalledWith(250);
+  });
+
   it('never retries when the caller marks a mutation unsafe', async () => {
     const send = vi.fn().mockResolvedValue(Response.json({}, { status: 503 }));
     const client = new AlibabaClient(credentials, network(send), {

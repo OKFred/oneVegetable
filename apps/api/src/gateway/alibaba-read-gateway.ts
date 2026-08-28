@@ -96,7 +96,7 @@ export class AlibabaReadGatewayClient implements GatewayClient {
         : this.#credentials;
     return new AlibabaClient(credentials, this.#network, {
       maxAttempts: this.#maxAttempts,
-      shouldRetry: (_method, error) => error.retryable,
+      shouldRetry: (method, error) => error.retryable && getCapabilityDefinition(method)?.risk === 'read',
       protocol,
       ...(this.#wait ? { wait: this.#wait } : {}),
       ...(context ? { requestId: context.requestId } : {})
@@ -170,6 +170,11 @@ export class AlibabaReadGatewayClient implements GatewayClient {
         return await products.getSchema(request as RequestOf<'getProductSchema'>);
       case 'renderProductSchema':
         return await products.renderSchema(request as RequestOf<'renderProductSchema'>);
+      case 'publishProduct':
+        return await products.mutate(
+          'alibaba.icbu.product.schema.add',
+          request as RequestOf<'publishProduct'>
+        );
       case 'saveProductDraft':
         return await products.saveDraft(request as RequestOf<'saveProductDraft'>);
       case 'updateProduct':
