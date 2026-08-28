@@ -5,10 +5,12 @@ import { computed, defineAsyncComponent, ref } from 'vue';
 import { Plus, Trash2 } from '@lucide/vue';
 
 import {
+  appendProductSchemaFixedSlot,
   cloneProductSchemaInstance,
   collectProductSchemaOfficialHints,
   isProductSchemaFieldDisabled,
   isProductSchemaImageField,
+  isProductSchemaFixedSlotCollection,
   isProductSchemaFieldReadOnly,
   isProductSchemaHtmlField,
   isProductEditorFieldRequired,
@@ -16,6 +18,7 @@ import {
   productEditorFieldDomId,
   productSchemaFieldText,
   productSchemaFieldTexts,
+  removeProductSchemaFixedSlot,
   type ProductSchemaField,
   type ProductSchemaFieldIssue,
   type ProductSchemaOfficialHint,
@@ -68,6 +71,8 @@ const groupField = computed(() => isProductSchemaGroupField(props.field));
 const required = computed(() => isProductEditorFieldRequired(props.field));
 const minimumItems = computed(() => itemRuleLimit('minInputNumRule', 0));
 const maximumItems = computed(() => itemRuleLimit('maxInputNumRule', Number.POSITIVE_INFINITY));
+const fixedSlotCollection = computed(() => isProductSchemaFixedSlotCollection(props.field));
+const fixedSlotFields = computed(() => props.field.instances[0]?.fields ?? []);
 const repeatableComplex = computed(
   () =>
     props.field.type === 'multiComplex' ||
@@ -270,6 +275,29 @@ function removeInstance(index: number): void {
     instances: props.field.instances.filter((_, currentIndex) => currentIndex !== index)
   });
 }
+
+function addFixedSlot(): void {
+  emit('update', appendProductSchemaFixedSlot(props.field));
+}
+
+function updateFixedSlot(index: number, slot: ProductSchemaField): void {
+  const instance = props.field.instances[0];
+  if (!instance) return;
+  emit('update', {
+    ...props.field,
+    instances: [
+      {
+        ...instance,
+        fields: instance.fields.map((field, fieldIndex) => (fieldIndex === index ? slot : field))
+      },
+      ...props.field.instances.slice(1)
+    ]
+  });
+}
+
+function removeFixedSlot(index: number): void {
+  emit('update', removeProductSchemaFixedSlot(props.field, index));
+}
 </script>
 
 <template>
@@ -454,6 +482,48 @@ function removeInstance(index: number): void {
         @update="updateComplexChild(index, $event)"
         @image-status="emit('imageStatus', $event)"
       />
+    </div>
+    <div v-else-if="fixedSlotCollection" class="space-y-3">
+      <div data-testid="fixed-slot-values" class="grid gap-3 xl:grid-cols-2">
+        <div
+          v-for="(slot, slotIndex) in fixedSlotFields"
+          :key="slot.key"
+          class="min-w-0 space-y-3 rounded-lg bg-muted/40 p-3"
+        >
+          <div class="flex items-center justify-between text-xs font-medium text-muted-foreground">
+            <span>{{ displayName }} #{{ slotIndex + 1 }}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              :disabled="fixedSlotFields.length <= minimumItems"
+              :aria-label="`删除 ${displayName} 第 ${slotIndex + 1} 档`"
+              @click="removeFixedSlot(slotIndex)"
+            >
+              <Trash2 class="size-3" />删除
+            </Button>
+          </div>
+          <ProductSchemaField
+            :field="slot"
+            :issues="issues"
+            :product-description-type="productDescriptionType"
+            :show-technical="showTechnical"
+            :label-override="`${displayName} 第 ${slotIndex + 1} 档`"
+            :official-hints="officialHintsForNestedField(slot)"
+            :language="language"
+            @update="updateFixedSlot(slotIndex, $event)"
+            @image-status="emit('imageStatus', $event)"
+          />
+        </div>
+      </div>
+      <p v-if="fixedSlotFields.length === 0" class="text-xs text-muted-foreground">尚未填写任何档位。</p>
+      <Button
+        variant="outline"
+        size="sm"
+        :disabled="fixedSlotFields.length >= maximumItems"
+        @click="addFixedSlot"
+      >
+        <Plus class="size-3" />新增 {{ displayName }}
+      </Button>
     </div>
     <div v-else-if="repeatableComplex" class="space-y-3">
       <div
