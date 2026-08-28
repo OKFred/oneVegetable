@@ -92,6 +92,29 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await expect(page.getByText(/响应契约漂移/)).toBeVisible();
 });
 
+test('web mock queues multiple products and saves platform drafts sequentially', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => {
+    localStorage.clear();
+  });
+  await page.reload();
+  await page.getByRole('link', { name: '商品' }).click();
+
+  await queueMockProduct(page, 'Batch solar generator A');
+  await expect(page.getByRole('heading', { name: '批量发品队列' })).toBeVisible();
+  await expect(page.getByText('Batch solar generator A', { exact: true })).toBeVisible();
+
+  await page.getByRole('tab', { name: '商品发布/编辑' }).click();
+  await page.getByRole('button', { name: '重新新建' }).click();
+  await queueMockProduct(page, 'Batch solar generator B');
+  await expect(page.getByText('Batch solar generator B', { exact: true })).toBeVisible();
+
+  await page.getByLabel('选择全部待发布商品').check();
+  await page.getByRole('button', { name: /开始保存草稿/ }).click();
+  await expect(page.getByText('批量任务完成：成功 2，失败 0，阻断 0，停止 0')).toBeVisible();
+  await expect(page.getByText('本轮成功')).toHaveCount(2);
+});
+
 test('web mock completes the typed RFQ quotation workflow', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => {
@@ -402,4 +425,12 @@ async function chooseMockProductCategory(page: Page): Promise<void> {
   const dialog = page.getByRole('dialog', { name: '选择商品类目' });
   await dialog.getByRole('button', { name: /Consumer Electronics/ }).click();
   await dialog.getByRole('button', { name: /Portable Power Stations/ }).click();
+}
+
+async function queueMockProduct(page: Page, title: string): Promise<void> {
+  await page.getByRole('tab', { name: '商品发布/编辑' }).click();
+  await chooseMockProductCategory(page);
+  await page.getByRole('button', { name: '开始填写' }).click();
+  await page.getByLabel('商品标题').fill(title);
+  await page.getByRole('button', { name: '加入队列' }).click();
 }
