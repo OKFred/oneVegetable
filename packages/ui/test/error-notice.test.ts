@@ -91,4 +91,36 @@ describe('ErrorNotice', () => {
     expect(exported).toContain('mock-diagnostic-1');
     expect(exported).not.toContain(secret);
   });
+
+  it('links credential vault failures directly to extension settings', () => {
+    const error = new GatewayException({
+      code: 'CREDENTIAL_VAULT_EMPTY',
+      message: '请先创建凭证保险库',
+      retryable: false
+    });
+    const Host = defineComponent({
+      setup() {
+        provideServices({
+          gateway: new MockGatewayClient(0),
+          settings: {
+            load: () =>
+              Promise.resolve({
+                appKey: '',
+                appSecret: '',
+                accessToken: '',
+                endpoint: ALIBABA_GATEWAY,
+                signMethod: 'hmac'
+              }),
+            save: () => Promise.resolve()
+          },
+          mode: 'extension'
+        });
+        return () => h(ErrorNotice, { error });
+      }
+    });
+    const wrapper = mount(Host);
+
+    expect(wrapper.get('a[href="#/settings"]').text()).toContain('前往设置凭证');
+    wrapper.unmount();
+  });
 });

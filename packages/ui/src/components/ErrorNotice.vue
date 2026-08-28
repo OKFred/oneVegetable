@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { AlertCircle, Check, Clipboard, Download } from '@lucide/vue';
+import { AlertCircle, Check, Clipboard, Download, Settings } from '@lucide/vue';
 
 import { sanitizeDiagnosticMessage } from '@one-vegetable/core/diagnostics';
 import { describeUserVisibleError } from '@one-vegetable/core/errors';
@@ -25,6 +25,9 @@ const props = withDefaults(
 
 const { gateway, mode } = useServices();
 const details = computed(() => describeUserVisibleError(props.error, props.fallback));
+const credentialSettingsRequired = computed(
+  () => mode === 'extension' && details.value.code?.startsWith('CREDENTIAL_VAULT_') === true
+);
 const copied = ref(false);
 const exporting = ref(false);
 const exportFeedback = ref('');
@@ -119,6 +122,13 @@ function downloadJson(value: unknown, fileName: string): void {
           </Button>
         </div>
         <div class="mt-2 flex flex-wrap items-center gap-2">
+          <a
+            v-if="credentialSettingsRequired"
+            href="#/settings"
+            class="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            <Settings class="size-3.5" aria-hidden="true" />前往设置凭证
+          </a>
           <Button
             type="button"
             size="sm"

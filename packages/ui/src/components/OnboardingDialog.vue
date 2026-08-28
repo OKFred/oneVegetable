@@ -6,7 +6,7 @@ import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
 import { useServices } from '../lib/services';
 
-const emit = defineEmits<{ ready: [] }>();
+const emit = defineEmits<{ ready: [destination?: 'settings'] }>();
 const { onboarding, mode } = useServices();
 const visible = ref(false);
 const acknowledged = ref(false);
@@ -28,14 +28,14 @@ onMounted(async () => {
   }
 });
 
-async function finish(): Promise<void> {
+async function finish(destination?: 'settings'): Promise<void> {
   if (!onboarding || !acknowledged.value) return;
   saving.value = true;
   error.value = '';
   try {
     await onboarding.complete();
     visible.value = false;
-    emit('ready');
+    emit('ready', destination);
   } catch (reason: unknown) {
     error.value = reason instanceof Error ? reason.message : '首次使用状态保存失败';
   } finally {
@@ -59,6 +59,11 @@ async function finish(): Promise<void> {
         <p class="mt-2 text-sm leading-6 text-muted-foreground">
           无需开放平台凭证即可查看能力目录和本地编辑；真实查询需要用户自己的凭证，图库分组管理、图片上传和外部图片转存已开放，其他真实写操作保持关闭。
         </p>
+        <ol class="mt-4 grid gap-2 rounded-lg border bg-muted/40 p-4 text-sm leading-6">
+          <li><strong>1.</strong> 在 Alibaba 应用中心创建或选择 Online 应用，取得 App Key 和 App Secret。</li>
+          <li><strong>2.</strong> 完成 OAuth 授权，取得该账号的 Access Token。</li>
+          <li><strong>3.</strong> 前往设置，创建保险库口令并填写或导入以上三项凭证。</li>
+        </ol>
         <div class="mt-5 grid gap-3 sm:grid-cols-2">
           <div class="rounded-lg border p-4">
             <KeyRound class="size-5 text-emerald-700" />
@@ -103,9 +108,14 @@ async function finish(): Promise<void> {
         <p v-if="error" class="mt-3 text-sm text-destructive">{{ error }}</p>
         <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
           <a class="text-sm text-emerald-700 underline" href="/privacy.html" target="_blank">查看隐私说明</a>
-          <Button :disabled="!acknowledged || saving" @click="finish">
-            <Check class="size-4" />开始使用
-          </Button>
+          <div class="flex flex-wrap justify-end gap-2">
+            <Button variant="outline" :disabled="!acknowledged || saving" @click="finish()">
+              稍后，仅浏览
+            </Button>
+            <Button :disabled="!acknowledged || saving" @click="finish('settings')">
+              <Check class="size-4" />前往设置凭证
+            </Button>
+          </div>
         </div>
       </Card>
     </div>
