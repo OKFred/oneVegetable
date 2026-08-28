@@ -33,7 +33,7 @@ describe('credential vault', () => {
     expect(JSON.stringify(record)).not.toContain('vault-token');
     await expect(unlockCredentialVault(record, 'correct horse battery staple')).resolves.toMatchObject({
       settings,
-      policy: { idleTimeoutMinutes: 15 }
+      policy: { idleTimeoutMinutes: 0 }
     });
   });
 
@@ -67,16 +67,36 @@ describe('credential vault', () => {
     expect(inspectCredentialStorage({ version: 2 }).kind).toBe('invalid');
   });
 
-  it('bounds passphrase byte length', () => {
+  it('accepts six-character passphrases and rejects shorter values', () => {
     expect(() => {
-      validateVaultPassphrase('short');
+      validateVaultPassphrase('12345');
     }).toThrow(CredentialVaultError);
     expect(() => {
-      validateVaultPassphrase('可用的保险库口令');
+      validateVaultPassphrase('123456');
+    }).not.toThrow();
+    expect(() => {
+      validateVaultPassphrase('六位保险口令');
     }).not.toThrow();
     expect(() => {
       validateVaultPassphrase('x'.repeat(257));
     }).toThrow(/不能超过/u);
+  });
+
+  it('keeps new vault sessions unlocked when idle locking is not selected', async () => {
+    const { record, key, policy } = await createCredentialVault(settings, '123456');
+    expect(policy).toEqual({ idleTimeoutMinutes: 0 });
+    expect(credentialVaultSessionTiming(policy, 1_000, Number.MAX_SAFE_INTEGER)).toEqual({
+      expired: false,
+      remainingSeconds: null
+    });
+
+    const session = new CredentialVaultSession();
+    session.activate({ record, key, settings, policy }, 1_000);
+    expect(session.read(record, false, Number.MAX_SAFE_INTEGER)).toMatchObject({
+      lastActivityAt: 1_000,
+      remainingSeconds: null
+    });
+    expect(session.lockReason).toBeNull();
   });
 
   it('encrypts the idle-lock policy and calculates expiration without extending activity', async () => {
@@ -100,7 +120,7 @@ describe('credential vault', () => {
 
   it('rejects unsupported idle-lock policies', async () => {
     await expect(
-      createCredentialVault(settings, 'correct horse battery staple', { idleTimeoutMinutes: 0 })
+      createCredentialVault(settings, 'correct horse battery staple', { idleTimeoutMinutes: 1 })
     ).rejects.toMatchObject({ code: 'VAULT_INVALID' });
   });
 

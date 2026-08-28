@@ -3,10 +3,10 @@ import type { CredentialVaultPolicy, GatewaySettings } from './types';
 
 export const CREDENTIAL_VAULT_VERSION = 2;
 export const CREDENTIAL_VAULT_ITERATIONS = 600_000;
-export const CREDENTIAL_VAULT_MIN_PASSPHRASE_BYTES = 12;
-export const CREDENTIAL_VAULT_MAX_PASSPHRASE_BYTES = 256;
-export const CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES = 15;
-export const CREDENTIAL_VAULT_IDLE_TIMEOUT_OPTIONS = [5, 15, 30, 60] as const;
+export const CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS = 6;
+export const CREDENTIAL_VAULT_MAX_PASSPHRASE_CHARACTERS = 256;
+export const CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES = 0;
+export const CREDENTIAL_VAULT_IDLE_TIMEOUT_OPTIONS = [0, 5, 15, 30, 60] as const;
 
 const SALT_BYTES = 16;
 const IV_BYTES = 12;
@@ -35,7 +35,7 @@ export interface UnlockedCredentialVault {
 
 export interface CredentialVaultSessionTiming {
   expired: boolean;
-  remainingSeconds: number;
+  remainingSeconds: number | null;
 }
 
 export interface CredentialVaultSessionValue extends UnlockedCredentialVault {
@@ -45,7 +45,7 @@ export interface CredentialVaultSessionValue extends UnlockedCredentialVault {
 export interface CredentialVaultSessionSnapshot {
   value: CredentialVaultSessionValue;
   lastActivityAt: number;
-  remainingSeconds: number;
+  remainingSeconds: number | null;
 }
 
 export class CredentialVaultSession {
@@ -194,6 +194,9 @@ export function credentialVaultSessionTiming(
   now = Date.now()
 ): CredentialVaultSessionTiming {
   const normalized = strictCredentialVaultPolicy(policy);
+  if (normalized.idleTimeoutMinutes === 0) {
+    return { expired: false, remainingSeconds: null };
+  }
   const timeoutMilliseconds = normalized.idleTimeoutMinutes * 60_000;
   const remainingMilliseconds = Math.max(0, timeoutMilliseconds - Math.max(0, now - lastActivityAt));
   return {
@@ -237,17 +240,17 @@ export function isCredentialVaultRecord(value: unknown): value is CredentialVaul
 }
 
 export function validateVaultPassphrase(passphrase: string): void {
-  const bytes = new TextEncoder().encode(passphrase).byteLength;
-  if (bytes < CREDENTIAL_VAULT_MIN_PASSPHRASE_BYTES) {
+  const characters = Array.from(passphrase).length;
+  if (characters < CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS) {
     throw new CredentialVaultError(
       'PASSPHRASE_TOO_SHORT',
-      `保险库口令至少需要 ${CREDENTIAL_VAULT_MIN_PASSPHRASE_BYTES} 个 UTF-8 字节`
+      `保险库口令至少需要 ${CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS} 位`
     );
   }
-  if (bytes > CREDENTIAL_VAULT_MAX_PASSPHRASE_BYTES) {
+  if (characters > CREDENTIAL_VAULT_MAX_PASSPHRASE_CHARACTERS) {
     throw new CredentialVaultError(
       'PASSPHRASE_TOO_LONG',
-      `保险库口令不能超过 ${CREDENTIAL_VAULT_MAX_PASSPHRASE_BYTES} 个 UTF-8 字节`
+      `保险库口令不能超过 ${CREDENTIAL_VAULT_MAX_PASSPHRASE_CHARACTERS} 位`
     );
   }
 }

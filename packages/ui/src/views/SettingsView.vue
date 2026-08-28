@@ -22,7 +22,8 @@ import {
   CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES,
   CREDENTIAL_VAULT_IDLE_TIMEOUT_OPTIONS,
   CREDENTIAL_VAULT_ITERATIONS,
-  CREDENTIAL_VAULT_MIN_PASSPHRASE_BYTES,
+  CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS,
+  validateVaultPassphrase,
   type CredentialVaultStatus,
   type DiagnosticsSnapshot,
   type GatewaySettings,
@@ -294,7 +295,10 @@ async function updateVaultPolicy(): Promise<void> {
   vaultError.value = null;
   try {
     applyVaultStatus(await vault.updatePolicy(idleTimeoutMinutes.value));
-    feedback.value = `保险库将在连续 ${idleTimeoutMinutes.value} 分钟未使用凭证后自动锁定。`;
+    feedback.value =
+      idleTimeoutMinutes.value === 0
+        ? '已关闭空闲自动锁定；扩展后台重启后仍需重新解锁。'
+        : `保险库将在连续 ${idleTimeoutMinutes.value} 分钟未使用凭证后自动锁定。`;
   } catch (error: unknown) {
     vaultError.value = userVisibleCause(error, '空闲锁定策略保存失败');
   } finally {
@@ -308,9 +312,7 @@ function applyVaultStatus(status: CredentialVaultStatus): void {
 }
 
 function assertMatchingPassphrases(passphrase: string, confirmation: string): void {
-  if (new TextEncoder().encode(passphrase).byteLength < CREDENTIAL_VAULT_MIN_PASSPHRASE_BYTES) {
-    throw new Error(`保险库口令至少需要 ${CREDENTIAL_VAULT_MIN_PASSPHRASE_BYTES} 个 UTF-8 字节`);
-  }
+  validateVaultPassphrase(passphrase);
   if (passphrase !== confirmation) throw new Error('两次输入的保险库口令不一致');
 }
 
@@ -603,7 +605,7 @@ function confirmThemePreference(): void {
         <div class="rounded-lg border p-4">
           <p class="text-sm font-medium">空闲自动锁定</p>
           <p class="mt-1 text-xs leading-5 text-muted-foreground">
-            仅实际读取或更新凭证会刷新计时；查看状态不会延长会话。service worker 提前终止时仍会立即锁定。
+            默认不因空闲自动锁定；只有选择时长后才会启用。扩展后台重启时仍需重新解锁。
           </p>
           <p v-if="vaultActivitySummary" class="mt-2 text-xs text-muted-foreground">
             {{ vaultActivitySummary }}
@@ -619,7 +621,7 @@ function confirmThemePreference(): void {
                 :key="minutes"
                 :value="minutes"
               >
-                {{ minutes }} 分钟
+                {{ minutes === 0 ? '不自动锁定（默认）' : `${minutes} 分钟` }}
               </option>
             </select>
             <Button variant="outline" :disabled="vaultBusy" @click="updateVaultPolicy">保存锁定策略</Button>
@@ -636,7 +638,7 @@ function confirmThemePreference(): void {
               type="password"
               aria-label="新保险库口令"
               autocomplete="new-password"
-              placeholder="至少 12 个 UTF-8 字节"
+              :placeholder="`至少 ${CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS} 位`"
             />
             <Input
               v-model="newVaultPassphraseConfirmation"
@@ -666,7 +668,7 @@ function confirmThemePreference(): void {
           type="password"
           aria-label="新建保险库口令"
           autocomplete="new-password"
-          placeholder="至少 12 个 UTF-8 字节"
+          :placeholder="`至少 ${CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS} 位`"
         />
         <Input
           v-model="vaultPassphraseConfirmation"

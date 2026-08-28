@@ -2,8 +2,8 @@ export { GatewayException, normalizeGatewayError } from './errors';
 export { BffGatewayClient } from './bff-client';
 export {
   CREDENTIAL_VAULT_ITERATIONS,
-  CREDENTIAL_VAULT_MAX_PASSPHRASE_BYTES,
-  CREDENTIAL_VAULT_MIN_PASSPHRASE_BYTES,
+  CREDENTIAL_VAULT_MAX_PASSPHRASE_CHARACTERS,
+  CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS,
   CredentialVaultError,
   inspectCredentialStorage,
   validateVaultPassphrase

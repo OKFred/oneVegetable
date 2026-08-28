@@ -89,7 +89,7 @@ function mountView(
           ? {
               vault: {
                 status: () =>
-                  Promise.resolve(vaultStatus(currentVaultState ?? 'empty', 15, initialLockReason)),
+                  Promise.resolve(vaultStatus(currentVaultState ?? 'empty', 0, initialLockReason)),
                 create: createVault,
                 migrate: migrateVault,
                 unlock: async (passphrase) => {
@@ -126,6 +126,50 @@ afterEach(() => {
 });
 
 describe('SettingsView diagnostics', () => {
+  it('shows no idle auto-lock as the default and explains the six-character minimum', async () => {
+    const wrapper = mountView('extension', 'unlocked');
+    await flushPromises();
+
+    expect((wrapper.get('select[aria-label="空闲自动锁定时间"]').element as HTMLSelectElement).value).toBe(
+      '0'
+    );
+    expect(wrapper.get('select[aria-label="空闲自动锁定时间"]').text()).toContain('不自动锁定（默认）');
+    expect(wrapper.get('input[aria-label="新保险库口令"]').attributes('placeholder')).toBe('至少 6 位');
+    expect(wrapper.text()).not.toContain('UTF-8 字节');
+
+    const policyButton = wrapper
+      .findAll('button')
+      .find((candidate) => candidate.text().includes('保存锁定策略'));
+    if (!policyButton) throw new Error('Missing idle-lock policy button');
+    await policyButton.trigger('click');
+    await vi.waitFor(() => {
+      expect(updateVaultPolicy).toHaveBeenCalledWith(0);
+      expect(wrapper.text()).toContain('已关闭空闲自动锁定');
+    });
+    wrapper.unmount();
+  });
+
+  it('accepts a six-character passphrase when creating the extension vault', async () => {
+    const wrapper = mountView('extension', 'empty');
+    await flushPromises();
+
+    await wrapper.get('input[aria-label="新建保险库口令"]').setValue('123456');
+    await wrapper.get('input[aria-label="确认保险库口令"]').setValue('123456');
+    const createButton = wrapper
+      .findAll('button')
+      .find((candidate) => candidate.text().includes('创建保险库并保存'));
+    if (!createButton) throw new Error('Missing vault creation button');
+    await createButton.trigger('click');
+    await flushPromises();
+
+    expect(createVault).toHaveBeenCalledWith(
+      '123456',
+      expect.objectContaining({ endpoint: ALIBABA_GATEWAY, signMethod: 'hmac' })
+    );
+    expect(wrapper.text()).toContain('加密凭证保险库已创建');
+    wrapper.unmount();
+  });
+
   it('imports the local authorization bundle without saving it automatically', async () => {
     const wrapper = mountView('extension', 'empty');
     await flushPromises();
@@ -343,7 +387,7 @@ describe('SettingsView diagnostics', () => {
 
 function vaultStatus(
   state: CredentialVaultState,
-  idleTimeoutMinutes = 15,
+  idleTimeoutMinutes = 0,
   lockReason: CredentialVaultLockReason = 'manual'
 ): CredentialVaultStatus {
   return {
@@ -356,7 +400,7 @@ function vaultStatus(
     signMethod: 'hmac',
     idleTimeoutMinutes: state === 'unlocked' ? idleTimeoutMinutes : null,
     lastActivityAt: state === 'unlocked' ? '2026-08-13T08:00:00.000Z' : null,
-    idleRemainingSeconds: state === 'unlocked' ? idleTimeoutMinutes * 60 : null,
+    idleRemainingSeconds: state === 'unlocked' && idleTimeoutMinutes > 0 ? idleTimeoutMinutes * 60 : null,
     lockReason: state === 'locked' ? lockReason : null
   };
 }
