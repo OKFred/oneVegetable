@@ -118,7 +118,7 @@ Cloudflare Worker，在 4174 端口启动 BFF 模式 Web。Playwright 会通过�
   其他能力没有真实账号验收前不要添加 `operation:*` 或
   `capability:*` 写能力标记。
 
-真实正式发布通过 `ONE_VEGETABLE_REAL_PRODUCT_PUBLISH_SMOKE=1 pnpm smoke:product:publish:real` 显式执行。脚本先复用当前账号可渲染且无 Schema 硬错误的商品作为测试模板，只改标题标记；平台返回商品 ID 后立即写入忽略目录中的脱敏报告，后续只能恢复回读，不能重复创建。2026-08-28 的验收商品 `1601935651469` 已由列表回读确认标题一致，状态为 `auditing`。
+真实正式发布通过 `ONE_VEGETABLE_REAL_PRODUCT_PUBLISH_SMOKE=1 pnpm smoke:product:publish:real` 显式执行。脚本先复用当前账号可渲染且无 Schema 硬错误的商品作为测试模板，只改标题标记；平台返回商品 ID 后立即写入忽略目录中的脱敏报告，后续只能恢复回读，不能重复创建。默认保留 Alibaba 当前发布状态，不主动下架；只有额外设置 `ONE_VEGETABLE_REAL_PRODUCT_PUBLISH_CLEANUP=1` 时才会在回读到 `online` 后下架该次 Smoke 商品。2026-08-28 的验收商品 `1601935651469` 已由列表回读确认标题一致。
 
 ## staging
 

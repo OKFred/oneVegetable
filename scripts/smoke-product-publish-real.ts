@@ -24,6 +24,7 @@ import { AlibabaReadGatewayClient } from '../apps/api/src/gateway/alibaba-read-g
 import { createNodeAlibabaCredentialProvider } from '../apps/api/src/gateway/node-credential-bundle';
 import { atomicWriteJson } from './openapi-auth/storage';
 import { installNodeXmlDomGlobals } from './node-xml-dom';
+import { shouldCleanupPublishedProduct } from './lib/product-publish-smoke-options';
 
 const LANGUAGE = 'en_US' as const;
 const DEFAULT_SOURCE_PRODUCT_ID = '1601928079741';
@@ -32,7 +33,7 @@ const TITLE_MARKER = `oneVegetable API validation ${new Date().toISOString().sli
 installNodeXmlDomGlobals();
 if (existsSync('.env')) loadEnvFile('.env');
 const allowMutation = process.env.ONE_VEGETABLE_REAL_PRODUCT_PUBLISH_SMOKE === '1';
-const cleanupOnlineProduct = process.env.ONE_VEGETABLE_REAL_PRODUCT_PUBLISH_KEEP_ONLINE !== '1';
+const cleanupOnlineProduct = shouldCleanupPublishedProduct(process.env);
 
 const reportPath = resolve(
   process.cwd(),
@@ -187,7 +188,10 @@ async function listProducts(): Promise<Product[]> {
 async function verifyAcceptedPublish(context: AcceptedPublishContext): Promise<void> {
   const visible = await waitForPublishedProduct(context.productId, context.titleMarker);
   let productStatus = visible?.status ?? null;
-  let cleanup: Record<string, unknown> = { attempted: false, reason: '商品尚未处于 online 状态' };
+  let cleanup: Record<string, unknown> = {
+    attempted: false,
+    reason: cleanupOnlineProduct ? '商品尚未处于 online 状态' : '默认保留平台发布状态，未开启显式清理'
+  };
   if (visible?.status === 'online' && visible.encryptedId && cleanupOnlineProduct) {
     const result = await call('updateProductDisplay', {
       productIds: [visible.id],
