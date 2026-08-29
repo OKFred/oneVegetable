@@ -56,7 +56,8 @@ export function applyNodeMigrations(handle: NodeDatabaseHandle): void {
     '0003_request_observability.sql',
     '0004_product_description_templates.sql',
     '0005_product_mutation_jobs.sql',
-    '0006_product_display_mutation_jobs.sql'
+    '0006_product_display_mutation_jobs.sql',
+    '0007_gateway_credential_vault.sql'
   ] as const;
   for (const name of names) {
     const version = Number.parseInt(name.slice(0, 4), 10);

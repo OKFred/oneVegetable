@@ -5,6 +5,8 @@ import { authorizeAdmin, policySummary } from '../abac';
 import { AuthError } from './service';
 import { markRequestActor } from '../observability/request-context';
 import { requestEventRetentionCutoff } from '../observability/request-events';
+import { CURRENT_SCHEMA_VERSION } from '../db/schema';
+import { EntityVersionConflictError } from '../db/repository';
 
 import type { Context, Hono } from 'hono';
 import type { GatewayError } from '@one-vegetable/core';
@@ -14,6 +16,7 @@ import type { PublicUser, UserRole, UserStatus } from './types';
 import type { RequestEventRepository } from '../observability/request-events';
 import type { AlibabaCredentialStatus } from '../gateway/credentials';
 import type { GatewayMode } from '../runtime-config';
+import type { GatewayCredentialService, StoredAlibabaCredentialProvider } from '../gateway/credential-vault';
 import { toPublicUser } from './types';
 
 export const SESSION_COOKIE = 'ov_session';
@@ -29,6 +32,8 @@ export interface AuthRoutesOptions {
   database: 'sqlite' | 'd1';
   gatewayMode: GatewayMode;
   gatewayStatus?: AlibabaCredentialStatus;
+  gatewayCredentialService?: GatewayCredentialService;
+  gatewayCredentialProvider?: StoredAlibabaCredentialProvider;
   mutationEnabled?: boolean;
   allowedOrigins?: readonly string[];
   requestEvents?: RequestEventRepository;
@@ -263,7 +268,7 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
             realReadEnabled: options.gatewayMode === 'real' && options.gatewayStatus?.configured === true,
             mutationEnabled: options.mutationEnabled === true
           },
-          schemaVersion: 3,
+          schemaVersion: CURRENT_SCHEMA_VERSION,
           requestEventRetentionDays: options.requestEventRetentionDays ?? 30
         }),
       ['requestId']
@@ -273,6 +278,98 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
   api.post('/admin/policy-summary/get', async (context) => {
     return adminRead(context, options, () => Promise.resolve(policySummary()), ['requestId']);
   });
+
+  const gatewayCredentialService = options.gatewayCredentialService;
+  const gatewayCredentialProvider = options.gatewayCredentialProvider;
+  if (gatewayCredentialService && gatewayCredentialProvider) {
+    api.post('/admin/gateway-credentials/get', async (context) => {
+      return adminRead(context, options, () => gatewayCredentialService.status(), ['requestId']);
+    });
+
+    api.post('/admin/gateway-credentials/import', async (context) => {
+      return adminWrite(
+        context,
+        options,
+        async (body, authenticated) => {
+          const requestId = readRequestId(body);
+          try {
+            const result = await gatewayCredentialService.import({
+              bundle: body.bundle,
+              actorId: authenticated.principal.actorId,
+              expectedRevision: readNullableRevision(body, 'revision'),
+              remark: readOptionalRemark(body, 'remark') ?? null
+            });
+            await options.authService.audit({
+              requestId,
+              actorId: authenticated.principal.actorId,
+              action: 'admin.gateway-credentials.import',
+              resourceKind: 'gateway-credential',
+              resourceId: 'primary',
+              outcome: 'success',
+              reasonCode: 'GATEWAY_CREDENTIAL_IMPORTED',
+              revisionAfter: result.revision
+            });
+            return result;
+          } catch (error: unknown) {
+            throw credentialRouteError(error);
+          }
+        },
+        ['requestId', 'bundle', 'revision', 'remark']
+      );
+    });
+
+    api.post('/admin/gateway-credentials/refresh', async (context) => {
+      return adminWrite(
+        context,
+        options,
+        async (body, authenticated) => {
+          const requestId = readRequestId(body);
+          await gatewayCredentialProvider.requireCredentials(requestId, true);
+          const result = await gatewayCredentialService.status();
+          await options.authService.audit({
+            requestId,
+            actorId: authenticated.principal.actorId,
+            action: 'admin.gateway-credentials.refresh',
+            resourceKind: 'gateway-credential',
+            resourceId: 'primary',
+            outcome: 'success',
+            reasonCode: 'GATEWAY_CREDENTIAL_REFRESHED',
+            revisionAfter: result.revision
+          });
+          return result;
+        },
+        ['requestId']
+      );
+    });
+
+    api.post('/admin/gateway-credentials/clear', async (context) => {
+      return adminWrite(
+        context,
+        options,
+        async (body, authenticated) => {
+          const requestId = readRequestId(body);
+          const revision = readInteger(body, 'revision');
+          try {
+            await gatewayCredentialService.clear(revision);
+          } catch (error: unknown) {
+            throw credentialRouteError(error);
+          }
+          await options.authService.audit({
+            requestId,
+            actorId: authenticated.principal.actorId,
+            action: 'admin.gateway-credentials.clear',
+            resourceKind: 'gateway-credential',
+            resourceId: 'primary',
+            outcome: 'success',
+            reasonCode: 'GATEWAY_CREDENTIAL_CLEARED',
+            revisionBefore: revision
+          });
+          return {};
+        },
+        ['requestId', 'revision']
+      );
+    });
+  }
 
   api.post('/admin/request-events/list', async (context) => {
     return adminRead(
@@ -454,6 +551,23 @@ function readInteger(body: Record<string, unknown>, key: string): number {
   const value = body[key];
   if (!Number.isSafeInteger(value)) throw new AuthError('INVALID_REQUEST_BODY', `${key} 无效`, 400);
   return value as number;
+}
+
+function readNullableRevision(body: Record<string, unknown>, key: string): number | null {
+  if (body[key] === null) return null;
+  return readInteger(body, key);
+}
+
+function credentialRouteError(error: unknown): AuthError {
+  if (error instanceof AuthError) return error;
+  if (error instanceof EntityVersionConflictError) {
+    return new AuthError('ENTITY_VERSION_CONFLICT', '凭据已被其他请求更新', 409);
+  }
+  return new AuthError(
+    'GATEWAY_CREDENTIAL_INVALID',
+    error instanceof Error ? error.message : 'Alibaba 授权包无效',
+    400
+  );
 }
 
 function readPage(body: Record<string, unknown>): number {

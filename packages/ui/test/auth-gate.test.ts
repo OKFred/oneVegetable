@@ -142,6 +142,10 @@ function controlFixture(
     listAudit: () => Promise.resolve({ items: [], total: 0 }),
     listRequestEvents: () => Promise.resolve({ items: [], total: 0 }),
     purgeRequestEvents: () => Promise.resolve({ deletedCount: 0, retentionDays: 30, cutoffTimeUtc: 0 }),
+    gatewayCredentialStatus: () => Promise.resolve(gatewayCredentialSummary()),
+    importGatewayCredential: () => Promise.resolve(gatewayCredentialSummary()),
+    refreshGatewayCredential: () => Promise.resolve(gatewayCredentialSummary()),
+    clearGatewayCredential: () => Promise.resolve(),
     system: () =>
       Promise.resolve({
         runtime: 'node',
@@ -155,6 +159,20 @@ function controlFixture(
       }),
     policySummary: () => Promise.resolve({}),
     csrfToken: () => null
+  };
+}
+
+function gatewayCredentialSummary() {
+  return {
+    configured: false,
+    revision: null,
+    accessTokenExpiresTimeUtc: null,
+    refreshTokenExpiresTimeUtc: null,
+    lastRefreshTimeUtc: null,
+    lastRefreshErrorCode: null,
+    updateTimeUtc: null,
+    updaterId: null,
+    remark: null
   };
 }
 

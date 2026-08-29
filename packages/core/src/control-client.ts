@@ -5,6 +5,7 @@ import { createRequestId, NetworkManager } from './network';
 import type { ApiResponse, BackendMeta } from './api-contract';
 import type { EntityAuditFields, UnixEpochMilliseconds } from './audit';
 import type { NetworkTransport } from './network';
+import type { AlibabaOpenApiCredentialBundle } from './alibaba-credential-bundle';
 
 export type ControlUserRole = 'admin' | 'user';
 export type ControlUserStatus = 'active' | 'disabled';
@@ -70,7 +71,7 @@ export interface ControlSystemInfo {
   schemaVersion: number;
   requestEventRetentionDays: number;
   gatewayStatus: {
-    source: 'environment' | 'credential-bundle' | 'documentation-replay';
+    source: 'environment' | 'credential-bundle' | 'd1-vault' | 'documentation-replay';
     configured: boolean;
     hasAppKey: boolean;
     hasAppSecret: boolean;
@@ -79,7 +80,22 @@ export interface ControlSystemInfo {
     signMethod: 'hmac' | 'md5' | 'hmac-sha256';
     realReadEnabled: boolean;
     mutationEnabled: boolean;
+    accessTokenExpiresTimeUtc?: number | null;
+    lastRefreshTimeUtc?: number | null;
+    lastRefreshErrorCode?: string | null;
   };
+}
+
+export interface ControlGatewayCredentialSummary {
+  configured: boolean;
+  revision: number | null;
+  accessTokenExpiresTimeUtc: UnixEpochMilliseconds | null;
+  refreshTokenExpiresTimeUtc: UnixEpochMilliseconds | null;
+  lastRefreshTimeUtc: UnixEpochMilliseconds | null;
+  lastRefreshErrorCode: string | null;
+  updateTimeUtc: UnixEpochMilliseconds | null;
+  updaterId: string | null;
+  remark: string | null;
 }
 
 export interface ControlRequestEvent {
@@ -161,6 +177,14 @@ export interface ControlClient {
     retentionDays: number;
     cutoffTimeUtc: UnixEpochMilliseconds;
   }>;
+  gatewayCredentialStatus(): Promise<ControlGatewayCredentialSummary>;
+  importGatewayCredential(
+    bundle: AlibabaOpenApiCredentialBundle,
+    revision: number | null,
+    remark?: string | null
+  ): Promise<ControlGatewayCredentialSummary>;
+  refreshGatewayCredential(): Promise<ControlGatewayCredentialSummary>;
+  clearGatewayCredential(revision: number): Promise<void>;
   csrfToken(): string | null;
 }
 
@@ -324,6 +348,26 @@ export class BffControlClient implements ControlClient {
     cutoffTimeUtc: UnixEpochMilliseconds;
   }> {
     return this.#call('/admin/request-events/purge', {});
+  }
+
+  gatewayCredentialStatus(): Promise<ControlGatewayCredentialSummary> {
+    return this.#call('/admin/gateway-credentials/get', {});
+  }
+
+  importGatewayCredential(
+    bundle: AlibabaOpenApiCredentialBundle,
+    revision: number | null,
+    remark: string | null = null
+  ): Promise<ControlGatewayCredentialSummary> {
+    return this.#call('/admin/gateway-credentials/import', { bundle, revision, remark });
+  }
+
+  refreshGatewayCredential(): Promise<ControlGatewayCredentialSummary> {
+    return this.#call('/admin/gateway-credentials/refresh', {});
+  }
+
+  async clearGatewayCredential(revision: number): Promise<void> {
+    await this.#call('/admin/gateway-credentials/clear', { revision });
   }
 
   async #call<T>(path: string, body: Record<string, unknown>): Promise<T> {

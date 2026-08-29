@@ -23,6 +23,7 @@ export const users = sqliteTable(
     username: text('username').notNull(),
     passwordHash: text('password_hash').notNull(),
     passwordSalt: text('password_salt').notNull(),
+    passwordLoginEnabled: integer('password_login_enabled', { mode: 'boolean' }).notNull().default(true),
     role: text('role', { enum: ['admin', 'user'] }).notNull(),
     status: text('status', { enum: ['active', 'disabled'] }).notNull(),
     failedLoginCount: integer('failed_login_count').notNull().default(0),
@@ -176,6 +177,27 @@ export const productMutationJobs = sqliteTable(
   ]
 );
 
+export const alibabaGatewayCredentials = sqliteTable('alibaba_gateway_credentials', {
+  id: text('id').primaryKey(),
+  encryptedBundle: text('encrypted_bundle').notNull(),
+  initializationVector: text('initialization_vector').notNull(),
+  algorithm: text('algorithm').notNull(),
+  schemaVersion: integer('schema_version').notNull(),
+  keyVersion: integer('key_version').notNull(),
+  accessTokenExpiresTimeUtc: integer('access_token_expires_time_utc'),
+  refreshTokenExpiresTimeUtc: integer('refresh_token_expires_time_utc'),
+  refreshLeaseId: text('refresh_lease_id'),
+  refreshLeaseUntilUtc: integer('refresh_lease_until_utc'),
+  lastRefreshTimeUtc: integer('last_refresh_time_utc'),
+  lastRefreshErrorCode: text('last_refresh_error_code'),
+  createTimeUtc: integer('create_time_utc').notNull(),
+  updateTimeUtc: integer('update_time_utc').notNull(),
+  creatorId: text('creator_id').notNull(),
+  updaterId: text('updater_id').notNull(),
+  revision: integer('revision').notNull().default(1),
+  remark: text('remark')
+});
+
 export const schema = {
   schemaMigrations,
   appMetadata,
@@ -184,6 +206,7 @@ export const schema = {
   auditEvents,
   requestEvents,
   productDescriptionTemplates,
-  productMutationJobs
+  productMutationJobs,
+  alibabaGatewayCredentials
 };
-export const CURRENT_SCHEMA_VERSION = 6;
+export const CURRENT_SCHEMA_VERSION = 7;

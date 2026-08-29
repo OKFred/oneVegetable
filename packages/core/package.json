@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./browser": "./src/product-description-browser.ts",
+    "./credential-bundle": "./src/alibaba-credential-bundle.ts",
     "./diagnostics": "./src/diagnostics.ts",
     "./errors": "./src/errors.ts",
     "./mock": "./src/mock-client.ts",

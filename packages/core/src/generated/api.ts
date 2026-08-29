@@ -339,6 +339,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/gateway-credentials/get": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Get encrypted Alibaba gateway credential status */
+        post: operations["getAdminGatewayCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/gateway-credentials/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Encrypt and import an Alibaba OpenAPI credential bundle */
+        post: operations["importAdminGatewayCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/gateway-credentials/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh the encrypted Alibaba access token */
+        post: operations["refreshAdminGatewayCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/gateway-credentials/clear": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clear the encrypted Alibaba credential bundle */
+        post: operations["clearAdminGatewayCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/system/get": {
         parameters: {
             query?: never;
@@ -1940,6 +2008,42 @@ export interface components {
             };
             /** @description Alibaba 网关返回的请求追踪 ID */
             request_id?: string;
+        };
+        AlibabaOpenApiCredentialBundle: {
+            /** @constant */
+            schemaVersion: 1;
+            /** Format: date-time */
+            capturedAtUtc: string;
+            application: {
+                appName: string;
+                appKey: string;
+                appSecret: string;
+                /** Format: uri */
+                callbackUrl: string;
+                status: string;
+                permissions: components["schemas"]["AlibabaOpenApiPermission"][];
+            };
+            oauth: {
+                accessToken: string;
+                refreshToken: string | null;
+                /** Format: date-time */
+                expiresAtUtc: string | null;
+                /** Format: date-time */
+                refreshExpiresAtUtc: string | null;
+            };
+            callback: {
+                /** Format: date-time */
+                receivedAtUtc: string;
+                /** @constant */
+                stateMatched: true;
+                /** Format: uri */
+                callbackOrigin: string;
+                callbackPath: string;
+            };
+        };
+        AlibabaOpenApiPermission: {
+            name: string;
+            status: string;
         };
         /** alibaba.icbu.photobank.group.list request */
         AlibabaPhotoAlibabaIcbuPhotobankGroupListRequest: {
@@ -5902,6 +6006,33 @@ export interface components {
             contentType: string;
             byteLength: number;
         };
+        GatewayCredentialClearRequest: {
+            requestId: components["schemas"]["RequestId"];
+            revision: number;
+        };
+        GatewayCredentialImportRequest: {
+            requestId: components["schemas"]["RequestId"];
+            bundle: components["schemas"]["AlibabaOpenApiCredentialBundle"];
+            revision: number | null;
+            remark?: string | null;
+        };
+        GatewayCredentialSummary: {
+            configured: boolean;
+            revision: number | null;
+            accessTokenExpiresTimeUtc: number | null;
+            refreshTokenExpiresTimeUtc: number | null;
+            lastRefreshTimeUtc: number | null;
+            lastRefreshErrorCode: string | null;
+            updateTimeUtc: number | null;
+            updaterId: string | null;
+            remark: string | null;
+        };
+        GatewayCredentialSummaryResponse: {
+            requestId: components["schemas"]["RequestId"];
+            /** @constant */
+            ok: true;
+            data: components["schemas"]["GatewayCredentialSummary"];
+        };
         GatewayError: {
             code: string;
             message: string;
@@ -7770,6 +7901,266 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AdminAuditListRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    getAdminGatewayCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestEnvelope"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    importAdminGatewayCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GatewayCredentialImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    refreshAdminGatewayCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestEnvelope"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    clearAdminGatewayCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GatewayCredentialClearRequest"];
             };
         };
         responses: {

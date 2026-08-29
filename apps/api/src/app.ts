@@ -57,6 +57,7 @@ import type { AdminService } from './auth/admin-service';
 import type { AuthenticatedSession, AuthService } from './auth/service';
 import type { RequestEventRepository } from './observability/request-events';
 import type { AlibabaCredentialStatus } from './gateway/credentials';
+import type { GatewayCredentialService, StoredAlibabaCredentialProvider } from './gateway/credential-vault';
 import type { GatewayMode } from './runtime-config';
 import type { ProductDescriptionTemplateRepository } from './product-description-templates/repository';
 import type { ProductMutationJobRepository } from './product-mutations/repository';
@@ -81,6 +82,8 @@ export interface ApiAppOptions {
   requestEvents?: RequestEventRepository;
   requestEventRetentionDays?: number;
   gatewayStatus?: AlibabaCredentialStatus;
+  gatewayCredentialService?: GatewayCredentialService;
+  gatewayCredentialProvider?: StoredAlibabaCredentialProvider;
   productDescriptionTemplates?: ProductDescriptionTemplateRepository;
   productMutationJobs?: ProductMutationJobRepository;
 }
@@ -193,6 +196,12 @@ export function createApiApp(options: ApiAppOptions): Hono {
       ].some((operation) => featureFlags.isEnabled(`operation:${operation}`)),
       ...(options.requestEvents ? { requestEvents: options.requestEvents } : {}),
       ...(options.gatewayStatus ? { gatewayStatus: options.gatewayStatus } : {}),
+      ...(options.gatewayCredentialService
+        ? { gatewayCredentialService: options.gatewayCredentialService }
+        : {}),
+      ...(options.gatewayCredentialProvider
+        ? { gatewayCredentialProvider: options.gatewayCredentialProvider }
+        : {}),
       ...(options.requestEventRetentionDays !== undefined
         ? { requestEventRetentionDays: options.requestEventRetentionDays }
         : {}),
@@ -482,7 +491,7 @@ export function createApiApp(options: ApiAppOptions): Hono {
   return app;
 }
 
-function gatewayStatus(code: string): 400 | 403 | 429 | 502 | 504 {
+function gatewayStatus(code: string): 400 | 403 | 429 | 502 | 503 | 504 {
   if (code === 'REQUEST_CONTRACT_INVALID' || code === 'INVALID_OPERATION_REQUEST') return 400;
   if (
     code === 'CAPABILITY_UNKNOWN' ||
@@ -493,6 +502,7 @@ function gatewayStatus(code: string): 400 | 403 | 429 | 502 | 504 {
     return 403;
   }
   if (code === 'RATE_LIMITED') return 429;
+  if (code === 'ALIBABA_CREDENTIALS_NOT_CONFIGURED') return 503;
   if (code === 'REQUEST_TIMEOUT') return 504;
   return 502;
 }

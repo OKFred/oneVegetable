@@ -5,8 +5,13 @@ import { SqlAuthRepository } from './auth/repository';
 import { AuthService } from './auth/service';
 import { isD1DatabaseReady, openD1Database } from './db/d1-database';
 import { SqlRequestEventRepository } from './observability/request-events';
-import { AlibabaReadGatewayClient } from './gateway/alibaba-read-gateway';
-import { EnvironmentAlibabaCredentialProvider } from './gateway/credentials';
+import { CredentialBackedAlibabaGatewayClient } from './gateway/alibaba-read-gateway';
+import {
+  GatewayCredentialCipher,
+  GatewayCredentialService,
+  SqlGatewayCredentialRepository,
+  StoredAlibabaCredentialProvider
+} from './gateway/credential-vault';
 import { createDocumentationReplayGateway, documentationReplayStatus } from './gateway/documentation-replay';
 import { readRuntimeConfiguration } from './runtime-config';
 import { SqlProductDescriptionTemplateRepository } from './product-description-templates/repository';
@@ -16,8 +21,14 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const runtimeConfiguration = readRuntimeConfiguration(env, 'local-worker');
     const { gatewayMode } = runtimeConfiguration;
-    const credentialProvider = new EnvironmentAlibabaCredentialProvider({});
     const database = openD1Database(env.DB);
+    const credentialRepository = new SqlGatewayCredentialRepository(database.executor);
+    const credentialCipher = await GatewayCredentialCipher.create(
+      env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY
+    );
+    const credentialService = new GatewayCredentialService(credentialRepository, credentialCipher);
+    const credentialProvider = new StoredAlibabaCredentialProvider(credentialRepository, credentialCipher);
+    const credentialStatus = await credentialProvider.status();
     const authRepository = new SqlAuthRepository(database.executor);
     const authService = new AuthService({
       repository: authRepository,
@@ -28,15 +39,17 @@ export default {
       database: 'd1',
       environment: runtimeConfiguration.environment,
       gatewayMode,
-      gatewayStatus: gatewayMode === 'replay' ? documentationReplayStatus() : credentialProvider.status(),
+      gatewayStatus: gatewayMode === 'replay' ? documentationReplayStatus() : credentialStatus,
       ...(gatewayMode === 'real'
-        ? { gateway: new AlibabaReadGatewayClient(credentialProvider.requireCredentials()) }
+        ? { gateway: new CredentialBackedAlibabaGatewayClient(credentialProvider) }
         : gatewayMode === 'replay'
           ? { gateway: createDocumentationReplayGateway() }
           : {}),
       apiPrefix: runtimeConfiguration.apiPrefix,
       authService,
       adminService: new AdminService(authRepository),
+      gatewayCredentialService: credentialService,
+      gatewayCredentialProvider: credentialProvider,
       featureFlags: new StaticOperationFeatureFlags(new Set(runtimeConfiguration.mutationFlags)),
       requestEvents: new SqlRequestEventRepository(database.executor),
       productDescriptionTemplates: new SqlProductDescriptionTemplateRepository(database.executor),

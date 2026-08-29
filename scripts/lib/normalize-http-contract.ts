@@ -522,6 +522,26 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       'listAdminAuditEvents',
       'AdminAuditListRequest'
     ),
+    '/admin/gateway-credentials/get': postOperation(
+      'Get encrypted Alibaba gateway credential status',
+      'getAdminGatewayCredential',
+      'RequestEnvelope'
+    ),
+    '/admin/gateway-credentials/import': postOperation(
+      'Encrypt and import an Alibaba OpenAPI credential bundle',
+      'importAdminGatewayCredential',
+      'GatewayCredentialImportRequest'
+    ),
+    '/admin/gateway-credentials/refresh': postOperation(
+      'Refresh the encrypted Alibaba access token',
+      'refreshAdminGatewayCredential',
+      'RequestEnvelope'
+    ),
+    '/admin/gateway-credentials/clear': postOperation(
+      'Clear the encrypted Alibaba credential bundle',
+      'clearAdminGatewayCredential',
+      'GatewayCredentialClearRequest'
+    ),
     '/admin/system/get': postOperation('Get protected system metadata', 'getAdminSystem', 'RequestEnvelope'),
     '/admin/policy-summary/get': postOperation(
       'Get the read-only ABAC policy summary',

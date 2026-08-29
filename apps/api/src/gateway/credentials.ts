@@ -11,13 +11,16 @@ export interface AlibabaCredentialEnvironment {
 }
 
 export interface AlibabaCredentialStatus {
-  source: 'environment' | 'credential-bundle' | 'documentation-replay';
+  source: 'environment' | 'credential-bundle' | 'd1-vault' | 'documentation-replay';
   configured: boolean;
   hasAppKey: boolean;
   hasAppSecret: boolean;
   hasAccessToken: boolean;
   endpointOrigin: string;
   signMethod: SignMethod;
+  accessTokenExpiresTimeUtc?: number | null;
+  lastRefreshTimeUtc?: number | null;
+  lastRefreshErrorCode?: string | null;
 }
 
 export interface AlibabaCredentialProvider {
@@ -31,6 +34,13 @@ export class GatewayConfigurationError extends Error {
       | 'ALIBABA_CREDENTIALS_INCOMPLETE'
       | 'ALIBABA_CREDENTIAL_FILE_INVALID'
       | 'ALIBABA_ACCESS_TOKEN_EXPIRED'
+      | 'ALIBABA_CREDENTIALS_NOT_CONFIGURED'
+      | 'ALIBABA_CREDENTIAL_ENCRYPTION_KEY_INVALID'
+      | 'ALIBABA_CREDENTIAL_VAULT_UNREADABLE'
+      | 'ALIBABA_REFRESH_TOKEN_MISSING'
+      | 'ALIBABA_REFRESH_TOKEN_EXPIRED'
+      | 'ALIBABA_CREDENTIAL_REFRESH_IN_PROGRESS'
+      | 'ALIBABA_TOKEN_REFRESH_FAILED'
       | 'ALIBABA_ENDPOINT_INVALID'
       | 'ALIBABA_SIGN_METHOD_INVALID',
     message: string

@@ -27,9 +27,9 @@
   "vars": {
     "ONE_VEGETABLE_API_PREFIX": "/api/v1",
     "ONE_VEGETABLE_ENVIRONMENT": "self-hosted",
-    "ONE_VEGETABLE_GATEWAY_MODE": "disabled",
+    "ONE_VEGETABLE_GATEWAY_MODE": "real",
     "ONE_VEGETABLE_CORS_ORIGINS": "",
-    "ONE_VEGETABLE_MUTATION_FLAGS": "",
+    "ONE_VEGETABLE_MUTATION_FLAGS": "operation:publishProduct,operation:saveProductDraft,operation:updateProduct,operation:updateProductDisplay,operation:operatePhotoGroup,operation:uploadPhoto,operation:transferPhotoFromUrl",
     "ONE_VEGETABLE_REQUEST_RETENTION_DAYS": "30"
   },
   "env": {

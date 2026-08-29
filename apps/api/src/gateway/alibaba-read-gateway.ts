@@ -19,6 +19,7 @@ import {
   validateCapabilityRequest,
   validateCapabilityResponse
 } from '@one-vegetable/core';
+import { GatewayConfigurationError } from './credentials';
 
 import type {
   CapabilityCallRequest,
@@ -30,6 +31,7 @@ import type {
   RequestOf,
   ResponseOf
 } from '@one-vegetable/core';
+import type { StoredAlibabaCredentialProvider } from './credential-vault';
 
 export interface GatewayRequestContext {
   requestId: string;
@@ -39,6 +41,30 @@ export interface AlibabaReadGatewayOptions {
   transport?: NetworkTransport;
   wait?: (milliseconds: number) => Promise<void>;
   maxAttempts?: 1 | 2 | 3;
+}
+
+export class CredentialBackedAlibabaGatewayClient implements GatewayClient {
+  constructor(private readonly provider: StoredAlibabaCredentialProvider) {}
+
+  async request<K extends OperationId>(
+    operation: K,
+    request: RequestOf<K>,
+    context?: GatewayRequestContext
+  ): Promise<ResponseOf<K>> {
+    try {
+      const credentials = await this.provider.requireCredentials(context?.requestId);
+      return await new AlibabaReadGatewayClient(credentials).request(operation, request, context);
+    } catch (error: unknown) {
+      if (error instanceof GatewayConfigurationError) {
+        throw new GatewayException({
+          code: error.code,
+          message: error.message,
+          retryable: error.code === 'ALIBABA_CREDENTIAL_REFRESH_IN_PROGRESS'
+        });
+      }
+      throw error;
+    }
+  }
 }
 
 export class AlibabaReadGatewayClient implements GatewayClient {
