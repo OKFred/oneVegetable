@@ -109,6 +109,21 @@ describe('ProductTransferDialog', () => {
     expect(findDialog('确认关闭')).toBeUndefined();
     expect(host.open.value).toBe(true);
   });
+
+  it('keeps the advanced settings summary independent from individual option values', async () => {
+    const host = mountDialog('export');
+    await nextTick();
+    const dialog = getDialog('导出商品');
+    const summary = dialog.querySelector('summary');
+    const xmlOption = dialog.querySelector<HTMLInputElement>('input[aria-label="Schema XML"]');
+    if (!summary || !xmlOption) throw new Error('Missing advanced export settings');
+
+    expect(summary.textContent.trim()).toBe('高级设置');
+    xmlOption.click();
+    await nextTick();
+    expect(host.schemaFormat.value).toBe('xml');
+    expect(summary.textContent.trim()).toBe('高级设置');
+  });
 });
 
 function mountDialog(mode: 'import' | 'export', busy = false) {

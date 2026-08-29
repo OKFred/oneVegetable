@@ -238,12 +238,7 @@ function errorMessage(error: unknown): string {
           <summary
             class="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-4 py-3 font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <span>
-              高级设置
-              <span class="ml-2 text-sm font-normal text-muted-foreground">
-                当前：{{ schemaFormat === 'json' ? 'Schema JSON' : 'Schema XML' }}
-              </span>
-            </span>
+            <span>高级设置</span>
             <ChevronDown class="size-4 transition-transform duration-200 group-open:rotate-180" />
           </summary>
           <fieldset class="grid gap-3 border-t p-4 sm:grid-cols-2">
