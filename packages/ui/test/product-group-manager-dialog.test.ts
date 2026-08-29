@@ -3,7 +3,7 @@
 import { defineComponent, h, ref } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { toast } from 'vue-sonner';
 
 import { MockGatewayClient } from '@one-vegetable/core/mock';
@@ -14,6 +14,26 @@ import { provideServices } from '../src/lib/services';
 vi.mock('vue-sonner', () => ({
   toast: { success: vi.fn() }
 }));
+
+class ResizeObserverMock implements ResizeObserver {
+  constructor(callback: ResizeObserverCallback) {
+    void callback;
+  }
+  observe(target: Element, options?: ResizeObserverOptions): void {
+    void target;
+    void options;
+  }
+  unobserve(target: Element): void {
+    void target;
+  }
+  disconnect(): void {
+    return;
+  }
+}
+
+beforeAll(() => {
+  globalThis.ResizeObserver = ResizeObserverMock;
+});
 
 afterEach(() => {
   document.body.innerHTML = '';
@@ -63,18 +83,20 @@ describe('ProductGroupManagerDialog', () => {
     wrapper.unmount();
   });
 
-  it('keeps unsupported rename and delete actions visible but disabled', async () => {
+  it('explains unsupported rename and delete actions with keyboard-accessible tooltips', async () => {
     const wrapper = mountDialog(true);
 
     await vi.waitFor(() => {
       expect(document.body.textContent).toContain('Energy storage');
     });
-    const rename = buttonByLabel('修改分组 Energy storage');
-    const remove = buttonByLabel('删除分组 Energy storage');
-    expect(rename.disabled).toBe(true);
-    expect(remove.disabled).toBe(true);
-    expect(rename.title).toContain('未提供商品分组修改接口');
-    expect(remove.title).toContain('未提供商品分组删除接口');
+    const rename = elementByLabel('修改分组 Energy storage（不可用）');
+    const remove = elementByLabel('删除分组 Energy storage（不可用）');
+    expect(rename.getAttribute('aria-disabled')).toBe('true');
+    expect(remove.getAttribute('aria-disabled')).toBe('true');
+    remove.focus();
+    await vi.waitFor(() => {
+      expect(document.body.querySelector('[role="tooltip"]')?.textContent).toContain('暂时无法删除线上分组');
+    });
     expect(document.body.textContent).toContain('仅提供商品分组查询与新增');
     wrapper.unmount();
   });
@@ -120,6 +142,12 @@ function buttonByLabel(label: string): HTMLButtonElement {
   const button = document.body.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
   if (!button) throw new Error(`Missing button: ${label}`);
   return button;
+}
+
+function elementByLabel(label: string): HTMLElement {
+  const element = document.body.querySelector<HTMLElement>(`[aria-label="${label}"]`);
+  if (!element) throw new Error(`Missing element: ${label}`);
+  return element;
 }
 
 function buttonByText(label: string): HTMLButtonElement {

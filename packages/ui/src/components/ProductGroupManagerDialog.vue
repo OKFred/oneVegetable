@@ -21,6 +21,7 @@ import QueryState from './QueryState.vue';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
 import ModalDialog from './ui/ModalDialog.vue';
+import Tooltip from './ui/Tooltip.vue';
 import {
   operationAvailabilityMessage,
   useOperationAvailability
@@ -315,26 +316,28 @@ function submitCreate(): void {
               >
                 <FolderPlus class="size-4" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                class="size-8"
-                disabled
-                :aria-label="`修改分组 ${row.group.name}`"
-                title="国际站官方 OpenAPI 未提供商品分组修改接口"
-              >
-                <Pencil class="size-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                class="size-8"
-                disabled
-                :aria-label="`删除分组 ${row.group.name}`"
-                title="国际站官方 OpenAPI 未提供商品分组删除接口"
-              >
-                <Trash2 class="size-3.5" />
-              </Button>
+              <Tooltip text="国际站官方 OpenAPI 未提供商品分组修改接口，暂时无法修改名称。">
+                <span
+                  role="button"
+                  tabindex="0"
+                  class="inline-flex size-8 cursor-not-allowed items-center justify-center rounded-md text-muted-foreground opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-disabled="true"
+                  :aria-label="`修改分组 ${row.group.name}（不可用）`"
+                >
+                  <Pencil class="size-3.5" />
+                </span>
+              </Tooltip>
+              <Tooltip text="国际站官方 OpenAPI 未提供商品分组删除接口，暂时无法删除线上分组。">
+                <span
+                  role="button"
+                  tabindex="0"
+                  class="inline-flex size-8 cursor-not-allowed items-center justify-center rounded-md text-muted-foreground opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-disabled="true"
+                  :aria-label="`删除分组 ${row.group.name}（不可用）`"
+                >
+                  <Trash2 class="size-3.5" />
+                </span>
+              </Tooltip>
             </div>
             <form
               v-if="createParentId === row.group.id"

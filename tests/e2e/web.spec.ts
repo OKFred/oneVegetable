@@ -61,6 +61,8 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await page.getByRole('button', { name: '分组', exact: true }).click();
   const productGroupDialog = page.getByRole('dialog', { name: '商品分组' });
   await expect(productGroupDialog.getByRole('tree', { name: '商品分组树' })).toBeVisible();
+  await productGroupDialog.getByRole('button', { name: '删除分组 Energy storage（不可用）' }).hover();
+  await expect(page.getByRole('tooltip')).toContainText('暂时无法删除线上分组');
   await productGroupDialog.getByRole('button', { name: '展开Energy storage' }).click();
   await expect(productGroupDialog.getByText('Portable power', { exact: true })).toBeVisible();
   await productGroupDialog.getByRole('button', { name: '在 Energy storage 下新增分组' }).click();
