@@ -1,13 +1,15 @@
 import { createApiApp } from './app';
-import { StaticOperationFeatureFlags } from './abac';
+import { EmergencyPauseFeatureFlags, StaticOperationFeatureFlags } from './abac';
 import { AdminService } from './auth/admin-service';
 import { SqlAuthRepository } from './auth/repository';
 import { AuthService } from './auth/service';
 import { SqlPasskeyRepository } from './auth/passkey-repository';
 import { PasskeyService } from './auth/passkey-service';
 import { isD1DatabaseReady, openD1Database } from './db/d1-database';
+import { createD1MetadataRepository } from './db/repository';
 import { SqlRequestEventRepository } from './observability/request-events';
 import { CredentialBackedAlibabaGatewayClient } from './gateway/alibaba-read-gateway';
+import { GatewayConfigurationError } from './gateway/credentials';
 import {
   GatewayCredentialCipher,
   GatewayCredentialService,
@@ -18,59 +20,120 @@ import { createDocumentationReplayGateway, documentationReplayStatus } from './g
 import { readRuntimeConfiguration } from './runtime-config';
 import { SqlProductDescriptionTemplateRepository } from './product-description-templates/repository';
 import { SqlProductMutationJobRepository } from './product-mutations/repository';
+import { readRealMutationsPaused, RealMutationControlService } from './safety/real-mutation-control';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const runtimeConfiguration = readRuntimeConfiguration(env, 'local-worker');
-    const { gatewayMode } = runtimeConfiguration;
-    const database = openD1Database(env.DB);
-    const credentialRepository = new SqlGatewayCredentialRepository(database.executor);
-    const credentialCipher = await GatewayCredentialCipher.create(
-      env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY
-    );
-    const credentialService = new GatewayCredentialService(credentialRepository, credentialCipher);
-    const credentialProvider = new StoredAlibabaCredentialProvider(credentialRepository, credentialCipher);
-    const credentialStatus = await credentialProvider.status();
-    const authRepository = new SqlAuthRepository(database.executor);
-    const authService = new AuthService({
-      repository: authRepository,
-      bootstrapToken: env.BOOTSTRAP_ADMIN_TOKEN,
-      authenticationMode: runtimeConfiguration.authenticationMode
-    });
-    const passkeyService =
-      runtimeConfiguration.authenticationMode === 'passkey'
-        ? new PasskeyService(
-            new SqlPasskeyRepository(database.executor),
-            authRepository,
-            authService,
-            env.BOOTSTRAP_ADMIN_TOKEN
-          )
-        : undefined;
-    return await createApiApp({
-      runtime: 'cloudflare',
-      database: 'd1',
-      environment: runtimeConfiguration.environment,
-      gatewayMode,
-      gatewayStatus: gatewayMode === 'replay' ? documentationReplayStatus() : credentialStatus,
-      ...(gatewayMode === 'real'
-        ? { gateway: new CredentialBackedAlibabaGatewayClient(credentialProvider) }
-        : gatewayMode === 'replay'
-          ? { gateway: createDocumentationReplayGateway() }
-          : {}),
-      apiPrefix: runtimeConfiguration.apiPrefix,
-      authService,
-      authenticationMode: runtimeConfiguration.authenticationMode,
-      ...(passkeyService ? { passkeyService } : {}),
-      adminService: new AdminService(authRepository),
-      gatewayCredentialService: credentialService,
-      gatewayCredentialProvider: credentialProvider,
-      featureFlags: new StaticOperationFeatureFlags(new Set(runtimeConfiguration.mutationFlags)),
-      requestEvents: new SqlRequestEventRepository(database.executor),
-      productDescriptionTemplates: new SqlProductDescriptionTemplateRepository(database.executor),
-      productMutationJobs: new SqlProductMutationJobRepository(database.executor),
-      requestEventRetentionDays: runtimeConfiguration.requestEventRetentionDays,
-      allowedOrigins: runtimeConfiguration.allowedOrigins,
-      ready: () => isD1DatabaseReady(database)
-    }).fetch(request, env);
+    try {
+      return await handleRequest(request, env);
+    } catch (error: unknown) {
+      if (!(error instanceof GatewayConfigurationError || error instanceof SelfHostedConfigurationError)) {
+        throw error;
+      }
+      return selfHostedConfigurationFailure(request, error);
+    }
   }
 };
+
+async function handleRequest(request: Request, env: Env): Promise<Response> {
+  assertBootstrapToken(env.BOOTSTRAP_ADMIN_TOKEN);
+  const runtimeConfiguration = readRuntimeConfiguration(env, 'local-worker');
+  const { gatewayMode } = runtimeConfiguration;
+  const database = openD1Database(env.DB);
+  const credentialRepository = new SqlGatewayCredentialRepository(database.executor);
+  const metadataRepository = createD1MetadataRepository(database.db);
+  const credentialCipher = await GatewayCredentialCipher.create(env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY);
+  const credentialService = new GatewayCredentialService(credentialRepository, credentialCipher);
+  const credentialProvider = new StoredAlibabaCredentialProvider(credentialRepository, credentialCipher);
+  const credentialStatus = await credentialProvider.status();
+  const authRepository = new SqlAuthRepository(database.executor);
+  const authService = new AuthService({
+    repository: authRepository,
+    bootstrapToken: env.BOOTSTRAP_ADMIN_TOKEN,
+    authenticationMode: runtimeConfiguration.authenticationMode
+  });
+  const passkeyService =
+    runtimeConfiguration.authenticationMode === 'passkey'
+      ? new PasskeyService(
+          new SqlPasskeyRepository(database.executor),
+          authRepository,
+          authService,
+          env.BOOTSTRAP_ADMIN_TOKEN
+        )
+      : undefined;
+  const featureFlags = new EmergencyPauseFeatureFlags(
+    new StaticOperationFeatureFlags(new Set(runtimeConfiguration.mutationFlags)),
+    await readRealMutationsPaused(metadataRepository)
+  );
+  const realMutationControl = new RealMutationControlService(metadataRepository, featureFlags);
+  return await createApiApp({
+    runtime: 'cloudflare',
+    database: 'd1',
+    environment: runtimeConfiguration.environment,
+    gatewayMode,
+    gatewayStatus: gatewayMode === 'replay' ? documentationReplayStatus() : credentialStatus,
+    ...(gatewayMode === 'real'
+      ? { gateway: new CredentialBackedAlibabaGatewayClient(credentialProvider) }
+      : gatewayMode === 'replay'
+        ? { gateway: createDocumentationReplayGateway() }
+        : {}),
+    apiPrefix: runtimeConfiguration.apiPrefix,
+    authService,
+    authenticationMode: runtimeConfiguration.authenticationMode,
+    ...(passkeyService ? { passkeyService } : {}),
+    adminService: new AdminService(authRepository),
+    gatewayCredentialService: credentialService,
+    gatewayCredentialProvider: credentialProvider,
+    featureFlags,
+    realMutationControl,
+    requestEvents: new SqlRequestEventRepository(database.executor),
+    productDescriptionTemplates: new SqlProductDescriptionTemplateRepository(database.executor),
+    productMutationJobs: new SqlProductMutationJobRepository(database.executor),
+    requestEventRetentionDays: runtimeConfiguration.requestEventRetentionDays,
+    allowedOrigins: runtimeConfiguration.allowedOrigins,
+    ready: () => isD1DatabaseReady(database)
+  }).fetch(request, env);
+}
+
+function selfHostedConfigurationFailure(
+  request: Request,
+  error: GatewayConfigurationError | SelfHostedConfigurationError
+): Response {
+  const requestId = crypto.randomUUID();
+  const pathname = new URL(request.url).pathname;
+  const health = pathname.endsWith('/healthz');
+  const body = health
+    ? { requestId, status: 'ok' }
+    : pathname.endsWith('/readyz')
+      ? { requestId, status: 'not-ready' }
+      : {
+          requestId,
+          ok: false,
+          error: {
+            code: error.code,
+            message:
+              error instanceof SelfHostedConfigurationError
+                ? '管理员引导令牌尚未正确配置'
+                : '凭据加密设施尚未正确配置',
+            retryable: false
+          }
+        };
+  return new Response(JSON.stringify(body), {
+    status: health ? 200 : 503,
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
+      'X-Request-ID': requestId
+    }
+  });
+}
+
+class SelfHostedConfigurationError extends Error {
+  readonly code = 'BOOTSTRAP_ADMIN_TOKEN_INVALID';
+}
+
+function assertBootstrapToken(value: string | undefined): asserts value is string {
+  if (!value || new TextEncoder().encode(value).byteLength < 32) {
+    throw new SelfHostedConfigurationError('管理员引导令牌至少需要 32 字节');
+  }
+}

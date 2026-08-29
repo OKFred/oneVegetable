@@ -12,6 +12,7 @@ export interface AbacDecision {
 
 export interface OperationFeatureFlags {
   isEnabled(key: string): boolean;
+  disabledReason?(key: string): string | null;
 }
 
 export class StaticOperationFeatureFlags implements OperationFeatureFlags {
@@ -19,6 +20,29 @@ export class StaticOperationFeatureFlags implements OperationFeatureFlags {
 
   isEnabled(key: string): boolean {
     return this.enabled.has(key);
+  }
+}
+
+export class EmergencyPauseFeatureFlags implements OperationFeatureFlags {
+  constructor(
+    private readonly delegate: OperationFeatureFlags,
+    private paused = false
+  ) {}
+
+  isEnabled(key: string): boolean {
+    return !this.paused && this.delegate.isEnabled(key);
+  }
+
+  disabledReason(key: string): string | null {
+    return this.paused ? 'REAL_MUTATIONS_PAUSED' : (this.delegate.disabledReason?.(key) ?? null);
+  }
+
+  setPaused(paused: boolean): void {
+    this.paused = paused;
+  }
+
+  isPaused(): boolean {
+    return this.paused;
   }
 }
 
@@ -60,7 +84,10 @@ export function authorizeOperation(
   const risk = operationRisk(operation, payload);
   if (risk === 'read') return { allowed: true, reasonCode: 'READ_ALLOWED' };
   if (principal.role !== 'admin') return denied('USER_MUTATION_DENIED');
-  if (!flags.isEnabled(`operation:${operation}`)) return denied('MUTATION_FLAG_DISABLED');
+  const operationFlag = `operation:${operation}`;
+  if (!flags.isEnabled(operationFlag)) {
+    return denied(flags.disabledReason?.(operationFlag) ?? 'MUTATION_FLAG_DISABLED');
+  }
   return { allowed: true, reasonCode: 'ADMIN_MUTATION_ALLOWED' };
 }
 
@@ -70,7 +97,7 @@ export function operationIsMutation(operation: OperationId, payload: Record<stri
 
 export function policySummary(): Record<string, unknown> {
   return {
-    evaluationOrder: ['identity', 'abac', 'capability', 'mutationFlag', 'contract'],
+    evaluationOrder: ['identity', 'abac', 'capability', 'emergencyPause', 'mutationFlag', 'contract'],
     roles: {
       user: ['active read operations'],
       admin: ['read operations', 'admin management', 'flag-enabled mutations']
@@ -78,6 +105,7 @@ export function policySummary(): Record<string, unknown> {
     invariants: [
       'disabled users are denied before ABAC',
       'admins cannot bypass capability restrictions',
+      'the emergency pause overrides every real mutation flag',
       'Alibaba mutations require a server-side feature flag'
     ]
   };
@@ -114,8 +142,9 @@ function capabilityPolicy(
   if (definition.risk === 'mutation' && !definition.realCallEnabled) {
     return denied('CAPABILITY_REAL_CALL_DISABLED');
   }
-  if (definition.risk === 'mutation' && !flags.isEnabled(`capability:${method}`)) {
-    return denied('CAPABILITY_MUTATION_FLAG_DISABLED');
+  const capabilityFlag = `capability:${method}`;
+  if (definition.risk === 'mutation' && !flags.isEnabled(capabilityFlag)) {
+    return denied(flags.disabledReason?.(capabilityFlag) ?? 'CAPABILITY_MUTATION_FLAG_DISABLED');
   }
   return { allowed: true, reasonCode: 'CAPABILITY_ALLOWED' };
 }

@@ -57,6 +57,11 @@ export class SqlPasskeyRepository implements PasskeyRepository {
 
   async createChallenge(challenge: StoredPasskeyChallenge, now: number): Promise<void> {
     await this.executor.execute(
+      `DELETE FROM webauthn_challenges
+       WHERE expires_time_utc < ? OR (consumed_time_utc IS NOT NULL AND consumed_time_utc < ?)`,
+      [now - 24 * 60 * 60 * 1000, now - 24 * 60 * 60 * 1000]
+    );
+    await this.executor.execute(
       `INSERT INTO webauthn_challenges (
         id, challenge, kind, user_id, username, rp_id, origin, context_json,
         expires_time_utc, consumed_time_utc, create_time_utc

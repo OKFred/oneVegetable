@@ -9,6 +9,7 @@ export default tseslint.config(
       '**/.output/**',
       '**/.wxt/**',
       '**/.wrangler/**',
+      '**/artifacts/**',
       '**/coverage/**',
       '**/node_modules/**',
       'legacy/**',

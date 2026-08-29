@@ -20,6 +20,7 @@ import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
+import SelfHostedAdminPanel from '../components/SelfHostedAdminPanel.vue';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 
@@ -55,6 +56,12 @@ type AdminActionConfirmation =
   | { kind: 'purge' };
 const actionConfirmation = ref<AdminActionConfirmation | null>(null);
 const temporaryPassword = ref<{ username: string; value: string } | null>(null);
+const enrollment = ref<{
+  username: string;
+  token: string;
+  expiresTimeUtc: number;
+} | null>(null);
+const selfHosted = computed(() => system.value?.environment === 'self-hosted');
 
 const actionTitle = computed(() => {
   const action = actionConfirmation.value;
@@ -228,12 +235,26 @@ async function createUser(): Promise<void> {
   error.value = null;
   try {
     const createdUsername = username.value;
-    await control.createUser({
-      username: username.value,
-      password: password.value,
-      role: role.value,
-      remark: remark.value || null
-    });
+    if (selfHosted.value) {
+      if (!control.createUserEnrollment) throw new Error('当前后端不支持 Passkey 用户邀请。');
+      const result = await control.createUserEnrollment({
+        username: username.value,
+        role: role.value,
+        remark: remark.value || null
+      });
+      enrollment.value = {
+        username: result.user.username,
+        token: result.enrollmentToken,
+        expiresTimeUtc: result.expiresTimeUtc
+      };
+    } else {
+      await control.createUser({
+        username: username.value,
+        password: password.value,
+        role: role.value,
+        remark: remark.value || null
+      });
+    }
     username.value = '';
     password.value = '';
     remark.value = '';
@@ -343,6 +364,23 @@ async function copyTemporaryPassword(): Promise<void> {
   }
 }
 
+function enrollmentUrl(): string {
+  if (!enrollment.value) return '';
+  const url = new URL(globalThis.location.href);
+  url.searchParams.set('enrollment', enrollment.value.token);
+  url.hash = '/dashboard';
+  return url.toString();
+}
+
+async function copyEnrollmentUrl(): Promise<void> {
+  try {
+    await globalThis.navigator.clipboard.writeText(enrollmentUrl());
+    toast.success('注册链接已复制。');
+  } catch {
+    toast.error('复制失败，请手工选择注册链接。');
+  }
+}
+
 function closeTemporaryPassword(): void {
   temporaryPassword.value = null;
 }
@@ -412,6 +450,7 @@ const userColumns: DataColumn<ControlUser>[] = [
         h(
           Button,
           {
+            class: selfHosted.value ? 'hidden' : '',
             variant: 'outline',
             size: 'sm',
             onClick: () => {
@@ -546,6 +585,8 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
       </Card>
     </div>
 
+    <SelfHostedAdminPanel v-if="selfHosted" />
+
     <div class="mt-5 grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
       <Card class="overflow-hidden">
         <div class="border-b p-5"><h2 class="font-semibold">用户管理</h2></div>
@@ -571,7 +612,7 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
             <span>用户名</span>
             <Input v-model="username" name="username" autocomplete="username" required />
           </label>
-          <label class="block space-y-1 text-sm">
+          <label v-if="!selfHosted" class="block space-y-1 text-sm">
             <span>初始密码</span>
             <Input
               v-model="password"
@@ -579,7 +620,7 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
               type="password"
               autocomplete="new-password"
               placeholder="至少 12 字节密码"
-              required
+              :required="!selfHosted"
             />
           </label>
           <label class="block space-y-1 text-sm">
@@ -598,7 +639,7 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
             <span>备注（可选）</span>
             <Input v-model="remark" name="remark" maxlength="500" placeholder="最多 500 字符" />
           </label>
-          <Button class="w-full" type="submit">创建</Button>
+          <Button class="w-full" type="submit">{{ selfHosted ? '创建并生成注册链接' : '创建' }}</Button>
         </form>
       </Card>
     </div>
@@ -730,6 +771,27 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
       <div class="flex justify-end gap-2">
         <Button variant="outline" @click="copyTemporaryPassword"><Copy class="size-4" />复制密码</Button>
         <Button @click="closeTemporaryPassword">我已保存，关闭</Button>
+      </div>
+    </template>
+  </ModalDialog>
+
+  <ModalDialog
+    :open="enrollment !== null"
+    title="一次性 Passkey 注册链接"
+    :description="`${enrollment?.username ?? '用户'} 的注册链接将在 ${formatTime(enrollment?.expiresTimeUtc ?? 0)} 失效。`"
+    size="md"
+    @update:open="enrollment = null"
+  >
+    <code class="block select-all break-all rounded-lg border bg-muted p-4 text-sm text-foreground">
+      {{ enrollmentUrl() }}
+    </code>
+    <p class="mt-3 text-sm text-amber-700 dark:text-amber-400">
+      链接只显示一次，请通过安全渠道转交。用户打开后会登记自己的 Passkey，并获得个人恢复码。
+    </p>
+    <template #footer>
+      <div class="flex justify-end gap-2">
+        <Button variant="outline" @click="copyEnrollmentUrl"><Copy class="size-4" />复制链接</Button>
+        <Button @click="enrollment = null">我已保存，关闭</Button>
       </div>
     </template>
   </ModalDialog>

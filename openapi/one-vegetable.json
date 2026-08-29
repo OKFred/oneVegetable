@@ -2957,6 +2957,174 @@
         }
       }
     },
+    "/admin/real-mutations/status/get": {
+      "post": {
+        "summary": "Get the emergency real-mutation pause status",
+        "operationId": "getRealMutationPauseStatus",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RequestEnvelope" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/real-mutations/pause/update": {
+      "post": {
+        "summary": "Pause or resume every real mutation",
+        "operationId": "updateRealMutationPause",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RealMutationPauseUpdateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/system/get": {
       "post": {
         "summary": "Get protected system metadata",
@@ -12234,6 +12402,17 @@
             "items": { "$ref": "#/components/schemas/ProductDescriptionQualityIssue" },
             "description": "Optional normalized official issues when the upstream response provides structured details."
           }
+        }
+      },
+      "RealMutationPauseUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "paused", "revision"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "paused": { "type": "boolean" },
+          "revision": { "type": ["integer", "null"], "minimum": 1 },
+          "remark": { "type": ["string", "null"], "maxLength": 500 }
         }
       },
       "RequestEnvelope": {

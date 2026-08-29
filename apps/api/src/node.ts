@@ -1,11 +1,12 @@
 import { serve } from '@hono/node-server';
 
 import { createApiApp } from './app';
-import { StaticOperationFeatureFlags } from './abac';
+import { EmergencyPauseFeatureFlags, StaticOperationFeatureFlags } from './abac';
 import { AdminService } from './auth/admin-service';
 import { SqlAuthRepository } from './auth/repository';
 import { AuthService } from './auth/service';
 import { applyNodeMigrations, isNodeDatabaseReady, openNodeDatabase } from './db/node-database';
+import { createSqliteMetadataRepository } from './db/repository';
 import { SqlRequestEventRepository } from './observability/request-events';
 import { AlibabaReadGatewayClient } from './gateway/alibaba-read-gateway';
 import { createNodeAlibabaCredentialProvider } from './gateway/node-credential-bundle';
@@ -16,6 +17,7 @@ import { createDocumentationReplayGateway, documentationReplayStatus } from './g
 import { readRuntimeConfiguration } from './runtime-config';
 import { SqlProductDescriptionTemplateRepository } from './product-description-templates/repository';
 import { SqlProductMutationJobRepository } from './product-mutations/repository';
+import { readRealMutationsPaused, RealMutationControlService } from './safety/real-mutation-control';
 
 const port = readPort(process.env.ONE_VEGETABLE_PORT);
 const runtimeConfiguration = readRuntimeConfiguration(process.env, 'local-node');
@@ -46,11 +48,16 @@ if (environment === 'local-node' && process.env.ONE_VEGETABLE_AUTO_MIGRATE !== '
   applyNodeMigrations(database);
 }
 const authRepository = new SqlAuthRepository(database.executor);
+const metadataRepository = createSqliteMetadataRepository(database.db);
 const authService = new AuthService({
   repository: authRepository,
   bootstrapToken: process.env.BOOTSTRAP_ADMIN_TOKEN,
   authenticationMode: runtimeConfiguration.authenticationMode
 });
+const featureFlags = new EmergencyPauseFeatureFlags(
+  new StaticOperationFeatureFlags(new Set(runtimeConfiguration.mutationFlags)),
+  await readRealMutationsPaused(metadataRepository)
+);
 const app = createApiApp({
   runtime: 'node',
   database: 'sqlite',
@@ -67,7 +74,8 @@ const app = createApiApp({
   authService,
   authenticationMode: runtimeConfiguration.authenticationMode,
   adminService: new AdminService(authRepository),
-  featureFlags: new StaticOperationFeatureFlags(new Set(runtimeConfiguration.mutationFlags)),
+  featureFlags,
+  realMutationControl: new RealMutationControlService(metadataRepository, featureFlags),
   requestEvents: new SqlRequestEventRepository(database.executor),
   productDescriptionTemplates: new SqlProductDescriptionTemplateRepository(database.executor),
   productMutationJobs: new SqlProductMutationJobRepository(database.executor),

@@ -189,6 +189,11 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     role: { $ref: '#/components/schemas/UserRole' },
     remark: { type: ['string', 'null'], maxLength: 500 }
   });
+  schemas.RealMutationPauseUpdateRequest = objectRequest(['requestId', 'paused', 'revision'], {
+    paused: { type: 'boolean' },
+    revision: { type: ['integer', 'null'], minimum: 1 },
+    remark: { type: ['string', 'null'], maxLength: 500 }
+  });
   schemas.PageRequest = objectRequest([], {
     page: { type: 'integer', minimum: 1, default: 1 },
     pageSize: { type: 'integer', minimum: 1, maximum: 100, default: 20 }
@@ -635,6 +640,16 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       'Clear the encrypted Alibaba credential bundle',
       'clearAdminGatewayCredential',
       'GatewayCredentialClearRequest'
+    ),
+    '/admin/real-mutations/status/get': postOperation(
+      'Get the emergency real-mutation pause status',
+      'getRealMutationPauseStatus',
+      'RequestEnvelope'
+    ),
+    '/admin/real-mutations/pause/update': postOperation(
+      'Pause or resume every real mutation',
+      'updateRealMutationPause',
+      'RealMutationPauseUpdateRequest'
     ),
     '/admin/system/get': postOperation('Get protected system metadata', 'getAdminSystem', 'RequestEnvelope'),
     '/admin/policy-summary/get': postOperation(

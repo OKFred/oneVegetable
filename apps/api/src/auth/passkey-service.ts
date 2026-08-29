@@ -151,14 +151,19 @@ export class PasskeyService {
       throw new AuthError('PASSKEY_NOT_FOUND', 'Passkey 无效或不属于当前域名', 401);
     }
     const user = await this.#requiredActiveUser(credential.userId);
-    const verification = await verifyAuthenticationResponse({
-      response,
-      expectedChallenge: challenge.challenge,
-      expectedOrigin: challenge.origin,
-      expectedRPID: challenge.rpId,
-      credential: toWebAuthnCredential(credential),
-      requireUserVerification: true
-    });
+    let verification;
+    try {
+      verification = await verifyAuthenticationResponse({
+        response,
+        expectedChallenge: challenge.challenge,
+        expectedOrigin: challenge.origin,
+        expectedRPID: challenge.rpId,
+        credential: toWebAuthnCredential(credential),
+        requireUserVerification: true
+      });
+    } catch {
+      throw new AuthError('PASSKEY_VERIFICATION_FAILED', 'Passkey 验证失败', 401);
+    }
     if (!verification.verified || !verification.authenticationInfo.userVerified) {
       throw new AuthError('PASSKEY_VERIFICATION_FAILED', 'Passkey 验证失败', 401);
     }
@@ -531,13 +536,19 @@ export class PasskeyService {
 }
 
 async function verifyRegistration(challenge: StoredPasskeyChallenge, raw: unknown) {
-  const verification = await verifyRegistrationResponse({
-    response: readRegistrationResponse(raw),
-    expectedChallenge: challenge.challenge,
-    expectedOrigin: challenge.origin,
-    expectedRPID: challenge.rpId,
-    requireUserVerification: true
-  });
+  let verification;
+  try {
+    verification = await verifyRegistrationResponse({
+      response: readRegistrationResponse(raw),
+      expectedChallenge: challenge.challenge,
+      expectedOrigin: challenge.origin,
+      expectedRPID: challenge.rpId,
+      requireUserVerification: true
+    });
+  } catch (error: unknown) {
+    if (error instanceof AuthError) throw error;
+    throw new AuthError('PASSKEY_VERIFICATION_FAILED', 'Passkey 验证失败', 401);
+  }
   if (!verification.verified || !verification.registrationInfo.userVerified) {
     throw new AuthError('PASSKEY_VERIFICATION_FAILED', 'Passkey 验证失败', 401);
   }

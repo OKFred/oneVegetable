@@ -18,6 +18,7 @@ import type { RequestEventRepository } from '../observability/request-events';
 import type { AlibabaCredentialStatus } from '../gateway/credentials';
 import type { GatewayMode } from '../runtime-config';
 import type { GatewayCredentialService, StoredAlibabaCredentialProvider } from '../gateway/credential-vault';
+import type { RealMutationControlService } from '../safety/real-mutation-control';
 import { toPublicUser } from './types';
 
 export const SESSION_COOKIE = 'ov_session';
@@ -42,6 +43,7 @@ export interface AuthRoutesOptions {
   requestEvents?: RequestEventRepository;
   requestEventRetentionDays?: number;
   clock?: () => number;
+  realMutationControl?: RealMutationControlService;
 }
 
 export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void {
@@ -256,8 +258,9 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
     return adminRead(
       context,
       options,
-      () =>
-        Promise.resolve({
+      async () => {
+        const mutationControl = await options.realMutationControl?.status();
+        return {
           runtime: options.runtime,
           environment: options.environment,
           apiPrefix: options.apiPrefix,
@@ -277,8 +280,10 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
             mutationEnabled: options.mutationEnabled === true
           },
           schemaVersion: CURRENT_SCHEMA_VERSION,
-          requestEventRetentionDays: options.requestEventRetentionDays ?? 30
-        }),
+          requestEventRetentionDays: options.requestEventRetentionDays ?? 30,
+          realMutationsPaused: mutationControl?.paused ?? false
+        };
+      },
       ['requestId']
     );
   });
@@ -286,6 +291,49 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
   api.post('/admin/policy-summary/get', async (context) => {
     return adminRead(context, options, () => Promise.resolve(policySummary()), ['requestId']);
   });
+
+  const realMutationControl = options.realMutationControl;
+  if (realMutationControl) {
+    api.post('/admin/real-mutations/status/get', async (context) => {
+      return adminRead(context, options, () => realMutationControl.status(), ['requestId']);
+    });
+
+    api.post('/admin/real-mutations/pause/update', async (context) => {
+      return adminWrite(
+        context,
+        options,
+        async (body, authenticated) => {
+          const requestId = readRequestId(body);
+          let result;
+          try {
+            result = await realMutationControl.set({
+              paused: readBoolean(body, 'paused'),
+              expectedRevision: readNullableRevision(body, 'revision'),
+              actorId: authenticated.principal.actorId,
+              remark: readOptionalRemark(body, 'remark') ?? null
+            });
+          } catch (error: unknown) {
+            if (error instanceof EntityVersionConflictError) {
+              throw new AuthError('ENTITY_VERSION_CONFLICT', '真实写入状态已被其他请求更新', 409);
+            }
+            throw error;
+          }
+          await options.authService.audit({
+            requestId,
+            actorId: authenticated.principal.actorId,
+            action: 'admin.real-mutations.pause.update',
+            resourceKind: 'system-setting',
+            resourceId: 'real_mutations_paused',
+            outcome: 'success',
+            reasonCode: result.paused ? 'REAL_MUTATIONS_PAUSED' : 'REAL_MUTATIONS_RESUMED',
+            revisionAfter: result.revision
+          });
+          return result;
+        },
+        ['requestId', 'paused', 'revision', 'remark']
+      );
+    });
+  }
 
   const gatewayCredentialService = options.gatewayCredentialService;
   const gatewayCredentialProvider = options.gatewayCredentialProvider;
@@ -785,6 +833,12 @@ function readInteger(body: Record<string, unknown>, key: string): number {
   const value = body[key];
   if (!Number.isSafeInteger(value)) throw new AuthError('INVALID_REQUEST_BODY', `${key} 无效`, 400);
   return value as number;
+}
+
+function readBoolean(body: Record<string, unknown>, key: string): boolean {
+  const value = body[key];
+  if (typeof value !== 'boolean') throw new AuthError('INVALID_REQUEST_BODY', `${key} 无效`, 400);
+  return value;
 }
 
 function readNullableRevision(body: Record<string, unknown>, key: string): number | null {

@@ -17,7 +17,7 @@ import Input from './ui/Input.vue';
 
 const emit = defineEmits<{ authenticated: [session: ControlSession] }>();
 const { control } = useServices();
-const mode = ref<'login' | 'bootstrap' | 'recovery'>('login');
+const mode = ref<'login' | 'bootstrap' | 'recovery' | 'enrollment'>('login');
 const username = ref('');
 const password = ref('');
 const bootstrapToken = ref('');
@@ -41,7 +41,12 @@ async function refreshBootstrapStatus(): Promise<void> {
   bootstrapStatusError.value = null;
   try {
     bootstrapStatus.value = await control.bootstrapStatus();
-    mode.value = bootstrapStatus.value.bootstrapAvailable ? 'bootstrap' : 'login';
+    mode.value =
+      enrollmentToken() && bootstrapStatus.value.authenticationMode === 'passkey'
+        ? 'enrollment'
+        : bootstrapStatus.value.bootstrapAvailable
+          ? 'bootstrap'
+          : 'login';
   } catch (cause: unknown) {
     bootstrapStatus.value = null;
     mode.value = 'login';
@@ -83,16 +88,21 @@ async function submit(): Promise<void> {
     const ceremony =
       mode.value === 'bootstrap'
         ? await passkeyControl.passkeyBootstrapOptions(bootstrapToken.value, username.value)
-        : await passkeyControl.passkeyRecoveryOptions(username.value, recoveryCode.value);
+        : mode.value === 'recovery'
+          ? await passkeyControl.passkeyRecoveryOptions(username.value, recoveryCode.value)
+          : await passkeyControl.passkeyEnrollmentOptions(enrollmentToken());
     const response = await startRegistration({
       optionsJSON: ceremony.options as unknown as PublicKeyCredentialCreationOptionsJSON
     });
     const result =
       mode.value === 'bootstrap'
         ? await passkeyControl.passkeyBootstrapVerify(ceremony.challengeId, response, '首个 Passkey')
-        : await passkeyControl.passkeyRecoveryVerify(ceremony.challengeId, response, '恢复设备');
+        : mode.value === 'recovery'
+          ? await passkeyControl.passkeyRecoveryVerify(ceremony.challengeId, response, '恢复设备')
+          : await passkeyControl.passkeyEnrollmentVerify(ceremony.challengeId, response, '受邀设备');
     pendingSession.value = result.session;
     recoveryCodes.value = result.recoveryCodes;
+    if (mode.value === 'enrollment') clearEnrollmentToken();
   } catch (cause: unknown) {
     error.value = cause instanceof Error ? cause : new Error('认证失败');
   } finally {
@@ -119,7 +129,9 @@ function requiredPasskeyControl() {
     !control.passkeyLoginOptions ||
     !control.passkeyLoginVerify ||
     !control.passkeyRecoveryOptions ||
-    !control.passkeyRecoveryVerify
+    !control.passkeyRecoveryVerify ||
+    !control.passkeyEnrollmentOptions ||
+    !control.passkeyEnrollmentVerify
   ) {
     throw new Error('当前客户端版本不支持 Passkey，请刷新页面。');
   }
@@ -129,8 +141,20 @@ function requiredPasskeyControl() {
     passkeyLoginOptions: control.passkeyLoginOptions.bind(control),
     passkeyLoginVerify: control.passkeyLoginVerify.bind(control),
     passkeyRecoveryOptions: control.passkeyRecoveryOptions.bind(control),
-    passkeyRecoveryVerify: control.passkeyRecoveryVerify.bind(control)
+    passkeyRecoveryVerify: control.passkeyRecoveryVerify.bind(control),
+    passkeyEnrollmentOptions: control.passkeyEnrollmentOptions.bind(control),
+    passkeyEnrollmentVerify: control.passkeyEnrollmentVerify.bind(control)
   };
+}
+
+function enrollmentToken(): string {
+  return new URL(globalThis.location.href).searchParams.get('enrollment')?.trim() ?? '';
+}
+
+function clearEnrollmentToken(): void {
+  const url = new URL(globalThis.location.href);
+  url.searchParams.delete('enrollment');
+  globalThis.history.replaceState(null, '', url);
 }
 </script>
 
@@ -254,7 +278,10 @@ function requiredPasskeyControl() {
           <span>管理员引导令牌</span>
           <Input v-model="bootstrapToken" name="bootstrapToken" type="password" autocomplete="off" required />
         </label>
-        <label v-if="mode !== 'login' || !passkeyMode" class="block space-y-1.5 text-sm">
+        <label
+          v-if="(mode !== 'login' && mode !== 'enrollment') || !passkeyMode"
+          class="block space-y-1.5 text-sm"
+        >
           <span>工作台用户名</span>
           <Input v-model="username" name="username" autocomplete="username webauthn" required />
         </label>
@@ -284,7 +311,9 @@ function requiredPasskeyControl() {
                   ? '创建管理员 Passkey'
                   : mode === 'recovery'
                     ? '使用恢复码登记新 Passkey'
-                    : '使用 Passkey 登录'
+                    : mode === 'enrollment'
+                      ? '接受邀请并登记 Passkey'
+                      : '使用 Passkey 登录'
                 : mode === 'login'
                   ? '登录'
                   : '创建管理员'

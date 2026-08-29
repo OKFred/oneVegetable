@@ -198,6 +198,80 @@ export const alibabaGatewayCredentials = sqliteTable('alibaba_gateway_credential
   remark: text('remark')
 });
 
+export const webauthnCredentials = sqliteTable(
+  'webauthn_credentials',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    publicKeyBase64Url: text('public_key_base64url').notNull(),
+    counter: integer('counter').notNull().default(0),
+    transportsJson: text('transports_json').notNull().default('[]'),
+    deviceType: text('device_type', { enum: ['singleDevice', 'multiDevice'] }).notNull(),
+    backedUp: integer('backed_up', { mode: 'boolean' }).notNull().default(false),
+    rpId: text('rp_id').notNull(),
+    name: text('name').notNull(),
+    createTimeUtc: integer('create_time_utc').notNull(),
+    updateTimeUtc: integer('update_time_utc').notNull(),
+    creatorId: text('creator_id').notNull(),
+    updaterId: text('updater_id').notNull(),
+    revision: integer('revision').notNull().default(1),
+    remark: text('remark')
+  },
+  (table) => [index('idx_webauthn_credentials_user_id').on(table.userId, table.createTimeUtc)]
+);
+
+export const webauthnChallenges = sqliteTable(
+  'webauthn_challenges',
+  {
+    id: text('id').primaryKey(),
+    challenge: text('challenge').notNull().unique(),
+    kind: text('kind', {
+      enum: ['bootstrap', 'login', 'register', 'recovery', 'enrollment']
+    }).notNull(),
+    userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+    username: text('username'),
+    rpId: text('rp_id').notNull(),
+    origin: text('origin').notNull(),
+    contextJson: text('context_json').notNull().default('{}'),
+    expiresTimeUtc: integer('expires_time_utc').notNull(),
+    consumedTimeUtc: integer('consumed_time_utc'),
+    createTimeUtc: integer('create_time_utc').notNull()
+  },
+  (table) => [index('idx_webauthn_challenges_expiry').on(table.expiresTimeUtc, table.consumedTimeUtc)]
+);
+
+export const authRecoveryCodes = sqliteTable(
+  'auth_recovery_codes',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    codeHash: text('code_hash').notNull().unique(),
+    consumedTimeUtc: integer('consumed_time_utc'),
+    createTimeUtc: integer('create_time_utc').notNull()
+  },
+  (table) => [index('idx_auth_recovery_codes_user_id').on(table.userId, table.consumedTimeUtc)]
+);
+
+export const userEnrollmentTokens = sqliteTable(
+  'user_enrollment_tokens',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull().unique(),
+    expiresTimeUtc: integer('expires_time_utc').notNull(),
+    consumedTimeUtc: integer('consumed_time_utc'),
+    creatorId: text('creator_id').notNull(),
+    createTimeUtc: integer('create_time_utc').notNull()
+  },
+  (table) => [index('idx_user_enrollment_tokens_expiry').on(table.expiresTimeUtc, table.consumedTimeUtc)]
+);
+
 export const schema = {
   schemaMigrations,
   appMetadata,
@@ -207,6 +281,10 @@ export const schema = {
   requestEvents,
   productDescriptionTemplates,
   productMutationJobs,
-  alibabaGatewayCredentials
+  alibabaGatewayCredentials,
+  webauthnCredentials,
+  webauthnChallenges,
+  authRecoveryCodes,
+  userEnrollmentTokens
 };
 export const CURRENT_SCHEMA_VERSION = 8;

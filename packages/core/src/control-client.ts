@@ -97,6 +97,7 @@ export interface ControlSystemInfo {
   gatewayMode: 'mock' | 'replay' | 'disabled' | 'real';
   schemaVersion: number;
   requestEventRetentionDays: number;
+  realMutationsPaused?: boolean;
   gatewayStatus: {
     source: 'environment' | 'credential-bundle' | 'd1-vault' | 'documentation-replay';
     configured: boolean;
@@ -111,6 +112,14 @@ export interface ControlSystemInfo {
     lastRefreshTimeUtc?: number | null;
     lastRefreshErrorCode?: string | null;
   };
+}
+
+export interface ControlRealMutationStatus {
+  paused: boolean;
+  revision: number | null;
+  updateTimeUtc: UnixEpochMilliseconds | null;
+  updaterId: string | null;
+  remark: string | null;
 }
 
 export interface ControlGatewayCredentialSummary {
@@ -246,6 +255,12 @@ export interface ControlClient {
   ): Promise<ControlGatewayCredentialSummary>;
   refreshGatewayCredential(): Promise<ControlGatewayCredentialSummary>;
   clearGatewayCredential(revision: number): Promise<void>;
+  realMutationStatus?(): Promise<ControlRealMutationStatus>;
+  updateRealMutationPause?(
+    paused: boolean,
+    revision: number | null,
+    remark?: string | null
+  ): Promise<ControlRealMutationStatus>;
   csrfToken(): string | null;
 }
 
@@ -530,6 +545,18 @@ export class BffControlClient implements ControlClient {
 
   async clearGatewayCredential(revision: number): Promise<void> {
     await this.#call('/admin/gateway-credentials/clear', { revision });
+  }
+
+  realMutationStatus(): Promise<ControlRealMutationStatus> {
+    return this.#call('/admin/real-mutations/status/get', {});
+  }
+
+  updateRealMutationPause(
+    paused: boolean,
+    revision: number | null,
+    remark: string | null = null
+  ): Promise<ControlRealMutationStatus> {
+    return this.#call('/admin/real-mutations/pause/update', { paused, revision, remark });
   }
 
   async #passkeyAuthenticationResult(

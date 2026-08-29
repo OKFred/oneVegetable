@@ -645,6 +645,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/real-mutations/status/get": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Get the emergency real-mutation pause status */
+        post: operations["getRealMutationPauseStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/real-mutations/pause/update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause or resume every real mutation */
+        post: operations["updateRealMutationPause"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/system/get": {
         parameters: {
             query?: never;
@@ -6835,6 +6869,12 @@ export interface components {
             /** @description Optional normalized official issues when the upstream response provides structured details. */
             qualityIssues?: components["schemas"]["ProductDescriptionQualityIssue"][];
         };
+        RealMutationPauseUpdateRequest: {
+            requestId: components["schemas"]["RequestId"];
+            paused: boolean;
+            revision: number | null;
+            remark?: string | null;
+        };
         RequestEnvelope: {
             requestId: components["schemas"]["RequestId"];
         };
@@ -9344,6 +9384,136 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["GatewayCredentialClearRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    getRealMutationPauseStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestEnvelope"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    updateRealMutationPause: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RealMutationPauseUpdateRequest"];
             };
         };
         responses: {
