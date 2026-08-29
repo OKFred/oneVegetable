@@ -44,6 +44,8 @@ import {
   type ProductTransferSchemaFormat
 } from '@one-vegetable/core';
 
+import ActionTooltip from '../components/ActionTooltip.vue';
+import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import ImagePreview, { type ImagePreviewItem } from '../components/ImagePreview.vue';
@@ -101,6 +103,11 @@ const ProductEditorWizard = defineAsyncComponent({
 
 type Workspace = 'list' | 'publisher' | 'batch-publisher';
 type DraftSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+type ProductActionConfirmation =
+  | { kind: 'product'; draft: boolean; changedNames: string[] }
+  | { kind: 'batch-publish'; target: ProductBatchPublishTarget; itemIds: string[] }
+  | { kind: 'batch-display'; display: 'online' | 'offline'; productIds: string[] }
+  | { kind: 'recover-display'; job: ProductMutationJob };
 
 const workspaceIds = new Set<Workspace>(['list', 'publisher', 'batch-publisher']);
 const editorModes = new Set<ProductEditorMode>(['quick', 'guided', 'advanced']);
@@ -174,6 +181,7 @@ const productTransferExportProducts = ref<Product[]>([]);
 const productPreviewOpen = ref(false);
 const productPreviewImages = ref<ImagePreviewItem[]>([]);
 const productGroupDialogOpen = ref(false);
+const actionConfirmation = ref<ProductActionConfirmation | null>(null);
 
 const products = useQuery({
   queryKey: ['products', subject, language, productPage, productPageSize],
@@ -471,6 +479,49 @@ const someCurrentPageProductsSelected = computed(
 const productExportDisabledReason = computed(() =>
   describeProductExportDisabled(selectedProducts.value.length, productTransferBusy.value)
 );
+const moreActionsDisabledReason = computed(() =>
+  selectedProducts.value.length === 0 ? '请先勾选至少一个商品' : ''
+);
+const actionConfirmationTitle = computed(() => {
+  const action = actionConfirmation.value;
+  if (!action) return '确认商品操作';
+  if (action.kind === 'product') {
+    if (editProductId.value) return '确认更新商品';
+    return action.draft ? '确认创建平台草稿' : '确认正式发布商品';
+  }
+  if (action.kind === 'batch-publish') {
+    return action.target === 'draft' ? '确认批量创建平台草稿' : '确认批量正式发布';
+  }
+  if (action.kind === 'batch-display') return action.display === 'online' ? '确认批量上架' : '确认批量下架';
+  return '确认恢复商品状态';
+});
+const actionConfirmationDescription = computed(() => {
+  const action = actionConfirmation.value;
+  if (!action) return '';
+  if (action.kind === 'product') {
+    return editProductId.value
+      ? `该操作会增量修改国际站商品 ${editProductId.value}。`
+      : action.draft
+        ? '该操作会在当前国际站账号中创建一条平台草稿。'
+        : '该操作会创建真实线上商品并进入平台审核。';
+  }
+  if (action.kind === 'batch-publish') {
+    return action.target === 'draft'
+      ? `将严格串行创建 ${action.itemIds.length} 条平台草稿，单条失败后继续。`
+      : `将严格串行发布 ${action.itemIds.length} 个真实线上商品，单条失败后继续。`;
+  }
+  if (action.kind === 'batch-display') {
+    return `将修改 ${action.productIds.length} 个真实商品的${action.display === 'online' ? '上架' : '下架'}状态。`;
+  }
+  return `将把商品 ${action.job.productId} 恢复为操作前的${action.job.originalDisplay === 'online' ? '上架' : '下架'}状态。`;
+});
+const actionConfirmationDestructive = computed(() => {
+  const action = actionConfirmation.value;
+  if (!action) return false;
+  if (action.kind === 'product') return !action.draft;
+  if (action.kind === 'batch-publish') return action.target === 'publish';
+  return true;
+});
 const selectedEncryptedProductIds = computed(() =>
   selectedProducts.value.flatMap((product) => (product.encryptedId ? [product.encryptedId] : []))
 );
@@ -518,18 +569,20 @@ const batchDisplay = useMutation({
 });
 
 function submitProduct(draft: boolean): void {
-  if (editProductId.value && mode !== 'mock') {
-    const changedNames = (schemaModel.value?.fields ?? [])
-      .filter((field) => schemaInspection.value.changedFieldKeys.includes(field.key))
-      .map((field) => field.name || field.id);
+  const changedNames = editProductId.value
+    ? (schemaModel.value?.fields ?? [])
+        .filter((field) => schemaInspection.value.changedFieldKeys.includes(field.key))
+        .map((field) => field.name || field.id)
+    : [];
+  if (editProductId.value) {
     if (changedNames.length === 0) {
       feedback.value = '没有需要提交的商品字段变更';
       return;
     }
-    const confirmed = globalThis.confirm(
-      `将增量更新商品 ${editProductId.value} 的 ${changedNames.length} 个字段：\n${changedNames.join('、')}`
-    );
-    if (!confirmed) return;
+  }
+  if (mode !== 'mock') {
+    actionConfirmation.value = { kind: 'product', draft, changedNames };
+    return;
   }
   publish.mutate(draft);
 }
@@ -561,7 +614,8 @@ function queueCurrentProduct(): void {
     editingBatchItemId.value = '';
     reloadBatchItems();
     selectedBatchItemIds.value = [...new Set([...selectedBatchItemIds.value, queued.id])];
-    feedback.value = `“${queued.title}”已加入批量发品队列。`;
+    feedback.value = '';
+    toast.success(`“${queued.title}”已加入批量发品队列。`);
     workspace.value = 'batch-publisher';
     updateProductHash('push');
   } catch (error: unknown) {
@@ -585,14 +639,12 @@ function submitBatchPublish(): void {
     );
     return;
   }
-  if (
-    mode !== 'mock' &&
-    !globalThis.confirm(
-      batchTarget.value === 'draft'
-        ? `将串行创建 ${selected.length} 条真实 Alibaba 平台草稿，单条失败后继续，是否确认？`
-        : `将串行正式发布 ${selected.length} 个真实 Alibaba 商品，单条失败后继续。发布会产生真实线上商品，是否确认？`
-    )
-  ) {
+  if (mode !== 'mock') {
+    actionConfirmation.value = {
+      kind: 'batch-publish',
+      target: batchTarget.value,
+      itemIds: selected.map((item) => item.id)
+    };
     return;
   }
   batchPublish.mutate({ ids: selected.map((item) => item.id), target: batchTarget.value });
@@ -626,7 +678,8 @@ function removeBatchItem(item: ProductBatchPublishItem): void {
   batchResults.value = Object.fromEntries(
     Object.entries(batchResults.value).filter(([itemId]) => itemId !== item.id)
   );
-  feedback.value = `“${item.title}”已从批量队列移除。`;
+  feedback.value = '';
+  toast.success(`“${item.title}”已从批量队列移除。`);
 }
 
 function reloadBatchItems(): void {
@@ -683,7 +736,10 @@ async function exportSelectedProducts(): Promise<void> {
       `one-vegetable-products-${fileTimestamp(new Date())}.json`,
       serializeProductTransferDocument(document, { schemaFormat: productTransferSchemaFormat.value })
     );
-    feedback.value = `已导出 ${document.products.length} 个商品（${productTransferSchemaFormatLabel(productTransferSchemaFormat.value)}）。`;
+    feedback.value = '';
+    toast.success(
+      `已导出 ${document.products.length} 个商品（${productTransferSchemaFormatLabel(productTransferSchemaFormat.value)}）。`
+    );
     productTransferDialogOpen.value = false;
   } catch (error: unknown) {
     productTransferError.value = errorMessage(error);
@@ -714,7 +770,10 @@ function importProducts(document: ProductTransferDocumentV1): void {
     );
     reloadBatchItems();
     selectedBatchItemIds.value = result.items.map((item) => item.id);
-    feedback.value = `商品 JSON 已导入本机队列：新增 ${result.added}，更新 ${result.updated}，已提交跳过 ${result.skipped}。导入不会自动写入平台。`;
+    feedback.value = '';
+    toast.success(
+      `商品 JSON 已导入本机队列：新增 ${result.added}，更新 ${result.updated}，已提交跳过 ${result.skipped}。导入不会自动写入平台。`
+    );
     productTransferDialogOpen.value = false;
     workspace.value = 'batch-publisher';
     updateProductHash('push');
@@ -763,27 +822,42 @@ function productTransferSchemaFormatLabel(format: ProductTransferSchemaFormat): 
 }
 
 function submitBatchDisplay(display: 'online' | 'offline'): void {
-  if (
-    mode !== 'mock' &&
-    !globalThis.confirm(
-      `将把 ${selectedProductIds.value.length} 个真实商品${display === 'online' ? '上架' : '下架'}，是否继续？`
-    )
-  ) {
+  if (mode !== 'mock') {
+    actionConfirmation.value = {
+      kind: 'batch-display',
+      display,
+      productIds: [...selectedProductIds.value]
+    };
     return;
   }
   batchDisplay.mutate(display);
 }
 
 function recoverDisplayJob(job: ProductMutationJob): void {
-  if (
-    mode !== 'mock' &&
-    !globalThis.confirm(
-      `将把商品 ${job.productId} 恢复为本次操作前的${job.originalDisplay === 'online' ? '上架' : '下架'}状态，是否继续？`
-    )
-  ) {
+  if (mode !== 'mock') {
+    actionConfirmation.value = { kind: 'recover-display', job };
     return;
   }
   recoverDisplayMutation.mutate(job);
+}
+
+function confirmProductAction(): void {
+  const action = actionConfirmation.value;
+  actionConfirmation.value = null;
+  if (!action) return;
+  if (action.kind === 'product') {
+    publish.mutate(action.draft);
+    return;
+  }
+  if (action.kind === 'batch-publish') {
+    batchPublish.mutate({ ids: action.itemIds, target: action.target });
+    return;
+  }
+  if (action.kind === 'batch-display') {
+    batchDisplay.mutate(action.display);
+    return;
+  }
+  recoverDisplayMutation.mutate(action.job);
 }
 
 function statusVariant(status: Product['status']): 'success' | 'warning' | 'secondary' | 'destructive' {
@@ -1623,66 +1697,67 @@ onBeforeUnmount(() => {
         <Button variant="outline" :disabled="productTransferBusy" @click="openProductImportDialog">
           <Upload class="size-4" />导入
         </Button>
-        <Button
-          variant="outline"
-          :disabled="Boolean(productExportDisabledReason)"
-          :title="productExportDisabledReason || undefined"
-          @click="openProductExportDialog"
-        >
-          <Download class="size-4" />导出
-        </Button>
+        <ActionTooltip :disabled="Boolean(productExportDisabledReason)" :reason="productExportDisabledReason">
+          <Button
+            variant="outline"
+            :disabled="Boolean(productExportDisabledReason)"
+            @click="openProductExportDialog"
+          >
+            <Download class="size-4" />导出
+          </Button>
+        </ActionTooltip>
         <Button variant="outline" @click="productGroupDialogOpen = true">分组</Button>
-        <DropdownMenuRoot :modal="false">
-          <DropdownMenuTrigger as-child>
-            <Button
-              variant="outline"
-              :disabled="selectedProducts.length === 0"
-              :title="selectedProducts.length === 0 ? '请先勾选商品' : '更多批量操作'"
-            >
-              <Ellipsis class="size-4" />更多<ChevronDown class="size-3.5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuContent
-              class="ov-dropdown-content z-[65] min-w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg outline-none"
-              :side-offset="6"
-              align="end"
-            >
-              <DropdownMenuItem
-                class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-                :disabled="queryingSelectedProductScores"
-                @select="querySelectedProductScores"
-              >
-                {{ queryingSelectedProductScores ? '批量查询中…' : '批量查询产品分' }}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator class="my-1 h-px bg-border" />
-              <DropdownMenuItem
-                class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-                :disabled="
-                  productDisplayMutationDisabled ||
-                  selectedProductMissingEncryptedId ||
-                  selectedDisplayMutationBlocked ||
-                  batchDisplay.isPending.value
-                "
-                @select="submitBatchDisplay('online')"
-              >
-                批量上架
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-                :disabled="
-                  productDisplayMutationDisabled ||
-                  selectedProductMissingEncryptedId ||
-                  selectedDisplayMutationBlocked ||
-                  batchDisplay.isPending.value
-                "
-                @select="submitBatchDisplay('offline')"
-              >
-                批量下架
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenuPortal>
-        </DropdownMenuRoot>
+        <ActionTooltip :disabled="Boolean(moreActionsDisabledReason)" :reason="moreActionsDisabledReason">
+          <span class="inline-flex">
+            <DropdownMenuRoot :modal="false">
+              <DropdownMenuTrigger as-child>
+                <Button variant="outline" :disabled="selectedProducts.length === 0">
+                  <Ellipsis class="size-4" />更多<ChevronDown class="size-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuContent
+                  class="ov-dropdown-content z-[65] min-w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg outline-none"
+                  :side-offset="6"
+                  align="end"
+                >
+                  <DropdownMenuItem
+                    class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
+                    :disabled="queryingSelectedProductScores"
+                    @select="querySelectedProductScores"
+                  >
+                    {{ queryingSelectedProductScores ? '批量查询中…' : '批量查询产品分' }}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator class="my-1 h-px bg-border" />
+                  <DropdownMenuItem
+                    class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
+                    :disabled="
+                      productDisplayMutationDisabled ||
+                      selectedProductMissingEncryptedId ||
+                      selectedDisplayMutationBlocked ||
+                      batchDisplay.isPending.value
+                    "
+                    @select="submitBatchDisplay('online')"
+                  >
+                    批量上架
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
+                    :disabled="
+                      productDisplayMutationDisabled ||
+                      selectedProductMissingEncryptedId ||
+                      selectedDisplayMutationBlocked ||
+                      batchDisplay.isPending.value
+                    "
+                    @select="submitBatchDisplay('offline')"
+                  >
+                    批量下架
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenuPortal>
+            </DropdownMenuRoot>
+          </span>
+        </ActionTooltip>
         <Button @click="startNewProduct">新增</Button>
       </div>
     </div>
@@ -1699,7 +1774,12 @@ onBeforeUnmount(() => {
       选中的商品仍有未完成或待恢复的上下架任务，请先确认任务状态。
     </p>
     <ErrorNotice v-if="batchDisplay.error.value" class="mb-3" :error="batchDisplay.error.value" compact />
-    <QueryState :loading="products.isPending.value" :error="products.error.value">
+    <QueryState
+      :loading="products.isPending.value"
+      :error="products.error.value"
+      retryable
+      @retry="products.refetch()"
+    >
       <DataTable
         :columns="columns"
         :data="products.data.value?.items ?? []"
@@ -1712,6 +1792,13 @@ onBeforeUnmount(() => {
         @update:page="setProductPage"
         @update:page-size="setProductPageSize"
       >
+        <template #empty>
+          <div class="space-y-3 py-4">
+            <p>没有匹配商品</p>
+            <Button v-if="subject" variant="outline" size="sm" @click="subject = ''">清除搜索条件</Button>
+            <Button v-else size="sm" @click="startNewProduct">新增商品</Button>
+          </div>
+        </template>
         <template #pagination-summary>
           <span
             class="border-l border-border pl-2 text-xs font-medium text-foreground"
@@ -2031,5 +2118,23 @@ onBeforeUnmount(() => {
     @confirm-export="exportSelectedProducts"
   />
   <ProductGroupManagerDialog v-model:open="productGroupDialogOpen" />
+
+  <ConfirmActionDialog
+    :open="actionConfirmation !== null"
+    :title="actionConfirmationTitle"
+    :description="actionConfirmationDescription"
+    :destructive="actionConfirmationDestructive"
+    confirm-label="确认继续"
+    @update:open="actionConfirmation = $event ? actionConfirmation : null"
+    @confirm="confirmProductAction"
+  >
+    <template v-if="actionConfirmation?.kind === 'product' && actionConfirmation.changedNames.length">
+      <p>本次将更新 {{ actionConfirmation.changedNames.length }} 个字段：</p>
+      <p class="max-h-28 overflow-auto rounded-md bg-muted p-3 text-foreground">
+        {{ actionConfirmation.changedNames.join('、') }}
+      </p>
+    </template>
+    <p v-else>请确认当前账号、商品数量和目标状态无误。提交后可在任务状态中通过 requestId 排查。</p>
+  </ConfirmActionDialog>
   <ImagePreview v-model:open="productPreviewOpen" :images="productPreviewImages" />
 </template>

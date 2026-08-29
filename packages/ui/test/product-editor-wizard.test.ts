@@ -225,7 +225,8 @@ describe('ProductEditorWizard', () => {
     expect(wrapper.emitted('submit')?.at(-1)).toEqual([true]);
     await wrapper.setProps({ platformDraftId: '1600000000001' });
     expect(wrapper.text()).toContain('平台草稿 1600000000001 已创建');
-    expect(draft.attributes('disabled')).toBeDefined();
+    const savedDraft = wrapper.findAll('button').find((button) => button.text().includes('平台草稿已创建'));
+    expect(savedDraft?.attributes('disabled')).toBeDefined();
     const officialEditor = wrapper.get('a');
     expect(officialEditor.text()).toContain('在国际站继续编辑');
     expect(officialEditor.attributes('href')).toBe(

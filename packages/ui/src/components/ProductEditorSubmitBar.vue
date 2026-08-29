@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { Save, Send } from '@lucide/vue';
 
+import ActionTooltip from './ActionTooltip.vue';
 import Button from './ui/Button.vue';
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     editing: boolean;
     quick?: boolean;
@@ -26,6 +28,24 @@ withDefaults(
 );
 
 const emit = defineEmits<{ submit: [draft: boolean] }>();
+const draftActionDisabled = computed(
+  () => props.submitPending || props.draftDisabled || !props.schemaSafe || Boolean(props.platformDraftId)
+);
+const publishActionDisabled = computed(
+  () => props.submitPending || props.publishDisabled || props.blockingCount > 0 || !props.schemaSafe
+);
+const draftActionReason = computed(() => {
+  if (props.submitPending) return '正在处理上一项商品操作';
+  if (props.platformDraftId) return '平台草稿已创建，后续修改会继续保存在本机';
+  if (!props.schemaSafe) return 'Schema XML 结构异常，请先修复后再保存';
+  return props.draftDisabledReason || '当前不能保存平台草稿';
+});
+const publishActionReason = computed(() => {
+  if (props.submitPending) return '正在处理上一项商品操作';
+  if (!props.schemaSafe) return 'Schema XML 结构异常，请先修复后再提交';
+  if (props.blockingCount > 0) return `仍有 ${props.blockingCount} 个 Schema 硬错误需要修复`;
+  return props.publishDisabledReason || '当前不能提交商品';
+});
 </script>
 
 <template>
@@ -40,24 +60,25 @@ const emit = defineEmits<{ submit: [draft: boolean] }>();
       <p v-else>{{ advisoryCount }} 条非阻断建议不会禁用提交。</p>
     </div>
     <div class="flex flex-wrap gap-2">
-      <Button
-        v-if="!editing"
-        :variant="quick ? 'default' : 'outline'"
-        :disabled="submitPending || draftDisabled || !schemaSafe || Boolean(platformDraftId)"
-        :title="draftDisabledReason"
-        @click="emit('submit', true)"
-      >
-        <Save class="size-4" />
-        {{ platformDraftId ? '平台草稿已创建' : '保存平台草稿' }}
-      </Button>
-      <Button
-        :variant="quick && !editing ? 'outline' : 'default'"
-        :disabled="submitPending || publishDisabled || blockingCount > 0 || !schemaSafe"
-        :title="publishDisabledReason"
-        @click="emit('submit', false)"
-      >
-        <Send class="size-4" />{{ editing ? '更新商品' : '直接发布' }} · {{ advisoryCount }} 条建议
-      </Button>
+      <ActionTooltip v-if="!editing" :disabled="draftActionDisabled" :reason="draftActionReason">
+        <Button
+          :variant="quick ? 'default' : 'outline'"
+          :disabled="draftActionDisabled"
+          @click="emit('submit', true)"
+        >
+          <Save class="size-4" />
+          {{ platformDraftId ? '平台草稿已创建' : '保存平台草稿' }}
+        </Button>
+      </ActionTooltip>
+      <ActionTooltip :disabled="publishActionDisabled" :reason="publishActionReason">
+        <Button
+          :variant="quick && !editing ? 'outline' : 'default'"
+          :disabled="publishActionDisabled"
+          @click="emit('submit', false)"
+        >
+          <Send class="size-4" />{{ editing ? '更新商品' : '直接发布' }} · {{ advisoryCount }} 条建议
+        </Button>
+      </ActionTooltip>
     </div>
   </div>
 </template>

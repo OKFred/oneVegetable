@@ -16,6 +16,8 @@ import { toast } from 'vue-sonner';
 
 import { validateProductGroupCreateInput, type ProductGroup } from '@one-vegetable/core';
 
+import ActionTooltip from './ActionTooltip.vue';
+import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import ErrorNotice from './ErrorNotice.vue';
 import QueryState from './QueryState.vue';
 import Button from './ui/Button.vue';
@@ -45,6 +47,7 @@ const childrenByParent = ref<Record<string, ProductGroup[]>>({});
 const childErrors = ref<Record<string, string>>({});
 const newGroupName = ref('');
 const createParentId = ref<number | null>(null);
+const createConfirmationOpen = ref(false);
 
 const roots = useQuery({
   queryKey: ['product-groups', 'root'],
@@ -66,6 +69,10 @@ const createUnavailableMessage = computed(() =>
     '当前环境尚未开放真实商品分组新增'
   )
 );
+const createParentLabel = computed(() => {
+  if (createParentId.value === -1) return '全部分组';
+  return visibleRows.value.find((row) => row.group.id === createParentId.value)?.group.name ?? '所选分组';
+});
 
 const createGroup = useMutation({
   mutationFn: async () => {
@@ -107,6 +114,7 @@ watch(
     if (open) return;
     newGroupName.value = '';
     createParentId.value = null;
+    createConfirmationOpen.value = false;
     createGroup.reset();
   }
 );
@@ -187,12 +195,15 @@ function cancelCreate(): void {
 
 function submitCreate(): void {
   if (!createAllowed.value || !newGroupName.value.trim() || createGroup.isPending.value) return;
-  if (
-    mode !== 'mock' &&
-    !globalThis.confirm(`将在国际站创建真实商品分组“${newGroupName.value.trim()}”，是否继续？`)
-  ) {
+  if (mode !== 'mock') {
+    createConfirmationOpen.value = true;
     return;
   }
+  createGroup.mutate();
+}
+
+function confirmCreate(): void {
+  createConfirmationOpen.value = false;
   createGroup.mutate();
 }
 </script>
@@ -234,17 +245,18 @@ function submitCreate(): void {
             <FolderOpen class="size-4 shrink-0 text-primary" />
             <span class="min-w-0 flex-1 truncate text-sm font-semibold">全部分组</span>
             <span class="text-xs text-muted-foreground">{{ roots.data.value?.length ?? 0 }} 个一级分组</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              class="size-8"
-              :disabled="!createAllowed || createGroup.isPending.value"
-              aria-label="在全部分组下新增分组"
-              :title="createAllowed ? '新增一级分组' : createUnavailableMessage"
-              @click="beginCreate(-1)"
-            >
-              <FolderPlus class="size-4" />
-            </Button>
+            <ActionTooltip :disabled="!createAllowed" :reason="createUnavailableMessage">
+              <Button
+                variant="ghost"
+                size="icon"
+                class="size-8"
+                :disabled="!createAllowed || createGroup.isPending.value"
+                aria-label="在全部分组下新增分组"
+                @click="beginCreate(-1)"
+              >
+                <FolderPlus class="size-4" />
+              </Button>
+            </ActionTooltip>
           </div>
           <form
             v-if="createParentId === -1"
@@ -304,18 +316,22 @@ function submitCreate(): void {
               <Folder v-else class="size-4 shrink-0 text-muted-foreground" />
               <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ row.group.name }}</span>
               <span class="font-mono text-[11px] text-muted-foreground">#{{ row.group.id }}</span>
-              <Button
+              <ActionTooltip
                 v-if="row.depth < 3"
-                variant="ghost"
-                size="icon"
-                class="size-8"
-                :disabled="!createAllowed || createGroup.isPending.value"
-                :aria-label="`在 ${row.group.name} 下新增分组`"
-                :title="createAllowed ? `在 ${row.group.name} 下新增子分组` : createUnavailableMessage"
-                @click="beginCreate(row.group.id)"
+                :disabled="!createAllowed"
+                :reason="createUnavailableMessage"
               >
-                <FolderPlus class="size-4" />
-              </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  class="size-8"
+                  :disabled="!createAllowed || createGroup.isPending.value"
+                  :aria-label="`在 ${row.group.name} 下新增分组`"
+                  @click="beginCreate(row.group.id)"
+                >
+                  <FolderPlus class="size-4" />
+                </Button>
+              </ActionTooltip>
               <Tooltip text="国际站官方 OpenAPI 未提供商品分组修改接口，暂时无法修改名称。">
                 <span
                   role="button"
@@ -417,4 +433,14 @@ function submitCreate(): void {
       </div>
     </template>
   </ModalDialog>
+
+  <ConfirmActionDialog
+    v-model:open="createConfirmationOpen"
+    title="确认创建商品分组"
+    description="该操作会立即写入当前国际站账号，官方 OpenAPI 暂不支持删除或重命名商品分组。"
+    confirm-label="创建分组"
+    @confirm="confirmCreate"
+  >
+    <p>将在“{{ createParentLabel }}”下创建“{{ newGroupName.trim() }}”。请确认名称和层级无误。</p>
+  </ConfirmActionDialog>
 </template>

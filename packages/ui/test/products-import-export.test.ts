@@ -7,6 +7,7 @@ import { defineComponent, h } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { toast } from 'vue-sonner';
 
 import { parseProductTransferJson } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
@@ -14,6 +15,10 @@ import { MockGatewayClient } from '@one-vegetable/core/mock';
 import { loadProductBatchPublishItems } from '../src/lib/product-batch-publish';
 import { provideServices } from '../src/lib/services';
 import ProductsView from '../src/views/ProductsView.vue';
+
+vi.mock('vue-sonner', () => ({
+  toast: { success: vi.fn(), warning: vi.fn() }
+}));
 
 const fixtureJson = readFileSync(
   resolve(import.meta.dirname, '../../../mock/data/product-transfer-v1.json'),
@@ -23,6 +28,7 @@ let exportedBlob: Blob | null = null;
 
 describe('ProductsView import and export', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     localStorage.clear();
     exportedBlob = null;
     globalThis.history.replaceState(null, '', '#/products/list');
@@ -86,7 +92,7 @@ describe('ProductsView import and export', () => {
       'renderProductSchema',
       expect.objectContaining({ productId: '10000001', categoryId: 100009999 })
     );
-    expect(wrapper.text()).toContain('已导出 1 个商品（Schema JSON）');
+    expect(toast.success).toHaveBeenCalledWith('已导出 1 个商品（Schema JSON）。');
     wrapper.unmount();
   });
 

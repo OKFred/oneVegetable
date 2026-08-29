@@ -66,7 +66,6 @@ describe('ProductsView product mutation lifecycle', () => {
       refresh: vi.fn(() => Promise.resolve(job)),
       recover
     };
-    const confirm = vi.spyOn(globalThis, 'confirm').mockReturnValue(true);
     const wrapper = mountProductsView(productMutationJobs, 'updateProductDisplay');
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('最近上下架任务');
@@ -75,10 +74,18 @@ describe('ProductsView product mutation lifecycle', () => {
     const recovery = wrapper.findAll('button').find((button) => button.text().includes('恢复原状态'));
     if (!recovery) throw new Error('Missing display recovery button');
     await recovery.trigger('click');
+    await flushPromises();
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('确认恢复商品状态');
+    });
+    const confirm = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.textContent.trim() === '确认继续'
+    );
+    if (!confirm) throw new Error('Missing recovery confirmation button');
+    confirm.click();
     await vi.waitFor(() => {
       expect(recover).toHaveBeenCalledWith(job.id, job.revision);
     });
-    confirm.mockRestore();
     wrapper.unmount();
   });
 });

@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { Pencil, Play, Square, Trash2 } from '@lucide/vue';
 
 import { inspectProductBatchPublishItem } from '../lib/product-batch-publish';
+import ActionTooltip from './ActionTooltip.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
@@ -46,6 +47,10 @@ const currentTargetAllowed = computed(() =>
 const currentDisabledReason = computed(() =>
   props.target === 'draft' ? props.draftDisabledReason : props.publishDisabledReason
 );
+const runDisabledReason = computed(() => {
+  if (selectedQueuedItems.value.length === 0) return '请先选择至少一个待提交商品';
+  return currentDisabledReason.value || '当前不能执行批量发品';
+});
 const selectedBlockedCount = computed(
   () =>
     selectedQueuedItems.value.filter((item) => !inspectProductBatchPublishItem(item, props.target).ready)
@@ -137,15 +142,16 @@ function statusVariant(
             正式发布
           </Button>
         </div>
-        <Button
+        <ActionTooltip
           v-if="!running"
           :disabled="selectedQueuedItems.length === 0 || !currentTargetAllowed"
-          :title="currentDisabledReason"
-          @click="emit('run')"
+          :reason="runDisabledReason"
         >
-          <Play class="size-4" />
-          {{ target === 'draft' ? '开始保存草稿' : '开始正式发布' }}
-        </Button>
+          <Button :disabled="selectedQueuedItems.length === 0 || !currentTargetAllowed" @click="emit('run')">
+            <Play class="size-4" />
+            {{ target === 'draft' ? '开始保存草稿' : '开始正式发布' }}
+          </Button>
+        </ActionTooltip>
         <Button v-else variant="destructive" @click="emit('stop')">
           <Square class="size-4" />停止后续任务
         </Button>
