@@ -193,7 +193,9 @@ function stickyColumnStyle(value: unknown): Record<string, string> | undefined {
           </tr>
           <tr v-if="table.getRowModel().rows.length === 0">
             <td :colspan="columns.length" class="h-32 text-center text-muted-foreground">
-              {{ emptyText }}
+              <slot name="empty">
+                {{ emptyText }}
+              </slot>
             </td>
           </tr>
         </tbody>

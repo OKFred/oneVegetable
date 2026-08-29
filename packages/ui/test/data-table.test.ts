@@ -103,6 +103,18 @@ describe('DataTable', () => {
     expect(pagination.get('[data-testid="selection-count"]').text()).toBe('已选 2 个');
   });
 
+  it('renders an actionable empty-state slot', () => {
+    const columns: DataColumn<Row>[] = [{ accessorKey: 'name', header: '名称' }];
+    const wrapper = mount(DataTable<Row>, {
+      props: { columns, data: [] },
+      slots: {
+        empty: () => h('button', { type: 'button' }, '清除筛选')
+      }
+    });
+
+    expect(wrapper.get('tbody button').text()).toBe('清除筛选');
+  });
+
   it('pins configured columns with opaque inherited row backgrounds', () => {
     const columns: DataColumn<Row>[] = [
       {
