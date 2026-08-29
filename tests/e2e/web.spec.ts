@@ -63,9 +63,9 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await expect(productGroupDialog.getByRole('tree', { name: '商品分组树' })).toBeVisible();
   await productGroupDialog.getByRole('button', { name: '展开Energy storage' }).click();
   await expect(productGroupDialog.getByText('Portable power', { exact: true })).toBeVisible();
-  await productGroupDialog.getByLabel('新分组的上级分组').selectOption('1001');
-  await productGroupDialog.getByLabel('新分组名称').fill('E2E products');
-  await productGroupDialog.getByRole('button', { name: '创建分组' }).click();
+  await productGroupDialog.getByRole('button', { name: '在 Energy storage 下新增分组' }).click();
+  await productGroupDialog.getByLabel('在 Energy storage 下的新分组名称').fill('E2E products');
+  await productGroupDialog.getByRole('button', { name: '保存', exact: true }).click();
   await expect(page.getByText(/商品分组“E2E products”已创建/)).toBeVisible();
   await expect(productGroupDialog.getByText('E2E products', { exact: true })).toBeVisible();
   await productGroupDialog.getByRole('button', { name: '关闭', exact: true }).click();

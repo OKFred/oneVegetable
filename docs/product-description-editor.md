@@ -30,7 +30,7 @@
 
 商品分组字段使用可复用的三级名称选择器，不向新手直接暴露 `group_id`。一级、二级和三级名称通过 `alibaba.icbu.product.group.get` 按父级懒加载，Schema 内仍无损保存官方分组 ID；无法解析的历史 ID 会明确显示为未知分组并保留原值。
 
-商品列表工具栏和商品分组选择器共用树形管理弹窗，替代原独立“类目与分组”工作区。弹窗按需读取最多三级分组，并通过 `alibaba.icbu.product.group.add` 新增一级或子分组。国际站官方商品 OpenAPI 目前只列出[分组查询](https://developer.alibaba.com/docs/api.htm?apiId=25299)和[分组新增](https://developer.alibaba.com/docs/api.htm?apiId=25300)，[Schema 发品说明](https://developer.alibaba.com/docs/doc.htm?articleId=119213&docType=1&treeId=456)也只引用这两个方法；没有分组改名或删除接口，因此这两个操作在界面中保留为禁用状态并说明平台限制，不做仅本地生效的伪修改。
+商品列表工具栏和商品分组选择器共用树形管理弹窗，替代原独立“类目与分组”工作区。所有一级分组挂在始终展开的虚拟根节点“全部分组”下；虚拟根节点和一、二级分组右侧提供行内新增入口，点击后直接在对应节点下填写名称，不再使用独立新增面板。弹窗按需读取最多三级分组，并通过 `alibaba.icbu.product.group.add` 新增一级或子分组。国际站官方商品 OpenAPI 目前只列出[分组查询](https://developer.alibaba.com/docs/api.htm?apiId=25299)和[分组新增](https://developer.alibaba.com/docs/api.htm?apiId=25300)，[Schema 发品说明](https://developer.alibaba.com/docs/doc.htm?articleId=119213&docType=1&treeId=456)也只引用这两个方法；没有分组改名或删除接口，因此这两个操作在界面中保留为禁用状态并说明平台限制，不做仅本地生效的伪修改。
 
 浏览器草稿使用版本化 V3 结构，按 `existing:<productId>` 或 `new:<categoryId>` 隔离，并记录快速/完整模式与平台草稿 ID。表单变化约 750 ms 后自动保存；最多保留最近 10 份和 30 天内草稿。恢复前必须由用户确认，V2 和旧单一草稿键迁移后也不会自动覆盖平台 Schema。
 

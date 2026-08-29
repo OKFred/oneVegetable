@@ -27,27 +27,34 @@ describe('ProductGroupManagerDialog', () => {
     await vi.waitFor(() => {
       expect(document.body.textContent).toContain('Energy storage');
     });
+    expect(document.body.textContent).toContain('全部分组');
+    await vi.waitFor(() => {
+      expect(buttonByLabel('在全部分组下新增分组').disabled).toBe(false);
+    });
+    buttonByLabel('在全部分组下新增分组').click();
+    await flushPromises();
+    expect(document.body.querySelector('input[aria-label="在全部分组下的新分组名称"]')).not.toBeNull();
+    buttonByText('取消').click();
     const expand = buttonByLabel('展开Energy storage');
     expand.click();
     await vi.waitFor(() => {
       expect(document.body.textContent).toContain('Portable power');
     });
 
-    const parent = document.body.querySelector<HTMLSelectElement>('select[aria-label="新分组的上级分组"]');
-    expect(parent).not.toBeNull();
-    if (!parent) throw new Error('Missing product group parent selector');
-    parent.value = '1001';
-    parent.dispatchEvent(new Event('change', { bubbles: true }));
-    const input = document.body.querySelector<HTMLInputElement>('input[aria-label="新分组名称"]');
+    buttonByLabel('在 Energy storage 下新增分组').click();
+    await flushPromises();
+    const input = document.body.querySelector<HTMLInputElement>(
+      'input[aria-label="在 Energy storage 下的新分组名称"]'
+    );
     expect(input).not.toBeNull();
     if (!input) throw new Error('Missing product group name input');
     input.value = 'E2E products';
     input.dispatchEvent(new Event('input', { bubbles: true }));
     await flushPromises();
     await vi.waitFor(() => {
-      expect(buttonByText('创建分组').disabled).toBe(false);
+      expect(buttonByText('保存').disabled).toBe(false);
     });
-    buttonByText('创建分组').click();
+    buttonByText('保存').click();
 
     await vi.waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith('商品分组“E2E products”已创建。');

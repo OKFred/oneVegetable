@@ -5,10 +5,10 @@ import {
   ChevronDown,
   ChevronRight,
   Folder,
+  FolderPlus,
   FolderOpen,
   LoaderCircle,
   Pencil,
-  Plus,
   RefreshCw,
   Trash2
 } from '@lucide/vue';
@@ -43,7 +43,7 @@ const loadingIds = ref<Set<number>>(new Set());
 const childrenByParent = ref<Record<string, ProductGroup[]>>({});
 const childErrors = ref<Record<string, string>>({});
 const newGroupName = ref('');
-const newGroupParentId = ref('-1');
+const createParentId = ref<number | null>(null);
 
 const roots = useQuery({
   queryKey: ['product-groups', 'root'],
@@ -58,12 +58,6 @@ const visibleRows = computed<ProductGroupRow[]>(() => {
   return rows;
 });
 
-const parentOptions = computed<ProductGroupRow[]>(() => {
-  const rows: ProductGroupRow[] = [];
-  appendKnownRows(roots.data.value ?? [], 1, rows, new Set());
-  return rows.filter((row) => row.depth < 3);
-});
-
 const createAllowed = computed(() => createAvailability.isAllowed('createProductGroup'));
 const createUnavailableMessage = computed(() =>
   operationAvailabilityMessage(
@@ -76,13 +70,13 @@ const createGroup = useMutation({
   mutationFn: async () => {
     const validation = validateProductGroupCreateInput({
       name: newGroupName.value.trim(),
-      parentId: Number(newGroupParentId.value)
+      parentId: createParentId.value ?? -1
     });
     if (!validation.valid || !validation.data) throw new Error(validation.errors.join('；'));
     return gateway.request('createProductGroup', validation.data);
   },
   onSuccess: async (created) => {
-    const parentId = Number(newGroupParentId.value);
+    const parentId = createParentId.value ?? -1;
     if (parentId === -1) {
       queryClient.setQueryData<ProductGroup[]>(['product-groups', 'root'], (current = []) =>
         appendUniqueGroup(current, created)
@@ -101,6 +95,7 @@ const createGroup = useMutation({
     }
     await queryClient.invalidateQueries({ queryKey: ['product-groups'], refetchType: 'none' });
     newGroupName.value = '';
+    createParentId.value = null;
     toast.success(`商品分组“${created.name}”已创建。`);
   }
 });
@@ -110,7 +105,7 @@ watch(
   (open) => {
     if (open) return;
     newGroupName.value = '';
-    newGroupParentId.value = '-1';
+    createParentId.value = null;
     createGroup.reset();
   }
 );
@@ -121,20 +116,6 @@ function appendVisibleRows(groups: readonly ProductGroup[], depth: number, rows:
     if (depth < 3 && expandedIds.value.has(group.id)) {
       appendVisibleRows(childrenFor(group.id, group.children), depth + 1, rows);
     }
-  }
-}
-
-function appendKnownRows(
-  groups: readonly ProductGroup[],
-  depth: number,
-  rows: ProductGroupRow[],
-  visited: Set<number>
-): void {
-  for (const group of groups) {
-    if (visited.has(group.id)) continue;
-    visited.add(group.id);
-    rows.push({ group, depth });
-    if (depth < 3) appendKnownRows(childrenFor(group.id, group.children), depth + 1, rows, visited);
   }
 }
 
@@ -185,7 +166,22 @@ async function refreshGroups(): Promise<void> {
   expandedIds.value = new Set();
   childrenByParent.value = {};
   childErrors.value = {};
+  cancelCreate();
   await queryClient.invalidateQueries({ queryKey: ['product-groups'] });
+}
+
+function beginCreate(parentId: number): void {
+  if (!createAllowed.value || createGroup.isPending.value) return;
+  createGroup.reset();
+  newGroupName.value = '';
+  createParentId.value = parentId;
+}
+
+function cancelCreate(): void {
+  if (createGroup.isPending.value) return;
+  createGroup.reset();
+  newGroupName.value = '';
+  createParentId.value = null;
 }
 
 function submitCreate(): void {
@@ -208,149 +204,209 @@ function submitCreate(): void {
     size="lg"
     @update:open="emit('update:open', $event)"
   >
-    <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_17rem]">
-      <section class="min-w-0" aria-labelledby="product-group-tree-heading">
-        <div class="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <h3 id="product-group-tree-heading" class="font-medium">分组树</h3>
-            <p class="mt-1 text-xs text-muted-foreground">最多三级；展开节点时按需读取下一级。</p>
-          </div>
-          <Button variant="outline" size="sm" :disabled="roots.isFetching.value" @click="refreshGroups">
-            <RefreshCw :class="['size-4', roots.isFetching.value ? 'animate-spin' : '']" />刷新
-          </Button>
+    <section class="min-w-0" aria-labelledby="product-group-tree-heading">
+      <div class="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h3 id="product-group-tree-heading" class="font-medium">分组树</h3>
+          <p class="mt-1 text-xs text-muted-foreground">最多三级；在目标目录右侧直接新增子分组。</p>
         </div>
+        <Button variant="outline" size="sm" :disabled="roots.isFetching.value" @click="refreshGroups">
+          <RefreshCw :class="['size-4', roots.isFetching.value ? 'animate-spin' : '']" />刷新
+        </Button>
+      </div>
 
-        <QueryState :loading="roots.isPending.value" :error="roots.error.value">
+      <QueryState :loading="roots.isPending.value" :error="roots.error.value">
+        <div
+          class="max-h-[32rem] overflow-auto rounded-lg border bg-card p-2"
+          role="tree"
+          aria-label="商品分组树"
+        >
           <div
-            v-if="visibleRows.length > 0"
-            class="max-h-[28rem] overflow-auto rounded-lg border bg-card p-2"
-            role="tree"
-            aria-label="商品分组树"
+            class="flex min-h-10 items-center gap-2 rounded-md bg-muted/50 px-2 transition-colors hover:bg-muted"
+            role="treeitem"
+            :aria-level="1"
+            :aria-expanded="true"
           >
-            <div v-for="row in visibleRows" :key="row.group.id">
-              <div
-                class="group flex min-h-10 items-center gap-2 rounded-md pr-2 transition-colors hover:bg-muted/70"
-                :style="{ paddingLeft: `${(row.depth - 1) * 20 + 4}px` }"
-                role="treeitem"
-                :aria-level="row.depth"
-                :aria-expanded="row.depth < 3 ? expandedIds.has(row.group.id) : undefined"
+            <span class="flex size-8 shrink-0 items-center justify-center text-muted-foreground">
+              <ChevronDown class="size-4" />
+            </span>
+            <FolderOpen class="size-4 shrink-0 text-primary" />
+            <span class="min-w-0 flex-1 truncate text-sm font-semibold">全部分组</span>
+            <span class="text-xs text-muted-foreground">{{ roots.data.value?.length ?? 0 }} 个一级分组</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              class="size-8"
+              :disabled="!createAllowed || createGroup.isPending.value"
+              aria-label="在全部分组下新增分组"
+              :title="createAllowed ? '新增一级分组' : createUnavailableMessage"
+              @click="beginCreate(-1)"
+            >
+              <FolderPlus class="size-4" />
+            </Button>
+          </div>
+          <form
+            v-if="createParentId === -1"
+            class="ml-12 mt-1 rounded-md border border-dashed bg-muted/25 p-3"
+            @submit.prevent="submitCreate"
+          >
+            <div class="flex flex-wrap items-center gap-2">
+              <Input
+                v-model="newGroupName"
+                class="min-w-52 flex-1"
+                aria-label="在全部分组下的新分组名称"
+                maxlength="80"
+                placeholder="输入一级分组名称"
+                :disabled="createGroup.isPending.value"
+                @keydown.esc.prevent="cancelCreate"
+              />
+              <Button type="submit" size="sm" :disabled="!newGroupName.trim() || createGroup.isPending.value">
+                <LoaderCircle v-if="createGroup.isPending.value" class="size-4 animate-spin" />
+                {{ createGroup.isPending.value ? '正在保存…' : '保存' }}
+              </Button>
+              <Button variant="ghost" size="sm" :disabled="createGroup.isPending.value" @click="cancelCreate">
+                取消
+              </Button>
+            </div>
+            <ErrorNotice
+              v-if="createGroup.error.value"
+              class="mt-2"
+              :error="createGroup.error.value"
+              compact
+            />
+          </form>
+
+          <div v-if="visibleRows.length === 0" class="px-12 py-5 text-sm text-muted-foreground">
+            当前账号暂无商品分组，可从“全部分组”右侧新增。
+          </div>
+          <div v-for="row in visibleRows" :key="row.group.id">
+            <div
+              class="group flex min-h-10 items-center gap-2 rounded-md pr-2 transition-colors hover:bg-muted/70"
+              :style="{ paddingLeft: `${row.depth * 20 + 4}px` }"
+              role="treeitem"
+              :aria-level="row.depth + 1"
+              :aria-expanded="row.depth < 3 ? expandedIds.has(row.group.id) : undefined"
+            >
+              <button
+                v-if="row.depth < 3"
+                type="button"
+                class="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                :aria-label="`${expandedIds.has(row.group.id) ? '收起' : '展开'}${row.group.name}`"
+                @click="toggleGroup(row)"
               >
-                <button
-                  v-if="row.depth < 3"
-                  type="button"
-                  class="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  :aria-label="`${expandedIds.has(row.group.id) ? '收起' : '展开'}${row.group.name}`"
-                  @click="toggleGroup(row)"
-                >
-                  <LoaderCircle v-if="loadingIds.has(row.group.id)" class="size-4 animate-spin" />
-                  <ChevronDown v-else-if="expandedIds.has(row.group.id)" class="size-4" />
-                  <ChevronRight v-else class="size-4" />
-                </button>
-                <span v-else class="block size-8 shrink-0" />
-                <FolderOpen v-if="expandedIds.has(row.group.id)" class="size-4 shrink-0 text-primary" />
-                <Folder v-else class="size-4 shrink-0 text-muted-foreground" />
-                <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ row.group.name }}</span>
-                <span class="font-mono text-[11px] text-muted-foreground">#{{ row.group.id }}</span>
+                <LoaderCircle v-if="loadingIds.has(row.group.id)" class="size-4 animate-spin" />
+                <ChevronDown v-else-if="expandedIds.has(row.group.id)" class="size-4" />
+                <ChevronRight v-else class="size-4" />
+              </button>
+              <span v-else class="block size-8 shrink-0" />
+              <FolderOpen v-if="expandedIds.has(row.group.id)" class="size-4 shrink-0 text-primary" />
+              <Folder v-else class="size-4 shrink-0 text-muted-foreground" />
+              <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ row.group.name }}</span>
+              <span class="font-mono text-[11px] text-muted-foreground">#{{ row.group.id }}</span>
+              <Button
+                v-if="row.depth < 3"
+                variant="ghost"
+                size="icon"
+                class="size-8"
+                :disabled="!createAllowed || createGroup.isPending.value"
+                :aria-label="`在 ${row.group.name} 下新增分组`"
+                :title="createAllowed ? `在 ${row.group.name} 下新增子分组` : createUnavailableMessage"
+                @click="beginCreate(row.group.id)"
+              >
+                <FolderPlus class="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                class="size-8"
+                disabled
+                :aria-label="`修改分组 ${row.group.name}`"
+                title="国际站官方 OpenAPI 未提供商品分组修改接口"
+              >
+                <Pencil class="size-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                class="size-8"
+                disabled
+                :aria-label="`删除分组 ${row.group.name}`"
+                title="国际站官方 OpenAPI 未提供商品分组删除接口"
+              >
+                <Trash2 class="size-3.5" />
+              </Button>
+            </div>
+            <form
+              v-if="createParentId === row.group.id"
+              class="mr-2 mt-1 rounded-md border border-dashed bg-muted/25 p-3"
+              :style="{ marginLeft: `${(row.depth + 1) * 20 + 36}px` }"
+              @submit.prevent="submitCreate"
+            >
+              <div class="flex flex-wrap items-center gap-2">
+                <Input
+                  v-model="newGroupName"
+                  class="min-w-52 flex-1"
+                  :aria-label="`在 ${row.group.name} 下的新分组名称`"
+                  maxlength="80"
+                  placeholder="输入子分组名称"
+                  :disabled="createGroup.isPending.value"
+                  @keydown.esc.prevent="cancelCreate"
+                />
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  class="size-8"
-                  disabled
-                  :aria-label="`修改分组 ${row.group.name}`"
-                  title="国际站官方 OpenAPI 未提供商品分组修改接口"
+                  type="submit"
+                  size="sm"
+                  :disabled="!newGroupName.trim() || createGroup.isPending.value"
                 >
-                  <Pencil class="size-3.5" />
+                  <LoaderCircle v-if="createGroup.isPending.value" class="size-4 animate-spin" />
+                  {{ createGroup.isPending.value ? '正在保存…' : '保存' }}
                 </Button>
                 <Button
                   variant="ghost"
-                  size="icon"
-                  class="size-8"
-                  disabled
-                  :aria-label="`删除分组 ${row.group.name}`"
-                  title="国际站官方 OpenAPI 未提供商品分组删除接口"
+                  size="sm"
+                  :disabled="createGroup.isPending.value"
+                  @click="cancelCreate"
                 >
-                  <Trash2 class="size-3.5" />
+                  取消
                 </Button>
               </div>
-              <p
-                v-if="childErrors[String(row.group.id)]"
-                class="py-1 text-xs text-destructive"
-                :style="{ paddingLeft: `${row.depth * 20 + 36}px` }"
-              >
-                {{ childErrors[String(row.group.id)] }}
-              </p>
-              <p
-                v-else-if="
-                  expandedIds.has(row.group.id) &&
-                  Object.hasOwn(childrenByParent, String(row.group.id)) &&
-                  childrenFor(row.group.id).length === 0
-                "
-                class="py-1 text-xs text-muted-foreground"
-                :style="{ paddingLeft: `${row.depth * 20 + 36}px` }"
-              >
-                暂无子分组
-              </p>
-            </div>
-          </div>
-          <div v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-            当前账号暂无商品分组。
-          </div>
-        </QueryState>
-      </section>
-
-      <aside class="space-y-4">
-        <section class="rounded-lg border bg-muted/25 p-4">
-          <h3 class="flex items-center gap-2 font-medium"><Plus class="size-4" />新增分组</h3>
-          <label class="mt-4 block text-xs font-medium">
-            上级分组
-            <select
-              v-model="newGroupParentId"
-              class="mt-1 h-9 w-full cursor-pointer rounded-md border bg-background px-3 text-sm"
-              aria-label="新分组的上级分组"
+              <ErrorNotice
+                v-if="createGroup.error.value"
+                class="mt-2"
+                :error="createGroup.error.value"
+                compact
+              />
+            </form>
+            <p
+              v-if="childErrors[String(row.group.id)]"
+              class="py-1 text-xs text-destructive"
+              :style="{ paddingLeft: `${(row.depth + 1) * 20 + 36}px` }"
             >
-              <option value="-1">一级分组</option>
-              <option v-for="row in parentOptions" :key="row.group.id" :value="String(row.group.id)">
-                {{ '—'.repeat(row.depth - 1) }} {{ row.group.name }}
-              </option>
-            </select>
-          </label>
-          <label class="mt-3 block text-xs font-medium">
-            分组名称
-            <Input
-              v-model="newGroupName"
-              class="mt-1"
-              aria-label="新分组名称"
-              maxlength="80"
-              placeholder="输入分组名称"
-              @keydown.enter="submitCreate"
-            />
-          </label>
-          <Button
-            class="mt-3 w-full"
-            :disabled="!newGroupName.trim() || !createAllowed || createGroup.isPending.value"
-            :title="!createAllowed ? createUnavailableMessage : undefined"
-            @click="submitCreate"
-          >
-            <LoaderCircle v-if="createGroup.isPending.value" class="size-4 animate-spin" />
-            <Plus v-else class="size-4" />
-            {{ createGroup.isPending.value ? '正在创建…' : '创建分组' }}
-          </Button>
-          <p v-if="!createAllowed" class="mt-2 text-xs text-amber-700 dark:text-amber-400">
-            {{ createUnavailableMessage }}
-          </p>
-          <ErrorNotice v-if="createGroup.error.value" class="mt-3" :error="createGroup.error.value" compact />
-        </section>
+              {{ childErrors[String(row.group.id)] }}
+            </p>
+            <p
+              v-else-if="
+                expandedIds.has(row.group.id) &&
+                Object.hasOwn(childrenByParent, String(row.group.id)) &&
+                childrenFor(row.group.id).length === 0
+              "
+              class="py-1 text-xs text-muted-foreground"
+              :style="{ paddingLeft: `${(row.depth + 1) * 20 + 36}px` }"
+            >
+              暂无子分组
+            </p>
+          </div>
+        </div>
+      </QueryState>
 
-        <section
-          class="rounded-lg border border-amber-200 bg-amber-50/70 p-4 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
-        >
-          <p class="font-medium">平台能力说明</p>
-          <p class="mt-1 leading-5">
-            国际站官方 OpenAPI 目前仅提供商品分组查询与新增，没有修改名称或删除接口；对应按钮已保留但不可用。
-          </p>
-        </section>
-      </aside>
-    </div>
+      <p v-if="!createAllowed" class="mt-3 text-xs text-amber-700 dark:text-amber-400">
+        {{ createUnavailableMessage }}
+      </p>
+      <div
+        class="mt-3 rounded-lg border border-amber-200 bg-amber-50/70 px-4 py-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
+      >
+        国际站官方 OpenAPI 目前仅提供商品分组查询与新增，没有修改名称或删除接口；对应按钮已保留但不可用。
+      </div>
+    </section>
 
     <template #footer>
       <div class="flex justify-end">
