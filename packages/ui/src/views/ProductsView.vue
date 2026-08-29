@@ -10,6 +10,7 @@ import {
   createProductScoreOfficialHints,
   inspectProductSchemaPatchSerialization,
   inspectProductSchemaSerialization,
+  MAX_PRODUCT_TRANSFER_ITEMS,
   parseProductSchemaXml,
   PRODUCT_EDITOR_STEP_IDS,
   productMutationJobIsBlocking,
@@ -45,6 +46,7 @@ import ProductTransferDialog from '../components/ProductTransferDialog.vue';
 import QueryState from '../components/QueryState.vue';
 import ScoreProgress from '../components/ScoreProgress.vue';
 import TablePagination from '../components/TablePagination.vue';
+import TriStateCheckbox from '../components/TriStateCheckbox.vue';
 import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
@@ -77,6 +79,7 @@ import {
   useOperationAvailability
 } from '../composables/use-operation-availability';
 import { appHash, parseAppHash } from '../lib/hash-router';
+import { describeProductExportDisabled, retainCurrentPageSelection } from '../lib/product-selection';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import type { DataColumn } from '../lib/table';
@@ -475,8 +478,20 @@ const qualityIssues = computed(() =>
     imageMetadata: imageMetadata.value
   })
 );
+const currentPageProducts = computed(() => products.data.value?.items ?? []);
+const currentPageProductIds = computed(() => currentPageProducts.value.map((product) => product.id));
 const selectedProducts = computed(() =>
-  (products.data.value?.items ?? []).filter((product) => selectedProductIds.value.includes(product.id))
+  currentPageProducts.value.filter((product) => selectedProductIds.value.includes(product.id))
+);
+const allCurrentPageProductsSelected = computed(
+  () =>
+    currentPageProducts.value.length > 0 && selectedProducts.value.length === currentPageProducts.value.length
+);
+const someCurrentPageProductsSelected = computed(
+  () => selectedProducts.value.length > 0 && !allCurrentPageProductsSelected.value
+);
+const productExportDisabledReason = computed(() =>
+  describeProductExportDisabled(selectedProducts.value.length, productTransferBusy.value)
 );
 const selectedEncryptedProductIds = computed(() =>
   selectedProducts.value.flatMap((product) => (product.encryptedId ? [product.encryptedId] : []))
@@ -816,19 +831,43 @@ function toggleProduct(productId: string, checked: boolean): void {
     : selectedProductIds.value.filter((id) => id !== productId);
 }
 
+function toggleCurrentPageProducts(checked: boolean): void {
+  selectedProductIds.value = checked ? currentPageProductIds.value : [];
+}
+
+function clearProductSelection(): void {
+  selectedProductIds.value = [];
+}
+
+function productSelectionHeader() {
+  const count = currentPageProducts.value.length;
+  return h(TriStateCheckbox, {
+    checked: allCurrentPageProductsSelected.value,
+    indeterminate: someCurrentPageProductsSelected.value,
+    disabled: count === 0,
+    label: allCurrentPageProductsSelected.value
+      ? `取消选择本页全部 ${count} 个商品`
+      : `选择本页全部 ${count} 个商品`,
+    title: allCurrentPageProductsSelected.value ? '取消选择本页全部商品' : '选择本页全部商品',
+    'onUpdate:checked': toggleCurrentPageProducts
+  });
+}
+
+function productSelectionCell(product: Product) {
+  return h(TriStateCheckbox, {
+    checked: selectedProductIds.value.includes(product.id),
+    label: `选择 ${product.subject}`,
+    'onUpdate:checked': (checked: boolean) => {
+      toggleProduct(product.id, checked);
+    }
+  });
+}
+
 const columns: DataColumn<Product>[] = [
   {
     id: 'select',
-    header: '选择',
-    cell: ({ row }) =>
-      h('input', {
-        type: 'checkbox',
-        'aria-label': `选择 ${row.original.subject}`,
-        checked: selectedProductIds.value.includes(row.original.id),
-        onChange: (event: Event) => {
-          toggleProduct(row.original.id, (event.target as HTMLInputElement).checked);
-        }
-      })
+    header: productSelectionHeader,
+    cell: ({ row }) => productSelectionCell(row.original)
   },
   {
     accessorKey: 'subject',
@@ -891,16 +930,8 @@ function formatProductScore(score: number): string {
 const qualityColumns: DataColumn<Product>[] = [
   {
     id: 'select',
-    header: '选择',
-    cell: ({ row }) =>
-      h('input', {
-        type: 'checkbox',
-        'aria-label': `选择 ${row.original.subject}`,
-        checked: selectedProductIds.value.includes(row.original.id),
-        onChange: (event: Event) => {
-          toggleProduct(row.original.id, (event.target as HTMLInputElement).checked);
-        }
-      })
+    header: productSelectionHeader,
+    cell: ({ row }) => productSelectionCell(row.original)
   },
   {
     accessorKey: 'subject',
@@ -1479,6 +1510,13 @@ watch([categoryId, editProductId], () => {
 
 watch([subject, language], () => {
   productPage.value = 1;
+  clearProductSelection();
+});
+
+watch([productPage, productPageSize], clearProductSelection);
+
+watch(currentPageProductIds, (productIds) => {
+  selectedProductIds.value = retainCurrentPageSelection(selectedProductIds.value, productIds);
 });
 
 watch(
@@ -1548,18 +1586,38 @@ onBeforeUnmount(() => {
     {{ feedback }}
   </p>
   <template v-if="workspace === 'list'">
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div
+      class="mb-4 flex flex-wrap items-center justify-between gap-3"
+      role="toolbar"
+      aria-label="商品列表操作"
+    >
       <div class="relative min-w-64 max-w-md flex-1">
         <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
         <Input v-model="subject" class="pl-9" placeholder="按标题搜索" />
       </div>
-      <div class="flex flex-wrap gap-2">
+      <div class="flex flex-wrap items-center justify-end gap-2">
+        <Badge variant="secondary" aria-live="polite">已选 {{ selectedProducts.length }} 个</Badge>
+        <Button
+          size="sm"
+          variant="ghost"
+          :disabled="selectedProducts.length === 0 || productTransferBusy"
+          @click="clearProductSelection"
+          >清空</Button
+        >
+        <span
+          v-if="selectedProducts.length > MAX_PRODUCT_TRANSFER_ITEMS"
+          class="text-xs text-amber-700 dark:text-amber-400"
+          role="status"
+        >
+          单次最多导出 {{ MAX_PRODUCT_TRANSFER_ITEMS }} 个商品
+        </span>
         <Button variant="outline" :disabled="productTransferBusy" @click="openProductImportDialog">
           <Upload class="size-4" />导入
         </Button>
         <Button
           variant="outline"
-          :disabled="selectedProducts.length === 0 || productTransferBusy"
+          :disabled="Boolean(productExportDisabledReason)"
+          :title="productExportDisabledReason || undefined"
           @click="openProductExportDialog"
         >
           <Download class="size-4" />导出
@@ -2008,11 +2066,10 @@ onBeforeUnmount(() => {
             :aria-label="`商品质量 ${product.subject}`"
           >
             <div class="flex items-start gap-3">
-              <input
-                type="checkbox"
-                :aria-label="`选择 ${product.subject}`"
+              <TriStateCheckbox
                 :checked="selectedProductIds.includes(product.id)"
-                @change="toggleProduct(product.id, ($event.target as HTMLInputElement).checked)"
+                :label="`选择 ${product.subject}`"
+                @update:checked="toggleProduct(product.id, $event)"
               />
               <div class="min-w-0 flex-1">
                 <p class="font-medium">{{ product.subject }}</p>

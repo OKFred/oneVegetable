@@ -122,6 +122,21 @@ test('web mock exports a product JSON and imports it into the local review queue
   });
   await page.getByRole('link', { name: '商品' }).click();
   await expect(page.getByText('Portable solar power station 1000W')).toBeVisible();
+  const productToolbar = page.getByRole('toolbar', { name: '商品列表操作' });
+  const selectCurrentPage = page.getByLabel('选择本页全部 3 个商品');
+  await expect(productToolbar).toContainText('已选 0 个');
+  await expect(selectCurrentPage).not.toBeChecked();
+  await page.getByLabel('选择 Portable solar power station 1000W').check();
+  await expect(productToolbar).toContainText('已选 1 个');
+  await expect(selectCurrentPage).toHaveAttribute('aria-checked', 'mixed');
+  await expect
+    .poll(() => selectCurrentPage.evaluate((element) => (element as HTMLInputElement).indeterminate))
+    .toBe(true);
+  await selectCurrentPage.check();
+  await expect(page.getByLabel('取消选择本页全部 3 个商品')).toBeChecked();
+  await expect(productToolbar).toContainText('已选 3 个');
+  await productToolbar.getByRole('button', { name: '清空', exact: true }).click();
+  await expect(productToolbar).toContainText('已选 0 个');
   await page.getByRole('button', { name: '切换到夜间模式' }).click();
 
   await page.getByRole('button', { name: '导入', exact: true }).click();
