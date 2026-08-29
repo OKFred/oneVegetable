@@ -2,9 +2,11 @@
 import { computed, h, ref, watch } from 'vue';
 import { useMutation, useQuery } from '@tanstack/vue-query';
 import { Calculator, ClipboardList, MapPin, PackageCheck, RefreshCw, ShieldAlert, Truck } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 
 import type { LogisticsOrderSummary, LogisticsQuoteRequest } from '@one-vegetable/core';
 
+import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -45,6 +47,32 @@ const logisticsRestrictionReason = computed(() =>
     '当前环境未开放 OneTouch 国际物流试算'
   )
 );
+const quoteDisabledReason = computed(() => {
+  if (quoteBlocked.value) return logisticsRestrictionReason.value;
+  if (calculateQuote.isPending.value) return '正在向平台查询运费方案';
+  return '';
+});
+const ordersDisabledReason = computed(() => {
+  if (ordersBlocked.value) {
+    return operationAvailabilityMessage(
+      logisticsOperations.reasonCode('listLogisticsOrders'),
+      '当前环境未开放物流订单查询'
+    );
+  }
+  if (orders.isFetching.value) return '正在刷新物流订单';
+  return '';
+});
+const createOrderDisabledReason = computed(() => {
+  if (createOrderBlocked.value) {
+    return operationAvailabilityMessage(
+      logisticsOperations.reasonCode('createLogisticsOrder'),
+      '当前环境未开放真实物流下单'
+    );
+  }
+  if (!selectedQuote.value) return '请先在“运费试算”生成可用方案';
+  if (createOrder.isPending.value) return '物流订单正在提交';
+  return '';
+});
 const destinationCountryCode = ref('US');
 const destinationZipCode = ref('07005');
 const originZipCode = ref('518000');
@@ -146,7 +174,8 @@ const addressNodes = useQuery({
 });
 
 const calculateQuote = useMutation({
-  mutationFn: () => gateway.request('calculateLogisticsQuote', buildQuoteRequest())
+  mutationFn: () => gateway.request('calculateLogisticsQuote', buildQuoteRequest()),
+  onSuccess: (result) => toast.success(`运费试算完成，共返回 ${result.options.length} 个方案。`)
 });
 const selectedQuote = computed(() => calculateQuote.data.value?.options.find((option) => option.available));
 const createOrder = useMutation({
@@ -157,7 +186,8 @@ const createOrder = useMutation({
       quoteRequest: buildQuoteRequest(),
       confirmedProductCode: quote.productCode
     });
-  }
+  },
+  onSuccess: () => toast.success('物流订单已提交。')
 });
 
 function buildQuoteRequest(): LogisticsQuoteRequest {
@@ -390,13 +420,11 @@ const workspaces: { id: Workspace; label: string }[] = [
           <label class="space-y-1 text-sm"><span>高 cm</span><Input v-model="packageHeight" /></label>
           <label class="space-y-1 text-sm"><span>重量 kg</span><Input v-model="packageWeight" /></label>
         </div>
-        <Button
-          class="mt-5"
-          :disabled="quoteBlocked || calculateQuote.isPending.value"
-          @click="calculateQuote.mutate()"
-        >
-          <Calculator class="size-4" />{{ quoteBlocked ? '业务资格待验收' : '开始试算' }}
-        </Button>
+        <ActionTooltip :disabled="Boolean(quoteDisabledReason)" :reason="quoteDisabledReason">
+          <Button class="mt-5" :disabled="Boolean(quoteDisabledReason)" @click="calculateQuote.mutate()">
+            <Calculator class="size-4" />{{ quoteBlocked ? '业务资格待验收' : '开始试算' }}
+          </Button>
+        </ActionTooltip>
         <ErrorNotice
           v-if="calculateQuote.error.value"
           class="mt-3"
@@ -430,16 +458,19 @@ const workspaces: { id: Workspace; label: string }[] = [
     <Card class="mb-4 p-4">
       <div class="grid gap-3 md:grid-cols-[1fr_auto]">
         <Input v-model="orderNumberFilter" placeholder="按物流订单号过滤" />
-        <Button
-          variant="outline"
-          :disabled="ordersBlocked || orders.isFetching.value"
-          @click="orders.refetch()"
-        >
-          <RefreshCw class="size-4" />刷新
-        </Button>
+        <ActionTooltip :disabled="Boolean(ordersDisabledReason)" :reason="ordersDisabledReason">
+          <Button variant="outline" :disabled="Boolean(ordersDisabledReason)" @click="orders.refetch()">
+            <RefreshCw :class="['size-4', orders.isFetching.value ? 'animate-spin' : '']" />刷新
+          </Button>
+        </ActionTooltip>
       </div>
     </Card>
-    <QueryState :loading="orders.isPending.value && !ordersBlocked" :error="orders.error.value">
+    <QueryState
+      :loading="orders.isPending.value && !ordersBlocked"
+      :error="orders.error.value"
+      :retryable="!ordersBlocked"
+      @retry="orders.refetch()"
+    >
       <DataTable
         :columns="columns"
         :data="orders.data.value?.items ?? []"
@@ -453,7 +484,17 @@ const workspaces: { id: Workspace; label: string }[] = [
         :active-row-key="logisticsOrderSheetOpen ? selectedOrderNumber : undefined"
         :row-aria-label="(order) => `查看物流订单 ${order.orderNumber}`"
         @row-activate="selectLogisticsOrder"
-      />
+      >
+        <template #empty>
+          <div class="space-y-3 py-4">
+            <p>{{ orderNumberFilter ? '没有匹配物流订单' : '当前账号暂无物流订单' }}</p>
+            <Button v-if="orderNumberFilter" variant="outline" size="sm" @click="orderNumberFilter = ''"
+              >清除过滤条件</Button
+            >
+            <Button v-else variant="outline" size="sm" @click="orders.refetch()">重新加载</Button>
+          </div>
+        </template>
+      </DataTable>
     </QueryState>
     <Sheet
       :open="logisticsOrderSheetOpen"
@@ -469,7 +510,12 @@ const workspaces: { id: Workspace; label: string }[] = [
           </span>
         </div>
       </template>
-      <QueryState :loading="orderDetail.isPending.value" :error="orderDetail.error.value">
+      <QueryState
+        :loading="orderDetail.isPending.value"
+        :error="orderDetail.error.value"
+        retryable
+        @retry="orderDetail.refetch()"
+      >
         <Card v-if="orderDetail.data.value" class="p-5">
           <div>
             <p class="font-semibold">订单信息</p>
@@ -544,7 +590,12 @@ const workspaces: { id: Workspace; label: string }[] = [
           <Truck class="size-4 text-primary" />
           <h2 class="font-semibold">运费模板</h2>
         </div>
-        <QueryState :loading="shippingTemplates.isPending.value" :error="shippingTemplates.error.value">
+        <QueryState
+          :loading="shippingTemplates.isPending.value"
+          :error="shippingTemplates.error.value"
+          retryable
+          @retry="shippingTemplates.refetch()"
+        >
           <div class="space-y-2">
             <div
               v-for="template in shippingTemplates.data.value ?? []"
@@ -596,13 +647,11 @@ const workspaces: { id: Workspace; label: string }[] = [
             />
           </fieldset>
         </div>
-        <Button
-          class="mt-5"
-          :disabled="createOrderBlocked || !selectedQuote || createOrder.isPending.value"
-          @click="createOrder.mutate()"
-        >
-          <PackageCheck class="size-4" />{{ createOrderBlocked ? '真实下单保持禁用' : '提交物流订单' }}
-        </Button>
+        <ActionTooltip :disabled="Boolean(createOrderDisabledReason)" :reason="createOrderDisabledReason">
+          <Button class="mt-5" :disabled="Boolean(createOrderDisabledReason)" @click="createOrder.mutate()">
+            <PackageCheck class="size-4" />{{ createOrderBlocked ? '真实下单保持禁用' : '提交物流订单' }}
+          </Button>
+        </ActionTooltip>
         <p v-if="!selectedQuote" class="mt-2 text-xs text-amber-700">请先在“运费试算”生成可用方案。</p>
         <ErrorNotice v-if="createOrder.error.value" class="mt-3" :error="createOrder.error.value" compact />
       </Card>

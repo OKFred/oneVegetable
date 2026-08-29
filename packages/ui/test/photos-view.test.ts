@@ -4,12 +4,17 @@ import { defineComponent, h } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { describe, expect, it, vi } from 'vitest';
+import { toast } from 'vue-sonner';
 
 import { OPERATION_IDS, StaticOperationAvailabilityClient, type OperationId } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import { provideServices } from '../src/lib/services';
 import PhotosView from '../src/views/PhotosView.vue';
+
+vi.mock('vue-sonner', () => ({
+  toast: { success: vi.fn() }
+}));
 
 function mountView(
   mode: 'mock' | 'extension' = 'mock',
@@ -83,7 +88,7 @@ describe('PhotosView', () => {
     await wrapper.get('input[aria-label="图库分组名称"]').setValue('主图新版');
     await button(wrapper, '改名').trigger('click');
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('分组已保存：主图新版');
+      expect(toast.success).toHaveBeenCalledWith('分组已保存：主图新版');
       expect(wrapper.text()).toContain('主图新版');
     });
     wrapper.unmount();
@@ -119,7 +124,7 @@ describe('PhotosView', () => {
     if (!(confirm instanceof HTMLButtonElement)) throw new Error('Missing delete confirmation button');
     confirm.click();
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('已删除所选分组');
+      expect(toast.success).toHaveBeenCalledWith('已删除所选分组');
     });
     wrapper.unmount();
   });

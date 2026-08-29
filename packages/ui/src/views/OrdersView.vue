@@ -14,9 +14,11 @@ import {
   ShieldAlert,
   Truck
 } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 
 import type { TradeOrderDraft, TradeOrderSummary } from '@one-vegetable/core';
 
+import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -143,8 +145,15 @@ const draftComplete = computed(
     /^\d+(?:\.\d+)?$/.test(draftQuantity.value) &&
     /^\d+(?:\.\d+)?$/.test(draftUnitPrice.value)
 );
+const createOrderDisabledReason = computed(() => {
+  if (mutationBlocked.value) return mutationDisabledReason.value;
+  if (createOrder.isPending.value) return '信保订单正在提交';
+  if (!draftComplete.value) return '请完整填写买家、商品 ID、标题、数量和单价';
+  return '';
+});
 const createOrder = useMutation({
-  mutationFn: () => gateway.request('createTradeOrder', orderDraft())
+  mutationFn: () => gateway.request('createTradeOrder', orderDraft()),
+  onSuccess: (result) => toast.success(`信保订单已创建：${result.id}`)
 });
 
 function orderDraft(): TradeOrderDraft {
@@ -369,7 +378,12 @@ onBeforeUnmount(() => {
         官方文档仅写“美国时间”，未给出精确时区；筛选值将原样发送，不擅自换算。
       </p>
     </Card>
-    <QueryState :loading="orders.isPending.value" :error="orders.error.value">
+    <QueryState
+      :loading="orders.isPending.value"
+      :error="orders.error.value"
+      retryable
+      @retry="orders.refetch()"
+    >
       <DataTable
         :columns="columns"
         :data="orders.data.value?.items ?? []"
@@ -383,7 +397,24 @@ onBeforeUnmount(() => {
         :active-row-key="orderSheetOpen ? selectedOrderId : undefined"
         :row-aria-label="(order) => `查看订单 ${order.id}`"
         @row-activate="selectOrder"
-      />
+      >
+        <template #empty>
+          <div class="space-y-3 py-4">
+            <p>{{ status || buyerLoginId ? '没有匹配订单' : '当前账号暂无订单' }}</p>
+            <Button
+              v-if="status || buyerLoginId"
+              variant="outline"
+              size="sm"
+              @click="
+                status = '';
+                buyerLoginId = '';
+              "
+              >清除筛选</Button
+            >
+            <Button v-else variant="outline" size="sm" @click="orders.refetch()">重新加载</Button>
+          </div>
+        </template>
+      </DataTable>
     </QueryState>
   </template>
 
@@ -391,7 +422,12 @@ onBeforeUnmount(() => {
     <div class="grid gap-4 xl:grid-cols-2">
       <Card class="p-5">
         <h2 class="font-semibold">履约通道</h2>
-        <QueryState :loading="fulfillmentChannels.isPending.value" :error="fulfillmentChannels.error.value">
+        <QueryState
+          :loading="fulfillmentChannels.isPending.value"
+          :error="fulfillmentChannels.error.value"
+          retryable
+          @retry="fulfillmentChannels.refetch()"
+        >
           <div class="mt-3 space-y-2">
             <div
               v-for="channel in fulfillmentChannels.data.value ?? []"
@@ -416,7 +452,12 @@ onBeforeUnmount(() => {
           <h2 class="font-semibold">服务费率</h2>
           <Input v-model="serviceCurrency" class="w-24" aria-label="服务费币种" />
         </div>
-        <QueryState :loading="serviceCharge.isPending.value" :error="serviceCharge.error.value">
+        <QueryState
+          :loading="serviceCharge.isPending.value"
+          :error="serviceCharge.error.value"
+          retryable
+          @retry="serviceCharge.refetch()"
+        >
           <div
             v-for="(item, index) in serviceCharge.data.value?.items ?? []"
             :key="index"
@@ -449,7 +490,12 @@ onBeforeUnmount(() => {
     <div class="grid gap-4 xl:grid-cols-2">
       <Card class="p-5">
         <h2 class="font-semibold">官方地址表单 Schema</h2>
-        <QueryState :loading="addressSchema.isPending.value" :error="addressSchema.error.value">
+        <QueryState
+          :loading="addressSchema.isPending.value"
+          :error="addressSchema.error.value"
+          retryable
+          @retry="addressSchema.refetch()"
+        >
           <div class="mt-3 space-y-2">
             <div
               v-for="field in addressSchema.data.value?.fields ?? []"
@@ -471,7 +517,13 @@ onBeforeUnmount(() => {
         <p v-if="!buyerEmail.includes('@')" class="mt-3 text-sm text-muted-foreground">
           输入有效邮箱后查询。
         </p>
-        <QueryState v-else :loading="addresses.isPending.value" :error="addresses.error.value">
+        <QueryState
+          v-else
+          :loading="addresses.isPending.value"
+          :error="addresses.error.value"
+          retryable
+          @retry="addresses.refetch()"
+        >
           <div
             v-for="address in addresses.data.value ?? []"
             :key="address.id"
@@ -484,7 +536,12 @@ onBeforeUnmount(() => {
             <code class="mt-2 block text-xs text-muted-foreground">{{ address.id }}</code>
           </div>
         </QueryState>
-        <Button class="mt-4" variant="outline" disabled>新增地址（真实写入待账号验收）</Button>
+        <ActionTooltip
+          :disabled="true"
+          reason="当前只接入地址 Schema 和地址查询；国际站地址写入尚未完成账号验收。"
+        >
+          <Button class="mt-4" variant="outline" disabled>新增地址</Button>
+        </ActionTooltip>
       </Card>
     </div>
   </template>
@@ -509,12 +566,11 @@ onBeforeUnmount(() => {
         <Input v-model="draftUnitPrice" inputmode="decimal" placeholder="单价" />
       </div>
       <div class="mt-4 flex flex-wrap items-center gap-3">
-        <Button
-          :disabled="mutationBlocked || !draftComplete || createOrder.isPending.value"
-          @click="createOrder.mutate()"
-        >
-          {{ mode === 'mock' ? '创建演示信保订单' : '创建信保订单（未开放）' }}
-        </Button>
+        <ActionTooltip :disabled="Boolean(createOrderDisabledReason)" :reason="createOrderDisabledReason">
+          <Button :disabled="Boolean(createOrderDisabledReason)" @click="createOrder.mutate()">
+            {{ mode === 'mock' ? '创建演示信保订单' : '创建信保订单（未开放）' }}
+          </Button>
+        </ActionTooltip>
         <Badge v-if="mutationBlocked" variant="warning">{{ mutationDisabledReason }}</Badge>
         <Badge v-else variant="success">Web 演示</Badge>
       </div>
@@ -609,7 +665,12 @@ onBeforeUnmount(() => {
           </div>
         </Card>
 
-        <QueryState :loading="aggregate.isPending.value" :error="aggregate.error.value">
+        <QueryState
+          :loading="aggregate.isPending.value"
+          :error="aggregate.error.value"
+          retryable
+          @retry="aggregate.refetch()"
+        >
           <div class="grid gap-4 sm:grid-cols-2">
             <Card class="p-4">
               <Banknote class="mb-2 size-5 text-primary" />
@@ -648,7 +709,12 @@ onBeforeUnmount(() => {
       </section>
 
       <section v-else aria-label="TT 汇款信息">
-        <QueryState :loading="ttAccount.isPending.value" :error="ttAccount.error.value">
+        <QueryState
+          :loading="ttAccount.isPending.value"
+          :error="ttAccount.error.value"
+          retryable
+          @retry="ttAccount.refetch()"
+        >
           <Card v-if="ttAccount.data.value" class="space-y-4 p-5">
             <div class="grid gap-4 sm:grid-cols-2">
               <div>

@@ -33,7 +33,12 @@ const summary = useQuery({
       {{ dataSource.label }}
     </span>
   </PageHeader>
-  <QueryState :loading="summary.isPending.value" :error="summary.error.value">
+  <QueryState
+    :loading="summary.isPending.value"
+    :error="summary.error.value"
+    retryable
+    @retry="summary.refetch()"
+  >
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <DashboardMetricCard
         title="商品"

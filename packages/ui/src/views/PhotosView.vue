@@ -2,9 +2,11 @@
 import { computed, ref } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import { Eye, FolderPlus, Pencil, ShieldCheck, Trash2, Upload } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 
 import type { Photo, PhotoGroup, PhotoGroupOperationRequest } from '@one-vegetable/core';
 
+import ActionTooltip from '../components/ActionTooltip.vue';
 import PageHeader from '../components/PageHeader.vue';
 import ImagePreview, { type ImagePreviewItem } from '../components/ImagePreview.vue';
 import PhotoGroupNavigation from '../components/PhotoGroupNavigation.vue';
@@ -43,6 +45,34 @@ const uploadDialogBlocked = computed(
 const groupMutationReason = computed(() =>
   operationAvailabilityMessage(photoMutations.reasonCode('operatePhotoGroup'), '当前环境未开放图库分组写入')
 );
+const uploadDialogReason = computed(() => {
+  if (!uploadDialogBlocked.value) return '';
+  return operationAvailabilityMessage(
+    [photoMutations.reasonCode('uploadPhoto'), photoMutations.reasonCode('transferPhotoFromUrl')]
+      .filter(Boolean)
+      .join(', '),
+    '当前环境未开放图库上传或外部 URL 转存'
+  );
+});
+const addGroupDisabledReason = computed(() => {
+  if (groupMutationBlocked.value) return groupMutationReason.value;
+  if (operateGroup.isPending.value) return '正在处理上一项图库分组操作';
+  if (!groupName.value.trim()) return '请先输入分组名称';
+  return '';
+});
+const renameGroupDisabledReason = computed(() => {
+  if (groupMutationBlocked.value) return groupMutationReason.value;
+  if (operateGroup.isPending.value) return '正在处理上一项图库分组操作';
+  if (selectedGroup.value === '-1') return '请先选择一个具体图库分组';
+  if (!groupName.value.trim()) return '请先输入新的分组名称';
+  return '';
+});
+const deleteGroupDisabledReason = computed(() => {
+  if (groupMutationBlocked.value) return groupMutationReason.value;
+  if (operateGroup.isPending.value) return '正在处理上一项图库分组操作';
+  if (selectedGroup.value === '-1') return '“全部图片”是虚拟根分组，不能删除';
+  return '';
+});
 const selectedGroupName = computed(() => selectedGroupDefinition.value?.name ?? '全部图片');
 const photos = useQuery({
   queryKey: ['photos', selectedGroup],
@@ -76,10 +106,12 @@ const previewImages = computed<ImagePreviewItem[]>(() =>
 const operateGroup = useMutation({
   mutationFn: (request: PhotoGroupOperationRequest) => gateway.request('operatePhotoGroup', request),
   onSuccess: async (result, request) => {
-    operationMessage.value =
+    const successMessage =
       request.operation === 'delete'
         ? '已删除所选分组'
         : `分组已保存：${result.group?.name ?? request.groupName ?? result.groupId}`;
+    operationMessage.value = '';
+    toast.success(successMessage);
     if (request.operation === 'delete') selectedGroup.value = '-1';
     deleteDialogOpen.value = false;
     groupName.value = '';
@@ -147,7 +179,8 @@ function openPreview(photo: Photo): void {
 }
 
 function handleUploaded(photo: Photo): void {
-  operationMessage.value = `已上传到图库：${photo.name}`;
+  operationMessage.value = '';
+  toast.success(`已上传到图库：${photo.name}`);
 }
 </script>
 
@@ -157,9 +190,11 @@ function handleUploaded(photo: Photo): void {
       <Badge :variant="mode === 'mock' ? 'secondary' : 'success'">
         {{ mode === 'mock' ? 'OpenAPI 演示' : mode === 'bff' ? 'BFF 后端查询' : 'Extension API 查询' }}
       </Badge>
-      <Button :disabled="uploadDialogBlocked" @click="uploadDialogOpen = true"
-        ><Upload class="size-4" />上传图片</Button
-      >
+      <ActionTooltip :disabled="uploadDialogBlocked" :reason="uploadDialogReason">
+        <Button :disabled="uploadDialogBlocked" @click="uploadDialogOpen = true">
+          <Upload class="size-4" />上传图片
+        </Button>
+      </ActionTooltip>
     </div>
   </PageHeader>
 
@@ -186,33 +221,33 @@ function handleUploaded(photo: Photo): void {
       <div class="mt-3 space-y-2 border-t pt-3">
         <Input v-model="groupName" aria-label="图库分组名称" placeholder="分组名称" />
         <div class="grid grid-cols-3 gap-1">
-          <Button
-            size="sm"
-            variant="outline"
-            :disabled="groupMutationBlocked || operateGroup.isPending.value || !groupName.trim()"
-            title="新增子分组"
-            @click="mutateGroup('add')"
-            ><FolderPlus class="size-3" />新增</Button
-          >
-          <Button
-            size="sm"
-            variant="outline"
-            :disabled="
-              groupMutationBlocked ||
-              operateGroup.isPending.value ||
-              selectedGroup === '-1' ||
-              !groupName.trim()
-            "
-            @click="mutateGroup('rename')"
-            ><Pencil class="size-3" />改名</Button
-          >
-          <Button
-            size="sm"
-            variant="outline"
-            :disabled="groupMutationBlocked || operateGroup.isPending.value || selectedGroup === '-1'"
-            @click="deleteDialogOpen = true"
-            ><Trash2 class="size-3" />删除</Button
-          >
+          <ActionTooltip :disabled="Boolean(addGroupDisabledReason)" :reason="addGroupDisabledReason">
+            <Button
+              size="sm"
+              variant="outline"
+              :disabled="Boolean(addGroupDisabledReason)"
+              @click="mutateGroup('add')"
+              ><FolderPlus class="size-3" />新增</Button
+            >
+          </ActionTooltip>
+          <ActionTooltip :disabled="Boolean(renameGroupDisabledReason)" :reason="renameGroupDisabledReason">
+            <Button
+              size="sm"
+              variant="outline"
+              :disabled="Boolean(renameGroupDisabledReason)"
+              @click="mutateGroup('rename')"
+              ><Pencil class="size-3" />改名</Button
+            >
+          </ActionTooltip>
+          <ActionTooltip :disabled="Boolean(deleteGroupDisabledReason)" :reason="deleteGroupDisabledReason">
+            <Button
+              size="sm"
+              variant="outline"
+              :disabled="Boolean(deleteGroupDisabledReason)"
+              @click="deleteDialogOpen = true"
+              ><Trash2 class="size-3" />删除</Button
+            >
+          </ActionTooltip>
         </div>
         <p v-if="mode !== 'mock' && !groupMutationBlocked" class="text-xs text-emerald-700">
           真实分组新增、改名和删除已完成账号验证；删除前会要求再次确认。
@@ -253,7 +288,12 @@ function handleUploaded(photo: Photo): void {
         </div>
       </Card>
 
-      <QueryState :loading="photos.isPending.value" :error="photos.error.value">
+      <QueryState
+        :loading="photos.isPending.value"
+        :error="photos.error.value"
+        retryable
+        @retry="photos.refetch()"
+      >
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           <Card v-for="photo in filteredPhotos" :key="photo.id" class="overflow-hidden">
             <button
@@ -292,7 +332,19 @@ function handleUploaded(photo: Photo): void {
           </Card>
         </div>
         <Card v-if="filteredPhotos.length === 0" class="p-8 text-center text-sm text-muted-foreground">
-          当前筛选下没有素材。
+          <p>当前筛选下没有素材。</p>
+          <div class="mt-3 flex justify-center gap-2">
+            <Button
+              v-if="governanceFilter !== 'all'"
+              variant="outline"
+              size="sm"
+              @click="governanceFilter = 'all'"
+              >清除筛选</Button
+            >
+            <Button v-else size="sm" :disabled="uploadDialogBlocked" @click="uploadDialogOpen = true">
+              上传图片
+            </Button>
+          </div>
         </Card>
       </QueryState>
     </section>

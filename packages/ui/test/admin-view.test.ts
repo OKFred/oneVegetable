@@ -14,7 +14,7 @@ import AdminView from '../src/views/AdminView.vue';
 const requestId = '3d7c8523-93cc-48b7-a615-a23d2976c516';
 
 describe('AdminView', () => {
-  it('correlates request diagnostics and requires a second click before retention cleanup', async () => {
+  it('correlates request diagnostics and confirms retention cleanup in a dialog', async () => {
     const listRequestEvents = vi.fn<ControlClient['listRequestEvents']>(() =>
       Promise.resolve({
         total: 41,
@@ -63,11 +63,52 @@ describe('AdminView', () => {
     const purge = wrapper.get('[data-testid="purge-request-events"]');
     await purge.trigger('click');
     expect(purgeRequestEvents).not.toHaveBeenCalled();
-    expect(purge.text()).toContain('确认清理');
-    await purge.trigger('click');
+    expect(document.body.textContent).toContain('确认清理请求诊断');
+    const confirm = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.textContent.trim() === '确认继续'
+    );
+    expect(confirm).toBeDefined();
+    confirm?.click();
     await flushPromises();
     expect(purgeRequestEvents).toHaveBeenCalledOnce();
     expect(wrapper.text()).toContain('已清理 4 条请求诊断');
+    wrapper.unmount();
+  });
+
+  it('confirms password reset and shows the temporary password only in a one-time dialog', async () => {
+    const control = controlFixture(
+      () => Promise.resolve({ items: [], total: 0 }),
+      () => Promise.resolve({ deletedCount: 0, retentionDays: 30, cutoffTimeUtc: 1 })
+    );
+    const resetPassword = vi.fn<ControlClient['resetPassword']>(() =>
+      Promise.resolve({ user: sessionFixture().user, temporaryPassword: 'temporary-secret-123' })
+    );
+    control.resetPassword = resetPassword;
+    const wrapper = mountView(control);
+    await flushPromises();
+
+    const reset = wrapper.findAll('button').find((button) => button.text().includes('重置密码'));
+    if (!reset) throw new Error('Missing reset password action');
+    await reset.trigger('click');
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('确认重置密码');
+    });
+    const confirm = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.textContent.trim() === '确认继续'
+    );
+    if (!confirm) throw new Error('Missing reset confirmation');
+    confirm.click();
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('temporary-secret-123');
+    });
+    expect(wrapper.text()).not.toContain('temporary-secret-123');
+    const close = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.textContent.trim() === '我已保存，关闭'
+    );
+    if (!close) throw new Error('Missing temporary password close action');
+    close.click();
+    await flushPromises();
+    expect(document.body.textContent).not.toContain('temporary-secret-123');
     wrapper.unmount();
   });
 });

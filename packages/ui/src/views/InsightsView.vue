@@ -169,7 +169,12 @@ const workspaces: { id: Workspace; label: string }[] = [
       </Card>
       <Card class="p-5">
         <h2 class="font-semibold">排名时间序列</h2>
-        <QueryState :loading="rank.isPending.value" :error="rank.error.value">
+        <QueryState
+          :loading="rank.isPending.value"
+          :error="rank.error.value"
+          retryable
+          @retry="rank.refetch()"
+        >
           <div class="mt-5 space-y-3">
             <div
               v-for="item in rank.data.value?.items ?? []"
@@ -203,7 +208,12 @@ const workspaces: { id: Workspace; label: string }[] = [
           <Badge variant="outline">{{ suppliers.data.value?.total ?? 0 }} 个</Badge>
         </div>
         <p class="mt-2 text-xs text-muted-foreground">官方仅返回加密供应商 ID，不补造公司名称。</p>
-        <QueryState :loading="suppliers.isPending.value" :error="suppliers.error.value">
+        <QueryState
+          :loading="suppliers.isPending.value"
+          :error="suppliers.error.value"
+          retryable
+          @retry="suppliers.refetch()"
+        >
           <div class="mt-4 overflow-hidden rounded-lg border">
             <div class="space-y-2 p-2">
               <button
@@ -248,7 +258,12 @@ const workspaces: { id: Workspace; label: string }[] = [
           <p class="mb-3 text-xs text-muted-foreground">
             当前供应商：<code>{{ selectedSupplierId }}</code>
           </p>
-          <QueryState :loading="supplierProducts.isPending.value" :error="supplierProducts.error.value">
+          <QueryState
+            :loading="supplierProducts.isPending.value"
+            :error="supplierProducts.error.value"
+            retryable
+            @retry="supplierProducts.refetch()"
+          >
             <DataTable
               :columns="productColumns"
               :data="supplierProducts.data.value?.items ?? []"

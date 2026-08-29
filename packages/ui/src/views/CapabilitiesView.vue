@@ -5,6 +5,7 @@ import { ExternalLink, Play, Search, ShieldAlert } from '@lucide/vue';
 
 import { type ApiCapability, type CapabilityDefinition } from '@one-vegetable/core';
 
+import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -99,6 +100,18 @@ const platformNotice = computed(() => {
   if (selected.value?.method === 'alibaba.icbu.task.status.notify') {
     return '这是 URL 爬取供应商的状态回调，不是卖家操作。没有平台下发的真实任务上下文时禁止调用。';
   }
+  return '';
+});
+const callDisabledReason = computed(() => {
+  if (!selected.value) return '请先选择 API 能力';
+  if (selected.value.restricted) {
+    return selected.value.restrictionReason ?? '该能力需要专用业务资格或上下文';
+  }
+  if (!selected.value.enabled) return '该能力当前未启用';
+  if (realCallBlocked.value) return '该真实写能力未在当前扩展版本开放';
+  if (call.isPending.value) return '能力调用正在执行';
+  if (definitionError.value) return `能力定义加载失败：${definitionError.value}`;
+  if (!definition.value || definitionMethod.value !== selected.value.method) return '能力定义仍在加载';
   return '';
 });
 
@@ -272,7 +285,12 @@ function matrixBadge(cell: CapabilityMatrixCell) {
       {{ accountSnapshotNotice }} 当前运行列展示应用数据源和调用门禁，实际权限以本次调用结果为准。
     </p>
   </div>
-  <QueryState :loading="capabilities.isPending.value" :error="capabilities.error.value">
+  <QueryState
+    :loading="capabilities.isPending.value"
+    :error="capabilities.error.value"
+    retryable
+    @retry="capabilities.refetch()"
+  >
     <DataTable
       :columns="columns"
       :data="filtered"
@@ -282,7 +300,23 @@ function matrixBadge(cell: CapabilityMatrixCell) {
       :active-row-key="capabilitySheetOpen ? selected?.method : undefined"
       :row-aria-label="(capability) => `查看 API ${capability.method}`"
       @row-activate="selectCapability"
-    />
+    >
+      <template #empty>
+        <div class="space-y-3 py-4">
+          <p>没有匹配的 API</p>
+          <Button
+            variant="outline"
+            size="sm"
+            @click="
+              search = '';
+              domain = 'all';
+              accountVerification = 'all';
+            "
+            >清除筛选</Button
+          >
+        </div>
+      </template>
+    </DataTable>
   </QueryState>
 
   <Sheet
@@ -385,19 +419,11 @@ function matrixBadge(cell: CapabilityMatrixCell) {
         JSON.stringify(call.data.value, null, 2)
       }}</pre>
       <ErrorNotice v-if="call.error.value" class="mt-3" :error="call.error.value" compact />
-      <Button
-        class="mt-3"
-        :disabled="
-          selected.restricted ||
-          !selected.enabled ||
-          realCallBlocked ||
-          call.isPending.value ||
-          !definition ||
-          definitionMethod !== selected.method
-        "
-        @click="call.mutate()"
-        ><Play class="size-4" />调用能力</Button
-      >
+      <ActionTooltip :disabled="Boolean(callDisabledReason)" :reason="callDisabledReason">
+        <Button class="mt-3" :disabled="Boolean(callDisabledReason)" @click="call.mutate()">
+          <Play class="size-4" />调用能力
+        </Button>
+      </ActionTooltip>
     </div>
   </Sheet>
 </template>

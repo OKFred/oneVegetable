@@ -2,6 +2,7 @@
 import { computed, h, ref, watch } from 'vue';
 import { useMutation, useQuery } from '@tanstack/vue-query';
 import { FileText, Paperclip, Save, Search, Send, ShieldAlert, Sparkles } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 
 import {
   normalizeGatewayError,
@@ -11,6 +12,7 @@ import {
   type RfqSummary
 } from '@one-vegetable/core';
 
+import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -145,24 +147,43 @@ const mutationAvailabilityReason = computed(() => {
   ].filter((reasonCode, index, values) => reasonCode && values.indexOf(reasonCode) === index);
   return operationAvailabilityMessage(reasonCodes.join(', ') || null, '真实附件上传或报价提交未开放');
 });
-const draftComplete = computed(
-  () =>
-    selectedRfqId.value !== '' &&
-    draft.value.message.trim() !== '' &&
-    draft.value.itemName.trim() !== '' &&
-    draft.value.unitPrice.trim() !== '' &&
-    draft.value.quantity.trim() !== '' &&
-    draft.value.port.trim() !== ''
+const missingQuotationFields = computed(() => {
+  const missing: string[] = [];
+  if (!selectedRfqId.value) missing.push('RFQ');
+  if (!draft.value.message.trim()) missing.push('给买家留言');
+  if (!draft.value.itemName.trim()) missing.push('商品名称');
+  if (!draft.value.unitPrice.trim()) missing.push('单价');
+  if (!draft.value.quantity.trim()) missing.push('数量');
+  if (!draft.value.port.trim()) missing.push('装运港');
+  return missing;
+});
+const attachmentDisabledReason = computed(() =>
+  attachmentMutationBlocked.value
+    ? operationAvailabilityMessage(rfqMutations.reasonCode('uploadRfqAttachment'), '当前环境未开放附件上传')
+    : ''
 );
+const quotationDisabledReason = computed(() => {
+  if (quotationMutationBlocked.value) {
+    return operationAvailabilityMessage(
+      rfqMutations.reasonCode('submitRfqQuotation'),
+      '当前环境未开放真实报价提交'
+    );
+  }
+  if (submitQuotation.isPending.value) return '报价正在提交，请稍候';
+  if (missingQuotationFields.value.length) return `请先填写：${missingQuotationFields.value.join('、')}`;
+  return '';
+});
 
 const submitQuotation = useMutation({
-  mutationFn: () => gateway.request('submitRfqQuotation', quotationPayload())
+  mutationFn: () => gateway.request('submitRfqQuotation', quotationPayload()),
+  onSuccess: () => toast.success('RFQ 报价已提交。')
 });
 const uploadAttachment = useMutation({
   mutationFn: (payload: RfqAttachmentUploadRequest) => gateway.request('uploadRfqAttachment', payload),
   onSuccess: (result) => {
     draft.value.attachmentFilesString = result.filesString;
     saveDraft();
+    toast.success('报价附件已上传并写入当前草稿。');
   }
 });
 
@@ -488,7 +509,12 @@ const columns: DataColumn<RfqSummary>[] = [
       </Button>
     </div>
 
-    <QueryState :loading="rfqListLoading" :error="rfqs.error.value">
+    <QueryState
+      :loading="rfqListLoading"
+      :error="rfqs.error.value"
+      :retryable="rfqWorkspaceReady"
+      @retry="rfqs.refetch()"
+    >
       <DataTable
         :columns="columns"
         :data="rfqs.data.value?.items ?? []"
@@ -529,7 +555,12 @@ const columns: DataColumn<RfqSummary>[] = [
               <p class="mt-1 text-sm text-muted-foreground">采购要求、贸易条款和买家附件</p>
             </div>
           </div>
-          <QueryState :loading="detail.isPending.value" :error="detail.error.value">
+          <QueryState
+            :loading="detail.isPending.value"
+            :error="detail.error.value"
+            retryable
+            @retry="detail.refetch()"
+          >
             <p class="mt-4 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
               {{ detail.data.value?.description || '文档响应未提供详细描述。' }}
             </p>
@@ -627,25 +658,32 @@ const columns: DataColumn<RfqSummary>[] = [
 
           <div class="mt-4 flex flex-wrap items-center gap-2">
             <Button variant="outline" @click="saveDraft"><Save class="size-4" />保存草稿</Button>
-            <label
-              class="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border bg-background px-4 text-sm font-medium hover:bg-accent"
-              :class="attachmentMutationBlocked ? 'pointer-events-none opacity-50' : ''"
-            >
-              <Paperclip class="size-4" />{{ attachmentName || '报价附件' }}
-              <input
-                type="file"
-                class="sr-only"
-                :disabled="attachmentMutationBlocked"
-                @change="selectAttachment"
-              />
-            </label>
-            <Button
-              :disabled="quotationMutationBlocked || !draftComplete || submitQuotation.isPending.value"
-              @click="submitQuotation.mutate()"
-            >
-              <Send class="size-4" />提交报价
-            </Button>
+            <ActionTooltip :disabled="attachmentMutationBlocked" :reason="attachmentDisabledReason">
+              <label
+                class="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border bg-background px-4 text-sm font-medium hover:bg-accent"
+                :class="attachmentMutationBlocked ? 'pointer-events-none opacity-50' : ''"
+              >
+                <Paperclip class="size-4" />{{ attachmentName || '报价附件' }}
+                <input
+                  type="file"
+                  class="sr-only"
+                  :disabled="attachmentMutationBlocked"
+                  @change="selectAttachment"
+                />
+              </label>
+            </ActionTooltip>
+            <ActionTooltip :disabled="Boolean(quotationDisabledReason)" :reason="quotationDisabledReason">
+              <Button :disabled="Boolean(quotationDisabledReason)" @click="submitQuotation.mutate()">
+                <Send class="size-4" />提交报价
+              </Button>
+            </ActionTooltip>
           </div>
+          <p
+            v-if="!quotationMutationBlocked && missingQuotationFields.length"
+            class="mt-2 text-xs text-amber-700 dark:text-amber-400"
+          >
+            提交前还需填写：{{ missingQuotationFields.join('、') }}。
+          </p>
           <p v-if="attachmentError" class="mt-2 text-sm text-destructive">{{ attachmentError }}</p>
           <ErrorNotice
             v-if="uploadAttachment.error.value"

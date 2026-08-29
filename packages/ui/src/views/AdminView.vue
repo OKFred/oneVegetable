@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, h, onMounted, ref } from 'vue';
-import { RefreshCw, ShieldCheck, Trash2, UserPlus } from '@lucide/vue';
+import { Copy, RefreshCw, ShieldCheck, Trash2, UserPlus } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 
 import { API_CAPABILITIES } from '@one-vegetable/core';
 import type {
@@ -14,6 +15,8 @@ import type {
 import Card from '../components/ui/Card.vue';
 import Button from '../components/ui/Button.vue';
 import Input from '../components/ui/Input.vue';
+import ModalDialog from '../components/ui/ModalDialog.vue';
+import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -43,8 +46,52 @@ const password = ref('');
 const role = ref<ControlUserRole>('user');
 const remark = ref('');
 const requestIdFilter = ref('');
-const purgeArmed = ref(false);
 const remarkDrafts = ref<Record<string, string>>({});
+type AdminActionConfirmation =
+  | { kind: 'status'; user: ControlUser }
+  | { kind: 'role'; user: ControlUser }
+  | { kind: 'password'; user: ControlUser }
+  | { kind: 'sessions'; user: ControlUser }
+  | { kind: 'purge' };
+const actionConfirmation = ref<AdminActionConfirmation | null>(null);
+const temporaryPassword = ref<{ username: string; value: string } | null>(null);
+
+const actionTitle = computed(() => {
+  const action = actionConfirmation.value;
+  if (!action) return '确认管理操作';
+  if (action.kind === 'purge') return '确认清理请求诊断';
+  if (action.kind === 'status') return action.user.status === 'active' ? '确认停用用户' : '确认启用用户';
+  if (action.kind === 'role') return action.user.role === 'admin' ? '确认降级管理员' : '确认提升管理员';
+  if (action.kind === 'password') return '确认重置密码';
+  return '确认撤销全部会话';
+});
+const actionDescription = computed(() => {
+  const action = actionConfirmation.value;
+  if (!action) return '';
+  if (action.kind === 'purge') {
+    return `将删除超过 ${system.value?.requestEventRetentionDays ?? '配置'} 天留存周期的请求诊断记录。`;
+  }
+  if (action.kind === 'status') {
+    return action.user.status === 'active'
+      ? `停用 ${action.user.username} 后，该用户现有和后续请求都会被拒绝。`
+      : `启用 ${action.user.username} 后，该用户可重新登录。`;
+  }
+  if (action.kind === 'role') {
+    return action.user.role === 'admin'
+      ? `将 ${action.user.username} 降级为普通只读用户。最后一个有效管理员不能被降级。`
+      : `将 ${action.user.username} 提升为管理员，可访问用户、审计和系统管理能力。`;
+  }
+  if (action.kind === 'password') {
+    return `将重置 ${action.user.username} 的密码；生成的一次性密码只会显示一次。`;
+  }
+  return `将立即撤销 ${action.user.username} 的全部登录会话，该用户需要重新登录。`;
+});
+const actionDestructive = computed(() => {
+  const action = actionConfirmation.value;
+  if (!action) return false;
+  if (action.kind === 'status') return action.user.status === 'active';
+  return action.kind !== 'role' || action.user.role === 'admin';
+});
 
 const capabilitySummary = computed(() => ({
   total: API_CAPABILITIES.length,
@@ -165,16 +212,11 @@ async function applyRequestIdFilter(): Promise<void> {
 
 async function purgeRequestEvents(): Promise<void> {
   if (!control) return;
-  if (!purgeArmed.value) {
-    purgeArmed.value = true;
-    notice.value = '再次点击“确认清理”后，才会删除超过留存周期的请求诊断记录。';
-    return;
-  }
   error.value = null;
   try {
     const result = await control.purgeRequestEvents();
-    purgeArmed.value = false;
     notice.value = `已清理 ${result.deletedCount} 条请求诊断；保留最近 ${result.retentionDays} 天。`;
+    toast.success(`已清理 ${result.deletedCount} 条过期请求诊断。`);
     await refresh();
   } catch (cause: unknown) {
     error.value = userVisibleCause(cause, '清理请求诊断失败');
@@ -185,6 +227,7 @@ async function createUser(): Promise<void> {
   if (!control) return;
   error.value = null;
   try {
+    const createdUsername = username.value;
     await control.createUser({
       username: username.value,
       password: password.value,
@@ -194,6 +237,7 @@ async function createUser(): Promise<void> {
     username.value = '';
     password.value = '';
     remark.value = '';
+    toast.success(`用户 ${createdUsername} 创建成功。`);
     await refresh();
   } catch (cause: unknown) {
     error.value = userVisibleCause(cause, '创建用户失败');
@@ -238,9 +282,11 @@ async function resetPassword(user: ControlUser): Promise<void> {
   error.value = null;
   try {
     const result = await control.resetPassword(user.id, user.revision);
-    notice.value = result.temporaryPassword
-      ? `${user.username} 的一次性临时密码：${result.temporaryPassword}（仅显示本次，请安全转交）`
-      : `${user.username} 的密码已重置`;
+    if (result.temporaryPassword) {
+      temporaryPassword.value = { username: user.username, value: result.temporaryPassword };
+    } else {
+      toast.success(`${user.username} 的密码已重置。`);
+    }
     await refresh();
   } catch (cause: unknown) {
     error.value = userVisibleCause(cause, '重置密码失败');
@@ -253,10 +299,52 @@ async function revokeSessions(user: ControlUser): Promise<void> {
   try {
     await control.revokeSessions(user.id);
     notice.value = `${user.username} 的所有会话已撤销`;
+    toast.success(`${user.username} 的全部会话已撤销。`);
     await refresh();
   } catch (cause: unknown) {
     error.value = userVisibleCause(cause, '撤销会话失败');
   }
+}
+
+function requestAdminAction(action: AdminActionConfirmation): void {
+  actionConfirmation.value = action;
+}
+
+function confirmAdminAction(): void {
+  const action = actionConfirmation.value;
+  actionConfirmation.value = null;
+  if (!action) return;
+  if (action.kind === 'purge') {
+    void purgeRequestEvents();
+    return;
+  }
+  if (action.kind === 'status') {
+    void toggleStatus(action.user);
+    return;
+  }
+  if (action.kind === 'role') {
+    void toggleRole(action.user);
+    return;
+  }
+  if (action.kind === 'password') {
+    void resetPassword(action.user);
+    return;
+  }
+  void revokeSessions(action.user);
+}
+
+async function copyTemporaryPassword(): Promise<void> {
+  if (!temporaryPassword.value) return;
+  try {
+    await globalThis.navigator.clipboard.writeText(temporaryPassword.value.value);
+    toast.success('一次性密码已复制，请通过安全渠道转交。');
+  } catch {
+    toast.error('复制失败，请手工选择一次性密码。');
+  }
+}
+
+function closeTemporaryPassword(): void {
+  temporaryPassword.value = null;
 }
 
 function userVisibleCause(cause: unknown, fallbackMessage: string): Error {
@@ -293,7 +381,13 @@ const userColumns: DataColumn<ControlUser>[] = [
     cell: ({ row }) =>
       h(
         Button,
-        { variant: 'outline', size: 'sm', onClick: () => toggleRole(row.original) },
+        {
+          variant: 'outline',
+          size: 'sm',
+          onClick: () => {
+            requestAdminAction({ kind: 'role', user: row.original });
+          }
+        },
         () => row.original.role
       )
   },
@@ -304,17 +398,37 @@ const userColumns: DataColumn<ControlUser>[] = [
     header: '操作',
     cell: ({ row }) =>
       h('div', { class: 'flex flex-wrap gap-1' }, [
-        h(Button, { variant: 'outline', size: 'sm', onClick: () => toggleStatus(row.original) }, () =>
-          row.original.status === 'active' ? '停用' : '启用'
+        h(
+          Button,
+          {
+            variant: 'outline',
+            size: 'sm',
+            onClick: () => {
+              requestAdminAction({ kind: 'status', user: row.original });
+            }
+          },
+          () => (row.original.status === 'active' ? '停用' : '启用')
         ),
         h(
           Button,
-          { variant: 'outline', size: 'sm', onClick: () => resetPassword(row.original) },
+          {
+            variant: 'outline',
+            size: 'sm',
+            onClick: () => {
+              requestAdminAction({ kind: 'password', user: row.original });
+            }
+          },
           () => '重置密码'
         ),
         h(
           Button,
-          { variant: 'outline', size: 'sm', onClick: () => revokeSessions(row.original) },
+          {
+            variant: 'outline',
+            size: 'sm',
+            onClick: () => {
+              requestAdminAction({ kind: 'sessions', user: row.original });
+            }
+          },
           () => '撤销会话'
         )
       ])
@@ -540,10 +654,10 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
           </form>
           <Button
             data-testid="purge-request-events"
-            :variant="purgeArmed ? 'destructive' : 'outline'"
-            @click="purgeRequestEvents"
+            variant="outline"
+            @click="requestAdminAction({ kind: 'purge' })"
           >
-            <Trash2 class="size-4" />{{ purgeArmed ? '确认清理' : '按留存周期清理' }}
+            <Trash2 class="size-4" />按留存周期清理
           </Button>
         </div>
       </div>
@@ -586,4 +700,37 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
       />
     </Card>
   </template>
+
+  <ConfirmActionDialog
+    :open="actionConfirmation !== null"
+    :title="actionTitle"
+    :description="actionDescription"
+    :destructive="actionDestructive"
+    confirm-label="确认继续"
+    @update:open="actionConfirmation = $event ? actionConfirmation : null"
+    @confirm="confirmAdminAction"
+  >
+    <p>操作会由 BFF 再次校验管理员权限，并记录 requestId 和操作审计。</p>
+  </ConfirmActionDialog>
+
+  <ModalDialog
+    :open="temporaryPassword !== null"
+    title="一次性临时密码"
+    :description="`${temporaryPassword?.username ?? '用户'} 的密码已重置。关闭后本页面不会再次显示该密码。`"
+    size="sm"
+    @update:open="closeTemporaryPassword"
+  >
+    <code class="block select-all break-all rounded-lg border bg-muted p-4 text-sm text-foreground">
+      {{ temporaryPassword?.value }}
+    </code>
+    <p class="mt-3 text-sm text-amber-700 dark:text-amber-400">
+      请先复制并通过安全渠道转交；不要把密码写入备注、日志或截图。
+    </p>
+    <template #footer>
+      <div class="flex justify-end gap-2">
+        <Button variant="outline" @click="copyTemporaryPassword"><Copy class="size-4" />复制密码</Button>
+        <Button @click="closeTemporaryPassword">我已保存，关闭</Button>
+      </div>
+    </template>
+  </ModalDialog>
 </template>

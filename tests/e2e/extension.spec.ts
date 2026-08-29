@@ -425,6 +425,9 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   expect(snapshot.entries.every((entry) => typeof entry.requestId === 'string')).toBe(true);
 
   await page.getByRole('button', { name: '清空诊断' }).click();
+  const clearDiagnosticsDialog = page.getByRole('dialog', { name: '确认清空诊断' });
+  await expect(clearDiagnosticsDialog).toBeVisible();
+  await clearDiagnosticsDialog.getByRole('button', { name: '确认继续' }).click();
   await expect(page.getByText('诊断记录已清空。')).toBeVisible();
   await expect(page.getByText('0 条', { exact: true })).toBeVisible();
 

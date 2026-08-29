@@ -32,6 +32,8 @@ import {
   type SignMethod
 } from '@one-vegetable/core';
 
+import ActionTooltip from '../components/ActionTooltip.vue';
+import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -74,6 +76,24 @@ const vaultError = ref<unknown>(null);
 const credentialImportError = ref<unknown>(null);
 const idleTimeoutMinutes = ref(CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES);
 let settingsInitialization: Promise<void> = Promise.resolve();
+const settingsConfirmation = ref<
+  { kind: 'revoke-permission'; origin: string } | { kind: 'clear-diagnostics' } | null
+>(null);
+const settingsConfirmationTitle = computed(() =>
+  settingsConfirmation.value?.kind === 'revoke-permission' ? '确认撤销主机权限' : '确认清空诊断'
+);
+const settingsConfirmationDescription = computed(() => {
+  const confirmation = settingsConfirmation.value;
+  if (!confirmation) return '';
+  return confirmation.kind === 'revoke-permission'
+    ? `撤销 ${confirmation.origin} 后，再次访问该主机时 Chrome 会重新询问授权。`
+    : `将清除当前保存的 ${diagnostics.value?.entries.length ?? 0} 条脱敏诊断记录。`;
+});
+const clearDiagnosticsDisabledReason = computed(() => {
+  if (diagnosticsBusy.value) return '正在处理诊断记录';
+  if ((diagnostics.value?.entries.length ?? 0) === 0) return '当前没有可清空的诊断记录';
+  return '';
+});
 const settingsEditable = computed(
   () => mode === 'mock' || vaultStatus.value?.state === 'empty' || vaultStatus.value?.state === 'unlocked'
 );
@@ -388,6 +408,17 @@ async function clearDiagnostics(): Promise<void> {
   } finally {
     diagnosticsBusy.value = false;
   }
+}
+
+function confirmSettingsAction(): void {
+  const confirmation = settingsConfirmation.value;
+  settingsConfirmation.value = null;
+  if (!confirmation) return;
+  if (confirmation.kind === 'revoke-permission') {
+    void revokePermission(confirmation.origin);
+    return;
+  }
+  void clearDiagnostics();
 }
 
 async function refreshLocalData(): Promise<void> {
@@ -804,7 +835,7 @@ function confirmThemePreference(): void {
             variant="outline"
             :aria-label="`撤销 ${origin}`"
             :disabled="permissionsBusy"
-            @click="revokePermission(origin)"
+            @click="settingsConfirmation = { kind: 'revoke-permission', origin }"
           >
             <Trash2 class="size-3.5" />撤销
           </Button>
@@ -844,9 +875,18 @@ function confirmThemePreference(): void {
         <Button variant="outline" :disabled="diagnosticsBusy" @click="exportDiagnostics">
           <Download class="size-4" />导出诊断
         </Button>
-        <Button variant="outline" :disabled="diagnosticsBusy" @click="clearDiagnostics">
-          <Trash2 class="size-4" />清空诊断
-        </Button>
+        <ActionTooltip
+          :disabled="Boolean(clearDiagnosticsDisabledReason)"
+          :reason="clearDiagnosticsDisabledReason"
+        >
+          <Button
+            variant="outline"
+            :disabled="Boolean(clearDiagnosticsDisabledReason)"
+            @click="settingsConfirmation = { kind: 'clear-diagnostics' }"
+          >
+            <Trash2 class="size-4" />清空诊断
+          </Button>
+        </ActionTooltip>
       </div>
     </Card>
     <Card v-if="mode === 'extension' && localData" class="p-5">
@@ -911,4 +951,19 @@ function confirmThemePreference(): void {
       </div>
     </Card>
   </div>
+
+  <ConfirmActionDialog
+    :open="settingsConfirmation !== null"
+    :title="settingsConfirmationTitle"
+    :description="settingsConfirmationDescription"
+    destructive
+    confirm-label="确认继续"
+    @update:open="settingsConfirmation = $event ? settingsConfirmation : null"
+    @confirm="confirmSettingsAction"
+  >
+    <p v-if="settingsConfirmation?.kind === 'clear-diagnostics'">
+      诊断内容已经脱敏，但清空后无法恢复；该操作不会删除账号凭证或商品草稿。
+    </p>
+    <p v-else>该操作只撤销所选额外主机，不影响 Alibaba 正式网关的必选权限。</p>
+  </ConfirmActionDialog>
 </template>

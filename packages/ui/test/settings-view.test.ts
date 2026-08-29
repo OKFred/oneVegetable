@@ -113,6 +113,18 @@ function mountView(
   return mount(Host, { attachTo: globalThis.document.body });
 }
 
+async function confirmSettingsAction(title: string): Promise<void> {
+  await vi.waitFor(() => {
+    expect(document.body.textContent).toContain(title);
+  });
+  const confirm = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find(
+    (button) => button.textContent.trim() === '确认继续'
+  );
+  if (!confirm) throw new Error(`Missing settings confirmation: ${title}`);
+  confirm.click();
+  await flushPromises();
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   anchorClick.mockClear();
@@ -274,6 +286,7 @@ describe('SettingsView diagnostics', () => {
     if (!clearButton) throw new Error('Missing diagnostics clear button');
     await clearButton.trigger('click');
     await flushPromises();
+    await confirmSettingsAction('确认清空诊断');
 
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('0 条');
@@ -290,6 +303,7 @@ describe('SettingsView diagnostics', () => {
 
     const revokeButton = wrapper.get('button[aria-label="撤销 https://images.example.com/*"]');
     await revokeButton.trigger('click');
+    await confirmSettingsAction('确认撤销主机权限');
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('当前没有额外主机权限。');
       expect(wrapper.text()).toContain('再次使用时会重新请求授权。');
