@@ -83,5 +83,23 @@ describe('DataTable', () => {
     expect(wrapper.text()).toContain('第 2 / 3 页');
     await wrapper.get('button[aria-label="下一页"]').trigger('click');
     expect(wrapper.emitted('update:page')).toEqual([[3]]);
+    await wrapper.get('select[aria-label="每页条数"]').setValue('10');
+    expect(wrapper.emitted('update:pageSize')).toEqual([[10]]);
+  });
+
+  it('renders additional summary content in the pagination footer', () => {
+    const columns: DataColumn<Row>[] = [{ accessorKey: 'name', header: '名称' }];
+    const wrapper = mount(DataTable<Row>, {
+      props: {
+        columns,
+        data: rows(3)
+      },
+      slots: {
+        'pagination-summary': () => h('span', { 'data-testid': 'selection-count' }, '已选 2 个')
+      }
+    });
+
+    const pagination = wrapper.get('nav[aria-label="表格分页"]');
+    expect(pagination.get('[data-testid="selection-count"]').text()).toBe('已选 2 个');
   });
 });

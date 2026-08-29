@@ -839,6 +839,18 @@ function clearProductSelection(): void {
   selectedProductIds.value = [];
 }
 
+function setProductPage(page: number): void {
+  if (page === productPage.value) return;
+  productPage.value = page;
+  clearProductSelection();
+}
+
+function setProductPageSize(pageSize: number): void {
+  if (pageSize === productPageSize.value) return;
+  productPageSize.value = pageSize;
+  clearProductSelection();
+}
+
 function productSelectionHeader() {
   const count = currentPageProducts.value.length;
   return h(TriStateCheckbox, {
@@ -1513,8 +1525,6 @@ watch([subject, language], () => {
   clearProductSelection();
 });
 
-watch([productPage, productPageSize], clearProductSelection);
-
 watch(currentPageProductIds, (productIds) => {
   selectedProductIds.value = retainCurrentPageSelection(selectedProductIds.value, productIds);
 });
@@ -1596,14 +1606,6 @@ onBeforeUnmount(() => {
         <Input v-model="subject" class="pl-9" placeholder="按标题搜索" />
       </div>
       <div class="flex flex-wrap items-center justify-end gap-2">
-        <Badge variant="secondary" aria-live="polite">已选 {{ selectedProducts.length }} 个</Badge>
-        <Button
-          size="sm"
-          variant="ghost"
-          :disabled="selectedProducts.length === 0 || productTransferBusy"
-          @click="clearProductSelection"
-          >清空</Button
-        >
         <span
           v-if="selectedProducts.length > MAX_PRODUCT_TRANSFER_ITEMS"
           class="text-xs text-amber-700 dark:text-amber-400"
@@ -1629,13 +1631,25 @@ onBeforeUnmount(() => {
       <DataTable
         :columns="columns"
         :data="products.data.value?.items ?? []"
-        v-model:page="productPage"
-        v-model:page-size="productPageSize"
+        :page="productPage"
+        :page-size="productPageSize"
         :total-rows="products.data.value?.total ?? 0"
         :pagination-disabled="products.isFetching.value"
         empty-text="没有匹配商品"
         min-width="960px"
-      />
+        @update:page="setProductPage"
+        @update:page-size="setProductPageSize"
+      >
+        <template #pagination-summary>
+          <span
+            class="border-l border-border pl-2 text-xs font-medium text-foreground"
+            data-testid="product-selection-count"
+            aria-live="polite"
+          >
+            已选 {{ selectedProducts.length }} 个
+          </span>
+        </template>
+      </DataTable>
     </QueryState>
   </template>
 
@@ -2051,11 +2065,13 @@ onBeforeUnmount(() => {
         v-if="qualityViewMode === 'list'"
         :data="products.data.value?.items ?? []"
         :columns="qualityColumns"
-        v-model:page="productPage"
-        v-model:page-size="productPageSize"
+        :page="productPage"
+        :page-size="productPageSize"
         :total-rows="products.data.value?.total ?? 0"
         :pagination-disabled="products.isFetching.value"
         empty-text="暂无商品"
+        @update:page="setProductPage"
+        @update:page-size="setProductPageSize"
       />
       <div v-else class="overflow-hidden rounded-lg border">
         <div class="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-3">
@@ -2110,10 +2126,12 @@ onBeforeUnmount(() => {
           </Card>
         </div>
         <TablePagination
-          v-model:page="productPage"
-          v-model:page-size="productPageSize"
+          :page="productPage"
+          :page-size="productPageSize"
           :total="products.data.value?.total ?? 0"
           :disabled="products.isFetching.value"
+          @update:page="setProductPage"
+          @update:page-size="setProductPageSize"
         />
       </div>
     </QueryState>

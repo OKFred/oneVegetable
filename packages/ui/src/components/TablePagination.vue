@@ -55,9 +55,12 @@ function setPageSize(event: Event): void {
     class="flex flex-col gap-3 border-t bg-background px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between"
     aria-label="表格分页"
   >
-    <p class="text-xs text-muted-foreground" aria-live="polite">
-      共 {{ normalizedTotal }} 条，当前 {{ firstVisibleRow }}–{{ lastVisibleRow }} 条
-    </p>
+    <div class="flex flex-wrap items-center gap-2">
+      <p class="text-xs text-muted-foreground" aria-live="polite">
+        共 {{ normalizedTotal }} 条，当前 {{ firstVisibleRow }}–{{ lastVisibleRow }} 条
+      </p>
+      <slot name="summary-extra" />
+    </div>
     <div class="flex flex-wrap items-center gap-2">
       <label class="flex items-center gap-2 whitespace-nowrap text-xs text-muted-foreground">
         每页

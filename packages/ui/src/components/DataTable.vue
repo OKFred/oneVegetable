@@ -171,6 +171,10 @@ function setPageSize(pageSize: number): void {
       :disabled="paginationDisabled"
       @update:page="setPage"
       @update:page-size="setPageSize"
-    />
+    >
+      <template #summary-extra>
+        <slot name="pagination-summary" />
+      </template>
+    </TablePagination>
   </div>
 </template>

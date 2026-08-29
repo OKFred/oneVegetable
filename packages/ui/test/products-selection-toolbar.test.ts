@@ -20,30 +20,32 @@ describe('ProductsView selection toolbar', () => {
     const wrapper = mountView();
     await waitForProducts(wrapper);
     const toolbar = wrapper.get('[role="toolbar"][aria-label="商品列表操作"]');
+    const selectedCount = wrapper.get('[data-testid="product-selection-count"]');
     const selectPage = wrapper.get('input[aria-label="选择本页全部 3 个商品"]');
 
-    expect(toolbar.text()).toContain('已选 0 个');
+    expect(selectedCount.text()).toBe('已选 0 个');
+    expect(toolbar.text()).not.toContain('已选');
     expect((selectPage.element as HTMLInputElement).indeterminate).toBe(false);
     expect(selectPage.attributes('aria-checked')).toBe('false');
-    expect(button(toolbar.element, '清空').disabled).toBe(true);
+    expect(
+      [...toolbar.element.querySelectorAll('button')].some((item) => item.textContent.trim() === '清空')
+    ).toBe(false);
     expect(button(toolbar.element, '导出').disabled).toBe(true);
 
     await wrapper.get('input[aria-label="选择 Portable solar power station 1000W"]').setValue(true);
-    expect(toolbar.text()).toContain('已选 1 个');
+    expect(selectedCount.text()).toBe('已选 1 个');
     expect((selectPage.element as HTMLInputElement).indeterminate).toBe(true);
     expect(selectPage.attributes('aria-checked')).toBe('mixed');
-    expect(button(toolbar.element, '清空').disabled).toBe(false);
     expect(button(toolbar.element, '导出').disabled).toBe(false);
 
     await selectPage.setValue(true);
-    expect(toolbar.text()).toContain('已选 3 个');
+    expect(selectedCount.text()).toBe('已选 3 个');
     expect(
       (wrapper.get('input[aria-label="取消选择本页全部 3 个商品"]').element as HTMLInputElement).checked
     ).toBe(true);
 
-    button(toolbar.element, '清空').click();
-    await wrapper.vm.$nextTick();
-    expect(toolbar.text()).toContain('已选 0 个');
+    await wrapper.get('input[aria-label="取消选择本页全部 3 个商品"]').setValue(false);
+    expect(selectedCount.text()).toBe('已选 0 个');
     expect(
       (wrapper.get('input[aria-label="选择本页全部 3 个商品"]').element as HTMLInputElement).checked
     ).toBe(false);
@@ -53,29 +55,32 @@ describe('ProductsView selection toolbar', () => {
   it('clears current-page selection when search, page size or language changes', async () => {
     const wrapper = mountView();
     await waitForProducts(wrapper);
-    const selectedCount = () => wrapper.get('[aria-live="polite"]').text();
+    const selectedCount = () => wrapper.get('[data-testid="product-selection-count"]').text();
 
     await wrapper.get('input[aria-label="选择 Portable solar power station 1000W"]').setValue(true);
     expect(selectedCount()).toContain('已选 1 个');
     await wrapper.get('input[placeholder="按标题搜索"]').setValue('canvas');
-    expect(selectedCount()).toContain('已选 0 个');
-    await flushPromises();
+    await waitForSelectionCount(wrapper, '已选 0 个', 'search change');
 
     await wrapper.get('input[placeholder="按标题搜索"]').setValue('');
     await waitForProducts(wrapper);
     await wrapper.get('input[aria-label="选择 Portable solar power station 1000W"]').setValue(true);
-    await wrapper.get('select[aria-label="每页条数"]').setValue('10');
-    expect(selectedCount()).toContain('已选 0 个');
-    await waitForProducts(wrapper);
+    const pageSizeSelect = wrapper.get('select[aria-label="每页条数"]');
+    const currentPageSize = (pageSizeSelect.element as HTMLSelectElement).value;
+    expect(currentPageSize).toBe('20');
+    await pageSizeSelect.setValue(currentPageSize === '10' ? '20' : '10');
+    await waitForSelectionCount(wrapper, '已选 0 个', 'page-size change');
 
     await wrapper.get('input[aria-label="选择 Portable solar power station 1000W"]').setValue(true);
     button(wrapper.element as Node, '商品发布/编辑').click();
     await wrapper.vm.$nextTick();
     await wrapper.get('summary').trigger('click');
-    await wrapper.get('select[aria-label="商品表单语言"]').setValue('zh_CN');
+    const languageSelect = wrapper.get('select[aria-label="商品表单语言"]');
+    const currentLanguage = (languageSelect.element as HTMLSelectElement).value;
+    await languageSelect.setValue(currentLanguage === 'zh_CN' ? 'en_US' : 'zh_CN');
     button(wrapper.element as Node, '商品列表').click();
     await wrapper.vm.$nextTick();
-    expect(selectedCount()).toContain('已选 0 个');
+    await waitForSelectionCount(wrapper, '已选 0 个', 'language change');
     wrapper.unmount();
   });
 });
@@ -110,6 +115,18 @@ async function waitForProducts(wrapper: ReturnType<typeof mountView>): Promise<v
   await flushPromises();
   await vi.waitFor(() => {
     expect(wrapper.text()).toContain('Portable solar power station 1000W');
+    expect(wrapper.get('select[aria-label="每页条数"]').attributes('disabled')).toBeUndefined();
+  });
+}
+
+async function waitForSelectionCount(
+  wrapper: ReturnType<typeof mountView>,
+  expected: string,
+  context: string
+): Promise<void> {
+  await flushPromises();
+  await vi.waitFor(() => {
+    expect(wrapper.find('[data-testid="product-selection-count"]').text(), context).toBe(expected);
   });
 }
 
