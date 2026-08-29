@@ -10,4 +10,14 @@ export const dataTableFeatures = tableFeatures({
   rowPaginationFeature,
   paginatedRowModel: createPaginatedRowModel()
 });
-export type DataColumn<TData extends RowData> = ColumnDef<typeof dataTableFeatures, TData>;
+
+export interface DataTableColumnMeta {
+  sticky?: 'left' | 'right';
+  stickyOffset?: string;
+  stickyBoundary?: boolean;
+  width?: string;
+}
+
+export type DataColumn<TData extends RowData> = ColumnDef<typeof dataTableFeatures, TData> & {
+  meta?: DataTableColumnMeta;
+};

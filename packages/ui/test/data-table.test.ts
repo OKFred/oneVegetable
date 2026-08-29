@@ -102,4 +102,34 @@ describe('DataTable', () => {
     const pagination = wrapper.get('nav[aria-label="表格分页"]');
     expect(pagination.get('[data-testid="selection-count"]').text()).toBe('已选 2 个');
   });
+
+  it('pins configured columns with opaque inherited row backgrounds', () => {
+    const columns: DataColumn<Row>[] = [
+      {
+        accessorKey: 'name',
+        header: '左侧',
+        meta: { sticky: 'left', stickyOffset: '0px', stickyBoundary: true, width: '96px' }
+      },
+      {
+        id: 'actions',
+        header: '右侧',
+        cell: () => '操作',
+        meta: { sticky: 'right', stickyOffset: '0px', stickyBoundary: true, width: '120px' }
+      }
+    ];
+    const wrapper = mount(DataTable<Row>, {
+      props: { columns, data: [{ name: 'value' }] }
+    });
+    const headers = wrapper.findAll('th');
+    const cells = wrapper.findAll('tbody td');
+
+    expect(headers[0]?.classes()).toContain('sticky');
+    expect((headers[0]?.element as HTMLElement).style.left).toBe('0px');
+    expect((headers[0]?.element as HTMLElement).style.width).toBe('96px');
+    expect(headers[1]?.classes()).toContain('sticky');
+    expect((headers[1]?.element as HTMLElement).style.right).toBe('0px');
+    expect(cells[0]?.classes()).toContain('bg-inherit');
+    expect(cells[1]?.classes()).toContain('bg-inherit');
+    expect(wrapper.get('tbody tr').classes()).toContain('bg-background');
+  });
 });

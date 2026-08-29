@@ -102,6 +102,13 @@ describe('ProductsView selection toolbar', () => {
     const wrapper = mountView();
     await waitForProducts(wrapper);
 
+    const table = wrapper.get('table');
+    const headers = table.findAll('th');
+    expect(headers[0]?.classes()).toContain('sticky');
+    expect(headers[1]?.classes()).toContain('sticky');
+    expect(headers.at(-1)?.classes()).toContain('sticky');
+    expect(table.findAll('button').some((item) => item.text() === '查询产品分')).toBe(false);
+
     const preview = wrapper.get('button[aria-label="预览 Portable solar power station 1000W 主图"]');
     expect(preview.get('img').attributes('src')).toContain('mock-solar-station.jpg');
     await preview.trigger('click');

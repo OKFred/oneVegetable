@@ -155,7 +155,6 @@ let applyingProductRoute = false;
 const categoryLoadError = ref('');
 const productScores = ref<Record<string, ProductScore>>({});
 const productScoreErrors = ref<Record<string, string>>({});
-const pendingProductScoreIds = ref<string[]>([]);
 const queryingSelectedProductScores = ref(false);
 let scoreRefreshTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 let draftSaveTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
@@ -460,7 +459,6 @@ const categoryMapping = useMutation({
 const productScore = useMutation({
   mutationFn: (productId: string) => gateway.request('getProductScore', { productId }),
   onMutate: (productId) => {
-    pendingProductScoreIds.value = [...new Set([...pendingProductScoreIds.value, productId])];
     productScoreErrors.value = Object.fromEntries(
       Object.entries(productScoreErrors.value).filter(([key]) => key !== productId)
     );
@@ -470,9 +468,6 @@ const productScore = useMutation({
   },
   onError: (error, productId) => {
     productScoreErrors.value = { ...productScoreErrors.value, [productId]: errorMessage(error) };
-  },
-  onSettled: (_result, _error, productId) => {
-    pendingProductScoreIds.value = pendingProductScoreIds.value.filter((id) => id !== productId);
   }
 });
 
@@ -889,7 +884,8 @@ const columns: DataColumn<Product>[] = [
   {
     id: 'select',
     header: productSelectionHeader,
-    cell: ({ row }) => productSelectionCell(row.original)
+    cell: ({ row }) => productSelectionCell(row.original),
+    meta: { sticky: 'left', stickyOffset: '0px', width: '56px' }
   },
   {
     id: 'image',
@@ -922,7 +918,8 @@ const columns: DataColumn<Product>[] = [
                 'flex size-14 items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground'
             },
             '暂无'
-          )
+          ),
+    meta: { sticky: 'left', stickyOffset: '56px', stickyBoundary: true, width: '96px' }
   },
   {
     accessorKey: 'subject',
@@ -978,22 +975,7 @@ const columns: DataColumn<Product>[] = [
     id: 'actions',
     header: '操作',
     cell: ({ row }) =>
-      h('div', { class: 'flex items-center gap-2' }, [
-        h(
-          Button,
-          {
-            size: 'sm',
-            variant: 'outline',
-            disabled:
-              !row.original.encryptedId ||
-              isProductScorePending(row.original) ||
-              queryingSelectedProductScores.value,
-            onClick: () => {
-              queryProductScore(row.original);
-            }
-          },
-          () => (isProductScorePending(row.original) ? '查询中…' : '查询产品分')
-        ),
+      h('div', { class: 'flex items-center' }, [
         h(
           Button,
           {
@@ -1005,7 +987,8 @@ const columns: DataColumn<Product>[] = [
           },
           () => '编辑商品'
         )
-      ])
+      ]),
+    meta: { sticky: 'right', stickyOffset: '0px', stickyBoundary: true, width: '120px' }
   }
 ];
 
@@ -1015,14 +998,6 @@ function scoreForProduct(product: Product): ProductScore | undefined {
 
 function scoreErrorForProduct(product: Product): string | undefined {
   return product.encryptedId ? productScoreErrors.value[product.encryptedId] : undefined;
-}
-
-function isProductScorePending(product: Product): boolean {
-  return Boolean(product.encryptedId && pendingProductScoreIds.value.includes(product.encryptedId));
-}
-
-function queryProductScore(product: Product): void {
-  if (product.encryptedId) productScore.mutate(product.encryptedId);
 }
 
 async function querySelectedProductScores(): Promise<void> {

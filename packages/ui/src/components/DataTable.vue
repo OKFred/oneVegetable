@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { FlexRender, useTable, type PaginationState, type RowData, type Updater } from '@tanstack/vue-table';
 
-import { dataTableFeatures, type DataColumn } from '../lib/table';
+import { dataTableFeatures, type DataColumn, type DataTableColumnMeta } from '../lib/table';
 import TablePagination from './TablePagination.vue';
 
 const props = withDefaults(
@@ -114,6 +114,35 @@ function setPage(page: number): void {
 function setPageSize(pageSize: number): void {
   table.setPageSize(pageSize);
 }
+
+function columnMeta(value: unknown): DataTableColumnMeta | undefined {
+  return value && typeof value === 'object' ? value : undefined;
+}
+
+function stickyColumnClasses(value: unknown, header: boolean): string[] {
+  const meta = columnMeta(value);
+  if (!meta?.sticky) return [];
+  return [
+    'sticky',
+    header ? 'z-20 bg-muted' : 'z-[5] bg-inherit',
+    meta.stickyBoundary && meta.sticky === 'left' ? 'shadow-[2px_0_3px_-2px_hsl(var(--border))]' : '',
+    meta.stickyBoundary && meta.sticky === 'right' ? 'shadow-[-2px_0_3px_-2px_hsl(var(--border))]' : ''
+  ];
+}
+
+function stickyColumnStyle(value: unknown): Record<string, string> | undefined {
+  const meta = columnMeta(value);
+  if (!meta?.sticky) return undefined;
+  const style: Record<string, string> = {
+    [meta.sticky]: meta.stickyOffset ?? '0px'
+  };
+  if (meta.width) {
+    style.width = meta.width;
+    style.minWidth = meta.width;
+    style.maxWidth = meta.width;
+  }
+  return style;
+}
 </script>
 
 <template>
@@ -128,6 +157,8 @@ function setPageSize(pageSize: number): void {
               v-for="header in headerGroup.headers"
               :key="header.id"
               class="h-10 whitespace-nowrap px-4 font-medium"
+              :class="stickyColumnClasses(header.column.columnDef.meta, true)"
+              :style="stickyColumnStyle(header.column.columnDef.meta)"
             >
               <FlexRender v-if="!header.isPlaceholder" :header="header" />
             </th>
@@ -137,7 +168,7 @@ function setPageSize(pageSize: number): void {
           <tr
             v-for="row in table.getRowModel().rows"
             :key="row.id"
-            class="border-t hover:bg-muted/40"
+            class="border-t bg-background hover:bg-muted/40"
             :class="[
               rowAriaLabel
                 ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
@@ -150,7 +181,13 @@ function setPageSize(pageSize: number): void {
             @keydown.enter.prevent="activateRow(row.original, $event)"
             @keydown.space.prevent="activateRow(row.original, $event)"
           >
-            <td v-for="cell in row.getAllCells()" :key="cell.id" class="px-4 py-3 align-middle">
+            <td
+              v-for="cell in row.getAllCells()"
+              :key="cell.id"
+              class="px-4 py-3 align-middle"
+              :class="stickyColumnClasses(cell.column.columnDef.meta, false)"
+              :style="stickyColumnStyle(cell.column.columnDef.meta)"
+            >
               <FlexRender :cell="cell" />
             </td>
           </tr>
