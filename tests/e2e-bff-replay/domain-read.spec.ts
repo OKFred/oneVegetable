@@ -19,9 +19,9 @@ test('authenticated Web uses Worker, D1 and documentation replay across every do
   await expect(page.getByRole('heading', { name: '登录运营工作台' })).toBeVisible();
 
   await page.getByRole('button', { name: '初始化管理员' }).click();
-  await page.getByLabel('一次性 Bootstrap Token').fill('bff-replay-e2e-bootstrap');
-  await page.getByLabel('用户名').fill('replay-admin');
-  await page.getByLabel('密码').fill('Replay-admin-2026!');
+  await page.getByLabel('管理员引导令牌').fill('bff-replay-e2e-bootstrap-token-32-bytes');
+  await page.getByLabel('工作台用户名').fill('replay-admin');
+  await page.getByLabel(/^工作台密码/).fill('Replay-admin-2026!');
   await page.getByRole('button', { name: '创建管理员' }).click();
 
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
@@ -42,7 +42,7 @@ test('authenticated Web uses Worker, D1 and documentation replay across every do
 
   await expect(page.getByText('cloudflare / test', { exact: true })).toBeVisible();
   await expect(page.getByText('replay', { exact: true })).toBeVisible();
-  await expect(page.getByText('d1 / v3', { exact: true })).toBeVisible();
+  await expect(page.getByText('d1 / v8', { exact: true })).toBeVisible();
   expect(failedOperations).toEqual([]);
   expect([...operationOrigins]).toEqual([workerOrigin]);
 });
@@ -52,7 +52,7 @@ test('BFF replay rejects a write operation while preserving its requestId', asyn
   const bootstrap = await request.post('http://127.0.0.1:8796/api/v1/auth/bootstrap', {
     data: {
       requestId: bootstrapRequestId,
-      bootstrapToken: 'bff-replay-e2e-bootstrap',
+      bootstrapToken: 'bff-replay-e2e-bootstrap-token-32-bytes',
       username: 'write-guard-admin',
       password: 'Write-guard-2026!',
       remark: 'BFF replay write guard'

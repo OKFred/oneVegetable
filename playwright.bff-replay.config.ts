@@ -17,10 +17,14 @@ export default defineConfig({
   webServer: [
     {
       command:
-        'pnpm --filter @one-vegetable/api exec wrangler dev --port 8796 --persist-to .wrangler/bff-replay-e2e --var BOOTSTRAP_ADMIN_TOKEN:bff-replay-e2e-bootstrap --var ONE_VEGETABLE_ENVIRONMENT:test --var ONE_VEGETABLE_GATEWAY_MODE:replay --var ONE_VEGETABLE_CORS_ORIGINS:http://127.0.0.1:4174',
+        'pnpm exec wrangler dev --config wrangler.jsonc --port 8796 --persist-to apps/api/.wrangler/bff-replay-e2e --var ONE_VEGETABLE_ENVIRONMENT:test --var ONE_VEGETABLE_GATEWAY_MODE:replay --var ONE_VEGETABLE_CORS_ORIGINS:http://127.0.0.1:4174 --var ONE_VEGETABLE_AUTH_MODE:password',
       url: `${workerOrigin}/api/v1/readyz`,
       reuseExistingServer: false,
-      timeout: 120_000
+      timeout: 120_000,
+      env: {
+        BOOTSTRAP_ADMIN_TOKEN: 'bff-replay-e2e-bootstrap-token-32-bytes',
+        ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+      }
     },
     {
       command: 'pnpm dev:web --host 127.0.0.1 --port 4174 --strictPort',

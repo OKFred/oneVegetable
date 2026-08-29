@@ -7,17 +7,17 @@ const persistDirectory = fileURLToPath(new URL('../apps/api/.wrangler/bff-replay
 rmSync(persistDirectory, { recursive: true, force: true });
 
 const migrationArguments = [
-  '--filter',
-  '@one-vegetable/api',
   'exec',
   'wrangler',
   'd1',
   'migrations',
   'apply',
-  'one-vegetable-local',
+  'DB',
   '--local',
   '--persist-to',
-  '.wrangler/bff-replay-e2e'
+  'apps/api/.wrangler/bff-replay-e2e',
+  '--config',
+  'wrangler.jsonc'
 ];
 const result =
   globalThis.process.platform === 'win32'
