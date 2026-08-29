@@ -27,6 +27,8 @@ pnpm dev:extension
 
 一键部署会在同一个 Worker 中托管 Vue Web、Hono API 和 D1，并自动执行数据库 migration。部署页只要求两个独立随机 Secret：首次管理员引导令牌 `BOOTSTRAP_ADMIN_TOKEN`，以及 32 字节 Base64URL 凭据加密密钥 `ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY`。Alibaba AppKey、AppSecret 和 Token 不填写到部署表单，部署后由管理员在系统页面导入。
 
+部署后的首次访问使用管理员引导令牌登记 Passkey，并一次性生成 10 个恢复码；详细的部署、凭据导入、域名更换和恢复流程见 [Cloudflare 自托管指南](docs/cloudflare-self-hosted.md)。
+
 本地验证 Cloudflare 构建：
 
 ```bash
