@@ -51,9 +51,20 @@ describe('ProductsView import and export', () => {
     });
 
     await wrapper.get('input[aria-label="选择 Portable solar power station 1000W"]').setValue(true);
-    const exportButton = wrapper.findAll('button').find((button) => button.text().includes('导出所选'));
-    if (!exportButton) throw new Error('Missing product export action');
-    await exportButton.trigger('click');
+    toolbarButton(wrapper.element as Element, '导出').click();
+    await flushPromises();
+
+    const exportDialog = getDialog('导出商品');
+    expect(exportDialog.textContent).toContain('已冻结本次导出范围');
+    expect(request.mock.calls.some(([operation]) => operation === 'renderProductSchema')).toBe(false);
+    expect(exportedBlob).toBeNull();
+
+    button(exportDialog, '导出').click();
+    await flushPromises();
+    expect(request.mock.calls.some(([operation]) => operation === 'renderProductSchema')).toBe(false);
+    expect(exportedBlob).toBeNull();
+
+    button(getDialog('确认导出'), '确认导出').click();
     await vi.waitFor(() => {
       expect(exportedBlob).not.toBeNull();
     });
@@ -89,10 +100,21 @@ describe('ProductsView import and export', () => {
     });
 
     await wrapper.get('input[aria-label="选择 Custom recycled cotton canvas tote bag"]').setValue(true);
-    await wrapper.get('select[aria-label="商品导出字段"]').setValue('xml');
-    const exportButton = wrapper.findAll('button').find((button) => button.text().includes('导出所选'));
-    if (!exportButton) throw new Error('Missing product export action');
-    await exportButton.trigger('click');
+    toolbarButton(wrapper.element as Element, '导出').click();
+    await flushPromises();
+
+    const exportDialog = getDialog('导出商品');
+    const advancedSettings = exportDialog.querySelector('details');
+    if (!(advancedSettings instanceof HTMLDetailsElement))
+      throw new Error('Missing export advanced settings');
+    advancedSettings.open = true;
+    const xmlOption = exportDialog.querySelector<HTMLInputElement>('input[aria-label="Schema XML"]');
+    if (!xmlOption) throw new Error('Missing Schema XML option');
+    xmlOption.click();
+    await flushPromises();
+    button(exportDialog, '导出').click();
+    await flushPromises();
+    button(getDialog('确认导出'), '确认导出').click();
     await vi.waitFor(() => {
       expect(exportedBlob).not.toBeNull();
     });
@@ -121,12 +143,26 @@ describe('ProductsView import and export', () => {
     const wrapper = mountView(gateway);
     await flushPromises();
 
-    const input = wrapper.get('input[aria-label="选择商品 JSON 文件"]');
+    toolbarButton(wrapper.element as Element, '导入').click();
+    await flushPromises();
+    const importDialog = getDialog('导入商品');
+    const input = importDialog.querySelector<HTMLInputElement>('input[aria-label="选择商品 JSON 文件"]');
+    if (!input) throw new Error('Missing product import input');
     const file = new File([fixtureJson], 'products.json', { type: 'application/json' });
-    Object.defineProperty(input.element, 'files', { configurable: true, value: [file] });
-    await input.trigger('change');
+    Object.defineProperty(input, 'files', { configurable: true, value: [file] });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    await flushPromises();
+
+    expect(importDialog.textContent).toContain('products.json');
+    expect(importDialog.textContent).toContain('1 个商品');
+    expect(loadProductBatchPublishItems(localStorage)).toEqual([]);
+
+    button(importDialog, '导入').click();
+    await flushPromises();
+    expect(loadProductBatchPublishItems(localStorage)).toEqual([]);
+    button(getDialog('确认导入'), '确认导入').click();
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('商品 JSON 已导入本机队列');
+      expect(loadProductBatchPublishItems(localStorage)).toHaveLength(1);
     });
 
     expect(loadProductBatchPublishItems(localStorage)).toMatchObject([
@@ -161,7 +197,31 @@ function mountView(gateway: MockGatewayClient) {
     }
   });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return mount(Host, { global: { plugins: [[VueQueryPlugin, { queryClient }]] } });
+  return mount(Host, { attachTo: document.body, global: { plugins: [[VueQueryPlugin, { queryClient }]] } });
+}
+
+function toolbarButton(root: Element, label: string): HTMLButtonElement {
+  const match = [...root.querySelectorAll<HTMLButtonElement>('button')].find(
+    (candidate) => candidate.textContent.trim() === label
+  );
+  if (!match) throw new Error(`Missing toolbar button: ${label}`);
+  return match;
+}
+
+function getDialog(title: string): HTMLElement {
+  const match = [...document.body.querySelectorAll<HTMLElement>('[role="dialog"]')].find((dialog) =>
+    dialog.textContent.includes(title)
+  );
+  if (!match) throw new Error(`Missing dialog: ${title}`);
+  return match;
+}
+
+function button(root: Element, label: string): HTMLButtonElement {
+  const match = [...root.querySelectorAll<HTMLButtonElement>('button')].find(
+    (candidate) => candidate.textContent.trim() === label
+  );
+  if (!match) throw new Error(`Missing button: ${label}`);
+  return match;
 }
 
 function settings() {

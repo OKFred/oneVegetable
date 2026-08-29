@@ -123,19 +123,47 @@ test('web mock exports a product JSON and imports it into the local review queue
   await page.getByRole('link', { name: '商品' }).click();
   await expect(page.getByText('Portable solar power station 1000W')).toBeVisible();
   await page.getByRole('button', { name: '切换到夜间模式' }).click();
-  const exportField = page.getByLabel('商品导出字段');
-  await expect(exportField).toHaveValue('json');
-  await expect
-    .poll(() => exportField.evaluate((element) => getComputedStyle(element).colorScheme))
-    .toBe('dark');
-  await exportField.selectOption('xml');
-  await expect(exportField).toHaveValue('xml');
-  await exportField.selectOption('json');
+
+  await page.getByRole('button', { name: '导入', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '导入商品' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: '确认关闭' })).toBeVisible();
+  await page
+    .getByRole('dialog', { name: '确认关闭' })
+    .getByRole('button', { name: '返回', exact: true })
+    .click();
+  await expect(page.getByRole('dialog', { name: '导入商品' })).toBeVisible();
+  await page.getByRole('dialog', { name: '导入商品' }).getByRole('button', { name: '取消' }).click();
+  await page
+    .getByRole('dialog', { name: '确认关闭' })
+    .getByRole('button', { name: '确认关闭', exact: true })
+    .click();
+
   await page.getByLabel('选择 Portable solar power station 1000W').check();
+  await page.getByRole('button', { name: '导出', exact: true }).click();
+  const exportDialog = page.getByRole('dialog', { name: '导出商品' });
+  await expect(exportDialog).toContainText('已冻结本次导出范围');
+  await exportDialog.locator('summary').click();
+  const schemaJsonOption = exportDialog.getByLabel('Schema JSON');
+  await expect(schemaJsonOption).toBeChecked();
+  await expect(schemaJsonOption).toBeVisible();
+  const schemaJsonCard = schemaJsonOption.locator('..');
+  await expect
+    .poll(() =>
+      schemaJsonCard.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return style.color === style.backgroundColor;
+      })
+    )
+    .toBe(false);
+  await exportDialog.getByRole('button', { name: '导出', exact: true }).click();
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('button', { name: /导出所选/ }).click()
+    page
+      .getByRole('dialog', { name: '确认导出' })
+      .getByRole('button', { name: '确认导出', exact: true })
+      .click()
   ]);
   const downloadPath = await download.path();
   if (!downloadPath) throw new Error('Product JSON download path is unavailable');
@@ -152,7 +180,41 @@ test('web mock exports a product JSON and imports it into the local review queue
   expect(transfer.products[0]?.schemaJson).toBeTruthy();
   expect(transfer.products[0]?.schemaXml).toBeUndefined();
 
-  await page.getByLabel('选择商品 JSON 文件').setInputFiles(downloadPath);
+  await page.getByRole('button', { name: '导出', exact: true }).click();
+  const xmlExportDialog = page.getByRole('dialog', { name: '导出商品' });
+  await xmlExportDialog.locator('summary').click();
+  await xmlExportDialog.getByLabel('Schema XML').check();
+  await xmlExportDialog.getByRole('button', { name: '导出', exact: true }).click();
+  const [xmlDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page
+      .getByRole('dialog', { name: '确认导出' })
+      .getByRole('button', { name: '确认导出', exact: true })
+      .click()
+  ]);
+  const xmlDownloadPath = await xmlDownload.path();
+  if (!xmlDownloadPath) throw new Error('Product Schema XML JSON download path is unavailable');
+  const xmlTransfer = JSON.parse(await readFile(xmlDownloadPath, 'utf8')) as {
+    products: { schemaJson?: unknown; schemaXml?: string }[];
+  };
+  expect(xmlTransfer.products[0]?.schemaXml).toBeTruthy();
+  expect(xmlTransfer.products[0]?.schemaJson).toBeUndefined();
+
+  await page.getByRole('button', { name: '导入', exact: true }).click();
+  const importDialog = page.getByRole('dialog', { name: '导入商品' });
+  await importDialog.getByLabel('选择商品 JSON 文件').setInputFiles(downloadPath);
+  await expect(importDialog).toContainText('1 个商品');
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('one-vegetable-product-batch-publish-v1')))
+    .toBeNull();
+  await importDialog.getByRole('button', { name: '导入', exact: true }).click();
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('one-vegetable-product-batch-publish-v1')))
+    .toBeNull();
+  await page
+    .getByRole('dialog', { name: '确认导入' })
+    .getByRole('button', { name: '确认导入', exact: true })
+    .click();
   await expect(page.getByText(/商品 JSON 已导入本机队列：新增 1/)).toBeVisible();
   await expect(page.getByRole('heading', { name: '批量发品队列' })).toBeVisible();
   await expect(page.getByText('Portable solar power station 1000W', { exact: true })).toBeVisible();

@@ -28,7 +28,10 @@ const emit = defineEmits<{ 'update:open': [open: boolean] }>();
 <template>
   <DialogRoot :open="open" @update:open="emit('update:open', $event)">
     <DialogPortal>
-      <DialogOverlay class="ov-dialog-overlay fixed inset-0 z-[60] bg-slate-950/70 backdrop-blur-sm" />
+      <DialogOverlay
+        class="ov-dialog-overlay fixed inset-0 z-[60] bg-slate-950/70 backdrop-blur-sm"
+        @click="emit('update:open', false)"
+      />
       <DialogContent
         class="ov-dialog-content fixed left-1/2 top-1/2 z-[61] flex max-h-[min(88vh,760px)] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border bg-background shadow-2xl outline-none"
         :class="size === 'sm' ? 'max-w-md' : size === 'lg' ? 'max-w-3xl' : 'max-w-xl'"

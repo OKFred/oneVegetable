@@ -10,8 +10,6 @@ import {
   createProductScoreOfficialHints,
   inspectProductSchemaPatchSerialization,
   inspectProductSchemaSerialization,
-  MAX_PRODUCT_TRANSFER_JSON_BYTES,
-  parseProductTransferJson,
   parseProductSchemaXml,
   PRODUCT_EDITOR_STEP_IDS,
   productMutationJobIsBlocking,
@@ -33,6 +31,7 @@ import {
   type ProductSchemaModel,
   type ProductScore,
   type ProductTransferItemInput,
+  type ProductTransferDocumentV1,
   type ProductTransferSchemaFormat
 } from '@one-vegetable/core';
 
@@ -42,6 +41,7 @@ import PageHeader from '../components/PageHeader.vue';
 import ProductBatchPublisher from '../components/ProductBatchPublisher.vue';
 import ProductCategoryPicker from '../components/ProductCategoryPicker.vue';
 import ProductEditorLoading from '../components/ProductEditorLoading.vue';
+import ProductTransferDialog from '../components/ProductTransferDialog.vue';
 import QueryState from '../components/QueryState.vue';
 import ScoreProgress from '../components/ScoreProgress.vue';
 import TablePagination from '../components/TablePagination.vue';
@@ -157,10 +157,12 @@ const batchResults = ref<Record<string, ProductBatchPublishRunResult>>({});
 const activeBatchItemId = ref('');
 const stopBatchRequested = ref(false);
 const editingBatchItemId = ref('');
-const productTransferInput = ref<HTMLInputElement | null>(null);
 const productTransferBusy = ref(false);
 const productTransferError = ref('');
 const productTransferSchemaFormat = ref<ProductTransferSchemaFormat>('json');
+const productTransferDialogOpen = ref(false);
+const productTransferDialogMode = ref<'import' | 'export'>('import');
+const productTransferExportProducts = ref<Product[]>([]);
 
 const products = useQuery({
   queryKey: ['products', subject, language, productPage, productPageSize],
@@ -640,7 +642,7 @@ function reloadBatchItems(): void {
 }
 
 async function exportSelectedProducts(): Promise<void> {
-  if (selectedProducts.value.length === 0) {
+  if (productTransferExportProducts.value.length === 0) {
     productTransferError.value = '请先选择要导出的商品。';
     return;
   }
@@ -649,7 +651,7 @@ async function exportSelectedProducts(): Promise<void> {
   productTransferError.value = '';
   try {
     const transferItems: ProductTransferItemInput[] = [];
-    for (const product of selectedProducts.value) {
+    for (const product of productTransferExportProducts.value) {
       const schema =
         product.status === 'draft'
           ? await gateway.request('getProductDraft', {
@@ -689,6 +691,7 @@ async function exportSelectedProducts(): Promise<void> {
       serializeProductTransferDocument(document, { schemaFormat: productTransferSchemaFormat.value })
     );
     feedback.value = `已导出 ${document.products.length} 个商品（${productTransferSchemaFormatLabel(productTransferSchemaFormat.value)}）。`;
+    productTransferDialogOpen.value = false;
   } catch (error: unknown) {
     productTransferError.value = errorMessage(error);
   } finally {
@@ -696,24 +699,15 @@ async function exportSelectedProducts(): Promise<void> {
   }
 }
 
-async function importProducts(event: Event): Promise<void> {
-  const input = event.currentTarget as HTMLInputElement;
-  const file = input.files?.[0];
-  input.value = '';
-  if (!file) return;
+function importProducts(document: ProductTransferDocumentV1): void {
   if (!('localStorage' in globalThis)) {
     productTransferError.value = '当前环境不支持本地商品导入。';
-    return;
-  }
-  if (file.size > MAX_PRODUCT_TRANSFER_JSON_BYTES) {
-    productTransferError.value = '商品导入文件超过 10 MiB 上限。';
     return;
   }
 
   productTransferBusy.value = true;
   productTransferError.value = '';
   try {
-    const document = parseProductTransferJson(await file.text());
     const result = importProductBatchPublishItems(
       globalThis.localStorage,
       document.products.map((product) => ({
@@ -728,6 +722,7 @@ async function importProducts(event: Event): Promise<void> {
     reloadBatchItems();
     selectedBatchItemIds.value = result.items.map((item) => item.id);
     feedback.value = `商品 JSON 已导入本机队列：新增 ${result.added}，更新 ${result.updated}，已提交跳过 ${result.skipped}。导入不会自动写入平台。`;
+    productTransferDialogOpen.value = false;
     workspace.value = 'batch-publisher';
     updateProductHash('push');
   } catch (error: unknown) {
@@ -735,6 +730,21 @@ async function importProducts(event: Event): Promise<void> {
   } finally {
     productTransferBusy.value = false;
   }
+}
+
+function openProductImportDialog(): void {
+  productTransferError.value = '';
+  productTransferDialogMode.value = 'import';
+  productTransferExportProducts.value = [];
+  productTransferDialogOpen.value = true;
+}
+
+function openProductExportDialog(): void {
+  if (selectedProducts.value.length === 0) return;
+  productTransferError.value = '';
+  productTransferDialogMode.value = 'export';
+  productTransferExportProducts.value = selectedProducts.value.map((product) => ({ ...product }));
+  productTransferDialogOpen.value = true;
 }
 
 function downloadTextFile(fileName: string, content: string): void {
@@ -1537,10 +1547,6 @@ onBeforeUnmount(() => {
   <p v-if="feedback" class="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">
     {{ feedback }}
   </p>
-  <p v-if="productTransferError" class="mb-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-    {{ productTransferError }}
-  </p>
-
   <template v-if="workspace === 'list'">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <div class="relative min-w-64 max-w-md flex-1">
@@ -1548,36 +1554,15 @@ onBeforeUnmount(() => {
         <Input v-model="subject" class="pl-9" placeholder="按标题搜索" />
       </div>
       <div class="flex flex-wrap gap-2">
-        <input
-          ref="productTransferInput"
-          class="sr-only"
-          type="file"
-          accept=".json,application/json"
-          aria-label="选择商品 JSON 文件"
-          @change="importProducts"
-        />
-        <Button variant="outline" :disabled="productTransferBusy" @click="productTransferInput?.click()">
-          <Upload class="size-4" />{{ productTransferBusy ? '处理中…' : '导入 JSON' }}
+        <Button variant="outline" :disabled="productTransferBusy" @click="openProductImportDialog">
+          <Upload class="size-4" />导入
         </Button>
-        <label class="flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm">
-          <span class="whitespace-nowrap text-muted-foreground">导出字段</span>
-          <select
-            v-model="productTransferSchemaFormat"
-            class="cursor-pointer bg-background font-medium text-foreground outline-none [color-scheme:light] dark:[color-scheme:dark]"
-            aria-label="商品导出字段"
-          >
-            <option class="bg-background text-foreground" value="json">Schema JSON（schemaJson）</option>
-            <option class="bg-background text-foreground" value="xml">Schema XML（schemaXml）</option>
-          </select>
-        </label>
         <Button
           variant="outline"
           :disabled="selectedProducts.length === 0 || productTransferBusy"
-          @click="exportSelectedProducts"
+          @click="openProductExportDialog"
         >
-          <Download class="size-4" />导出所选{{
-            selectedProducts.length ? ` (${selectedProducts.length})` : ''
-          }}
+          <Download class="size-4" />导出
         </Button>
         <Button @click="startNewProduct">发布新商品</Button>
       </div>
@@ -2076,4 +2061,15 @@ onBeforeUnmount(() => {
       </div>
     </QueryState>
   </template>
+
+  <ProductTransferDialog
+    v-model:open="productTransferDialogOpen"
+    v-model:schema-format="productTransferSchemaFormat"
+    :mode="productTransferDialogMode"
+    :busy="productTransferBusy"
+    :error="productTransferError"
+    :export-products="productTransferExportProducts"
+    @confirm-import="importProducts"
+    @confirm-export="exportSelectedProducts"
+  />
 </template>
