@@ -76,9 +76,13 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   ).toBeVisible();
   await page.getByLabel('选择 Portable solar power station 1000W').check();
   await page.getByLabel('选择 Custom recycled cotton canvas tote bag').check();
+  const clientWidthBeforeMenu = await page.evaluate(() => document.documentElement.clientWidth);
   await page.getByRole('button', { name: '更多' }).click();
   const productActionsMenu = page.getByRole('menu');
   await expect(productActionsMenu).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.clientWidth))
+    .toBe(clientWidthBeforeMenu);
   await expect
     .poll(() => productActionsMenu.evaluate((element) => getComputedStyle(element).backgroundColor))
     .not.toBe('rgba(0, 0, 0, 0)');

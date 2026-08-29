@@ -43,6 +43,7 @@ import type {
 import { APP_VERSION } from '@one-vegetable/core/version';
 
 import Button from './components/ui/Button.vue';
+import Sonner from './components/ui/Sonner.vue';
 import AuthGate from './components/AuthGate.vue';
 import OnboardingDialog from './components/OnboardingDialog.vue';
 import { pageHash, parsePageHash, type PageId } from './lib/hash-router';
@@ -252,6 +253,7 @@ async function logout(): Promise<void> {
 
 <template>
   <div class="min-h-screen bg-background text-foreground">
+    <Sonner :theme="darkTheme ? 'dark' : 'light'" />
     <div v-if="authLoading" class="grid min-h-screen place-items-center text-sm text-muted-foreground">
       正在检查本地会话…
     </div>

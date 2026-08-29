@@ -4,14 +4,23 @@ import { defineComponent, h } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { toast } from 'vue-sonner';
 
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import { provideServices } from '../src/lib/services';
 import ProductsView from '../src/views/ProductsView.vue';
 
+vi.mock('vue-sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    warning: vi.fn()
+  }
+}));
+
 describe('ProductsView selection toolbar', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     localStorage.clear();
     globalThis.history.replaceState(null, '', '#/products/list');
   });
@@ -106,7 +115,7 @@ describe('ProductsView selection toolbar', () => {
     await flushPromises();
 
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('产品分查询完成：成功 2 个');
+      expect(toast.success).toHaveBeenCalledWith('产品分查询完成：成功 2 个，失败 0 个。');
       expect(wrapper.text().match(/4\.6\/6/g)).toHaveLength(2);
     });
     expect(wrapper.text()).not.toContain('质量与上下架');

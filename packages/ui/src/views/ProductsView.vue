@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from 'reka-ui';
+import { toast } from 'vue-sonner';
 
 import {
   analyzeProductDescriptionQuality,
@@ -1048,7 +1049,9 @@ async function querySelectedProductScores(): Promise<void> {
     queryingSelectedProductScores.value = false;
   }
   const skipped = selectedProducts.value.length - targets.length;
-  feedback.value = `产品分查询完成：成功 ${succeeded} 个，失败 ${failed} 个${skipped > 0 ? `，跳过 ${skipped} 个` : ''}。`;
+  const message = `产品分查询完成：成功 ${succeeded} 个，失败 ${failed} 个${skipped > 0 ? `，跳过 ${skipped} 个` : ''}。`;
+  if (failed > 0 || skipped > 0) toast.warning(message);
+  else toast.success(message);
 }
 
 function formatProductScore(score: number): string {
@@ -1691,7 +1694,7 @@ onBeforeUnmount(() => {
         >
           <Download class="size-4" />导出
         </Button>
-        <DropdownMenuRoot>
+        <DropdownMenuRoot :modal="false">
           <DropdownMenuTrigger as-child>
             <Button
               variant="outline"
