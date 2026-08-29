@@ -1,17 +1,22 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, h, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import { Layers3, LayoutGrid, List, ListPlus, RefreshCw, Search } from '@lucide/vue';
+import { Download, Layers3, LayoutGrid, List, ListPlus, RefreshCw, Search, Upload } from '@lucide/vue';
 
 import {
   analyzeProductDescriptionQuality,
   collectProductSchemaOfficialHints,
+  createProductTransferDocument,
   createProductScoreOfficialHints,
   inspectProductSchemaPatchSerialization,
   inspectProductSchemaSerialization,
+  MAX_PRODUCT_TRANSFER_JSON_BYTES,
+  parseProductTransferJson,
   parseProductSchemaXml,
   PRODUCT_EDITOR_STEP_IDS,
   productMutationJobIsBlocking,
+  productTransferQueueItemId,
+  serializeProductTransferDocument,
   validateProductDisplayInput,
   validateProductGroupCreateInput,
   validateProductSchemaRenderInput,
@@ -25,7 +30,8 @@ import {
   type OperationId,
   type ProductSchemaOfficialHint,
   type ProductSchemaModel,
-  type ProductScore
+  type ProductScore,
+  type ProductTransferItemInput
 } from '@one-vegetable/core';
 
 import DataTable from '../components/DataTable.vue';
@@ -54,6 +60,7 @@ import {
 } from '../lib/product-editor-drafts';
 import {
   completeProductBatchPublishItem,
+  importProductBatchPublishItems,
   loadProductBatchPublishItems,
   removeProductBatchPublishItem,
   runProductBatchPublish,
@@ -148,6 +155,9 @@ const batchResults = ref<Record<string, ProductBatchPublishRunResult>>({});
 const activeBatchItemId = ref('');
 const stopBatchRequested = ref(false);
 const editingBatchItemId = ref('');
+const productTransferInput = ref<HTMLInputElement | null>(null);
+const productTransferBusy = ref(false);
+const productTransferError = ref('');
 
 const products = useQuery({
   queryKey: ['products', subject, language, productPage, productPageSize],
@@ -624,6 +634,120 @@ function removeBatchItem(item: ProductBatchPublishItem): void {
 function reloadBatchItems(): void {
   if (!('localStorage' in globalThis)) return;
   batchItems.value = loadProductBatchPublishItems(globalThis.localStorage);
+}
+
+async function exportSelectedProducts(): Promise<void> {
+  if (selectedProducts.value.length === 0) {
+    productTransferError.value = '请先选择要导出的商品。';
+    return;
+  }
+
+  productTransferBusy.value = true;
+  productTransferError.value = '';
+  try {
+    const transferItems: ProductTransferItemInput[] = [];
+    for (const product of selectedProducts.value) {
+      const schema =
+        product.status === 'draft'
+          ? await gateway.request('getProductDraft', {
+              productId: product.id,
+              language: language.value
+            })
+          : product.categoryId === null
+            ? null
+            : await gateway.request('renderProductSchema', {
+                categoryId: product.categoryId,
+                language: language.value,
+                productId: product.id
+              });
+      if (!schema) throw new Error(`商品 ${product.id} 缺少类目，无法导出完整 Schema`);
+      const schemaXml = 'schemaXml' in schema ? schema.schemaXml : schema.xml;
+      const exportedCategoryId =
+        product.status === 'draft' && schema.categoryId > 0 ? schema.categoryId : product.categoryId;
+      if (exportedCategoryId === null) throw new Error(`商品 ${product.id} 缺少类目，无法导出完整 Schema`);
+      transferItems.push({
+        source: {
+          productId: product.id,
+          subject: product.subject,
+          groupName: product.groupName,
+          status: product.status,
+          updatedAt: product.updatedAt
+        },
+        categoryId: exportedCategoryId,
+        language: language.value,
+        market: 'market' in schema && schema.market === 'sourcing' ? 'sourcing' : market.value,
+        schemaXml
+      });
+    }
+    const document = createProductTransferDocument(transferItems);
+    downloadTextFile(
+      `one-vegetable-products-${fileTimestamp(new Date())}.json`,
+      serializeProductTransferDocument(document)
+    );
+    feedback.value = `已导出 ${document.products.length} 个商品的完整 Schema JSON。`;
+  } catch (error: unknown) {
+    productTransferError.value = errorMessage(error);
+  } finally {
+    productTransferBusy.value = false;
+  }
+}
+
+async function importProducts(event: Event): Promise<void> {
+  const input = event.currentTarget as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  if (!('localStorage' in globalThis)) {
+    productTransferError.value = '当前环境不支持本地商品导入。';
+    return;
+  }
+  if (file.size > MAX_PRODUCT_TRANSFER_JSON_BYTES) {
+    productTransferError.value = '商品导入文件超过 10 MiB 上限。';
+    return;
+  }
+
+  productTransferBusy.value = true;
+  productTransferError.value = '';
+  try {
+    const document = parseProductTransferJson(await file.text());
+    const result = importProductBatchPublishItems(
+      globalThis.localStorage,
+      document.products.map((product) => ({
+        id: productTransferQueueItemId(product),
+        title: product.source.subject,
+        categoryId: String(product.categoryId),
+        language: product.language,
+        market: product.market,
+        xml: product.schemaXml
+      }))
+    );
+    reloadBatchItems();
+    selectedBatchItemIds.value = result.items.map((item) => item.id);
+    feedback.value = `商品 JSON 已导入本机队列：新增 ${result.added}，更新 ${result.updated}，已提交跳过 ${result.skipped}。导入不会自动写入平台。`;
+    workspace.value = 'batch-publisher';
+    updateProductHash('push');
+  } catch (error: unknown) {
+    productTransferError.value = errorMessage(error);
+  } finally {
+    productTransferBusy.value = false;
+  }
+}
+
+function downloadTextFile(fileName: string, content: string): void {
+  const url = URL.createObjectURL(new Blob([content], { type: 'application/json;charset=utf-8' }));
+  const anchor = globalThis.document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function fileTimestamp(date: Date): string {
+  return date
+    .toISOString()
+    .replaceAll(/[-:]/gu, '')
+    .replace(/\.\d{3}Z$/u, 'Z')
+    .replace('T', '-');
 }
 
 function submitProductGroup(): void {
@@ -1404,6 +1528,9 @@ onBeforeUnmount(() => {
   <p v-if="feedback" class="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">
     {{ feedback }}
   </p>
+  <p v-if="productTransferError" class="mb-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+    {{ productTransferError }}
+  </p>
 
   <template v-if="workspace === 'list'">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -1411,7 +1538,29 @@ onBeforeUnmount(() => {
         <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
         <Input v-model="subject" class="pl-9" placeholder="按标题搜索" />
       </div>
-      <Button @click="startNewProduct">发布新商品</Button>
+      <div class="flex flex-wrap gap-2">
+        <input
+          ref="productTransferInput"
+          class="sr-only"
+          type="file"
+          accept=".json,application/json"
+          aria-label="选择商品 JSON 文件"
+          @change="importProducts"
+        />
+        <Button variant="outline" :disabled="productTransferBusy" @click="productTransferInput?.click()">
+          <Upload class="size-4" />{{ productTransferBusy ? '处理中…' : '导入 JSON' }}
+        </Button>
+        <Button
+          variant="outline"
+          :disabled="selectedProducts.length === 0 || productTransferBusy"
+          @click="exportSelectedProducts"
+        >
+          <Download class="size-4" />导出所选{{
+            selectedProducts.length ? ` (${selectedProducts.length})` : ''
+          }}
+        </Button>
+        <Button @click="startNewProduct">发布新商品</Button>
+      </div>
     </div>
     <QueryState :loading="products.isPending.value" :error="products.error.value">
       <DataTable

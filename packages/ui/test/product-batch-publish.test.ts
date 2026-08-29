@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
   completeProductBatchPublishItem,
+  importProductBatchPublishItems,
   inspectProductBatchPublishItem,
   loadProductBatchPublishItems,
   runProductBatchPublish,
@@ -85,6 +86,52 @@ describe('product batch publish queue', () => {
     expect(completed).toMatchObject({ status: 'draft-saved', platformProductId: 'platform-product-1' });
     expect(inspectProductBatchPublishItem(completed, 'draft')).toMatchObject({ ready: false });
   });
+
+  it('imports multiple products atomically and safely skips completed stable ids', () => {
+    const inputs = [
+      importInput('import:10000001:en_US', 'Imported first'),
+      importInput('import:10000002:en_US', 'Imported second')
+    ];
+
+    expect(importProductBatchPublishItems(localStorage, inputs, NOW)).toMatchObject({
+      added: 2,
+      updated: 0,
+      skipped: 0
+    });
+    expect(importProductBatchPublishItems(localStorage, inputs, NOW + 1)).toMatchObject({
+      added: 0,
+      updated: 2,
+      skipped: 0
+    });
+    completeProductBatchPublishItem(
+      localStorage,
+      'import:10000001:en_US',
+      'draft',
+      'platform-product-1',
+      NOW + 2
+    );
+
+    expect(importProductBatchPublishItems(localStorage, inputs, NOW + 3)).toMatchObject({
+      added: 0,
+      updated: 1,
+      skipped: 1
+    });
+    expect(loadProductBatchPublishItems(localStorage, NOW + 4)).toHaveLength(2);
+  });
+
+  it('does not partially write an import when any product XML is invalid', () => {
+    expect(() =>
+      importProductBatchPublishItems(
+        localStorage,
+        [
+          importInput('valid', 'Valid import'),
+          { ...importInput('invalid', 'Invalid import'), xml: '<broken>' }
+        ],
+        NOW
+      )
+    ).toThrow();
+    expect(loadProductBatchPublishItems(localStorage, NOW)).toEqual([]);
+  });
 });
 
 function upsert(id: string, xml: string, now: number) {
@@ -98,4 +145,15 @@ function upsert(id: string, xml: string, now: number) {
     },
     { id, now }
   );
+}
+
+function importInput(id: string, title: string) {
+  return {
+    id,
+    title,
+    categoryId: '201712702',
+    language: 'en_US' as const,
+    market: 'wholesale' as const,
+    xml: fixture.validXml.replace('Batch portable power station', title)
+  };
 }

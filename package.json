@@ -67,6 +67,7 @@
     "smoke:photobank:upload:real": "tsx scripts/smoke-photobank-upload-real.ts",
     "smoke:photobank:group:real": "tsx scripts/smoke-photobank-group-real.ts",
     "smoke:product:draft:real": "tsx scripts/smoke-product-draft-real.ts",
+    "smoke:product:transfer:draft:real": "tsx scripts/smoke-product-transfer-draft-real.ts",
     "smoke:product:draft:verify": "tsx scripts/verify-product-draft-edit-real.ts",
     "smoke:product:publish:real": "tsx scripts/smoke-product-publish-real.ts",
     "smoke:product:batch-publish:real": "tsx scripts/smoke-product-batch-publish-real.ts",

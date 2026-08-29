@@ -48,6 +48,17 @@ export interface ProductBatchPublishItemInput {
   xml: string;
 }
 
+export interface ProductBatchPublishImportInput extends ProductBatchPublishItemInput {
+  id: string;
+}
+
+export interface ProductBatchPublishImportResult {
+  items: ProductBatchPublishItem[];
+  added: number;
+  updated: number;
+  skipped: number;
+}
+
 export interface ProductBatchPublishPreflight {
   ready: boolean;
   title: string;
@@ -111,23 +122,12 @@ export function upsertProductBatchPublishItem(
     throw new Error(`批量发布队列最多保留 ${MAX_ITEMS} 条商品`);
   }
 
-  const normalizedCategoryId = normalizeCategoryId(input.categoryId);
-  const normalizedXml = input.xml.trim();
-  if (!normalizedXml) throw new Error('商品 Schema XML 不能为空');
-  const derivedTitle = inspectProductBatchPublishXml(normalizedXml).title;
-  const item: ProductBatchPublishItem = {
-    schemaVersion: SCHEMA_VERSION,
-    id: existing?.id ?? options.id ?? globalThis.crypto.randomUUID(),
-    title: normalizeTitle(input.title) || derivedTitle,
-    categoryId: normalizedCategoryId,
-    language: input.language,
-    market: input.market,
-    xml: normalizedXml,
-    status: 'queued',
-    platformProductId: null,
-    createdAtUtc: existing?.createdAtUtc ?? now,
+  const id = existing?.id ?? options.id;
+  const item = createProductBatchPublishItem(input, {
+    ...(id ? { id } : {}),
+    ...(existing ? { createdAtUtc: existing.createdAtUtc } : {}),
     updatedAtUtc: now
-  };
+  });
   writeItems(
     draftStorage,
     [item, ...current.filter((candidate) => candidate.id !== item.id)]
@@ -135,6 +135,47 @@ export function upsertProductBatchPublishItem(
       .slice(0, MAX_ITEMS)
   );
   return item;
+}
+
+export function importProductBatchPublishItems(
+  draftStorage: DraftStorage,
+  inputs: readonly ProductBatchPublishImportInput[],
+  now = Date.now()
+): ProductBatchPublishImportResult {
+  if (inputs.length === 0) throw new Error('商品导入文件没有可导入商品');
+  if (inputs.length > MAX_ITEMS) throw new Error(`单次最多导入 ${MAX_ITEMS} 条商品`);
+  const current = loadProductBatchPublishItems(draftStorage, now);
+  const inputIds = inputs.map((input) => input.id);
+  if (inputIds.some((id) => id.trim() === '')) throw new Error('商品导入文件包含无效商品 ID');
+  if (new Set(inputIds).size !== inputIds.length) throw new Error('商品导入文件包含重复商品');
+
+  const completedIds = new Set(current.filter((item) => item.status !== 'queued').map((item) => item.id));
+  const importableInputs = inputs.filter((input) => !completedIds.has(input.id));
+  const existingIds = new Set(current.map((item) => item.id));
+  const newItemCount = importableInputs.filter((input) => !existingIds.has(input.id)).length;
+  if (current.length + newItemCount > MAX_ITEMS) {
+    throw new Error(`批量发布队列最多保留 ${MAX_ITEMS} 条商品，请先移除不需要的队列项`);
+  }
+
+  const imported = importableInputs.map((input, index) => {
+    const existing = current.find((item) => item.id === input.id);
+    return createProductBatchPublishItem(input, {
+      id: input.id,
+      ...(existing ? { createdAtUtc: existing.createdAtUtc } : {}),
+      updatedAtUtc: Math.max(0, now - index)
+    });
+  });
+  const importedIds = new Set(imported.map((item) => item.id));
+  const merged = [...imported, ...current.filter((item) => !importedIds.has(item.id))]
+    .sort((left, right) => right.updatedAtUtc - left.updatedAtUtc)
+    .slice(0, MAX_ITEMS);
+  writeItems(draftStorage, merged);
+  return {
+    items: imported,
+    added: imported.filter((item) => !existingIds.has(item.id)).length,
+    updated: imported.filter((item) => existingIds.has(item.id)).length,
+    skipped: inputs.length - importableInputs.length
+  };
 }
 
 export function completeProductBatchPublishItem(
@@ -304,6 +345,29 @@ function normalizeCategoryId(value: string): string {
   const parsed = Number(normalized);
   if (!Number.isSafeInteger(parsed) || parsed <= 0) throw new Error('商品类目必须是正整数');
   return normalized;
+}
+
+function createProductBatchPublishItem(
+  input: ProductBatchPublishItemInput,
+  options: { id?: string; createdAtUtc?: number; updatedAtUtc: number }
+): ProductBatchPublishItem {
+  const normalizedCategoryId = normalizeCategoryId(input.categoryId);
+  const normalizedXml = input.xml.trim();
+  if (!normalizedXml) throw new Error('商品 Schema XML 不能为空');
+  const derivedTitle = inspectProductBatchPublishXml(normalizedXml).title;
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    id: options.id ?? globalThis.crypto.randomUUID(),
+    title: normalizeTitle(input.title) || derivedTitle,
+    categoryId: normalizedCategoryId,
+    language: input.language,
+    market: input.market,
+    xml: normalizedXml,
+    status: 'queued',
+    platformProductId: null,
+    createdAtUtc: options.createdAtUtc ?? options.updatedAtUtc,
+    updatedAtUtc: options.updatedAtUtc
+  };
 }
 
 function normalizeTitle(value: string | undefined): string {

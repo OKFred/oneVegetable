@@ -1,0 +1,20 @@
+{
+  "format": "one-vegetable-products",
+  "schemaVersion": 1,
+  "exportedAtUtc": "2026-08-28T08:00:00.000Z",
+  "products": [
+    {
+      "source": {
+        "productId": "10000001",
+        "subject": "Portable solar power station 1000W",
+        "groupName": "Energy storage",
+        "status": "online",
+        "updatedAt": "2026-08-11T03:20:00.000Z"
+      },
+      "categoryId": 100009999,
+      "language": "en_US",
+      "market": "wholesale",
+      "schemaXml": "<itemSchema><field id=\"productTitle\" name=\"商品标题\" type=\"input\"><values><value>Portable solar power station 1000W</value></values></field><field id=\"keywords\" name=\"关键词\" type=\"multiInput\"><values><value>solar generator</value><value>portable power station</value></values></field></itemSchema>"
+    }
+  ]
+}

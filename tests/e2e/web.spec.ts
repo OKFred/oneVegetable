@@ -115,6 +115,39 @@ test('web mock queues multiple products and saves platform drafts sequentially',
   await expect(page.getByText('本轮成功')).toHaveCount(2);
 });
 
+test('web mock exports a product JSON and imports it into the local review queue', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => {
+    localStorage.clear();
+  });
+  await page.getByRole('link', { name: '商品' }).click();
+  await expect(page.getByText('Portable solar power station 1000W')).toBeVisible();
+  await page.getByLabel('选择 Portable solar power station 1000W').check();
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: /导出所选/ }).click()
+  ]);
+  const downloadPath = await download.path();
+  if (!downloadPath) throw new Error('Product JSON download path is unavailable');
+  const transfer = JSON.parse(await readFile(downloadPath, 'utf8')) as {
+    format: string;
+    schemaVersion: number;
+    products: { source: { productId: string }; schemaXml: string }[];
+  };
+  expect(transfer).toMatchObject({
+    format: 'one-vegetable-products',
+    schemaVersion: 1,
+    products: [{ source: { productId: '10000001' } }]
+  });
+  expect(transfer.products[0]?.schemaXml).toContain('Portable solar power station 1000W');
+
+  await page.getByLabel('选择商品 JSON 文件').setInputFiles(downloadPath);
+  await expect(page.getByText(/商品 JSON 已导入本机队列：新增 1/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: '批量发品队列' })).toBeVisible();
+  await expect(page.getByText('Portable solar power station 1000W', { exact: true })).toBeVisible();
+});
+
 test('web mock completes the typed RFQ quotation workflow', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => {
