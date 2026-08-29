@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "tsx watch src/node.ts",
     "dev:node": "tsx watch src/node.ts",
-    "dev:worker": "wrangler dev",
+    "dev:worker": "wrangler dev --config ../../wrangler.jsonc --env=\"\"",
     "typecheck": "tsc --noEmit",
-    "build": "tsc --noEmit && wrangler deploy --dry-run --env=\"\" --outdir dist/worker"
+    "build": "tsc --noEmit && wrangler deploy --dry-run --config ../../wrangler.jsonc --env=\"\" --outdir dist/worker"
   },
   "dependencies": {
     "@hono/node-server": "2.1.0",
@@ -21,7 +21,6 @@
     "@cloudflare/vitest-pool-workers": "0.21.2",
     "drizzle-kit": "0.31.10",
     "tsx": "4.23.12",
-    "typescript": "5.9.3",
-    "wrangler": "4.122.0"
+    "typescript": "5.9.3"
   }
 }

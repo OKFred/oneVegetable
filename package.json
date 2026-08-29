@@ -16,10 +16,16 @@
     "dev:worker": "pnpm --filter @one-vegetable/api dev:worker",
     "openapi:auth": "tsx scripts/acquire-alibaba-openapi-auth.ts",
     "openapi:auth:refresh": "tsx scripts/refresh-alibaba-openapi-auth.ts",
-    "db:migrate:local": "pnpm --filter @one-vegetable/api exec wrangler d1 migrations apply one-vegetable-local --local",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local --config wrangler.jsonc --env=\"\"",
     "build:api": "pnpm --filter @one-vegetable/api build",
     "build": "pnpm run generate && pnpm -r --if-present build && pnpm run check:web-bundle && pnpm run check:extension-bundle && pnpm run check:store-compliance",
     "build:web": "pnpm --filter @one-vegetable/web build",
+    "build:web:cloudflare": "pnpm --filter @one-vegetable/web build:cloudflare",
+    "cloudflare:types": "wrangler types apps/api/src/worker-configuration.d.ts --config wrangler.jsonc --include-runtime false --env=\"\"",
+    "cloudflare:types:check": "wrangler types apps/api/src/worker-configuration.d.ts --config wrangler.jsonc --include-runtime false --env=\"\" --check",
+    "cloudflare:build": "pnpm run generate && pnpm run cloudflare:types && pnpm run typecheck && pnpm run build:web:cloudflare && wrangler deploy --dry-run --config wrangler.jsonc --env=\"\" --outdir dist/cloudflare",
+    "cloudflare:deploy": "pnpm run generate && pnpm run cloudflare:types && pnpm run typecheck && pnpm run build:web:cloudflare && wrangler d1 migrations apply DB --remote --config wrangler.jsonc --env=\"\" && wrangler deploy --config wrangler.jsonc --env=\"\"",
+    "deploy": "pnpm run cloudflare:deploy",
     "build:extension": "pnpm --filter @one-vegetable/extension build",
     "check:extension-bundle": "tsx scripts/check-extension-bundle.ts",
     "check:web-bundle": "tsx scripts/check-web-bundle.ts",
@@ -88,6 +94,16 @@
     ],
     "*.{json,yaml,yml,md,css,html}": "prettier --write"
   },
+  "cloudflare": {
+    "bindings": {
+      "BOOTSTRAP_ADMIN_TOKEN": {
+        "description": "首次注册自托管管理员时使用的随机引导令牌，至少 32 字节。"
+      },
+      "ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY": {
+        "description": "用于加密 Alibaba 凭据保险库的独立 32 字节 Base64URL 密钥。"
+      }
+    }
+  },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
     "@eslint/js": "10.0.1",
@@ -112,6 +128,7 @@
     "typescript": "5.9.3",
     "typescript-eslint": "8.67.0",
     "vitest": "4.1.10",
-    "vue-eslint-parser": "10.4.1"
+    "vue-eslint-parser": "10.4.1",
+    "wrangler": "4.127.1"
   }
 }

@@ -12,27 +12,11 @@ import { readRuntimeConfiguration } from './runtime-config';
 import { SqlProductDescriptionTemplateRepository } from './product-description-templates/repository';
 import { SqlProductMutationJobRepository } from './product-mutations/repository';
 
-interface Env {
-  DB: D1Database;
-  ONE_VEGETABLE_API_PREFIX?: string;
-  ONE_VEGETABLE_ENVIRONMENT?: string;
-  ONE_VEGETABLE_GATEWAY_MODE?: string;
-  ONE_VEGETABLE_CORS_ORIGINS?: string;
-  ONE_VEGETABLE_MUTATION_FLAGS?: string;
-  ONE_VEGETABLE_REQUEST_RETENTION_DAYS?: string;
-  BOOTSTRAP_ADMIN_TOKEN?: string;
-  ONE_VEGETABLE_ALIBABA_APP_KEY?: string;
-  ONE_VEGETABLE_ALIBABA_APP_SECRET?: string;
-  ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN?: string;
-  ONE_VEGETABLE_ALIBABA_ENDPOINT?: string;
-  ONE_VEGETABLE_ALIBABA_SIGN_METHOD?: string;
-}
-
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const runtimeConfiguration = readRuntimeConfiguration(env, 'local-worker');
     const { gatewayMode } = runtimeConfiguration;
-    const credentialProvider = new EnvironmentAlibabaCredentialProvider(env);
+    const credentialProvider = new EnvironmentAlibabaCredentialProvider({});
     const database = openD1Database(env.DB);
     const authRepository = new SqlAuthRepository(database.executor);
     const authService = new AuthService({

@@ -21,6 +21,18 @@ pnpm dev:web
 pnpm dev:extension
 ```
 
+## Cloudflare 一键部署
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/OKFred/oneVegetable)
+
+一键部署会在同一个 Worker 中托管 Vue Web、Hono API 和 D1，并自动执行数据库 migration。部署页只要求两个独立随机 Secret：首次管理员引导令牌 `BOOTSTRAP_ADMIN_TOKEN`，以及 32 字节 Base64URL 凭据加密密钥 `ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY`。Alibaba AppKey、AppSecret 和 Token 不填写到部署表单，部署后由管理员在系统页面导入。
+
+本地验证 Cloudflare 构建：
+
+```bash
+pnpm cloudflare:build
+```
+
 Web 只接受 `VITE_GATEWAY_MODE=mock|bff`，拼写错误会直接阻止启动，不会静默转为 Mock。BFF 模式会读取 `/meta/get`，在全局状态和总览中明确显示 `real / replay / mock / disabled`。
 总览的商品、图库和订单指标同时显示逐项可用性：真实返回 `0` 会标记为已确认，不会与未知总数、账号无权限或接口失败混淆。
 
