@@ -104,7 +104,10 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       'mutationEnabled'
     ],
     properties: {
-      source: { type: 'string', enum: ['environment', 'documentation-replay'] },
+      source: {
+        type: 'string',
+        enum: ['environment', 'credential-bundle', 'd1-vault', 'documentation-replay']
+      },
       configured: { type: 'boolean' },
       hasAppKey: { type: 'boolean' },
       hasAppSecret: { type: 'boolean' },
@@ -130,11 +133,12 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
   schemas.AuthBootstrapStatus = {
     type: 'object',
     additionalProperties: false,
-    required: ['initialized', 'bootstrapTokenConfigured', 'bootstrapAvailable'],
+    required: ['initialized', 'bootstrapTokenConfigured', 'bootstrapAvailable', 'authenticationMode'],
     properties: {
       initialized: { type: 'boolean' },
       bootstrapTokenConfigured: { type: 'boolean' },
-      bootstrapAvailable: { type: 'boolean' }
+      bootstrapAvailable: { type: 'boolean' },
+      authenticationMode: { type: 'string', enum: ['password', 'passkey'] }
     }
   };
   schemas.AuthBootstrapStatusResponse = {
@@ -160,6 +164,30 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
   schemas.AuthPasswordChangeRequest = objectRequest(['requestId', 'currentPassword', 'newPassword'], {
     currentPassword: { type: 'string' },
     newPassword: { type: 'string', minLength: 12, maxLength: 256 }
+  });
+  schemas.PasskeyBootstrapOptionsRequest = objectRequest(['requestId', 'bootstrapToken', 'username'], {
+    bootstrapToken: { type: 'string', minLength: 1 },
+    username: { type: 'string', minLength: 3, maxLength: 64 }
+  });
+  schemas.PasskeyVerifyRequest = objectRequest(['requestId', 'challengeId', 'response'], {
+    challengeId: { type: 'string', format: 'uuid' },
+    response: { type: 'object', additionalProperties: true },
+    credentialName: { type: 'string', minLength: 1, maxLength: 80 }
+  });
+  schemas.PasskeyRecoveryOptionsRequest = objectRequest(['requestId', 'username', 'recoveryCode'], {
+    username: { type: 'string', minLength: 3, maxLength: 64 },
+    recoveryCode: { type: 'string', minLength: 16, maxLength: 128 }
+  });
+  schemas.PasskeyEnrollmentOptionsRequest = objectRequest(['requestId', 'enrollmentToken'], {
+    enrollmentToken: { type: 'string', minLength: 32, maxLength: 128 }
+  });
+  schemas.PasskeyCredentialTargetRequest = objectRequest(['requestId', 'credentialId'], {
+    credentialId: { type: 'string', minLength: 1, maxLength: 1024 }
+  });
+  schemas.AdminUserEnrollmentCreateRequest = objectRequest(['requestId', 'username', 'role'], {
+    username: { type: 'string', minLength: 3, maxLength: 64 },
+    role: { $ref: '#/components/schemas/UserRole' },
+    remark: { type: ['string', 'null'], maxLength: 500 }
   });
   schemas.PageRequest = objectRequest([], {
     page: { type: 'integer', minimum: 1, default: 1 },
@@ -504,8 +532,74 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       'changePassword',
       'AuthPasswordChangeRequest'
     ),
+    '/auth/passkey/bootstrap/options': postOperation(
+      'Begin first administrator Passkey registration',
+      'beginPasskeyBootstrap',
+      'PasskeyBootstrapOptionsRequest'
+    ),
+    '/auth/passkey/bootstrap/verify': postOperation(
+      'Verify first administrator Passkey registration',
+      'verifyPasskeyBootstrap',
+      'PasskeyVerifyRequest'
+    ),
+    '/auth/passkey/login/options': postOperation(
+      'Begin discoverable Passkey login',
+      'beginPasskeyLogin',
+      'RequestEnvelope'
+    ),
+    '/auth/passkey/login/verify': postOperation(
+      'Verify discoverable Passkey login',
+      'verifyPasskeyLogin',
+      'PasskeyVerifyRequest'
+    ),
+    '/auth/passkeys/list': postOperation('List current user Passkeys', 'listPasskeys', 'RequestEnvelope'),
+    '/auth/passkeys/register/options': postOperation(
+      'Begin an additional Passkey registration',
+      'beginPasskeyRegistration',
+      'RequestEnvelope'
+    ),
+    '/auth/passkeys/register/verify': postOperation(
+      'Verify an additional Passkey registration',
+      'verifyPasskeyRegistration',
+      'PasskeyVerifyRequest'
+    ),
+    '/auth/passkeys/remove': postOperation(
+      'Remove one Passkey',
+      'removePasskey',
+      'PasskeyCredentialTargetRequest'
+    ),
+    '/auth/recovery-codes/regenerate': postOperation(
+      'Regenerate one-time recovery codes',
+      'regenerateRecoveryCodes',
+      'RequestEnvelope'
+    ),
+    '/auth/passkey/recovery/options': postOperation(
+      'Begin recovery-code Passkey registration',
+      'beginPasskeyRecovery',
+      'PasskeyRecoveryOptionsRequest'
+    ),
+    '/auth/passkey/recovery/verify': postOperation(
+      'Verify recovery-code Passkey registration',
+      'verifyPasskeyRecovery',
+      'PasskeyVerifyRequest'
+    ),
+    '/auth/passkey/enrollment/options': postOperation(
+      'Begin administrator-issued Passkey enrollment',
+      'beginPasskeyEnrollment',
+      'PasskeyEnrollmentOptionsRequest'
+    ),
+    '/auth/passkey/enrollment/verify': postOperation(
+      'Verify administrator-issued Passkey enrollment',
+      'verifyPasskeyEnrollment',
+      'PasskeyVerifyRequest'
+    ),
     '/admin/users/list': postOperation('List local users', 'listAdminUsers', 'PageRequest'),
     '/admin/users/create': postOperation('Create a local user', 'createAdminUser', 'AdminUserCreateRequest'),
+    '/admin/users/enrollment/create': postOperation(
+      'Create a Passkey-only user and one-time enrollment token',
+      'createAdminUserEnrollment',
+      'AdminUserEnrollmentCreateRequest'
+    ),
     '/admin/users/update': postOperation('Update a local user', 'updateAdminUser', 'AdminUserUpdateRequest'),
     '/admin/users/password/reset': postOperation(
       'Reset a local user password',

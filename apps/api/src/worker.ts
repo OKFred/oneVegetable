@@ -3,6 +3,8 @@ import { StaticOperationFeatureFlags } from './abac';
 import { AdminService } from './auth/admin-service';
 import { SqlAuthRepository } from './auth/repository';
 import { AuthService } from './auth/service';
+import { SqlPasskeyRepository } from './auth/passkey-repository';
+import { PasskeyService } from './auth/passkey-service';
 import { isD1DatabaseReady, openD1Database } from './db/d1-database';
 import { SqlRequestEventRepository } from './observability/request-events';
 import { CredentialBackedAlibabaGatewayClient } from './gateway/alibaba-read-gateway';
@@ -32,8 +34,18 @@ export default {
     const authRepository = new SqlAuthRepository(database.executor);
     const authService = new AuthService({
       repository: authRepository,
-      bootstrapToken: env.BOOTSTRAP_ADMIN_TOKEN
+      bootstrapToken: env.BOOTSTRAP_ADMIN_TOKEN,
+      authenticationMode: runtimeConfiguration.authenticationMode
     });
+    const passkeyService =
+      runtimeConfiguration.authenticationMode === 'passkey'
+        ? new PasskeyService(
+            new SqlPasskeyRepository(database.executor),
+            authRepository,
+            authService,
+            env.BOOTSTRAP_ADMIN_TOKEN
+          )
+        : undefined;
     return await createApiApp({
       runtime: 'cloudflare',
       database: 'd1',
@@ -47,6 +59,8 @@ export default {
           : {}),
       apiPrefix: runtimeConfiguration.apiPrefix,
       authService,
+      authenticationMode: runtimeConfiguration.authenticationMode,
+      ...(passkeyService ? { passkeyService } : {}),
       adminService: new AdminService(authRepository),
       gatewayCredentialService: credentialService,
       gatewayCredentialProvider: credentialProvider,

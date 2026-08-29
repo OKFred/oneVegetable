@@ -8,6 +8,7 @@ export interface AuthUser extends EntityAuditFields {
   username: string;
   passwordHash: string;
   passwordSalt: string;
+  passwordLoginEnabled: boolean;
   role: UserRole;
   status: UserStatus;
   failedLoginCount: number;

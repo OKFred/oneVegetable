@@ -12,6 +12,7 @@ import type { Context, Hono } from 'hono';
 import type { GatewayError } from '@one-vegetable/core';
 import type { AdminService } from './admin-service';
 import type { AuthenticatedSession, AuthService } from './service';
+import type { PasskeyService } from './passkey-service';
 import type { PublicUser, UserRole, UserStatus } from './types';
 import type { RequestEventRepository } from '../observability/request-events';
 import type { AlibabaCredentialStatus } from '../gateway/credentials';
@@ -25,6 +26,8 @@ const REQUEST_IDS = new WeakMap<Request, string>();
 
 export interface AuthRoutesOptions {
   authService: AuthService;
+  authenticationMode?: 'password' | 'passkey';
+  passkeyService?: PasskeyService;
   adminService: AdminService;
   apiPrefix: string;
   environment: string;
@@ -49,6 +52,8 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
       return success(context, requestId, await options.authService.bootstrapStatus());
     });
   });
+
+  if (options.passkeyService) registerPasskeyRoutes(api, options, options.passkeyService);
 
   api.post('/auth/bootstrap', async (context) => {
     return handle(context, async () => {
@@ -149,6 +154,7 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
       context,
       options,
       async (body, authenticated) => {
+        assertPasswordRoutesEnabled(options);
         const remark = readOptionalRemark(body, 'remark');
         return options.adminService.createUser({
           requestId: readRequestId(body),
@@ -185,14 +191,16 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
     return adminWrite(
       context,
       options,
-      async (body, authenticated) =>
-        options.adminService.resetPassword({
+      async (body, authenticated) => {
+        assertPasswordRoutesEnabled(options);
+        return options.adminService.resetPassword({
           requestId: readRequestId(body),
           actor: authenticated.principal,
           userId: readString(body, 'userId'),
           expectedRevision: readInteger(body, 'revision'),
           ...(body.newPassword === undefined ? {} : { newPassword: readPassword(body, 'newPassword') })
-        }),
+        });
+      },
       ['requestId', 'userId', 'revision', 'newPassword']
     );
   });
@@ -426,6 +434,232 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
       ['requestId']
     );
   });
+}
+
+function registerPasskeyRoutes(api: Hono, options: AuthRoutesOptions, passkeys: PasskeyService): void {
+  api.post('/auth/passkey/bootstrap/options', async (context) => {
+    return handle(context, async () => {
+      const body = await readBody(context, ['requestId', 'bootstrapToken', 'username']);
+      const requestId = readRequestId(body);
+      return success(
+        context,
+        requestId,
+        await passkeys.bootstrapOptions({
+          bootstrapToken: readString(body, 'bootstrapToken'),
+          username: readString(body, 'username'),
+          ceremony: passkeyCeremony(context)
+        })
+      );
+    });
+  });
+
+  api.post('/auth/passkey/bootstrap/verify', async (context) => {
+    return handle(context, async () => {
+      const body = await readBody(context, ['requestId', 'challengeId', 'response', 'credentialName']);
+      const requestId = readRequestId(body);
+      const result = await passkeys.bootstrapVerify({
+        requestId,
+        challengeId: readString(body, 'challengeId'),
+        response: body.response,
+        ...(body.credentialName === undefined ? {} : { credentialName: readString(body, 'credentialName') })
+      });
+      setSessionCookies(context, options, result.sessionToken, result.session.csrfToken);
+      return success(context, requestId, authenticationResult(result));
+    });
+  });
+
+  api.post('/auth/passkey/login/options', async (context) => {
+    return handle(context, async () => {
+      const body = await readBody(context, ['requestId']);
+      return success(context, readRequestId(body), await passkeys.loginOptions(passkeyCeremony(context)));
+    });
+  });
+
+  api.post('/auth/passkey/login/verify', async (context) => {
+    return handle(context, async () => {
+      const body = await readBody(context, ['requestId', 'challengeId', 'response']);
+      const requestId = readRequestId(body);
+      const result = await passkeys.loginVerify({
+        requestId,
+        challengeId: readString(body, 'challengeId'),
+        response: body.response
+      });
+      setSessionCookies(context, options, result.sessionToken, result.session.csrfToken);
+      return success(context, requestId, authenticationResult(result));
+    });
+  });
+
+  api.post('/auth/passkeys/list', async (context) => {
+    return handle(context, async () => {
+      const body = await readBody(context, ['requestId']);
+      const authenticated = await authenticateRequest(context, options.authService);
+      return success(
+        context,
+        readRequestId(body),
+        await passkeys.listCredentials(authenticated.principal.actorId)
+      );
+    });
+  });
+
+  api.post('/auth/passkeys/register/options', async (context) => {
+    return handle(context, async () => {
+      const body = await readBody(context, ['requestId']);
+      const authenticated = await authenticateMutation(context, options);
+      return success(
+        context,
+        readRequestId(body),
+        await passkeys.registerOptions(authenticated.user, passkeyCeremony(context))
+      );
+    });
+  });
+
+  api.post('/auth/passkeys/register/verify', async (context) => {
+    return handle(context, async () => {
+      const body = await readBody(context, ['requestId', 'challengeId', 'response', 'credentialName']);
+      const authenticated = await authenticateMutation(context, options);
+      return success(
+        context,
+        readRequestId(body),
+        await passkeys.registerVerify({
+          requestId: readRequestId(body),
+          actor: authenticated.principal,
+          challengeId: readString(body, 'challengeId'),
+          response: body.response,
+          ...(body.credentialName === undefined ? {} : { credentialName: readString(body, 'credentialName') })
+        })
+      );
+    });
+  });
+
+  api.post('/auth/passkeys/remove', async (context) => {
+    return handle(context, async () => {
+      const body = await readBody(context, ['requestId', 'credentialId']);
+      const authenticated = await authenticateMutation(context, options);
+      await passkeys.removeCredential({
+        requestId: readRequestId(body),
+        actor: authenticated.principal,
+        credentialId: readString(body, 'credentialId')
+      });
+      return success(context, readRequestId(body), {});
+    });
+  });
+
+  api.post('/auth/recovery-codes/regenerate', async (context) => {
+    return handle(context, async () => {
+      const body = await readBody(context, ['requestId']);
+      const authenticated = await authenticateMutation(context, options);
+      return success(context, readRequestId(body), {
+        recoveryCodes: await passkeys.regenerateRecoveryCodes({
+          requestId: readRequestId(body),
+          actor: authenticated.principal
+        })
+      });
+    });
+  });
+
+  api.post('/auth/passkey/recovery/options', async (context) => {
+    return handle(context, async () => {
+      const body = await readBody(context, ['requestId', 'username', 'recoveryCode']);
+      return success(
+        context,
+        readRequestId(body),
+        await passkeys.recoveryOptions({
+          username: readString(body, 'username'),
+          recoveryCode: readString(body, 'recoveryCode'),
+          ceremony: passkeyCeremony(context)
+        })
+      );
+    });
+  });
+
+  api.post('/auth/passkey/recovery/verify', async (context) => {
+    return handle(context, async () => {
+      const body = await readBody(context, ['requestId', 'challengeId', 'response', 'credentialName']);
+      const requestId = readRequestId(body);
+      const result = await passkeys.recoveryVerify({
+        requestId,
+        challengeId: readString(body, 'challengeId'),
+        response: body.response,
+        ...(body.credentialName === undefined ? {} : { credentialName: readString(body, 'credentialName') })
+      });
+      setSessionCookies(context, options, result.sessionToken, result.session.csrfToken);
+      return success(context, requestId, authenticationResult(result));
+    });
+  });
+
+  api.post('/auth/passkey/enrollment/options', async (context) => {
+    return handle(context, async () => {
+      const body = await readBody(context, ['requestId', 'enrollmentToken']);
+      return success(
+        context,
+        readRequestId(body),
+        await passkeys.enrollmentOptions({
+          enrollmentToken: readString(body, 'enrollmentToken'),
+          ceremony: passkeyCeremony(context)
+        })
+      );
+    });
+  });
+
+  api.post('/auth/passkey/enrollment/verify', async (context) => {
+    return handle(context, async () => {
+      const body = await readBody(context, ['requestId', 'challengeId', 'response', 'credentialName']);
+      const requestId = readRequestId(body);
+      const result = await passkeys.enrollmentVerify({
+        requestId,
+        challengeId: readString(body, 'challengeId'),
+        response: body.response,
+        ...(body.credentialName === undefined ? {} : { credentialName: readString(body, 'credentialName') })
+      });
+      setSessionCookies(context, options, result.sessionToken, result.session.csrfToken);
+      return success(context, requestId, authenticationResult(result));
+    });
+  });
+
+  api.post('/admin/users/enrollment/create', async (context) => {
+    return adminWrite(
+      context,
+      options,
+      async (body, authenticated) => {
+        const remark = readOptionalRemark(body, 'remark');
+        return passkeys.createEnrollment({
+          requestId: readRequestId(body),
+          actor: authenticated.principal,
+          username: readString(body, 'username'),
+          role: readEnum(body, 'role', ['admin', 'user']),
+          ...(remark === undefined ? {} : { remark })
+        });
+      },
+      ['requestId', 'username', 'role', 'remark']
+    );
+  });
+}
+
+function passkeyCeremony(context: Context): { origin: string; rpId: string } {
+  const requestUrl = new URL(context.req.url);
+  const origin = context.req.header('Origin');
+  if (!origin || origin !== requestUrl.origin) {
+    throw new AuthError('ORIGIN_INVALID', 'Passkey 请求 Origin 无效', 403);
+  }
+  return { origin, rpId: requestUrl.hostname };
+}
+
+function authenticationResult(result: {
+  user: PublicUser;
+  session: unknown;
+  recoveryCodes?: string[];
+}): Record<string, unknown> {
+  return {
+    user: result.user,
+    session: result.session,
+    ...(result.recoveryCodes ? { recoveryCodes: result.recoveryCodes } : {})
+  };
+}
+
+function assertPasswordRoutesEnabled(options: AuthRoutesOptions): void {
+  if (options.authenticationMode === 'passkey') {
+    throw new AuthError('PASSWORD_LOGIN_DISABLED', '自托管环境请使用 Passkey', 403);
+  }
 }
 
 export async function authenticateRequest(

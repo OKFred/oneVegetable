@@ -9,6 +9,7 @@ export interface RuntimeConfigurationEnvironment {
   ONE_VEGETABLE_CORS_ORIGINS?: string;
   ONE_VEGETABLE_MUTATION_FLAGS?: string;
   ONE_VEGETABLE_REQUEST_RETENTION_DAYS?: string;
+  ONE_VEGETABLE_AUTH_MODE?: string;
 }
 
 export interface RuntimeConfiguration {
@@ -18,6 +19,7 @@ export interface RuntimeConfiguration {
   allowedOrigins: readonly string[];
   mutationFlags: ReadonlySet<string>;
   requestEventRetentionDays: number;
+  authenticationMode: 'password' | 'passkey';
 }
 
 export function readRuntimeConfiguration(
@@ -31,10 +33,17 @@ export function readRuntimeConfiguration(
     gatewayMode: readGatewayMode(input.ONE_VEGETABLE_GATEWAY_MODE),
     allowedOrigins: readOrigins(input.ONE_VEGETABLE_CORS_ORIGINS, environment),
     mutationFlags: readMutationFlags(input.ONE_VEGETABLE_MUTATION_FLAGS),
-    requestEventRetentionDays: readRetentionDays(input.ONE_VEGETABLE_REQUEST_RETENTION_DAYS)
+    requestEventRetentionDays: readRetentionDays(input.ONE_VEGETABLE_REQUEST_RETENTION_DAYS),
+    authenticationMode: readAuthenticationMode(input.ONE_VEGETABLE_AUTH_MODE, environment)
   };
   assertDeploymentSafety(configuration);
   return configuration;
+}
+
+function readAuthenticationMode(value: string | undefined, environment: string): 'password' | 'passkey' {
+  if (value === 'password' || value === 'passkey') return value;
+  if (value === undefined || value === '') return environment === 'self-hosted' ? 'passkey' : 'password';
+  throw new Error('ONE_VEGETABLE_AUTH_MODE 无效');
 }
 
 function readEnvironment(value: string | undefined, fallback: string): string {

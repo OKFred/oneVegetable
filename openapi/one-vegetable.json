@@ -945,6 +945,1096 @@
         }
       }
     },
+    "/auth/passkey/bootstrap/options": {
+      "post": {
+        "summary": "Begin first administrator Passkey registration",
+        "operationId": "beginPasskeyBootstrap",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PasskeyBootstrapOptionsRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/passkey/bootstrap/verify": {
+      "post": {
+        "summary": "Verify first administrator Passkey registration",
+        "operationId": "verifyPasskeyBootstrap",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/PasskeyVerifyRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/passkey/login/options": {
+      "post": {
+        "summary": "Begin discoverable Passkey login",
+        "operationId": "beginPasskeyLogin",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RequestEnvelope" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/passkey/login/verify": {
+      "post": {
+        "summary": "Verify discoverable Passkey login",
+        "operationId": "verifyPasskeyLogin",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/PasskeyVerifyRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/passkeys/list": {
+      "post": {
+        "summary": "List current user Passkeys",
+        "operationId": "listPasskeys",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RequestEnvelope" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/passkeys/register/options": {
+      "post": {
+        "summary": "Begin an additional Passkey registration",
+        "operationId": "beginPasskeyRegistration",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RequestEnvelope" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/passkeys/register/verify": {
+      "post": {
+        "summary": "Verify an additional Passkey registration",
+        "operationId": "verifyPasskeyRegistration",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/PasskeyVerifyRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/passkeys/remove": {
+      "post": {
+        "summary": "Remove one Passkey",
+        "operationId": "removePasskey",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PasskeyCredentialTargetRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/recovery-codes/regenerate": {
+      "post": {
+        "summary": "Regenerate one-time recovery codes",
+        "operationId": "regenerateRecoveryCodes",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RequestEnvelope" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/passkey/recovery/options": {
+      "post": {
+        "summary": "Begin recovery-code Passkey registration",
+        "operationId": "beginPasskeyRecovery",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/PasskeyRecoveryOptionsRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/passkey/recovery/verify": {
+      "post": {
+        "summary": "Verify recovery-code Passkey registration",
+        "operationId": "verifyPasskeyRecovery",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/PasskeyVerifyRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/passkey/enrollment/options": {
+      "post": {
+        "summary": "Begin administrator-issued Passkey enrollment",
+        "operationId": "beginPasskeyEnrollment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PasskeyEnrollmentOptionsRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/passkey/enrollment/verify": {
+      "post": {
+        "summary": "Verify administrator-issued Passkey enrollment",
+        "operationId": "verifyPasskeyEnrollment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/PasskeyVerifyRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/users/list": {
       "post": {
         "summary": "List local users",
@@ -1035,6 +2125,92 @@
           "required": true,
           "content": {
             "application/json": { "schema": { "$ref": "#/components/schemas/AdminUserCreateRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users/enrollment/create": {
+      "post": {
+        "summary": "Create a Passkey-only user and one-time enrollment token",
+        "operationId": "createAdminUserEnrollment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdminUserEnrollmentCreateRequest" }
+            }
           }
         },
         "responses": {
@@ -2186,6 +3362,17 @@
           "remark": { "type": ["string", "null"], "maxLength": 500 }
         }
       },
+      "AdminUserEnrollmentCreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "username", "role"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "username": { "type": "string", "minLength": 3, "maxLength": 64 },
+          "role": { "$ref": "#/components/schemas/UserRole" },
+          "remark": { "type": ["string", "null"], "maxLength": 500 }
+        }
+      },
       "AdminUserTargetRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -2223,7 +3410,10 @@
           "mutationEnabled"
         ],
         "properties": {
-          "source": { "type": "string", "enum": ["environment", "documentation-replay"] },
+          "source": {
+            "type": "string",
+            "enum": ["environment", "credential-bundle", "d1-vault", "documentation-replay"]
+          },
           "configured": { "type": "boolean" },
           "hasAppKey": { "type": "boolean" },
           "hasAppSecret": { "type": "boolean" },
@@ -9555,11 +10745,12 @@
       "AuthBootstrapStatus": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["initialized", "bootstrapTokenConfigured", "bootstrapAvailable"],
+        "required": ["initialized", "bootstrapTokenConfigured", "bootstrapAvailable", "authenticationMode"],
         "properties": {
           "initialized": { "type": "boolean" },
           "bootstrapTokenConfigured": { "type": "boolean" },
-          "bootstrapAvailable": { "type": "boolean" }
+          "bootstrapAvailable": { "type": "boolean" },
+          "authenticationMode": { "type": "string", "enum": ["password", "passkey"] }
         }
       },
       "AuthBootstrapStatusResponse": {
@@ -10425,6 +11616,55 @@
           "requestId": { "$ref": "#/components/schemas/RequestId" },
           "page": { "type": "integer", "minimum": 1, "default": 1 },
           "pageSize": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+        }
+      },
+      "PasskeyBootstrapOptionsRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "bootstrapToken", "username"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "bootstrapToken": { "type": "string", "minLength": 1 },
+          "username": { "type": "string", "minLength": 3, "maxLength": 64 }
+        }
+      },
+      "PasskeyCredentialTargetRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "credentialId"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "credentialId": { "type": "string", "minLength": 1, "maxLength": 1024 }
+        }
+      },
+      "PasskeyEnrollmentOptionsRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "enrollmentToken"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "enrollmentToken": { "type": "string", "minLength": 32, "maxLength": 128 }
+        }
+      },
+      "PasskeyRecoveryOptionsRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "username", "recoveryCode"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "username": { "type": "string", "minLength": 3, "maxLength": 64 },
+          "recoveryCode": { "type": "string", "minLength": 16, "maxLength": 128 }
+        }
+      },
+      "PasskeyVerifyRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "challengeId", "response"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "challengeId": { "type": "string", "format": "uuid" },
+          "response": { "type": "object", "additionalProperties": true },
+          "credentialName": { "type": "string", "minLength": 1, "maxLength": 80 }
         }
       },
       "Photo": {

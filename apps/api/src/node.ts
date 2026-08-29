@@ -11,20 +11,36 @@ import { AlibabaReadGatewayClient } from './gateway/alibaba-read-gateway';
 import { createNodeAlibabaCredentialProvider } from './gateway/node-credential-bundle';
 
 import type { NodeAlibabaCredentialEnvironment } from './gateway/node-credential-bundle';
+
 import { createDocumentationReplayGateway, documentationReplayStatus } from './gateway/documentation-replay';
-import { readRuntimeConfiguration, type RuntimeConfigurationEnvironment } from './runtime-config';
+import { readRuntimeConfiguration } from './runtime-config';
 import { SqlProductDescriptionTemplateRepository } from './product-description-templates/repository';
 import { SqlProductMutationJobRepository } from './product-mutations/repository';
 
 const port = readPort(process.env.ONE_VEGETABLE_PORT);
-const runtimeConfiguration = readRuntimeConfiguration(
-  process.env as unknown as RuntimeConfigurationEnvironment,
-  'local-node'
-);
+const runtimeConfiguration = readRuntimeConfiguration(process.env, 'local-node');
 const { environment, gatewayMode } = runtimeConfiguration;
-const credentialProvider = createNodeAlibabaCredentialProvider(
-  process.env as unknown as NodeAlibabaCredentialEnvironment
-);
+const credentialEnvironment = {
+  ...optionalEnvironmentValue(
+    'ONE_VEGETABLE_ALIBABA_CREDENTIAL_FILE',
+    process.env.ONE_VEGETABLE_ALIBABA_CREDENTIAL_FILE
+  ),
+  ...optionalEnvironmentValue('ONE_VEGETABLE_ALIBABA_APP_KEY', process.env.ONE_VEGETABLE_ALIBABA_APP_KEY),
+  ...optionalEnvironmentValue(
+    'ONE_VEGETABLE_ALIBABA_APP_SECRET',
+    process.env.ONE_VEGETABLE_ALIBABA_APP_SECRET
+  ),
+  ...optionalEnvironmentValue(
+    'ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN',
+    process.env.ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN
+  ),
+  ...optionalEnvironmentValue('ONE_VEGETABLE_ALIBABA_ENDPOINT', process.env.ONE_VEGETABLE_ALIBABA_ENDPOINT),
+  ...optionalEnvironmentValue(
+    'ONE_VEGETABLE_ALIBABA_SIGN_METHOD',
+    process.env.ONE_VEGETABLE_ALIBABA_SIGN_METHOD
+  )
+} satisfies NodeAlibabaCredentialEnvironment;
+const credentialProvider = createNodeAlibabaCredentialProvider(credentialEnvironment);
 const database = openNodeDatabase(process.env.ONE_VEGETABLE_SQLITE_PATH ?? '.data/one-vegetable.sqlite');
 if (environment === 'local-node' && process.env.ONE_VEGETABLE_AUTO_MIGRATE !== 'false') {
   applyNodeMigrations(database);
@@ -32,7 +48,8 @@ if (environment === 'local-node' && process.env.ONE_VEGETABLE_AUTO_MIGRATE !== '
 const authRepository = new SqlAuthRepository(database.executor);
 const authService = new AuthService({
   repository: authRepository,
-  bootstrapToken: process.env.BOOTSTRAP_ADMIN_TOKEN
+  bootstrapToken: process.env.BOOTSTRAP_ADMIN_TOKEN,
+  authenticationMode: runtimeConfiguration.authenticationMode
 });
 const app = createApiApp({
   runtime: 'node',
@@ -48,6 +65,7 @@ const app = createApiApp({
   apiPrefix: runtimeConfiguration.apiPrefix,
   allowedOrigins: runtimeConfiguration.allowedOrigins,
   authService,
+  authenticationMode: runtimeConfiguration.authenticationMode,
   adminService: new AdminService(authRepository),
   featureFlags: new StaticOperationFeatureFlags(new Set(runtimeConfiguration.mutationFlags)),
   requestEvents: new SqlRequestEventRepository(database.executor),
@@ -65,4 +83,11 @@ function readPort(value: string | undefined): number {
   const port = Number(value ?? 8787);
   if (!Number.isInteger(port) || port < 1 || port > 65_535) throw new Error('ONE_VEGETABLE_PORT 无效');
   return port;
+}
+
+function optionalEnvironmentValue<const Key extends string>(
+  key: Key,
+  value: string | undefined
+): Partial<Record<Key, string>> {
+  return value === undefined ? {} : ({ [key]: value } as Record<Key, string>);
 }

@@ -55,6 +55,7 @@ import type { Context } from 'hono';
 import type { OperationFeatureFlags } from './abac';
 import type { AdminService } from './auth/admin-service';
 import type { AuthenticatedSession, AuthService } from './auth/service';
+import type { PasskeyService } from './auth/passkey-service';
 import type { RequestEventRepository } from './observability/request-events';
 import type { AlibabaCredentialStatus } from './gateway/credentials';
 import type { GatewayCredentialService, StoredAlibabaCredentialProvider } from './gateway/credential-vault';
@@ -78,6 +79,8 @@ export interface ApiAppOptions {
   allowedOrigins?: readonly string[];
   authService?: AuthService;
   adminService?: AdminService;
+  authenticationMode?: 'password' | 'passkey';
+  passkeyService?: PasskeyService;
   featureFlags?: OperationFeatureFlags;
   requestEvents?: RequestEventRepository;
   requestEventRetentionDays?: number;
@@ -184,6 +187,8 @@ export function createApiApp(options: ApiAppOptions): Hono {
       runtime: options.runtime,
       database: options.database,
       gatewayMode: options.gatewayMode,
+      authenticationMode: options.authenticationMode ?? 'password',
+      ...(options.passkeyService ? { passkeyService: options.passkeyService } : {}),
       mutationEnabled: [
         'publishProduct',
         'saveProductDraft',

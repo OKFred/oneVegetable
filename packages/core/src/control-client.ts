@@ -36,6 +36,7 @@ export interface ControlBootstrapStatus {
   initialized: boolean;
   bootstrapTokenConfigured: boolean;
   bootstrapAvailable: boolean;
+  authenticationMode?: 'password' | 'passkey';
 }
 
 interface AuthenticationResult {
@@ -46,6 +47,32 @@ interface AuthenticationResult {
     absoluteExpiresTimeUtc: UnixEpochMilliseconds;
     idleExpiresTimeUtc: UnixEpochMilliseconds;
   };
+  recoveryCodes?: string[];
+}
+
+export interface ControlPasskeyOptions {
+  challengeId: string;
+  options: Record<string, unknown>;
+}
+
+export interface ControlPasskeyCredential {
+  id: string;
+  name: string;
+  deviceType: 'singleDevice' | 'multiDevice';
+  backedUp: boolean;
+  rpId: string;
+  createTimeUtc: UnixEpochMilliseconds;
+}
+
+export interface ControlPasskeyAuthenticationResult {
+  session: ControlSession;
+  recoveryCodes: string[];
+}
+
+export interface ControlUserEnrollment {
+  user: ControlUser;
+  enrollmentToken: string;
+  expiresTimeUtc: UnixEpochMilliseconds;
 }
 
 export interface ControlAuditEvent {
@@ -128,6 +155,35 @@ export interface ControlClient {
     remark?: string | null;
   }): Promise<ControlSession>;
   login(username: string, password: string): Promise<ControlSession>;
+  passkeyBootstrapOptions?(bootstrapToken: string, username: string): Promise<ControlPasskeyOptions>;
+  passkeyBootstrapVerify?(
+    challengeId: string,
+    response: unknown,
+    credentialName?: string
+  ): Promise<ControlPasskeyAuthenticationResult>;
+  passkeyLoginOptions?(): Promise<ControlPasskeyOptions>;
+  passkeyLoginVerify?(challengeId: string, response: unknown): Promise<ControlSession>;
+  passkeyRecoveryOptions?(username: string, recoveryCode: string): Promise<ControlPasskeyOptions>;
+  passkeyRecoveryVerify?(
+    challengeId: string,
+    response: unknown,
+    credentialName?: string
+  ): Promise<ControlPasskeyAuthenticationResult>;
+  passkeyEnrollmentOptions?(enrollmentToken: string): Promise<ControlPasskeyOptions>;
+  passkeyEnrollmentVerify?(
+    challengeId: string,
+    response: unknown,
+    credentialName?: string
+  ): Promise<ControlPasskeyAuthenticationResult>;
+  listPasskeys?(): Promise<ControlPasskeyCredential[]>;
+  passkeyRegistrationOptions?(): Promise<ControlPasskeyOptions>;
+  registerPasskey?(
+    challengeId: string,
+    response: unknown,
+    credentialName?: string
+  ): Promise<ControlPasskeyCredential>;
+  removePasskey?(credentialId: string): Promise<void>;
+  regenerateRecoveryCodes?(): Promise<string[]>;
   logout(): Promise<void>;
   listUsers(page?: number, pageSize?: number): Promise<PageResult<ControlUser>>;
   createUser(input: {
@@ -136,6 +192,11 @@ export interface ControlClient {
     role: ControlUserRole;
     remark?: string | null;
   }): Promise<ControlUser>;
+  createUserEnrollment?(input: {
+    username: string;
+    role: ControlUserRole;
+    remark?: string | null;
+  }): Promise<ControlUserEnrollment>;
   updateUser(input: {
     userId: string;
     role: ControlUserRole;
@@ -259,6 +320,99 @@ export class BffControlClient implements ControlClient {
     return toControlSession(result);
   }
 
+  passkeyBootstrapOptions(bootstrapToken: string, username: string): Promise<ControlPasskeyOptions> {
+    return this.#call('/auth/passkey/bootstrap/options', { bootstrapToken, username });
+  }
+
+  async passkeyBootstrapVerify(
+    challengeId: string,
+    response: unknown,
+    credentialName?: string
+  ): Promise<ControlPasskeyAuthenticationResult> {
+    return this.#passkeyAuthenticationResult(
+      '/auth/passkey/bootstrap/verify',
+      challengeId,
+      response,
+      credentialName
+    );
+  }
+
+  passkeyLoginOptions(): Promise<ControlPasskeyOptions> {
+    return this.#call('/auth/passkey/login/options', {});
+  }
+
+  async passkeyLoginVerify(challengeId: string, response: unknown): Promise<ControlSession> {
+    const result = await this.#call<AuthenticationResult>('/auth/passkey/login/verify', {
+      challengeId,
+      response
+    });
+    this.#sessionCsrfToken = result.session.csrfToken;
+    return toControlSession(result);
+  }
+
+  passkeyRecoveryOptions(username: string, recoveryCode: string): Promise<ControlPasskeyOptions> {
+    return this.#call('/auth/passkey/recovery/options', { username, recoveryCode });
+  }
+
+  passkeyRecoveryVerify(
+    challengeId: string,
+    response: unknown,
+    credentialName?: string
+  ): Promise<ControlPasskeyAuthenticationResult> {
+    return this.#passkeyAuthenticationResult(
+      '/auth/passkey/recovery/verify',
+      challengeId,
+      response,
+      credentialName
+    );
+  }
+
+  passkeyEnrollmentOptions(enrollmentToken: string): Promise<ControlPasskeyOptions> {
+    return this.#call('/auth/passkey/enrollment/options', { enrollmentToken });
+  }
+
+  passkeyEnrollmentVerify(
+    challengeId: string,
+    response: unknown,
+    credentialName?: string
+  ): Promise<ControlPasskeyAuthenticationResult> {
+    return this.#passkeyAuthenticationResult(
+      '/auth/passkey/enrollment/verify',
+      challengeId,
+      response,
+      credentialName
+    );
+  }
+
+  listPasskeys(): Promise<ControlPasskeyCredential[]> {
+    return this.#call('/auth/passkeys/list', {});
+  }
+
+  passkeyRegistrationOptions(): Promise<ControlPasskeyOptions> {
+    return this.#call('/auth/passkeys/register/options', {});
+  }
+
+  registerPasskey(
+    challengeId: string,
+    response: unknown,
+    credentialName?: string
+  ): Promise<ControlPasskeyCredential> {
+    return this.#call('/auth/passkeys/register/verify', {
+      challengeId,
+      response,
+      ...(credentialName ? { credentialName } : {})
+    });
+  }
+
+  async removePasskey(credentialId: string): Promise<void> {
+    await this.#call('/auth/passkeys/remove', { credentialId });
+  }
+
+  async regenerateRecoveryCodes(): Promise<string[]> {
+    const result = await this.#call<{ recoveryCodes: string[] }>('/auth/recovery-codes/regenerate', {});
+    return result.recoveryCodes;
+  }
+
   async logout(): Promise<void> {
     await this.#call('/auth/logout', {});
     this.#sessionCsrfToken = null;
@@ -275,6 +429,14 @@ export class BffControlClient implements ControlClient {
     remark?: string | null;
   }): Promise<ControlUser> {
     return this.#call('/admin/users/create', input);
+  }
+
+  createUserEnrollment(input: {
+    username: string;
+    role: ControlUserRole;
+    remark?: string | null;
+  }): Promise<ControlUserEnrollment> {
+    return this.#call('/admin/users/enrollment/create', input);
   }
 
   updateUser(input: {
@@ -368,6 +530,21 @@ export class BffControlClient implements ControlClient {
 
   async clearGatewayCredential(revision: number): Promise<void> {
     await this.#call('/admin/gateway-credentials/clear', { revision });
+  }
+
+  async #passkeyAuthenticationResult(
+    path: string,
+    challengeId: string,
+    response: unknown,
+    credentialName?: string
+  ): Promise<ControlPasskeyAuthenticationResult> {
+    const result = await this.#call<AuthenticationResult>(path, {
+      challengeId,
+      response,
+      ...(credentialName ? { credentialName } : {})
+    });
+    this.#sessionCsrfToken = result.session.csrfToken;
+    return { session: toControlSession(result), recoveryCodes: result.recoveryCodes ?? [] };
   }
 
   async #call<T>(path: string, body: Record<string, unknown>): Promise<T> {

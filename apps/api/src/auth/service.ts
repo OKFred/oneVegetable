@@ -37,6 +37,7 @@ export interface AuthServiceOptions {
   repository: AuthRepository;
   bootstrapToken?: string | undefined;
   clock?: () => UnixEpochMilliseconds;
+  authenticationMode?: 'password' | 'passkey';
 }
 
 export interface AuthenticatedSession {
@@ -49,24 +50,28 @@ export class AuthService {
   readonly #repository: AuthRepository;
   readonly #bootstrapToken: string | undefined;
   readonly #clock: () => UnixEpochMilliseconds;
+  readonly #authenticationMode: 'password' | 'passkey';
 
   constructor(options: AuthServiceOptions) {
     this.#repository = options.repository;
     this.#bootstrapToken = options.bootstrapToken;
     this.#clock = options.clock ?? Date.now;
+    this.#authenticationMode = options.authenticationMode ?? 'password';
   }
 
   async bootstrapStatus(): Promise<{
     initialized: boolean;
     bootstrapTokenConfigured: boolean;
     bootstrapAvailable: boolean;
+    authenticationMode: 'password' | 'passkey';
   }> {
     const initialized = (await this.#repository.countUsers()) > 0;
     const bootstrapTokenConfigured = Boolean(this.#bootstrapToken);
     return {
       initialized,
       bootstrapTokenConfigured,
-      bootstrapAvailable: !initialized && bootstrapTokenConfigured
+      bootstrapAvailable: !initialized && bootstrapTokenConfigured,
+      authenticationMode: this.#authenticationMode
     };
   }
 
@@ -77,6 +82,7 @@ export class AuthService {
     password: string;
     remark?: string | null;
   }): Promise<{ user: PublicUser; session: AuthSessionResult; sessionToken: string }> {
+    this.#assertPasswordAuthenticationEnabled();
     if (!this.#bootstrapToken || !(await tokenEquals(input.bootstrapToken, this.#bootstrapToken))) {
       throw new AuthError('INVALID_BOOTSTRAP_TOKEN', '初始化令牌无效', 403);
     }
@@ -90,6 +96,7 @@ export class AuthService {
       username: normalizeUsername(input.username),
       passwordHash: digest.hash,
       passwordSalt: digest.salt,
+      passwordLoginEnabled: true,
       role: 'admin',
       status: 'active',
       audit: createEntityAuditFields('system:bootstrap', now, input.remark)
@@ -113,6 +120,7 @@ export class AuthService {
     username: string;
     password: string;
   }): Promise<{ user: PublicUser; session: AuthSessionResult; sessionToken: string }> {
+    this.#assertPasswordAuthenticationEnabled();
     const now = this.#clock();
     const user = await this.#repository.findUserByUsername(normalizeUsername(input.username));
     if (!user) {
@@ -128,6 +136,9 @@ export class AuthService {
       throw new AuthError('INVALID_CREDENTIALS', '用户名或密码错误', 401);
     }
     if (user.status !== 'active') throw new AuthError('USER_DISABLED', '账号已停用', 403);
+    if (!user.passwordLoginEnabled) {
+      throw new AuthError('PASSWORD_LOGIN_DISABLED', '此账号仅允许使用 Passkey 登录', 403);
+    }
     if (user.lockedUntilUtc !== null && user.lockedUntilUtc > now) {
       throw new AuthError('LOGIN_LOCKED', '登录失败次数过多，请稍后再试', 403);
     }
@@ -223,6 +234,7 @@ export class AuthService {
     currentPassword: string;
     newPassword: string;
   }): Promise<void> {
+    this.#assertPasswordAuthenticationEnabled();
     validatePassword(input.newPassword);
     if (
       !(await verifyPassword(
@@ -244,6 +256,7 @@ export class AuthService {
       status: current.status,
       passwordHash: digest.hash,
       passwordSalt: digest.salt,
+      passwordLoginEnabled: true,
       audit
     });
     if (!updated) throw new EntityVersionConflictError();
@@ -267,6 +280,14 @@ export class AuthService {
 
   get repository(): AuthRepository {
     return this.#repository;
+  }
+
+  async createVerifiedSession(
+    user: AuthUser
+  ): Promise<{ user: PublicUser; session: AuthSessionResult; sessionToken: string }> {
+    if (user.status !== 'active') throw new AuthError('USER_DISABLED', '账号已停用', 403);
+    const session = await this.#newSession(user, this.#clock());
+    return { user: toPublicUser(user), ...session };
   }
 
   async #newSession(
@@ -296,6 +317,12 @@ export class AuthService {
         idleExpiresTimeUtc: session.idleExpiresTimeUtc
       }
     };
+  }
+
+  #assertPasswordAuthenticationEnabled(): void {
+    if (this.#authenticationMode === 'passkey') {
+      throw new AuthError('PASSWORD_LOGIN_DISABLED', '自托管环境请使用 Passkey', 403);
+    }
   }
 }
 

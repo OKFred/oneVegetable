@@ -7,6 +7,7 @@ export interface CreateUserRecord {
   username: string;
   passwordHash: string;
   passwordSalt: string;
+  passwordLoginEnabled?: boolean;
   role: UserRole;
   status: UserStatus;
   audit: EntityAuditFields;
@@ -19,6 +20,7 @@ export interface UpdateUserRecord {
   status: UserStatus;
   passwordHash: string;
   passwordSalt: string;
+  passwordLoginEnabled: boolean;
   audit: EntityAuditFields;
 }
 
@@ -79,15 +81,16 @@ export class SqlAuthRepository implements AuthRepository {
   async createUser(input: CreateUserRecord): Promise<AuthUser> {
     await this.executor.execute(
       `INSERT INTO users (
-        id, username, password_hash, password_salt, role, status,
+        id, username, password_hash, password_salt, password_login_enabled, role, status,
         failed_login_count, locked_until_utc, create_time_utc, update_time_utc,
         creator_id, updater_id, revision, remark
-      ) VALUES (?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, ?, ?, ?)`,
       [
         input.id,
         input.username,
         input.passwordHash,
         input.passwordSalt,
+        input.passwordLoginEnabled === false ? 0 : 1,
         input.role,
         input.status,
         input.audit.createTimeUtc,
@@ -123,6 +126,7 @@ export class SqlAuthRepository implements AuthRepository {
   async updateUser(input: UpdateUserRecord): Promise<AuthUser | null> {
     const result = await this.executor.execute(
       `UPDATE users SET role = ?, status = ?, password_hash = ?, password_salt = ?,
+       password_login_enabled = ?,
        update_time_utc = ?, updater_id = ?, revision = ?, remark = ?
        WHERE id = ? AND revision = ?`,
       [
@@ -130,6 +134,7 @@ export class SqlAuthRepository implements AuthRepository {
         input.status,
         input.passwordHash,
         input.passwordSalt,
+        input.passwordLoginEnabled ? 1 : 0,
         input.audit.updateTimeUtc,
         input.audit.updaterId,
         input.audit.revision,
@@ -291,6 +296,7 @@ function toUser(row: Record<string, unknown>): AuthUser {
     username: readString(row, 'username'),
     passwordHash: readString(row, 'password_hash'),
     passwordSalt: readString(row, 'password_salt'),
+    passwordLoginEnabled: readNumber(row, 'password_login_enabled') === 1,
     role: readEnum(row, 'role', ['admin', 'user']),
     status: readEnum(row, 'status', ['active', 'disabled']),
     failedLoginCount: readNumber(row, 'failed_login_count'),

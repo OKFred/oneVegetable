@@ -237,6 +237,227 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/passkey/bootstrap/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Begin first administrator Passkey registration */
+        post: operations["beginPasskeyBootstrap"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/passkey/bootstrap/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify first administrator Passkey registration */
+        post: operations["verifyPasskeyBootstrap"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/passkey/login/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Begin discoverable Passkey login */
+        post: operations["beginPasskeyLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/passkey/login/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify discoverable Passkey login */
+        post: operations["verifyPasskeyLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/passkeys/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** List current user Passkeys */
+        post: operations["listPasskeys"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/passkeys/register/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Begin an additional Passkey registration */
+        post: operations["beginPasskeyRegistration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/passkeys/register/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify an additional Passkey registration */
+        post: operations["verifyPasskeyRegistration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/passkeys/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remove one Passkey */
+        post: operations["removePasskey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/recovery-codes/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Regenerate one-time recovery codes */
+        post: operations["regenerateRecoveryCodes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/passkey/recovery/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Begin recovery-code Passkey registration */
+        post: operations["beginPasskeyRecovery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/passkey/recovery/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify recovery-code Passkey registration */
+        post: operations["verifyPasskeyRecovery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/passkey/enrollment/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Begin administrator-issued Passkey enrollment */
+        post: operations["beginPasskeyEnrollment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/passkey/enrollment/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify administrator-issued Passkey enrollment */
+        post: operations["verifyPasskeyEnrollment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/users/list": {
         parameters: {
             query?: never;
@@ -265,6 +486,23 @@ export interface paths {
         put?: never;
         /** Create a local user */
         post: operations["createAdminUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/enrollment/create": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a Passkey-only user and one-time enrollment token */
+        post: operations["createAdminUserEnrollment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -522,6 +760,12 @@ export interface components {
             role: components["schemas"]["UserRole"];
             remark?: string | null;
         };
+        AdminUserEnrollmentCreateRequest: {
+            requestId: components["schemas"]["RequestId"];
+            username: string;
+            role: components["schemas"]["UserRole"];
+            remark?: string | null;
+        };
         AdminUserTargetRequest: {
             requestId: components["schemas"]["RequestId"];
             /** Format: uuid */
@@ -538,7 +782,7 @@ export interface components {
         };
         AlibabaGatewayStatus: {
             /** @enum {string} */
-            source: "environment" | "documentation-replay";
+            source: "environment" | "credential-bundle" | "d1-vault" | "documentation-replay";
             configured: boolean;
             hasAppKey: boolean;
             hasAppSecret: boolean;
@@ -5877,6 +6121,8 @@ export interface components {
             initialized: boolean;
             bootstrapTokenConfigured: boolean;
             bootstrapAvailable: boolean;
+            /** @enum {string} */
+            authenticationMode: "password" | "passkey";
         };
         AuthBootstrapStatusResponse: {
             requestId: components["schemas"]["RequestId"];
@@ -6266,6 +6512,33 @@ export interface components {
             page: number;
             /** @default 20 */
             pageSize: number;
+        };
+        PasskeyBootstrapOptionsRequest: {
+            requestId: components["schemas"]["RequestId"];
+            bootstrapToken: string;
+            username: string;
+        };
+        PasskeyCredentialTargetRequest: {
+            requestId: components["schemas"]["RequestId"];
+            credentialId: string;
+        };
+        PasskeyEnrollmentOptionsRequest: {
+            requestId: components["schemas"]["RequestId"];
+            enrollmentToken: string;
+        };
+        PasskeyRecoveryOptionsRequest: {
+            requestId: components["schemas"]["RequestId"];
+            username: string;
+            recoveryCode: string;
+        };
+        PasskeyVerifyRequest: {
+            requestId: components["schemas"]["RequestId"];
+            /** Format: uuid */
+            challengeId: string;
+            response: {
+                [key: string]: unknown;
+            };
+            credentialName?: string;
         };
         Photo: {
             /** @description Alibaba international PhotoBank fileId; persist it with the Schema value. */
@@ -7566,6 +7839,851 @@ export interface operations {
             };
         };
     };
+    beginPasskeyBootstrap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyBootstrapOptionsRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    verifyPasskeyBootstrap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    beginPasskeyLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestEnvelope"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    verifyPasskeyLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    listPasskeys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestEnvelope"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    beginPasskeyRegistration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestEnvelope"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    verifyPasskeyRegistration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    removePasskey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyCredentialTargetRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    regenerateRecoveryCodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestEnvelope"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    beginPasskeyRecovery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyRecoveryOptionsRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    verifyPasskeyRecovery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    beginPasskeyEnrollment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyEnrollmentOptionsRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    verifyPasskeyEnrollment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
     listAdminUsers: {
         parameters: {
             query?: never;
@@ -7641,6 +8759,71 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AdminUserCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    createAdminUserEnrollment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminUserEnrollmentCreateRequest"];
             };
         };
         responses: {

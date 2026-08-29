@@ -39,6 +39,7 @@ export class AdminService {
       username,
       passwordHash: digest.hash,
       passwordSalt: digest.salt,
+      passwordLoginEnabled: true,
       role: input.role,
       status: 'active',
       audit: createEntityAuditFields(input.actor.actorId, now, input.remark)
@@ -93,6 +94,7 @@ export class AdminService {
       status: input.status,
       passwordHash: current.passwordHash,
       passwordSalt: current.passwordSalt,
+      passwordLoginEnabled: current.passwordLoginEnabled,
       audit
     });
     if (!updated) throw new AuthError('ENTITY_VERSION_CONFLICT', '用户已被其他请求更新', 409);
@@ -135,6 +137,7 @@ export class AdminService {
       status: current.status,
       passwordHash: digest.hash,
       passwordSalt: digest.salt,
+      passwordLoginEnabled: true,
       audit
     });
     if (!updated) throw new AuthError('ENTITY_VERSION_CONFLICT', '用户已被其他请求更新', 409);
