@@ -32,6 +32,9 @@ describe('ProductAdapter', () => {
               product_id: 'encrypted-product-id',
               subject: 'Real product',
               category_id: 456,
+              main_image: {
+                images: { string: ['https://sc04.alicdn.com/kf/product-cover.jpg'] }
+              },
               display: 'Y',
               gmt_modified: '2026-08-20 12:30:00'
             }
@@ -51,6 +54,7 @@ describe('ProductAdapter', () => {
           id: '123',
           encryptedId: 'encrypted-product-id',
           categoryId: 456,
+          imageUrl: 'https://sc04.alicdn.com/kf/product-cover.jpg',
           status: 'online'
         }
       ]
@@ -178,6 +182,15 @@ describe('ProductAdapter', () => {
       score: 4.6,
       issues: []
     });
+  });
+
+  it('does not clamp a provider score when the official API omits a maximum', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve({ method, data: { result: { final_score: '5.6' } } })
+    );
+    const adapter = new ProductAdapter({ call });
+
+    await expect(adapter.getScore('encrypted-product-id')).resolves.toMatchObject({ score: 5.6 });
   });
 
   it('renders an existing product with its documented numeric id and category', async () => {

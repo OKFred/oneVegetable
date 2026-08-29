@@ -74,6 +74,7 @@ describe('BFF Alibaba read gateway', () => {
                 group_name: 'BFF group',
                 display: 'online',
                 score: 88,
+                main_image: { images: { string: ['https://sc04.alicdn.com/kf/bff-product.jpg'] } },
                 gmt_modified: '2026-08-14T00:00:00Z'
               }
             ],
@@ -88,7 +89,14 @@ describe('BFF Alibaba read gateway', () => {
       gateway.request('listProducts', { page: 1, pageSize: 20 }, { requestId })
     ).resolves.toMatchObject({
       total: 1,
-      items: [{ id: 'product-1', subject: 'Typed BFF product', status: 'online' }]
+      items: [
+        {
+          id: 'product-1',
+          subject: 'Typed BFF product',
+          status: 'online',
+          imageUrl: 'https://sc04.alicdn.com/kf/bff-product.jpg'
+        }
+      ]
     });
   });
 

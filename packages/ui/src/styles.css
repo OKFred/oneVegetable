@@ -223,6 +223,18 @@ textarea {
   animation: ov-dialog-out 140ms ease-in;
 }
 
+.ov-dropdown-content {
+  transform-origin: var(--reka-dropdown-menu-content-transform-origin);
+}
+
+.ov-dropdown-content[data-state='open'] {
+  animation: ov-dropdown-in 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ov-dropdown-content[data-state='closed'] {
+  animation: ov-dropdown-out 100ms ease-in;
+}
+
 .ov-modal-enter-active,
 .ov-modal-leave-active {
   transition: opacity 180ms ease;
@@ -332,6 +344,20 @@ summary::marker {
   to {
     opacity: 0;
     transform: translate(-50%, calc(-50% + 0.5rem)) scale(0.985);
+  }
+}
+
+@keyframes ov-dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem) scale(0.98);
+  }
+}
+
+@keyframes ov-dropdown-out {
+  to {
+    opacity: 0;
+    transform: translateY(-0.125rem) scale(0.985);
   }
 }
 

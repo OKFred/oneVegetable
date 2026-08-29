@@ -6204,6 +6204,8 @@ export interface components {
             /** @enum {string} */
             status: "online" | "offline" | "draft" | "auditing" | "rejected";
             score: number;
+            /** Format: uri */
+            imageUrl: string | null;
             /** Format: date-time */
             updatedAt: string;
             categoryId: number | null;
@@ -6423,6 +6425,7 @@ export interface components {
         };
         ProductScore: {
             productId: string;
+            /** @description Alibaba final_score. The API documentation does not define a hard maximum; the current seller UI presents the score out of 6. */
             score: number;
             issues: string[];
             /** @description Optional normalized official issues when the upstream response provides structured details. */

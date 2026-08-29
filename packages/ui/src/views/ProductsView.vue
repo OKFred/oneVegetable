@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, h, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import { Download, Layers3, LayoutGrid, List, ListPlus, RefreshCw, Search, Upload } from '@lucide/vue';
+import { ChevronDown, Download, Ellipsis, Layers3, ListPlus, RefreshCw, Search, Upload } from '@lucide/vue';
+import {
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuRoot,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from 'reka-ui';
 
 import {
   analyzeProductDescriptionQuality,
@@ -38,14 +46,13 @@ import {
 
 import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
+import ImagePreview, { type ImagePreviewItem } from '../components/ImagePreview.vue';
 import PageHeader from '../components/PageHeader.vue';
 import ProductBatchPublisher from '../components/ProductBatchPublisher.vue';
 import ProductCategoryPicker from '../components/ProductCategoryPicker.vue';
 import ProductEditorLoading from '../components/ProductEditorLoading.vue';
 import ProductTransferDialog from '../components/ProductTransferDialog.vue';
 import QueryState from '../components/QueryState.vue';
-import ScoreProgress from '../components/ScoreProgress.vue';
-import TablePagination from '../components/TablePagination.vue';
 import TriStateCheckbox from '../components/TriStateCheckbox.vue';
 import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
@@ -91,13 +98,13 @@ const ProductEditorWizard = defineAsyncComponent({
   timeout: 30_000
 });
 
-type Workspace = 'list' | 'publisher' | 'batch-publisher' | 'organization' | 'quality';
+type Workspace = 'list' | 'publisher' | 'batch-publisher' | 'organization';
 type DraftSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
-type QualityViewMode = 'cards' | 'list';
 
-const workspaceIds = new Set<Workspace>(['list', 'publisher', 'batch-publisher', 'organization', 'quality']);
+const workspaceIds = new Set<Workspace>(['list', 'publisher', 'batch-publisher', 'organization']);
 const editorModes = new Set<ProductEditorMode>(['quick', 'guided', 'advanced']);
 const editorStepIds = new Set<ProductEditorStepId>(PRODUCT_EDITOR_STEP_IDS);
+const PRODUCT_SCORE_DISPLAY_MAX = 6;
 
 const { gateway, mode, productMutationJobs } = useServices();
 const { language: preferredLanguage } = useAppPreferences();
@@ -145,10 +152,10 @@ const currentCategory = ref<ProductCategory | null>(null);
 const categoryLoadingId = ref<number | null>(null);
 let applyingProductRoute = false;
 const categoryLoadError = ref('');
-const qualityViewMode = ref<QualityViewMode>('cards');
 const productScores = ref<Record<string, ProductScore>>({});
 const productScoreErrors = ref<Record<string, string>>({});
-const pendingProductScoreId = ref('');
+const pendingProductScoreIds = ref<string[]>([]);
+const queryingSelectedProductScores = ref(false);
 let scoreRefreshTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 let draftSaveTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 const sourceIsLocalDraft = ref(false);
@@ -166,6 +173,8 @@ const productTransferSchemaFormat = ref<ProductTransferSchemaFormat>('json');
 const productTransferDialogOpen = ref(false);
 const productTransferDialogMode = ref<'import' | 'export'>('import');
 const productTransferExportProducts = ref<Product[]>([]);
+const productPreviewOpen = ref(false);
+const productPreviewImages = ref<ImagePreviewItem[]>([]);
 
 const products = useQuery({
   queryKey: ['products', subject, language, productPage, productPageSize],
@@ -450,7 +459,7 @@ const categoryMapping = useMutation({
 const productScore = useMutation({
   mutationFn: (productId: string) => gateway.request('getProductScore', { productId }),
   onMutate: (productId) => {
-    pendingProductScoreId.value = productId;
+    pendingProductScoreIds.value = [...new Set([...pendingProductScoreIds.value, productId])];
     productScoreErrors.value = Object.fromEntries(
       Object.entries(productScoreErrors.value).filter(([key]) => key !== productId)
     );
@@ -462,7 +471,7 @@ const productScore = useMutation({
     productScoreErrors.value = { ...productScoreErrors.value, [productId]: errorMessage(error) };
   },
   onSettled: (_result, _error, productId) => {
-    if (pendingProductScoreId.value === productId) pendingProductScoreId.value = '';
+    pendingProductScoreIds.value = pendingProductScoreIds.value.filter((id) => id !== productId);
   }
 });
 
@@ -882,74 +891,48 @@ const columns: DataColumn<Product>[] = [
     cell: ({ row }) => productSelectionCell(row.original)
   },
   {
+    id: 'image',
+    header: '图片',
+    cell: ({ row }) =>
+      row.original.imageUrl
+        ? h(
+            'button',
+            {
+              type: 'button',
+              class:
+                'group relative block size-14 cursor-zoom-in overflow-hidden rounded-md border border-border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              'aria-label': `预览 ${row.original.subject} 主图`,
+              onClick: () => {
+                openProductImagePreview(row.original);
+              }
+            },
+            h('img', {
+              src: row.original.imageUrl,
+              alt: `${row.original.subject} 主图`,
+              class: 'size-full object-cover transition-transform duration-200 group-hover:scale-105',
+              loading: 'lazy',
+              referrerpolicy: 'no-referrer'
+            })
+          )
+        : h(
+            'span',
+            {
+              class:
+                'flex size-14 items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground'
+            },
+            '暂无'
+          )
+  },
+  {
     accessorKey: 'subject',
     header: '商品',
-    cell: (context) => h('div', { class: 'font-medium' }, context.getValue<string>())
+    cell: ({ row }) =>
+      h('div', { class: 'min-w-56 space-y-1' }, [
+        h('p', { class: 'font-medium' }, row.original.subject),
+        h('p', { class: 'font-mono text-xs text-muted-foreground' }, row.original.id)
+      ])
   },
   { accessorKey: 'groupName', header: '分组' },
-  {
-    accessorKey: 'status',
-    header: '状态',
-    cell: (context) =>
-      h(Badge, { variant: statusVariant(context.getValue<Product['status']>()) }, () =>
-        context.getValue<string>()
-      )
-  },
-  { accessorKey: 'score', header: '质量分', cell: (context) => `${context.getValue<number>()}/100` },
-  {
-    accessorKey: 'updatedAt',
-    header: '更新时间',
-    cell: (context) => new Date(context.getValue<string>()).toLocaleString('zh-CN')
-  },
-  {
-    id: 'actions',
-    header: '操作',
-    cell: ({ row }) =>
-      h(
-        Button,
-        {
-          size: 'sm',
-          variant: 'outline',
-          onClick: () => {
-            void selectProductForSchema(row.original);
-          }
-        },
-        () => '编辑商品'
-      )
-  }
-];
-
-function scoreForProduct(product: Product): ProductScore | undefined {
-  return product.encryptedId ? productScores.value[product.encryptedId] : undefined;
-}
-
-function scoreErrorForProduct(product: Product): string | undefined {
-  return product.encryptedId ? productScoreErrors.value[product.encryptedId] : undefined;
-}
-
-function isProductScorePending(product: Product): boolean {
-  return Boolean(product.encryptedId && pendingProductScoreId.value === product.encryptedId);
-}
-
-function queryProductScore(product: Product): void {
-  if (product.encryptedId) productScore.mutate(product.encryptedId);
-}
-
-function formatProductScore(score: number): string {
-  return Number.isInteger(score) ? String(score) : score.toFixed(1);
-}
-
-const qualityColumns: DataColumn<Product>[] = [
-  {
-    id: 'select',
-    header: productSelectionHeader,
-    cell: ({ row }) => productSelectionCell(row.original)
-  },
-  {
-    accessorKey: 'subject',
-    header: '商品',
-    cell: (context) => h('div', { class: 'font-medium' }, context.getValue<string>())
-  },
   {
     accessorKey: 'status',
     header: '状态',
@@ -963,15 +946,17 @@ const qualityColumns: DataColumn<Product>[] = [
     header: '产品分',
     cell: ({ row }) => {
       const score = scoreForProduct(row.original);
-      return h('div', { class: 'space-y-0.5' }, [
+      const error = scoreErrorForProduct(row.original);
+      return h('div', { class: 'min-w-24 space-y-0.5' }, [
         h(
           'span',
           { class: 'font-medium tabular-nums' },
-          score ? `${formatProductScore(score.score)}/5` : '未查询'
+          score ? `${formatProductScore(score.score)}/${PRODUCT_SCORE_DISPLAY_MAX}` : '未查询'
         ),
         score?.issues.length
           ? h('p', { class: 'text-xs text-amber-700 dark:text-amber-400' }, `${score.issues.length} 项建议`)
-          : null
+          : null,
+        error ? h('p', { class: 'text-xs text-destructive', title: error }, '查询失败') : null
       ]);
     }
   },
@@ -984,23 +969,104 @@ const qualityColumns: DataColumn<Product>[] = [
     }
   },
   {
-    id: 'scoreAction',
+    accessorKey: 'updatedAt',
+    header: '更新时间',
+    cell: (context) => new Date(context.getValue<string>()).toLocaleString('zh-CN')
+  },
+  {
+    id: 'actions',
     header: '操作',
     cell: ({ row }) =>
-      h(
-        Button,
-        {
-          size: 'sm',
-          variant: 'outline',
-          disabled: !row.original.encryptedId || isProductScorePending(row.original),
-          onClick: () => {
-            queryProductScore(row.original);
-          }
-        },
-        () => (isProductScorePending(row.original) ? '查询中…' : '查询产品分')
-      )
+      h('div', { class: 'flex items-center gap-2' }, [
+        h(
+          Button,
+          {
+            size: 'sm',
+            variant: 'outline',
+            disabled:
+              !row.original.encryptedId ||
+              isProductScorePending(row.original) ||
+              queryingSelectedProductScores.value,
+            onClick: () => {
+              queryProductScore(row.original);
+            }
+          },
+          () => (isProductScorePending(row.original) ? '查询中…' : '查询产品分')
+        ),
+        h(
+          Button,
+          {
+            size: 'sm',
+            variant: 'outline',
+            onClick: () => {
+              void selectProductForSchema(row.original);
+            }
+          },
+          () => '编辑商品'
+        )
+      ])
   }
 ];
+
+function scoreForProduct(product: Product): ProductScore | undefined {
+  return product.encryptedId ? productScores.value[product.encryptedId] : undefined;
+}
+
+function scoreErrorForProduct(product: Product): string | undefined {
+  return product.encryptedId ? productScoreErrors.value[product.encryptedId] : undefined;
+}
+
+function isProductScorePending(product: Product): boolean {
+  return Boolean(product.encryptedId && pendingProductScoreIds.value.includes(product.encryptedId));
+}
+
+function queryProductScore(product: Product): void {
+  if (product.encryptedId) productScore.mutate(product.encryptedId);
+}
+
+async function querySelectedProductScores(): Promise<void> {
+  const targets = selectedProducts.value.filter((product): product is Product & { encryptedId: string } =>
+    Boolean(product.encryptedId)
+  );
+  if (targets.length === 0) {
+    feedback.value = '选中的商品没有可用于查询产品分的平台混淆 ID。';
+    return;
+  }
+  queryingSelectedProductScores.value = true;
+  let succeeded = 0;
+  let failed = 0;
+  try {
+    for (const product of targets) {
+      try {
+        await productScore.mutateAsync(product.encryptedId);
+        succeeded += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+  } finally {
+    queryingSelectedProductScores.value = false;
+  }
+  const skipped = selectedProducts.value.length - targets.length;
+  feedback.value = `产品分查询完成：成功 ${succeeded} 个，失败 ${failed} 个${skipped > 0 ? `，跳过 ${skipped} 个` : ''}。`;
+}
+
+function formatProductScore(score: number): string {
+  return Number.isInteger(score) ? String(score) : score.toFixed(1);
+}
+
+function openProductImagePreview(product: Product): void {
+  if (!product.imageUrl) return;
+  productPreviewImages.value = [
+    {
+      id: product.id,
+      src: product.imageUrl,
+      alt: `${product.subject} 主图`,
+      description: `商品 ${product.id}`
+    }
+  ];
+  productPreviewOpen.value = true;
+}
 
 function flattenCategories(items: ProductCategory[], depth = 0): (ProductCategory & { depth: number })[] {
   return items.flatMap((item) => [{ ...item, depth }, ...flattenCategories(item.children, depth + 1)]);
@@ -1174,6 +1240,7 @@ async function syncProductsFromHash(): Promise<boolean> {
     requestedWorkspace && workspaceIds.has(requestedWorkspace as Workspace)
       ? (requestedWorkspace as Workspace)
       : 'list';
+  const shouldCanonicalizeWorkspace = requestedWorkspace !== nextWorkspace;
   applyingProductRoute = true;
   try {
     workspace.value = nextWorkspace;
@@ -1215,6 +1282,7 @@ async function syncProductsFromHash(): Promise<boolean> {
     return true;
   } finally {
     applyingProductRoute = false;
+    if (shouldCanonicalizeWorkspace) updateProductHash('replace');
   }
 }
 
@@ -1580,8 +1648,7 @@ onBeforeUnmount(() => {
         ['list', '商品列表'],
         ['publisher', '商品发布/编辑'],
         ['batch-publisher', '批量发品'],
-        ['organization', '类目与分组'],
-        ['quality', '质量与上下架']
+        ['organization', '类目与分组']
       ] as const"
       :key="item[0]"
       :variant="workspace === item[0] ? 'default' : 'outline'"
@@ -1624,9 +1691,73 @@ onBeforeUnmount(() => {
         >
           <Download class="size-4" />导出
         </Button>
+        <DropdownMenuRoot>
+          <DropdownMenuTrigger as-child>
+            <Button
+              variant="outline"
+              :disabled="selectedProducts.length === 0"
+              :title="selectedProducts.length === 0 ? '请先勾选商品' : '更多批量操作'"
+            >
+              <Ellipsis class="size-4" />更多<ChevronDown class="size-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuContent
+              class="ov-dropdown-content z-[65] min-w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg outline-none"
+              :side-offset="6"
+              align="end"
+            >
+              <DropdownMenuItem
+                class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
+                :disabled="queryingSelectedProductScores"
+                @select="querySelectedProductScores"
+              >
+                {{ queryingSelectedProductScores ? '批量查询中…' : '批量查询产品分' }}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator class="my-1 h-px bg-border" />
+              <DropdownMenuItem
+                class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
+                :disabled="
+                  productDisplayMutationDisabled ||
+                  selectedProductMissingEncryptedId ||
+                  selectedDisplayMutationBlocked ||
+                  batchDisplay.isPending.value
+                "
+                @select="submitBatchDisplay('online')"
+              >
+                批量上架
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
+                :disabled="
+                  productDisplayMutationDisabled ||
+                  selectedProductMissingEncryptedId ||
+                  selectedDisplayMutationBlocked ||
+                  batchDisplay.isPending.value
+                "
+                @select="submitBatchDisplay('offline')"
+              >
+                批量下架
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenuRoot>
         <Button @click="startNewProduct">发布新商品</Button>
       </div>
     </div>
+    <p
+      v-if="selectedProductIds.length && productDisplayMutationDisabled"
+      class="mb-3 text-xs text-amber-700 dark:text-amber-400"
+    >
+      当前环境尚未开放真实商品上下架。
+    </p>
+    <p v-else-if="selectedProductMissingEncryptedId" class="mb-3 text-xs text-destructive">
+      选中的商品缺少平台混淆 ID，不能执行上下架。
+    </p>
+    <p v-else-if="selectedDisplayMutationBlocked" class="mb-3 text-xs text-amber-700 dark:text-amber-400">
+      选中的商品仍有未完成或待恢复的上下架任务，请先确认任务状态。
+    </p>
+    <ErrorNotice v-if="batchDisplay.error.value" class="mb-3" :error="batchDisplay.error.value" compact />
     <QueryState :loading="products.isPending.value" :error="products.error.value">
       <DataTable
         :columns="columns"
@@ -1636,7 +1767,7 @@ onBeforeUnmount(() => {
         :total-rows="products.data.value?.total ?? 0"
         :pagination-disabled="products.isFetching.value"
         empty-text="没有匹配商品"
-        min-width="960px"
+        min-width="1320px"
         @update:page="setProductPage"
         @update:page-size="setProductPageSize"
       >
@@ -1651,6 +1782,78 @@ onBeforeUnmount(() => {
         </template>
       </DataTable>
     </QueryState>
+    <Card v-if="latestDisplayMutationJobs.length" class="mt-5 p-5">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="font-semibold">最近上下架任务</h2>
+          <p class="mt-1 text-sm text-muted-foreground">
+            Alibaba 明确接受后仍需通过商品列表回读，才会标记为完成。
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          :disabled="displayMutationHistory.isFetching.value"
+          @click="displayMutationHistory.refetch()"
+        >
+          <RefreshCw class="size-4" />
+          {{ displayMutationHistory.isFetching.value ? '检查中…' : '刷新全部' }}
+        </Button>
+      </div>
+      <div class="mt-4 space-y-3">
+        <div
+          v-for="job in latestDisplayMutationJobs"
+          :key="job.id"
+          class="rounded-lg border border-border p-3"
+        >
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="font-mono text-sm">{{ job.productId }}</span>
+                <Badge :variant="productMutationStatusVariant(job.status)">
+                  {{ productMutationStatusLabel(job.status) }}
+                </Badge>
+              </div>
+              <p class="mt-1 text-xs text-muted-foreground">
+                {{ job.originalDisplay === 'online' ? '上架' : '下架' }} →
+                {{ job.targetDisplay === 'online' ? '上架' : '下架' }} · requestId
+                <span class="font-mono">{{ job.requestId }}</span>
+              </p>
+              <p v-if="job.message" class="mt-2 text-sm text-muted-foreground">{{ job.message }}</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                :disabled="refreshDisplayMutation.isPending.value"
+                @click="refreshDisplayMutation.mutate(job)"
+                >查询状态</Button
+              >
+              <Button
+                v-if="job.status === 'recovery-required'"
+                size="sm"
+                variant="destructive"
+                :disabled="recoverDisplayMutation.isPending.value"
+                @click="recoverDisplayJob(job)"
+                >恢复原状态</Button
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+      <ErrorNotice
+        v-if="refreshDisplayMutation.error.value"
+        class="mt-3"
+        :error="refreshDisplayMutation.error.value"
+        compact
+      />
+      <ErrorNotice
+        v-if="recoverDisplayMutation.error.value"
+        class="mt-3"
+        :error="recoverDisplayMutation.error.value"
+        compact
+      />
+    </Card>
   </template>
 
   <template v-else-if="workspace === 'publisher'">
@@ -1926,217 +2129,6 @@ onBeforeUnmount(() => {
     </div>
   </template>
 
-  <template v-else>
-    <Card class="mb-5 p-5">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 class="font-semibold">批量上下架</h2>
-          <p class="mt-1 text-sm text-muted-foreground">已选 {{ selectedProductIds.length }} 个商品</p>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <div class="flex rounded-md border border-border p-0.5" aria-label="质量视图">
-            <Button
-              size="sm"
-              :variant="qualityViewMode === 'cards' ? 'secondary' : 'ghost'"
-              :aria-pressed="qualityViewMode === 'cards'"
-              @click="qualityViewMode = 'cards'"
-            >
-              <LayoutGrid class="size-4" />卡片
-            </Button>
-            <Button
-              size="sm"
-              :variant="qualityViewMode === 'list' ? 'secondary' : 'ghost'"
-              :aria-pressed="qualityViewMode === 'list'"
-              @click="qualityViewMode = 'list'"
-            >
-              <List class="size-4" />列表
-            </Button>
-          </div>
-          <Button
-            :disabled="
-              !selectedProductIds.length ||
-              productDisplayMutationDisabled ||
-              selectedProductMissingEncryptedId ||
-              selectedDisplayMutationBlocked ||
-              batchDisplay.isPending.value
-            "
-            @click="submitBatchDisplay('online')"
-            >批量上架</Button
-          >
-          <Button
-            variant="outline"
-            :disabled="
-              !selectedProductIds.length ||
-              productDisplayMutationDisabled ||
-              selectedProductMissingEncryptedId ||
-              selectedDisplayMutationBlocked ||
-              batchDisplay.isPending.value
-            "
-            @click="submitBatchDisplay('offline')"
-            >批量下架</Button
-          >
-        </div>
-      </div>
-      <p v-if="productDisplayMutationDisabled" class="mt-3 text-xs text-amber-700 dark:text-amber-400">
-        当前环境尚未开放真实商品上下架。
-      </p>
-      <p v-else-if="selectedProductMissingEncryptedId" class="mt-3 text-xs text-destructive">
-        选中的商品缺少平台混淆 ID，不能执行上下架。
-      </p>
-      <p v-else-if="selectedDisplayMutationBlocked" class="mt-3 text-xs text-amber-700 dark:text-amber-400">
-        选中的商品仍有未完成或待恢复的上下架任务，请先确认任务状态。
-      </p>
-      <ErrorNotice v-if="batchDisplay.error.value" class="mt-3" :error="batchDisplay.error.value" compact />
-    </Card>
-    <Card v-if="latestDisplayMutationJobs.length" class="mb-5 p-5">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 class="font-semibold">最近上下架任务</h2>
-          <p class="mt-1 text-sm text-muted-foreground">
-            Alibaba 明确接受后仍需通过商品列表回读，才会标记为完成。
-          </p>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          :disabled="displayMutationHistory.isFetching.value"
-          @click="displayMutationHistory.refetch()"
-        >
-          <RefreshCw class="size-4" />
-          {{ displayMutationHistory.isFetching.value ? '检查中…' : '刷新全部' }}
-        </Button>
-      </div>
-      <div class="mt-4 space-y-3">
-        <div
-          v-for="job in latestDisplayMutationJobs"
-          :key="job.id"
-          class="rounded-lg border border-border p-3"
-        >
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-mono text-sm">{{ job.productId }}</span>
-                <Badge :variant="productMutationStatusVariant(job.status)">
-                  {{ productMutationStatusLabel(job.status) }}
-                </Badge>
-              </div>
-              <p class="mt-1 text-xs text-muted-foreground">
-                {{ job.originalDisplay === 'online' ? '上架' : '下架' }} →
-                {{ job.targetDisplay === 'online' ? '上架' : '下架' }} · requestId
-                <span class="font-mono">{{ job.requestId }}</span>
-              </p>
-              <p v-if="job.message" class="mt-2 text-sm text-muted-foreground">{{ job.message }}</p>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                :disabled="refreshDisplayMutation.isPending.value"
-                @click="refreshDisplayMutation.mutate(job)"
-                >查询状态</Button
-              >
-              <Button
-                v-if="job.status === 'recovery-required'"
-                size="sm"
-                variant="destructive"
-                :disabled="recoverDisplayMutation.isPending.value"
-                @click="recoverDisplayJob(job)"
-                >恢复原状态</Button
-              >
-            </div>
-          </div>
-        </div>
-      </div>
-      <ErrorNotice
-        v-if="refreshDisplayMutation.error.value"
-        class="mt-3"
-        :error="refreshDisplayMutation.error.value"
-        compact
-      />
-      <ErrorNotice
-        v-if="recoverDisplayMutation.error.value"
-        class="mt-3"
-        :error="recoverDisplayMutation.error.value"
-        compact
-      />
-    </Card>
-    <QueryState :loading="products.isPending.value" :error="products.error.value">
-      <DataTable
-        v-if="qualityViewMode === 'list'"
-        :data="products.data.value?.items ?? []"
-        :columns="qualityColumns"
-        :page="productPage"
-        :page-size="productPageSize"
-        :total-rows="products.data.value?.total ?? 0"
-        :pagination-disabled="products.isFetching.value"
-        empty-text="暂无商品"
-        @update:page="setProductPage"
-        @update:page-size="setProductPageSize"
-      />
-      <div v-else class="overflow-hidden rounded-lg border">
-        <div class="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-3">
-          <Card
-            v-for="product in products.data.value?.items ?? []"
-            :key="product.id"
-            class="p-4"
-            :aria-label="`商品质量 ${product.subject}`"
-          >
-            <div class="flex items-start gap-3">
-              <TriStateCheckbox
-                :checked="selectedProductIds.includes(product.id)"
-                :label="`选择 ${product.subject}`"
-                @update:checked="toggleProduct(product.id, $event)"
-              />
-              <div class="min-w-0 flex-1">
-                <p class="font-medium">{{ product.subject }}</p>
-                <p class="mt-1 text-xs text-muted-foreground">{{ product.id }}</p>
-              </div>
-              <Badge :variant="statusVariant(product.status)">{{ product.status }}</Badge>
-            </div>
-            <div class="mt-4 space-y-3">
-              <ScoreProgress
-                v-if="scoreForProduct(product)"
-                label="产品分"
-                :value="scoreForProduct(product)?.score ?? 0"
-                :max="5"
-              />
-              <div v-else class="flex items-center justify-between gap-3 text-sm">
-                <span class="text-muted-foreground">产品分</span>
-                <span>未查询</span>
-              </div>
-              <ScoreProgress v-if="product.score > 0" label="质量分" :value="product.score" :max="100" />
-              <ul
-                v-if="scoreForProduct(product)?.issues.length"
-                class="list-disc space-y-1 pl-5 text-xs text-amber-700 dark:text-amber-400"
-              >
-                <li v-for="issue in scoreForProduct(product)?.issues ?? []" :key="issue">{{ issue }}</li>
-              </ul>
-              <p v-if="scoreErrorForProduct(product)" class="text-xs text-destructive">
-                产品分查询失败：{{ scoreErrorForProduct(product) }}
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                class="w-full"
-                :disabled="!product.encryptedId || isProductScorePending(product)"
-                @click="queryProductScore(product)"
-                >{{ isProductScorePending(product) ? '查询中…' : '查询产品分' }}</Button
-              >
-            </div>
-          </Card>
-        </div>
-        <TablePagination
-          :page="productPage"
-          :page-size="productPageSize"
-          :total="products.data.value?.total ?? 0"
-          :disabled="products.isFetching.value"
-          @update:page="setProductPage"
-          @update:page-size="setProductPageSize"
-        />
-      </div>
-    </QueryState>
-  </template>
-
   <ProductTransferDialog
     v-model:open="productTransferDialogOpen"
     v-model:schema-format="productTransferSchemaFormat"
@@ -2147,4 +2139,5 @@ onBeforeUnmount(() => {
     @confirm-import="importProducts"
     @confirm-export="exportSelectedProducts"
   />
+  <ImagePreview v-model:open="productPreviewOpen" :images="productPreviewImages" />
 </template>

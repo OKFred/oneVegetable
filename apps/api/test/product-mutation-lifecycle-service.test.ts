@@ -352,6 +352,7 @@ function productPage(status: 'online' | 'offline' | 'auditing'): ProductPage {
         groupName: 'Smoke',
         status,
         score: 0,
+        imageUrl: null,
         updatedAt: '2026-08-22T00:00:00.000Z',
         categoryId: REQUEST.categoryId
       }

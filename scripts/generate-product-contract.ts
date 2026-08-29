@@ -417,7 +417,12 @@ document.components.schemas.ProductScore = {
   required: ['productId', 'score', 'issues'],
   properties: {
     productId: { type: 'string' },
-    score: { type: 'number', minimum: 0, maximum: 5 },
+    score: {
+      type: 'number',
+      minimum: 0,
+      description:
+        'Alibaba final_score. The API documentation does not define a hard maximum; the current seller UI presents the score out of 6.'
+    },
     issues: { type: 'array', items: { type: 'string' } },
     qualityIssues: {
       type: 'array',

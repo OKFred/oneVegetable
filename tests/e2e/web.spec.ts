@@ -61,21 +61,29 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await page.getByRole('button', { name: '创建' }).click();
   await expect(page.getByText(/分组“New group”已创建/)).toBeVisible();
 
-  await page.getByRole('tab', { name: '质量与上下架' }).click();
-  const firstProductQuality = page.getByLabel('商品质量 Portable solar power station 1000W');
-  const zeroQualityProduct = page.getByLabel('商品质量 Commercial stainless steel food dehydrator');
-  await expect(firstProductQuality.getByText('质量分')).toBeVisible();
-  await expect(zeroQualityProduct.getByText('质量分')).toHaveCount(0);
-  await firstProductQuality.getByRole('button', { name: '查询产品分' }).click();
-  await expect(firstProductQuality.getByText('4.6/5')).toBeVisible();
-  await expect(firstProductQuality.getByText(/建议补充更多应用场景图片/)).toBeVisible();
-  await page.getByRole('button', { name: '列表' }).click();
-  const scoredProductRow = page.getByRole('row', { name: /Portable solar power station 1000W/ });
-  await expect(scoredProductRow).toContainText('4.6/5');
+  await page.getByRole('tab', { name: '商品列表' }).click();
+  const scoredProductRow = page.getByRole('row').filter({ hasText: 'Portable solar power station 1000W' });
+  const secondProductRow = page
+    .getByRole('row')
+    .filter({ hasText: 'Custom recycled cotton canvas tote bag' });
+  const zeroQualityProductRow = page
+    .getByRole('row')
+    .filter({ hasText: 'Commercial stainless steel food dehydrator' });
   await expect(scoredProductRow).toContainText('92/100');
-  await page.getByRole('button', { name: '卡片' }).click();
+  await expect(zeroQualityProductRow).toContainText('—');
+  await expect(
+    page.getByRole('button', { name: '预览 Portable solar power station 1000W 主图' })
+  ).toBeVisible();
   await page.getByLabel('选择 Portable solar power station 1000W').check();
-  await page.getByRole('button', { name: '批量下架' }).click();
+  await page.getByLabel('选择 Custom recycled cotton canvas tote bag').check();
+  await page.getByRole('button', { name: '更多' }).click();
+  await page.getByRole('menuitem', { name: '批量查询产品分' }).click();
+  await expect(page.getByText(/产品分查询完成：成功 2 个/)).toBeVisible();
+  await expect(scoredProductRow).toContainText('4.6/6');
+  await expect(secondProductRow).toContainText('4.6/6');
+  await page.getByLabel('选择 Custom recycled cotton canvas tote bag').uncheck();
+  await page.getByRole('button', { name: '更多' }).click();
+  await page.getByRole('menuitem', { name: '批量下架' }).click();
   await expect(page.getByText(/1 个商品已下架/)).toBeVisible();
 
   await page.getByRole('link', { name: 'API 能力' }).click();

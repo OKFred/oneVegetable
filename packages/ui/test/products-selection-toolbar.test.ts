@@ -31,12 +31,17 @@ describe('ProductsView selection toolbar', () => {
       [...toolbar.element.querySelectorAll('button')].some((item) => item.textContent.trim() === '清空')
     ).toBe(false);
     expect(button(toolbar.element, '导出').disabled).toBe(true);
+    expect(button(toolbar.element, '更多').disabled).toBe(true);
+    expect(toolbar.text()).not.toContain('批量查询产品分');
+    expect(toolbar.text()).not.toContain('批量上架');
+    expect(toolbar.text()).not.toContain('批量下架');
 
     await wrapper.get('input[aria-label="选择 Portable solar power station 1000W"]').setValue(true);
     expect(selectedCount.text()).toBe('已选 1 个');
     expect((selectPage.element as HTMLInputElement).indeterminate).toBe(true);
     expect(selectPage.attributes('aria-checked')).toBe('mixed');
     expect(button(toolbar.element, '导出').disabled).toBe(false);
+    expect(button(toolbar.element, '更多').disabled).toBe(false);
 
     await selectPage.setValue(true);
     expect(selectedCount.text()).toBe('已选 3 个');
@@ -81,6 +86,30 @@ describe('ProductsView selection toolbar', () => {
     button(wrapper.element as Node, '商品列表').click();
     await wrapper.vm.$nextTick();
     await waitForSelectionCount(wrapper, '已选 0 个', 'language change');
+    wrapper.unmount();
+  });
+
+  it('previews list images and queries product scores for selected products in sequence', async () => {
+    const wrapper = mountView();
+    await waitForProducts(wrapper);
+
+    const preview = wrapper.get('button[aria-label="预览 Portable solar power station 1000W 主图"]');
+    expect(preview.get('img').attributes('src')).toContain('mock-solar-station.jpg');
+    await preview.trigger('click');
+    expect(document.body.textContent).toContain('商品 10000001');
+
+    await wrapper.get('input[aria-label="选择 Portable solar power station 1000W"]').setValue(true);
+    await wrapper.get('input[aria-label="选择 Custom recycled cotton canvas tote bag"]').setValue(true);
+    button(wrapper.element as Node, '更多').click();
+    await flushPromises();
+    menuItem('批量查询产品分').click();
+    await flushPromises();
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('产品分查询完成：成功 2 个');
+      expect(wrapper.text().match(/4\.6\/6/g)).toHaveLength(2);
+    });
+    expect(wrapper.text()).not.toContain('质量与上下架');
     wrapper.unmount();
   });
 });
@@ -136,6 +165,14 @@ function button(root: Node, label: string): HTMLButtonElement {
     (candidate) => candidate.textContent.trim() === label
   );
   if (!match) throw new Error(`Missing button: ${label}`);
+  return match;
+}
+
+function menuItem(label: string): HTMLElement {
+  const match = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+    (candidate) => candidate.textContent.trim() === label
+  );
+  if (!match) throw new Error(`Missing menu item: ${label}`);
   return match;
 }
 

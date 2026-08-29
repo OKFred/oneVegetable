@@ -3,7 +3,7 @@
 import { defineComponent, h } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
@@ -13,6 +13,10 @@ import ProductsView from '../src/views/ProductsView.vue';
 import type { ProductMutationJob, ProductMutationJobClient } from '@one-vegetable/core';
 
 describe('ProductsView product mutation lifecycle', () => {
+  beforeEach(() => {
+    globalThis.history.replaceState(null, '', '#/products/list');
+  });
+
   it('restores an auditing job, shows its requestId and disables duplicate updates', async () => {
     const job = jobFixture();
     const refresh = vi.fn(() => Promise.resolve({ ...job, revision: 3, lastCheckedTimeUtc: 3 }));
@@ -64,9 +68,6 @@ describe('ProductsView product mutation lifecycle', () => {
     };
     const confirm = vi.spyOn(globalThis, 'confirm').mockReturnValue(true);
     const wrapper = mountProductsView(productMutationJobs, 'updateProductDisplay');
-    const quality = wrapper.findAll('button').find((button) => button.text().includes('质量与上下架'));
-    if (!quality) throw new Error('Missing quality workspace button');
-    await quality.trigger('click');
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('最近上下架任务');
       expect(wrapper.text()).toContain('需要人工恢复');

@@ -36,16 +36,20 @@ export class ProductAdapter {
       ...(request.groupId !== undefined ? { group_id1: request.groupId } : {})
     });
     const root = unwrap(call.data, call.method);
-    const items = findRecords(root, ['products', 'product_list', 'result_list']).map((item) => ({
-      id: readString(item, ['id', 'product_id']) ?? '',
-      encryptedId: readString(item, ['product_id']) ?? null,
-      subject: readString(item, ['subject', 'product_subject']) ?? '未命名商品',
-      groupName: readString(item, ['group_name']) ?? '未分组',
-      status: normalizeProductStatus(readString(item, ['display']), readString(item, ['status'])),
-      score: readNumber(item, ['score']) ?? 0,
-      updatedAt: normalizeDate(readString(item, ['gmt_modified', 'modified_time'])),
-      categoryId: readNumber(item, ['category_id', 'cat_id']) ?? null
-    }));
+    const items = findRecords(root, ['products', 'product_list', 'result_list']).map((item) => {
+      const mainImage = asRecord(item.main_image);
+      return {
+        id: readString(item, ['id', 'product_id']) ?? '',
+        encryptedId: readString(item, ['product_id']) ?? null,
+        subject: readString(item, ['subject', 'product_subject']) ?? '未命名商品',
+        groupName: readString(item, ['group_name']) ?? '未分组',
+        status: normalizeProductStatus(readString(item, ['display']), readString(item, ['status'])),
+        score: readNumber(item, ['score']) ?? 0,
+        imageUrl: readStringList(mainImage.images)[0] ?? null,
+        updatedAt: normalizeDate(readString(item, ['gmt_modified', 'modified_time'])),
+        categoryId: readNumber(item, ['category_id', 'cat_id']) ?? null
+      };
+    });
     return {
       items,
       page: request.page ?? 1,
@@ -71,6 +75,7 @@ export class ProductAdapter {
       groupName: 'Schema 商品',
       status: draft ? 'draft' : 'online',
       score: 0,
+      imageUrl: null,
       updatedAt: new Date().toISOString(),
       categoryId: 0,
       language,
@@ -423,6 +428,24 @@ function readNumberList(value: unknown): number[] {
   }
   if (!isRecord(value)) return [];
   return readNumberList(value.number ?? value.numbers ?? value.string ?? value.strings ?? value.items);
+}
+
+function readStringList(value: unknown): string[] {
+  if (typeof value === 'string') {
+    const normalized = value.trim();
+    if (normalized === '') return [];
+    if (normalized.startsWith('[')) {
+      try {
+        return readStringList(JSON.parse(normalized) as unknown);
+      } catch {
+        return [normalized];
+      }
+    }
+    return [normalized];
+  }
+  if (Array.isArray(value)) return value.flatMap(readStringList);
+  if (!isRecord(value)) return [];
+  return readStringList(value.string ?? value.strings ?? value.items ?? value.values);
 }
 
 async function mapWithConcurrency<T, R>(

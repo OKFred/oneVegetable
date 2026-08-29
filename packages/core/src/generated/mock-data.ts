@@ -12,6 +12,7 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
           "groupName": "Energy storage",
           "status": "online",
           "score": 92,
+          "imageUrl": "https://sc04.alicdn.com/kf/mock-solar-station.jpg",
           "updatedAt": "2026-08-11T03:20:00Z",
           "categoryId": 100009999
         },
@@ -22,6 +23,7 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
           "groupName": "Packaging",
           "status": "draft",
           "score": 76,
+          "imageUrl": "https://sc04.alicdn.com/kf/mock-canvas-tote.jpg",
           "updatedAt": "2026-08-10T09:12:00Z",
           "categoryId": 100001589
         },
@@ -32,6 +34,7 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
           "groupName": "Food machinery",
           "status": "auditing",
           "score": 0,
+          "imageUrl": null,
           "updatedAt": "2026-08-09T11:03:00Z",
           "categoryId": 100009998
         }
@@ -47,6 +50,7 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
       "groupName": "Energy storage",
       "status": "online",
       "score": 92,
+      "imageUrl": "https://sc04.alicdn.com/kf/mock-solar-station.jpg",
       "updatedAt": "2026-08-11T03:20:00Z",
       "categoryId": 100003109,
       "language": "en_US",
@@ -125,6 +129,7 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
       "groupName": "Energy storage",
       "status": "draft",
       "score": 92,
+      "imageUrl": "https://sc04.alicdn.com/kf/mock-solar-station.jpg",
       "updatedAt": "2026-08-11T03:20:00Z",
       "categoryId": 100003109,
       "language": "en_US",
