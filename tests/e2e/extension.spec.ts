@@ -92,7 +92,8 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.goto(`chrome-extension://${extensionId}/options.html`);
 
   await expect(page.getByRole('heading', { name: '先确认数据与调用边界' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '开始使用' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '稍后，仅浏览' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '前往设置凭证' })).toBeDisabled();
   await expect(page.getByRole('link', { name: '查看隐私说明' })).toHaveAttribute('href', '/privacy.html');
   const diagnosticsBeforeConsent = await page.evaluate(async () => {
     const extension = (
@@ -108,9 +109,9 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   });
   expect(diagnosticsBeforeConsent).toMatchObject({ ok: true, data: { entries: [] } });
   await page.getByRole('checkbox').check();
-  await page.getByRole('button', { name: '开始使用' }).click();
+  await page.getByRole('button', { name: '稍后，仅浏览' }).click();
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
-  await page.getByRole('link', { name: '设置' }).click();
+  await page.getByRole('link', { name: '设置', exact: true }).click();
   await expect(page.getByRole('heading', { name: '凭证保险库' })).toBeVisible();
   await expect(page.getByText('未创建', { exact: true })).toBeVisible();
   await page.getByLabel('App Key').fill('e2e-app-key');
@@ -139,7 +140,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   expect(JSON.stringify(encryptedSettings)).not.toContain('e2e-secret');
   expect(JSON.stringify(encryptedSettings)).not.toContain('e2e-token');
   await page.reload();
-  await page.getByRole('link', { name: '设置' }).click();
+  await page.getByRole('link', { name: '设置', exact: true }).click();
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
   await expect(page.getByLabel('App Secret')).toHaveValue('');
   await expect(page.getByLabel('Access Token')).toHaveValue('');
@@ -208,7 +209,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   });
 
   await page.reload();
-  await page.getByRole('link', { name: '设置' }).click();
+  await page.getByRole('link', { name: '设置', exact: true }).click();
   await expect(page.getByText('已锁定', { exact: true })).toBeVisible();
   await expect(page.getByText('扩展后台已重新启动，需要重新解锁')).toBeVisible();
   const lockedGatewayResponse = await page.evaluate(async () => {
@@ -407,7 +408,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   expect(partnerCapabilityError).toMatchObject({ ok: false });
   expect(JSON.stringify(partnerCapabilityError)).toContain('CGS 小满签约客户');
 
-  await page.getByRole('link', { name: '设置' }).click();
+  await page.getByRole('link', { name: '设置', exact: true }).click();
   await expect(page.getByRole('heading', { name: '脱敏诊断' })).toBeVisible();
   await expect(page.getByLabel('诊断记录数量')).toContainText(/\d+ 条/u);
   const downloadPromise = page.waitForEvent('download');
@@ -465,7 +466,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.reload();
   await expect(page.getByRole('heading', { name: '先确认数据与调用边界' })).toBeVisible();
   await page.getByRole('checkbox').check();
-  await page.getByRole('button', { name: '开始使用' }).click();
+  await page.getByRole('button', { name: '稍后，仅浏览' }).click();
   await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {
@@ -486,7 +487,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
     });
   });
   await page.reload();
-  await page.getByRole('link', { name: '设置' }).click();
+  await page.getByRole('link', { name: '设置', exact: true }).click();
   await expect(page.getByText('待迁移', { exact: true })).toBeVisible();
   await expect(page.getByText(/真实请求已停止读取该记录/)).toBeVisible();
   await page.getByLabel('新建保险库口令').fill('migrated-vault-password');
