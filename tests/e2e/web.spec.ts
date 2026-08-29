@@ -58,7 +58,7 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await page.getByRole('tab', { name: '商品列表' }).click();
   await expect(page.getByRole('tab', { name: '类目与分组' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '新增', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '商品分组', exact: true }).click();
+  await page.getByRole('button', { name: '分组', exact: true }).click();
   const productGroupDialog = page.getByRole('dialog', { name: '商品分组' });
   await expect(productGroupDialog.getByRole('tree', { name: '商品分组树' })).toBeVisible();
   await productGroupDialog.getByRole('button', { name: '展开Energy storage' }).click();

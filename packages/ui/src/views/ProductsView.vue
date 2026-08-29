@@ -1631,7 +1631,7 @@ onBeforeUnmount(() => {
         >
           <Download class="size-4" />导出
         </Button>
-        <Button variant="outline" @click="productGroupDialogOpen = true">商品分组</Button>
+        <Button variant="outline" @click="productGroupDialogOpen = true">分组</Button>
         <DropdownMenuRoot :modal="false">
           <DropdownMenuTrigger as-child>
             <Button
