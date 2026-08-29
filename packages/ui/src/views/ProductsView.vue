@@ -15,6 +15,7 @@ import {
   parseProductSchemaXml,
   PRODUCT_EDITOR_STEP_IDS,
   productMutationJobIsBlocking,
+  resolveProductSchemaXml,
   productTransferQueueItemId,
   serializeProductTransferDocument,
   validateProductDisplayInput,
@@ -661,7 +662,8 @@ async function exportSelectedProducts(): Promise<void> {
                 productId: product.id
               });
       if (!schema) throw new Error(`商品 ${product.id} 缺少类目，无法导出完整 Schema`);
-      const schemaXml = 'schemaXml' in schema ? schema.schemaXml : schema.xml;
+      const schemaXml = resolveProductSchemaXml(schema);
+      if (!schemaXml) throw new Error(`商品 ${product.id} 未返回 Schema XML 或 Schema JSON`);
       const exportedCategoryId =
         product.status === 'draft' && schema.categoryId > 0 ? schema.categoryId : product.categoryId;
       if (exportedCategoryId === null) throw new Error(`商品 ${product.id} 缺少类目，无法导出完整 Schema`);

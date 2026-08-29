@@ -1,7 +1,17 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AlibabaClient } from '../src/alibaba-client';
 import { ProductAdapter } from '../src/product-adapter';
+
+const schemaJsonFixture = JSON.parse(
+  readFileSync(
+    resolve(import.meta.dirname, '../../../mock/data/product-transfer-schema-json-v1.json'),
+    'utf8'
+  )
+) as { products: { schemaJson: unknown }[] };
 
 function response(method: string, body: Record<string, unknown>) {
   return {
@@ -374,6 +384,22 @@ describe('ProductAdapter', () => {
         retryable: false
       }
     });
+  });
+
+  it('uses canonical Schema JSON when a render response omits XML', async () => {
+    const schemaJson = schemaJsonFixture.products[0]?.schemaJson;
+    if (!schemaJson) throw new Error('Missing Schema JSON adapter fixture');
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve(response(method, { schemaJson, biz_success: true }))
+    );
+    const adapter = new ProductAdapter({ call });
+
+    const rendered = await adapter.renderSchema({
+      categoryId: 456,
+      language: 'en_US',
+      productId: '123'
+    });
+    expect(rendered.xml).toContain('Schema JSON fallback product');
   });
 
   it('uses cat_id 0 for the documented top-level category query', async () => {

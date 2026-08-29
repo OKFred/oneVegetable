@@ -1,0 +1,54 @@
+{
+  "format": "one-vegetable-products",
+  "schemaVersion": 1,
+  "exportedAtUtc": "2026-08-29T08:00:00.000Z",
+  "products": [
+    {
+      "source": {
+        "productId": "10000003",
+        "subject": "Schema JSON fallback product",
+        "groupName": "Fallback samples",
+        "status": "draft",
+        "updatedAt": "2026-08-29T07:30:00.000Z"
+      },
+      "categoryId": 100009999,
+      "language": "en_US",
+      "market": "wholesale",
+      "schemaJson": {
+        "format": "one-vegetable-product-schema",
+        "schemaVersion": 1,
+        "root": {
+          "type": "element",
+          "name": "itemSchema",
+          "attributes": {
+            "version": "trade.1.1"
+          },
+          "children": [
+            {
+              "type": "element",
+              "name": "field",
+              "attributes": {
+                "id": "productTitle",
+                "name": "Product name",
+                "type": "input"
+              },
+              "children": [
+                {
+                  "type": "element",
+                  "name": "value",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "Schema JSON fallback product"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

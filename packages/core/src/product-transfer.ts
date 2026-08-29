@@ -1,4 +1,10 @@
 import { isAlibabaLanguage, type AlibabaLanguage } from './preferences';
+import {
+  normalizeProductSchemaJson,
+  productSchemaJsonToXml,
+  productSchemaXmlToJson,
+  type ProductSchemaJsonDocument
+} from './product-schema-json';
 import { inspectProductSchemaSerialization, parseProductSchemaXml } from './product-schema';
 
 import type { Product } from './types';
@@ -23,6 +29,7 @@ export interface ProductTransferItemV1 {
   language: AlibabaLanguage;
   market: 'wholesale' | 'sourcing';
   schemaXml: string;
+  schemaJson: ProductSchemaJsonDocument;
 }
 
 export interface ProductTransferDocumentV1 {
@@ -37,7 +44,8 @@ export interface ProductTransferItemInput {
   categoryId: number;
   language: AlibabaLanguage;
   market: 'wholesale' | 'sourcing';
-  schemaXml: string;
+  schemaXml?: string;
+  schemaJson?: ProductSchemaJsonDocument | string;
 }
 
 export function createProductTransferDocument(
@@ -119,11 +127,19 @@ function normalizeProduct(value: unknown, index: number): ProductTransferItemV1 
   if (item.market !== 'wholesale' && item.market !== 'sourcing') {
     throw new Error(`第 ${index + 1} 个商品市场无效`);
   }
-  const schemaXml = requireString(item.schemaXml, `第 ${index + 1} 个商品缺少 Schema XML`).trim();
+  const providedSchemaXml = typeof item.schemaXml === 'string' ? item.schemaXml.trim() : '';
+  const providedSchemaJson =
+    item.schemaJson === undefined ? null : normalizeProductSchemaJson(item.schemaJson);
+  const schemaXml =
+    providedSchemaXml !== ''
+      ? providedSchemaXml
+      : providedSchemaJson
+        ? productSchemaJsonToXml(providedSchemaJson)
+        : '';
   if (utf8ByteLength(schemaXml) > MAX_PRODUCT_TRANSFER_SCHEMA_BYTES) {
     throw new Error(`第 ${index + 1} 个商品 Schema XML 超过 2 MiB 上限`);
   }
-  if (schemaXml === '') throw new Error(`第 ${index + 1} 个商品缺少 Schema XML`);
+  if (schemaXml === '') throw new Error(`第 ${index + 1} 个商品缺少 Schema XML 或 Schema JSON`);
   const inspection = inspectProductSchemaSerialization(parseProductSchemaXml(schemaXml));
   if (!inspection.safe) {
     throw new Error(`第 ${index + 1} 个商品 Schema XML 结构异常：${inspection.structuralDiffs.join('；')}`);
@@ -134,7 +150,8 @@ function normalizeProduct(value: unknown, index: number): ProductTransferItemV1 
     categoryId,
     language: item.language,
     market: item.market,
-    schemaXml: inspection.xml
+    schemaXml: inspection.xml,
+    schemaJson: productSchemaXmlToJson(inspection.xml)
   };
 }
 

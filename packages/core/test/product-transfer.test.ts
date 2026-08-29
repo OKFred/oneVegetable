@@ -16,6 +16,10 @@ const fixtureJson = readFileSync(
   resolve(import.meta.dirname, '../../../mock/data/product-transfer-v1.json'),
   'utf8'
 );
+const schemaJsonFixture = readFileSync(
+  resolve(import.meta.dirname, '../../../mock/data/product-transfer-schema-json-v1.json'),
+  'utf8'
+);
 
 describe('product transfer JSON', () => {
   it('round-trips a versioned product Schema snapshot without losing XML', () => {
@@ -26,7 +30,32 @@ describe('product transfer JSON', () => {
 
     expect(parseProductTransferJson(serialized)).toEqual(parsed);
     expect(product.schemaXml).toContain('Portable solar power station 1000W');
+    expect(product.schemaJson.root.name).toBe('itemSchema');
     expect(productTransferQueueItemId(product)).toBe('import:10000001:en_US');
+  });
+
+  it('uses Schema JSON when Schema XML is missing and emits both normalized representations', () => {
+    const parsed = parseProductTransferJson(schemaJsonFixture);
+    const product = parsed.products[0];
+    if (!product) throw new Error('Missing Schema JSON fallback fixture product');
+
+    expect(product.schemaXml).toContain('Schema JSON fallback product');
+    expect(product.schemaJson.root.attributes).toEqual({ version: 'trade.1.1' });
+    expect(parseProductTransferJson(serializeProductTransferDocument(parsed))).toEqual(parsed);
+  });
+
+  it('prefers Schema XML when both representations are present', () => {
+    const fixture = JSON.parse(schemaJsonFixture) as Record<string, unknown>;
+    const products = fixture.products as Record<string, unknown>[];
+    const product = products[0];
+    if (!product) throw new Error('Missing Schema JSON fallback fixture product');
+    product.schemaXml =
+      '<itemSchema><field id="productTitle" type="input"><value>Preferred XML</value></field></itemSchema>';
+
+    const parsed = parseProductTransferJson(JSON.stringify(fixture));
+    expect(parsed.products[0]?.schemaXml).toContain('Preferred XML');
+    expect(JSON.stringify(parsed.products[0]?.schemaJson)).toContain('Preferred XML');
+    expect(JSON.stringify(parsed.products[0]?.schemaJson)).not.toContain('Schema JSON fallback product');
   });
 
   it('creates normalized documents with an explicit export timestamp', () => {
@@ -54,5 +83,11 @@ describe('product transfer JSON', () => {
         JSON.stringify({ ...fixture, products: [{ ...first, schemaXml: '<itemSchema>' }] })
       )
     ).toThrow('Schema XML');
+
+    expect(() =>
+      parseProductTransferJson(
+        JSON.stringify({ ...fixture, products: [{ ...first, schemaXml: undefined, schemaJson: undefined }] })
+      )
+    ).toThrow('Schema XML 或 Schema JSON');
   });
 });

@@ -1,6 +1,7 @@
 import type { AlibabaClient } from './alibaba-client';
 import { GatewayException } from './errors';
 import { productListLanguage, type AlibabaLanguage } from './preferences';
+import { resolveProductSchemaXml } from './product-schema-json';
 import type {
   ProductCategory,
   ProductCategoryMapping,
@@ -73,7 +74,7 @@ export class ProductAdapter {
       updatedAt: new Date().toISOString(),
       categoryId: 0,
       language,
-      schemaXml: readString(root, ['data']) ?? ''
+      schemaXml: requireSchemaXml(root, 'ALIBABA_DRAFT_SCHEMA_RENDER_FAILED')
     };
   }
 
@@ -87,7 +88,7 @@ export class ProductAdapter {
       }
     });
     return {
-      xml: readString(unwrap(call.data, call.method), ['data']) ?? '',
+      xml: requireSchemaXml(unwrap(call.data, call.method), 'ALIBABA_SCHEMA_GET_FAILED'),
       categoryId: request.categoryId,
       language: request.language,
       market: request.market
@@ -122,7 +123,7 @@ export class ProductAdapter {
       xml: request.xml
     });
     return {
-      xml: readString(unwrap(call.data, call.method), ['data', 'result']) ?? '',
+      xml: requireSchemaXml(unwrap(call.data, call.method), 'ALIBABA_LEVEL_SCHEMA_FAILED'),
       categoryId: request.categoryId,
       language: request.language,
       market: 'wholesale'
@@ -311,7 +312,7 @@ export class ProductAdapter {
 }
 
 function requireSchemaXml(record: Record<string, unknown>, fallbackCode: string): string {
-  const xml = readString(record, ['data']);
+  const xml = resolveProductSchemaXml(record);
   if (readBoolean(record, ['biz_success']) !== false && xml?.trim()) return xml;
   const traceId = readString(record, ['trace_id', 'request_id']);
   throw new GatewayException({
