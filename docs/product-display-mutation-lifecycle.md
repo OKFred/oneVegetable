@@ -52,4 +52,4 @@ pnpm smoke:product:display:real
 
 随后官方后台恢复为 Active 1、Pending 0，OpenAPI 列表再次回读为 online；两条持久任务最终均为 `verified`，恢复标记已清除。因此该方法记为当前账号验证通过，但验收同时证明上架可能经过异步审核，不能按同步接口对待，也不能在 Pending 阶段重复提交。
 
-真实 Smoke 不进入 CI。`pnpm dev:api:real` 默认仍不启用 `operation:updateProductDisplay`，页面真实按钮只有在本地显式 feature flag 开启时才可用；staging 和 production 继续禁止商品 mutation。
+真实 Smoke 不进入 CI。完成上述真实账号生命周期验收后，`pnpm dev:api:real` 默认在本地 Node 子进程中启用 `operation:updateProductDisplay`；页面仍要求管理员会话、二次确认、混淆 ID 完整且没有阻断中的持久任务。显式设置 `ONE_VEGETABLE_MUTATION_FLAGS` 可覆盖本地默认值，包括设为空值以关闭全部写能力。local-worker、扩展、staging 和 production 继续禁止真实商品上下架。

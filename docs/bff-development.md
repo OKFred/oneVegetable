@@ -112,7 +112,7 @@ Cloudflare Worker，在 4174 端口启动 BFF 模式 Web。Playwright 会通过�
 - `ONE_VEGETABLE_REQUEST_RETENTION_DAYS` 控制请求诊断留存，默认 30 天、允许 1–90 天；清理接口只删除
   超过留存窗口的 `request_events`，不会删除 append-only 的 `audit_events`。管理页执行清理前需要二次确认。
 - `ONE_VEGETABLE_MUTATION_FLAGS` 默认空值。`pnpm dev:api:real` 仅在本地 Node 子进程中默认注入
-  `operation:publishProduct,operation:saveProductDraft,operation:updateProduct,operation:operatePhotoGroup,operation:uploadPhoto,operation:transferPhotoFromUrl`；这些操作已经完成真实账号 Smoke。新增商品和正式商品增量更新都会触发平台审核，审核期间读取 Schema 可能返回 `PUB_BIZCHECK_PRODUCT_IN_AUDITING`，客户端应保留本地草稿并稍后刷新。
+  `operation:publishProduct,operation:saveProductDraft,operation:updateProduct,operation:updateProductDisplay,operation:operatePhotoGroup,operation:uploadPhoto,operation:transferPhotoFromUrl`；这些操作已经完成真实账号 Smoke。商品上下架通过持久任务提交并用商品列表回读最终状态，上架可能进入平台异步审核，审核期间禁止重复提交。新增商品和正式商品增量更新同样可能触发平台审核，审核期间读取 Schema 可能返回 `PUB_BIZCHECK_PRODUCT_IN_AUDITING`，客户端应保留本地草稿并稍后刷新。
   `saveProductDraft` 只允许首次新增平台草稿；传入既有 `productId` 会在出网前返回
   `ALIBABA_DRAFT_UPDATE_UNSUPPORTED`，避免误用正式商品的 `schema.update` 或重复创建草稿。
   其他能力没有真实账号验收前不要添加 `operation:*` 或

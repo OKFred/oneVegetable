@@ -3,6 +3,8 @@ import { existsSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
 import { loadEnvFile } from 'node:process';
 
+import { resolveLocalRealMutationFlags } from './lib/local-real-mutation-flags';
+
 if (existsSync('.env')) loadEnvFile('.env');
 
 const configuredPath =
@@ -25,9 +27,7 @@ const child = spawn(command, args, {
     ...process.env,
     ONE_VEGETABLE_ENVIRONMENT: 'local-node',
     ONE_VEGETABLE_GATEWAY_MODE: 'real',
-    ONE_VEGETABLE_MUTATION_FLAGS:
-      process.env.ONE_VEGETABLE_MUTATION_FLAGS ??
-      'operation:publishProduct,operation:saveProductDraft,operation:updateProduct,operation:operatePhotoGroup,operation:uploadPhoto,operation:transferPhotoFromUrl',
+    ONE_VEGETABLE_MUTATION_FLAGS: resolveLocalRealMutationFlags(process.env.ONE_VEGETABLE_MUTATION_FLAGS),
     ONE_VEGETABLE_ALIBABA_CREDENTIAL_FILE: credentialFile
   },
   stdio: 'inherit',
