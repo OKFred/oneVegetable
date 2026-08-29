@@ -60,7 +60,11 @@ describe('ProductsView import and export', () => {
 
     const blob = exportedBlob;
     if (!blob) throw new Error('Missing exported product Blob');
-    const exported = parseProductTransferJson(await blob.text());
+    const exportedJson = await blob.text();
+    const raw = JSON.parse(exportedJson) as { products: Record<string, unknown>[] };
+    expect(raw.products[0]).toHaveProperty('schemaJson');
+    expect(raw.products[0]).not.toHaveProperty('schemaXml');
+    const exported = parseProductTransferJson(exportedJson);
     expect(exported.products).toHaveLength(1);
     expect(exported.products[0]).toMatchObject({
       source: { productId: '10000001', subject: 'Portable solar power station 1000W' },
@@ -71,7 +75,7 @@ describe('ProductsView import and export', () => {
       'renderProductSchema',
       expect.objectContaining({ productId: '10000001', categoryId: 100009999 })
     );
-    expect(wrapper.text()).toContain('已导出 1 个商品的完整 Schema JSON');
+    expect(wrapper.text()).toContain('已导出 1 个商品（Schema JSON）');
     wrapper.unmount();
   });
 
@@ -85,6 +89,7 @@ describe('ProductsView import and export', () => {
     });
 
     await wrapper.get('input[aria-label="选择 Custom recycled cotton canvas tote bag"]').setValue(true);
+    await wrapper.get('select[aria-label="商品导出字段"]').setValue('xml');
     const exportButton = wrapper.findAll('button').find((button) => button.text().includes('导出所选'));
     if (!exportButton) throw new Error('Missing product export action');
     await exportButton.trigger('click');
@@ -94,7 +99,11 @@ describe('ProductsView import and export', () => {
 
     const blob = exportedBlob;
     if (!blob) throw new Error('Missing exported draft Blob');
-    const exported = parseProductTransferJson(await blob.text());
+    const exportedJson = await blob.text();
+    const raw = JSON.parse(exportedJson) as { products: Record<string, unknown>[] };
+    expect(raw.products[0]).toHaveProperty('schemaXml');
+    expect(raw.products[0]).not.toHaveProperty('schemaJson');
+    const exported = parseProductTransferJson(exportedJson);
     expect(exported.products[0]).toMatchObject({
       source: { productId: '10000002', status: 'draft' },
       categoryId: 100003109

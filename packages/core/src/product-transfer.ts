@@ -15,6 +15,12 @@ export const MAX_PRODUCT_TRANSFER_ITEMS = 20;
 export const MAX_PRODUCT_TRANSFER_JSON_BYTES = 10 * 1024 * 1024;
 export const MAX_PRODUCT_TRANSFER_SCHEMA_BYTES = 2 * 1024 * 1024;
 
+export type ProductTransferSchemaFormat = 'json' | 'xml';
+
+export interface ProductTransferSerializeOptions {
+  schemaFormat?: ProductTransferSchemaFormat;
+}
+
 export interface ProductTransferSourceV1 {
   productId: string;
   subject: string;
@@ -62,9 +68,24 @@ export function createProductTransferDocument(
   });
 }
 
-export function serializeProductTransferDocument(document: ProductTransferDocumentV1): string {
+export function serializeProductTransferDocument(
+  document: ProductTransferDocumentV1,
+  options: ProductTransferSerializeOptions = {}
+): string {
   const normalized = normalizeProductTransferDocument(document);
-  const json = `${JSON.stringify(normalized, null, 2)}\n`;
+  const schemaFormat = options.schemaFormat ?? 'json';
+  const serialized = {
+    ...normalized,
+    products: normalized.products.map((product) => {
+      const { schemaXml, schemaJson, ...metadata } = product;
+      return {
+        ...metadata,
+        ...(schemaFormat === 'json' ? { schemaJson } : {}),
+        ...(schemaFormat === 'xml' ? { schemaXml } : {})
+      };
+    })
+  };
+  const json = `${JSON.stringify(serialized, null, 2)}\n`;
   if (utf8ByteLength(json) > MAX_PRODUCT_TRANSFER_JSON_BYTES) {
     throw new Error('商品导出文件超过 10 MiB 上限');
   }
@@ -129,7 +150,9 @@ function normalizeProduct(value: unknown, index: number): ProductTransferItemV1 
   }
   const providedSchemaXml = typeof item.schemaXml === 'string' ? item.schemaXml.trim() : '';
   const providedSchemaJson =
-    item.schemaJson === undefined ? null : normalizeProductSchemaJson(item.schemaJson);
+    providedSchemaXml !== '' || item.schemaJson === undefined
+      ? null
+      : normalizeProductSchemaJson(item.schemaJson);
   const schemaXml =
     providedSchemaXml !== ''
       ? providedSchemaXml

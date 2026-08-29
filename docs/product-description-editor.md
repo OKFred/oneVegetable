@@ -16,9 +16,9 @@
 
 ## 商品 JSON 导入导出
 
-商品列表可以选择当前页中的一个或多个商品并导出 JSON。正式商品逐条调用只读 `schema.render`，平台草稿使用 `schema.render.draft`；导出保存来源商品 ID、标题、分组、状态、更新时间、类目、语言、市场，以及完整 `schemaXml` 和无损节点树 `schemaJson`。`schemaJson` 使用 `one-vegetable-product-schema` 格式，显式保存元素、属性、文本、CDATA、注释和子节点顺序，可稳定转换回 Alibaba 所需 XML。文件使用 `one-vegetable-products` 格式与显式 `schemaVersion`；单个文件最多 20 个商品、10 MiB，单条 XML 最多 2 MiB。
+商品列表可以选择当前页中的一个或多个商品并导出 JSON。正式商品逐条调用只读 `schema.render`，平台草稿使用 `schema.render.draft`；导出保存来源商品 ID、标题、分组、状态、更新时间、类目、语言和市场。导出文件始终是 `one-vegetable-products` 版本化 JSON，用户可以选择只携带无损节点树 `schemaJson`，或者只携带 XML 字符串 `schemaXml`，不会生成独立 XML 文件。`schemaJson` 使用 `one-vegetable-product-schema` 格式，显式保存元素、属性、文本、CDATA、注释和子节点顺序，可稳定转换回 Alibaba 所需 XML。单个文件最多 20 个商品、10 MiB，单条 XML 最多 2 MiB。
 
-“导入 JSON”只接受该版本化格式，并在写入前完成文件大小、版本、来源 ID、类目、语言、市场、重复项和 Schema 无损结构校验。导入时优先使用非空 `schemaXml`；该字段缺失或为空时，使用 `schemaJson` 还原 XML。两者均缺失、JSON 节点不合法或转换后 XML 不安全时整批拒绝，不会生成部分商品。相同来源商品与语言使用稳定队列 ID：尚未提交的条目再次导入会更新，已经保存为平台草稿或正式发布的条目会跳过，避免误重复提交。导入结束后仍需在批量发品工作区人工复核并显式选择“保存平台草稿”或“正式发布”；导入本身不调用任何平台写接口。
+“导入 JSON”只接受该版本化格式，并在写入前完成文件大小、版本、来源 ID、类目、语言、市场、重复项和 Schema 无损结构校验。导入时优先使用非空 `schemaXml`；该字段缺失或为空时，使用 `schemaJson` 还原 XML。为兼容已经导出的历史文件，两个字段同时存在时也可导入，但界面不再提供这种导出选项。两者均缺失、JSON 节点不合法或转换后 XML 不安全时整批拒绝，不会生成部分商品。相同来源商品与语言使用稳定队列 ID：尚未提交的条目再次导入会更新，已经保存为平台草稿或正式发布的条目会跳过，避免误重复提交。导入结束后仍需在批量发品工作区人工复核并显式选择“保存平台草稿”或“正式发布”；导入本身不调用任何平台写接口。
 
 ## Schema XML 边界
 

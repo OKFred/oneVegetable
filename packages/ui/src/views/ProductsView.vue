@@ -32,7 +32,8 @@ import {
   type ProductSchemaOfficialHint,
   type ProductSchemaModel,
   type ProductScore,
-  type ProductTransferItemInput
+  type ProductTransferItemInput,
+  type ProductTransferSchemaFormat
 } from '@one-vegetable/core';
 
 import DataTable from '../components/DataTable.vue';
@@ -159,6 +160,7 @@ const editingBatchItemId = ref('');
 const productTransferInput = ref<HTMLInputElement | null>(null);
 const productTransferBusy = ref(false);
 const productTransferError = ref('');
+const productTransferSchemaFormat = ref<ProductTransferSchemaFormat>('json');
 
 const products = useQuery({
   queryKey: ['products', subject, language, productPage, productPageSize],
@@ -684,9 +686,9 @@ async function exportSelectedProducts(): Promise<void> {
     const document = createProductTransferDocument(transferItems);
     downloadTextFile(
       `one-vegetable-products-${fileTimestamp(new Date())}.json`,
-      serializeProductTransferDocument(document)
+      serializeProductTransferDocument(document, { schemaFormat: productTransferSchemaFormat.value })
     );
-    feedback.value = `已导出 ${document.products.length} 个商品的完整 Schema JSON。`;
+    feedback.value = `已导出 ${document.products.length} 个商品（${productTransferSchemaFormatLabel(productTransferSchemaFormat.value)}）。`;
   } catch (error: unknown) {
     productTransferError.value = errorMessage(error);
   } finally {
@@ -750,6 +752,11 @@ function fileTimestamp(date: Date): string {
     .replaceAll(/[-:]/gu, '')
     .replace(/\.\d{3}Z$/u, 'Z')
     .replace('T', '-');
+}
+
+function productTransferSchemaFormatLabel(format: ProductTransferSchemaFormat): string {
+  if (format === 'json') return 'Schema JSON';
+  return 'Schema XML';
 }
 
 function submitProductGroup(): void {
@@ -1552,6 +1559,17 @@ onBeforeUnmount(() => {
         <Button variant="outline" :disabled="productTransferBusy" @click="productTransferInput?.click()">
           <Upload class="size-4" />{{ productTransferBusy ? '处理中…' : '导入 JSON' }}
         </Button>
+        <label class="flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm">
+          <span class="whitespace-nowrap text-muted-foreground">导出字段</span>
+          <select
+            v-model="productTransferSchemaFormat"
+            class="cursor-pointer bg-background font-medium text-foreground outline-none [color-scheme:light] dark:[color-scheme:dark]"
+            aria-label="商品导出字段"
+          >
+            <option class="bg-background text-foreground" value="json">Schema JSON（schemaJson）</option>
+            <option class="bg-background text-foreground" value="xml">Schema XML（schemaXml）</option>
+          </select>
+        </label>
         <Button
           variant="outline"
           :disabled="selectedProducts.length === 0 || productTransferBusy"

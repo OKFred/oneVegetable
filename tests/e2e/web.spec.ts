@@ -122,6 +122,15 @@ test('web mock exports a product JSON and imports it into the local review queue
   });
   await page.getByRole('link', { name: '商品' }).click();
   await expect(page.getByText('Portable solar power station 1000W')).toBeVisible();
+  await page.getByRole('button', { name: '切换到夜间模式' }).click();
+  const exportField = page.getByLabel('商品导出字段');
+  await expect(exportField).toHaveValue('json');
+  await expect
+    .poll(() => exportField.evaluate((element) => getComputedStyle(element).colorScheme))
+    .toBe('dark');
+  await exportField.selectOption('xml');
+  await expect(exportField).toHaveValue('xml');
+  await exportField.selectOption('json');
   await page.getByLabel('选择 Portable solar power station 1000W').check();
 
   const [download] = await Promise.all([
@@ -133,14 +142,15 @@ test('web mock exports a product JSON and imports it into the local review queue
   const transfer = JSON.parse(await readFile(downloadPath, 'utf8')) as {
     format: string;
     schemaVersion: number;
-    products: { source: { productId: string }; schemaXml: string }[];
+    products: { source: { productId: string }; schemaJson: unknown; schemaXml?: string }[];
   };
   expect(transfer).toMatchObject({
     format: 'one-vegetable-products',
     schemaVersion: 1,
     products: [{ source: { productId: '10000001' } }]
   });
-  expect(transfer.products[0]?.schemaXml).toContain('Portable solar power station 1000W');
+  expect(transfer.products[0]?.schemaJson).toBeTruthy();
+  expect(transfer.products[0]?.schemaXml).toBeUndefined();
 
   await page.getByLabel('选择商品 JSON 文件').setInputFiles(downloadPath);
   await expect(page.getByText(/商品 JSON 已导入本机队列：新增 1/)).toBeVisible();

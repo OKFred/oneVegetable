@@ -51,6 +51,7 @@ describe('product transfer JSON', () => {
     if (!product) throw new Error('Missing Schema JSON fallback fixture product');
     product.schemaXml =
       '<itemSchema><field id="productTitle" type="input"><value>Preferred XML</value></field></itemSchema>';
+    product.schemaJson = 'invalid but ignored because schemaXml is present';
 
     const parsed = parseProductTransferJson(JSON.stringify(fixture));
     expect(parsed.products[0]?.schemaXml).toContain('Preferred XML');
@@ -64,6 +65,17 @@ describe('product transfer JSON', () => {
 
     expect(document.exportedAtUtc).toBe('2026-08-28T09:30:00.000Z');
     expect(document.products).toEqual(fixture.products);
+  });
+
+  it('serializes a JSON file with the selected Schema field and imports either representation', () => {
+    const document = parseProductTransferJson(fixtureJson);
+    const jsonOnly = serializeProductTransferDocument(document, { schemaFormat: 'json' });
+    const xmlOnly = serializeProductTransferDocument(document, { schemaFormat: 'xml' });
+
+    expect(schemaFields(jsonOnly)).toEqual({ schemaJson: true, schemaXml: false });
+    expect(schemaFields(xmlOnly)).toEqual({ schemaJson: false, schemaXml: true });
+    expect(parseProductTransferJson(jsonOnly)).toEqual(document);
+    expect(parseProductTransferJson(xmlOnly)).toEqual(document);
   });
 
   it('rejects unknown versions, duplicate sources, and malformed Schema XML', () => {
@@ -91,3 +103,10 @@ describe('product transfer JSON', () => {
     ).toThrow('Schema XML 或 Schema JSON');
   });
 });
+
+function schemaFields(json: string): { schemaJson: boolean; schemaXml: boolean } {
+  const value = JSON.parse(json) as { products: Record<string, unknown>[] };
+  const product = value.products[0];
+  if (!product) throw new Error('Missing serialized transfer product');
+  return { schemaJson: 'schemaJson' in product, schemaXml: 'schemaXml' in product };
+}
