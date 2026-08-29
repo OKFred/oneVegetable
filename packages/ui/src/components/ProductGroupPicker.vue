@@ -12,6 +12,8 @@ import {
 } from '@one-vegetable/core';
 
 import Input from './ui/Input.vue';
+import Button from './ui/Button.vue';
+import ProductGroupManagerDialog from './ProductGroupManagerDialog.vue';
 import { useServices } from '../lib/services';
 
 const props = withDefaults(
@@ -25,6 +27,7 @@ const emit = defineEmits<{ update: [field: ProductSchemaField] }>();
 
 const { gateway } = useServices();
 const search = ref('');
+const managerOpen = ref(false);
 const levelFields = computed(() => {
   const fields = props.field.instances[0]?.fields ?? props.field.children;
   return new Map(
@@ -143,9 +146,14 @@ function numericId(value: string): number | null {
 
 <template>
   <div class="space-y-3 rounded-md bg-muted/30 p-3">
-    <div class="relative">
-      <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-      <Input v-model="search" class="pl-9" aria-label="搜索商品分组" placeholder="搜索分组名称或 ID" />
+    <div class="flex flex-wrap items-center gap-2">
+      <div class="relative min-w-52 flex-1">
+        <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+        <Input v-model="search" class="pl-9" aria-label="搜索商品分组" placeholder="搜索分组名称或 ID" />
+      </div>
+      <Button variant="outline" size="sm" @click="managerOpen = true">
+        <FolderTree class="size-4" />管理商品分组
+      </Button>
     </div>
 
     <template v-if="complexGroup">
@@ -243,5 +251,7 @@ function numericId(value: string): number | null {
     <p v-if="showTechnical" class="text-xs text-muted-foreground">
       分组 ID：{{ [firstId, secondId, thirdId].filter(Boolean).join(' / ') || scalarId() || '未设置' }}
     </p>
+
+    <ProductGroupManagerDialog v-model:open="managerOpen" />
   </div>
 </template>

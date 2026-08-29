@@ -16,7 +16,7 @@
 
 ## 商品 JSON 导入导出
 
-商品列表常驻工具栏集中提供搜索、导入、导出和发布新商品，当前页已选数量显示在表格底部分页区域。表头复选框支持未选、部分选择和本页全选三态；全选只作用于当前页，翻页、修改分页大小、搜索或语言后清空。导出对话框冻结打开时选中的商品范围，正式商品逐条调用只读 `schema.render`，平台草稿使用 `schema.render.draft`；导出保存来源商品 ID、标题、分组、状态、更新时间、类目、语言和市场。导出文件始终是 `one-vegetable-products` 版本化 JSON，“高级设置”可以选择只携带无损节点树 `schemaJson`，或者只携带 XML 字符串 `schemaXml`，不会生成独立 XML 文件。`schemaJson` 使用 `one-vegetable-product-schema` 格式，显式保存元素、属性、文本、CDATA、注释和子节点顺序，可稳定转换回 Alibaba 所需 XML。单个文件最多 20 个商品、10 MiB，单条 XML 最多 2 MiB。超过 20 个选择时保留选择但禁用导出；读取平台 Schema 和触发下载前需要二次确认。
+商品列表常驻工具栏集中提供搜索、导入、导出、商品分组和新增商品，当前页已选数量显示在表格底部分页区域。表头复选框支持未选、部分选择和本页全选三态；全选只作用于当前页，翻页、修改分页大小、搜索或语言后清空。导出对话框冻结打开时选中的商品范围，正式商品逐条调用只读 `schema.render`，平台草稿使用 `schema.render.draft`；导出保存来源商品 ID、标题、分组、状态、更新时间、类目、语言和市场。导出文件始终是 `one-vegetable-products` 版本化 JSON，“高级设置”可以选择只携带无损节点树 `schemaJson`，或者只携带 XML 字符串 `schemaXml`，不会生成独立 XML 文件。`schemaJson` 使用 `one-vegetable-product-schema` 格式，显式保存元素、属性、文本、CDATA、注释和子节点顺序，可稳定转换回 Alibaba 所需 XML。单个文件最多 20 个商品、10 MiB，单条 XML 最多 2 MiB。超过 20 个选择时保留选择但禁用导出；读取平台 Schema 和触发下载前需要二次确认。
 
 “导入”对话框只接受该版本化 JSON 格式，选择文件后立即完成文件大小、版本、来源 ID、类目、语言、市场、重复项和 Schema 无损结构校验，并展示文件名、大小与商品数量；此时不会写入队列。用户执行并完成二次确认后才原子写入本机批量发品队列。导入时优先使用非空 `schemaXml`；该字段缺失或为空时，使用 `schemaJson` 还原 XML。为兼容已经导出的历史文件，两个字段同时存在时也可导入，但界面不再提供这种导出选项。两者均缺失、JSON 节点不合法或转换后 XML 不安全时整批拒绝，不会生成部分商品。相同来源商品与语言使用稳定队列 ID：尚未提交的条目再次导入会更新，已经保存为平台草稿或正式发布的条目会跳过，避免误重复提交。导入结束后仍需在批量发品工作区人工复核并显式选择“保存平台草稿”或“正式发布”；导入本身不调用任何平台写接口。
 
@@ -29,6 +29,8 @@
 截至 2026-08-21，官方推荐的新发品链路仍是 `schema.get/render` 获取 XML、客户端渲染表单、`schema.add/update` 提交填值后的 XML；没有确认到适用于 ICBU 的 JSON Schema 替代接口。网关参数 `format=json` 只改变外层响应封装，不会把 `data` 中的 Schema XML 转成 JSON。旧 `product.add/update` 已停止维护并计划下线，不作为回退方案。
 
 商品分组字段使用可复用的三级名称选择器，不向新手直接暴露 `group_id`。一级、二级和三级名称通过 `alibaba.icbu.product.group.get` 按父级懒加载，Schema 内仍无损保存官方分组 ID；无法解析的历史 ID 会明确显示为未知分组并保留原值。
+
+商品列表工具栏和商品分组选择器共用树形管理弹窗，替代原独立“类目与分组”工作区。弹窗按需读取最多三级分组，并通过 `alibaba.icbu.product.group.add` 新增一级或子分组。国际站官方商品 OpenAPI 目前只列出[分组查询](https://developer.alibaba.com/docs/api.htm?apiId=25299)和[分组新增](https://developer.alibaba.com/docs/api.htm?apiId=25300)，[Schema 发品说明](https://developer.alibaba.com/docs/doc.htm?articleId=119213&docType=1&treeId=456)也只引用这两个方法；没有分组改名或删除接口，因此这两个操作在界面中保留为禁用状态并说明平台限制，不做仅本地生效的伪修改。
 
 浏览器草稿使用版本化 V3 结构，按 `existing:<productId>` 或 `new:<categoryId>` 隔离，并记录快速/完整模式与平台草稿 ID。表单变化约 750 ms 后自动保存；最多保留最近 10 份和 30 天内草稿。恢复前必须由用户确认，V2 和旧单一草稿键迁移后也不会自动覆盖平台 Schema。
 

@@ -94,6 +94,8 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
 export class MockGatewayClient implements GatewayClient {
   private photoGroups: PhotoGroup[] = structuredClone(MOCK_DATA.listPhotoGroups);
   private photos: Photo[] = structuredClone(PHOTOS);
+  private productGroups: ProductGroup[] = structuredClone(MOCK_DATA.listProductGroups);
+  private nextProductGroupId = maxProductGroupId(this.productGroups) + 1;
   private diagnostics: DiagnosticEntry[] = structuredClone(MOCK_DATA.getDiagnostics.entries);
 
   constructor(private readonly latency = 160) {}
@@ -105,7 +107,7 @@ export class MockGatewayClient implements GatewayClient {
       const { page, pageSize, start, end } = paginationWindow(payload.page, payload.pageSize, 20);
       const subject = payload.subject?.trim().toLocaleLowerCase();
       const groupName = payload.groupId
-        ? findProductGroup(MOCK_DATA.listProductGroups, payload.groupId)?.name
+        ? findProductGroup(this.productGroups, payload.groupId)?.name
         : undefined;
       const candidates = PRODUCTS.filter((product) => {
         if (subject && !product.subject.toLocaleLowerCase().includes(subject)) return false;
@@ -183,9 +185,25 @@ export class MockGatewayClient implements GatewayClient {
     }
     if (operation === 'listProductGroups') {
       const payload = _request as OperationMap['listProductGroups']['request'];
-      if (payload?.parentId === undefined) return structuredClone(MOCK_DATA.listProductGroups);
-      const parent = findProductGroup(MOCK_DATA.listProductGroups, payload.parentId);
+      if (payload?.parentId === undefined) return structuredClone(this.productGroups);
+      const parent = findProductGroup(this.productGroups, payload.parentId);
       return structuredClone(parent?.children ?? []);
+    }
+    if (operation === 'createProductGroup') {
+      const payload = _request as OperationMap['createProductGroup']['request'];
+      const created: ProductGroup = {
+        ...structuredClone(MOCK_DATA.createProductGroup),
+        id: this.nextProductGroupId++,
+        name: payload.name,
+        children: []
+      };
+      if (payload.parentId === -1) this.productGroups.push(created);
+      else {
+        const parent = findProductGroup(this.productGroups, payload.parentId);
+        if (!parent) throw new Error(`商品分组父节点 #${payload.parentId} 不存在`);
+        parent.children.push(created);
+      }
+      return structuredClone(created);
     }
     if (operation === 'callCapability') {
       const payload = _request as CapabilityCallRequest;
@@ -475,6 +493,10 @@ function findProductGroup(groups: readonly ProductGroup[], groupId: number): Pro
     if (nested) return nested;
   }
   return null;
+}
+
+function maxProductGroupId(groups: readonly ProductGroup[]): number {
+  return groups.reduce((maximum, group) => Math.max(maximum, group.id, maxProductGroupId(group.children)), 0);
 }
 
 function paginationWindow(

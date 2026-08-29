@@ -27,7 +27,6 @@ import {
   productTransferQueueItemId,
   serializeProductTransferDocument,
   validateProductDisplayInput,
-  validateProductGroupCreateInput,
   validateProductSchemaRenderInput,
   validateProductSchemaUpdateInput,
   validateSchemaPublishInput,
@@ -52,6 +51,7 @@ import PageHeader from '../components/PageHeader.vue';
 import ProductBatchPublisher from '../components/ProductBatchPublisher.vue';
 import ProductCategoryPicker from '../components/ProductCategoryPicker.vue';
 import ProductEditorLoading from '../components/ProductEditorLoading.vue';
+import ProductGroupManagerDialog from '../components/ProductGroupManagerDialog.vue';
 import ProductTransferDialog from '../components/ProductTransferDialog.vue';
 import QueryState from '../components/QueryState.vue';
 import TriStateCheckbox from '../components/TriStateCheckbox.vue';
@@ -99,10 +99,10 @@ const ProductEditorWizard = defineAsyncComponent({
   timeout: 30_000
 });
 
-type Workspace = 'list' | 'publisher' | 'batch-publisher' | 'organization';
+type Workspace = 'list' | 'publisher' | 'batch-publisher';
 type DraftSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
-const workspaceIds = new Set<Workspace>(['list', 'publisher', 'batch-publisher', 'organization']);
+const workspaceIds = new Set<Workspace>(['list', 'publisher', 'batch-publisher']);
 const editorModes = new Set<ProductEditorMode>(['quick', 'guided', 'advanced']);
 const editorStepIds = new Set<ProductEditorStepId>(PRODUCT_EDITOR_STEP_IDS);
 const PRODUCT_SCORE_DISPLAY_MAX = 6;
@@ -144,8 +144,6 @@ const draftCandidate = ref<ProductEditorDraftV3 | null>(null);
 const migratedDraftKey = ref<string | null>(null);
 const draftSaveStatus = ref<DraftSaveStatus>('idle');
 const selectedProductIds = ref<string[]>([]);
-const groupName = ref('');
-const groupParentId = ref('-1');
 const imageMetadata = ref<Record<string, ProductDescriptionImageMetadata>>({});
 const categorySearch = ref('');
 const categoryTree = ref<ProductCategory[]>([]);
@@ -175,6 +173,7 @@ const productTransferDialogMode = ref<'import' | 'export'>('import');
 const productTransferExportProducts = ref<Product[]>([]);
 const productPreviewOpen = ref(false);
 const productPreviewImages = ref<ImagePreviewItem[]>([]);
+const productGroupDialogOpen = ref(false);
 
 const products = useQuery({
   queryKey: ['products', subject, language, productPage, productPageSize],
@@ -191,16 +190,11 @@ const categories = useQuery({
   queryFn: () => gateway.request('listProductCategories', {}),
   staleTime: 10 * 60 * 1000
 });
-const groups = useQuery({
-  queryKey: ['product-groups'],
-  queryFn: () => gateway.request('listProductGroups', undefined)
-});
 const productOperations = useOperationAvailability([
   'saveProductDraft',
   'publishProduct',
   'updateProduct',
-  'updateProductDisplay',
-  'createProductGroup'
+  'updateProductDisplay'
 ]);
 const productMutationHistory = useQuery({
   queryKey: ['product-mutation-jobs', editProductId],
@@ -283,7 +277,6 @@ const productMutationBlocksSubmit = computed(() => {
 function dedicatedMutationAllowed(operation: OperationId): boolean {
   return productOperations.isAllowed(operation);
 }
-const productGroupMutationDisabled = computed(() => !dedicatedMutationAllowed('createProductGroup'));
 const productDisplayMutationDisabled = computed(() => !dedicatedMutationAllowed('updateProductDisplay'));
 const platformDraftDisabled = computed(() => {
   return !productOperations.isAllowed('saveProductDraft');
@@ -434,26 +427,6 @@ const batchPublish = useMutation({
     activeBatchItemId.value = '';
     stopBatchRequested.value = false;
   }
-});
-
-const createGroup = useMutation({
-  mutationFn: () => {
-    const validation = validateProductGroupCreateInput({
-      name: groupName.value.trim(),
-      parentId: Number(groupParentId.value)
-    });
-    if (!validation.valid || !validation.data) throw new Error(validation.errors.join('；'));
-    return gateway.request('createProductGroup', validation.data);
-  },
-  onSuccess: async (result) => {
-    feedback.value = `分组“${result.name}”已创建`;
-    groupName.value = '';
-    await queryClient.invalidateQueries({ queryKey: ['product-groups'] });
-  }
-});
-
-const categoryMapping = useMutation({
-  mutationFn: () => gateway.request('mapProductCategory', { categoryId: Number(categoryId.value) })
 });
 
 const productScore = useMutation({
@@ -787,16 +760,6 @@ function fileTimestamp(date: Date): string {
 function productTransferSchemaFormatLabel(format: ProductTransferSchemaFormat): string {
   if (format === 'json') return 'Schema JSON';
   return 'Schema XML';
-}
-
-function submitProductGroup(): void {
-  if (
-    mode !== 'mock' &&
-    !globalThis.confirm(`将在所选父级下创建真实商品分组“${groupName.value.trim()}”，是否继续？`)
-  ) {
-    return;
-  }
-  createGroup.mutate();
 }
 
 function submitBatchDisplay(display: 'online' | 'offline'): void {
@@ -1625,8 +1588,7 @@ onBeforeUnmount(() => {
       v-for="item in [
         ['list', '商品列表'],
         ['publisher', '商品发布/编辑'],
-        ['batch-publisher', '批量发品'],
-        ['organization', '类目与分组']
+        ['batch-publisher', '批量发品']
       ] as const"
       :key="item[0]"
       :variant="workspace === item[0] ? 'default' : 'outline'"
@@ -1669,6 +1631,7 @@ onBeforeUnmount(() => {
         >
           <Download class="size-4" />导出
         </Button>
+        <Button variant="outline" @click="productGroupDialogOpen = true">商品分组</Button>
         <DropdownMenuRoot :modal="false">
           <DropdownMenuTrigger as-child>
             <Button
@@ -1720,7 +1683,7 @@ onBeforeUnmount(() => {
             </DropdownMenuContent>
           </DropdownMenuPortal>
         </DropdownMenuRoot>
-        <Button @click="startNewProduct">发布新商品</Button>
+        <Button @click="startNewProduct">新增</Button>
       </div>
     </div>
     <p
@@ -1838,7 +1801,7 @@ onBeforeUnmount(() => {
     <Card class="mb-5 p-5">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 class="font-semibold">{{ editProductId ? '编辑已有商品' : '发布新商品' }}</h2>
+          <h2 class="font-semibold">{{ editProductId ? '编辑已有商品' : '新增商品' }}</h2>
           <p class="mt-1 text-sm text-muted-foreground">
             {{ editProductId ? `商品 ${editProductId}` : '先选择叶子类目，再加载平台表单。' }}
           </p>
@@ -2057,56 +2020,6 @@ onBeforeUnmount(() => {
     <ErrorNotice v-if="batchPublish.error.value" class="mt-3" :error="batchPublish.error.value" compact />
   </template>
 
-  <template v-else-if="workspace === 'organization'">
-    <div class="grid gap-5 lg:grid-cols-2">
-      <Card class="p-5">
-        <h2 class="font-semibold">类目树与映射</h2>
-        <select v-model="categoryId" class="mt-4 h-9 w-full rounded-md border bg-background px-3 text-sm">
-          <option v-for="category in categoryOptions" :key="category.id" :value="String(category.id)">
-            {{ '—'.repeat(category.depth) }} {{ category.name }}
-          </option>
-        </select>
-        <Button class="mt-3" variant="outline" @click="categoryMapping.mutate()">查询新类目映射</Button>
-        <p v-if="categoryMapping.data.value" class="mt-3 text-sm">
-          {{ categoryMapping.data.value.sourceCategoryId }} →
-          <strong>{{ categoryMapping.data.value.targetCategoryId }}</strong>
-        </p>
-      </Card>
-      <Card class="p-5">
-        <h2 class="font-semibold">商品分组</h2>
-        <ul class="my-4 space-y-2 text-sm">
-          <li v-for="group in groups.data.value ?? []" :key="group.id" class="rounded-md bg-muted p-2">
-            {{ group.name }} <span class="text-muted-foreground">#{{ group.id }}</span>
-          </li>
-        </ul>
-        <label class="mb-3 block text-sm">
-          <span class="text-muted-foreground">上级分组</span>
-          <select
-            v-model="groupParentId"
-            class="mt-1 h-9 w-full cursor-pointer rounded-md border bg-background px-3 text-sm"
-          >
-            <option value="-1">一级分组</option>
-            <option v-for="group in groups.data.value ?? []" :key="group.id" :value="String(group.id)">
-              {{ group.name }}
-            </option>
-          </select>
-        </label>
-        <div class="flex gap-2">
-          <Input v-model="groupName" aria-label="新分组名称" placeholder="新分组名称" />
-          <Button
-            :disabled="!groupName.trim() || productGroupMutationDisabled || createGroup.isPending.value"
-            @click="submitProductGroup"
-            >创建</Button
-          >
-        </div>
-        <p v-if="productGroupMutationDisabled" class="mt-2 text-xs text-amber-700 dark:text-amber-400">
-          当前环境尚未开放真实商品分组新增。
-        </p>
-        <ErrorNotice v-if="createGroup.error.value" class="mt-2" :error="createGroup.error.value" compact />
-      </Card>
-    </div>
-  </template>
-
   <ProductTransferDialog
     v-model:open="productTransferDialogOpen"
     v-model:schema-format="productTransferSchemaFormat"
@@ -2117,5 +2030,6 @@ onBeforeUnmount(() => {
     @confirm-import="importProducts"
     @confirm-export="exportSelectedProducts"
   />
+  <ProductGroupManagerDialog v-model:open="productGroupDialogOpen" />
   <ImagePreview v-model:open="productPreviewOpen" :images="productPreviewImages" />
 </template>

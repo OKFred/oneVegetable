@@ -59,6 +59,10 @@ describe('ProductGroupPicker', () => {
       expect(wrapper.findAll('select')[1]?.text()).toContain('Reusable bags');
     });
     expect(groupValues(field.value)).toEqual(['1002', '', '']);
+
+    await wrapper.get('button').trigger('click');
+    await flushPromises();
+    expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain('商品分组');
     wrapper.unmount();
   });
 });

@@ -32,7 +32,7 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await page.getByRole('tab', { name: '商品发布/编辑' }).click();
   await chooseMockProductCategory(page);
   await page.getByRole('button', { name: '开始填写' }).click();
-  await expect(page.getByRole('heading', { name: '发布新商品' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '新增商品' })).toBeVisible();
   await expect(page.getByText('当前分组：Energy storage / Portable power / Solar generators')).toBeVisible();
   await expect
     .poll(() => page.getByLabel('一级分组').evaluate((element) => getComputedStyle(element).cursor))
@@ -55,13 +55,21 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await page.getByRole('button', { name: /6\. 检查与提交/ }).click();
   await expect(page.getByRole('heading', { name: '检查与提交' })).toBeVisible();
 
-  await page.getByRole('tab', { name: '类目与分组' }).click();
-  await expect(page.locator('li').filter({ hasText: 'Energy storage' }).first()).toBeVisible();
-  await page.getByLabel('新分组名称').fill('E2E products');
-  await page.getByRole('button', { name: '创建' }).click();
-  await expect(page.getByText(/分组“New group”已创建/)).toBeVisible();
-
   await page.getByRole('tab', { name: '商品列表' }).click();
+  await expect(page.getByRole('tab', { name: '类目与分组' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '新增', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '商品分组', exact: true }).click();
+  const productGroupDialog = page.getByRole('dialog', { name: '商品分组' });
+  await expect(productGroupDialog.getByRole('tree', { name: '商品分组树' })).toBeVisible();
+  await productGroupDialog.getByRole('button', { name: '展开Energy storage' }).click();
+  await expect(productGroupDialog.getByText('Portable power', { exact: true })).toBeVisible();
+  await productGroupDialog.getByLabel('新分组的上级分组').selectOption('1001');
+  await productGroupDialog.getByLabel('新分组名称').fill('E2E products');
+  await productGroupDialog.getByRole('button', { name: '创建分组' }).click();
+  await expect(page.getByText(/商品分组“E2E products”已创建/)).toBeVisible();
+  await expect(productGroupDialog.getByText('E2E products', { exact: true })).toBeVisible();
+  await productGroupDialog.getByRole('button', { name: '关闭', exact: true }).click();
+
   const scoredProductRow = page.getByRole('row').filter({ hasText: 'Portable solar power station 1000W' });
   const secondProductRow = page
     .getByRole('row')
