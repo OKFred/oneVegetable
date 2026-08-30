@@ -8,7 +8,10 @@ import { describe, expect, it } from 'vitest';
 import {
   BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA,
   OPERATION_IDS,
-  StaticOperationAvailabilityClient
+  StaticOperationAvailabilityClient,
+  type ProductDescriptionTemplateClient,
+  type ProductDescriptionTemplateListInput,
+  type ProductDescriptionTemplatePage
 } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 import { MemoryProductDescriptionTemplateClient } from '@one-vegetable/core/templates';
@@ -16,17 +19,21 @@ import { MemoryProductDescriptionTemplateClient } from '@one-vegetable/core/temp
 import ProductDescriptionEditor from '../src/components/ProductDescriptionEditor.vue';
 import { provideServices } from '../src/lib/services';
 
-function mountEditor(html: string, smartDetail = false) {
+function mountEditor(
+  html: string,
+  smartDetail = false,
+  productDescriptionTemplates: ProductDescriptionTemplateClient = new MemoryProductDescriptionTemplateClient(
+    BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates,
+    { writable: false }
+  )
+) {
   const model = ref(html);
   const Host = defineComponent({
     setup() {
       provideServices({
         gateway: new MockGatewayClient(0),
         settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
-        productDescriptionTemplates: new MemoryProductDescriptionTemplateClient(
-          BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates,
-          { writable: false }
-        ),
+        productDescriptionTemplates,
         operationAvailability: new StaticOperationAvailabilityClient(new Set(OPERATION_IDS)),
         mode: 'mock'
       });
@@ -142,7 +149,52 @@ describe('ProductDescriptionEditor', () => {
     expect(model.value).toContain('Shipping and Delivery');
     wrapper.unmount();
   });
+
+  it('keeps loaded template actions available while reopening refreshes the list', async () => {
+    const client = new DelayedRefreshTemplateClient();
+    const { wrapper } = mountEditor('<p>Original details</p>', false, client);
+    await flushPromises();
+
+    await clickButton('详情模板');
+    await flushPromises();
+    await clickButton('追加末尾', templateCard('Company profile'));
+
+    await clickButton('详情模板');
+    await nextTick();
+    expect(document.body.textContent).toContain('正在刷新模板');
+    await clickButton('覆盖全文', templateCard('Shipping and delivery'));
+    expect(document.body.textContent).toContain('确认覆盖商品详情');
+
+    client.releaseRefresh();
+    await flushPromises();
+    wrapper.unmount();
+  });
 });
+
+class DelayedRefreshTemplateClient extends MemoryProductDescriptionTemplateClient {
+  #listCalls = 0;
+  #releaseRefresh: (() => void) | undefined;
+
+  constructor() {
+    super(BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates, { writable: false });
+  }
+
+  override async list(
+    input: ProductDescriptionTemplateListInput = {}
+  ): Promise<ProductDescriptionTemplatePage> {
+    this.#listCalls += 1;
+    if (this.#listCalls > 1) {
+      await new Promise<void>((resolve) => {
+        this.#releaseRefresh = resolve;
+      });
+    }
+    return super.list(input);
+  }
+
+  releaseRefresh(): void {
+    this.#releaseRefresh?.();
+  }
+}
 
 function templateCard(name: string): HTMLElement {
   const card = [...document.body.querySelectorAll<HTMLElement>('article')].find((element) =>

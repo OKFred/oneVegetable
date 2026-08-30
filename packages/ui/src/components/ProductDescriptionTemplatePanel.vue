@@ -214,47 +214,52 @@ function messageOf(reason: unknown): string {
           <FilePlus2 class="size-4" />新建共享模板
         </Button>
       </div>
-      <p v-if="loading" class="py-8 text-center text-sm text-muted-foreground">正在读取模板…</p>
+      <p v-if="loading && templates.length === 0" class="py-8 text-center text-sm text-muted-foreground">
+        正在读取模板…
+      </p>
       <p v-else-if="visibleTemplates.length === 0" class="py-8 text-center text-sm text-muted-foreground">
         当前语言暂无可用模板。
       </p>
-      <div v-else class="grid gap-3 md:grid-cols-2">
-        <article v-for="template in visibleTemplates" :key="template.id" class="rounded-lg border p-4">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <p class="truncate font-medium">{{ template.name }}</p>
-              <div class="mt-2 flex flex-wrap gap-1">
-                <Badge variant="outline">{{ categoryLabel(template.category) }}</Badge>
-                <Badge v-if="isBundled(template)" variant="secondary">内置</Badge>
-                <Badge v-if="template.status === 'archived'" variant="warning">已归档</Badge>
+      <template v-else>
+        <p v-if="loading" class="mb-3 text-xs text-muted-foreground" role="status">正在刷新模板…</p>
+        <div class="grid gap-3 md:grid-cols-2" :aria-busy="loading">
+          <article v-for="template in visibleTemplates" :key="template.id" class="rounded-lg border p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="truncate font-medium">{{ template.name }}</p>
+                <div class="mt-2 flex flex-wrap gap-1">
+                  <Badge variant="outline">{{ categoryLabel(template.category) }}</Badge>
+                  <Badge v-if="isBundled(template)" variant="secondary">内置</Badge>
+                  <Badge v-if="template.status === 'archived'" variant="warning">已归档</Badge>
+                </div>
               </div>
             </div>
-          </div>
-          <p v-if="template.remark" class="mt-3 line-clamp-2 text-xs text-muted-foreground">
-            {{ template.remark }}
-          </p>
-          <div v-if="template.status === 'active'" class="mt-4 flex flex-wrap gap-2">
-            <Button size="sm" @click="applyTemplate(template, 'insert')">插入光标处</Button>
-            <Button size="sm" variant="outline" @click="applyTemplate(template, 'append')">追加末尾</Button>
-            <Button size="sm" variant="ghost" @click="applyTemplate(template, 'replace')">覆盖全文</Button>
-          </div>
-          <div v-if="canManage && !isBundled(template)" class="mt-3 flex flex-wrap gap-2 border-t pt-3">
-            <Button
-              v-if="template.status === 'active'"
-              size="sm"
-              variant="ghost"
-              @click="startEdit(template)"
-            >
-              <Pencil class="size-3" />编辑
-            </Button>
-            <Button size="sm" variant="ghost" :disabled="saving" @click="changeStatus(template)">
-              <Archive v-if="template.status === 'active'" class="size-3" />
-              <ArchiveRestore v-else class="size-3" />
-              {{ template.status === 'active' ? '归档' : '恢复' }}
-            </Button>
-          </div>
-        </article>
-      </div>
+            <p v-if="template.remark" class="mt-3 line-clamp-2 text-xs text-muted-foreground">
+              {{ template.remark }}
+            </p>
+            <div v-if="template.status === 'active'" class="mt-4 flex flex-wrap gap-2">
+              <Button size="sm" @click="applyTemplate(template, 'insert')">插入光标处</Button>
+              <Button size="sm" variant="outline" @click="applyTemplate(template, 'append')">追加末尾</Button>
+              <Button size="sm" variant="ghost" @click="applyTemplate(template, 'replace')">覆盖全文</Button>
+            </div>
+            <div v-if="canManage && !isBundled(template)" class="mt-3 flex flex-wrap gap-2 border-t pt-3">
+              <Button
+                v-if="template.status === 'active'"
+                size="sm"
+                variant="ghost"
+                @click="startEdit(template)"
+              >
+                <Pencil class="size-3" />编辑
+              </Button>
+              <Button size="sm" variant="ghost" :disabled="saving" @click="changeStatus(template)">
+                <Archive v-if="template.status === 'active'" class="size-3" />
+                <ArchiveRestore v-else class="size-3" />
+                {{ template.status === 'active' ? '归档' : '恢复' }}
+              </Button>
+            </div>
+          </article>
+        </div>
+      </template>
     </template>
 
     <template v-else-if="view === 'edit'">
