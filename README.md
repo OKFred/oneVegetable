@@ -83,7 +83,7 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 - 设置页提供 `zh_CN` / `en_US` 接口语言偏好；商品列表、Schema、平台草稿、履约通道和地址 Schema 等支持语言参数的请求使用该偏好，商品草稿仍保留创建时的语言上下文。
 - 本地商品草稿使用 V3 结构，按商品 ID 或新建类目隔离，约 750 ms 防抖保存，并记录编辑模式与已创建的平台草稿 ID。最多保留 10 份且自动清理 30 天前记录；平台草稿创建后不会重复调用 `schema.add.draft`。
 - Schema 中 `valueTypeRule=html` 或 `superText` 会使用受限 Tiptap 编辑器；仅维护 `productDescType=2` 的普通详情。编辑器提供中英文公司、物流、包装与服务内置模板，以及 BFF 审计共享模板，支持插入、追加和预览后覆盖；智能详情和不受支持的旧 HTML 必须先确认转换。
-- 主图、SKU 图和详情图复用国际站图库选择器。真实图库查询、本地上传和外部 URL 转存已接通；Web/BFF 仍使用 JSON Base64 契约，后台校验后按官方要求转换为 multipart，单张上限 5 MiB。商品更新和图库分组写入继续关闭。
+- 主图、SKU 图和详情图复用国际站图库选择器。真实图库查询、本地上传和外部 URL 转存已接通；Web/BFF 仍使用 JSON Base64 契约，后台校验后按官方要求转换为 multipart，单张上限 5 MiB。图库页面只保留分组浏览，新增、改名和删除集中到独立树形管理弹窗，并在真实写入前逐项确认。
 - 详情整改面板区分 `Alibaba Schema`、`官方提示` 和 `项目建议`。只有 Schema/契约硬错误阻止提交；内容长度、结构、SEO、图片质量和官方评分提示均不阻止提交。
 - 商品编辑以 `schema.render` XML 为权威源文档：无编辑时原样返回，编辑时只应用安全字段补丁，结构异常会在出网前阻断。详见 [商品 Schema XML 安全边界](docs/product-schema-xml-safety.md)。
 - `openapi/one-vegetable.json` 是运行时唯一契约；商品、RFQ、交易、物流、洞察、图库和平台协作文档 JSON 是离线生成输入。商品快照包含 25 个目录 API 和 2 个文章来源 Schema 发布 API；RFQ 快照包含 7 个目录 API；交易分类的 27 个方法中，26 个进入类型化快照；物流快照包含 14 个官方物流分类方法和 1 个商品域运费模板方法；洞察快照包含 2 个数据接口和 2 个采购供应商接口；图库快照包含 4 个官方目录 API；平台协作快照包含最后 3 个目录 API。接口契约详情以淘宝开放平台详情页为主，免费/授权/聚石塔/业务资格等准入标签以 Alibaba.com 国际站目录和文章为准；新增领域前必须执行双源差异审计。详见 [Alibaba OpenAPI 文档源策略](docs/alibaba-api-document-sources.md)。CI 不访问官方文档站。

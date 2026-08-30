@@ -1,22 +1,26 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import { Eye, FolderPlus, Pencil, ShieldCheck, Trash2, Upload } from '@lucide/vue';
+import { useQuery } from '@tanstack/vue-query';
+import { Eye, Settings2, ShieldCheck, Upload } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
-import type { Photo, PhotoGroup, PhotoGroupOperationRequest } from '@one-vegetable/core';
+import type {
+  Photo,
+  PhotoGroup,
+  PhotoGroupOperationRequest,
+  PhotoGroupOperationResult
+} from '@one-vegetable/core';
 
 import ActionTooltip from '../components/ActionTooltip.vue';
 import PageHeader from '../components/PageHeader.vue';
 import ImagePreview, { type ImagePreviewItem } from '../components/ImagePreview.vue';
+import PhotoGroupManagerDialog from '../components/PhotoGroupManagerDialog.vue';
 import PhotoGroupNavigation from '../components/PhotoGroupNavigation.vue';
 import PhotoUploadDialog from '../components/PhotoUploadDialog.vue';
 import QueryState from '../components/QueryState.vue';
 import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
-import Input from '../components/ui/Input.vue';
-import ModalDialog from '../components/ui/ModalDialog.vue';
 import {
   operationAvailabilityMessage,
   useOperationAvailability
@@ -26,24 +30,18 @@ import { useServices } from '../lib/services';
 type GovernanceFilter = 'all' | 'unreferenced' | 'lowResolution';
 
 const { gateway, mode } = useServices();
-const queryClient = useQueryClient();
 const selectedGroup = ref('-1');
-const groupName = ref('');
 const governanceFilter = ref<GovernanceFilter>('all');
-const operationMessage = ref('');
 const selectedGroupDefinition = ref<PhotoGroup | null>(null);
 const observedDimensions = ref<Record<string, { width: number; height: number }>>({});
 const previewOpen = ref(false);
 const previewIndex = ref(0);
-const deleteDialogOpen = ref(false);
 const uploadDialogOpen = ref(false);
-const photoMutations = useOperationAvailability(['operatePhotoGroup', 'uploadPhoto', 'transferPhotoFromUrl']);
-const groupMutationBlocked = computed(() => !photoMutations.isAllowed('operatePhotoGroup'));
+const groupManagerOpen = ref(false);
+const groupNavigationRevision = ref(0);
+const photoMutations = useOperationAvailability(['uploadPhoto', 'transferPhotoFromUrl']);
 const uploadDialogBlocked = computed(
   () => !photoMutations.isAllowed('uploadPhoto') && !photoMutations.isAllowed('transferPhotoFromUrl')
-);
-const groupMutationReason = computed(() =>
-  operationAvailabilityMessage(photoMutations.reasonCode('operatePhotoGroup'), '当前环境未开放图库分组写入')
 );
 const uploadDialogReason = computed(() => {
   if (!uploadDialogBlocked.value) return '';
@@ -53,25 +51,6 @@ const uploadDialogReason = computed(() => {
       .join(', '),
     '当前环境未开放图库上传或外部 URL 转存'
   );
-});
-const addGroupDisabledReason = computed(() => {
-  if (groupMutationBlocked.value) return groupMutationReason.value;
-  if (operateGroup.isPending.value) return '正在处理上一项图库分组操作';
-  if (!groupName.value.trim()) return '请先输入分组名称';
-  return '';
-});
-const renameGroupDisabledReason = computed(() => {
-  if (groupMutationBlocked.value) return groupMutationReason.value;
-  if (operateGroup.isPending.value) return '正在处理上一项图库分组操作';
-  if (selectedGroup.value === '-1') return '请先选择一个具体图库分组';
-  if (!groupName.value.trim()) return '请先输入新的分组名称';
-  return '';
-});
-const deleteGroupDisabledReason = computed(() => {
-  if (groupMutationBlocked.value) return groupMutationReason.value;
-  if (operateGroup.isPending.value) return '正在处理上一项图库分组操作';
-  if (selectedGroup.value === '-1') return '“全部图片”是虚拟根分组，不能删除';
-  return '';
 });
 const selectedGroupName = computed(() => selectedGroupDefinition.value?.name ?? '全部图片');
 const photos = useQuery({
@@ -103,41 +82,20 @@ const previewImages = computed<ImagePreviewItem[]>(() =>
     description: `${dimensionsLabel(photo)} · ${fileSize(photo.fileSize)}`
   }))
 );
-const operateGroup = useMutation({
-  mutationFn: (request: PhotoGroupOperationRequest) => gateway.request('operatePhotoGroup', request),
-  onSuccess: async (result, request) => {
-    const successMessage =
-      request.operation === 'delete'
-        ? '已删除所选分组'
-        : `分组已保存：${result.group?.name ?? request.groupName ?? result.groupId}`;
-    operationMessage.value = '';
-    toast.success(successMessage);
-    if (request.operation === 'delete') selectedGroup.value = '-1';
-    deleteDialogOpen.value = false;
-    groupName.value = '';
-    await queryClient.invalidateQueries({ queryKey: ['photo-groups'] });
-  },
-  onError: (error: Error) => {
-    operationMessage.value = error.message;
-  }
-});
-
-function mutateGroup(operation: PhotoGroupOperationRequest['operation']): void {
-  if (groupMutationBlocked.value) {
-    operationMessage.value = groupMutationReason.value;
-    return;
-  }
-  const current = selectedGroupDefinition.value;
-  operateGroup.mutate({
-    operation,
-    groupId:
-      operation === 'add' ? (current?.id === '-1' ? null : (current?.id ?? null)) : (current?.id ?? null),
-    groupName: operation === 'delete' ? null : groupName.value.trim() || null
-  });
-}
-
 function selectGroupDefinition(group: PhotoGroup): void {
   selectedGroupDefinition.value = group.id === '-1' ? null : group;
+}
+
+function handleGroupChanged(request: PhotoGroupOperationRequest, result: PhotoGroupOperationResult): void {
+  groupNavigationRevision.value += 1;
+  if (request.operation === 'delete') {
+    selectedGroup.value = '-1';
+    selectedGroupDefinition.value = null;
+    return;
+  }
+  if (request.operation === 'rename' && result.group?.id === selectedGroup.value) {
+    selectedGroupDefinition.value = result.group;
+  }
 }
 
 function rememberDimensions(photo: Photo, event: Event): void {
@@ -179,7 +137,6 @@ function openPreview(photo: Photo): void {
 }
 
 function handleUploaded(photo: Photo): void {
-  operationMessage.value = '';
   toast.success(`已上传到图库：${photo.name}`);
 }
 </script>
@@ -190,6 +147,9 @@ function handleUploaded(photo: Photo): void {
       <Badge :variant="mode === 'mock' ? 'secondary' : 'success'">
         {{ mode === 'mock' ? 'OpenAPI 演示' : mode === 'bff' ? 'BFF 后端查询' : 'Extension API 查询' }}
       </Badge>
+      <Button variant="outline" @click="groupManagerOpen = true">
+        <Settings2 class="size-4" />分组管理
+      </Button>
       <ActionTooltip :disabled="uploadDialogBlocked" :reason="uploadDialogReason">
         <Button :disabled="uploadDialogBlocked" @click="uploadDialogOpen = true">
           <Upload class="size-4" />上传图片
@@ -216,45 +176,11 @@ function handleUploaded(photo: Photo): void {
   <div class="grid gap-5 lg:grid-cols-[270px_1fr]">
     <Card class="h-fit p-3">
       <p class="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">图库分组</p>
-      <PhotoGroupNavigation v-model="selectedGroup" @select="selectGroupDefinition" />
-
-      <div class="mt-3 space-y-2 border-t pt-3">
-        <Input v-model="groupName" aria-label="图库分组名称" placeholder="分组名称" />
-        <div class="grid grid-cols-3 gap-1">
-          <ActionTooltip :disabled="Boolean(addGroupDisabledReason)" :reason="addGroupDisabledReason">
-            <Button
-              size="sm"
-              variant="outline"
-              :disabled="Boolean(addGroupDisabledReason)"
-              @click="mutateGroup('add')"
-              ><FolderPlus class="size-3" />新增</Button
-            >
-          </ActionTooltip>
-          <ActionTooltip :disabled="Boolean(renameGroupDisabledReason)" :reason="renameGroupDisabledReason">
-            <Button
-              size="sm"
-              variant="outline"
-              :disabled="Boolean(renameGroupDisabledReason)"
-              @click="mutateGroup('rename')"
-              ><Pencil class="size-3" />改名</Button
-            >
-          </ActionTooltip>
-          <ActionTooltip :disabled="Boolean(deleteGroupDisabledReason)" :reason="deleteGroupDisabledReason">
-            <Button
-              size="sm"
-              variant="outline"
-              :disabled="Boolean(deleteGroupDisabledReason)"
-              @click="deleteDialogOpen = true"
-              ><Trash2 class="size-3" />删除</Button
-            >
-          </ActionTooltip>
-        </div>
-        <p v-if="mode !== 'mock' && !groupMutationBlocked" class="text-xs text-emerald-700">
-          真实分组新增、改名和删除已完成账号验证；删除前会要求再次确认。
-        </p>
-        <p v-else-if="groupMutationBlocked" class="text-xs text-amber-700">{{ groupMutationReason }}</p>
-        <p v-if="operationMessage" class="text-xs text-muted-foreground">{{ operationMessage }}</p>
-      </div>
+      <PhotoGroupNavigation
+        :key="groupNavigationRevision"
+        v-model="selectedGroup"
+        @select="selectGroupDefinition"
+      />
     </Card>
 
     <section class="space-y-3">
@@ -350,30 +276,7 @@ function handleUploaded(photo: Photo): void {
     </section>
   </div>
 
-  <ModalDialog
-    v-model:open="deleteDialogOpen"
-    title="删除图库分组"
-    :description="`确定删除“${selectedGroupDefinition?.name ?? '所选分组'}”吗？该请求会直接提交到国际站，平台拒绝时页面会显示错误。`"
-    size="sm"
-  >
-    <p class="text-sm leading-6 text-muted-foreground">
-      这是国际站真实写操作。当前分组 ID：{{ selectedGroupDefinition?.id ?? selectedGroup }}。
-    </p>
-    <template #footer>
-      <div class="flex justify-end gap-2">
-        <Button variant="outline" :disabled="operateGroup.isPending.value" @click="deleteDialogOpen = false">
-          取消
-        </Button>
-        <Button
-          variant="destructive"
-          :disabled="groupMutationBlocked || operateGroup.isPending.value"
-          @click="mutateGroup('delete')"
-        >
-          {{ operateGroup.isPending.value ? '正在删除…' : '确认删除' }}
-        </Button>
-      </div>
-    </template>
-  </ModalDialog>
+  <PhotoGroupManagerDialog v-model:open="groupManagerOpen" @changed="handleGroupChanged" />
 
   <PhotoUploadDialog
     v-model:open="uploadDialogOpen"

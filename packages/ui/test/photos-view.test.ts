@@ -4,7 +4,6 @@ import { defineComponent, h } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { describe, expect, it, vi } from 'vitest';
-import { toast } from 'vue-sonner';
 
 import { OPERATION_IDS, StaticOperationAvailabilityClient, type OperationId } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
@@ -75,56 +74,30 @@ describe('PhotosView', () => {
     wrapper.unmount();
   });
 
-  it('supports group rename in Mock mode', async () => {
+  it('moves gallery writes into a dedicated tree management dialog', async () => {
     const wrapper = mountView();
     await flushPromises();
+
+    expect(wrapper.find('input[aria-label="图库分组名称"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('真实分组新增、改名和删除');
+    await button(wrapper, '分组管理').trigger('click');
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('商品主图');
-    });
-    await button(wrapper, '商品主图').trigger('click');
-    await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('白底主图');
-    });
-    await wrapper.get('input[aria-label="图库分组名称"]').setValue('主图新版');
-    await button(wrapper, '改名').trigger('click');
-    await vi.waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith('分组已保存：主图新版');
-      expect(wrapper.text()).toContain('主图新版');
+      expect(document.body.textContent).toContain('图库分组管理');
+      expect(document.body.textContent).toContain('全部图片');
+      expect(document.body.textContent).toContain('商品主图');
     });
     wrapper.unmount();
   });
 
-  it('enables account-verified group mutations outside Mock mode', async () => {
+  it('enables the account-verified group manager outside Mock mode', async () => {
     const wrapper = mountView('extension');
     await flushPromises();
-    await wrapper.get('input[aria-label="图库分组名称"]').setValue('真实分组');
 
-    expect(button(wrapper, '新增').attributes('disabled')).toBeUndefined();
+    expect(button(wrapper, '分组管理').attributes('disabled')).toBeUndefined();
     expect(wrapper.text()).toContain('Extension API 查询');
-    expect(wrapper.text()).toContain('真实分组新增、改名和删除已完成账号验证');
-    wrapper.unmount();
-  });
-
-  it('requires confirmation before deleting a real gallery group', async () => {
-    const wrapper = mountView('extension');
-    await flushPromises();
+    await button(wrapper, '分组管理').trigger('click');
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('商品主图');
-    });
-    await button(wrapper, '商品主图').trigger('click');
-    await button(wrapper, '删除').trigger('click');
-
-    await vi.waitFor(() => {
-      expect(document.body.textContent).toContain('删除图库分组');
-    });
-    expect(document.body.textContent).toContain('这是国际站真实写操作');
-    const confirm = Array.from(document.body.querySelectorAll('button')).find((candidate) =>
-      candidate.textContent.includes('确认删除')
-    );
-    if (!(confirm instanceof HTMLButtonElement)) throw new Error('Missing delete confirmation button');
-    confirm.click();
-    await vi.waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith('已删除所选分组');
+      expect(document.body.textContent).toContain('新增、改名和删除会直接写入当前国际站账号');
     });
     wrapper.unmount();
   });
@@ -132,11 +105,13 @@ describe('PhotosView', () => {
   it('disables gallery writes with the operation availability reason', async () => {
     const wrapper = mountView('extension', new Set());
     await flushPromises();
-    await wrapper.get('input[aria-label="图库分组名称"]').setValue('不可写分组');
 
-    expect(button(wrapper, '新增').attributes('disabled')).toBeDefined();
+    expect(button(wrapper, '分组管理').attributes('disabled')).toBeUndefined();
     expect(button(wrapper, '上传图片').attributes('disabled')).toBeDefined();
-    expect(wrapper.text()).toContain('当前环境未开放图库分组写入（STATIC_DISABLED）');
+    await button(wrapper, '分组管理').trigger('click');
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('当前环境未开放图库分组写入（STATIC_DISABLED）');
+    });
     wrapper.unmount();
   });
 });
