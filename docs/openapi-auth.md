@@ -27,7 +27,8 @@ pnpm openapi:auth
 - OAuth authorize 与 Token 交换均传递应用已登记的 `redirect_uri`。
 - 多个应用时通过 `OPEN_API_APP_KEY` 或 `OPEN_API_APP_NAME` 精确选择。
 - 默认保留线上 Callback URL。
-- 只有设置 `OPEN_API_CALLBACK_URL` 时才会编辑并保存 Callback；该值必须是无凭据、无 fragment 的公共 HTTPS URL。
+- 只有设置 `OPEN_API_CALLBACK_URL` 时才会进入 Callback 修改流程；该值必须是无凭据、无 fragment 的公共 HTTPS URL。脚本会展示新旧地址并要求再次输入 `yes`，未确认时保留线上现值。
+- 非交互调用若确实需要修改 Callback，必须额外显式设置 `OPEN_API_CALLBACK_CHANGE_CONFIRMED=1`；只设置新地址不会静默保存。
 - 自动选中旧 `crosstrade` OAuth 应用时，脚本会拒绝通过新版应用中心修改 Callback，避免误改另一个应用。
 - 脚本不会自动恢复显式保存的新 Callback URL。
 
@@ -41,6 +42,8 @@ OPEN_API_MANUAL_FALLBACK=1
 OPEN_API_TIMEOUT_MS=180000
 OPEN_API_MANUAL_TIMEOUT_MS=600000
 ```
+
+Node 授权工具只支持带桌面的 Windows 本机与系统 Chrome。远程或无桌面的 Node 部署不会尝试启动浏览器，应改用正式扩展导出授权包。
 
 ## 本地输出与安全边界
 
@@ -92,6 +95,6 @@ pnpm smoke:web:real
 
 2026-08-20 的页面验证中，Dashboard、顶级类目、商品分组、商品列表、真实商品 Schema、商品评分、图库分组、图库列表和订单列表均返回 200。编辑已有商品会调用 `alibaba.icbu.product.schema.render`，并要求真实 XML 成功解析、至少一个编辑字段已回填且无损 XML 预览非空；新建商品才调用 `schema.get` 获取类目模板。Alibaba 可能对列表中仍显示为 approved 的商品返回 `PUB_BIZCHECK_PRODUCT_IN_AUDITING`，因此 Smoke 会如实记录该 provider error，并在最多 5 个真实商品内寻找当前可渲染的样本。RFQ 与供应商排名按当前账号权限返回拒绝；Mock 哨兵为 0。商品更新按钮在真实模式中保持禁用，测试还会直接尝试一个商品分组写操作，并要求它在出网前以 `MUTATION_FLAG_DISABLED` 被拒绝。
 
-`artifacts/` 已被 Git 忽略，但 Windows 不保证 POSIX `0600` 文件权限完全生效。不要上传、提交、粘贴或通过聊天发送授权包和 Profile。截图在 AppSecret 显示及 OAuth 授权前生成，诊断文件不记录密码、Cookie、CSRF、授权码或 Token。
+`artifacts/` 已被 Git 忽略，但 Windows 不保证 POSIX `0600` 文件权限完全生效。不要上传、提交、粘贴或通过聊天发送授权包和 Profile。截图在 AppSecret 显示及 OAuth 授权前生成，并会先清空账号、密码、Token 等敏感表单值；进入密钥查看阶段后即使失败也不会补拍页面。诊断文件不记录密码、Cookie、CSRF、授权码或 Token。
 
 失败时不写入不完整的授权包，只保存脱敏的 `last-run.json` 和现场截图。CI 不运行该脚本，也不读取 `.env`。

@@ -1,5 +1,11 @@
 import { isAbsolute, resolve } from 'node:path';
 
+import {
+  callbackMatchesAlibabaRegistration,
+  optionalAlibabaCredentialCallbackUrl,
+  parseAlibabaCredentialCallbackUrl
+} from '../../packages/core/src/alibaba-credential-acquisition';
+
 export interface OpenApiAuthConfiguration {
   targetUrl: URL;
   callbackUrl: URL | null;
@@ -58,34 +64,23 @@ export function readOpenApiAuthConfiguration(
 }
 
 export function callbackMatches(expected: URL, actual: URL): boolean {
-  return (
-    expected.origin === actual.origin && normalizePath(expected.pathname) === normalizePath(actual.pathname)
-  );
+  return callbackMatchesAlibabaRegistration(expected, actual);
 }
 
 function httpsUrl(value: string, name: string): URL {
-  let url: URL;
   try {
-    url = new URL(value);
+    return parseAlibabaCredentialCallbackUrl(value);
   } catch {
-    throw new Error(`${name} 不是有效 URL`);
-  }
-  if (
-    url.protocol !== 'https:' ||
-    url.username !== '' ||
-    url.password !== '' ||
-    url.hash !== '' ||
-    url.hostname === 'localhost' ||
-    isPrivateHost(url.hostname)
-  ) {
     throw new Error(`${name} 必须是无凭据、无 fragment 的公共 HTTPS URL`);
   }
-  return url;
 }
 
 function optionalHttpsUrl(value: string | undefined, name: string): URL | null {
-  const candidate = optionalString(value);
-  return candidate ? httpsUrl(candidate, name) : null;
+  try {
+    return optionalAlibabaCredentialCallbackUrl(value);
+  } catch {
+    throw new Error(`${name} 必须是无凭据、无 fragment 的公共 HTTPS URL`);
+  }
 }
 
 function optionalString(value: string | undefined): string | null {
@@ -113,25 +108,4 @@ function duration(value: string | undefined, fallback: number, name: string): nu
     throw new Error(`${name} 必须是 1000 到 3600000 之间的整数毫秒`);
   }
   return result;
-}
-
-function normalizePath(pathname: string): string {
-  return pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
-}
-
-function isPrivateHost(hostname: string): boolean {
-  const normalized = hostname.toLowerCase().replace(/^\[|\]$/g, '');
-  if (normalized === '::1' || normalized === '0.0.0.0') return true;
-  const parts = normalized.split('.').map(Number);
-  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
-    return false;
-  }
-  const [first = 0, second = 0] = parts;
-  return (
-    first === 10 ||
-    first === 127 ||
-    (first === 169 && second === 254) ||
-    (first === 172 && second >= 16 && second <= 31) ||
-    (first === 192 && second === 168)
-  );
 }
