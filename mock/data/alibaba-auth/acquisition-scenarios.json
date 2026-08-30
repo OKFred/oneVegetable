@@ -1,0 +1,46 @@
+{
+  "singleApplication": {
+    "applications": [
+      {
+        "applicationId": "application-center-1",
+        "appName": "oneVegetable demo",
+        "appKeySuffix": "1234",
+        "status": "Online",
+        "source": "application-center"
+      }
+    ]
+  },
+  "multipleApplications": {
+    "applications": [
+      {
+        "applicationId": "application-center-1",
+        "appName": "oneVegetable demo",
+        "appKeySuffix": "1234",
+        "status": "Online",
+        "source": "application-center"
+      },
+      {
+        "applicationId": "legacy-crosstrade-1",
+        "appName": "Legacy seller tool",
+        "appKeySuffix": "5678",
+        "status": "Online",
+        "source": "legacy-crosstrade"
+      }
+    ]
+  },
+  "callbackConfirmation": {
+    "currentUrl": "https://seller.example.com/oauth/callback",
+    "requestedUrl": "https://app.example.com/alibaba/callback"
+  },
+  "extensionFallbacks": [
+    "browser-unavailable",
+    "browser-quota-exhausted",
+    "bot-rejected",
+    "captcha",
+    "slider",
+    "mfa",
+    "secret-verification",
+    "automation-layout-unsupported",
+    "session-expired"
+  ]
+}

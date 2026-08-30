@@ -25,7 +25,7 @@ pnpm dev:extension
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/OKFred/oneVegetable)
 
-一键部署会在同一个 Worker 中托管 Vue Web、Hono API 和 D1，并自动执行数据库 migration。部署页只要求两个独立随机 Secret：首次管理员引导令牌 `BOOTSTRAP_ADMIN_TOKEN`，以及 32 字节 Base64URL 凭据加密密钥 `ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY`。Alibaba AppKey、AppSecret 和 Token 不填写到部署表单，部署后由管理员在系统页面导入。
+一键部署会在同一个 Worker 中托管 Vue Web、Hono API 和 D1，并自动执行数据库 migration。部署页只要求两个独立随机 Secret：首次管理员引导令牌 `BOOTSTRAP_ADMIN_TOKEN`，以及 32 字节 Base64URL 凭据加密密钥 `ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY`。Alibaba AppKey、AppSecret 和 Token 不填写到部署表单；部署后管理员可以用 Browser Run 尝试一键连接、改用本机插件，或导入本机授权包。Browser Run 免费额度有限，开发和 CI 只做本地模拟与 Wrangler dry-run，真实云浏览器留到发布候选的受控验收。
 
 部署后的首次访问使用管理员引导令牌登记 Passkey，并一次性生成 10 个恢复码；详细的部署、凭据导入、域名更换和恢复流程见 [Cloudflare 自托管指南](docs/cloudflare-self-hosted.md)。
 
@@ -58,6 +58,7 @@ pnpm test:e2e
 pnpm test:e2e:bff-replay # 重建隔离 D1，启动 Worker/Web，验证认证后的全领域 BFF 读链路
 pnpm check:replay-coverage # 校验所有可真实调用的只读能力都有有效文档回放
 pnpm openapi:auth         # Windows 本地有头浏览器获取 OpenAPI 授权包
+pnpm openapi:auth:free    # 显式使用 .env.free 验证无应用/人机挑战兜底
 pnpm smoke:product:draft:real # 显式 opt-in 后创建并回读一条真实平台草稿
 pnpm release:extension # 可复现 ZIP、SHA-256 与 release.json
 pnpm capture:store-assets # 从构建后的扩展刷新 1280×800 商店截图
@@ -97,7 +98,7 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 - 数据洞察工作台展示供应商全站排名时间序列，以及买家历史信保供应商与下单商品。页面不推断排名含义、不补造供应商名称，并保持长 ID 为字符串。CGS 小满签约客户接口默认关闭且不提供业务密钥表单。详见 [数据与供应商洞察说明](docs/insights-domain.md)。
 - 图库工作台复用按官方 `id` 参数懒加载的三层分组导航，展示文件大小、引用数量、更新时间与图库 `fileId`。真实账号已验证分组、素材读取和 multipart 上传；官方列表不提供尺寸时由浏览器读取自然尺寸后再给出低于 750 × 750 的非阻断建议，避免误报。URL 转存复用已验证上传链路，分组写操作继续关闭。详见 [图库域说明](docs/photo-domain.md)。
 - 普通文件转存、天鹿风控和 URL 爬取任务通知归为平台协作能力。文件转存不会冒充图库入库；风控和任务回调不提供页面采集或发送入口，并由 service worker 二次门禁。详见 [平台协作能力说明](docs/platform-domain.md)。
-- MV3 默认只申请 `storage` 和正式网关主机权限；自定义网关与外部图片来源在用户执行对应操作时按需申请主机权限。设置页可导出或清空最多 100 条会话级脱敏诊断，且构建会执行权限与体积预算检查。详见 [MV3 发布加固说明](docs/mv3-release-hardening.md)。
+- MV3 默认只申请 `storage`、用于用户主动授权向导的 `scripting` 和正式网关主机权限；应用中心、OAuth Callback、自定义网关与外部图片来源均在用户执行对应操作时按具体站点申请权限。设置页可导出或清空最多 100 条会话级脱敏诊断，且构建会执行权限与体积预算检查。详见 [MV3 发布加固说明](docs/mv3-release-hardening.md)。
 - 开放平台凭证使用用户口令派生的 AES-256-GCM 密钥加密保存；local/session 存储对内容脚本不可见，口令不落盘。新保险库默认不启用空闲自动锁定，用户可主动选择时长；service worker 重启后仍需重新解锁。旧版明文设置必须显式迁移，遗忘口令只能清除后重新配置，威胁模型与恢复边界见 [凭证保险库说明](docs/credential-vault.md)。
 - RC 构建会迁移旧设置、允许查看/撤销额外主机权限、只对只读请求执行有限重试，并生成可复现 ZIP 与 SHA-256。CI 只保存产物，不自动上架。详见 [RC 发布准备说明](docs/rc-release-readiness.md)。
 - 扩展首次使用会显著说明凭证、权限、Mock 与真实验收边界；设置页可导出不含具体值的数据清单并彻底清除本地数据。商店文案、隐私政策、真实扩展截图和仍待人工完成的阻断项见 [Chrome Web Store 提交清单](docs/store-submission.md)。

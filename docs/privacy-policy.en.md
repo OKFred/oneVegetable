@@ -9,7 +9,7 @@ oneVegetable is a user-operated local Alibaba.com operations workspace for manag
 
 ## Data processed
 
-- App Key, App Secret, Access Token, signature algorithm, and gateway address entered by the user;
+- App Key, App Secret, Access Token, signature algorithm, and gateway address entered by the user or obtained through the user-initiated authorization assistant;
 - product Schema drafts and RFQ quotation drafts created by the user;
 - product, gallery, RFQ, trade, logistics, and data insight responses requested from the user's Alibaba.com Open Platform account;
 - up to 100 recent session-scoped redacted diagnostics containing operation names, requestIds, durations, error codes, and available traceIds.
@@ -20,6 +20,10 @@ Both `chrome.storage.local` and `chrome.storage.session` use Chrome `TRUSTED_CON
 
 A forgotten vault passphrase cannot be recovered. The user must erase all extension-local data and configure the credentials again. Legacy plaintext credentials are never used for real requests. After the user creates a new passphrase, the service worker performs the encryption migration in place without returning the old App Secret or Access Token to a page.
 
+After the user starts the authorization assistant, packaged extension code runs only in the known Alibaba Application Center and OAuth tabs for that attempt. It reads the selected existing application configuration and validates the OAuth callback. The extension does not collect the user's Alibaba website password. The user handles CAPTCHA, slider, MFA, and secret-view verification directly on Alibaba pages. App Secret, OAuth code, and tokens are processed only in service-worker memory; the validated code is exchanged immediately and is never persisted. Complete credentials are stored only when the user chooses encrypted vault storage, or exported to a local JSON file after acknowledging the plaintext-secret risk.
+
+The user may also explicitly choose cloud authorization in the administration page of their self-hosted Cloudflare Worker. In that flow, the Alibaba website account and password exist only in that HTTPS request and the temporary Browser Run session memory. They are not written to D1, application logs, audit events, screenshots, or browser recordings. The temporary job stores only public state and a session identifier. CAPTCHA, slider, MFA, secret-view verification, bot rejection, or exhausted browser quota ends the attempt and directs the user to the local extension. The cloud flow does not create an application, request API permissions, fill developer registration details, or accept agreements for the user. On success, complete credentials are encrypted directly in the user's own Worker, and the administration page never displays the secrets.
+
 ## Data use and transfer
 
 Real queries are sent only after a user action. The extension service worker sends them over HTTPS to the Alibaba.com Open Platform gateway configured by the user. An external image is downloaded from the specified public HTTP(S) URL and uploaded to the user's own international gallery only after the user explicitly starts that transfer.
@@ -29,10 +33,11 @@ Use of user data follows the Chrome Web Store User Data Policy, including the Li
 ## Permissions
 
 - `storage`: stores local credentials, settings, onboarding state, and session diagnostics;
+- `scripting`: injects fixed packaged code only into the known Alibaba Application Center and OAuth tabs after the user explicitly starts the authorization assistant;
 - `https://eco.taobao.com/*`: calls the official Alibaba.com HTTPS Open Platform gateway;
-- optional `http://*/*` and `https://*/*`: Chrome access is requested for a specific host only when the user configures a custom gateway or explicitly transfers an external image. The user can revoke each grant in Settings.
+- optional `http://*/*` and `https://*/*`: Chrome access is requested for a specific host only when the user starts the authorization assistant, confirms the actual OAuth callback, configures a custom gateway, or explicitly transfers an external image. The user can revoke each grant in Settings.
 
-The extension does not request cookies, browsing history, tabs, or a required `<all_urls>` permission. Gallery group management, image upload, and external image transfer occur only after an explicit user action. Other real write operations remain blocked before any network request leaves the extension background.
+The extension does not request cookies, browsing history, `tabs`, `webNavigation`, or a required `<all_urls>` permission. The authorization assistant does not create applications, accept platform agreements for the user, or bypass human verification. Gallery group management, image upload, and external image transfer occur only after an explicit user action. Other real write operations remain blocked before any network request leaves the extension background.
 
 ## Data control and retention
 

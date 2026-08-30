@@ -19,6 +19,14 @@ ALL_PASS=your-login-password
 pnpm openapi:auth
 ```
 
+默认从仓库根目录的 `.env` 读取 Alibaba 网站登录账号。要用未绑定应用的测试账号验证“无应用、验证码或人工验证”分支，可显式运行：
+
+```powershell
+pnpm openapi:auth:free
+```
+
+该命令只在当前进程内读取 `.env.free`。脚本不会打印或持久化网站密码，也不会自动创建应用、申请 API 权限或接受平台协议；遇到滑块、验证码、MFA 等验证时保留有头页面供用户处理。
+
 脚本使用 `artifacts/openapi-auth/profile` 保存独立 Chrome 会话。若出现验证码、滑块、二次验证或安全确认，请在打开的浏览器中手工完成；页面就绪后脚本会自动继续。
 
 ## 应用与 Callback
@@ -27,8 +35,48 @@ pnpm openapi:auth
 - OAuth authorize 与 Token 交换均传递应用已登记的 `redirect_uri`。
 - 多个应用时通过 `OPEN_API_APP_KEY` 或 `OPEN_API_APP_NAME` 精确选择。
 - 默认保留线上 Callback URL。
-- 只有设置 `OPEN_API_CALLBACK_URL` 时才会编辑并保存 Callback；该值必须是无凭据、无 fragment 的公共 HTTPS URL。
+- 只有设置 `OPEN_API_CALLBACK_URL` 时才会进入 Callback 修改流程；该值必须是无凭据、无 fragment 的公共 HTTPS URL。脚本会展示新旧地址并要求再次输入 `yes`，未确认时保留线上现值。
+- 非交互调用若确实需要修改 Callback，必须额外显式设置 `OPEN_API_CALLBACK_CHANGE_CONFIRMED=1`；只设置新地址不会静默保存。
 - 自动选中旧 `crosstrade` OAuth 应用时，脚本会拒绝通过新版应用中心修改 Callback，避免误改另一个应用。
+
+## Chrome 插件授权向导
+
+正式插件的设置页提供“获取开放平台凭证”：
+
+- 复用当前 Chrome 中的 Alibaba 登录态，不接收或保存网站账号密码；
+- 只处理已有应用，不创建应用、不申请 API 包、不代替用户接受平台协议；
+- 多应用时只展示应用名称、状态和 AppKey 尾号，由用户选择；
+- Callback 留空时保留现值，显式修改时先展示新旧地址并确认；
+- 仅在用户继续操作时为应用中心、OAuth 和实际 Callback 域名请求精确站点权限；
+- 滑块、验证码、MFA 和密钥查看确认由用户在打开的 Alibaba 标签页中完成；
+- OAuth code 只在内存中完成 state 校验和 Token 交换，不写入存储或诊断；
+- 完成后可直接加密保存到插件保险库，也可在确认明文风险后导出 `credentialInfo.json` 供自托管后端导入。
+
+扩展后台被 Chrome 回收会清除正在进行的任务及明文内存，用户需重新启动向导。任务最长保留 10 分钟。
+
+## Cloudflare 自托管一键连接
+
+自托管管理员页面提供两条并列入口：
+
+- “云端自动获取”使用绑定到当前 Worker 的 Cloudflare Browser Run；账号、密码只存在于当前 HTTPS 请求和临时浏览器内存，不写入 D1、日志、审计、截图或 Session Recording。
+- “使用本机插件”直接打开正式扩展方案，不提交 Alibaba 网站密码，也不占用 Browser Run 额度。
+
+云端流程同样只读取已有应用，不创建应用、不申请 API 权限、不填写开发者表单，也不代替用户接受协议。多个应用会停在选择步骤；Callback 留空时保留现值，显式填写时必须再次确认新旧地址。OAuth state 与实际 Callback 校验通过后，授权码立即交换 Token，完整凭据直接用现有 AES-256-GCM 保险库加密，页面只返回应用名称、AppKey 尾号、权限摘要和到期时间。
+
+Browser Run 会被网站标记为自动化浏览器，免费套餐额度也有限。开发和 CI 只运行本地状态机、模拟数据、Windows 有头 Playwright 以及 `wrangler deploy --dry-run`；dry-run 不创建 Browser Run 会话，也不消耗浏览器分钟数。仅在发布候选完成后做一次受控云端验收。遇到滑块、CAPTCHA、MFA、密钥安全确认、机器人拒绝或额度不足时，Worker 立即结束临时任务并返回稳定原因码，界面引导改用本机插件，不尝试绕过验证。
+
+云端任务最多保留 10 分钟，全局同时只允许一个活动任务，同一管理员 30 分钟最多启动 3 次。任务表只保存公开状态、浏览器会话 ID、已选应用标识和 Callback 地址；密码、AppSecret、OAuth code 和 Token 不进入任务表。
+
+本地优先验证顺序：
+
+1. 使用 `mock/data/alibaba-auth` 和单元测试覆盖单应用、多应用、Callback 确认与全部插件兜底原因。
+2. 在 Windows 运行 `pnpm openapi:auth`，用 `.env` 验证已有应用和 OAuth。
+3. 显式运行 `pnpm openapi:auth:free`，用 `.env.free` 验证无应用和人机挑战；该账号不会触发应用创建或权限申请。
+4. 运行 Cloudflare 构建和 Wrangler dry-run，确认 Browser binding、Worker 包与路由。
+5. 最后才在自托管 Worker 中做一次真实 Browser Run 验收。
+
+截至 2026-08-31，本轮已完成本地模拟、Windows 构建测试和 Wrangler dry-run；现有测试账号需要更换密码，因此新的 Node 真实授权与 Cloud Browser Run 真实验收暂缓。该状态不影响功能代码交付，但不能据此宣称云端一键获取已通过 Alibaba 实际页面验收。账号恢复后应先运行一次 `pnpm openapi:auth`，再执行一次受控云端验收，不需要重复消耗 Browser Run 额度做开发调试。
+
 - 脚本不会自动恢复显式保存的新 Callback URL。
 
 其他可选变量：
@@ -41,6 +89,8 @@ OPEN_API_MANUAL_FALLBACK=1
 OPEN_API_TIMEOUT_MS=180000
 OPEN_API_MANUAL_TIMEOUT_MS=600000
 ```
+
+Node 授权工具只支持带桌面的 Windows 本机与系统 Chrome。远程或无桌面的 Node 部署不会尝试启动浏览器，应改用正式扩展导出授权包。
 
 ## 本地输出与安全边界
 
@@ -92,6 +142,6 @@ pnpm smoke:web:real
 
 2026-08-20 的页面验证中，Dashboard、顶级类目、商品分组、商品列表、真实商品 Schema、商品评分、图库分组、图库列表和订单列表均返回 200。编辑已有商品会调用 `alibaba.icbu.product.schema.render`，并要求真实 XML 成功解析、至少一个编辑字段已回填且无损 XML 预览非空；新建商品才调用 `schema.get` 获取类目模板。Alibaba 可能对列表中仍显示为 approved 的商品返回 `PUB_BIZCHECK_PRODUCT_IN_AUDITING`，因此 Smoke 会如实记录该 provider error，并在最多 5 个真实商品内寻找当前可渲染的样本。RFQ 与供应商排名按当前账号权限返回拒绝；Mock 哨兵为 0。商品更新按钮在真实模式中保持禁用，测试还会直接尝试一个商品分组写操作，并要求它在出网前以 `MUTATION_FLAG_DISABLED` 被拒绝。
 
-`artifacts/` 已被 Git 忽略，但 Windows 不保证 POSIX `0600` 文件权限完全生效。不要上传、提交、粘贴或通过聊天发送授权包和 Profile。截图在 AppSecret 显示及 OAuth 授权前生成，诊断文件不记录密码、Cookie、CSRF、授权码或 Token。
+`artifacts/` 已被 Git 忽略，但 Windows 不保证 POSIX `0600` 文件权限完全生效。不要上传、提交、粘贴或通过聊天发送授权包和 Profile。截图在 AppSecret 显示及 OAuth 授权前生成，并会先清空账号、密码、Token 等敏感表单值；进入密钥查看阶段后即使失败也不会补拍页面。诊断文件不记录密码、Cookie、CSRF、授权码或 Token。
 
 失败时不写入不完整的授权包，只保存脱敏的 `last-run.json` 和现场截图。CI 不运行该脚本，也不读取 `.env`。

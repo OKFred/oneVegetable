@@ -6,6 +6,10 @@ import type { ApiResponse, BackendMeta } from './api-contract';
 import type { EntityAuditFields, UnixEpochMilliseconds } from './audit';
 import type { NetworkTransport } from './network';
 import type { AlibabaOpenApiCredentialBundle } from './alibaba-credential-bundle';
+import type {
+  AlibabaCredentialAcquisitionContinueCommand,
+  AlibabaCredentialAcquisitionState
+} from './alibaba-credential-acquisition';
 
 export type ControlUserRole = 'admin' | 'user';
 export type ControlUserStatus = 'active' | 'disabled';
@@ -255,6 +259,17 @@ export interface ControlClient {
   ): Promise<ControlGatewayCredentialSummary>;
   refreshGatewayCredential(): Promise<ControlGatewayCredentialSummary>;
   clearGatewayCredential(revision: number): Promise<void>;
+  startAlibabaCredentialAcquisition?(input: {
+    account: string;
+    password: string;
+    callbackUrl: string | null;
+  }): Promise<AlibabaCredentialAcquisitionState>;
+  continueAlibabaCredentialAcquisition?(
+    jobId: string,
+    command: AlibabaCredentialAcquisitionContinueCommand
+  ): Promise<AlibabaCredentialAcquisitionState>;
+  alibabaCredentialAcquisitionStatus?(jobId: string): Promise<AlibabaCredentialAcquisitionState>;
+  cancelAlibabaCredentialAcquisition?(jobId: string): Promise<AlibabaCredentialAcquisitionState>;
   realMutationStatus?(): Promise<ControlRealMutationStatus>;
   updateRealMutationPause?(
     paused: boolean,
@@ -545,6 +560,29 @@ export class BffControlClient implements ControlClient {
 
   async clearGatewayCredential(revision: number): Promise<void> {
     await this.#call('/admin/gateway-credentials/clear', { revision });
+  }
+
+  startAlibabaCredentialAcquisition(input: {
+    account: string;
+    password: string;
+    callbackUrl: string | null;
+  }): Promise<AlibabaCredentialAcquisitionState> {
+    return this.#call('/admin/alibaba-credential-acquisition/start', input);
+  }
+
+  continueAlibabaCredentialAcquisition(
+    jobId: string,
+    command: AlibabaCredentialAcquisitionContinueCommand
+  ): Promise<AlibabaCredentialAcquisitionState> {
+    return this.#call('/admin/alibaba-credential-acquisition/continue', { jobId, command });
+  }
+
+  alibabaCredentialAcquisitionStatus(jobId: string): Promise<AlibabaCredentialAcquisitionState> {
+    return this.#call('/admin/alibaba-credential-acquisition/status', { jobId });
+  }
+
+  cancelAlibabaCredentialAcquisition(jobId: string): Promise<AlibabaCredentialAcquisitionState> {
+    return this.#call('/admin/alibaba-credential-acquisition/cancel', { jobId });
   }
 
   realMutationStatus(): Promise<ControlRealMutationStatus> {

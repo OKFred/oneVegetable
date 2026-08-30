@@ -21,6 +21,9 @@ import { readRuntimeConfiguration } from './runtime-config';
 import { SqlProductDescriptionTemplateRepository } from './product-description-templates/repository';
 import { SqlProductMutationJobRepository } from './product-mutations/repository';
 import { readRealMutationsPaused, RealMutationControlService } from './safety/real-mutation-control';
+import { SqlAlibabaCredentialAcquisitionJobRepository } from './alibaba-credential-acquisition/repository';
+import { AlibabaCredentialAcquisitionService } from './alibaba-credential-acquisition/service';
+import { CloudflareAlibabaCredentialAcquisitionDriver } from './alibaba-credential-acquisition/cloudflare-playwright-driver';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -66,6 +69,16 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     await readRealMutationsPaused(metadataRepository)
   );
   const realMutationControl = new RealMutationControlService(metadataRepository, featureFlags);
+  const alibabaCredentialAcquisition =
+    runtimeConfiguration.environment === 'self-hosted' && env.BROWSER
+      ? new AlibabaCredentialAcquisitionService(
+          new SqlAlibabaCredentialAcquisitionJobRepository(database.executor),
+          // Wrangler generates BrowserRun as a structural BrowserWorker binding; ESLint cannot resolve that ambient type.
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+          new CloudflareAlibabaCredentialAcquisitionDriver(env.BROWSER),
+          credentialService
+        )
+      : undefined;
   return await createApiApp({
     runtime: 'cloudflare',
     database: 'd1',
@@ -86,6 +99,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     gatewayCredentialProvider: credentialProvider,
     featureFlags,
     realMutationControl,
+    ...(alibabaCredentialAcquisition ? { alibabaCredentialAcquisition } : {}),
     requestEvents: new SqlRequestEventRepository(database.executor),
     productDescriptionTemplates: new SqlProductDescriptionTemplateRepository(database.executor),
     productMutationJobs: new SqlProductMutationJobRepository(database.executor),

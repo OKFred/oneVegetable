@@ -35,6 +35,50 @@ export interface AlibabaTokenResponse {
   refreshExpiresInSeconds: number | null;
 }
 
+export interface AlibabaOpenApiCredentialBundleInput {
+  capturedAtTimeUtc: number;
+  application: {
+    appName: string;
+    appKey: string;
+    appSecret: string;
+    callbackUrl: string;
+    status: string;
+    permissions: AlibabaOpenApiPermission[];
+  };
+  token: AlibabaTokenResponse;
+  receivedCallbackUrl: string;
+}
+
+export function createAlibabaOpenApiCredentialBundle(
+  input: AlibabaOpenApiCredentialBundleInput
+): AlibabaOpenApiCredentialBundle {
+  const capturedAtUtc = new Date(input.capturedAtTimeUtc).toISOString();
+  const callback = new URL(input.receivedCallbackUrl);
+  return parseAlibabaOpenApiCredentialBundle({
+    schemaVersion: 1,
+    capturedAtUtc,
+    application: {
+      ...input.application,
+      permissions: input.application.permissions.map((permission) => ({ ...permission }))
+    },
+    oauth: {
+      accessToken: input.token.accessToken,
+      refreshToken: input.token.refreshToken,
+      expiresAtUtc: credentialExpiryFromSeconds(input.capturedAtTimeUtc, input.token.expiresInSeconds),
+      refreshExpiresAtUtc: credentialExpiryFromSeconds(
+        input.capturedAtTimeUtc,
+        input.token.refreshExpiresInSeconds
+      )
+    },
+    callback: {
+      receivedAtUtc: capturedAtUtc,
+      stateMatched: true,
+      callbackOrigin: callback.origin,
+      callbackPath: callback.pathname
+    }
+  });
+}
+
 export function parseAlibabaOpenApiCredentialBundle(value: unknown): AlibabaOpenApiCredentialBundle {
   if (!isRecord(value) || value.schemaVersion !== 1) throw new Error('Alibaba 授权包版本不受支持');
   const application = requiredRecord(value.application, 'application');

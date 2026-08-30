@@ -29,6 +29,7 @@ import {
 
 import type {
   CredentialVaultRepository,
+  ExtensionAlibabaCredentialAcquisitionRepository,
   ControlClient,
   ControlSession,
   GatewayClient,
@@ -55,6 +56,7 @@ const props = defineProps<{
   gateway: GatewayClient;
   settings: SettingsRepository;
   vault?: CredentialVaultRepository;
+  alibabaCredentialAcquisition?: ExtensionAlibabaCredentialAcquisitionRepository;
   permissions?: HostPermissionsRepository;
   localData?: LocalDataRepository;
   onboarding?: OnboardingRepository;
@@ -77,6 +79,9 @@ provideServices({
   ...(props.localData ? { localData: props.localData } : {}),
   ...(props.onboarding ? { onboarding: props.onboarding } : {}),
   ...(props.vault ? { vault: props.vault } : {}),
+  ...(props.alibabaCredentialAcquisition
+    ? { alibabaCredentialAcquisition: props.alibabaCredentialAcquisition }
+    : {}),
   ...(props.control ? { control: props.control } : {}),
   ...(props.productDescriptionTemplates
     ? { productDescriptionTemplates: props.productDescriptionTemplates }

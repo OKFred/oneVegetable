@@ -63,6 +63,7 @@ import type { GatewayMode } from './runtime-config';
 import type { ProductDescriptionTemplateRepository } from './product-description-templates/repository';
 import type { ProductMutationJobRepository } from './product-mutations/repository';
 import type { RealMutationControlService } from './safety/real-mutation-control';
+import type { AlibabaCredentialAcquisitionService } from './alibaba-credential-acquisition/service';
 
 export type ApiRuntime = 'node' | 'cloudflare';
 export type ApiDatabase = 'sqlite' | 'd1';
@@ -91,6 +92,7 @@ export interface ApiAppOptions {
   productDescriptionTemplates?: ProductDescriptionTemplateRepository;
   productMutationJobs?: ProductMutationJobRepository;
   realMutationControl?: RealMutationControlService;
+  alibabaCredentialAcquisition?: AlibabaCredentialAcquisitionService;
 }
 
 export interface RequestLogContext {
@@ -192,6 +194,9 @@ export function createApiApp(options: ApiAppOptions): Hono {
       authenticationMode: options.authenticationMode ?? 'password',
       ...(options.passkeyService ? { passkeyService: options.passkeyService } : {}),
       ...(options.realMutationControl ? { realMutationControl: options.realMutationControl } : {}),
+      ...(options.alibabaCredentialAcquisition
+        ? { alibabaCredentialAcquisition: options.alibabaCredentialAcquisition }
+        : {}),
       mutationEnabled: [
         'publishProduct',
         'saveProductDraft',

@@ -70,6 +70,7 @@ describe('SelfHostedAdminPanel', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Alibaba 凭据保险库');
+    expect(wrapper.text()).toContain('一键连接');
     expect(wrapper.text()).toContain('已配置');
     expect(wrapper.text()).toContain('Windows Hello');
     const pause = wrapper.findAll('button').find((button) => button.text().includes('暂停全部真实写入'));

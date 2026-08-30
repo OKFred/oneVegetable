@@ -68,8 +68,8 @@ if (manifest.minimum_chrome_version !== '102') {
 }
 if (manifest.homepage_url !== listing.homepageUrl) errors.push('manifest and listing homepage URLs differ');
 if (manifest.version !== listing.extensionVersion) errors.push('manifest and listing versions differ');
-if (JSON.stringify(manifest.permissions) !== JSON.stringify(['storage']))
-  errors.push('required extension permissions must remain exactly [storage]');
+if (JSON.stringify(manifest.permissions) !== JSON.stringify(['storage', 'scripting']))
+  errors.push('required extension permissions must remain exactly [storage, scripting]');
 if (JSON.stringify(manifest.host_permissions) !== JSON.stringify(['https://eco.taobao.com/*']))
   errors.push('required host permissions must remain limited to the official gateway');
 if (JSON.stringify(manifest.optional_host_permissions) !== JSON.stringify(['http://*/*', 'https://*/*'])) {
@@ -86,7 +86,7 @@ for (const field of ['privacyPolicyUrl', 'supportUrl', 'homepageUrl'] as const) 
 if ((listing.permissions ?? []).some((permission) => !permission.justification?.trim())) {
   errors.push('every store permission declaration needs a justification');
 }
-if (listing.permissions?.length !== 3) errors.push('store permission inventory must contain three entries');
+if (listing.permissions?.length !== 4) errors.push('store permission inventory must contain four entries');
 const enabledRealMutations = listing.submissionStatus?.enabledRealMutations ?? [];
 if (
   JSON.stringify(enabledRealMutations) !==
@@ -219,7 +219,7 @@ for (const phrase of [
 }
 
 process.stdout.write(
-  `MV3 manifest, 2 locales, bilingual static privacy disclosures, 3 permission declarations and ${screenshots.length} screenshots checked\n`
+  `MV3 manifest, 2 locales, bilingual static privacy disclosures, 4 permission declarations and ${screenshots.length} screenshots checked\n`
 );
 if (errors.length > 0) throw new Error(errors.join('\n'));
 
