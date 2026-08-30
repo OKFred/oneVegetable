@@ -35,6 +35,7 @@
       <p><code>chrome.storage.local</code> 与 <code>chrome.storage.session</code> 均设置为 Chrome <code>TRUSTED_CONTEXTS</code>，网页及扩展内容脚本不能通过 Storage API 读取。新建保险库默认不启用空闲自动锁定，用户可主动选择 5、15、30 或 60 分钟。启用后，状态查询不刷新计时，实际读取或更新凭证才刷新。service worker 若更早终止，内存密钥会立即丢失。</p>
       <p>遗忘保险库口令时无法恢复凭证，用户只能彻底清除扩展本地数据后重新配置。旧版明文凭证不会再用于真实请求；用户设置新口令后，service worker 会直接完成原位加密迁移，不把旧 App Secret 或 Access Token 返回给页面。</p>
       <p>用户主动启动授权向导后，扩展会在本次已知的 Alibaba 应用中心和 OAuth 标签页中运行扩展包内固定代码，读取用户选择的已有应用配置并校验 OAuth Callback。Alibaba 网站密码不由扩展收集；验证码、滑块、MFA 和密钥安全确认由用户在 Alibaba 页面直接完成。App Secret、OAuth code 和 Token 只在 service worker 内存中处理，code 在校验后立即交换且不落盘。完整凭据仅在用户选择“保存到保险库”时加密存储，或在用户确认明文风险后导出为本地 JSON 文件。</p>
+      <p>用户也可以在自己部署的 Cloudflare Worker 管理页面主动选择云端授权。此时 Alibaba 网站账号和密码仅在该次 HTTPS 请求及临时 Browser Run 会话内存中处理，不写入 D1、应用日志、审计、截图或浏览器录制。临时任务只保存公开状态和会话标识；遇到验证码、滑块、MFA、密钥安全确认、机器人拒绝或额度不足时立即结束并提示改用本机扩展。云端流程不创建应用、不申请权限、不填写开发者资料，也不代替用户接受协议。授权成功后完整凭据直接在用户自己的 Worker 中加密保存，管理页面不回显密钥。</p>
       <h2>数据使用与传输</h2>
       <p>真实查询仅在用户操作后，由扩展 service worker 通过 HTTPS 向用户配置的 Alibaba.com 开放平台网关发送。外部图片转存仅在用户明确操作时下载指定公共 HTTP(S) 图片，再上传到用户自己的国际站图库。</p>
       <p>扩展对用户数据的使用遵守 Chrome Web Store User Data Policy（包括 Limited Use 要求）：数据只用于提供或改进公开说明的单一用途，不用于个性化广告、信用评估或数据转售。除非用户明确授权技术支持、安全调查或法律要求，开发者不会允许人工读取用户数据。</p>

@@ -54,6 +54,29 @@ pnpm openapi:auth:free
 
 扩展后台被 Chrome 回收会清除正在进行的任务及明文内存，用户需重新启动向导。任务最长保留 10 分钟。
 
+## Cloudflare 自托管一键连接
+
+自托管管理员页面提供两条并列入口：
+
+- “云端自动获取”使用绑定到当前 Worker 的 Cloudflare Browser Run；账号、密码只存在于当前 HTTPS 请求和临时浏览器内存，不写入 D1、日志、审计、截图或 Session Recording。
+- “使用本机插件”直接打开正式扩展方案，不提交 Alibaba 网站密码，也不占用 Browser Run 额度。
+
+云端流程同样只读取已有应用，不创建应用、不申请 API 权限、不填写开发者表单，也不代替用户接受协议。多个应用会停在选择步骤；Callback 留空时保留现值，显式填写时必须再次确认新旧地址。OAuth state 与实际 Callback 校验通过后，授权码立即交换 Token，完整凭据直接用现有 AES-256-GCM 保险库加密，页面只返回应用名称、AppKey 尾号、权限摘要和到期时间。
+
+Browser Run 会被网站标记为自动化浏览器，免费套餐额度也有限。开发和 CI 只运行本地状态机、模拟数据、Windows 有头 Playwright 以及 `wrangler deploy --dry-run`；dry-run 不创建 Browser Run 会话，也不消耗浏览器分钟数。仅在发布候选完成后做一次受控云端验收。遇到滑块、CAPTCHA、MFA、密钥安全确认、机器人拒绝或额度不足时，Worker 立即结束临时任务并返回稳定原因码，界面引导改用本机插件，不尝试绕过验证。
+
+云端任务最多保留 10 分钟，全局同时只允许一个活动任务，同一管理员 30 分钟最多启动 3 次。任务表只保存公开状态、浏览器会话 ID、已选应用标识和 Callback 地址；密码、AppSecret、OAuth code 和 Token 不进入任务表。
+
+本地优先验证顺序：
+
+1. 使用 `mock/data/alibaba-auth` 和单元测试覆盖单应用、多应用、Callback 确认与全部插件兜底原因。
+2. 在 Windows 运行 `pnpm openapi:auth`，用 `.env` 验证已有应用和 OAuth。
+3. 显式运行 `pnpm openapi:auth:free`，用 `.env.free` 验证无应用和人机挑战；该账号不会触发应用创建或权限申请。
+4. 运行 Cloudflare 构建和 Wrangler dry-run，确认 Browser binding、Worker 包与路由。
+5. 最后才在自托管 Worker 中做一次真实 Browser Run 验收。
+
+截至 2026-08-31，本轮已完成本地模拟、Windows 构建测试和 Wrangler dry-run；现有测试账号需要更换密码，因此新的 Node 真实授权与 Cloud Browser Run 真实验收暂缓。该状态不影响功能代码交付，但不能据此宣称云端一键获取已通过 Alibaba 实际页面验收。账号恢复后应先运行一次 `pnpm openapi:auth`，再执行一次受控云端验收，不需要重复消耗 Browser Run 额度做开发调试。
+
 - 脚本不会自动恢复显式保存的新 Callback URL。
 
 其他可选变量：
