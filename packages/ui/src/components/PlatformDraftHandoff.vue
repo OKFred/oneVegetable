@@ -28,7 +28,7 @@ const officialEditorUrl = computed(() => {
       :href="officialEditorUrl"
       target="_blank"
       rel="noopener noreferrer"
-      class="inline-flex h-9 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md border border-input bg-background px-4 py-2 text-sm font-medium transition-[color,background-color,border-color,box-shadow,opacity,transform] duration-150 ease-out hover:-translate-y-px hover:bg-accent hover:text-accent-foreground active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      class="inline-flex h-9 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md border border-input bg-background px-4 py-2 text-sm font-medium transition-[color,background-color,border-color,box-shadow,opacity] duration-150 ease-out hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       在国际站继续编辑 <ExternalLink class="size-4" />
     </a>
