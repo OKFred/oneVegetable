@@ -6789,16 +6789,6 @@ export interface components {
             /** @description Optional smaller Schema-derived limit. PhotoBank uploads are capped at 5 MiB. */
             maxBytes?: number;
         };
-        ProductAssetDownloadRequest: {
-            /**
-             * Format: uri
-             * @description International-site PhotoBank URL referenced by a product Schema.
-             */
-            url: string;
-        };
-        ProductAssetDownloadResult: components["schemas"]["EncodedFilePayload"] & {
-            sha256: string;
-        };
         PhotoUploadRequest: components["schemas"]["EncodedFilePayload"] & {
             groupId?: string;
         };
@@ -6820,6 +6810,16 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             categoryId: number | null;
+        };
+        ProductAssetDownloadRequest: {
+            /**
+             * Format: uri
+             * @description International-site PhotoBank URL referenced by a product Schema.
+             */
+            url: string;
+        };
+        ProductAssetDownloadResult: components["schemas"]["EncodedFilePayload"] & {
+            sha256: string;
         };
         ProductCategory: {
             id: number;
