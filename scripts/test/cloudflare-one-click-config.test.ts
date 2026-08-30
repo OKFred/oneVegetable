@@ -43,6 +43,7 @@ describe('Cloudflare one-click deployment configuration', () => {
     const vars = wrangler.vars as Record<string, string>;
     expect(vars.ONE_VEGETABLE_ENVIRONMENT).toBe('self-hosted');
     expect(vars.ONE_VEGETABLE_AUTH_MODE).toBe('passkey');
+    expect(vars).not.toHaveProperty('ONE_VEGETABLE_CORS_ORIGINS');
     expect(new Set(vars.ONE_VEGETABLE_MUTATION_FLAGS.split(','))).toEqual(
       new Set([
         'operation:publishProduct',
