@@ -1,20 +1,24 @@
+import { resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { callbackMatches, readOpenApiAuthConfiguration } from './config';
 import { OpenApiAuthError, redactText, safeError } from './storage';
 
 describe('OpenAPI auth configuration', () => {
+  const workingDirectory = resolve('test-workspace');
+
   it('uses safe defaults and treats login credentials separately', () => {
     const result = readOpenApiAuthConfiguration(
       { ALI_ACCOUNT: 'seller@example.com', ALL_PASS: 'not-printed' },
-      'D:\\workspace\\oneVegetable'
+      workingDirectory
     );
 
     expect(result.targetUrl.href).toBe('https://i.alibaba.com/explore/open-api');
     expect(result.callbackUrl).toBeNull();
     expect(result.account).toBe('seller@example.com');
     expect(result.password).toBe('not-printed');
-    expect(result.outputPath).toContain('artifacts\\openapi-auth\\credentials.json');
+    expect(result.outputPath).toBe(resolve(workingDirectory, 'artifacts/openapi-auth/credentials.json'));
   });
 
   it.each([
@@ -26,7 +30,7 @@ describe('OpenAPI auth configuration', () => {
     'https://example.com/callback#token'
   ])('rejects an unsafe callback URL: %s', (callbackUrl) => {
     expect(() =>
-      readOpenApiAuthConfiguration({ OPEN_API_CALLBACK_URL: callbackUrl }, 'D:\\workspace\\oneVegetable')
+      readOpenApiAuthConfiguration({ OPEN_API_CALLBACK_URL: callbackUrl }, workingDirectory)
     ).toThrow('公共 HTTPS URL');
   });
 
