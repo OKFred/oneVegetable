@@ -433,9 +433,11 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
   const companyTemplate = templateDialog.locator('article').filter({ hasText: 'Company profile' });
   await companyTemplate.getByRole('button', { name: '追加末尾' }).click();
   await expect(page.locator('.ProseMirror')).toContainText('About Us');
+  await expect(templateDialog).toBeHidden();
 
   await page.getByRole('button', { name: '详情模板' }).click();
   templateDialog = page.getByRole('dialog', { name: '商品详情模板' });
+  await expect(templateDialog).toBeVisible();
   const shippingTemplate = templateDialog.locator('article').filter({ hasText: 'Shipping and delivery' });
   await expect(templateDialog.locator('[aria-busy]')).toHaveAttribute('aria-busy', 'false');
   const replaceDescriptionButton = shippingTemplate.getByRole('button', { name: '覆盖全文' });
@@ -446,9 +448,11 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
   await expect(replaceDialog.getByText('覆盖后：Shipping and delivery')).toBeVisible();
   await replaceDialog.getByRole('button', { name: '确认覆盖全文' }).click();
   await expect(page.locator('.ProseMirror')).toContainText('Shipping and Delivery');
+  await expect(replaceDialog).toBeHidden();
 
   await page.getByRole('button', { name: '详情模板' }).click();
   templateDialog = page.getByRole('dialog', { name: '商品详情模板' });
+  await expect(templateDialog).toBeVisible();
   await templateDialog.getByRole('button', { name: '新建共享模板' }).click();
   const editorDialog = page.getByRole('dialog', { name: '新建共享详情模板' });
   await editorDialog.getByLabel('模板名称').fill('E2E custom details');
