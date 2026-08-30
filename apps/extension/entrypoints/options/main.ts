@@ -287,9 +287,12 @@ function isDraftKey(key: string): boolean {
 
 class ExtensionGatewayClient implements GatewayClient {
   async request<K extends OperationId>(operation: K, payload: RequestOf<K>): Promise<ResponseOf<K>> {
-    if (operation === 'transferPhotoFromUrl') {
-      const transfer = payload as RequestOf<'transferPhotoFromUrl'>;
-      await ensureOptionalHostPermission(transfer.url, '外部图片来源');
+    if (operation === 'transferPhotoFromUrl' || operation === 'downloadProductAsset') {
+      const transfer = payload as RequestOf<'transferPhotoFromUrl'> | RequestOf<'downloadProductAsset'>;
+      await ensureOptionalHostPermission(
+        transfer.url,
+        operation === 'downloadProductAsset' ? '商品 ZIP 图片下载' : '外部图片来源'
+      );
     }
     const message: RuntimeRequest<K> = {
       requestId: crypto.randomUUID(),

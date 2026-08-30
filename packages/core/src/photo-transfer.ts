@@ -1,6 +1,12 @@
 import { createRequestId, NativeFetchTransport, NetworkManager } from './network';
 import { MAX_PHOTOBANK_IMAGE_BYTES } from './encoded-file';
-import type { PhotoTransferRequest, PhotoUploadRequest } from './types';
+import { isPhotoBankUrl } from './product-description-url';
+import type {
+  PhotoTransferRequest,
+  PhotoUploadRequest,
+  ProductAssetDownloadRequest,
+  ProductAssetDownloadResult
+} from './types';
 
 export const MAX_TRANSFER_IMAGE_BYTES = MAX_PHOTOBANK_IMAGE_BYTES;
 const MAX_REDIRECTS = 5;
@@ -14,6 +20,27 @@ const ALLOWED_IMAGE_CONTENT_TYPES = new Set([
 ]);
 
 export type DownloadedPhotoUpload = PhotoUploadRequest;
+
+export async function downloadProductAsset(
+  request: ProductAssetDownloadRequest,
+  fetcher: typeof fetch = globalThis.fetch
+): Promise<ProductAssetDownloadResult> {
+  if (!isPhotoBankUrl(request.url)) {
+    throw new Error('商品资源导出仅允许国际站图库地址');
+  }
+  const downloaded = await downloadPhotoForUpload(
+    { url: request.url, groupId: '-1', maxBytes: MAX_PHOTOBANK_IMAGE_BYTES },
+    fetcher
+  );
+  const bytes = base64ToBytes(downloaded.contentBase64);
+  return {
+    fileName: downloaded.fileName,
+    contentBase64: downloaded.contentBase64,
+    contentType: downloaded.contentType,
+    byteLength: downloaded.byteLength,
+    sha256: await sha256Hex(bytes)
+  };
+}
 
 export function assertPublicPhotoUrl(rawUrl: string): URL {
   let url: URL;
@@ -180,6 +207,16 @@ function bytesToBase64(bytes: Uint8Array): string {
     binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
   }
   return btoa(binary);
+}
+
+function base64ToBytes(value: string): Uint8Array {
+  const binary = atob(value);
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', Uint8Array.from(bytes));
+  return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('');
 }
 
 function inferFileName(url: URL, contentType: string): string {

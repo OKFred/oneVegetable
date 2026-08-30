@@ -8,6 +8,7 @@ import {
   CredentialVaultError,
   CredentialVaultSession,
   DashboardAdapter,
+  downloadProductAsset,
   downloadPhotoForUpload,
   findCapability,
   GatewayException,
@@ -64,6 +65,7 @@ const OPERATIONS = new Set<OperationId>([
   'listPhotos',
   'uploadPhoto',
   'transferPhotoFromUrl',
+  'downloadProductAsset',
   'listOrders',
   'getOrderFund',
   'getOrderLogistics',
@@ -576,6 +578,8 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
         ...(downloaded.groupId ? { groupId: downloaded.groupId } : {})
       });
     }
+    case 'downloadProductAsset':
+      return downloadProductAsset(payload as RequestOf<'downloadProductAsset'>);
     case 'listOrders': {
       const status = readString(request, ['status']);
       const page = await trades.list({

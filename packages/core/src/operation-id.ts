@@ -17,6 +17,7 @@ const OPERATION_ID_RECORD = {
   listPhotos: true,
   uploadPhoto: true,
   transferPhotoFromUrl: true,
+  downloadProductAsset: true,
   listOrders: true,
   getOrderFund: true,
   getOrderLogistics: true,

@@ -75,6 +75,16 @@ describe('MockGatewayClient', () => {
       groupId: '2002'
     });
     expect(transferred).toMatchObject({ name: 'detail.jpg', groupId: '2002' });
+
+    const downloaded = await client.request('downloadProductAsset', {
+      url: 'https://sc04.alicdn.com/kf/mock-product-asset.jpg'
+    });
+    expect(downloaded).toMatchObject({
+      fileName: 'mock-product-asset.jpg',
+      contentType: 'image/jpeg',
+      byteLength: 4
+    });
+    expect(downloaded.sha256).toMatch(/^[a-f0-9]{64}$/u);
   });
 
   it('serves the RFQ search, detail, equity and quotation mock workflow', async () => {
