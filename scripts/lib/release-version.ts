@@ -6,6 +6,10 @@ export interface WorkspacePackageVersion {
 
 const stableSemanticVersion = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
+export function releaseTagFromArguments(arguments_: readonly string[], fallbackTagName = ''): string {
+  return arguments_.find((argument) => argument !== '--') ?? fallbackTagName;
+}
+
 export function releaseVersionIssues(
   tagName: string,
   packages: readonly WorkspacePackageVersion[]

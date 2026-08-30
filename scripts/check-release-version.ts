@@ -1,7 +1,11 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-import { releaseVersionIssues, type WorkspacePackageVersion } from './lib/release-version';
+import {
+  releaseTagFromArguments,
+  releaseVersionIssues,
+  type WorkspacePackageVersion
+} from './lib/release-version';
 
 const root = resolve(import.meta.dirname, '..');
 const packageFiles = [
@@ -12,7 +16,7 @@ const packageFiles = [
   'packages/core/package.json',
   'packages/ui/package.json'
 ] as const;
-const tagName = process.argv[2] ?? process.env.GITHUB_REF_NAME ?? '';
+const tagName = releaseTagFromArguments(process.argv.slice(2), process.env.GITHUB_REF_NAME);
 const packages = await Promise.all(packageFiles.map((fileName) => readPackageVersion(fileName)));
 const issues = releaseVersionIssues(tagName, packages);
 

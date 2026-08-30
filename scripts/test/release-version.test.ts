@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { releaseVersionIssues, type WorkspacePackageVersion } from '../lib/release-version';
+import {
+  releaseTagFromArguments,
+  releaseVersionIssues,
+  type WorkspacePackageVersion
+} from '../lib/release-version';
 
 function packages(version = '2.0.2'): WorkspacePackageVersion[] {
   return [
@@ -11,6 +15,11 @@ function packages(version = '2.0.2'): WorkspacePackageVersion[] {
 }
 
 describe('formal release version validation', () => {
+  it('normalizes pnpm argument separators consistently across operating systems', () => {
+    expect(releaseTagFromArguments(['--', 'v2.0.2'], 'v9.9.9')).toBe('v2.0.2');
+    expect(releaseTagFromArguments([], 'v2.0.2')).toBe('v2.0.2');
+  });
+
   it('accepts an exact stable semantic version tag', () => {
     expect(releaseVersionIssues('v2.0.2', packages())).toEqual([]);
   });

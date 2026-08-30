@@ -4,31 +4,48 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing annotated stable tag to recover
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: formal-release-${{ github.ref_name }}
+  group: formal-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
       - name: Verify immutable release ref
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "$(git cat-file -t "${GITHUB_REF_NAME}")" != "tag" ]]; then
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${GITHUB_REF_NAME}" != "${{ github.event.repository.default_branch }}" ]]; then
+            echo "::error::Release recovery must be dispatched from the default branch."
+            exit 1
+          fi
+          if [[ ! "${RELEASE_TAG}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::Formal releases require a stable SemVer tag."
+            exit 1
+          fi
+          if [[ "$(git cat-file -t "${RELEASE_TAG}")" != "tag" ]]; then
             echo "::error::Formal releases require an annotated Git tag."
             exit 1
           fi
           git fetch origin master --no-tags
-          release_commit="$(git rev-list -n 1 "${GITHUB_REF_NAME}")"
+          release_commit="$(git rev-list -n 1 "${RELEASE_TAG}")"
           if ! git merge-base --is-ancestor "${release_commit}" origin/master; then
             echo "::error::Release commit must belong to origin/master."
             exit 1
@@ -40,7 +57,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Verify tag and workspace versions
-        run: pnpm check:release-version -- "${{ github.ref_name }}"
+        run: pnpm check:release-version "${RELEASE_TAG}"
       - run: pnpm check
       - run: pnpm exec playwright install --with-deps chromium
       - run: xvfb-run --auto-servernum pnpm test:e2e
@@ -49,7 +66,7 @@ jobs:
       - name: Preserve validated release artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: one-vegetable-${{ github.ref_name }}
+          name: one-vegetable-${{ env.RELEASE_TAG }}
           path: |
             artifacts/one-vegetable-*-chrome-mv3.zip
             artifacts/one-vegetable-*-chrome-mv3.zip.sha256
@@ -62,14 +79,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
-            echo "::error::GitHub Release ${GITHUB_REF_NAME} already exists; release assets are immutable."
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            echo "::error::GitHub Release ${RELEASE_TAG} already exists; release assets are immutable."
             exit 1
           fi
-          gh release create "${GITHUB_REF_NAME}" \
+          gh release create "${RELEASE_TAG}" \
             artifacts/one-vegetable-*-chrome-mv3.zip \
             artifacts/one-vegetable-*-chrome-mv3.zip.sha256 \
             artifacts/release.json \
             --verify-tag \
-            --title "oneVegetable ${GITHUB_REF_NAME}" \
+            --title "oneVegetable ${RELEASE_TAG}" \
             --generate-notes
