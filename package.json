@@ -31,6 +31,7 @@
     "check:web-bundle": "tsx scripts/check-web-bundle.ts",
     "check:store-compliance": "tsx scripts/check-store-compliance.ts",
     "check:workspace-version": "tsx scripts/check-workspace-version.ts",
+    "check:release-version": "tsx scripts/check-release-version.ts",
     "capture:store-assets": "pnpm run build:extension && tsx scripts/capture-store-assets.ts",
     "zip:extension": "pnpm run release:extension",
     "release:extension": "pnpm run build:extension && pnpm run check:extension-bundle && pnpm run check:store-compliance && tsx scripts/package-extension.ts",

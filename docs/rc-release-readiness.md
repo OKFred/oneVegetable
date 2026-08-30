@@ -40,7 +40,7 @@ pnpm release:extension
 - 同名 `.sha256` 校验文件；
 - `release.json`，包含版本、文件数、大小和 SHA-256。
 
-ZIP 内文件按名称排序，使用固定时间和权限属性；脚本会在写出前生成两次并逐字节比较，再解压核对文件清单。根包、扩展包和 manifest 版本不一致时拒绝打包。CI 会保存发布目录 14 天，但不会自动发布到 Chrome Web Store。
+ZIP 内文件按名称排序，使用固定时间和权限属性；脚本会在写出前生成两次并逐字节比较，再解压核对文件清单。根包、扩展包和 manifest 版本不一致时拒绝打包。普通 CI 会保存发布目录 14 天；正式 SemVer Tag 还会在完整检查通过后创建 GitHub Release。两者都不会自动发布到 Chrome Web Store。
 
 ## 剩余限制
 

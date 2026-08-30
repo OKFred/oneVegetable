@@ -67,7 +67,7 @@ pnpm upload:extension:draft
 pnpm upload:extension:draft -- --confirm-draft-upload
 ```
 
-成功记录写入已忽略的 `artifacts/chrome-web-store-draft-upload.json`，不包含 Token。CI 继续只生成发布包，不默认访问商店 API。正式提交审核、发布范围和可见性仍在 Chrome Web Store Developer Dashboard 中人工确认。
+成功记录写入已忽略的 `artifacts/chrome-web-store-draft-upload.json`，不包含 Token。普通 CI 只生成发布包；正式 SemVer Tag 会创建包含同一发布包和校验值的 GitHub Release，但两者都不默认访问商店 API。正式提交审核、发布范围和可见性仍在 Chrome Web Store Developer Dashboard 中人工确认。
 
 官方参考：[Chrome Web Store API 使用指南](https://developer.chrome.com/docs/webstore/using-api)、[V2 media.upload](https://developer.chrome.com/docs/webstore/api/reference/rest/v2/media/upload)、[service account 配置](https://developer.chrome.com/docs/webstore/service-accounts)。
 

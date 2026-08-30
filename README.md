@@ -63,6 +63,8 @@ pnpm release:extension # 可复现 ZIP、SHA-256 与 release.json
 pnpm capture:store-assets # 从构建后的扩展刷新 1280×800 商店截图
 ```
 
+正式版本使用与 workspace 版本一致的 annotated Git Tag（如 `v2.0.2`）和 GitHub Release；release 分支仅在 RC 冻结时临时使用。Tag 工作流会重新执行完整检查并附加扩展 ZIP、SHA-256 与发布元数据，但不会自动提交 Chrome Web Store 或部署生产环境。详见 [正式版本与回退流程](docs/release-process.md)。
+
 ## 扩展调试
 
 日常开发使用 `pnpm dev:extension`。WXT 会启动独立 Chromium profile，并在 options、popup、service worker、content script 或 manifest 变化后自动更新/重载扩展；不需要像 MV2 一样每次打开 `chrome://extensions` 手工点击“重新加载”。
