@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 
 import { chromium, expect, test, type BrowserContext } from '@playwright/test';
 
-let context: BrowserContext;
+let context: BrowserContext | null = null;
 
 test.setTimeout(90_000);
 
@@ -18,7 +18,7 @@ test.beforeAll(async () => {
     minimum_chrome_version?: string;
   };
   expect(manifest.background).toEqual({ service_worker: 'background.js', type: 'module' });
-  expect(manifest.permissions).toEqual(['storage']);
+  expect(manifest.permissions).toEqual(['storage', 'scripting']);
   expect(manifest.host_permissions).toEqual(['https://eco.taobao.com/*']);
   expect(manifest.optional_host_permissions).toEqual(['http://*/*', 'https://*/*']);
   expect(manifest.permissions).not.toContain('cookies');
@@ -32,18 +32,20 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await context.close();
+  if (context) await context.close();
 });
 
 test('MV3 options page persists settings and exposes the audited catalog', async () => {
-  let serviceWorker = context.serviceWorkers()[0];
-  serviceWorker ??= await context.waitForEvent('serviceworker');
+  const browserContext = context;
+  if (!browserContext) throw new Error('extension browser context was not initialized');
+  let serviceWorker = browserContext.serviceWorkers()[0];
+  serviceWorker ??= await browserContext.waitForEvent('serviceworker');
   const extensionId = new URL(serviceWorker.url()).host;
-  await context.route('https://storage-probe.alibaba.com/**', (route) =>
+  await browserContext.route('https://storage-probe.alibaba.com/**', (route) =>
     route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>storage probe</title>' })
   );
-  const storageProbePage = await context.newPage();
-  const storageProbeCdp = await context.newCDPSession(storageProbePage);
+  const storageProbePage = await browserContext.newPage();
+  const storageProbeCdp = await browserContext.newCDPSession(storageProbePage);
   const storageProbeResult = new Promise<unknown>((resolveStorageProbe) => {
     storageProbeCdp.on('Runtime.executionContextCreated', ({ context: executionContext }) => {
       if (executionContext.auxData?.type !== 'isolated') return;
@@ -68,9 +70,9 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   };
   expect(storageProbe.result?.value).toEqual({ localAvailable: false, sessionAvailable: false });
   await storageProbePage.close();
-  await context.unroute('https://storage-probe.alibaba.com/**');
+  await browserContext.unroute('https://storage-probe.alibaba.com/**');
 
-  const privacyPage = await context.newPage();
+  const privacyPage = await browserContext.newPage();
   await privacyPage.goto(`chrome-extension://${extensionId}/privacy.html`);
   await expect(privacyPage.locator('html')).toHaveAttribute('lang', 'zh-CN');
   await expect(privacyPage.getByRole('heading', { name: '一根青菜隐私政策' })).toBeVisible();
@@ -88,7 +90,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(privacyPage.getByRole('heading', { name: 'oneVegetable Privacy Policy' })).toBeVisible();
   await privacyPage.close();
 
-  const page = await context.newPage();
+  const page = await browserContext.newPage();
   await page.goto(`chrome-extension://${extensionId}/options.html`);
 
   await expect(page.getByRole('heading', { name: '先确认数据与调用边界' })).toBeVisible();
@@ -184,7 +186,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   expect(JSON.stringify(diagnosticsBeforeRestart)).not.toContain('e2e-token');
   const entriesBeforeRestart = (diagnosticsBeforeRestart as { data: { entries: unknown[] } }).data.entries;
 
-  const cdp = await context.newCDPSession(page);
+  const cdp = await browserContext.newCDPSession(page);
   const { targetInfos } = await cdp.send('Target.getTargets');
   const serviceWorkerTarget = targetInfos.find(
     (target) => target.type === 'service_worker' && target.url === serviceWorker.url()
