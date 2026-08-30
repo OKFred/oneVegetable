@@ -18,7 +18,7 @@
     "openapi:auth:refresh": "tsx scripts/refresh-alibaba-openapi-auth.ts",
     "db:migrate:local": "wrangler d1 migrations apply DB --local --config wrangler.jsonc --env=\"\"",
     "build:api": "pnpm --filter @one-vegetable/api build",
-    "build": "pnpm run generate && pnpm -r --if-present build && pnpm run check:web-bundle && pnpm run check:extension-bundle && pnpm run check:store-compliance",
+    "build": "pnpm run generate && pnpm run build:web && pnpm run build:api && pnpm run build:extension && pnpm run check:web-bundle && pnpm run check:extension-bundle && pnpm run check:store-compliance",
     "build:web": "pnpm --filter @one-vegetable/web build",
     "build:web:cloudflare": "pnpm --filter @one-vegetable/web build:cloudflare",
     "cloudflare:types": "wrangler types apps/api/src/worker-configuration.d.ts --config wrangler.jsonc --include-runtime false --env=\"\" && prettier --write apps/api/src/worker-configuration.d.ts",
