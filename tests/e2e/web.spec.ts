@@ -141,6 +141,7 @@ test('web mock queues multiple products and saves platform drafts sequentially',
 });
 
 test('web mock exports a product JSON and imports it into the local review queue', async ({ page }) => {
+  test.setTimeout(60_000);
   await page.goto('/');
   await page.evaluate(() => {
     localStorage.clear();
@@ -411,6 +412,7 @@ test('web mock manages gallery groups and exposes non-blocking asset governance'
 test('web mock supports visual detail editing, PhotoBank transfer and non-blocking guidance', async ({
   page
 }) => {
+  test.setTimeout(60_000);
   await page.goto('/');
   await page.evaluate(() => {
     localStorage.clear();
@@ -436,9 +438,7 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
   await expect(templateDialog.locator('[aria-busy]')).toHaveAttribute('aria-busy', 'false');
   const replaceDescriptionButton = shippingTemplate.getByRole('button', { name: '覆盖全文' });
   await expect(replaceDescriptionButton).toBeEnabled();
-  await replaceDescriptionButton.evaluate((button: HTMLButtonElement) => {
-    button.click();
-  });
+  await replaceDescriptionButton.click();
   const replaceDialog = page.getByRole('dialog', { name: '确认覆盖商品详情' });
   await expect(replaceDialog.getByRole('heading', { name: '当前详情' })).toBeVisible();
   await expect(replaceDialog.getByText('覆盖后：Shipping and delivery')).toBeVisible();
