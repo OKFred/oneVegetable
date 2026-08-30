@@ -577,6 +577,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/alibaba-credential-acquisition/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Cloudflare Browser Run Alibaba credential acquisition */
+        post: operations["startAlibabaCredentialAcquisition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/alibaba-credential-acquisition/continue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Continue Alibaba credential acquisition after explicit administrator input */
+        post: operations["continueAlibabaCredentialAcquisition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/alibaba-credential-acquisition/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Get public Alibaba credential acquisition state */
+        post: operations["getAlibabaCredentialAcquisitionStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/alibaba-credential-acquisition/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Alibaba credential acquisition and clear its browser context */
+        post: operations["cancelAlibabaCredentialAcquisition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/gateway-credentials/get": {
         parameters: {
             query?: never;
@@ -9282,6 +9350,98 @@ export interface operations {
                     "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
                 };
             };
+        };
+    };
+    startAlibabaCredentialAcquisition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlibabaCredentialAcquisitionStartRequest"];
+            };
+        };
+        responses: {
+            200: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            400: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            401: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            403: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            404: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            409: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            429: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            503: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+        };
+    };
+    continueAlibabaCredentialAcquisition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlibabaCredentialAcquisitionContinueRequest"];
+            };
+        };
+        responses: {
+            200: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            400: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            401: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            403: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            404: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            409: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            429: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            503: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+        };
+    };
+    getAlibabaCredentialAcquisitionStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlibabaCredentialAcquisitionJobRequest"];
+            };
+        };
+        responses: {
+            200: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            400: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            401: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            403: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            404: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            409: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            429: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            503: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+        };
+    };
+    cancelAlibabaCredentialAcquisition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlibabaCredentialAcquisitionJobRequest"];
+            };
+        };
+        responses: {
+            200: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            400: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            401: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            403: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            404: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            409: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            429: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
+            503: components["responses"]["AlibabaCredentialAcquisitionStateResponse"];
         };
     };
     getAdminGatewayCredential: {

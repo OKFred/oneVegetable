@@ -2623,6 +2623,102 @@
         }
       }
     },
+    "/admin/alibaba-credential-acquisition/start": {
+      "post": {
+        "summary": "Start Cloudflare Browser Run Alibaba credential acquisition",
+        "operationId": "startAlibabaCredentialAcquisition",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionStartRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "400": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "401": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "403": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "404": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "409": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "429": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "503": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" }
+        }
+      }
+    },
+    "/admin/alibaba-credential-acquisition/continue": {
+      "post": {
+        "summary": "Continue Alibaba credential acquisition after explicit administrator input",
+        "operationId": "continueAlibabaCredentialAcquisition",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionContinueRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "400": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "401": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "403": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "404": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "409": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "429": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "503": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" }
+        }
+      }
+    },
+    "/admin/alibaba-credential-acquisition/status": {
+      "post": {
+        "summary": "Get public Alibaba credential acquisition state",
+        "operationId": "getAlibabaCredentialAcquisitionStatus",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionJobRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "400": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "401": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "403": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "404": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "409": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "429": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "503": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" }
+        }
+      }
+    },
+    "/admin/alibaba-credential-acquisition/cancel": {
+      "post": {
+        "summary": "Cancel Alibaba credential acquisition and clear its browser context",
+        "operationId": "cancelAlibabaCredentialAcquisition",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionJobRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "400": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "401": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "403": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "404": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "409": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "429": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "503": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" }
+        }
+      }
+    },
     "/admin/gateway-credentials/get": {
       "post": {
         "summary": "Get encrypted Alibaba gateway credential status",

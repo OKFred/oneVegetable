@@ -409,6 +409,19 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       }
     }
   });
+  const acquisitionOperation = (summary: string, operationId: string, requestSchema: string) => ({
+    post: {
+      summary,
+      operationId,
+      requestBody: requestBody(requestSchema),
+      responses: Object.fromEntries(
+        ['200', '400', '401', '403', '404', '409', '429', '503'].map((status) => [
+          status,
+          { $ref: '#/components/responses/AlibabaCredentialAcquisitionStateResponse' }
+        ])
+      )
+    }
+  });
 
   document.paths = {
     '/healthz': {
@@ -620,6 +633,26 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       'List append-only audit events',
       'listAdminAuditEvents',
       'AdminAuditListRequest'
+    ),
+    '/admin/alibaba-credential-acquisition/start': acquisitionOperation(
+      'Start Cloudflare Browser Run Alibaba credential acquisition',
+      'startAlibabaCredentialAcquisition',
+      'AlibabaCredentialAcquisitionStartRequest'
+    ),
+    '/admin/alibaba-credential-acquisition/continue': acquisitionOperation(
+      'Continue Alibaba credential acquisition after explicit administrator input',
+      'continueAlibabaCredentialAcquisition',
+      'AlibabaCredentialAcquisitionContinueRequest'
+    ),
+    '/admin/alibaba-credential-acquisition/status': acquisitionOperation(
+      'Get public Alibaba credential acquisition state',
+      'getAlibabaCredentialAcquisitionStatus',
+      'AlibabaCredentialAcquisitionJobRequest'
+    ),
+    '/admin/alibaba-credential-acquisition/cancel': acquisitionOperation(
+      'Cancel Alibaba credential acquisition and clear its browser context',
+      'cancelAlibabaCredentialAcquisition',
+      'AlibabaCredentialAcquisitionJobRequest'
     ),
     '/admin/gateway-credentials/get': postOperation(
       'Get encrypted Alibaba gateway credential status',

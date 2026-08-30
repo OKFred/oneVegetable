@@ -198,6 +198,39 @@ export const alibabaGatewayCredentials = sqliteTable('alibaba_gateway_credential
   remark: text('remark')
 });
 
+export const alibabaCredentialAcquisitionJobs = sqliteTable(
+  'alibaba_credential_acquisition_jobs',
+  {
+    id: text('id').primaryKey(),
+    actorId: text('actor_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    browserSessionId: text('browser_session_id'),
+    status: text('status', {
+      enum: [
+        'running',
+        'selection-required',
+        'callback-confirmation-required',
+        'extension-required',
+        'completed',
+        'failed'
+      ]
+    }).notNull(),
+    stateJson: text('state_json').notNull(),
+    selectedApplicationId: text('selected_application_id'),
+    requestedCallbackUrl: text('requested_callback_url'),
+    activeSlot: integer('active_slot'),
+    expiresTimeUtc: integer('expires_time_utc').notNull(),
+    createTimeUtc: integer('create_time_utc').notNull(),
+    updateTimeUtc: integer('update_time_utc').notNull()
+  },
+  (table) => [
+    uniqueIndex('alibaba_credential_acquisition_jobs_active_unique').on(table.activeSlot),
+    index('alibaba_credential_acquisition_jobs_actor_time_index').on(table.actorId, table.createTimeUtc),
+    index('alibaba_credential_acquisition_jobs_expiry_index').on(table.activeSlot, table.expiresTimeUtc)
+  ]
+);
+
 export const webauthnCredentials = sqliteTable(
   'webauthn_credentials',
   {
@@ -282,9 +315,10 @@ export const schema = {
   productDescriptionTemplates,
   productMutationJobs,
   alibabaGatewayCredentials,
+  alibabaCredentialAcquisitionJobs,
   webauthnCredentials,
   webauthnChallenges,
   authRecoveryCodes,
   userEnrollmentTokens
 };
-export const CURRENT_SCHEMA_VERSION = 8;
+export const CURRENT_SCHEMA_VERSION = 9;
