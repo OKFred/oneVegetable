@@ -79,6 +79,23 @@ describe('NetworkManager', () => {
     ).rejects.toMatchObject({ gatewayError: { code: 'NETWORK_RESPONSE_TOO_LARGE' } });
   });
 
+  it('preserves redirect error semantics with a Worker-compatible manual request', async () => {
+    const send = vi.fn().mockResolvedValue(
+      new Response(null, {
+        status: 302,
+        headers: { Location: 'https://evil.example/redirected' }
+      })
+    );
+    const manager = createManager(send);
+
+    await expect(
+      manager.request({ service: 'alibaba', url: 'https://eco.taobao.com/router/rest' })
+    ).rejects.toMatchObject({ gatewayError: { code: 'NETWORK_REDIRECT_DENIED' } });
+
+    const call = send.mock.calls[0] as [RequestInfo | URL, RequestInit] | undefined;
+    expect(call?.[1].redirect).toBe('manual');
+  });
+
   it('keeps GatewayException intact', () => {
     const requestId = createRequestId();
     const error = new GatewayException({ code: 'CUSTOM', message: 'custom', retryable: false }, requestId);

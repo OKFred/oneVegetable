@@ -118,6 +118,7 @@ export class NetworkManager {
     }
     const url = new URL(input.url);
     const policy = this.#policies[input.service];
+    const redirectPolicy = policy.redirect ?? 'error';
     try {
       assertAllowedUrl(url, policy);
       assertRequestSize(input.body, policy.maxRequestBytes, input.bodySizeBytes);
@@ -143,9 +144,21 @@ export class NetworkManager {
             'X-Request-ID': requestId
           },
           credentials: policy.credentials ?? 'omit',
-          redirect: policy.redirect ?? 'error',
+          // Cloudflare Workers does not implement `redirect: "error"`.
+          // Request redirects manually and preserve the same deny-by-default policy below.
+          redirect: redirectPolicy === 'error' ? 'manual' : redirectPolicy,
           signal: combinedSignal
         });
+        if (redirectPolicy === 'error' && isRedirectResponse(response)) {
+          throw new GatewayException(
+            {
+              code: 'NETWORK_REDIRECT_DENIED',
+              message: '网络请求不允许重定向',
+              retryable: false
+            },
+            requestId
+          );
+        }
         const result: NetworkResponse = {
           requestId,
           status: response.status,
@@ -326,4 +339,15 @@ function combineSignals(external: AbortSignal | undefined, timeout: AbortSignal)
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && (error.name === 'AbortError' || error.name === 'TimeoutError');
+}
+
+function isRedirectResponse(response: Response): boolean {
+  return (
+    response.type === 'opaqueredirect' ||
+    response.status === 301 ||
+    response.status === 302 ||
+    response.status === 303 ||
+    response.status === 307 ||
+    response.status === 308
+  );
 }
