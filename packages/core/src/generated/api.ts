@@ -814,6 +814,101 @@ export interface components {
             revision: number;
             remark: string | null;
         };
+        AlibabaCredentialAcquisitionApplicationSummary: {
+            applicationId: string;
+            appName: string;
+            appKeySuffix: string;
+            status: string;
+            /** @enum {string} */
+            source: "application-center" | "legacy-crosstrade";
+        };
+        AlibabaCredentialAcquisitionCallbackConfirmationState: {
+            /** @constant */
+            status: "callback-confirmation-required";
+            /** Format: uuid */
+            jobId: string;
+            expiresAtUtc: number;
+            /** Format: uri */
+            currentUrl: string;
+            /** Format: uri */
+            requestedUrl: string;
+        };
+        AlibabaCredentialAcquisitionCompletedState: {
+            /** @constant */
+            status: "completed";
+            credential: components["schemas"]["AlibabaCredentialAcquisitionCompletedSummary"];
+        };
+        AlibabaCredentialAcquisitionCompletedSummary: {
+            appName: string;
+            appKeySuffix: string;
+            applicationStatus: string;
+            permissions: {
+                total: number;
+                items: components["schemas"]["AlibabaOpenApiPermission"][];
+            };
+            accessTokenExpiresTimeUtc: number | null;
+            refreshTokenExpiresTimeUtc: number | null;
+        };
+        AlibabaCredentialAcquisitionContinueCommand: {
+            /** @constant */
+            type: "select-application";
+            applicationId: string;
+        } | {
+            /** @constant */
+            type: "confirm-callback-change";
+            confirmed: boolean;
+        };
+        AlibabaCredentialAcquisitionContinueRequest: {
+            requestId: components["schemas"]["RequestId"];
+            /** Format: uuid */
+            jobId: string;
+            command: components["schemas"]["AlibabaCredentialAcquisitionContinueCommand"];
+        };
+        AlibabaCredentialAcquisitionExtensionRequiredState: {
+            /** @constant */
+            status: "extension-required";
+            /** @enum {string} */
+            reasonCode: "browser-unavailable" | "browser-quota-exhausted" | "bot-rejected" | "captcha" | "slider" | "mfa" | "secret-verification" | "automation-layout-unsupported" | "session-expired";
+        };
+        AlibabaCredentialAcquisitionFailedState: {
+            /** @constant */
+            status: "failed";
+            error: components["schemas"]["GatewayError"];
+        };
+        AlibabaCredentialAcquisitionJobRequest: {
+            requestId: components["schemas"]["RequestId"];
+            /** Format: uuid */
+            jobId: string;
+        };
+        AlibabaCredentialAcquisitionRunningState: {
+            /** @constant */
+            status: "running";
+            /** Format: uuid */
+            jobId: string;
+            expiresAtUtc: number;
+        };
+        AlibabaCredentialAcquisitionSelectionRequiredState: {
+            /** @constant */
+            status: "selection-required";
+            /** Format: uuid */
+            jobId: string;
+            expiresAtUtc: number;
+            applications: components["schemas"]["AlibabaCredentialAcquisitionApplicationSummary"][];
+        };
+        AlibabaCredentialAcquisitionStartRequest: {
+            requestId: components["schemas"]["RequestId"];
+            account: string;
+            password: string;
+            /** Format: uri */
+            callbackUrl: string | null;
+        };
+        AlibabaCredentialAcquisitionState: components["schemas"]["AlibabaCredentialAcquisitionRunningState"] | components["schemas"]["AlibabaCredentialAcquisitionSelectionRequiredState"] | components["schemas"]["AlibabaCredentialAcquisitionCallbackConfirmationState"] | components["schemas"]["AlibabaCredentialAcquisitionExtensionRequiredState"] | components["schemas"]["AlibabaCredentialAcquisitionCompletedState"] | components["schemas"]["AlibabaCredentialAcquisitionFailedState"];
+        AlibabaCredentialAcquisitionStateSuccess: {
+            requestId: components["schemas"]["RequestId"];
+            /** @constant */
+            ok: true;
+            data: components["schemas"]["AlibabaCredentialAcquisitionState"];
+        };
         AlibabaGatewayStatus: {
             /** @enum {string} */
             source: "environment" | "credential-bundle" | "d1-vault" | "documentation-replay";
@@ -7107,6 +7202,16 @@ export interface components {
             };
             content: {
                 "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+            };
+        };
+        /** @description Public acquisition state or a structured failure */
+        AlibabaCredentialAcquisitionStateResponse: {
+            headers: {
+                "X-Request-ID"?: components["schemas"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["AlibabaCredentialAcquisitionStateSuccess"] | components["schemas"]["ApiFailure"];
             };
         };
     };
