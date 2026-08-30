@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { startRegistration } from '@simplewebauthn/browser';
-import { Copy, KeyRound, PauseCircle, PlayCircle, RefreshCw, Shield, Upload } from '@lucide/vue';
+import { Copy, KeyRound, PauseCircle, PlayCircle, RefreshCw, Shield, Sparkles, Upload } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
 import { parseAlibabaOpenApiCredentialBundle } from '@one-vegetable/core';
@@ -19,6 +19,7 @@ import Card from './ui/Card.vue';
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import ErrorNotice from './ErrorNotice.vue';
 import ModalDialog from './ui/ModalDialog.vue';
+import AlibabaCloudCredentialAcquisitionDialog from './AlibabaCloudCredentialAcquisitionDialog.vue';
 
 type Confirmation =
   | { kind: 'credential-import' }
@@ -38,6 +39,7 @@ const recoveryCodes = ref<string[]>([]);
 const loading = ref(false);
 const error = ref<unknown>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
+const acquisitionOpen = ref(false);
 
 const confirmationTitle = computed(() => {
   if (confirmation.value?.kind === 'credential-import') return '确认导入 Alibaba 凭据';
@@ -235,6 +237,7 @@ function userError(cause: unknown, fallback: string): Error {
           @change="selectCredentialFile"
         />
         <div class="mt-4 flex flex-wrap gap-2">
+          <Button size="sm" @click="acquisitionOpen = true"><Sparkles class="size-4" />一键连接</Button>
           <Button size="sm" @click="fileInput?.click()"
             ><Upload class="size-4" />导入 credentials.json</Button
           >
@@ -323,6 +326,8 @@ function userError(cause: unknown, fallback: string): Error {
       @update:open="confirmation = $event ? confirmation : null"
       @confirm="confirm"
     />
+
+    <AlibabaCloudCredentialAcquisitionDialog v-model:open="acquisitionOpen" @completed="refresh" />
 
     <ModalDialog
       :open="recoveryCodes.length > 0"
