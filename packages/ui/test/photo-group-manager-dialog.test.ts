@@ -42,7 +42,7 @@ afterEach(() => {
 });
 
 describe('PhotoGroupManagerDialog', () => {
-  it('loads descendants lazily and adds a root group in Mock mode', async () => {
+  it('keeps the parent expanded and shows a newly added child immediately', async () => {
     const wrapper = mountDialog('mock');
 
     await vi.waitFor(() => {
@@ -53,9 +53,9 @@ describe('PhotoGroupManagerDialog', () => {
       expect(document.body.textContent).toContain('白底主图');
     });
 
-    buttonByLabel('在全部图片下新增分组').click();
+    buttonByLabel('在 商品主图 下新增分组').click();
     await flushPromises();
-    const input = inputByLabel('在全部图片下的新分组名称');
+    const input = inputByLabel('在 商品主图 下的新分组名称');
     input.value = '新版详情素材';
     input.dispatchEvent(new Event('input', { bubbles: true }));
     await flushPromises();
@@ -64,6 +64,7 @@ describe('PhotoGroupManagerDialog', () => {
     await vi.waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith('图库分组“新版详情素材”已创建');
       expect(document.body.textContent).toContain('新版详情素材');
+      expect(buttonByLabel('收起商品主图')).toBeDefined();
     });
     wrapper.unmount();
   });

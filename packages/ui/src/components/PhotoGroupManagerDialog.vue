@@ -111,6 +111,7 @@ const confirmationTarget = computed(() => {
 const operateGroup = useMutation({
   mutationFn: (request: PhotoGroupOperationRequest) => gateway.request('operatePhotoGroup', request),
   onSuccess: async (result, request) => {
+    applyOperationResult(request, result);
     confirmationOpen.value = false;
     pendingRequest.value = null;
     editAction.value = null;
@@ -118,7 +119,7 @@ const operateGroup = useMutation({
     operationError.value = '';
     toast.success(successMessage(request, result));
     emit('changed', request, result);
-    await refreshGroups();
+    await queryClient.invalidateQueries({ queryKey: ['photo-groups'], refetchType: 'none' });
   },
   onError: (error: Error) => {
     confirmationOpen.value = false;
@@ -156,6 +157,99 @@ function childrenFor(parentId: string): PhotoGroup[] {
 function findKnownGroup(groupId: string | null): PhotoGroup | null {
   if (!groupId) return null;
   return rootGroups.value.find((group) => group.id === groupId) ?? descendantsById.value[groupId] ?? null;
+}
+
+function applyOperationResult(request: PhotoGroupOperationRequest, result: PhotoGroupOperationResult): void {
+  if (request.operation === 'add') {
+    applyAddedGroup(request, result);
+    return;
+  }
+  if (!request.groupId) return;
+  if (request.operation === 'rename') {
+    applyRenamedGroup(request, result);
+    return;
+  }
+  applyDeletedGroup(request.groupId);
+}
+
+function applyAddedGroup(request: PhotoGroupOperationRequest, result: PhotoGroupOperationResult): void {
+  const parent = findKnownGroup(request.groupId);
+  const created: PhotoGroup = {
+    id: result.group?.id ?? result.groupId,
+    name: result.group?.name ?? request.groupName ?? '未命名分组',
+    photoCount: result.group?.photoCount ?? 0,
+    parentId: request.groupId,
+    level: request.groupId ? Math.min((parent?.level ?? 1) + 1, 3) : 1
+  };
+  const queryKey = request.groupId
+    ? (['photo-groups', request.groupId] as const)
+    : (['photo-groups', 'root'] as const);
+  queryClient.setQueryData<PhotoGroup[]>(queryKey, (current = []) => upsertGroup(current, created));
+  if (!request.groupId) return;
+
+  descendantsById.value = { ...descendantsById.value, [created.id]: created };
+  const nextExpanded = new Set(expandedIds.value);
+  nextExpanded.add(request.groupId);
+  expandedIds.value = nextExpanded;
+  const nextLoaded = new Set(loadedIds.value);
+  nextLoaded.add(request.groupId);
+  loadedIds.value = nextLoaded;
+  childErrors.value = { ...childErrors.value, [request.groupId]: '' };
+}
+
+function applyRenamedGroup(request: PhotoGroupOperationRequest, result: PhotoGroupOperationResult): void {
+  if (!request.groupId) return;
+  const current = findKnownGroup(request.groupId);
+  const renamed: PhotoGroup = {
+    id: request.groupId,
+    name: request.groupName ?? result.group?.name ?? current?.name ?? '未命名分组',
+    photoCount: result.group?.photoCount ?? current?.photoCount ?? 0,
+    parentId: current?.parentId ?? result.group?.parentId ?? null,
+    level: current?.level ?? result.group?.level ?? 1
+  };
+  if (renamed.parentId !== null) {
+    descendantsById.value = { ...descendantsById.value, [renamed.id]: renamed };
+  }
+  updateCachedGroups((groups) => groups.map((group) => (group.id === renamed.id ? renamed : group)));
+}
+
+function applyDeletedGroup(groupId: string): void {
+  const removedIds = collectKnownBranchIds(groupId);
+  const nextDescendants: Record<string, PhotoGroup> = {};
+  for (const [id, group] of Object.entries(descendantsById.value)) {
+    if (!removedIds.has(id)) nextDescendants[id] = group;
+  }
+  descendantsById.value = nextDescendants;
+  expandedIds.value = new Set([...expandedIds.value].filter((id) => !removedIds.has(id)));
+  loadedIds.value = new Set([...loadedIds.value].filter((id) => !removedIds.has(id)));
+  updateCachedGroups((groups) => groups.filter((group) => !removedIds.has(group.id)));
+}
+
+function collectKnownBranchIds(groupId: string): Set<string> {
+  const removedIds = new Set([groupId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const group of Object.values(descendantsById.value)) {
+      if (group.parentId && removedIds.has(group.parentId) && !removedIds.has(group.id)) {
+        removedIds.add(group.id);
+        changed = true;
+      }
+    }
+  }
+  return removedIds;
+}
+
+function updateCachedGroups(update: (groups: readonly PhotoGroup[]) => PhotoGroup[]): void {
+  queryClient.setQueriesData<PhotoGroup[]>({ queryKey: ['photo-groups'] }, (current) =>
+    current ? update(current) : current
+  );
+}
+
+function upsertGroup(groups: readonly PhotoGroup[], group: PhotoGroup): PhotoGroup[] {
+  const existingIndex = groups.findIndex((candidate) => candidate.id === group.id);
+  if (existingIndex < 0) return [...groups, group];
+  return groups.map((candidate, index) => (index === existingIndex ? group : candidate));
 }
 
 async function toggleGroup(row: PhotoGroupRow): Promise<void> {
