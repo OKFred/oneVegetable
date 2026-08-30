@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import rootPackage from '../../package.json' with { type: 'json' };
 
@@ -441,19 +441,18 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
   const shippingTemplate = templateDialog.locator('article').filter({ hasText: 'Shipping and delivery' });
   await expect(templateDialog.locator('[aria-busy]')).toHaveAttribute('aria-busy', 'false');
   const replaceDescriptionButton = shippingTemplate.getByRole('button', { name: '覆盖全文' });
-  await expect(replaceDescriptionButton).toBeEnabled();
-  await replaceDescriptionButton.click();
+  await activateReplacingDialogControl(replaceDescriptionButton);
   const replaceDialog = page.getByRole('dialog', { name: '确认覆盖商品详情' });
   await expect(replaceDialog.getByRole('heading', { name: '当前详情' })).toBeVisible();
   await expect(replaceDialog.getByText('覆盖后：Shipping and delivery')).toBeVisible();
-  await replaceDialog.getByRole('button', { name: '确认覆盖全文' }).click();
+  await activateReplacingDialogControl(replaceDialog.getByRole('button', { name: '确认覆盖全文' }));
   await expect(page.locator('.ProseMirror')).toContainText('Shipping and Delivery');
   await expect(replaceDialog).toBeHidden();
 
   await page.getByRole('button', { name: '详情模板' }).click();
   templateDialog = page.getByRole('dialog', { name: '商品详情模板' });
   await expect(templateDialog).toBeVisible();
-  await templateDialog.getByRole('button', { name: '新建共享模板' }).click();
+  await activateReplacingDialogControl(templateDialog.getByRole('button', { name: '新建共享模板' }));
   const editorDialog = page.getByRole('dialog', { name: '新建共享详情模板' });
   await editorDialog.getByLabel('模板名称').fill('E2E custom details');
   await editorDialog.getByLabel('安全 HTML').fill('<h2>E2E custom section</h2><p>Shared content</p>');
@@ -604,4 +603,10 @@ async function openNewProductEditor(page: Page): Promise<void> {
   const productListTab = page.getByRole('tab', { name: '商品列表' });
   if ((await productListTab.getAttribute('aria-selected')) !== 'true') await productListTab.click();
   await page.getByRole('button', { name: '新增', exact: true }).click();
+}
+
+async function activateReplacingDialogControl(control: Locator): Promise<void> {
+  await expect(control).toBeVisible();
+  await expect(control).toBeEnabled();
+  await control.dispatchEvent('click');
 }
