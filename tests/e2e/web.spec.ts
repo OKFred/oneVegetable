@@ -456,7 +456,7 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
   const editorDialog = page.getByRole('dialog', { name: '新建共享详情模板' });
   await editorDialog.getByLabel('模板名称').fill('E2E custom details');
   await editorDialog.getByLabel('安全 HTML').fill('<h2>E2E custom section</h2><p>Shared content</p>');
-  await editorDialog.getByRole('button', { name: '保存共享模板' }).click();
+  await activateReplacingDialogControl(editorDialog.getByRole('button', { name: '保存共享模板' }));
   await expect(
     page.getByRole('dialog', { name: '商品详情模板' }).getByText('E2E custom details')
   ).toBeVisible();
