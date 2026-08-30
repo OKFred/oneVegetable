@@ -12,6 +12,7 @@ import type {
 } from '@one-vegetable/core';
 
 import ActionTooltip from '../components/ActionTooltip.vue';
+import GroupSidebar from '../components/GroupSidebar.vue';
 import PageHeader from '../components/PageHeader.vue';
 import ImagePreview, { type ImagePreviewItem } from '../components/ImagePreview.vue';
 import PhotoGroupManagerDialog from '../components/PhotoGroupManagerDialog.vue';
@@ -29,7 +30,7 @@ import { useServices } from '../lib/services';
 
 type GovernanceFilter = 'all' | 'unreferenced' | 'lowResolution';
 
-const { gateway, mode } = useServices();
+const { gateway } = useServices();
 const selectedGroup = ref('-1');
 const governanceFilter = ref<GovernanceFilter>('all');
 const selectedGroupDefinition = ref<PhotoGroup | null>(null);
@@ -39,6 +40,7 @@ const previewIndex = ref(0);
 const uploadDialogOpen = ref(false);
 const groupManagerOpen = ref(false);
 const groupNavigationRevision = ref(0);
+const groupSidebarCollapsed = ref(false);
 const photoMutations = useOperationAvailability(['uploadPhoto', 'transferPhotoFromUrl']);
 const uploadDialogBlocked = computed(
   () => !photoMutations.isAllowed('uploadPhoto') && !photoMutations.isAllowed('transferPhotoFromUrl')
@@ -144,9 +146,6 @@ function handleUploaded(photo: Photo): void {
 <template>
   <PageHeader title="图库" description="管理国际站图库（图片银行）的分组、发品素材与非阻断治理提示。">
     <div class="flex flex-wrap items-center justify-end gap-2">
-      <Badge :variant="mode === 'mock' ? 'secondary' : 'success'">
-        {{ mode === 'mock' ? 'OpenAPI 演示' : mode === 'bff' ? 'BFF 后端查询' : 'Extension API 查询' }}
-      </Badge>
       <Button variant="outline" @click="groupManagerOpen = true">
         <Settings2 class="size-4" />分组管理
       </Button>
@@ -173,15 +172,19 @@ function handleUploaded(photo: Photo): void {
     </Card>
   </div>
 
-  <div class="grid gap-5 lg:grid-cols-[270px_1fr]">
-    <Card class="h-fit p-3">
-      <p class="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">图库分组</p>
+  <div
+    class="grid gap-5 transition-[grid-template-columns] duration-200"
+    :class="
+      groupSidebarCollapsed ? 'lg:grid-cols-[3.25rem_minmax(0,1fr)]' : 'lg:grid-cols-[270px_minmax(0,1fr)]'
+    "
+  >
+    <GroupSidebar v-model:collapsed="groupSidebarCollapsed" title="图库分组">
       <PhotoGroupNavigation
         :key="groupNavigationRevision"
         v-model="selectedGroup"
         @select="selectGroupDefinition"
       />
-    </Card>
+    </GroupSidebar>
 
     <section class="space-y-3">
       <Card class="flex flex-wrap items-center justify-between gap-3 p-3">

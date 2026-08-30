@@ -74,6 +74,28 @@ describe('PhotosView', () => {
     wrapper.unmount();
   });
 
+  it('collapses the group sidebar and exposes explicit tree expansion controls', async () => {
+    const wrapper = mountView();
+    await flushPromises();
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('button[aria-label="展开商品主图"]').exists()).toBe(true);
+    });
+    await wrapper.get('button[aria-label="展开商品主图"]').trigger('click');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('白底主图');
+      expect(wrapper.find('button[aria-label="收起商品主图"]').exists()).toBe(true);
+    });
+    await wrapper.get('button[aria-label="收起商品主图"]').trigger('click');
+    expect(wrapper.text()).not.toContain('白底主图');
+
+    await wrapper.get('button[aria-label="收起图库分组"]').trigger('click');
+    expect(wrapper.find('[role="tree"][aria-label="图库分组"]').exists()).toBe(false);
+    await wrapper.get('button[aria-label="展开图库分组"]').trigger('click');
+    expect(wrapper.find('[role="tree"][aria-label="图库分组"]').exists()).toBe(true);
+    wrapper.unmount();
+  });
+
   it('moves gallery writes into a dedicated tree management dialog', async () => {
     const wrapper = mountView();
     await flushPromises();
@@ -94,7 +116,7 @@ describe('PhotosView', () => {
     await flushPromises();
 
     expect(button(wrapper, '分组管理').attributes('disabled')).toBeUndefined();
-    expect(wrapper.text()).toContain('Extension API 查询');
+    expect(wrapper.text()).not.toMatch(/BFF|OpenAPI 演示|Extension API/);
     await button(wrapper, '分组管理').trigger('click');
     await vi.waitFor(() => {
       expect(document.body.textContent).toContain('新增、改名和删除会直接写入当前国际站账号');

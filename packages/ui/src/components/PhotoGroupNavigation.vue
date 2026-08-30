@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
-import { FolderOpen, LoaderCircle } from '@lucide/vue';
+import { ChevronDown, ChevronRight, Folder, FolderOpen, LoaderCircle } from '@lucide/vue';
 
 import type { PhotoGroup } from '@one-vegetable/core';
 
@@ -45,7 +45,21 @@ const visibleGroups = computed(() => [
 async function selectGroup(group: PhotoGroup): Promise<void> {
   emit('update:modelValue', group.id);
   emit('select', group);
-  if (group.id === '-1' || group.level !== 1 || descendants.value[group.id]) return;
+  if (group.id === '-1' || group.level !== 1 || hasLoaded(group.id)) return;
+  await expandGroup(group);
+}
+
+async function toggleGroup(group: PhotoGroup): Promise<void> {
+  if (expandedRootIds.value.includes(group.id)) {
+    expandedRootIds.value = expandedRootIds.value.filter((id) => id !== group.id);
+    return;
+  }
+  await expandGroup(group);
+}
+
+async function expandGroup(group: PhotoGroup): Promise<void> {
+  expandedRootIds.value = [...new Set([...expandedRootIds.value, group.id])];
+  if (hasLoaded(group.id)) return;
   loadingRootIds.value = [...loadingRootIds.value, group.id];
   error.value = '';
   try {
@@ -59,34 +73,59 @@ async function selectGroup(group: PhotoGroup): Promise<void> {
         .filter((candidate) => candidate.id !== group.id)
         .toSorted((left, right) => left.level - right.level || left.name.localeCompare(right.name))
     };
-    expandedRootIds.value = [...new Set([...expandedRootIds.value, group.id])];
   } catch (reason: unknown) {
     error.value = reason instanceof Error ? reason.message : '图库子分组加载失败';
   } finally {
     loadingRootIds.value = loadingRootIds.value.filter((id) => id !== group.id);
   }
 }
+
+function hasLoaded(groupId: string): boolean {
+  return Object.hasOwn(descendants.value, groupId);
+}
+
+function canToggle(group: PhotoGroup): boolean {
+  if (group.id === '-1' || group.level !== 1) return false;
+  return !hasLoaded(group.id) || (descendants.value[group.id]?.length ?? 0) > 0;
+}
 </script>
 
 <template>
-  <div>
+  <div role="tree" aria-label="图库分组">
     <TransitionGroup name="ov-list" tag="div">
-      <button
+      <div
         v-for="group in visibleGroups"
         :key="group.id"
-        type="button"
+        role="treeitem"
+        :aria-level="group.level"
+        :aria-expanded="canToggle(group) ? expandedRootIds.includes(group.id) : undefined"
         class="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-muted"
         :class="props.modelValue === group.id ? 'bg-accent text-accent-foreground' : ''"
         :style="{ paddingLeft: `${8 + (group.level - 1) * 14}px` }"
-        @click="selectGroup(group)"
       >
-        <span class="flex min-w-0 items-center gap-2">
-          <LoaderCircle v-if="loadingRootIds.includes(group.id)" class="size-4 shrink-0 animate-spin" />
-          <FolderOpen v-else class="size-4 shrink-0" />
+        <button
+          v-if="canToggle(group)"
+          type="button"
+          class="mr-1 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          :aria-label="`${expandedRootIds.includes(group.id) ? '收起' : '展开'}${group.name}`"
+          @click="toggleGroup(group)"
+        >
+          <LoaderCircle v-if="loadingRootIds.includes(group.id)" class="size-4 animate-spin" />
+          <ChevronDown v-else-if="expandedRootIds.includes(group.id)" class="size-4" />
+          <ChevronRight v-else class="size-4" />
+        </button>
+        <span v-else class="mr-1 block size-7 shrink-0" />
+        <button
+          type="button"
+          class="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left"
+          @click="selectGroup(group)"
+        >
+          <FolderOpen v-if="expandedRootIds.includes(group.id)" class="size-4 shrink-0" />
+          <Folder v-else class="size-4 shrink-0" />
           <span class="truncate">{{ group.name }}</span>
-        </span>
+        </button>
         <span v-if="group.photoCount > 0" class="text-xs text-muted-foreground">{{ group.photoCount }}</span>
-      </button>
+      </div>
     </TransitionGroup>
     <ErrorNotice
       v-if="roots.error.value"
