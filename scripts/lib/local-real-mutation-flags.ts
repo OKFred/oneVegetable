@@ -3,6 +3,7 @@ export const DEFAULT_LOCAL_REAL_MUTATION_FLAGS = [
   'operation:saveProductDraft',
   'operation:updateProduct',
   'operation:updateProductDisplay',
+  'operation:createProductGroup',
   'operation:operatePhotoGroup',
   'operation:uploadPhoto',
   'operation:transferPhotoFromUrl'

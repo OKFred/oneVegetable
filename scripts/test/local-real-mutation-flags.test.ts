@@ -6,9 +6,9 @@ import {
 } from '../lib/local-real-mutation-flags';
 
 describe('local real mutation flags', () => {
-  it('enables only account-verified local mutations by default', () => {
+  it('enables reviewed local mutations while keeping unsupported domains closed', () => {
     expect(DEFAULT_LOCAL_REAL_MUTATION_FLAGS).toContain('operation:updateProductDisplay');
-    expect(DEFAULT_LOCAL_REAL_MUTATION_FLAGS).not.toContain('operation:createProductGroup');
+    expect(DEFAULT_LOCAL_REAL_MUTATION_FLAGS).toContain('operation:createProductGroup');
     expect(DEFAULT_LOCAL_REAL_MUTATION_FLAGS).not.toContain('operation:submitRfqQuotation');
   });
 
