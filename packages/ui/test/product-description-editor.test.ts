@@ -150,7 +150,7 @@ describe('ProductDescriptionEditor', () => {
     wrapper.unmount();
   });
 
-  it('keeps loaded templates visible but locks stale actions until reopening finishes refreshing', async () => {
+  it('reuses loaded templates across reopening and refreshes them only on request', async () => {
     const client = new DelayedRefreshTemplateClient();
     const { wrapper } = mountEditor('<p>Original details</p>', false, client);
     await flushPromises();
@@ -161,8 +161,14 @@ describe('ProductDescriptionEditor', () => {
 
     await clickButton('详情模板');
     await nextTick();
-    expect(document.body.textContent).toContain('正在刷新模板');
+    expect(document.body.textContent).not.toContain('正在刷新模板');
+    expect(client.listCalls).toBe(1);
     const replaceButton = findButton('覆盖全文', templateCard('Shipping and delivery'));
+    expect(replaceButton.disabled).toBe(false);
+
+    await clickButton('刷新');
+    await nextTick();
+    expect(document.body.textContent).toContain('正在刷新模板');
     expect(replaceButton.disabled).toBe(true);
 
     client.releaseRefresh();
@@ -181,6 +187,10 @@ class DelayedRefreshTemplateClient extends MemoryProductDescriptionTemplateClien
 
   constructor() {
     super(BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates, { writable: false });
+  }
+
+  get listCalls(): number {
+    return this.#listCalls;
   }
 
   override async list(

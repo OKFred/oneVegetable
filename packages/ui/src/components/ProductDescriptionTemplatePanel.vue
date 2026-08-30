@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { Archive, ArchiveRestore, FilePlus2, LayoutTemplate, Pencil } from '@lucide/vue';
+import { Archive, ArchiveRestore, FilePlus2, LayoutTemplate, Pencil, RefreshCw } from '@lucide/vue';
 
 import { sanitizeProductDescriptionHtml } from '@one-vegetable/core/browser';
 import {
@@ -29,6 +29,7 @@ const { productDescriptionTemplates, mode } = useServices();
 const open = ref(false);
 const view = ref<PanelView>('browse');
 const templates = ref<ProductDescriptionTemplate[]>([]);
+const loadedLanguage = ref<ProductDescriptionTemplateLanguage | null>(null);
 const loading = ref(false);
 const saving = ref(false);
 const error = ref('');
@@ -40,6 +41,7 @@ const formName = ref('');
 const formCategory = ref<ProductDescriptionTemplateCategory>('custom');
 const formHtml = ref('');
 const formRemark = ref('');
+let loadSequence = 0;
 
 const canManage = computed(() => mode !== 'extension' && productDescriptionTemplates !== undefined);
 const visibleTemplates = computed(() =>
@@ -61,27 +63,34 @@ const selectedSafeHtml = computed(() =>
 );
 
 watch(open, (value) => {
-  if (value) void loadTemplates();
+  if (value && loadedLanguage.value !== props.language) void loadTemplates();
   else resetView();
 });
 watch(
   () => props.language,
   () => {
+    loadedLanguage.value = null;
+    templates.value = [];
     if (open.value) void loadTemplates();
   }
 );
 
 async function loadTemplates(): Promise<void> {
   if (!productDescriptionTemplates) return;
+  const sequence = ++loadSequence;
+  const requestedLanguage = props.language;
   loading.value = true;
   error.value = '';
   try {
-    const result = await productDescriptionTemplates.list({ language: props.language, pageSize: 100 });
+    const result = await productDescriptionTemplates.list({ language: requestedLanguage, pageSize: 100 });
+    if (sequence !== loadSequence || requestedLanguage !== props.language) return;
     templates.value = result.items;
+    loadedLanguage.value = requestedLanguage;
   } catch (reason: unknown) {
+    if (sequence !== loadSequence) return;
     error.value = messageOf(reason);
   } finally {
-    loading.value = false;
+    if (sequence === loadSequence) loading.value = false;
   }
 }
 
@@ -210,9 +219,14 @@ function messageOf(reason: unknown): string {
         <label class="flex cursor-pointer items-center gap-2 text-sm">
           <input v-model="showArchived" type="checkbox" :disabled="loading" />显示已归档共享模板
         </label>
-        <Button v-if="canManage" variant="outline" size="sm" :disabled="loading" @click="startCreate">
-          <FilePlus2 class="size-4" />新建共享模板
-        </Button>
+        <div class="flex flex-wrap justify-end gap-2">
+          <Button variant="outline" size="sm" :disabled="loading" @click="loadTemplates">
+            <RefreshCw class="size-4" :class="loading ? 'animate-spin' : ''" />刷新
+          </Button>
+          <Button v-if="canManage" variant="outline" size="sm" :disabled="loading" @click="startCreate">
+            <FilePlus2 class="size-4" />新建共享模板
+          </Button>
+        </div>
       </div>
       <p v-if="loading && templates.length === 0" class="py-8 text-center text-sm text-muted-foreground">
         正在读取模板…
