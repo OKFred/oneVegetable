@@ -19,6 +19,14 @@ ALL_PASS=your-login-password
 pnpm openapi:auth
 ```
 
+默认从仓库根目录的 `.env` 读取 Alibaba 网站登录账号。要用未绑定应用的测试账号验证“无应用、验证码或人工验证”分支，可显式运行：
+
+```powershell
+pnpm openapi:auth:free
+```
+
+该命令只在当前进程内读取 `.env.free`。脚本不会打印或持久化网站密码，也不会自动创建应用、申请 API 权限或接受平台协议；遇到滑块、验证码、MFA 等验证时保留有头页面供用户处理。
+
 脚本使用 `artifacts/openapi-auth/profile` 保存独立 Chrome 会话。若出现验证码、滑块、二次验证或安全确认，请在打开的浏览器中手工完成；页面就绪后脚本会自动继续。
 
 ## 应用与 Callback

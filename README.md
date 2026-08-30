@@ -58,6 +58,7 @@ pnpm test:e2e
 pnpm test:e2e:bff-replay # 重建隔离 D1，启动 Worker/Web，验证认证后的全领域 BFF 读链路
 pnpm check:replay-coverage # 校验所有可真实调用的只读能力都有有效文档回放
 pnpm openapi:auth         # Windows 本地有头浏览器获取 OpenAPI 授权包
+pnpm openapi:auth:free    # 显式使用 .env.free 验证无应用/人机挑战兜底
 pnpm smoke:product:draft:real # 显式 opt-in 后创建并回读一条真实平台草稿
 pnpm release:extension # 可复现 ZIP、SHA-256 与 release.json
 pnpm capture:store-assets # 从构建后的扩展刷新 1280×800 商店截图

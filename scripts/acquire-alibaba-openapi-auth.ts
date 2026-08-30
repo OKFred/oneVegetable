@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { loadEnvFile, stdin, stdout } from 'node:process';
 import { createInterface } from 'node:readline/promises';
 
@@ -89,6 +90,14 @@ function safeUrl(value: string | null): string | null {
 }
 
 function loadLocalEnvironment(): void {
-  if (!existsSync('.env')) return;
-  loadEnvFile('.env');
+  const environmentFile = resolve(process.cwd(), readEnvironmentFileArgument(process.argv.slice(2)));
+  if (!existsSync(environmentFile)) return;
+  loadEnvFile(environmentFile);
+}
+
+function readEnvironmentFileArgument(arguments_: readonly string[]): string {
+  const prefix = '--env-file=';
+  const argument = arguments_.find((value) => value.startsWith(prefix));
+  const value = argument?.slice(prefix.length).trim() ?? '';
+  return value || '.env';
 }
