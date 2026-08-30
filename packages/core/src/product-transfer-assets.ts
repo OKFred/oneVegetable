@@ -188,7 +188,11 @@ function collectHtmlImageSources(html: string): string[] {
 }
 
 function normalizeTransferAssetSource(value: string): string | null {
-  return normalizeProductTransferAssetPath(value) ?? normalizeRemoteProductAssetUrl(value);
+  const trimmed = value.trim();
+  if (trimmed.startsWith(PRODUCT_TRANSFER_ASSET_DIRECTORY)) {
+    return normalizeProductTransferAssetPath(trimmed) ?? trimmed;
+  }
+  return normalizeRemoteProductAssetUrl(trimmed);
 }
 
 function isTransferImageField(field: ProductSchemaField): boolean {
