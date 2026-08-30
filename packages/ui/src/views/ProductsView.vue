@@ -1235,11 +1235,12 @@ async function selectProductForSchema(product: Product): Promise<void> {
 }
 
 function startNewProduct(): void {
+  const migratedDraft = migratedDraftKey.value ? draftCandidate.value : null;
   cancelDraftSave();
-  draftCandidate.value = null;
+  draftCandidate.value = migratedDraft;
   acknowledgedMutationJobId.value = '';
   editingBatchItemId.value = '';
-  resetEditorSession({ categoryId: '', mode: 'quick' });
+  resetEditorSession({ categoryId: migratedDraft?.categoryId ?? '', mode: 'quick' });
   editScoreProductId.value = '';
   currentCategory.value = null;
   categorySearch.value = '';
@@ -1248,7 +1249,7 @@ function startNewProduct(): void {
   feedback.value = '请选择叶子类目并开始填写商品信息。';
   workspace.value = 'publisher';
   updateProductHash('push');
-  offerCurrentDraft();
+  if (!migratedDraft) offerCurrentDraft();
 }
 
 function setWorkspace(nextWorkspace: Workspace): void {

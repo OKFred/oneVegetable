@@ -29,7 +29,7 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await expect(page.getByRole('heading', { name: '商品管理' })).toBeVisible();
   await expect(page.getByText('Portable solar power station 1000W')).toBeVisible();
 
-  await page.getByRole('tab', { name: '商品发布/编辑' }).click();
+  await openNewProductEditor(page);
   await chooseMockProductCategory(page);
   await page.getByRole('button', { name: '开始填写' }).click();
   await expect(page.getByRole('heading', { name: '新增商品' })).toBeVisible();
@@ -131,8 +131,6 @@ test('web mock queues multiple products and saves platform drafts sequentially',
   await expect(page.getByRole('heading', { name: '批量发品队列' })).toBeVisible();
   await expect(page.getByText('Batch solar generator A', { exact: true })).toBeVisible();
 
-  await page.getByRole('tab', { name: '商品发布/编辑' }).click();
-  await page.getByRole('button', { name: '重新新建' }).click();
   await queueMockProduct(page, 'Batch solar generator B');
   await expect(page.getByText('Batch solar generator B', { exact: true })).toBeVisible();
 
@@ -322,7 +320,8 @@ test('web mock restores product workspace and wizard step from the hash route', 
   await page.goto('/#/products/publisher/guided/review/new/100009999');
   await expect(page.getByRole('heading', { name: '商品管理' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '检查与提交' })).toBeVisible();
-  await expect(page.getByRole('tab', { name: '商品发布/编辑' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: '商品列表' })).toHaveAttribute('aria-selected', 'false');
+  await expect(page.getByRole('tab', { name: '批量发品' })).toHaveAttribute('aria-selected', 'false');
   await expect(page.getByRole('button', { name: /6\. 检查与提交/ })).toHaveAttribute('aria-current', 'step');
 
   await page.getByRole('button', { name: /4\. 商品详情/ }).click();
@@ -397,11 +396,14 @@ test('web mock manages gallery groups and exposes non-blocking asset governance'
   await page.getByRole('button', { name: '放大图片' }).click();
   await expect(page.getByText('125%')).toBeVisible();
   await page.getByRole('button', { name: '关闭图片预览' }).click();
-  await page.getByRole('button', { name: /商品主图/ }).click();
-  await page.getByLabel('图库分组名称').fill('E2E 主图');
-  await page.getByRole('button', { name: '改名' }).click();
-  await expect(page.getByText('分组已保存：E2E 主图')).toBeVisible();
-  await page.getByRole('button', { name: /详情素材/ }).click();
+  await page.getByRole('button', { name: '分组管理' }).click();
+  const groupManager = page.getByRole('dialog', { name: '图库分组管理' });
+  await groupManager.getByRole('button', { name: '修改分组 商品主图' }).click();
+  await groupManager.getByLabel('商品主图 的新名称').fill('E2E 主图');
+  await groupManager.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(page.getByText('图库分组已改名为“E2E 主图”')).toBeVisible();
+  await groupManager.getByRole('button', { name: '关闭', exact: true }).click();
+  await page.getByRole('button', { name: '详情素材', exact: true }).click();
   await expect(page.getByText('dehydrator-detail.jpg')).toBeVisible();
   await expect(page.getByText('solar-station-front.jpg')).toHaveCount(0);
 });
@@ -415,7 +417,7 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
   });
   await page.reload();
   await page.getByRole('link', { name: '商品' }).click();
-  await page.getByRole('tab', { name: '商品发布/编辑' }).click();
+  await openNewProductEditor(page);
   await chooseMockProductCategory(page);
   await page.getByRole('button', { name: '开始填写' }).click();
   await page.getByRole('button', { name: /六步向导/ }).click();
@@ -543,7 +545,7 @@ test('web mock groups official product hints and locates their fields from revie
   });
   await page.reload();
   await page.getByRole('link', { name: '商品' }).click();
-  await page.getByRole('tab', { name: '商品发布/编辑' }).click();
+  await openNewProductEditor(page);
   await chooseMockProductCategory(page);
   await page.getByRole('button', { name: '开始填写' }).click();
   await page.getByRole('button', { name: /六步向导/ }).click();
@@ -567,7 +569,7 @@ test('web mock persists the API language preference for product editing', async 
   await expect(page.getByText('接口语言偏好已保存为 zh_CN')).toBeVisible();
 
   await page.getByRole('link', { name: '商品' }).click();
-  await page.getByRole('tab', { name: '商品发布/编辑' }).click();
+  await openNewProductEditor(page);
   await page.getByText('高级设置', { exact: true }).click();
   await expect(page.getByLabel('商品表单语言')).toHaveValue('zh_CN');
 });
@@ -580,9 +582,15 @@ async function chooseMockProductCategory(page: Page): Promise<void> {
 }
 
 async function queueMockProduct(page: Page, title: string): Promise<void> {
-  await page.getByRole('tab', { name: '商品发布/编辑' }).click();
+  await openNewProductEditor(page);
   await chooseMockProductCategory(page);
   await page.getByRole('button', { name: '开始填写' }).click();
   await page.getByLabel('商品标题').fill(title);
   await page.getByRole('button', { name: '加入队列' }).click();
+}
+
+async function openNewProductEditor(page: Page): Promise<void> {
+  const productListTab = page.getByRole('tab', { name: '商品列表' });
+  if ((await productListTab.getAttribute('aria-selected')) !== 'true') await productListTab.click();
+  await page.getByRole('button', { name: '新增', exact: true }).click();
 }

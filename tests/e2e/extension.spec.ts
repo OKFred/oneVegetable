@@ -328,7 +328,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
     );
   });
   await page.getByRole('link', { name: '商品' }).click();
-  await page.getByRole('tab', { name: '商品发布/编辑' }).click();
+  await page.getByRole('button', { name: '新增', exact: true }).click();
   await expect(page.getByText('发现从旧版本迁移的本地草稿')).toBeVisible();
   await page.getByRole('button', { name: '继续本地草稿' }).click();
   await page.getByRole('button', { name: /6\. 检查与提交/ }).click();
@@ -353,9 +353,11 @@ test('MV3 options page persists settings and exposes the audited catalog', async
 
   await page.getByRole('link', { name: '图库', exact: true }).click();
   await expect(page.getByRole('heading', { name: '图库' })).toBeVisible();
-  await page.getByLabel('图库分组名称').fill('真实分组');
-  await expect(page.getByRole('button', { name: '新增' })).toBeEnabled();
-  await expect(page.getByText(/真实分组新增、改名和删除已完成账号验证/)).toBeVisible();
+  await expect(page.getByRole('button', { name: '分组管理' })).toBeEnabled();
+  await page.getByRole('button', { name: '分组管理' }).click();
+  const photoGroupDialog = page.getByRole('dialog', { name: '图库分组管理' });
+  await expect(photoGroupDialog.getByText(/新增、改名和删除会直接写入当前国际站账号/)).toBeVisible();
+  await photoGroupDialog.getByRole('button', { name: '关闭', exact: true }).click();
 
   await page.getByRole('link', { name: 'RFQ' }).click();
   await expect(page.getByRole('heading', { name: 'RFQ 工作台' })).toBeVisible();
