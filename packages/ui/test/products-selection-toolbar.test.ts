@@ -41,6 +41,7 @@ describe('ProductsView selection toolbar', () => {
     ).toBe(false);
     expect(button(toolbar.element, '导出').disabled).toBe(true);
     expect(button(toolbar.element, '更多').disabled).toBe(true);
+    expect(wrapper.findAll('[role="tab"]').map((tab) => tab.text())).toEqual(['商品列表', '批量发品']);
     expect(toolbar.text()).not.toContain('批量查询产品分');
     expect(toolbar.text()).not.toContain('批量上架');
     expect(toolbar.text()).not.toContain('批量下架');
@@ -66,6 +67,72 @@ describe('ProductsView selection toolbar', () => {
     wrapper.unmount();
   });
 
+  it('refreshes the current product list from the toolbar', async () => {
+    const gateway = new MockGatewayClient(0);
+    const request = vi.spyOn(gateway, 'request');
+    const wrapper = mountView(gateway);
+    await waitForProducts(wrapper);
+    const toolbar = wrapper.get('[role="toolbar"][aria-label="商品列表操作"]');
+    const initialRequests = request.mock.calls.filter(([operation]) => operation === 'listProducts').length;
+
+    button(toolbar.element, '刷新').click();
+
+    await vi.waitFor(() => {
+      const refreshedRequests = request.mock.calls.filter(
+        ([operation]) => operation === 'listProducts'
+      ).length;
+      expect(refreshedRequests).toBe(initialRequests + 1);
+    });
+    wrapper.unmount();
+  });
+
+  it('filters from the collapsible product group tree and preserves group depth', async () => {
+    const gateway = new MockGatewayClient(0);
+    const request = vi.spyOn(gateway, 'request');
+    const wrapper = mountView(gateway);
+    await waitForProducts(wrapper);
+    const groups = wrapper.get('[role="tree"][aria-label="商品分组"]');
+
+    button(groups.element, 'Energy storage').click();
+    await vi.waitFor(() => {
+      expect(wrapper.text()).not.toContain('Custom recycled cotton canvas tote bag');
+      expect(
+        request.mock.calls.some(
+          ([operation, payload]) =>
+            operation === 'listProducts' &&
+            typeof payload === 'object' &&
+            'groupId' in payload &&
+            payload.groupId === 1001 &&
+            'groupLevel' in payload &&
+            payload.groupLevel === 1
+        )
+      ).toBe(true);
+    });
+
+    await groups.get('button[aria-label="展开Energy storage"]').trigger('click');
+    expect(groups.text()).toContain('Portable power');
+    button(groups.element, 'Portable power').click();
+    await vi.waitFor(() => {
+      expect(
+        request.mock.calls.some(
+          ([operation, payload]) =>
+            operation === 'listProducts' &&
+            typeof payload === 'object' &&
+            'groupId' in payload &&
+            payload.groupId === 1101 &&
+            'groupLevel' in payload &&
+            payload.groupLevel === 2
+        )
+      ).toBe(true);
+    });
+
+    await wrapper.get('button[aria-label="收起商品分组"]').trigger('click');
+    expect(wrapper.find('[role="tree"][aria-label="商品分组"]').exists()).toBe(false);
+    await wrapper.get('button[aria-label="展开商品分组"]').trigger('click');
+    expect(wrapper.find('[role="tree"][aria-label="商品分组"]').exists()).toBe(true);
+    wrapper.unmount();
+  });
+
   it('clears current-page selection when search, page size or language changes', async () => {
     const wrapper = mountView();
     await waitForProducts(wrapper);
@@ -86,7 +153,7 @@ describe('ProductsView selection toolbar', () => {
     await waitForSelectionCount(wrapper, '已选 0 个', 'page-size change');
 
     await wrapper.get('input[aria-label="选择 Portable solar power station 1000W"]').setValue(true);
-    button(wrapper.element as Node, '商品发布/编辑').click();
+    button(wrapper.element as Node, '新增').click();
     await wrapper.vm.$nextTick();
     await wrapper.get('summary').trigger('click');
     const languageSelect = wrapper.get('select[aria-label="商品表单语言"]');
@@ -130,8 +197,7 @@ describe('ProductsView selection toolbar', () => {
   });
 });
 
-function mountView() {
-  const gateway = new MockGatewayClient(0);
+function mountView(gateway = new MockGatewayClient(0)) {
   const Host = defineComponent({
     setup() {
       provideServices({

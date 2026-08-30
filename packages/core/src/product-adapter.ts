@@ -33,7 +33,7 @@ export class ProductAdapter {
       current_page: request.page ?? 1,
       page_size: request.pageSize ?? 20,
       ...(request.subject ? { subject: request.subject } : {}),
-      ...(request.groupId !== undefined ? { group_id1: request.groupId } : {})
+      ...productGroupFilterParameters(request)
     });
     const root = unwrap(call.data, call.method);
     const items = findRecords(root, ['products', 'product_list', 'result_list']).map((item) => {
@@ -314,6 +314,17 @@ export class ProductAdapter {
       issues: issueRecords.map((item) => readString(item, ['message', 'description']) ?? '待优化项')
     };
   }
+}
+
+function productGroupFilterParameters(request: RequestOf<'listProducts'>): {
+  group_id1?: number;
+  group_id2?: number;
+  group_id3?: number;
+} {
+  if (request.groupId === undefined) return {};
+  if (request.groupLevel === 2) return { group_id2: request.groupId };
+  if (request.groupLevel === 3) return { group_id3: request.groupId };
+  return { group_id1: request.groupId };
 }
 
 function requireSchemaXml(record: Record<string, unknown>, fallbackCode: string): string {

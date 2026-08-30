@@ -32,6 +32,7 @@ import {
   validateSchemaPublishInput,
   type Product,
   type ProductCategory,
+  type ProductGroup,
   type ProductDescriptionImageMetadata,
   type ProductEditorStepId,
   type ProductMutationJob,
@@ -48,12 +49,14 @@ import ActionTooltip from '../components/ActionTooltip.vue';
 import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
+import GroupSidebar from '../components/GroupSidebar.vue';
 import ImagePreview, { type ImagePreviewItem } from '../components/ImagePreview.vue';
 import PageHeader from '../components/PageHeader.vue';
 import ProductBatchPublisher from '../components/ProductBatchPublisher.vue';
 import ProductCategoryPicker from '../components/ProductCategoryPicker.vue';
 import ProductEditorLoading from '../components/ProductEditorLoading.vue';
 import ProductGroupManagerDialog from '../components/ProductGroupManagerDialog.vue';
+import ProductGroupNavigation from '../components/ProductGroupNavigation.vue';
 import ProductTransferDialog from '../components/ProductTransferDialog.vue';
 import QueryState from '../components/QueryState.vue';
 import TriStateCheckbox from '../components/TriStateCheckbox.vue';
@@ -181,16 +184,34 @@ const productTransferExportProducts = ref<Product[]>([]);
 const productPreviewOpen = ref(false);
 const productPreviewImages = ref<ImagePreviewItem[]>([]);
 const productGroupDialogOpen = ref(false);
+const productGroupNavigationRevision = ref(0);
+const productGroupSidebarCollapsed = ref(false);
+const selectedProductGroupId = ref<number | null>(null);
+const selectedProductGroupLevel = ref<1 | 2 | 3 | undefined>(undefined);
 const actionConfirmation = ref<ProductActionConfirmation | null>(null);
 
 const products = useQuery({
-  queryKey: ['products', subject, language, productPage, productPageSize],
+  queryKey: [
+    'products',
+    subject,
+    language,
+    productPage,
+    productPageSize,
+    selectedProductGroupId,
+    selectedProductGroupLevel
+  ],
   queryFn: () =>
     gateway.request('listProducts', {
       page: productPage.value,
       pageSize: productPageSize.value,
       subject: subject.value,
-      language: language.value
+      language: language.value,
+      ...(selectedProductGroupId.value !== null
+        ? {
+            groupId: selectedProductGroupId.value,
+            groupLevel: selectedProductGroupLevel.value ?? 1
+          }
+        : {})
     })
 });
 const categories = useQuery({
@@ -879,6 +900,17 @@ function toggleCurrentPageProducts(checked: boolean): void {
 
 function clearProductSelection(): void {
   selectedProductIds.value = [];
+}
+
+function selectProductGroup(group: ProductGroup | null, depth: 0 | 1 | 2 | 3): void {
+  selectedProductGroupId.value = group?.id ?? null;
+  selectedProductGroupLevel.value = depth === 0 ? undefined : depth;
+  productPage.value = 1;
+  clearProductSelection();
+}
+
+function handleProductGroupChanged(): void {
+  productGroupNavigationRevision.value += 1;
 }
 
 function setProductPage(page: number): void {
@@ -1661,7 +1693,6 @@ onBeforeUnmount(() => {
     <Button
       v-for="item in [
         ['list', '商品列表'],
-        ['publisher', '商品发布/编辑'],
         ['batch-publisher', '批量发品']
       ] as const"
       :key="item[0]"
@@ -1678,210 +1709,241 @@ onBeforeUnmount(() => {
   </p>
   <template v-if="workspace === 'list'">
     <div
-      class="mb-4 flex flex-wrap items-center justify-between gap-3"
-      role="toolbar"
-      aria-label="商品列表操作"
+      class="grid gap-5 transition-[grid-template-columns] duration-200"
+      :class="
+        productGroupSidebarCollapsed
+          ? 'lg:grid-cols-[3.25rem_minmax(0,1fr)]'
+          : 'lg:grid-cols-[270px_minmax(0,1fr)]'
+      "
     >
-      <div class="relative min-w-64 max-w-md flex-1">
-        <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-        <Input v-model="subject" class="pl-9" placeholder="按标题搜索" />
-      </div>
-      <div class="flex flex-wrap items-center justify-end gap-2">
-        <span
-          v-if="selectedProducts.length > MAX_PRODUCT_TRANSFER_ITEMS"
-          class="text-xs text-amber-700 dark:text-amber-400"
-          role="status"
-        >
-          单次最多导出 {{ MAX_PRODUCT_TRANSFER_ITEMS }} 个商品
-        </span>
-        <Button variant="outline" :disabled="productTransferBusy" @click="openProductImportDialog">
-          <Upload class="size-4" />导入
-        </Button>
-        <ActionTooltip :disabled="Boolean(productExportDisabledReason)" :reason="productExportDisabledReason">
-          <Button
-            variant="outline"
-            :disabled="Boolean(productExportDisabledReason)"
-            @click="openProductExportDialog"
-          >
-            <Download class="size-4" />导出
-          </Button>
-        </ActionTooltip>
-        <Button variant="outline" @click="productGroupDialogOpen = true">分组</Button>
-        <ActionTooltip :disabled="Boolean(moreActionsDisabledReason)" :reason="moreActionsDisabledReason">
-          <span class="inline-flex">
-            <DropdownMenuRoot :modal="false">
-              <DropdownMenuTrigger as-child>
-                <Button variant="outline" :disabled="selectedProducts.length === 0">
-                  <Ellipsis class="size-4" />更多<ChevronDown class="size-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuPortal>
-                <DropdownMenuContent
-                  class="ov-dropdown-content z-[65] min-w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg outline-none"
-                  :side-offset="6"
-                  align="end"
-                >
-                  <DropdownMenuItem
-                    class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-                    :disabled="queryingSelectedProductScores"
-                    @select="querySelectedProductScores"
-                  >
-                    {{ queryingSelectedProductScores ? '批量查询中…' : '批量查询产品分' }}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator class="my-1 h-px bg-border" />
-                  <DropdownMenuItem
-                    class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-                    :disabled="
-                      productDisplayMutationDisabled ||
-                      selectedProductMissingEncryptedId ||
-                      selectedDisplayMutationBlocked ||
-                      batchDisplay.isPending.value
-                    "
-                    @select="submitBatchDisplay('online')"
-                  >
-                    批量上架
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-                    :disabled="
-                      productDisplayMutationDisabled ||
-                      selectedProductMissingEncryptedId ||
-                      selectedDisplayMutationBlocked ||
-                      batchDisplay.isPending.value
-                    "
-                    @select="submitBatchDisplay('offline')"
-                  >
-                    批量下架
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenuPortal>
-            </DropdownMenuRoot>
-          </span>
-        </ActionTooltip>
-        <Button @click="startNewProduct">新增</Button>
-      </div>
-    </div>
-    <p
-      v-if="selectedProductIds.length && productDisplayMutationDisabled"
-      class="mb-3 text-xs text-amber-700 dark:text-amber-400"
-    >
-      当前环境尚未开放真实商品上下架。
-    </p>
-    <p v-else-if="selectedProductMissingEncryptedId" class="mb-3 text-xs text-destructive">
-      选中的商品缺少平台混淆 ID，不能执行上下架。
-    </p>
-    <p v-else-if="selectedDisplayMutationBlocked" class="mb-3 text-xs text-amber-700 dark:text-amber-400">
-      选中的商品仍有未完成或待恢复的上下架任务，请先确认任务状态。
-    </p>
-    <ErrorNotice v-if="batchDisplay.error.value" class="mb-3" :error="batchDisplay.error.value" compact />
-    <QueryState
-      :loading="products.isPending.value"
-      :error="products.error.value"
-      retryable
-      @retry="products.refetch()"
-    >
-      <DataTable
-        :columns="columns"
-        :data="products.data.value?.items ?? []"
-        :page="productPage"
-        :page-size="productPageSize"
-        :total-rows="products.data.value?.total ?? 0"
-        :pagination-disabled="products.isFetching.value"
-        empty-text="没有匹配商品"
-        min-width="1320px"
-        @update:page="setProductPage"
-        @update:page-size="setProductPageSize"
-      >
-        <template #empty>
-          <div class="space-y-3 py-4">
-            <p>没有匹配商品</p>
-            <Button v-if="subject" variant="outline" size="sm" @click="subject = ''">清除搜索条件</Button>
-            <Button v-else size="sm" @click="startNewProduct">新增商品</Button>
-          </div>
-        </template>
-        <template #pagination-summary>
-          <span
-            class="border-l border-border pl-2 text-xs font-medium text-foreground"
-            data-testid="product-selection-count"
-            aria-live="polite"
-          >
-            已选 {{ selectedProducts.length }} 个
-          </span>
-        </template>
-      </DataTable>
-    </QueryState>
-    <Card v-if="latestDisplayMutationJobs.length" class="mt-5 p-5">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 class="font-semibold">最近上下架任务</h2>
-          <p class="mt-1 text-sm text-muted-foreground">
-            Alibaba 明确接受后仍需通过商品列表回读，才会标记为完成。
-          </p>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          :disabled="displayMutationHistory.isFetching.value"
-          @click="displayMutationHistory.refetch()"
-        >
-          <RefreshCw class="size-4" />
-          {{ displayMutationHistory.isFetching.value ? '检查中…' : '刷新全部' }}
-        </Button>
-      </div>
-      <div class="mt-4 space-y-3">
+      <GroupSidebar v-model:collapsed="productGroupSidebarCollapsed" title="商品分组">
+        <ProductGroupNavigation
+          :key="productGroupNavigationRevision"
+          v-model="selectedProductGroupId"
+          @select="selectProductGroup"
+        />
+      </GroupSidebar>
+
+      <section class="min-w-0">
         <div
-          v-for="job in latestDisplayMutationJobs"
-          :key="job.id"
-          class="rounded-lg border border-border p-3"
+          class="mb-4 flex flex-wrap items-center justify-between gap-3"
+          role="toolbar"
+          aria-label="商品列表操作"
         >
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-mono text-sm">{{ job.productId }}</span>
-                <Badge :variant="productMutationStatusVariant(job.status)">
-                  {{ productMutationStatusLabel(job.status) }}
-                </Badge>
-              </div>
-              <p class="mt-1 text-xs text-muted-foreground">
-                {{ job.originalDisplay === 'online' ? '上架' : '下架' }} →
-                {{ job.targetDisplay === 'online' ? '上架' : '下架' }} · requestId
-                <span class="font-mono">{{ job.requestId }}</span>
-              </p>
-              <p v-if="job.message" class="mt-2 text-sm text-muted-foreground">{{ job.message }}</p>
-            </div>
-            <div class="flex flex-wrap gap-2">
+          <div class="relative min-w-64 max-w-md flex-1">
+            <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+            <Input v-model="subject" class="pl-9" placeholder="按标题搜索" />
+          </div>
+          <div class="flex flex-wrap items-center justify-end gap-2">
+            <span
+              v-if="selectedProducts.length > MAX_PRODUCT_TRANSFER_ITEMS"
+              class="text-xs text-amber-700 dark:text-amber-400"
+              role="status"
+            >
+              单次最多导出 {{ MAX_PRODUCT_TRANSFER_ITEMS }} 个商品
+            </span>
+            <Button
+              variant="outline"
+              :disabled="products.isFetching.value"
+              aria-label="刷新商品列表"
+              @click="products.refetch()"
+            >
+              <RefreshCw class="size-4" :class="{ 'animate-spin': products.isFetching.value }" />
+              {{ products.isFetching.value ? '刷新中…' : '刷新' }}
+            </Button>
+            <Button variant="outline" :disabled="productTransferBusy" @click="openProductImportDialog">
+              <Upload class="size-4" />导入
+            </Button>
+            <ActionTooltip
+              :disabled="Boolean(productExportDisabledReason)"
+              :reason="productExportDisabledReason"
+            >
               <Button
-                size="sm"
                 variant="outline"
-                :disabled="refreshDisplayMutation.isPending.value"
-                @click="refreshDisplayMutation.mutate(job)"
-                >查询状态</Button
+                :disabled="Boolean(productExportDisabledReason)"
+                @click="openProductExportDialog"
               >
-              <Button
-                v-if="job.status === 'recovery-required'"
-                size="sm"
-                variant="destructive"
-                :disabled="recoverDisplayMutation.isPending.value"
-                @click="recoverDisplayJob(job)"
-                >恢复原状态</Button
-              >
-            </div>
+                <Download class="size-4" />导出
+              </Button>
+            </ActionTooltip>
+            <Button variant="outline" @click="productGroupDialogOpen = true">分组</Button>
+            <ActionTooltip :disabled="Boolean(moreActionsDisabledReason)" :reason="moreActionsDisabledReason">
+              <span class="inline-flex">
+                <DropdownMenuRoot :modal="false">
+                  <DropdownMenuTrigger as-child>
+                    <Button variant="outline" :disabled="selectedProducts.length === 0">
+                      <Ellipsis class="size-4" />更多<ChevronDown class="size-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuContent
+                      class="ov-dropdown-content z-[65] min-w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg outline-none"
+                      :side-offset="6"
+                      align="end"
+                    >
+                      <DropdownMenuItem
+                        class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
+                        :disabled="queryingSelectedProductScores"
+                        @select="querySelectedProductScores"
+                      >
+                        {{ queryingSelectedProductScores ? '批量查询中…' : '批量查询产品分' }}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator class="my-1 h-px bg-border" />
+                      <DropdownMenuItem
+                        class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
+                        :disabled="
+                          productDisplayMutationDisabled ||
+                          selectedProductMissingEncryptedId ||
+                          selectedDisplayMutationBlocked ||
+                          batchDisplay.isPending.value
+                        "
+                        @select="submitBatchDisplay('online')"
+                      >
+                        批量上架
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
+                        :disabled="
+                          productDisplayMutationDisabled ||
+                          selectedProductMissingEncryptedId ||
+                          selectedDisplayMutationBlocked ||
+                          batchDisplay.isPending.value
+                        "
+                        @select="submitBatchDisplay('offline')"
+                      >
+                        批量下架
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuRoot>
+              </span>
+            </ActionTooltip>
+            <Button @click="startNewProduct">新增</Button>
           </div>
         </div>
-      </div>
-      <ErrorNotice
-        v-if="refreshDisplayMutation.error.value"
-        class="mt-3"
-        :error="refreshDisplayMutation.error.value"
-        compact
-      />
-      <ErrorNotice
-        v-if="recoverDisplayMutation.error.value"
-        class="mt-3"
-        :error="recoverDisplayMutation.error.value"
-        compact
-      />
-    </Card>
+        <p
+          v-if="selectedProductIds.length && productDisplayMutationDisabled"
+          class="mb-3 text-xs text-amber-700 dark:text-amber-400"
+        >
+          当前环境尚未开放真实商品上下架。
+        </p>
+        <p v-else-if="selectedProductMissingEncryptedId" class="mb-3 text-xs text-destructive">
+          选中的商品缺少平台混淆 ID，不能执行上下架。
+        </p>
+        <p v-else-if="selectedDisplayMutationBlocked" class="mb-3 text-xs text-amber-700 dark:text-amber-400">
+          选中的商品仍有未完成或待恢复的上下架任务，请先确认任务状态。
+        </p>
+        <ErrorNotice v-if="batchDisplay.error.value" class="mb-3" :error="batchDisplay.error.value" compact />
+        <QueryState
+          :loading="products.isPending.value"
+          :error="products.error.value"
+          retryable
+          @retry="products.refetch()"
+        >
+          <DataTable
+            :columns="columns"
+            :data="products.data.value?.items ?? []"
+            :page="productPage"
+            :page-size="productPageSize"
+            :total-rows="products.data.value?.total ?? 0"
+            :pagination-disabled="products.isFetching.value"
+            empty-text="没有匹配商品"
+            min-width="1320px"
+            @update:page="setProductPage"
+            @update:page-size="setProductPageSize"
+          >
+            <template #empty>
+              <div class="space-y-3 py-4">
+                <p>没有匹配商品</p>
+                <Button v-if="subject" variant="outline" size="sm" @click="subject = ''">清除搜索条件</Button>
+                <Button v-else size="sm" @click="startNewProduct">新增商品</Button>
+              </div>
+            </template>
+            <template #pagination-summary>
+              <span
+                class="border-l border-border pl-2 text-xs font-medium text-foreground"
+                data-testid="product-selection-count"
+                aria-live="polite"
+              >
+                已选 {{ selectedProducts.length }} 个
+              </span>
+            </template>
+          </DataTable>
+        </QueryState>
+        <Card v-if="latestDisplayMutationJobs.length" class="mt-5 p-5">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 class="font-semibold">最近上下架任务</h2>
+              <p class="mt-1 text-sm text-muted-foreground">
+                Alibaba 明确接受后仍需通过商品列表回读，才会标记为完成。
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              :disabled="displayMutationHistory.isFetching.value"
+              @click="displayMutationHistory.refetch()"
+            >
+              <RefreshCw class="size-4" />
+              {{ displayMutationHistory.isFetching.value ? '检查中…' : '刷新全部' }}
+            </Button>
+          </div>
+          <div class="mt-4 space-y-3">
+            <div
+              v-for="job in latestDisplayMutationJobs"
+              :key="job.id"
+              class="rounded-lg border border-border p-3"
+            >
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="font-mono text-sm">{{ job.productId }}</span>
+                    <Badge :variant="productMutationStatusVariant(job.status)">
+                      {{ productMutationStatusLabel(job.status) }}
+                    </Badge>
+                  </div>
+                  <p class="mt-1 text-xs text-muted-foreground">
+                    {{ job.originalDisplay === 'online' ? '上架' : '下架' }} →
+                    {{ job.targetDisplay === 'online' ? '上架' : '下架' }} · requestId
+                    <span class="font-mono">{{ job.requestId }}</span>
+                  </p>
+                  <p v-if="job.message" class="mt-2 text-sm text-muted-foreground">{{ job.message }}</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    :disabled="refreshDisplayMutation.isPending.value"
+                    @click="refreshDisplayMutation.mutate(job)"
+                    >查询状态</Button
+                  >
+                  <Button
+                    v-if="job.status === 'recovery-required'"
+                    size="sm"
+                    variant="destructive"
+                    :disabled="recoverDisplayMutation.isPending.value"
+                    @click="recoverDisplayJob(job)"
+                    >恢复原状态</Button
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+          <ErrorNotice
+            v-if="refreshDisplayMutation.error.value"
+            class="mt-3"
+            :error="refreshDisplayMutation.error.value"
+            compact
+          />
+          <ErrorNotice
+            v-if="recoverDisplayMutation.error.value"
+            class="mt-3"
+            :error="recoverDisplayMutation.error.value"
+            compact
+          />
+        </Card>
+      </section>
+    </div>
   </template>
 
   <template v-else-if="workspace === 'publisher'">
@@ -2117,7 +2179,7 @@ onBeforeUnmount(() => {
     @confirm-import="importProducts"
     @confirm-export="exportSelectedProducts"
   />
-  <ProductGroupManagerDialog v-model:open="productGroupDialogOpen" />
+  <ProductGroupManagerDialog v-model:open="productGroupDialogOpen" @changed="handleProductGroupChanged" />
 
   <ConfirmActionDialog
     :open="actionConfirmation !== null"

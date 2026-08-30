@@ -36,7 +36,10 @@ interface ProductGroupRow {
 }
 
 const props = defineProps<{ open: boolean }>();
-const emit = defineEmits<{ 'update:open': [open: boolean] }>();
+const emit = defineEmits<{
+  'update:open': [open: boolean];
+  changed: [group: ProductGroup];
+}>();
 
 const { gateway, mode } = useServices();
 const queryClient = useQueryClient();
@@ -105,6 +108,7 @@ const createGroup = useMutation({
     newGroupName.value = '';
     createParentId.value = null;
     toast.success(`商品分组“${created.name}”已创建。`);
+    emit('changed', created);
   }
 });
 

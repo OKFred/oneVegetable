@@ -182,7 +182,7 @@ function statusVariant(
           <tbody>
             <tr v-if="items.length === 0">
               <td colspan="7" class="px-4 py-12 text-center text-muted-foreground">
-                队列为空。请先在“商品发布/编辑”中填写商品并加入批量队列。
+                队列为空。请先在商品列表点击“新增”，填写商品后加入批量队列。
               </td>
             </tr>
             <tr v-for="item in items" :key="item.id" class="border-b last:border-b-0">

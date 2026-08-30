@@ -90,6 +90,27 @@ describe('ProductAdapter', () => {
     });
   });
 
+  it('maps the selected product group depth to the matching Alibaba filter', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve({ method, data: { products: [], total_item: 0 } })
+    );
+    const adapter = new ProductAdapter({ call });
+
+    await adapter.list({ groupId: 1101, groupLevel: 2 });
+    await adapter.list({ groupId: 1111, groupLevel: 3 });
+
+    expect(call).toHaveBeenNthCalledWith(
+      1,
+      'alibaba.icbu.product.list',
+      expect.objectContaining({ group_id2: 1101 })
+    );
+    expect(call).toHaveBeenNthCalledWith(
+      2,
+      'alibaba.icbu.product.list',
+      expect.objectContaining({ group_id3: 1111 })
+    );
+  });
+
   it('expands documented category child_ids into selectable root categories', async () => {
     const call = vi.fn<AlibabaClient['call']>((method, parameters) => {
       const categoryId = (parameters as { cat_id: number }).cat_id;

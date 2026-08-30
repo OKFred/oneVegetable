@@ -134,6 +134,7 @@ export interface ProductListQuery {
   pageSize?: number;
   subject?: string;
   groupId?: number;
+  groupLevel?: 1 | 2 | 3;
   language?: AlibabaLanguage;
 }
 
