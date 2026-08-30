@@ -16,7 +16,7 @@
 3. 在 Windows 上执行完整发布前检查：
 
    ```powershell
-   pnpm check:release-version v2.0.2
+   pnpm check:release-version v2.0.3
    pnpm check
    pnpm test:e2e
    pnpm test:e2e:bff-replay
@@ -26,8 +26,8 @@
 4. 确认待发布提交已经推送且属于远端 `master`，再创建 annotated tag：
 
    ```powershell
-   git tag -a v2.0.2 -m "oneVegetable v2.0.2"
-   git push origin v2.0.2
+   git tag -a v2.0.3 -m "oneVegetable v2.0.3"
+   git push origin v2.0.3
    ```
 
 5. Tag 会触发 `Publish formal release` 工作流。工作流重新执行版本校验、完整检查、两套 E2E 和可复现扩展打包，然后创建 GitHub Release。
@@ -39,7 +39,7 @@
 
 ## RC 与紧急修复
 
-- 需要较长冻结期时，创建 `release/2.0.2`，只接受版本、文档和阻断发布的问题修复；最终仍合入 `master` 后再打 Tag。
+- 需要较长冻结期时，创建 `release/2.0.3`，只接受版本、文档和阻断发布的问题修复；最终仍合入 `master` 后再打 Tag。
 - 紧急修复从最近正式 Tag 创建 `hotfix/2.0.3`，完成后同时合回 `master` 和 `staging`，并发布新的 patch 版本。不要修改原 Tag 或覆盖原 Release。
 
 ## 回退
