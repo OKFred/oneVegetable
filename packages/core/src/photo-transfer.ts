@@ -21,6 +21,10 @@ const ALLOWED_IMAGE_CONTENT_TYPES = new Set([
 
 export type DownloadedPhotoUpload = PhotoUploadRequest;
 
+export interface PhotoDownloadOptions {
+  assertUrl?: (url: URL) => void;
+}
+
 export async function downloadProductAsset(
   request: ProductAssetDownloadRequest,
   fetcher: typeof fetch = globalThis.fetch
@@ -30,7 +34,14 @@ export async function downloadProductAsset(
   }
   const downloaded = await downloadPhotoForUpload(
     { url: request.url, groupId: '-1', maxBytes: MAX_PHOTOBANK_IMAGE_BYTES },
-    fetcher
+    fetcher,
+    {
+      assertUrl(url) {
+        if (!isPhotoBankUrl(url.toString())) {
+          throw new Error('商品资源导出不允许跳转到图库域名之外');
+        }
+      }
+    }
   );
   const bytes = base64ToBytes(downloaded.contentBase64);
   return {
@@ -71,10 +82,12 @@ export function assertPublicPhotoUrl(rawUrl: string): URL {
 
 export async function downloadPhotoForUpload(
   request: PhotoTransferRequest,
-  fetcher: typeof fetch = globalThis.fetch
+  fetcher: typeof fetch = globalThis.fetch,
+  options: PhotoDownloadOptions = {}
 ): Promise<DownloadedPhotoUpload> {
   const maxBytes = Math.min(request.maxBytes ?? MAX_TRANSFER_IMAGE_BYTES, MAX_TRANSFER_IMAGE_BYTES);
   let url = assertPublicPhotoUrl(request.url);
+  options.assertUrl?.(url);
   const requestId = createRequestId();
   const network = new NetworkManager({
     transport: new NativeFetchTransport(fetcher),
@@ -83,7 +96,8 @@ export async function downloadPhotoForUpload(
       bff: { allowedOrigins: [] },
       'external-photo': {
         allowUrl(candidate) {
-          assertPublicPhotoUrl(candidate.toString());
+          const checked = assertPublicPhotoUrl(candidate.toString());
+          options.assertUrl?.(checked);
           return true;
         },
         timeoutMilliseconds: 30_000,
@@ -119,6 +133,7 @@ export async function downloadPhotoForUpload(
     if (!location) throw new Error('图片下载重定向缺少 Location');
     if (redirect === MAX_REDIRECTS) throw new Error('图片下载重定向次数过多');
     url = assertPublicPhotoUrl(new URL(location, url).toString());
+    options.assertUrl?.(url);
   }
   if (!response?.ok) throw new Error(`图片下载失败（HTTP ${response?.status ?? 0}）`);
 

@@ -101,5 +101,16 @@ describe('PhotoBank URL transfer safety', () => {
     await expect(
       downloadProductAsset({ url: 'https://images.example.com/product.jpg' }, fetcher)
     ).rejects.toThrow('仅允许国际站图库地址');
+
+    const redirectingFetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      new Response(null, {
+        status: 302,
+        headers: { location: 'https://images.example.com/escaped.jpg' }
+      })
+    );
+    await expect(
+      downloadProductAsset({ url: 'https://sc04.alicdn.com/kf/redirect.jpg' }, redirectingFetcher)
+    ).rejects.toThrow('不允许跳转到图库域名之外');
+    expect(redirectingFetcher).toHaveBeenCalledOnce();
   });
 });
