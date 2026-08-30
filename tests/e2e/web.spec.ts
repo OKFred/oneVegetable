@@ -433,7 +433,10 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
   await page.getByRole('button', { name: '详情模板' }).click();
   templateDialog = page.getByRole('dialog', { name: '商品详情模板' });
   const shippingTemplate = templateDialog.locator('article').filter({ hasText: 'Shipping and delivery' });
-  await shippingTemplate.getByRole('button', { name: '覆盖全文' }).click();
+  await expect(templateDialog.locator('[aria-busy]')).toHaveAttribute('aria-busy', 'false');
+  const replaceDescriptionButton = shippingTemplate.getByRole('button', { name: '覆盖全文' });
+  await expect(replaceDescriptionButton).toBeEnabled();
+  await replaceDescriptionButton.click();
   const replaceDialog = page.getByRole('dialog', { name: '确认覆盖商品详情' });
   await expect(replaceDialog.getByRole('heading', { name: '当前详情' })).toBeVisible();
   await expect(replaceDialog.getByText('覆盖后：Shipping and delivery')).toBeVisible();
