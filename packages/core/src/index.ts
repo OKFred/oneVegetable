@@ -34,6 +34,7 @@ export * from './product-mutation-job-client';
 export * from './product-schema';
 export * from './product-schema-json';
 export * from './product-transfer';
+export * from './product-transfer-assets';
 export * from './rfq-adapter';
 export * from './trade-adapter';
 export * from './logistics-adapter';
