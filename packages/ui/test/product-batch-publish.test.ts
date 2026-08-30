@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   completeProductBatchPublishItem,
   importProductBatchPublishItems,
+  inspectProductBatchPublishImport,
   inspectProductBatchPublishItem,
   loadProductBatchPublishItems,
   runProductBatchPublish,
@@ -130,6 +131,16 @@ describe('product batch publish queue', () => {
         NOW
       )
     ).toThrow();
+    expect(loadProductBatchPublishItems(localStorage, NOW)).toEqual([]);
+  });
+
+  it('preflights an import without changing the queue', () => {
+    const inspection = inspectProductBatchPublishImport(
+      localStorage,
+      [importInput('import:10000001:en_US', 'Preflight only')],
+      NOW
+    );
+    expect(inspection).toEqual({ added: 1, updated: 0, skipped: 0 });
     expect(loadProductBatchPublishItems(localStorage, NOW)).toEqual([]);
   });
 });

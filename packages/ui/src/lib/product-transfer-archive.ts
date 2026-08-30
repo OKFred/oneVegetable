@@ -17,6 +17,13 @@ import {
   type ProductTransferDocumentV2
 } from '@one-vegetable/core';
 
+import type { ProductTransferDocumentV1 } from '@one-vegetable/core';
+import type {
+  ArchiveWorkerFile,
+  ArchiveWorkerRequest,
+  ArchiveWorkerResponse
+} from './product-transfer-archive.worker';
+
 const MANIFEST_PATH = 'products.json';
 
 export interface ProductTransferArchiveAsset {
@@ -37,6 +44,24 @@ export interface ProductTransferArchiveReadResult {
 export interface ProductTransferArchiveWriteInput {
   document: ProductTransferDocumentV2;
   assets: readonly ProductTransferArchiveAsset[];
+}
+
+export type ProductTransferFileFormat = 'json' | 'zip';
+
+export type ProductTransferImportSelection =
+  | { kind: 'json'; document: ProductTransferDocumentV1 }
+  | {
+      kind: 'zip';
+      archive: ProductTransferArchiveReadResult;
+      targetGroupId: string;
+      targetGroupName: string;
+    };
+
+export interface ProductTransferProgress {
+  phase: 'reading' | 'downloading' | 'packing' | 'uploading' | 'queuing';
+  message: string;
+  current: number;
+  total: number;
 }
 
 export async function readProductTransferArchive(
@@ -129,6 +154,7 @@ export async function createProductTransferArchive(
   const files: AsyncZippable = {
     [MANIFEST_PATH]: [manifest, { level: 6 }]
   };
+  const workerFiles: ArchiveWorkerFile[] = [{ path: MANIFEST_PATH, bytes: manifest, level: 6 }];
   const names = new Set<string>([MANIFEST_PATH]);
   let totalUncompressedBytes = manifest.byteLength;
 
@@ -148,6 +174,7 @@ export async function createProductTransferArchive(
       throw new Error('商品 ZIP 解压后超过 100 MiB 上限');
     }
     files[path] = [asset.bytes, { level: 0 }];
+    workerFiles.push({ path, bytes: asset.bytes, level: 0 });
   }
 
   if (Object.keys(files).length > MAX_PRODUCT_TRANSFER_ARCHIVE_ENTRIES) {
@@ -157,7 +184,7 @@ export async function createProductTransferArchive(
   for (const path of collectDocumentAssetPaths(input.document)) {
     if (!availableAssets.has(path)) throw new Error(`商品 ZIP 缺少引用图片：${path}`);
   }
-  const archive = await zipArchive(files);
+  const archive = await zipArchive(files, workerFiles);
   if (archive.byteLength > MAX_PRODUCT_TRANSFER_ZIP_BYTES) {
     throw new Error('商品 ZIP 超过 50 MiB 上限');
   }
@@ -253,6 +280,36 @@ function decodeUtf8(bytes: Uint8Array, path: string): string {
 }
 
 function unzipArchive(bytes: Uint8Array, filter: (entry: UnzipFileInfo) => boolean): Promise<Unzipped> {
+  if (typeof Worker !== 'undefined') {
+    return runArchiveWorker({
+      id: globalThis.crypto.randomUUID(),
+      operation: 'unzip',
+      bytes,
+      limits: {
+        maxEntries: MAX_PRODUCT_TRANSFER_ARCHIVE_ENTRIES,
+        maxJsonBytes: MAX_PRODUCT_TRANSFER_JSON_BYTES,
+        maxPhotoBytes: MAX_PHOTOBANK_IMAGE_BYTES,
+        maxUncompressedBytes: MAX_PRODUCT_TRANSFER_UNCOMPRESSED_BYTES
+      }
+    }).then((response) => {
+      if (!response.ok) throw new Error(response.message);
+      if (response.operation !== 'unzip') throw new Error('商品 ZIP 解压任务返回类型错误');
+      const files: Unzipped = {};
+      for (const file of response.files) {
+        if (
+          filter({
+            name: file.path,
+            size: file.bytes.byteLength,
+            originalSize: file.bytes.byteLength,
+            compression: 0
+          })
+        ) {
+          files[file.path] = Uint8Array.from(file.bytes);
+        }
+      }
+      return files;
+    });
+  }
   return new Promise((resolve, reject) => {
     unzip(bytes, { filter }, (error, files) => {
       if (error) reject(error);
@@ -261,12 +318,68 @@ function unzipArchive(bytes: Uint8Array, filter: (entry: UnzipFileInfo) => boole
   });
 }
 
-function zipArchive(files: AsyncZippable): Promise<Uint8Array> {
+function zipArchive(files: AsyncZippable, workerFiles: readonly ArchiveWorkerFile[]): Promise<Uint8Array> {
+  if (typeof Worker !== 'undefined') {
+    return runArchiveWorker({
+      id: globalThis.crypto.randomUUID(),
+      operation: 'zip',
+      files: [...workerFiles]
+    }).then((response) => {
+      if (!response.ok) throw new Error(response.message);
+      if (response.operation !== 'zip') throw new Error('商品 ZIP 压缩任务返回类型错误');
+      return response.bytes;
+    });
+  }
   return new Promise((resolve, reject) => {
     zip(files, { level: 6 }, (error, archive) => {
       if (error) reject(error);
       else resolve(archive);
     });
+  });
+}
+
+function runArchiveWorker(request: ArchiveWorkerRequest): Promise<ArchiveWorkerResponse> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL('./product-transfer-archive.worker.ts', import.meta.url), {
+      type: 'module',
+      name: 'one-vegetable-product-transfer'
+    });
+    const timeout = globalThis.setTimeout(() => {
+      worker.terminate();
+      reject(new Error('商品 ZIP 后台任务超时'));
+    }, 60_000);
+    const finish = (action: () => void): void => {
+      globalThis.clearTimeout(timeout);
+      worker.terminate();
+      action();
+    };
+    worker.onerror = () => {
+      finish(() => {
+        reject(new Error('商品 ZIP 后台任务失败'));
+      });
+    };
+    worker.onmessage = (event: MessageEvent<ArchiveWorkerResponse>) => {
+      if (event.data.id !== request.id) return;
+      finish(() => {
+        resolve(event.data);
+      });
+    };
+    try {
+      if (request.operation === 'unzip') {
+        const bytes = request.bytes.slice();
+        worker.postMessage({ ...request, bytes }, [bytes.buffer]);
+        return;
+      }
+      const transferableFiles = request.files.map((file) => ({ ...file, bytes: file.bytes.slice() }));
+      worker.postMessage(
+        { ...request, files: transferableFiles },
+        transferableFiles.map((file) => file.bytes.buffer)
+      );
+    } catch (error: unknown) {
+      finish(() => {
+        reject(toError(error));
+      });
+    }
   });
 }
 

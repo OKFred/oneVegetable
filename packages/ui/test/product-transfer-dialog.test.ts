@@ -7,6 +7,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Product, ProductTransferDocumentV1, ProductTransferSchemaFormat } from '@one-vegetable/core';
 
 import ProductTransferDialog from '../src/components/ProductTransferDialog.vue';
+import type {
+  ProductTransferFileFormat,
+  ProductTransferImportSelection
+} from '../src/lib/product-transfer-archive';
 
 const product: Product = {
   id: '10000001',
@@ -76,7 +80,7 @@ describe('ProductTransferDialog', () => {
     const host = mountDialog('import');
     await nextTick();
     const input = getDialog('导入商品').querySelector<HTMLInputElement>(
-      'input[aria-label="选择商品 JSON 文件"]'
+      'input[aria-label="选择商品 JSON 或 ZIP 文件"]'
     );
     if (!input) throw new Error('Missing import input');
     const file = new File([JSON.stringify(transferDocument())], 'products.json', {
@@ -84,9 +88,9 @@ describe('ProductTransferDialog', () => {
     });
     Object.defineProperty(input, 'files', { configurable: true, value: [file] });
     input.dispatchEvent(new Event('change', { bubbles: true }));
-    await flushPromises();
-
-    expect(getDialog('导入商品').textContent).toContain('1 个商品');
+    await vi.waitFor(() => {
+      expect(getDialog('导入商品').textContent).toContain('1 个商品');
+    });
     expect(host.confirmImport).not.toHaveBeenCalled();
     button(getDialog('导入商品'), '导入').click();
     await flushPromises();
@@ -94,6 +98,10 @@ describe('ProductTransferDialog', () => {
     button(getDialog('确认导入'), '确认导入').click();
     await flushPromises();
     expect(host.confirmImport).toHaveBeenCalledOnce();
+    const selection = host.confirmImport.mock.calls[0]?.[0];
+    expect(selection?.kind).toBe('json');
+    if (selection?.kind !== 'json') throw new Error('Expected JSON import selection');
+    expect(selection.document.schemaVersion).toBe(1);
   });
 
   it('keeps execution and closing disabled while an operation is in progress', async () => {
@@ -116,12 +124,16 @@ describe('ProductTransferDialog', () => {
     const dialog = getDialog('导出商品');
     const summary = dialog.querySelector('summary');
     const xmlOption = dialog.querySelector<HTMLInputElement>('input[aria-label="Schema XML"]');
-    if (!summary || !xmlOption) throw new Error('Missing advanced export settings');
+    const zipOption = dialog.querySelector<HTMLInputElement>('input[aria-label="ZIP 资源包"]');
+    if (!summary || !xmlOption || !zipOption) throw new Error('Missing advanced export settings');
 
     expect(summary.textContent.trim()).toBe('高级设置');
     xmlOption.click();
     await nextTick();
     expect(host.schemaFormat.value).toBe('xml');
+    zipOption.click();
+    await nextTick();
+    expect(host.fileFormat.value).toBe('zip');
     expect(summary.textContent.trim()).toBe('高级设置');
   });
 });
@@ -129,7 +141,8 @@ describe('ProductTransferDialog', () => {
 function mountDialog(mode: 'import' | 'export', busy = false) {
   const open = ref(true);
   const schemaFormat = ref<ProductTransferSchemaFormat>('json');
-  const confirmImport = vi.fn<(document: ProductTransferDocumentV1) => void>();
+  const fileFormat = ref<ProductTransferFileFormat>('json');
+  const confirmImport = vi.fn<(selection: ProductTransferImportSelection) => void>();
   const confirmExport = vi.fn<() => void>();
   const Host = defineComponent({
     setup() {
@@ -140,12 +153,16 @@ function mountDialog(mode: 'import' | 'export', busy = false) {
           busy,
           error: '',
           schemaFormat: schemaFormat.value,
+          fileFormat: fileFormat.value,
           exportProducts: mode === 'export' ? [product] : [],
           'onUpdate:open': (value: boolean) => {
             open.value = value;
           },
           'onUpdate:schemaFormat': (value: ProductTransferSchemaFormat) => {
             schemaFormat.value = value;
+          },
+          'onUpdate:fileFormat': (value: ProductTransferFileFormat) => {
+            fileFormat.value = value;
           },
           onConfirmImport: confirmImport,
           onConfirmExport: confirmExport
@@ -156,7 +173,7 @@ function mountDialog(mode: 'import' | 'export', busy = false) {
   cleanup = () => {
     wrapper.unmount();
   };
-  return { wrapper, open, schemaFormat, confirmImport, confirmExport };
+  return { wrapper, open, schemaFormat, fileFormat, confirmImport, confirmExport };
 }
 
 function transferDocument(): ProductTransferDocumentV1 {
