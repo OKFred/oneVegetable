@@ -15,6 +15,7 @@ import PhotoGroupNavigation from './PhotoGroupNavigation.vue';
 import Button from './ui/Button.vue';
 import ModalDialog from './ui/ModalDialog.vue';
 import {
+  isProductTransferZipBytes,
   readProductTransferArchive,
   type ProductTransferFileFormat,
   type ProductTransferImportSelection,
@@ -122,9 +123,15 @@ async function validateFile(event: Event): Promise<void> {
   validatingFile.value = true;
   try {
     const extension = file.name.split('.').pop()?.toLocaleLowerCase();
-    if (extension === 'zip') {
+    const bytes = await readFileBytes(file);
+    const isZip =
+      extension === 'zip' ||
+      file.type === 'application/zip' ||
+      file.type === 'application/x-zip-compressed' ||
+      isProductTransferZipBytes(bytes);
+    if (isZip) {
       if (file.size > MAX_PRODUCT_TRANSFER_ZIP_BYTES) throw new Error('商品 ZIP 超过 50 MiB 上限');
-      const archive = await readProductTransferArchive(await readFileBytes(file));
+      const archive = await readProductTransferArchive(bytes);
       if (sequence !== validationSequence) return;
       importSelection.value = {
         kind: 'zip',
@@ -134,9 +141,12 @@ async function validateFile(event: Event): Promise<void> {
       };
       return;
     }
-    if (extension !== 'json') throw new Error('仅支持 .json 或 .zip 商品文件');
     if (file.size > MAX_PRODUCT_TRANSFER_JSON_BYTES) throw new Error('商品导入文件超过 10 MiB 上限');
-    const document = parseProductTransferJson(await readFileText(file));
+    const text = decodeProductTransferText(bytes);
+    if (extension !== 'json' && file.type !== 'application/json' && !text.trimStart().startsWith('{')) {
+      throw new Error('仅支持 .json 或 .zip 商品文件');
+    }
+    const document = parseProductTransferJson(text);
     if (sequence !== validationSequence) return;
     importSelection.value = { kind: 'json', document };
   } catch (error: unknown) {
@@ -247,21 +257,12 @@ function readFileBytes(file: File): Promise<Uint8Array> {
   });
 }
 
-function readFileText(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => {
-      reject(new Error('读取商品文件失败'));
-    };
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') {
-        reject(new Error('读取商品文件失败'));
-        return;
-      }
-      resolve(reader.result);
-    };
-    reader.readAsText(file, 'utf-8');
-  });
+function decodeProductTransferText(bytes: Uint8Array): string {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error('商品 JSON 不是有效 UTF-8 文本');
+  }
 }
 
 function errorMessage(error: unknown): string {

@@ -902,7 +902,7 @@ async function importProducts(selection: ProductTransferImportSelection): Promis
     selectedBatchItemIds.value = result.items.map((item) => item.id);
     feedback.value = '';
     toast.success(
-      `商品${selection.kind === 'zip' ? ' ZIP' : ' JSON'}已导入本机队列：新增 ${result.added}，更新 ${result.updated}，已提交跳过 ${result.skipped}。导入不会自动发布商品。`
+      `商品 ${selection.kind === 'zip' ? 'ZIP' : 'JSON'} 已导入本机队列：新增 ${result.added}，更新 ${result.updated}，已提交跳过 ${result.skipped}。导入不会自动发布商品。`
     );
     productTransferDialogOpen.value = false;
     workspace.value = 'batch-publisher';

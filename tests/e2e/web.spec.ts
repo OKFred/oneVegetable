@@ -314,7 +314,7 @@ test('web mock exports and imports a product ZIP with gallery assets', async ({ 
     .getByRole('dialog', { name: '确认导入' })
     .getByRole('button', { name: '确认导入', exact: true })
     .click();
-  await expect(page.getByText(/商品 ZIP已导入本机队列：新增 1/)).toBeVisible();
+  await expect(page.getByText(/商品 ZIP 已导入本机队列：新增 1/)).toBeVisible();
   await expect(page.getByRole('heading', { name: '批量发品队列' })).toBeVisible();
 });
 

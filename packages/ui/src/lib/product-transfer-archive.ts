@@ -70,7 +70,7 @@ export async function readProductTransferArchive(
   if (bytes.byteLength > MAX_PRODUCT_TRANSFER_ZIP_BYTES) {
     throw new Error('商品 ZIP 超过 50 MiB 上限');
   }
-  if (!looksLikeZip(bytes)) throw new Error('所选文件不是有效 ZIP');
+  if (!isProductTransferZipBytes(bytes)) throw new Error('所选文件不是有效 ZIP');
 
   let entryCount = 0;
   let totalUncompressedBytes = 0;
@@ -260,7 +260,7 @@ function normalizeArchiveEntryName(name: string): string {
   return normalized;
 }
 
-function looksLikeZip(bytes: Uint8Array): boolean {
+export function isProductTransferZipBytes(bytes: Uint8Array): boolean {
   return (
     bytes.byteLength >= 4 &&
     bytes[0] === 0x50 &&

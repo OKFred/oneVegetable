@@ -83,9 +83,7 @@ describe('ProductTransferDialog', () => {
       'input[aria-label="选择商品 JSON 或 ZIP 文件"]'
     );
     if (!input) throw new Error('Missing import input');
-    const file = new File([JSON.stringify(transferDocument())], 'products.json', {
-      type: 'application/json'
-    });
+    const file = new File([JSON.stringify(transferDocument())], 'temporary-upload');
     Object.defineProperty(input, 'files', { configurable: true, value: [file] });
     input.dispatchEvent(new Event('change', { bubbles: true }));
     await vi.waitFor(() => {
