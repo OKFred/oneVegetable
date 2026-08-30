@@ -14,6 +14,11 @@
       "justification": "Stores user-entered gateway credentials encrypted with a user passphrase, local settings and onboarding state, and redacted diagnostics for the current browser session. The passphrase is never stored, local/session storage is hidden from content scripts, and unlocked credentials auto-lock after the configured idle period."
     },
     {
+      "permission": "scripting",
+      "required": true,
+      "justification": "Runs fixed packaged code only in the known Alibaba Application Center and OAuth tabs after the user explicitly starts credential acquisition. It does not execute remote code, collect the website password, accept agreements, or bypass human verification."
+    },
+    {
       "permission": "https://eco.taobao.com/*",
       "required": true,
       "justification": "Sends user-initiated, signed HTTPS requests to the documented Alibaba.com Open Platform gateway."
@@ -21,7 +26,7 @@
     {
       "permission": "http://*/*, https://*/*",
       "required": false,
-      "justification": "Chrome grants only the specific host requested when a user configures a custom gateway or explicitly transfers an external image; grants are revocable in settings."
+      "justification": "Chrome grants only the specific host requested when a user starts credential acquisition, confirms the actual OAuth callback, configures a custom gateway, or explicitly transfers an external image; grants are revocable in settings."
     }
   ],
   "dataUse": {

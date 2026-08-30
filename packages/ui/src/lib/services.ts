@@ -3,6 +3,7 @@ import { inject, provide, type InjectionKey } from 'vue';
 import type {
   BackendMeta,
   CredentialVaultRepository,
+  ExtensionAlibabaCredentialAcquisitionRepository,
   ControlClient,
   GatewayClient,
   HostPermissionsRepository,
@@ -25,6 +26,7 @@ export interface AppServices {
   gateway: GatewayClient;
   settings: SettingsRepository;
   vault?: CredentialVaultRepository;
+  alibabaCredentialAcquisition?: ExtensionAlibabaCredentialAcquisitionRepository;
   permissions?: HostPermissionsRepository;
   localData?: LocalDataRepository;
   onboarding?: OnboardingRepository;

@@ -38,6 +38,22 @@ pnpm openapi:auth:free
 - 只有设置 `OPEN_API_CALLBACK_URL` 时才会进入 Callback 修改流程；该值必须是无凭据、无 fragment 的公共 HTTPS URL。脚本会展示新旧地址并要求再次输入 `yes`，未确认时保留线上现值。
 - 非交互调用若确实需要修改 Callback，必须额外显式设置 `OPEN_API_CALLBACK_CHANGE_CONFIRMED=1`；只设置新地址不会静默保存。
 - 自动选中旧 `crosstrade` OAuth 应用时，脚本会拒绝通过新版应用中心修改 Callback，避免误改另一个应用。
+
+## Chrome 插件授权向导
+
+正式插件的设置页提供“获取开放平台凭证”：
+
+- 复用当前 Chrome 中的 Alibaba 登录态，不接收或保存网站账号密码；
+- 只处理已有应用，不创建应用、不申请 API 包、不代替用户接受平台协议；
+- 多应用时只展示应用名称、状态和 AppKey 尾号，由用户选择；
+- Callback 留空时保留现值，显式修改时先展示新旧地址并确认；
+- 仅在用户继续操作时为应用中心、OAuth 和实际 Callback 域名请求精确站点权限；
+- 滑块、验证码、MFA 和密钥查看确认由用户在打开的 Alibaba 标签页中完成；
+- OAuth code 只在内存中完成 state 校验和 Token 交换，不写入存储或诊断；
+- 完成后可直接加密保存到插件保险库，也可在确认明文风险后导出 `credentialInfo.json` 供自托管后端导入。
+
+扩展后台被 Chrome 回收会清除正在进行的任务及明文内存，用户需重新启动向导。任务最长保留 10 分钟。
+
 - 脚本不会自动恢复显式保存的新 Callback URL。
 
 其他可选变量：
