@@ -150,7 +150,7 @@ describe('ProductDescriptionEditor', () => {
     wrapper.unmount();
   });
 
-  it('keeps loaded template actions available while reopening refreshes the list', async () => {
+  it('keeps loaded templates visible but locks stale actions until reopening finishes refreshing', async () => {
     const client = new DelayedRefreshTemplateClient();
     const { wrapper } = mountEditor('<p>Original details</p>', false, client);
     await flushPromises();
@@ -162,11 +162,15 @@ describe('ProductDescriptionEditor', () => {
     await clickButton('详情模板');
     await nextTick();
     expect(document.body.textContent).toContain('正在刷新模板');
-    await clickButton('覆盖全文', templateCard('Shipping and delivery'));
-    expect(document.body.textContent).toContain('确认覆盖商品详情');
+    const replaceButton = findButton('覆盖全文', templateCard('Shipping and delivery'));
+    expect(replaceButton.disabled).toBe(true);
 
     client.releaseRefresh();
     await flushPromises();
+    expect(replaceButton.disabled).toBe(false);
+    replaceButton.click();
+    await nextTick();
+    expect(document.body.textContent).toContain('确认覆盖商品详情');
     wrapper.unmount();
   });
 });
@@ -205,12 +209,17 @@ function templateCard(name: string): HTMLElement {
 }
 
 async function clickButton(label: string, container: ParentNode = document.body): Promise<void> {
+  const button = findButton(label, container);
+  button.click();
+  await nextTick();
+}
+
+function findButton(label: string, container: ParentNode = document.body): HTMLButtonElement {
   const button = [...container.querySelectorAll<HTMLButtonElement>('button')].find((candidate) =>
     candidate.textContent.includes(label)
   );
   if (!button) throw new Error(`Missing button: ${label}`);
-  button.click();
-  await nextTick();
+  return button;
 }
 
 function settings() {

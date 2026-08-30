@@ -208,9 +208,9 @@ function messageOf(reason: unknown): string {
     <template v-if="view === 'browse'">
       <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
         <label class="flex cursor-pointer items-center gap-2 text-sm">
-          <input v-model="showArchived" type="checkbox" />显示已归档共享模板
+          <input v-model="showArchived" type="checkbox" :disabled="loading" />显示已归档共享模板
         </label>
-        <Button v-if="canManage" variant="outline" size="sm" @click="startCreate">
+        <Button v-if="canManage" variant="outline" size="sm" :disabled="loading" @click="startCreate">
           <FilePlus2 class="size-4" />新建共享模板
         </Button>
       </div>
@@ -238,20 +238,37 @@ function messageOf(reason: unknown): string {
               {{ template.remark }}
             </p>
             <div v-if="template.status === 'active'" class="mt-4 flex flex-wrap gap-2">
-              <Button size="sm" @click="applyTemplate(template, 'insert')">插入光标处</Button>
-              <Button size="sm" variant="outline" @click="applyTemplate(template, 'append')">追加末尾</Button>
-              <Button size="sm" variant="ghost" @click="applyTemplate(template, 'replace')">覆盖全文</Button>
+              <Button size="sm" :disabled="loading" @click="applyTemplate(template, 'insert')"
+                >插入光标处</Button
+              >
+              <Button
+                size="sm"
+                variant="outline"
+                :disabled="loading"
+                @click="applyTemplate(template, 'append')"
+              >
+                追加末尾
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                :disabled="loading"
+                @click="applyTemplate(template, 'replace')"
+              >
+                覆盖全文
+              </Button>
             </div>
             <div v-if="canManage && !isBundled(template)" class="mt-3 flex flex-wrap gap-2 border-t pt-3">
               <Button
                 v-if="template.status === 'active'"
                 size="sm"
                 variant="ghost"
+                :disabled="loading"
                 @click="startEdit(template)"
               >
                 <Pencil class="size-3" />编辑
               </Button>
-              <Button size="sm" variant="ghost" :disabled="saving" @click="changeStatus(template)">
+              <Button size="sm" variant="ghost" :disabled="loading || saving" @click="changeStatus(template)">
                 <Archive v-if="template.status === 'active'" class="size-3" />
                 <ArchiveRestore v-else class="size-3" />
                 {{ template.status === 'active' ? '归档' : '恢复' }}
