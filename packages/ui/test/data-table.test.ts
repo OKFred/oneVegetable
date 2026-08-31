@@ -130,10 +130,16 @@ describe('DataTable', () => {
       }
     ];
     const wrapper = mount(DataTable<Row>, {
-      props: { columns, data: [{ name: 'value' }] }
+      props: {
+        columns,
+        data: [{ name: 'value' }],
+        getRowKey: (row: Row) => row.name,
+        activeRowKey: 'value'
+      }
     });
     const headers = wrapper.findAll('th');
     const cells = wrapper.findAll('tbody td');
+    const row = wrapper.get('tbody tr');
 
     expect(headers[0]?.classes()).toContain('sticky');
     expect((headers[0]?.element as HTMLElement).style.left).toBe('0px');
@@ -142,6 +148,8 @@ describe('DataTable', () => {
     expect((headers[1]?.element as HTMLElement).style.right).toBe('0px');
     expect(cells[0]?.classes()).toContain('bg-inherit');
     expect(cells[1]?.classes()).toContain('bg-inherit');
-    expect(wrapper.get('tbody tr').classes()).toContain('bg-background');
+    expect(row.classes()).toEqual(expect.arrayContaining(['bg-background', 'hover:bg-muted', 'bg-accent']));
+    expect(row.classes()).not.toContain('hover:bg-muted/40');
+    expect(row.classes()).not.toContain('bg-accent/70');
   });
 });
