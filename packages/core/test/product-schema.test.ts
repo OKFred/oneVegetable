@@ -292,6 +292,37 @@ describe('product Schema XML engine', () => {
     expect(issues.some((issue) => issue.rule === 'serverBizRule' && issue.severity === 'warning')).toBe(true);
   });
 
+  it('accepts integer quantity prices within Alibaba decimal value bounds', () => {
+    const model = parseProductSchemaXml(`<itemSchema>
+      <field id="price" name="Quantity price" type="input">
+        <rules>
+          <rule name="valueTypeRule" value="decimal"/>
+          <rule name="minDecimalDigitsRule" value="0.01" exProperty="include"/>
+          <rule name="maxDecimalDigitsRule" value="9999999.99" exProperty="include"/>
+        </rules>
+        <value>199</value>
+      </field>
+    </itemSchema>`);
+
+    expect(validateProductSchemaModel(model)).toEqual([]);
+
+    model.fields[0] = withProductSchemaFieldText(at(model.fields, 0), '0');
+    expect(validateProductSchemaModel(model)).toContainEqual(
+      expect.objectContaining({
+        rule: 'minDecimalDigitsRule',
+        message: 'Quantity price 不能小于 0.01'
+      })
+    );
+
+    model.fields[0] = withProductSchemaFieldText(at(model.fields, 0), '10000000');
+    expect(validateProductSchemaModel(model)).toContainEqual(
+      expect.objectContaining({
+        rule: 'maxDecimalDigitsRule',
+        message: 'Quantity price 不能大于 9999999.99'
+      })
+    );
+  });
+
   it('preserves value attributes such as PhotoBank fileId without normalizing the XML layout', () => {
     const xml = `<itemSchema><fields><field id="scImages" name="Images" type="multiInput"><value fileId="photo-1" inputValue="cover" img="true">https://photobank.example/cover.jpg</value></field></fields></itemSchema>`;
     const model = parseProductSchemaXml(xml);

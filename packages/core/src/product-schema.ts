@@ -638,12 +638,23 @@ function validateScalarRule(
   ) {
     pushError(issues, field, rule.name, `${field.name} 不能大于 ${limit}`);
   }
-  const decimalDigits = value.includes('.') ? (value.split('.')[1]?.length ?? 0) : 0;
-  if (rule.name === 'minDecimalDigitsRule' && decimalDigits < limit) {
-    pushError(issues, field, rule.name, `${field.name} 小数位不能少于 ${limit}`);
+  // ICBU Schema uses these legacy rule names for decimal value bounds. For example,
+  // Quantity price currently returns 0.01 and 9999999.99 rather than digit counts.
+  if (
+    rule.name === 'minDecimalDigitsRule' &&
+    Number.isFinite(numeric) &&
+    Number.isFinite(limit) &&
+    violatesMinimum(numeric, limit, rule)
+  ) {
+    pushError(issues, field, rule.name, `${field.name} 不能小于 ${limit}`);
   }
-  if (rule.name === 'maxDecimalDigitsRule' && decimalDigits > limit) {
-    pushError(issues, field, rule.name, `${field.name} 小数位不能多于 ${limit}`);
+  if (
+    rule.name === 'maxDecimalDigitsRule' &&
+    Number.isFinite(numeric) &&
+    Number.isFinite(limit) &&
+    violatesMaximum(numeric, limit, rule)
+  ) {
+    pushError(issues, field, rule.name, `${field.name} 不能大于 ${limit}`);
   }
   if (rule.name === 'regexRule' || rule.name === 'regxRule') validateRegexRule(field, rule, value, issues);
   if (rule.name === 'valueTypeRule') validateValueTypeRule(field, rule, value, issues);
