@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
-import { Eye, Settings2, ShieldCheck, Upload } from '@lucide/vue';
+import { Eye, Settings2, Share2, ShieldCheck, Upload } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
 import type {
@@ -10,6 +10,7 @@ import type {
   PhotoGroupOperationRequest,
   PhotoGroupOperationResult
 } from '@one-vegetable/core';
+import { SOCIAL_SHARE_MAX_PHOTOS } from '@one-vegetable/core';
 
 import ActionTooltip from '../components/ActionTooltip.vue';
 import GroupSidebar from '../components/GroupSidebar.vue';
@@ -17,8 +18,10 @@ import PageHeader from '../components/PageHeader.vue';
 import ImagePreview, { type ImagePreviewItem } from '../components/ImagePreview.vue';
 import PhotoGroupManagerDialog from '../components/PhotoGroupManagerDialog.vue';
 import PhotoGroupNavigation from '../components/PhotoGroupNavigation.vue';
+import PhotoSocialShareDialog from '../components/PhotoSocialShareDialog.vue';
 import PhotoUploadDialog from '../components/PhotoUploadDialog.vue';
 import QueryState from '../components/QueryState.vue';
+import TriStateCheckbox from '../components/TriStateCheckbox.vue';
 import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
@@ -38,9 +41,11 @@ const observedDimensions = ref<Record<string, { width: number; height: number }>
 const previewOpen = ref(false);
 const previewIndex = ref(0);
 const uploadDialogOpen = ref(false);
+const shareDialogOpen = ref(false);
 const groupManagerOpen = ref(false);
 const groupNavigationRevision = ref(0);
 const groupSidebarCollapsed = ref(false);
+const selectedPhotoIds = ref<string[]>([]);
 const photoMutations = useOperationAvailability(['uploadPhoto', 'transferPhotoFromUrl']);
 const uploadDialogBlocked = computed(
   () => !photoMutations.isAllowed('uploadPhoto') && !photoMutations.isAllowed('transferPhotoFromUrl')
@@ -69,6 +74,11 @@ const filteredPhotos = computed(() => {
   }
   return items;
 });
+const selectedPhotoIdSet = computed(() => new Set(selectedPhotoIds.value));
+const selectedPhotos = computed(() => {
+  const selected = selectedPhotoIdSet.value;
+  return (photos.data.value?.items ?? []).filter((photo) => selected.has(photo.id));
+});
 const governanceCounts = computed(() => {
   const items = photos.data.value?.items ?? [];
   return {
@@ -84,6 +94,30 @@ const previewImages = computed<ImagePreviewItem[]>(() =>
     description: `${dimensionsLabel(photo)} · ${fileSize(photo.fileSize)}`
   }))
 );
+
+watch(selectedGroup, () => {
+  selectedPhotoIds.value = [];
+});
+watch(
+  () => (photos.data.value?.items ?? []).map((photo) => photo.id).join('|'),
+  () => {
+    const available = new Set((photos.data.value?.items ?? []).map((photo) => photo.id));
+    selectedPhotoIds.value = selectedPhotoIds.value.filter((id) => available.has(id));
+  }
+);
+
+function setPhotoSelected(photoId: string, checked: boolean): void {
+  if (!checked) {
+    selectedPhotoIds.value = selectedPhotoIds.value.filter((id) => id !== photoId);
+    return;
+  }
+  if (selectedPhotoIdSet.value.has(photoId)) return;
+  if (selectedPhotoIds.value.length >= SOCIAL_SHARE_MAX_PHOTOS) {
+    toast.warning(`单次最多选择 ${SOCIAL_SHARE_MAX_PHOTOS} 张图片`);
+    return;
+  }
+  selectedPhotoIds.value = [...selectedPhotoIds.value, photoId];
+}
 function selectGroupDefinition(group: PhotoGroup): void {
   selectedGroupDefinition.value = group.id === '-1' ? null : group;
 }
@@ -149,6 +183,9 @@ function handleUploaded(photo: Photo): void {
       <Button variant="outline" @click="groupManagerOpen = true">
         <Settings2 class="size-4" />分组管理
       </Button>
+      <Button variant="outline" :disabled="selectedPhotos.length === 0" @click="shareDialogOpen = true">
+        <Share2 class="size-4" />{{ selectedPhotos.length > 0 ? `分享 ${selectedPhotos.length} 张` : '分享' }}
+      </Button>
       <ActionTooltip :disabled="uploadDialogBlocked" :reason="uploadDialogReason">
         <Button :disabled="uploadDialogBlocked" @click="uploadDialogOpen = true">
           <Upload class="size-4" />上传图片
@@ -188,9 +225,15 @@ function handleUploaded(photo: Photo): void {
 
     <section class="space-y-3">
       <Card class="flex flex-wrap items-center justify-between gap-3 p-3">
-        <div class="flex items-center gap-2 text-sm font-medium">
-          <ShieldCheck class="size-4" />素材治理
+        <div class="flex flex-wrap items-center gap-2 text-sm font-medium">
+          <span class="inline-flex items-center gap-2"><ShieldCheck class="size-4" />素材治理</span>
           <Badge variant="secondary">建议不阻断使用</Badge>
+          <Badge v-if="selectedPhotos.length > 0" variant="outline"
+            >已选 {{ selectedPhotos.length }} 张</Badge
+          >
+          <Button v-if="selectedPhotos.length > 0" variant="ghost" size="sm" @click="selectedPhotoIds = []">
+            取消选择
+          </Button>
         </div>
         <div class="flex flex-wrap gap-2">
           <Button
@@ -224,7 +267,19 @@ function handleUploaded(photo: Photo): void {
         @retry="photos.refetch()"
       >
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          <Card v-for="photo in filteredPhotos" :key="photo.id" class="overflow-hidden">
+          <Card
+            v-for="photo in filteredPhotos"
+            :key="photo.id"
+            class="relative overflow-hidden transition-[box-shadow,border-color]"
+            :class="selectedPhotoIdSet.has(photo.id) ? 'ring-2 ring-primary' : ''"
+          >
+            <span class="absolute left-3 top-3 z-20 rounded-md bg-background/90 p-1 shadow backdrop-blur">
+              <TriStateCheckbox
+                :checked="selectedPhotoIdSet.has(photo.id)"
+                :label="`${selectedPhotoIdSet.has(photo.id) ? '取消选择' : '选择'} ${photo.name}`"
+                @update:checked="setPhotoSelected(photo.id, $event)"
+              />
+            </span>
             <button
               type="button"
               class="group relative block w-full overflow-hidden bg-muted text-left"
@@ -280,6 +335,8 @@ function handleUploaded(photo: Photo): void {
   </div>
 
   <PhotoGroupManagerDialog v-model:open="groupManagerOpen" @changed="handleGroupChanged" />
+
+  <PhotoSocialShareDialog v-model:open="shareDialogOpen" :photos="selectedPhotos" />
 
   <PhotoUploadDialog
     v-model:open="uploadDialogOpen"

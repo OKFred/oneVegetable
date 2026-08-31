@@ -12,7 +12,7 @@ import { provideServices } from '../src/lib/services';
 import PhotosView from '../src/views/PhotosView.vue';
 
 vi.mock('vue-sonner', () => ({
-  toast: { success: vi.fn() }
+  toast: { success: vi.fn(), warning: vi.fn() }
 }));
 
 function mountView(
@@ -71,6 +71,23 @@ describe('PhotosView', () => {
     await button(wrapper, '低分辨率 1').trigger('click');
     expect(wrapper.text()).toContain('dehydrator-detail.jpg');
     expect(wrapper.text()).not.toContain('solar-station-front.jpg');
+    wrapper.unmount();
+  });
+
+  it('selects gallery images and opens the honest social sharing workflow', async () => {
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(button(wrapper, '分享').attributes('disabled')).toBeDefined();
+    await wrapper.get('input[aria-label="选择 solar-station-front.jpg"]').setValue(true);
+    expect(wrapper.text()).toContain('已选 1 张');
+    expect(button(wrapper, '分享 1 张').attributes('disabled')).toBeUndefined();
+    await button(wrapper, '分享 1 张').trigger('click');
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('分享图库素材');
+      expect(document.body.textContent).toContain('Facebook Page');
+      expect(document.body.textContent).toContain('需要配置');
+    });
     wrapper.unmount();
   });
 
