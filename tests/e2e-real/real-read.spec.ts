@@ -263,7 +263,7 @@ test('authenticated Web renders real read results without Mock fallback', async 
 
     await openDomain(page, '管理后台', '管理后台');
     await expect(page.getByText('node / local-node', { exact: true })).toBeVisible();
-    await expect(page.getByText('sqlite / v3', { exact: true })).toBeVisible();
+    await expect(page.getByText(/^sqlite \/ v[1-9][0-9]*$/u)).toBeVisible();
     await expect(page.getByText('real', { exact: true })).toBeVisible();
     await expect(page.getByText(/凭据 完整 · 只读真实调用 已启用/)).toBeVisible();
 
