@@ -126,9 +126,9 @@ test('authenticated Web renders real read results without Mock fallback', async 
     await page.goto('/');
     await expect(page.getByRole('heading', { name: '登录运营工作台' })).toBeVisible();
     await page.getByRole('button', { name: '初始化管理员' }).click();
-    await page.getByLabel('一次性 Bootstrap Token').fill('real-web-smoke-bootstrap');
-    await page.getByLabel('用户名').fill('real-read-admin');
-    await page.getByLabel('密码').fill('Real-read-admin-2026!');
+    await page.getByLabel('管理员引导令牌').fill('real-web-smoke-bootstrap');
+    await page.getByLabel('工作台用户名').fill('real-read-admin');
+    await page.getByLabel('工作台密码').fill('Real-read-admin-2026!');
     await page.getByRole('button', { name: '创建管理员' }).click();
 
     await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
