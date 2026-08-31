@@ -110,6 +110,7 @@ import {
   type ProductTransferImportSelection,
   type ProductTransferProgress
 } from '../lib/product-transfer-archive';
+import { productStatusLabel } from '../lib/product-status';
 import { describeProductExportDisabled, retainCurrentPageSelection } from '../lib/product-selection';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
@@ -1238,7 +1239,7 @@ const columns: DataColumn<Product>[] = [
     header: '状态',
     cell: (context) =>
       h(Badge, { variant: statusVariant(context.getValue<Product['status']>()) }, () =>
-        context.getValue<string>()
+        productStatusLabel(context.getValue<Product['status']>())
       )
   },
   {

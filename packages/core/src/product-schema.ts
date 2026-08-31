@@ -561,6 +561,7 @@ function validateField(
   const disabled = activeRules.some((rule) => rule.name === 'disableRule' && isTruthy(rule.value));
   const values = effectiveFieldValues(field);
   const nonEmpty = values.filter((value) => value.trim() !== '');
+  const required = activeRules.some((rule) => rule.name === 'requiredRule' && isTruthy(rule.value));
 
   if (!disabled) {
     for (const rule of activeRules) {
@@ -575,12 +576,13 @@ function validateField(
       }
       if (NON_VALIDATING_RULES.has(rule.name)) continue;
       const numericRule = Number(rule.value);
-      if (rule.name === 'requiredRule' && isTruthy(rule.value) && nonEmpty.length === 0) {
+      if (rule.name === 'requiredRule' && required && nonEmpty.length === 0) {
         pushError(issues, field, rule.name, `${field.name} 为必填项`);
       }
       if (
         rule.name === 'minInputNumRule' &&
         Number.isFinite(numericRule) &&
+        (required || nonEmpty.length > 0) &&
         violatesMinimum(nonEmpty.length, numericRule, rule)
       ) {
         pushError(issues, field, rule.name, `${field.name} 至少填写 ${numericRule} 项`);

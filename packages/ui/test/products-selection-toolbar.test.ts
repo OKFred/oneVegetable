@@ -32,6 +32,8 @@ describe('ProductsView selection toolbar', () => {
     const selectedCount = wrapper.get('[data-testid="product-selection-count"]');
     const selectPage = wrapper.get('input[aria-label="选择本页全部 3 个商品"]');
 
+    expect(wrapper.get('table').text()).toContain('在线');
+    expect(wrapper.get('table').text()).not.toMatch(/\bonline\b/);
     expect(selectedCount.text()).toBe('已选 0 个');
     expect(toolbar.text()).not.toContain('已选');
     expect((selectPage.element as HTMLInputElement).indeterminate).toBe(false);

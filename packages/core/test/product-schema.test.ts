@@ -323,6 +323,35 @@ describe('product Schema XML engine', () => {
     );
   });
 
+  it('does not treat optional repeatable minimums as required fields', () => {
+    const model = parseProductSchemaXml(`<itemSchema>
+      <field id="optionalTiers" name="Optional tiers" type="complex">
+        <rules><rule name="minInputNumRule" value="1"/></rules>
+        <fields><field id="optionalTiers_0" type="complex"><fields>
+          <field id="quantity" type="input"/><field id="price" type="input"/>
+        </fields></field></fields>
+      </field>
+      <field id="requiredTiers" name="Required tiers" type="complex">
+        <rules>
+          <rule name="requiredRule" value="true"/>
+          <rule name="minInputNumRule" value="1"/>
+        </rules>
+        <fields><field id="requiredTiers_0" type="complex"><fields>
+          <field id="quantity" type="input"/><field id="price" type="input"/>
+        </fields></field></fields>
+      </field>
+    </itemSchema>`);
+
+    const issues = validateProductSchemaModel(model);
+    expect(issues.some((issue) => issue.fieldKey === 'field:0')).toBe(false);
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fieldKey: 'field:1', rule: 'requiredRule' }),
+        expect.objectContaining({ fieldKey: 'field:1', rule: 'minInputNumRule' })
+      ])
+    );
+  });
+
   it('preserves value attributes such as PhotoBank fileId without normalizing the XML layout', () => {
     const xml = `<itemSchema><fields><field id="scImages" name="Images" type="multiInput"><value fileId="photo-1" inputValue="cover" img="true">https://photobank.example/cover.jpg</value></field></fields></itemSchema>`;
     const model = parseProductSchemaXml(xml);
