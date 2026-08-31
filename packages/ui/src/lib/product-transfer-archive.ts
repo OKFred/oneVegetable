@@ -10,6 +10,7 @@ import {
   normalizeProductTransferAssetPath,
   parseProductSchemaXml,
   parseProductTransferPackageJson,
+  PHOTOBANK_UPLOAD_CONTENT_TYPES,
   photoFileExtension,
   PRODUCT_TRANSFER_ARCHIVE_SCHEMA_VERSION,
   serializeProductTransferArchiveDocument,
@@ -165,6 +166,7 @@ export async function createProductTransferArchive(
     if (names.has(caseInsensitiveName)) throw new Error(`图片资源路径重复：${path}`);
     names.add(caseInsensitiveName);
     const detectedContentType = validatePhotoBytes(asset.bytes);
+    assertPhotoBankUploadContentType(detectedContentType);
     if (detectedContentType !== asset.contentType.toLocaleLowerCase()) {
       throw new Error(`图片 ${path} 的文件头与 Content-Type 不一致`);
     }
@@ -225,6 +227,7 @@ function normalizeArchiveAsset(path: string, bytes: Uint8Array): ProductTransfer
   const normalizedPath = normalizeProductTransferAssetPath(path);
   if (!normalizedPath || normalizedPath !== path) throw new Error(`图片资源路径无效：${path}`);
   const contentType = validatePhotoBytes(bytes);
+  assertPhotoBankUploadContentType(contentType);
   assertImageExtension(path, contentType);
   return {
     path,
@@ -232,6 +235,12 @@ function normalizeArchiveAsset(path: string, bytes: Uint8Array): ProductTransfer
     contentType,
     bytes
   };
+}
+
+function assertPhotoBankUploadContentType(contentType: string): void {
+  if (!PHOTOBANK_UPLOAD_CONTENT_TYPES.has(contentType)) {
+    throw new Error(`国际站图库暂不支持上传 ${contentType} 图片`);
+  }
 }
 
 function assertImageExtension(path: string, contentType: string): void {

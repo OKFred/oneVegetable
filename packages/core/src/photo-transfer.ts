@@ -1,5 +1,9 @@
 import { createRequestId, NativeFetchTransport, NetworkManager } from './network';
-import { MAX_PHOTOBANK_IMAGE_BYTES } from './encoded-file';
+import {
+  MAX_PHOTOBANK_IMAGE_BYTES,
+  PHOTOBANK_UPLOAD_CONTENT_TYPES,
+  PHOTO_CONTENT_TYPES
+} from './encoded-file';
 import { isPhotoBankUrl } from './product-description-url';
 import type {
   PhotoTransferRequest,
@@ -10,14 +14,7 @@ import type {
 
 export const MAX_TRANSFER_IMAGE_BYTES = MAX_PHOTOBANK_IMAGE_BYTES;
 const MAX_REDIRECTS = 5;
-const ALLOWED_IMAGE_CONTENT_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-  'image/avif',
-  'image/bmp'
-]);
+const PHOTO_UPLOAD_ACCEPT_HEADER = [...PHOTOBANK_UPLOAD_CONTENT_TYPES].join(',');
 
 export type DownloadedPhotoUpload = PhotoUploadRequest;
 
@@ -105,7 +102,7 @@ export async function downloadPhotoForUpload(
         redirect: 'manual',
         credentials: 'omit',
         defaultHeaders: {
-          Accept: 'image/avif,image/webp,image/png,image/jpeg,image/gif,image/bmp'
+          Accept: PHOTO_UPLOAD_ACCEPT_HEADER
         }
       }
     }
@@ -138,7 +135,10 @@ export async function downloadPhotoForUpload(
   if (!response?.ok) throw new Error(`图片下载失败（HTTP ${response?.status ?? 0}）`);
 
   const contentType = response.headers.get('content-type')?.split(';')[0]?.trim().toLocaleLowerCase() ?? '';
-  if (!ALLOWED_IMAGE_CONTENT_TYPES.has(contentType)) throw new Error('URL 返回内容不是支持的图片类型');
+  if (!PHOTO_CONTENT_TYPES.has(contentType)) throw new Error('URL 返回内容不是支持的图片类型');
+  if (!PHOTOBANK_UPLOAD_CONTENT_TYPES.has(contentType)) {
+    throw new Error('URL 返回图片格式不受国际站图库上传支持');
+  }
   const declaredLength = parseContentLength(response.headers.get('content-length'));
   if (declaredLength !== undefined && declaredLength > maxBytes) {
     throw new Error(`图片超过 ${formatBytes(maxBytes)} 下载上限`);

@@ -8,6 +8,7 @@ if (process.env.ONE_VEGETABLE_REAL_WEB_SMOKE !== '1') {
 const apiOrigin = 'http://127.0.0.1:8797';
 const webOrigin = 'http://127.0.0.1:4175';
 const sqlitePath = resolve('artifacts/real-web-smoke/one-vegetable.sqlite');
+const productTransferZipMutationEnabled = process.env.ONE_VEGETABLE_REAL_PRODUCT_TRANSFER_ZIP_SMOKE === '1';
 
 export default defineConfig({
   testDir: './tests/e2e-real',
@@ -30,7 +31,7 @@ export default defineConfig({
         ONE_VEGETABLE_PORT: '8797',
         ONE_VEGETABLE_SQLITE_PATH: sqlitePath,
         ONE_VEGETABLE_CORS_ORIGINS: webOrigin,
-        ONE_VEGETABLE_MUTATION_FLAGS: '',
+        ONE_VEGETABLE_MUTATION_FLAGS: productTransferZipMutationEnabled ? 'operation:uploadPhoto' : '',
         BOOTSTRAP_ADMIN_TOKEN: 'real-web-smoke-bootstrap'
       }
     },

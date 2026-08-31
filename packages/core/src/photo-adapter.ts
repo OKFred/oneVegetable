@@ -1,5 +1,9 @@
 import type { AlibabaClient } from './alibaba-client';
-import { MAX_PHOTOBANK_IMAGE_BYTES, PHOTO_CONTENT_TYPES, validateEncodedFile } from './encoded-file';
+import {
+  MAX_PHOTOBANK_IMAGE_BYTES,
+  PHOTOBANK_UPLOAD_CONTENT_TYPES,
+  validateEncodedFile
+} from './encoded-file';
 import type {
   Photo,
   PhotoGroup,
@@ -65,7 +69,7 @@ export class PhotoAdapter {
 
   async upload(request: PhotoUploadRequest): Promise<Photo> {
     const bytes = validateEncodedFile(request, {
-      allowedContentTypes: PHOTO_CONTENT_TYPES,
+      allowedContentTypes: PHOTOBANK_UPLOAD_CONTENT_TYPES,
       maxBytes: MAX_PHOTOBANK_IMAGE_BYTES,
       requireImageSignature: true
     });
