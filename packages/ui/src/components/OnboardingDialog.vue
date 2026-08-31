@@ -62,7 +62,7 @@ async function finish(destination?: 'settings'): Promise<void> {
         <ol class="mt-4 grid gap-2 rounded-lg border bg-muted/40 p-4 text-sm leading-6">
           <li><strong>1.</strong> 在 Alibaba 应用中心创建或选择 Online 应用，取得 App Key 和 App Secret。</li>
           <li><strong>2.</strong> 完成 OAuth 授权，取得该账号的 Access Token。</li>
-          <li><strong>3.</strong> 前往设置，创建保险库口令并填写或导入以上三项凭证。</li>
+          <li><strong>3.</strong> 前往设置，设置本机保护口令并填写或导入以上三项凭证。</li>
         </ol>
         <div class="mt-5 grid gap-3 sm:grid-cols-2">
           <div class="rounded-lg border p-4">

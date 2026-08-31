@@ -99,7 +99,7 @@ describe('ErrorNotice', () => {
   it('links credential vault failures directly to extension settings', () => {
     const error = new GatewayException({
       code: 'CREDENTIAL_VAULT_EMPTY',
-      message: '请先创建凭证保险库',
+      message: '请先在设置中配置开放平台凭证',
       retryable: false
     });
     const wrapper = mountErrorNotice(error, 'extension');

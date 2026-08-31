@@ -209,7 +209,7 @@ function userError(cause: unknown, fallback: string): Error {
     <div class="grid gap-5 xl:grid-cols-3">
       <Card class="p-5">
         <div class="flex items-center justify-between gap-3">
-          <h3 class="flex items-center gap-2 font-semibold"><Upload class="size-4" />Alibaba 凭据保险库</h3>
+          <h3 class="flex items-center gap-2 font-semibold"><Upload class="size-4" />Alibaba 开放平台凭证</h3>
           <span
             class="rounded-full px-2 py-1 text-xs"
             :class="

@@ -74,7 +74,7 @@ function mountView(
               categories: [
                 {
                   id: 'credentials',
-                  label: '加密凭证保险库与网关设置',
+                  label: '加密开放平台凭证与网关设置',
                   storage: 'chrome.storage.local',
                   itemCount: 1,
                   approximateBytes: 512,
@@ -146,7 +146,7 @@ describe('SettingsView diagnostics', () => {
       '0'
     );
     expect(wrapper.get('select[aria-label="空闲自动锁定时间"]').text()).toContain('不自动锁定（默认）');
-    expect(wrapper.get('input[aria-label="新保险库口令"]').attributes('placeholder')).toBe('至少 6 位');
+    expect(wrapper.get('input[aria-label="新保护口令"]').attributes('placeholder')).toBe('至少 6 位');
     expect(wrapper.text()).not.toContain('UTF-8 字节');
 
     const policyButton = wrapper
@@ -165,11 +165,11 @@ describe('SettingsView diagnostics', () => {
     const wrapper = mountView('extension', 'empty');
     await flushPromises();
 
-    await wrapper.get('input[aria-label="新建保险库口令"]').setValue('123456');
-    await wrapper.get('input[aria-label="确认保险库口令"]').setValue('123456');
+    await wrapper.get('input[aria-label="设置保护口令"]').setValue('123456');
+    await wrapper.get('input[aria-label="确认保护口令"]').setValue('123456');
     const createButton = wrapper
       .findAll('button')
-      .find((candidate) => candidate.text().includes('创建保险库并保存'));
+      .find((candidate) => candidate.text().includes('加密保存凭证'));
     if (!createButton) throw new Error('Missing vault creation button');
     await createButton.trigger('click');
     await flushPromises();
@@ -315,7 +315,7 @@ describe('SettingsView diagnostics', () => {
     const wrapper = mountView('extension');
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('本地数据与隐私');
-      expect(wrapper.text()).toContain('加密凭证保险库与网关设置');
+      expect(wrapper.text()).toContain('加密开放平台凭证与网关设置');
     });
 
     const clearButton = wrapper.findAll('button').find((candidate) => candidate.text().includes('彻底清除'));
@@ -338,11 +338,11 @@ describe('SettingsView diagnostics', () => {
   it('hides editable credentials while locked and reveals only safe fields after unlock', async () => {
     const wrapper = mountView('extension', 'locked');
     await vi.waitFor(() => {
-      expect(wrapper.find('input[aria-label="保险库口令"]').exists()).toBe(true);
+      expect(wrapper.find('input[aria-label="保护口令"]').exists()).toBe(true);
     });
     expect(wrapper.text()).not.toContain('国际站开放平台凭证');
 
-    await wrapper.get('input[aria-label="保险库口令"]').setValue('correct-vault-password');
+    await wrapper.get('input[aria-label="保护口令"]').setValue('correct-vault-password');
     await wrapper.get('button').trigger('click');
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('凭证已解锁');
@@ -361,7 +361,7 @@ describe('SettingsView diagnostics', () => {
     await policyButton.trigger('click');
     await vi.waitFor(() => {
       expect(updateVaultPolicy).toHaveBeenCalledWith(30);
-      expect(wrapper.text()).toContain('连续 30 分钟未使用凭证后自动锁定');
+      expect(wrapper.text()).toContain('连续 30 分钟未使用后自动锁定');
     });
     wrapper.unmount();
   });
@@ -381,15 +381,15 @@ describe('SettingsView diagnostics', () => {
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('发现旧版明文凭证');
     });
-    await wrapper.get('input[aria-label="新建保险库口令"]').setValue('migrated-vault-password');
-    await wrapper.get('input[aria-label="确认保险库口令"]').setValue('different-vault-password');
+    await wrapper.get('input[aria-label="设置保护口令"]').setValue('migrated-vault-password');
+    await wrapper.get('input[aria-label="确认保护口令"]').setValue('different-vault-password');
     await wrapper.get('button').trigger('click');
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('两次输入的保险库口令不一致');
+      expect(wrapper.text()).toContain('两次输入的本机保护口令不一致');
     });
     expect(migrateVault).not.toHaveBeenCalled();
 
-    await wrapper.get('input[aria-label="确认保险库口令"]').setValue('migrated-vault-password');
+    await wrapper.get('input[aria-label="确认保护口令"]').setValue('migrated-vault-password');
     await wrapper.get('button').trigger('click');
     await vi.waitFor(() => {
       expect(migrateVault).toHaveBeenCalledWith('migrated-vault-password');

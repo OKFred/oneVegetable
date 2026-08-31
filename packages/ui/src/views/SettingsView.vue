@@ -199,7 +199,7 @@ async function importCredentialBundle(event: Event): Promise<void> {
     const imported = readImportedCredentials(JSON.parse(await file.text()) as unknown);
     model.value = { ...model.value, ...imported };
     feedback.value =
-      '已从授权包读取 App Key、App Secret 和 Access Token；尚未保存，请设置保险库口令并确认保存。';
+      '已从授权包读取 App Key、App Secret 和 Access Token；尚未保存，请设置本机保护口令并确认保存。';
   } catch (error: unknown) {
     credentialImportError.value = userVisibleCause(error, '授权包导入失败');
   } finally {
@@ -245,7 +245,7 @@ async function refreshVaultStatus(): Promise<void> {
   try {
     applyVaultStatus(await vault.status());
   } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, '保险库状态读取失败');
+    vaultError.value = userVisibleCause(error, '凭证保护状态读取失败');
   }
 }
 
@@ -259,7 +259,7 @@ async function unlockVault(): Promise<void> {
     clearVaultPassphrases();
     feedback.value = '凭证已解锁；刷新页面或后台休眠后无需重复输入口令。';
   } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, '保险库解锁失败');
+    vaultError.value = userVisibleCause(error, '凭证解锁失败');
   } finally {
     vaultBusy.value = false;
   }
@@ -277,7 +277,7 @@ async function migrateVault(): Promise<void> {
     feedback.value = '旧版明文凭证已原位加密，并在当前 Chrome 会话内保持可用。';
     await refreshLocalData();
   } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, '保险库迁移失败');
+    vaultError.value = userVisibleCause(error, '旧凭证加密失败');
   } finally {
     vaultBusy.value = false;
   }
@@ -297,7 +297,7 @@ async function lockVault(): Promise<void> {
     };
     feedback.value = '凭证已锁定，当前 Chrome 会话中的解锁状态已清除。';
   } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, '保险库锁定失败');
+    vaultError.value = userVisibleCause(error, '凭证锁定失败');
   } finally {
     vaultBusy.value = false;
   }
@@ -313,7 +313,7 @@ async function rotateVaultPassphrase(): Promise<void> {
     clearVaultPassphrases();
     feedback.value = '凭证已使用新 salt 和新口令重新加密。';
   } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, '保险库口令更换失败');
+    vaultError.value = userVisibleCause(error, '保护口令更换失败');
   } finally {
     vaultBusy.value = false;
   }
@@ -328,7 +328,7 @@ async function updateVaultPolicy(): Promise<void> {
     feedback.value =
       idleTimeoutMinutes.value === 0
         ? '已关闭空闲自动锁定；当前 Chrome 会话内将保持可用。'
-        : `保险库将在连续 ${idleTimeoutMinutes.value} 分钟未使用凭证后自动锁定。`;
+        : `开放平台凭证将在连续 ${idleTimeoutMinutes.value} 分钟未使用后自动锁定。`;
   } catch (error: unknown) {
     vaultError.value = userVisibleCause(error, '空闲锁定策略保存失败');
   } finally {
@@ -343,7 +343,7 @@ function applyVaultStatus(status: CredentialVaultStatus): void {
 
 function assertMatchingPassphrases(passphrase: string, confirmation: string): void {
   validateVaultPassphrase(passphrase);
-  if (passphrase !== confirmation) throw new Error('两次输入的保险库口令不一致');
+  if (passphrase !== confirmation) throw new Error('两次输入的本机保护口令不一致');
 }
 
 function clearVaultPassphrases(): void {
@@ -605,10 +605,10 @@ function confirmThemePreference(): void {
         <p class="text-sm font-medium">
           {{
             vaultStatus.lockReason === 'idle'
-              ? '保险库已因空闲超时自动锁定'
+              ? '开放平台凭证已因空闲超时自动锁定'
               : vaultStatus.lockReason === 'session-ended'
                 ? 'Chrome 会话已结束，需要重新解锁'
-                : '保险库已手动锁定'
+                : '开放平台凭证已手动锁定'
           }}
         </p>
         <p class="mt-1 text-xs text-muted-foreground">
@@ -623,7 +623,7 @@ function confirmThemePreference(): void {
             v-model="vaultPassphrase"
             class="max-w-sm"
             type="password"
-            aria-label="保险库口令"
+            aria-label="保护口令"
             autocomplete="current-password"
           />
           <Button :disabled="vaultBusy || !vaultPassphrase" @click="unlockVault">
@@ -632,7 +632,7 @@ function confirmThemePreference(): void {
         </div>
       </div>
       <div v-else-if="vaultStatus?.state === 'invalid'" class="mt-4 rounded-lg bg-red-50 p-4 text-red-900">
-        <p class="text-sm font-medium">保险库记录无效</p>
+        <p class="text-sm font-medium">本机凭证记录无效</p>
         <p class="mt-1 text-xs leading-5">
           为避免覆盖无法恢复的数据，当前不提供自动修复。请先备份浏览器配置，再使用下方彻底清除功能重新开始。
         </p>
@@ -669,7 +669,7 @@ function confirmThemePreference(): void {
           </div>
         </div>
         <div class="rounded-lg border p-4">
-          <p class="text-sm font-medium">更换保险库口令</p>
+          <p class="text-sm font-medium">更换本机保护口令</p>
           <p class="mt-1 text-xs text-muted-foreground">
             将生成新 salt 和新密钥重新加密，不需要旧口令再次参与。
           </p>
@@ -677,14 +677,14 @@ function confirmThemePreference(): void {
             <Input
               v-model="newVaultPassphrase"
               type="password"
-              aria-label="新保险库口令"
+              aria-label="新保护口令"
               autocomplete="new-password"
               :placeholder="`至少 ${CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS} 位`"
             />
             <Input
               v-model="newVaultPassphraseConfirmation"
               type="password"
-              aria-label="确认新保险库口令"
+              aria-label="确认新保护口令"
               autocomplete="new-password"
               placeholder="再次输入"
             />
@@ -707,14 +707,14 @@ function confirmThemePreference(): void {
         <Input
           v-model="vaultPassphrase"
           type="password"
-          aria-label="新建保险库口令"
+          aria-label="设置保护口令"
           autocomplete="new-password"
           :placeholder="`至少 ${CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS} 位`"
         />
         <Input
           v-model="vaultPassphraseConfirmation"
           type="password"
-          aria-label="确认保险库口令"
+          aria-label="确认保护口令"
           autocomplete="new-password"
           placeholder="再次输入"
         />
@@ -817,7 +817,7 @@ function confirmThemePreference(): void {
             (!vaultPassphrase || !vaultPassphraseConfirmation))
         "
         @click="save"
-        ><Save class="size-4" />{{ vaultStatus?.state === 'empty' ? '创建保险库并保存' : '保存设置' }}</Button
+        ><Save class="size-4" />{{ vaultStatus?.state === 'empty' ? '加密保存凭证' : '保存设置' }}</Button
       >
     </Card>
     <AlibabaCredentialAcquisitionDialog

@@ -276,7 +276,7 @@ async function saveAcquiredCredentialsToVault(
   const present = Object.prototype.hasOwnProperty.call(stored, SETTINGS_STORAGE_KEY);
   const state = inspectCredentialStorage(stored[SETTINGS_STORAGE_KEY], present);
   if (state.kind === 'empty') {
-    if (!passphrase) throw new Error('首次保存到保险库时需要设置口令');
+    if (!passphrase) throw new Error('首次保存到插件时需要设置本机保护口令');
     return (await executeCredentialVaultOperation('create', {
       passphrase,
       settings
@@ -319,7 +319,7 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
       await vaultSession.lock('manual');
       return credentialVaultStatus(state);
     case 'create': {
-      if (state.kind !== 'empty') throw new Error('只有空保险库可以创建新凭证');
+      if (state.kind !== 'empty') throw new Error('已有凭证配置不能重复创建');
       const request = asRecord(payload);
       const settings = requiredGatewaySettings(request.settings);
       const created = await createCredentialVault(settings, requiredString(request, 'passphrase'));
@@ -369,7 +369,7 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
       return credentialVaultStatus({ kind: 'vault', record });
     }
     default:
-      throw new Error('不支持的保险库操作');
+      throw new Error('不支持的凭证保护操作');
   }
 }
 
@@ -423,15 +423,15 @@ async function getUnlockedVault(state: ReturnType<typeof inspectCredentialStorag
 function vaultStateError(kind: ReturnType<typeof inspectCredentialStorage>['kind']): GatewayException {
   const details =
     kind === 'legacy'
-      ? ['CREDENTIAL_VAULT_MIGRATION_REQUIRED', '旧版明文凭证必须先迁移到加密保险库']
+      ? ['CREDENTIAL_VAULT_MIGRATION_REQUIRED', '旧版明文凭证必须先完成本机加密']
       : kind === 'invalid'
         ? ['CREDENTIAL_VAULT_INVALID', '凭证存储格式无效，请清除本地数据后重新配置']
         : kind === 'empty'
-          ? ['CREDENTIAL_VAULT_EMPTY', '请先创建凭证保险库']
+          ? ['CREDENTIAL_VAULT_EMPTY', '请先在设置中配置开放平台凭证']
           : vaultSession.lockReason === 'idle'
-            ? ['CREDENTIAL_VAULT_IDLE_TIMEOUT', '凭证保险库因空闲超时已自动锁定，请重新解锁']
+            ? ['CREDENTIAL_VAULT_IDLE_TIMEOUT', '开放平台凭证因空闲超时已锁定，请重新解锁']
             : vaultSession.lockReason === 'manual'
-              ? ['CREDENTIAL_VAULT_LOCKED', '凭证保险库已手动锁定，请先在设置中解锁']
+              ? ['CREDENTIAL_VAULT_LOCKED', '开放平台凭证已手动锁定，请先在设置中解锁']
               : ['CREDENTIAL_VAULT_SESSION_ENDED', 'Chrome 会话已结束或扩展已更新，请在设置中重新解锁凭证'];
   const [code, message] = details as [string, string];
   return new GatewayException({ code, message, retryable: false });

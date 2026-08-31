@@ -180,7 +180,7 @@ async function requestVault<K extends CredentialVaultOperation>(
     throw new GatewayException(
       {
         code: 'INVALID_RUNTIME_RESPONSE',
-        message: '保险库响应 requestId 不匹配',
+        message: '凭证保护响应 requestId 不匹配',
         retryable: false
       },
       message.requestId
@@ -231,7 +231,7 @@ const localData: LocalDataRepository = {
     const categories: LocalDataCategory[] = [
       {
         id: 'credentials',
-        label: '加密凭证保险库与网关设置',
+        label: '加密开放平台凭证与网关设置',
         storage: 'chrome.storage.local',
         itemCount: SETTINGS_STORAGE_KEY in local ? 1 : 0,
         approximateBytes: approximateStorageBytes(local[SETTINGS_STORAGE_KEY]),
