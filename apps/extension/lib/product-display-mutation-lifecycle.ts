@@ -1,17 +1,24 @@
 import {
   GatewayException,
   isProductMutationJob,
+  PENDING_PRODUCT_MUTATION_ID_PREFIX,
+  productMutationJobHasResolvedProductId,
   productMutationJobIsBlocking,
   productMutationJobIsTerminal,
+  type AlibabaLanguage,
   type Product,
+  type ProductDetail,
   type ProductDisplayMutationResult,
   type ProductDisplayRequest,
   type ProductListQuery,
   type ProductMutationJob,
   type ProductMutationJobListInput,
   type ProductMutationJobPage,
+  type ProductMutationJobOperation,
+  type ProductMutationResult,
   type ProductMutationJobStatus,
-  type ProductPage
+  type ProductPage,
+  type RequestOf
 } from '@one-vegetable/core';
 import { EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY } from './product-display-mutation-storage';
 
@@ -36,8 +43,27 @@ export interface ExtensionProductDisplayGateway {
   updateDisplay(request: ProductDisplayRequest): Promise<ProductDisplayMutationResult>;
 }
 
+export interface ExtensionProductCreationGateway {
+  list(request: ProductListQuery): Promise<ProductPage>;
+  get(productId: string, draft?: boolean, language?: AlibabaLanguage): Promise<ProductDetail>;
+  mutate(
+    method: 'alibaba.icbu.product.schema.add',
+    request: RequestOf<'publishProduct'>
+  ): Promise<ProductMutationResult>;
+  saveDraft(request: RequestOf<'saveProductDraft'>): Promise<ProductMutationResult>;
+}
+
 export type ExtensionProductDisplaySubmissionResult = ProductDisplayMutationResult & {
   jobs: ProductMutationJob[];
+};
+
+export type ExtensionProductCreationOperation = Extract<
+  ProductMutationJobOperation,
+  'publishProduct' | 'saveProductDraft'
+>;
+
+export type ExtensionProductCreationSubmissionResult = ProductMutationResult & {
+  job: ProductMutationJob;
 };
 
 export class ExtensionProductDisplayMutationLifecycle {
@@ -130,6 +156,82 @@ export class ExtensionProductDisplayMutationLifecycle {
     });
   }
 
+  submitCreation(
+    gateway: ExtensionProductCreationGateway,
+    requestId: string,
+    operation: ExtensionProductCreationOperation,
+    request: RequestOf<'publishProduct'>
+  ): Promise<ExtensionProductCreationSubmissionResult> {
+    return this.#exclusive(async () => {
+      const payloadFingerprint = await creationFingerprint(operation, request);
+      const currentJobs = await this.#readJobs();
+      const duplicate = currentJobs.find(
+        (job) =>
+          job.operation === operation &&
+          job.payloadFingerprint === payloadFingerprint &&
+          (productMutationJobIsBlocking(job.status) || job.status === 'verified')
+      );
+      if (duplicate) {
+        if (duplicate.status === 'verified') throw creationAlreadyAccepted(duplicate);
+        throw mutationInProgress(duplicate);
+      }
+
+      const job = createCreationJob({
+        requestId,
+        operation,
+        categoryId: request.categoryId,
+        language: requireCreationLanguage(request.language),
+        payloadFingerprint,
+        now: this.clock()
+      });
+      await this.#writeJobs([...currentJobs, job]);
+
+      let result: ProductMutationResult;
+      try {
+        result =
+          operation === 'saveProductDraft'
+            ? await gateway.saveDraft(request)
+            : await gateway.mutate('alibaba.icbu.product.schema.add', request);
+      } catch (error: unknown) {
+        const details = errorDetails(error);
+        const status: ProductMutationJobStatus = details.retryable ? 'recovery-required' : 'failed';
+        await this.#transitionOne(
+          job,
+          status,
+          {
+            traceId: details.traceId,
+            reasonCode: details.code,
+            message: details.retryable
+              ? `请求结果不确定，已停止重复创建并等待人工核对：${details.message}`
+              : details.message
+          },
+          false
+        );
+        throw error;
+      }
+
+      const accepted = await this.#transitionOne(
+        job,
+        'verifying',
+        {
+          productId: result.productId,
+          traceId: result.traceId,
+          reasonCode:
+            operation === 'saveProductDraft'
+              ? 'ALIBABA_PRODUCT_DRAFT_ACCEPTED'
+              : 'ALIBABA_PRODUCT_PUBLISH_ACCEPTED',
+          message:
+            operation === 'saveProductDraft'
+              ? 'Alibaba 已接受平台草稿创建，等待草稿 Schema 回读确认'
+              : 'Alibaba 已接受正式发布，等待商品列表回读确认'
+        },
+        false
+      );
+      const verified = await this.#refreshCreation(gateway, accepted);
+      return { ...result, job: verified };
+    });
+  }
+
   async list(input: ProductMutationJobListInput = {}): Promise<ProductMutationJobPage> {
     const page = input.page ?? 1;
     const pageSize = input.pageSize ?? 20;
@@ -162,17 +264,21 @@ export class ExtensionProductDisplayMutationLifecycle {
   }
 
   refresh(
-    gateway: ExtensionProductDisplayGateway,
+    gateway: ExtensionProductDisplayGateway | ExtensionProductCreationGateway,
     id: string,
     expectedRevision: number
   ): Promise<ProductMutationJob> {
     return this.#exclusive(async () => {
       const current = await this.#requireRevision(id, expectedRevision);
       if (productMutationJobIsTerminal(current.status)) return structuredClone(current);
+      if (isCreationOperation(current.operation)) {
+        return await this.#refreshCreation(requireCreationGateway(gateway), current);
+      }
       assertDisplayJob(current);
+      const displayGateway = requireDisplayGateway(gateway);
       try {
         const product = (
-          await readProducts(gateway, {
+          await readProducts(displayGateway, {
             productIds: [current.productId],
             encryptedProductIds: [current.encryptedProductId],
             display: current.targetDisplay
@@ -248,6 +354,88 @@ export class ExtensionProductDisplayMutationLifecycle {
     });
   }
 
+  async #refreshCreation(
+    gateway: ExtensionProductCreationGateway,
+    current: ProductMutationJob
+  ): Promise<ProductMutationJob> {
+    if (!isCreationOperation(current.operation) || current.categoryId === null || current.language === null) {
+      throw gatewayError('PRODUCT_MUTATION_JOB_INVALID', '新增商品任务缺少类目或语言快照');
+    }
+    if (!productMutationJobHasResolvedProductId(current)) {
+      if (current.status === 'recovery-required') return structuredClone(current);
+      return await this.#transitionOne(
+        current,
+        'recovery-required',
+        {
+          reasonCode: 'PRODUCT_CREATION_RESULT_UNKNOWN',
+          message: '请求可能已经到达平台，但本地未取得商品 ID；为避免重复创建，请先在国际站后台人工核对'
+        },
+        true
+      );
+    }
+
+    try {
+      if (current.operation === 'saveProductDraft') {
+        const detail = await gateway.get(current.productId, true, current.language);
+        if (detail.id !== current.productId || detail.schemaXml.trim() === '') {
+          throw gatewayError('PRODUCT_DRAFT_READBACK_MISMATCH', '平台草稿回读缺少匹配的商品 ID 或 Schema');
+        }
+        return await this.#transitionOne(
+          current,
+          'verified',
+          {
+            reasonCode: 'PRODUCT_DRAFT_READBACK_MATCHED',
+            message: `平台草稿 ${current.productId} 已通过 schema.render.draft 回读确认`
+          },
+          true
+        );
+      }
+
+      const product = await findProductById(gateway, current.productId, current.language);
+      if (product) {
+        return await this.#transitionOne(
+          current,
+          'verified',
+          {
+            reasonCode: 'PRODUCT_PUBLISH_READBACK_MATCHED',
+            message:
+              product.status === 'auditing'
+                ? `商品 ${current.productId} 已在列表回读，当前由平台审核中`
+                : `商品 ${current.productId} 已在列表回读，当前状态为${product.status === 'online' ? '上架' : '下架'}`
+          },
+          true
+        );
+      }
+      const timedOut = this.clock() - current.submittedTimeUtc >= VERIFICATION_TIMEOUT_MILLISECONDS;
+      return await this.#transitionOne(
+        current,
+        timedOut ? 'recovery-required' : 'verifying',
+        {
+          reasonCode: timedOut ? 'PRODUCT_PUBLISH_READBACK_TIMEOUT' : 'PRODUCT_PUBLISH_READBACK_PENDING',
+          message: timedOut
+            ? '平台已受理发布，但商品列表暂未回读到该商品；已禁止重复创建，请稍后人工核对'
+            : '平台已受理发布，商品列表暂未回读到该商品'
+        },
+        true
+      );
+    } catch (error: unknown) {
+      const details = errorDetails(error);
+      const timedOut = this.clock() - current.submittedTimeUtc >= VERIFICATION_TIMEOUT_MILLISECONDS;
+      return await this.#transitionOne(
+        current,
+        timedOut ? 'recovery-required' : 'verifying',
+        {
+          traceId: details.traceId,
+          reasonCode: details.code,
+          message: timedOut
+            ? `平台回读超时，已禁止重复创建：${details.message}`
+            : `平台回读尚未完成：${details.message}`
+        },
+        true
+      );
+    }
+  }
+
   recover(
     gateway: ExtensionProductDisplayGateway,
     id: string,
@@ -309,7 +497,12 @@ export class ExtensionProductDisplayMutationLifecycle {
   #transitionOne(
     current: ProductMutationJob,
     status: ProductMutationJobStatus,
-    details: { traceId?: string | null; reasonCode: string; message: string },
+    details: {
+      productId?: string;
+      traceId?: string | null;
+      reasonCode: string;
+      message: string;
+    },
     checked: boolean
   ): Promise<ProductMutationJob> {
     return this.#transitionMany([current], status, details, checked).then((jobs) => {
@@ -322,7 +515,12 @@ export class ExtensionProductDisplayMutationLifecycle {
   async #transitionMany(
     expectedJobs: readonly ProductMutationJob[],
     status: ProductMutationJobStatus,
-    details: { traceId?: string | null; reasonCode: string; message: string },
+    details: {
+      productId?: string;
+      traceId?: string | null;
+      reasonCode: string;
+      message: string;
+    },
     checked: boolean
   ): Promise<ProductMutationJob[]> {
     const jobs = await this.#readJobs();
@@ -353,7 +551,7 @@ export class ExtensionProductDisplayMutationLifecycle {
     if (!isStoredJobs(value)) {
       throw gatewayError(
         'EXTENSION_PRODUCT_MUTATION_STORAGE_INVALID',
-        '插件商品写入任务存储无效；为避免重复操作，真实上下架已停止'
+        '插件商品写入任务存储无效；为避免重复操作，真实商品写入已停止'
       );
     }
     return structuredClone(value.jobs);
@@ -431,16 +629,58 @@ function createDisplayJob(input: {
   };
 }
 
+function createCreationJob(input: {
+  requestId: string;
+  operation: ExtensionProductCreationOperation;
+  categoryId: number;
+  language: 'zh_CN' | 'en_US';
+  payloadFingerprint: string;
+  now: number;
+}): ProductMutationJob {
+  return {
+    id: crypto.randomUUID(),
+    requestId: input.requestId,
+    productId: `${PENDING_PRODUCT_MUTATION_ID_PREFIX}${input.payloadFingerprint}`,
+    operation: input.operation,
+    status: 'submitted',
+    categoryId: input.categoryId,
+    language: input.language,
+    payloadFingerprint: input.payloadFingerprint,
+    fieldExpectations: [],
+    encryptedProductId: null,
+    targetDisplay: null,
+    originalDisplay: null,
+    traceId: null,
+    reasonCode: null,
+    message: null,
+    submittedTimeUtc: input.now,
+    lastCheckedTimeUtc: null,
+    completedTimeUtc: null,
+    createTimeUtc: input.now,
+    updateTimeUtc: input.now,
+    creatorId: ACTOR_ID,
+    updaterId: ACTOR_ID,
+    revision: 1,
+    remark: null
+  };
+}
+
 function transitionJob(
   current: ProductMutationJob,
   status: ProductMutationJobStatus,
-  details: { traceId?: string | null; reasonCode: string; message: string },
+  details: {
+    productId?: string;
+    traceId?: string | null;
+    reasonCode: string;
+    message: string;
+  },
   checked: boolean,
   now: number
 ): ProductMutationJob {
   const terminal = productMutationJobIsTerminal(status);
   return {
     ...current,
+    productId: details.productId ?? current.productId,
     status,
     traceId: details.traceId === undefined ? current.traceId : details.traceId,
     reasonCode: details.reasonCode,
@@ -516,6 +756,69 @@ async function displayFingerprint(
   return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('');
 }
 
+async function creationFingerprint(
+  operation: ExtensionProductCreationOperation,
+  request: RequestOf<'publishProduct'>
+): Promise<string> {
+  const bytes = new TextEncoder().encode(
+    `${operation}\n${request.categoryId}\n${request.language}\n${request.schemaXml}`
+  );
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('');
+}
+
+async function findProductById(
+  gateway: Pick<ExtensionProductCreationGateway, 'list'>,
+  productId: string,
+  language: AlibabaLanguage
+): Promise<Product | null> {
+  for (let page = 1; page <= 100; page += 1) {
+    const result = await gateway.list({ page, pageSize: 100, language });
+    const product = result.items.find((candidate) => candidate.id === productId);
+    if (product) return product;
+    if (page * result.pageSize >= result.total) return null;
+  }
+  return null;
+}
+
+function isCreationOperation(
+  operation: ProductMutationJobOperation
+): operation is ExtensionProductCreationOperation {
+  return operation === 'publishProduct' || operation === 'saveProductDraft';
+}
+
+function requireCreationGateway(
+  gateway: ExtensionProductDisplayGateway | ExtensionProductCreationGateway
+): ExtensionProductCreationGateway {
+  const candidate = gateway as Partial<ExtensionProductCreationGateway>;
+  if (
+    typeof candidate.list !== 'function' ||
+    typeof candidate.get !== 'function' ||
+    typeof candidate.mutate !== 'function' ||
+    typeof candidate.saveDraft !== 'function'
+  ) {
+    throw gatewayError('PRODUCT_MUTATION_GATEWAY_INVALID', '当前商品网关不支持新增商品回读');
+  }
+  return candidate as ExtensionProductCreationGateway;
+}
+
+function requireDisplayGateway(
+  gateway: ExtensionProductDisplayGateway | ExtensionProductCreationGateway
+): ExtensionProductDisplayGateway {
+  const candidate = gateway as Partial<ExtensionProductDisplayGateway>;
+  if (typeof candidate.list !== 'function' || typeof candidate.updateDisplay !== 'function') {
+    throw gatewayError('PRODUCT_MUTATION_GATEWAY_INVALID', '当前商品网关不支持上下架回读');
+  }
+  return candidate as ExtensionProductDisplayGateway;
+}
+
+function requireCreationLanguage(value: string): 'zh_CN' | 'en_US' {
+  if (value !== 'zh_CN' && value !== 'en_US') {
+    throw gatewayError('REQUEST_CONTRACT_INVALID', '新增商品语言仅支持 zh_CN 或 en_US');
+  }
+  return value;
+}
+
 function isStoredJobs(value: unknown): value is StoredProductMutationJobs {
   if (!isRecord(value) || value.schemaVersion !== STORAGE_SCHEMA_VERSION || !Array.isArray(value.jobs)) {
     return false;
@@ -550,9 +853,17 @@ function errorDetails(error: unknown): {
 }
 
 function mutationInProgress(job: ProductMutationJob): GatewayException {
+  const target = productMutationJobHasResolvedProductId(job) ? `商品 ${job.productId}` : '相同内容';
   return gatewayError(
     'PRODUCT_MUTATION_ALREADY_IN_PROGRESS',
-    `商品 ${job.productId} 已有 ${job.status} 写入任务`
+    `${target} 已有 ${job.status} 写入任务，请先完成平台回读或人工核对`
+  );
+}
+
+function creationAlreadyAccepted(job: ProductMutationJob): GatewayException {
+  return gatewayError(
+    'PRODUCT_CREATION_ALREADY_ACCEPTED',
+    `相同内容已由平台接受为 ${job.productId}；为避免重复商品，本次未再次提交`
   );
 }
 

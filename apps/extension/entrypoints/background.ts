@@ -30,6 +30,7 @@ import {
   validateCapabilityRequest,
   validateCapabilityResponse,
   validateProductDisplayInput,
+  validateSchemaPublishInput,
   type ApiCapability,
   type AlibabaLanguage,
   type CredentialVaultRequest,
@@ -154,7 +155,7 @@ const vaultSession = new ExtensionCredentialVaultSession({
   remove: (key) => browser.storage.session.remove(key)
 });
 const alibabaCredentialAcquisition = new ExtensionAlibabaCredentialAcquisitionController();
-const productDisplayMutations = new ExtensionProductDisplayMutationLifecycle({
+const productMutations = new ExtensionProductDisplayMutationLifecycle({
   get: (key) => browser.storage.local.get(key),
   set: (items) => browser.storage.local.set(items)
 });
@@ -170,20 +171,20 @@ async function handleProductMutationJobRequest(
     let data: unknown;
     switch (message.operation) {
       case 'list':
-        data = await productDisplayMutations.list(productMutationListInput(payload));
+        data = await productMutations.list(productMutationListInput(payload));
         break;
       case 'get':
-        data = await productDisplayMutations.get(requiredString(payload, 'id'));
+        data = await productMutations.get(requiredString(payload, 'id'));
         break;
       case 'refresh':
-        data = await productDisplayMutations.refresh(
+        data = await productMutations.refresh(
           await loadProductAdapter(),
           requiredString(payload, 'id'),
           requiredNumber(payload, 'revision')
         );
         break;
       case 'recover':
-        data = await productDisplayMutations.recover(
+        data = await productMutations.recover(
           await loadProductAdapter(),
           requiredString(payload, 'id'),
           requiredNumber(payload, 'revision')
@@ -556,9 +557,17 @@ async function executeOperation(
     case 'renderProductSchema':
       return products.renderSchema(payload as RequestOf<'renderProductSchema'>);
     case 'publishProduct':
-      return products.mutate('alibaba.icbu.product.schema.add', payload as RequestOf<'publishProduct'>);
-    case 'saveProductDraft':
-      return products.saveDraft(payload as RequestOf<'saveProductDraft'>);
+    case 'saveProductDraft': {
+      const validation = validateSchemaPublishInput(payload);
+      if (!validation.valid || !validation.data) {
+        throw new GatewayException({
+          code: 'REQUEST_CONTRACT_INVALID',
+          message: validation.errors.join('；') || '新增商品请求无效',
+          retryable: false
+        });
+      }
+      return productMutations.submitCreation(products, requestId, operation, validation.data);
+    }
     case 'updateProduct':
       return products.update(payload as RequestOf<'updateProduct'>);
     case 'updateProductDisplay': {
@@ -570,7 +579,7 @@ async function executeOperation(
           retryable: false
         });
       }
-      return productDisplayMutations.submit(products, requestId, validation.data);
+      return productMutations.submit(products, requestId, validation.data);
     }
     case 'listProductCategories':
       return products.listCategories(readNumber(request, ['parentId']));

@@ -2,13 +2,17 @@ import { describe, expect, it } from 'vitest';
 
 import {
   GatewayException,
+  type ProductDetail,
   type ProductDisplayMutationResult,
   type ProductDisplayRequest,
   type ProductListQuery,
-  type ProductPage
+  type ProductMutationResult,
+  type ProductPage,
+  type RequestOf
 } from '@one-vegetable/core';
 import {
   ExtensionProductDisplayMutationLifecycle,
+  type ExtensionProductCreationGateway,
   type ExtensionProductDisplayGateway,
   type ExtensionProductMutationStorage
 } from '../lib/product-display-mutation-lifecycle';
@@ -150,6 +154,88 @@ describe('extension product display mutation lifecycle', () => {
     });
     expect(gateway.updates).toEqual([]);
   });
+
+  it('persists and verifies a platform draft before returning success', async () => {
+    const storage = new MemoryStorage();
+    const gateway = new FakeCreationGateway();
+    const lifecycle = new ExtensionProductDisplayMutationLifecycle(storage, () => 20_000);
+
+    const result = await lifecycle.submitCreation(
+      gateway,
+      crypto.randomUUID(),
+      'saveProductDraft',
+      creationRequest()
+    );
+
+    expect(gateway.draftCalls).toHaveLength(1);
+    expect(result).toMatchObject({
+      productId: gateway.productId,
+      success: true,
+      job: {
+        operation: 'saveProductDraft',
+        productId: gateway.productId,
+        status: 'verified',
+        reasonCode: 'PRODUCT_DRAFT_READBACK_MATCHED'
+      }
+    });
+    const restarted = new ExtensionProductDisplayMutationLifecycle(storage, () => 20_001);
+    expect((await restarted.list()).items).toHaveLength(1);
+    await expect(
+      restarted.submitCreation(gateway, crypto.randomUUID(), 'saveProductDraft', creationRequest())
+    ).rejects.toMatchObject({ gatewayError: { code: 'PRODUCT_CREATION_ALREADY_ACCEPTED' } });
+    expect(gateway.draftCalls).toHaveLength(1);
+  });
+
+  it('resumes published-product readback after a worker restart', async () => {
+    const storage = new MemoryStorage();
+    const gateway = new FakeCreationGateway();
+    gateway.publishVisible = false;
+    const lifecycle = new ExtensionProductDisplayMutationLifecycle(storage, () => 30_000);
+
+    const result = await lifecycle.submitCreation(
+      gateway,
+      crypto.randomUUID(),
+      'publishProduct',
+      creationRequest()
+    );
+    expect(result.job.status).toBe('verifying');
+
+    gateway.publishVisible = true;
+    const restarted = new ExtensionProductDisplayMutationLifecycle(storage, () => 30_001);
+    const persisted = (await restarted.list()).items[0];
+    if (!persisted) throw new Error('missing persisted creation job');
+    const verified = await restarted.refresh(gateway, persisted.id, persisted.revision);
+    expect(verified).toMatchObject({
+      operation: 'publishProduct',
+      productId: gateway.productId,
+      status: 'verified',
+      reasonCode: 'PRODUCT_PUBLISH_READBACK_MATCHED'
+    });
+  });
+
+  it('fails closed and blocks duplicate creation after an uncertain network result', async () => {
+    const storage = new MemoryStorage();
+    const gateway = new FakeCreationGateway();
+    gateway.mutationError = new GatewayException({
+      code: 'NETWORK_TIMEOUT',
+      message: '请求超时',
+      retryable: true
+    });
+    const lifecycle = new ExtensionProductDisplayMutationLifecycle(storage, () => 40_000);
+
+    await expect(
+      lifecycle.submitCreation(gateway, crypto.randomUUID(), 'publishProduct', creationRequest())
+    ).rejects.toMatchObject({ gatewayError: { code: 'NETWORK_TIMEOUT' } });
+    expect((await lifecycle.list()).items[0]).toMatchObject({
+      operation: 'publishProduct',
+      status: 'recovery-required',
+      reasonCode: 'NETWORK_TIMEOUT'
+    });
+    await expect(
+      lifecycle.submitCreation(gateway, crypto.randomUUID(), 'publishProduct', creationRequest())
+    ).rejects.toMatchObject({ gatewayError: { code: 'PRODUCT_MUTATION_ALREADY_IN_PROGRESS' } });
+    expect(gateway.publishCalls).toHaveLength(1);
+  });
 });
 
 class MemoryStorage implements ExtensionProductMutationStorage {
@@ -216,10 +302,87 @@ class FakeGateway implements ExtensionProductDisplayGateway {
   }
 }
 
+class FakeCreationGateway implements ExtensionProductCreationGateway {
+  readonly productId = '1600000000002';
+  readonly draftCalls: RequestOf<'saveProductDraft'>[] = [];
+  readonly publishCalls: RequestOf<'publishProduct'>[] = [];
+  publishVisible = true;
+  draftVisible = true;
+  mutationError: GatewayException | null = null;
+
+  list(request: ProductListQuery): Promise<ProductPage> {
+    const items = this.publishVisible
+      ? [
+          {
+            id: this.productId,
+            encryptedId: 'encrypted-created-product',
+            subject: 'Created smoke product',
+            groupName: 'Default',
+            status: 'auditing' as const,
+            score: 0,
+            imageUrl: null,
+            updatedAt: '2026-09-01T00:00:00.000Z',
+            categoryId: 100
+          }
+        ]
+      : [];
+    return Promise.resolve({
+      items,
+      page: request.page ?? 1,
+      pageSize: request.pageSize ?? 100,
+      total: items.length
+    });
+  }
+
+  get(productId: string, draft = false, language = 'en_US'): Promise<ProductDetail> {
+    if (!this.draftVisible || !draft || productId !== this.productId) {
+      return Promise.reject(
+        new GatewayException({ code: 'DRAFT_PENDING', message: '草稿尚未可见', retryable: true })
+      );
+    }
+    return Promise.resolve({
+      id: productId,
+      encryptedId: null,
+      subject: 'Created draft',
+      groupName: 'Schema 商品',
+      status: 'draft',
+      score: 0,
+      imageUrl: null,
+      updatedAt: '2026-09-01T00:00:00.000Z',
+      categoryId: 100,
+      language,
+      schemaXml: '<schema><field id="subject"><value>Created draft</value></field></schema>'
+    });
+  }
+
+  mutate(
+    _method: 'alibaba.icbu.product.schema.add',
+    request: RequestOf<'publishProduct'>
+  ): Promise<ProductMutationResult> {
+    this.publishCalls.push(structuredClone(request));
+    if (this.mutationError) return Promise.reject(this.mutationError);
+    return Promise.resolve({ productId: this.productId, traceId: crypto.randomUUID(), success: true });
+  }
+
+  saveDraft(request: RequestOf<'saveProductDraft'>): Promise<ProductMutationResult> {
+    this.draftCalls.push(structuredClone(request));
+    if (this.mutationError) return Promise.reject(this.mutationError);
+    return Promise.resolve({ productId: this.productId, traceId: crypto.randomUUID(), success: true });
+  }
+}
+
 function displayRequest(display: 'online' | 'offline'): ProductDisplayRequest {
   return {
     productIds: ['1600000000001'],
     encryptedProductIds: ['encrypted-product-id'],
     display
+  };
+}
+
+function creationRequest(): RequestOf<'publishProduct'> {
+  return {
+    categoryId: 100,
+    language: 'en_US',
+    schemaXml: '<schema><field id="subject"><value>Created smoke product</value></field></schema>'
   };
 }
