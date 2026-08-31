@@ -15,6 +15,30 @@ const clipboardWrite = vi.fn(() => Promise.resolve());
 const anchorClick = vi.fn();
 let exportedBlob: Blob | null = null;
 
+function mountErrorNotice(error: unknown, mode: 'mock' | 'extension') {
+  const Host = defineComponent({
+    setup() {
+      provideServices({
+        gateway: new MockGatewayClient(0),
+        settings: {
+          load: () =>
+            Promise.resolve({
+              appKey: '',
+              appSecret: '',
+              accessToken: '',
+              endpoint: ALIBABA_GATEWAY,
+              signMethod: 'hmac'
+            }),
+          save: () => Promise.resolve()
+        },
+        mode
+      });
+      return () => h(ErrorNotice, { error });
+    }
+  });
+  return mount(Host);
+}
+
 beforeEach(() => {
   exportedBlob = null;
   clipboardWrite.mockClear();
@@ -52,27 +76,7 @@ describe('ErrorNotice', () => {
       },
       requestId
     );
-    const Host = defineComponent({
-      setup() {
-        provideServices({
-          gateway: new MockGatewayClient(0),
-          settings: {
-            load: () =>
-              Promise.resolve({
-                appKey: '',
-                appSecret: '',
-                accessToken: '',
-                endpoint: ALIBABA_GATEWAY,
-                signMethod: 'hmac'
-              }),
-            save: () => Promise.resolve()
-          },
-          mode: 'mock'
-        });
-        return () => h(ErrorNotice, { error });
-      }
-    });
-    const wrapper = mount(Host);
+    const wrapper = mountErrorNotice(error, 'mock');
 
     expect(wrapper.text()).toContain(requestId);
     const buttons = wrapper.findAll('button');
@@ -98,27 +102,7 @@ describe('ErrorNotice', () => {
       message: '请先创建凭证保险库',
       retryable: false
     });
-    const Host = defineComponent({
-      setup() {
-        provideServices({
-          gateway: new MockGatewayClient(0),
-          settings: {
-            load: () =>
-              Promise.resolve({
-                appKey: '',
-                appSecret: '',
-                accessToken: '',
-                endpoint: ALIBABA_GATEWAY,
-                signMethod: 'hmac'
-              }),
-            save: () => Promise.resolve()
-          },
-          mode: 'extension'
-        });
-        return () => h(ErrorNotice, { error });
-      }
-    });
-    const wrapper = mount(Host);
+    const wrapper = mountErrorNotice(error, 'extension');
 
     expect(wrapper.get('a[href="#/settings"]').text()).toContain('前往设置凭证');
     wrapper.unmount();
