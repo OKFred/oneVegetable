@@ -63,6 +63,7 @@ export function validateEncodedFile(
 }
 
 export const PHOTO_CONTENT_TYPES = new Set(Object.keys(IMAGE_SIGNATURES));
+export const PHOTOBANK_UPLOAD_CONTENT_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/bmp']);
 
 export function validatePhotoBytes(bytes: Uint8Array, maxBytes = MAX_PHOTOBANK_IMAGE_BYTES): string {
   if (bytes.byteLength === 0) throw new Error('图片文件为空');

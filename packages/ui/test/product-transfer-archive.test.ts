@@ -17,6 +17,7 @@ import {
 const fixturePath = resolve(process.cwd(), 'mock/data/product-transfer/products-v2.json');
 const jpeg = Uint8Array.from([0xff, 0xd8, 0xff, 0xd9]);
 const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const avif = Uint8Array.from([0, 0, 0, 32, 102, 116, 121, 112, 97, 118, 105, 102]);
 
 describe('product transfer ZIP archive', () => {
   it('builds and reads a V2 archive with referenced assets', async () => {
@@ -68,5 +69,19 @@ describe('product transfer ZIP archive', () => {
         '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
       )
     ).toBe('assets/My-cover-01-0123456789ab.jpg');
+  });
+
+  it('rejects archive images that the Alibaba gallery cannot upload', async () => {
+    const manifest = await readFile(fixturePath);
+    await expect(
+      readProductTransferArchive(
+        zipSync({
+          'products.json': manifest,
+          'assets/cover.jpg': jpeg,
+          'assets/detail.png': png,
+          'assets/unused.avif': avif
+        })
+      )
+    ).rejects.toThrow('图库暂不支持上传 image/avif');
   });
 });
