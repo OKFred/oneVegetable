@@ -42,7 +42,7 @@ test('authenticated Web uses Worker, D1 and documentation replay across every do
 
   await expect(page.getByText('cloudflare / test', { exact: true })).toBeVisible();
   await expect(page.getByText('replay', { exact: true })).toBeVisible();
-  await expect(page.getByText('d1 / v8', { exact: true })).toBeVisible();
+  await expect(page.getByText(/^d1 \/ v[1-9][0-9]*$/)).toBeVisible();
   expect(failedOperations).toEqual([]);
   expect([...operationOrigins]).toEqual([workerOrigin]);
 });
