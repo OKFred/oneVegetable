@@ -17,6 +17,23 @@ test('web mock labels its in-process source and never calls the BFF', async ({ p
   expect(bffRequests).toEqual([]);
 });
 
+test('version updates are bundled and link to the formal GitHub record', async ({ page }) => {
+  const githubApiRequests: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().startsWith('https://api.github.com/')) githubApiRequests.push(request.url());
+  });
+
+  await page.goto('/#/releases');
+  await expect(page.getByRole('heading', { name: '版本更新' })).toBeVisible();
+  await expect(page.getByText(`v${rootPackage.version}`, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('开放平台凭据向导')).toBeVisible();
+  await expect(page.getByRole('link', { name: /GitHub 发布页/ })).toHaveAttribute(
+    'href',
+    'https://github.com/OKFred/oneVegetable/releases'
+  );
+  expect(githubApiRequests).toEqual([]);
+});
+
 test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();

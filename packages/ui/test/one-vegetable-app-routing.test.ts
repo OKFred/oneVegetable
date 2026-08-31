@@ -19,6 +19,7 @@ vi.mock('../src/views/LogisticsView.vue', () => ({ default: { template: '<div />
 vi.mock('../src/views/InsightsView.vue', () => ({ default: { template: '<div />' } }));
 vi.mock('../src/views/CapabilitiesView.vue', () => ({ default: { template: '<div />' } }));
 vi.mock('../src/views/AdminView.vue', () => ({ default: { template: '<div />' } }));
+vi.mock('../src/views/ReleaseNotesView.vue', () => ({ default: { template: '<div />' } }));
 vi.mock('../src/views/SettingsView.vue', () => ({ default: { template: '<div />' } }));
 
 const settings = {
