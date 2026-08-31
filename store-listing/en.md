@@ -5,6 +5,7 @@ oneVegetable is a local operations workspace for Alibaba.com international selle
 Key features:
 
 - Visually edit Schema-based products and standard descriptions.
+- Import and export products as JSON or ZIP archives with managed `assets` image resources.
 - Select gallery assets and receive non-blocking content guidance.
 - Search RFQs and keep quotation drafts locally.
 - Combine order funding, logistics and fulfillment information.

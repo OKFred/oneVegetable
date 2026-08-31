@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "extensionVersion": "2.0.3",
+  "extensionVersion": "2.1.0",
   "singlePurpose": "A user-operated local workspace for managing Alibaba.com international products, gallery assets, RFQs, trade and logistics through documented Open Platform APIs.",
   "category": "productivity",
   "defaultLocale": "zh_CN",
