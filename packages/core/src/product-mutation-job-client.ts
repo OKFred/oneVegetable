@@ -122,7 +122,12 @@ export function isProductMutationJob(value: unknown): value is ProductMutationJo
     typeof value.id === 'string' &&
     typeof value.requestId === 'string' &&
     typeof value.productId === 'string' &&
-    isEnum(value.operation, ['updateProduct', 'updateProductDisplay']) &&
+    isEnum(value.operation, [
+      'publishProduct',
+      'saveProductDraft',
+      'updateProduct',
+      'updateProductDisplay'
+    ]) &&
     isEnum(value.status, [
       'submitted',
       'auditing',

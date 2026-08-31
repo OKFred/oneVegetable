@@ -6945,7 +6945,7 @@ export interface components {
             requestId: components["schemas"]["RequestId"];
             productId: string;
             /** @enum {string} */
-            operation: "updateProduct" | "updateProductDisplay";
+            operation: "publishProduct" | "saveProductDraft" | "updateProduct" | "updateProductDisplay";
             /** @enum {string} */
             status: "submitted" | "auditing" | "verifying" | "verified" | "recovery-required" | "recovering" | "recovered" | "failed";
             categoryId: number | null;

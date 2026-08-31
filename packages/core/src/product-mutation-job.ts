@@ -1,6 +1,9 @@
 import type { EntityAuditFields } from './audit';
 
-export type ProductMutationJobOperation = 'updateProduct' | 'updateProductDisplay';
+export type ProductMutationJobOperation =
+  'publishProduct' | 'saveProductDraft' | 'updateProduct' | 'updateProductDisplay';
+
+export const PENDING_PRODUCT_MUTATION_ID_PREFIX = 'pending:';
 
 export type ProductMutationJobStatus =
   | 'submitted'
@@ -76,4 +79,8 @@ export function productMutationJobIsBlocking(status: ProductMutationJobStatus): 
 
 export function productMutationJobIsTerminal(status: ProductMutationJobStatus): boolean {
   return status === 'verified' || status === 'recovered' || status === 'failed';
+}
+
+export function productMutationJobHasResolvedProductId(job: ProductMutationJob): boolean {
+  return /^[1-9][0-9]*$/u.test(job.productId);
 }
