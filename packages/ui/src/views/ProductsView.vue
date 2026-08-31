@@ -26,6 +26,7 @@ import {
   MAX_PRODUCT_TRANSFER_ITEMS,
   parseProductSchemaXml,
   PRODUCT_EDITOR_STEP_IDS,
+  productMutationJobHasResolvedProductId,
   productMutationJobIsBlocking,
   productSchemaXmlToJson,
   replaceProductSchemaAssetReferences,
@@ -294,6 +295,35 @@ const displayMutationHistory = useQuery({
     query.state.data?.some((job) => productMutationJobIsBlocking(job.status)) ? 15_000 : false,
   staleTime: 0
 });
+const creationMutationHistory = useQuery({
+  queryKey: ['product-creation-mutation-jobs'],
+  queryFn: async () => {
+    if (!productMutationJobs) return [];
+    const page = await productMutationJobs.list({ pageSize: 100 });
+    const creationJobs = page.items.filter(
+      (job) => job.operation === 'publishProduct' || job.operation === 'saveProductDraft'
+    );
+    const refreshed: ProductMutationJob[] = [];
+    for (const job of creationJobs) {
+      if (!productMutationJobIsBlocking(job.status)) {
+        refreshed.push(job);
+        continue;
+      }
+      try {
+        refreshed.push(await productMutationJobs.refresh(job.id, job.revision));
+      } catch {
+        refreshed.push(job);
+      }
+    }
+    return refreshed.toSorted(
+      (left, right) => right.submittedTimeUtc - left.submittedTimeUtc || right.id.localeCompare(left.id)
+    );
+  },
+  enabled: computed(() => productMutationJobs !== undefined),
+  refetchInterval: (query) =>
+    query.state.data?.some((job) => productMutationJobIsBlocking(job.status)) ? 15_000 : false,
+  staleTime: 0
+});
 
 const categoryOptions = computed(() => flattenCategories(categoryTree.value));
 const batchCategoryLabels = computed<Record<string, string>>(() =>
@@ -314,6 +344,9 @@ const categoryPickerError = computed(
 );
 const currentProductMutationJob = computed<ProductMutationJob | null>(
   () => productMutationHistory.data.value?.items.find((job) => job.operation === 'updateProduct') ?? null
+);
+const currentCreationMutationJob = computed<ProductMutationJob | null>(
+  () => creationMutationHistory.data.value?.[0] ?? null
 );
 const productMutationBlocksSubmit = computed(() => {
   const job = currentProductMutationJob.value;
@@ -398,9 +431,17 @@ const publish = useMutation({
       });
       return;
     }
+    const creationPending =
+      !editProductId.value && result.job !== undefined && result.job.status !== 'verified';
+    if (!editProductId.value && result.job) {
+      queryClient.setQueryData(['product-creation-mutation-jobs'], [result.job]);
+      await queryClient.invalidateQueries({ queryKey: ['product-creation-mutation-jobs'] });
+    }
     feedback.value = editProductId.value
       ? `商品 ${result.productId} 已更新`
-      : `${draft ? '草稿已保存' : '商品已发布'}：${result.productId}`;
+      : creationPending
+        ? `平台已接受${draft ? '草稿创建' : '正式发布'}：${result.productId}，正在回读确认`
+        : `${draft ? '草稿已保存并回读确认' : '商品已发布并回读确认'}：${result.productId}`;
     if (!editProductId.value && editingBatchItemId.value && 'localStorage' in globalThis) {
       completeProductBatchPublishItem(
         globalThis.localStorage,
@@ -415,8 +456,10 @@ const publish = useMutation({
     if (draft && !editProductId.value) {
       platformDraftId.value = result.productId;
       saveCurrentLocalDraft();
-    } else {
+    } else if (!creationPending) {
       clearCurrentLocalDraft();
+    } else {
+      saveCurrentLocalDraft();
     }
     if (editScoreProductId.value) scheduleScoreRefresh(editScoreProductId.value);
   }
@@ -2284,6 +2327,82 @@ onBeforeUnmount(() => {
       v-if="productMutationHistory.error.value"
       class="mb-4"
       :error="productMutationHistory.error.value"
+      compact
+    />
+
+    <Card
+      v-if="currentCreationMutationJob && !editProductId"
+      class="mb-5 border-amber-300 p-5 dark:border-amber-800"
+    >
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <p class="font-medium">
+              {{
+                currentCreationMutationJob.operation === 'saveProductDraft'
+                  ? '最近的平台草稿任务'
+                  : '最近的正式发布任务'
+              }}
+            </p>
+            <Badge :variant="productMutationStatusVariant(currentCreationMutationJob.status)">
+              {{ productMutationStatusLabel(currentCreationMutationJob.status) }}
+            </Badge>
+          </div>
+          <p class="mt-2 text-sm text-muted-foreground">
+            {{ currentCreationMutationJob.message || '等待下一次平台状态检查。' }}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          :disabled="creationMutationHistory.isFetching.value"
+          @click="creationMutationHistory.refetch()"
+        >
+          <RefreshCw class="size-4" />
+          {{ creationMutationHistory.isFetching.value ? '检查中…' : '查询平台状态' }}
+        </Button>
+      </div>
+      <dl class="mt-4 grid gap-3 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <dt>商品 ID</dt>
+          <dd class="mt-1 font-mono text-foreground">
+            {{
+              productMutationJobHasResolvedProductId(currentCreationMutationJob)
+                ? currentCreationMutationJob.productId
+                : '等待平台返回'
+            }}
+          </dd>
+        </div>
+        <div>
+          <dt>requestId</dt>
+          <dd class="mt-1 break-all font-mono text-foreground">
+            {{ currentCreationMutationJob.requestId }}
+          </dd>
+        </div>
+        <div>
+          <dt>提交时间</dt>
+          <dd class="mt-1 text-foreground">
+            {{ formatMutationTime(currentCreationMutationJob.submittedTimeUtc) }}
+          </dd>
+        </div>
+        <div>
+          <dt>最近检查</dt>
+          <dd class="mt-1 text-foreground">
+            {{ formatMutationTime(currentCreationMutationJob.lastCheckedTimeUtc) }}
+          </dd>
+        </div>
+      </dl>
+      <p
+        v-if="currentCreationMutationJob.status === 'recovery-required'"
+        class="mt-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive"
+      >
+        结果仍不确定。请先在国际站后台核对；插件不会自动重复创建、删除或下架商品。
+      </p>
+    </Card>
+    <ErrorNotice
+      v-if="creationMutationHistory.error.value"
+      class="mb-4"
+      :error="creationMutationHistory.error.value"
       compact
     />
 

@@ -88,11 +88,48 @@ describe('ProductsView product mutation lifecycle', () => {
     });
     wrapper.unmount();
   });
+
+  it('resumes and displays a persisted product creation readback task', async () => {
+    const job = creationJobFixture();
+    const verified = {
+      ...job,
+      status: 'verified' as const,
+      revision: 3,
+      lastCheckedTimeUtc: 3,
+      completedTimeUtc: 3,
+      reasonCode: 'PRODUCT_PUBLISH_READBACK_MATCHED',
+      message: '商品已在列表回读，当前由平台审核中'
+    };
+    const refresh = vi.fn(() => Promise.resolve(verified));
+    const productMutationJobs: ProductMutationJobClient = {
+      list: vi.fn(() => Promise.resolve({ items: [job], page: 1, pageSize: 100, total: 1 })),
+      get: vi.fn(() => Promise.resolve(job)),
+      refresh,
+      recover: vi.fn(() => Promise.resolve(job))
+    };
+    const wrapper = mountProductsView(productMutationJobs, 'publishProduct', 'extension');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Portable solar power station 1000W');
+    });
+    const create = wrapper.findAll('button').find((button) => button.text().trim() === '新增');
+    if (!create) throw new Error('Missing create product button');
+    await create.trigger('click');
+    await flushPromises();
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('最近的正式发布任务');
+      expect(wrapper.text()).toContain(job.productId);
+      expect(wrapper.text()).toContain(job.requestId);
+      expect(wrapper.text()).toContain('商品已在列表回读');
+    });
+    expect(refresh).toHaveBeenCalledWith(job.id, job.revision);
+    wrapper.unmount();
+  });
 });
 
 function mountProductsView(
   productMutationJobs: ProductMutationJobClient,
-  allowedOperation: 'updateProduct' | 'updateProductDisplay',
+  allowedOperation: 'publishProduct' | 'updateProduct' | 'updateProductDisplay',
   mode: 'bff' | 'extension' = 'bff'
 ) {
   const Host = defineComponent({
@@ -176,6 +213,35 @@ function displayJobFixture(): ProductMutationJob {
     creatorId: 'admin-1',
     updaterId: 'admin-1',
     revision: 3,
+    remark: null
+  };
+}
+
+function creationJobFixture(): ProductMutationJob {
+  return {
+    id: '7e5b0112-947d-4f5e-889a-ed06f4045bf7',
+    requestId: '975c76cc-bc6d-4278-b3db-b512c53f0d26',
+    productId: '1600000000002',
+    operation: 'publishProduct',
+    status: 'verifying',
+    categoryId: 100009999,
+    language: 'en_US',
+    payloadFingerprint: 'd'.repeat(64),
+    fieldExpectations: [],
+    encryptedProductId: null,
+    targetDisplay: null,
+    originalDisplay: null,
+    traceId: 'creation-trace',
+    reasonCode: 'ALIBABA_PRODUCT_PUBLISH_ACCEPTED',
+    message: '等待商品列表回读',
+    submittedTimeUtc: 1,
+    lastCheckedTimeUtc: null,
+    completedTimeUtc: null,
+    createTimeUtc: 1,
+    updateTimeUtc: 2,
+    creatorId: 'extension:local-admin',
+    updaterId: 'extension:local-admin',
+    revision: 2,
     remark: null
   };
 }
