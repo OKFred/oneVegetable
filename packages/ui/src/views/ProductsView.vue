@@ -394,7 +394,7 @@ const publish = useMutation({
           (fieldKey) => issue.fieldKey === fieldKey || issue.fieldKey.startsWith(`${fieldKey}:`)
         )
       );
-      if (changedErrors.length > 0) throw new Error('请先修正本次修改字段中的阻断问题');
+      if (changedErrors.length > 0) throw new Error('请先补齐本次修改涉及的最低发布条件');
       const request = {
         productId: editProductId.value,
         categoryId: Number(categoryId.value),
@@ -414,7 +414,8 @@ const publish = useMutation({
     };
     const validation = validateSchemaPublishInput(base);
     if (!validation.valid) throw new Error(validation.errors.join('；'));
-    if (!draft && blockingSchemaIssues.value.length > 0) throw new Error('请先修正表单中的阻断问题');
+    if (!draft && blockingSchemaIssues.value.length > 0)
+      throw new Error('请先补齐商品名称、主图等最低发布条件');
     return draft ? gateway.request('saveProductDraft', base) : gateway.request('publishProduct', base);
   },
   onSuccess: async (result, draft) => {

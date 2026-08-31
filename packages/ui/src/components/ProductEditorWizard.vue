@@ -159,17 +159,27 @@ const officialHintGroups = computed(() => {
 });
 
 function sectionIssueCount(sectionId: ProductEditorStepId): number {
-  if (sectionId === 'review') return blockingIssues.value.length;
+  if (sectionId === 'review') return blockingIssues.value.length + advisoryIssues.value.length;
   const section = sections.value.find((candidate) => candidate.id === sectionId);
   if (!section) return 0;
   const keys = new Set(section.fields.flatMap((entry) => collectFieldReferences(entry.field)));
-  return props.issues.filter((issue) => issue.severity === 'error' && keys.has(issue.fieldKey)).length;
+  return props.issues.filter((issue) => keys.has(issue.fieldKey)).length;
+}
+
+function sectionHasBlockingIssue(sectionId: ProductEditorStepId): boolean {
+  if (sectionId === 'review') return blockingIssues.value.length > 0;
+  const section = sections.value.find((candidate) => candidate.id === sectionId);
+  if (!section) return false;
+  const keys = new Set(section.fields.flatMap((entry) => collectFieldReferences(entry.field)));
+  return blockingIssues.value.some((issue) => keys.has(issue.fieldKey));
 }
 
 function hasRequiredIssue(field: ProductSchemaField): boolean {
   const keys = new Set(collectFieldReferences(field));
   return props.issues.some(
-    (issue) => issue.severity === 'error' && issue.rule === 'requiredRule' && keys.has(issue.fieldKey)
+    (issue) =>
+      ['requiredRule', 'publishMinimumProductTitle', 'publishMinimumMainImage'].includes(issue.rule) &&
+      keys.has(issue.fieldKey)
   );
 }
 
@@ -189,8 +199,12 @@ function moveStep(offset: -1 | 1): void {
 }
 
 function sourceLabel(source: 'alibaba-schema' | 'project'): string {
-  if (source === 'alibaba-schema') return '平台必填与格式';
+  if (source === 'alibaba-schema') return '平台规则预检';
   return '内容优化建议';
+}
+
+function sourceHasBlockingIssue(source: 'alibaba-schema' | 'project'): boolean {
+  return issuesBySource.value[source].some((issue) => issue.level === 'error');
 }
 
 async function focusIssue(issue: ProductDescriptionQualityIssue): Promise<void> {
@@ -249,7 +263,7 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
         <h2 class="font-semibold">{{ editing ? '编辑商品' : '发布新商品' }}</h2>
         <p class="mt-1 text-xs text-muted-foreground">
           必填项完成 {{ completedRequiredCount }}/{{ requiredEntries.length }} ·
-          {{ blockingIssues.length }} 个阻断问题 · {{ advisoryIssues.length }} 条建议
+          {{ blockingIssues.length }} 个最低条件未满足 · {{ advisoryIssues.length }} 条预检提示
         </p>
       </div>
       <div class="flex gap-2" role="group" aria-label="商品编辑模式">
@@ -313,7 +327,10 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
         >
           <span class="flex items-center justify-between gap-1">
             <span class="font-medium">{{ index + 1 }}. {{ section.title }}</span>
-            <Badge v-if="sectionIssueCount(section.id)" variant="destructive">
+            <Badge
+              v-if="sectionIssueCount(section.id)"
+              :variant="sectionHasBlockingIssue(section.id) ? 'destructive' : 'secondary'"
+            >
               {{ sectionIssueCount(section.id) }}
             </Badge>
           </span>
@@ -368,7 +385,9 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 id="product-review-title" class="text-lg font-semibold">检查与提交</h3>
-            <p class="mt-1 text-sm text-muted-foreground">平台硬错误会阻止提交，其他建议不会禁用按钮。</p>
+            <p class="mt-1 text-sm text-muted-foreground">
+              仅商品名称、主图等最低条件和 XML/请求安全问题会阻止；其余规则由 Alibaba 接口最终校验。
+            </p>
           </div>
           <Button
             v-if="scoreAvailable"
@@ -400,11 +419,7 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
           >
             <div class="flex items-center justify-between gap-2">
               <h4 class="font-medium">{{ sourceLabel(source) }}</h4>
-              <Badge
-                :variant="
-                  source === 'alibaba-schema' && issuesBySource[source].length ? 'destructive' : 'secondary'
-                "
-              >
+              <Badge :variant="sourceHasBlockingIssue(source) ? 'destructive' : 'secondary'">
                 {{ issuesBySource[source].length }}
               </Badge>
             </div>

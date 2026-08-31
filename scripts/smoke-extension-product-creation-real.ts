@@ -409,7 +409,7 @@ function prepareRequest(
   const inspection = inspectProductSchemaSerialization(model);
   if (!inspection.safe) throw new Error(`Schema XML 结构异常：${inspection.structuralDiffs.join('；')}`);
   const errors = validateProductSchemaModel(model).filter((issue) => issue.severity === 'error');
-  if (errors.length > 0) throw new Error(`扩展真实 Smoke 仍有 ${errors.length} 个 Schema 硬错误`);
+  if (errors.length > 0) throw new Error(`扩展真实 Smoke 仍有 ${errors.length} 个最低发布条件未满足`);
   return {
     request: {
       categoryId: candidate.product.categoryId,

@@ -40,7 +40,7 @@ Alibaba OpenAPI 接口采用双源审计，不把任一站点单独视为完整�
 - `docId=27010` 对应的 `alibaba.icbu.product.update.field` 已由国际站官方变更说明列为旧发品链路，不进入快速发品或商品编辑主路径。
 - 首次保存平台草稿使用 `alibaba.icbu.product.schema.add.draft`，首次正式发布使用 `alibaba.icbu.product.schema.add`；正式商品后续完善使用 active 的 `alibaba.icbu.product.schema.update`。
 - 官方文档目前未提供可覆盖既有平台草稿的 OpenAPI。2026-08-21 真实验证中，`schema.update` 对刚创建的草稿返回 `Record does not exist`，确认它只适用于正式商品记录。因此一次平台草稿创建成功后，后续编辑只保存本地 V3 草稿，不能重复调用 `schema.add.draft`；重新进入时通过 `schema.render.draft` 读取平台基线，并提供国际站官方编辑页入口写回同一草稿。
-- 快速模式允许带 Schema 内容问题保存平台草稿，但 XML 结构安全、请求契约、类目和语言仍是前置条件。直接发布与正式更新仍要求 Schema 硬错误清零。
+- 快速模式允许带 Schema 内容问题保存平台草稿，但 XML 结构安全、请求契约、类目和语言仍是前置条件。直接发布与正式更新仅在商品名称、主图等最低条件缺失时提前阻止；其余 Schema 规则作为预检警告，最终以 Alibaba 接口返回为准。
 - `saveProductDraft` 使用 `https://open-api.alibaba.com/sync`、HMAC-SHA256 和 Unix 毫秒时间戳。2026-08-21 真实 Smoke 已创建草稿 `1601930390138`，并由 `schema.render.draft` 回读标题与图库素材。
 - 2026-09-01 使用本地构建的 MV3 扩展再次验证 `saveProductDraft`：service worker 在出网前持久化任务，平台返回草稿 `1601938471572` 后由 `schema.render.draft` 回读，任务状态为 `verified`。
 - 同日通过国际站官方编辑页对该草稿同 ID 保存标题变更，再由 `schema.render.draft` 二次回读确认。官方页面使用依赖网页登录态与 CSRF 的站内提交接口，它不是 OpenAPI，不能作为 BFF 或扩展适配器。

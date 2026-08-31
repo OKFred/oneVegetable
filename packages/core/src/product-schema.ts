@@ -140,6 +140,14 @@ const LOCAL_RULES = new Set([
 ]);
 
 const INHERITED_RULES = new Set(['regexRule', 'regxRule']);
+const PRODUCT_TITLE_FIELD_IDS = new Set(['producttitle', 'subject', 'title']);
+const PRODUCT_MAIN_IMAGE_FIELD_IDS = new Set([
+  'scimages',
+  'mainimage',
+  'mainimages',
+  'productimage',
+  'productimages'
+]);
 const NON_VALIDATING_RULES = new Set([
   'disableRule',
   'readOnlyRule',
@@ -319,9 +327,15 @@ export function inspectProductSchemaPatchSerialization(
 }
 
 export function validateProductSchemaModel(model: ProductSchemaModel): ProductSchemaFieldIssue[] {
-  const issues: ProductSchemaFieldIssue[] = [];
+  const ruleIssues: ProductSchemaFieldIssue[] = [];
   const fieldValues = collectFieldValues(model.fields);
-  for (const field of model.fields) validateField(field, issues, fieldValues, []);
+  for (const field of model.fields) validateField(field, ruleIssues, fieldValues, []);
+  const minimumIssues = validateProductPublishMinimums(model);
+  const minimumFieldKeys = new Set(minimumIssues.map((issue) => issue.fieldKey));
+  const issues = [
+    ...minimumIssues,
+    ...ruleIssues.filter((issue) => !(issue.rule === 'requiredRule' && minimumFieldKeys.has(issue.fieldKey)))
+  ];
   const seen = new Set<string>();
   return issues.filter((issue) => {
     const key = `${issue.fieldKey}\u0000${issue.severity}\u0000${issue.rule}\u0000${issue.message}`;
@@ -329,6 +343,28 @@ export function validateProductSchemaModel(model: ProductSchemaModel): ProductSc
     seen.add(key);
     return true;
   });
+}
+
+/**
+ * Keeps only the small, deterministic baseline that is unsafe to omit from a
+ * formal product publish. Category-specific Schema rules remain advisory and
+ * Alibaba is the final source of truth for those rules.
+ */
+export function validateProductPublishMinimums(model: ProductSchemaModel): ProductSchemaFieldIssue[] {
+  const issues: ProductSchemaFieldIssue[] = [];
+  appendPublishMinimumIssue(
+    model.fields.filter((field) => PRODUCT_TITLE_FIELD_IDS.has(normalizeFieldId(field.id))),
+    'publishMinimumProductTitle',
+    '商品名称不能为空，这是正式发布的最低条件',
+    issues
+  );
+  appendPublishMinimumIssue(
+    model.fields.filter((field) => PRODUCT_MAIN_IMAGE_FIELD_IDS.has(normalizeFieldId(field.id))),
+    'publishMinimumMainImage',
+    '商品主图至少需要 1 张，这是正式发布的最低条件',
+    issues
+  );
+  return issues;
 }
 
 export function cloneProductSchemaInstance(field: ProductSchemaField): ProductSchemaInstance {
@@ -577,7 +613,7 @@ function validateField(
       if (NON_VALIDATING_RULES.has(rule.name)) continue;
       const numericRule = Number(rule.value);
       if (rule.name === 'requiredRule' && required && nonEmpty.length === 0) {
-        pushError(issues, field, rule.name, `${field.name} 为必填项`);
+        pushRuleWarning(issues, field, rule.name, `${field.name} 为平台必填项`);
       }
       if (
         rule.name === 'minInputNumRule' &&
@@ -585,14 +621,14 @@ function validateField(
         (required || nonEmpty.length > 0) &&
         violatesMinimum(nonEmpty.length, numericRule, rule)
       ) {
-        pushError(issues, field, rule.name, `${field.name} 至少填写 ${numericRule} 项`);
+        pushRuleWarning(issues, field, rule.name, `${field.name} 至少填写 ${numericRule} 项`);
       }
       if (
         rule.name === 'maxInputNumRule' &&
         Number.isFinite(numericRule) &&
         violatesMaximum(nonEmpty.length, numericRule, rule)
       ) {
-        pushError(issues, field, rule.name, `${field.name} 最多填写 ${numericRule} 项`);
+        pushRuleWarning(issues, field, rule.name, `${field.name} 最多填写 ${numericRule} 项`);
       }
       if (field.type !== 'complex' && field.type !== 'multiComplex') {
         for (const value of nonEmpty) validateScalarRule(field, rule, value, issues);
@@ -618,10 +654,10 @@ function validateScalarRule(
       ? new TextEncoder().encode(value).byteLength
       : Array.from(value).length;
   if (rule.name === 'minLengthRule' && Number.isFinite(limit) && violatesMinimum(length, limit, rule)) {
-    pushError(issues, field, rule.name, `${field.name} 长度不能小于 ${limit}`);
+    pushRuleWarning(issues, field, rule.name, `${field.name} 长度不能小于 ${limit}`);
   }
   if (rule.name === 'maxLengthRule' && Number.isFinite(limit) && violatesMaximum(length, limit, rule)) {
-    pushError(issues, field, rule.name, `${field.name} 长度不能大于 ${limit}`);
+    pushRuleWarning(issues, field, rule.name, `${field.name} 长度不能大于 ${limit}`);
   }
   const numeric = Number(value);
   if (
@@ -630,7 +666,7 @@ function validateScalarRule(
     Number.isFinite(limit) &&
     violatesMinimum(numeric, limit, rule)
   ) {
-    pushError(issues, field, rule.name, `${field.name} 不能小于 ${limit}`);
+    pushRuleWarning(issues, field, rule.name, `${field.name} 不能小于 ${limit}`);
   }
   if (
     rule.name === 'maxValueRule' &&
@@ -638,7 +674,7 @@ function validateScalarRule(
     Number.isFinite(limit) &&
     violatesMaximum(numeric, limit, rule)
   ) {
-    pushError(issues, field, rule.name, `${field.name} 不能大于 ${limit}`);
+    pushRuleWarning(issues, field, rule.name, `${field.name} 不能大于 ${limit}`);
   }
   // ICBU Schema uses these legacy rule names for decimal value bounds. For example,
   // Quantity price currently returns 0.01 and 9999999.99 rather than digit counts.
@@ -648,7 +684,7 @@ function validateScalarRule(
     Number.isFinite(limit) &&
     violatesMinimum(numeric, limit, rule)
   ) {
-    pushError(issues, field, rule.name, `${field.name} 不能小于 ${limit}`);
+    pushRuleWarning(issues, field, rule.name, `${field.name} 不能小于 ${limit}`);
   }
   if (
     rule.name === 'maxDecimalDigitsRule' &&
@@ -656,7 +692,7 @@ function validateScalarRule(
     Number.isFinite(limit) &&
     violatesMaximum(numeric, limit, rule)
   ) {
-    pushError(issues, field, rule.name, `${field.name} 不能大于 ${limit}`);
+    pushRuleWarning(issues, field, rule.name, `${field.name} 不能大于 ${limit}`);
   }
   if (rule.name === 'regexRule' || rule.name === 'regxRule') validateRegexRule(field, rule, value, issues);
   if (rule.name === 'valueTypeRule') validateValueTypeRule(field, rule, value, issues);
@@ -671,7 +707,7 @@ function validateRegexRule(
   try {
     const matches = new RegExp(rule.value).test(value);
     const valid = isExclusive(rule) ? !matches : matches;
-    if (!valid) pushError(issues, field, rule.name, `${field.name} 格式不正确`);
+    if (!valid) pushRuleWarning(issues, field, rule.name, `${field.name} 格式不正确`);
   } catch {
     issues.push({
       fieldKey: field.key,
@@ -700,7 +736,7 @@ function validateValueTypeRule(
       valid = false;
     }
   }
-  if (!valid) pushError(issues, field, rule.name, `${field.name} 类型不正确`);
+  if (!valid) pushRuleWarning(issues, field, rule.name, `${field.name} 类型不正确`);
 }
 
 function updateField(
@@ -929,14 +965,22 @@ function collectFieldValues(fields: ProductSchemaField[]): ReadonlyMap<string, s
 }
 
 function effectiveFieldValues(field: ProductSchemaField): string[] {
-  if (field.type !== 'complex' && field.type !== 'multiComplex') return productSchemaFieldTexts(field);
+  if (field.type !== 'complex' && field.type !== 'multiComplex') {
+    return field.values.map((value) =>
+      value.text.trim() === '' ? (value.attributes.fileId ?? '') : value.text
+    );
+  }
   return field.instances.flatMap((instance) =>
     instance.fields.some((child) => fieldHasContent(child)) ? [instance.key] : []
   );
 }
 
 function fieldHasContent(field: ProductSchemaField): boolean {
-  if (productSchemaFieldTexts(field).some((value) => value.trim() !== '')) return true;
+  if (
+    field.values.some((value) => value.text.trim() !== '' || (value.attributes.fileId?.trim() ?? '') !== '')
+  ) {
+    return true;
+  }
   return field.instances.some((instance) => instance.fields.some((child) => fieldHasContent(child)));
 }
 
@@ -1126,11 +1170,27 @@ function isTruthy(value: string): boolean {
   return value === 'true' || value === '1';
 }
 
-function pushError(
+function appendPublishMinimumIssue(
+  fields: ProductSchemaField[],
+  rule: string,
+  message: string,
+  issues: ProductSchemaFieldIssue[]
+): void {
+  if (fields.length === 0 || fields.some((field) => fieldHasContent(field))) return;
+  const field = fields[0];
+  if (!field) return;
+  issues.push({ fieldKey: field.key, severity: 'error', rule, message });
+}
+
+function normalizeFieldId(fieldId: string): string {
+  return fieldId.replaceAll(/[^a-z0-9]/giu, '').toLocaleLowerCase();
+}
+
+function pushRuleWarning(
   issues: ProductSchemaFieldIssue[],
   field: ProductSchemaField,
   rule: string,
   message: string
 ): void {
-  issues.push({ fieldKey: field.key, severity: 'error', rule, message });
+  issues.push({ fieldKey: field.key, severity: 'warning', rule, message });
 }
