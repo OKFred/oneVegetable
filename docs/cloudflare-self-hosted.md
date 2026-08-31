@@ -37,9 +37,19 @@ $bytes = New-Object byte[] 32
 
 ## Alibaba 凭据保险库
 
-Alibaba 网站登录账号不等于 OpenAPI 凭据。登录工作台后，在“管理后台 → Cloudflare 自托管设置”选择本地 `credentials.json`：
+Alibaba 网站登录账号不等于 OpenAPI 凭据。登录工作台后，在“管理后台 → Cloudflare 自托管设置”可选择：
 
-- 浏览器先校验授权包结构；确认后通过同源、带 CSRF 的管理接口提交。
+- “一键连接”：使用 Browser Run 尝试读取已有应用并完成 OAuth。账号、密码只在当前请求和临时浏览器内存中处理；不写入 D1、日志、审计、截图或录制。Callback 默认留空并保留应用现值。
+- “使用本机插件”：不提交网站密码，也不占用 Browser Run 免费额度；适合滑块、验证码、MFA 或密钥查看确认。
+- “导入凭据”：选择本机 Playwright 或插件导出的 `credentials.json` / `credentialInfo.json`。
+
+云端自动流程不会创建应用、申请 API 权限、填写开发者资料或接受协议。多个应用必须人工选择，显式修改 Callback 必须再次确认。遇到人机验证、机器人拒绝、额度不足或页面布局无法安全识别时，任务立即停止并转入插件引导；系统不会绕过验证，也不会回退到 Mock。
+
+Browser Run 免费额度有限。项目开发和 CI 使用本地模拟、Windows 有头 Playwright 与 Wrangler dry-run；仅在发布候选完成后做一次云端验收。dry-run 不会创建远程浏览器会话。
+
+凭据进入保险库后：
+
+- 导入本地授权包时，浏览器先校验结构；确认后通过同源、带 CSRF 的管理接口提交。
 - Worker 使用 AES-256-GCM 加密后写入 D1，AAD 绑定记录 ID、Schema 版本和密钥版本。
 - 管理接口只显示完整性、Token 到期时间和刷新状态，不回显 AppKey、AppSecret、Token 或 refresh token。
 - Access Token 到期前 5 分钟自动刷新；刷新失败时真实调用会明确失败，不回退到 Mock。

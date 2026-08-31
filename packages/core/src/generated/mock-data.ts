@@ -346,6 +346,13 @@ export const PHOTO_MOCK_DATA: PhotoMockData = {
       "fileSize": 245760,
       "referenceCount": 0,
       "modifiedAt": "2026-08-12T04:01:00Z"
+    },
+    "downloadProductAsset": {
+      "fileName": "mock-product-asset.jpg",
+      "contentBase64": "/9j/2Q==",
+      "contentType": "image/jpeg",
+      "byteLength": 4,
+      "sha256": "32461d5bd1773012acef0ba15636752949bd7c2ce50f9172159d9f56cf0dd9af"
     }
   }
 };

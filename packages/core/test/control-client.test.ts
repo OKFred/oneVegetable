@@ -186,6 +186,74 @@ describe('BffControlClient', () => {
     await expect(client.purgeRequestEvents()).resolves.toMatchObject({ deletedCount: 2 });
     expect(send).toHaveBeenCalledTimes(2);
   });
+
+  it('uses typed POST bodies and CSRF for the Alibaba credential acquisition flow', async () => {
+    const jobId = '11111111-1111-4111-8111-111111111111';
+    const calls: { path: string; body: Record<string, unknown> }[] = [];
+    const send = vi.fn<NetworkTransport['send']>((input, init) => {
+      const url =
+        input instanceof URL ? input : typeof input === 'string' ? new URL(input) : new URL(input.url);
+      if (typeof init.body !== 'string') throw new Error('expected JSON body');
+      const body = JSON.parse(init.body) as Record<string, unknown>;
+      expect(new Headers(init.headers).get('X-CSRF-Token')).toBe('csrf-token');
+      calls.push({ path: url.pathname, body });
+      const data = url.pathname.endsWith('/start')
+        ? { status: 'running', jobId, expiresAtUtc: 10_000 }
+        : url.pathname.endsWith('/continue')
+          ? {
+              status: 'callback-confirmation-required',
+              jobId,
+              currentUrl: 'https://old.example.com/callback',
+              requestedUrl: 'https://new.example.com/callback'
+            }
+          : url.pathname.endsWith('/status')
+            ? { status: 'running', jobId, expiresAtUtc: 10_000 }
+            : {
+                status: 'failed',
+                error: {
+                  code: 'ACQUISITION_CANCELLED',
+                  message: 'cancelled',
+                  retryable: false
+                }
+              };
+      return Promise.resolve(Response.json({ requestId: body.requestId, ok: true, data }));
+    });
+    const client = new BffControlClient({
+      baseUrl: 'https://self-hosted.example.com',
+      transport: { send },
+      csrfToken: () => 'csrf-token'
+    });
+
+    await client.startAlibabaCredentialAcquisition({
+      account: 'website-account@example.com',
+      password: 'website-password',
+      callbackUrl: null
+    });
+    await client.continueAlibabaCredentialAcquisition(jobId, {
+      type: 'select-application',
+      applicationId: 'application-center:1'
+    });
+    await client.alibabaCredentialAcquisitionStatus(jobId);
+    await client.cancelAlibabaCredentialAcquisition(jobId);
+
+    expect(calls.map((call) => call.path)).toEqual([
+      '/api/v1/admin/alibaba-credential-acquisition/start',
+      '/api/v1/admin/alibaba-credential-acquisition/continue',
+      '/api/v1/admin/alibaba-credential-acquisition/status',
+      '/api/v1/admin/alibaba-credential-acquisition/cancel'
+    ]);
+    expect(calls[0]?.body).toMatchObject({
+      account: 'website-account@example.com',
+      password: 'website-password',
+      callbackUrl: null
+    });
+    expect(calls[1]?.body).toMatchObject({
+      jobId,
+      command: { type: 'select-application', applicationId: 'application-center:1' }
+    });
+    expect(calls[2]?.body).toMatchObject({ jobId });
+    expect(calls[3]?.body).toMatchObject({ jobId });
+  });
 });
 
 function userFixture() {

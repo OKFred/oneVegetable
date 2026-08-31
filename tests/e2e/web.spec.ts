@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { unzipSync } from 'fflate';
 
 import rootPackage from '../../package.json' with { type: 'json' };
 
@@ -247,7 +248,7 @@ test('web mock exports a product JSON and imports it into the local review queue
 
   await page.getByRole('button', { name: '导入', exact: true }).click();
   const importDialog = page.getByRole('dialog', { name: '导入商品' });
-  await importDialog.getByLabel('选择商品 JSON 文件').setInputFiles(downloadPath);
+  await importDialog.getByLabel('选择商品 JSON 或 ZIP 文件').setInputFiles(downloadPath);
   await expect(importDialog).toContainText('1 个商品');
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem('one-vegetable-product-batch-publish-v1')))
@@ -263,6 +264,58 @@ test('web mock exports a product JSON and imports it into the local review queue
   await expect(page.getByText(/商品 JSON 已导入本机队列：新增 1/)).toBeVisible();
   await expect(page.getByRole('heading', { name: '批量发品队列' })).toBeVisible();
   await expect(page.getByText('Portable solar power station 1000W', { exact: true })).toBeVisible();
+});
+
+test('web mock exports and imports a product ZIP with gallery assets', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.goto('/');
+  await page.evaluate(() => {
+    localStorage.clear();
+  });
+  await page.getByRole('link', { name: '商品' }).click();
+  await expect(page.getByText('Portable solar power station 1000W')).toBeVisible();
+  await page.getByLabel('选择 Portable solar power station 1000W').check();
+  await page.getByRole('button', { name: '导出', exact: true }).click();
+  const exportDialog = page.getByRole('dialog', { name: '导出商品' });
+  await exportDialog.locator('summary').click();
+  await exportDialog.getByLabel('ZIP 资源包').check();
+  await exportDialog.getByRole('button', { name: '导出', exact: true }).click();
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page
+      .getByRole('dialog', { name: '确认导出' })
+      .getByRole('button', { name: '确认导出', exact: true })
+      .click()
+  ]);
+  const downloadPath = await download.path();
+  if (!downloadPath) throw new Error('Product ZIP download path is unavailable');
+  const archive = unzipSync(new Uint8Array(await readFile(downloadPath)));
+  const manifestBytes = archive['products.json'];
+  if (!manifestBytes) throw new Error('Product ZIP does not contain products.json');
+  const manifest = JSON.parse(new TextDecoder().decode(manifestBytes)) as {
+    schemaVersion: number;
+    products: { schemaJson?: unknown; schemaXml?: string }[];
+  };
+  expect(manifest.schemaVersion).toBe(2);
+  expect(Object.keys(archive).filter((path) => path.startsWith('assets/'))).toHaveLength(1);
+  expect(JSON.stringify(manifest.products[0])).toContain('assets/');
+
+  await page.getByRole('button', { name: '导入', exact: true }).click();
+  const importDialog = page.getByRole('dialog', { name: '导入商品' });
+  await importDialog.getByLabel('选择商品 JSON 或 ZIP 文件').setInputFiles({
+    name: download.suggestedFilename(),
+    mimeType: 'application/zip',
+    buffer: await readFile(downloadPath)
+  });
+  await expect(importDialog).toContainText('1 张引用图片');
+  await expect(importDialog).toContainText('上传到图库分组');
+  await importDialog.getByRole('button', { name: '导入', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: '确认导入' })
+    .getByRole('button', { name: '确认导入', exact: true })
+    .click();
+  await expect(page.getByText(/商品 ZIP 已导入本机队列：新增 1/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: '批量发品队列' })).toBeVisible();
 });
 
 test('web mock completes the typed RFQ quotation workflow', async ({ page }) => {

@@ -3,6 +3,8 @@ import { dirname } from 'node:path';
 
 import type { BrowserContext, Frame, Locator, Page, Request } from '@playwright/test';
 
+import { resolveAlibabaCredentialApplication } from '../../packages/core/src/alibaba-credential-acquisition';
+
 import { callbackMatches } from './config';
 import { OpenApiAuthError } from './storage';
 import type { AlibabaOpenApiPermission } from './types';
@@ -98,15 +100,35 @@ export async function selectApplication(
   process.stdout.write(
     `应用候选：${candidates.length}；旧平台候选：${legacyCandidates.length}；AppKey 长度：${candidates.map((item) => item.appKey.length).join(',') || '无'}\n`
   );
-  if (candidates.length > 1 && !selector.appKey && !selector.appName && legacyCandidates.length !== 1) {
+  const legacyDefault =
+    !selector.appKey && !selector.appName && legacyCandidates.length === 1 && current.appKey.length < 8
+      ? legacyCandidates[0]
+      : undefined;
+  const selection = resolveAlibabaCredentialApplication(
+    candidates.map((candidate, index) => ({
+      applicationId: `candidate-${index + 1}`,
+      appName: candidate.appName,
+      appKey: candidate.appKey,
+      status: candidate.source === 'legacy-crosstrade' ? 'Legacy Online' : current.status,
+      source: candidate.source
+    })),
+    legacyDefault ? { appKey: legacyDefault.appKey } : selector
+  );
+  if (selection.kind === 'selection-required') {
     throw new OpenApiAuthError(
       'APPLICATION_SELECTION_REQUIRED',
       '检测到多个应用，请设置 OPEN_API_APP_KEY 或 OPEN_API_APP_NAME'
     );
   }
-
-  const expected = chooseApplicationCandidate(candidates, legacyCandidates, current, selector);
-  if (expected?.source === 'legacy-crosstrade') {
+  if (selection.kind === 'failed') {
+    throw new OpenApiAuthError(selection.code, '指定应用不在应用列表中');
+  }
+  const expected = candidates.find(
+    (candidate) =>
+      candidate.appKey === selection.application.appKey && candidate.source === selection.application.source
+  );
+  if (!expected) throw new OpenApiAuthError('APPLICATION_NOT_FOUND', '指定应用不在应用列表中');
+  if (expected.source === 'legacy-crosstrade') {
     if (!expected.callbackUrl) {
       throw new OpenApiAuthError('LEGACY_CALLBACK_UNAVAILABLE', '旧平台应用未返回 Callback URL');
     }
@@ -127,7 +149,7 @@ export async function selectApplication(
   }
 
   let selected = current;
-  if (expected && current.appKey !== expected.appKey) {
+  if (current.appKey !== expected.appKey) {
     if (
       current.appName === expected.appName &&
       (expected.appKey.includes(current.appKey) || current.appKey.includes(expected.appKey))
@@ -327,11 +349,40 @@ async function waitForAuthorizationResult(
 
 export async function captureSafeScreenshot(page: Page, path: string): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
+  await redactSensitiveScreenshotFields(page);
   await page.screenshot({ path, fullPage: false });
 }
 
 export async function closeContext(context: BrowserContext): Promise<void> {
   await context.close().catch(() => undefined);
+}
+
+async function redactSensitiveScreenshotFields(page: Page): Promise<void> {
+  for (const frame of page.frames()) {
+    await frame
+      .locator(
+        'input[type="password"], input[name*="account" i], input[name*="login" i], input[name*="secret" i], input[name*="token" i], input[autocomplete="username"]'
+      )
+      .evaluateAll((elements) => {
+        for (const element of elements) {
+          if (element instanceof HTMLInputElement) {
+            element.value = '';
+            element.setAttribute('value', '');
+          }
+        }
+      })
+      .catch(() => undefined);
+    await frame
+      .locator('.cloud-form')
+      .filter({ hasText: /app secret|access token|refresh token|password/i })
+      .evaluateAll((elements) => {
+        for (const element of elements) {
+          const value = element.querySelector('.form-item');
+          if (value) value.textContent = '[REDACTED]';
+        }
+      })
+      .catch(() => undefined);
+  }
 }
 
 async function hasPlatformConfiguration(page: Page): Promise<boolean> {
@@ -490,26 +541,6 @@ export function findApplicationCandidates(value: unknown): { appKey: string; app
   };
   visit(value, 0);
   return uniqueCandidates(candidates);
-}
-
-function chooseApplicationCandidate(
-  candidates: ApplicationCandidate[],
-  legacyCandidates: ApplicationCandidate[],
-  current: OpenApiApplication,
-  selector: { appKey: string | null; appName: string | null }
-): ApplicationCandidate | null {
-  if (selector.appKey || selector.appName) {
-    const candidate = candidates.find(
-      (item) =>
-        (!selector.appKey || item.appKey === selector.appKey) &&
-        (!selector.appName || item.appName === selector.appName)
-    );
-    if (!candidate) throw new OpenApiAuthError('APPLICATION_NOT_FOUND', '指定应用不在应用列表中');
-    return candidate;
-  }
-  if (legacyCandidates.length === 1 && current.appKey.length < 8) return legacyCandidates[0] ?? null;
-  if (candidates.length === 1) return candidates[0] ?? null;
-  return null;
 }
 
 async function readLegacyApplicationCandidates(context: BrowserContext): Promise<ApplicationCandidate[]> {

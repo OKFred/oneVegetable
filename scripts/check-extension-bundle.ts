@@ -37,6 +37,9 @@ const eagerOptionBytes = eagerOptionFiles.reduce(
   0
 );
 const totalBytes = sizes.reduce((total, entry) => total + entry.size, 0);
+const productTransferWorker = sizes.find((entry) =>
+  /^assets\/product-transfer-archive\.worker-[A-Za-z0-9_-]+\.js$/u.test(entry.file)
+);
 
 const errors: string[] = [];
 if (!background || background.size > 100_000) {
@@ -51,7 +54,10 @@ for (const chunk of eagerPageChunks) {
 if (eagerOptionBytes > 250_000) {
   errors.push(`Options eager JavaScript exceeds 250 KB: ${eagerOptionBytes}`);
 }
-if (totalBytes > 3_250_000) errors.push(`Unpacked extension exceeds 3.25 MB: ${totalBytes}`);
+if (!productTransferWorker || productTransferWorker.size > 50_000) {
+  errors.push(`Product transfer worker exceeds 50 KB: ${productTransferWorker?.size ?? 'missing'}`);
+}
+if (totalBytes > 3_500_000) errors.push(`Unpacked extension exceeds 3.50 MB: ${totalBytes}`);
 if (sizes.some((entry) => entry.file.endsWith('.map'))) errors.push('Production source maps are not allowed');
 if (manifest.permissions?.includes('cookies')) errors.push('cookies permission is not allowed');
 if (manifest.host_permissions?.includes('<all_urls>'))

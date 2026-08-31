@@ -19,6 +19,9 @@ import type { AlibabaCredentialStatus } from '../gateway/credentials';
 import type { GatewayMode } from '../runtime-config';
 import type { GatewayCredentialService, StoredAlibabaCredentialProvider } from '../gateway/credential-vault';
 import type { RealMutationControlService } from '../safety/real-mutation-control';
+import type { AlibabaCredentialAcquisitionService } from '../alibaba-credential-acquisition/service';
+import { AlibabaCredentialAcquisitionServiceError } from '../alibaba-credential-acquisition/service';
+import { AlibabaCredentialAcquisitionContractError } from '@one-vegetable/core';
 import { toPublicUser } from './types';
 
 export const SESSION_COOKIE = 'ov_session';
@@ -44,6 +47,7 @@ export interface AuthRoutesOptions {
   requestEventRetentionDays?: number;
   clock?: () => number;
   realMutationControl?: RealMutationControlService;
+  alibabaCredentialAcquisition?: AlibabaCredentialAcquisitionService;
 }
 
 export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void {
@@ -427,6 +431,110 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
     });
   }
 
+  const alibabaCredentialAcquisition = options.alibabaCredentialAcquisition;
+  if (alibabaCredentialAcquisition) {
+    api.post('/admin/alibaba-credential-acquisition/start', async (context) => {
+      return adminWrite(
+        context,
+        options,
+        async (body, authenticated) => {
+          const requestId = readRequestId(body);
+          try {
+            const state = await alibabaCredentialAcquisition.start({
+              requestId,
+              actorId: authenticated.principal.actorId,
+              account: readSensitiveString(body, 'account', 512),
+              password: readSensitiveString(body, 'password', 1024),
+              callbackUrl: readNullableString(body, 'callbackUrl')
+            });
+            await auditCredentialAcquisition(options, {
+              requestId,
+              actorId: authenticated.principal.actorId,
+              action: 'admin.alibaba-credential-acquisition.start',
+              state
+            });
+            return state;
+          } catch (error: unknown) {
+            throw acquisitionRouteError(error);
+          }
+        },
+        ['requestId', 'account', 'password', 'callbackUrl']
+      );
+    });
+
+    api.post('/admin/alibaba-credential-acquisition/continue', async (context) => {
+      return adminWrite(
+        context,
+        options,
+        async (body, authenticated) => {
+          const requestId = readRequestId(body);
+          try {
+            const state = await alibabaCredentialAcquisition.continue({
+              requestId,
+              actorId: authenticated.principal.actorId,
+              jobId: readUuid(body, 'jobId'),
+              command: readAcquisitionCommand(body.command)
+            });
+            await auditCredentialAcquisition(options, {
+              requestId,
+              actorId: authenticated.principal.actorId,
+              action: 'admin.alibaba-credential-acquisition.continue',
+              state
+            });
+            return state;
+          } catch (error: unknown) {
+            throw acquisitionRouteError(error);
+          }
+        },
+        ['requestId', 'jobId', 'command']
+      );
+    });
+
+    api.post('/admin/alibaba-credential-acquisition/status', async (context) => {
+      return adminRead(
+        context,
+        options,
+        async (body, authenticated) => {
+          try {
+            return await alibabaCredentialAcquisition.status(
+              authenticated.principal.actorId,
+              readUuid(body, 'jobId')
+            );
+          } catch (error: unknown) {
+            throw acquisitionRouteError(error);
+          }
+        },
+        ['requestId', 'jobId']
+      );
+    });
+
+    api.post('/admin/alibaba-credential-acquisition/cancel', async (context) => {
+      return adminWrite(
+        context,
+        options,
+        async (body, authenticated) => {
+          const requestId = readRequestId(body);
+          try {
+            const state = await alibabaCredentialAcquisition.cancel(
+              authenticated.principal.actorId,
+              readUuid(body, 'jobId')
+            );
+            await auditCredentialAcquisition(options, {
+              requestId,
+              actorId: authenticated.principal.actorId,
+              action: 'admin.alibaba-credential-acquisition.cancel',
+              state
+            });
+            return state;
+          } catch (error: unknown) {
+            throw acquisitionRouteError(error);
+          }
+        },
+        ['requestId', 'jobId']
+      );
+    });
+  }
+
   api.post('/admin/request-events/list', async (context) => {
     return adminRead(
       context,
@@ -800,6 +908,72 @@ function readString(body: Record<string, unknown>, key: string): string {
   const value = body[key];
   if (typeof value !== 'string') throw new AuthError('INVALID_REQUEST_BODY', `${key} 无效`, 400);
   return value;
+}
+
+function readSensitiveString(body: Record<string, unknown>, key: string, maxLength: number): string {
+  const value = readString(body, key).trim();
+  if (!value || value.length > maxLength) {
+    throw new AuthError('INVALID_REQUEST_BODY', `${key} 无效`, 400);
+  }
+  return value;
+}
+
+function readUuid(body: Record<string, unknown>, key: string): string {
+  const value = readString(body, key);
+  if (!isRequestId(value)) throw new AuthError('INVALID_REQUEST_BODY', `${key} 必须是 UUID v4`, 400);
+  return value;
+}
+
+function readAcquisitionCommand(value: unknown) {
+  if (!isRecord(value)) throw new AuthError('INVALID_REQUEST_BODY', 'command 无效', 400);
+  if (
+    value.type === 'select-application' &&
+    typeof value.applicationId === 'string' &&
+    value.applicationId.trim() !== '' &&
+    value.applicationId.length <= 256 &&
+    Object.keys(value).every((key) => key === 'type' || key === 'applicationId')
+  ) {
+    return { type: 'select-application' as const, applicationId: value.applicationId };
+  }
+  if (
+    value.type === 'confirm-callback-change' &&
+    typeof value.confirmed === 'boolean' &&
+    Object.keys(value).every((key) => key === 'type' || key === 'confirmed')
+  ) {
+    return { type: 'confirm-callback-change' as const, confirmed: value.confirmed };
+  }
+  throw new AuthError('INVALID_REQUEST_BODY', 'command 无效', 400);
+}
+
+function acquisitionRouteError(error: unknown): AuthError {
+  if (error instanceof AuthError) return error;
+  if (error instanceof AlibabaCredentialAcquisitionServiceError) {
+    return new AuthError(error.code, error.message, error.status);
+  }
+  if (error instanceof AlibabaCredentialAcquisitionContractError) {
+    return new AuthError(error.code, error.message, 400);
+  }
+  return new AuthError('ALIBABA_CREDENTIAL_ACQUISITION_FAILED', 'Alibaba 凭据获取暂时失败', 503);
+}
+
+async function auditCredentialAcquisition(
+  options: AuthRoutesOptions,
+  input: {
+    requestId: string;
+    actorId: string;
+    action: string;
+    state: { status: string };
+  }
+): Promise<void> {
+  await options.authService.audit({
+    requestId: input.requestId,
+    actorId: input.actorId,
+    action: input.action,
+    resourceKind: 'alibaba-credential-acquisition',
+    resourceId: null,
+    outcome: input.state.status === 'failed' ? 'error' : 'success',
+    reasonCode: `ACQUISITION_${input.state.status.replaceAll('-', '_').toUpperCase()}`
+  });
 }
 
 function readNullableString(body: Record<string, unknown>, key: string): string | null {

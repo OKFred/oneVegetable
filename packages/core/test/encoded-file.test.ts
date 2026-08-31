@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { PHOTO_CONTENT_TYPES, validateEncodedFile } from '../src/encoded-file';
+import {
+  decodeBase64,
+  detectPhotoContentType,
+  encodeBase64,
+  PHOTO_CONTENT_TYPES,
+  photoFileExtension,
+  validateEncodedFile,
+  validatePhotoBytes
+} from '../src/encoded-file';
 
 describe('validateEncodedFile', () => {
   it('decodes a pure Base64 image and checks its declared size and signature', () => {
@@ -34,5 +42,14 @@ describe('validateEncodedFile', () => {
         { allowedContentTypes: PHOTO_CONTENT_TYPES, requireImageSignature: true }
       )
     ).toThrow('文件头');
+  });
+
+  it('detects archive image bytes and safely round-trips Base64', () => {
+    const bytes = Uint8Array.from([0xff, 0xd8, 0xff, 0xd9]);
+    expect(detectPhotoContentType(bytes)).toBe('image/jpeg');
+    expect(validatePhotoBytes(bytes)).toBe('image/jpeg');
+    expect(photoFileExtension('image/jpeg')).toBe('jpg');
+    expect(decodeBase64(encodeBase64(bytes))).toEqual(bytes);
+    expect(() => validatePhotoBytes(Uint8Array.from([1, 2, 3]))).toThrow('图片文件头');
   });
 });

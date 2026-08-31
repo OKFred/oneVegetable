@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { assertPublicPhotoUrl, downloadPhotoForUpload } from '../src/photo-transfer';
+import { assertPublicPhotoUrl, downloadPhotoForUpload, downloadProductAsset } from '../src/photo-transfer';
 
 describe('PhotoBank URL transfer safety', () => {
   it.each([
@@ -80,5 +80,37 @@ describe('PhotoBank URL transfer safety', () => {
       contentType: 'image/png',
       byteLength: 4
     });
+  });
+
+  it('downloads only PhotoBank product assets and returns a verified digest', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(Uint8Array.from([0xff, 0xd8, 0xff, 0xd9]), {
+        status: 200,
+        headers: { 'content-type': 'image/jpeg', 'content-length': '4' }
+      })
+    );
+    const result = await downloadProductAsset({ url: 'https://sc04.alicdn.com/kf/product.jpg' }, fetcher);
+
+    expect(result).toEqual({
+      fileName: 'product.jpg',
+      contentBase64: '/9j/2Q==',
+      contentType: 'image/jpeg',
+      byteLength: 4,
+      sha256: '32461d5bd1773012acef0ba15636752949bd7c2ce50f9172159d9f56cf0dd9af'
+    });
+    await expect(
+      downloadProductAsset({ url: 'https://images.example.com/product.jpg' }, fetcher)
+    ).rejects.toThrow('仅允许国际站图库地址');
+
+    const redirectingFetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      new Response(null, {
+        status: 302,
+        headers: { location: 'https://images.example.com/escaped.jpg' }
+      })
+    );
+    await expect(
+      downloadProductAsset({ url: 'https://sc04.alicdn.com/kf/redirect.jpg' }, redirectingFetcher)
+    ).rejects.toThrow('不允许跳转到图库域名之外');
+    expect(redirectingFetcher).toHaveBeenCalledOnce();
   });
 });

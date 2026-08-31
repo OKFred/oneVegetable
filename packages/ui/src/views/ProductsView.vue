@@ -14,16 +14,23 @@ import { toast } from 'vue-sonner';
 
 import {
   analyzeProductDescriptionQuality,
+  collectProductSchemaAssetReferences,
   collectProductSchemaOfficialHints,
+  createProductTransferArchiveDocument,
   createProductTransferDocument,
   createProductScoreOfficialHints,
+  decodeBase64,
+  encodeBase64,
   inspectProductSchemaPatchSerialization,
   inspectProductSchemaSerialization,
   MAX_PRODUCT_TRANSFER_ITEMS,
   parseProductSchemaXml,
   PRODUCT_EDITOR_STEP_IDS,
   productMutationJobIsBlocking,
+  productSchemaXmlToJson,
+  replaceProductSchemaAssetReferences,
   resolveProductSchemaXml,
+  serializeProductSchemaXml,
   productTransferQueueItemId,
   serializeProductTransferDocument,
   validateProductDisplayInput,
@@ -42,6 +49,7 @@ import {
   type ProductScore,
   type ProductTransferItemInput,
   type ProductTransferDocumentV1,
+  type ProductTransferDocumentV2,
   type ProductTransferSchemaFormat
 } from '@one-vegetable/core';
 
@@ -78,6 +86,7 @@ import {
 import {
   completeProductBatchPublishItem,
   importProductBatchPublishItems,
+  inspectProductBatchPublishImport,
   loadProductBatchPublishItems,
   removeProductBatchPublishItem,
   runProductBatchPublish,
@@ -92,6 +101,14 @@ import {
   useOperationAvailability
 } from '../composables/use-operation-availability';
 import { appHash, parseAppHash } from '../lib/hash-router';
+import {
+  createProductTransferArchive,
+  productTransferArchiveAssetPath,
+  type ProductTransferArchiveAsset,
+  type ProductTransferFileFormat,
+  type ProductTransferImportSelection,
+  type ProductTransferProgress
+} from '../lib/product-transfer-archive';
 import { describeProductExportDisabled, retainCurrentPageSelection } from '../lib/product-selection';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
@@ -178,6 +195,8 @@ const editingBatchItemId = ref('');
 const productTransferBusy = ref(false);
 const productTransferError = ref('');
 const productTransferSchemaFormat = ref<ProductTransferSchemaFormat>('json');
+const productTransferFileFormat = ref<ProductTransferFileFormat>('json');
+const productTransferProgress = ref<ProductTransferProgress | null>(null);
 const productTransferDialogOpen = ref(false);
 const productTransferDialogMode = ref<'import' | 'export'>('import');
 const productTransferExportProducts = ref<Product[]>([]);
@@ -225,6 +244,7 @@ const productOperations = useOperationAvailability([
   'updateProduct',
   'updateProductDisplay'
 ]);
+const productTransferOperations = useOperationAvailability(['uploadPhoto', 'downloadProductAsset']);
 const productMutationHistory = useQuery({
   queryKey: ['product-mutation-jobs', editProductId],
   queryFn: async () => {
@@ -500,6 +520,22 @@ const someCurrentPageProductsSelected = computed(
 const productExportDisabledReason = computed(() =>
   describeProductExportDisabled(selectedProducts.value.length, productTransferBusy.value)
 );
+const productTransferAssetUploadAllowed = computed(() => productTransferOperations.isAllowed('uploadPhoto'));
+const productTransferAssetDownloadAllowed = computed(() =>
+  productTransferOperations.isAllowed('downloadProductAsset')
+);
+const productTransferAssetUploadDisabledReason = computed(() =>
+  operationAvailabilityMessage(
+    productTransferOperations.reasonCode('uploadPhoto'),
+    '当前环境未开放真实图库上传'
+  )
+);
+const productTransferAssetDownloadDisabledReason = computed(() =>
+  operationAvailabilityMessage(
+    productTransferOperations.reasonCode('downloadProductAsset'),
+    '当前环境未开放商品图片下载'
+  )
+);
 const moreActionsDisabledReason = computed(() =>
   selectedProducts.value.length === 0 ? '请先勾选至少一个商品' : ''
 );
@@ -716,60 +752,131 @@ async function exportSelectedProducts(): Promise<void> {
 
   productTransferBusy.value = true;
   productTransferError.value = '';
+  productTransferProgress.value = null;
   try {
-    const transferItems: ProductTransferItemInput[] = [];
-    for (const product of productTransferExportProducts.value) {
-      const schema =
-        product.status === 'draft'
-          ? await gateway.request('getProductDraft', {
-              productId: product.id,
-              language: language.value
-            })
-          : product.categoryId === null
-            ? null
-            : await gateway.request('renderProductSchema', {
-                categoryId: product.categoryId,
-                language: language.value,
-                productId: product.id
-              });
-      if (!schema) throw new Error(`商品 ${product.id} 缺少类目，无法导出完整 Schema`);
-      const schemaXml = resolveProductSchemaXml(schema);
-      if (!schemaXml) throw new Error(`商品 ${product.id} 未返回 Schema XML 或 Schema JSON`);
-      const exportedCategoryId =
-        product.status === 'draft' && schema.categoryId > 0 ? schema.categoryId : product.categoryId;
-      if (exportedCategoryId === null) throw new Error(`商品 ${product.id} 缺少类目，无法导出完整 Schema`);
-      transferItems.push({
-        source: {
-          productId: product.id,
-          subject: product.subject,
-          groupName: product.groupName,
-          status: product.status,
-          updatedAt: product.updatedAt
-        },
-        categoryId: exportedCategoryId,
-        language: language.value,
-        market: 'market' in schema && schema.market === 'sourcing' ? 'sourcing' : market.value,
-        schemaXml
-      });
+    const transferItems = await loadProductTransferItems(productTransferExportProducts.value);
+    if (productTransferFileFormat.value === 'zip') {
+      await exportProductZip(transferItems);
+    } else {
+      const document = createProductTransferDocument(transferItems);
+      downloadTextFile(
+        `one-vegetable-products-${fileTimestamp(new Date())}.json`,
+        serializeProductTransferDocument(document, { schemaFormat: productTransferSchemaFormat.value })
+      );
     }
-    const document = createProductTransferDocument(transferItems);
-    downloadTextFile(
-      `one-vegetable-products-${fileTimestamp(new Date())}.json`,
-      serializeProductTransferDocument(document, { schemaFormat: productTransferSchemaFormat.value })
-    );
     feedback.value = '';
     toast.success(
-      `已导出 ${document.products.length} 个商品（${productTransferSchemaFormatLabel(productTransferSchemaFormat.value)}）。`
+      `已导出 ${transferItems.length} 个商品（${productTransferFileFormat.value.toLocaleUpperCase()}，${productTransferSchemaFormatLabel(productTransferSchemaFormat.value)}）。`
     );
     productTransferDialogOpen.value = false;
   } catch (error: unknown) {
     productTransferError.value = errorMessage(error);
   } finally {
     productTransferBusy.value = false;
+    productTransferProgress.value = null;
   }
 }
 
-function importProducts(document: ProductTransferDocumentV1): void {
+async function loadProductTransferItems(
+  productsToExport: readonly Product[]
+): Promise<ProductTransferItemInput[]> {
+  const transferItems: ProductTransferItemInput[] = [];
+  for (const [index, product] of productsToExport.entries()) {
+    productTransferProgress.value = {
+      phase: 'reading',
+      message: `正在读取商品 Schema（${index + 1}/${productsToExport.length}）…`,
+      current: index,
+      total: productsToExport.length
+    };
+    const schema =
+      product.status === 'draft'
+        ? await gateway.request('getProductDraft', {
+            productId: product.id,
+            language: language.value
+          })
+        : product.categoryId === null
+          ? null
+          : await gateway.request('renderProductSchema', {
+              categoryId: product.categoryId,
+              language: language.value,
+              productId: product.id
+            });
+    if (!schema) throw new Error(`商品 ${product.id} 缺少类目，无法导出完整 Schema`);
+    const schemaXml = resolveProductSchemaXml(schema);
+    if (!schemaXml) throw new Error(`商品 ${product.id} 未返回 Schema XML 或 Schema JSON`);
+    const exportedCategoryId =
+      product.status === 'draft' && schema.categoryId > 0 ? schema.categoryId : product.categoryId;
+    if (exportedCategoryId === null) throw new Error(`商品 ${product.id} 缺少类目，无法导出完整 Schema`);
+    transferItems.push({
+      source: {
+        productId: product.id,
+        subject: product.subject,
+        groupName: product.groupName,
+        status: product.status,
+        updatedAt: product.updatedAt
+      },
+      categoryId: exportedCategoryId,
+      language: language.value,
+      market: 'market' in schema && schema.market === 'sourcing' ? 'sourcing' : market.value,
+      schemaXml
+    });
+  }
+  return transferItems;
+}
+
+async function exportProductZip(transferItems: readonly ProductTransferItemInput[]): Promise<void> {
+  const models = transferItems.map((item) => parseProductSchemaXml(item.schemaXml ?? ''));
+  const assetUrls = [
+    ...new Set(
+      models.flatMap((model) =>
+        collectProductSchemaAssetReferences(model).map((reference) => reference.source)
+      )
+    )
+  ];
+  const replacements = new Map<string, { url: string; fileId: null }>();
+  const assetsBySha = new Map<string, ProductTransferArchiveAsset>();
+  for (const [index, url] of assetUrls.entries()) {
+    productTransferProgress.value = {
+      phase: 'downloading',
+      message: `正在下载图库图片（${index + 1}/${assetUrls.length}）…`,
+      current: index,
+      total: assetUrls.length
+    };
+    const result = await gateway.request('downloadProductAsset', { url });
+    let asset = assetsBySha.get(result.sha256);
+    if (!asset) {
+      const path = productTransferArchiveAssetPath(result.fileName, result.contentType, result.sha256);
+      asset = {
+        path,
+        fileName: path.slice(path.lastIndexOf('/') + 1),
+        contentType: result.contentType,
+        bytes: decodeBase64(result.contentBase64)
+      };
+      assetsBySha.set(result.sha256, asset);
+    }
+    replacements.set(url, { url: asset.path, fileId: null });
+  }
+
+  const archiveItems = models.map((model, index) => {
+    const item = transferItems[index];
+    if (!item) throw new Error('商品 ZIP 导出范围发生变化');
+    return {
+      ...item,
+      schemaXml: serializeProductSchemaXml(replaceProductSchemaAssetReferences(model, replacements))
+    };
+  });
+  const document = createProductTransferArchiveDocument(archiveItems, productTransferSchemaFormat.value);
+  productTransferProgress.value = {
+    phase: 'packing',
+    message: '正在生成 ZIP 资源包…',
+    current: 0,
+    total: 1
+  };
+  const archive = await createProductTransferArchive({ document, assets: [...assetsBySha.values()] });
+  downloadBinaryFile(`one-vegetable-products-${fileTimestamp(new Date())}.zip`, archive, 'application/zip');
+}
+
+async function importProducts(selection: ProductTransferImportSelection): Promise<void> {
   if (!('localStorage' in globalThis)) {
     productTransferError.value = '当前环境不支持本地商品导入。';
     return;
@@ -777,23 +884,25 @@ function importProducts(document: ProductTransferDocumentV1): void {
 
   productTransferBusy.value = true;
   productTransferError.value = '';
+  productTransferProgress.value = null;
   try {
+    const document =
+      selection.kind === 'json' ? selection.document : await uploadProductTransferAssets(selection);
+    productTransferProgress.value = {
+      phase: 'queuing',
+      message: '正在写入本机批量发品队列…',
+      current: 0,
+      total: 1
+    };
     const result = importProductBatchPublishItems(
       globalThis.localStorage,
-      document.products.map((product) => ({
-        id: productTransferQueueItemId(product),
-        title: product.source.subject,
-        categoryId: String(product.categoryId),
-        language: product.language,
-        market: product.market,
-        xml: product.schemaXml
-      }))
+      productTransferQueueInputs(document)
     );
     reloadBatchItems();
     selectedBatchItemIds.value = result.items.map((item) => item.id);
     feedback.value = '';
     toast.success(
-      `商品 JSON 已导入本机队列：新增 ${result.added}，更新 ${result.updated}，已提交跳过 ${result.skipped}。导入不会自动写入平台。`
+      `商品 ${selection.kind === 'zip' ? 'ZIP' : 'JSON'} 已导入本机队列：新增 ${result.added}，更新 ${result.updated}，已提交跳过 ${result.skipped}。导入不会自动发布商品。`
     );
     productTransferDialogOpen.value = false;
     workspace.value = 'batch-publisher';
@@ -802,11 +911,81 @@ function importProducts(document: ProductTransferDocumentV1): void {
     productTransferError.value = errorMessage(error);
   } finally {
     productTransferBusy.value = false;
+    productTransferProgress.value = null;
   }
+}
+
+async function uploadProductTransferAssets(
+  selection: Extract<ProductTransferImportSelection, { kind: 'zip' }>
+): Promise<ProductTransferDocumentV2> {
+  const originalInputs = productTransferQueueInputs(selection.archive.document);
+  inspectProductBatchPublishImport(globalThis.localStorage, originalInputs);
+
+  const assetsByPath = new Map(selection.archive.assets.map((asset) => [asset.path, asset]));
+  const replacements = new Map<
+    string,
+    {
+      url: string;
+      fileId: string;
+      fileName: string;
+      groupId: string;
+      width: number | null;
+      height: number | null;
+      fileSize: number;
+    }
+  >();
+  for (const [index, path] of selection.archive.referencedAssetPaths.entries()) {
+    const asset = assetsByPath.get(path);
+    if (!asset) throw new Error(`ZIP 缺少图片：${path}`);
+    productTransferProgress.value = {
+      phase: 'uploading',
+      message: `正在上传到“${selection.targetGroupName}”（${index + 1}/${selection.archive.referencedAssetPaths.length}）…`,
+      current: index,
+      total: selection.archive.referencedAssetPaths.length
+    };
+    const photo = await gateway.request('uploadPhoto', {
+      fileName: asset.fileName,
+      contentBase64: encodeBase64(asset.bytes),
+      contentType: asset.contentType,
+      byteLength: asset.bytes.byteLength,
+      groupId: selection.targetGroupId
+    });
+    replacements.set(path, {
+      url: photo.url,
+      fileId: photo.id,
+      fileName: photo.name,
+      groupId: photo.groupId,
+      width: photo.width,
+      height: photo.height,
+      fileSize: photo.fileSize
+    });
+  }
+  if (replacements.size > 0) await queryClient.invalidateQueries({ queryKey: ['photos'] });
+  return {
+    ...selection.archive.document,
+    products: selection.archive.document.products.map((product) => {
+      const schemaXml = serializeProductSchemaXml(
+        replaceProductSchemaAssetReferences(parseProductSchemaXml(product.schemaXml), replacements)
+      );
+      return { ...product, schemaXml, schemaJson: productSchemaXmlToJson(schemaXml) };
+    })
+  };
+}
+
+function productTransferQueueInputs(document: ProductTransferDocumentV1 | ProductTransferDocumentV2) {
+  return document.products.map((product) => ({
+    id: productTransferQueueItemId(product),
+    title: product.source.subject,
+    categoryId: String(product.categoryId),
+    language: product.language,
+    market: product.market,
+    xml: product.schemaXml
+  }));
 }
 
 function openProductImportDialog(): void {
   productTransferError.value = '';
+  productTransferProgress.value = null;
   productTransferDialogMode.value = 'import';
   productTransferExportProducts.value = [];
   productTransferDialogOpen.value = true;
@@ -815,6 +994,7 @@ function openProductImportDialog(): void {
 function openProductExportDialog(): void {
   if (selectedProducts.value.length === 0) return;
   productTransferError.value = '';
+  productTransferProgress.value = null;
   productTransferDialogMode.value = 'export';
   productTransferExportProducts.value = selectedProducts.value.map((product) => ({ ...product }));
   productTransferDialogOpen.value = true;
@@ -822,6 +1002,16 @@ function openProductExportDialog(): void {
 
 function downloadTextFile(fileName: string, content: string): void {
   const url = URL.createObjectURL(new Blob([content], { type: 'application/json;charset=utf-8' }));
+  const anchor = globalThis.document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadBinaryFile(fileName: string, content: Uint8Array, contentType: string): void {
+  const bytes = content.slice().buffer;
+  const url = URL.createObjectURL(new Blob([bytes], { type: contentType }));
   const anchor = globalThis.document.createElement('a');
   anchor.href = url;
   anchor.download = fileName;
@@ -2173,10 +2363,16 @@ onBeforeUnmount(() => {
   <ProductTransferDialog
     v-model:open="productTransferDialogOpen"
     v-model:schema-format="productTransferSchemaFormat"
+    v-model:file-format="productTransferFileFormat"
     :mode="productTransferDialogMode"
     :busy="productTransferBusy"
     :error="productTransferError"
     :export-products="productTransferExportProducts"
+    :asset-upload-allowed="productTransferAssetUploadAllowed"
+    :asset-upload-disabled-reason="productTransferAssetUploadDisabledReason"
+    :asset-download-allowed="productTransferAssetDownloadAllowed"
+    :asset-download-disabled-reason="productTransferAssetDownloadDisabledReason"
+    :progress="productTransferProgress"
     @confirm-import="importProducts"
     @confirm-export="exportSelectedProducts"
   />

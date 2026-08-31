@@ -15,6 +15,7 @@
     "dev:api:real": "tsx scripts/run-real-api.ts",
     "dev:worker": "pnpm --filter @one-vegetable/api dev:worker",
     "openapi:auth": "tsx scripts/acquire-alibaba-openapi-auth.ts",
+    "openapi:auth:free": "tsx scripts/acquire-alibaba-openapi-auth.ts --env-file=.env.free",
     "openapi:auth:refresh": "tsx scripts/refresh-alibaba-openapi-auth.ts",
     "db:migrate:local": "wrangler d1 migrations apply DB --local --config wrangler.jsonc --env=\"\"",
     "build:api": "pnpm --filter @one-vegetable/api build",

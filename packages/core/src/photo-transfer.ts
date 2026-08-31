@@ -1,6 +1,12 @@
 import { createRequestId, NativeFetchTransport, NetworkManager } from './network';
 import { MAX_PHOTOBANK_IMAGE_BYTES } from './encoded-file';
-import type { PhotoTransferRequest, PhotoUploadRequest } from './types';
+import { isPhotoBankUrl } from './product-description-url';
+import type {
+  PhotoTransferRequest,
+  PhotoUploadRequest,
+  ProductAssetDownloadRequest,
+  ProductAssetDownloadResult
+} from './types';
 
 export const MAX_TRANSFER_IMAGE_BYTES = MAX_PHOTOBANK_IMAGE_BYTES;
 const MAX_REDIRECTS = 5;
@@ -14,6 +20,38 @@ const ALLOWED_IMAGE_CONTENT_TYPES = new Set([
 ]);
 
 export type DownloadedPhotoUpload = PhotoUploadRequest;
+
+export interface PhotoDownloadOptions {
+  assertUrl?: (url: URL) => void;
+}
+
+export async function downloadProductAsset(
+  request: ProductAssetDownloadRequest,
+  fetcher: typeof fetch = globalThis.fetch
+): Promise<ProductAssetDownloadResult> {
+  if (!isPhotoBankUrl(request.url)) {
+    throw new Error('商品资源导出仅允许国际站图库地址');
+  }
+  const downloaded = await downloadPhotoForUpload(
+    { url: request.url, groupId: '-1', maxBytes: MAX_PHOTOBANK_IMAGE_BYTES },
+    fetcher,
+    {
+      assertUrl(url) {
+        if (!isPhotoBankUrl(url.toString())) {
+          throw new Error('商品资源导出不允许跳转到图库域名之外');
+        }
+      }
+    }
+  );
+  const bytes = base64ToBytes(downloaded.contentBase64);
+  return {
+    fileName: downloaded.fileName,
+    contentBase64: downloaded.contentBase64,
+    contentType: downloaded.contentType,
+    byteLength: downloaded.byteLength,
+    sha256: await sha256Hex(bytes)
+  };
+}
 
 export function assertPublicPhotoUrl(rawUrl: string): URL {
   let url: URL;
@@ -44,10 +82,12 @@ export function assertPublicPhotoUrl(rawUrl: string): URL {
 
 export async function downloadPhotoForUpload(
   request: PhotoTransferRequest,
-  fetcher: typeof fetch = globalThis.fetch
+  fetcher: typeof fetch = globalThis.fetch,
+  options: PhotoDownloadOptions = {}
 ): Promise<DownloadedPhotoUpload> {
   const maxBytes = Math.min(request.maxBytes ?? MAX_TRANSFER_IMAGE_BYTES, MAX_TRANSFER_IMAGE_BYTES);
   let url = assertPublicPhotoUrl(request.url);
+  options.assertUrl?.(url);
   const requestId = createRequestId();
   const network = new NetworkManager({
     transport: new NativeFetchTransport(fetcher),
@@ -56,7 +96,8 @@ export async function downloadPhotoForUpload(
       bff: { allowedOrigins: [] },
       'external-photo': {
         allowUrl(candidate) {
-          assertPublicPhotoUrl(candidate.toString());
+          const checked = assertPublicPhotoUrl(candidate.toString());
+          options.assertUrl?.(checked);
           return true;
         },
         timeoutMilliseconds: 30_000,
@@ -92,6 +133,7 @@ export async function downloadPhotoForUpload(
     if (!location) throw new Error('图片下载重定向缺少 Location');
     if (redirect === MAX_REDIRECTS) throw new Error('图片下载重定向次数过多');
     url = assertPublicPhotoUrl(new URL(location, url).toString());
+    options.assertUrl?.(url);
   }
   if (!response?.ok) throw new Error(`图片下载失败（HTTP ${response?.status ?? 0}）`);
 
@@ -180,6 +222,16 @@ function bytesToBase64(bytes: Uint8Array): string {
     binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
   }
   return btoa(binary);
+}
+
+function base64ToBytes(value: string): Uint8Array {
+  const binary = atob(value);
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', Uint8Array.from(bytes));
+  return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('');
 }
 
 function inferFileName(url: URL, contentType: string): string {

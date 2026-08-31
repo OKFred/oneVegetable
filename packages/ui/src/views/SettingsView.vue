@@ -14,7 +14,8 @@ import {
   Save,
   ShieldCheck,
   Trash2,
-  UnlockKeyhole
+  UnlockKeyhole,
+  WandSparkles
 } from '@lucide/vue';
 
 import {
@@ -33,6 +34,7 @@ import {
 } from '@one-vegetable/core';
 
 import ActionTooltip from '../components/ActionTooltip.vue';
+import AlibabaCredentialAcquisitionDialog from '../components/AlibabaCredentialAcquisitionDialog.vue';
 import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
@@ -44,7 +46,8 @@ import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import type { DataColumn } from '../lib/table';
 
-const { gateway, settings, permissions, localData, vault, mode } = useServices();
+const { gateway, settings, permissions, localData, vault, alibabaCredentialAcquisition, mode } =
+  useServices();
 const { language: preferredLanguage, theme: preferredTheme } = useAppPreferences();
 const signMethods: SignMethod[] = ['hmac', 'md5', 'hmac-sha256'];
 const model = ref<GatewaySettings>({
@@ -74,6 +77,7 @@ const newVaultPassphraseConfirmation = ref('');
 const vaultBusy = ref(false);
 const vaultError = ref<unknown>(null);
 const credentialImportError = ref<unknown>(null);
+const credentialAcquisitionOpen = ref(false);
 const idleTimeoutMinutes = ref(CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES);
 let settingsInitialization: Promise<void> = Promise.resolve();
 const settingsConfirmation = ref<
@@ -202,6 +206,13 @@ async function importCredentialBundle(event: Event): Promise<void> {
   } finally {
     input.value = '';
   }
+}
+
+async function handleAcquiredCredentialsSaved(status: CredentialVaultStatus): Promise<void> {
+  applyVaultStatus(status);
+  model.value = await settings.load();
+  feedback.value = 'Alibaba 开放平台凭据已获取并加密保存，可以开始真实查询。';
+  await refreshLocalData();
 }
 
 function readImportedCredentials(
@@ -728,10 +739,19 @@ function confirmThemePreference(): void {
       <div class="mb-4 rounded-lg border bg-muted/40 p-4 text-sm leading-6">
         <p class="font-medium">三步完成真实接口连接</p>
         <p class="mt-1 text-muted-foreground">
-          App Key 和 App Secret 由 Alibaba 应用中心发放，不能通过 OAuth 自动读取；OAuth 授权用于取得 Access
-          Token。你可以手工填写，也可以导入项目授权工具生成的 credentials.json。
+          可以用插件向导复用当前 Chrome 登录态，读取已有应用并完成
+          OAuth；遇到滑块、验证码或密钥安全确认时，直接在打开的 Alibaba
+          标签页中处理。也可以手工填写或导入授权包。
         </p>
         <div class="mt-3 flex flex-wrap gap-2">
+          <Button
+            v-if="alibabaCredentialAcquisition"
+            size="sm"
+            type="button"
+            @click="credentialAcquisitionOpen = true"
+          >
+            <WandSparkles class="size-3.5" />获取开放平台凭证
+          </Button>
           <a
             href="https://i.alibaba.com/explore/open-api"
             target="_blank"
@@ -801,6 +821,11 @@ function confirmThemePreference(): void {
         ><Save class="size-4" />{{ vaultStatus?.state === 'empty' ? '创建保险库并保存' : '保存设置' }}</Button
       >
     </Card>
+    <AlibabaCredentialAcquisitionDialog
+      v-if="alibabaCredentialAcquisition"
+      v-model:open="credentialAcquisitionOpen"
+      @saved="handleAcquiredCredentialsSaved"
+    />
     <Card class="flex items-start gap-3 border-emerald-200 bg-emerald-50 p-5 text-emerald-900"
       ><ShieldCheck class="mt-0.5 size-5 shrink-0" />
       <div>

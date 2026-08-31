@@ -2623,6 +2623,102 @@
         }
       }
     },
+    "/admin/alibaba-credential-acquisition/start": {
+      "post": {
+        "summary": "Start Cloudflare Browser Run Alibaba credential acquisition",
+        "operationId": "startAlibabaCredentialAcquisition",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionStartRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "400": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "401": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "403": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "404": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "409": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "429": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "503": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" }
+        }
+      }
+    },
+    "/admin/alibaba-credential-acquisition/continue": {
+      "post": {
+        "summary": "Continue Alibaba credential acquisition after explicit administrator input",
+        "operationId": "continueAlibabaCredentialAcquisition",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionContinueRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "400": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "401": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "403": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "404": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "409": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "429": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "503": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" }
+        }
+      }
+    },
+    "/admin/alibaba-credential-acquisition/status": {
+      "post": {
+        "summary": "Get public Alibaba credential acquisition state",
+        "operationId": "getAlibabaCredentialAcquisitionStatus",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionJobRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "400": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "401": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "403": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "404": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "409": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "429": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "503": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" }
+        }
+      }
+    },
+    "/admin/alibaba-credential-acquisition/cancel": {
+      "post": {
+        "summary": "Cancel Alibaba credential acquisition and clear its browser context",
+        "operationId": "cancelAlibabaCredentialAcquisition",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionJobRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "400": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "401": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "403": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "404": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "409": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "429": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" },
+          "503": { "$ref": "#/components/responses/AlibabaCredentialAcquisitionStateResponse" }
+        }
+      }
+    },
     "/admin/gateway-credentials/get": {
       "post": {
         "summary": "Get encrypted Alibaba gateway credential status",
@@ -3471,6 +3567,20 @@
             }
           }
         }
+      },
+      "AlibabaCredentialAcquisitionStateResponse": {
+        "description": "Public acquisition state or a structured failure",
+        "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+        "content": {
+          "application/json": {
+            "schema": {
+              "oneOf": [
+                { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionStateSuccess" },
+                { "$ref": "#/components/schemas/ApiFailure" }
+              ]
+            }
+          }
+        }
       }
     },
     "schemas": {
@@ -3561,6 +3671,200 @@
           "status": { "$ref": "#/components/schemas/UserStatus" },
           "revision": { "type": "integer", "minimum": 1 },
           "remark": { "type": ["string", "null"], "maxLength": 500 }
+        }
+      },
+      "AlibabaCredentialAcquisitionApplicationSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["applicationId", "appName", "appKeySuffix", "status", "source"],
+        "properties": {
+          "applicationId": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "appName": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "appKeySuffix": { "type": "string", "minLength": 1, "maxLength": 4 },
+          "status": { "type": "string", "maxLength": 128 },
+          "source": { "type": "string", "enum": ["application-center", "legacy-crosstrade"] }
+        }
+      },
+      "AlibabaCredentialAcquisitionCallbackConfirmationState": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "jobId", "expiresAtUtc", "currentUrl", "requestedUrl"],
+        "properties": {
+          "status": { "const": "callback-confirmation-required" },
+          "jobId": { "type": "string", "format": "uuid" },
+          "expiresAtUtc": { "type": "integer", "minimum": 0 },
+          "currentUrl": { "type": "string", "format": "uri", "maxLength": 4096 },
+          "requestedUrl": { "type": "string", "format": "uri", "maxLength": 4096 }
+        }
+      },
+      "AlibabaCredentialAcquisitionCompletedState": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "credential"],
+        "properties": {
+          "status": { "const": "completed" },
+          "credential": { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionCompletedSummary" }
+        }
+      },
+      "AlibabaCredentialAcquisitionCompletedSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "appName",
+          "appKeySuffix",
+          "applicationStatus",
+          "permissions",
+          "accessTokenExpiresTimeUtc",
+          "refreshTokenExpiresTimeUtc"
+        ],
+        "properties": {
+          "appName": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "appKeySuffix": { "type": "string", "minLength": 1, "maxLength": 4 },
+          "applicationStatus": { "type": "string", "maxLength": 128 },
+          "permissions": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["total", "items"],
+            "properties": {
+              "total": { "type": "integer", "minimum": 0, "maximum": 512 },
+              "items": {
+                "type": "array",
+                "maxItems": 512,
+                "items": { "$ref": "#/components/schemas/AlibabaOpenApiPermission" }
+              }
+            }
+          },
+          "accessTokenExpiresTimeUtc": { "type": ["integer", "null"], "minimum": 0 },
+          "refreshTokenExpiresTimeUtc": { "type": ["integer", "null"], "minimum": 0 }
+        }
+      },
+      "AlibabaCredentialAcquisitionContinueCommand": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "applicationId"],
+            "properties": {
+              "type": { "const": "select-application" },
+              "applicationId": { "type": "string", "minLength": 1, "maxLength": 256 }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "confirmed"],
+            "properties": {
+              "type": { "const": "confirm-callback-change" },
+              "confirmed": { "type": "boolean" }
+            }
+          }
+        ]
+      },
+      "AlibabaCredentialAcquisitionContinueRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "jobId", "command"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "jobId": { "type": "string", "format": "uuid" },
+          "command": { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionContinueCommand" }
+        }
+      },
+      "AlibabaCredentialAcquisitionExtensionRequiredState": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "reasonCode"],
+        "properties": {
+          "status": { "const": "extension-required" },
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "browser-unavailable",
+              "browser-quota-exhausted",
+              "bot-rejected",
+              "captcha",
+              "slider",
+              "mfa",
+              "secret-verification",
+              "automation-layout-unsupported",
+              "session-expired"
+            ]
+          }
+        }
+      },
+      "AlibabaCredentialAcquisitionFailedState": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "error"],
+        "properties": {
+          "status": { "const": "failed" },
+          "error": { "$ref": "#/components/schemas/GatewayError" }
+        }
+      },
+      "AlibabaCredentialAcquisitionJobRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "jobId"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "jobId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "AlibabaCredentialAcquisitionRunningState": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "jobId", "expiresAtUtc"],
+        "properties": {
+          "status": { "const": "running" },
+          "jobId": { "type": "string", "format": "uuid" },
+          "expiresAtUtc": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "AlibabaCredentialAcquisitionSelectionRequiredState": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "jobId", "expiresAtUtc", "applications"],
+        "properties": {
+          "status": { "const": "selection-required" },
+          "jobId": { "type": "string", "format": "uuid" },
+          "expiresAtUtc": { "type": "integer", "minimum": 0 },
+          "applications": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 100,
+            "items": { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionApplicationSummary" }
+          }
+        }
+      },
+      "AlibabaCredentialAcquisitionStartRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "account", "password", "callbackUrl"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "account": { "type": "string", "minLength": 1, "maxLength": 512, "writeOnly": true },
+          "password": { "type": "string", "minLength": 1, "maxLength": 1024, "writeOnly": true },
+          "callbackUrl": { "type": ["string", "null"], "format": "uri", "maxLength": 4096 }
+        }
+      },
+      "AlibabaCredentialAcquisitionState": {
+        "oneOf": [
+          { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionRunningState" },
+          { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionSelectionRequiredState" },
+          { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionCallbackConfirmationState" },
+          { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionExtensionRequiredState" },
+          { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionCompletedState" },
+          { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionFailedState" }
+        ]
+      },
+      "AlibabaCredentialAcquisitionStateSuccess": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "ok", "data"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "ok": { "const": true },
+          "data": { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionState" }
         }
       },
       "AlibabaGatewayStatus": {
@@ -11975,6 +12279,29 @@
           "updatedAt": { "type": "string", "format": "date-time" },
           "categoryId": { "type": ["integer", "null"] }
         }
+      },
+      "ProductAssetDownloadRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["url"],
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://",
+            "description": "International-site PhotoBank URL referenced by a product Schema."
+          }
+        }
+      },
+      "ProductAssetDownloadResult": {
+        "allOf": [
+          { "$ref": "#/components/schemas/EncodedFilePayload" },
+          {
+            "type": "object",
+            "required": ["sha256"],
+            "properties": { "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" } }
+          }
+        ]
       },
       "ProductCategory": {
         "type": "object",

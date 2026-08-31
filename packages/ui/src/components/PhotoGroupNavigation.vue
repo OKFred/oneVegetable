@@ -8,7 +8,9 @@ import type { PhotoGroup } from '@one-vegetable/core';
 import ErrorNotice from './ErrorNotice.vue';
 import { useServices } from '../lib/services';
 
-const props = defineProps<{ modelValue: string }>();
+const props = withDefaults(defineProps<{ modelValue: string; allLabel?: string }>(), {
+  allLabel: '全部图片'
+});
 const emit = defineEmits<{
   'update:modelValue': [groupId: string];
   select: [group: PhotoGroup];
@@ -22,7 +24,7 @@ const loadingRootIds = ref<string[]>([]);
 const error = ref('');
 const allGroup: PhotoGroup = {
   id: '-1',
-  name: '全部图片',
+  name: props.allLabel,
   photoCount: 0,
   parentId: null,
   level: 1

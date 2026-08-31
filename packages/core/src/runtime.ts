@@ -1,4 +1,16 @@
 export { GatewayException, normalizeGatewayError } from './errors';
+export type {
+  ExtensionAlibabaCredentialAcquisitionOperation,
+  ExtensionAlibabaCredentialAcquisitionRepository,
+  ExtensionAlibabaCredentialAcquisitionRequest,
+  ExtensionAlibabaCredentialAcquisitionResponse
+} from './alibaba-credential-acquisition-extension';
+export type {
+  AlibabaCredentialAcquisitionContinueCommand,
+  AlibabaCredentialAcquisitionState
+} from './alibaba-credential-acquisition';
+export { parseAlibabaOpenApiCredentialBundle } from './alibaba-credential-bundle';
+export type { AlibabaOpenApiCredentialBundle } from './alibaba-credential-bundle';
 export { BffGatewayClient } from './bff-client';
 export {
   CREDENTIAL_VAULT_ITERATIONS,

@@ -8,6 +8,7 @@ import {
   CredentialVaultError,
   CredentialVaultSession,
   DashboardAdapter,
+  downloadProductAsset,
   downloadPhotoForUpload,
   findCapability,
   GatewayException,
@@ -36,12 +37,15 @@ import {
   type CredentialVaultStatus,
   type DiagnosticEntry,
   type DiagnosticsSnapshot,
+  type ExtensionAlibabaCredentialAcquisitionRequest,
+  type ExtensionAlibabaCredentialAcquisitionResponse,
   type GatewaySettings,
   type OperationId,
   type RequestOf,
   type RuntimeRequest,
   type RuntimeResponse
 } from '@one-vegetable/core';
+import { ExtensionAlibabaCredentialAcquisitionController } from '../lib/alibaba-credential-acquisition';
 import { resolveExtensionOperationAvailability } from '../lib/operation-policy';
 
 const OPERATIONS = new Set<OperationId>([
@@ -61,6 +65,7 @@ const OPERATIONS = new Set<OperationId>([
   'listPhotos',
   'uploadPhoto',
   'transferPhotoFromUrl',
+  'downloadProductAsset',
   'listOrders',
   'getOrderFund',
   'getOrderLogistics',
@@ -114,6 +119,10 @@ export default defineBackground({
     // WebExtension runtime listeners support returning a promise for the response.
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     browser.runtime.onMessage.addListener((value: unknown) => {
+      const acquisitionMessage = asAlibabaCredentialAcquisitionRequest(value);
+      if (acquisitionMessage) {
+        return handleAlibabaCredentialAcquisitionRequest(acquisitionMessage, storageAccessReady);
+      }
       const vaultMessage = asCredentialVaultRequest(value);
       if (vaultMessage) return handleCredentialVaultRequest(vaultMessage, storageAccessReady);
       const message = asRuntimeRequest(value);
@@ -131,6 +140,71 @@ async function restrictStorageToTrustedContexts(): Promise<void> {
 }
 
 const vaultSession = new CredentialVaultSession();
+const alibabaCredentialAcquisition = new ExtensionAlibabaCredentialAcquisitionController();
+
+async function handleAlibabaCredentialAcquisitionRequest(
+  message: ExtensionAlibabaCredentialAcquisitionRequest,
+  storageAccessReady: Promise<void>
+): Promise<ExtensionAlibabaCredentialAcquisitionResponse> {
+  try {
+    await storageAccessReady;
+    const payload = asRecord(message.payload);
+    let data: unknown;
+    switch (message.operation) {
+      case 'start':
+        data = await alibabaCredentialAcquisition.start(nullableString(payload.callbackUrl));
+        break;
+      case 'continue':
+        data = await alibabaCredentialAcquisition.continue(
+          requiredString(payload, 'jobId'),
+          requiredAcquisitionContinueCommand(payload.command)
+        );
+        break;
+      case 'status':
+        data = await alibabaCredentialAcquisition.status(requiredString(payload, 'jobId'));
+        break;
+      case 'cancel':
+        data = await alibabaCredentialAcquisition.cancel(requiredString(payload, 'jobId'));
+        break;
+      case 'save-to-vault': {
+        const bundle = await alibabaCredentialAcquisition.completedBundle();
+        data = await saveAcquiredCredentialsToVault(bundle, optionalVaultString(payload.passphrase));
+        break;
+      }
+      case 'export-bundle':
+        data = await alibabaCredentialAcquisition.exportBundle();
+        break;
+    }
+    return { requestId: message.requestId, ok: true, data };
+  } catch (error: unknown) {
+    return { requestId: message.requestId, ok: false, error: normalizeVaultError(error) };
+  }
+}
+
+async function saveAcquiredCredentialsToVault(
+  bundle: Awaited<ReturnType<ExtensionAlibabaCredentialAcquisitionController['completedBundle']>>,
+  passphrase: string | undefined
+): Promise<CredentialVaultStatus> {
+  const settings: GatewaySettings = {
+    appKey: bundle.application.appKey,
+    appSecret: bundle.application.appSecret,
+    accessToken: bundle.oauth.accessToken,
+    endpoint: ALIBABA_GATEWAY,
+    signMethod: 'hmac'
+  };
+  const stored = await browser.storage.local.get(SETTINGS_STORAGE_KEY);
+  const present = Object.prototype.hasOwnProperty.call(stored, SETTINGS_STORAGE_KEY);
+  const state = inspectCredentialStorage(stored[SETTINGS_STORAGE_KEY], present);
+  if (state.kind === 'empty') {
+    if (!passphrase) throw new Error('首次保存到保险库时需要设置口令');
+    return (await executeCredentialVaultOperation('create', {
+      passphrase,
+      settings
+    })) as CredentialVaultStatus;
+  }
+  if (state.kind !== 'vault' || !vaultSession.read(state.record)) throw vaultStateError(state.kind);
+  return (await executeCredentialVaultOperation('save', settings)) as CredentialVaultStatus;
+}
 
 async function handleCredentialVaultRequest(
   message: CredentialVaultRequest,
@@ -504,6 +578,8 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
         ...(downloaded.groupId ? { groupId: downloaded.groupId } : {})
       });
     }
+    case 'downloadProductAsset':
+      return downloadProductAsset(payload as RequestOf<'downloadProductAsset'>);
     case 'listOrders': {
       const status = readString(request, ['status']);
       const page = await trades.list({
@@ -681,6 +757,48 @@ function asCredentialVaultRequest(value: unknown): CredentialVaultRequest | null
     return null;
   }
   return value as unknown as CredentialVaultRequest;
+}
+
+function asAlibabaCredentialAcquisitionRequest(
+  value: unknown
+): ExtensionAlibabaCredentialAcquisitionRequest | null {
+  if (
+    !isRecord(value) ||
+    value.kind !== 'alibaba-credential-acquisition-request' ||
+    !isRequestId(value.requestId)
+  ) {
+    return null;
+  }
+  if (
+    value.operation !== 'start' &&
+    value.operation !== 'continue' &&
+    value.operation !== 'status' &&
+    value.operation !== 'cancel' &&
+    value.operation !== 'save-to-vault' &&
+    value.operation !== 'export-bundle'
+  ) {
+    return null;
+  }
+  return value as unknown as ExtensionAlibabaCredentialAcquisitionRequest;
+}
+
+function requiredAcquisitionContinueCommand(
+  value: unknown
+): Parameters<ExtensionAlibabaCredentialAcquisitionController['continue']>[1] {
+  const record = asRecord(value);
+  if (record.type === 'select-application') {
+    return { type: 'select-application', applicationId: requiredString(record, 'applicationId') };
+  }
+  if (record.type === 'confirm-callback-change' && typeof record.confirmed === 'boolean') {
+    return { type: 'confirm-callback-change', confirmed: record.confirmed };
+  }
+  throw new Error('Alibaba 凭据获取继续命令无效');
+}
+
+function nullableString(value: unknown): string | null {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value !== 'string') throw new Error('Callback URL 无效');
+  return value;
 }
 
 function requiredVaultString(value: unknown, key: string): string {

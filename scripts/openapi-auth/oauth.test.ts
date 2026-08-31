@@ -16,7 +16,8 @@ describe('Alibaba OAuth callback', () => {
         appKey: '23075594',
         callbackUrl: new URL('https://i.alibaba.com/callback'),
         status: 'Online',
-        permissions: []
+        permissions: [],
+        source: 'application-center'
       },
       'expected-state'
     );

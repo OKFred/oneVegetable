@@ -12,6 +12,8 @@
 - `logistics.json`：OneTouch 物流演示。
 - `insights.json`：数据洞察演示。
 - `system.json`：旧订单组合视图等跨领域演示数据。
+- `alibaba-auth/`：凭据获取状态机、应用选择和安全回退的脱敏自动化样例；不包含账号、密码、
+  AppSecret、授权码或 Token。
 
 修改 JSON 后运行：
 

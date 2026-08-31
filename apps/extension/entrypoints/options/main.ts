@@ -18,6 +18,13 @@ import {
   type CredentialVaultRequest,
   type CredentialVaultResponse,
   type CredentialVaultStatus,
+  type ExtensionAlibabaCredentialAcquisitionOperation,
+  type ExtensionAlibabaCredentialAcquisitionRepository,
+  type ExtensionAlibabaCredentialAcquisitionRequest,
+  type ExtensionAlibabaCredentialAcquisitionResponse,
+  type AlibabaCredentialAcquisitionContinueCommand,
+  type AlibabaCredentialAcquisitionState,
+  type AlibabaOpenApiCredentialBundle,
   type GatewayClient,
   type GatewaySettings,
   type HostPermissionsRepository,
@@ -32,6 +39,7 @@ import {
   type SettingsRepository
 } from '@one-vegetable/core/runtime';
 import '@one-vegetable/ui/styles.css';
+import { ALIBABA_CREDENTIAL_ACQUISITION_ORIGINS } from '../../lib/alibaba-credential-page-driver';
 import { resolveExtensionOperationAvailability } from '../../lib/operation-policy';
 
 const operationAvailability = new StaticOperationAvailabilityClient((operation) =>
@@ -58,6 +66,81 @@ const vault: CredentialVaultRepository = {
   rotate: (newPassphrase) => requestVault('rotate', { newPassphrase }),
   updatePolicy: (idleTimeoutMinutes) => requestVault('update-policy', { idleTimeoutMinutes })
 };
+
+let latestAcquisitionState: AlibabaCredentialAcquisitionState | null = null;
+
+const alibabaCredentialAcquisition: ExtensionAlibabaCredentialAcquisitionRepository = {
+  async start(callbackUrl) {
+    await ensureOptionalOrigins(ALIBABA_CREDENTIAL_ACQUISITION_ORIGINS, 'Alibaba 凭证获取');
+    return rememberAcquisitionState(await requestAcquisition('start', { callbackUrl }));
+  },
+  async continue(jobId, command) {
+    if (command.type === 'confirm-callback-change') {
+      const state = latestAcquisitionState;
+      if (state?.status !== 'callback-confirmation-required' || state.jobId !== jobId) {
+        throw new Error('Callback 确认状态已失效，请重新读取任务状态');
+      }
+      const callbackUrl = command.confirmed ? state.requestedUrl : state.currentUrl;
+      await ensureOptionalOrigins([`${new URL(callbackUrl).origin}/*`], 'OAuth Callback');
+    }
+    return rememberAcquisitionState(await requestAcquisition('continue', { jobId, command }));
+  },
+  async status(jobId) {
+    return rememberAcquisitionState(await requestAcquisition('status', { jobId }));
+  },
+  async cancel(jobId) {
+    const state = await requestAcquisition('cancel', { jobId });
+    latestAcquisitionState = null;
+    return state;
+  },
+  saveToVault(passphrase) {
+    return requestAcquisition('save-to-vault', passphrase ? { passphrase } : {});
+  },
+  exportBundle() {
+    return requestAcquisition('export-bundle', undefined);
+  }
+};
+
+interface AcquisitionOperationMap {
+  start: { request: { callbackUrl: string | null }; response: AlibabaCredentialAcquisitionState };
+  continue: {
+    request: { jobId: string; command: AlibabaCredentialAcquisitionContinueCommand };
+    response: AlibabaCredentialAcquisitionState;
+  };
+  status: { request: { jobId: string }; response: AlibabaCredentialAcquisitionState };
+  cancel: { request: { jobId: string }; response: AlibabaCredentialAcquisitionState };
+  'save-to-vault': { request: { passphrase?: string }; response: CredentialVaultStatus };
+  'export-bundle': { request: undefined; response: AlibabaOpenApiCredentialBundle };
+}
+
+async function requestAcquisition<K extends ExtensionAlibabaCredentialAcquisitionOperation>(
+  operation: K,
+  payload: AcquisitionOperationMap[K]['request']
+): Promise<AcquisitionOperationMap[K]['response']> {
+  const message: ExtensionAlibabaCredentialAcquisitionRequest = {
+    requestId: crypto.randomUUID(),
+    kind: 'alibaba-credential-acquisition-request',
+    operation,
+    ...(payload === undefined ? {} : { payload })
+  };
+  const response: ExtensionAlibabaCredentialAcquisitionResponse = await browser.runtime.sendMessage(message);
+  if (response.requestId !== message.requestId) {
+    throw new GatewayException({
+      code: 'INVALID_RUNTIME_RESPONSE',
+      message: '凭证获取响应 requestId 不匹配',
+      retryable: false
+    });
+  }
+  if (!response.ok) throw new GatewayException(response.error, response.requestId);
+  return response.data as AcquisitionOperationMap[K]['response'];
+}
+
+function rememberAcquisitionState(
+  state: AlibabaCredentialAcquisitionState
+): AlibabaCredentialAcquisitionState {
+  latestAcquisitionState = state;
+  return state;
+}
 
 interface VaultOperationMap {
   status: { request: undefined; response: CredentialVaultStatus };
@@ -204,9 +287,12 @@ function isDraftKey(key: string): boolean {
 
 class ExtensionGatewayClient implements GatewayClient {
   async request<K extends OperationId>(operation: K, payload: RequestOf<K>): Promise<ResponseOf<K>> {
-    if (operation === 'transferPhotoFromUrl') {
-      const transfer = payload as RequestOf<'transferPhotoFromUrl'>;
-      await ensureOptionalHostPermission(transfer.url, '外部图片来源');
+    if (operation === 'transferPhotoFromUrl' || operation === 'downloadProductAsset') {
+      const transfer = payload as RequestOf<'transferPhotoFromUrl'> | RequestOf<'downloadProductAsset'>;
+      await ensureOptionalHostPermission(
+        transfer.url,
+        operation === 'downloadProductAsset' ? '商品 ZIP 图片下载' : '外部图片来源'
+      );
     }
     const message: RuntimeRequest<K> = {
       requestId: crypto.randomUUID(),
@@ -252,6 +338,17 @@ async function ensureOptionalHostPermission(rawUrl: string, purpose: string): Pr
   });
 }
 
+async function ensureOptionalOrigins(origins: readonly string[], purpose: string): Promise<void> {
+  const request = { origins: [...origins] };
+  // permissions.request 必须直接发生在按钮点击的用户手势中；不要先 await contains。
+  if (await browser.permissions.request(request)) return;
+  throw new GatewayException({
+    code: 'HOST_PERMISSION_DENIED',
+    message: `未授予${purpose}所需的精确站点权限`,
+    retryable: false
+  });
+}
+
 window.addEventListener('unhandledrejection', (event) => {
   const error = normalizeGatewayError(event.reason as unknown);
   console.error('[oneVegetable]', error.code, error.message);
@@ -270,6 +367,7 @@ async function mountOptionsApp(): Promise<void> {
     localData,
     onboarding,
     vault,
+    alibabaCredentialAcquisition,
     productDescriptionTemplates: new BundledProductDescriptionTemplateClient(
       BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates
     ),

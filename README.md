@@ -25,7 +25,7 @@ pnpm dev:extension
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/OKFred/oneVegetable)
 
-一键部署会在同一个 Worker 中托管 Vue Web、Hono API 和 D1，并自动执行数据库 migration。部署页只要求两个独立随机 Secret：首次管理员引导令牌 `BOOTSTRAP_ADMIN_TOKEN`，以及 32 字节 Base64URL 凭据加密密钥 `ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY`。Alibaba AppKey、AppSecret 和 Token 不填写到部署表单，部署后由管理员在系统页面导入。
+一键部署会在同一个 Worker 中托管 Vue Web、Hono API 和 D1，并自动执行数据库 migration。部署页只要求两个独立随机 Secret：首次管理员引导令牌 `BOOTSTRAP_ADMIN_TOKEN`，以及 32 字节 Base64URL 凭据加密密钥 `ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY`。Alibaba AppKey、AppSecret 和 Token 不填写到部署表单；部署后管理员可以用 Browser Run 尝试一键连接、改用本机插件，或导入本机授权包。Browser Run 免费额度有限，开发和 CI 只做本地模拟与 Wrangler dry-run，真实云浏览器留到发布候选的受控验收。
 
 部署后的首次访问使用管理员引导令牌登记 Passkey，并一次性生成 10 个恢复码；详细的部署、凭据导入、域名更换和恢复流程见 [Cloudflare 自托管指南](docs/cloudflare-self-hosted.md)。
 
@@ -58,6 +58,7 @@ pnpm test:e2e
 pnpm test:e2e:bff-replay # 重建隔离 D1，启动 Worker/Web，验证认证后的全领域 BFF 读链路
 pnpm check:replay-coverage # 校验所有可真实调用的只读能力都有有效文档回放
 pnpm openapi:auth         # Windows 本地有头浏览器获取 OpenAPI 授权包
+pnpm openapi:auth:free    # 显式使用 .env.free 验证无应用/人机挑战兜底
 pnpm smoke:product:draft:real # 显式 opt-in 后创建并回读一条真实平台草稿
 pnpm release:extension # 可复现 ZIP、SHA-256 与 release.json
 pnpm capture:store-assets # 从构建后的扩展刷新 1280×800 商店截图
@@ -81,7 +82,7 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 
 - 目录查询等 TOP 能力使用 `https://eco.taobao.com/router/rest`；已验证的 Schema 草稿写入使用 `https://open-api.alibaba.com/sync`、HMAC-SHA256 和 Unix 毫秒时间戳。两个协议都由同一集中网络层管理。
 - 商品发布、草稿与更新使用 Schema 流程；新建商品通过 `schema.get` 获取类目模板，编辑已有商品通过 `schema.render` 加载现有值，不再把旧 `product.add/update` 作为主路径。
-- 商品页分为商品列表、商品发布/编辑、批量发品、类目与分组四个工作区。质量分、产品分查询及批量上下架已整合到商品列表；列表直接展示 `product.list` 返回的主图并支持预览，勾选本页商品后可从“更多”菜单顺序批量查询产品分或批量上下架。新建商品默认进入单页“快速发布”，优先填写必填与核心字段并保存平台草稿；六步向导和高级 Schema 模式完整保留，三种模式共享同一份编辑会话。商品列表使用当前页三态选择和常驻工具栏，工具栏集中提供搜索、导入、导出和发布入口，当前已选数量显示在表格底部分页区域。导入、导出通过独立确认对话框传输当前选中的平台商品和完整 Schema；文件始终为版本化 JSON，导出高级设置可选择只携带节点式 `schemaJson` 或只携带字符串 `schemaXml`，导入会优先使用 `schemaXml` 并在缺失时从 `schemaJson` 无损还原。文件校验、商品预览和执行前二次确认全部完成后，导入才会原子写入本机批量队列，且不会自动写入平台。批量发品复用单品接口严格串行保存草稿或正式发布，逐条展示结果且不自动重试。
+- 商品页分为商品列表、商品发布/编辑、批量发品、类目与分组四个工作区。质量分、产品分查询及批量上下架已整合到商品列表；列表直接展示 `product.list` 返回的主图并支持预览，勾选本页商品后可从“更多”菜单顺序批量查询产品分或批量上下架。新建商品默认进入单页“快速发布”，优先填写必填与核心字段并保存平台草稿；六步向导和高级 Schema 模式完整保留，三种模式共享同一份编辑会话。商品列表使用当前页三态选择和常驻工具栏，工具栏集中提供搜索、导入、导出和发布入口，当前已选数量显示在表格底部分页区域。导入、导出通过独立确认对话框传输当前选中的平台商品和完整 Schema；普通 JSON 可选择只携带节点式 `schemaJson` 或字符串 `schemaXml`，ZIP 则在根目录保存同样的 `products.json`，并将主图、SKU 图和详情图放入 `assets/` 后改写为相对路径。ZIP 导入先安全校验并预检本机队列，用户二次确认后逐张上传到所选图库分组，全部上传成功才原子写入批量队列；ZIP 导出严格下载全部图库资源，任一图片失败都不生成文件。批量发品仍需人工复核并显式保存草稿或发布。详细限制见 [商品编辑与传输说明](docs/product-description-editor.md)。
 - 设置页提供 `zh_CN` / `en_US` 接口语言偏好；商品列表、Schema、平台草稿、履约通道和地址 Schema 等支持语言参数的请求使用该偏好，商品草稿仍保留创建时的语言上下文。
 - 本地商品草稿使用 V3 结构，按商品 ID 或新建类目隔离，约 750 ms 防抖保存，并记录编辑模式与已创建的平台草稿 ID。最多保留 10 份且自动清理 30 天前记录；平台草稿创建后不会重复调用 `schema.add.draft`。
 - Schema 中 `valueTypeRule=html` 或 `superText` 会使用受限 Tiptap 编辑器；仅维护 `productDescType=2` 的普通详情。编辑器提供中英文公司、物流、包装与服务内置模板，以及 BFF 审计共享模板，支持插入、追加和预览后覆盖；智能详情和不受支持的旧 HTML 必须先确认转换。
@@ -97,7 +98,7 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 - 数据洞察工作台展示供应商全站排名时间序列，以及买家历史信保供应商与下单商品。页面不推断排名含义、不补造供应商名称，并保持长 ID 为字符串。CGS 小满签约客户接口默认关闭且不提供业务密钥表单。详见 [数据与供应商洞察说明](docs/insights-domain.md)。
 - 图库工作台复用按官方 `id` 参数懒加载的三层分组导航，展示文件大小、引用数量、更新时间与图库 `fileId`。真实账号已验证分组、素材读取和 multipart 上传；官方列表不提供尺寸时由浏览器读取自然尺寸后再给出低于 750 × 750 的非阻断建议，避免误报。URL 转存复用已验证上传链路，分组写操作继续关闭。详见 [图库域说明](docs/photo-domain.md)。
 - 普通文件转存、天鹿风控和 URL 爬取任务通知归为平台协作能力。文件转存不会冒充图库入库；风控和任务回调不提供页面采集或发送入口，并由 service worker 二次门禁。详见 [平台协作能力说明](docs/platform-domain.md)。
-- MV3 默认只申请 `storage` 和正式网关主机权限；自定义网关与外部图片来源在用户执行对应操作时按需申请主机权限。设置页可导出或清空最多 100 条会话级脱敏诊断，且构建会执行权限与体积预算检查。详见 [MV3 发布加固说明](docs/mv3-release-hardening.md)。
+- MV3 默认只申请 `storage`、用于用户主动授权向导的 `scripting` 和正式网关主机权限；应用中心、OAuth Callback、自定义网关与外部图片来源均在用户执行对应操作时按具体站点申请权限。设置页可导出或清空最多 100 条会话级脱敏诊断，且构建会执行权限与体积预算检查。详见 [MV3 发布加固说明](docs/mv3-release-hardening.md)。
 - 开放平台凭证使用用户口令派生的 AES-256-GCM 密钥加密保存；local/session 存储对内容脚本不可见，口令不落盘。新保险库默认不启用空闲自动锁定，用户可主动选择时长；service worker 重启后仍需重新解锁。旧版明文设置必须显式迁移，遗忘口令只能清除后重新配置，威胁模型与恢复边界见 [凭证保险库说明](docs/credential-vault.md)。
 - RC 构建会迁移旧设置、允许查看/撤销额外主机权限、只对只读请求执行有限重试，并生成可复现 ZIP 与 SHA-256。CI 只保存产物，不自动上架。详见 [RC 发布准备说明](docs/rc-release-readiness.md)。
 - 扩展首次使用会显著说明凭证、权限、Mock 与真实验收边界；设置页可导出不含具体值的数据清单并彻底清除本地数据。商店文案、隐私政策、真实扩展截图和仍待人工完成的阻断项见 [Chrome Web Store 提交清单](docs/store-submission.md)。
