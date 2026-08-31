@@ -38,7 +38,12 @@ export interface ProductMockData {
 export interface PhotoMockData {
   photoGroups: PhotoGroup[];
   responses: OperationResponses<
-    'listPhotoGroups' | 'operatePhotoGroup' | 'listPhotos' | 'uploadPhoto' | 'transferPhotoFromUrl'
+    | 'listPhotoGroups'
+    | 'operatePhotoGroup'
+    | 'listPhotos'
+    | 'uploadPhoto'
+    | 'transferPhotoFromUrl'
+    | 'downloadProductAsset'
   >;
 }
 

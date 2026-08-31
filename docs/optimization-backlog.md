@@ -4,6 +4,12 @@
 
 本清单用于保存 Web、BFF 和 Chrome Extension MV3 的后续优化项。真实 Alibaba 验收结果、Mock/Replay 和发布门禁继续分别记录，不互相替代。
 
+## 商品 ZIP 后的扩展体积门禁
+
+- 商品 ZIP 使用扩展包内固定的模块 Worker，当前产物约 14.42 KiB，不加载远程代码。
+- 引入该能力后，扩展解包产物约 3.35 MB；总预算由 3.25 MB 调整为 3.50 MB，同时为 ZIP Worker 单独设置 50 KB 硬上限。
+- 后续仍优先拆分体积较大的商品详情编辑器和 standalone validators；不得通过继续抬高总预算代替拆分。
+
 ## P0：当前迭代
 
 ### 扩展包体收口

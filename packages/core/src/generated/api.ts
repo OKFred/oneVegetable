@@ -6811,6 +6811,16 @@ export interface components {
             updatedAt: string;
             categoryId: number | null;
         };
+        ProductAssetDownloadRequest: {
+            /**
+             * Format: uri
+             * @description International-site PhotoBank URL referenced by a product Schema.
+             */
+            url: string;
+        };
+        ProductAssetDownloadResult: components["schemas"]["EncodedFilePayload"] & {
+            sha256: string;
+        };
         ProductCategory: {
             id: number;
             name: string;

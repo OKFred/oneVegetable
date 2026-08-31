@@ -50,7 +50,7 @@ export function validateEncodedFile(
     throw new Error(`不支持的文件类型：${contentType}`);
   }
 
-  const bytes = base64ToBytes(payload.contentBase64);
+  const bytes = decodeBase64(payload.contentBase64);
   const maxBytes = Math.min(options.maxBytes ?? MAX_ENCODED_FILE_BYTES, MAX_ENCODED_FILE_BYTES);
   if (bytes.byteLength > maxBytes) throw new Error(`文件超过 ${formatBytes(maxBytes)} 上限`);
   if (payload.byteLength !== bytes.byteLength) throw new Error('byteLength 与文件实际大小不一致');
@@ -64,13 +64,51 @@ export function validateEncodedFile(
 
 export const PHOTO_CONTENT_TYPES = new Set(Object.keys(IMAGE_SIGNATURES));
 
-function base64ToBytes(value: string): Uint8Array {
+export function validatePhotoBytes(bytes: Uint8Array, maxBytes = MAX_PHOTOBANK_IMAGE_BYTES): string {
+  if (bytes.byteLength === 0) throw new Error('图片文件为空');
+  if (bytes.byteLength > maxBytes) throw new Error(`文件超过 ${formatBytes(maxBytes)} 上限`);
+  const contentType = detectPhotoContentType(bytes);
+  if (!contentType) throw new Error('不支持的图片文件头');
+  return contentType;
+}
+
+export function detectPhotoContentType(bytes: Uint8Array): string | null {
+  for (const [contentType, matches] of Object.entries(IMAGE_SIGNATURES)) {
+    if (matches(bytes)) return contentType;
+  }
+  return null;
+}
+
+export function photoFileExtension(contentType: string): string {
+  const extensions: Readonly<Record<string, string>> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/gif': 'gif',
+    'image/webp': 'webp',
+    'image/bmp': 'bmp',
+    'image/avif': 'avif'
+  };
+  const extension = extensions[contentType.toLocaleLowerCase()];
+  if (!extension) throw new Error(`不支持的图片文件类型：${contentType}`);
+  return extension;
+}
+
+export function decodeBase64(value: string): Uint8Array {
   try {
     const binary = globalThis.atob(value);
     return Uint8Array.from(binary, (character) => character.charCodeAt(0));
   } catch {
     throw new Error('contentBase64 不是有效 Base64');
   }
+}
+
+export function encodeBase64(bytes: Uint8Array): string {
+  const chunkSize = 0x8000;
+  let binary = '';
+  for (let offset = 0; offset < bytes.byteLength; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return globalThis.btoa(binary);
 }
 
 function bytesToAscii(bytes: Uint8Array): string {

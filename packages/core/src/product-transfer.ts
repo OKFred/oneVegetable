@@ -11,9 +11,13 @@ import type { Product } from './types';
 
 export const PRODUCT_TRANSFER_FORMAT = 'one-vegetable-products';
 export const PRODUCT_TRANSFER_SCHEMA_VERSION = 1;
+export const PRODUCT_TRANSFER_ARCHIVE_SCHEMA_VERSION = 2;
 export const MAX_PRODUCT_TRANSFER_ITEMS = 20;
 export const MAX_PRODUCT_TRANSFER_JSON_BYTES = 10 * 1024 * 1024;
 export const MAX_PRODUCT_TRANSFER_SCHEMA_BYTES = 2 * 1024 * 1024;
+export const MAX_PRODUCT_TRANSFER_ZIP_BYTES = 50 * 1024 * 1024;
+export const MAX_PRODUCT_TRANSFER_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
+export const MAX_PRODUCT_TRANSFER_ARCHIVE_ENTRIES = 500;
 
 export type ProductTransferSchemaFormat = 'json' | 'xml';
 
@@ -45,6 +49,16 @@ export interface ProductTransferDocumentV1 {
   products: ProductTransferItemV1[];
 }
 
+export interface ProductTransferDocumentV2 {
+  format: typeof PRODUCT_TRANSFER_FORMAT;
+  schemaVersion: typeof PRODUCT_TRANSFER_ARCHIVE_SCHEMA_VERSION;
+  exportedAtUtc: string;
+  schemaFormat: ProductTransferSchemaFormat;
+  products: ProductTransferItemV1[];
+}
+
+export type ProductTransferDocument = ProductTransferDocumentV1 | ProductTransferDocumentV2;
+
 export interface ProductTransferItemInput {
   source: ProductTransferSourceV1;
   categoryId: number;
@@ -68,15 +82,120 @@ export function createProductTransferDocument(
   });
 }
 
+export function createProductTransferArchiveDocument(
+  products: readonly ProductTransferItemInput[],
+  schemaFormat: ProductTransferSchemaFormat,
+  exportedAt = new Date()
+): ProductTransferDocumentV2 {
+  if (Number.isNaN(exportedAt.getTime())) throw new Error('导出时间无效');
+  return normalizeProductTransferArchiveDocument({
+    format: PRODUCT_TRANSFER_FORMAT,
+    schemaVersion: PRODUCT_TRANSFER_ARCHIVE_SCHEMA_VERSION,
+    exportedAtUtc: exportedAt.toISOString(),
+    schemaFormat,
+    products
+  });
+}
+
 export function serializeProductTransferDocument(
   document: ProductTransferDocumentV1,
   options: ProductTransferSerializeOptions = {}
 ): string {
   const normalized = normalizeProductTransferDocument(document);
-  const schemaFormat = options.schemaFormat ?? 'json';
+  return serializeNormalizedDocument(normalized, options.schemaFormat ?? 'json');
+}
+
+export function parseProductTransferJson(json: string): ProductTransferDocumentV1 {
+  return normalizeProductTransferDocument(parseTransferJson(json));
+}
+
+export function serializeProductTransferArchiveDocument(document: ProductTransferDocumentV2): string {
+  const normalized = normalizeProductTransferArchiveDocument(document);
+  return serializeNormalizedDocument(normalized, normalized.schemaFormat);
+}
+
+export function parseProductTransferArchiveJson(json: string): ProductTransferDocumentV2 {
+  const value = parseTransferJson(json);
+  return normalizeProductTransferArchiveDocument(value);
+}
+
+export function parseProductTransferPackageJson(json: string): ProductTransferDocument {
+  const value = parseTransferJson(json);
+  const record = requireRecord(value, '商品导入文件必须是 JSON 对象');
+  if (record.schemaVersion === PRODUCT_TRANSFER_SCHEMA_VERSION) {
+    return normalizeProductTransferDocument(record);
+  }
+  if (record.schemaVersion === PRODUCT_TRANSFER_ARCHIVE_SCHEMA_VERSION) {
+    return normalizeProductTransferArchiveDocument(record);
+  }
+  throw new Error(`不支持的商品导入版本：${displayValue(record.schemaVersion)}`);
+}
+
+export function productTransferQueueItemId(item: ProductTransferItemV1): string {
+  return `import:${item.source.productId}:${item.language}`;
+}
+
+function normalizeProductTransferDocument(value: unknown): ProductTransferDocumentV1 {
+  const record = requireRecord(value, '商品导入文件必须是 JSON 对象');
+  if (record.format !== PRODUCT_TRANSFER_FORMAT) {
+    throw new Error(`不支持的商品导入格式：${displayValue(record.format)}`);
+  }
+  if (record.schemaVersion !== PRODUCT_TRANSFER_SCHEMA_VERSION) {
+    throw new Error(`不支持的商品导入版本：${displayValue(record.schemaVersion)}`);
+  }
+  const products = normalizeProducts(record.products);
+
+  return {
+    format: PRODUCT_TRANSFER_FORMAT,
+    schemaVersion: PRODUCT_TRANSFER_SCHEMA_VERSION,
+    exportedAtUtc: normalizedIsoDate(record.exportedAtUtc, '商品导出时间无效'),
+    products
+  };
+}
+
+function normalizeProductTransferArchiveDocument(value: unknown): ProductTransferDocumentV2 {
+  const record = requireRecord(value, '商品导入文件必须是 JSON 对象');
+  if (record.format !== PRODUCT_TRANSFER_FORMAT) {
+    throw new Error(`不支持的商品导入格式：${displayValue(record.format)}`);
+  }
+  if (record.schemaVersion !== PRODUCT_TRANSFER_ARCHIVE_SCHEMA_VERSION) {
+    throw new Error(`不支持的商品导入版本：${displayValue(record.schemaVersion)}`);
+  }
+  if (record.schemaFormat !== 'json' && record.schemaFormat !== 'xml') {
+    throw new Error('商品 ZIP 的 schemaFormat 无效');
+  }
+  const products = normalizeProducts(record.products);
+  return {
+    format: PRODUCT_TRANSFER_FORMAT,
+    schemaVersion: PRODUCT_TRANSFER_ARCHIVE_SCHEMA_VERSION,
+    exportedAtUtc: normalizedIsoDate(record.exportedAtUtc, '商品导出时间无效'),
+    schemaFormat: record.schemaFormat,
+    products
+  };
+}
+
+function normalizeProducts(value: unknown): ProductTransferItemV1[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new Error('商品导入文件至少需要包含 1 个商品');
+  }
+  if (value.length > MAX_PRODUCT_TRANSFER_ITEMS) {
+    throw new Error(`商品导入文件最多包含 ${MAX_PRODUCT_TRANSFER_ITEMS} 个商品`);
+  }
+  const products = value.map((product, index) => normalizeProduct(product, index));
+  const identifiers = products.map((product) => productTransferQueueItemId(product));
+  if (new Set(identifiers).size !== identifiers.length) {
+    throw new Error('商品导入文件包含重复的来源商品和语言');
+  }
+  return products;
+}
+
+function serializeNormalizedDocument(
+  document: ProductTransferDocument,
+  schemaFormat: ProductTransferSchemaFormat
+): string {
   const serialized = {
-    ...normalized,
-    products: normalized.products.map((product) => {
+    ...document,
+    products: document.products.map((product) => {
       const { schemaXml, schemaJson, ...metadata } = product;
       return {
         ...metadata,
@@ -92,50 +211,15 @@ export function serializeProductTransferDocument(
   return json;
 }
 
-export function parseProductTransferJson(json: string): ProductTransferDocumentV1 {
+function parseTransferJson(json: string): unknown {
   if (utf8ByteLength(json) > MAX_PRODUCT_TRANSFER_JSON_BYTES) {
     throw new Error('商品导入文件超过 10 MiB 上限');
   }
-  let value: unknown;
   try {
-    value = JSON.parse(json) as unknown;
+    return JSON.parse(json.replace(/^\uFEFF/u, '')) as unknown;
   } catch {
     throw new Error('商品导入文件不是有效 JSON');
   }
-  return normalizeProductTransferDocument(value);
-}
-
-export function productTransferQueueItemId(item: ProductTransferItemV1): string {
-  return `import:${item.source.productId}:${item.language}`;
-}
-
-function normalizeProductTransferDocument(value: unknown): ProductTransferDocumentV1 {
-  const record = requireRecord(value, '商品导入文件必须是 JSON 对象');
-  if (record.format !== PRODUCT_TRANSFER_FORMAT) {
-    throw new Error(`不支持的商品导入格式：${displayValue(record.format)}`);
-  }
-  if (record.schemaVersion !== PRODUCT_TRANSFER_SCHEMA_VERSION) {
-    throw new Error(`不支持的商品导入版本：${displayValue(record.schemaVersion)}`);
-  }
-  if (!Array.isArray(record.products) || record.products.length === 0) {
-    throw new Error('商品导入文件至少需要包含 1 个商品');
-  }
-  if (record.products.length > MAX_PRODUCT_TRANSFER_ITEMS) {
-    throw new Error(`商品导入文件最多包含 ${MAX_PRODUCT_TRANSFER_ITEMS} 个商品`);
-  }
-
-  const products = record.products.map((product, index) => normalizeProduct(product, index));
-  const identifiers = products.map((product) => productTransferQueueItemId(product));
-  if (new Set(identifiers).size !== identifiers.length) {
-    throw new Error('商品导入文件包含重复的来源商品和语言');
-  }
-
-  return {
-    format: PRODUCT_TRANSFER_FORMAT,
-    schemaVersion: PRODUCT_TRANSFER_SCHEMA_VERSION,
-    exportedAtUtc: normalizedIsoDate(record.exportedAtUtc, '商品导出时间无效'),
-    products
-  };
 }
 
 function normalizeProduct(value: unknown, index: number): ProductTransferItemV1 {

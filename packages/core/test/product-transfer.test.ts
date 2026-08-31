@@ -6,9 +6,13 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  createProductTransferArchiveDocument,
   createProductTransferDocument,
+  parseProductTransferArchiveJson,
+  parseProductTransferPackageJson,
   parseProductTransferJson,
   productTransferQueueItemId,
+  serializeProductTransferArchiveDocument,
   serializeProductTransferDocument
 } from '../src/product-transfer';
 
@@ -101,6 +105,28 @@ describe('product transfer JSON', () => {
         JSON.stringify({ ...fixture, products: [{ ...first, schemaXml: undefined, schemaJson: undefined }] })
       )
     ).toThrow('Schema XML 或 Schema JSON');
+  });
+
+  it('serializes a self-describing V2 archive document with one selected Schema field', () => {
+    const fixture = parseProductTransferJson(fixtureJson);
+    const document = createProductTransferArchiveDocument(
+      fixture.products,
+      'xml',
+      new Date('2026-08-31T00:00:00Z')
+    );
+    const json = serializeProductTransferArchiveDocument(document);
+    const raw = JSON.parse(json) as {
+      schemaVersion: number;
+      schemaFormat: string;
+      products: Record<string, unknown>[];
+    };
+
+    expect(raw).toMatchObject({ schemaVersion: 2, schemaFormat: 'xml' });
+    expect(raw.products[0]).toHaveProperty('schemaXml');
+    expect(raw.products[0]).not.toHaveProperty('schemaJson');
+    expect(parseProductTransferArchiveJson(json)).toEqual(document);
+    expect(parseProductTransferPackageJson(json)).toEqual(document);
+    expect(parseProductTransferPackageJson(fixtureJson)).toEqual(fixture);
   });
 });
 

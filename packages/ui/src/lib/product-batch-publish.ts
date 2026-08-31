@@ -59,6 +59,8 @@ export interface ProductBatchPublishImportResult {
   skipped: number;
 }
 
+export type ProductBatchPublishImportInspection = Omit<ProductBatchPublishImportResult, 'items'>;
+
 export interface ProductBatchPublishPreflight {
   ready: boolean;
   title: string;
@@ -142,6 +144,32 @@ export function importProductBatchPublishItems(
   inputs: readonly ProductBatchPublishImportInput[],
   now = Date.now()
 ): ProductBatchPublishImportResult {
+  const plan = planProductBatchPublishImport(draftStorage, inputs, now);
+  writeItems(draftStorage, plan.merged);
+  return importResult(plan);
+}
+
+export function inspectProductBatchPublishImport(
+  draftStorage: DraftStorage,
+  inputs: readonly ProductBatchPublishImportInput[],
+  now = Date.now()
+): ProductBatchPublishImportInspection {
+  const { added, updated, skipped } = importResult(planProductBatchPublishImport(draftStorage, inputs, now));
+  return { added, updated, skipped };
+}
+
+interface ProductBatchPublishImportPlan {
+  imported: ProductBatchPublishItem[];
+  merged: ProductBatchPublishItem[];
+  existingIds: Set<string>;
+  inputCount: number;
+}
+
+function planProductBatchPublishImport(
+  draftStorage: DraftStorage,
+  inputs: readonly ProductBatchPublishImportInput[],
+  now: number
+): ProductBatchPublishImportPlan {
   if (inputs.length === 0) throw new Error('商品导入文件没有可导入商品');
   if (inputs.length > MAX_ITEMS) throw new Error(`单次最多导入 ${MAX_ITEMS} 条商品`);
   const current = loadProductBatchPublishItems(draftStorage, now);
@@ -169,12 +197,15 @@ export function importProductBatchPublishItems(
   const merged = [...imported, ...current.filter((item) => !importedIds.has(item.id))]
     .sort((left, right) => right.updatedAtUtc - left.updatedAtUtc)
     .slice(0, MAX_ITEMS);
-  writeItems(draftStorage, merged);
+  return { imported, merged, existingIds, inputCount: inputs.length };
+}
+
+function importResult(plan: ProductBatchPublishImportPlan): ProductBatchPublishImportResult {
   return {
-    items: imported,
-    added: imported.filter((item) => !existingIds.has(item.id)).length,
-    updated: imported.filter((item) => existingIds.has(item.id)).length,
-    skipped: inputs.length - importableInputs.length
+    items: plan.imported,
+    added: plan.imported.filter((item) => !plan.existingIds.has(item.id)).length,
+    updated: plan.imported.filter((item) => plan.existingIds.has(item.id)).length,
+    skipped: plan.inputCount - plan.imported.length
   };
 }
 

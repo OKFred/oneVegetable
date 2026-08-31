@@ -12280,6 +12280,29 @@
           "categoryId": { "type": ["integer", "null"] }
         }
       },
+      "ProductAssetDownloadRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["url"],
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://",
+            "description": "International-site PhotoBank URL referenced by a product Schema."
+          }
+        }
+      },
+      "ProductAssetDownloadResult": {
+        "allOf": [
+          { "$ref": "#/components/schemas/EncodedFilePayload" },
+          {
+            "type": "object",
+            "required": ["sha256"],
+            "properties": { "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" } }
+          }
+        ]
+      },
       "ProductCategory": {
         "type": "object",
         "additionalProperties": false,

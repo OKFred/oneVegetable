@@ -3,6 +3,7 @@ import {
   ALIBABA_SYNC_GATEWAY,
   APP_VERSION,
   DashboardAdapter,
+  downloadProductAsset,
   downloadPhotoForUpload,
   findCapability,
   GatewayException,
@@ -274,6 +275,8 @@ export class AlibabaReadGatewayClient implements GatewayClient {
         const downloaded = await downloadPhotoForUpload(request as RequestOf<'transferPhotoFromUrl'>);
         return await photos.upload(downloaded);
       }
+      case 'downloadProductAsset':
+        return await downloadProductAsset(request as RequestOf<'downloadProductAsset'>);
       case 'listShippingTemplates':
         return await logistics.listShippingTemplates();
       case 'listOrders':

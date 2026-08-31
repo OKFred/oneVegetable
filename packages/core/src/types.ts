@@ -195,6 +195,8 @@ export interface InsightsSupplierProductListQuery extends InsightsSupplierListQu
 }
 
 export type PhotoUploadRequest = components['schemas']['PhotoUploadRequest'];
+export type ProductAssetDownloadRequest = components['schemas']['ProductAssetDownloadRequest'];
+export type ProductAssetDownloadResult = components['schemas']['ProductAssetDownloadResult'];
 
 export interface PhotoGroupOperationResult {
   operation: PhotoGroupOperationRequest['operation'];
@@ -222,6 +224,10 @@ export interface OperationMap {
   listPhotos: { request: PhotoListQuery; response: PhotoPage };
   uploadPhoto: { request: PhotoUploadRequest; response: Photo };
   transferPhotoFromUrl: { request: PhotoTransferRequest; response: Photo };
+  downloadProductAsset: {
+    request: ProductAssetDownloadRequest;
+    response: ProductAssetDownloadResult;
+  };
   listOrders: { request: OrderListQuery; response: OrderPage };
   getOrderFund: { request: { orderId: string }; response: OrderFund };
   getOrderLogistics: { request: { orderId: string }; response: OrderLogistics };

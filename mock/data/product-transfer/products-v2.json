@@ -1,0 +1,21 @@
+{
+  "format": "one-vegetable-products",
+  "schemaVersion": 2,
+  "exportedAtUtc": "2026-08-31T00:00:00.000Z",
+  "schemaFormat": "xml",
+  "products": [
+    {
+      "source": {
+        "productId": "1600000000001",
+        "subject": "Archive fixture product",
+        "groupName": "Fixtures",
+        "status": "online",
+        "updatedAt": "2026-08-30T00:00:00.000Z"
+      },
+      "categoryId": 201712702,
+      "language": "en_US",
+      "market": "wholesale",
+      "schemaXml": "<itemSchema><field id=\"scImages\" name=\"商品图片\" type=\"multiInput\"><value>assets/cover.jpg</value></field><field id=\"superText\" name=\"商品详情\" type=\"input\"><rules><rule name=\"valueTypeRule\" value=\"html\"/></rules><value>&lt;p&gt;Archive fixture&lt;/p&gt;&lt;img src=&quot;assets/detail.png&quot;&gt;</value></field></itemSchema>"
+    }
+  ]
+}
