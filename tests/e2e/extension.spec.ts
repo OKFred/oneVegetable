@@ -169,6 +169,38 @@ test('MV3 options page persists settings and exposes the audited catalog', async
     error: { code: 'LOGISTICS_QUALIFICATION_REQUIRED' }
   });
 
+  const productCreationContractErrors = await page.evaluate(async () => {
+    const extension = (
+      globalThis as unknown as {
+        chrome: { runtime: { sendMessage(value: object): Promise<unknown> } };
+      }
+    ).chrome;
+    return Promise.all(
+      ['saveProductDraft', 'publishProduct'].map((operation) =>
+        extension.runtime.sendMessage({
+          requestId: crypto.randomUUID(),
+          kind: 'gateway-request',
+          operation,
+          payload: { categoryId: 0, language: 'invalid', schemaXml: '' }
+        })
+      )
+    );
+  });
+  expect(productCreationContractErrors).toHaveLength(2);
+  expect(productCreationContractErrors).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        ok: false,
+        error: expect.objectContaining({ code: 'REQUEST_CONTRACT_INVALID' })
+      }),
+      expect.objectContaining({
+        ok: false,
+        error: expect.objectContaining({ code: 'REQUEST_CONTRACT_INVALID' })
+      })
+    ])
+  );
+  expect(JSON.stringify(productCreationContractErrors)).not.toContain('REAL_MUTATION_DISABLED');
+
   const diagnosticsBeforeRestart = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {
@@ -332,7 +364,8 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByText('发现从旧版本迁移的本地草稿')).toBeVisible();
   await page.getByRole('button', { name: '继续本地草稿' }).click();
   await page.getByRole('button', { name: /6\. 检查与提交/ }).click();
-  await expect(page.getByRole('button', { name: /发布商品/ })).toBeDisabled();
+  await expect(page.getByRole('button', { name: /保存平台草稿/ })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /发布商品/ })).toBeEnabled();
   await page.getByRole('button', { name: /4\. 商品详情/ }).click();
   await page.getByRole('button', { name: /更多选填信息/ }).click();
   await page.getByRole('button', { name: '详情模板' }).click();
