@@ -353,10 +353,10 @@ function requireProductMutationResult(root: Record<string, unknown>): ProductMut
   if (readExplicitBoolean(root, 'biz_success') !== true || productId === '') {
     throw new GatewayException({
       code:
-        readString(root, ['msg_code', 'error_code']) ??
+        readString(root, ['msg_code', 'error_code', 'sub_error_code', 'sub_code']) ??
         (productId === '' ? 'ALIBABA_PRODUCT_ID_MISSING' : 'ALIBABA_PRODUCT_MUTATION_UNCONFIRMED'),
       message:
-        readString(root, ['message', 'msg']) ??
+        readString(root, ['message', 'msg', 'sub_error_msg', 'sub_msg', 'error_msg']) ??
         'Alibaba 未明确返回 biz_success=true 和非空 product_id，不能确认商品写入成功',
       traceId,
       retryable: false

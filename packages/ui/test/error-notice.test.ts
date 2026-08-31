@@ -107,4 +107,22 @@ describe('ErrorNotice', () => {
     expect(wrapper.get('a[href="#/settings"]').text()).toContain('前往设置凭证');
     wrapper.unmount();
   });
+
+  it('shows semicolon-separated platform reasons as a readable list with traceId', () => {
+    const error = new GatewayException({
+      code: 'PRODUCT_SCHEMA_INVALID',
+      message: '商品名称不能为空; 主图至少需要一张；商品名称不能为空',
+      traceId: 'alibaba-trace-1',
+      retryable: false
+    });
+    const wrapper = mountErrorNotice(error, 'mock');
+
+    expect(wrapper.text()).toContain('返回了 2 条原因');
+    expect(wrapper.findAll('li').map((item) => item.text())).toEqual([
+      '商品名称不能为空',
+      '主图至少需要一张'
+    ]);
+    expect(wrapper.text()).toContain('traceId: alibaba-trace-1');
+    wrapper.unmount();
+  });
 });

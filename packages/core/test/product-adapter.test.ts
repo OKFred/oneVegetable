@@ -308,6 +308,35 @@ describe('ProductAdapter', () => {
     });
   });
 
+  it('preserves detailed Alibaba mutation reasons and traceId', async () => {
+    const adapter = new ProductAdapter({
+      call: vi.fn<AlibabaClient['call']>((method) =>
+        Promise.resolve(
+          response(method, {
+            biz_success: false,
+            sub_error_code: 'PRODUCT_SCHEMA_INVALID',
+            sub_error_msg: 'Title is required; Main image is required',
+            trace_id: 'publish-failed-trace'
+          })
+        )
+      )
+    });
+
+    await expect(
+      adapter.mutate('alibaba.icbu.product.schema.add', {
+        categoryId: 456,
+        language: 'en_US',
+        schemaXml: '<itemSchema />'
+      })
+    ).rejects.toMatchObject({
+      gatewayError: {
+        code: 'PRODUCT_SCHEMA_INVALID',
+        message: 'Title is required; Main image is required',
+        traceId: 'publish-failed-trace'
+      }
+    });
+  });
+
   it('updates only the supplied product Schema patch through the documented TOP client', async () => {
     const call = vi.fn<AlibabaClient['call']>((method, parameters) => {
       expect(method).toBe('alibaba.icbu.product.schema.update');

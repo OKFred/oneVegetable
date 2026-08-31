@@ -84,3 +84,11 @@ export function describeUserVisibleError(
     traceId: null
   };
 }
+
+export function splitUserVisibleErrorMessages(message: string): string[] {
+  const parts = message
+    .split(/(?:\r?\n|[;；])+/u)
+    .map((part) => part.trim())
+    .filter((part, index, values) => part !== '' && values.indexOf(part) === index);
+  return parts.length > 0 ? parts : [message];
+}
