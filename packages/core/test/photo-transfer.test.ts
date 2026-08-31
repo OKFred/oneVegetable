@@ -91,6 +91,9 @@ describe('PhotoBank URL transfer safety', () => {
     );
     const result = await downloadProductAsset({ url: 'https://sc04.alicdn.com/kf/product.jpg' }, fetcher);
 
+    const [, init] = fetcher.mock.calls[0] ?? [];
+    expect(new Headers(init?.headers).get('accept')).toBe('image/jpeg,image/png,image/gif,image/bmp');
+
     expect(result).toEqual({
       fileName: 'product.jpg',
       contentBase64: '/9j/2Q==',
@@ -112,5 +115,19 @@ describe('PhotoBank URL transfer safety', () => {
       downloadProductAsset({ url: 'https://sc04.alicdn.com/kf/redirect.jpg' }, redirectingFetcher)
     ).rejects.toThrow('不允许跳转到图库域名之外');
     expect(redirectingFetcher).toHaveBeenCalledOnce();
+  });
+
+  it('rejects negotiated AVIF before attempting a PhotoBank upload', async () => {
+    await expect(
+      downloadProductAsset(
+        { url: 'https://sc04.alicdn.com/kf/product.jpg' },
+        vi.fn<typeof fetch>().mockResolvedValue(
+          new Response(Uint8Array.from([0, 0, 0, 32, 102, 116, 121, 112, 97, 118, 105, 102]), {
+            status: 200,
+            headers: { 'content-type': 'image/avif' }
+          })
+        )
+      )
+    ).rejects.toThrow('图库上传支持');
   });
 });

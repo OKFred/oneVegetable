@@ -41,4 +41,8 @@ for (const fileName of [
   await rm(target, { force: true });
 }
 
-process.stdout.write('真实 Web Smoke 隔离环境已准备完成；mutation flags 保持为空。\n');
+process.stdout.write(
+  process.env.ONE_VEGETABLE_REAL_PRODUCT_TRANSFER_ZIP_SMOKE === '1'
+    ? '真实 Web Smoke 隔离环境已准备完成；仅开放本次图库上传。\n'
+    : '真实 Web Smoke 隔离环境已准备完成；mutation flags 保持为空。\n'
+);

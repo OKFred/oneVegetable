@@ -95,6 +95,23 @@ describe('PhotoAdapter', () => {
     expect(file?.bytes).toBeInstanceOf(Uint8Array);
   });
 
+  it('rejects AVIF before calling the Alibaba upload endpoint', async () => {
+    const call = vi.fn<AlibabaClient['call']>();
+    const callWithFile = vi.fn<AlibabaClient['callWithFile']>();
+    const bytes = Uint8Array.from([0, 0, 0, 32, 102, 116, 121, 112, 97, 118, 105, 102]);
+
+    await expect(
+      new PhotoAdapter(client(call, callWithFile)).upload({
+        contentBase64: Buffer.from(bytes).toString('base64'),
+        contentType: 'image/avif',
+        byteLength: bytes.byteLength,
+        fileName: 'unsupported.avif',
+        groupId: '-1'
+      })
+    ).rejects.toThrow('不支持的文件类型');
+    expect(callWithFile).not.toHaveBeenCalled();
+  });
+
   it('does not fabricate dimensions that photobank.list did not return', async () => {
     const call = vi.fn<AlibabaClient['call']>((method) =>
       Promise.resolve(
