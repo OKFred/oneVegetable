@@ -12,7 +12,7 @@
 ## 正式发布
 
 1. 将计划发布的功能合入 `staging`，完成回归后合入 `master`。
-2. 在发布提交中同步更新根目录、API、Web、扩展、core 和 UI 的稳定 SemVer 版本。
+2. 在发布提交中同步更新根目录、API、Web、扩展、core 和 UI 的稳定 SemVer 版本，并在 `release-notes/releases.json` 增加同版本的用户可读说明。
 3. 在 Windows 上执行完整发布前检查：
 
    ```powershell
@@ -30,7 +30,7 @@
    git push origin v2.1.0
    ```
 
-5. Tag 会触发 `Publish formal release` 工作流。工作流重新执行版本校验、完整检查、两套 E2E 和可复现扩展打包，然后创建 GitHub Release。
+5. Tag 会触发 `Publish formal release` 工作流。工作流重新执行版本校验、版本说明校验、完整检查、两套 E2E 和可复现扩展打包，然后使用应用内同源的版本说明创建 GitHub Release。
 6. 从 GitHub Release 下载 ZIP 并核对 SHA-256 后，再人工上传或提交 Chrome Web Store。Cloudflare 正式部署也必须记录使用的 Tag；Tag 不会自动触发商店提交或生产部署。
 
 如果 Tag 推送后的工作流在 GitHub Release 创建前因自动化故障失败，先在默认分支修复工作流，再从 Actions 的 `Publish formal release` 页面手工运行并输入原 Tag。恢复任务必须检出该不可变 Tag 重新完成全套校验和打包；不得移动 Tag、改用其他提交或覆盖已经存在的 GitHub Release。

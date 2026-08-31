@@ -63,6 +63,8 @@ jobs:
       - run: xvfb-run --auto-servernum pnpm test:e2e
       - run: xvfb-run --auto-servernum pnpm test:e2e:bff-replay
       - run: pnpm release:extension
+      - name: Render product release notes
+        run: pnpm release:notes "${RELEASE_TAG}" --output artifacts/release-notes.md
       - name: Preserve validated release artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -71,6 +73,7 @@ jobs:
             artifacts/one-vegetable-*-chrome-mv3.zip
             artifacts/one-vegetable-*-chrome-mv3.zip.sha256
             artifacts/release.json
+            artifacts/release-notes.md
           if-no-files-found: error
           retention-days: 90
       - name: Create immutable GitHub Release
@@ -89,4 +92,4 @@ jobs:
             artifacts/release.json \
             --verify-tag \
             --title "oneVegetable ${RELEASE_TAG}" \
-            --generate-notes
+            --notes-file artifacts/release-notes.md

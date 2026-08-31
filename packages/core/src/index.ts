@@ -21,6 +21,7 @@ export * from './photo-transfer';
 export * from './preferences';
 export * from './privacy';
 export * from './photo-adapter';
+export * from './release-notes';
 export * from './product-description';
 export * from './product-description-quality';
 export * from './product-description-template';
