@@ -70,7 +70,8 @@ async function finish(destination?: 'settings'): Promise<void> {
             <p class="mt-2 font-medium">凭证在本机加密保存</p>
             <p class="mt-1 text-xs leading-5 text-muted-foreground">
               App Key、App Secret 和 Access Token 使用用户口令加密后存入
-              chrome.storage.local；口令不保存，内容脚本不能读取，扩展后台重启或连续空闲达到设置时长后需重新解锁。
+              chrome.storage.local；口令不保存，内容脚本不能读取。解锁状态仅在当前 Chrome
+              会话内存中保留，刷新页面或后台休眠无需重复输入口令。
             </p>
           </div>
           <div class="rounded-lg border p-4">

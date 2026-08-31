@@ -178,7 +178,7 @@ describe('SettingsView diagnostics', () => {
       '123456',
       expect.objectContaining({ endpoint: ALIBABA_GATEWAY, signMethod: 'hmac' })
     );
-    expect(wrapper.text()).toContain('加密凭证保险库已创建');
+    expect(wrapper.text()).toContain('凭证已加密保存');
     wrapper.unmount();
   });
 
@@ -345,7 +345,7 @@ describe('SettingsView diagnostics', () => {
     await wrapper.get('input[aria-label="保险库口令"]').setValue('correct-vault-password');
     await wrapper.get('button').trigger('click');
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('凭证保险库已解锁');
+      expect(wrapper.text()).toContain('凭证已解锁');
     });
     expect((wrapper.get('input[aria-label="App Key"]').element as HTMLInputElement).value).toBe(
       'configured-key'
@@ -366,12 +366,12 @@ describe('SettingsView diagnostics', () => {
     wrapper.unmount();
   });
 
-  it('explains that a worker restart cleared only the in-memory decryption key', async () => {
-    const wrapper = mountView('extension', 'locked', 'worker-restart');
+  it('explains that ending the Chrome session cleared only the in-memory unlock material', async () => {
+    const wrapper = mountView('extension', 'locked', 'session-ended');
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('扩展后台已重新启动，需要重新解锁');
+      expect(wrapper.text()).toContain('Chrome 会话已结束，需要重新解锁');
     });
-    expect(wrapper.text()).toContain('内存密钥不会保留');
+    expect(wrapper.text()).toContain('会清除仅存于内存的会话解锁材料');
     expect(wrapper.text()).toContain('本地加密凭据仍然安全保存');
     wrapper.unmount();
   });
@@ -393,7 +393,7 @@ describe('SettingsView diagnostics', () => {
     await wrapper.get('button').trigger('click');
     await vi.waitFor(() => {
       expect(migrateVault).toHaveBeenCalledWith('migrated-vault-password');
-      expect(wrapper.text()).toContain('旧版明文凭证已原位迁移');
+      expect(wrapper.text()).toContain('旧版明文凭证已原位加密，并在当前 Chrome 会话内保持可用');
     });
     wrapper.unmount();
   });

@@ -52,4 +52,14 @@ pnpm smoke:product:display:real
 
 随后官方后台恢复为 Active 1、Pending 0，OpenAPI 列表再次回读为 online；两条持久任务最终均为 `verified`，恢复标记已清除。因此该方法记为当前账号验证通过，但验收同时证明上架可能经过异步审核，不能按同步接口对待，也不能在 Pending 阶段重复提交。
 
-真实 Smoke 不进入 CI。完成上述真实账号生命周期验收后，`pnpm dev:api:real` 默认在本地 Node 子进程中启用 `operation:updateProductDisplay`；页面仍要求管理员会话、二次确认、混淆 ID 完整且没有阻断中的持久任务。显式设置 `ONE_VEGETABLE_MUTATION_FLAGS` 可覆盖本地默认值，包括设为空值以关闭全部写能力。local-worker、扩展、staging 和 production 继续禁止真实商品上下架。
+真实 Smoke 不进入 CI。完成上述真实账号生命周期验收后，`pnpm dev:api:real` 默认在本地 Node 子进程中启用 `operation:updateProductDisplay`；页面仍要求管理员会话、二次确认、混淆 ID 完整且没有阻断中的持久任务。显式设置 `ONE_VEGETABLE_MUTATION_FLAGS` 可覆盖本地默认值，包括设为空值以关闭全部写能力。local-worker、staging 和 production 继续禁止真实商品上下架。
+
+## 插件本地任务
+
+2.1.0 之后的插件补丁版本允许本机管理员执行已完成真实账号验收的商品上下架。插件不直接复用 BFF 数据库，而是在 `chrome.storage.local` 中保存同构的最小任务快照：商品明文 ID、混淆 ID、原状态、目标状态、requestId、traceId、状态和脱敏错误。任务不包含 App Secret、Access Token、完整请求或完整 Alibaba 响应。
+
+插件在出网前重新读取商品列表，核对明文 ID、混淆 ID 和原状态；商品处于审核中、有未完成任务或目标状态没有变化时直接拒绝。Alibaba 明确受理后，任务进入 `verifying`，并由商品列表回读确认。service worker 重启不会清除任务；未完成任务持续阻止重复操作，超时后进入 `recovery-required`，用户可恢复到操作前状态。终态任务最多保留 30 天、100 条，用户清除扩展本地数据时一并删除。
+
+网络超时等无法判断 Alibaba 是否已经受理的错误不会标记为普通失败，而是直接进入 `recovery-required` 并阻止重试。后续回读若确认商品仍为原状态，任务安全结束为 `recovered`；若目标状态已生效，则结束为 `verified`。
+
+扩展仍不开放正式发品、平台草稿、商品 Schema 更新及其他未经插件路径验收的真实写操作。正在审核的 2.1.0 商店包不包含此变更，需在后续补丁版本重新构建和提交。

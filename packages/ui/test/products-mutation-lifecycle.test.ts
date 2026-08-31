@@ -66,7 +66,7 @@ describe('ProductsView product mutation lifecycle', () => {
       refresh: vi.fn(() => Promise.resolve(job)),
       recover
     };
-    const wrapper = mountProductsView(productMutationJobs, 'updateProductDisplay');
+    const wrapper = mountProductsView(productMutationJobs, 'updateProductDisplay', 'extension');
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('最近上下架任务');
       expect(wrapper.text()).toContain('需要人工恢复');
@@ -92,7 +92,8 @@ describe('ProductsView product mutation lifecycle', () => {
 
 function mountProductsView(
   productMutationJobs: ProductMutationJobClient,
-  allowedOperation: 'updateProduct' | 'updateProductDisplay'
+  allowedOperation: 'updateProduct' | 'updateProductDisplay',
+  mode: 'bff' | 'extension' = 'bff'
 ) {
   const Host = defineComponent({
     setup() {
@@ -110,7 +111,7 @@ function mountProductsView(
             })
         },
         productMutationJobs,
-        mode: 'bff'
+        mode
       });
       return () => h(ProductsView);
     }

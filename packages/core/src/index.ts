@@ -31,6 +31,7 @@ export * from './product-official-hints';
 export * from './product-mutation-fingerprint';
 export * from './product-mutation-job';
 export * from './product-mutation-job-client';
+export * from './product-mutation-job-extension';
 export * from './product-schema';
 export * from './product-schema-json';
 export * from './product-transfer';

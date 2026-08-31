@@ -6,7 +6,7 @@
 
 ## 设置升级
 
-扩展设置现在以版本 2 加密保险库保存：PBKDF2-HMAC-SHA256 使用随机 salt 和 600,000 次迭代派生不可导出的 AES-256-GCM 密钥，随机 96-bit IV 与固定 additional data 为密文提供机密性和完整性。用户口令不写入任何存储，解锁密钥和设置只存在于 service worker 内存，后台重启或用户主动锁定后页面和真实请求都无法读取凭证。
+扩展设置现在以版本 2 加密保险库保存：PBKDF2-HMAC-SHA256 使用随机 salt 和 600,000 次迭代派生不可导出的 AES-256-GCM 运行时密钥，随机 96-bit IV 与固定 additional data 为密文提供机密性和完整性。用户口令不写入任何存储；当前 Chrome 会话额外在内存型 `chrome.storage.session` 保存派生密钥材料，使 service worker 休眠后可以恢复。浏览器重启、扩展更新/重载、用户主动锁定或空闲超时后，页面和真实请求都无法读取凭证。
 
 local/session 存储在后台启动时限制为 Chrome `TRUSTED_CONTEXTS`，最低支持 Chrome 102。新建保险库默认不启用空闲自动锁定，用户可选择 5、15、30 或 60 分钟；策略与凭证一起加密，状态查询不会意外续期。
 

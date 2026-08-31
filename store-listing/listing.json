@@ -11,7 +11,7 @@
     {
       "permission": "storage",
       "required": true,
-      "justification": "Stores user-entered gateway credentials encrypted with a user passphrase, local settings and onboarding state, and redacted diagnostics for the current browser session. The passphrase is never stored, local/session storage is hidden from content scripts, and unlocked credentials auto-lock after the configured idle period."
+      "justification": "Stores user-entered gateway credentials encrypted with a user passphrase, local settings and onboarding state, durable product display mutation status without secrets or full responses, plus derived unlock material and redacted diagnostics held only in current Chrome-session memory. The passphrase is never stored, local/session storage is hidden from content scripts, and session unlock material is cleared by browser restart, extension update/reload, explicit locking, or the configured idle timeout."
     },
     {
       "permission": "scripting",
@@ -42,7 +42,12 @@
   "submissionStatus": {
     "accountRegistration": "confirmed-by-existing-store-item",
     "privacyPolicyPublication": "publish-with-release",
-    "enabledRealMutations": ["operatePhotoGroup", "uploadPhoto", "transferPhotoFromUrl"],
+    "enabledRealMutations": [
+      "updateProductDisplay",
+      "operatePhotoGroup",
+      "uploadPhoto",
+      "transferPhotoFromUrl"
+    ],
     "otherRealMutationsEnabled": false
   }
 }

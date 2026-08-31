@@ -114,7 +114,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('button', { name: '稍后，仅浏览' }).click();
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
   await page.getByRole('link', { name: '设置', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '凭证保险库' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '开放平台凭证保护' })).toBeVisible();
   await expect(page.getByText('未创建', { exact: true })).toBeVisible();
   await page.getByLabel('App Key').fill('e2e-app-key');
   await page.getByLabel('App Secret').fill('e2e-secret');
@@ -122,7 +122,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByLabel('新建保险库口令').fill('e2e-vault-password');
   await page.getByLabel('确认保险库口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '创建保险库并保存' }).click();
-  await expect(page.getByText('加密凭证保险库已创建并保持解锁。').first()).toBeVisible();
+  await expect(page.getByText('凭证已加密保存，并将在当前 Chrome 会话内保持可用。').first()).toBeVisible();
   const encryptedSettings = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {
@@ -212,24 +212,22 @@ test('MV3 options page persists settings and exposes the audited catalog', async
 
   await page.reload();
   await page.getByRole('link', { name: '设置', exact: true }).click();
-  await expect(page.getByText('已锁定', { exact: true })).toBeVisible();
-  await expect(page.getByText('扩展后台已重新启动，需要重新解锁')).toBeVisible();
-  const lockedGatewayResponse = await page.evaluate(async () => {
+  await expect(page.getByText('已解锁', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
+  const sessionStorageAfterRestart = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {
-        chrome: { runtime: { sendMessage(value: object): Promise<unknown> } };
+        chrome: { storage: { session: { get(key: null): Promise<Record<string, unknown>> } } };
       }
     ).chrome;
-    return extension.runtime.sendMessage({
-      requestId: crypto.randomUUID(),
-      kind: 'gateway-request',
-      operation: 'getDashboard'
-    });
+    return extension.storage.session.get(null);
   });
-  expect(lockedGatewayResponse).toMatchObject({
-    ok: false,
-    error: { code: 'CREDENTIAL_VAULT_WORKER_RESTARTED' }
-  });
+  expect(JSON.stringify(sessionStorageAfterRestart)).not.toContain('e2e-vault-password');
+  expect(JSON.stringify(sessionStorageAfterRestart)).not.toContain('e2e-app-key');
+  expect(JSON.stringify(sessionStorageAfterRestart)).not.toContain('e2e-secret');
+  expect(JSON.stringify(sessionStorageAfterRestart)).not.toContain('e2e-token');
+  await page.getByRole('button', { name: '立即锁定' }).click();
+  await expect(page.getByText('已锁定', { exact: true })).toBeVisible();
   await page.getByLabel('保险库口令').fill('wrong-vault-password');
   await page.getByRole('button', { name: '解锁' }).click();
   await expect(page.getByText(/口令不正确或密文已损坏/)).toBeVisible();
@@ -257,7 +255,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByLabel('新保险库口令', { exact: true }).fill('e2e-rotated-vault-password');
   await page.getByLabel('确认新保险库口令', { exact: true }).fill('e2e-rotated-vault-password');
   await page.getByRole('button', { name: '更换口令' }).click();
-  await expect(page.getByText('保险库已使用新 salt 和新口令重新加密。')).toBeVisible();
+  await expect(page.getByText('凭证已使用新 salt 和新口令重新加密。')).toBeVisible();
   await page.getByRole('button', { name: '立即锁定' }).click();
   await expect(page.getByText('已锁定', { exact: true })).toBeVisible();
   await page.getByLabel('保险库口令').fill('e2e-vault-password');
@@ -500,7 +498,9 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByLabel('新建保险库口令').fill('migrated-vault-password');
   await page.getByLabel('确认保险库口令').fill('migrated-vault-password');
   await page.getByRole('button', { name: '加密并迁移旧凭证' }).click();
-  await expect(page.getByText('旧版明文凭证已原位迁移到加密保险库。').first()).toBeVisible();
+  await expect(
+    page.getByText('旧版明文凭证已原位加密，并在当前 Chrome 会话内保持可用。').first()
+  ).toBeVisible();
   const migratedEncryptedSettings = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {

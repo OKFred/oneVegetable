@@ -105,7 +105,7 @@ export class BffProductMutationJobClient implements ProductMutationJobClient {
   }
 }
 
-function isProductMutationJobPage(value: unknown): value is ProductMutationJobPage {
+export function isProductMutationJobPage(value: unknown): value is ProductMutationJobPage {
   return (
     isRecord(value) &&
     Array.isArray(value.items) &&
@@ -116,7 +116,7 @@ function isProductMutationJobPage(value: unknown): value is ProductMutationJobPa
   );
 }
 
-function isProductMutationJob(value: unknown): value is ProductMutationJob {
+export function isProductMutationJob(value: unknown): value is ProductMutationJob {
   return (
     isRecord(value) &&
     typeof value.id === 'string' &&

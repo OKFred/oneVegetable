@@ -262,7 +262,7 @@ const productMutationHistory = useQuery({
       items: page.items.map((job) => (job.id === refreshed.id ? refreshed : job))
     };
   },
-  enabled: computed(() => mode === 'bff' && productMutationJobs !== undefined && editProductId.value !== ''),
+  enabled: computed(() => productMutationJobs !== undefined && editProductId.value !== ''),
   refetchInterval: (query) =>
     query.state.data?.items.some((job) => job.status === 'submitted' || job.status === 'auditing')
       ? 15_000
@@ -289,7 +289,7 @@ const displayMutationHistory = useQuery({
     }
     return refreshed;
   },
-  enabled: computed(() => mode === 'bff' && productMutationJobs !== undefined),
+  enabled: computed(() => productMutationJobs !== undefined),
   refetchInterval: (query) =>
     query.state.data?.some((job) => productMutationJobIsBlocking(job.status)) ? 15_000 : false,
   staleTime: 0

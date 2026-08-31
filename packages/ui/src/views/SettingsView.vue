@@ -22,7 +22,6 @@ import {
   ALIBABA_GATEWAY,
   CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES,
   CREDENTIAL_VAULT_IDLE_TIMEOUT_OPTIONS,
-  CREDENTIAL_VAULT_ITERATIONS,
   CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS,
   validateVaultPassphrase,
   type CredentialVaultStatus,
@@ -173,7 +172,7 @@ async function save(): Promise<void> {
       assertMatchingPassphrases(vaultPassphrase.value, vaultPassphraseConfirmation.value);
       applyVaultStatus(await vault.create(vaultPassphrase.value, model.value));
       clearVaultPassphrases();
-      feedback.value = '加密凭证保险库已创建并保持解锁。';
+      feedback.value = '凭证已加密保存，并将在当前 Chrome 会话内保持可用。';
       await refreshLocalData();
     } else {
       await settings.save(model.value);
@@ -211,7 +210,7 @@ async function importCredentialBundle(event: Event): Promise<void> {
 async function handleAcquiredCredentialsSaved(status: CredentialVaultStatus): Promise<void> {
   applyVaultStatus(status);
   model.value = await settings.load();
-  feedback.value = 'Alibaba 开放平台凭据已获取并加密保存，可以开始真实查询。';
+  feedback.value = 'Alibaba 开放平台凭据已获取并加密保存，当前 Chrome 会话内可以直接使用。';
   await refreshLocalData();
 }
 
@@ -258,7 +257,7 @@ async function unlockVault(): Promise<void> {
     applyVaultStatus(await vault.unlock(vaultPassphrase.value));
     model.value = await settings.load();
     clearVaultPassphrases();
-    feedback.value = '凭证保险库已解锁；service worker 重启后会自动重新锁定。';
+    feedback.value = '凭证已解锁；刷新页面或后台休眠后无需重复输入口令。';
   } catch (error: unknown) {
     vaultError.value = userVisibleCause(error, '保险库解锁失败');
   } finally {
@@ -275,7 +274,7 @@ async function migrateVault(): Promise<void> {
     applyVaultStatus(await vault.migrate(vaultPassphrase.value));
     model.value = await settings.load();
     clearVaultPassphrases();
-    feedback.value = '旧版明文凭证已原位迁移到加密保险库。';
+    feedback.value = '旧版明文凭证已原位加密，并在当前 Chrome 会话内保持可用。';
     await refreshLocalData();
   } catch (error: unknown) {
     vaultError.value = userVisibleCause(error, '保险库迁移失败');
@@ -296,7 +295,7 @@ async function lockVault(): Promise<void> {
       endpoint: ALIBABA_GATEWAY,
       signMethod: 'hmac'
     };
-    feedback.value = '保险库已锁定，页面中的可编辑凭证状态已清空。';
+    feedback.value = '凭证已锁定，当前 Chrome 会话中的解锁状态已清除。';
   } catch (error: unknown) {
     vaultError.value = userVisibleCause(error, '保险库锁定失败');
   } finally {
@@ -312,7 +311,7 @@ async function rotateVaultPassphrase(): Promise<void> {
     assertMatchingPassphrases(newVaultPassphrase.value, newVaultPassphraseConfirmation.value);
     applyVaultStatus(await vault.rotate(newVaultPassphrase.value));
     clearVaultPassphrases();
-    feedback.value = '保险库已使用新 salt 和新口令重新加密。';
+    feedback.value = '凭证已使用新 salt 和新口令重新加密。';
   } catch (error: unknown) {
     vaultError.value = userVisibleCause(error, '保险库口令更换失败');
   } finally {
@@ -328,7 +327,7 @@ async function updateVaultPolicy(): Promise<void> {
     applyVaultStatus(await vault.updatePolicy(idleTimeoutMinutes.value));
     feedback.value =
       idleTimeoutMinutes.value === 0
-        ? '已关闭空闲自动锁定；扩展后台重启后仍需重新解锁。'
+        ? '已关闭空闲自动锁定；当前 Chrome 会话内将保持可用。'
         : `保险库将在连续 ${idleTimeoutMinutes.value} 分钟未使用凭证后自动锁定。`;
   } catch (error: unknown) {
     vaultError.value = userVisibleCause(error, '空闲锁定策略保存失败');
@@ -571,11 +570,11 @@ function confirmThemePreference(): void {
         <div>
           <div class="flex items-center gap-2">
             <LockKeyhole class="size-4 text-primary" />
-            <h2 class="font-semibold">凭证保险库</h2>
+            <h2 class="font-semibold">开放平台凭证保护</h2>
           </div>
           <p class="mt-2 text-sm text-muted-foreground">
-            PBKDF2-HMAC-SHA256 {{ CREDENTIAL_VAULT_ITERATIONS.toLocaleString() }} 次派生 AES-256-GCM
-            密钥；口令不保存，后台重启后需重新解锁。
+            凭证加密保存在本机。解锁后，刷新页面或 MV3
+            后台休眠不会要求重复输入口令；浏览器重启、扩展更新、主动锁定或所选空闲时限到期后才会重新锁定。
           </p>
         </div>
         <span class="rounded-full bg-muted px-3 py-1 text-xs">
@@ -607,15 +606,15 @@ function confirmThemePreference(): void {
           {{
             vaultStatus.lockReason === 'idle'
               ? '保险库已因空闲超时自动锁定'
-              : vaultStatus.lockReason === 'worker-restart'
-                ? '扩展后台已重新启动，需要重新解锁'
+              : vaultStatus.lockReason === 'session-ended'
+                ? 'Chrome 会话已结束，需要重新解锁'
                 : '保险库已手动锁定'
           }}
         </p>
         <p class="mt-1 text-xs text-muted-foreground">
           {{
-            vaultStatus.lockReason === 'worker-restart'
-              ? 'MV3 service worker 被浏览器回收或扩展更新后，内存密钥不会保留；本地加密凭据仍然安全保存。'
+            vaultStatus.lockReason === 'session-ended'
+              ? '浏览器重启、扩展更新或重载会清除仅存于内存的会话解锁材料；本地加密凭据仍然安全保存。'
               : '页面与后台中的解锁状态已清除，重新输入口令后才能继续真实查询。'
           }}
         </p>
@@ -647,7 +646,7 @@ function confirmThemePreference(): void {
         <div class="rounded-lg border p-4">
           <p class="text-sm font-medium">空闲自动锁定</p>
           <p class="mt-1 text-xs leading-5 text-muted-foreground">
-            默认不因空闲自动锁定；只有选择时长后才会启用。扩展后台重启时仍需重新解锁。
+            默认不因空闲自动锁定；只有选择时长后才会启用。MV3 后台休眠不会清除当前 Chrome 会话的解锁状态。
           </p>
           <p v-if="vaultActivitySummary" class="mt-2 text-xs text-muted-foreground">
             {{ vaultActivitySummary }}

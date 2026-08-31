@@ -16,5 +16,9 @@ describe('extension operation policy', () => {
       allowed: true,
       reasonCode: 'EXTENSION_OPERATION_ALLOWED'
     });
+    expect(resolveExtensionOperationAvailability('updateProductDisplay')).toMatchObject({
+      allowed: true,
+      reasonCode: 'EXTENSION_OPERATION_ALLOWED'
+    });
   });
 });

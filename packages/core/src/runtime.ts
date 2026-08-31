@@ -23,8 +23,14 @@ export {
 export { ALIBABA_GATEWAY } from './signing';
 export { APP_PREFERENCES_STORAGE_KEY } from './preferences';
 export { StaticOperationAvailabilityClient } from './operation-availability';
+export { ExtensionProductMutationJobClient } from './product-mutation-job-extension';
 export { QUALIFICATION_GATED_OPERATION_IDS } from './operation-id';
 export type { OperationAvailabilityClient } from './product-description-template-client-types';
+export type {
+  ExtensionProductMutationJobOperation,
+  ExtensionProductMutationJobRequest,
+  ExtensionProductMutationJobResponse
+} from './product-mutation-job-extension';
 export {
   BundledProductDescriptionTemplateClient,
   BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA
