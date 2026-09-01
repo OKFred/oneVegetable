@@ -151,7 +151,9 @@ test('authenticated Web renders real read results without Mock fallback', async 
       )
       .toBe(true);
 
-    const productRows = page.getByRole('row').filter({ has: page.getByRole('button', { name: '编辑商品' }) });
+    const productRows = page
+      .getByRole('row')
+      .filter({ has: page.getByRole('button', { name: '编辑', exact: true }) });
     const editableProductIndexes: number[] = [];
     for (let index = 0; index < (await productRows.count()); index += 1) {
       if (!/auditing|draft|rejected/iu.test(await productRows.nth(index).innerText())) {
@@ -168,7 +170,7 @@ test('authenticated Web renders real read results without Mock fallback', async 
       const previousScoreAttemptCount = results.filter(
         (result) => result.operation === 'getProductScore'
       ).length;
-      await productRows.nth(productIndex).getByRole('button', { name: '编辑商品' }).click();
+      await productRows.nth(productIndex).getByRole('button', { name: '编辑', exact: true }).click();
       await expect
         .poll(
           async () =>

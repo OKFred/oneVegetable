@@ -30,7 +30,7 @@ describe('ProductsView product mutation lifecycle', () => {
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('Portable solar power station 1000W');
     });
-    const edit = wrapper.findAll('button').find((button) => button.text().includes('编辑商品'));
+    const edit = wrapper.findAll('button').find((button) => button.text() === '编辑');
     if (!edit) throw new Error('Missing edit button');
     await edit.trigger('click');
     await flushPromises();

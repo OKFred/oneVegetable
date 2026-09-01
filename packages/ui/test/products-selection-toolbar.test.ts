@@ -34,6 +34,8 @@ describe('ProductsView selection toolbar', () => {
 
     expect(wrapper.get('table').text()).toContain('在线');
     expect(wrapper.get('table').text()).not.toMatch(/\bonline\b/);
+    expect(button(wrapper.get('table').element, '编辑')).toBeInstanceOf(HTMLButtonElement);
+    expect(wrapper.get('table').text()).not.toContain('编辑商品');
     expect(selectedCount.text()).toBe('已选 0 个');
     expect(toolbar.text()).not.toContain('已选');
     expect((selectPage.element as HTMLInputElement).indeterminate).toBe(false);

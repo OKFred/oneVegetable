@@ -1303,7 +1303,7 @@ const columns: DataColumn<Product>[] = [
               void selectProductForSchema(row.original);
             }
           },
-          () => '编辑商品'
+          () => '编辑'
         )
       ]),
     meta: { sticky: 'right', stickyOffset: '0px', stickyBoundary: true, width: '120px' }
