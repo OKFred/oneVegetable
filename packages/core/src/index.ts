@@ -44,6 +44,7 @@ export * from './insights-adapter';
 export * from './signing';
 export * from './settings-storage';
 export * from './social-sharing';
+export * from './social-meta';
 export * from './types';
 export * from './validation';
 export * from './version';

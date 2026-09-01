@@ -11556,6 +11556,38 @@
           "byteLength": { "type": "integer", "minimum": 1, "maximum": 20971520 }
         }
       },
+      "ExtensionSocialDevice": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "extensionId",
+          "status",
+          "expiresTimeUtc",
+          "lastUsedTimeUtc",
+          "createTimeUtc",
+          "updateTimeUtc",
+          "creatorId",
+          "updaterId",
+          "revision",
+          "remark"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "extensionId": { "type": "string", "minLength": 32, "maxLength": 32 },
+          "status": { "type": "string", "enum": ["active", "revoked", "expired"] },
+          "expiresTimeUtc": { "type": "integer", "minimum": 0 },
+          "lastUsedTimeUtc": { "type": ["integer", "null"], "minimum": 0 },
+          "createTimeUtc": { "type": "integer", "minimum": 0 },
+          "updateTimeUtc": { "type": "integer", "minimum": 0 },
+          "creatorId": { "type": "string", "minLength": 1 },
+          "updaterId": { "type": "string", "minLength": 1 },
+          "revision": { "type": "integer", "minimum": 1 },
+          "remark": { "type": ["string", "null"], "maxLength": 500 }
+        }
+      },
       "GatewayCredentialClearRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -11975,6 +12007,32 @@
             "type": "array",
             "items": { "$ref": "#/components/schemas/LogisticsSpecialProductType" }
           }
+        }
+      },
+      "MetaAppConfigurationSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "configured",
+          "appIdSuffix",
+          "graphApiVersion",
+          "publicOrigin",
+          "callbackUrl",
+          "revision",
+          "updateTimeUtc",
+          "updaterId",
+          "remark"
+        ],
+        "properties": {
+          "configured": { "type": "boolean" },
+          "appIdSuffix": { "type": ["string", "null"], "maxLength": 4 },
+          "graphApiVersion": { "type": "string", "pattern": "^v[0-9]+\\.0$" },
+          "publicOrigin": { "type": ["string", "null"], "format": "uri" },
+          "callbackUrl": { "type": ["string", "null"], "format": "uri" },
+          "revision": { "type": ["integer", "null"], "minimum": 1 },
+          "updateTimeUtc": { "type": ["integer", "null"], "minimum": 0 },
+          "updaterId": { "type": ["string", "null"] },
+          "remark": { "type": ["string", "null"], "maxLength": 500 }
         }
       },
       "OperationAvailability": {
@@ -12551,10 +12609,7 @@
         "properties": {
           "id": { "type": "string", "format": "uuid" },
           "requestId": { "$ref": "#/components/schemas/RequestId" },
-          "productId": {
-            "type": "string",
-            "pattern": "^(?:[1-9][0-9]*|pending:[0-9a-f]{64})$"
-          },
+          "productId": { "type": "string", "pattern": "^(?:[1-9][0-9]*|pending:[0-9a-f]{64})$" },
           "operation": {
             "type": "string",
             "enum": ["publishProduct", "saveProductDraft", "updateProduct", "updateProductDisplay"]
@@ -12947,6 +13002,163 @@
         "additionalProperties": false,
         "required": ["id", "name"],
         "properties": { "id": { "type": "string" }, "name": { "type": "string" } }
+      },
+      "SocialAccountConnection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "accountExternalId",
+          "accountName",
+          "status",
+          "grantedScopes",
+          "tokenExpiresTimeUtc",
+          "destinationCount",
+          "createTimeUtc",
+          "updateTimeUtc",
+          "creatorId",
+          "updaterId",
+          "revision",
+          "remark"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "accountExternalId": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "accountName": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "status": { "type": "string", "enum": ["connected", "reconnect-required", "disconnected"] },
+          "grantedScopes": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+          },
+          "tokenExpiresTimeUtc": { "type": ["integer", "null"], "minimum": 0 },
+          "destinationCount": { "type": "integer", "minimum": 0 },
+          "createTimeUtc": { "type": "integer", "minimum": 0 },
+          "updateTimeUtc": { "type": "integer", "minimum": 0 },
+          "creatorId": { "type": "string", "minLength": 1 },
+          "updaterId": { "type": "string", "minLength": 1 },
+          "revision": { "type": "integer", "minimum": 1 },
+          "remark": { "type": ["string", "null"], "maxLength": 500 }
+        }
+      },
+      "SocialDestination": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "connectionId",
+          "platform",
+          "externalId",
+          "name",
+          "pageExternalId",
+          "pageName",
+          "canPublish",
+          "unavailableReasonCode",
+          "tasks",
+          "createTimeUtc",
+          "updateTimeUtc"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "connectionId": { "type": "string", "format": "uuid" },
+          "platform": { "$ref": "#/components/schemas/SocialPlatform" },
+          "externalId": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "pageExternalId": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "pageName": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "canPublish": { "type": "boolean" },
+          "unavailableReasonCode": { "type": ["string", "null"], "maxLength": 128 },
+          "tasks": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+          },
+          "createTimeUtc": { "type": "integer", "minimum": 0 },
+          "updateTimeUtc": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "SocialPlatform": { "type": "string", "enum": ["facebook", "instagram"] },
+      "SocialPostPrepareRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "destinationId", "caption", "idempotencyKey", "file"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "destinationId": { "type": "string", "format": "uuid" },
+          "caption": { "type": "string", "maxLength": 4000 },
+          "idempotencyKey": { "type": "string", "format": "uuid" },
+          "file": { "$ref": "#/components/schemas/EncodedFilePayload" }
+        }
+      },
+      "SocialPostTargetRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "jobId"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "jobId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "SocialPublishJob": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "requestId",
+          "idempotencyKey",
+          "destinationId",
+          "platform",
+          "status",
+          "captionLength",
+          "fileName",
+          "contentType",
+          "byteLength",
+          "contentSha256",
+          "platformContainerId",
+          "platformPostId",
+          "platformRequestId",
+          "platformTraceId",
+          "reasonCode",
+          "message",
+          "nextAdvanceTimeUtc",
+          "expiresTimeUtc",
+          "createTimeUtc",
+          "updateTimeUtc",
+          "creatorId",
+          "updaterId",
+          "revision",
+          "remark"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "idempotencyKey": { "type": "string", "format": "uuid" },
+          "destinationId": { "type": "string", "format": "uuid" },
+          "platform": { "$ref": "#/components/schemas/SocialPlatform" },
+          "status": {
+            "type": "string",
+            "enum": ["prepared", "processing", "published", "failed", "unknown", "cancelled", "expired"]
+          },
+          "captionLength": { "type": "integer", "minimum": 0, "maximum": 4000 },
+          "fileName": { "type": "string", "minLength": 1, "maxLength": 255 },
+          "contentType": { "type": "string", "enum": ["image/jpeg", "image/png"] },
+          "byteLength": { "type": "integer", "minimum": 1, "maximum": 5242880 },
+          "contentSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "platformContainerId": { "type": ["string", "null"], "maxLength": 256 },
+          "platformPostId": { "type": ["string", "null"], "maxLength": 256 },
+          "platformRequestId": { "type": ["string", "null"], "maxLength": 256 },
+          "platformTraceId": { "type": ["string", "null"], "maxLength": 256 },
+          "reasonCode": { "type": ["string", "null"], "maxLength": 128 },
+          "message": { "type": ["string", "null"], "maxLength": 1000 },
+          "nextAdvanceTimeUtc": { "type": ["integer", "null"], "minimum": 0 },
+          "expiresTimeUtc": { "type": "integer", "minimum": 0 },
+          "createTimeUtc": { "type": "integer", "minimum": 0 },
+          "updateTimeUtc": { "type": "integer", "minimum": 0 },
+          "creatorId": { "type": "string", "minLength": 1 },
+          "updaterId": { "type": "string", "minLength": 1 },
+          "revision": { "type": "integer", "minimum": 1 },
+          "remark": { "type": ["string", "null"], "maxLength": 500 }
+        }
       },
       "TradeAddress": {
         "type": "object",

@@ -6449,6 +6449,22 @@ export interface components {
             contentType: string;
             byteLength: number;
         };
+        ExtensionSocialDevice: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            extensionId: string;
+            /** @enum {string} */
+            status: "active" | "revoked" | "expired";
+            expiresTimeUtc: number;
+            lastUsedTimeUtc: number | null;
+            createTimeUtc: number;
+            updateTimeUtc: number;
+            creatorId: string;
+            updaterId: string;
+            revision: number;
+            remark: string | null;
+        };
         GatewayCredentialClearRequest: {
             requestId: components["schemas"]["RequestId"];
             revision: number;
@@ -6649,6 +6665,19 @@ export interface components {
             code: string;
             name: string;
             children: components["schemas"]["LogisticsSpecialProductType"][];
+        };
+        MetaAppConfigurationSummary: {
+            configured: boolean;
+            appIdSuffix: string | null;
+            graphApiVersion: string;
+            /** Format: uri */
+            publicOrigin: string | null;
+            /** Format: uri */
+            callbackUrl: string | null;
+            revision: number | null;
+            updateTimeUtc: number | null;
+            updaterId: string | null;
+            remark: string | null;
         };
         OperationAvailability: {
             operation: string;
@@ -7155,6 +7184,87 @@ export interface components {
         ShippingTemplate: {
             id: string;
             name: string;
+        };
+        SocialAccountConnection: {
+            /** Format: uuid */
+            id: string;
+            accountExternalId: string;
+            accountName: string;
+            /** @enum {string} */
+            status: "connected" | "reconnect-required" | "disconnected";
+            grantedScopes: string[];
+            tokenExpiresTimeUtc: number | null;
+            destinationCount: number;
+            createTimeUtc: number;
+            updateTimeUtc: number;
+            creatorId: string;
+            updaterId: string;
+            revision: number;
+            remark: string | null;
+        };
+        SocialDestination: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            connectionId: string;
+            platform: components["schemas"]["SocialPlatform"];
+            externalId: string;
+            name: string;
+            pageExternalId: string;
+            pageName: string;
+            canPublish: boolean;
+            unavailableReasonCode: string | null;
+            tasks: string[];
+            createTimeUtc: number;
+            updateTimeUtc: number;
+        };
+        /** @enum {string} */
+        SocialPlatform: "facebook" | "instagram";
+        SocialPostPrepareRequest: {
+            requestId: components["schemas"]["RequestId"];
+            /** Format: uuid */
+            destinationId: string;
+            caption: string;
+            /** Format: uuid */
+            idempotencyKey: string;
+            file: components["schemas"]["EncodedFilePayload"];
+        };
+        SocialPostTargetRequest: {
+            requestId: components["schemas"]["RequestId"];
+            /** Format: uuid */
+            jobId: string;
+        };
+        SocialPublishJob: {
+            /** Format: uuid */
+            id: string;
+            requestId: components["schemas"]["RequestId"];
+            /** Format: uuid */
+            idempotencyKey: string;
+            /** Format: uuid */
+            destinationId: string;
+            platform: components["schemas"]["SocialPlatform"];
+            /** @enum {string} */
+            status: "prepared" | "processing" | "published" | "failed" | "unknown" | "cancelled" | "expired";
+            captionLength: number;
+            fileName: string;
+            /** @enum {string} */
+            contentType: "image/jpeg" | "image/png";
+            byteLength: number;
+            contentSha256: string;
+            platformContainerId: string | null;
+            platformPostId: string | null;
+            platformRequestId: string | null;
+            platformTraceId: string | null;
+            reasonCode: string | null;
+            message: string | null;
+            nextAdvanceTimeUtc: number | null;
+            expiresTimeUtc: number;
+            createTimeUtc: number;
+            updateTimeUtc: number;
+            creatorId: string;
+            updaterId: string;
+            revision: number;
+            remark: string | null;
         };
         TradeAddress: {
             id: string;
