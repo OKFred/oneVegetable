@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import {
   Camera,
   Copy,
@@ -43,6 +43,12 @@ const publicOrigin = ref(globalThis.location.origin);
 const remark = ref('');
 const loading = ref(false);
 const error = ref<unknown>(null);
+const pairingRefreshState = ref<'idle' | 'waiting' | 'timeout'>('idle');
+let pairingDeviceIdsBeforeApproval = new Set<string>();
+let pairingRefreshAttempts = 0;
+let pairingRefreshTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
+const pairingRefreshIntervalMilliseconds = 1_500;
+const pairingRefreshAttemptLimit = 20;
 const confirmation = ref<
   | { kind: 'save' }
   | { kind: 'clear' }
@@ -121,7 +127,15 @@ const confirmationDescription = computed(() => {
 
 onMounted(async () => {
   showOAuthResult();
+  globalThis.addEventListener('focus', handlePageForeground);
+  globalThis.document.addEventListener('visibilitychange', handleVisibilityChange);
   await refresh();
+});
+
+onBeforeUnmount(() => {
+  stopPairingRefreshTimer();
+  globalThis.removeEventListener('focus', handlePageForeground);
+  globalThis.document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 
 async function refresh(): Promise<void> {
@@ -138,7 +152,7 @@ async function refresh(): Promise<void> {
     configuration.value = nextConfiguration;
     connections.value = nextConnections;
     destinations.value = nextDestinations;
-    devices.value = nextDevices;
+    applyDevices(nextDevices);
     publicOrigin.value = nextConfiguration.publicOrigin ?? globalThis.location.origin;
     remark.value = nextConfiguration.remark ?? '';
   } catch (cause: unknown) {
@@ -146,6 +160,75 @@ async function refresh(): Promise<void> {
   } finally {
     loading.value = false;
   }
+}
+
+async function refreshDevices(): Promise<void> {
+  if (!deviceManagementSupported.value || !control?.listExtensionSocialDevices) return;
+  applyDevices(await control.listExtensionSocialDevices());
+}
+
+function applyDevices(nextDevices: ExtensionSocialDevice[]): void {
+  devices.value = nextDevices;
+  if (
+    pairingRefreshState.value !== 'idle' &&
+    nextDevices.some((device) => !pairingDeviceIdsBeforeApproval.has(device.id))
+  ) {
+    pairingRefreshState.value = 'idle';
+    stopPairingRefreshTimer();
+    toast.success('插件已领取授权，设备列表已自动更新');
+  }
+}
+
+function startPairingDeviceRefresh(): void {
+  stopPairingRefreshTimer();
+  pairingDeviceIdsBeforeApproval = new Set(devices.value.map((device) => device.id));
+  pairingRefreshAttempts = 0;
+  pairingRefreshState.value = 'waiting';
+  schedulePairingDeviceRefresh();
+}
+
+function schedulePairingDeviceRefresh(): void {
+  pairingRefreshTimer = globalThis.setTimeout(() => {
+    void pollForPairedDevice();
+  }, pairingRefreshIntervalMilliseconds);
+}
+
+async function pollForPairedDevice(): Promise<void> {
+  pairingRefreshTimer = null;
+  if (!isPairingRefreshWaiting()) return;
+  pairingRefreshAttempts += 1;
+  try {
+    await refreshDevices();
+  } catch {
+    // A later poll or a foreground refresh can recover from a transient request failure.
+  }
+  if (!isPairingRefreshWaiting()) return;
+  if (pairingRefreshAttempts >= pairingRefreshAttemptLimit) {
+    pairingRefreshState.value = 'timeout';
+    return;
+  }
+  schedulePairingDeviceRefresh();
+}
+
+function isPairingRefreshWaiting(): boolean {
+  return pairingRefreshState.value === 'waiting';
+}
+
+function stopPairingRefreshTimer(): void {
+  if (pairingRefreshTimer === null) return;
+  globalThis.clearTimeout(pairingRefreshTimer);
+  pairingRefreshTimer = null;
+}
+
+function handlePageForeground(): void {
+  if (loading.value || !deviceManagementSupported.value) return;
+  void refreshDevices().catch((cause: unknown) => {
+    error.value = cause;
+  });
+}
+
+function handleVisibilityChange(): void {
+  if (globalThis.document.visibilityState === 'visible') handlePageForeground();
 }
 
 async function executeConfirmation(): Promise<void> {
@@ -184,7 +267,15 @@ async function executeConfirmation(): Promise<void> {
       if (!control.approveExtensionSocialPairing) throw new Error('当前后端不支持插件配对');
       await control.approveExtensionSocialPairing(pairingCode.value);
       pairingCode.value = '';
-      toast.success('插件配对已批准，请回到插件检查结果');
+      startPairingDeviceRefresh();
+      try {
+        await refreshDevices();
+      } catch {
+        // Approval already succeeded; the background poll will retry the device list.
+      }
+      if (pairingRefreshState.value === 'waiting') {
+        toast.success('插件配对已批准，正在等待插件领取授权');
+      }
     } else {
       if (!control.revokeExtensionSocialDevice) throw new Error('当前后端不支持撤销插件设备');
       await control.revokeExtensionSocialDevice(action.device.id, action.device.revision);
@@ -433,6 +524,29 @@ function destinationCount(connectionId: string): number {
         >
           <ShieldCheck class="size-4" />批准配对
         </Button>
+      </div>
+      <div
+        v-if="pairingRefreshState !== 'idle'"
+        class="mt-3 flex items-start gap-2 rounded-lg border bg-muted/40 p-3 text-sm"
+        role="status"
+        aria-live="polite"
+      >
+        <RefreshCw
+          class="mt-0.5 size-4 shrink-0 text-primary"
+          :class="pairingRefreshState === 'waiting' ? 'animate-spin' : ''"
+        />
+        <div>
+          <p class="font-medium">
+            {{ pairingRefreshState === 'waiting' ? '等待插件领取授权' : '插件尚未领取授权' }}
+          </p>
+          <p class="mt-1 text-xs text-muted-foreground">
+            {{
+              pairingRefreshState === 'waiting'
+                ? '请回到插件点击“检查批准结果”，领取后设备列表会自动更新。'
+                : '配对已经批准。回到插件检查结果后，再返回本页即可自动刷新设备列表。'
+            }}
+          </p>
+        </div>
       </div>
       <p
         v-if="devices.length === 0"
