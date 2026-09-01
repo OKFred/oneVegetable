@@ -1237,7 +1237,7 @@ const columns: DataColumn<Product>[] = [
   {
     accessorKey: 'groupName',
     header: '分组',
-    cell: (context) => h('span', { class: 'block min-w-40' }, context.getValue<string>() || '—')
+    cell: (context) => h('span', { class: 'block min-w-20' }, context.getValue<string>() || '—')
   },
   {
     accessorKey: 'status',

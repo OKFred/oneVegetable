@@ -85,7 +85,7 @@ describe('ProductsView selection toolbar', () => {
 
     if (!groupCell || !statusCell || !updatedAtCell)
       throw new Error('Missing product group, status or update time cell');
-    expect(groupCell.get('.min-w-40').classes()).toContain('block');
+    expect(groupCell.get('.min-w-20').classes()).toContain('block');
     expect(statusCell.get('.whitespace-nowrap').text()).toBe('在线');
     expect(updatedAtCell.get('.whitespace-nowrap').classes()).toContain('tabular-nums');
     wrapper.unmount();
