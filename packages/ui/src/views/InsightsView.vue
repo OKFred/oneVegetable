@@ -13,6 +13,7 @@ import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
+import { useUiI18n } from '../i18n';
 import { formatDate } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
@@ -20,6 +21,7 @@ import type { DataColumn } from '../lib/table';
 type Workspace = 'performance' | 'suppliers' | 'partner';
 
 const { gateway, mode } = useServices();
+const { t } = useUiI18n();
 const workspace = ref<Workspace>('performance');
 const selectedSupplierId = ref('');
 const dateStart = ref('');
@@ -80,10 +82,10 @@ watch([selectedSupplierId, dateStart, dateEnd], () => {
   supplierProductPage.value = 1;
 });
 
-const productColumns: DataColumn<InsightsSupplierProduct>[] = [
+const productColumns = computed<DataColumn<InsightsSupplierProduct>[]>(() => [
   {
     accessorKey: 'subject',
-    header: '历史采购商品',
+    header: t('insights.columns.product'),
     cell: ({ row }) =>
       h('div', { class: 'min-w-64' }, [
         h('p', { class: 'font-medium' }, row.original.subject),
@@ -92,49 +94,46 @@ const productColumns: DataColumn<InsightsSupplierProduct>[] = [
   },
   {
     accessorKey: 'id',
-    header: '商品 ID',
+    header: t('insights.columns.productId'),
     cell: (context) => h('code', { class: 'text-xs' }, context.getValue<string>())
   },
   {
     accessorKey: 'categoryId',
-    header: '类目 ID',
+    header: t('insights.columns.categoryId'),
     cell: (context) => h('code', { class: 'text-xs' }, context.getValue<string>())
   },
   {
     id: 'price',
-    header: '历史价格区间',
-    cell: ({ row }) => row.original.priceRange ?? '未返回'
+    header: t('insights.columns.price'),
+    cell: ({ row }) => row.original.priceRange ?? t('insights.notReturned')
   },
   {
     accessorKey: 'publishedAt',
-    header: '发布时间',
+    header: t('insights.columns.publishedAt'),
     cell: (context) => {
       const value = context.getValue<string | null>();
-      return formatDate(value, value ?? '文档未返回');
+      return formatDate(value, value ?? t('insights.documentNotReturned'));
     }
   }
-];
+]);
 
-const workspaces: { id: Workspace; label: string }[] = [
-  { id: 'performance', label: '经营排名' },
-  { id: 'suppliers', label: '采购供应商' },
-  { id: 'partner', label: '合作方能力' }
-];
+const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
+  { id: 'performance', label: t('insights.workspaces.performance') },
+  { id: 'suppliers', label: t('insights.workspaces.suppliers') },
+  { id: 'partner', label: t('insights.workspaces.partner') }
+]);
 </script>
 
 <template>
-  <PageHeader
-    title="数据与供应商洞察"
-    description="整合供应商全站排名和历史信保采购关系；原始响应只在适配层转换，长 ID 不转为 JavaScript number。"
-  />
+  <PageHeader :title="t('insights.title')" :description="t('insights.description')" />
   <Card class="mb-4 flex items-start gap-3 border-blue-200 bg-blue-50 p-4 text-blue-950">
     <ShieldAlert class="mt-0.5 size-4 shrink-0" />
     <p class="text-sm leading-5">
-      本页结果仅按官方字段展示，不把排名百分比解释成官方经营诊断，也不推断供应商质量。采购供应商接口需要买家授权身份；未获得权限时仅提供本地契约演示。
+      {{ t('insights.disclaimer') }}
     </p>
   </Card>
 
-  <div class="mb-4 flex flex-wrap gap-2" aria-label="洞察工作区">
+  <div class="mb-4 flex flex-wrap gap-2" :aria-label="t('insights.workspaceLabel')">
     <Button
       v-for="item in workspaces"
       :key="item.id"
@@ -151,7 +150,7 @@ const workspaces: { id: Workspace; label: string }[] = [
       <Card class="p-5">
         <div class="flex items-center justify-between gap-3">
           <div>
-            <p class="text-sm text-muted-foreground">最新全站排名百分比</p>
+            <p class="text-sm text-muted-foreground">{{ t('insights.latestRank') }}</p>
             <p class="mt-2 text-4xl font-semibold">
               {{ rank.data.value?.latestPercent ?? '—' }}<span class="ml-1 text-lg">%</span>
             </p>
@@ -159,14 +158,14 @@ const workspaces: { id: Workspace; label: string }[] = [
           <BarChart3 class="size-8 text-primary" />
         </div>
         <p class="mt-4 text-xs leading-5 text-muted-foreground">
-          官方仅返回日期与 percent，没有定义趋势含义。本项目保留原值，不生成“提升”“下降”或评级结论。
+          {{ t('insights.rankExplanation') }}
         </p>
         <Button variant="outline" class="mt-4" :disabled="rank.isFetching.value" @click="rank.refetch()">
-          <RefreshCw class="size-4" />刷新
+          <RefreshCw class="size-4" />{{ t('common.actions.refresh') }}
         </Button>
       </Card>
       <Card class="p-5">
-        <h2 class="font-semibold">排名时间序列</h2>
+        <h2 class="font-semibold">{{ t('insights.timeline') }}</h2>
         <QueryState
           :loading="rank.isPending.value"
           :error="rank.error.value"
@@ -190,7 +189,9 @@ const workspaces: { id: Workspace; label: string }[] = [
               </div>
               <span class="text-right font-medium">{{ item.percent }}%</span>
             </div>
-            <p v-if="!rank.data.value?.items.length" class="text-sm text-muted-foreground">暂无排名数据。</p>
+            <p v-if="!rank.data.value?.items.length" class="text-sm text-muted-foreground">
+              {{ t('insights.noRank') }}
+            </p>
           </div>
         </QueryState>
       </Card>
@@ -203,11 +204,13 @@ const workspaces: { id: Workspace; label: string }[] = [
         <div class="flex items-center justify-between gap-2">
           <div class="flex items-center gap-2">
             <Building2 class="size-4 text-primary" />
-            <h2 class="font-semibold">历史信保供应商</h2>
+            <h2 class="font-semibold">{{ t('insights.historicalSuppliers') }}</h2>
           </div>
-          <Badge variant="outline">{{ suppliers.data.value?.total ?? 0 }} 个</Badge>
+          <Badge variant="outline">{{
+            t('insights.supplierCount', { count: suppliers.data.value?.total ?? 0 })
+          }}</Badge>
         </div>
-        <p class="mt-2 text-xs text-muted-foreground">官方仅返回加密供应商 ID，不补造公司名称。</p>
+        <p class="mt-2 text-xs text-muted-foreground">{{ t('insights.encryptedOnly') }}</p>
         <QueryState
           :loading="suppliers.isPending.value"
           :error="suppliers.error.value"
@@ -240,23 +243,25 @@ const workspaces: { id: Workspace; label: string }[] = [
         <Card class="mb-4 p-4">
           <div class="flex items-center gap-2">
             <CalendarRange class="size-4 text-primary" />
-            <p class="text-sm font-medium">历史下单时间筛选</p>
+            <p class="text-sm font-medium">{{ t('insights.dateFilter') }}</p>
           </div>
           <div class="mt-3 grid gap-3 sm:grid-cols-2">
             <label class="space-y-1 text-sm"
-              ><span>开始日期</span><Input v-model="dateStart" type="date"
+              ><span>{{ t('insights.startDate') }}</span
+              ><Input v-model="dateStart" type="date"
             /></label>
             <label class="space-y-1 text-sm"
-              ><span>结束日期</span><Input v-model="dateEnd" type="date"
+              ><span>{{ t('insights.endDate') }}</span
+              ><Input v-model="dateEnd" type="date"
             /></label>
           </div>
         </Card>
         <Card v-if="!selectedSupplierId" class="p-8 text-center text-sm text-muted-foreground">
-          从左侧选择一个加密供应商 ID 查看曾经下过订单的商品。
+          {{ t('insights.selectSupplier') }}
         </Card>
         <template v-else>
           <p class="mb-3 text-xs text-muted-foreground">
-            当前供应商：<code>{{ selectedSupplierId }}</code>
+            {{ t('insights.currentSupplier') }} <code>{{ selectedSupplierId }}</code>
           </p>
           <QueryState
             :loading="supplierProducts.isPending.value"
@@ -271,7 +276,7 @@ const workspaces: { id: Workspace; label: string }[] = [
               v-model:page-size="supplierProductPageSize"
               :total-rows="supplierProducts.data.value?.total ?? 0"
               :pagination-disabled="supplierProducts.isFetching.value"
-              empty-text="暂无历史采购商品"
+              :empty-text="t('insights.noProducts')"
               min-width="840px"
             />
           </QueryState>
@@ -284,22 +289,16 @@ const workspaces: { id: Workspace; label: string }[] = [
     <Card class="max-w-3xl p-5">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 class="font-semibold">CGS 小满签约客户数据查询</h2>
+          <h2 class="font-semibold">{{ t('insights.partnerTitle') }}</h2>
           <code class="mt-2 block text-xs text-muted-foreground">alibaba.mydata.self.query.cgsokk</code>
         </div>
-        <Badge variant="warning">默认关闭</Badge>
+        <Badge variant="warning">{{ t('insights.disabled') }}</Badge>
       </div>
       <p class="mt-4 text-sm leading-6 text-muted-foreground">
-        官方标记为免费且不需要用户授权，但接口名称和说明限定 CGS 小满签约客户，请求还要求独立业务
-        <code>app_secret</code
-        >。因此本项目只保留类型、演示契约和审计记录，不提供调用表单，也不会把密钥放入页面或普通设置。
+        {{ t('insights.partnerDescription') }}
       </p>
       <p class="mt-3 text-xs text-muted-foreground">
-        {{
-          mode === 'mock'
-            ? '本地演示模式不模拟真实企业数据。'
-            : '扩展 service worker 会在通用调试入口阻止该方法。'
-        }}
+        {{ mode === 'mock' ? t('insights.partnerMock') : t('insights.partnerExtension') }}
       </p>
     </Card>
   </template>

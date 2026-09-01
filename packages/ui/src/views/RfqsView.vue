@@ -22,6 +22,7 @@ import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import Sheet from '../components/ui/Sheet.vue';
+import { useUiI18n } from '../i18n';
 import {
   operationAvailabilityMessage,
   useOperationAvailability
@@ -48,6 +49,7 @@ interface QuotationDraft {
 }
 
 const { gateway, mode } = useServices();
+const { t } = useUiI18n();
 const source = ref<RfqSource>('search');
 const keywords = ref('');
 const country = ref('');
@@ -146,45 +148,50 @@ const mutationAvailabilityReason = computed(() => {
     rfqMutations.reasonCode('uploadRfqAttachment'),
     rfqMutations.reasonCode('submitRfqQuotation')
   ].filter((reasonCode, index, values) => reasonCode && values.indexOf(reasonCode) === index);
-  return operationAvailabilityMessage(reasonCodes.join(', ') || null, '真实附件上传或报价提交未开放');
+  return operationAvailabilityMessage(reasonCodes.join(', ') || null, t('rfqs.mutation.unavailable'));
 });
 const missingQuotationFields = computed(() => {
   const missing: string[] = [];
-  if (!selectedRfqId.value) missing.push('RFQ');
-  if (!draft.value.message.trim()) missing.push('给买家留言');
-  if (!draft.value.itemName.trim()) missing.push('商品名称');
-  if (!draft.value.unitPrice.trim()) missing.push('单价');
-  if (!draft.value.quantity.trim()) missing.push('数量');
-  if (!draft.value.port.trim()) missing.push('装运港');
+  if (!selectedRfqId.value) missing.push(t('rfqs.fields.rfq'));
+  if (!draft.value.message.trim()) missing.push(t('rfqs.fields.message'));
+  if (!draft.value.itemName.trim()) missing.push(t('rfqs.fields.itemName'));
+  if (!draft.value.unitPrice.trim()) missing.push(t('rfqs.fields.unitPrice'));
+  if (!draft.value.quantity.trim()) missing.push(t('rfqs.fields.quantity'));
+  if (!draft.value.port.trim()) missing.push(t('rfqs.fields.port'));
   return missing;
 });
 const attachmentDisabledReason = computed(() =>
   attachmentMutationBlocked.value
-    ? operationAvailabilityMessage(rfqMutations.reasonCode('uploadRfqAttachment'), '当前环境未开放附件上传')
+    ? operationAvailabilityMessage(
+        rfqMutations.reasonCode('uploadRfqAttachment'),
+        t('rfqs.mutation.uploadUnavailable')
+      )
     : ''
 );
 const quotationDisabledReason = computed(() => {
   if (quotationMutationBlocked.value) {
     return operationAvailabilityMessage(
       rfqMutations.reasonCode('submitRfqQuotation'),
-      '当前环境未开放真实报价提交'
+      t('rfqs.mutation.submitUnavailable')
     );
   }
-  if (submitQuotation.isPending.value) return '报价正在提交，请稍候';
-  if (missingQuotationFields.value.length) return `请先填写：${missingQuotationFields.value.join('、')}`;
+  if (submitQuotation.isPending.value) return t('rfqs.mutation.submitting');
+  if (missingQuotationFields.value.length) {
+    return t('rfqs.mutation.fillFirst', { fields: missingQuotationFields.value.join(', ') });
+  }
   return '';
 });
 
 const submitQuotation = useMutation({
   mutationFn: () => gateway.request('submitRfqQuotation', quotationPayload()),
-  onSuccess: () => toast.success('RFQ 报价已提交。')
+  onSuccess: () => toast.success(t('rfqs.feedback.submitted'))
 });
 const uploadAttachment = useMutation({
   mutationFn: (payload: RfqAttachmentUploadRequest) => gateway.request('uploadRfqAttachment', payload),
   onSuccess: (result) => {
     draft.value.attachmentFilesString = result.filesString;
     saveDraft();
-    toast.success('报价附件已上传并写入当前草稿。');
+    toast.success(t('rfqs.feedback.attachmentUploaded'));
   }
 });
 
@@ -250,7 +257,7 @@ async function selectAttachment(event: Event): Promise<void> {
   if (attachmentMutationBlocked.value) {
     attachmentError.value = operationAvailabilityMessage(
       rfqMutations.reasonCode('uploadRfqAttachment'),
-      '当前环境未开放附件上传'
+      t('rfqs.mutation.uploadUnavailable')
     );
     input.value = '';
     return;
@@ -265,7 +272,7 @@ async function selectAttachment(event: Event): Promise<void> {
       byteLength: file.size
     });
   } catch (error: unknown) {
-    attachmentError.value = error instanceof Error ? error.message : '附件读取失败';
+    attachmentError.value = error instanceof Error ? error.message : t('rfqs.errors.attachmentRead');
   } finally {
     input.value = '';
   }
@@ -275,11 +282,11 @@ function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => {
-      reject(new Error('附件读取失败'));
+      reject(new Error(t('rfqs.errors.attachmentRead')));
     };
     reader.onload = () => {
       if (typeof reader.result !== 'string') {
-        reject(new Error('附件读取失败'));
+        reject(new Error(t('rfqs.errors.attachmentRead')));
         return;
       }
       resolve(reader.result.slice(reader.result.indexOf(',') + 1));
@@ -338,10 +345,10 @@ function isRfqPermissionDenied(error: unknown): boolean {
   );
 }
 
-const columns: DataColumn<RfqSummary>[] = [
+const columns = computed<DataColumn<RfqSummary>[]>(() => [
   {
     accessorKey: 'subject',
-    header: '采购需求',
+    header: t('rfqs.columns.demand'),
     cell: ({ row }) =>
       h(
         'button',
@@ -356,36 +363,36 @@ const columns: DataColumn<RfqSummary>[] = [
   },
   {
     id: 'quantity',
-    header: '数量',
+    header: t('rfqs.columns.quantity'),
     cell: ({ row }) =>
       row.original.quantity === null
         ? '—'
         : `${row.original.quantity.toLocaleString()} ${row.original.quantityUnit ?? ''}`
   },
-  { accessorKey: 'countryCode', header: '国家/地区' },
+  { accessorKey: 'countryCode', header: t('rfqs.columns.country') },
   {
     id: 'remainingQuotes',
-    header: '剩余报价',
+    header: t('rfqs.columns.remaining'),
     cell: ({ row }) => row.original.remainingQuotes ?? '—'
   },
   {
     id: 'read',
-    header: '状态',
+    header: t('rfqs.columns.status'),
     cell: ({ row }) => {
       const read = readStatus.data.value?.statuses[row.original.id] ?? row.original.read;
-      return h(Badge, { variant: read ? 'outline' : 'success' }, () => (read ? '已读' : '未读'));
+      return h(Badge, { variant: read ? 'outline' : 'success' }, () => t(read ? 'rfqs.read' : 'rfqs.unread'));
     }
   },
   {
     accessorKey: 'expiresAt',
-    header: '截止',
-    cell: ({ row }) => formatDate(row.original.expiresAt, '未提供')
+    header: t('rfqs.columns.deadline'),
+    cell: ({ row }) => formatDate(row.original.expiresAt, t('rfqs.notProvided'))
   }
-];
+]);
 </script>
 
 <template>
-  <PageHeader title="RFQ 工作台" description="RFQ 搜索、推荐、详情、已读状态与报价草稿均使用类型化契约。">
+  <PageHeader :title="t('rfqs.title')" :description="t('rfqs.description')">
     <Badge
       :variant="
         mode === 'mock'
@@ -399,12 +406,12 @@ const columns: DataColumn<RfqSummary>[] = [
     >
       {{
         mode === 'mock'
-          ? '契约演示'
+          ? t('rfqs.status.demo')
           : rfqPackageDenied
-            ? '当前账号无 RFQ 权限'
+            ? t('rfqs.status.denied')
             : rfqWorkspaceReady
-              ? 'RFQ 权限预检通过'
-              : '正在检查 RFQ 权限'
+              ? t('rfqs.status.ready')
+              : t('rfqs.status.checking')
       }}
     </Badge>
   </PageHeader>
@@ -413,19 +420,21 @@ const columns: DataColumn<RfqSummary>[] = [
     <div class="flex items-start gap-3">
       <ShieldAlert class="mt-0.5 size-5 shrink-0 text-amber-600" />
       <div class="min-w-0 flex-1">
-        <h2 class="font-semibold">当前应用未获得 RFQ API 包权限</h2>
+        <h2 class="font-semibold">{{ t('rfqs.permissions.deniedTitle') }}</h2>
         <p class="mt-2 text-sm leading-6 text-muted-foreground">
-          Alibaba 返回 {{ rfqAccessError?.code ?? '11' }} /
           {{
-            rfqAccessError?.subCode ?? 'isv.permission-api-package-limit'
-          }}。页面已停止继续请求搜索、推荐、详情和已读状态，避免重复失败。
+            t('rfqs.permissions.deniedDescription', {
+              code: rfqAccessError?.code ?? '11',
+              subCode: rfqAccessError?.subCode ?? 'isv.permission-api-package-limit'
+            })
+          }}
         </p>
         <p v-if="rfqAccessError?.traceId" class="mt-2 break-all font-mono text-xs text-muted-foreground">
           traceId：{{ rfqAccessError.traceId }}
         </p>
         <div class="mt-4 flex flex-wrap gap-2">
           <Button variant="outline" size="sm" :disabled="equity.isFetching.value" @click="equity.refetch()">
-            {{ equity.isFetching.value ? '检测中…' : '重新检测权限' }}
+            {{ equity.isFetching.value ? t('rfqs.permissions.checking') : t('rfqs.permissions.retry') }}
           </Button>
           <a
             href="https://developer.alibaba.com/docs/api.htm?apiId=32084"
@@ -433,7 +442,7 @@ const columns: DataColumn<RfqSummary>[] = [
             target="_blank"
             rel="noreferrer"
           >
-            查看 RFQ 接口文档
+            {{ t('rfqs.permissions.docs') }}
           </a>
         </div>
       </div>
@@ -444,9 +453,13 @@ const columns: DataColumn<RfqSummary>[] = [
     <div class="flex items-start gap-3">
       <ShieldAlert class="mt-0.5 size-5 shrink-0 text-destructive" />
       <div>
-        <h2 class="font-semibold">RFQ 权限检查失败</h2>
-        <p class="mt-2 text-sm text-muted-foreground">{{ rfqAccessError?.message ?? '请稍后重试。' }}</p>
-        <Button class="mt-4" variant="outline" size="sm" @click="equity.refetch()">重新检测</Button>
+        <h2 class="font-semibold">{{ t('rfqs.permissions.failedTitle') }}</h2>
+        <p class="mt-2 text-sm text-muted-foreground">
+          {{ rfqAccessError?.message ?? t('rfqs.permissions.retryLater') }}
+        </p>
+        <Button class="mt-4" variant="outline" size="sm" @click="equity.refetch()">
+          {{ t('rfqs.permissions.retryShort') }}
+        </Button>
       </div>
     </div>
   </Card>
@@ -458,51 +471,56 @@ const columns: DataColumn<RfqSummary>[] = [
     >
       <ShieldAlert class="mt-0.5 size-4 shrink-0 text-amber-600" />
       <div>
-        <p class="font-medium">真实报价写操作保持关闭</p>
+        <p class="font-medium">{{ t('rfqs.mutation.closedTitle') }}</p>
         <p class="mt-1 text-xs leading-5 text-muted-foreground">
-          {{ mutationAvailabilityReason }}；本地报价草稿不受影响。
+          {{ t('rfqs.mutation.closedDescription', { reason: mutationAvailabilityReason }) }}
         </p>
       </div>
     </Card>
 
     <div class="mb-4 grid gap-3 md:grid-cols-3">
       <Card class="p-4">
-        <p class="text-xs text-muted-foreground">剩余报价权益</p>
+        <p class="text-xs text-muted-foreground">{{ t('rfqs.equity.quotes') }}</p>
         <p class="mt-1 text-2xl font-semibold">{{ equity.data.value?.remainingQuotes ?? '—' }}</p>
       </Card>
       <Card class="p-4">
-        <p class="text-xs text-muted-foreground">剩余置顶权益</p>
+        <p class="text-xs text-muted-foreground">{{ t('rfqs.equity.topQuotes') }}</p>
         <p class="mt-1 text-2xl font-semibold">{{ equity.data.value?.remainingTopQuotes ?? '—' }}</p>
       </Card>
       <Card class="p-4">
-        <p class="text-xs text-muted-foreground">市场表现分</p>
+        <p class="text-xs text-muted-foreground">{{ t('rfqs.equity.score') }}</p>
         <p class="mt-1 text-2xl font-semibold">{{ equity.data.value?.score ?? '—' }}</p>
       </Card>
     </div>
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
       <Button :variant="source === 'search' ? 'default' : 'outline'" @click="source = 'search'">
-        <Search class="size-4" />RFQ 市场
+        <Search class="size-4" />{{ t('rfqs.market') }}
       </Button>
       <Button :variant="source === 'recommend' ? 'default' : 'outline'" @click="source = 'recommend'">
-        <Sparkles class="size-4" />推荐 RFQ
+        <Sparkles class="size-4" />{{ t('rfqs.recommended') }}
       </Button>
       <div v-if="source === 'search'" class="relative min-w-64 flex-1">
         <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-        <Input v-model="keywords" class="pl-9" placeholder="搜索采购标题或描述" @keyup.enter="applySearch" />
+        <Input
+          v-model="keywords"
+          class="pl-9"
+          :placeholder="t('rfqs.searchPlaceholder')"
+          @keyup.enter="applySearch"
+        />
       </div>
       <Input
         v-if="source === 'search'"
         v-model="country"
         class="w-32"
-        placeholder="国家代码"
+        :placeholder="t('rfqs.countryPlaceholder')"
         @keyup.enter="applySearch"
       />
       <label v-if="source === 'search'" class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input v-model="unquotedOnly" type="checkbox" />仅看可报价
+        <input v-model="unquotedOnly" type="checkbox" />{{ t('rfqs.unquotedOnly') }}
       </label>
       <Button v-if="source === 'search'" variant="outline" @click="applySearch">
-        <Search class="size-4" />查询
+        <Search class="size-4" />{{ t('rfqs.search') }}
       </Button>
     </div>
 
@@ -520,27 +538,27 @@ const columns: DataColumn<RfqSummary>[] = [
         :total-rows="rfqs.data.value?.total ?? 0"
         :page-size-options="[10, 20]"
         :pagination-disabled="rfqs.isFetching.value"
-        empty-text="没有匹配的 RFQ"
+        :empty-text="t('rfqs.noMatch')"
         min-width="840px"
         :get-row-key="(rfq) => rfq.id"
         :active-row-key="rfqSheetOpen ? selectedRfqId : undefined"
-        :row-aria-label="(rfq) => `查看 RFQ ${rfq.subject}`"
+        :row-aria-label="(rfq) => t('rfqs.view', { subject: rfq.subject })"
         @row-activate="selectRfq"
       />
     </QueryState>
 
     <Sheet
       :open="rfqSheetOpen"
-      :title="detail.data.value?.subject ?? selectedSummary?.subject ?? 'RFQ 详情'"
+      :title="detail.data.value?.subject ?? selectedSummary?.subject ?? t('rfqs.detailTitle')"
       :description="selectedRfqId ? `RFQ ${selectedRfqId}` : undefined"
       @update:open="rfqSheetOpen = $event"
     >
       <template #toolbar>
         <div class="flex flex-wrap items-center justify-between gap-2">
           <Badge :variant="detail.data.value?.recommended ? 'success' : 'outline'">
-            {{ detail.data.value?.recommended ? '推荐 RFQ' : 'RFQ 市场' }}
+            {{ detail.data.value?.recommended ? t('rfqs.recommended') : t('rfqs.market') }}
           </Badge>
-          <span class="text-xs text-muted-foreground">详情与报价草稿集中在当前侧栏</span>
+          <span class="text-xs text-muted-foreground">{{ t('rfqs.sidebarDescription') }}</span>
         </div>
       </template>
 
@@ -548,8 +566,10 @@ const columns: DataColumn<RfqSummary>[] = [
         <Card class="p-5">
           <div class="flex items-start justify-between gap-3">
             <div>
-              <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">RFQ 详情</p>
-              <p class="mt-1 text-sm text-muted-foreground">采购要求、贸易条款和买家附件</p>
+              <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {{ t('rfqs.detail.label') }}
+              </p>
+              <p class="mt-1 text-sm text-muted-foreground">{{ t('rfqs.detail.description') }}</p>
             </div>
           </div>
           <QueryState
@@ -559,28 +579,28 @@ const columns: DataColumn<RfqSummary>[] = [
             @retry="detail.refetch()"
           >
             <p class="mt-4 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-              {{ detail.data.value?.description || '文档响应未提供详细描述。' }}
+              {{ detail.data.value?.description || t('rfqs.detail.noDescription') }}
             </p>
             <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2">
               <div>
-                <dt class="text-xs text-muted-foreground">类目</dt>
+                <dt class="text-xs text-muted-foreground">{{ t('rfqs.detail.category') }}</dt>
                 <dd>{{ detail.data.value?.categoryName ?? '—' }}</dd>
               </div>
               <div>
-                <dt class="text-xs text-muted-foreground">目的港</dt>
+                <dt class="text-xs text-muted-foreground">{{ t('rfqs.detail.destinationPort') }}</dt>
                 <dd>{{ detail.data.value?.destinationPort ?? '—' }}</dd>
               </div>
               <div>
-                <dt class="text-xs text-muted-foreground">付款条款</dt>
+                <dt class="text-xs text-muted-foreground">{{ t('rfqs.detail.paymentTerms') }}</dt>
                 <dd>{{ detail.data.value?.paymentTerms ?? '—' }}</dd>
               </div>
               <div>
-                <dt class="text-xs text-muted-foreground">运输条款</dt>
+                <dt class="text-xs text-muted-foreground">{{ t('rfqs.detail.shippingTerms') }}</dt>
                 <dd>{{ detail.data.value?.shippingTerms ?? '—' }}</dd>
               </div>
             </dl>
             <div v-if="detail.data.value?.attachments.length" class="mt-5 rounded-lg bg-muted p-3">
-              <p class="text-xs font-medium text-muted-foreground">买家附件</p>
+              <p class="text-xs font-medium text-muted-foreground">{{ t('rfqs.detail.attachments') }}</p>
               <a
                 v-for="attachment in detail.data.value.attachments"
                 :key="attachment.url"
@@ -598,69 +618,74 @@ const columns: DataColumn<RfqSummary>[] = [
         <Card class="p-5">
           <div class="flex items-start justify-between gap-3">
             <div>
-              <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">报价草稿</p>
-              <p class="mt-1 text-sm text-muted-foreground">草稿仅保存在当前浏览器，不会提前出网。</p>
+              <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {{ t('rfqs.draft.title') }}
+              </p>
+              <p class="mt-1 text-sm text-muted-foreground">{{ t('rfqs.draft.description') }}</p>
             </div>
-            <Badge v-if="draftSaved" variant="success">已保存</Badge>
+            <Badge v-if="draftSaved" variant="success">{{ t('rfqs.draft.saved') }}</Badge>
           </div>
 
           <div
             v-if="realMutationBlocked"
             class="mt-4 flex gap-2 rounded-lg border border-amber-300 p-3 text-sm"
           >
-            <ShieldAlert class="mt-0.5 size-4 shrink-0 text-amber-600" />可保存本地草稿；{{
-              mutationAvailabilityReason
-            }}。
+            <ShieldAlert class="mt-0.5 size-4 shrink-0 text-amber-600" />{{
+              t('rfqs.mutation.localAvailable', { reason: mutationAvailabilityReason })
+            }}
           </div>
 
           <div class="mt-4 grid gap-3 sm:grid-cols-2">
             <label class="text-xs text-muted-foreground sm:col-span-2"
-              >给买家留言
+              >{{ t('rfqs.fields.message') }}
               <textarea
                 v-model="draft.message"
                 class="mt-1 min-h-24 w-full rounded-md border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
             </label>
             <label class="text-xs text-muted-foreground"
-              >商品名称<Input v-model="draft.itemName" class="mt-1"
+              >{{ t('rfqs.fields.itemName') }}<Input v-model="draft.itemName" class="mt-1"
             /></label>
             <label class="text-xs text-muted-foreground"
-              >有效期<Input v-model="draft.expiresAt" class="mt-1" type="date"
+              >{{ t('rfqs.fields.expiresAt') }}<Input v-model="draft.expiresAt" class="mt-1" type="date"
             /></label>
             <label class="text-xs text-muted-foreground"
-              >单价<Input v-model="draft.unitPrice" class="mt-1" placeholder="599.00"
+              >{{ t('rfqs.fields.unitPrice')
+              }}<Input v-model="draft.unitPrice" class="mt-1" placeholder="599.00"
             /></label>
             <label class="text-xs text-muted-foreground"
-              >币种<Input v-model="draft.currency" class="mt-1"
+              >{{ t('rfqs.fields.currency') }}<Input v-model="draft.currency" class="mt-1"
             /></label>
             <label class="text-xs text-muted-foreground"
-              >数量<Input v-model="draft.quantity" class="mt-1"
+              >{{ t('rfqs.fields.quantity') }}<Input v-model="draft.quantity" class="mt-1"
             /></label>
             <label class="text-xs text-muted-foreground"
-              >数量单位<Input v-model="draft.quantityUnit" class="mt-1"
+              >{{ t('rfqs.fields.quantityUnit') }}<Input v-model="draft.quantityUnit" class="mt-1"
             /></label>
             <label class="text-xs text-muted-foreground"
-              >贸易条款<Input v-model="draft.shippingTerms" class="mt-1"
+              >{{ t('rfqs.fields.shippingTerms') }}<Input v-model="draft.shippingTerms" class="mt-1"
             /></label>
             <label class="text-xs text-muted-foreground"
-              >装运港<Input v-model="draft.port" class="mt-1"
+              >{{ t('rfqs.fields.port') }}<Input v-model="draft.port" class="mt-1"
             /></label>
             <label class="text-xs text-muted-foreground"
-              >付款条款<Input v-model="draft.paymentTerms" class="mt-1"
+              >{{ t('rfqs.fields.paymentTerms') }}<Input v-model="draft.paymentTerms" class="mt-1"
             /></label>
             <label class="text-xs text-muted-foreground"
-              >备注<Input v-model="draft.remark" class="mt-1"
+              >{{ t('rfqs.fields.remark') }}<Input v-model="draft.remark" class="mt-1"
             /></label>
           </div>
 
           <div class="mt-4 flex flex-wrap items-center gap-2">
-            <Button variant="outline" @click="saveDraft"><Save class="size-4" />保存草稿</Button>
+            <Button variant="outline" @click="saveDraft"
+              ><Save class="size-4" />{{ t('rfqs.draft.save') }}</Button
+            >
             <ActionTooltip :disabled="attachmentMutationBlocked" :reason="attachmentDisabledReason">
               <label
                 class="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border bg-background px-4 text-sm font-medium hover:bg-accent"
                 :class="attachmentMutationBlocked ? 'pointer-events-none opacity-50' : ''"
               >
-                <Paperclip class="size-4" />{{ attachmentName || '报价附件' }}
+                <Paperclip class="size-4" />{{ attachmentName || t('rfqs.draft.attachment') }}
                 <input
                   type="file"
                   class="sr-only"
@@ -671,7 +696,7 @@ const columns: DataColumn<RfqSummary>[] = [
             </ActionTooltip>
             <ActionTooltip :disabled="Boolean(quotationDisabledReason)" :reason="quotationDisabledReason">
               <Button :disabled="Boolean(quotationDisabledReason)" @click="submitQuotation.mutate()">
-                <Send class="size-4" />提交报价
+                <Send class="size-4" />{{ t('rfqs.draft.submit') }}
               </Button>
             </ActionTooltip>
           </div>
@@ -679,7 +704,7 @@ const columns: DataColumn<RfqSummary>[] = [
             v-if="!quotationMutationBlocked && missingQuotationFields.length"
             class="mt-2 text-xs text-amber-700 dark:text-amber-400"
           >
-            提交前还需填写：{{ missingQuotationFields.join('、') }}。
+            {{ t('rfqs.draft.missing', { fields: missingQuotationFields.join(', ') }) }}
           </p>
           <p v-if="attachmentError" class="mt-2 text-sm text-destructive">{{ attachmentError }}</p>
           <ErrorNotice
@@ -698,8 +723,11 @@ const columns: DataColumn<RfqSummary>[] = [
             v-if="submitQuotation.data.value"
             class="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800"
           >
-            {{ mode === 'mock' ? '演示报价提交成功' : '报价提交成功' }}，报价 ID：{{
-              submitQuotation.data.value.quotationId
+            {{
+              t('rfqs.draft.quotationId', {
+                message: mode === 'mock' ? t('rfqs.draft.demoSuccess') : t('rfqs.draft.success'),
+                id: submitQuotation.data.value.quotationId
+              })
             }}
           </p>
         </Card>
