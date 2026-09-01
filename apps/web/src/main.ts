@@ -18,7 +18,7 @@ import {
   CompositeProductDescriptionTemplateClient,
   MemoryProductDescriptionTemplateClient
 } from '@one-vegetable/core/templates';
-import { OneVegetableApp } from '@one-vegetable/ui';
+import { OneVegetableApp, uiI18n } from '@one-vegetable/ui';
 import '@one-vegetable/ui/styles.css';
 
 import { readWebGatewayMode, resolveWebBffBaseUrl } from './runtime-config';
@@ -111,6 +111,7 @@ const app = createApp(OneVegetableApp, {
   ...(productMutationJobs ? { productMutationJobs } : {}),
   operationAvailability
 });
+app.use(uiI18n);
 app.use(VueQueryPlugin, {
   queryClient: new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000 } } })
 });

@@ -9,6 +9,7 @@ import {
   EXTENSION_SOCIAL_BACKEND_STORAGE_KEY,
   approximateStorageBytes,
   APP_PREFERENCES_STORAGE_KEY,
+  LEGACY_APP_PREFERENCES_STORAGE_KEY,
   completeOnboarding,
   createLocalDataInventory,
   normalizeGatewayError,
@@ -332,7 +333,9 @@ const localData: LocalDataRepository = {
           key !== EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY &&
           key !== EXTENSION_SOCIAL_BACKEND_STORAGE_KEY
       ),
-      ...localEntries.filter(([key]) => key === APP_PREFERENCES_STORAGE_KEY)
+      ...localEntries.filter(
+        ([key]) => key === APP_PREFERENCES_STORAGE_KEY || key === LEGACY_APP_PREFERENCES_STORAGE_KEY
+      )
     ]);
     const categories: LocalDataCategory[] = [
       {
@@ -630,7 +633,7 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 async function mountOptionsApp(): Promise<void> {
-  const [{ createApp }, { QueryClient, VueQueryPlugin }, { OneVegetableApp }] = await Promise.all([
+  const [{ createApp }, { QueryClient, VueQueryPlugin }, { OneVegetableApp, uiI18n }] = await Promise.all([
     import('vue'),
     import('@tanstack/vue-query'),
     import('@one-vegetable/ui')
@@ -652,6 +655,7 @@ async function mountOptionsApp(): Promise<void> {
     operationAvailability,
     mode: 'extension'
   });
+  app.use(uiI18n);
   app.use(VueQueryPlugin, {
     queryClient: new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000 } } })
   });

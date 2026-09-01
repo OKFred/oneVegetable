@@ -138,7 +138,7 @@ const editorStepIds = new Set<ProductEditorStepId>(PRODUCT_EDITOR_STEP_IDS);
 const PRODUCT_SCORE_DISPLAY_MAX = 6;
 
 const { gateway, mode, productMutationJobs } = useServices();
-const { language: preferredLanguage } = useAppPreferences();
+const { alibabaLanguage: preferredLanguage } = useAppPreferences();
 const queryClient = useQueryClient();
 const workspace = ref<Workspace>('list');
 const subject = ref('');

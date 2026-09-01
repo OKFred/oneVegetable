@@ -267,7 +267,8 @@ describe('SettingsView diagnostics', () => {
     await language.setValue('zh_CN');
 
     expect(JSON.parse(localStorage.getItem(APP_PREFERENCES_STORAGE_KEY) ?? '{}')).toEqual({
-      language: 'zh_CN',
+      uiLocale: 'en-US',
+      alibabaLanguage: 'zh_CN',
       theme: 'system'
     });
     expect(wrapper.text()).toContain('接口语言偏好已保存为 zh_CN');

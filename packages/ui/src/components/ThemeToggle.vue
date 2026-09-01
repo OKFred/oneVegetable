@@ -5,21 +5,27 @@ import { Moon, Sun, SunMoon } from '@lucide/vue';
 import type { AppTheme } from '@one-vegetable/core';
 
 import Button from './ui/Button.vue';
+import { useUiI18n } from '../i18n';
 import { useAppPreferences } from '../lib/preferences';
 
 interface ThemeOption {
   value: AppTheme;
-  label: string;
+  labelKey: string;
   icon: Component;
 }
 
 const options: ThemeOption[] = [
-  { value: 'light', label: '浅色', icon: Sun },
-  { value: 'dark', label: '深色', icon: Moon },
-  { value: 'system', label: '跟随系统', icon: SunMoon }
+  { value: 'light', labelKey: 'common.theme.light', icon: Sun },
+  { value: 'dark', labelKey: 'common.theme.dark', icon: Moon },
+  { value: 'system', labelKey: 'common.theme.system', icon: SunMoon }
 ];
-const fallbackOption: ThemeOption = options[2] ?? { value: 'system', label: '跟随系统', icon: SunMoon };
+const fallbackOption: ThemeOption = options[2] ?? {
+  value: 'system',
+  labelKey: 'common.theme.system',
+  icon: SunMoon
+};
 const { theme } = useAppPreferences();
+const { t } = useUiI18n();
 const currentIndex = computed(() =>
   Math.max(
     0,
@@ -28,8 +34,11 @@ const currentIndex = computed(() =>
 );
 const currentOption = computed(() => options[currentIndex.value] ?? fallbackOption);
 const nextOption = computed(() => options[(currentIndex.value + 1) % options.length] ?? fallbackOption);
-const accessibleLabel = computed(
-  () => `界面主题：${currentOption.value.label}；点击切换为${nextOption.value.label}`
+const accessibleLabel = computed(() =>
+  t('common.theme.switch', {
+    current: t(currentOption.value.labelKey),
+    next: t(nextOption.value.labelKey)
+  })
 );
 
 function cycleTheme(): void {

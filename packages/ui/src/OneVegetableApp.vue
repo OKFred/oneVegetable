@@ -47,8 +47,10 @@ import { APP_VERSION } from '@one-vegetable/core/version';
 import Button from './components/ui/Button.vue';
 import Sonner from './components/ui/Sonner.vue';
 import AuthGate from './components/AuthGate.vue';
+import LanguageToggle from './components/LanguageToggle.vue';
 import OnboardingDialog from './components/OnboardingDialog.vue';
 import ThemeToggle from './components/ThemeToggle.vue';
+import { useUiI18n } from './i18n';
 import { pageHash, parsePageHash, type PageId } from './lib/hash-router';
 import { resolveDataSource, type RuntimeState } from './lib/data-source';
 import { applyAppTheme, useAppPreferences } from './lib/preferences';
@@ -98,25 +100,26 @@ provideServices({
 
 interface NavigationItem {
   id: PageId;
-  label: string;
+  labelKey: string;
   icon: Component;
 }
 interface FocusableButton {
   focus: () => void;
 }
 const baseItems: NavigationItem[] = [
-  { id: 'dashboard', label: '总览', icon: Home },
-  { id: 'products', label: '商品', icon: Boxes },
-  { id: 'photos', label: '图库', icon: Image },
-  { id: 'rfqs', label: 'RFQ', icon: Handshake },
-  { id: 'orders', label: '订单', icon: ShoppingCart },
-  { id: 'logistics', label: '国际物流', icon: Truck },
-  { id: 'insights', label: '数据洞察', icon: BarChart3 },
-  { id: 'capabilities', label: 'API 能力', icon: PlugZap },
-  { id: 'admin', label: '管理后台', icon: ShieldCheck },
-  { id: 'releases', label: '版本更新', icon: History },
-  { id: 'settings', label: '设置', icon: Settings }
+  { id: 'dashboard', labelKey: 'shell.navigation.dashboard', icon: Home },
+  { id: 'products', labelKey: 'shell.navigation.products', icon: Boxes },
+  { id: 'photos', labelKey: 'shell.navigation.photos', icon: Image },
+  { id: 'rfqs', labelKey: 'shell.navigation.rfqs', icon: Handshake },
+  { id: 'orders', labelKey: 'shell.navigation.orders', icon: ShoppingCart },
+  { id: 'logistics', labelKey: 'shell.navigation.logistics', icon: Truck },
+  { id: 'insights', labelKey: 'shell.navigation.insights', icon: BarChart3 },
+  { id: 'capabilities', labelKey: 'shell.navigation.capabilities', icon: PlugZap },
+  { id: 'admin', labelKey: 'shell.navigation.admin', icon: ShieldCheck },
+  { id: 'releases', labelKey: 'shell.navigation.releases', icon: History },
+  { id: 'settings', labelKey: 'shell.navigation.settings', icon: Settings }
 ];
+const { t } = useUiI18n();
 const session = ref<ControlSession | null>(null);
 const dataSource = computed(() => resolveDataSource(props.mode, runtime));
 const { theme: themePreference } = useAppPreferences();
@@ -264,9 +267,19 @@ async function logout(): Promise<void> {
   <div class="min-h-screen bg-background text-foreground">
     <Sonner :theme="darkTheme ? 'dark' : 'light'" />
     <div v-if="authLoading" class="grid min-h-screen place-items-center text-sm text-muted-foreground">
-      正在检查本地会话…
+      {{ t('shell.checkingSession') }}
     </div>
-    <AuthGate v-else-if="mode === 'bff' && control && !session" @authenticated="handleAuthenticated" />
+    <div
+      v-if="authLoading || (mode === 'bff' && control && !session) || !workspaceReady"
+      class="fixed right-4 top-4 z-[80] flex items-center gap-1"
+    >
+      <LanguageToggle />
+      <ThemeToggle />
+    </div>
+    <AuthGate
+      v-if="!authLoading && mode === 'bff' && control && !session"
+      @authenticated="handleAuthenticated"
+    />
     <OnboardingDialog @ready="handleOnboardingReady" />
     <template v-if="!authLoading && (mode !== 'bff' || session) && workspaceReady">
       <aside
@@ -282,13 +295,16 @@ async function logout(): Promise<void> {
             ><Sprout class="size-5"
           /></span>
           <div>
-            <p class="font-semibold">一根青菜</p>
+            <p class="font-semibold">{{ t('shell.brand') }}</p>
             <p class="text-[10px] uppercase tracking-[0.18em] text-slate-400">
               oneVegetable {{ APP_VERSION }}
             </p>
           </div>
         </div>
-        <nav class="max-h-[calc(100vh-12rem)] space-y-1 overflow-y-auto p-3" aria-label="主导航">
+        <nav
+          class="max-h-[calc(100vh-12rem)] space-y-1 overflow-y-auto p-3"
+          :aria-label="t('shell.primaryNavigation')"
+        >
           <a
             v-for="item in items"
             :key="item.id"
@@ -302,7 +318,7 @@ async function logout(): Promise<void> {
             "
             @click="sidebarOpen = false"
           >
-            <component :is="item.icon" class="size-4" />{{ item.label }}
+            <component :is="item.icon" class="size-4" />{{ t(item.labelKey) }}
           </a>
         </nav>
         <div class="absolute inset-x-3 bottom-4 rounded-lg border border-slate-800 bg-slate-900 p-3">
@@ -323,21 +339,22 @@ async function logout(): Promise<void> {
             variant="ghost"
             size="icon"
             class="lg:hidden"
-            aria-label="打开主导航"
+            :aria-label="t('shell.openNavigation')"
             aria-controls="app-primary-navigation"
             :aria-expanded="sidebarOpen"
             @click="openSidebar"
             ><Menu class="size-5"
           /></Button>
-          <p class="hidden text-sm text-muted-foreground sm:block">国际站开放平台运营工作台</p>
+          <p class="hidden text-sm text-muted-foreground sm:block">{{ t('shell.workspaceTitle') }}</p>
           <div class="flex items-center gap-2 text-xs text-muted-foreground">
+            <LanguageToggle />
             <ThemeToggle />
             <span data-testid="data-source-status" class="inline-flex items-center gap-2">
               <span class="size-2 rounded-full" :class="dataSource.dotClass" />{{ dataSource.label }}
             </span>
             <span v-if="session">{{ session.principal.username }}</span>
             <Button v-if="mode === 'bff' && session" variant="outline" size="sm" @click="logout">
-              退出
+              {{ t('shell.logout') }}
             </Button>
           </div>
         </header>
@@ -347,7 +364,7 @@ async function logout(): Promise<void> {
         <button
           v-if="sidebarOpen"
           class="fixed inset-0 z-30 bg-black/40 lg:hidden"
-          aria-label="关闭导航"
+          :aria-label="t('shell.closeNavigation')"
           @click="closeSidebar(true)"
         />
       </Transition>

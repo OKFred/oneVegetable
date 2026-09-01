@@ -42,7 +42,7 @@ type Workspace = 'orders' | 'finance' | 'addresses' | 'assurance';
 type OrderDrawerTab = 'overview' | 'payment';
 
 const { gateway, mode } = useServices();
-const { language: preferredLanguage } = useAppPreferences();
+const { alibabaLanguage: preferredLanguage } = useAppPreferences();
 const workspace = ref<Workspace>('orders');
 const status = ref('');
 const buyerLoginId = ref('');

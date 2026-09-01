@@ -17,6 +17,10 @@ describe('ThemeToggle', () => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn()
     }));
+    localStorage.setItem(
+      APP_PREFERENCES_STORAGE_KEY,
+      JSON.stringify({ uiLocale: 'zh-CN', alibabaLanguage: 'en_US', theme: 'system' })
+    );
   });
 
   afterEach(() => {
@@ -39,7 +43,8 @@ describe('ThemeToggle', () => {
     await trigger.trigger('click');
     expect(trigger.attributes('aria-label')).toBe('界面主题：跟随系统；点击切换为浅色');
     expect(JSON.parse(localStorage.getItem(APP_PREFERENCES_STORAGE_KEY) ?? '{}')).toEqual({
-      language: 'en_US',
+      uiLocale: 'zh-CN',
+      alibabaLanguage: 'en_US',
       theme: 'system'
     });
     wrapper.unmount();

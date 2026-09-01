@@ -58,7 +58,7 @@ const {
   extensionSocialBackend,
   mode
 } = useServices();
-const { language: preferredLanguage } = useAppPreferences();
+const { alibabaLanguage: preferredLanguage } = useAppPreferences();
 const signMethods: SignMethod[] = ['hmac', 'md5', 'hmac-sha256'];
 const model = ref<GatewaySettings>({
   appKey: '',

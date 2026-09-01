@@ -57,7 +57,10 @@ describe('OrdersView', () => {
   });
 
   it('uses the preferred language for fulfillment and address Schema requests', async () => {
-    localStorage.setItem(APP_PREFERENCES_STORAGE_KEY, JSON.stringify({ language: 'en_US' }));
+    localStorage.setItem(
+      APP_PREFERENCES_STORAGE_KEY,
+      JSON.stringify({ uiLocale: 'zh-CN', alibabaLanguage: 'en_US', theme: 'system' })
+    );
     const request = vi.spyOn(MockGatewayClient.prototype, 'request');
     const wrapper = mountView();
     await flushPromises();

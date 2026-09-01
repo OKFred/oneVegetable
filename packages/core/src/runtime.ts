@@ -23,7 +23,7 @@ export {
   validateVaultPassphrase
 } from './credential-vault';
 export { ALIBABA_GATEWAY } from './signing';
-export { APP_PREFERENCES_STORAGE_KEY } from './preferences';
+export { APP_PREFERENCES_STORAGE_KEY, LEGACY_APP_PREFERENCES_STORAGE_KEY } from './preferences';
 export { StaticOperationAvailabilityClient } from './operation-availability';
 export { ExtensionProductMutationJobClient } from './product-mutation-job-extension';
 export { QUALIFICATION_GATED_OPERATION_IDS } from './operation-id';
