@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
 import { strFromU8, unzipSync } from 'fflate';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import type { Photo } from '@one-vegetable/core';
+import type { GatewayClient, Photo } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import {
@@ -74,5 +74,23 @@ describe('social share package', () => {
       'mock-product-asset.jpg',
       'mock-product-asset-2.jpg'
     ]);
+  });
+
+  it('stops waiting for a gateway message that never returns', async () => {
+    vi.useFakeTimers();
+    try {
+      const gateway: Pick<GatewayClient, 'request'> = {
+        request: () => new Promise<never>(() => undefined)
+      };
+      const preparation = prepareSocialShareAssets([photo], gateway, undefined, {
+        timeoutMilliseconds: 25
+      });
+      const assertion = expect(preparation).rejects.toThrow('原图 solar station.jpg 准备超时，请重试');
+
+      await vi.advanceTimersByTimeAsync(25);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

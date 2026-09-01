@@ -3,6 +3,7 @@
 import { defineComponent, h } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { toast } from 'vue-sonner';
 
 import {
   ALIBABA_GATEWAY,
@@ -16,6 +17,10 @@ import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import SettingsView from '../src/views/SettingsView.vue';
 import { provideServices } from '../src/lib/services';
+
+vi.mock('vue-sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn() }
+}));
 
 const anchorClick = vi.fn();
 const createObjectUrl = vi.fn(() => 'blob:diagnostics');
@@ -161,16 +166,14 @@ describe('SettingsView diagnostics', () => {
     wrapper.unmount();
   });
 
-  it('accepts a six-character passphrase when creating the extension vault', async () => {
+  it('saves credentials and settings in one action when creating the extension vault', async () => {
     const wrapper = mountView('extension', 'empty');
     await flushPromises();
 
     await wrapper.get('input[aria-label="设置保护口令"]').setValue('123456');
     await wrapper.get('input[aria-label="确认保护口令"]').setValue('123456');
-    const createButton = wrapper
-      .findAll('button')
-      .find((candidate) => candidate.text().includes('加密保存凭证'));
-    if (!createButton) throw new Error('Missing vault creation button');
+    const createButton = wrapper.findAll('button').find((candidate) => candidate.text().includes('保存设置'));
+    if (!createButton) throw new Error('Missing settings save button');
     await createButton.trigger('click');
     await flushPromises();
 
@@ -178,7 +181,37 @@ describe('SettingsView diagnostics', () => {
       '123456',
       expect.objectContaining({ endpoint: ALIBABA_GATEWAY, signMethod: 'hmac' })
     );
-    expect(wrapper.text()).toContain('凭证已加密保存');
+    expect(wrapper.text()).toContain('凭证与设置已加密保存');
+    expect(toast.success).toHaveBeenCalledWith('凭证与设置已保存');
+    expect(wrapper.text()).not.toContain('加密保存凭证');
+    wrapper.unmount();
+  });
+
+  it('shows a busy state while the combined settings save is running', async () => {
+    let finishCreate: ((status: CredentialVaultStatus) => void) | undefined;
+    createVault.mockImplementationOnce(
+      (_passphrase, _settings) =>
+        new Promise((resolve) => {
+          finishCreate = resolve;
+        })
+    );
+    const wrapper = mountView('extension', 'empty');
+    await flushPromises();
+
+    await wrapper.get('input[aria-label="设置保护口令"]').setValue('123456');
+    await wrapper.get('input[aria-label="确认保护口令"]').setValue('123456');
+    const saveButton = wrapper.findAll('button').find((candidate) => candidate.text().includes('保存设置'));
+    if (!saveButton) throw new Error('Missing settings save button');
+    await saveButton.trigger('click');
+
+    expect(saveButton.text()).toContain('保存中');
+    expect(saveButton.attributes('disabled')).toBeDefined();
+    if (!finishCreate) throw new Error('Vault creation did not start');
+    finishCreate(vaultStatus('unlocked'));
+    await flushPromises();
+
+    expect(saveButton.text()).toContain('保存设置');
+    expect(toast.success).toHaveBeenCalledWith('凭证与设置已保存');
     wrapper.unmount();
   });
 
@@ -241,21 +274,12 @@ describe('SettingsView diagnostics', () => {
     wrapper.unmount();
   });
 
-  it('persists and applies the preferred interface theme', async () => {
+  it('keeps interface theme controls out of connection settings', async () => {
     const wrapper = mountView();
     await flushPromises();
 
-    const theme = wrapper.get('select[aria-label="主题偏好"]');
-    expect((theme.element as HTMLSelectElement).value).toBe('system');
-    await theme.setValue('dark');
-
-    expect(document.documentElement.classList.contains('dark')).toBe(true);
-    expect(document.documentElement.dataset.theme).toBe('dark');
-    expect(JSON.parse(localStorage.getItem(APP_PREFERENCES_STORAGE_KEY) ?? '{}')).toEqual({
-      language: 'en_US',
-      theme: 'dark'
-    });
-    expect(wrapper.text()).toContain('界面主题已切换为深色');
+    expect(wrapper.find('select[aria-label="主题偏好"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('界面主题');
     wrapper.unmount();
   });
 

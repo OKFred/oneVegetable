@@ -12,7 +12,10 @@ import {
 const policies = {
   alibaba: { allowedOrigins: ['https://eco.taobao.com'], maxResponseBytes: 32 },
   bff: { allowedOrigins: ['https://api.example.com'], maxRequestBytes: 32 },
-  'external-photo': { allowUrl: (url: URL) => url.hostname === 'images.example.com' }
+  'external-photo': {
+    allowUrl: (url: URL) => url.hostname === 'images.example.com',
+    cache: 'no-store' as const
+  }
 } as const;
 
 describe('NetworkManager', () => {
@@ -94,6 +97,19 @@ describe('NetworkManager', () => {
 
     const call = send.mock.calls[0] as [RequestInfo | URL, RequestInit] | undefined;
     expect(call?.[1].redirect).toBe('manual');
+  });
+
+  it('applies a service cache policy to the native request', async () => {
+    const send = vi.fn().mockResolvedValue(Response.json({ ok: true }));
+    const manager = createManager(send);
+
+    await manager.request({
+      service: 'external-photo',
+      url: 'https://images.example.com/original.jpg'
+    });
+
+    const call = send.mock.calls[0] as [RequestInfo | URL, RequestInit] | undefined;
+    expect(call?.[1].cache).toBe('no-store');
   });
 
   it('keeps GatewayException intact', () => {

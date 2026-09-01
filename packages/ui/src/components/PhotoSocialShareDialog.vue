@@ -10,6 +10,7 @@ import {
   type Photo,
   type SocialPublishingClient,
   type SocialDestination,
+  type SocialPostPermalink,
   type SocialPublishJob
 } from '@one-vegetable/core';
 
@@ -44,6 +45,7 @@ const officialBusy = ref(false);
 const officialError = ref<unknown>(null);
 const publishConfirmationOpen = ref(false);
 const publishJob = ref<SocialPublishJob | null>(null);
+const postPermalink = ref<SocialPostPermalink | null>(null);
 const prepareIdempotencyKey = ref(globalThis.crypto.randomUUID());
 let advanceTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 
@@ -72,7 +74,8 @@ const officialIssue = computed(() => {
     return mode === 'extension' ? '请先在插件设置中配对社交发布后端。' : '当前后端未启用社交发布。';
   }
   if (props.photos.length !== 1) return '官方 API 每次只支持选择 1 张图片。';
-  if (preparing.value || assets.value.length !== 1) return '正在准备原图。';
+  if (preparing.value) return '正在准备原图。';
+  if (assets.value.length !== 1) return '原图尚未准备完成。';
   const destination = selectedDestination.value;
   if (!destination) return '请选择发布目标。';
   if (!destination.canPublish) return `该目标不可发布：${destination.unavailableReasonCode ?? '权限不足'}`;
@@ -112,8 +115,16 @@ watch(
 
 watch([destinationId, caption, selectionKey], () => {
   prepareIdempotencyKey.value = globalThis.crypto.randomUUID();
+  postPermalink.value = null;
   if (publishJob.value?.status === 'prepared') publishJob.value = null;
 });
+
+watch(
+  () => publishJob.value?.id,
+  (jobId, previousJobId) => {
+    if (jobId !== previousJobId) postPermalink.value = null;
+  }
+);
 
 watch(
   () => publishJob.value,
@@ -272,6 +283,21 @@ async function advanceOfficialPublish(): Promise<void> {
   }
 }
 
+async function getOfficialPostPermalink(): Promise<void> {
+  const job = publishJob.value;
+  if (job?.status !== 'published' || !social?.getSocialPostPermalink || officialBusy.value) return;
+  officialBusy.value = true;
+  officialError.value = null;
+  try {
+    postPermalink.value = await social.getSocialPostPermalink(job.id);
+    toast.success('已获取平台内容链接');
+  } catch (error: unknown) {
+    officialError.value = error;
+  } finally {
+    officialBusy.value = false;
+  }
+}
+
 function scheduleAdvance(job: SocialPublishJob | null): void {
   clearAdvanceTimer();
   if (job?.platform !== 'instagram' || job.status !== 'processing') return;
@@ -370,6 +396,13 @@ function toError(error: unknown): Error {
           <Button variant="outline" :disabled="assets.length === 0" @click="downloadSharePackage">
             <Download class="size-4" />下载 ZIP 分享包
           </Button>
+          <Button
+            v-if="assets.length === 0 && feedback?.kind === 'error' && selectionIssues.length === 0"
+            variant="outline"
+            @click="prepareAssets"
+          >
+            <RefreshCw class="size-4" />重新准备原图
+          </Button>
         </div>
       </section>
 
@@ -435,6 +468,29 @@ function toError(error: unknown): Error {
               <p v-if="publishJob.platformPostId" class="mt-2 text-xs text-muted-foreground">
                 平台发布 ID：{{ publishJob.platformPostId }}
               </p>
+              <div v-if="publishJob.status === 'published'" class="mt-3">
+                <a
+                  v-if="postPermalink"
+                  :href="postPermalink.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                >
+                  在 {{ postPermalink.platform === 'facebook' ? 'Facebook' : 'Instagram' }} 查看
+                  <ExternalLink class="size-3.5" />
+                </a>
+                <Button
+                  v-else
+                  variant="outline"
+                  size="sm"
+                  :disabled="officialBusy"
+                  @click="getOfficialPostPermalink"
+                >
+                  <LoaderCircle v-if="officialBusy" class="size-4 animate-spin" />
+                  <ExternalLink v-else class="size-4" />
+                  获取 {{ publishJob.platform === 'facebook' ? 'Facebook' : 'Instagram' }} 链接
+                </Button>
+              </div>
             </div>
             <div class="flex flex-wrap gap-2">
               <Button :disabled="officialBusy || Boolean(officialIssue)" @click="prepareOfficialPublish">

@@ -13,6 +13,8 @@ import { SqlMetaSocialRepository } from '../src/social-meta/repository';
 import { MetaSecretCipher } from '../src/social-meta/secret-cipher';
 import { MetaSocialService } from '../src/social-meta/service';
 
+import permalinkFixture from '../../../mock/data/social-meta/permalink.json';
+
 import type { NetworkTransport, SocialPlatform } from '@one-vegetable/core';
 import type { NodeDatabaseHandle } from '../src/db/node-database';
 
@@ -23,15 +25,25 @@ afterEach(() => {
 });
 
 describe('social publishing state machine', () => {
-  it('publishes one Facebook image once and reuses an identical idempotency key', async () => {
-    const transport = new RoutingTransport(() =>
-      jsonResponse({ id: 'photo-1', post_id: 'page-1_123' }, { 'x-fb-request-id': 'fb-request-1' })
+  it('publishes one Facebook image once and resolves its permalink only on request', async () => {
+    const transport = new RoutingTransport(({ method }) =>
+      method === 'GET'
+        ? jsonResponse(
+            { permalink_url: permalinkFixture.url },
+            { 'x-fb-request-id': 'fb-permalink-request-1' }
+          )
+        : jsonResponse({ id: 'photo-1', post_id: 'page-1_123' }, { 'x-fb-request-id': 'fb-request-1' })
     );
     const harness = await createHarness('facebook', transport);
     const input = prepareRequest(harness.destinationId, pngHeader(1200, 1000), 'image/png');
     const prepared = await harness.service.prepare(input, harness.actorId);
     const repeated = await harness.service.prepare(input, harness.actorId);
     const published = await harness.service.publish({
+      jobId: prepared.id,
+      requestId: createRequestId(),
+      actorId: harness.actorId
+    });
+    const permalink = await harness.service.getPermalink({
       jobId: prepared.id,
       requestId: createRequestId(),
       actorId: harness.actorId
@@ -43,15 +55,49 @@ describe('social publishing state machine', () => {
       platformPostId: 'page-1_123',
       platformRequestId: 'fb-request-1'
     });
-    expect(transport.requests).toHaveLength(1);
+    expect(permalink).toMatchObject({
+      platform: 'facebook',
+      platformPostId: 'page-1_123',
+      url: permalinkFixture.url,
+      platformRequestId: 'fb-permalink-request-1'
+    });
+    expect(transport.requests).toHaveLength(2);
     expect(transport.requests[0]?.url.pathname).toBe('/v26.0/page-1/photos');
     expect(transport.requests[0]?.body).toContain('published=true');
+    expect(transport.requests[1]?.url.pathname).toBe('/v26.0/page-1_123');
+    expect(transport.requests[1]?.url.searchParams.get('fields')).toBe('permalink_url');
     expect(JSON.stringify(published)).not.toContain('A concise caption');
     expect(published).not.toHaveProperty('encryptedCaption');
     const stored = harness.database.connection
       .prepare('SELECT encrypted_caption FROM social_publish_jobs WHERE id = ?')
       .get(prepared.id) as { encrypted_caption: string };
     expect(stored.encrypted_caption).not.toContain('A concise caption');
+  });
+
+  it('rejects a non-Meta permalink returned by Graph API', async () => {
+    const transport = new RoutingTransport(({ method }) =>
+      method === 'GET'
+        ? jsonResponse({ permalink_url: 'https://malicious.example/post/1' })
+        : jsonResponse({ id: 'photo-1', post_id: 'page-1_123' })
+    );
+    const harness = await createHarness('facebook', transport);
+    const prepared = await harness.service.prepare(
+      prepareRequest(harness.destinationId, pngHeader(1200, 1000), 'image/png'),
+      harness.actorId
+    );
+    await harness.service.publish({
+      jobId: prepared.id,
+      requestId: createRequestId(),
+      actorId: harness.actorId
+    });
+
+    await expect(
+      harness.service.getPermalink({
+        jobId: prepared.id,
+        requestId: createRequestId(),
+        actorId: harness.actorId
+      })
+    ).rejects.toMatchObject({ code: 'META_PERMALINK_INVALID', status: 502 });
   });
 
   it('marks an ambiguous Facebook timeout unknown and never sends it again', async () => {

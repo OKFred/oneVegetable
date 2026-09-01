@@ -241,6 +241,18 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       deviceToken: { type: ['string', 'null'], minLength: 47, maxLength: 47 }
     }
   };
+  schemas.SocialPostPermalink = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['platform', 'platformPostId', 'url', 'platformRequestId', 'platformTraceId'],
+    properties: {
+      platform: { $ref: '#/components/schemas/SocialPlatform' },
+      platformPostId: { type: 'string', minLength: 1, maxLength: 256 },
+      url: { type: 'string', format: 'uri', pattern: '^https://' },
+      platformRequestId: { type: ['string', 'null'], maxLength: 256 },
+      platformTraceId: { type: ['string', 'null'], maxLength: 256 }
+    }
+  };
   schemas.PageRequest = objectRequest([], {
     page: { type: 'integer', minimum: 1, default: 1 },
     pageSize: { type: 'integer', minimum: 1, maximum: 100, default: 20 }
@@ -839,6 +851,11 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     '/social-posts/get': postOperation(
       'Read one social publish job',
       'getSocialPost',
+      'SocialPostTargetRequest'
+    ),
+    '/social-posts/permalink/get': postOperation(
+      'Read the platform permalink for one published social post on explicit user request',
+      'getSocialPostPermalink',
       'SocialPostTargetRequest'
     ),
     '/social-posts/list': postOperation(

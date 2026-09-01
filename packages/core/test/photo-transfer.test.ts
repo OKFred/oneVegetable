@@ -93,6 +93,7 @@ describe('PhotoBank URL transfer safety', () => {
 
     const [, init] = fetcher.mock.calls[0] ?? [];
     expect(new Headers(init?.headers).get('accept')).toBe('image/jpeg,image/png,image/gif,image/bmp');
+    expect(init?.cache).toBe('no-store');
 
     expect(result).toEqual({
       fileName: 'product.jpg',

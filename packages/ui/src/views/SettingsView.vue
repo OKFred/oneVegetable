@@ -8,8 +8,8 @@ import {
   FileUp,
   Globe2,
   KeyRound,
+  LoaderCircle,
   LockKeyhole,
-  Moon,
   RotateCcw,
   Save,
   ShieldCheck,
@@ -17,6 +17,7 @@ import {
   UnlockKeyhole,
   WandSparkles
 } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 
 import {
   ALIBABA_GATEWAY,
@@ -57,7 +58,7 @@ const {
   extensionSocialBackend,
   mode
 } = useServices();
-const { language: preferredLanguage, theme: preferredTheme } = useAppPreferences();
+const { language: preferredLanguage } = useAppPreferences();
 const signMethods: SignMethod[] = ['hmac', 'md5', 'hmac-sha256'];
 const model = ref<GatewaySettings>({
   appKey: '',
@@ -182,16 +183,21 @@ async function save(): Promise<void> {
       assertMatchingPassphrases(vaultPassphrase.value, vaultPassphraseConfirmation.value);
       applyVaultStatus(await vault.create(vaultPassphrase.value, model.value));
       clearVaultPassphrases();
-      feedback.value = '凭证已加密保存，并将在当前 Chrome 会话内保持可用。';
+      model.value = await settings.load();
+      feedback.value = '凭证与设置已加密保存，并将在当前 Chrome 会话内保持可用。';
+      toast.success('凭证与设置已保存');
       await refreshLocalData();
     } else {
       await settings.save(model.value);
       feedback.value =
         mode === 'mock' ? '演示设置已保存在本地浏览器。' : '设置已重新加密写入 chrome.storage.local。';
       model.value = await settings.load();
+      toast.success(mode === 'mock' ? '演示设置已保存' : '设置已保存');
     }
   } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, '设置保存失败');
+    const visibleError = userVisibleCause(error, '设置保存失败');
+    vaultError.value = visibleError;
+    toast.error(visibleError.message);
   } finally {
     saving.value = false;
   }
@@ -509,11 +515,6 @@ function formatBytes(bytes: number): string {
 function confirmLanguagePreference(): void {
   feedback.value = `接口语言偏好已保存为 ${preferredLanguage.value}。`;
 }
-
-function confirmThemePreference(): void {
-  const label = { system: '跟随系统', light: '浅色', dark: '深色' }[preferredTheme.value];
-  feedback.value = `界面主题已切换为${label}。`;
-}
 </script>
 
 <template>
@@ -528,53 +529,6 @@ function confirmThemePreference(): void {
     >
       {{ feedback }}
     </p>
-    <Card class="p-5">
-      <div class="flex items-start gap-3">
-        <Globe2 class="mt-0.5 size-5 shrink-0 text-primary" />
-        <div class="min-w-0 flex-1">
-          <h2 class="font-semibold">接口语言偏好</h2>
-          <p class="mt-1 text-sm leading-6 text-muted-foreground">
-            用于商品 Schema、平台草稿、履约通道和地址 Schema 等支持 language 参数的请求；不改变当前界面语言。
-          </p>
-          <label class="mt-3 block max-w-xs text-sm font-medium">
-            偏好语言
-            <select
-              v-model="preferredLanguage"
-              class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
-              aria-label="偏好语言"
-              @change="confirmLanguagePreference"
-            >
-              <option value="zh_CN">简体中文（zh_CN）</option>
-              <option value="en_US">English（en_US）</option>
-            </select>
-          </label>
-        </div>
-      </div>
-    </Card>
-    <Card class="p-5">
-      <div class="flex items-start gap-3">
-        <Moon class="mt-0.5 size-5 shrink-0 text-primary" />
-        <div class="min-w-0 flex-1">
-          <h2 class="font-semibold">界面主题</h2>
-          <p class="mt-1 text-sm leading-6 text-muted-foreground">
-            深色模式会降低夜间使用时的亮度，并保留状态、警告与表格的可读对比度。
-          </p>
-          <label class="mt-3 block max-w-xs text-sm font-medium">
-            主题偏好
-            <select
-              v-model="preferredTheme"
-              class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
-              aria-label="主题偏好"
-              @change="confirmThemePreference"
-            >
-              <option value="system">跟随系统</option>
-              <option value="light">浅色</option>
-              <option value="dark">深色</option>
-            </select>
-          </label>
-        </div>
-      </div>
-    </Card>
     <Card v-if="mode === 'extension' && vault" class="p-5">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -822,13 +776,17 @@ function confirmThemePreference(): void {
         class="mt-4"
         :disabled="
           saving ||
+          vaultBusy ||
           (mode === 'extension' &&
             vaultStatus?.state === 'empty' &&
             (!vaultPassphrase || !vaultPassphraseConfirmation))
         "
         @click="save"
-        ><Save class="size-4" />{{ vaultStatus?.state === 'empty' ? '加密保存凭证' : '保存设置' }}</Button
       >
+        <LoaderCircle v-if="saving" class="size-4 animate-spin" />
+        <Save v-else class="size-4" />
+        {{ saving ? '保存中…' : '保存设置' }}
+      </Button>
     </Card>
     <AlibabaCredentialAcquisitionDialog
       v-if="alibabaCredentialAcquisition"
@@ -846,6 +804,29 @@ function confirmThemePreference(): void {
       </div></Card
     >
     <ExtensionSocialBackendPanel v-if="mode === 'extension' && extensionSocialBackend" />
+    <Card class="p-5">
+      <div class="flex items-start gap-3">
+        <Globe2 class="mt-0.5 size-5 shrink-0 text-primary" />
+        <div class="min-w-0 flex-1">
+          <h2 class="font-semibold">接口语言偏好</h2>
+          <p class="mt-1 text-sm leading-6 text-muted-foreground">
+            用于商品 Schema、平台草稿、履约通道和地址 Schema 等支持 language 参数的请求；不改变当前界面语言。
+          </p>
+          <label class="mt-3 block max-w-xs text-sm font-medium">
+            偏好语言
+            <select
+              v-model="preferredLanguage"
+              class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
+              aria-label="偏好语言"
+              @change="confirmLanguagePreference"
+            >
+              <option value="zh_CN">简体中文（zh_CN）</option>
+              <option value="en_US">English（en_US）</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    </Card>
     <Card v-if="mode === 'extension' && permissions" class="p-5">
       <div class="flex items-center gap-2">
         <Globe2 class="size-4 text-primary" />

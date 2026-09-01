@@ -85,13 +85,23 @@ describe('MetaSocialAdminPanel', () => {
       })
     );
     const revokeExtensionSocialDevice = vi.fn(() => Promise.resolve());
+    const pairedDevice = {
+      ...devicesFixture[0],
+      id: '99999999-9999-4999-8999-999999999999',
+      name: 'New Chrome device'
+    };
+    const listExtensionSocialDevices = vi
+      .fn()
+      .mockResolvedValueOnce(devicesFixture)
+      .mockResolvedValueOnce(devicesFixture)
+      .mockResolvedValue([...devicesFixture, pairedDevice]);
     const control = {
       metaAppConfiguration: () => Promise.resolve(configurationFixture),
       updateMetaAppConfiguration: vi.fn(),
       listMetaConnections: () => Promise.resolve(connectionsFixture),
       listSocialDestinations: () => Promise.resolve(destinationsFixture),
       approveExtensionSocialPairing,
-      listExtensionSocialDevices: () => Promise.resolve(devicesFixture),
+      listExtensionSocialDevices,
       revokeExtensionSocialDevice
     } as unknown as ControlClient;
     const wrapper = mountPanel(control);
@@ -103,6 +113,13 @@ describe('MetaSocialAdminPanel', () => {
     await findButton(wrapper, '批准配对').trigger('click');
     await clickBodyButton('确认');
     expect(approveExtensionSocialPairing).toHaveBeenCalledWith('ABCDEFGHJKLMNPQR');
+    expect(listExtensionSocialDevices).toHaveBeenCalledTimes(2);
+    expect(wrapper.text()).toContain('等待插件领取授权');
+
+    globalThis.dispatchEvent(new Event('focus'));
+    await flushPromises();
+    expect(wrapper.text()).toContain('New Chrome device');
+    expect(wrapper.text()).not.toContain('等待插件领取授权');
 
     const revoke = wrapper.find('button[aria-label="撤销 Windows Chrome"]');
     await revoke.trigger('click');

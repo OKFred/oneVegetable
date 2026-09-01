@@ -18,13 +18,11 @@ import {
   Home,
   Image,
   Menu,
-  Moon,
   PlugZap,
   ShieldCheck,
   Settings,
   ShoppingCart,
   Sprout,
-  Sun,
   Truck
 } from '@lucide/vue';
 
@@ -50,6 +48,7 @@ import Button from './components/ui/Button.vue';
 import Sonner from './components/ui/Sonner.vue';
 import AuthGate from './components/AuthGate.vue';
 import OnboardingDialog from './components/OnboardingDialog.vue';
+import ThemeToggle from './components/ThemeToggle.vue';
 import { pageHash, parsePageHash, type PageId } from './lib/hash-router';
 import { resolveDataSource, type RuntimeState } from './lib/data-source';
 import { applyAppTheme, useAppPreferences } from './lib/preferences';
@@ -153,10 +152,6 @@ const desktopNavigation = ref(desktopNavigationQuery.matches);
 
 function syncTheme(): void {
   darkTheme.value = applyAppTheme(themePreference.value) === 'dark';
-}
-
-function toggleTheme(): void {
-  themePreference.value = darkTheme.value ? 'light' : 'dark';
 }
 
 function syncDesktopNavigation(): void {
@@ -336,16 +331,7 @@ async function logout(): Promise<void> {
           /></Button>
           <p class="hidden text-sm text-muted-foreground sm:block">国际站开放平台运营工作台</p>
           <div class="flex items-center gap-2 text-xs text-muted-foreground">
-            <Button
-              variant="ghost"
-              size="icon"
-              :aria-label="darkTheme ? '切换到浅色模式' : '切换到夜间模式'"
-              :title="darkTheme ? '切换到浅色模式' : '切换到夜间模式'"
-              @click="toggleTheme"
-            >
-              <Sun v-if="darkTheme" class="size-4" />
-              <Moon v-else class="size-4" />
-            </Button>
+            <ThemeToggle />
             <span data-testid="data-source-status" class="inline-flex items-center gap-2">
               <span class="size-2 rounded-full" :class="dataSource.dotClass" />{{ dataSource.label }}
             </span>

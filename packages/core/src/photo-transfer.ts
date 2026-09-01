@@ -103,6 +103,10 @@ export async function downloadPhotoForUpload(
           options.assertUrl?.(checked);
           return true;
         },
+        // A preview may have populated Chrome's cache before an optional host permission was granted.
+        // Always fetch explicit transfers from the origin so the authorized byte response is not mixed
+        // with an older no-cors, redirect or partial cache entry.
+        cache: 'no-store',
         timeoutMilliseconds: 30_000,
         maxResponseBytes: maxBytes,
         redirect: 'manual',

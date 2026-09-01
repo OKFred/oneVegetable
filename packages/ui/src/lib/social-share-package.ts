@@ -35,10 +35,17 @@ export interface SocialSharePackageManifest {
 
 export type SocialShareDownloadProgress = (current: number, total: number) => void;
 
+export interface SocialSharePreparationOptions {
+  timeoutMilliseconds?: number;
+}
+
+export const SOCIAL_SHARE_ASSET_TIMEOUT_MILLISECONDS = 45_000;
+
 export async function prepareSocialShareAssets(
   photos: readonly Photo[],
   gateway: Pick<GatewayClient, 'request'>,
-  onProgress?: SocialShareDownloadProgress
+  onProgress?: SocialShareDownloadProgress,
+  options: SocialSharePreparationOptions = {}
 ): Promise<PreparedSocialShareAsset[]> {
   assertSelection(
     photos.length,
@@ -48,7 +55,11 @@ export async function prepareSocialShareAssets(
   const assets: PreparedSocialShareAsset[] = [];
 
   for (const [index, photo] of photos.entries()) {
-    const result = await gateway.request('downloadProductAsset', { url: photo.url });
+    const result = await withTimeout(
+      gateway.request('downloadProductAsset', { url: photo.url }),
+      options.timeoutMilliseconds ?? SOCIAL_SHARE_ASSET_TIMEOUT_MILLISECONDS,
+      `原图 ${photo.name} 准备超时，请重试`
+    );
     const bytes = decodeBase64(result.contentBase64);
     const detectedContentType = validatePhotoBytes(bytes);
     if (result.byteLength !== bytes.byteLength) throw new Error(`图片 ${photo.name} 的大小校验失败`);
@@ -72,6 +83,27 @@ export async function prepareSocialShareAssets(
   }
 
   return assets;
+}
+
+function withTimeout<T>(operation: Promise<T>, timeoutMilliseconds: number, message: string): Promise<T> {
+  if (!Number.isFinite(timeoutMilliseconds) || timeoutMilliseconds <= 0) {
+    return Promise.reject(new Error('原图准备超时时间无效'));
+  }
+  return new Promise<T>((resolve, reject) => {
+    const timeout = globalThis.setTimeout(() => {
+      reject(new Error(message));
+    }, timeoutMilliseconds);
+    void operation.then(
+      (value) => {
+        globalThis.clearTimeout(timeout);
+        resolve(value);
+      },
+      (error: unknown) => {
+        globalThis.clearTimeout(timeout);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    );
+  });
 }
 
 export function createNativeShareFiles(assets: readonly PreparedSocialShareAsset[]): File[] {

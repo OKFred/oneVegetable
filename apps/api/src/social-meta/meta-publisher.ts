@@ -1,9 +1,15 @@
 import { GatewayException, META_GRAPH_ORIGIN, NetworkManager } from '@one-vegetable/core';
 
-import type { NetworkResponse, NetworkTransport } from '@one-vegetable/core';
+import type { NetworkResponse, NetworkTransport, SocialPlatform } from '@one-vegetable/core';
 
 export interface MetaMutationResult {
   id: string;
+  requestId: string | null;
+  traceId: string | null;
+}
+
+export interface MetaPermalinkResult {
+  url: string;
   requestId: string | null;
   traceId: string | null;
 }
@@ -71,6 +77,37 @@ export class MetaPublisher {
     );
   }
 
+  async readPermalink(input: {
+    graphApiVersion: string;
+    platform: SocialPlatform;
+    postId: string;
+    accessToken: string;
+    requestId: string;
+  }): Promise<MetaPermalinkResult> {
+    const url = new URL(`/${input.graphApiVersion}/${encodeURIComponent(input.postId)}`, META_GRAPH_ORIGIN);
+    url.searchParams.set('fields', 'permalink_url');
+    url.searchParams.set('access_token', input.accessToken);
+    const response = await this.request({
+      url,
+      method: 'GET',
+      requestId: input.requestId,
+      ambiguousOnNetwork: false
+    });
+    const data = readGraphData(response);
+    const ids = readPlatformIds(response, data);
+    const permalink = optionalString(data.permalink_url);
+    if (!permalink) {
+      throw new MetaPublisherError(
+        'META_PERMALINK_UNAVAILABLE',
+        'Meta 没有返回该内容的公开链接',
+        false,
+        ids.requestId,
+        ids.traceId
+      );
+    }
+    return { url: normalizeMetaPermalink(permalink, input.platform, ids), ...ids };
+  }
+
   createInstagramContainer(input: {
     graphApiVersion: string;
     instagramAccountId: string;
@@ -121,7 +158,8 @@ export class MetaPublisher {
     const response = await this.request({
       url,
       method: 'GET',
-      requestId: input.requestId
+      requestId: input.requestId,
+      ambiguousOnNetwork: false
     });
     const data = readGraphData(response);
     const statusCode = optionalString(data.status_code)?.toUpperCase();
@@ -185,6 +223,7 @@ export class MetaPublisher {
     requestId: string;
     body?: URLSearchParams | FormData;
     bodySizeBytes?: number;
+    ambiguousOnNetwork?: boolean;
   }): Promise<NetworkResponse> {
     try {
       const response = await this.#network.request({
@@ -206,22 +245,20 @@ export class MetaPublisher {
       return response;
     } catch (error: unknown) {
       if (error instanceof MetaPublisherError) throw error;
+      const ambiguous = input.ambiguousOnNetwork ?? true;
+      const message = ambiguous
+        ? '无法确认 Meta 是否已收到发布请求，请勿自动重发'
+        : '暂时无法读取 Meta 数据，请稍后重试';
       if (error instanceof GatewayException) {
         throw new MetaPublisherError(
           error.gatewayError.code,
-          '无法确认 Meta 是否已收到发布请求，请勿自动重发',
-          requestMayHaveReachedPlatform(error.gatewayError.code),
+          message,
+          ambiguous && requestMayHaveReachedPlatform(error.gatewayError.code),
           null,
           error.gatewayError.traceId ?? null
         );
       }
-      throw new MetaPublisherError(
-        'META_NETWORK_FAILED',
-        '无法确认 Meta 是否已收到发布请求，请勿自动重发',
-        true,
-        null,
-        null
-      );
+      throw new MetaPublisherError('META_NETWORK_FAILED', message, ambiguous, null, null);
     }
   }
 }
@@ -235,11 +272,45 @@ function explicitGraphError(
   const ids = readPlatformIds(response, error ?? {});
   return new MetaPublisherError(
     `META_GRAPH_${code ?? response.status}${subcode === null ? '' : `_${subcode}`}`,
-    'Meta 拒绝了发布请求，请检查目标权限、素材或文案',
+    'Meta 拒绝了请求，请检查目标权限或凭据',
     false,
     ids.requestId,
     ids.traceId,
     code === 190
+  );
+}
+
+function normalizeMetaPermalink(
+  value: string,
+  platform: SocialPlatform,
+  ids: { requestId: string | null; traceId: string | null }
+): string {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw invalidMetaPermalink(ids);
+  }
+  const expectedDomain = platform === 'facebook' ? 'facebook.com' : 'instagram.com';
+  const hostname = url.hostname.toLowerCase();
+  if (
+    url.protocol !== 'https:' ||
+    url.username ||
+    url.password ||
+    (hostname !== expectedDomain && !hostname.endsWith(`.${expectedDomain}`))
+  ) {
+    throw invalidMetaPermalink(ids);
+  }
+  return url.href;
+}
+
+function invalidMetaPermalink(ids: { requestId: string | null; traceId: string | null }): MetaPublisherError {
+  return new MetaPublisherError(
+    'META_PERMALINK_INVALID',
+    'Meta 返回了不受信任的内容链接',
+    false,
+    ids.requestId,
+    ids.traceId
   );
 }
 
