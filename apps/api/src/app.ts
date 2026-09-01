@@ -28,6 +28,7 @@ import { markRequestOperation, readRequestContext } from './observability/reques
 import { registerProductDescriptionTemplateRoutes } from './product-description-templates/routes';
 import { ProductDescriptionTemplateService } from './product-description-templates/service';
 import { registerProductMutationRoutes } from './product-mutations/routes';
+import { registerMetaSocialRoutes } from './social-meta/routes';
 import {
   ProductDisplayNoChangeError,
   ProductDisplayTargetMismatchError,
@@ -64,6 +65,7 @@ import type { ProductDescriptionTemplateRepository } from './product-description
 import type { ProductMutationJobRepository } from './product-mutations/repository';
 import type { RealMutationControlService } from './safety/real-mutation-control';
 import type { AlibabaCredentialAcquisitionService } from './alibaba-credential-acquisition/service';
+import type { MetaSocialService } from './social-meta/service';
 
 export type ApiRuntime = 'node' | 'cloudflare';
 export type ApiDatabase = 'sqlite' | 'd1';
@@ -93,6 +95,7 @@ export interface ApiAppOptions {
   productMutationJobs?: ProductMutationJobRepository;
   realMutationControl?: RealMutationControlService;
   alibabaCredentialAcquisition?: AlibabaCredentialAcquisitionService;
+  metaSocial?: MetaSocialService;
 }
 
 export interface RequestLogContext {
@@ -238,6 +241,14 @@ export function createApiApp(options: ApiAppOptions): Hono {
     registerProductMutationRoutes(api, {
       authService: options.authService,
       service: productMutations,
+      ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
+    });
+  }
+
+  if (options.authService && options.metaSocial) {
+    registerMetaSocialRoutes(api, {
+      authService: options.authService,
+      service: options.metaSocial,
       ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
     });
   }

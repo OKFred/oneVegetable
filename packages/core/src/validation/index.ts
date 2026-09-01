@@ -5,6 +5,8 @@ import {
   validateCapabilityCallRequest,
   validateLogisticsOrderDraft,
   validateLogisticsQuoteRequest,
+  validateMetaAppConfigurationUpdateRequest,
+  validateMetaConnectionTargetRequest,
   validateOperationAvailabilityRequest,
   validateProductDisplayRequest,
   validateProductGroupCreateRequest,
@@ -45,7 +47,12 @@ import type {
   ProductMutationJobListRequest,
   ProductMutationJobRefreshRequest
 } from '../product-mutation-job';
-import type { SocialPostPrepareRequest, SocialPostTargetRequest } from '../social-meta';
+import type {
+  MetaAppConfigurationUpdateRequest,
+  MetaConnectionTargetRequest,
+  SocialPostPrepareRequest,
+  SocialPostTargetRequest
+} from '../social-meta';
 
 export interface ValidationResult<T> {
   valid: boolean;
@@ -193,6 +200,20 @@ export const validateSocialPostPrepareInput = (value: unknown, locale?: 'en' | '
 export const validateSocialPostTargetInput = (value: unknown, locale?: 'en' | 'zh') =>
   runValidator<SocialPostTargetRequest>(
     validateSocialPostTargetRequest as StandaloneValidator,
+    value,
+    locale
+  );
+
+export const validateMetaAppConfigurationUpdateInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<MetaAppConfigurationUpdateRequest>(
+    validateMetaAppConfigurationUpdateRequest as StandaloneValidator,
+    value,
+    locale
+  );
+
+export const validateMetaConnectionTargetInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<MetaConnectionTargetRequest>(
+    validateMetaConnectionTargetRequest as StandaloneValidator,
     value,
     locale
   );

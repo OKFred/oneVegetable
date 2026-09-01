@@ -16,6 +16,8 @@ export const META_PAGE_PUBLISH_TASKS = ['CREATE_CONTENT', 'PROFILE_PLUS_CREATE_C
 
 export type SocialPlatform = components['schemas']['SocialPlatform'];
 export type MetaAppConfigurationSummary = components['schemas']['MetaAppConfigurationSummary'];
+export type MetaAppConfigurationUpdateRequest = components['schemas']['MetaAppConfigurationUpdateRequest'];
+export type MetaConnectionTargetRequest = components['schemas']['MetaConnectionTargetRequest'];
 export type SocialAccountConnection = components['schemas']['SocialAccountConnection'];
 export type SocialDestination = components['schemas']['SocialDestination'];
 export type SocialPublishJob = components['schemas']['SocialPublishJob'];

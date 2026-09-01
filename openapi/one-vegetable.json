@@ -3554,6 +3554,20 @@
   },
   "components": {
     "responses": {
+      "ControlResponse": {
+        "description": "Typed control-plane result or structured failure",
+        "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+        "content": {
+          "application/json": {
+            "schema": {
+              "oneOf": [
+                { "$ref": "#/components/schemas/ApiSuccess" },
+                { "$ref": "#/components/schemas/ApiFailure" }
+              ]
+            }
+          }
+        }
+      },
       "GatewayFailure": {
         "description": "Gateway failure",
         "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
@@ -12033,6 +12047,33 @@
           "updateTimeUtc": { "type": ["integer", "null"], "minimum": 0 },
           "updaterId": { "type": ["string", "null"] },
           "remark": { "type": ["string", "null"], "maxLength": 500 }
+        }
+      },
+      "MetaAppConfigurationUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "appId", "appSecret", "publicOrigin", "revision", "remark"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "appId": { "type": "string", "pattern": "^[0-9]{5,32}$" },
+          "appSecret": { "type": "string", "minLength": 1, "maxLength": 512, "writeOnly": true },
+          "publicOrigin": {
+            "type": "string",
+            "pattern": "^https?://[^\\s/?#]+(?::[0-9]+)?/?$",
+            "maxLength": 2048
+          },
+          "revision": { "type": ["integer", "null"], "minimum": 1 },
+          "remark": { "type": ["string", "null"], "maxLength": 500 }
+        }
+      },
+      "MetaConnectionTargetRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "connectionId", "revision"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "connectionId": { "type": "string", "format": "uuid" },
+          "revision": { "type": "integer", "minimum": 1 }
         }
       },
       "OperationAvailability": {

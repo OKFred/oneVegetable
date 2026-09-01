@@ -24,6 +24,9 @@ import { readRealMutationsPaused, RealMutationControlService } from './safety/re
 import { SqlAlibabaCredentialAcquisitionJobRepository } from './alibaba-credential-acquisition/repository';
 import { AlibabaCredentialAcquisitionService } from './alibaba-credential-acquisition/service';
 import { CloudflareAlibabaCredentialAcquisitionDriver } from './alibaba-credential-acquisition/cloudflare-playwright-driver';
+import { SqlMetaSocialRepository } from './social-meta/repository';
+import { MetaSecretCipher } from './social-meta/secret-cipher';
+import { MetaSocialService } from './social-meta/service';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -46,6 +49,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   const credentialRepository = new SqlGatewayCredentialRepository(database.executor);
   const metadataRepository = createD1MetadataRepository(database.db);
   const credentialCipher = await GatewayCredentialCipher.create(env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY);
+  const metaSecretCipher = await MetaSecretCipher.create(env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY);
   const credentialService = new GatewayCredentialService(credentialRepository, credentialCipher);
   const credentialProvider = new StoredAlibabaCredentialProvider(credentialRepository, credentialCipher);
   const credentialStatus = await credentialProvider.status();
@@ -69,6 +73,9 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     await readRealMutationsPaused(metadataRepository)
   );
   const realMutationControl = new RealMutationControlService(metadataRepository, featureFlags);
+  const metaSocial = new MetaSocialService(new SqlMetaSocialRepository(database.executor), metaSecretCipher, {
+    apiPrefix: runtimeConfiguration.apiPrefix
+  });
   const alibabaCredentialAcquisition =
     runtimeConfiguration.environment === 'self-hosted' && env.BROWSER
       ? new AlibabaCredentialAcquisitionService(
@@ -99,6 +106,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     gatewayCredentialProvider: credentialProvider,
     featureFlags,
     realMutationControl,
+    metaSocial,
     ...(alibabaCredentialAcquisition ? { alibabaCredentialAcquisition } : {}),
     requestEvents: new SqlRequestEventRepository(database.executor),
     productDescriptionTemplates: new SqlProductDescriptionTemplateRepository(database.executor),

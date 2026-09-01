@@ -50,7 +50,9 @@ const coreValidators: Record<string, object | undefined> = {
   validateProductMutationJobGetRequest: schemas.ProductMutationJobGetRequest,
   validateProductMutationJobRefreshRequest: schemas.ProductMutationJobRefreshRequest,
   validateSocialPostPrepareRequest: schemas.SocialPostPrepareRequest,
-  validateSocialPostTargetRequest: schemas.SocialPostTargetRequest
+  validateSocialPostTargetRequest: schemas.SocialPostTargetRequest,
+  validateMetaAppConfigurationUpdateRequest: schemas.MetaAppConfigurationUpdateRequest,
+  validateMetaConnectionTargetRequest: schemas.MetaConnectionTargetRequest
 };
 
 const domains: CapabilityDomain[] = ['product', 'rfq', 'trade', 'logistics', 'insights', 'photo', 'platform'];

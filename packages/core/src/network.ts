@@ -1,6 +1,6 @@
 import { GatewayException, withGatewayRequestId } from './errors';
 
-export type NetworkServiceId = 'alibaba' | 'bff' | 'external-photo';
+export type NetworkServiceId = 'alibaba' | 'bff' | 'external-photo' | 'meta';
 export type NetworkResponseType = 'json' | 'text' | 'bytes';
 
 export interface NetworkTransport {
@@ -68,7 +68,7 @@ export interface NetworkLogEntry {
 
 export interface NetworkManagerOptions {
   transport?: NetworkTransport;
-  policies: Readonly<Record<NetworkServiceId, NetworkServicePolicy>>;
+  policies: Readonly<Partial<Record<NetworkServiceId, NetworkServicePolicy>>>;
   clock?: () => number;
   wait?: (milliseconds: number) => Promise<void>;
   logger?: (entry: NetworkLogEntry) => void;
@@ -86,7 +86,7 @@ export function isRequestId(value: unknown): value is string {
 
 export class NetworkManager {
   readonly #transport: NetworkTransport;
-  readonly #policies: Readonly<Record<NetworkServiceId, NetworkServicePolicy>>;
+  readonly #policies: Readonly<Partial<Record<NetworkServiceId, NetworkServicePolicy>>>;
   readonly #clock: () => number;
   readonly #wait: (milliseconds: number) => Promise<void>;
   readonly #logger: ((entry: NetworkLogEntry) => void) | undefined;
@@ -118,6 +118,16 @@ export class NetworkManager {
     }
     const url = new URL(input.url);
     const policy = this.#policies[input.service];
+    if (!policy) {
+      throw new GatewayException(
+        {
+          code: 'NETWORK_SERVICE_NOT_CONFIGURED',
+          message: `网络服务 ${input.service} 未配置`,
+          retryable: false
+        },
+        requestId
+      );
+    }
     const redirectPolicy = policy.redirect ?? 'error';
     try {
       assertAllowedUrl(url, policy);

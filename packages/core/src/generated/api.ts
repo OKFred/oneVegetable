@@ -6679,6 +6679,20 @@ export interface components {
             updaterId: string | null;
             remark: string | null;
         };
+        MetaAppConfigurationUpdateRequest: {
+            requestId: components["schemas"]["RequestId"];
+            appId: string;
+            appSecret: string;
+            publicOrigin: string;
+            revision: number | null;
+            remark: string | null;
+        };
+        MetaConnectionTargetRequest: {
+            requestId: components["schemas"]["RequestId"];
+            /** Format: uuid */
+            connectionId: string;
+            revision: number;
+        };
         OperationAvailability: {
             operation: string;
             allowed: boolean;
@@ -7382,6 +7396,16 @@ export interface components {
         UserStatus: "active" | "disabled";
     };
     responses: {
+        /** @description Typed control-plane result or structured failure */
+        ControlResponse: {
+            headers: {
+                "X-Request-ID"?: components["schemas"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+            };
+        };
         /** @description Gateway failure */
         GatewayFailure: {
             headers: {

@@ -18,6 +18,9 @@ import { readRuntimeConfiguration } from './runtime-config';
 import { SqlProductDescriptionTemplateRepository } from './product-description-templates/repository';
 import { SqlProductMutationJobRepository } from './product-mutations/repository';
 import { readRealMutationsPaused, RealMutationControlService } from './safety/real-mutation-control';
+import { SqlMetaSocialRepository } from './social-meta/repository';
+import { MetaSecretCipher } from './social-meta/secret-cipher';
+import { MetaSocialService } from './social-meta/service';
 
 const port = readPort(process.env.ONE_VEGETABLE_PORT);
 const runtimeConfiguration = readRuntimeConfiguration(process.env, 'local-node');
@@ -58,6 +61,14 @@ const featureFlags = new EmergencyPauseFeatureFlags(
   new StaticOperationFeatureFlags(new Set(runtimeConfiguration.mutationFlags)),
   await readRealMutationsPaused(metadataRepository)
 );
+const metaSecretCipher = process.env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY
+  ? await MetaSecretCipher.create(process.env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY)
+  : undefined;
+const metaSocial = metaSecretCipher
+  ? new MetaSocialService(new SqlMetaSocialRepository(database.executor), metaSecretCipher, {
+      apiPrefix: runtimeConfiguration.apiPrefix
+    })
+  : undefined;
 const app = createApiApp({
   runtime: 'node',
   database: 'sqlite',
@@ -76,6 +87,7 @@ const app = createApiApp({
   adminService: new AdminService(authRepository),
   featureFlags,
   realMutationControl: new RealMutationControlService(metadataRepository, featureFlags),
+  ...(metaSocial ? { metaSocial } : {}),
   requestEvents: new SqlRequestEventRepository(database.executor),
   productDescriptionTemplates: new SqlProductDescriptionTemplateRepository(database.executor),
   productMutationJobs: new SqlProductMutationJobRepository(database.executor),
