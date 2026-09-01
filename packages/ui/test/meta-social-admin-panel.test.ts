@@ -57,6 +57,8 @@ describe('MetaSocialAdminPanel', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('已配置 ···6789');
+    expect(wrapper.text()).toContain('Cloudflare Worker · R2 私有素材库');
+    expect(wrapper.text()).toContain('发布组件就绪');
     expect(wrapper.text()).toContain('oneVegetable Test');
     expect(wrapper.text()).toContain('INSTAGRAM_PERMISSION_MISSING');
     const disconnect = wrapper.find('button[aria-label="断开 oneVegetable Tester"]');

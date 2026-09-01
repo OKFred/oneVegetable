@@ -264,6 +264,15 @@ export function createApiApp(options: ApiAppOptions): Hono {
     registerMetaSocialRoutes(api, {
       authService: options.authService,
       service: options.metaSocial,
+      runtime: {
+        runtime: options.runtime,
+        mediaStorage: options.socialMediaAssets
+          ? options.runtime === 'cloudflare'
+            ? 'r2'
+            : 'filesystem'
+          : 'unavailable',
+        publishingRuntimeAvailable: options.socialPublishing !== undefined
+      },
       ...(options.socialMediaAssets ? { mediaAssets: options.socialMediaAssets } : {}),
       ...(options.socialPublishing ? { publishing: options.socialPublishing } : {}),
       ...(options.extensionSocialDevices ? { extensionDevices: options.extensionSocialDevices } : {}),

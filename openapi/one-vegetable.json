@@ -13670,6 +13670,24 @@
           "graphApiVersion": { "type": "string", "pattern": "^v[0-9]+\\.0$" },
           "publicOrigin": { "type": ["string", "null"], "format": "uri" },
           "callbackUrl": { "type": ["string", "null"], "format": "uri" },
+          "apiRuntime": {
+            "type": "string",
+            "enum": ["node", "cloudflare"],
+            "description": "Runtime currently serving the Meta administration API."
+          },
+          "mediaStorage": {
+            "type": "string",
+            "enum": ["filesystem", "r2", "unavailable"],
+            "description": "Private temporary storage used for social publishing media."
+          },
+          "publishingRuntimeAvailable": {
+            "type": "boolean",
+            "description": "Whether the current runtime has both media storage and the publishing service wired."
+          },
+          "runtimeIssueCode": {
+            "type": ["string", "null"],
+            "enum": ["SOCIAL_MEDIA_STORAGE_UNAVAILABLE", "SOCIAL_PUBLISHING_SERVICE_UNAVAILABLE", null]
+          },
           "revision": { "type": ["integer", "null"], "minimum": 1 },
           "updateTimeUtc": { "type": ["integer", "null"], "minimum": 0 },
           "updaterId": { "type": ["string", "null"] },
