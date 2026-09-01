@@ -115,7 +115,7 @@ import { productStatusLabel } from '../lib/product-status';
 import { describeProductExportDisabled, retainCurrentPageSelection } from '../lib/product-selection';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
-import { useUiI18n } from '../i18n';
+import { hasUiTranslation, useUiI18n } from '../i18n';
 import type { DataColumn } from '../lib/table';
 
 const ProductEditorWizard = defineAsyncComponent({
@@ -1977,6 +1977,24 @@ function productMutationStatusLabel(status: ProductMutationJob['status']): strin
   return t('products.view.mutationStatus.failed');
 }
 
+function productMutationMessage(job: ProductMutationJob): string {
+  if (job.reasonCode) {
+    const reasonKey = `products.view.mutationReason.${job.reasonCode}`;
+    if (hasUiTranslation(reasonKey)) {
+      const display = job.targetDisplay ?? job.originalDisplay;
+      return t(reasonKey, {
+        productId: job.productId,
+        display: display
+          ? t(display === 'online' ? 'products.view.feedback.online' : 'products.view.feedback.offline')
+          : ''
+      });
+    }
+    const errorKey = `errors.codes.${job.reasonCode}`;
+    if (hasUiTranslation(errorKey)) return t(errorKey);
+  }
+  return job.message ?? t('products.view.page.awaitingCheck');
+}
+
 function productMutationStatusVariant(
   status: ProductMutationJob['status']
 ): 'success' | 'warning' | 'secondary' | 'destructive' {
@@ -2306,7 +2324,7 @@ onBeforeUnmount(() => {
                     }}
                     <span class="font-mono">{{ job.requestId }}</span>
                   </p>
-                  <p v-if="job.message" class="mt-2 text-sm text-muted-foreground">{{ job.message }}</p>
+                  <p class="mt-2 text-sm text-muted-foreground">{{ productMutationMessage(job) }}</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
                   <Button
@@ -2465,7 +2483,7 @@ onBeforeUnmount(() => {
             </Badge>
           </div>
           <p class="mt-2 text-sm text-muted-foreground">
-            {{ currentProductMutationJob.message || t('products.view.page.awaitingCheck') }}
+            {{ productMutationMessage(currentProductMutationJob) }}
           </p>
         </div>
         <Button
@@ -2543,7 +2561,7 @@ onBeforeUnmount(() => {
             </Badge>
           </div>
           <p class="mt-2 text-sm text-muted-foreground">
-            {{ currentCreationMutationJob.message || t('products.view.page.awaitingCheck') }}
+            {{ productMutationMessage(currentCreationMutationJob) }}
           </p>
         </div>
         <Button

@@ -8,12 +8,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import { provideServices } from '../src/lib/services';
+import { uiI18n } from '../src/i18n';
 import ProductsView from '../src/views/ProductsView.vue';
 
-import type { ProductMutationJob, ProductMutationJobClient } from '@one-vegetable/core';
+import {
+  APP_PREFERENCES_STORAGE_KEY,
+  type ProductMutationJob,
+  type ProductMutationJobClient
+} from '@one-vegetable/core';
 
 describe('ProductsView product mutation lifecycle', () => {
   beforeEach(() => {
+    globalThis.localStorage.setItem(
+      APP_PREFERENCES_STORAGE_KEY,
+      JSON.stringify({ uiLocale: 'zh-CN', alibabaLanguage: 'en_US', theme: 'system' })
+    );
+    uiI18n.global.locale.value = 'zh-CN';
     globalThis.history.replaceState(null, '', '#/products/list');
   });
 
@@ -86,6 +96,28 @@ describe('ProductsView product mutation lifecycle', () => {
     await vi.waitFor(() => {
       expect(recover).toHaveBeenCalledWith(job.id, job.revision);
     });
+    wrapper.unmount();
+  });
+
+  it('localizes durable job reasons without exposing the stored Chinese project message', async () => {
+    globalThis.localStorage.setItem(
+      APP_PREFERENCES_STORAGE_KEY,
+      JSON.stringify({ uiLocale: 'en-US', alibabaLanguage: 'en_US', theme: 'system' })
+    );
+    uiI18n.global.locale.value = 'en-US';
+    const job = displayJobFixture();
+    const productMutationJobs: ProductMutationJobClient = {
+      list: vi.fn(() => Promise.resolve({ items: [job], page: 1, pageSize: 100, total: 1 })),
+      get: vi.fn(() => Promise.resolve(job)),
+      refresh: vi.fn(() => Promise.resolve(job)),
+      recover: vi.fn(() => Promise.resolve(job))
+    };
+    const wrapper = mountProductsView(productMutationJobs, 'updateProductDisplay', 'extension');
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Platform-status readback timed out');
+    });
+    expect(wrapper.text()).not.toContain(job.message);
     wrapper.unmount();
   });
 

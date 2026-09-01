@@ -33,6 +33,7 @@
     "check:web-bundle:cloudflare": "tsx scripts/check-web-bundle.ts --cloudflare",
     "check:store-compliance": "tsx scripts/check-store-compliance.ts",
     "check:workspace-version": "tsx scripts/check-workspace-version.ts",
+    "check:i18n": "tsx scripts/check-i18n.ts",
     "check:release-version": "tsx scripts/check-release-version.ts",
     "capture:store-assets": "pnpm run build:extension && tsx scripts/capture-store-assets.ts",
     "zip:extension": "pnpm run release:extension",
@@ -93,7 +94,7 @@
     "check:staging-config": "tsx scripts/check-staging-config.ts",
     "check:staging-config:local": "tsx scripts/check-staging-config.ts --allow-placeholders --skip-deployment-environment",
     "check:replay-coverage": "tsx scripts/check-documentation-replay.ts",
-    "check": "pnpm run format:check && pnpm run lint && pnpm run check:workspace-version && pnpm run check:openapi && pnpm run audit:apis:check && pnpm run check:replay-coverage && pnpm run typecheck && pnpm run test && pnpm run build",
+    "check": "pnpm run format:check && pnpm run lint && pnpm run check:i18n && pnpm run check:workspace-version && pnpm run check:openapi && pnpm run audit:apis:check && pnpm run check:replay-coverage && pnpm run typecheck && pnpm run test && pnpm run build",
     "prepare": "husky"
   },
   "lint-staged": {

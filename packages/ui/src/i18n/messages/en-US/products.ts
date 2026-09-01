@@ -642,6 +642,36 @@ export const products = {
       recovered: 'Previous status restored',
       failed: 'Submission failed'
     },
+    mutationReason: {
+      ALIBABA_DISPLAY_MUTATION_ACCEPTED:
+        'Alibaba accepted the listing-status change. Waiting for product-list readback.',
+      ALIBABA_PRODUCT_DRAFT_ACCEPTED:
+        'Alibaba accepted the platform draft. Waiting for draft Schema readback.',
+      ALIBABA_PRODUCT_PUBLISH_ACCEPTED:
+        'Alibaba accepted the publication. Waiting for product-list readback.',
+      PRODUCT_DISPLAY_RECOVERY_PLATFORM_AUDITING:
+        'The product is under platform review. Waiting to confirm the restored status.',
+      PRODUCT_DISPLAY_PLATFORM_AUDITING:
+        'The product is under platform review. Waiting to confirm its listing status.',
+      PRODUCT_DISPLAY_ORIGINAL_STATE_CONFIRMED:
+        'Platform readback confirms the product remains {display}, matching its original status.',
+      PRODUCT_DISPLAY_RECOVERY_MATCHED: 'Platform readback confirms the product was restored to {display}.',
+      PRODUCT_DISPLAY_READBACK_MATCHED: 'Platform readback confirms the product is {display}.',
+      PRODUCT_DISPLAY_READBACK_TIMEOUT:
+        'Platform-status readback timed out. Repeated writes are blocked; verify the product manually.',
+      PRODUCT_DISPLAY_READBACK_PENDING:
+        'The platform status does not match yet. Waiting for another readback.',
+      PRODUCT_CREATION_RESULT_UNKNOWN:
+        'The request may have reached the platform, but no product ID was received. Verify manually to avoid a duplicate.',
+      PRODUCT_DRAFT_READBACK_MATCHED: 'Platform draft {productId} was confirmed by Schema readback.',
+      PRODUCT_PUBLISH_READBACK_MATCHED: 'Product {productId} was confirmed in product-list readback.',
+      PRODUCT_PUBLISH_READBACK_TIMEOUT:
+        'The platform accepted publication, but product-list readback timed out. Repeated creation is blocked.',
+      PRODUCT_PUBLISH_READBACK_PENDING:
+        'The platform accepted publication, but the product is not visible in product-list readback yet.',
+      ALIBABA_DISPLAY_RECOVERY_ACCEPTED:
+        'Alibaba accepted the status restoration. Waiting for product-list readback.'
+    },
     neverChecked: 'Never checked',
     page: {
       title: 'Product management',

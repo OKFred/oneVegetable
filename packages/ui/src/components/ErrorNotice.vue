@@ -49,8 +49,13 @@ const platformError = computed(() => {
     ].includes(code)
   );
 });
+const detailBearingError = computed(
+  () =>
+    platformError.value ||
+    ['INVALID_OPERATION_PAYLOAD', 'REQUEST_CONTRACT_INVALID'].includes(details.value.code ?? '')
+);
 const originalMessage = computed(() => {
-  if (!platformError.value) return null;
+  if (!detailBearingError.value) return null;
   const raw = details.value.message.trim();
   return raw && raw !== localizedMessage.value.trim() ? raw : null;
 });

@@ -579,6 +579,24 @@ export const products = {
       recovered: '原状态已恢复',
       failed: '提交失败'
     },
+    mutationReason: {
+      ALIBABA_DISPLAY_MUTATION_ACCEPTED: 'Alibaba 已接受上下架请求，等待商品列表回读确认。',
+      ALIBABA_PRODUCT_DRAFT_ACCEPTED: 'Alibaba 已接受平台草稿创建，等待草稿 Schema 回读确认。',
+      ALIBABA_PRODUCT_PUBLISH_ACCEPTED: 'Alibaba 已接受正式发布，等待商品列表回读确认。',
+      PRODUCT_DISPLAY_RECOVERY_PLATFORM_AUDITING: '平台正在审核商品，等待审核完成后确认恢复状态。',
+      PRODUCT_DISPLAY_PLATFORM_AUDITING: '平台正在审核商品，等待审核完成后确认上下架状态。',
+      PRODUCT_DISPLAY_ORIGINAL_STATE_CONFIRMED: '平台回读确认商品仍为操作前的{display}状态。',
+      PRODUCT_DISPLAY_RECOVERY_MATCHED: '平台回读已确认商品恢复为{display}状态。',
+      PRODUCT_DISPLAY_READBACK_MATCHED: '平台回读已确认商品为{display}状态。',
+      PRODUCT_DISPLAY_READBACK_TIMEOUT: '平台状态回读超时，已停止重复操作，请人工核对。',
+      PRODUCT_DISPLAY_READBACK_PENDING: '平台状态尚未匹配，继续等待回读。',
+      PRODUCT_CREATION_RESULT_UNKNOWN: '请求可能已到达平台，但尚未取得商品 ID；为避免重复创建，请人工核对。',
+      PRODUCT_DRAFT_READBACK_MATCHED: '平台草稿 {productId} 已通过 Schema 回读确认。',
+      PRODUCT_PUBLISH_READBACK_MATCHED: '商品已在列表回读确认（{productId}）。',
+      PRODUCT_PUBLISH_READBACK_TIMEOUT: '平台已受理发布，但商品列表回读超时；已禁止重复创建。',
+      PRODUCT_PUBLISH_READBACK_PENDING: '平台已受理发布，商品列表尚未回读到该商品。',
+      ALIBABA_DISPLAY_RECOVERY_ACCEPTED: 'Alibaba 已接受状态恢复请求，等待商品列表回读确认。'
+    },
     neverChecked: '尚未检查',
     page: {
       title: '商品管理',
