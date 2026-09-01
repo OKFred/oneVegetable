@@ -10,7 +10,7 @@
 - 下载 ZIP 分享包，包含 `assets/` 原图、`caption.txt` 和不含账号凭据的 `share.json`。
 - 通过用户自己的 BFF 和 Meta Graph API，把一张图库图片发布到一个 Facebook Page 或一个关联的 Instagram 专业账号。
 
-Meta 直发的契约、加密存储、OAuth、多连接、权限发现、发布状态机、Node/Cloudflare 素材暂存和插件设备配对已实现并通过本地自动测试。尚未创建项目专用 Meta 应用、测试 Page 或执行真实 Facebook 帖子发布；Instagram 也尚未取得可关联的专业账号。因此在完成外部验收前，不应把平台侧发布标记为“已验证”。
+Meta 直发的契约、加密存储、OAuth、多连接、权限发现、发布状态机、Node/Cloudflare 素材暂存和插件设备配对已实现并通过本地自动测试。2026-09-01 已使用项目 Meta 应用和测试 Page 完成一次 Facebook 单图发布，并通过 Facebook 页面回读确认图片与文案；详细证据见 [Facebook 真实发布验证记录](meta-facebook-real-validation.md)。Instagram 尚未取得可关联的专业账号，因此仍不能标记为真实账号已验证。
 
 X、TikTok、轮播、定时发布和多目标同时发布不在当前范围。未配置或权限不足时界面显示真实原因，不回退页面自动化或 Mock。
 
