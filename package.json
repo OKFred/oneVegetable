@@ -88,6 +88,7 @@
     "smoke:extension:product-create:real": "tsx scripts/smoke-extension-product-creation-real.ts",
     "recover:product:title:real": "tsx scripts/recover-product-title-real.ts",
     "smoke:web:real": "tsx scripts/prepare-real-web-smoke.ts && playwright test --config playwright.real.config.ts",
+    "smoke:social:extension:read": "tsx scripts/smoke-social-extension-read.ts",
     "check:staging-config": "tsx scripts/check-staging-config.ts",
     "check:staging-config:local": "tsx scripts/check-staging-config.ts --allow-placeholders --skip-deployment-environment",
     "check:replay-coverage": "tsx scripts/check-documentation-replay.ts",

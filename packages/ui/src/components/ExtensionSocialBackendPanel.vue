@@ -14,7 +14,7 @@ import ErrorNotice from './ErrorNotice.vue';
 import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 
-const { extensionSocialBackend } = useServices();
+const { extensionSocialBackend, socialPublishing } = useServices();
 const status = ref<ExtensionSocialBackendStatus | null>(null);
 const baseUrl = ref('');
 const deviceName = ref('Chrome 插件');
@@ -23,9 +23,10 @@ const error = ref<unknown>(null);
 const disconnectConfirmation = ref(false);
 
 const stateLabel = computed(() => {
-  if (status.value?.state === 'paired') return '已配对';
-  if (status.value?.state === 'pending') return '等待管理员批准';
-  if (status.value?.state === 'expired') return '已失效';
+  if (status.value === null) return '正在读取';
+  if (status.value.state === 'paired') return '已配对';
+  if (status.value.state === 'pending') return '等待管理员批准';
+  if (status.value.state === 'expired') return '已失效';
   return '未配置';
 });
 const formattedPairingCode = computed(() =>
@@ -89,6 +90,21 @@ async function disconnect(): Promise<void> {
     baseUrl.value = '';
     disconnectConfirmation.value = false;
     toast.success('已从插件移除社交发布后端授权');
+  } catch (cause: unknown) {
+    error.value = cause;
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function verifyConnection(): Promise<void> {
+  if (!socialPublishing) return;
+  busy.value = true;
+  error.value = null;
+  try {
+    const destinations = await socialPublishing.listSocialDestinations();
+    const publishable = destinations.filter((destination) => destination.canPublish).length;
+    toast.success(`连接正常：发现 ${destinations.length} 个目标，其中 ${publishable} 个可发布`);
   } catch (cause: unknown) {
     error.value = cause;
   } finally {
@@ -178,19 +194,37 @@ async function copyPairingCode(): Promise<void> {
       </p>
     </div>
 
+    <div
+      v-if="status?.state === 'expired'"
+      class="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm"
+    >
+      <p class="font-medium">设备授权已失效</p>
+      <p class="mt-1 text-xs text-muted-foreground">
+        可能是 30 天有效期已到或管理员已撤销设备。重新配对会签发新令牌，不会恢复旧令牌。
+      </p>
+    </div>
+
     <div class="mt-4 flex flex-wrap gap-2">
       <Button
-        v-if="status?.state !== 'paired' && status?.state !== 'pending'"
+        v-if="status && status.state !== 'paired' && status.state !== 'pending'"
         :disabled="busy || !baseUrl.trim() || !deviceName.trim()"
         @click="startPairing"
       >
-        <Link2 class="size-4" />开始配对
+        <Link2 class="size-4" />{{ status.state === 'expired' ? '重新配对' : '开始配对' }}
       </Button>
       <Button v-if="status?.state === 'pending'" :disabled="busy" @click="pollPairing">
         <RefreshCw class="size-4" />检查批准结果
       </Button>
       <Button
-        v-if="status?.state !== 'unconfigured'"
+        v-if="status?.state === 'paired' && socialPublishing"
+        variant="outline"
+        :disabled="busy"
+        @click="verifyConnection"
+      >
+        <RefreshCw class="size-4" />检查连接
+      </Button>
+      <Button
+        v-if="status && status.state !== 'unconfigured'"
         variant="outline"
         :disabled="busy"
         @click="disconnectConfirmation = true"

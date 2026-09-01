@@ -8,7 +8,8 @@ import {
   ALIBABA_GATEWAY,
   type ExtensionSocialBackendRepository,
   type ExtensionSocialBackendStatus,
-  type ExtensionSocialDevice
+  type ExtensionSocialDevice,
+  type SocialPublishingClient
 } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
@@ -23,6 +24,30 @@ vi.mock('vue-sonner', () => ({
 const extensionId = 'aepfdoldflokikbbcpnfifkacpfakmjc';
 
 describe('ExtensionSocialBackendPanel', () => {
+  it('does not show actionable controls before the stored status has loaded', async () => {
+    let resolveStatus: ((status: ExtensionSocialBackendStatus) => void) | undefined;
+    const backend = {
+      status: () =>
+        new Promise<ExtensionSocialBackendStatus>((resolve) => {
+          resolveStatus = resolve;
+        }),
+      start: vi.fn(),
+      refresh: vi.fn(),
+      disconnect: vi.fn()
+    } satisfies ExtensionSocialBackendRepository;
+    const wrapper = mountPanel(backend);
+
+    expect(wrapper.text()).toContain('正在读取');
+    expect(wrapper.text()).not.toContain('开始配对');
+    expect(wrapper.text()).not.toContain('断开');
+
+    resolveStatus?.(unconfiguredStatus());
+    await flushPromises();
+    expect(wrapper.text()).toContain('开始配对');
+    expect(wrapper.text()).not.toContain('断开');
+    wrapper.unmount();
+  });
+
   it('guides pairing and does not expose the device token', async () => {
     const start = vi.fn(() => Promise.resolve(pendingStatus()));
     const refresh = vi.fn(() => Promise.resolve(pairedStatus()));
@@ -54,9 +79,51 @@ describe('ExtensionSocialBackendPanel', () => {
     expect(disconnect).toHaveBeenCalledOnce();
     wrapper.unmount();
   });
+
+  it('checks the paired BFF with a read-only destination request', async () => {
+    const listSocialDestinations = vi.fn(() =>
+      Promise.resolve([
+        {
+          id: '22222222-2222-4222-8222-222222222222',
+          connectionId: '11111111-1111-4111-8111-111111111111',
+          platform: 'facebook' as const,
+          externalId: 'page-1',
+          pageExternalId: 'page-1',
+          pageName: 'oneVegetable Test',
+          name: 'oneVegetable Test',
+          canPublish: true,
+          unavailableReasonCode: null,
+          tasks: ['CREATE_CONTENT'],
+          createTimeUtc: 1_790_000_000_000,
+          updateTimeUtc: 1_790_000_000_000
+        }
+      ])
+    );
+    const publishing = {
+      listSocialDestinations,
+      prepareSocialPost: vi.fn(),
+      publishSocialPost: vi.fn(),
+      advanceSocialPost: vi.fn(),
+      getSocialPost: vi.fn(),
+      listSocialPosts: vi.fn(),
+      cancelSocialPost: vi.fn()
+    } satisfies SocialPublishingClient;
+    const backend = {
+      status: () => Promise.resolve(pairedStatus()),
+      start: vi.fn(),
+      refresh: vi.fn(),
+      disconnect: vi.fn()
+    } satisfies ExtensionSocialBackendRepository;
+    const wrapper = mountPanel(backend, publishing);
+    await flushPromises();
+
+    await clickButton(wrapper, '检查连接');
+    expect(listSocialDestinations).toHaveBeenCalledOnce();
+    wrapper.unmount();
+  });
 });
 
-function mountPanel(backend: ExtensionSocialBackendRepository) {
+function mountPanel(backend: ExtensionSocialBackendRepository, socialPublishing?: SocialPublishingClient) {
   const Host = defineComponent({
     setup() {
       provideServices({
@@ -73,6 +140,7 @@ function mountPanel(backend: ExtensionSocialBackendRepository) {
           save: () => Promise.resolve()
         },
         extensionSocialBackend: backend,
+        ...(socialPublishing ? { socialPublishing } : {}),
         mode: 'extension'
       });
       return () => h(ExtensionSocialBackendPanel);

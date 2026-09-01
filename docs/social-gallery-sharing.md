@@ -60,6 +60,8 @@ Cloudflare 使用私有 `SOCIAL_MEDIA` R2 binding 暂存素材；桶不公开，
 
 设备令牌仅能读取发布目标和调用社交发布任务，不能读取 Meta 密钥、管理用户或调用 Alibaba 能力。管理员可随时在后端撤销设备；插件本地“断开”只删除本机令牌，若设备可能遗失还应在管理后台撤销。
 
+配对成功后可点击插件里的“检查连接”，它只读取目标列表，用来验证精确主机权限、CORS、设备令牌和 BFF 路由，不会创建发布任务或调用 Meta mutation。开发排障也可运行 `pnpm smoke:social:extension:read`，并在当前进程临时提供 `ONE_VEGETABLE_SOCIAL_SMOKE_BASE_URL`、`ONE_VEGETABLE_SOCIAL_SMOKE_EXTENSION_ID`、`ONE_VEGETABLE_SOCIAL_SMOKE_DEVICE_TOKEN`。该命令只输出数量、状态、requestId 与耗时到忽略目录，绝不写出令牌或目标名称；令牌不要放入仓库或普通日志。
+
 ## 安全边界
 
 - Meta App Secret、用户 Token、Page Token 和待发布文案使用独立 AAD 的 AES-256-GCM 密文保存，API 不回显。
