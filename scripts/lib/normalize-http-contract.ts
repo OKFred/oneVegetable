@@ -702,7 +702,110 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       'Purge request diagnostics outside the retention window',
       'purgeAdminRequestEvents',
       'RequestEnvelope'
-    )
+    ),
+    '/admin/social/meta/config/get': postOperation(
+      'Read Meta application configuration summary',
+      'getMetaAppConfiguration',
+      'RequestEnvelope'
+    ),
+    '/admin/social/meta/config/update': postOperation(
+      'Create or update write-only Meta application credentials',
+      'updateMetaAppConfiguration',
+      'MetaAppConfigurationUpdateRequest'
+    ),
+    '/admin/social/meta/config/clear': postOperation(
+      'Clear Meta application credentials after all connections are removed',
+      'clearMetaAppConfiguration',
+      'RevisionRequest'
+    ),
+    '/admin/social/meta/oauth/start': postOperation(
+      'Start a one-time administrator Meta OAuth flow',
+      'startMetaOAuth',
+      'RequestEnvelope'
+    ),
+    '/social/meta/oauth/callback': {
+      get: {
+        summary: 'Receive the Meta OAuth protocol callback',
+        operationId: 'completeMetaOAuth',
+        responses: {
+          '200': { description: 'OAuth callback accepted by a non-navigation client' },
+          '303': { description: 'Redirect to the administrator page with a redacted result' },
+          '400': { description: 'OAuth callback rejected' }
+        }
+      }
+    },
+    '/admin/social/meta/connections/list': postOperation(
+      'List connected Meta identities',
+      'listMetaConnections',
+      'RequestEnvelope'
+    ),
+    '/admin/social/meta/connections/disconnect': postOperation(
+      'Disconnect one Meta identity and its destinations',
+      'disconnectMetaConnection',
+      'MetaConnectionTargetRequest'
+    ),
+    '/social/destinations/list': postOperation(
+      'List publishable Facebook Page and Instagram professional destinations',
+      'listSocialDestinations',
+      'RequestEnvelope'
+    ),
+    '/social-posts/prepare': postOperation(
+      'Validate and privately stage one social image',
+      'prepareSocialPost',
+      'SocialPostPrepareRequest'
+    ),
+    '/social-posts/publish': postOperation(
+      'Perform the first and only initial platform publish attempt',
+      'publishSocialPost',
+      'SocialPostTargetRequest'
+    ),
+    '/social-posts/advance': postOperation(
+      'Advance an Instagram container no more than once per minute',
+      'advanceSocialPost',
+      'SocialPostTargetRequest'
+    ),
+    '/social-posts/get': postOperation(
+      'Read one social publish job',
+      'getSocialPost',
+      'SocialPostTargetRequest'
+    ),
+    '/social-posts/list': postOperation(
+      'List recent social publish jobs',
+      'listSocialPosts',
+      'SocialPostListRequest'
+    ),
+    '/social-posts/cancel': postOperation(
+      'Cancel a prepared or not-yet-finalized social publish job',
+      'cancelSocialPost',
+      'SocialPostTargetRequest'
+    ),
+    '/social-media/{opaqueToken}': {
+      get: {
+        summary: 'Read one short-lived private social image through an opaque token',
+        operationId: 'readSocialMediaAsset',
+        parameters: [
+          {
+            name: 'opaqueToken',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', pattern: '^[A-Za-z0-9_-]{43}$' }
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'Short-lived image bytes',
+            headers: {
+              'X-Request-ID': { schema: { $ref: '#/components/schemas/RequestId' } }
+            },
+            content: {
+              'image/jpeg': { schema: { type: 'string', contentEncoding: 'base64' } },
+              'image/png': { schema: { type: 'string', contentEncoding: 'base64' } }
+            }
+          },
+          '404': envelopeResponse('Social media asset not found')
+        }
+      }
+    }
   };
   document.components.responses = {
     ...(document.components.responses ?? {}),

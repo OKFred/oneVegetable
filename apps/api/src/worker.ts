@@ -30,6 +30,8 @@ import { MetaSocialService } from './social-meta/service';
 import { R2SocialMediaStore } from './social-meta/r2-media-store';
 import { SocialMediaAssetService } from './social-meta/media-service';
 import { SqlSocialPublishingRepository } from './social-meta/publishing-repository';
+import { MetaPublisher } from './social-meta/meta-publisher';
+import { SocialPublishingService } from './social-meta/publishing-service';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -87,6 +89,15 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
         new R2SocialMediaStore(env.SOCIAL_MEDIA)
       )
     : undefined;
+  const socialPublishing = socialMediaAssets
+    ? new SocialPublishingService(
+        new SqlSocialPublishingRepository(database.executor),
+        socialMediaAssets,
+        metaSocial,
+        metaSecretCipher,
+        new MetaPublisher()
+      )
+    : undefined;
   const alibabaCredentialAcquisition =
     runtimeConfiguration.environment === 'self-hosted' && env.BROWSER
       ? new AlibabaCredentialAcquisitionService(
@@ -119,6 +130,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     realMutationControl,
     metaSocial,
     ...(socialMediaAssets ? { socialMediaAssets } : {}),
+    ...(socialPublishing ? { socialPublishing } : {}),
     ...(alibabaCredentialAcquisition ? { alibabaCredentialAcquisition } : {}),
     requestEvents: new SqlRequestEventRepository(database.executor),
     productDescriptionTemplates: new SqlProductDescriptionTemplateRepository(database.executor),

@@ -22,6 +22,7 @@ import {
   validateProductSchemaUpdateRequest,
   validateSchemaPublishRequest,
   validateSocialPostPrepareRequest,
+  validateSocialPostListRequest,
   validateSocialPostTargetRequest
 } from '../generated/validators-core';
 
@@ -51,6 +52,7 @@ import type {
   MetaAppConfigurationUpdateRequest,
   MetaConnectionTargetRequest,
   SocialPostPrepareRequest,
+  SocialPostListRequest,
   SocialPostTargetRequest
 } from '../social-meta';
 
@@ -196,6 +198,9 @@ export const validateSocialPostPrepareInput = (value: unknown, locale?: 'en' | '
     value,
     locale
   );
+
+export const validateSocialPostListInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<SocialPostListRequest>(validateSocialPostListRequest as StandaloneValidator, value, locale);
 
 export const validateSocialPostTargetInput = (value: unknown, locale?: 'en' | 'zh') =>
   runValidator<SocialPostTargetRequest>(

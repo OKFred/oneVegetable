@@ -35,6 +35,14 @@ interface MetaPage {
   instagramAccountId: string | null;
 }
 
+export interface MetaPublishingDestination {
+  destination: SocialDestinationRecord;
+  accessToken: string;
+  graphApiVersion: string;
+  publicOrigin: string;
+  apiPrefix: string;
+}
+
 export class MetaSocialServiceError extends Error {
   constructor(
     readonly code: string,
@@ -286,6 +294,43 @@ export class MetaSocialService {
       initializationVector: destination.initializationVector,
       keyVersion: 1
     });
+  }
+
+  async resolvePublishingDestination(destinationId: string): Promise<MetaPublishingDestination> {
+    const [configuration, destination] = await Promise.all([
+      this.requireConfiguration(),
+      this.repository.findDestination(destinationId)
+    ]);
+    if (!destination?.canPublish) {
+      throw new MetaSocialServiceError(
+        destination?.unavailableReasonCode ?? 'META_DESTINATION_NOT_AVAILABLE',
+        '发布目标不存在或当前没有发布权限',
+        403
+      );
+    }
+    const connection = await this.repository.findConnection(destination.connectionId);
+    if (connection?.status !== 'connected') {
+      throw new MetaSocialServiceError('META_CONNECTION_RECONNECT_REQUIRED', 'Meta 账号需要重新连接', 409);
+    }
+    if (connection.tokenExpiresTimeUtc !== null && connection.tokenExpiresTimeUtc <= this.clock()) {
+      await this.repository.markConnectionReconnectRequired(connection.id, this.clock());
+      throw new MetaSocialServiceError(
+        'META_CONNECTION_RECONNECT_REQUIRED',
+        'Meta 账号令牌已过期，请重新连接',
+        409
+      );
+    }
+    return {
+      destination,
+      accessToken: await this.requireDestinationToken(destination),
+      graphApiVersion: configuration.graphApiVersion,
+      publicOrigin: configuration.publicOrigin,
+      apiPrefix: this.apiPrefix
+    };
+  }
+
+  markConnectionReconnectRequired(connectionId: string): Promise<void> {
+    return this.repository.markConnectionReconnectRequired(connectionId, this.clock());
   }
 
   private async saveDiscoveredDestination(input: {

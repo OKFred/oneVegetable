@@ -24,6 +24,7 @@ export type SocialPublishJob = components['schemas']['SocialPublishJob'];
 export type ExtensionSocialDevice = components['schemas']['ExtensionSocialDevice'];
 export type SocialPostPrepareRequest = components['schemas']['SocialPostPrepareRequest'];
 export type SocialPostTargetRequest = components['schemas']['SocialPostTargetRequest'];
+export type SocialPostListRequest = components['schemas']['SocialPostListRequest'];
 
 export interface MetaDestinationPermissionInput {
   platform: SocialPlatform;

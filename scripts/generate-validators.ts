@@ -51,6 +51,7 @@ const coreValidators: Record<string, object | undefined> = {
   validateProductMutationJobRefreshRequest: schemas.ProductMutationJobRefreshRequest,
   validateSocialPostPrepareRequest: schemas.SocialPostPrepareRequest,
   validateSocialPostTargetRequest: schemas.SocialPostTargetRequest,
+  validateSocialPostListRequest: schemas.SocialPostListRequest,
   validateMetaAppConfigurationUpdateRequest: schemas.MetaAppConfigurationUpdateRequest,
   validateMetaConnectionTargetRequest: schemas.MetaConnectionTargetRequest
 };

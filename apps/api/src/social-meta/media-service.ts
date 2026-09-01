@@ -82,6 +82,18 @@ export class SocialMediaAssetService {
     return `${input.publicOrigin}${input.apiPrefix}/social-media/${token}`;
   }
 
+  async readById(assetId: string): Promise<SocialMediaStoredObject> {
+    const asset = await this.repository.findAsset(assetId);
+    if (!asset || asset.expiresTimeUtc <= this.clock()) {
+      throw new SocialMediaAssetError('SOCIAL_ASSET_EXPIRED', '待发布图片已过期，请重新准备', 410);
+    }
+    const object = await this.store.get(asset.storageKey);
+    if (object?.bytes.byteLength !== asset.byteLength || object.contentType !== asset.contentType) {
+      throw new SocialMediaAssetError('SOCIAL_ASSET_NOT_FOUND', '待发布图片不存在', 404);
+    }
+    return object;
+  }
+
   async readByOpaqueToken(token: string): Promise<SocialMediaStoredObject | null> {
     await this.cleanupIfDue();
     if (!TOKEN_PATTERN.test(token)) return null;

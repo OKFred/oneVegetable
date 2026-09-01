@@ -76,6 +76,7 @@ export interface MetaSocialRepository {
   createOAuthState(input: MetaOAuthStateRecord): Promise<void>;
   consumeOAuthState(stateHash: string, now: number): Promise<MetaOAuthStateRecord | null>;
   findConnectionByExternalId(accountExternalId: string): Promise<MetaOAuthGrantRecord | null>;
+  findConnection(id: string): Promise<MetaOAuthGrantRecord | null>;
   saveConnection(input: {
     id: string;
     accountExternalId: string;
@@ -88,6 +89,7 @@ export interface MetaSocialRepository {
     now: number;
   }): Promise<MetaOAuthGrantRecord>;
   listConnections(now: number): Promise<SocialAccountConnection[]>;
+  markConnectionReconnectRequired(id: string, now: number): Promise<void>;
   disconnectConnection(id: string, expectedRevision: number, actorId: string, now: number): Promise<boolean>;
   findDestinationByExternalId(
     platform: SocialDestination['platform'],
@@ -228,6 +230,11 @@ export class SqlMetaSocialRepository implements MetaSocialRepository {
     return rows[0] ? toOAuthGrant(rows[0]) : null;
   }
 
+  async findConnection(id: string): Promise<MetaOAuthGrantRecord | null> {
+    const rows = await this.executor.query('SELECT * FROM meta_oauth_grants WHERE id = ? LIMIT 1', [id]);
+    return rows[0] ? toOAuthGrant(rows[0]) : null;
+  }
+
   async saveConnection(input: {
     id: string;
     accountExternalId: string;
@@ -303,6 +310,15 @@ export class SqlMetaSocialRepository implements MetaSocialRepository {
         remark: grant.remark
       };
     });
+  }
+
+  async markConnectionReconnectRequired(id: string, now: number): Promise<void> {
+    await this.executor.execute(
+      `UPDATE meta_oauth_grants
+       SET status = 'reconnect-required', update_time_utc = ?, revision = revision + 1
+       WHERE id = ? AND status = 'connected'`,
+      [now, id]
+    );
   }
 
   async disconnectConnection(

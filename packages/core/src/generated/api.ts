@@ -815,6 +815,261 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/social/meta/config/get": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read Meta application configuration summary */
+        post: operations["getMetaAppConfiguration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/social/meta/config/update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create or update write-only Meta application credentials */
+        post: operations["updateMetaAppConfiguration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/social/meta/config/clear": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clear Meta application credentials after all connections are removed */
+        post: operations["clearMetaAppConfiguration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/social/meta/oauth/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a one-time administrator Meta OAuth flow */
+        post: operations["startMetaOAuth"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/social/meta/oauth/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Receive the Meta OAuth protocol callback */
+        get: operations["completeMetaOAuth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/social/meta/connections/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** List connected Meta identities */
+        post: operations["listMetaConnections"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/social/meta/connections/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disconnect one Meta identity and its destinations */
+        post: operations["disconnectMetaConnection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/social/destinations/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** List publishable Facebook Page and Instagram professional destinations */
+        post: operations["listSocialDestinations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/social-posts/prepare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate and privately stage one social image */
+        post: operations["prepareSocialPost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/social-posts/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Perform the first and only initial platform publish attempt */
+        post: operations["publishSocialPost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/social-posts/advance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Advance an Instagram container no more than once per minute */
+        post: operations["advanceSocialPost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/social-posts/get": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read one social publish job */
+        post: operations["getSocialPost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/social-posts/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** List recent social publish jobs */
+        post: operations["listSocialPosts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/social-posts/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a prepared or not-yet-finalized social publish job */
+        post: operations["cancelSocialPost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/social-media/{opaqueToken}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one short-lived private social image through an opaque token */
+        get: operations["readSocialMediaAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7096,6 +7351,10 @@ export interface components {
         };
         /** Format: uuid */
         RequestId: string;
+        RevisionRequest: {
+            requestId: components["schemas"]["RequestId"];
+            revision: number;
+        };
         RfqAttachment: {
             name: string;
             url: string;
@@ -7234,6 +7493,10 @@ export interface components {
         };
         /** @enum {string} */
         SocialPlatform: "facebook" | "instagram";
+        SocialPostListRequest: {
+            requestId: components["schemas"]["RequestId"];
+            limit?: number;
+        };
         SocialPostPrepareRequest: {
             requestId: components["schemas"]["RequestId"];
             /** Format: uuid */
@@ -10228,6 +10491,917 @@ export interface operations {
             };
             /** @description Entity conflict */
             409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    getMetaAppConfiguration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestEnvelope"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    updateMetaAppConfiguration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MetaAppConfigurationUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    clearMetaAppConfiguration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    startMetaOAuth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestEnvelope"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    completeMetaOAuth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OAuth callback accepted by a non-navigation client */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Redirect to the administrator page with a redacted result */
+            303: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description OAuth callback rejected */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listMetaConnections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestEnvelope"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    disconnectMetaConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MetaConnectionTargetRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    listSocialDestinations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestEnvelope"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    prepareSocialPost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SocialPostPrepareRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    publishSocialPost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SocialPostTargetRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    advanceSocialPost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SocialPostTargetRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    getSocialPost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SocialPostTargetRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    listSocialPosts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SocialPostListRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    cancelSocialPost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SocialPostTargetRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    readSocialMediaAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opaqueToken: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Short-lived image bytes */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": string;
+                    "image/png": string;
+                };
+            };
+            /** @description Social media asset not found */
+            404: {
                 headers: {
                     "X-Request-ID"?: components["schemas"]["RequestId"];
                     [name: string]: unknown;

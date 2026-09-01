@@ -3550,6 +3550,1139 @@
           }
         }
       }
+    },
+    "/admin/social/meta/config/get": {
+      "post": {
+        "summary": "Read Meta application configuration summary",
+        "operationId": "getMetaAppConfiguration",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RequestEnvelope" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/social/meta/config/update": {
+      "post": {
+        "summary": "Create or update write-only Meta application credentials",
+        "operationId": "updateMetaAppConfiguration",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/MetaAppConfigurationUpdateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/social/meta/config/clear": {
+      "post": {
+        "summary": "Clear Meta application credentials after all connections are removed",
+        "operationId": "clearMetaAppConfiguration",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RevisionRequest" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/social/meta/oauth/start": {
+      "post": {
+        "summary": "Start a one-time administrator Meta OAuth flow",
+        "operationId": "startMetaOAuth",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RequestEnvelope" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/social/meta/oauth/callback": {
+      "get": {
+        "summary": "Receive the Meta OAuth protocol callback",
+        "operationId": "completeMetaOAuth",
+        "responses": {
+          "200": { "description": "OAuth callback accepted by a non-navigation client" },
+          "303": { "description": "Redirect to the administrator page with a redacted result" },
+          "400": { "description": "OAuth callback rejected" }
+        }
+      }
+    },
+    "/admin/social/meta/connections/list": {
+      "post": {
+        "summary": "List connected Meta identities",
+        "operationId": "listMetaConnections",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RequestEnvelope" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/social/meta/connections/disconnect": {
+      "post": {
+        "summary": "Disconnect one Meta identity and its destinations",
+        "operationId": "disconnectMetaConnection",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/MetaConnectionTargetRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/social/destinations/list": {
+      "post": {
+        "summary": "List publishable Facebook Page and Instagram professional destinations",
+        "operationId": "listSocialDestinations",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RequestEnvelope" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/social-posts/prepare": {
+      "post": {
+        "summary": "Validate and privately stage one social image",
+        "operationId": "prepareSocialPost",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/SocialPostPrepareRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/social-posts/publish": {
+      "post": {
+        "summary": "Perform the first and only initial platform publish attempt",
+        "operationId": "publishSocialPost",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/SocialPostTargetRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/social-posts/advance": {
+      "post": {
+        "summary": "Advance an Instagram container no more than once per minute",
+        "operationId": "advanceSocialPost",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/SocialPostTargetRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/social-posts/get": {
+      "post": {
+        "summary": "Read one social publish job",
+        "operationId": "getSocialPost",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/SocialPostTargetRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/social-posts/list": {
+      "post": {
+        "summary": "List recent social publish jobs",
+        "operationId": "listSocialPosts",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/SocialPostListRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/social-posts/cancel": {
+      "post": {
+        "summary": "Cancel a prepared or not-yet-finalized social publish job",
+        "operationId": "cancelSocialPost",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/SocialPostTargetRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/social-media/{opaqueToken}": {
+      "get": {
+        "summary": "Read one short-lived private social image through an opaque token",
+        "operationId": "readSocialMediaAsset",
+        "parameters": [
+          {
+            "name": "opaqueToken",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Short-lived image bytes",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "image/jpeg": { "schema": { "type": "string", "contentEncoding": "base64" } },
+              "image/png": { "schema": { "type": "string", "contentEncoding": "base64" } }
+            }
+          },
+          "404": {
+            "description": "Social media asset not found",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -12855,6 +13988,15 @@
         "format": "uuid",
         "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
       },
+      "RevisionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "revision"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "revision": { "type": "integer", "minimum": 1 }
+        }
+      },
       "RfqAttachment": {
         "type": "object",
         "additionalProperties": false,
@@ -13119,6 +14261,15 @@
         }
       },
       "SocialPlatform": { "type": "string", "enum": ["facebook", "instagram"] },
+      "SocialPostListRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 100 }
+        }
+      },
       "SocialPostPrepareRequest": {
         "type": "object",
         "additionalProperties": false,

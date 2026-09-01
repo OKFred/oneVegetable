@@ -1,9 +1,16 @@
-import { isRequestId, normalizeRemark } from '@one-vegetable/core';
+import {
+  isRequestId,
+  normalizeRemark,
+  validateSocialPostListInput,
+  validateSocialPostPrepareInput,
+  validateSocialPostTargetInput
+} from '@one-vegetable/core';
 import { authorizeAdmin } from '../abac';
 import { authenticateMutation, authenticateRequest } from '../auth/routes';
 import { AuthError } from '../auth/service';
 import { MetaEntityVersionConflictError } from './repository';
 import { SocialMediaAssetError } from './media-service';
+import { SocialPublishingServiceError } from './publishing-service';
 import { MetaSocialServiceError } from './service';
 
 import type { GatewayError } from '@one-vegetable/core';
@@ -12,6 +19,7 @@ import type { Context } from 'hono';
 import type { AuthService } from '../auth/service';
 import type { MetaSocialService } from './service';
 import type { SocialMediaAssetService } from './media-service';
+import type { SocialPublishingService } from './publishing-service';
 
 const REQUEST_IDS = new WeakMap<Request, string>();
 
@@ -19,6 +27,7 @@ export interface MetaSocialRouteOptions {
   authService: AuthService;
   service: MetaSocialService;
   mediaAssets?: SocialMediaAssetService;
+  publishing?: SocialPublishingService;
   allowedOrigins?: readonly string[];
 }
 
@@ -195,6 +204,128 @@ export function registerMetaSocialRoutes(api: Hono, options: MetaSocialRouteOpti
       });
     });
   }
+
+  if (options.publishing) registerPublishingRoutes(api, options);
+}
+
+function registerPublishingRoutes(api: Hono, options: MetaSocialRouteOptions): void {
+  const publishing = options.publishing;
+  if (!publishing) return;
+
+  api.post('/social-posts/prepare', (context) =>
+    adminWrite(
+      context,
+      options,
+      async (body, actorId) => {
+        const validation = validateSocialPostPrepareInput(body);
+        if (!validation.valid || !validation.data) {
+          throw new AuthError('INVALID_REQUEST_BODY', validation.errors.join('；'), 400);
+        }
+        const result = await publishing.prepare(validation.data, actorId);
+        await options.authService.audit({
+          requestId: validation.data.requestId,
+          actorId,
+          action: 'social.post.prepare',
+          resourceKind: 'social-publish-job',
+          resourceId: result.id,
+          outcome: 'success',
+          reasonCode: 'SOCIAL_POST_PREPARED',
+          revisionBefore: null,
+          revisionAfter: result.revision
+        });
+        return result;
+      },
+      ['requestId', 'destinationId', 'caption', 'idempotencyKey', 'file']
+    )
+  );
+
+  for (const [path, action, auditAction] of [
+    ['/social-posts/publish', 'publish', 'social.post.publish'],
+    ['/social-posts/advance', 'advance', 'social.post.advance']
+  ] as const) {
+    api.post(path, (context) =>
+      adminWrite(
+        context,
+        options,
+        async (body, actorId) => {
+          const request = readSocialTarget(body);
+          const result = await publishing[action]({ ...request, actorId });
+          await options.authService.audit({
+            requestId: request.requestId,
+            actorId,
+            action: auditAction,
+            resourceKind: 'social-publish-job',
+            resourceId: result.id,
+            outcome: result.status === 'failed' || result.status === 'unknown' ? 'error' : 'success',
+            reasonCode: result.reasonCode ?? `SOCIAL_POST_${result.status.toUpperCase()}`,
+            revisionBefore: Math.max(1, result.revision - 1),
+            revisionAfter: result.revision
+          });
+          return result;
+        },
+        ['requestId', 'jobId']
+      )
+    );
+  }
+
+  api.post('/social-posts/get', (context) =>
+    adminRead(
+      context,
+      options,
+      async (body, actorId) => {
+        const request = readSocialTarget(body);
+        return publishing.get(request.jobId, actorId);
+      },
+      ['requestId', 'jobId']
+    )
+  );
+
+  api.post('/social-posts/list', (context) =>
+    adminRead(
+      context,
+      options,
+      async (body, actorId) => {
+        const validation = validateSocialPostListInput(body);
+        if (!validation.valid || !validation.data) {
+          throw new AuthError('INVALID_REQUEST_BODY', validation.errors.join('；'), 400);
+        }
+        return { items: await publishing.list(actorId, validation.data.limit) };
+      },
+      ['requestId', 'limit']
+    )
+  );
+
+  api.post('/social-posts/cancel', (context) =>
+    adminWrite(
+      context,
+      options,
+      async (body, actorId) => {
+        const request = readSocialTarget(body);
+        const result = await publishing.cancel(request.jobId, actorId);
+        await options.authService.audit({
+          requestId: request.requestId,
+          actorId,
+          action: 'social.post.cancel',
+          resourceKind: 'social-publish-job',
+          resourceId: result.id,
+          outcome: 'success',
+          reasonCode: 'SOCIAL_POST_CANCELLED',
+          revisionBefore: Math.max(1, result.revision - 1),
+          revisionAfter: result.revision
+        });
+        return result;
+      },
+      ['requestId', 'jobId']
+    )
+  );
+}
+
+function readSocialTarget(body: Record<string, unknown>): { requestId: string; jobId: string } {
+  const validation = validateSocialPostTargetInput(body);
+  if (!validation.valid || !validation.data) {
+    throw new AuthError('INVALID_REQUEST_BODY', validation.errors.join('；'), 400);
+  }
+  return validation.data;
 }
 
 async function adminRead(
@@ -332,6 +463,14 @@ function routeError(error: unknown): {
   if (error instanceof SocialMediaAssetError) {
     return { code: error.code, message: error.message, status: error.status, retryable: false };
   }
+  if (error instanceof SocialPublishingServiceError) {
+    return {
+      code: error.code,
+      message: error.message,
+      status: error.status,
+      retryable: error.retryable
+    };
+  }
   if (error instanceof MetaEntityVersionConflictError) {
     return {
       code: 'ENTITY_VERSION_CONFLICT',
@@ -349,6 +488,15 @@ function callbackRedirect(
   status: 'connected' | 'failed',
   reasonCode?: string
 ): Response {
+  if (context.req.header('accept')?.includes('application/json')) {
+    return status === 'connected'
+      ? success(context, requestId, { status })
+      : failure(context, requestId, 400, {
+          code: reasonCode ?? 'META_OAUTH_FAILED',
+          message: 'Meta OAuth 授权失败',
+          retryable: false
+        });
+  }
   const query = new URLSearchParams({ meta: status });
   if (reasonCode) query.set('reason', reasonCode.slice(0, 128));
   const response = context.redirect(`${new URL(context.req.url).origin}/#/admin?${query}`, 303);
