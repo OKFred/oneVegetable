@@ -1239,8 +1239,13 @@ const columns: DataColumn<Product>[] = [
     accessorKey: 'status',
     header: '状态',
     cell: (context) =>
-      h(Badge, { variant: statusVariant(context.getValue<Product['status']>()) }, () =>
-        productStatusLabel(context.getValue<Product['status']>())
+      h(
+        Badge,
+        {
+          variant: statusVariant(context.getValue<Product['status']>()),
+          class: 'whitespace-nowrap'
+        },
+        () => productStatusLabel(context.getValue<Product['status']>())
       )
   },
   {
@@ -1273,7 +1278,12 @@ const columns: DataColumn<Product>[] = [
   {
     accessorKey: 'updatedAt',
     header: '更新时间',
-    cell: (context) => new Date(context.getValue<string>()).toLocaleString('zh-CN')
+    cell: (context) =>
+      h(
+        'span',
+        { class: 'whitespace-nowrap tabular-nums' },
+        new Date(context.getValue<string>()).toLocaleString('zh-CN')
+      )
   },
   {
     id: 'actions',

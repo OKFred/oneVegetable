@@ -69,6 +69,24 @@ describe('ProductsView selection toolbar', () => {
     wrapper.unmount();
   });
 
+  it('keeps product status and update time on one line', async () => {
+    const wrapper = mountView();
+    await waitForProducts(wrapper);
+    const headers = wrapper.findAll('thead th').map((header) => header.text().trim());
+    const statusIndex = headers.indexOf('状态');
+    const updatedAtIndex = headers.indexOf('更新时间');
+    if (statusIndex < 0 || updatedAtIndex < 0)
+      throw new Error('Missing product status or update time header');
+    const cells = wrapper.get('tbody tr').findAll('td');
+    const statusCell = cells.at(statusIndex);
+    const updatedAtCell = cells.at(updatedAtIndex);
+
+    if (!statusCell || !updatedAtCell) throw new Error('Missing product status or update time cell');
+    expect(statusCell.get('.whitespace-nowrap').text()).toBe('在线');
+    expect(updatedAtCell.get('.whitespace-nowrap').classes()).toContain('tabular-nums');
+    wrapper.unmount();
+  });
+
   it('refreshes the current product list from the toolbar', async () => {
     const gateway = new MockGatewayClient(0);
     const request = vi.spyOn(gateway, 'request');
