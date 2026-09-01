@@ -274,21 +274,12 @@ describe('SettingsView diagnostics', () => {
     wrapper.unmount();
   });
 
-  it('persists and applies the preferred interface theme', async () => {
+  it('keeps interface theme controls out of connection settings', async () => {
     const wrapper = mountView();
     await flushPromises();
 
-    const theme = wrapper.get('select[aria-label="主题偏好"]');
-    expect((theme.element as HTMLSelectElement).value).toBe('system');
-    await theme.setValue('dark');
-
-    expect(document.documentElement.classList.contains('dark')).toBe(true);
-    expect(document.documentElement.dataset.theme).toBe('dark');
-    expect(JSON.parse(localStorage.getItem(APP_PREFERENCES_STORAGE_KEY) ?? '{}')).toEqual({
-      language: 'en_US',
-      theme: 'dark'
-    });
-    expect(wrapper.text()).toContain('界面主题已切换为深色');
+    expect(wrapper.find('select[aria-label="主题偏好"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('界面主题');
     wrapper.unmount();
   });
 
