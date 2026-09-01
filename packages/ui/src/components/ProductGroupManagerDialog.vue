@@ -28,6 +28,7 @@ import {
   operationAvailabilityMessage,
   useOperationAvailability
 } from '../composables/use-operation-availability';
+import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 
 interface ProductGroupRow {
@@ -42,6 +43,7 @@ const emit = defineEmits<{
 }>();
 
 const { gateway, mode } = useServices();
+const { t } = useUiI18n();
 const queryClient = useQueryClient();
 const createAvailability = useOperationAvailability(['createProductGroup']);
 const expandedIds = ref<Set<number>>(new Set());
@@ -69,12 +71,15 @@ const createAllowed = computed(() => createAvailability.isAllowed('createProduct
 const createUnavailableMessage = computed(() =>
   operationAvailabilityMessage(
     createAvailability.reasonCode('createProductGroup'),
-    '当前环境尚未开放真实商品分组新增'
+    t('products.groupManager.unavailable')
   )
 );
 const createParentLabel = computed(() => {
-  if (createParentId.value === -1) return '全部分组';
-  return visibleRows.value.find((row) => row.group.id === createParentId.value)?.group.name ?? '所选分组';
+  if (createParentId.value === -1) return t('products.common.allGroups');
+  return (
+    visibleRows.value.find((row) => row.group.id === createParentId.value)?.group.name ??
+    t('products.groupManager.selectedGroup')
+  );
 });
 
 const createGroup = useMutation({
@@ -107,7 +112,7 @@ const createGroup = useMutation({
     await queryClient.invalidateQueries({ queryKey: ['product-groups'], refetchType: 'none' });
     newGroupName.value = '';
     createParentId.value = null;
-    toast.success(`商品分组“${created.name}”已创建。`);
+    toast.success(t('products.groupManager.created', { name: created.name }));
     emit('changed', created);
   }
 });
@@ -161,7 +166,8 @@ async function toggleGroup(row: ProductGroupRow): Promise<void> {
   } catch (error: unknown) {
     childErrors.value = {
       ...childErrors.value,
-      [String(row.group.id)]: error instanceof Error ? error.message : '子分组加载失败'
+      [String(row.group.id)]:
+        error instanceof Error ? error.message : t('products.groupManager.childLoadFailed')
     };
   } finally {
     setLoading(row.group.id, false);
@@ -215,19 +221,23 @@ function confirmCreate(): void {
 <template>
   <ModalDialog
     :open="open"
-    title="商品分组"
-    description="以树形结构查看国际站商品分组，并在平台允许时新增分组。"
+    :title="t('products.groupManager.title')"
+    :description="t('products.groupManager.description')"
     size="lg"
     @update:open="emit('update:open', $event)"
   >
     <section class="min-w-0" aria-labelledby="product-group-tree-heading">
       <div class="mb-3 flex items-center justify-between gap-3">
         <div>
-          <h3 id="product-group-tree-heading" class="font-medium">分组树</h3>
-          <p class="mt-1 text-xs text-muted-foreground">最多三级；在目标目录右侧直接新增子分组。</p>
+          <h3 id="product-group-tree-heading" class="font-medium">
+            {{ t('products.groupManager.treeTitle') }}
+          </h3>
+          <p class="mt-1 text-xs text-muted-foreground">{{ t('products.groupManager.treeDescription') }}</p>
         </div>
         <Button variant="outline" size="sm" :disabled="roots.isFetching.value" @click="refreshGroups">
-          <RefreshCw :class="['size-4', roots.isFetching.value ? 'animate-spin' : '']" />刷新
+          <RefreshCw :class="['size-4', roots.isFetching.value ? 'animate-spin' : '']" />{{
+            t('common.actions.refresh')
+          }}
         </Button>
       </div>
 
@@ -235,7 +245,7 @@ function confirmCreate(): void {
         <div
           class="max-h-[32rem] overflow-auto rounded-lg border bg-card p-2"
           role="tree"
-          aria-label="商品分组树"
+          :aria-label="t('products.groupManager.treeLabel')"
         >
           <div
             class="flex min-h-10 items-center gap-2 rounded-md bg-muted/50 px-2 transition-colors hover:bg-muted"
@@ -247,15 +257,19 @@ function confirmCreate(): void {
               <ChevronDown class="size-4" />
             </span>
             <FolderOpen class="size-4 shrink-0 text-primary" />
-            <span class="min-w-0 flex-1 truncate text-sm font-semibold">全部分组</span>
-            <span class="text-xs text-muted-foreground">{{ roots.data.value?.length ?? 0 }} 个一级分组</span>
+            <span class="min-w-0 flex-1 truncate text-sm font-semibold">{{
+              t('products.common.allGroups')
+            }}</span>
+            <span class="text-xs text-muted-foreground">
+              {{ t('products.groupManager.rootCount', { count: roots.data.value?.length ?? 0 }) }}
+            </span>
             <ActionTooltip :disabled="!createAllowed" :reason="createUnavailableMessage">
               <Button
                 variant="ghost"
                 size="icon"
                 class="size-8"
                 :disabled="!createAllowed || createGroup.isPending.value"
-                aria-label="在全部分组下新增分组"
+                :aria-label="t('products.groupManager.addToRoot')"
                 @click="beginCreate(-1)"
               >
                 <FolderPlus class="size-4" />
@@ -271,18 +285,20 @@ function confirmCreate(): void {
               <Input
                 v-model="newGroupName"
                 class="min-w-52 flex-1"
-                aria-label="在全部分组下的新分组名称"
+                :aria-label="t('products.groupManager.rootNameLabel')"
                 maxlength="80"
-                placeholder="输入一级分组名称"
+                :placeholder="t('products.groupManager.rootNamePlaceholder')"
                 :disabled="createGroup.isPending.value"
                 @keydown.esc.prevent="cancelCreate"
               />
               <Button type="submit" size="sm" :disabled="!newGroupName.trim() || createGroup.isPending.value">
                 <LoaderCircle v-if="createGroup.isPending.value" class="size-4 animate-spin" />
-                {{ createGroup.isPending.value ? '正在保存…' : '保存' }}
+                {{
+                  createGroup.isPending.value ? t('products.groupManager.saving') : t('common.actions.save')
+                }}
               </Button>
               <Button variant="ghost" size="sm" :disabled="createGroup.isPending.value" @click="cancelCreate">
-                取消
+                {{ t('common.actions.cancel') }}
               </Button>
             </div>
             <ErrorNotice
@@ -294,7 +310,7 @@ function confirmCreate(): void {
           </form>
 
           <div v-if="visibleRows.length === 0" class="px-12 py-5 text-sm text-muted-foreground">
-            当前账号暂无商品分组，可从“全部分组”右侧新增。
+            {{ t('products.groupManager.empty') }}
           </div>
           <div v-for="row in visibleRows" :key="row.group.id">
             <div
@@ -308,7 +324,14 @@ function confirmCreate(): void {
                 v-if="row.depth < 3"
                 type="button"
                 class="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                :aria-label="`${expandedIds.has(row.group.id) ? '收起' : '展开'}${row.group.name}`"
+                :aria-label="
+                  t(
+                    expandedIds.has(row.group.id)
+                      ? 'products.groupNavigation.collapse'
+                      : 'products.groupNavigation.expand',
+                    { name: row.group.name }
+                  )
+                "
                 @click="toggleGroup(row)"
               >
                 <LoaderCircle v-if="loadingIds.has(row.group.id)" class="size-4 animate-spin" />
@@ -330,30 +353,30 @@ function confirmCreate(): void {
                   size="icon"
                   class="size-8"
                   :disabled="!createAllowed || createGroup.isPending.value"
-                  :aria-label="`在 ${row.group.name} 下新增分组`"
+                  :aria-label="t('products.groupManager.addToGroup', { name: row.group.name })"
                   @click="beginCreate(row.group.id)"
                 >
                   <FolderPlus class="size-4" />
                 </Button>
               </ActionTooltip>
-              <Tooltip text="国际站官方 OpenAPI 未提供商品分组修改接口，暂时无法修改名称。">
+              <Tooltip :text="t('products.groupManager.renameUnavailableTooltip')">
                 <span
                   role="button"
                   tabindex="0"
                   class="inline-flex size-8 cursor-not-allowed items-center justify-center rounded-md text-muted-foreground opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   aria-disabled="true"
-                  :aria-label="`修改分组 ${row.group.name}（不可用）`"
+                  :aria-label="t('products.groupManager.renameUnavailable', { name: row.group.name })"
                 >
                   <Pencil class="size-3.5" />
                 </span>
               </Tooltip>
-              <Tooltip text="国际站官方 OpenAPI 未提供商品分组删除接口，暂时无法删除线上分组。">
+              <Tooltip :text="t('products.groupManager.deleteUnavailableTooltip')">
                 <span
                   role="button"
                   tabindex="0"
                   class="inline-flex size-8 cursor-not-allowed items-center justify-center rounded-md text-muted-foreground opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   aria-disabled="true"
-                  :aria-label="`删除分组 ${row.group.name}（不可用）`"
+                  :aria-label="t('products.groupManager.deleteUnavailable', { name: row.group.name })"
                 >
                   <Trash2 class="size-3.5" />
                 </span>
@@ -369,9 +392,9 @@ function confirmCreate(): void {
                 <Input
                   v-model="newGroupName"
                   class="min-w-52 flex-1"
-                  :aria-label="`在 ${row.group.name} 下的新分组名称`"
+                  :aria-label="t('products.groupManager.childNameLabel', { name: row.group.name })"
                   maxlength="80"
-                  placeholder="输入子分组名称"
+                  :placeholder="t('products.groupManager.childNamePlaceholder')"
                   :disabled="createGroup.isPending.value"
                   @keydown.esc.prevent="cancelCreate"
                 />
@@ -381,7 +404,9 @@ function confirmCreate(): void {
                   :disabled="!newGroupName.trim() || createGroup.isPending.value"
                 >
                   <LoaderCircle v-if="createGroup.isPending.value" class="size-4 animate-spin" />
-                  {{ createGroup.isPending.value ? '正在保存…' : '保存' }}
+                  {{
+                    createGroup.isPending.value ? t('products.groupManager.saving') : t('common.actions.save')
+                  }}
                 </Button>
                 <Button
                   variant="ghost"
@@ -389,7 +414,7 @@ function confirmCreate(): void {
                   :disabled="createGroup.isPending.value"
                   @click="cancelCreate"
                 >
-                  取消
+                  {{ t('common.actions.cancel') }}
                 </Button>
               </div>
               <ErrorNotice
@@ -415,7 +440,7 @@ function confirmCreate(): void {
               class="py-1 text-xs text-muted-foreground"
               :style="{ paddingLeft: `${(row.depth + 1) * 20 + 36}px` }"
             >
-              暂无子分组
+              {{ t('products.groupManager.noChildren') }}
             </p>
           </div>
         </div>
@@ -427,24 +452,31 @@ function confirmCreate(): void {
       <div
         class="mt-3 rounded-lg border border-amber-200 bg-amber-50/70 px-4 py-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
       >
-        国际站官方 OpenAPI 目前仅提供商品分组查询与新增，没有修改名称或删除接口；对应按钮已保留但不可用。
+        {{ t('products.groupManager.apiLimitation') }}
       </div>
     </section>
 
     <template #footer>
       <div class="flex justify-end">
-        <Button variant="outline" @click="emit('update:open', false)">关闭</Button>
+        <Button variant="outline" @click="emit('update:open', false)">{{ t('common.actions.close') }}</Button>
       </div>
     </template>
   </ModalDialog>
 
   <ConfirmActionDialog
     v-model:open="createConfirmationOpen"
-    title="确认创建商品分组"
-    description="该操作会立即写入当前国际站账号，官方 OpenAPI 暂不支持删除或重命名商品分组。"
-    confirm-label="创建分组"
+    :title="t('products.groupManager.confirmTitle')"
+    :description="t('products.groupManager.confirmDescription')"
+    :confirm-label="t('products.groupManager.confirmLabel')"
     @confirm="confirmCreate"
   >
-    <p>将在“{{ createParentLabel }}”下创建“{{ newGroupName.trim() }}”。请确认名称和层级无误。</p>
+    <p>
+      {{
+        t('products.groupManager.confirmTarget', {
+          parent: createParentLabel,
+          name: newGroupName.trim()
+        })
+      }}
+    </p>
   </ConfirmActionDialog>
 </template>

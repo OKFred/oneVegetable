@@ -16,6 +16,7 @@ import type {
   ProductSchemaSerializationInspection
 } from '@one-vegetable/core';
 import type { ProductEditorMode } from '../lib/product-editor-drafts';
+import { translateUi } from '../i18n';
 
 export interface ProductEditorSessionOptions {
   language: AlibabaLanguage;
@@ -45,7 +46,9 @@ export function useProductEditorSession(options: ProductEditorSessionOptions) {
         xml: model.value.sourceXml,
         noOp: false,
         changedFieldKeys: [],
-        structuralDiffs: [error instanceof Error ? error.message : 'Schema XML 序列化失败'],
+        structuralDiffs: [
+          error instanceof Error ? error.message : translateUi('products.editor.serializationFailed')
+        ],
         safe: false
       };
     }

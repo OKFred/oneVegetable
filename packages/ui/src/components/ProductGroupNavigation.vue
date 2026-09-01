@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight, Folder, FolderOpen, LoaderCircle } from '@lu
 import type { ProductGroup } from '@one-vegetable/core';
 
 import ErrorNotice from './ErrorNotice.vue';
+import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 
 interface ProductGroupRow {
@@ -20,6 +21,7 @@ const emit = defineEmits<{
 }>();
 
 const { gateway } = useServices();
+const { t } = useUiI18n();
 const queryClient = useQueryClient();
 const childrenByParent = ref<Record<string, ProductGroup[]>>({});
 const expandedIds = ref<Set<number>>(new Set());
@@ -96,7 +98,8 @@ async function toggleGroup(row: ProductGroupRow): Promise<void> {
   } catch (error: unknown) {
     childErrors.value = {
       ...childErrors.value,
-      [String(row.group.id)]: error instanceof Error ? error.message : '商品子分组加载失败'
+      [String(row.group.id)]:
+        error instanceof Error ? error.message : t('products.groupNavigation.childLoadFailed')
     };
   } finally {
     setLoading(row.group.id, false);
@@ -112,7 +115,7 @@ function setLoading(groupId: number, loading: boolean): void {
 </script>
 
 <template>
-  <div role="tree" aria-label="商品分组">
+  <div role="tree" :aria-label="t('products.groupNavigation.tree')">
     <button
       type="button"
       role="treeitem"
@@ -123,7 +126,7 @@ function setLoading(groupId: number, loading: boolean): void {
     >
       <span class="block size-7 shrink-0" />
       <Folder class="size-4 shrink-0" />
-      <span class="truncate">全部商品</span>
+      <span class="truncate">{{ t('products.common.allProducts') }}</span>
     </button>
 
     <TransitionGroup name="ov-list" tag="div">
@@ -141,7 +144,14 @@ function setLoading(groupId: number, loading: boolean): void {
           v-if="canToggle(row)"
           type="button"
           class="mr-1 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          :aria-label="`${expandedIds.has(row.group.id) ? '收起' : '展开'}${row.group.name}`"
+          :aria-label="
+            t(
+              expandedIds.has(row.group.id)
+                ? 'products.groupNavigation.collapse'
+                : 'products.groupNavigation.expand',
+              { name: row.group.name }
+            )
+          "
           @click="toggleGroup(row)"
         >
           <LoaderCircle v-if="loadingIds.has(row.group.id)" class="size-4 animate-spin" />
@@ -165,14 +175,14 @@ function setLoading(groupId: number, loading: boolean): void {
       v-if="roots.error.value"
       class="mx-2 my-2"
       :error="roots.error.value"
-      fallback="商品分组加载失败"
+      :fallback="t('products.groupNavigation.loadFailed')"
       compact
     />
     <p
       v-if="visibleRows.length === 0 && !roots.isPending.value"
       class="px-2 py-3 text-xs text-muted-foreground"
     >
-      当前账号暂无商品分组
+      {{ t('products.groupNavigation.empty') }}
     </p>
     <p
       v-for="(message, groupId) in childErrors"

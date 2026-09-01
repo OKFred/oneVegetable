@@ -14,6 +14,7 @@ import ProductEditorLoading from './ProductEditorLoading.vue';
 import ProductSchemaFieldComponent from './ProductSchemaField.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
+import { useUiI18n } from '../i18n';
 
 const ProductSchemaXmlPreview = defineAsyncComponent({
   loader: () => import('./ProductSchemaXmlPreview.vue'),
@@ -46,11 +47,14 @@ const emit = defineEmits<{
   imageStatus: [status: ProductDescriptionImageMetadata & { url: string }];
   submit: [draft: boolean];
 }>();
+const { t } = useUiI18n();
 
 const xmlPreviewOpen = ref(false);
 const serializationLabel = computed(() => {
-  if (!props.schemaInspection.safe) return '结构异常';
-  return props.schemaInspection.noOp ? '原样' : '安全补丁';
+  if (!props.schemaInspection.safe) return t('products.editor.serialization.invalid');
+  return props.schemaInspection.noOp
+    ? t('products.editor.serialization.unchanged')
+    : t('products.editor.serialization.safePatch');
 });
 const changedFieldNames = computed(() =>
   props.schemaInspection.changedFieldKeys.map(
@@ -77,14 +81,14 @@ function handleXmlPreviewToggle(event: Event): void {
     />
   </div>
   <div v-if="model.warnings.length" class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-    <p class="font-medium">服务端规则提示</p>
+    <p class="font-medium">{{ t('products.editor.warnings') }}</p>
     <ul class="mt-1 list-disc pl-5">
       <li v-for="warning in model.warnings" :key="warning">{{ warning }}</li>
     </ul>
   </div>
   <details class="mt-5 rounded-lg border p-3" @toggle="handleXmlPreviewToggle">
     <summary class="flex cursor-pointer items-center gap-2 text-sm font-medium">
-      Schema XML 预览（只读）
+      {{ t('products.editor.xmlPreview') }}
       <Badge
         :variant="schemaInspection.safe ? (schemaInspection.noOp ? 'secondary' : 'success') : 'destructive'"
       >
@@ -103,7 +107,8 @@ function handleXmlPreviewToggle(event: Event): void {
       :disabled="submitPending || publishDisabled || blockingCount > 0 || !schemaInspection.safe"
       @click="emit('submit', false)"
     >
-      <Send class="size-4" />{{ editing ? '更新商品' : '发布商品' }} · {{ advisoryCount }} 条建议
+      <Send class="size-4" />{{ t(editing ? 'products.editor.update' : 'products.editor.publish') }} ·
+      {{ t('products.common.suggestionCount', { count: advisoryCount }) }}
     </Button>
     <Button
       v-if="!editing"
@@ -111,7 +116,7 @@ function handleXmlPreviewToggle(event: Event): void {
       :disabled="submitPending || draftDisabled || Boolean(platformDraftId) || !schemaInspection.safe"
       @click="emit('submit', true)"
     >
-      <Save class="size-4" />保存平台草稿
+      <Save class="size-4" />{{ t('products.editor.savePlatformDraft') }}
     </Button>
   </div>
 </template>

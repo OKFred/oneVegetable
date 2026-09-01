@@ -20,10 +20,12 @@ import {
 
 import type { ProductTransferDocumentV1 } from '@one-vegetable/core';
 import type {
+  ArchiveWorkerErrorCode,
   ArchiveWorkerFile,
   ArchiveWorkerRequest,
   ArchiveWorkerResponse
 } from './product-transfer-archive.worker';
+import { translateUi } from '../i18n';
 
 const MANIFEST_PATH = 'products.json';
 
@@ -69,9 +71,9 @@ export async function readProductTransferArchive(
   bytes: Uint8Array
 ): Promise<ProductTransferArchiveReadResult> {
   if (bytes.byteLength > MAX_PRODUCT_TRANSFER_ZIP_BYTES) {
-    throw new Error('商品 ZIP 超过 50 MiB 上限');
+    throw new Error(translateUi('products.transfer.errors.zipTooLarge'));
   }
-  if (!isProductTransferZipBytes(bytes)) throw new Error('所选文件不是有效 ZIP');
+  if (!isProductTransferZipBytes(bytes)) throw new Error(translateUi('products.transfer.errors.invalidZip'));
 
   let entryCount = 0;
   let totalUncompressedBytes = 0;
@@ -82,32 +84,38 @@ export async function readProductTransferArchive(
     try {
       entryCount += 1;
       if (entryCount > MAX_PRODUCT_TRANSFER_ARCHIVE_ENTRIES) {
-        throw new Error('商品 ZIP 文件数量超过 500 个上限');
+        throw new Error(translateUi('products.transfer.errors.entryLimit'));
       }
       totalUncompressedBytes += entry.originalSize;
       if (totalUncompressedBytes > MAX_PRODUCT_TRANSFER_UNCOMPRESSED_BYTES) {
-        throw new Error('商品 ZIP 解压后超过 100 MiB 上限');
+        throw new Error(translateUi('products.transfer.errors.uncompressedLimit'));
       }
 
       const name = normalizeArchiveEntryName(entry.name);
       const caseInsensitiveName = name.toLocaleLowerCase('en-US');
-      if (normalizedNames.has(caseInsensitiveName)) throw new Error(`商品 ZIP 包含重复路径：${name}`);
+      if (normalizedNames.has(caseInsensitiveName)) {
+        throw new Error(translateUi('products.transfer.errors.duplicatePath', { path: name }));
+      }
       normalizedNames.add(caseInsensitiveName);
 
       if (name.endsWith('/')) {
-        if (name !== 'assets/') throw new Error(`商品 ZIP 包含不支持的目录：${name}`);
+        if (name !== 'assets/') {
+          throw new Error(translateUi('products.transfer.errors.unsupportedDirectory', { path: name }));
+        }
         return false;
       }
       if (name === MANIFEST_PATH) {
         if (entry.originalSize > MAX_PRODUCT_TRANSFER_JSON_BYTES) {
-          throw new Error('products.json 超过 10 MiB 上限');
+          throw new Error(translateUi('products.transfer.errors.manifestLimit'));
         }
         return true;
       }
       const assetPath = normalizeProductTransferAssetPath(name);
-      if (!assetPath) throw new Error(`商品 ZIP 包含不支持的路径：${name}`);
+      if (!assetPath) {
+        throw new Error(translateUi('products.transfer.errors.unsupportedPath', { path: name }));
+      }
       if (entry.originalSize > MAX_PHOTOBANK_IMAGE_BYTES) {
-        throw new Error(`图片 ${name} 超过 5 MiB 上限`);
+        throw new Error(translateUi('products.transfer.errors.photoLimit', { path: name }));
       }
       return true;
     } catch (error: unknown) {
@@ -118,11 +126,11 @@ export async function readProductTransferArchive(
   if (filterState.error) throw filterState.error;
 
   const manifestBytes = files[MANIFEST_PATH];
-  if (!manifestBytes) throw new Error('商品 ZIP 根目录缺少 products.json');
+  if (!manifestBytes) throw new Error(translateUi('products.transfer.errors.manifestMissing'));
   const manifest = decodeUtf8(manifestBytes, MANIFEST_PATH);
   const parsed = parseProductTransferPackageJson(manifest);
   if (parsed.schemaVersion !== PRODUCT_TRANSFER_ARCHIVE_SCHEMA_VERSION) {
-    throw new Error('ZIP 商品包必须使用 schemaVersion 2');
+    throw new Error(translateUi('products.transfer.errors.schemaVersion'));
   }
 
   const assets = Object.entries(files)
@@ -131,7 +139,9 @@ export async function readProductTransferArchive(
   const assetsByPath = new Map(assets.map((asset) => [asset.path, asset]));
   const referencedAssetPaths = collectDocumentAssetPaths(parsed);
   for (const path of referencedAssetPaths) {
-    if (!assetsByPath.has(path)) throw new Error(`商品 ZIP 缺少引用图片：${path}`);
+    if (!assetsByPath.has(path)) {
+      throw new Error(translateUi('products.transfer.errors.referencedAssetMissing', { path }));
+    }
   }
   const referenced = new Set(referencedAssetPaths);
   const unusedAssetPaths = assets
@@ -161,34 +171,40 @@ export async function createProductTransferArchive(
 
   for (const asset of input.assets) {
     const path = normalizeProductTransferAssetPath(asset.path);
-    if (!path || path !== asset.path) throw new Error(`图片资源路径无效：${asset.path}`);
+    if (!path || path !== asset.path) {
+      throw new Error(translateUi('products.transfer.errors.invalidAssetPath', { path: asset.path }));
+    }
     const caseInsensitiveName = path.toLocaleLowerCase('en-US');
-    if (names.has(caseInsensitiveName)) throw new Error(`图片资源路径重复：${path}`);
+    if (names.has(caseInsensitiveName)) {
+      throw new Error(translateUi('products.transfer.errors.duplicateAssetPath', { path }));
+    }
     names.add(caseInsensitiveName);
     const detectedContentType = validatePhotoBytes(asset.bytes);
     assertPhotoBankUploadContentType(detectedContentType);
     if (detectedContentType !== asset.contentType.toLocaleLowerCase()) {
-      throw new Error(`图片 ${path} 的文件头与 Content-Type 不一致`);
+      throw new Error(translateUi('products.transfer.errors.contentTypeMismatch', { path }));
     }
     assertImageExtension(path, detectedContentType);
     totalUncompressedBytes += asset.bytes.byteLength;
     if (totalUncompressedBytes > MAX_PRODUCT_TRANSFER_UNCOMPRESSED_BYTES) {
-      throw new Error('商品 ZIP 解压后超过 100 MiB 上限');
+      throw new Error(translateUi('products.transfer.errors.uncompressedLimit'));
     }
     files[path] = [asset.bytes, { level: 0 }];
     workerFiles.push({ path, bytes: asset.bytes, level: 0 });
   }
 
   if (Object.keys(files).length > MAX_PRODUCT_TRANSFER_ARCHIVE_ENTRIES) {
-    throw new Error('商品 ZIP 文件数量超过 500 个上限');
+    throw new Error(translateUi('products.transfer.errors.entryLimit'));
   }
   const availableAssets = new Set(input.assets.map((asset) => asset.path));
   for (const path of collectDocumentAssetPaths(input.document)) {
-    if (!availableAssets.has(path)) throw new Error(`商品 ZIP 缺少引用图片：${path}`);
+    if (!availableAssets.has(path)) {
+      throw new Error(translateUi('products.transfer.errors.referencedAssetMissing', { path }));
+    }
   }
   const archive = await zipArchive(files, workerFiles);
   if (archive.byteLength > MAX_PRODUCT_TRANSFER_ZIP_BYTES) {
-    throw new Error('商品 ZIP 超过 50 MiB 上限');
+    throw new Error(translateUi('products.transfer.errors.zipTooLarge'));
   }
   return archive;
 }
@@ -198,7 +214,9 @@ export function productTransferArchiveAssetPath(
   contentType: string,
   sha256: string
 ): string {
-  if (!/^[0-9a-f]{64}$/u.test(sha256)) throw new Error('图片 SHA-256 无效');
+  if (!/^[0-9a-f]{64}$/u.test(sha256)) {
+    throw new Error(translateUi('products.transfer.errors.invalidSha256'));
+  }
   const stem = fileName
     .replace(/\.[^.]*$/u, '')
     .normalize('NFKD')
@@ -216,7 +234,13 @@ function collectDocumentAssetPaths(document: ProductTransferDocumentV2): string[
     for (const reference of references) {
       if (!reference.source.startsWith('assets/')) continue;
       const path = normalizeProductTransferAssetPath(reference.source);
-      if (!path) throw new Error(`商品 ${product.source.productId} 包含不安全的图片路径`);
+      if (!path) {
+        throw new Error(
+          translateUi('products.transfer.errors.unsafeProductAsset', {
+            productId: product.source.productId
+          })
+        );
+      }
       paths.add(path);
     }
   }
@@ -225,7 +249,9 @@ function collectDocumentAssetPaths(document: ProductTransferDocumentV2): string[
 
 function normalizeArchiveAsset(path: string, bytes: Uint8Array): ProductTransferArchiveAsset {
   const normalizedPath = normalizeProductTransferAssetPath(path);
-  if (!normalizedPath || normalizedPath !== path) throw new Error(`图片资源路径无效：${path}`);
+  if (!normalizedPath || normalizedPath !== path) {
+    throw new Error(translateUi('products.transfer.errors.invalidAssetPath', { path }));
+  }
   const contentType = validatePhotoBytes(bytes);
   assertPhotoBankUploadContentType(contentType);
   assertImageExtension(path, contentType);
@@ -239,7 +265,7 @@ function normalizeArchiveAsset(path: string, bytes: Uint8Array): ProductTransfer
 
 function assertPhotoBankUploadContentType(contentType: string): void {
   if (!PHOTOBANK_UPLOAD_CONTENT_TYPES.has(contentType)) {
-    throw new Error(`国际站图库暂不支持上传 ${contentType} 图片`);
+    throw new Error(translateUi('products.transfer.errors.unsupportedPhotoType', { contentType }));
   }
 }
 
@@ -247,7 +273,9 @@ function assertImageExtension(path: string, contentType: string): void {
   const extension = path.split('.').pop()?.toLocaleLowerCase() ?? '';
   const accepted =
     contentType === 'image/jpeg' ? new Set(['jpg', 'jpeg']) : new Set([photoFileExtension(contentType)]);
-  if (!accepted.has(extension)) throw new Error(`图片 ${path} 的扩展名与文件内容不一致`);
+  if (!accepted.has(extension)) {
+    throw new Error(translateUi('products.transfer.errors.extensionMismatch', { path }));
+  }
 }
 
 function normalizeArchiveEntryName(name: string): string {
@@ -258,14 +286,20 @@ function normalizeArchiveEntryName(name: string): string {
     name.includes('\0') ||
     /^[A-Za-z]:/u.test(name)
   ) {
-    throw new Error(`商品 ZIP 包含不安全路径：${name || '空路径'}`);
+    throw new Error(
+      translateUi('products.transfer.errors.unsafePath', {
+        path: name || translateUi('products.transfer.errors.emptyPath')
+      })
+    );
   }
   const segments = name.split('/').filter((segment) => segment !== '');
   if (segments.some((segment) => segment === '.' || segment === '..')) {
-    throw new Error(`商品 ZIP 包含路径穿越：${name}`);
+    throw new Error(translateUi('products.transfer.errors.traversalPath', { path: name }));
   }
   const normalized = name.endsWith('/') ? `${segments.join('/')}/` : segments.join('/');
-  if (normalized !== name) throw new Error(`商品 ZIP 包含非规范路径：${name}`);
+  if (normalized !== name) {
+    throw new Error(translateUi('products.transfer.errors.nonCanonicalPath', { path: name }));
+  }
   return normalized;
 }
 
@@ -284,7 +318,7 @@ function decodeUtf8(bytes: Uint8Array, path: string): string {
   try {
     return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
   } catch {
-    throw new Error(`${path} 不是有效 UTF-8 文本`);
+    throw new Error(translateUi('products.transfer.errors.invalidText', { path }));
   }
 }
 
@@ -301,8 +335,10 @@ function unzipArchive(bytes: Uint8Array, filter: (entry: UnzipFileInfo) => boole
         maxUncompressedBytes: MAX_PRODUCT_TRANSFER_UNCOMPRESSED_BYTES
       }
     }).then((response) => {
-      if (!response.ok) throw new Error(response.message);
-      if (response.operation !== 'unzip') throw new Error('商品 ZIP 解压任务返回类型错误');
+      if (!response.ok) throw new Error(archiveWorkerErrorMessage(response.errorCode, response.path));
+      if (response.operation !== 'unzip') {
+        throw new Error(translateUi('products.transfer.errors.unzipResponse'));
+      }
       const files: Unzipped = {};
       for (const file of response.files) {
         if (
@@ -334,8 +370,10 @@ function zipArchive(files: AsyncZippable, workerFiles: readonly ArchiveWorkerFil
       operation: 'zip',
       files: [...workerFiles]
     }).then((response) => {
-      if (!response.ok) throw new Error(response.message);
-      if (response.operation !== 'zip') throw new Error('商品 ZIP 压缩任务返回类型错误');
+      if (!response.ok) throw new Error(archiveWorkerErrorMessage(response.errorCode, response.path));
+      if (response.operation !== 'zip') {
+        throw new Error(translateUi('products.transfer.errors.zipResponse'));
+      }
       return response.bytes;
     });
   }
@@ -355,7 +393,7 @@ function runArchiveWorker(request: ArchiveWorkerRequest): Promise<ArchiveWorkerR
     });
     const timeout = globalThis.setTimeout(() => {
       worker.terminate();
-      reject(new Error('商品 ZIP 后台任务超时'));
+      reject(new Error(translateUi('products.transfer.errors.workerTimeout')));
     }, 60_000);
     const finish = (action: () => void): void => {
       globalThis.clearTimeout(timeout);
@@ -364,7 +402,7 @@ function runArchiveWorker(request: ArchiveWorkerRequest): Promise<ArchiveWorkerR
     };
     worker.onerror = () => {
       finish(() => {
-        reject(new Error('商品 ZIP 后台任务失败'));
+        reject(new Error(translateUi('products.transfer.errors.workerFailed')));
       });
     };
     worker.onmessage = (event: MessageEvent<ArchiveWorkerResponse>) => {
@@ -389,6 +427,25 @@ function runArchiveWorker(request: ArchiveWorkerRequest): Promise<ArchiveWorkerR
         reject(toError(error));
       });
     }
+  });
+}
+
+function archiveWorkerErrorMessage(code: ArchiveWorkerErrorCode, path?: string): string {
+  const key = {
+    'entry-limit': 'entryLimit',
+    'uncompressed-limit': 'uncompressedLimit',
+    'duplicate-path': 'duplicatePath',
+    'unsupported-directory': 'unsupportedDirectory',
+    'manifest-limit': 'manifestLimit',
+    'unsupported-path': 'unsupportedPath',
+    'photo-limit': 'photoLimit',
+    'unsafe-path': 'unsafePath',
+    'traversal-path': 'traversalPath',
+    'non-canonical-path': 'nonCanonicalPath',
+    'worker-failed': 'workerFailed'
+  } satisfies Record<ArchiveWorkerErrorCode, string>;
+  return translateUi(`products.transfer.errors.${key[code]}`, {
+    path: path && path.length > 0 ? path : translateUi('products.transfer.errors.emptyPath')
   });
 }
 

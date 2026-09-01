@@ -17,10 +17,32 @@ export type ArchiveWorkerRequest =
   | { id: string; operation: 'unzip'; bytes: Uint8Array; limits: ArchiveWorkerLimits }
   | { id: string; operation: 'zip'; files: ArchiveWorkerFile[] };
 
+export type ArchiveWorkerErrorCode =
+  | 'entry-limit'
+  | 'uncompressed-limit'
+  | 'duplicate-path'
+  | 'unsupported-directory'
+  | 'manifest-limit'
+  | 'unsupported-path'
+  | 'photo-limit'
+  | 'unsafe-path'
+  | 'traversal-path'
+  | 'non-canonical-path'
+  | 'worker-failed';
+
 export type ArchiveWorkerResponse =
   | { id: string; ok: true; operation: 'unzip'; files: ArchiveWorkerFile[] }
   | { id: string; ok: true; operation: 'zip'; bytes: Uint8Array }
-  | { id: string; ok: false; message: string };
+  | { id: string; ok: false; errorCode: ArchiveWorkerErrorCode; path?: string };
+
+class ArchiveWorkerFailure extends Error {
+  constructor(
+    readonly errorCode: ArchiveWorkerErrorCode,
+    readonly path?: string
+  ) {
+    super(errorCode);
+  }
+}
 
 interface ArchiveWorkerScope {
   onmessage: ((event: MessageEvent<ArchiveWorkerRequest>) => void) | null;
@@ -44,10 +66,12 @@ scope.onmessage = (event) => {
       bytes.buffer as ArrayBuffer
     ]);
   } catch (error: unknown) {
+    const failure = error instanceof ArchiveWorkerFailure ? error : new ArchiveWorkerFailure('worker-failed');
     scope.postMessage({
       id: event.data.id,
       ok: false,
-      message: error instanceof Error ? error.message : String(error)
+      errorCode: failure.errorCode,
+      ...(failure.path === undefined ? {} : { path: failure.path })
     });
   }
 };
@@ -61,11 +85,11 @@ function unzipSafely(bytes: Uint8Array, limits: ArchiveWorkerLimits): ArchiveWor
       validateEntry(entry, names, limits);
       entryCount += 1;
       if (entryCount > limits.maxEntries) {
-        throw new Error('商品 ZIP 文件数量超过 500 个上限');
+        throw new ArchiveWorkerFailure('entry-limit');
       }
       totalUncompressedBytes += entry.originalSize;
       if (totalUncompressedBytes > limits.maxUncompressedBytes) {
-        throw new Error('商品 ZIP 解压后超过 100 MiB 上限');
+        throw new ArchiveWorkerFailure('uncompressed-limit');
       }
       return !entry.name.endsWith('/');
     }
@@ -76,23 +100,23 @@ function unzipSafely(bytes: Uint8Array, limits: ArchiveWorkerLimits): ArchiveWor
 function validateEntry(entry: UnzipFileInfo, names: Set<string>, limits: ArchiveWorkerLimits): void {
   const name = normalizeEntryName(entry.name);
   const folded = name.toLocaleLowerCase('en-US');
-  if (names.has(folded)) throw new Error(`商品 ZIP 包含重复路径：${name}`);
+  if (names.has(folded)) throw new ArchiveWorkerFailure('duplicate-path', name);
   names.add(folded);
   if (name.endsWith('/')) {
-    if (name !== 'assets/') throw new Error(`商品 ZIP 包含不支持的目录：${name}`);
+    if (name !== 'assets/') throw new ArchiveWorkerFailure('unsupported-directory', name);
     return;
   }
   if (name === 'products.json') {
     if (entry.originalSize > limits.maxJsonBytes) {
-      throw new Error('products.json 超过 10 MiB 上限');
+      throw new ArchiveWorkerFailure('manifest-limit');
     }
     return;
   }
   if (!normalizeAssetPath(name)) {
-    throw new Error(`商品 ZIP 包含不支持的路径：${name}`);
+    throw new ArchiveWorkerFailure('unsupported-path', name);
   }
   if (entry.originalSize > limits.maxPhotoBytes) {
-    throw new Error(`图片 ${name} 超过 5 MiB 上限`);
+    throw new ArchiveWorkerFailure('photo-limit', name);
   }
 }
 
@@ -124,13 +148,13 @@ function normalizeEntryName(name: string): string {
     name.includes('\0') ||
     /^[A-Za-z]:/u.test(name)
   ) {
-    throw new Error(`商品 ZIP 包含不安全路径：${name || '空路径'}`);
+    throw new ArchiveWorkerFailure('unsafe-path', name);
   }
   const segments = name.split('/').filter((segment) => segment !== '');
   if (segments.some((segment) => segment === '.' || segment === '..')) {
-    throw new Error(`商品 ZIP 包含路径穿越：${name}`);
+    throw new ArchiveWorkerFailure('traversal-path', name);
   }
   const normalized = name.endsWith('/') ? `${segments.join('/')}/` : segments.join('/');
-  if (normalized !== name) throw new Error(`商品 ZIP 包含非规范路径：${name}`);
+  if (normalized !== name) throw new ArchiveWorkerFailure('non-canonical-path', name);
   return normalized;
 }

@@ -7,6 +7,7 @@ import ActionTooltip from './ActionTooltip.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
+import { useUiI18n } from '../i18n';
 
 import type {
   ProductBatchPublishItem,
@@ -36,6 +37,7 @@ const emit = defineEmits<{
   edit: [item: ProductBatchPublishItem];
   remove: [item: ProductBatchPublishItem];
 }>();
+const { t } = useUiI18n();
 
 const queuedItems = computed(() => props.items.filter((item) => item.status === 'queued'));
 const selectedQueuedItems = computed(() =>
@@ -48,8 +50,8 @@ const currentDisabledReason = computed(() =>
   props.target === 'draft' ? props.draftDisabledReason : props.publishDisabledReason
 );
 const runDisabledReason = computed(() => {
-  if (selectedQueuedItems.value.length === 0) return '请先选择至少一个待提交商品';
-  return currentDisabledReason.value || '当前不能执行批量发品';
+  if (selectedQueuedItems.value.length === 0) return t('products.batch.selectFirst');
+  return currentDisabledReason.value || t('products.batch.unavailable');
 });
 const selectedBlockedCount = computed(
   () =>
@@ -72,17 +74,17 @@ function toggleAll(checked: boolean): void {
 }
 
 function storedStatusLabel(item: ProductBatchPublishItem): string {
-  if (item.status === 'draft-saved') return '已保存平台草稿';
-  if (item.status === 'published') return '已正式发布';
-  return '等待提交';
+  if (item.status === 'draft-saved') return t('products.batch.storedStatus.draft');
+  if (item.status === 'published') return t('products.batch.storedStatus.published');
+  return t('products.batch.storedStatus.queued');
 }
 
 function runStatusLabel(result: ProductBatchPublishRunResult | undefined): string {
   if (!result) return '';
-  if (result.status === 'succeeded') return '本轮成功';
-  if (result.status === 'failed') return '本轮失败';
-  if (result.status === 'blocked') return '提交前阻断';
-  return '已停止';
+  if (result.status === 'succeeded') return t('products.batch.runStatus.succeeded');
+  if (result.status === 'failed') return t('products.batch.runStatus.failed');
+  if (result.status === 'blocked') return t('products.batch.runStatus.blocked');
+  return t('products.batch.runStatus.stopped');
 }
 
 function statusVariant(
@@ -101,13 +103,15 @@ function statusVariant(
     <Card class="p-5">
       <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 class="font-semibold">批量发品队列</h2>
+          <h2 class="font-semibold">{{ t('products.batch.title') }}</h2>
           <p class="mt-1 text-sm text-muted-foreground">
-            复用单品 Schema 链路并严格串行提交；单条失败不会停止后续商品，也不会自动重试。
+            {{ t('products.batch.description') }}
           </p>
         </div>
         <p class="text-sm text-muted-foreground">
-          待提交 {{ queuedItems.length }} · 已选择 {{ selectedQueuedItems.length }}
+          {{
+            t('products.batch.summary', { queued: queuedItems.length, selected: selectedQueuedItems.length })
+          }}
         </p>
       </div>
 
@@ -115,14 +119,14 @@ function statusVariant(
         <label class="flex cursor-pointer items-center gap-2 text-sm">
           <input
             type="checkbox"
-            aria-label="选择全部待发布商品"
+            :aria-label="t('products.batch.selectAllLabel')"
             :checked="allQueuedSelected"
             :disabled="running || queuedItems.length === 0"
             @change="toggleAll(($event.target as HTMLInputElement).checked)"
           />
-          全选待提交商品
+          {{ t('products.batch.selectAll') }}
         </label>
-        <div class="flex rounded-md border border-border p-0.5" aria-label="批量发品目标">
+        <div class="flex rounded-md border border-border p-0.5" :aria-label="t('products.batch.targetLabel')">
           <Button
             size="sm"
             :variant="target === 'draft' ? 'secondary' : 'ghost'"
@@ -130,7 +134,7 @@ function statusVariant(
             :disabled="running"
             @click="emit('update:target', 'draft')"
           >
-            保存平台草稿
+            {{ t('products.batch.saveDraft') }}
           </Button>
           <Button
             size="sm"
@@ -139,7 +143,7 @@ function statusVariant(
             :disabled="running"
             @click="emit('update:target', 'publish')"
           >
-            正式发布
+            {{ t('products.batch.publish') }}
           </Button>
         </div>
         <ActionTooltip
@@ -149,11 +153,11 @@ function statusVariant(
         >
           <Button :disabled="selectedQueuedItems.length === 0 || !currentTargetAllowed" @click="emit('run')">
             <Play class="size-4" />
-            {{ target === 'draft' ? '开始保存草稿' : '开始正式发布' }}
+            {{ t(target === 'draft' ? 'products.batch.startDraft' : 'products.batch.startPublish') }}
           </Button>
         </ActionTooltip>
         <Button v-else variant="destructive" @click="emit('stop')">
-          <Square class="size-4" />停止后续任务
+          <Square class="size-4" />{{ t('products.batch.stop') }}
         </Button>
       </div>
 
@@ -161,7 +165,7 @@ function statusVariant(
         {{ currentDisabledReason }}
       </p>
       <p v-else-if="selectedBlockedCount" class="mt-3 text-sm text-amber-700 dark:text-amber-400">
-        当前目标下有 {{ selectedBlockedCount }} 条未通过提交前检查；运行时会标记为阻断并继续处理其他商品。
+        {{ t('products.batch.blockedSummary', { count: selectedBlockedCount }) }}
       </p>
     </Card>
 
@@ -170,26 +174,28 @@ function statusVariant(
         <table class="w-full min-w-[980px] border-collapse text-sm">
           <thead class="sticky top-0 z-10 bg-muted/95 backdrop-blur">
             <tr class="border-b text-left">
-              <th class="w-12 whitespace-nowrap px-4 py-3">选择</th>
-              <th class="whitespace-nowrap px-4 py-3">商品</th>
-              <th class="whitespace-nowrap px-4 py-3">类目</th>
-              <th class="whitespace-nowrap px-4 py-3">语言</th>
-              <th class="whitespace-nowrap px-4 py-3">检查</th>
-              <th class="whitespace-nowrap px-4 py-3">状态</th>
-              <th class="whitespace-nowrap px-4 py-3 text-right">操作</th>
+              <th class="w-12 whitespace-nowrap px-4 py-3">{{ t('products.batch.columns.select') }}</th>
+              <th class="whitespace-nowrap px-4 py-3">{{ t('products.batch.columns.product') }}</th>
+              <th class="whitespace-nowrap px-4 py-3">{{ t('products.batch.columns.category') }}</th>
+              <th class="whitespace-nowrap px-4 py-3">{{ t('products.batch.columns.language') }}</th>
+              <th class="whitespace-nowrap px-4 py-3">{{ t('products.batch.columns.check') }}</th>
+              <th class="whitespace-nowrap px-4 py-3">{{ t('products.batch.columns.status') }}</th>
+              <th class="whitespace-nowrap px-4 py-3 text-right">
+                {{ t('products.batch.columns.actions') }}
+              </th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="items.length === 0">
               <td colspan="7" class="px-4 py-12 text-center text-muted-foreground">
-                队列为空。请先在商品列表点击“新增”，填写商品后加入批量队列。
+                {{ t('products.batch.empty') }}
               </td>
             </tr>
             <tr v-for="item in items" :key="item.id" class="border-b last:border-b-0">
               <td class="px-4 py-3 align-top">
                 <input
                   type="checkbox"
-                  :aria-label="`选择 ${item.title}`"
+                  :aria-label="t('products.batch.selectProduct', { title: item.title })"
                   :checked="selectedIds.includes(item.id)"
                   :disabled="running || item.status !== 'queued'"
                   @change="toggleItem(item.id, ($event.target as HTMLInputElement).checked)"
@@ -202,7 +208,9 @@ function statusVariant(
                 </p>
               </td>
               <td class="px-4 py-3 align-top">
-                <p class="whitespace-nowrap">{{ categoryLabels[item.categoryId] ?? '未知类目' }}</p>
+                <p class="whitespace-nowrap">
+                  {{ categoryLabels[item.categoryId] ?? t('products.batch.unknownCategory') }}
+                </p>
                 <p class="font-mono text-xs text-muted-foreground">{{ item.categoryId }}</p>
               </td>
               <td class="whitespace-nowrap px-4 py-3 align-top">{{ item.language }}</td>
@@ -217,24 +225,30 @@ function statusVariant(
                   >
                     {{
                       inspectProductBatchPublishItem(item, target).ready
-                        ? '可以提交'
-                        : `${inspectProductBatchPublishItem(item, target).blockingIssues.length} 个最低条件未满足`
+                        ? t('products.batch.ready')
+                        : t('products.batch.minimumMissing', {
+                            count: inspectProductBatchPublishItem(item, target).blockingIssues.length
+                          })
                     }}
                   </p>
                   <p
                     v-if="inspectProductBatchPublishItem(item, target).schemaIssueCount"
                     class="mt-1 text-xs text-muted-foreground"
                   >
-                    预检提示 {{ inspectProductBatchPublishItem(item, target).schemaIssueCount }} 个
+                    {{
+                      t('products.batch.advisoryCount', {
+                        count: inspectProductBatchPublishItem(item, target).schemaIssueCount
+                      })
+                    }}
                   </p>
                 </template>
-                <span v-else class="text-muted-foreground">已完成</span>
+                <span v-else class="text-muted-foreground">{{ t('products.batch.completed') }}</span>
               </td>
               <td class="px-4 py-3 align-top">
                 <Badge :variant="statusVariant(item, results[item.id])">
                   {{
                     activeItemId === item.id
-                      ? '正在提交'
+                      ? t('products.batch.submitting')
                       : runStatusLabel(results[item.id]) || storedStatusLabel(item)
                   }}
                 </Badge>
@@ -254,10 +268,10 @@ function statusVariant(
                     :disabled="running"
                     @click="emit('edit', item)"
                   >
-                    <Pencil class="size-4" />编辑
+                    <Pencil class="size-4" />{{ t('products.batch.edit') }}
                   </Button>
                   <Button size="sm" variant="ghost" :disabled="running" @click="emit('remove', item)">
-                    <Trash2 class="size-4" />移除
+                    <Trash2 class="size-4" />{{ t('products.batch.remove') }}
                   </Button>
                 </div>
               </td>

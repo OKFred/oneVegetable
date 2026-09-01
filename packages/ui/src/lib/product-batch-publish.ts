@@ -15,6 +15,7 @@ import type {
   SchemaPublishRequest
 } from '@one-vegetable/core';
 import type { DraftStorage } from './product-editor-drafts';
+import { translateUi } from '../i18n';
 
 export const PRODUCT_BATCH_PUBLISH_STORAGE_KEY = 'one-vegetable-product-batch-publish-v1';
 
@@ -122,7 +123,7 @@ export function upsertProductBatchPublishItem(
   const current = loadProductBatchPublishItems(draftStorage, now);
   const existing = options.id ? current.find((item) => item.id === options.id) : undefined;
   if (!existing && current.length >= MAX_ITEMS) {
-    throw new Error(`批量发布队列最多保留 ${MAX_ITEMS} 条商品`);
+    throw new Error(translateUi('products.batch.errors.queueLimit', { maximum: MAX_ITEMS }));
   }
 
   const id = existing?.id ?? options.id;
@@ -171,19 +172,25 @@ function planProductBatchPublishImport(
   inputs: readonly ProductBatchPublishImportInput[],
   now: number
 ): ProductBatchPublishImportPlan {
-  if (inputs.length === 0) throw new Error('商品导入文件没有可导入商品');
-  if (inputs.length > MAX_ITEMS) throw new Error(`单次最多导入 ${MAX_ITEMS} 条商品`);
+  if (inputs.length === 0) throw new Error(translateUi('products.batch.errors.emptyImport'));
+  if (inputs.length > MAX_ITEMS) {
+    throw new Error(translateUi('products.batch.errors.importLimit', { maximum: MAX_ITEMS }));
+  }
   const current = loadProductBatchPublishItems(draftStorage, now);
   const inputIds = inputs.map((input) => input.id);
-  if (inputIds.some((id) => id.trim() === '')) throw new Error('商品导入文件包含无效商品 ID');
-  if (new Set(inputIds).size !== inputIds.length) throw new Error('商品导入文件包含重复商品');
+  if (inputIds.some((id) => id.trim() === '')) {
+    throw new Error(translateUi('products.batch.errors.invalidId'));
+  }
+  if (new Set(inputIds).size !== inputIds.length) {
+    throw new Error(translateUi('products.batch.errors.duplicate'));
+  }
 
   const completedIds = new Set(current.filter((item) => item.status !== 'queued').map((item) => item.id));
   const importableInputs = inputs.filter((input) => !completedIds.has(input.id));
   const existingIds = new Set(current.map((item) => item.id));
   const newItemCount = importableInputs.filter((input) => !existingIds.has(input.id)).length;
   if (current.length + newItemCount > MAX_ITEMS) {
-    throw new Error(`批量发布队列最多保留 ${MAX_ITEMS} 条商品，请先移除不需要的队列项`);
+    throw new Error(translateUi('products.batch.errors.queueLimitCleanup', { maximum: MAX_ITEMS }));
   }
 
   const imported = importableInputs.map((input, index) => {
@@ -219,7 +226,7 @@ export function completeProductBatchPublishItem(
 ): ProductBatchPublishItem {
   const items = loadProductBatchPublishItems(draftStorage, now);
   const current = items.find((item) => item.id === id);
-  if (!current) throw new Error('批量发布商品不存在或已过期');
+  if (!current) throw new Error(translateUi('products.batch.errors.missing'));
   const updated: ProductBatchPublishItem = {
     ...current,
     status: target === 'draft' ? 'draft-saved' : 'published',
@@ -249,7 +256,7 @@ export function inspectProductBatchPublishItem(
   target: ProductBatchPublishTarget
 ): ProductBatchPublishPreflight {
   if (item.status !== 'queued') {
-    return blockedPreflight(item.title, '该商品已经提交到平台，不能重复发布');
+    return blockedPreflight(item.title, translateUi('products.batch.errors.alreadySubmitted'));
   }
 
   let inspection: ReturnType<typeof inspectProductBatchPublishXml>;
@@ -285,7 +292,14 @@ export async function runProductBatchPublish(
   const results: ProductBatchPublishRunResult[] = [];
   for (const item of options.items) {
     if (options.shouldStop?.()) {
-      const cancelled = resultFor(item, options.target, 'cancelled', null, null, '已停止后续任务');
+      const cancelled = resultFor(
+        item,
+        options.target,
+        'cancelled',
+        null,
+        null,
+        translateUi('products.batch.errors.stopped')
+      );
       results.push(cancelled);
       options.onResult?.(cancelled);
       continue;
@@ -299,7 +313,7 @@ export async function runProductBatchPublish(
         'blocked',
         null,
         null,
-        preflight.blockingIssues.join('；') || '商品未通过提交前检查'
+        preflight.blockingIssues.join('; ') || translateUi('products.batch.errors.preflight')
       );
       results.push(blocked);
       options.onResult?.(blocked);
@@ -315,7 +329,7 @@ export async function runProductBatchPublish(
             'failed',
             response.productId,
             response.traceId,
-            '平台未明确接受请求'
+            translateUi('products.batch.errors.platformNotAccepted')
           );
       results.push(result);
       options.onResult?.(result);
@@ -336,7 +350,7 @@ function inspectProductBatchPublishXml(xml: string): {
 } {
   const model = parseProductSchemaXml(xml);
   const serialization = inspectProductSchemaSerialization(model);
-  const title = findTitle(model.fields) || '未命名商品';
+  const title = findTitle(model.fields) || translateUi('products.batch.errors.unnamed');
   return {
     xml: serialization.xml,
     title,
@@ -375,7 +389,9 @@ function resultFor(
 function normalizeCategoryId(value: string): string {
   const normalized = value.trim();
   const parsed = Number(normalized);
-  if (!Number.isSafeInteger(parsed) || parsed <= 0) throw new Error('商品类目必须是正整数');
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    throw new Error(translateUi('products.batch.errors.categoryPositive'));
+  }
   return normalized;
 }
 
@@ -385,7 +401,7 @@ function createProductBatchPublishItem(
 ): ProductBatchPublishItem {
   const normalizedCategoryId = normalizeCategoryId(input.categoryId);
   const normalizedXml = input.xml.trim();
-  if (!normalizedXml) throw new Error('商品 Schema XML 不能为空');
+  if (!normalizedXml) throw new Error(translateUi('products.batch.errors.xmlRequired'));
   const derivedTitle = inspectProductBatchPublishXml(normalizedXml).title;
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -440,5 +456,5 @@ function writeItems(draftStorage: DraftStorage, items: readonly ProductBatchPubl
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : '批量发布请求失败';
+  return error instanceof Error ? error.message : translateUi('products.batch.errors.requestFailed');
 }

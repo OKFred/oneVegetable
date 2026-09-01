@@ -19,6 +19,7 @@ import ProductEditorSubmitBar from './ProductEditorSubmitBar.vue';
 import ProductFieldsPanel from './ProductFieldsPanel.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
+import { useUiI18n } from '../i18n';
 
 const props = withDefaults(
   defineProps<{
@@ -44,6 +45,7 @@ const emit = defineEmits<{
   submit: [draft: boolean];
   openFull: [];
 }>();
+const { t } = useUiI18n();
 
 const moreOpen = ref(false);
 const selection = computed(() => selectQuickPublishFields(props.model.fields));
@@ -55,15 +57,6 @@ const advisoryCount = computed(
 const groups = computed(() => groupEntries(selection.value.essential));
 const moreGroups = computed(() => groupEntries(selection.value.remaining));
 
-const SECTION_LABELS: Record<ProductEditorStepId, string> = {
-  basics: '基础信息与分组',
-  attributes: '必填商品属性',
-  media: '商品图片',
-  description: '商品详情',
-  trade: '交易与物流',
-  review: '检查与提交'
-};
-
 function groupEntries(entries: ProductEditorFieldEntry[]) {
   const grouped = new Map<ProductEditorStepId, ProductEditorFieldEntry[]>();
   for (const entry of entries) {
@@ -72,7 +65,11 @@ function groupEntries(entries: ProductEditorFieldEntry[]) {
     values.push(entry);
     grouped.set(step, values);
   }
-  return [...grouped.entries()].map(([id, values]) => ({ id, label: SECTION_LABELS[id], entries: values }));
+  return [...grouped.entries()].map(([id, values]) => ({
+    id,
+    label: t(`products.quick.sections.${id}`),
+    entries: values
+  }));
 }
 </script>
 
@@ -81,12 +78,16 @@ function groupEntries(entries: ProductEditorFieldEntry[]) {
     <div class="rounded-lg border border-primary/25 bg-primary/5 p-4">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p class="flex items-center gap-2 font-medium"><Gauge class="size-4 text-primary" />最快发品路径</p>
+          <p class="flex items-center gap-2 font-medium">
+            <Gauge class="size-4 text-primary" />{{ t('products.quick.title') }}
+          </p>
           <p class="mt-1 text-sm text-muted-foreground">
-            先填写必填项和常用信息，优先保存为平台草稿；其余内容可稍后增量完善。
+            {{ t('products.quick.description') }}
           </p>
         </div>
-        <Badge variant="secondary">{{ selection.essential.length }} 个优先字段</Badge>
+        <Badge variant="secondary">
+          {{ t('products.quick.priorityFields', { count: selection.essential.length }) }}
+        </Badge>
       </div>
     </div>
 
@@ -115,9 +116,11 @@ function groupEntries(entries: ProductEditorFieldEntry[]) {
         @click="moreOpen = !moreOpen"
       >
         <span>
-          <span class="flex items-center gap-2 font-medium"><ListChecks class="size-4" />继续完善</span>
+          <span class="flex items-center gap-2 font-medium">
+            <ListChecks class="size-4" />{{ t('products.quick.continue') }}
+          </span>
           <span class="mt-1 block text-xs text-muted-foreground">
-            {{ selection.remaining.length }} 个非核心字段，可现在填写或保存草稿后再处理。
+            {{ t('products.quick.remaining', { count: selection.remaining.length }) }}
           </span>
         </span>
         <ChevronDown class="size-4 transition-transform" :class="moreOpen ? 'rotate-180' : ''" />
@@ -140,7 +143,9 @@ function groupEntries(entries: ProductEditorFieldEntry[]) {
     </section>
 
     <div class="mt-4 flex justify-end">
-      <Button variant="ghost" size="sm" @click="emit('openFull')">切换到六步向导检查全部字段</Button>
+      <Button variant="ghost" size="sm" @click="emit('openFull')">
+        {{ t('products.quick.openWizard') }}
+      </Button>
     </div>
 
     <ProductEditorSubmitBar

@@ -7,6 +7,7 @@ import type { ProductSchemaOfficialHint } from '@one-vegetable/core';
 
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
+import { useUiI18n } from '../i18n';
 
 const props = withDefaults(
   defineProps<{
@@ -17,6 +18,7 @@ const props = withDefaults(
   { compact: false, showLocate: true }
 );
 const emit = defineEmits<{ locate: [] }>();
+const { t } = useUiI18n();
 
 const open = ref(false);
 const content = ref<HTMLElement | null>(null);
@@ -38,25 +40,31 @@ watchEffect(() => {
         {{ hint.summary }}
       </p>
       <div class="flex shrink-0 items-center gap-1">
-        <Badge v-if="hint.occurrenceCount > 1" variant="outline"> 重复 {{ hint.occurrenceCount }} 次 </Badge>
+        <Badge v-if="hint.occurrenceCount > 1" variant="outline">
+          {{ t('products.officialHint.repeated', { count: hint.occurrenceCount }) }}
+        </Badge>
         <Button
           v-if="canLocate"
           type="button"
           variant="ghost"
           size="sm"
-          :aria-label="`定位字段：${hint.rootFieldName}`"
+          :aria-label="t('products.officialHint.locateLabel', { name: hint.rootFieldName })"
           @click="emit('locate')"
         >
-          <MapPin class="size-3.5" />定位字段
+          <MapPin class="size-3.5" />{{ t('products.officialHint.locate') }}
         </Button>
         <CollapsibleTrigger v-if="hint.hasRichContent" as-child>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            :aria-label="`${open ? '收起' : '展开'}官方提示：${hint.summary}`"
+            :aria-label="
+              t(open ? 'products.officialHint.collapseLabel' : 'products.officialHint.expandLabel', {
+                summary: hint.summary
+              })
+            "
           >
-            {{ open ? '收起' : '展开' }}
+            {{ t(open ? 'products.officialHint.collapse' : 'products.officialHint.expand') }}
             <ChevronDown class="size-3.5 transition-transform" :class="open ? 'rotate-180' : ''" />
           </Button>
         </CollapsibleTrigger>
