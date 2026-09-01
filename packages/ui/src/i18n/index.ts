@@ -30,6 +30,10 @@ export function useUiI18n(): {
 } {
   return {
     locale: computed(() => uiI18n.global.locale.value),
-    t: (key, values) => uiI18n.global.t(key, values ?? {})
+    t: translateUi
   };
+}
+
+export function translateUi(key: string, values?: Record<string, unknown>): string {
+  return uiI18n.global.t(key, values ?? {});
 }

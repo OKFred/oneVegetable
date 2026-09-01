@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ChevronLeft, ChevronRight } from '@lucide/vue';
 
+import { useUiI18n } from '../i18n';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
 
@@ -12,6 +13,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:collapsed': [collapsed: boolean];
 }>();
+const { t } = useUiI18n();
 </script>
 
 <template>
@@ -30,8 +32,16 @@ const emit = defineEmits<{
         variant="ghost"
         size="icon"
         class="size-8 shrink-0"
-        :aria-label="`${props.collapsed ? '展开' : '收起'}${props.title}`"
-        :title="`${props.collapsed ? '展开' : '收起'}${props.title}`"
+        :aria-label="
+          t(props.collapsed ? 'common.sidebar.expand' : 'common.sidebar.collapse', {
+            title: props.title
+          })
+        "
+        :title="
+          t(props.collapsed ? 'common.sidebar.expand' : 'common.sidebar.collapse', {
+            title: props.title
+          })
+        "
         @click="emit('update:collapsed', !props.collapsed)"
       >
         <ChevronRight v-if="props.collapsed" class="size-4" />

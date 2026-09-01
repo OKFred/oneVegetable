@@ -3,7 +3,10 @@ import { computed, ref, watch } from 'vue';
 import { FlexRender, useTable, type PaginationState, type RowData, type Updater } from '@tanstack/vue-table';
 
 import { dataTableFeatures, type DataColumn, type DataTableColumnMeta } from '../lib/table';
+import { useUiI18n } from '../i18n';
 import TablePagination from './TablePagination.vue';
+
+const { t } = useUiI18n();
 
 const props = withDefaults(
   defineProps<{
@@ -23,7 +26,7 @@ const props = withDefaults(
     paginationDisabled?: boolean;
   }>(),
   {
-    emptyText: '暂无数据',
+    emptyText: '',
     maxHeight: 'min(60vh, 640px)',
     minWidth: '720px',
     getRowKey: null,
@@ -194,7 +197,7 @@ function stickyColumnStyle(value: unknown): Record<string, string> | undefined {
           <tr v-if="table.getRowModel().rows.length === 0">
             <td :colspan="columns.length" class="h-32 text-center text-muted-foreground">
               <slot name="empty">
-                {{ emptyText }}
+                {{ emptyText || t('common.data.empty') }}
               </slot>
             </td>
           </tr>

@@ -22,6 +22,7 @@ import {
 } from 'reka-ui';
 
 import Button from './ui/Button.vue';
+import { useUiI18n } from '../i18n';
 
 export interface ImagePreviewItem {
   id: string;
@@ -39,6 +40,7 @@ const props = withDefaults(
   { initialIndex: 0 }
 );
 const emit = defineEmits<{ 'update:open': [open: boolean] }>();
+const { t } = useUiI18n();
 
 const index = ref(0);
 const scale = ref(1);
@@ -105,14 +107,16 @@ function handleKeydown(event: KeyboardEvent): void {
         aria-modal="true"
         @keydown="handleKeydown"
       >
-        <DialogTitle class="sr-only">图片预览</DialogTitle>
-        <DialogDescription class="sr-only">查看图库原图，并支持切换、缩放和旋转。</DialogDescription>
+        <DialogTitle class="sr-only">{{ t('common.imagePreview.title') }}</DialogTitle>
+        <DialogDescription class="sr-only">{{ t('common.imagePreview.description') }}</DialogDescription>
 
         <header class="flex shrink-0 items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div class="min-w-0">
-            <p class="truncate text-sm font-medium">{{ current?.alt ?? '图片预览' }}</p>
+            <p class="truncate text-sm font-medium">
+              {{ current?.alt ?? t('common.imagePreview.title') }}
+            </p>
             <p class="mt-0.5 text-xs text-white/60">
-              {{ images.length ? `${index + 1} / ${images.length}` : '无图片' }}
+              {{ images.length ? `${index + 1} / ${images.length}` : t('common.imagePreview.empty') }}
               <template v-if="current?.description"> · {{ current.description }}</template>
             </p>
           </div>
@@ -120,7 +124,7 @@ function handleKeydown(event: KeyboardEvent): void {
             <a
               v-if="current"
               class="inline-flex size-9 items-center justify-center rounded-md text-white transition-colors hover:bg-white/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-              aria-label="在新标签页打开原图"
+              :aria-label="t('common.imagePreview.openOriginal')"
               :href="current.src"
               target="_blank"
               rel="noopener noreferrer"
@@ -132,7 +136,7 @@ function handleKeydown(event: KeyboardEvent): void {
                 variant="ghost"
                 size="icon"
                 class="text-white hover:bg-white/15 hover:text-white"
-                aria-label="关闭图片预览"
+                :aria-label="t('common.imagePreview.close')"
               >
                 <X class="size-5" />
               </Button>
@@ -149,7 +153,7 @@ function handleKeydown(event: KeyboardEvent): void {
             v-if="images.length > 1"
             type="button"
             class="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/40 p-3 text-white shadow-lg backdrop-blur hover:bg-black/60 sm:left-5"
-            aria-label="上一张图片"
+            :aria-label="t('common.imagePreview.previous')"
             @click="move(-1)"
           >
             <ChevronLeft class="size-6" />
@@ -165,13 +169,13 @@ function handleKeydown(event: KeyboardEvent): void {
               draggable="false"
               @dblclick="toggleZoom"
             />
-            <p v-else class="text-sm text-white/60">没有可预览的图片。</p>
+            <p v-else class="text-sm text-white/60">{{ t('common.imagePreview.noPreview') }}</p>
           </div>
           <button
             v-if="images.length > 1"
             type="button"
             class="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/40 p-3 text-white shadow-lg backdrop-blur hover:bg-black/60 sm:right-5"
-            aria-label="下一张图片"
+            :aria-label="t('common.imagePreview.next')"
             @click="move(1)"
           >
             <ChevronRight class="size-6" />
@@ -185,7 +189,7 @@ function handleKeydown(event: KeyboardEvent): void {
               size="icon"
               class="text-white hover:bg-white/15 hover:text-white"
               :disabled="scale <= 0.25"
-              aria-label="缩小图片"
+              :aria-label="t('common.imagePreview.zoomOut')"
               @click="zoom(-0.25)"
             >
               <ZoomOut class="size-4" />
@@ -196,7 +200,7 @@ function handleKeydown(event: KeyboardEvent): void {
               size="icon"
               class="text-white hover:bg-white/15 hover:text-white"
               :disabled="scale >= 4"
-              aria-label="放大图片"
+              :aria-label="t('common.imagePreview.zoomIn')"
               @click="zoom(0.25)"
             >
               <ZoomIn class="size-4" />
@@ -206,7 +210,7 @@ function handleKeydown(event: KeyboardEvent): void {
               variant="ghost"
               size="icon"
               class="text-white hover:bg-white/15 hover:text-white"
-              aria-label="向左旋转"
+              :aria-label="t('common.imagePreview.rotateLeft')"
               @click="rotate(-90)"
             >
               <RotateCcw class="size-4" />
@@ -215,7 +219,7 @@ function handleKeydown(event: KeyboardEvent): void {
               variant="ghost"
               size="icon"
               class="text-white hover:bg-white/15 hover:text-white"
-              aria-label="向右旋转"
+              :aria-label="t('common.imagePreview.rotateRight')"
               @click="rotate(90)"
             >
               <RotateCw class="size-4" />
@@ -224,7 +228,7 @@ function handleKeydown(event: KeyboardEvent): void {
               variant="ghost"
               size="icon"
               class="text-white hover:bg-white/15 hover:text-white"
-              aria-label="复位图片"
+              :aria-label="t('common.imagePreview.reset')"
               @click="resetTransform"
             >
               <RefreshCw class="size-4" />

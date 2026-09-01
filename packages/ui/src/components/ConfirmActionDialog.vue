@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import Button from './ui/Button.vue';
 import ModalDialog from './ui/ModalDialog.vue';
+import { useUiI18n } from '../i18n';
+
+const { t } = useUiI18n();
 
 const props = withDefaults(
   defineProps<{
@@ -14,8 +17,8 @@ const props = withDefaults(
   }>(),
   {
     description: '',
-    confirmLabel: '确认',
-    cancelLabel: '取消',
+    confirmLabel: '',
+    cancelLabel: '',
     destructive: false,
     pending: false
   }
@@ -45,13 +48,15 @@ function updateOpen(open: boolean): void {
     </div>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <Button variant="outline" :disabled="pending" @click="updateOpen(false)">{{ cancelLabel }}</Button>
+        <Button variant="outline" :disabled="pending" @click="updateOpen(false)">{{
+          cancelLabel || t('common.actions.cancel')
+        }}</Button>
         <Button
           :variant="destructive ? 'destructive' : 'default'"
           :disabled="pending"
           @click="emit('confirm')"
         >
-          {{ pending ? '正在处理…' : confirmLabel }}
+          {{ pending ? t('common.actions.processing') : confirmLabel || t('common.actions.confirm') }}
         </Button>
       </div>
     </template>

@@ -25,6 +25,6 @@ function toggleLocale(): void {
     data-testid="language-toggle"
     @click="toggleLocale"
   >
-    {{ uiLocale === 'zh-CN' ? 'EN' : '中' }}
+    {{ uiLocale === 'zh-CN' ? t('common.language.shortEnglish') : t('common.language.shortChinese') }}
   </Button>
 </template>

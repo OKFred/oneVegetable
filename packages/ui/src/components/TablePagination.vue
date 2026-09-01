@@ -2,7 +2,10 @@
 import { computed } from 'vue';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from '@lucide/vue';
 
+import { useUiI18n } from '../i18n';
 import Button from './ui/Button.vue';
+
+const { t } = useUiI18n();
 
 const props = withDefaults(
   defineProps<{
@@ -53,29 +56,37 @@ function setPageSize(event: Event): void {
 <template>
   <nav
     class="flex flex-col gap-3 border-t bg-background px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between"
-    aria-label="表格分页"
+    :aria-label="t('common.pagination.label')"
   >
     <div class="flex flex-wrap items-center gap-2">
       <p class="text-xs text-muted-foreground" aria-live="polite">
-        共 {{ normalizedTotal }} 条，当前 {{ firstVisibleRow }}–{{ lastVisibleRow }} 条
+        {{
+          t('common.pagination.summary', {
+            total: normalizedTotal,
+            first: firstVisibleRow,
+            last: lastVisibleRow
+          })
+        }}
       </p>
       <slot name="summary-extra" />
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <label class="flex items-center gap-2 whitespace-nowrap text-xs text-muted-foreground">
-        每页
+        {{ t('common.pagination.perPage') }}
         <select
           :value="normalizedPageSize"
           :disabled="disabled"
           class="h-8 cursor-pointer rounded-md border bg-background px-2 text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-          aria-label="每页条数"
+          :aria-label="t('common.pagination.perPageLabel')"
           @change="setPageSize"
         >
-          <option v-for="size in sizeOptions" :key="size" :value="size">{{ size }} 条</option>
+          <option v-for="size in sizeOptions" :key="size" :value="size">
+            {{ t('common.pagination.rows', { count: size }) }}
+          </option>
         </select>
       </label>
       <span class="min-w-20 text-center text-xs tabular-nums text-muted-foreground">
-        第 {{ currentPage }} / {{ pageCount }} 页
+        {{ t('common.pagination.page', { current: currentPage, total: pageCount }) }}
       </span>
       <div class="flex items-center gap-1">
         <Button
@@ -83,7 +94,7 @@ function setPageSize(event: Event): void {
           variant="outline"
           class="size-8"
           :disabled="disabled || currentPage <= 1"
-          aria-label="第一页"
+          :aria-label="t('common.pagination.first')"
           @click="setPage(1)"
         >
           <ChevronsLeft class="size-4" />
@@ -93,7 +104,7 @@ function setPageSize(event: Event): void {
           variant="outline"
           class="size-8"
           :disabled="disabled || currentPage <= 1"
-          aria-label="上一页"
+          :aria-label="t('common.pagination.previous')"
           @click="setPage(currentPage - 1)"
         >
           <ChevronLeft class="size-4" />
@@ -103,7 +114,7 @@ function setPageSize(event: Event): void {
           variant="outline"
           class="size-8"
           :disabled="disabled || currentPage >= pageCount"
-          aria-label="下一页"
+          :aria-label="t('common.pagination.next')"
           @click="setPage(currentPage + 1)"
         >
           <ChevronRight class="size-4" />
@@ -113,7 +124,7 @@ function setPageSize(event: Event): void {
           variant="outline"
           class="size-8"
           :disabled="disabled || currentPage >= pageCount"
-          aria-label="最后一页"
+          :aria-label="t('common.pagination.last')"
           @click="setPage(pageCount)"
         >
           <ChevronsRight class="size-4" />
