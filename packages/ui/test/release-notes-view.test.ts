@@ -16,6 +16,8 @@ describe('ReleaseNotesView', () => {
     expect(wrapper.text()).toContain('开放平台凭据向导');
     expect(wrapper.text()).toContain('商品详情模板与弹窗稳定性');
     expect(wrapper.text()).toContain('MV3 工程化版本基线');
+    expect(wrapper.text()).toContain('2026-08-31');
+    expect(wrapper.text()).not.toContain('2026年');
     expect(wrapper.findAll('[aria-label="正式版本更新记录"] > li')).toHaveLength(3);
   });
 

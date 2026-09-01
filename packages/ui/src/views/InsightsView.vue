@@ -13,6 +13,7 @@ import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
+import { formatDate } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 
@@ -79,12 +80,6 @@ watch([selectedSupplierId, dateStart, dateEnd], () => {
   supplierProductPage.value = 1;
 });
 
-function formatPublishedAt(value: string | null): string {
-  if (!value) return '文档未返回';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('zh-CN');
-}
-
 const productColumns: DataColumn<InsightsSupplierProduct>[] = [
   {
     accessorKey: 'subject',
@@ -113,7 +108,10 @@ const productColumns: DataColumn<InsightsSupplierProduct>[] = [
   {
     accessorKey: 'publishedAt',
     header: '发布时间',
-    cell: (context) => formatPublishedAt(context.getValue<string | null>())
+    cell: (context) => {
+      const value = context.getValue<string | null>();
+      return formatDate(value, value ?? '文档未返回');
+    }
   }
 ];
 
@@ -181,7 +179,9 @@ const workspaces: { id: Workspace; label: string }[] = [
               :key="item.statDate"
               class="grid grid-cols-[6rem_1fr_4rem] items-center gap-3 text-sm"
             >
-              <span class="font-mono text-xs text-muted-foreground">{{ item.statDate }}</span>
+              <span class="font-mono text-xs text-muted-foreground">{{
+                formatDate(item.statDate, item.statDate)
+              }}</span>
               <div class="h-3 overflow-hidden rounded-full bg-muted">
                 <div
                   class="h-full rounded-full bg-primary"

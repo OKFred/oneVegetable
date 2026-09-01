@@ -8,6 +8,7 @@ import { APP_VERSION } from '@one-vegetable/core/version';
 import PageHeader from '../components/PageHeader.vue';
 import Badge from '../components/ui/Badge.vue';
 import Card from '../components/ui/Card.vue';
+import { formatDate } from '../lib/date-time';
 
 interface ChangePresentation {
   label: string;
@@ -39,15 +40,6 @@ const changePresentation: Record<ReleaseChangeType, ChangePresentation> = {
 };
 
 const currentRelease = computed(() => RELEASE_NOTES.find((release) => release.version === APP_VERSION));
-
-function formatReleaseDate(value: string): string {
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    timeZone: 'UTC'
-  }).format(new Date(`${value}T00:00:00Z`));
-}
 </script>
 
 <template>
@@ -101,7 +93,7 @@ function formatReleaseDate(value: string): string {
                   <Badge v-if="release.version === APP_VERSION" variant="success">当前版本</Badge>
                 </div>
                 <p class="mt-1 text-xs text-muted-foreground">
-                  {{ formatReleaseDate(release.releasedAt) }}
+                  {{ formatDate(release.releasedAt) }}
                 </p>
               </div>
               <Badge variant="outline">

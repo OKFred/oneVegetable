@@ -30,6 +30,7 @@ import {
   operationAvailabilityMessage,
   useOperationAvailability
 } from '../composables/use-operation-availability';
+import { formatDate, formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 
@@ -168,10 +169,6 @@ function fileSize(value: number): string {
   return value >= 1024 * 1024 ? `${(value / 1024 / 1024).toFixed(1)} MiB` : `${Math.ceil(value / 1024)} KiB`;
 }
 
-function modifiedAtLabel(value: string): string {
-  return new Date(value).toLocaleString('zh-CN');
-}
-
 function openPreview(photo: Photo): void {
   previewIndex.value = Math.max(
     0,
@@ -273,11 +270,7 @@ const photoColumns: DataColumn<Photo>[] = [
     id: 'modifiedAt',
     header: '更新时间',
     cell: ({ row }) =>
-      h(
-        'span',
-        { class: 'whitespace-nowrap text-muted-foreground' },
-        modifiedAtLabel(row.original.modifiedAt)
-      )
+      h('span', { class: 'whitespace-nowrap text-muted-foreground' }, formatDateTime(row.original.modifiedAt))
   },
   {
     id: 'actions',
@@ -460,9 +453,7 @@ const photoColumns: DataColumn<Photo>[] = [
                 <Badge v-if="isLowResolution(photo)" variant="outline">建议换高清图</Badge>
               </div>
               <p class="text-[11px] text-muted-foreground">图库 fileId：{{ photo.id }}</p>
-              <p class="text-[11px] text-muted-foreground">
-                更新于 {{ new Date(photo.modifiedAt).toLocaleDateString('zh-CN') }}
-              </p>
+              <p class="text-[11px] text-muted-foreground">更新于 {{ formatDate(photo.modifiedAt) }}</p>
             </div>
           </Card>
         </div>

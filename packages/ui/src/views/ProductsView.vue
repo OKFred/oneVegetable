@@ -73,6 +73,7 @@ import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
+import { formatDateTime } from '../lib/date-time';
 import {
   findProductEditorDraft,
   migrateLegacyProductEditorDraft,
@@ -1283,11 +1284,7 @@ const columns: DataColumn<Product>[] = [
     accessorKey: 'updatedAt',
     header: '更新时间',
     cell: (context) =>
-      h(
-        'span',
-        { class: 'whitespace-nowrap tabular-nums' },
-        new Date(context.getValue<string>()).toLocaleString('zh-CN')
-      )
+      h('span', { class: 'whitespace-nowrap tabular-nums' }, formatDateTime(context.getValue<string>()))
   },
   {
     id: 'actions',
@@ -1871,7 +1868,7 @@ function productMutationStatusVariant(
 }
 
 function formatMutationTime(value: number | null): string {
-  return value === null ? '尚未检查' : new Date(value).toLocaleString();
+  return formatDateTime(value, '尚未检查');
 }
 
 function guardedSchemaXml(model: ProductSchemaModel): string {
@@ -2264,9 +2261,7 @@ onBeforeUnmount(() => {
         </p>
         <p class="mt-1 text-xs text-amber-800">
           保存于
-          {{
-            new Date(draftCandidate.updatedAtUtc).toLocaleString('zh-CN')
-          }}。请选择后再继续，不会静默覆盖平台表单。
+          {{ formatDateTime(draftCandidate.updatedAtUtc) }}。请选择后再继续，不会静默覆盖平台表单。
         </p>
         <div class="mt-3 flex flex-wrap gap-2">
           <Button size="sm" @click="resumeLocalDraft">继续本地草稿</Button>

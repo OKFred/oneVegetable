@@ -20,6 +20,7 @@ import {
   operationAvailabilityMessage,
   useOperationAvailability
 } from '../composables/use-operation-availability';
+import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 
@@ -269,8 +270,8 @@ function buildQuoteRequest(): LogisticsQuoteRequest {
   };
 }
 
-function formatDate(value: string | null): string {
-  return value ? new Date(value).toLocaleString('zh-CN') : '文档未返回';
+function formatLogisticsDateTime(value: string | null): string {
+  return formatDateTime(value, '文档未返回');
 }
 
 function selectLogisticsOrder(order: LogisticsOrderSummary): void {
@@ -316,7 +317,7 @@ const columns: DataColumn<LogisticsOrderSummary>[] = [
   {
     accessorKey: 'placedAt',
     header: '下单时间',
-    cell: (context) => formatDate(context.getValue<string | null>())
+    cell: (context) => formatLogisticsDateTime(context.getValue<string | null>())
   }
 ];
 

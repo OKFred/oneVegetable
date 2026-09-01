@@ -41,6 +41,7 @@ import PageHeader from '../components/PageHeader.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
+import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import type { DataColumn } from '../lib/table';
@@ -106,7 +107,7 @@ const lastDiagnosticError = computed(() =>
 const vaultActivitySummary = computed(() => {
   const status = vaultStatus.value;
   if (!status?.lastActivityAt || status.idleRemainingSeconds === null) return '';
-  const lastActivity = new Date(status.lastActivityAt).toLocaleString('zh-CN', { hour12: false });
+  const lastActivity = formatDateTime(status.lastActivityAt);
   const remainingMinutes = Math.max(1, Math.ceil(status.idleRemainingSeconds / 60));
   return `最近活动：${lastActivity}；状态快照剩余约 ${remainingMinutes} 分钟。`;
 });

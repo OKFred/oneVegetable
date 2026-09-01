@@ -33,6 +33,7 @@ import {
   useOperationAvailability
 } from '../composables/use-operation-availability';
 import { appHash, parseAppHash } from '../lib/hash-router';
+import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import type { DataColumn } from '../lib/table';
@@ -216,8 +217,8 @@ function maskedAccountNumber(value: string | null): string {
   return `${'•'.repeat(Math.max(4, value.length - visible.length))}${visible}`;
 }
 
-function formatDate(value: string | null): string {
-  return value ? new Date(value).toLocaleString('zh-CN') : '文档未返回';
+function formatOrderDateTime(value: string | null): string {
+  return formatDateTime(value, '文档未返回');
 }
 
 const columns: DataColumn<TradeOrderSummary>[] = [
@@ -250,7 +251,7 @@ const columns: DataColumn<TradeOrderSummary>[] = [
   {
     accessorKey: 'modifiedAt',
     header: '最后修改',
-    cell: (context) => formatDate(context.getValue<string | null>())
+    cell: (context) => formatOrderDateTime(context.getValue<string | null>())
   },
   {
     id: 'actions',
@@ -655,11 +656,11 @@ onBeforeUnmount(() => {
               </div>
               <div>
                 <p class="text-xs text-muted-foreground">创建时间</p>
-                <p class="mt-1 text-sm">{{ formatDate(selectedOrder.createdAt) }}</p>
+                <p class="mt-1 text-sm">{{ formatOrderDateTime(selectedOrder.createdAt) }}</p>
               </div>
               <div>
                 <p class="text-xs text-muted-foreground">最后修改</p>
-                <p class="mt-1 text-sm">{{ formatDate(selectedOrder.modifiedAt) }}</p>
+                <p class="mt-1 text-sm">{{ formatOrderDateTime(selectedOrder.modifiedAt) }}</p>
               </div>
             </div>
           </div>

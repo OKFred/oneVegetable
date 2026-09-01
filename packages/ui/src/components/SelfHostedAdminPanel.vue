@@ -20,6 +20,7 @@ import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import ErrorNotice from './ErrorNotice.vue';
 import ModalDialog from './ui/ModalDialog.vue';
 import AlibabaCloudCredentialAcquisitionDialog from './AlibabaCloudCredentialAcquisitionDialog.vue';
+import { formatDateTime } from '../lib/date-time';
 
 type Confirmation =
   | { kind: 'credential-import' }
@@ -183,10 +184,6 @@ async function copyRecoveryCodes(): Promise<void> {
   }
 }
 
-function formatTime(value: number | null): string {
-  return value === null ? '—' : new Date(value).toLocaleString('zh-CN', { hour12: false });
-}
-
 function userError(cause: unknown, fallback: string): Error {
   return cause instanceof Error ? cause : new Error(fallback);
 }
@@ -222,7 +219,7 @@ function userError(cause: unknown, fallback: string): Error {
         <dl class="mt-4 space-y-2 text-sm">
           <div class="flex justify-between gap-3">
             <dt class="text-muted-foreground">Access Token 到期</dt>
-            <dd>{{ formatTime(credentials?.accessTokenExpiresTimeUtc ?? null) }}</dd>
+            <dd>{{ formatDateTime(credentials?.accessTokenExpiresTimeUtc ?? null) }}</dd>
           </div>
           <div class="flex justify-between gap-3">
             <dt class="text-muted-foreground">最近刷新错误</dt>

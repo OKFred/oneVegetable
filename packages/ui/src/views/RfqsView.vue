@@ -26,6 +26,7 @@ import {
   operationAvailabilityMessage,
   useOperationAvailability
 } from '../composables/use-operation-availability';
+import { formatDate } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 
@@ -306,10 +307,6 @@ function isQuotationDraft(value: unknown): value is QuotationDraft {
   return keys.every((key) => key in value && typeof (value as Record<string, unknown>)[key] === 'string');
 }
 
-function formatDate(value: string | null): string {
-  return value ? new Date(value).toLocaleDateString('zh-CN') : '未提供';
-}
-
 watch(selectedRfqId, (rfqId) => {
   submitQuotation.reset();
   attachmentError.value = '';
@@ -382,7 +379,7 @@ const columns: DataColumn<RfqSummary>[] = [
   {
     accessorKey: 'expiresAt',
     header: '截止',
-    cell: ({ row }) => formatDate(row.original.expiresAt)
+    cell: ({ row }) => formatDate(row.original.expiresAt, '未提供')
   }
 ];
 </script>
