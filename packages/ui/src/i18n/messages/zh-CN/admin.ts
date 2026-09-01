@@ -116,6 +116,104 @@ export const admin = {
     failedTitle: '自动获取未完成',
     restart: '重新开始'
   },
+  meta: {
+    title: '社交账号',
+    description: '配置一个 Meta 应用，可连接多个 Facebook 身份及其 Page 和 Instagram 专业账号。',
+    refresh: '刷新',
+    runtime: {
+      r2: 'R2 私有素材库',
+      filesystem: '本地私有素材目录',
+      unavailable: '素材存储不可用',
+      storageIssue: '缺少临时素材存储，暂时无法准备 Facebook 或 Instagram 发布任务。',
+      serviceIssue: '发布服务尚未完成初始化，请检查凭据加密设施与运行时绑定。',
+      ready: '社交发布运行组件已就绪。',
+      incomplete: '当前后端未返回完整的社交发布运行状态。',
+      readyBadge: '发布组件就绪',
+      actionRequired: '需要处理'
+    },
+    confirmation: {
+      saveTitle: '确认保存 Meta 应用配置',
+      clearTitle: '确认清除 Meta 应用配置',
+      approveTitle: '确认批准插件设备',
+      revokeTitle: '确认撤销插件设备',
+      disconnectTitle: '确认断开 Meta 账号',
+      replaceSecret:
+        '新的 App Secret 会重新加密保存且不再回显。App ID 或公开地址发生变化时，必须先断开现有账号。',
+      keepSecret: '将保留现有 App Secret。App ID 或公开地址发生变化时，必须先断开现有账号。',
+      firstSave: 'App Secret 会加密保存且不再回显，请确认 App ID 和公开地址正确。',
+      clear: '只有断开全部 Meta 账号后才能清除应用配置。',
+      approve: '批准后，持有此一次性配对码的 Chrome 插件将获得 30 天社交发布设备令牌。',
+      revoke: '撤销 {name} 后，该插件无法再读取发布目标或创建社交发布任务。',
+      disconnect: '断开 {name} 后，其 Facebook Page 和 Instagram 发布目标会同时移除。'
+    },
+    errors: {
+      unsupportedConfig: '当前后端不支持 Meta 应用配置',
+      noConfiguration: '当前没有可清除的 Meta 应用配置',
+      unsupportedDisconnect: '当前后端不支持断开 Meta 账号',
+      unsupportedPairing: '当前后端不支持插件配对',
+      unsupportedRevoke: '当前后端不支持撤销插件设备',
+      operation: 'Meta 配置操作失败'
+    },
+    feedback: {
+      deviceClaimed: '插件已领取授权，设备列表已自动更新',
+      configurationSaved: 'Meta 应用配置已加密保存',
+      configurationCleared: 'Meta 应用配置已清除',
+      disconnected: '已断开 {name}',
+      pairingApproved: '插件配对已批准，正在等待插件领取授权',
+      deviceRevoked: '已撤销 {name}',
+      callbackCopied: 'Callback URL 已复制',
+      connected: 'Meta 账号连接成功',
+      connectionFailed: 'Meta 账号连接失败：{reason}',
+      unknownReason: '未知原因'
+    },
+    configuration: {
+      title: 'Meta 应用配置',
+      configured: '已配置 ···{suffix}',
+      notConfigured: '未配置',
+      appId: 'App ID',
+      appSecret: 'App Secret',
+      keepSecretPlaceholder: '留空则保留现有密钥',
+      requiredSecretPlaceholder: '首次配置时必填',
+      publicOrigin: '公开地址',
+      publicOriginDescription: 'Instagram 需要从该 HTTPS 地址临时读取待发布图片。',
+      remark: '备注',
+      optional: '可选',
+      callbackCopyAria: '复制 Callback URL',
+      save: '保存配置',
+      connectFacebook: '连接 Facebook Page',
+      connectBoth: 'Facebook + Instagram',
+      clear: '清除配置'
+    },
+    connections: {
+      title: '已连接账号与发布目标',
+      description: '只有具备创建内容任务和所需授权的目标才可发布。',
+      empty: '尚未连接 Meta 账号。',
+      summary: '{count} 个目标 · 更新于 {time}',
+      connected: '已连接',
+      reconnect: '需要重新连接',
+      disconnectAria: '断开 {name}',
+      canPublish: '可发布',
+      unavailable: '不可用'
+    },
+    devices: {
+      title: '插件设备',
+      description: '插件只获得读取目标和社交发布权限，不会取得 Meta App Secret 或平台 Token。',
+      activeCount: '{count} 台有效',
+      pairingCode: '插件显示的一次性配对码',
+      approve: '批准配对',
+      waiting: '等待插件领取授权',
+      notClaimed: '插件尚未领取授权',
+      waitingDescription: '请回到插件点击“检查批准结果”，领取后设备列表会自动更新。',
+      timeoutDescription: '配对已经批准。回到插件检查结果后，再返回本页即可自动刷新设备列表。',
+      empty: '暂无已配对插件设备。',
+      expires: '到期：{time}',
+      lastUsed: '最近使用：{time}',
+      active: '有效',
+      expired: '已过期',
+      revoked: '已撤销',
+      revokeAria: '撤销 {name}'
+    }
+  },
   selfHosted: {
     confirmation: {
       importTitle: '确认导入 Alibaba 凭据',

@@ -28,10 +28,12 @@ import Card from './ui/Card.vue';
 import Input from './ui/Input.vue';
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import ErrorNotice from './ErrorNotice.vue';
+import { useUiI18n } from '../i18n';
 import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 
 const { control } = useServices();
+const { t } = useUiI18n();
 const configuration = ref<MetaAppConfigurationSummary | null>(null);
 const connections = ref<SocialAccountConnection[]>([]);
 const destinations = ref<SocialDestination[]>([]);
@@ -78,50 +80,50 @@ const runtimeLabel = computed(() => {
   const runtime = current.apiRuntime === 'cloudflare' ? 'Cloudflare Worker' : 'Node.js';
   const storage =
     current.mediaStorage === 'r2'
-      ? 'R2 私有素材库'
+      ? t('admin.meta.runtime.r2')
       : current.mediaStorage === 'filesystem'
-        ? '本地私有素材目录'
-        : '素材存储不可用';
+        ? t('admin.meta.runtime.filesystem')
+        : t('admin.meta.runtime.unavailable');
   return `${runtime} · ${storage}`;
 });
 const runtimeDescription = computed(() => {
   const current = configuration.value;
   if (!current?.apiRuntime) return '';
   if (current.runtimeIssueCode === 'SOCIAL_MEDIA_STORAGE_UNAVAILABLE') {
-    return '缺少临时素材存储，暂时无法准备 Facebook 或 Instagram 发布任务。';
+    return t('admin.meta.runtime.storageIssue');
   }
   if (current.runtimeIssueCode === 'SOCIAL_PUBLISHING_SERVICE_UNAVAILABLE') {
-    return '发布服务尚未完成初始化，请检查凭据加密设施与运行时绑定。';
+    return t('admin.meta.runtime.serviceIssue');
   }
   return current.publishingRuntimeAvailable
-    ? '社交发布运行组件已就绪。'
-    : '当前后端未返回完整的社交发布运行状态。';
+    ? t('admin.meta.runtime.ready')
+    : t('admin.meta.runtime.incomplete');
 });
 const confirmationTitle = computed(() => {
-  if (confirmation.value?.kind === 'save') return '确认保存 Meta 应用配置';
-  if (confirmation.value?.kind === 'clear') return '确认清除 Meta 应用配置';
-  if (confirmation.value?.kind === 'approve-pairing') return '确认批准插件设备';
-  if (confirmation.value?.kind === 'revoke-device') return '确认撤销插件设备';
-  return '确认断开 Meta 账号';
+  if (confirmation.value?.kind === 'save') return t('admin.meta.confirmation.saveTitle');
+  if (confirmation.value?.kind === 'clear') return t('admin.meta.confirmation.clearTitle');
+  if (confirmation.value?.kind === 'approve-pairing') return t('admin.meta.confirmation.approveTitle');
+  if (confirmation.value?.kind === 'revoke-device') return t('admin.meta.confirmation.revokeTitle');
+  return t('admin.meta.confirmation.disconnectTitle');
 });
 const confirmationDescription = computed(() => {
   const value = confirmation.value;
   if (value?.kind === 'save') {
     return configuration.value?.configured
       ? appSecret.value
-        ? '新的 App Secret 会重新加密保存且不再回显。App ID 或公开地址发生变化时，必须先断开现有账号。'
-        : '将保留现有 App Secret。App ID 或公开地址发生变化时，必须先断开现有账号。'
-      : 'App Secret 会加密保存且不再回显，请确认 App ID 和公开地址正确。';
+        ? t('admin.meta.confirmation.replaceSecret')
+        : t('admin.meta.confirmation.keepSecret')
+      : t('admin.meta.confirmation.firstSave');
   }
-  if (value?.kind === 'clear') return '只有断开全部 Meta 账号后才能清除应用配置。';
+  if (value?.kind === 'clear') return t('admin.meta.confirmation.clear');
   if (value?.kind === 'approve-pairing') {
-    return '批准后，持有此一次性配对码的 Chrome 插件将获得 30 天社交发布设备令牌。';
+    return t('admin.meta.confirmation.approve');
   }
   if (value?.kind === 'revoke-device') {
-    return `撤销 ${value.device.name} 后，该插件无法再读取发布目标或创建社交发布任务。`;
+    return t('admin.meta.confirmation.revoke', { name: value.device.name });
   }
   return value?.kind === 'disconnect'
-    ? `断开 ${value.connection.accountName} 后，其 Facebook Page 和 Instagram 发布目标会同时移除。`
+    ? t('admin.meta.confirmation.disconnect', { name: value.connection.accountName })
     : '';
 });
 
@@ -175,7 +177,7 @@ function applyDevices(nextDevices: ExtensionSocialDevice[]): void {
   ) {
     pairingRefreshState.value = 'idle';
     stopPairingRefreshTimer();
-    toast.success('插件已领取授权，设备列表已自动更新');
+    toast.success(t('admin.meta.feedback.deviceClaimed'));
   }
 }
 
@@ -238,7 +240,7 @@ async function executeConfirmation(): Promise<void> {
   error.value = null;
   try {
     if (action.kind === 'save') {
-      if (!control.updateMetaAppConfiguration) throw new Error('当前后端不支持 Meta 应用配置');
+      if (!control.updateMetaAppConfiguration) throw new Error(t('admin.meta.errors.unsupportedConfig'));
       configuration.value = await control.updateMetaAppConfiguration({
         appId: appId.value.trim(),
         appSecret: appSecret.value.trim() || null,
@@ -247,24 +249,24 @@ async function executeConfirmation(): Promise<void> {
         remark: remark.value.trim() || null
       });
       appSecret.value = '';
-      toast.success('Meta 应用配置已加密保存');
+      toast.success(t('admin.meta.feedback.configurationSaved'));
     } else if (action.kind === 'clear') {
       const revision = configuration.value?.revision;
       if (!control.clearMetaAppConfiguration || revision === null || revision === undefined) {
-        throw new Error('当前没有可清除的 Meta 应用配置');
+        throw new Error(t('admin.meta.errors.noConfiguration'));
       }
       await control.clearMetaAppConfiguration(revision);
       appId.value = '';
       appSecret.value = '';
       await refresh();
-      toast.success('Meta 应用配置已清除');
+      toast.success(t('admin.meta.feedback.configurationCleared'));
     } else if (action.kind === 'disconnect') {
-      if (!control.disconnectMetaConnection) throw new Error('当前后端不支持断开 Meta 账号');
+      if (!control.disconnectMetaConnection) throw new Error(t('admin.meta.errors.unsupportedDisconnect'));
       await control.disconnectMetaConnection(action.connection.id, action.connection.revision);
       await refresh();
-      toast.success(`已断开 ${action.connection.accountName}`);
+      toast.success(t('admin.meta.feedback.disconnected', { name: action.connection.accountName }));
     } else if (action.kind === 'approve-pairing') {
-      if (!control.approveExtensionSocialPairing) throw new Error('当前后端不支持插件配对');
+      if (!control.approveExtensionSocialPairing) throw new Error(t('admin.meta.errors.unsupportedPairing'));
       await control.approveExtensionSocialPairing(pairingCode.value);
       pairingCode.value = '';
       startPairingDeviceRefresh();
@@ -274,13 +276,13 @@ async function executeConfirmation(): Promise<void> {
         // Approval already succeeded; the background poll will retry the device list.
       }
       if (pairingRefreshState.value === 'waiting') {
-        toast.success('插件配对已批准，正在等待插件领取授权');
+        toast.success(t('admin.meta.feedback.pairingApproved'));
       }
     } else {
-      if (!control.revokeExtensionSocialDevice) throw new Error('当前后端不支持撤销插件设备');
+      if (!control.revokeExtensionSocialDevice) throw new Error(t('admin.meta.errors.unsupportedRevoke'));
       await control.revokeExtensionSocialDevice(action.device.id, action.device.revision);
       await refresh();
-      toast.success(`已撤销 ${action.device.name}`);
+      toast.success(t('admin.meta.feedback.deviceRevoked', { name: action.device.name }));
     }
     confirmation.value = null;
   } catch (cause: unknown) {
@@ -307,7 +309,7 @@ async function copyCallback(): Promise<void> {
   const callback = configuration.value?.callbackUrl;
   if (!callback) return;
   await globalThis.navigator.clipboard.writeText(callback);
-  toast.success('Callback URL 已复制');
+  toast.success(t('admin.meta.feedback.callbackCopied'));
 }
 
 function showOAuthResult(): void {
@@ -315,8 +317,14 @@ function showOAuthResult(): void {
   if (!query) return;
   const parameters = new URLSearchParams(query);
   const result = parameters.get('meta');
-  if (result === 'connected') toast.success('Meta 账号连接成功');
-  else if (result === 'failed') toast.error(`Meta 账号连接失败：${parameters.get('reason') ?? '未知原因'}`);
+  if (result === 'connected') toast.success(t('admin.meta.feedback.connected'));
+  else if (result === 'failed') {
+    toast.error(
+      t('admin.meta.feedback.connectionFailed', {
+        reason: parameters.get('reason') ?? t('admin.meta.feedback.unknownReason')
+      })
+    );
+  }
 }
 
 function destinationCount(connectionId: string): number {
@@ -328,25 +336,29 @@ function destinationCount(connectionId: string): number {
   <Card v-if="supported" class="mt-5 overflow-hidden">
     <div class="flex flex-wrap items-start justify-between gap-3 border-b p-5">
       <div>
-        <h2 class="font-semibold">社交账号</h2>
+        <h2 class="font-semibold">{{ t('admin.meta.title') }}</h2>
         <p class="mt-1 text-sm text-muted-foreground">
-          配置一个 Meta 应用，可连接多个 Facebook 身份及其 Page 和 Instagram 专业账号。
+          {{ t('admin.meta.description') }}
         </p>
       </div>
       <Button variant="outline" size="sm" :disabled="loading" @click="refresh">
-        <RefreshCw class="size-4" />刷新
+        <RefreshCw class="size-4" />{{ t('admin.meta.refresh') }}
       </Button>
     </div>
 
     <div class="grid gap-5 p-5 xl:grid-cols-[0.9fr_1.1fr]">
       <section class="space-y-4">
         <div class="flex items-center justify-between gap-3">
-          <h3 class="font-medium">Meta 应用配置</h3>
+          <h3 class="font-medium">{{ t('admin.meta.configuration.title') }}</h3>
           <Badge :variant="configuration?.configured ? 'success' : 'secondary'">
-            {{ configuration?.configured ? `已配置 ···${configuration.appIdSuffix}` : '未配置' }}
+            {{
+              configuration?.configured
+                ? t('admin.meta.configuration.configured', { suffix: configuration.appIdSuffix })
+                : t('admin.meta.configuration.notConfigured')
+            }}
           </Badge>
         </div>
-        <ErrorNotice v-if="error" :error="error" fallback="Meta 配置操作失败" compact />
+        <ErrorNotice v-if="error" :error="error" :fallback="t('admin.meta.errors.operation')" compact />
         <div
           v-if="configuration?.apiRuntime"
           class="rounded-lg border p-3"
@@ -362,40 +374,53 @@ function destinationCount(connectionId: string): number {
               <span class="truncate">{{ runtimeLabel }}</span>
             </div>
             <Badge :variant="configuration.publishingRuntimeAvailable ? 'success' : 'warning'">
-              {{ configuration.publishingRuntimeAvailable ? '发布组件就绪' : '需要处理' }}
+              {{
+                configuration.publishingRuntimeAvailable
+                  ? t('admin.meta.runtime.readyBadge')
+                  : t('admin.meta.runtime.actionRequired')
+              }}
             </Badge>
           </div>
           <p class="mt-2 text-xs text-muted-foreground">{{ runtimeDescription }}</p>
         </div>
         <label class="block space-y-1 text-sm">
-          <span>App ID</span>
+          <span>{{ t('admin.meta.configuration.appId') }}</span>
           <Input v-model="appId" inputmode="numeric" placeholder="Meta App ID" autocomplete="off" />
         </label>
         <label class="block space-y-1 text-sm">
-          <span>App Secret</span>
+          <span>{{ t('admin.meta.configuration.appSecret') }}</span>
           <Input
             v-model="appSecret"
             type="password"
-            :placeholder="configuration?.configured ? '留空则保留现有密钥' : '首次配置时必填'"
+            :placeholder="
+              configuration?.configured
+                ? t('admin.meta.configuration.keepSecretPlaceholder')
+                : t('admin.meta.configuration.requiredSecretPlaceholder')
+            "
             autocomplete="new-password"
           />
         </label>
         <label class="block space-y-1 text-sm">
-          <span>公开地址</span>
+          <span>{{ t('admin.meta.configuration.publicOrigin') }}</span>
           <Input v-model="publicOrigin" type="url" placeholder="https://example.com" />
           <span class="block text-xs text-muted-foreground">
-            Instagram 需要从该 HTTPS 地址临时读取待发布图片。
+            {{ t('admin.meta.configuration.publicOriginDescription') }}
           </span>
         </label>
         <label class="block space-y-1 text-sm">
-          <span>备注</span>
-          <Input v-model="remark" maxlength="500" placeholder="可选" />
+          <span>{{ t('admin.meta.configuration.remark') }}</span>
+          <Input v-model="remark" maxlength="500" :placeholder="t('admin.meta.configuration.optional')" />
         </label>
         <div v-if="configuration?.callbackUrl" class="rounded-lg border bg-muted/30 p-3">
           <p class="text-xs text-muted-foreground">OAuth Callback</p>
           <div class="mt-1 flex items-center gap-2">
             <code class="min-w-0 flex-1 truncate text-xs">{{ configuration.callbackUrl }}</code>
-            <Button variant="ghost" size="icon" aria-label="复制 Callback URL" @click="copyCallback">
+            <Button
+              variant="ghost"
+              size="icon"
+              :aria-label="t('admin.meta.configuration.callbackCopyAria')"
+              @click="copyCallback"
+            >
               <Copy class="size-4" />
             </Button>
           </div>
@@ -410,60 +435,68 @@ function destinationCount(connectionId: string): number {
             "
             @click="confirmation = { kind: 'save' }"
           >
-            <Save class="size-4" />保存配置
+            <Save class="size-4" />{{ t('admin.meta.configuration.save') }}
           </Button>
           <Button
             variant="outline"
             :disabled="loading || !configuration?.configured"
             @click="startOAuth(false)"
           >
-            <Link2 class="size-4" />连接 Facebook Page
+            <Link2 class="size-4" />{{ t('admin.meta.configuration.connectFacebook') }}
           </Button>
           <Button
             variant="outline"
             :disabled="loading || !configuration?.configured"
             @click="startOAuth(true)"
           >
-            <Camera class="size-4" />Facebook + Instagram
+            <Camera class="size-4" />{{ t('admin.meta.configuration.connectBoth') }}
           </Button>
           <Button
             variant="ghost"
             :disabled="loading || !configuration?.configured"
             @click="confirmation = { kind: 'clear' }"
           >
-            <Trash2 class="size-4" />清除配置
+            <Trash2 class="size-4" />{{ t('admin.meta.configuration.clear') }}
           </Button>
         </div>
       </section>
 
       <section class="space-y-4">
         <div>
-          <h3 class="font-medium">已连接账号与发布目标</h3>
-          <p class="mt-1 text-xs text-muted-foreground">只有具备创建内容任务和所需授权的目标才可发布。</p>
+          <h3 class="font-medium">{{ t('admin.meta.connections.title') }}</h3>
+          <p class="mt-1 text-xs text-muted-foreground">{{ t('admin.meta.connections.description') }}</p>
         </div>
         <p
           v-if="connections.length === 0"
           class="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground"
         >
-          尚未连接 Meta 账号。
+          {{ t('admin.meta.connections.empty') }}
         </p>
         <article v-for="connection in connections" :key="connection.id" class="rounded-lg border p-4">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p class="font-medium">{{ connection.accountName }}</p>
               <p class="mt-1 text-xs text-muted-foreground">
-                {{ destinationCount(connection.id) }} 个目标 · 更新于
-                {{ formatDateTime(connection.updateTimeUtc) }}
+                {{
+                  t('admin.meta.connections.summary', {
+                    count: destinationCount(connection.id),
+                    time: formatDateTime(connection.updateTimeUtc)
+                  })
+                }}
               </p>
             </div>
             <div class="flex items-center gap-2">
               <Badge :variant="connection.status === 'connected' ? 'success' : 'warning'">
-                {{ connection.status === 'connected' ? '已连接' : '需要重新连接' }}
+                {{
+                  connection.status === 'connected'
+                    ? t('admin.meta.connections.connected')
+                    : t('admin.meta.connections.reconnect')
+                }}
               </Badge>
               <Button
                 variant="ghost"
                 size="icon"
-                :aria-label="`断开 ${connection.accountName}`"
+                :aria-label="t('admin.meta.connections.disconnectAria', { name: connection.accountName })"
                 @click="confirmation = { kind: 'disconnect', connection }"
               >
                 <Unplug class="size-4" />
@@ -481,7 +514,11 @@ function destinationCount(connectionId: string): number {
                 <Camera v-else class="size-4" />
                 <span class="min-w-0 flex-1 truncate font-medium">{{ destination.name }}</span>
                 <Badge :variant="destination.canPublish ? 'success' : 'secondary'">
-                  {{ destination.canPublish ? '可发布' : '不可用' }}
+                  {{
+                    destination.canPublish
+                      ? t('admin.meta.connections.canPublish')
+                      : t('admin.meta.connections.unavailable')
+                  }}
                 </Badge>
               </div>
               <p v-if="destination.unavailableReasonCode" class="mt-2 text-xs text-muted-foreground">
@@ -498,19 +535,23 @@ function destinationCount(connectionId: string): number {
         <div>
           <div class="flex items-center gap-2">
             <Smartphone class="size-4 text-primary" />
-            <h3 class="font-medium">插件设备</h3>
+            <h3 class="font-medium">{{ t('admin.meta.devices.title') }}</h3>
           </div>
           <p class="mt-1 text-xs text-muted-foreground">
-            插件只获得读取目标和社交发布权限，不会取得 Meta App Secret 或平台 Token。
+            {{ t('admin.meta.devices.description') }}
           </p>
         </div>
-        <Badge variant="secondary"
-          >{{ devices.filter((device) => device.status === 'active').length }} 台有效</Badge
-        >
+        <Badge variant="secondary">
+          {{
+            t('admin.meta.devices.activeCount', {
+              count: devices.filter((device) => device.status === 'active').length
+            })
+          }}
+        </Badge>
       </div>
       <div class="mt-4 flex flex-wrap items-end gap-2">
         <label class="min-w-64 flex-1 space-y-1 text-sm">
-          <span>插件显示的一次性配对码</span>
+          <span>{{ t('admin.meta.devices.pairingCode') }}</span>
           <Input
             v-model="pairingCode"
             maxlength="19"
@@ -522,7 +563,7 @@ function destinationCount(connectionId: string): number {
           :disabled="loading || pairingCode.replaceAll('-', '').trim().length !== 16"
           @click="confirmation = { kind: 'approve-pairing' }"
         >
-          <ShieldCheck class="size-4" />批准配对
+          <ShieldCheck class="size-4" />{{ t('admin.meta.devices.approve') }}
         </Button>
       </div>
       <div
@@ -537,13 +578,17 @@ function destinationCount(connectionId: string): number {
         />
         <div>
           <p class="font-medium">
-            {{ pairingRefreshState === 'waiting' ? '等待插件领取授权' : '插件尚未领取授权' }}
+            {{
+              pairingRefreshState === 'waiting'
+                ? t('admin.meta.devices.waiting')
+                : t('admin.meta.devices.notClaimed')
+            }}
           </p>
           <p class="mt-1 text-xs text-muted-foreground">
             {{
               pairingRefreshState === 'waiting'
-                ? '请回到插件点击“检查批准结果”，领取后设备列表会自动更新。'
-                : '配对已经批准。回到插件检查结果后，再返回本页即可自动刷新设备列表。'
+                ? t('admin.meta.devices.waitingDescription')
+                : t('admin.meta.devices.timeoutDescription')
             }}
           </p>
         </div>
@@ -552,7 +597,7 @@ function destinationCount(connectionId: string): number {
         v-if="devices.length === 0"
         class="mt-4 rounded-lg border border-dashed p-4 text-sm text-muted-foreground"
       >
-        暂无已配对插件设备。
+        {{ t('admin.meta.devices.empty') }}
       </p>
       <div v-else class="mt-4 grid gap-2 md:grid-cols-2">
         <article v-for="device in devices" :key="device.id" class="rounded-lg border p-3 text-sm">
@@ -560,21 +605,27 @@ function destinationCount(connectionId: string): number {
             <div>
               <p class="font-medium">{{ device.name }}</p>
               <p class="mt-1 text-xs text-muted-foreground">
-                到期：{{ formatDateTime(device.expiresTimeUtc) }}
+                {{ t('admin.meta.devices.expires', { time: formatDateTime(device.expiresTimeUtc) }) }}
               </p>
               <p v-if="device.lastUsedTimeUtc" class="mt-1 text-xs text-muted-foreground">
-                最近使用：{{ formatDateTime(device.lastUsedTimeUtc) }}
+                {{ t('admin.meta.devices.lastUsed', { time: formatDateTime(device.lastUsedTimeUtc) }) }}
               </p>
             </div>
             <div class="flex items-center gap-1">
               <Badge :variant="device.status === 'active' ? 'success' : 'secondary'">
-                {{ device.status === 'active' ? '有效' : device.status === 'expired' ? '已过期' : '已撤销' }}
+                {{
+                  device.status === 'active'
+                    ? t('admin.meta.devices.active')
+                    : device.status === 'expired'
+                      ? t('admin.meta.devices.expired')
+                      : t('admin.meta.devices.revoked')
+                }}
               </Badge>
               <Button
                 v-if="device.status === 'active'"
                 variant="ghost"
                 size="icon"
-                :aria-label="`撤销 ${device.name}`"
+                :aria-label="t('admin.meta.devices.revokeAria', { name: device.name })"
                 @click="confirmation = { kind: 'revoke-device', device }"
               >
                 <Unplug class="size-4" />

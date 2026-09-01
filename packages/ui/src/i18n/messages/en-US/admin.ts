@@ -129,6 +129,114 @@ export const admin = {
     failedTitle: 'Automatic acquisition did not complete',
     restart: 'Start again'
   },
+  meta: {
+    title: 'Social accounts',
+    description:
+      'Configure one Meta application and connect multiple Facebook identities, Pages, and Instagram professional accounts.',
+    refresh: 'Refresh',
+    runtime: {
+      r2: 'Private R2 media storage',
+      filesystem: 'Private local media directory',
+      unavailable: 'Media storage unavailable',
+      storageIssue:
+        'Temporary media storage is missing, so Facebook and Instagram publishing tasks cannot be prepared.',
+      serviceIssue:
+        'The publishing service has not finished initializing. Check credential encryption and runtime bindings.',
+      ready: 'Social publishing runtime components are ready.',
+      incomplete: 'The backend did not return complete social publishing runtime status.',
+      readyBadge: 'Publishing ready',
+      actionRequired: 'Action required'
+    },
+    confirmation: {
+      saveTitle: 'Confirm Meta application configuration',
+      clearTitle: 'Confirm Meta application configuration removal',
+      approveTitle: 'Confirm extension device approval',
+      revokeTitle: 'Confirm extension device revocation',
+      disconnectTitle: 'Confirm Meta account disconnection',
+      replaceSecret:
+        'The new App Secret will be encrypted and never shown again. Disconnect existing accounts before changing the App ID or public origin.',
+      keepSecret:
+        'The current App Secret will be retained. Disconnect existing accounts before changing the App ID or public origin.',
+      firstSave:
+        'The App Secret will be encrypted and never shown again. Confirm that the App ID and public origin are correct.',
+      clear: 'Disconnect all Meta accounts before clearing the application configuration.',
+      approve:
+        'The Chrome extension holding this one-time pairing code will receive a 30-day social publishing device token.',
+      revoke:
+        'After revoking {name}, this extension can no longer read publishing destinations or create social publishing tasks.',
+      disconnect: 'Disconnecting {name} also removes its Facebook Page and Instagram publishing destinations.'
+    },
+    errors: {
+      unsupportedConfig: 'This backend does not support Meta application configuration',
+      noConfiguration: 'There is no Meta application configuration to clear',
+      unsupportedDisconnect: 'This backend does not support disconnecting Meta accounts',
+      unsupportedPairing: 'This backend does not support extension pairing',
+      unsupportedRevoke: 'This backend does not support extension device revocation',
+      operation: 'Meta configuration operation failed'
+    },
+    feedback: {
+      deviceClaimed: 'The extension claimed authorization and the device list updated automatically',
+      configurationSaved: 'Meta application configuration saved encrypted',
+      configurationCleared: 'Meta application configuration cleared',
+      disconnected: 'Disconnected {name}',
+      pairingApproved: 'Extension pairing approved; waiting for the extension to claim authorization',
+      deviceRevoked: 'Revoked {name}',
+      callbackCopied: 'Callback URL copied',
+      connected: 'Meta account connected',
+      connectionFailed: 'Meta account connection failed: {reason}',
+      unknownReason: 'Unknown reason'
+    },
+    configuration: {
+      title: 'Meta application configuration',
+      configured: 'Configured ···{suffix}',
+      notConfigured: 'Not configured',
+      appId: 'App ID',
+      appSecret: 'App Secret',
+      keepSecretPlaceholder: 'Leave empty to keep the current secret',
+      requiredSecretPlaceholder: 'Required for initial configuration',
+      publicOrigin: 'Public origin',
+      publicOriginDescription: 'Instagram temporarily reads pending images from this HTTPS origin.',
+      remark: 'Remark',
+      optional: 'Optional',
+      callbackCopyAria: 'Copy Callback URL',
+      save: 'Save configuration',
+      connectFacebook: 'Connect Facebook Page',
+      connectBoth: 'Facebook + Instagram',
+      clear: 'Clear configuration'
+    },
+    connections: {
+      title: 'Connected accounts and publishing destinations',
+      description: 'Only destinations with content-creation tasks and the required permissions can publish.',
+      empty: 'No Meta accounts connected.',
+      summary: '{count} destinations · Updated {time}',
+      connected: 'Connected',
+      reconnect: 'Reconnect required',
+      disconnectAria: 'Disconnect {name}',
+      canPublish: 'Can publish',
+      unavailable: 'Unavailable'
+    },
+    devices: {
+      title: 'Extension devices',
+      description:
+        'Extensions receive only destination-read and social-publishing permissions, never the Meta App Secret or platform Token.',
+      activeCount: '{count} active',
+      pairingCode: 'One-time pairing code shown by the extension',
+      approve: 'Approve pairing',
+      waiting: 'Waiting for extension authorization claim',
+      notClaimed: 'The extension has not claimed authorization',
+      waitingDescription:
+        'Return to the extension and select “Check approval result.” The device list updates automatically after the claim.',
+      timeoutDescription:
+        'Pairing was approved. Check the result in the extension, then return here to refresh the device list automatically.',
+      empty: 'No paired extension devices.',
+      expires: 'Expires: {time}',
+      lastUsed: 'Last used: {time}',
+      active: 'Active',
+      expired: 'Expired',
+      revoked: 'Revoked',
+      revokeAria: 'Revoke {name}'
+    }
+  },
   selfHosted: {
     confirmation: {
       importTitle: 'Confirm Alibaba credential import',
