@@ -16,6 +16,7 @@ import Input from '../components/ui/Input.vue';
 import Sheet from '../components/ui/Sheet.vue';
 import { capabilityMatrix, type CapabilityMatrixCell } from '../lib/capability-matrix';
 import { resolveDataSource } from '../lib/data-source';
+import { formatDate } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 
@@ -330,7 +331,8 @@ function matrixBadge(cell: CapabilityMatrixCell) {
         <div>
           <p class="font-mono text-sm font-semibold">{{ selected.method }}</p>
           <p class="mt-1 text-xs text-muted-foreground">
-            检查日期 {{ selected.checkedAt }} · 文档更新 {{ selected.updatedAt ?? '未知' }}
+            检查日期 {{ formatDate(selected.checkedAt, selected.checkedAt) }} · 文档更新
+            {{ formatDate(selected.updatedAt, selected.updatedAt ?? '未知') }}
           </p>
         </div>
         <div class="flex flex-wrap gap-2">

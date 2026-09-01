@@ -32,6 +32,10 @@ describe('ProductsView selection toolbar', () => {
     const selectedCount = wrapper.get('[data-testid="product-selection-count"]');
     const selectPage = wrapper.get('input[aria-label="选择本页全部 3 个商品"]');
 
+    expect(wrapper.get('table').text()).toContain('在线');
+    expect(wrapper.get('table').text()).not.toMatch(/\bonline\b/);
+    expect(button(wrapper.get('table').element, '编辑')).toBeInstanceOf(HTMLButtonElement);
+    expect(wrapper.get('table').text()).not.toContain('编辑商品');
     expect(selectedCount.text()).toBe('已选 0 个');
     expect(toolbar.text()).not.toContain('已选');
     expect((selectPage.element as HTMLInputElement).indeterminate).toBe(false);
@@ -41,6 +45,8 @@ describe('ProductsView selection toolbar', () => {
     ).toBe(false);
     expect(button(toolbar.element, '导出').disabled).toBe(true);
     expect(button(toolbar.element, '更多').disabled).toBe(true);
+    expect(button(toolbar.element, '分组').querySelector('svg')).not.toBeNull();
+    expect(button(toolbar.element, '新增').querySelector('svg')).not.toBeNull();
     expect(wrapper.findAll('[role="tab"]').map((tab) => tab.text())).toEqual(['商品列表', '批量发品']);
     expect(toolbar.text()).not.toContain('批量查询产品分');
     expect(toolbar.text()).not.toContain('批量上架');
@@ -64,6 +70,28 @@ describe('ProductsView selection toolbar', () => {
     expect(
       (wrapper.get('input[aria-label="选择本页全部 3 个商品"]').element as HTMLInputElement).checked
     ).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('keeps the group column roomy and status and update time on one line', async () => {
+    const wrapper = mountView();
+    await waitForProducts(wrapper);
+    const headers = wrapper.findAll('thead th').map((header) => header.text().trim());
+    const groupIndex = headers.indexOf('分组');
+    const statusIndex = headers.indexOf('状态');
+    const updatedAtIndex = headers.indexOf('更新时间');
+    if (groupIndex < 0 || statusIndex < 0 || updatedAtIndex < 0)
+      throw new Error('Missing product group, status or update time header');
+    const cells = wrapper.get('tbody tr').findAll('td');
+    const groupCell = cells.at(groupIndex);
+    const statusCell = cells.at(statusIndex);
+    const updatedAtCell = cells.at(updatedAtIndex);
+
+    if (!groupCell || !statusCell || !updatedAtCell)
+      throw new Error('Missing product group, status or update time cell');
+    expect(groupCell.get('.min-w-20').classes()).toContain('block');
+    expect(statusCell.get('.whitespace-nowrap').text()).toBe('在线');
+    expect(updatedAtCell.get('.whitespace-nowrap').classes()).toContain('tabular-nums');
     wrapper.unmount();
   });
 

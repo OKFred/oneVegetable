@@ -39,7 +39,7 @@ const STEP_COPY: Record<ProductEditorStepId, Pick<ProductEditorSection, 'title' 
   media: { title: '图片素材', description: '从国际站图库选择主图、SKU 图和其他素材' },
   description: { title: '商品详情', description: '编辑普通详情内容并查看内容质量建议' },
   trade: { title: '交易与物流', description: '填写价格、起订量、包装、交期和物流信息' },
-  review: { title: '检查与提交', description: '集中修正阻断问题并查看非阻断整改建议' }
+  review: { title: '检查与提交', description: '补齐最低发布条件并查看非阻断预检提示' }
 };
 
 const KNOWN_FIELD_STEPS = new Map<string, ProductEditorStepId>([

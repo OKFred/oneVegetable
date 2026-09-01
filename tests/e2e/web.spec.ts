@@ -17,6 +17,23 @@ test('web mock labels its in-process source and never calls the BFF', async ({ p
   expect(bffRequests).toEqual([]);
 });
 
+test('version updates are bundled and link to the formal GitHub record', async ({ page }) => {
+  const githubApiRequests: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().startsWith('https://api.github.com/')) githubApiRequests.push(request.url());
+  });
+
+  await page.goto('/#/releases');
+  await expect(page.getByRole('heading', { name: '版本更新' })).toBeVisible();
+  await expect(page.getByText(`v${rootPackage.version}`, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('开放平台凭据向导')).toBeVisible();
+  await expect(page.getByRole('link', { name: /GitHub 发布页/ })).toHaveAttribute(
+    'href',
+    'https://github.com/OKFred/oneVegetable/releases'
+  );
+  expect(githubApiRequests).toEqual([]);
+});
+
 test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
@@ -452,6 +469,20 @@ test('web mock manages gallery groups and exposes non-blocking asset governance'
   await page.getByRole('button', { name: '放大图片' }).click();
   await expect(page.getByText('125%')).toBeVisible();
   await page.getByRole('button', { name: '关闭图片预览' }).click();
+  await page.getByLabel('选择 solar-station-front.jpg').check();
+  await expect(page.getByRole('button', { name: '分享 1 张' })).toBeEnabled();
+  await page.getByRole('button', { name: '分享 1 张' }).click();
+  const shareDialog = page.getByRole('dialog', { name: '分享图库素材' });
+  await expect(shareDialog.getByText('发布到：Facebook Page', { exact: true })).toBeVisible();
+  await expect(shareDialog.getByText('发布到：Instagram 专业账号', { exact: true })).toBeVisible();
+  await expect(shareDialog.getByText('需要配置')).toHaveCount(4);
+  const packageButton = shareDialog.getByRole('button', { name: '下载 ZIP 分享包' });
+  await expect(packageButton).toBeEnabled();
+  const downloadPromise = page.waitForEvent('download');
+  await packageButton.click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^one-vegetable-social-share-\d{4}-\d{2}-\d{2}\.zip$/u);
+  await shareDialog.getByRole('button', { name: '关闭', exact: true }).click();
   await page.getByRole('button', { name: '分组管理' }).click();
   const groupManager = page.getByRole('dialog', { name: '图库分组管理' });
   await groupManager.getByRole('button', { name: '修改分组 商品主图' }).click();

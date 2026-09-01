@@ -7,10 +7,7 @@ export interface ExtensionOperationPolicyDecision {
 }
 
 const DISABLED_MUTATION_OPERATIONS: ReadonlySet<OperationId> = new Set([
-  'publishProduct',
-  'saveProductDraft',
   'updateProduct',
-  'updateProductDisplay',
   'createProductGroup',
   'uploadRfqAttachment',
   'submitRfqQuotation',

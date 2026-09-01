@@ -55,16 +55,31 @@ describe('product description quality suggestions', () => {
     );
   });
 
-  it('keeps Alibaba Schema errors blocking and official messages advisory', () => {
+  it('distinguishes publish minimum blockers from advisory Alibaba Schema rules', () => {
     const officialHints = createProductScoreOfficialHints(['Use accurate keywords', 'Add scenario images']);
     const issues = analyzeProductDescriptionQuality({
       html: '<p>Short copy</p>',
       schemaIssues: [
-        { fieldKey: 'field:0', severity: 'error', rule: 'requiredRule', message: 'Title is required' }
+        {
+          fieldKey: 'field:0',
+          severity: 'error',
+          rule: 'publishMinimumProductTitle',
+          message: 'Title is required'
+        },
+        {
+          fieldKey: 'field:1',
+          severity: 'warning',
+          rule: 'requiredRule',
+          message: 'Material is recommended'
+        }
       ],
       officialHints
     });
     expect(issues.find((issue) => issue.source === 'alibaba-schema')?.level).toBe('error');
+    expect(issues.find((issue) => issue.code === 'schema-requiredRule')).toMatchObject({
+      level: 'warning',
+      remediation: '建议提交前核对；本地预检不会阻止提交，最终以 Alibaba 接口返回为准。'
+    });
     expect(
       issues.filter((issue) => issue.source === 'official').every((issue) => issue.level === 'warning')
     ).toBe(true);

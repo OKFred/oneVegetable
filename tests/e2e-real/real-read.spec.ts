@@ -1,7 +1,7 @@
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-import { expect, test, type BrowserContext, type Page, type Request, type Response } from '@playwright/test';
+import { expect, test, type Page, type Request, type Response } from '@playwright/test';
 
 interface OperationResult {
   operation: string;
@@ -16,6 +16,7 @@ interface RealWebSmokeReport {
   schemaVersion: 1;
   capturedAtUtc: string;
   gatewaySource: 'credential-bundle';
+  captureErrors: string[];
   results: OperationResult[];
   targetProductSchema: TargetProductSchemaResult | null;
 }
@@ -23,12 +24,14 @@ interface RealWebSmokeReport {
 interface TargetProductSchemaResult {
   productId: string;
   categoryId: number;
-  language: 'zh_CN';
+  language: 'zh_CN' | 'en_US';
   requestId: string;
   sourceByteLength: number;
   fieldCount: number;
   blockingIssueCount: number;
   blockingIssues: TargetProductSchemaIssue[];
+  advisoryIssueCount: number;
+  advisoryRuleCounts: Record<string, number>;
   noOp: boolean;
   safe: boolean;
 }
@@ -83,38 +86,41 @@ interface ProductSchemaPrerequisites {
   categoryId: number | null;
 }
 
+interface ProductSchemaCapture {
+  productId: string | null;
+  categoryId: number | null;
+  language: 'zh_CN' | 'en_US' | null;
+  requestId: string | null;
+  xml: string | null;
+}
+
 const apiOrigin = 'http://127.0.0.1:8797';
 const webOrigin = 'http://127.0.0.1:4175';
 const reportPath = resolve('artifacts/real-web-smoke/report.json');
 const mockSentinels = ['mock-solar-station', 'RFQ-20260812-001', 'Northwind Trading', 'supplier-enc-001'];
 
 test('authenticated Web renders real read results without Mock fallback', async ({ page, context }) => {
+  test.setTimeout(180_000);
   const results: OperationResult[] = [];
   const operationOrigins = new Set<string>();
   const productSchemaPrerequisites: ProductSchemaPrerequisites = {
     productId: null,
     categoryId: null
   };
+  const productSchemaCapture: ProductSchemaCapture = {
+    productId: null,
+    categoryId: null,
+    language: null,
+    requestId: null,
+    xml: null
+  };
   const captureTasks = new Set<Promise<void>>();
   const captureErrors: string[] = [];
   let targetProductSchema: TargetProductSchemaResult | null = null;
-  page.on('response', (response) => {
-    if (!response.url().endsWith('/api/v1/operations/call')) return;
-    operationOrigins.add(new URL(response.url()).origin);
-    const operation = readString(readRecord(response.request().postDataJSON()), 'operation');
-    if (operation === 'renderProductSchema') return;
-    const task = captureOperation(response, results, productSchemaPrerequisites)
-      .catch((cause: unknown) => {
-        captureErrors.push(cause instanceof Error ? cause.message : '无法读取 operation 响应');
-      })
-      .finally(() => captureTasks.delete(task));
-    captureTasks.add(task);
-  });
   page.on('requestfinished', (request) => {
     if (!request.url().endsWith('/api/v1/operations/call')) return;
-    const operation = readString(readRecord(request.postDataJSON()), 'operation');
-    if (operation !== 'renderProductSchema') return;
-    const task = captureFinishedOperation(request, results, productSchemaPrerequisites)
+    operationOrigins.add(new URL(request.url()).origin);
+    const task = captureFinishedOperation(request, results, productSchemaPrerequisites, productSchemaCapture)
       .catch((cause: unknown) => {
         captureErrors.push(cause instanceof Error ? cause.message : '无法读取 operation 响应');
       })
@@ -134,7 +140,6 @@ test('authenticated Web renders real read results without Mock fallback', async 
     await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
     await expect(page.getByTestId('data-source-status')).toHaveText(/Alibaba 实时数据/);
     await expectOperation(results, 'getDashboard', 'passed');
-    targetProductSchema = await inspectTargetProductSchema(page, context, results);
 
     await openDomain(page, '商品', '商品管理');
     await expectOperation(results, 'listProducts', 'passed');
@@ -146,7 +151,9 @@ test('authenticated Web renders real read results without Mock fallback', async 
       )
       .toBe(true);
 
-    const productRows = page.getByRole('row').filter({ has: page.getByRole('button', { name: '编辑商品' }) });
+    const productRows = page
+      .getByRole('row')
+      .filter({ has: page.getByRole('button', { name: '编辑', exact: true }) });
     const editableProductIndexes: number[] = [];
     for (let index = 0; index < (await productRows.count()); index += 1) {
       if (!/auditing|draft|rejected/iu.test(await productRows.nth(index).innerText())) {
@@ -163,7 +170,7 @@ test('authenticated Web renders real read results without Mock fallback', async 
       const previousScoreAttemptCount = results.filter(
         (result) => result.operation === 'getProductScore'
       ).length;
-      await productRows.nth(productIndex).getByRole('button', { name: '编辑商品' }).click();
+      await productRows.nth(productIndex).getByRole('button', { name: '编辑', exact: true }).click();
       await expect
         .poll(
           async () =>
@@ -196,6 +203,18 @@ test('authenticated Web renders real read results without Mock fallback', async 
     }
     expect(renderSucceeded).toBe(true);
     expect(scoreSucceeded).toBe(true);
+    await expect
+      .poll(() => productSchemaCapture.xml !== null, {
+        message: '成功打开的真实商品应被记录为本次 Schema 预检目标'
+      })
+      .toBe(true);
+    targetProductSchema = await summarizeCapturedProductSchema(page, productSchemaCapture);
+    expect(targetProductSchema.blockingIssueCount).toBe(0);
+    expect(
+      targetProductSchema.blockingIssues.every((issue) =>
+        ['publishMinimumProductTitle', 'publishMinimumMainImage'].includes(issue.rule)
+      )
+    ).toBe(true);
     await expect(page.getByLabel('商品明文 ID')).toHaveValue(/^[1-9][0-9]*$/);
     await expectOperation(results, 'renderProductSchema', 'passed');
     await expectNoMockSentinel(results, 'renderProductSchema');
@@ -294,7 +313,7 @@ test('authenticated Web renders real read results without Mock fallback', async 
     });
   } finally {
     await Promise.all(captureTasks);
-    await writeReport(results, targetProductSchema);
+    await writeReport(results, targetProductSchema, captureErrors);
   }
 
   expect(captureErrors).toEqual([]);
@@ -302,50 +321,28 @@ test('authenticated Web renders real read results without Mock fallback', async 
   expect([...operationOrigins]).toEqual([apiOrigin]);
 });
 
-async function inspectTargetProductSchema(
+async function summarizeCapturedProductSchema(
   page: Page,
-  context: BrowserContext,
-  results: OperationResult[]
-): Promise<TargetProductSchemaResult | null> {
-  const productId = '1601928079741';
-  const categoryId = 201712702;
-  const requestId = crypto.randomUUID();
-  const csrfCookie = (await context.cookies(`${apiOrigin}/api/v1/operations/call`)).find(
-    (cookie) => cookie.name === 'ov_csrf'
-  );
-  if (!csrfCookie) throw new Error('真实 Web 会话缺少 CSRF Cookie');
-  const response = await page.request.post(`${apiOrigin}/api/v1/operations/call`, {
-    headers: { Origin: webOrigin, 'X-CSRF-Token': csrfCookie.value },
-    data: {
-      requestId,
-      operation: 'renderProductSchema',
-      payload: { productId, categoryId, language: 'zh_CN' }
-    }
-  });
-  const body: unknown = await response.json();
-  results.push({
-    operation: 'renderProductSchema:target',
-    requestId,
-    statusCode: response.status(),
-    outcome: response.ok() ? 'passed' : 'provider-error',
-    errorCode: readErrorCode(body),
-    mockSentinelDetected: mockSentinels.some((sentinel) => JSON.stringify(body).includes(sentinel))
-  });
-  if (!response.ok()) return null;
-  const xml = readString(readRecord(readRecord(body).data), 'xml');
-  if (!xml) throw new Error('目标商品 schema.render 未返回 XML');
+  capture: ProductSchemaCapture
+): Promise<TargetProductSchemaResult> {
+  const { productId, categoryId, language, requestId, xml } = capture;
+  if (!productId || categoryId === null || !language || !requestId || !xml) {
+    throw new Error('成功渲染的真实商品缺少 Schema 预检上下文');
+  }
   const schemaResult = await inspectXmlWithBrowserDom(page, xml);
   expect(schemaResult.safe).toBe(true);
   expect(schemaResult.noOp).toBe(true);
   return {
     productId,
     categoryId,
-    language: 'zh_CN',
+    language,
     requestId,
     sourceByteLength: new TextEncoder().encode(xml).byteLength,
     fieldCount: schemaResult.fieldCount,
     blockingIssueCount: schemaResult.blockingIssueCount,
     blockingIssues: schemaResult.blockingIssues,
+    advisoryIssueCount: schemaResult.advisoryIssueCount,
+    advisoryRuleCounts: schemaResult.advisoryRuleCounts,
     noOp: schemaResult.noOp,
     safe: schemaResult.safe
   };
@@ -358,6 +355,8 @@ async function inspectXmlWithBrowserDom(
   fieldCount: number;
   blockingIssueCount: number;
   blockingIssues: TargetProductSchemaIssue[];
+  advisoryIssueCount: number;
+  advisoryRuleCounts: Record<string, number>;
   noOp: boolean;
   safe: boolean;
 }> {
@@ -392,8 +391,8 @@ async function inspectXmlWithBrowserDom(
         }
         return null;
       };
-      const blockingIssues = schemaModule
-        .validateProductSchemaModel(model)
+      const issues = schemaModule.validateProductSchemaModel(model);
+      const blockingIssues = issues
         .filter((issue) => issue.severity === 'error')
         .map(({ fieldKey, rule, message }) => {
           const field = findField(model.fields, fieldKey);
@@ -411,11 +410,19 @@ async function inspectXmlWithBrowserDom(
             nonEmptyValueCount: field?.values.filter((value) => value.text.trim() !== '').length ?? 0
           };
         });
+      const advisoryRuleCounts = issues
+        .filter((issue) => issue.severity === 'warning')
+        .reduce<Record<string, number>>((counts, issue) => {
+          counts[issue.rule] = (counts[issue.rule] ?? 0) + 1;
+          return counts;
+        }, {});
       if (inspection.xml !== sourceXml) throw new Error('无编辑序列化未原样返回源 XML');
       return {
         fieldCount: model.fields.length,
         blockingIssueCount: blockingIssues.length,
         blockingIssues,
+        advisoryIssueCount: issues.filter((issue) => issue.severity === 'warning').length,
+        advisoryRuleCounts,
         noOp: inspection.noOp,
         safe: inspection.safe
       };
@@ -432,10 +439,13 @@ async function openDomain(page: Page, navigation: string, heading: string): Prom
 async function captureFinishedOperation(
   request: Request,
   results: OperationResult[],
-  productSchemaPrerequisites: ProductSchemaPrerequisites
+  productSchemaPrerequisites: ProductSchemaPrerequisites,
+  productSchemaCapture: ProductSchemaCapture
 ): Promise<void> {
   const response = await request.response();
-  if (response) await captureOperation(response, results, productSchemaPrerequisites);
+  if (response) {
+    await captureOperation(response, results, productSchemaPrerequisites, productSchemaCapture);
+  }
 }
 
 async function expectOperation(
@@ -450,7 +460,7 @@ async function expectOperation(
           (result) =>
             result.operation === operation && (expected === 'observed' || result.outcome === expected)
         ),
-      { message: `${operation} should be ${expected}` }
+      { message: `${operation} should be ${expected}`, timeout: 30_000 }
     )
     .toBe(true);
 }
@@ -458,7 +468,8 @@ async function expectOperation(
 async function captureOperation(
   response: Response,
   results: OperationResult[],
-  productSchemaPrerequisites: ProductSchemaPrerequisites
+  productSchemaPrerequisites: ProductSchemaPrerequisites,
+  productSchemaCapture: ProductSchemaCapture
 ): Promise<void> {
   const requestBody = readRecord(response.request().postDataJSON());
   const operation = readString(requestBody, 'operation') ?? 'unknown';
@@ -468,6 +479,15 @@ async function captureOperation(
   const errorCode = readErrorCode(responseBody);
   if (response.ok() && operation === 'listProducts') {
     collectProductSchemaPrerequisites(body.data, productSchemaPrerequisites);
+  }
+  if (response.ok() && operation === 'renderProductSchema') {
+    const payload = readRecord(requestBody.payload);
+    const language = readString(payload, 'language');
+    productSchemaCapture.productId = readString(payload, 'productId');
+    productSchemaCapture.categoryId = readNumber(payload, 'categoryId');
+    productSchemaCapture.language = language === 'zh_CN' || language === 'en_US' ? language : null;
+    productSchemaCapture.requestId = readString(body, 'requestId');
+    productSchemaCapture.xml = readString(readRecord(body.data), 'xml');
   }
   results.push({
     operation,
@@ -529,12 +549,14 @@ function readNumber(record: Record<string, unknown>, key: string): number | null
 
 async function writeReport(
   results: readonly OperationResult[],
-  targetProductSchema: TargetProductSchemaResult | null
+  targetProductSchema: TargetProductSchemaResult | null,
+  captureErrors: readonly string[]
 ): Promise<void> {
   const report: RealWebSmokeReport = {
     schemaVersion: 1,
     capturedAtUtc: new Date().toISOString(),
     gatewaySource: 'credential-bundle',
+    captureErrors: [...captureErrors],
     results: [...results],
     targetProductSchema
   };

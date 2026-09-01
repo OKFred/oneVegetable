@@ -43,7 +43,7 @@ const draftActionReason = computed(() => {
 const publishActionReason = computed(() => {
   if (props.submitPending) return '正在处理上一项商品操作';
   if (!props.schemaSafe) return 'Schema XML 结构异常，请先修复后再提交';
-  if (props.blockingCount > 0) return `仍有 ${props.blockingCount} 个 Schema 硬错误需要修复`;
+  if (props.blockingCount > 0) return `仍有 ${props.blockingCount} 个最低发布条件需要补齐`;
   return props.publishDisabledReason || '当前不能提交商品';
 });
 </script>
@@ -55,9 +55,9 @@ const publishActionReason = computed(() => {
     <div class="min-w-0 text-xs text-muted-foreground">
       <p v-if="platformDraftId">后续修改自动保存在本机；写回平台请使用上方国际站编辑入口。</p>
       <p v-else-if="blockingCount && quick">
-        当前有 {{ blockingCount }} 个 Schema 问题，但仍可尝试保存平台草稿。
+        当前有 {{ blockingCount }} 个最低发布条件未满足，但仍可保存平台草稿继续完善。
       </p>
-      <p v-else>{{ advisoryCount }} 条非阻断建议不会禁用提交。</p>
+      <p v-else>{{ advisoryCount }} 条预检提示不会禁用提交，最终以 Alibaba 返回为准。</p>
     </div>
     <div class="flex flex-wrap gap-2">
       <ActionTooltip v-if="!editing" :disabled="draftActionDisabled" :reason="draftActionReason">

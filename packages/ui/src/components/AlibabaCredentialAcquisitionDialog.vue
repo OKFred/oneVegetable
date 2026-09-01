@@ -118,11 +118,11 @@ async function saveToVault(): Promise<void> {
   if (!alibabaCredentialAcquisition) return;
   if (vaultStatus.value?.state === 'empty') {
     if (vaultPassphrase.value.length < 6) {
-      error.value = new Error('保险库口令至少输入 6 位');
+      error.value = new Error('本机保护口令至少输入 6 位');
       return;
     }
     if (vaultPassphrase.value !== vaultPassphraseConfirmation.value) {
-      error.value = new Error('两次输入的保险库口令不一致');
+      error.value = new Error('两次输入的本机保护口令不一致');
       return;
     }
   }
@@ -135,7 +135,7 @@ async function saveToVault(): Promise<void> {
     vaultStatus.value = status;
     vaultPassphrase.value = '';
     vaultPassphraseConfirmation.value = '';
-    feedback.value = '凭据已加密保存到插件保险库。';
+    feedback.value = '凭据已在插件中加密保存。';
     emit('saved', status);
   } catch (cause: unknown) {
     error.value = cause;
@@ -321,23 +321,23 @@ function downloadJson(value: unknown, filename: string): void {
         <div class="rounded-lg border p-4">
           <div class="flex items-center gap-2">
             <KeyRound class="size-4 text-primary" />
-            <h3 class="font-medium">保存到插件保险库</h3>
+            <h3 class="font-medium">加密保存到插件</h3>
           </div>
           <p v-if="vaultStatus?.state === 'locked'" class="mt-2 text-sm text-amber-700 dark:text-amber-300">
-            保险库当前已锁定。请关闭向导，在设置页解锁后重新执行获取流程。
+            本机凭证当前已锁定。请关闭向导，在设置页解锁后重新执行获取流程。
           </p>
           <div v-else-if="vaultStatus?.state === 'empty'" class="mt-3 grid gap-2 sm:grid-cols-2">
             <Input
               v-model="vaultPassphrase"
               type="password"
               autocomplete="new-password"
-              placeholder="设置本机保险库口令（至少 6 位）"
+              placeholder="设置本机保护口令（至少 6 位）"
             />
             <Input
               v-model="vaultPassphraseConfirmation"
               type="password"
               autocomplete="new-password"
-              placeholder="再次输入保险库口令"
+              placeholder="再次输入保护口令"
             />
           </div>
           <Button

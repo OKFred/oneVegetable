@@ -80,7 +80,10 @@ function appendSchemaIssues(
       source: 'alibaba-schema',
       level: issue.severity === 'error' ? 'error' : 'warning',
       message: issue.message,
-      remediation: '按 Alibaba Schema 约束修正对应字段后再提交。',
+      remediation:
+        issue.severity === 'error'
+          ? '补齐商品名称、主图等最低发布条件后再提交。'
+          : '建议提交前核对；本地预检不会阻止提交，最终以 Alibaba 接口返回为准。',
       fieldIds: [issue.fieldKey]
     });
   }

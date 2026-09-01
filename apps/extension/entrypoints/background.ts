@@ -6,7 +6,6 @@ import {
   ALIBABA_SYNC_GATEWAY,
   createCredentialVault,
   CredentialVaultError,
-  CredentialVaultSession,
   DashboardAdapter,
   downloadProductAsset,
   downloadPhotoForUpload,
@@ -30,6 +29,8 @@ import {
   TradeAdapter,
   validateCapabilityRequest,
   validateCapabilityResponse,
+  validateProductDisplayInput,
+  validateSchemaPublishInput,
   type ApiCapability,
   type AlibabaLanguage,
   type CredentialVaultRequest,
@@ -39,14 +40,19 @@ import {
   type DiagnosticsSnapshot,
   type ExtensionAlibabaCredentialAcquisitionRequest,
   type ExtensionAlibabaCredentialAcquisitionResponse,
+  type ExtensionProductMutationJobRequest,
+  type ExtensionProductMutationJobResponse,
   type GatewaySettings,
   type OperationId,
+  type ProductMutationJobListInput,
   type RequestOf,
   type RuntimeRequest,
   type RuntimeResponse
 } from '@one-vegetable/core';
 import { ExtensionAlibabaCredentialAcquisitionController } from '../lib/alibaba-credential-acquisition';
+import { ExtensionCredentialVaultSession } from '../lib/credential-vault-session';
 import { resolveExtensionOperationAvailability } from '../lib/operation-policy';
+import { ExtensionProductDisplayMutationLifecycle } from '../lib/product-display-mutation-lifecycle';
 
 const OPERATIONS = new Set<OperationId>([
   'getDashboard',
@@ -125,6 +131,10 @@ export default defineBackground({
       }
       const vaultMessage = asCredentialVaultRequest(value);
       if (vaultMessage) return handleCredentialVaultRequest(vaultMessage, storageAccessReady);
+      const productMutationMessage = asProductMutationJobRequest(value);
+      if (productMutationMessage) {
+        return handleProductMutationJobRequest(productMutationMessage, storageAccessReady);
+      }
       const message = asRuntimeRequest(value);
       if (!message) return undefined;
       return handleRequestAfterStorageReady(message, storageAccessReady);
@@ -139,8 +149,79 @@ async function restrictStorageToTrustedContexts(): Promise<void> {
   ]);
 }
 
-const vaultSession = new CredentialVaultSession();
+const vaultSession = new ExtensionCredentialVaultSession({
+  get: (key) => browser.storage.session.get(key),
+  set: (items) => browser.storage.session.set(items),
+  remove: (key) => browser.storage.session.remove(key)
+});
 const alibabaCredentialAcquisition = new ExtensionAlibabaCredentialAcquisitionController();
+const productMutations = new ExtensionProductDisplayMutationLifecycle({
+  get: (key) => browser.storage.local.get(key),
+  set: (items) => browser.storage.local.set(items)
+});
+
+async function handleProductMutationJobRequest(
+  message: ExtensionProductMutationJobRequest,
+  storageAccessReady: Promise<void>
+): Promise<ExtensionProductMutationJobResponse> {
+  const startedAt = performance.now();
+  try {
+    await storageAccessReady;
+    const payload = asRecord(message.payload);
+    let data: unknown;
+    switch (message.operation) {
+      case 'list':
+        data = await productMutations.list(productMutationListInput(payload));
+        break;
+      case 'get':
+        data = await productMutations.get(requiredString(payload, 'id'));
+        break;
+      case 'refresh':
+        data = await productMutations.refresh(
+          await loadProductAdapter(),
+          requiredString(payload, 'id'),
+          requiredNumber(payload, 'revision')
+        );
+        break;
+      case 'recover':
+        data = await productMutations.recover(
+          await loadProductAdapter(),
+          requiredString(payload, 'id'),
+          requiredNumber(payload, 'revision')
+        );
+        break;
+    }
+    await safelyRecordDiagnostic({
+      requestId: message.requestId,
+      operation: `product-mutation-job.${message.operation}`,
+      method:
+        message.operation === 'refresh'
+          ? 'alibaba.icbu.product.list'
+          : message.operation === 'recover'
+            ? 'alibaba.icbu.product.batch.update.display'
+            : null,
+      outcome: 'success',
+      durationMs: Math.max(0, Math.round(performance.now() - startedAt)),
+      errorCode: null,
+      errorMessage: null,
+      traceId: readResultTraceId(data)
+    });
+    return { requestId: message.requestId, ok: true, data };
+  } catch (error: unknown) {
+    const normalized = normalizeGatewayError(error);
+    await safelyRecordDiagnostic({
+      requestId: message.requestId,
+      operation: `product-mutation-job.${message.operation}`,
+      method: null,
+      outcome: 'error',
+      durationMs: Math.max(0, Math.round(performance.now() - startedAt)),
+      errorCode: normalized.code,
+      errorMessage: sanitizeDiagnosticMessage(normalized.message),
+      traceId: normalized.traceId ?? null
+    });
+    return { requestId: message.requestId, ok: false, error: normalized };
+  }
+}
 
 async function handleAlibabaCredentialAcquisitionRequest(
   message: ExtensionAlibabaCredentialAcquisitionRequest,
@@ -196,13 +277,13 @@ async function saveAcquiredCredentialsToVault(
   const present = Object.prototype.hasOwnProperty.call(stored, SETTINGS_STORAGE_KEY);
   const state = inspectCredentialStorage(stored[SETTINGS_STORAGE_KEY], present);
   if (state.kind === 'empty') {
-    if (!passphrase) throw new Error('首次保存到保险库时需要设置口令');
+    if (!passphrase) throw new Error('首次保存到插件时需要设置本机保护口令');
     return (await executeCredentialVaultOperation('create', {
       passphrase,
       settings
     })) as CredentialVaultStatus;
   }
-  if (state.kind !== 'vault' || !vaultSession.read(state.record)) throw vaultStateError(state.kind);
+  if (state.kind !== 'vault' || !(await vaultSession.read(state.record))) throw vaultStateError(state.kind);
   return (await executeCredentialVaultOperation('save', settings)) as CredentialVaultStatus;
 }
 
@@ -232,30 +313,30 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
     case 'unlock': {
       if (state.kind !== 'vault') throw vaultStateError(state.kind);
       const unlocked = await unlockCredentialVault(state.record, requiredVaultString(payload, 'passphrase'));
-      vaultSession.activate({ ...unlocked, record: state.record });
+      await vaultSession.activate({ ...unlocked, record: state.record }, unlocked.sessionKeyMaterial);
       return credentialVaultStatus(state);
     }
     case 'lock':
-      vaultSession.lock('manual');
+      await vaultSession.lock('manual');
       return credentialVaultStatus(state);
     case 'create': {
-      if (state.kind !== 'empty') throw new Error('只有空保险库可以创建新凭证');
+      if (state.kind !== 'empty') throw new Error('已有凭证配置不能重复创建');
       const request = asRecord(payload);
       const settings = requiredGatewaySettings(request.settings);
       const created = await createCredentialVault(settings, requiredString(request, 'passphrase'));
       await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: created.record });
-      vaultSession.activate({ ...created, settings });
+      await vaultSession.activate({ ...created, settings }, created.sessionKeyMaterial);
       return credentialVaultStatus({ kind: 'vault', record: created.record });
     }
     case 'migrate': {
       if (state.kind !== 'legacy') throw new Error('当前没有待迁移的旧版明文凭证');
       const created = await createCredentialVault(state.settings, requiredVaultString(payload, 'passphrase'));
       await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: created.record });
-      vaultSession.activate({ ...created, settings: state.settings });
+      await vaultSession.activate({ ...created, settings: state.settings }, created.sessionKeyMaterial);
       return credentialVaultStatus({ kind: 'vault', record: created.record });
     }
     case 'save': {
-      const current = getUnlockedVault(state);
+      const current = await getUnlockedVault(state);
       const patch = asRecord(payload);
       const settings: GatewaySettings = {
         appKey: optionalVaultString(patch.appKey) ?? current.settings.appKey,
@@ -266,35 +347,37 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
       };
       const record = await resealCredentialVault(current.record, settings, current.key, current.policy);
       await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: record });
-      vaultSession.activate({ ...current, record, settings });
+      await vaultSession.update({ ...current, record, settings });
       return credentialVaultStatus({ kind: 'vault', record });
     }
     case 'rotate': {
-      const current = getUnlockedVault(state);
+      const current = await getUnlockedVault(state);
       const created = await createCredentialVault(
         current.settings,
         requiredVaultString(payload, 'newPassphrase'),
         current.policy
       );
       await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: created.record });
-      vaultSession.activate({ ...created, settings: current.settings });
+      await vaultSession.activate({ ...created, settings: current.settings }, created.sessionKeyMaterial);
       return credentialVaultStatus({ kind: 'vault', record: created.record });
     }
     case 'update-policy': {
-      const current = getUnlockedVault(state);
+      const current = await getUnlockedVault(state);
       const policy = { idleTimeoutMinutes: requiredNumber(asRecord(payload), 'idleTimeoutMinutes') };
       const record = await resealCredentialVault(current.record, current.settings, current.key, policy);
       await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: record });
-      vaultSession.activate({ ...current, record, policy });
+      await vaultSession.update({ ...current, record, policy });
       return credentialVaultStatus({ kind: 'vault', record });
     }
     default:
-      throw new Error('不支持的保险库操作');
+      throw new Error('不支持的凭证保护操作');
   }
 }
 
-function credentialVaultStatus(state: ReturnType<typeof inspectCredentialStorage>): CredentialVaultStatus {
-  const activeSession = state.kind === 'vault' ? vaultSession.read(state.record) : undefined;
+async function credentialVaultStatus(
+  state: ReturnType<typeof inspectCredentialStorage>
+): Promise<CredentialVaultStatus> {
+  const activeSession = state.kind === 'vault' ? await vaultSession.read(state.record) : undefined;
   const activeVault = activeSession?.value;
   const settings = state.kind === 'legacy' ? state.settings : activeVault?.settings;
   const effectiveState = state.kind === 'vault' ? (activeSession ? 'unlocked' : 'locked') : state.kind;
@@ -309,16 +392,18 @@ function credentialVaultStatus(state: ReturnType<typeof inspectCredentialStorage
     idleTimeoutMinutes: activeVault?.policy.idleTimeoutMinutes ?? null,
     lastActivityAt: activeSession ? new Date(activeSession.lastActivityAt).toISOString() : null,
     idleRemainingSeconds: activeSession?.remainingSeconds ?? null,
-    lockReason: effectiveState === 'locked' ? (vaultSession.lockReason ?? 'worker-restart') : null
+    lockReason: effectiveState === 'locked' ? (vaultSession.lockReason ?? 'session-ended') : null
   };
 }
 
-function editableSettings(state: ReturnType<typeof inspectCredentialStorage>): GatewaySettings {
+async function editableSettings(
+  state: ReturnType<typeof inspectCredentialStorage>
+): Promise<GatewaySettings> {
   const settings =
     state.kind === 'legacy'
       ? state.settings
       : state.kind === 'vault'
-        ? getUnlockedVault(state).settings
+        ? (await getUnlockedVault(state)).settings
         : undefined;
   return {
     appKey: settings?.appKey ?? '',
@@ -329,9 +414,9 @@ function editableSettings(state: ReturnType<typeof inspectCredentialStorage>): G
   };
 }
 
-function getUnlockedVault(state: ReturnType<typeof inspectCredentialStorage>) {
+async function getUnlockedVault(state: ReturnType<typeof inspectCredentialStorage>) {
   if (state.kind !== 'vault') throw vaultStateError(state.kind);
-  const activeSession = vaultSession.read(state.record, true);
+  const activeSession = await vaultSession.read(state.record, true);
   if (!activeSession) throw vaultStateError(state.kind);
   return activeSession.value;
 }
@@ -339,19 +424,16 @@ function getUnlockedVault(state: ReturnType<typeof inspectCredentialStorage>) {
 function vaultStateError(kind: ReturnType<typeof inspectCredentialStorage>['kind']): GatewayException {
   const details =
     kind === 'legacy'
-      ? ['CREDENTIAL_VAULT_MIGRATION_REQUIRED', '旧版明文凭证必须先迁移到加密保险库']
+      ? ['CREDENTIAL_VAULT_MIGRATION_REQUIRED', '旧版明文凭证必须先完成本机加密']
       : kind === 'invalid'
         ? ['CREDENTIAL_VAULT_INVALID', '凭证存储格式无效，请清除本地数据后重新配置']
         : kind === 'empty'
-          ? ['CREDENTIAL_VAULT_EMPTY', '请先创建凭证保险库']
+          ? ['CREDENTIAL_VAULT_EMPTY', '请先在设置中配置开放平台凭证']
           : vaultSession.lockReason === 'idle'
-            ? ['CREDENTIAL_VAULT_IDLE_TIMEOUT', '凭证保险库因空闲超时已自动锁定，请重新解锁']
+            ? ['CREDENTIAL_VAULT_IDLE_TIMEOUT', '开放平台凭证因空闲超时已锁定，请重新解锁']
             : vaultSession.lockReason === 'manual'
-              ? ['CREDENTIAL_VAULT_LOCKED', '凭证保险库已手动锁定，请先在设置中解锁']
-              : [
-                  'CREDENTIAL_VAULT_WORKER_RESTARTED',
-                  '扩展后台已重新启动，内存中的解密密钥已清除，请在设置中重新解锁'
-                ];
+              ? ['CREDENTIAL_VAULT_LOCKED', '开放平台凭证已手动锁定，请先在设置中解锁']
+              : ['CREDENTIAL_VAULT_SESSION_ENDED', 'Chrome 会话已结束或扩展已更新，请在设置中重新解锁凭证'];
   const [code, message] = details as [string, string];
   return new GatewayException({ code, message, retryable: false });
 }
@@ -366,7 +448,7 @@ function normalizeVaultError(error: unknown): ReturnType<typeof normalizeGateway
 async function handleRequest(message: RuntimeRequest): Promise<RuntimeResponse> {
   if (message.operation === 'getDiagnostics' || message.operation === 'clearDiagnostics') {
     try {
-      const data = await executeOperation(message.operation, message.payload);
+      const data = await executeOperation(message.operation, message.payload, message.requestId);
       return { requestId: message.requestId, ok: true, data } as RuntimeResponse;
     } catch (error: unknown) {
       return { requestId: message.requestId, ok: false, error: normalizeGatewayError(error) };
@@ -374,7 +456,7 @@ async function handleRequest(message: RuntimeRequest): Promise<RuntimeResponse> 
   }
   const startedAt = performance.now();
   try {
-    const data = await executeOperation(message.operation, message.payload);
+    const data = await executeOperation(message.operation, message.payload, message.requestId);
     await safelyRecordDiagnostic({
       requestId: message.requestId,
       operation: message.operation,
@@ -414,7 +496,11 @@ async function handleRequestAfterStorageReady(
   return handleRequest(message);
 }
 
-async function executeOperation(operation: OperationId, payload: unknown): Promise<unknown> {
+async function executeOperation(
+  operation: OperationId,
+  payload: unknown,
+  requestId: string
+): Promise<unknown> {
   if (operation === 'getDiagnostics') return getDiagnostics();
   if (operation === 'clearDiagnostics') {
     await clearDiagnostics();
@@ -471,13 +557,30 @@ async function executeOperation(operation: OperationId, payload: unknown): Promi
     case 'renderProductSchema':
       return products.renderSchema(payload as RequestOf<'renderProductSchema'>);
     case 'publishProduct':
-      return products.mutate('alibaba.icbu.product.schema.add', payload as RequestOf<'publishProduct'>);
-    case 'saveProductDraft':
-      return products.saveDraft(payload as RequestOf<'saveProductDraft'>);
+    case 'saveProductDraft': {
+      const validation = validateSchemaPublishInput(payload);
+      if (!validation.valid || !validation.data) {
+        throw new GatewayException({
+          code: 'REQUEST_CONTRACT_INVALID',
+          message: validation.errors.join('；') || '新增商品请求无效',
+          retryable: false
+        });
+      }
+      return productMutations.submitCreation(products, requestId, operation, validation.data);
+    }
     case 'updateProduct':
       return products.update(payload as RequestOf<'updateProduct'>);
-    case 'updateProductDisplay':
-      return products.updateDisplay(payload as RequestOf<'updateProductDisplay'>);
+    case 'updateProductDisplay': {
+      const validation = validateProductDisplayInput(payload);
+      if (!validation.valid || !validation.data) {
+        throw new GatewayException({
+          code: 'REQUEST_CONTRACT_INVALID',
+          message: validation.errors.join('；') || '商品上下架请求无效',
+          retryable: false
+        });
+      }
+      return productMutations.submit(products, requestId, validation.data);
+    }
     case 'listProductCategories':
       return products.listCategories(readNumber(request, ['parentId']));
     case 'mapProductCategory':
@@ -736,7 +839,21 @@ async function loadSettings(): Promise<GatewaySettings> {
   const stored = await browser.storage.local.get(SETTINGS_STORAGE_KEY);
   const present = Object.prototype.hasOwnProperty.call(stored, SETTINGS_STORAGE_KEY);
   const state = inspectCredentialStorage(stored[SETTINGS_STORAGE_KEY], present);
-  return getUnlockedVault(state).settings;
+  return (await getUnlockedVault(state)).settings;
+}
+
+async function loadProductAdapter(): Promise<ProductAdapter> {
+  const settings = await loadSettings();
+  assertCredentials(settings);
+  const client = AlibabaClient.create(settings, {
+    maxAttempts: 3,
+    shouldRetry: (_method, error) => error.retryable
+  });
+  const mutationClient = AlibabaClient.create(
+    { ...settings, endpoint: ALIBABA_SYNC_GATEWAY, signMethod: 'hmac-sha256' },
+    { maxAttempts: 1, protocol: 'sync', shouldRetry: () => false }
+  );
+  return new ProductAdapter(client, mutationClient);
 }
 
 function asCredentialVaultRequest(value: unknown): CredentialVaultRequest | null {
@@ -780,6 +897,47 @@ function asAlibabaCredentialAcquisitionRequest(
     return null;
   }
   return value as unknown as ExtensionAlibabaCredentialAcquisitionRequest;
+}
+
+function asProductMutationJobRequest(value: unknown): ExtensionProductMutationJobRequest | null {
+  if (!isRecord(value) || value.kind !== 'product-mutation-job-request' || !isRequestId(value.requestId)) {
+    return null;
+  }
+  if (
+    value.operation !== 'list' &&
+    value.operation !== 'get' &&
+    value.operation !== 'refresh' &&
+    value.operation !== 'recover'
+  ) {
+    return null;
+  }
+  return value as unknown as ExtensionProductMutationJobRequest;
+}
+
+function productMutationListInput(payload: Record<string, unknown>): ProductMutationJobListInput {
+  const page = readNumber(payload, ['page']);
+  const pageSize = readNumber(payload, ['pageSize']);
+  const productId = readString(payload, ['productId']);
+  const status = readString(payload, ['status']);
+  if (
+    status !== undefined &&
+    status !== 'submitted' &&
+    status !== 'auditing' &&
+    status !== 'verifying' &&
+    status !== 'verified' &&
+    status !== 'recovery-required' &&
+    status !== 'recovering' &&
+    status !== 'recovered' &&
+    status !== 'failed'
+  ) {
+    throw new Error('商品写入任务状态无效');
+  }
+  return {
+    ...(page === undefined ? {} : { page }),
+    ...(pageSize === undefined ? {} : { pageSize }),
+    ...(productId === undefined ? {} : { productId }),
+    ...(status === undefined ? {} : { status })
+  };
 }
 
 function requiredAcquisitionContinueCommand(

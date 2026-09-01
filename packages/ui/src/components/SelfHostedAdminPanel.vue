@@ -20,6 +20,7 @@ import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import ErrorNotice from './ErrorNotice.vue';
 import ModalDialog from './ui/ModalDialog.vue';
 import AlibabaCloudCredentialAcquisitionDialog from './AlibabaCloudCredentialAcquisitionDialog.vue';
+import { formatDateTime } from '../lib/date-time';
 
 type Confirmation =
   | { kind: 'credential-import' }
@@ -183,10 +184,6 @@ async function copyRecoveryCodes(): Promise<void> {
   }
 }
 
-function formatTime(value: number | null): string {
-  return value === null ? '—' : new Date(value).toLocaleString('zh-CN', { hour12: false });
-}
-
 function userError(cause: unknown, fallback: string): Error {
   return cause instanceof Error ? cause : new Error(fallback);
 }
@@ -209,7 +206,7 @@ function userError(cause: unknown, fallback: string): Error {
     <div class="grid gap-5 xl:grid-cols-3">
       <Card class="p-5">
         <div class="flex items-center justify-between gap-3">
-          <h3 class="flex items-center gap-2 font-semibold"><Upload class="size-4" />Alibaba 凭据保险库</h3>
+          <h3 class="flex items-center gap-2 font-semibold"><Upload class="size-4" />Alibaba 开放平台凭证</h3>
           <span
             class="rounded-full px-2 py-1 text-xs"
             :class="
@@ -222,7 +219,7 @@ function userError(cause: unknown, fallback: string): Error {
         <dl class="mt-4 space-y-2 text-sm">
           <div class="flex justify-between gap-3">
             <dt class="text-muted-foreground">Access Token 到期</dt>
-            <dd>{{ formatTime(credentials?.accessTokenExpiresTimeUtc ?? null) }}</dd>
+            <dd>{{ formatDateTime(credentials?.accessTokenExpiresTimeUtc ?? null) }}</dd>
           </div>
           <div class="flex justify-between gap-3">
             <dt class="text-muted-foreground">最近刷新错误</dt>

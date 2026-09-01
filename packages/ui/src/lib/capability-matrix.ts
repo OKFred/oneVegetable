@@ -1,6 +1,7 @@
 import type { ApiCapability } from '@one-vegetable/core';
 
 import type { DataSourcePresentation } from './data-source';
+import { formatDateTime } from './date-time';
 
 export type CapabilityMatrixVariant = 'success' | 'warning' | 'destructive' | 'secondary' | 'outline';
 
@@ -119,7 +120,7 @@ function accountDetail(capability: ApiCapability, summary: string): string {
     parts.push(`原因码：${capability.accountVerificationReasonCode}`);
   }
   if (capability.accountVerificationCheckedAt) {
-    parts.push(`检查时间：${capability.accountVerificationCheckedAt}`);
+    parts.push(`检查时间：${formatDateTime(capability.accountVerificationCheckedAt)}`);
   }
   return parts.join(' ');
 }

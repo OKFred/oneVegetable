@@ -11,6 +11,7 @@ import type {
   AlibabaLanguage,
   ProductMutationResult,
   ProductSchemaField,
+  ProductSchemaFieldIssue,
   SchemaPublishRequest
 } from '@one-vegetable/core';
 import type { DraftStorage } from './product-editor-drafts';
@@ -265,7 +266,9 @@ export function inspectProductBatchPublishItem(
   const blockingIssues = [
     ...inspection.structuralDiffs,
     ...(!validation.valid ? validation.errors : []),
-    ...(target === 'publish' ? inspection.schemaIssues : [])
+    ...(target === 'publish'
+      ? inspection.schemaIssues.filter((issue) => issue.severity === 'error').map((issue) => issue.message)
+      : [])
   ];
   return {
     ready: blockingIssues.length === 0 && validation.data !== undefined,
@@ -329,7 +332,7 @@ function inspectProductBatchPublishXml(xml: string): {
   xml: string;
   title: string;
   structuralDiffs: string[];
-  schemaIssues: string[];
+  schemaIssues: ProductSchemaFieldIssue[];
 } {
   const model = parseProductSchemaXml(xml);
   const serialization = inspectProductSchemaSerialization(model);
@@ -339,8 +342,6 @@ function inspectProductBatchPublishXml(xml: string): {
     title,
     structuralDiffs: serialization.safe ? [] : serialization.structuralDiffs,
     schemaIssues: validateProductSchemaModel(model)
-      .filter((issue) => issue.severity === 'error')
-      .map((issue) => issue.message)
   };
 }
 

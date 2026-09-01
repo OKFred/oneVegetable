@@ -62,7 +62,7 @@ async function finish(destination?: 'settings'): Promise<void> {
         <ol class="mt-4 grid gap-2 rounded-lg border bg-muted/40 p-4 text-sm leading-6">
           <li><strong>1.</strong> 在 Alibaba 应用中心创建或选择 Online 应用，取得 App Key 和 App Secret。</li>
           <li><strong>2.</strong> 完成 OAuth 授权，取得该账号的 Access Token。</li>
-          <li><strong>3.</strong> 前往设置，创建保险库口令并填写或导入以上三项凭证。</li>
+          <li><strong>3.</strong> 前往设置，设置本机保护口令并填写或导入以上三项凭证。</li>
         </ol>
         <div class="mt-5 grid gap-3 sm:grid-cols-2">
           <div class="rounded-lg border p-4">
@@ -70,7 +70,8 @@ async function finish(destination?: 'settings'): Promise<void> {
             <p class="mt-2 font-medium">凭证在本机加密保存</p>
             <p class="mt-1 text-xs leading-5 text-muted-foreground">
               App Key、App Secret 和 Access Token 使用用户口令加密后存入
-              chrome.storage.local；口令不保存，内容脚本不能读取，扩展后台重启或连续空闲达到设置时长后需重新解锁。
+              chrome.storage.local；口令不保存，内容脚本不能读取。解锁状态仅在当前 Chrome
+              会话内存中保留，刷新页面或后台休眠无需重复输入口令。
             </p>
           </div>
           <div class="rounded-lg border p-4">

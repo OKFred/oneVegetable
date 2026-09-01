@@ -168,12 +168,12 @@ function stickyColumnStyle(value: unknown): Record<string, string> | undefined {
           <tr
             v-for="row in table.getRowModel().rows"
             :key="row.id"
-            class="border-t bg-background hover:bg-muted/40"
+            class="border-t bg-background hover:bg-muted"
             :class="[
               rowAriaLabel
                 ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
                 : '',
-              activeRowKey !== undefined && rowKey(row.original) === activeRowKey ? 'bg-accent/70' : ''
+              activeRowKey !== undefined && rowKey(row.original) === activeRowKey ? 'bg-accent' : ''
             ]"
             :tabindex="rowAriaLabel ? 0 : undefined"
             :aria-label="rowAriaLabel?.(row.original)"

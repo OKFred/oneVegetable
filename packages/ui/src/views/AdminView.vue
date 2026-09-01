@@ -21,6 +21,7 @@ import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
 import SelfHostedAdminPanel from '../components/SelfHostedAdminPanel.vue';
+import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 
@@ -389,10 +390,6 @@ function userVisibleCause(cause: unknown, fallbackMessage: string): Error {
   return cause instanceof Error ? cause : new Error(fallbackMessage);
 }
 
-function formatTime(value: number): string {
-  return new Date(value).toLocaleString('zh-CN', { hour12: false });
-}
-
 const userColumns: DataColumn<ControlUser>[] = [
   {
     accessorKey: 'username',
@@ -478,7 +475,7 @@ const requestEventColumns: DataColumn<ControlRequestEvent>[] = [
   {
     accessorKey: 'eventTimeUtc',
     header: '时间',
-    cell: ({ row }) => h('span', { class: 'whitespace-nowrap' }, formatTime(row.original.eventTimeUtc))
+    cell: ({ row }) => h('span', { class: 'whitespace-nowrap' }, formatDateTime(row.original.eventTimeUtc))
   },
   {
     accessorKey: 'requestId',
@@ -504,7 +501,7 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
   {
     accessorKey: 'eventTimeUtc',
     header: '时间',
-    cell: ({ row }) => h('span', { class: 'whitespace-nowrap' }, formatTime(row.original.eventTimeUtc))
+    cell: ({ row }) => h('span', { class: 'whitespace-nowrap' }, formatDateTime(row.original.eventTimeUtc))
   },
   {
     accessorKey: 'requestId',
@@ -778,7 +775,7 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
   <ModalDialog
     :open="enrollment !== null"
     title="一次性 Passkey 注册链接"
-    :description="`${enrollment?.username ?? '用户'} 的注册链接将在 ${formatTime(enrollment?.expiresTimeUtc ?? 0)} 失效。`"
+    :description="`${enrollment?.username ?? '用户'} 的注册链接将在 ${formatDateTime(enrollment?.expiresTimeUtc ?? 0)} 失效。`"
     size="md"
     @update:open="enrollment = null"
   >

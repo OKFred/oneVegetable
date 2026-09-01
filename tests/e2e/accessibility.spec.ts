@@ -14,6 +14,16 @@ test('dashboard and product list have no automatic WCAG A/AA violations', async 
   await expectNoAccessibilityViolations(page);
 });
 
+test('version updates remain accessible in light and dark themes', async ({ page }) => {
+  await page.goto('/#/releases');
+  await expect(page.getByRole('heading', { name: '版本更新' })).toBeVisible();
+  await expectNoAccessibilityViolations(page);
+
+  await page.getByRole('button', { name: '切换到夜间模式' }).click();
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await expectNoAccessibilityViolations(page);
+});
+
 test('mobile navigation has a name and restores keyboard focus after Escape', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');

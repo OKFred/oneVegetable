@@ -18,7 +18,7 @@ import {
 const NOW = Date.UTC(2026, 7, 28);
 const fixture = JSON.parse(
   readFileSync(resolve(import.meta.dirname, '../../../mock/data/product-batch-publish.json'), 'utf8')
-) as { validXml: string; invalidXml: string };
+) as { validXml: string; invalidXml: string; onlineCloneXml: string };
 
 describe('product batch publish queue', () => {
   beforeEach(() => {
@@ -45,6 +45,35 @@ describe('product batch publish queue', () => {
     expect(inspectProductBatchPublishItem(item, 'publish')).toMatchObject({
       ready: false,
       schemaIssueCount: 1
+    });
+  });
+
+  it('allows Alibaba category rule warnings through to the publish API', () => {
+    const item = upsert(
+      'advisory-only',
+      `<itemSchema>
+        <field id="productTitle" name="商品标题" type="input"><value>Ready title</value></field>
+        <field id="material" name="材质" type="input">
+          <rules><rule name="requiredRule" value="true"/></rules><value/>
+        </field>
+      </itemSchema>`,
+      NOW
+    );
+
+    expect(inspectProductBatchPublishItem(item, 'publish')).toMatchObject({
+      ready: true,
+      schemaIssueCount: 1,
+      blockingIssues: []
+    });
+  });
+
+  it('accepts an imported online product with an optional empty ladder and integer quantity price', () => {
+    const item = upsert('online-clone', fixture.onlineCloneXml, NOW);
+
+    expect(inspectProductBatchPublishItem(item, 'publish')).toMatchObject({
+      ready: true,
+      schemaIssueCount: 0,
+      blockingIssues: []
     });
   });
 

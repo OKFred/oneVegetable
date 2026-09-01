@@ -11,12 +11,13 @@ oneVegetable is a user-operated local Alibaba.com operations workspace for manag
 
 - App Key, App Secret, Access Token, signature algorithm, and gateway address entered by the user or obtained through the user-initiated authorization assistant;
 - product Schema drafts and RFQ quotation drafts created by the user;
+- local product display mutation jobs created by a user action, including product IDs, platform-encrypted IDs, original and target states, requestIds, available traceIds, job status, and redacted error summaries;
 - product, gallery, RFQ, trade, logistics, and data insight responses requested from the user's Alibaba.com Open Platform account;
 - up to 100 recent session-scoped redacted diagnostics containing operation names, requestIds, durations, error codes, and available traceIds.
 
-Credentials and settings are encrypted in `chrome.storage.local` with an AES-256-GCM key derived from the user's passphrase using PBKDF2-HMAC-SHA256 with 600,000 iterations. The passphrase is not stored. The key exists only in the unlocked service worker memory, and the vault automatically locks after a service worker restart. Drafts are stored in the extension's own `localStorage`. Redacted diagnostics are stored in `chrome.storage.session` and are not retained as long-term logs after the browser session ends. The extension runs no first-party analytics or advertising service and does not send this data to a developer-operated server.
+Credentials and settings are encrypted in `chrome.storage.local` with an AES-256-GCM key derived from the user's passphrase using PBKDF2-HMAC-SHA256 with 600,000 iterations. The passphrase is not stored. To avoid repeated unlock prompts after an MV3 service worker becomes dormant, derived key material is held in the in-memory `chrome.storage.session` after unlock and bound to the current ciphertext version and last activity time. It contains no credential plaintext and is cleared when the browser restarts, the extension is disabled, updated, or reloaded, the user locks it, or the selected idle timeout expires. Product display mutation jobs are also stored in `chrome.storage.local`, but do not contain App Secrets, tokens, complete requests, or complete responses. Incomplete jobs remain until verification or recovery; terminal jobs are retained for at most 30 days and 100 entries. Drafts are stored in the extension's own `localStorage`. Redacted diagnostics are also stored in `chrome.storage.session` and are not retained as long-term logs after the browser session ends. The extension runs no first-party analytics or advertising service and does not send this data to a developer-operated server.
 
-Both `chrome.storage.local` and `chrome.storage.session` use Chrome `TRUSTED_CONTEXTS`; web pages and extension content scripts cannot read them through the Storage API. A new vault does not enable idle auto-lock by default. The user may opt in to a 5, 15, 30, or 60 minute timeout. When enabled, status checks do not extend the timer; only an actual credential read or update does. If the service worker terminates sooner, the in-memory key is lost immediately.
+Both `chrome.storage.local` and `chrome.storage.session` use Chrome `TRUSTED_CONTEXTS`; web pages and extension content scripts cannot read them through the Storage API. A new vault does not enable idle auto-lock by default. The user may opt in to a 5, 15, 30, or 60 minute timeout. When enabled, status checks do not extend the timer; only an actual credential read or update does. Normal service worker dormancy does not end the current Chrome session's unlocked state.
 
 A forgotten vault passphrase cannot be recovered. The user must erase all extension-local data and configure the credentials again. Legacy plaintext credentials are never used for real requests. After the user creates a new passphrase, the service worker performs the encryption migration in place without returning the old App Secret or Access Token to a page.
 
@@ -26,22 +27,22 @@ The user may also explicitly choose cloud authorization in the administration pa
 
 ## Data use and transfer
 
-Real queries are sent only after a user action. The extension service worker sends them over HTTPS to the Alibaba.com Open Platform gateway configured by the user. An external image is downloaded from the specified public HTTP(S) URL and uploaded to the user's own international gallery only after the user explicitly starts that transfer.
+Real queries and product display changes are sent only after a user action and confirmation. The extension service worker sends them over HTTPS to the Alibaba.com Open Platform gateway configured by the user. Before a product display change leaves the extension, the plaintext product ID, platform-encrypted ID, and current state are cross-checked; accepted changes are verified by reading the product list. An external image is downloaded from the specified public HTTP(S) URL and uploaded to the user's own international gallery only after the user explicitly starts that transfer.
 
 Use of user data follows the Chrome Web Store User Data Policy, including the Limited Use requirements. Data is used only to provide or improve the disclosed single purpose and is not used for personalized advertising, credit assessment, or data resale. The developer does not permit a person to read user data unless the user explicitly authorizes technical support, a security investigation requires it, or the law requires it.
 
 ## Permissions
 
-- `storage`: stores local credentials, settings, onboarding state, and session diagnostics;
+- `storage`: stores local encrypted credentials, settings, onboarding state, product display mutation jobs, and derived unlock material plus redacted diagnostics held only in the current Chrome session memory;
 - `scripting`: injects fixed packaged code only into the known Alibaba Application Center and OAuth tabs after the user explicitly starts the authorization assistant;
 - `https://eco.taobao.com/*`: calls the official Alibaba.com HTTPS Open Platform gateway;
 - optional `http://*/*` and `https://*/*`: Chrome access is requested for a specific host only when the user starts the authorization assistant, confirms the actual OAuth callback, configures a custom gateway, or explicitly transfers an external image. The user can revoke each grant in Settings.
 
-The extension does not request cookies, browsing history, `tabs`, `webNavigation`, or a required `<all_urls>` permission. The authorization assistant does not create applications, accept platform agreements for the user, or bypass human verification. Gallery group management, image upload, and external image transfer occur only after an explicit user action. Other real write operations remain blocked before any network request leaves the extension background.
+The extension does not request cookies, browsing history, `tabs`, `webNavigation`, or a required `<all_urls>` permission. The authorization assistant does not create applications, accept platform agreements for the user, or bypass human verification. Gallery group management, image upload, external image transfer, and product display changes occur only after an explicit user action and confirmation. Other real write operations remain blocked before any network request leaves the extension background.
 
 ## Data control and retention
 
-Settings lets the user lock the vault, change the passphrase, inspect and export an inventory that contains no secret values, clear session diagnostics, revoke extra host permissions, and permanently erase credentials, settings, drafts, and diagnostics. Uninstalling the extension also removes extension-local storage managed by Chrome.
+Settings lets the user lock the vault, change the passphrase, inspect and export an inventory that contains no secret values, clear session diagnostics, revoke extra host permissions, and permanently erase credentials, settings, product display mutation jobs, drafts, and diagnostics. Uninstalling the extension also removes extension-local storage managed by Chrome.
 
 ## Security and limitations
 

@@ -15,6 +15,30 @@ const clipboardWrite = vi.fn(() => Promise.resolve());
 const anchorClick = vi.fn();
 let exportedBlob: Blob | null = null;
 
+function mountErrorNotice(error: unknown, mode: 'mock' | 'extension') {
+  const Host = defineComponent({
+    setup() {
+      provideServices({
+        gateway: new MockGatewayClient(0),
+        settings: {
+          load: () =>
+            Promise.resolve({
+              appKey: '',
+              appSecret: '',
+              accessToken: '',
+              endpoint: ALIBABA_GATEWAY,
+              signMethod: 'hmac'
+            }),
+          save: () => Promise.resolve()
+        },
+        mode
+      });
+      return () => h(ErrorNotice, { error });
+    }
+  });
+  return mount(Host);
+}
+
 beforeEach(() => {
   exportedBlob = null;
   clipboardWrite.mockClear();
@@ -52,27 +76,7 @@ describe('ErrorNotice', () => {
       },
       requestId
     );
-    const Host = defineComponent({
-      setup() {
-        provideServices({
-          gateway: new MockGatewayClient(0),
-          settings: {
-            load: () =>
-              Promise.resolve({
-                appKey: '',
-                appSecret: '',
-                accessToken: '',
-                endpoint: ALIBABA_GATEWAY,
-                signMethod: 'hmac'
-              }),
-            save: () => Promise.resolve()
-          },
-          mode: 'mock'
-        });
-        return () => h(ErrorNotice, { error });
-      }
-    });
-    const wrapper = mount(Host);
+    const wrapper = mountErrorNotice(error, 'mock');
 
     expect(wrapper.text()).toContain(requestId);
     const buttons = wrapper.findAll('button');
@@ -95,32 +99,30 @@ describe('ErrorNotice', () => {
   it('links credential vault failures directly to extension settings', () => {
     const error = new GatewayException({
       code: 'CREDENTIAL_VAULT_EMPTY',
-      message: '请先创建凭证保险库',
+      message: '请先在设置中配置开放平台凭证',
       retryable: false
     });
-    const Host = defineComponent({
-      setup() {
-        provideServices({
-          gateway: new MockGatewayClient(0),
-          settings: {
-            load: () =>
-              Promise.resolve({
-                appKey: '',
-                appSecret: '',
-                accessToken: '',
-                endpoint: ALIBABA_GATEWAY,
-                signMethod: 'hmac'
-              }),
-            save: () => Promise.resolve()
-          },
-          mode: 'extension'
-        });
-        return () => h(ErrorNotice, { error });
-      }
-    });
-    const wrapper = mount(Host);
+    const wrapper = mountErrorNotice(error, 'extension');
 
     expect(wrapper.get('a[href="#/settings"]').text()).toContain('前往设置凭证');
+    wrapper.unmount();
+  });
+
+  it('shows semicolon-separated platform reasons as a readable list with traceId', () => {
+    const error = new GatewayException({
+      code: 'PRODUCT_SCHEMA_INVALID',
+      message: '商品名称不能为空; 主图至少需要一张；商品名称不能为空',
+      traceId: 'alibaba-trace-1',
+      retryable: false
+    });
+    const wrapper = mountErrorNotice(error, 'mock');
+
+    expect(wrapper.text()).toContain('返回了 2 条原因');
+    expect(wrapper.findAll('li').map((item) => item.text())).toEqual([
+      '商品名称不能为空',
+      '主图至少需要一张'
+    ]);
+    expect(wrapper.text()).toContain('traceId: alibaba-trace-1');
     wrapper.unmount();
   });
 });

@@ -218,14 +218,14 @@ function statusVariant(
                     {{
                       inspectProductBatchPublishItem(item, target).ready
                         ? '可以提交'
-                        : `${inspectProductBatchPublishItem(item, target).blockingIssues.length} 个阻断`
+                        : `${inspectProductBatchPublishItem(item, target).blockingIssues.length} 个最低条件未满足`
                     }}
                   </p>
                   <p
                     v-if="inspectProductBatchPublishItem(item, target).schemaIssueCount"
                     class="mt-1 text-xs text-muted-foreground"
                   >
-                    Schema 问题 {{ inspectProductBatchPublishItem(item, target).schemaIssueCount }} 个
+                    预检提示 {{ inspectProductBatchPublishItem(item, target).schemaIssueCount }} 个
                   </p>
                 </template>
                 <span v-else class="text-muted-foreground">已完成</span>

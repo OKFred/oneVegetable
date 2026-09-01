@@ -14,6 +14,7 @@ import {
   BarChart3,
   Boxes,
   Handshake,
+  History,
   Home,
   Image,
   Menu,
@@ -108,6 +109,7 @@ const baseItems: NavigationItem[] = [
   { id: 'insights', label: '数据洞察', icon: BarChart3 },
   { id: 'capabilities', label: 'API 能力', icon: PlugZap },
   { id: 'admin', label: '管理后台', icon: ShieldCheck },
+  { id: 'releases', label: '版本更新', icon: History },
   { id: 'settings', label: '设置', icon: Settings }
 ];
 const session = ref<ControlSession | null>(null);
@@ -135,6 +137,7 @@ const views: Record<PageId, Component> = {
   insights: defineAsyncComponent(() => import('./views/InsightsView.vue')),
   capabilities: defineAsyncComponent(() => import('./views/CapabilitiesView.vue')),
   admin: defineAsyncComponent(() => import('./views/AdminView.vue')),
+  releases: defineAsyncComponent(() => import('./views/ReleaseNotesView.vue')),
   settings: defineAsyncComponent(() => import('./views/SettingsView.vue'))
 };
 const activeView = computed(() => views[page.value]);
@@ -284,7 +287,7 @@ async function logout(): Promise<void> {
             </p>
           </div>
         </div>
-        <nav class="space-y-1 p-3" aria-label="主导航">
+        <nav class="max-h-[calc(100vh-12rem)] space-y-1 overflow-y-auto p-3" aria-label="主导航">
           <a
             v-for="item in items"
             :key="item.id"

@@ -12551,8 +12551,14 @@
         "properties": {
           "id": { "type": "string", "format": "uuid" },
           "requestId": { "$ref": "#/components/schemas/RequestId" },
-          "productId": { "type": "string", "pattern": "^[1-9][0-9]*$" },
-          "operation": { "type": "string", "enum": ["updateProduct", "updateProductDisplay"] },
+          "productId": {
+            "type": "string",
+            "pattern": "^(?:[1-9][0-9]*|pending:[0-9a-f]{64})$"
+          },
+          "operation": {
+            "type": "string",
+            "enum": ["publishProduct", "saveProductDraft", "updateProduct", "updateProductDisplay"]
+          },
           "status": {
             "type": "string",
             "enum": [

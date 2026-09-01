@@ -22,7 +22,6 @@ import {
   ALIBABA_GATEWAY,
   CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES,
   CREDENTIAL_VAULT_IDLE_TIMEOUT_OPTIONS,
-  CREDENTIAL_VAULT_ITERATIONS,
   CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS,
   validateVaultPassphrase,
   type CredentialVaultStatus,
@@ -42,6 +41,7 @@ import PageHeader from '../components/PageHeader.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
+import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import type { DataColumn } from '../lib/table';
@@ -107,7 +107,7 @@ const lastDiagnosticError = computed(() =>
 const vaultActivitySummary = computed(() => {
   const status = vaultStatus.value;
   if (!status?.lastActivityAt || status.idleRemainingSeconds === null) return '';
-  const lastActivity = new Date(status.lastActivityAt).toLocaleString('zh-CN', { hour12: false });
+  const lastActivity = formatDateTime(status.lastActivityAt);
   const remainingMinutes = Math.max(1, Math.ceil(status.idleRemainingSeconds / 60));
   return `最近活动：${lastActivity}；状态快照剩余约 ${remainingMinutes} 分钟。`;
 });
@@ -173,7 +173,7 @@ async function save(): Promise<void> {
       assertMatchingPassphrases(vaultPassphrase.value, vaultPassphraseConfirmation.value);
       applyVaultStatus(await vault.create(vaultPassphrase.value, model.value));
       clearVaultPassphrases();
-      feedback.value = '加密凭证保险库已创建并保持解锁。';
+      feedback.value = '凭证已加密保存，并将在当前 Chrome 会话内保持可用。';
       await refreshLocalData();
     } else {
       await settings.save(model.value);
@@ -200,7 +200,7 @@ async function importCredentialBundle(event: Event): Promise<void> {
     const imported = readImportedCredentials(JSON.parse(await file.text()) as unknown);
     model.value = { ...model.value, ...imported };
     feedback.value =
-      '已从授权包读取 App Key、App Secret 和 Access Token；尚未保存，请设置保险库口令并确认保存。';
+      '已从授权包读取 App Key、App Secret 和 Access Token；尚未保存，请设置本机保护口令并确认保存。';
   } catch (error: unknown) {
     credentialImportError.value = userVisibleCause(error, '授权包导入失败');
   } finally {
@@ -211,7 +211,7 @@ async function importCredentialBundle(event: Event): Promise<void> {
 async function handleAcquiredCredentialsSaved(status: CredentialVaultStatus): Promise<void> {
   applyVaultStatus(status);
   model.value = await settings.load();
-  feedback.value = 'Alibaba 开放平台凭据已获取并加密保存，可以开始真实查询。';
+  feedback.value = 'Alibaba 开放平台凭据已获取并加密保存，当前 Chrome 会话内可以直接使用。';
   await refreshLocalData();
 }
 
@@ -246,7 +246,7 @@ async function refreshVaultStatus(): Promise<void> {
   try {
     applyVaultStatus(await vault.status());
   } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, '保险库状态读取失败');
+    vaultError.value = userVisibleCause(error, '凭证保护状态读取失败');
   }
 }
 
@@ -258,9 +258,9 @@ async function unlockVault(): Promise<void> {
     applyVaultStatus(await vault.unlock(vaultPassphrase.value));
     model.value = await settings.load();
     clearVaultPassphrases();
-    feedback.value = '凭证保险库已解锁；service worker 重启后会自动重新锁定。';
+    feedback.value = '凭证已解锁；刷新页面或后台休眠后无需重复输入口令。';
   } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, '保险库解锁失败');
+    vaultError.value = userVisibleCause(error, '凭证解锁失败');
   } finally {
     vaultBusy.value = false;
   }
@@ -275,10 +275,10 @@ async function migrateVault(): Promise<void> {
     applyVaultStatus(await vault.migrate(vaultPassphrase.value));
     model.value = await settings.load();
     clearVaultPassphrases();
-    feedback.value = '旧版明文凭证已原位迁移到加密保险库。';
+    feedback.value = '旧版明文凭证已原位加密，并在当前 Chrome 会话内保持可用。';
     await refreshLocalData();
   } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, '保险库迁移失败');
+    vaultError.value = userVisibleCause(error, '旧凭证加密失败');
   } finally {
     vaultBusy.value = false;
   }
@@ -296,9 +296,9 @@ async function lockVault(): Promise<void> {
       endpoint: ALIBABA_GATEWAY,
       signMethod: 'hmac'
     };
-    feedback.value = '保险库已锁定，页面中的可编辑凭证状态已清空。';
+    feedback.value = '凭证已锁定，当前 Chrome 会话中的解锁状态已清除。';
   } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, '保险库锁定失败');
+    vaultError.value = userVisibleCause(error, '凭证锁定失败');
   } finally {
     vaultBusy.value = false;
   }
@@ -312,9 +312,9 @@ async function rotateVaultPassphrase(): Promise<void> {
     assertMatchingPassphrases(newVaultPassphrase.value, newVaultPassphraseConfirmation.value);
     applyVaultStatus(await vault.rotate(newVaultPassphrase.value));
     clearVaultPassphrases();
-    feedback.value = '保险库已使用新 salt 和新口令重新加密。';
+    feedback.value = '凭证已使用新 salt 和新口令重新加密。';
   } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, '保险库口令更换失败');
+    vaultError.value = userVisibleCause(error, '保护口令更换失败');
   } finally {
     vaultBusy.value = false;
   }
@@ -328,8 +328,8 @@ async function updateVaultPolicy(): Promise<void> {
     applyVaultStatus(await vault.updatePolicy(idleTimeoutMinutes.value));
     feedback.value =
       idleTimeoutMinutes.value === 0
-        ? '已关闭空闲自动锁定；扩展后台重启后仍需重新解锁。'
-        : `保险库将在连续 ${idleTimeoutMinutes.value} 分钟未使用凭证后自动锁定。`;
+        ? '已关闭空闲自动锁定；当前 Chrome 会话内将保持可用。'
+        : `开放平台凭证将在连续 ${idleTimeoutMinutes.value} 分钟未使用后自动锁定。`;
   } catch (error: unknown) {
     vaultError.value = userVisibleCause(error, '空闲锁定策略保存失败');
   } finally {
@@ -344,7 +344,7 @@ function applyVaultStatus(status: CredentialVaultStatus): void {
 
 function assertMatchingPassphrases(passphrase: string, confirmation: string): void {
   validateVaultPassphrase(passphrase);
-  if (passphrase !== confirmation) throw new Error('两次输入的保险库口令不一致');
+  if (passphrase !== confirmation) throw new Error('两次输入的本机保护口令不一致');
 }
 
 function clearVaultPassphrases(): void {
@@ -571,11 +571,11 @@ function confirmThemePreference(): void {
         <div>
           <div class="flex items-center gap-2">
             <LockKeyhole class="size-4 text-primary" />
-            <h2 class="font-semibold">凭证保险库</h2>
+            <h2 class="font-semibold">开放平台凭证保护</h2>
           </div>
           <p class="mt-2 text-sm text-muted-foreground">
-            PBKDF2-HMAC-SHA256 {{ CREDENTIAL_VAULT_ITERATIONS.toLocaleString() }} 次派生 AES-256-GCM
-            密钥；口令不保存，后台重启后需重新解锁。
+            凭证加密保存在本机。解锁后，刷新页面或 MV3
+            后台休眠不会要求重复输入口令；浏览器重启、扩展更新、主动锁定或所选空闲时限到期后才会重新锁定。
           </p>
         </div>
         <span class="rounded-full bg-muted px-3 py-1 text-xs">
@@ -606,16 +606,16 @@ function confirmThemePreference(): void {
         <p class="text-sm font-medium">
           {{
             vaultStatus.lockReason === 'idle'
-              ? '保险库已因空闲超时自动锁定'
-              : vaultStatus.lockReason === 'worker-restart'
-                ? '扩展后台已重新启动，需要重新解锁'
-                : '保险库已手动锁定'
+              ? '开放平台凭证已因空闲超时自动锁定'
+              : vaultStatus.lockReason === 'session-ended'
+                ? 'Chrome 会话已结束，需要重新解锁'
+                : '开放平台凭证已手动锁定'
           }}
         </p>
         <p class="mt-1 text-xs text-muted-foreground">
           {{
-            vaultStatus.lockReason === 'worker-restart'
-              ? 'MV3 service worker 被浏览器回收或扩展更新后，内存密钥不会保留；本地加密凭据仍然安全保存。'
+            vaultStatus.lockReason === 'session-ended'
+              ? '浏览器重启、扩展更新或重载会清除仅存于内存的会话解锁材料；本地加密凭据仍然安全保存。'
               : '页面与后台中的解锁状态已清除，重新输入口令后才能继续真实查询。'
           }}
         </p>
@@ -624,7 +624,7 @@ function confirmThemePreference(): void {
             v-model="vaultPassphrase"
             class="max-w-sm"
             type="password"
-            aria-label="保险库口令"
+            aria-label="保护口令"
             autocomplete="current-password"
           />
           <Button :disabled="vaultBusy || !vaultPassphrase" @click="unlockVault">
@@ -633,7 +633,7 @@ function confirmThemePreference(): void {
         </div>
       </div>
       <div v-else-if="vaultStatus?.state === 'invalid'" class="mt-4 rounded-lg bg-red-50 p-4 text-red-900">
-        <p class="text-sm font-medium">保险库记录无效</p>
+        <p class="text-sm font-medium">本机凭证记录无效</p>
         <p class="mt-1 text-xs leading-5">
           为避免覆盖无法恢复的数据，当前不提供自动修复。请先备份浏览器配置，再使用下方彻底清除功能重新开始。
         </p>
@@ -647,7 +647,7 @@ function confirmThemePreference(): void {
         <div class="rounded-lg border p-4">
           <p class="text-sm font-medium">空闲自动锁定</p>
           <p class="mt-1 text-xs leading-5 text-muted-foreground">
-            默认不因空闲自动锁定；只有选择时长后才会启用。扩展后台重启时仍需重新解锁。
+            默认不因空闲自动锁定；只有选择时长后才会启用。MV3 后台休眠不会清除当前 Chrome 会话的解锁状态。
           </p>
           <p v-if="vaultActivitySummary" class="mt-2 text-xs text-muted-foreground">
             {{ vaultActivitySummary }}
@@ -670,7 +670,7 @@ function confirmThemePreference(): void {
           </div>
         </div>
         <div class="rounded-lg border p-4">
-          <p class="text-sm font-medium">更换保险库口令</p>
+          <p class="text-sm font-medium">更换本机保护口令</p>
           <p class="mt-1 text-xs text-muted-foreground">
             将生成新 salt 和新密钥重新加密，不需要旧口令再次参与。
           </p>
@@ -678,14 +678,14 @@ function confirmThemePreference(): void {
             <Input
               v-model="newVaultPassphrase"
               type="password"
-              aria-label="新保险库口令"
+              aria-label="新保护口令"
               autocomplete="new-password"
               :placeholder="`至少 ${CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS} 位`"
             />
             <Input
               v-model="newVaultPassphraseConfirmation"
               type="password"
-              aria-label="确认新保险库口令"
+              aria-label="确认新保护口令"
               autocomplete="new-password"
               placeholder="再次输入"
             />
@@ -708,14 +708,14 @@ function confirmThemePreference(): void {
         <Input
           v-model="vaultPassphrase"
           type="password"
-          aria-label="新建保险库口令"
+          aria-label="设置保护口令"
           autocomplete="new-password"
           :placeholder="`至少 ${CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS} 位`"
         />
         <Input
           v-model="vaultPassphraseConfirmation"
           type="password"
-          aria-label="确认保险库口令"
+          aria-label="确认保护口令"
           autocomplete="new-password"
           placeholder="再次输入"
         />
@@ -818,7 +818,7 @@ function confirmThemePreference(): void {
             (!vaultPassphrase || !vaultPassphraseConfirmation))
         "
         @click="save"
-        ><Save class="size-4" />{{ vaultStatus?.state === 'empty' ? '创建保险库并保存' : '保存设置' }}</Button
+        ><Save class="size-4" />{{ vaultStatus?.state === 'empty' ? '加密保存凭证' : '保存设置' }}</Button
       >
     </Card>
     <AlibabaCredentialAcquisitionDialog

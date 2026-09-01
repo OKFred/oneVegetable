@@ -4,6 +4,7 @@ import {
   GatewayException,
   BundledProductDescriptionTemplateClient,
   BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA,
+  ExtensionProductMutationJobClient,
   approximateStorageBytes,
   APP_PREFERENCES_STORAGE_KEY,
   completeOnboarding,
@@ -41,10 +42,14 @@ import {
 import '@one-vegetable/ui/styles.css';
 import { ALIBABA_CREDENTIAL_ACQUISITION_ORIGINS } from '../../lib/alibaba-credential-page-driver';
 import { resolveExtensionOperationAvailability } from '../../lib/operation-policy';
+import { EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY } from '../../lib/product-display-mutation-storage';
 
 const operationAvailability = new StaticOperationAvailabilityClient((operation) =>
   resolveExtensionOperationAvailability(operation)
 );
+const productMutationJobs = new ExtensionProductMutationJobClient({
+  send: (message) => browser.runtime.sendMessage(message)
+});
 
 const settings: SettingsRepository = {
   load: () => requestVault('get-settings', undefined),
@@ -175,7 +180,7 @@ async function requestVault<K extends CredentialVaultOperation>(
     throw new GatewayException(
       {
         code: 'INVALID_RUNTIME_RESPONSE',
-        message: '保险库响应 requestId 不匹配',
+        message: '凭证保护响应 requestId 不匹配',
         retryable: false
       },
       message.requestId
@@ -213,23 +218,34 @@ const localData: LocalDataRepository = {
   async inspect() {
     const [local, session] = await Promise.all([
       browser.storage.local.get(null),
-      browser.storage.session.get(null)
+      browser.storage.session.get('diagnosticEntries')
     ]);
     const localEntries = localStorageEntries();
     const drafts = localEntries.filter(([key]) => isDraftKey(key));
     const preferences = Object.fromEntries([
-      ...Object.entries(local).filter(([key]) => key !== SETTINGS_STORAGE_KEY),
+      ...Object.entries(local).filter(
+        ([key]) => key !== SETTINGS_STORAGE_KEY && key !== EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY
+      ),
       ...localEntries.filter(([key]) => key === APP_PREFERENCES_STORAGE_KEY)
     ]);
     const categories: LocalDataCategory[] = [
       {
         id: 'credentials',
-        label: '加密凭证保险库与网关设置',
+        label: '加密开放平台凭证与网关设置',
         storage: 'chrome.storage.local',
         itemCount: SETTINGS_STORAGE_KEY in local ? 1 : 0,
         approximateBytes: approximateStorageBytes(local[SETTINGS_STORAGE_KEY]),
         sensitive: true,
         retention: '保留到用户覆盖、清除扩展数据或卸载扩展'
+      },
+      {
+        id: 'product-mutation-jobs',
+        label: '商品上下架本地任务',
+        storage: 'chrome.storage.local',
+        itemCount: productMutationJobCount(local[EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY]),
+        approximateBytes: approximateStorageBytes(local[EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY]),
+        sensitive: true,
+        retention: '未完成任务保留到核验或恢复；完成任务最多保留 30 天、100 条'
       },
       {
         id: 'drafts',
@@ -283,6 +299,12 @@ function localStorageEntries(): [string, string][] {
 
 function isDraftKey(key: string): boolean {
   return key === 'one-vegetable-product-schema-draft' || key.startsWith('one-vegetable:rfq-draft:');
+}
+
+function productMutationJobCount(value: unknown): number {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return 0;
+  const jobs = Reflect.get(value, 'jobs') as unknown;
+  return Array.isArray(jobs) ? jobs.length : 0;
 }
 
 class ExtensionGatewayClient implements GatewayClient {
@@ -371,6 +393,7 @@ async function mountOptionsApp(): Promise<void> {
     productDescriptionTemplates: new BundledProductDescriptionTemplateClient(
       BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates
     ),
+    productMutationJobs,
     operationAvailability,
     mode: 'extension'
   });

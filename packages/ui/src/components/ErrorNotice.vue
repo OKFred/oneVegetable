@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { AlertCircle, Check, Clipboard, Download, Settings } from '@lucide/vue';
 
 import { sanitizeDiagnosticMessage } from '@one-vegetable/core/diagnostics';
-import { describeUserVisibleError } from '@one-vegetable/core/errors';
+import { describeUserVisibleError, splitUserVisibleErrorMessages } from '@one-vegetable/core/errors';
 import { APP_VERSION } from '@one-vegetable/core/version';
 
 import type { DiagnosticsSnapshot } from '@one-vegetable/core';
@@ -25,6 +25,7 @@ const props = withDefaults(
 
 const { gateway, mode } = useServices();
 const details = computed(() => describeUserVisibleError(props.error, props.fallback));
+const messageParts = computed(() => splitUserVisibleErrorMessages(details.value.message));
 const credentialSettingsRequired = computed(
   () => mode === 'extension' && details.value.code?.startsWith('CREDENTIAL_VAULT_') === true
 );
@@ -109,13 +110,35 @@ function downloadJson(value: unknown, fileName: string): void {
     <div class="flex items-start gap-2">
       <AlertCircle class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
       <div class="min-w-0 flex-1">
-        <p class="break-words font-medium">{{ details.message }}</p>
+        <p v-if="messageParts.length === 1" class="break-words font-medium">{{ messageParts[0] }}</p>
+        <div v-else>
+          <p class="font-medium">返回了 {{ messageParts.length }} 条原因：</p>
+          <ul class="mt-1 list-disc space-y-1 pl-5">
+            <li v-for="message in messageParts" :key="message" class="break-words">{{ message }}</li>
+          </ul>
+        </div>
         <p v-if="details.code" class="mt-1 text-xs opacity-80">错误码：{{ details.code }}</p>
-        <div v-if="details.requestId" class="mt-2 flex flex-wrap items-center gap-2">
-          <code class="break-all rounded bg-background/70 px-2 py-1 text-[11px] text-foreground">
+        <div v-if="details.requestId || details.traceId" class="mt-2 flex flex-wrap items-center gap-2">
+          <code
+            v-if="details.requestId"
+            class="break-all rounded bg-background/70 px-2 py-1 text-[11px] text-foreground"
+          >
             requestId: {{ details.requestId }}
           </code>
-          <Button type="button" size="sm" variant="outline" class="h-7 gap-1" @click="copyRequestId">
+          <code
+            v-if="details.traceId"
+            class="break-all rounded bg-background/70 px-2 py-1 text-[11px] text-foreground"
+          >
+            traceId: {{ details.traceId }}
+          </code>
+          <Button
+            v-if="details.requestId"
+            type="button"
+            size="sm"
+            variant="outline"
+            class="h-7 gap-1"
+            @click="copyRequestId"
+          >
             <Check v-if="copied" class="size-3.5" aria-hidden="true" />
             <Clipboard v-else class="size-3.5" aria-hidden="true" />
             {{ copied ? '已复制' : '复制 requestId' }}
