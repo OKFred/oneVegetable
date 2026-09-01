@@ -32,6 +32,8 @@ import { SocialMediaAssetService } from './social-meta/media-service';
 import { SqlSocialPublishingRepository } from './social-meta/publishing-repository';
 import { MetaPublisher } from './social-meta/meta-publisher';
 import { SocialPublishingService } from './social-meta/publishing-service';
+import { SqlExtensionSocialDeviceRepository } from './social-meta/extension-device-repository';
+import { ExtensionSocialDeviceService } from './social-meta/extension-device-service';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -98,6 +100,9 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
         new MetaPublisher()
       )
     : undefined;
+  const extensionSocialDevices = new ExtensionSocialDeviceService(
+    new SqlExtensionSocialDeviceRepository(database.executor)
+  );
   const alibabaCredentialAcquisition =
     runtimeConfiguration.environment === 'self-hosted' && env.BROWSER
       ? new AlibabaCredentialAcquisitionService(
@@ -131,6 +136,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     metaSocial,
     ...(socialMediaAssets ? { socialMediaAssets } : {}),
     ...(socialPublishing ? { socialPublishing } : {}),
+    extensionSocialDevices,
     ...(alibabaCredentialAcquisition ? { alibabaCredentialAcquisition } : {}),
     requestEvents: new SqlRequestEventRepository(database.executor),
     productDescriptionTemplates: new SqlProductDescriptionTemplateRepository(database.executor),

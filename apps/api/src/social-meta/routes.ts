@@ -8,6 +8,7 @@ import {
 import { authorizeAdmin } from '../abac';
 import { authenticateMutation, authenticateRequest } from '../auth/routes';
 import { AuthError } from '../auth/service';
+import { ExtensionSocialDeviceError } from './extension-device-service';
 import { MetaEntityVersionConflictError } from './repository';
 import { SocialMediaAssetError } from './media-service';
 import { SocialPublishingServiceError } from './publishing-service';
@@ -17,6 +18,7 @@ import type { GatewayError } from '@one-vegetable/core';
 import type { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { AuthService } from '../auth/service';
+import type { ExtensionSocialDeviceService } from './extension-device-service';
 import type { MetaSocialService } from './service';
 import type { SocialMediaAssetService } from './media-service';
 import type { SocialPublishingService } from './publishing-service';
@@ -28,6 +30,7 @@ export interface MetaSocialRouteOptions {
   service: MetaSocialService;
   mediaAssets?: SocialMediaAssetService;
   publishing?: SocialPublishingService;
+  extensionDevices?: ExtensionSocialDeviceService;
   allowedOrigins?: readonly string[];
 }
 
@@ -176,8 +179,10 @@ export function registerMetaSocialRoutes(api: Hono, options: MetaSocialRouteOpti
     )
   );
 
+  if (options.extensionDevices) registerExtensionDeviceRoutes(api, options);
+
   api.post('/social/destinations/list', (context) =>
-    adminRead(context, options, async () => ({ items: await options.service.listDestinations() }), [
+    socialRead(context, options, async () => ({ items: await options.service.listDestinations() }), [
       'requestId'
     ])
   );
@@ -208,12 +213,95 @@ export function registerMetaSocialRoutes(api: Hono, options: MetaSocialRouteOpti
   if (options.publishing) registerPublishingRoutes(api, options);
 }
 
+function registerExtensionDeviceRoutes(api: Hono, options: MetaSocialRouteOptions): void {
+  const devices = options.extensionDevices;
+  if (!devices) return;
+
+  api.post('/extension-pairings/start', (context) =>
+    extensionRequest(
+      context,
+      async (body) => {
+        const extensionId = readString(body, 'extensionId');
+        assertExtensionOrigin(context, extensionId);
+        return devices.start({ extensionId, deviceName: readString(body, 'deviceName') });
+      },
+      ['requestId', 'extensionId', 'deviceName']
+    )
+  );
+
+  api.post('/extension-pairings/status', (context) =>
+    extensionRequest(
+      context,
+      async (body) => {
+        const extensionId = readString(body, 'extensionId');
+        assertExtensionOrigin(context, extensionId);
+        return devices.status({
+          pairingId: readUuid(body, 'pairingId'),
+          pairingCode: readString(body, 'pairingCode'),
+          extensionId
+        });
+      },
+      ['requestId', 'pairingId', 'pairingCode', 'extensionId']
+    )
+  );
+
+  api.post('/admin/extension-pairings/approve', (context) =>
+    adminWrite(
+      context,
+      options,
+      async (body, actorId) => {
+        const result = await devices.approve(readString(body, 'pairingCode'), actorId);
+        await options.authService.audit({
+          requestId: readRequestId(body),
+          actorId,
+          action: 'social.extension-pairing.approve',
+          resourceKind: 'extension-social-pairing',
+          resourceId: result.pairingId,
+          outcome: 'success',
+          reasonCode: 'EXTENSION_PAIRING_APPROVED'
+        });
+        return result;
+      },
+      ['requestId', 'pairingCode']
+    )
+  );
+
+  api.post('/admin/extension-devices/list', (context) =>
+    adminRead(context, options, async () => ({ items: await devices.list() }), ['requestId'])
+  );
+
+  api.post('/admin/extension-devices/revoke', (context) =>
+    adminWrite(
+      context,
+      options,
+      async (body, actorId) => {
+        const deviceId = readUuid(body, 'deviceId');
+        const revision = readRevision(body, 'revision');
+        await devices.revoke({ deviceId, revision, actorId });
+        await options.authService.audit({
+          requestId: readRequestId(body),
+          actorId,
+          action: 'social.extension-device.revoke',
+          resourceKind: 'extension-social-device',
+          resourceId: deviceId,
+          outcome: 'success',
+          reasonCode: 'EXTENSION_DEVICE_REVOKED',
+          revisionBefore: revision,
+          revisionAfter: revision + 1
+        });
+        return {};
+      },
+      ['requestId', 'deviceId', 'revision']
+    )
+  );
+}
+
 function registerPublishingRoutes(api: Hono, options: MetaSocialRouteOptions): void {
   const publishing = options.publishing;
   if (!publishing) return;
 
   api.post('/social-posts/prepare', (context) =>
-    adminWrite(
+    socialWrite(
       context,
       options,
       async (body, actorId) => {
@@ -244,7 +332,7 @@ function registerPublishingRoutes(api: Hono, options: MetaSocialRouteOptions): v
     ['/social-posts/advance', 'advance', 'social.post.advance']
   ] as const) {
     api.post(path, (context) =>
-      adminWrite(
+      socialWrite(
         context,
         options,
         async (body, actorId) => {
@@ -269,7 +357,7 @@ function registerPublishingRoutes(api: Hono, options: MetaSocialRouteOptions): v
   }
 
   api.post('/social-posts/get', (context) =>
-    adminRead(
+    socialRead(
       context,
       options,
       async (body, actorId) => {
@@ -281,7 +369,7 @@ function registerPublishingRoutes(api: Hono, options: MetaSocialRouteOptions): v
   );
 
   api.post('/social-posts/list', (context) =>
-    adminRead(
+    socialRead(
       context,
       options,
       async (body, actorId) => {
@@ -296,7 +384,7 @@ function registerPublishingRoutes(api: Hono, options: MetaSocialRouteOptions): v
   );
 
   api.post('/social-posts/cancel', (context) =>
-    adminWrite(
+    socialWrite(
       context,
       options,
       async (body, actorId) => {
@@ -359,6 +447,86 @@ async function adminWrite(
     if (!decision.allowed) throw new AuthError(decision.reasonCode, '需要管理员权限', 403);
     return success(context, readRequestId(body), await action(body, authenticated.principal.actorId));
   });
+}
+
+async function socialRead(
+  context: Context,
+  options: MetaSocialRouteOptions,
+  action: (body: Record<string, unknown>, actorId: string) => Promise<unknown>,
+  allowedKeys: readonly string[]
+): Promise<Response> {
+  return handle(context, async () => {
+    const body = await readBody(context, allowedKeys);
+    const actorId = await authenticateSocialActor(context, options, false);
+    return success(context, readRequestId(body), await action(body, actorId));
+  });
+}
+
+async function socialWrite(
+  context: Context,
+  options: MetaSocialRouteOptions,
+  action: (body: Record<string, unknown>, actorId: string) => Promise<unknown>,
+  allowedKeys: readonly string[]
+): Promise<Response> {
+  return handle(context, async () => {
+    const body = await readBody(context, allowedKeys);
+    const actorId = await authenticateSocialActor(context, options, true);
+    return success(context, readRequestId(body), await action(body, actorId));
+  });
+}
+
+async function authenticateSocialActor(
+  context: Context,
+  options: MetaSocialRouteOptions,
+  mutation: boolean
+): Promise<string> {
+  const authorization = context.req.header('authorization')?.trim();
+  if (authorization) {
+    const match = /^Bearer (ovd_[A-Za-z0-9_-]{43})$/u.exec(authorization);
+    if (!match?.[1] || !options.extensionDevices) {
+      throw new ExtensionSocialDeviceError('EXTENSION_DEVICE_UNAUTHORIZED', '扩展设备授权无效', 401);
+    }
+    const extensionId = context.req.header('x-one-vegetable-extension-id') ?? '';
+    assertExtensionOrigin(context, extensionId);
+    const authenticated = await options.extensionDevices.authenticate({
+      deviceToken: match[1],
+      extensionId
+    });
+    return authenticated.actorId;
+  }
+  const authenticated = mutation
+    ? await authenticateMutation(context, {
+        authService: options.authService,
+        ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
+      })
+    : await authenticateRequest(context, options.authService);
+  const decision = authorizeAdmin(authenticated.principal, mutation ? 'admin.write' : 'admin.read');
+  if (!decision.allowed) throw new AuthError(decision.reasonCode, '需要管理员权限', 403);
+  return authenticated.principal.actorId;
+}
+
+async function extensionRequest(
+  context: Context,
+  action: (body: Record<string, unknown>) => Promise<unknown>,
+  allowedKeys: readonly string[]
+): Promise<Response> {
+  return handle(context, async () => {
+    const body = await readBody(context, allowedKeys);
+    return success(context, readRequestId(body), await action(body));
+  });
+}
+
+function assertExtensionOrigin(context: Context, extensionId: string): void {
+  if (
+    !/^[a-p]{32}$/u.test(extensionId) ||
+    context.req.header('origin') !== `chrome-extension://${extensionId}`
+  ) {
+    throw new ExtensionSocialDeviceError(
+      'EXTENSION_ORIGIN_MISMATCH',
+      '请求来源与 Chrome 扩展 ID 不匹配',
+      403
+    );
+  }
 }
 
 async function readBody(context: Context, allowedKeys: readonly string[]): Promise<Record<string, unknown>> {
@@ -470,6 +638,9 @@ function routeError(error: unknown): {
       status: error.status,
       retryable: error.retryable
     };
+  }
+  if (error instanceof ExtensionSocialDeviceError) {
+    return { code: error.code, message: error.message, status: error.status, retryable: false };
   }
   if (error instanceof MetaEntityVersionConflictError) {
     return {

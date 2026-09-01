@@ -110,6 +110,18 @@ describe('shared Hono API', () => {
       }
     });
     expect(denied.headers.get('Access-Control-Allow-Origin')).toBeNull();
+
+    const extensionOrigin = 'chrome-extension://aepfdoldflokikbbcpnfifkacpfakmjc';
+    const extension = await app.request('/api/v1/meta/get', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: extensionOrigin,
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'Authorization,X-One-Vegetable-Extension-ID'
+      }
+    });
+    expect(extension.headers.get('Access-Control-Allow-Origin')).toBe(extensionOrigin);
+    expect(extension.headers.get('Access-Control-Allow-Headers')).toContain('Authorization');
   });
 
   it('requires an explicit real gateway and forwards the requestId context', async () => {

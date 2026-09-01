@@ -26,6 +26,8 @@ import { SocialMediaAssetService } from './social-meta/media-service';
 import { SqlSocialPublishingRepository } from './social-meta/publishing-repository';
 import { MetaPublisher } from './social-meta/meta-publisher';
 import { SocialPublishingService } from './social-meta/publishing-service';
+import { SqlExtensionSocialDeviceRepository } from './social-meta/extension-device-repository';
+import { ExtensionSocialDeviceService } from './social-meta/extension-device-service';
 
 const port = readPort(process.env.ONE_VEGETABLE_PORT);
 const runtimeConfiguration = readRuntimeConfiguration(process.env, 'local-node');
@@ -75,6 +77,9 @@ const metaSocial = metaSecretCipher
     })
   : undefined;
 const socialPublishingRepository = new SqlSocialPublishingRepository(database.executor);
+const extensionSocialDevices = new ExtensionSocialDeviceService(
+  new SqlExtensionSocialDeviceRepository(database.executor)
+);
 const socialMediaAssets = new SocialMediaAssetService(
   socialPublishingRepository,
   new NodeSocialMediaStore(process.env.ONE_VEGETABLE_SOCIAL_MEDIA_PATH ?? '.data/social-media')
@@ -110,6 +115,7 @@ const app = createApiApp({
   ...(metaSocial ? { metaSocial } : {}),
   socialMediaAssets,
   ...(socialPublishing ? { socialPublishing } : {}),
+  extensionSocialDevices,
   requestEvents: new SqlRequestEventRepository(database.executor),
   productDescriptionTemplates: new SqlProductDescriptionTemplateRepository(database.executor),
   productMutationJobs: new SqlProductMutationJobRepository(database.executor),

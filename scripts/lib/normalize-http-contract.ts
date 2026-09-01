@@ -194,6 +194,53 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     revision: { type: ['integer', 'null'], minimum: 1 },
     remark: { type: ['string', 'null'], maxLength: 500 }
   });
+  schemas.ExtensionSocialPairingStartRequest = objectRequest(['requestId', 'extensionId', 'deviceName'], {
+    extensionId: { type: 'string', pattern: '^[a-p]{32}$' },
+    deviceName: { type: 'string', minLength: 1, maxLength: 80 }
+  });
+  schemas.ExtensionSocialPairingStatusRequest = objectRequest(
+    ['requestId', 'pairingId', 'pairingCode', 'extensionId'],
+    {
+      pairingId: { type: 'string', format: 'uuid' },
+      pairingCode: { type: 'string', pattern: '^[A-Z2-9]{16}$' },
+      extensionId: { type: 'string', pattern: '^[a-p]{32}$' }
+    }
+  );
+  schemas.ExtensionSocialPairingApproveRequest = objectRequest(['requestId', 'pairingCode'], {
+    pairingCode: { type: 'string', pattern: '^[A-Z2-9]{16}$' }
+  });
+  schemas.ExtensionSocialDeviceTargetRequest = objectRequest(['requestId', 'deviceId', 'revision'], {
+    deviceId: { type: 'string', format: 'uuid' },
+    revision: { type: 'integer', minimum: 1 }
+  });
+  schemas.ExtensionSocialPairingStart = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['pairingId', 'pairingCode', 'status', 'expiresTimeUtc'],
+    properties: {
+      pairingId: { type: 'string', format: 'uuid' },
+      pairingCode: { type: 'string', pattern: '^[A-Z2-9]{16}$' },
+      status: { const: 'pending' },
+      expiresTimeUtc: { type: 'integer', minimum: 0 }
+    }
+  };
+  schemas.ExtensionSocialPairingStatus = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['pairingId', 'status', 'expiresTimeUtc', 'device', 'deviceToken'],
+    properties: {
+      pairingId: { type: 'string', format: 'uuid' },
+      status: {
+        type: 'string',
+        enum: ['pending', 'approved', 'paired', 'consumed', 'cancelled', 'expired']
+      },
+      expiresTimeUtc: { type: 'integer', minimum: 0 },
+      device: {
+        oneOf: [{ $ref: '#/components/schemas/ExtensionSocialDevice' }, { type: 'null' }]
+      },
+      deviceToken: { type: ['string', 'null'], minLength: 47, maxLength: 47 }
+    }
+  };
   schemas.PageRequest = objectRequest([], {
     page: { type: 'integer', minimum: 1, default: 1 },
     pageSize: { type: 'integer', minimum: 1, maximum: 100, default: 20 }
@@ -743,6 +790,31 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       'Disconnect one Meta identity and its destinations',
       'disconnectMetaConnection',
       'MetaConnectionTargetRequest'
+    ),
+    '/extension-pairings/start': postOperation(
+      'Start a short-lived Chrome extension social publishing pairing',
+      'startExtensionSocialPairing',
+      'ExtensionSocialPairingStartRequest'
+    ),
+    '/extension-pairings/status': postOperation(
+      'Poll a Chrome extension social publishing pairing and receive its one-time device token',
+      'getExtensionSocialPairingStatus',
+      'ExtensionSocialPairingStatusRequest'
+    ),
+    '/admin/extension-pairings/approve': postOperation(
+      'Approve one Chrome extension social publishing pairing code',
+      'approveExtensionSocialPairing',
+      'ExtensionSocialPairingApproveRequest'
+    ),
+    '/admin/extension-devices/list': postOperation(
+      'List paired Chrome extension social publishing devices',
+      'listExtensionSocialDevices',
+      'RequestEnvelope'
+    ),
+    '/admin/extension-devices/revoke': postOperation(
+      'Revoke one Chrome extension social publishing device',
+      'revokeExtensionSocialDevice',
+      'ExtensionSocialDeviceTargetRequest'
     ),
     '/social/destinations/list': postOperation(
       'List publishable Facebook Page and Instagram professional destinations',

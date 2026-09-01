@@ -13,6 +13,9 @@ import type {
 import type {
   MetaAppConfigurationSummary,
   MetaAppConfigurationUpdateRequest,
+  ExtensionSocialDevice,
+  ExtensionSocialPairingStart,
+  ExtensionSocialPairingStatus,
   SocialAccountConnection,
   SocialDestination,
   SocialPostPrepareRequest,
@@ -292,6 +295,15 @@ export interface ControlClient {
   startMetaOAuth?(): Promise<{ authorizationUrl: string; expiresTimeUtc: number }>;
   listMetaConnections?(): Promise<SocialAccountConnection[]>;
   disconnectMetaConnection?(connectionId: string, revision: number): Promise<void>;
+  startExtensionSocialPairing?(extensionId: string, deviceName: string): Promise<ExtensionSocialPairingStart>;
+  extensionSocialPairingStatus?(
+    pairingId: string,
+    pairingCode: string,
+    extensionId: string
+  ): Promise<ExtensionSocialPairingStatus>;
+  approveExtensionSocialPairing?(pairingCode: string): Promise<ExtensionSocialPairingStatus>;
+  listExtensionSocialDevices?(): Promise<ExtensionSocialDevice[]>;
+  revokeExtensionSocialDevice?(deviceId: string, revision: number): Promise<void>;
   listSocialDestinations?(): Promise<SocialDestination[]>;
   prepareSocialPost?(input: Omit<SocialPostPrepareRequest, 'requestId'>): Promise<SocialPublishJob>;
   publishSocialPost?(jobId: string): Promise<SocialPublishJob>;
@@ -307,6 +319,8 @@ export interface BffControlClientOptions {
   apiPrefix?: string | undefined;
   transport?: NetworkTransport;
   csrfToken?: () => string | null;
+  bearerToken?: () => string | null;
+  extensionId?: string;
 }
 
 export class BffControlClient implements ControlClient {
@@ -314,6 +328,8 @@ export class BffControlClient implements ControlClient {
   readonly #apiPrefix: string;
   readonly #network: NetworkManager;
   readonly #externalCsrfToken: (() => string | null) | undefined;
+  readonly #bearerToken: (() => string | null) | undefined;
+  readonly #extensionId: string | undefined;
   #sessionCsrfToken: string | null = null;
 
   constructor(options: BffControlClientOptions) {
@@ -323,6 +339,8 @@ export class BffControlClient implements ControlClient {
     }
     this.#apiPrefix = normalizeApiPrefix(options.apiPrefix ?? DEFAULT_API_PREFIX);
     this.#externalCsrfToken = options.csrfToken;
+    this.#bearerToken = options.bearerToken;
+    this.#extensionId = options.extensionId;
     this.#network = new NetworkManager({
       ...(options.transport ? { transport: options.transport } : {}),
       policies: {
@@ -650,6 +668,31 @@ export class BffControlClient implements ControlClient {
     await this.#call('/admin/social/meta/connections/disconnect', { connectionId, revision });
   }
 
+  startExtensionSocialPairing(extensionId: string, deviceName: string): Promise<ExtensionSocialPairingStart> {
+    return this.#call('/extension-pairings/start', { extensionId, deviceName });
+  }
+
+  extensionSocialPairingStatus(
+    pairingId: string,
+    pairingCode: string,
+    extensionId: string
+  ): Promise<ExtensionSocialPairingStatus> {
+    return this.#call('/extension-pairings/status', { pairingId, pairingCode, extensionId });
+  }
+
+  approveExtensionSocialPairing(pairingCode: string): Promise<ExtensionSocialPairingStatus> {
+    return this.#call('/admin/extension-pairings/approve', { pairingCode });
+  }
+
+  async listExtensionSocialDevices(): Promise<ExtensionSocialDevice[]> {
+    const result = await this.#call<{ items: ExtensionSocialDevice[] }>('/admin/extension-devices/list', {});
+    return result.items;
+  }
+
+  async revokeExtensionSocialDevice(deviceId: string, revision: number): Promise<void> {
+    await this.#call('/admin/extension-devices/revoke', { deviceId, revision });
+  }
+
   async listSocialDestinations(): Promise<SocialDestination[]> {
     const result = await this.#call<{ items: SocialDestination[] }>('/social/destinations/list', {});
     return result.items;
@@ -700,6 +743,9 @@ export class BffControlClient implements ControlClient {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     const csrfToken = this.csrfToken();
     if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+    const bearerToken = this.#bearerToken?.();
+    if (bearerToken) headers.Authorization = `Bearer ${bearerToken}`;
+    if (this.#extensionId) headers['X-One-Vegetable-Extension-ID'] = this.#extensionId;
     const response = await this.#network.request({
       service: 'bff',
       url: new URL(`${this.#apiPrefix}${path}`, this.#baseUrl),
