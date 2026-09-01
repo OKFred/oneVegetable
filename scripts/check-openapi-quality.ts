@@ -15,4 +15,6 @@ if (issues.length > 0) {
   );
 }
 
-console.log('OpenAPI project rules passed: probes use GET; all other operations use POST JSON bodies.');
+console.log(
+  'OpenAPI project rules passed: probes and declared protocol callbacks use GET; business operations use POST JSON bodies.'
+);

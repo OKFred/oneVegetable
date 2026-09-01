@@ -28,6 +28,7 @@ import { markRequestOperation, readRequestContext } from './observability/reques
 import { registerProductDescriptionTemplateRoutes } from './product-description-templates/routes';
 import { ProductDescriptionTemplateService } from './product-description-templates/service';
 import { registerProductMutationRoutes } from './product-mutations/routes';
+import { registerMetaSocialRoutes } from './social-meta/routes';
 import {
   ProductDisplayNoChangeError,
   ProductDisplayTargetMismatchError,
@@ -64,6 +65,10 @@ import type { ProductDescriptionTemplateRepository } from './product-description
 import type { ProductMutationJobRepository } from './product-mutations/repository';
 import type { RealMutationControlService } from './safety/real-mutation-control';
 import type { AlibabaCredentialAcquisitionService } from './alibaba-credential-acquisition/service';
+import type { MetaSocialService } from './social-meta/service';
+import type { ExtensionSocialDeviceService } from './social-meta/extension-device-service';
+import type { SocialMediaAssetService } from './social-meta/media-service';
+import type { SocialPublishingService } from './social-meta/publishing-service';
 
 export type ApiRuntime = 'node' | 'cloudflare';
 export type ApiDatabase = 'sqlite' | 'd1';
@@ -93,6 +98,10 @@ export interface ApiAppOptions {
   productMutationJobs?: ProductMutationJobRepository;
   realMutationControl?: RealMutationControlService;
   alibabaCredentialAcquisition?: AlibabaCredentialAcquisitionService;
+  metaSocial?: MetaSocialService;
+  socialMediaAssets?: SocialMediaAssetService;
+  socialPublishing?: SocialPublishingService;
+  extensionSocialDevices?: ExtensionSocialDeviceService;
 }
 
 export interface RequestLogContext {
@@ -168,9 +177,18 @@ export function createApiApp(options: ApiAppOptions): Hono {
   api.use(
     '*',
     cors({
-      origin: [...(options.allowedOrigins ?? [])],
+      origin: (origin) =>
+        (options.allowedOrigins ?? []).includes(origin) || /^chrome-extension:\/\/[a-p]{32}$/u.test(origin)
+          ? origin
+          : undefined,
       allowMethods: ['GET', 'POST', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'X-CSRF-Token', 'X-Request-ID'],
+      allowHeaders: [
+        'Authorization',
+        'Content-Type',
+        'X-CSRF-Token',
+        'X-One-Vegetable-Extension-ID',
+        'X-Request-ID'
+      ],
       exposeHeaders: ['X-Request-ID'],
       credentials: true,
       maxAge: 600
@@ -238,6 +256,17 @@ export function createApiApp(options: ApiAppOptions): Hono {
     registerProductMutationRoutes(api, {
       authService: options.authService,
       service: productMutations,
+      ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
+    });
+  }
+
+  if (options.authService && options.metaSocial) {
+    registerMetaSocialRoutes(api, {
+      authService: options.authService,
+      service: options.metaSocial,
+      ...(options.socialMediaAssets ? { mediaAssets: options.socialMediaAssets } : {}),
+      ...(options.socialPublishing ? { publishing: options.socialPublishing } : {}),
+      ...(options.extensionSocialDevices ? { extensionDevices: options.extensionSocialDevices } : {}),
       ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
     });
   }

@@ -1,5 +1,6 @@
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace']);
 const PROBE_PATHS = new Set(['/healthz', '/readyz']);
+const PROTOCOL_GET_PATHS = new Set(['/social/meta/oauth/callback', '/social-media/{opaqueToken}']);
 
 export interface OpenApiQualityIssue {
   pointer: string;
@@ -71,6 +72,19 @@ function inspectOperation(
     }
     if ('requestBody' in operation || 'parameters' in operation) {
       issues.push({ pointer, message: 'Infrastructure probes must not accept request parameters.' });
+    }
+    return;
+  }
+
+  if (PROTOCOL_GET_PATHS.has(path)) {
+    if (method !== 'get') {
+      issues.push({ pointer, message: 'Protocol callback and media routes must use GET.' });
+    }
+    if ('requestBody' in operation) {
+      issues.push({ pointer, message: 'Protocol GET routes must not accept a request body.' });
+    }
+    if (path === '/social/meta/oauth/callback' && 'parameters' in operation) {
+      issues.push({ pointer, message: 'OAuth callback parameters are defined by the external protocol.' });
     }
     return;
   }

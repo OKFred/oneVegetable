@@ -18,6 +18,16 @@ import { readRuntimeConfiguration } from './runtime-config';
 import { SqlProductDescriptionTemplateRepository } from './product-description-templates/repository';
 import { SqlProductMutationJobRepository } from './product-mutations/repository';
 import { readRealMutationsPaused, RealMutationControlService } from './safety/real-mutation-control';
+import { SqlMetaSocialRepository } from './social-meta/repository';
+import { MetaSecretCipher } from './social-meta/secret-cipher';
+import { MetaSocialService } from './social-meta/service';
+import { NodeSocialMediaStore } from './social-meta/node-media-store';
+import { SocialMediaAssetService } from './social-meta/media-service';
+import { SqlSocialPublishingRepository } from './social-meta/publishing-repository';
+import { MetaPublisher } from './social-meta/meta-publisher';
+import { SocialPublishingService } from './social-meta/publishing-service';
+import { SqlExtensionSocialDeviceRepository } from './social-meta/extension-device-repository';
+import { ExtensionSocialDeviceService } from './social-meta/extension-device-service';
 
 const port = readPort(process.env.ONE_VEGETABLE_PORT);
 const runtimeConfiguration = readRuntimeConfiguration(process.env, 'local-node');
@@ -58,6 +68,32 @@ const featureFlags = new EmergencyPauseFeatureFlags(
   new StaticOperationFeatureFlags(new Set(runtimeConfiguration.mutationFlags)),
   await readRealMutationsPaused(metadataRepository)
 );
+const metaSecretCipher = process.env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY
+  ? await MetaSecretCipher.create(process.env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY)
+  : undefined;
+const metaSocial = metaSecretCipher
+  ? new MetaSocialService(new SqlMetaSocialRepository(database.executor), metaSecretCipher, {
+      apiPrefix: runtimeConfiguration.apiPrefix
+    })
+  : undefined;
+const socialPublishingRepository = new SqlSocialPublishingRepository(database.executor);
+const extensionSocialDevices = new ExtensionSocialDeviceService(
+  new SqlExtensionSocialDeviceRepository(database.executor)
+);
+const socialMediaAssets = new SocialMediaAssetService(
+  socialPublishingRepository,
+  new NodeSocialMediaStore(process.env.ONE_VEGETABLE_SOCIAL_MEDIA_PATH ?? '.data/social-media')
+);
+const socialPublishing =
+  metaSocial && metaSecretCipher
+    ? new SocialPublishingService(
+        socialPublishingRepository,
+        socialMediaAssets,
+        metaSocial,
+        metaSecretCipher,
+        new MetaPublisher()
+      )
+    : undefined;
 const app = createApiApp({
   runtime: 'node',
   database: 'sqlite',
@@ -76,6 +112,10 @@ const app = createApiApp({
   adminService: new AdminService(authRepository),
   featureFlags,
   realMutationControl: new RealMutationControlService(metadataRepository, featureFlags),
+  ...(metaSocial ? { metaSocial } : {}),
+  socialMediaAssets,
+  ...(socialPublishing ? { socialPublishing } : {}),
+  extensionSocialDevices,
   requestEvents: new SqlRequestEventRepository(database.executor),
   productDescriptionTemplates: new SqlProductDescriptionTemplateRepository(database.executor),
   productMutationJobs: new SqlProductMutationJobRepository(database.executor),

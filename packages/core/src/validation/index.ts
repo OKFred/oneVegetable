@@ -5,6 +5,8 @@ import {
   validateCapabilityCallRequest,
   validateLogisticsOrderDraft,
   validateLogisticsQuoteRequest,
+  validateMetaAppConfigurationUpdateRequest,
+  validateMetaConnectionTargetRequest,
   validateOperationAvailabilityRequest,
   validateProductDisplayRequest,
   validateProductGroupCreateRequest,
@@ -18,7 +20,10 @@ import {
   validateProductSchemaRenderRequest,
   validateProductSchemaRequest,
   validateProductSchemaUpdateRequest,
-  validateSchemaPublishRequest
+  validateSchemaPublishRequest,
+  validateSocialPostPrepareRequest,
+  validateSocialPostListRequest,
+  validateSocialPostTargetRequest
 } from '../generated/validators-core';
 
 import type {
@@ -43,6 +48,13 @@ import type {
   ProductMutationJobListRequest,
   ProductMutationJobRefreshRequest
 } from '../product-mutation-job';
+import type {
+  MetaAppConfigurationUpdateRequest,
+  MetaConnectionTargetRequest,
+  SocialPostPrepareRequest,
+  SocialPostListRequest,
+  SocialPostTargetRequest
+} from '../social-meta';
 
 export interface ValidationResult<T> {
   valid: boolean;
@@ -176,6 +188,37 @@ export const validateProductMutationJobGetInput = (value: unknown, locale?: 'en'
 export const validateProductMutationJobRefreshInput = (value: unknown, locale?: 'en' | 'zh') =>
   runValidator<ProductMutationJobRefreshRequest>(
     validateProductMutationJobRefreshRequest as StandaloneValidator,
+    value,
+    locale
+  );
+
+export const validateSocialPostPrepareInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<SocialPostPrepareRequest>(
+    validateSocialPostPrepareRequest as StandaloneValidator,
+    value,
+    locale
+  );
+
+export const validateSocialPostListInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<SocialPostListRequest>(validateSocialPostListRequest as StandaloneValidator, value, locale);
+
+export const validateSocialPostTargetInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<SocialPostTargetRequest>(
+    validateSocialPostTargetRequest as StandaloneValidator,
+    value,
+    locale
+  );
+
+export const validateMetaAppConfigurationUpdateInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<MetaAppConfigurationUpdateRequest>(
+    validateMetaAppConfigurationUpdateRequest as StandaloneValidator,
+    value,
+    locale
+  );
+
+export const validateMetaConnectionTargetInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<MetaConnectionTargetRequest>(
+    validateMetaConnectionTargetRequest as StandaloneValidator,
     value,
     locale
   );

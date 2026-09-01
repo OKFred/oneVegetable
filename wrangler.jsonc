@@ -17,6 +17,7 @@
       "migrations_dir": "apps/api/drizzle"
     }
   ],
+  "r2_buckets": [{ "binding": "SOCIAL_MEDIA" }],
   "browser": {
     "binding": "BROWSER"
   },

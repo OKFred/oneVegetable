@@ -42,7 +42,9 @@ export class GatewayConfigurationError extends Error {
       | 'ALIBABA_CREDENTIAL_REFRESH_IN_PROGRESS'
       | 'ALIBABA_TOKEN_REFRESH_FAILED'
       | 'ALIBABA_ENDPOINT_INVALID'
-      | 'ALIBABA_SIGN_METHOD_INVALID',
+      | 'ALIBABA_SIGN_METHOD_INVALID'
+      | 'META_CREDENTIAL_ENCRYPTION_KEY_INVALID'
+      | 'META_CREDENTIAL_VAULT_UNREADABLE',
     message: string
   ) {
     super(message);

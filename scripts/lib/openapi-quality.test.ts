@@ -19,6 +19,15 @@ function validDocument(): Record<string, unknown> {
             '400': { description: 'Invalid request' }
           }
         }
+      },
+      '/social/meta/oauth/callback': {
+        get: { responses: { '303': { description: 'OAuth completed' } } }
+      },
+      '/social-media/{opaqueToken}': {
+        get: {
+          parameters: [{ name: 'opaqueToken', in: 'path', required: true }],
+          responses: { '200': { description: 'Temporary image' } }
+        }
       }
     },
     components: { schemas: {} }

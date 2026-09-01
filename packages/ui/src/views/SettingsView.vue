@@ -37,6 +37,7 @@ import AlibabaCredentialAcquisitionDialog from '../components/AlibabaCredentialA
 import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
+import ExtensionSocialBackendPanel from '../components/ExtensionSocialBackendPanel.vue';
 import PageHeader from '../components/PageHeader.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
@@ -46,8 +47,16 @@ import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import type { DataColumn } from '../lib/table';
 
-const { gateway, settings, permissions, localData, vault, alibabaCredentialAcquisition, mode } =
-  useServices();
+const {
+  gateway,
+  settings,
+  permissions,
+  localData,
+  vault,
+  alibabaCredentialAcquisition,
+  extensionSocialBackend,
+  mode
+} = useServices();
 const { language: preferredLanguage, theme: preferredTheme } = useAppPreferences();
 const signMethods: SignMethod[] = ['hmac', 'md5', 'hmac-sha256'];
 const model = ref<GatewaySettings>({
@@ -836,6 +845,7 @@ function confirmThemePreference(): void {
         </p>
       </div></Card
     >
+    <ExtensionSocialBackendPanel v-if="mode === 'extension' && extensionSocialBackend" />
     <Card v-if="mode === 'extension' && permissions" class="p-5">
       <div class="flex items-center gap-2">
         <Globe2 class="size-4 text-primary" />

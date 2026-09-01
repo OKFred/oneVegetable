@@ -1,0 +1,16 @@
+[
+  {
+    "id": "77777777-7777-4777-8777-777777777777",
+    "name": "Windows Chrome",
+    "extensionId": "aepfdoldflokikbbcpnfifkacpfakmjc",
+    "status": "active",
+    "expiresTimeUtc": 1790784000000,
+    "lastUsedTimeUtc": 1788195600000,
+    "createTimeUtc": 1788192000000,
+    "updateTimeUtc": 1788192000000,
+    "creatorId": "admin-1",
+    "updaterId": "admin-1",
+    "revision": 1,
+    "remark": null
+  }
+]

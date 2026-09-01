@@ -1,0 +1,132 @@
+// @vitest-environment jsdom
+
+import { defineComponent, h } from 'vue';
+import { flushPromises, mount } from '@vue/test-utils';
+import { describe, expect, it, vi } from 'vitest';
+
+import {
+  ALIBABA_GATEWAY,
+  type ExtensionSocialBackendRepository,
+  type ExtensionSocialBackendStatus,
+  type ExtensionSocialDevice
+} from '@one-vegetable/core';
+import { MockGatewayClient } from '@one-vegetable/core/mock';
+
+import devicesFixture from '../../../mock/data/social-meta/devices.json';
+import ExtensionSocialBackendPanel from '../src/components/ExtensionSocialBackendPanel.vue';
+import { provideServices } from '../src/lib/services';
+
+vi.mock('vue-sonner', () => ({
+  toast: { success: vi.fn(), info: vi.fn(), warning: vi.fn(), error: vi.fn() }
+}));
+
+const extensionId = 'aepfdoldflokikbbcpnfifkacpfakmjc';
+
+describe('ExtensionSocialBackendPanel', () => {
+  it('guides pairing and does not expose the device token', async () => {
+    const start = vi.fn(() => Promise.resolve(pendingStatus()));
+    const refresh = vi.fn(() => Promise.resolve(pairedStatus()));
+    const disconnect = vi.fn(() => Promise.resolve(unconfiguredStatus()));
+    const backend = {
+      status: () => Promise.resolve(unconfiguredStatus()),
+      start,
+      refresh,
+      disconnect
+    } satisfies ExtensionSocialBackendRepository;
+    const wrapper = mountPanel(backend);
+    await flushPromises();
+
+    const inputs = wrapper.findAll('input');
+    await inputs[0]?.setValue('https://social.example.com');
+    await inputs[1]?.setValue('Windows Chrome');
+    await clickButton(wrapper, '开始配对');
+    expect(start).toHaveBeenCalledWith('https://social.example.com', 'Windows Chrome');
+    expect(wrapper.text()).toContain('ABCD-EFGH-JKLM-NPQR');
+
+    await clickButton(wrapper, '检查批准结果');
+    expect(refresh).toHaveBeenCalledOnce();
+    expect(wrapper.text()).toContain('已配对');
+    expect(wrapper.text()).not.toContain('ovd_');
+
+    await clickButton(wrapper, '断开');
+    expect(disconnect).not.toHaveBeenCalled();
+    await clickBodyButton('确认断开');
+    expect(disconnect).toHaveBeenCalledOnce();
+    wrapper.unmount();
+  });
+});
+
+function mountPanel(backend: ExtensionSocialBackendRepository) {
+  const Host = defineComponent({
+    setup() {
+      provideServices({
+        gateway: new MockGatewayClient(0),
+        settings: {
+          load: () =>
+            Promise.resolve({
+              appKey: '',
+              appSecret: '',
+              accessToken: '',
+              endpoint: ALIBABA_GATEWAY,
+              signMethod: 'hmac'
+            }),
+          save: () => Promise.resolve()
+        },
+        extensionSocialBackend: backend,
+        mode: 'extension'
+      });
+      return () => h(ExtensionSocialBackendPanel);
+    }
+  });
+  return mount(Host, { attachTo: document.body });
+}
+
+async function clickButton(wrapper: ReturnType<typeof mountPanel>, label: string): Promise<void> {
+  const button = wrapper.findAll('button').find((candidate) => candidate.text().trim() === label);
+  if (!button) throw new Error(`Missing button: ${label}`);
+  await button.trigger('click');
+  await flushPromises();
+}
+
+async function clickBodyButton(label: string): Promise<void> {
+  const button = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find(
+    (candidate) => candidate.textContent.trim() === label
+  );
+  if (!button) throw new Error(`Missing body button: ${label}`);
+  button.click();
+  await flushPromises();
+}
+
+function unconfiguredStatus(): ExtensionSocialBackendStatus {
+  return {
+    state: 'unconfigured',
+    baseUrl: null,
+    extensionId,
+    deviceName: null,
+    pairingCode: null,
+    pairingExpiresTimeUtc: null,
+    device: null
+  };
+}
+
+function pendingStatus(): ExtensionSocialBackendStatus {
+  return {
+    state: 'pending',
+    baseUrl: 'https://social.example.com',
+    extensionId,
+    deviceName: 'Windows Chrome',
+    pairingCode: 'ABCDEFGHJKLMNPQR',
+    pairingExpiresTimeUtc: 1_790_784_000_000,
+    device: null
+  };
+}
+
+function pairedStatus(): ExtensionSocialBackendStatus {
+  return {
+    ...pendingStatus(),
+    state: 'paired',
+    pairingCode: null,
+    pairingExpiresTimeUtc: null,
+    device: (devicesFixture[0] as ExtensionSocialDevice | undefined) ?? null
+  };
+}

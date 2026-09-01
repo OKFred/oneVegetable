@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
 import { loadEnvFile } from 'node:process';
 
+import { resolveLocalCredentialEncryptionKey } from './lib/local-credential-encryption-key';
 import { resolveLocalRealMutationFlags } from './lib/local-real-mutation-flags';
 
 if (existsSync('.env')) loadEnvFile('.env');
@@ -14,6 +15,13 @@ const configuredPath =
 const credentialFile = isAbsolute(configuredPath) ? configuredPath : resolve(process.cwd(), configuredPath);
 if (!existsSync(credentialFile)) {
   throw new Error('未找到 Alibaba 授权包，请先运行 pnpm openapi:auth');
+}
+const localEncryptionKey = await resolveLocalCredentialEncryptionKey({
+  configuredValue: process.env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY,
+  filePath: resolve(process.cwd(), '.data/local-credential-encryption-key')
+});
+if (localEncryptionKey.source === 'generated') {
+  process.stdout.write('已生成本地凭据加密密钥并保存到 .data；后续启动会自动复用。\n');
 }
 
 const windows = process.platform === 'win32';
@@ -28,7 +36,8 @@ const child = spawn(command, args, {
     ONE_VEGETABLE_ENVIRONMENT: 'local-node',
     ONE_VEGETABLE_GATEWAY_MODE: 'real',
     ONE_VEGETABLE_MUTATION_FLAGS: resolveLocalRealMutationFlags(process.env.ONE_VEGETABLE_MUTATION_FLAGS),
-    ONE_VEGETABLE_ALIBABA_CREDENTIAL_FILE: credentialFile
+    ONE_VEGETABLE_ALIBABA_CREDENTIAL_FILE: credentialFile,
+    ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY: localEncryptionKey.value
   },
   stdio: 'inherit',
   windowsHide: true

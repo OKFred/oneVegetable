@@ -24,6 +24,7 @@ describe('Cloudflare one-click deployment configuration', () => {
       migrations_dir: 'apps/api/drizzle'
     });
     expect(databases[0]).not.toHaveProperty('database_id');
+    expect(wrangler.r2_buckets).toEqual([{ binding: 'SOCIAL_MEDIA' }]);
     expect(existsSync(new URL('apps/api/wrangler.jsonc', root))).toBe(false);
   });
 

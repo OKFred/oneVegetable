@@ -12,6 +12,8 @@ export type {
 export { parseAlibabaOpenApiCredentialBundle } from './alibaba-credential-bundle';
 export type { AlibabaOpenApiCredentialBundle } from './alibaba-credential-bundle';
 export { BffGatewayClient } from './bff-client';
+export { BffControlClient } from './control-client';
+export { EXTENSION_SOCIAL_BACKEND_STORAGE_KEY } from './extension-social-backend';
 export {
   CREDENTIAL_VAULT_ITERATIONS,
   CREDENTIAL_VAULT_MAX_PASSPHRASE_CHARACTERS,
@@ -65,3 +67,16 @@ export type {
   RuntimeResponse,
   SettingsRepository
 } from './types';
+export type {
+  ExtensionSocialBackendRepository,
+  ExtensionSocialBackendStatus
+} from './extension-social-backend';
+export type { SocialPublishingClient } from './social-publishing-client';
+export type {
+  ExtensionSocialDevice,
+  ExtensionSocialPairingStart,
+  ExtensionSocialPairingStatus,
+  SocialDestination,
+  SocialPostPrepareRequest,
+  SocialPublishJob
+} from './social-meta';

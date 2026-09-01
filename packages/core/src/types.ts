@@ -415,7 +415,13 @@ export interface OnboardingRepository {
 }
 
 export interface LocalDataCategory {
-  id: 'credentials' | 'product-mutation-jobs' | 'drafts' | 'diagnostics' | 'preferences';
+  id:
+    | 'credentials'
+    | 'product-mutation-jobs'
+    | 'social-backend-device'
+    | 'drafts'
+    | 'diagnostics'
+    | 'preferences';
   label: string;
   storage: 'chrome.storage.local' | 'chrome.storage.session' | 'localStorage';
   itemCount: number;
