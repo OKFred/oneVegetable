@@ -200,6 +200,58 @@ export const settings = {
     revoked: 'Revoked {origin}. Access will be requested again when needed.',
     notGranted: '{origin} is not currently authorized.'
   },
+  extensionRuntime: {
+    permissionPurposes: {
+      socialBackend: 'social publishing backend',
+      customGateway: 'custom gateway',
+      credentialAcquisition: 'Alibaba credential acquisition',
+      oauthCallback: 'OAuth Callback',
+      productZipAsset: 'product ZIP image download',
+      externalPhoto: 'external image source'
+    },
+    errors: {
+      callbackStateExpired: 'The Callback confirmation state expired. Refresh the task status.',
+      acquisitionRequestMismatch: 'The credential acquisition response requestId does not match.',
+      vaultRequestMismatch: 'The credential protection response requestId does not match.',
+      runtimeRequestMismatch: 'The extension background response requestId does not match.',
+      invalidHostProtocol: '{purpose} only supports HTTP(S) addresses.',
+      permissionDeniedHost: 'Access to {host} for {purpose} was not granted.',
+      permissionDeniedPurpose: 'The exact site access required for {purpose} was not granted.',
+      socialPairingRequired: 'Pair the social publishing backend in Settings first.',
+      socialBackendRequired: 'Configure and pair the social publishing backend first.',
+      socialHttps: 'The social publishing backend must use HTTPS. localhost may use HTTP.',
+      socialUrlStructure:
+        'The social publishing backend URL cannot contain a path, credentials, query, or fragment.'
+    },
+    localData: {
+      credentials: {
+        label: 'Encrypted Open Platform credentials and gateway settings',
+        retention: 'Kept until replaced, extension data is cleared, or the extension is uninstalled'
+      },
+      productMutationJobs: {
+        label: 'Local product display jobs',
+        retention:
+          'Incomplete jobs remain until verified or recovered; completed jobs are kept for up to 30 days and 100 entries'
+      },
+      socialBackendDevice: {
+        label: 'Social publishing backend device authorization',
+        retention:
+          'Kept until disconnected, extension data is cleared, authorization expires, or the extension is uninstalled'
+      },
+      drafts: {
+        label: 'Local product and RFQ drafts',
+        retention: 'Kept until deleted, extension data is cleared, or the extension is uninstalled'
+      },
+      diagnostics: {
+        label: 'Redacted session diagnostics',
+        retention: 'Current browser session only, up to 100 entries'
+      },
+      preferences: {
+        label: 'First-use state and interface preferences',
+        retention: 'Kept until extension data is cleared or the extension is uninstalled'
+      }
+    }
+  },
   localData: {
     title: 'Local data and privacy',
     description:

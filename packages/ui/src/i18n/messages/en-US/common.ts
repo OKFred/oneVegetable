@@ -102,7 +102,8 @@ export const common = {
     configureCredentials: 'Configure credentials',
     preparingDiagnostics: 'Preparing…',
     exportDiagnostics: 'Export redacted diagnostics',
-    platformResponse: 'Platform response'
+    platformResponse: 'Platform response',
+    originalResponse: 'Original response'
   },
   language: {
     switchToEnglish: 'Switch the interface to English',

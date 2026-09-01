@@ -2,6 +2,7 @@ import { auth } from './auth';
 import { admin } from './admin';
 import { capabilities } from './capabilities';
 import { common } from './common';
+import { errors } from './errors';
 import { insights } from './insights';
 import { logistics } from './logistics';
 import { orders } from './orders';
@@ -14,6 +15,7 @@ import { shell } from './shell';
 
 export const enUS = {
   common,
+  errors,
   admin,
   shell,
   auth,

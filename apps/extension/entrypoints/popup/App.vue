@@ -1,10 +1,19 @@
 <script setup lang="ts">
+import { watch } from 'vue';
 import { ExternalLink, Sprout } from '@lucide/vue';
 import { APP_VERSION } from '@one-vegetable/core/version';
 import { LanguageToggle, useUiI18n } from '@one-vegetable/ui';
 
 defineProps<{ openDashboard: () => Promise<void> }>();
-const { t } = useUiI18n();
+const { locale, t } = useUiI18n();
+
+watch(
+  locale,
+  () => {
+    globalThis.document.title = t('shell.brand');
+  },
+  { immediate: true }
+);
 </script>
 
 <template>

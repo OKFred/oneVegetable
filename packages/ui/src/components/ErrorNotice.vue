@@ -9,7 +9,7 @@ import { APP_VERSION } from '@one-vegetable/core/version';
 import type { DiagnosticsSnapshot } from '@one-vegetable/core';
 
 import Button from './ui/Button.vue';
-import { useUiI18n } from '../i18n';
+import { hasUiTranslation, useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 
 const { t } = useUiI18n();
@@ -30,7 +30,31 @@ const { gateway, mode } = useServices();
 const details = computed(() =>
   describeUserVisibleError(props.error, props.fallback || t('common.error.fallback'))
 );
-const messageParts = computed(() => splitUserVisibleErrorMessages(details.value.message));
+const localizedMessage = computed(() => {
+  const code = details.value.code;
+  if (!code) return details.value.message;
+  const key = `errors.codes.${code}`;
+  return hasUiTranslation(key) ? t(key) : details.value.message;
+});
+const platformError = computed(() => {
+  const code = details.value.code ?? '';
+  return (
+    code.startsWith('ALIBABA_') ||
+    [
+      'ALIBABA_ERROR',
+      'AUTHENTICATION_FAILED',
+      'PERMISSION_DENIED',
+      'RATE_LIMITED',
+      'UPSTREAM_UNAVAILABLE'
+    ].includes(code)
+  );
+});
+const originalMessage = computed(() => {
+  if (!platformError.value) return null;
+  const raw = details.value.message.trim();
+  return raw && raw !== localizedMessage.value.trim() ? raw : null;
+});
+const messageParts = computed(() => splitUserVisibleErrorMessages(localizedMessage.value));
 const credentialSettingsRequired = computed(
   () => mode === 'extension' && details.value.code?.startsWith('CREDENTIAL_VAULT_') === true
 );
@@ -128,6 +152,12 @@ function downloadJson(value: unknown, fileName: string): void {
         <p v-if="details.code" class="mt-1 text-xs opacity-80">
           {{ t('common.error.code', { code: details.code }) }}
         </p>
+        <details v-if="originalMessage" class="mt-2 rounded border border-current/20 p-2 text-xs">
+          <summary class="cursor-pointer font-medium">
+            {{ t(platformError ? 'common.error.platformResponse' : 'common.error.originalResponse') }}
+          </summary>
+          <p class="mt-2 break-words whitespace-pre-wrap opacity-90">{{ originalMessage }}</p>
+        </details>
         <div v-if="details.requestId || details.traceId" class="mt-2 flex flex-wrap items-center gap-2">
           <code
             v-if="details.requestId"

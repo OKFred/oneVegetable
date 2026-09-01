@@ -1,5 +1,6 @@
 export const shell = {
   brand: '一根青菜',
+  documentTitle: '一根青菜 · 国际站运营工作台',
   workspaceTitle: '国际站开放平台运营工作台',
   checkingSession: '正在检查本地会话…',
   primaryNavigation: '主导航',

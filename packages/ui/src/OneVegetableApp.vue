@@ -119,7 +119,7 @@ const baseItems: NavigationItem[] = [
   { id: 'releases', labelKey: 'shell.navigation.releases', icon: History },
   { id: 'settings', labelKey: 'shell.navigation.settings', icon: Settings }
 ];
-const { t } = useUiI18n();
+const { locale, t } = useUiI18n();
 const session = ref<ControlSession | null>(null);
 const dataSource = computed(() => resolveDataSource(props.mode, runtime));
 const { theme: themePreference } = useAppPreferences();
@@ -152,6 +152,14 @@ const activeView = computed(() => views[page.value]);
 const colorScheme = globalThis.matchMedia('(prefers-color-scheme: dark)');
 const desktopNavigationQuery = globalThis.matchMedia('(min-width: 1024px)');
 const desktopNavigation = ref(desktopNavigationQuery.matches);
+
+watch(
+  locale,
+  () => {
+    globalThis.document.title = t('shell.documentTitle');
+  },
+  { immediate: true }
+);
 
 function syncTheme(): void {
   darkTheme.value = applyAppTheme(themePreference.value) === 'dark';

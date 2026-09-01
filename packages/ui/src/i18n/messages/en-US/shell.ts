@@ -1,5 +1,6 @@
 export const shell = {
   brand: 'oneVegetable',
+  documentTitle: 'oneVegetable · Alibaba.com Operations Workspace',
   workspaceTitle: 'Alibaba.com Open Platform Operations Workspace',
   checkingSession: 'Checking your local session…',
   primaryNavigation: 'Primary navigation',

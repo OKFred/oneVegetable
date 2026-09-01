@@ -277,7 +277,12 @@ async function saveAcquiredCredentialsToVault(
   const present = Object.prototype.hasOwnProperty.call(stored, SETTINGS_STORAGE_KEY);
   const state = inspectCredentialStorage(stored[SETTINGS_STORAGE_KEY], present);
   if (state.kind === 'empty') {
-    if (!passphrase) throw new Error('首次保存到插件时需要设置本机保护口令');
+    if (!passphrase) {
+      throw gatewayFailure(
+        'CREDENTIAL_VAULT_PASSPHRASE_REQUIRED',
+        'A local passphrase is required before saving credentials for the first time.'
+      );
+    }
     return (await executeCredentialVaultOperation('create', {
       passphrase,
       settings
@@ -320,7 +325,9 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
       await vaultSession.lock('manual');
       return credentialVaultStatus(state);
     case 'create': {
-      if (state.kind !== 'empty') throw new Error('已有凭证配置不能重复创建');
+      if (state.kind !== 'empty') {
+        throw gatewayFailure('CREDENTIAL_VAULT_ALREADY_CONFIGURED', 'Credentials already exist.');
+      }
       const request = asRecord(payload);
       const settings = requiredGatewaySettings(request.settings);
       const created = await createCredentialVault(settings, requiredString(request, 'passphrase'));
@@ -329,7 +336,12 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
       return credentialVaultStatus({ kind: 'vault', record: created.record });
     }
     case 'migrate': {
-      if (state.kind !== 'legacy') throw new Error('当前没有待迁移的旧版明文凭证');
+      if (state.kind !== 'legacy') {
+        throw gatewayFailure(
+          'CREDENTIAL_VAULT_MIGRATION_NOT_AVAILABLE',
+          'No legacy plaintext credentials are available to migrate.'
+        );
+      }
       const created = await createCredentialVault(state.settings, requiredVaultString(payload, 'passphrase'));
       await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: created.record });
       await vaultSession.activate({ ...created, settings: state.settings }, created.sessionKeyMaterial);
@@ -370,7 +382,10 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
       return credentialVaultStatus({ kind: 'vault', record });
     }
     default:
-      throw new Error('不支持的凭证保护操作');
+      throw gatewayFailure(
+        'INVALID_CREDENTIAL_VAULT_OPERATION',
+        'The credential protection operation is not supported.'
+      );
   }
 }
 
@@ -424,16 +439,22 @@ async function getUnlockedVault(state: ReturnType<typeof inspectCredentialStorag
 function vaultStateError(kind: ReturnType<typeof inspectCredentialStorage>['kind']): GatewayException {
   const details =
     kind === 'legacy'
-      ? ['CREDENTIAL_VAULT_MIGRATION_REQUIRED', '旧版明文凭证必须先完成本机加密']
+      ? [
+          'CREDENTIAL_VAULT_MIGRATION_REQUIRED',
+          'Legacy plaintext credentials must be encrypted locally first.'
+        ]
       : kind === 'invalid'
-        ? ['CREDENTIAL_VAULT_INVALID', '凭证存储格式无效，请清除本地数据后重新配置']
+        ? [
+            'CREDENTIAL_VAULT_INVALID',
+            'Credential storage is invalid. Clear local data and configure it again.'
+          ]
         : kind === 'empty'
-          ? ['CREDENTIAL_VAULT_EMPTY', '请先在设置中配置开放平台凭证']
+          ? ['CREDENTIAL_VAULT_EMPTY', 'Configure Open Platform credentials in Settings first.']
           : vaultSession.lockReason === 'idle'
-            ? ['CREDENTIAL_VAULT_IDLE_TIMEOUT', '开放平台凭证因空闲超时已锁定，请重新解锁']
+            ? ['CREDENTIAL_VAULT_IDLE_TIMEOUT', 'Open Platform credentials were locked after being idle.']
             : vaultSession.lockReason === 'manual'
-              ? ['CREDENTIAL_VAULT_LOCKED', '开放平台凭证已手动锁定，请先在设置中解锁']
-              : ['CREDENTIAL_VAULT_SESSION_ENDED', 'Chrome 会话已结束或扩展已更新，请在设置中重新解锁凭证'];
+              ? ['CREDENTIAL_VAULT_LOCKED', 'Open Platform credentials were manually locked.']
+              : ['CREDENTIAL_VAULT_SESSION_ENDED', 'The Chrome session ended or the extension was updated.'];
   const [code, message] = details as [string, string];
   return new GatewayException({ code, message, retryable: false });
 }
@@ -509,7 +530,9 @@ async function executeOperation(
   if (operation === 'listCapabilities') return listCapabilities();
   if (operation === 'getCapabilityDefinition') {
     const definition = getCapabilityDefinition(requiredString(asRecord(payload), 'method'));
-    if (!definition) throw new Error('该能力尚无类型化定义');
+    if (!definition) {
+      throw gatewayFailure('CAPABILITY_DEFINITION_MISSING', 'This capability has no typed definition.');
+    }
     return definition;
   }
 
@@ -562,7 +585,7 @@ async function executeOperation(
       if (!validation.valid || !validation.data) {
         throw new GatewayException({
           code: 'REQUEST_CONTRACT_INVALID',
-          message: validation.errors.join('；') || '新增商品请求无效',
+          message: validation.errors.join('; ') || 'The product creation request is invalid.',
           retryable: false
         });
       }
@@ -575,7 +598,7 @@ async function executeOperation(
       if (!validation.valid || !validation.data) {
         throw new GatewayException({
           code: 'REQUEST_CONTRACT_INVALID',
-          message: validation.errors.join('；') || '商品上下架请求无效',
+          message: validation.errors.join('; ') || 'The product display request is invalid.',
           retryable: false
         });
       }
@@ -640,7 +663,10 @@ async function executeOperation(
       return trades.deleteAddress(requiredString(request, 'addressId'));
     case 'createTradeOrder':
     case 'modifyTradeOrder':
-      throw new Error('信保订单写入需要真实账号逐方法验收，当前保持禁用');
+      throw gatewayFailure(
+        'TRADE_MUTATION_UNVERIFIED',
+        'Trade Assurance order writes require per-operation real-account verification.'
+      );
     case 'listLogisticsAddressNodes':
       return logistics.listAddressNodes(payload as RequestOf<'listLogisticsAddressNodes'>);
     case 'listLogisticsSpecialProductTypes':
@@ -693,7 +719,7 @@ async function executeOperation(
       return {
         items: page.items.map((item) => ({
           id: item.id,
-          buyerName: item.buyerLoginId ?? '未知买家',
+          buyerName: item.buyerLoginId ?? '—',
           amount: Number(item.amount),
           currency: item.currency,
           status: item.status,
@@ -930,7 +956,7 @@ function productMutationListInput(payload: Record<string, unknown>): ProductMuta
     status !== 'recovered' &&
     status !== 'failed'
   ) {
-    throw new Error('商品写入任务状态无效');
+    throw gatewayFailure('PRODUCT_MUTATION_STATUS_INVALID', 'The product mutation job status is invalid.');
   }
   return {
     ...(page === undefined ? {} : { page }),
@@ -950,12 +976,15 @@ function requiredAcquisitionContinueCommand(
   if (record.type === 'confirm-callback-change' && typeof record.confirmed === 'boolean') {
     return { type: 'confirm-callback-change', confirmed: record.confirmed };
   }
-  throw new Error('Alibaba 凭据获取继续命令无效');
+  throw gatewayFailure(
+    'ACQUISITION_COMMAND_INVALID',
+    'The Alibaba credential acquisition command is invalid.'
+  );
 }
 
 function nullableString(value: unknown): string | null {
   if (value === null || value === undefined || value === '') return null;
-  if (typeof value !== 'string') throw new Error('Callback URL 无效');
+  if (typeof value !== 'string') throw gatewayFailure('CALLBACK_INVALID', 'The Callback URL is invalid.');
   return value;
 }
 
@@ -980,7 +1009,7 @@ function requiredGatewaySettings(value: unknown): GatewaySettings {
 
 function requiredSignMethod(value: unknown): GatewaySettings['signMethod'] {
   if (value === 'hmac' || value === 'md5' || value === 'hmac-sha256') return value;
-  throw new Error('签名算法无效');
+  throw gatewayFailure('ALIBABA_SIGN_METHOD_INVALID', 'The Alibaba signing method is invalid.');
 }
 
 function asRuntimeRequest(value: unknown): RuntimeRequest | null {
@@ -1025,26 +1054,27 @@ function readNumber(record: Record<string, unknown>, keys: string[]): number | u
 
 function requiredString(record: Record<string, unknown>, key: string): string {
   const value = readString(record, [key]);
-  if (!value) throw new Error(`缺少必填参数 ${key}`);
+  if (!value) throw gatewayFailure('INVALID_OPERATION_PAYLOAD', `Missing required field: ${key}.`);
   return value;
 }
 
 function requiredAlibabaLanguage(record: Record<string, unknown>, key: string): AlibabaLanguage {
   const value = requiredString(record, key);
   if (isAlibabaLanguage(value)) return value;
-  throw new Error(`${key} 仅支持 zh_CN 或 en_US`);
+  throw gatewayFailure('INVALID_OPERATION_PAYLOAD', `${key} must be zh_CN or en_US.`);
 }
 
 function requiredNumber(record: Record<string, unknown>, key: string): number {
   const value = readNumber(record, [key]);
-  if (value === undefined) throw new Error(`缺少必填参数 ${key}`);
+  if (value === undefined)
+    throw gatewayFailure('INVALID_OPERATION_PAYLOAD', `Missing required field: ${key}.`);
   return value;
 }
 
 function requiredStringArray(record: Record<string, unknown>, key: string): string[] {
   const value = record[key];
   if (!Array.isArray(value) || !value.every((item) => typeof item === 'string')) {
-    throw new Error(`缺少必填参数 ${key}`);
+    throw gatewayFailure('INVALID_OPERATION_PAYLOAD', `Missing or invalid required field: ${key}.`);
   }
   return value;
 }
@@ -1058,17 +1088,30 @@ function assertCredentials(settings: GatewaySettings): void {
   if (!settings.appKey || !settings.appSecret || !settings.accessToken) {
     throw new GatewayException({
       code: 'MISSING_CREDENTIALS',
-      message: '请先在设置中填写 App Key、App Secret 和 Access Token',
+      message: 'Configure the App Key, App Secret, and Access Token in Settings first.',
       retryable: false
     });
   }
 }
 
 function assertCallable(capability: ApiCapability | undefined): asserts capability is ApiCapability {
-  if (!capability) throw new Error('API 不在已审计的免费非聚石塔目录中');
-  if (capability.restricted) throw new Error(capability.restrictionReason ?? 'API 需要额外业务权限');
-  if (!capability.enabled) throw new Error('API 尚未完成契约、适配器与测试，当前不可调用');
-  if (!capability.realCallEnabled) {
-    throw new Error('该写能力未开放，后台已在出网前拒绝');
+  if (!capability) {
+    throw gatewayFailure('CAPABILITY_NOT_AUDITED', 'The API is not in the audited callable catalog.');
   }
+  if (capability.restricted) {
+    throw gatewayFailure(
+      'CAPABILITY_RESTRICTED',
+      capability.restrictionReason ?? 'The API requires additional business permissions.'
+    );
+  }
+  if (!capability.enabled) {
+    throw gatewayFailure('CAPABILITY_NOT_INTEGRATED', 'The API contract, adapter, and tests are incomplete.');
+  }
+  if (!capability.realCallEnabled) {
+    throw gatewayFailure('REAL_MUTATION_DISABLED', 'This real write operation is disabled.');
+  }
+}
+
+function gatewayFailure(code: string, message: string): GatewayException {
+  return new GatewayException({ code, message, retryable: false });
 }

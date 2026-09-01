@@ -46,6 +46,7 @@ import {
   type SocialPublishingClient,
   type SettingsRepository
 } from '@one-vegetable/core/runtime';
+import { translateUi } from '@one-vegetable/ui';
 import '@one-vegetable/ui/styles.css';
 import { ALIBABA_CREDENTIAL_ACQUISITION_ORIGINS } from '../../lib/alibaba-credential-page-driver';
 import { resolveExtensionOperationAvailability } from '../../lib/operation-policy';
@@ -77,7 +78,10 @@ const extensionSocialBackend: ExtensionSocialBackendRepository = {
   },
   async start(baseUrl, deviceName) {
     const normalizedBaseUrl = normalizeSocialBackendUrl(baseUrl);
-    await ensureOptionalOrigins([`${new URL(normalizedBaseUrl).origin}/*`], '社交发布后端');
+    await ensureOptionalOrigins(
+      [`${new URL(normalizedBaseUrl).origin}/*`],
+      translateUi('settings.extensionRuntime.permissionPurposes.socialBackend')
+    );
     const client = new BffControlClient({
       baseUrl: normalizedBaseUrl,
       extensionId: browser.runtime.id
@@ -158,7 +162,10 @@ const socialPublishing: SocialPublishingClient = {
 const settings: SettingsRepository = {
   load: () => requestVault('get-settings', undefined),
   async save(value) {
-    await ensureOptionalHostPermission(value.endpoint, '自定义网关');
+    await ensureOptionalHostPermission(
+      value.endpoint,
+      translateUi('settings.extensionRuntime.permissionPurposes.customGateway')
+    );
     await requestVault('save', value);
   }
 };
@@ -166,7 +173,10 @@ const settings: SettingsRepository = {
 const vault: CredentialVaultRepository = {
   status: () => requestVault('status', undefined),
   create: async (passphrase, value) => {
-    await ensureOptionalHostPermission(value.endpoint, '自定义网关');
+    await ensureOptionalHostPermission(
+      value.endpoint,
+      translateUi('settings.extensionRuntime.permissionPurposes.customGateway')
+    );
     return requestVault('create', { passphrase, settings: value });
   },
   migrate: (passphrase) => requestVault('migrate', { passphrase }),
@@ -180,17 +190,23 @@ let latestAcquisitionState: AlibabaCredentialAcquisitionState | null = null;
 
 const alibabaCredentialAcquisition: ExtensionAlibabaCredentialAcquisitionRepository = {
   async start(callbackUrl) {
-    await ensureOptionalOrigins(ALIBABA_CREDENTIAL_ACQUISITION_ORIGINS, 'Alibaba 凭证获取');
+    await ensureOptionalOrigins(
+      ALIBABA_CREDENTIAL_ACQUISITION_ORIGINS,
+      translateUi('settings.extensionRuntime.permissionPurposes.credentialAcquisition')
+    );
     return rememberAcquisitionState(await requestAcquisition('start', { callbackUrl }));
   },
   async continue(jobId, command) {
     if (command.type === 'confirm-callback-change') {
       const state = latestAcquisitionState;
       if (state?.status !== 'callback-confirmation-required' || state.jobId !== jobId) {
-        throw new Error('Callback 确认状态已失效，请重新读取任务状态');
+        throw new Error(translateUi('settings.extensionRuntime.errors.callbackStateExpired'));
       }
       const callbackUrl = command.confirmed ? state.requestedUrl : state.currentUrl;
-      await ensureOptionalOrigins([`${new URL(callbackUrl).origin}/*`], 'OAuth Callback');
+      await ensureOptionalOrigins(
+        [`${new URL(callbackUrl).origin}/*`],
+        translateUi('settings.extensionRuntime.permissionPurposes.oauthCallback')
+      );
     }
     return rememberAcquisitionState(await requestAcquisition('continue', { jobId, command }));
   },
@@ -236,7 +252,7 @@ async function requestAcquisition<K extends ExtensionAlibabaCredentialAcquisitio
   if (response.requestId !== message.requestId) {
     throw new GatewayException({
       code: 'INVALID_RUNTIME_RESPONSE',
-      message: '凭证获取响应 requestId 不匹配',
+      message: translateUi('settings.extensionRuntime.errors.acquisitionRequestMismatch'),
       retryable: false
     });
   }
@@ -284,7 +300,7 @@ async function requestVault<K extends CredentialVaultOperation>(
     throw new GatewayException(
       {
         code: 'INVALID_RUNTIME_RESPONSE',
-        message: '凭证保护响应 requestId 不匹配',
+        message: translateUi('settings.extensionRuntime.errors.vaultRequestMismatch'),
         retryable: false
       },
       message.requestId
@@ -340,57 +356,57 @@ const localData: LocalDataRepository = {
     const categories: LocalDataCategory[] = [
       {
         id: 'credentials',
-        label: '加密开放平台凭证与网关设置',
+        label: translateUi('settings.extensionRuntime.localData.credentials.label'),
         storage: 'chrome.storage.local',
         itemCount: SETTINGS_STORAGE_KEY in local ? 1 : 0,
         approximateBytes: approximateStorageBytes(local[SETTINGS_STORAGE_KEY]),
         sensitive: true,
-        retention: '保留到用户覆盖、清除扩展数据或卸载扩展'
+        retention: translateUi('settings.extensionRuntime.localData.credentials.retention')
       },
       {
         id: 'product-mutation-jobs',
-        label: '商品上下架本地任务',
+        label: translateUi('settings.extensionRuntime.localData.productMutationJobs.label'),
         storage: 'chrome.storage.local',
         itemCount: productMutationJobCount(local[EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY]),
         approximateBytes: approximateStorageBytes(local[EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY]),
         sensitive: true,
-        retention: '未完成任务保留到核验或恢复；完成任务最多保留 30 天、100 条'
+        retention: translateUi('settings.extensionRuntime.localData.productMutationJobs.retention')
       },
       {
         id: 'social-backend-device',
-        label: '社交发布后端设备授权',
+        label: translateUi('settings.extensionRuntime.localData.socialBackendDevice.label'),
         storage: 'chrome.storage.local',
         itemCount: EXTENSION_SOCIAL_BACKEND_STORAGE_KEY in local ? 1 : 0,
         approximateBytes: approximateStorageBytes(local[EXTENSION_SOCIAL_BACKEND_STORAGE_KEY]),
         sensitive: true,
-        retention: '保留到用户断开社交后端、清除扩展数据、设备授权到期或卸载扩展'
+        retention: translateUi('settings.extensionRuntime.localData.socialBackendDevice.retention')
       },
       {
         id: 'drafts',
-        label: '商品与 RFQ 本地草稿',
+        label: translateUi('settings.extensionRuntime.localData.drafts.label'),
         storage: 'localStorage',
         itemCount: drafts.length,
         approximateBytes: approximateStorageBytes(Object.fromEntries(drafts)),
         sensitive: true,
-        retention: '保留到草稿被删除、清除扩展数据或卸载扩展'
+        retention: translateUi('settings.extensionRuntime.localData.drafts.retention')
       },
       {
         id: 'diagnostics',
-        label: '脱敏会话诊断',
+        label: translateUi('settings.extensionRuntime.localData.diagnostics.label'),
         storage: 'chrome.storage.session',
         itemCount: Array.isArray(session.diagnosticEntries) ? session.diagnosticEntries.length : 0,
         approximateBytes: approximateStorageBytes(session),
         sensitive: false,
-        retention: '仅当前浏览器会话，最多 100 条'
+        retention: translateUi('settings.extensionRuntime.localData.diagnostics.retention')
       },
       {
         id: 'preferences',
-        label: '首次使用与界面偏好',
+        label: translateUi('settings.extensionRuntime.localData.preferences.label'),
         storage: 'chrome.storage.local',
         itemCount: Object.keys(preferences).length,
         approximateBytes: approximateStorageBytes(preferences),
         sensitive: false,
-        retention: '保留到清除扩展数据或卸载扩展'
+        retention: translateUi('settings.extensionRuntime.localData.preferences.retention')
       }
     ];
     return createLocalDataInventory(categories);
@@ -431,7 +447,11 @@ class ExtensionGatewayClient implements GatewayClient {
       const transfer = payload as RequestOf<'transferPhotoFromUrl'> | RequestOf<'downloadProductAsset'>;
       await ensureOptionalHostPermission(
         transfer.url,
-        operation === 'downloadProductAsset' ? '商品 ZIP 图片下载' : '外部图片来源'
+        translateUi(
+          operation === 'downloadProductAsset'
+            ? 'settings.extensionRuntime.permissionPurposes.productZipAsset'
+            : 'settings.extensionRuntime.permissionPurposes.externalPhoto'
+        )
       );
     }
     const message: RuntimeRequest<K> = {
@@ -445,7 +465,7 @@ class ExtensionGatewayClient implements GatewayClient {
       throw new GatewayException(
         {
           code: 'INVALID_RUNTIME_RESPONSE',
-          message: '扩展后台响应 requestId 不匹配',
+          message: translateUi('settings.extensionRuntime.errors.runtimeRequestMismatch'),
           retryable: false
         },
         message.requestId
@@ -461,7 +481,7 @@ async function ensureOptionalHostPermission(rawUrl: string, purpose: string): Pr
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new GatewayException({
       code: 'INVALID_HOST_PERMISSION',
-      message: `${purpose}仅允许 HTTP(S) 地址`,
+      message: translateUi('settings.extensionRuntime.errors.invalidHostProtocol', { purpose }),
       retryable: false
     });
   }
@@ -473,7 +493,10 @@ async function ensureOptionalHostPermission(rawUrl: string, purpose: string): Pr
   if (await browser.permissions.request(permissions)) return;
   throw new GatewayException({
     code: 'HOST_PERMISSION_DENIED',
-    message: `未授予 ${purpose} ${url.hostname} 的访问权限`,
+    message: translateUi('settings.extensionRuntime.errors.permissionDeniedHost', {
+      purpose,
+      host: url.hostname
+    }),
     retryable: false
   });
 }
@@ -484,7 +507,7 @@ async function ensureOptionalOrigins(origins: readonly string[], purpose: string
   if (await browser.permissions.request(request)) return;
   throw new GatewayException({
     code: 'HOST_PERMISSION_DENIED',
-    message: `未授予${purpose}所需的精确站点权限`,
+    message: translateUi('settings.extensionRuntime.errors.permissionDeniedPurpose', { purpose }),
     retryable: false
   });
 }
@@ -499,7 +522,7 @@ async function withSocialControl<T>(action: (client: BffControlClient) => Promis
   ) {
     throw new GatewayException({
       code: 'EXTENSION_SOCIAL_BACKEND_NOT_PAIRED',
-      message: '请先在设置中配对社交发布后端',
+      message: translateUi('settings.extensionRuntime.errors.socialPairingRequired'),
       retryable: false
     });
   }
@@ -517,7 +540,7 @@ async function requireExtensionSocialBackend(): Promise<StoredExtensionSocialBac
   if (!stored) {
     throw new GatewayException({
       code: 'EXTENSION_SOCIAL_BACKEND_NOT_CONFIGURED',
-      message: '请先填写并配对社交发布后端',
+      message: translateUi('settings.extensionRuntime.errors.socialBackendRequired'),
       retryable: false
     });
   }
@@ -607,7 +630,7 @@ function normalizeSocialBackendUrl(value: string): string {
   if (url.protocol !== 'https:' && !loopback) {
     throw new GatewayException({
       code: 'SOCIAL_BACKEND_URL_INVALID',
-      message: '社交发布后端必须使用 HTTPS；本机 localhost 可使用 HTTP',
+      message: translateUi('settings.extensionRuntime.errors.socialHttps'),
       retryable: false
     });
   }
@@ -620,7 +643,7 @@ function normalizeSocialBackendUrl(value: string): string {
   ) {
     throw new GatewayException({
       code: 'SOCIAL_BACKEND_URL_INVALID',
-      message: '社交发布后端地址不能包含路径、账号、query 或 fragment',
+      message: translateUi('settings.extensionRuntime.errors.socialUrlStructure'),
       retryable: false
     });
   }

@@ -37,3 +37,7 @@ export function useUiI18n(): {
 export function translateUi(key: string, values?: Record<string, unknown>): string {
   return uiI18n.global.t(key, values ?? {});
 }
+
+export function hasUiTranslation(key: string): boolean {
+  return uiI18n.global.te(key, uiI18n.global.locale.value);
+}

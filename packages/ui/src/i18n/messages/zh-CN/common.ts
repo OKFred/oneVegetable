@@ -102,7 +102,8 @@ export const common = {
     configureCredentials: '前往设置凭证',
     preparingDiagnostics: '正在整理…',
     exportDiagnostics: '导出脱敏诊断',
-    platformResponse: '平台返回'
+    platformResponse: '平台返回',
+    originalResponse: '原始返回'
   },
   language: {
     switchToEnglish: '切换为英文界面',

@@ -182,6 +182,55 @@ export const settings = {
     revoked: '已撤销 {origin}；再次使用时会重新请求授权。',
     notGranted: '{origin} 当前未授权。'
   },
+  extensionRuntime: {
+    permissionPurposes: {
+      socialBackend: '社交发布后端',
+      customGateway: '自定义网关',
+      credentialAcquisition: 'Alibaba 凭证获取',
+      oauthCallback: 'OAuth Callback',
+      productZipAsset: '商品 ZIP 图片下载',
+      externalPhoto: '外部图片来源'
+    },
+    errors: {
+      callbackStateExpired: 'Callback 确认状态已失效，请重新读取任务状态。',
+      acquisitionRequestMismatch: '凭证获取响应 requestId 不匹配。',
+      vaultRequestMismatch: '凭证保护响应 requestId 不匹配。',
+      runtimeRequestMismatch: '扩展后台响应 requestId 不匹配。',
+      invalidHostProtocol: '{purpose}仅允许 HTTP(S) 地址。',
+      permissionDeniedHost: '未授予 {purpose} 对 {host} 的访问权限。',
+      permissionDeniedPurpose: '未授予{purpose}所需的精确站点权限。',
+      socialPairingRequired: '请先在设置中配对社交发布后端。',
+      socialBackendRequired: '请先填写并配对社交发布后端。',
+      socialHttps: '社交发布后端必须使用 HTTPS；本机 localhost 可使用 HTTP。',
+      socialUrlStructure: '社交发布后端地址不能包含路径、账号、query 或 fragment。'
+    },
+    localData: {
+      credentials: {
+        label: '加密开放平台凭证与网关设置',
+        retention: '保留到用户覆盖、清除扩展数据或卸载扩展'
+      },
+      productMutationJobs: {
+        label: '商品上下架本地任务',
+        retention: '未完成任务保留到核验或恢复；完成任务最多保留 30 天、100 条'
+      },
+      socialBackendDevice: {
+        label: '社交发布后端设备授权',
+        retention: '保留到用户断开社交后端、清除扩展数据、设备授权到期或卸载扩展'
+      },
+      drafts: {
+        label: '商品与 RFQ 本地草稿',
+        retention: '保留到草稿被删除、清除扩展数据或卸载扩展'
+      },
+      diagnostics: {
+        label: '脱敏会话诊断',
+        retention: '仅当前浏览器会话，最多 100 条'
+      },
+      preferences: {
+        label: '首次使用与界面偏好',
+        retention: '保留到清除扩展数据或卸载扩展'
+      }
+    }
+  },
   localData: {
     title: '本地数据与隐私',
     description: '清单只包含类别和估算大小，不导出 App Secret、Access Token、草稿正文或诊断内容。',

@@ -8,6 +8,7 @@ import { ALIBABA_GATEWAY, GatewayException } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import ErrorNotice from '../src/components/ErrorNotice.vue';
+import { uiI18n } from '../src/i18n';
 import { provideServices } from '../src/lib/services';
 
 const requestId = '3d7c8523-93cc-48b7-a615-a23d2976c516';
@@ -40,6 +41,7 @@ function mountErrorNotice(error: unknown, mode: 'mock' | 'extension') {
 }
 
 beforeEach(() => {
+  uiI18n.global.locale.value = 'zh-CN';
   exportedBlob = null;
   clipboardWrite.mockClear();
   anchorClick.mockClear();
@@ -61,6 +63,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  uiI18n.global.locale.value = 'zh-CN';
   vi.restoreAllMocks();
 });
 
@@ -123,6 +126,21 @@ describe('ErrorNotice', () => {
       '主图至少需要一张'
     ]);
     expect(wrapper.text()).toContain('traceId: alibaba-trace-1');
+    wrapper.unmount();
+  });
+
+  it('localizes a known gateway code while preserving the Alibaba response', () => {
+    uiI18n.global.locale.value = 'en-US';
+    const error = new GatewayException({
+      code: 'ALIBABA_ERROR',
+      message: '访问令牌无效',
+      retryable: false
+    });
+    const wrapper = mountErrorNotice(error, 'mock');
+
+    expect(wrapper.text()).toContain('The Alibaba API returned an error.');
+    expect(wrapper.get('summary').text()).toBe('Platform response');
+    expect(wrapper.text()).toContain('访问令牌无效');
     wrapper.unmount();
   });
 });
