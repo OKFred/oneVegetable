@@ -43,6 +43,8 @@ describe('ProductsView selection toolbar', () => {
     ).toBe(false);
     expect(button(toolbar.element, '导出').disabled).toBe(true);
     expect(button(toolbar.element, '更多').disabled).toBe(true);
+    expect(button(toolbar.element, '分组').querySelector('svg')).not.toBeNull();
+    expect(button(toolbar.element, '新增').querySelector('svg')).not.toBeNull();
     expect(wrapper.findAll('[role="tab"]').map((tab) => tab.text())).toEqual(['商品列表', '批量发品']);
     expect(toolbar.text()).not.toContain('批量查询产品分');
     expect(toolbar.text()).not.toContain('批量上架');

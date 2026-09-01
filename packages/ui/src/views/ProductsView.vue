@@ -2016,7 +2016,9 @@ onBeforeUnmount(() => {
                 <Download class="size-4" />导出
               </Button>
             </ActionTooltip>
-            <Button variant="outline" @click="productGroupDialogOpen = true">分组</Button>
+            <Button variant="outline" @click="productGroupDialogOpen = true">
+              <Layers3 class="size-4" aria-hidden="true" />分组
+            </Button>
             <ActionTooltip :disabled="Boolean(moreActionsDisabledReason)" :reason="moreActionsDisabledReason">
               <span class="inline-flex">
                 <DropdownMenuRoot :modal="false">
@@ -2068,7 +2070,7 @@ onBeforeUnmount(() => {
                 </DropdownMenuRoot>
               </span>
             </ActionTooltip>
-            <Button @click="startNewProduct">新增</Button>
+            <Button @click="startNewProduct"><ListPlus class="size-4" aria-hidden="true" />新增</Button>
           </div>
         </div>
         <p
