@@ -45,14 +45,16 @@ import type { SocialPublishingClient } from '@one-vegetable/core';
 import { APP_VERSION } from '@one-vegetable/core/version';
 
 import Button from './components/ui/Button.vue';
+import { Avatar, AvatarFallback } from './components/ui/avatar';
 import Sonner from './components/ui/Sonner.vue';
+import Tooltip from './components/ui/Tooltip.vue';
 import AuthGate from './components/AuthGate.vue';
 import LanguageToggle from './components/LanguageToggle.vue';
 import OnboardingDialog from './components/OnboardingDialog.vue';
 import ThemeToggle from './components/ThemeToggle.vue';
 import { useUiI18n } from './i18n';
 import { pageHash, parsePageHash, type PageId } from './lib/hash-router';
-import { resolveDataSource, type RuntimeState } from './lib/data-source';
+import type { RuntimeState } from './lib/data-source';
 import { applyAppTheme, useAppPreferences } from './lib/preferences';
 import { provideServices } from './lib/services';
 
@@ -121,7 +123,6 @@ const baseItems: NavigationItem[] = [
 ];
 const { locale, t } = useUiI18n();
 const session = ref<ControlSession | null>(null);
-const dataSource = computed(() => resolveDataSource(props.mode, runtime));
 const { theme: themePreference } = useAppPreferences();
 const darkTheme = ref(applyAppTheme(themePreference.value) === 'dark');
 const authLoading = ref(props.mode === 'bff' && props.control !== undefined);
@@ -152,6 +153,12 @@ const activeView = computed(() => views[page.value]);
 const colorScheme = globalThis.matchMedia('(prefers-color-scheme: dark)');
 const desktopNavigationQuery = globalThis.matchMedia('(min-width: 1024px)');
 const desktopNavigation = ref(desktopNavigationQuery.matches);
+const identityName = computed(
+  () =>
+    session.value?.principal.username ??
+    t(props.mode === 'extension' ? 'shell.identity.extensionAdmin' : 'shell.identity.localDemo')
+);
+const identityInitials = computed(() => avatarInitials(identityName.value));
 
 watch(
   locale,
@@ -269,6 +276,21 @@ async function logout(): Promise<void> {
   session.value = null;
   replacePage('dashboard');
 }
+
+function avatarInitials(name: string): string {
+  const words = name.trim().split(/\s+/u).filter(Boolean);
+  if (words.length > 1) {
+    return words
+      .slice(0, 2)
+      .map((word) => word[0] ?? '')
+      .join('')
+      .toUpperCase();
+  }
+  return Array.from(words[0] ?? 'OV')
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
 </script>
 
 <template>
@@ -310,7 +332,7 @@ async function logout(): Promise<void> {
           </div>
         </div>
         <nav
-          class="max-h-[calc(100vh-12rem)] space-y-1 overflow-y-auto p-3"
+          class="h-[calc(100vh-4rem)] space-y-1 overflow-y-auto p-3"
           :aria-label="t('shell.primaryNavigation')"
         >
           <a
@@ -329,14 +351,6 @@ async function logout(): Promise<void> {
             <component :is="item.icon" class="size-4" />{{ t(item.labelKey) }}
           </a>
         </nav>
-        <div class="absolute inset-x-3 bottom-4 rounded-lg border border-slate-800 bg-slate-900 p-3">
-          <p class="text-xs font-medium">
-            {{ dataSource.label }}
-          </p>
-          <p class="mt-1 text-[11px] leading-4 text-slate-400">
-            {{ dataSource.description }}
-          </p>
-        </div>
       </aside>
       <div class="lg:pl-60">
         <header
@@ -357,10 +371,18 @@ async function logout(): Promise<void> {
           <div class="flex items-center gap-2 text-xs text-muted-foreground">
             <LanguageToggle />
             <ThemeToggle />
-            <span data-testid="data-source-status" class="inline-flex items-center gap-2">
-              <span class="size-2 rounded-full" :class="dataSource.dotClass" />{{ dataSource.label }}
-            </span>
-            <span v-if="session">{{ session.principal.username }}</span>
+            <Tooltip :text="identityName">
+              <Avatar
+                class="border border-border bg-card text-foreground shadow-sm"
+                role="img"
+                data-testid="account-avatar"
+                :aria-label="t('shell.identity.avatarLabel', { name: identityName })"
+              >
+                <AvatarFallback class="bg-primary/10 text-xs text-primary">
+                  {{ identityInitials }}
+                </AvatarFallback>
+              </Avatar>
+            </Tooltip>
             <Button v-if="mode === 'bff' && session" variant="outline" size="sm" @click="logout">
               {{ t('shell.logout') }}
             </Button>

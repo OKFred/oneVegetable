@@ -10,6 +10,11 @@ export const shell = {
   popupDescription:
     'WXT reloads the extension automatically in development. Real API requests run in the extension service worker.',
   logout: 'Sign out',
+  identity: {
+    extensionAdmin: 'Local administrator',
+    localDemo: 'Local demo user',
+    avatarLabel: 'Current user: {name}'
+  },
   navigation: {
     dashboard: 'Dashboard',
     products: 'Products',

@@ -9,6 +9,11 @@ export const shell = {
   openWorkspace: '打开运营工作台',
   popupDescription: '开发模式由 WXT 自动重载；真实 API 请求由扩展 service worker 发起。',
   logout: '退出',
+  identity: {
+    extensionAdmin: '本机管理员',
+    localDemo: '本地演示用户',
+    avatarLabel: '当前用户：{name}'
+  },
   navigation: {
     dashboard: '总览',
     products: '商品',

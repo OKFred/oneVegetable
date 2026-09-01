@@ -30,11 +30,7 @@ const summary = useQuery({
           ? t('shell.dashboard.descriptions.extension')
           : t('shell.dashboard.descriptions.mock')
     "
-  >
-    <span class="rounded-full border bg-card px-3 py-1.5 text-xs text-muted-foreground">
-      {{ dataSource.label }}
-    </span>
-  </PageHeader>
+  />
   <QueryState
     :loading="summary.isPending.value"
     :error="summary.error.value"
