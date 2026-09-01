@@ -21,6 +21,9 @@ import { readRealMutationsPaused, RealMutationControlService } from './safety/re
 import { SqlMetaSocialRepository } from './social-meta/repository';
 import { MetaSecretCipher } from './social-meta/secret-cipher';
 import { MetaSocialService } from './social-meta/service';
+import { NodeSocialMediaStore } from './social-meta/node-media-store';
+import { SocialMediaAssetService } from './social-meta/media-service';
+import { SqlSocialPublishingRepository } from './social-meta/publishing-repository';
 
 const port = readPort(process.env.ONE_VEGETABLE_PORT);
 const runtimeConfiguration = readRuntimeConfiguration(process.env, 'local-node');
@@ -69,6 +72,11 @@ const metaSocial = metaSecretCipher
       apiPrefix: runtimeConfiguration.apiPrefix
     })
   : undefined;
+const socialPublishingRepository = new SqlSocialPublishingRepository(database.executor);
+const socialMediaAssets = new SocialMediaAssetService(
+  socialPublishingRepository,
+  new NodeSocialMediaStore(process.env.ONE_VEGETABLE_SOCIAL_MEDIA_PATH ?? '.data/social-media')
+);
 const app = createApiApp({
   runtime: 'node',
   database: 'sqlite',
@@ -88,6 +96,7 @@ const app = createApiApp({
   featureFlags,
   realMutationControl: new RealMutationControlService(metadataRepository, featureFlags),
   ...(metaSocial ? { metaSocial } : {}),
+  socialMediaAssets,
   requestEvents: new SqlRequestEventRepository(database.executor),
   productDescriptionTemplates: new SqlProductDescriptionTemplateRepository(database.executor),
   productMutationJobs: new SqlProductMutationJobRepository(database.executor),

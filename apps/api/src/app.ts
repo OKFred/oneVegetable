@@ -66,6 +66,7 @@ import type { ProductMutationJobRepository } from './product-mutations/repositor
 import type { RealMutationControlService } from './safety/real-mutation-control';
 import type { AlibabaCredentialAcquisitionService } from './alibaba-credential-acquisition/service';
 import type { MetaSocialService } from './social-meta/service';
+import type { SocialMediaAssetService } from './social-meta/media-service';
 
 export type ApiRuntime = 'node' | 'cloudflare';
 export type ApiDatabase = 'sqlite' | 'd1';
@@ -96,6 +97,7 @@ export interface ApiAppOptions {
   realMutationControl?: RealMutationControlService;
   alibabaCredentialAcquisition?: AlibabaCredentialAcquisitionService;
   metaSocial?: MetaSocialService;
+  socialMediaAssets?: SocialMediaAssetService;
 }
 
 export interface RequestLogContext {
@@ -249,6 +251,7 @@ export function createApiApp(options: ApiAppOptions): Hono {
     registerMetaSocialRoutes(api, {
       authService: options.authService,
       service: options.metaSocial,
+      ...(options.socialMediaAssets ? { mediaAssets: options.socialMediaAssets } : {}),
       ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
     });
   }

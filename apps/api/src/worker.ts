@@ -27,6 +27,9 @@ import { CloudflareAlibabaCredentialAcquisitionDriver } from './alibaba-credenti
 import { SqlMetaSocialRepository } from './social-meta/repository';
 import { MetaSecretCipher } from './social-meta/secret-cipher';
 import { MetaSocialService } from './social-meta/service';
+import { R2SocialMediaStore } from './social-meta/r2-media-store';
+import { SocialMediaAssetService } from './social-meta/media-service';
+import { SqlSocialPublishingRepository } from './social-meta/publishing-repository';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -76,6 +79,14 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   const metaSocial = new MetaSocialService(new SqlMetaSocialRepository(database.executor), metaSecretCipher, {
     apiPrefix: runtimeConfiguration.apiPrefix
   });
+  const socialMediaAssets = env.SOCIAL_MEDIA
+    ? new SocialMediaAssetService(
+        new SqlSocialPublishingRepository(database.executor),
+        // Wrangler exposes the generated R2 binding as an ambient type that ESLint cannot resolve.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        new R2SocialMediaStore(env.SOCIAL_MEDIA)
+      )
+    : undefined;
   const alibabaCredentialAcquisition =
     runtimeConfiguration.environment === 'self-hosted' && env.BROWSER
       ? new AlibabaCredentialAcquisitionService(
@@ -107,6 +118,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     featureFlags,
     realMutationControl,
     metaSocial,
+    ...(socialMediaAssets ? { socialMediaAssets } : {}),
     ...(alibabaCredentialAcquisition ? { alibabaCredentialAcquisition } : {}),
     requestEvents: new SqlRequestEventRepository(database.executor),
     productDescriptionTemplates: new SqlProductDescriptionTemplateRepository(database.executor),

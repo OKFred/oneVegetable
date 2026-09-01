@@ -45,6 +45,7 @@ export * from './signing';
 export * from './settings-storage';
 export * from './social-sharing';
 export * from './social-meta';
+export * from './social-media';
 export * from './types';
 export * from './validation';
 export * from './version';

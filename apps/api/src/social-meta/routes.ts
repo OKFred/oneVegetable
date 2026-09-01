@@ -3,6 +3,7 @@ import { authorizeAdmin } from '../abac';
 import { authenticateMutation, authenticateRequest } from '../auth/routes';
 import { AuthError } from '../auth/service';
 import { MetaEntityVersionConflictError } from './repository';
+import { SocialMediaAssetError } from './media-service';
 import { MetaSocialServiceError } from './service';
 
 import type { GatewayError } from '@one-vegetable/core';
@@ -10,12 +11,14 @@ import type { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { AuthService } from '../auth/service';
 import type { MetaSocialService } from './service';
+import type { SocialMediaAssetService } from './media-service';
 
 const REQUEST_IDS = new WeakMap<Request, string>();
 
 export interface MetaSocialRouteOptions {
   authService: AuthService;
   service: MetaSocialService;
+  mediaAssets?: SocialMediaAssetService;
   allowedOrigins?: readonly string[];
 }
 
@@ -169,6 +172,29 @@ export function registerMetaSocialRoutes(api: Hono, options: MetaSocialRouteOpti
       'requestId'
     ])
   );
+
+  if (options.mediaAssets) {
+    api.get('/social-media/:opaqueToken', async (context) => {
+      const requestId = crypto.randomUUID();
+      const object = await options.mediaAssets?.readByOpaqueToken(context.req.param('opaqueToken'));
+      if (!object)
+        return failure(context, requestId, 404, {
+          code: 'SOCIAL_MEDIA_NOT_FOUND',
+          message: '社交素材不存在或已过期',
+          retryable: false
+        });
+      return new Response(Uint8Array.from(object.bytes).buffer, {
+        status: 200,
+        headers: {
+          'Content-Type': object.contentType,
+          'Content-Length': String(object.bytes.byteLength),
+          'Cache-Control': 'private, max-age=60',
+          'X-Content-Type-Options': 'nosniff',
+          'X-Request-ID': requestId
+        }
+      });
+    });
+  }
 }
 
 async function adminRead(
@@ -302,6 +328,9 @@ function routeError(error: unknown): {
       status: error.status,
       retryable: error.retryable
     };
+  }
+  if (error instanceof SocialMediaAssetError) {
+    return { code: error.code, message: error.message, status: error.status, retryable: false };
   }
   if (error instanceof MetaEntityVersionConflictError) {
     return {
