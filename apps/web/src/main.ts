@@ -106,6 +106,7 @@ const app = createApp(OneVegetableApp, {
   settings,
   mode: gatewayMode,
   ...(control ? { control } : {}),
+  ...(control ? { socialPublishing: control } : {}),
   ...(productDescriptionTemplates ? { productDescriptionTemplates } : {}),
   ...(productMutationJobs ? { productMutationJobs } : {}),
   operationAvailability

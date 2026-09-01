@@ -1,10 +1,22 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { Camera, Copy, Link2, MessageCircle, RefreshCw, Save, Trash2, Unplug } from '@lucide/vue';
+import {
+  Camera,
+  Copy,
+  Link2,
+  MessageCircle,
+  RefreshCw,
+  Save,
+  ShieldCheck,
+  Smartphone,
+  Trash2,
+  Unplug
+} from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
 import type {
   MetaAppConfigurationSummary,
+  ExtensionSocialDevice,
   SocialAccountConnection,
   SocialDestination
 } from '@one-vegetable/core';
@@ -22,6 +34,8 @@ const { control } = useServices();
 const configuration = ref<MetaAppConfigurationSummary | null>(null);
 const connections = ref<SocialAccountConnection[]>([]);
 const destinations = ref<SocialDestination[]>([]);
+const devices = ref<ExtensionSocialDevice[]>([]);
+const pairingCode = ref('');
 const appId = ref('');
 const appSecret = ref('');
 const publicOrigin = ref(globalThis.location.origin);
@@ -29,7 +43,12 @@ const remark = ref('');
 const loading = ref(false);
 const error = ref<unknown>(null);
 const confirmation = ref<
-  { kind: 'save' } | { kind: 'clear' } | { kind: 'disconnect'; connection: SocialAccountConnection } | null
+  | { kind: 'save' }
+  | { kind: 'clear' }
+  | { kind: 'disconnect'; connection: SocialAccountConnection }
+  | { kind: 'approve-pairing' }
+  | { kind: 'revoke-device'; device: ExtensionSocialDevice }
+  | null
 >(null);
 
 const supported = computed(
@@ -39,9 +58,18 @@ const supported = computed(
     'updateMetaAppConfiguration' in control &&
     'listMetaConnections' in control
 );
+const deviceManagementSupported = computed(
+  () =>
+    control !== undefined &&
+    'approveExtensionSocialPairing' in control &&
+    'listExtensionSocialDevices' in control &&
+    'revokeExtensionSocialDevice' in control
+);
 const confirmationTitle = computed(() => {
   if (confirmation.value?.kind === 'save') return '确认保存 Meta 应用配置';
   if (confirmation.value?.kind === 'clear') return '确认清除 Meta 应用配置';
+  if (confirmation.value?.kind === 'approve-pairing') return '确认批准插件设备';
+  if (confirmation.value?.kind === 'revoke-device') return '确认撤销插件设备';
   return '确认断开 Meta 账号';
 });
 const confirmationDescription = computed(() => {
@@ -52,6 +80,12 @@ const confirmationDescription = computed(() => {
       : 'App Secret 会加密保存且不再回显，请确认 App ID 和公开地址正确。';
   }
   if (value?.kind === 'clear') return '只有断开全部 Meta 账号后才能清除应用配置。';
+  if (value?.kind === 'approve-pairing') {
+    return '批准后，持有此一次性配对码的 Chrome 插件将获得 30 天社交发布设备令牌。';
+  }
+  if (value?.kind === 'revoke-device') {
+    return `撤销 ${value.device.name} 后，该插件无法再读取发布目标或创建社交发布任务。`;
+  }
   return value?.kind === 'disconnect'
     ? `断开 ${value.connection.accountName} 后，其 Facebook Page 和 Instagram 发布目标会同时移除。`
     : '';
@@ -67,14 +101,16 @@ async function refresh(): Promise<void> {
   loading.value = true;
   error.value = null;
   try {
-    const [nextConfiguration, nextConnections, nextDestinations] = await Promise.all([
+    const [nextConfiguration, nextConnections, nextDestinations, nextDevices] = await Promise.all([
       control.metaAppConfiguration(),
       control.listMetaConnections(),
-      control.listSocialDestinations?.() ?? Promise.resolve([])
+      control.listSocialDestinations?.() ?? Promise.resolve([]),
+      control.listExtensionSocialDevices?.() ?? Promise.resolve([])
     ]);
     configuration.value = nextConfiguration;
     connections.value = nextConnections;
     destinations.value = nextDestinations;
+    devices.value = nextDevices;
     publicOrigin.value = nextConfiguration.publicOrigin ?? globalThis.location.origin;
     remark.value = nextConfiguration.remark ?? '';
   } catch (cause: unknown) {
@@ -111,11 +147,21 @@ async function executeConfirmation(): Promise<void> {
       appSecret.value = '';
       await refresh();
       toast.success('Meta 应用配置已清除');
-    } else {
+    } else if (action.kind === 'disconnect') {
       if (!control.disconnectMetaConnection) throw new Error('当前后端不支持断开 Meta 账号');
       await control.disconnectMetaConnection(action.connection.id, action.connection.revision);
       await refresh();
       toast.success(`已断开 ${action.connection.accountName}`);
+    } else if (action.kind === 'approve-pairing') {
+      if (!control.approveExtensionSocialPairing) throw new Error('当前后端不支持插件配对');
+      await control.approveExtensionSocialPairing(pairingCode.value);
+      pairingCode.value = '';
+      toast.success('插件配对已批准，请回到插件检查结果');
+    } else {
+      if (!control.revokeExtensionSocialDevice) throw new Error('当前后端不支持撤销插件设备');
+      await control.revokeExtensionSocialDevice(action.device.id, action.device.revision);
+      await refresh();
+      toast.success(`已撤销 ${action.device.name}`);
     }
     confirmation.value = null;
   } catch (cause: unknown) {
@@ -291,6 +337,75 @@ function destinationCount(connectionId: string): number {
         </article>
       </section>
     </div>
+
+    <section v-if="deviceManagementSupported" class="border-t p-5">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <Smartphone class="size-4 text-primary" />
+            <h3 class="font-medium">插件设备</h3>
+          </div>
+          <p class="mt-1 text-xs text-muted-foreground">
+            插件只获得读取目标和社交发布权限，不会取得 Meta App Secret 或平台 Token。
+          </p>
+        </div>
+        <Badge variant="secondary"
+          >{{ devices.filter((device) => device.status === 'active').length }} 台有效</Badge
+        >
+      </div>
+      <div class="mt-4 flex flex-wrap items-end gap-2">
+        <label class="min-w-64 flex-1 space-y-1 text-sm">
+          <span>插件显示的一次性配对码</span>
+          <Input
+            v-model="pairingCode"
+            maxlength="19"
+            autocomplete="one-time-code"
+            placeholder="ABCD-EFGH-JKLM-NPQR"
+          />
+        </label>
+        <Button
+          :disabled="loading || pairingCode.replaceAll('-', '').trim().length !== 16"
+          @click="confirmation = { kind: 'approve-pairing' }"
+        >
+          <ShieldCheck class="size-4" />批准配对
+        </Button>
+      </div>
+      <p
+        v-if="devices.length === 0"
+        class="mt-4 rounded-lg border border-dashed p-4 text-sm text-muted-foreground"
+      >
+        暂无已配对插件设备。
+      </p>
+      <div v-else class="mt-4 grid gap-2 md:grid-cols-2">
+        <article v-for="device in devices" :key="device.id" class="rounded-lg border p-3 text-sm">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="font-medium">{{ device.name }}</p>
+              <p class="mt-1 text-xs text-muted-foreground">
+                到期：{{ formatDateTime(device.expiresTimeUtc) }}
+              </p>
+              <p v-if="device.lastUsedTimeUtc" class="mt-1 text-xs text-muted-foreground">
+                最近使用：{{ formatDateTime(device.lastUsedTimeUtc) }}
+              </p>
+            </div>
+            <div class="flex items-center gap-1">
+              <Badge :variant="device.status === 'active' ? 'success' : 'secondary'">
+                {{ device.status === 'active' ? '有效' : device.status === 'expired' ? '已过期' : '已撤销' }}
+              </Badge>
+              <Button
+                v-if="device.status === 'active'"
+                variant="ghost"
+                size="icon"
+                :aria-label="`撤销 ${device.name}`"
+                @click="confirmation = { kind: 'revoke-device', device }"
+              >
+                <Unplug class="size-4" />
+              </Button>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
   </Card>
 
   <ConfirmActionDialog
@@ -298,7 +413,11 @@ function destinationCount(connectionId: string): number {
     :title="confirmationTitle"
     :description="confirmationDescription"
     :pending="loading"
-    :destructive="confirmation?.kind === 'clear' || confirmation?.kind === 'disconnect'"
+    :destructive="
+      confirmation?.kind === 'clear' ||
+      confirmation?.kind === 'disconnect' ||
+      confirmation?.kind === 'revoke-device'
+    "
     @update:open="confirmation = $event ? confirmation : null"
     @confirm="executeConfirmation"
   />

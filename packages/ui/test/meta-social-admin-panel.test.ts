@@ -10,6 +10,7 @@ import { MockGatewayClient } from '@one-vegetable/core/mock';
 import configurationFixture from '../../../mock/data/social-meta/configuration.json';
 import connectionsFixture from '../../../mock/data/social-meta/connections.json';
 import destinationsFixture from '../../../mock/data/social-meta/destinations.json';
+import devicesFixture from '../../../mock/data/social-meta/devices.json';
 import MetaSocialAdminPanel from '../src/components/MetaSocialAdminPanel.vue';
 import { provideServices } from '../src/lib/services';
 
@@ -66,4 +67,81 @@ describe('MetaSocialAdminPanel', () => {
     expect(disconnectMetaConnection).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111', 1);
     wrapper.unmount();
   });
+
+  it('approves a pairing code and confirms before revoking an extension device', async () => {
+    const approveExtensionSocialPairing = vi.fn(() =>
+      Promise.resolve({
+        pairingId: '88888888-8888-4888-8888-888888888888',
+        status: 'approved' as const,
+        expiresTimeUtc: 1_790_784_000_000,
+        device: null,
+        deviceToken: null
+      })
+    );
+    const revokeExtensionSocialDevice = vi.fn(() => Promise.resolve());
+    const control = {
+      metaAppConfiguration: () => Promise.resolve(configurationFixture),
+      updateMetaAppConfiguration: vi.fn(),
+      listMetaConnections: () => Promise.resolve(connectionsFixture),
+      listSocialDestinations: () => Promise.resolve(destinationsFixture),
+      approveExtensionSocialPairing,
+      listExtensionSocialDevices: () => Promise.resolve(devicesFixture),
+      revokeExtensionSocialDevice
+    } as unknown as ControlClient;
+    const wrapper = mountPanel(control);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Windows Chrome');
+    const pairingInput = wrapper.find('input[placeholder="ABCD-EFGH-JKLM-NPQR"]');
+    await pairingInput.setValue('ABCDEFGHJKLMNPQR');
+    await findButton(wrapper, '批准配对').trigger('click');
+    await clickBodyButton('确认');
+    expect(approveExtensionSocialPairing).toHaveBeenCalledWith('ABCDEFGHJKLMNPQR');
+
+    const revoke = wrapper.find('button[aria-label="撤销 Windows Chrome"]');
+    await revoke.trigger('click');
+    await clickBodyButton('确认');
+    expect(revokeExtensionSocialDevice).toHaveBeenCalledWith('77777777-7777-4777-8777-777777777777', 1);
+    wrapper.unmount();
+  });
 });
+
+function mountPanel(control: ControlClient) {
+  const Host = defineComponent({
+    setup() {
+      provideServices({
+        gateway: new MockGatewayClient(0),
+        settings: {
+          load: () =>
+            Promise.resolve({
+              appKey: '',
+              appSecret: '',
+              accessToken: '',
+              endpoint: ALIBABA_GATEWAY,
+              signMethod: 'hmac'
+            }),
+          save: () => Promise.resolve()
+        },
+        control,
+        mode: 'bff'
+      });
+      return () => h(MetaSocialAdminPanel);
+    }
+  });
+  return mount(Host, { attachTo: document.body });
+}
+
+function findButton(wrapper: ReturnType<typeof mountPanel>, label: string) {
+  const button = wrapper.findAll('button').find((candidate) => candidate.text().trim() === label);
+  if (!button) throw new Error(`Missing button: ${label}`);
+  return button;
+}
+
+async function clickBodyButton(label: string): Promise<void> {
+  const button = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find(
+    (candidate) => candidate.textContent.trim() === label
+  );
+  if (!button) throw new Error(`Missing body button: ${label}`);
+  button.click();
+  await flushPromises();
+}

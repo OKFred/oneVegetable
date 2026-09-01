@@ -30,6 +30,7 @@ import {
 
 import type {
   CredentialVaultRepository,
+  ExtensionSocialBackendRepository,
   ExtensionAlibabaCredentialAcquisitionRepository,
   ControlClient,
   ControlSession,
@@ -42,6 +43,7 @@ import type {
   ProductMutationJobClient,
   SettingsRepository
 } from '@one-vegetable/core';
+import type { SocialPublishingClient } from '@one-vegetable/core';
 import { APP_VERSION } from '@one-vegetable/core/version';
 
 import Button from './components/ui/Button.vue';
@@ -62,6 +64,8 @@ const props = defineProps<{
   localData?: LocalDataRepository;
   onboarding?: OnboardingRepository;
   control?: ControlClient;
+  socialPublishing?: SocialPublishingClient;
+  extensionSocialBackend?: ExtensionSocialBackendRepository;
   productDescriptionTemplates?: ProductDescriptionTemplateClient;
   productMutationJobs?: ProductMutationJobClient;
   operationAvailability?: OperationAvailabilityClient;
@@ -84,6 +88,8 @@ provideServices({
     ? { alibabaCredentialAcquisition: props.alibabaCredentialAcquisition }
     : {}),
   ...(props.control ? { control: props.control } : {}),
+  ...(props.socialPublishing ? { socialPublishing: props.socialPublishing } : {}),
+  ...(props.extensionSocialBackend ? { extensionSocialBackend: props.extensionSocialBackend } : {}),
   ...(props.productDescriptionTemplates
     ? { productDescriptionTemplates: props.productDescriptionTemplates }
     : {}),

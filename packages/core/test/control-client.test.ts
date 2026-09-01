@@ -305,6 +305,27 @@ describe('BffControlClient', () => {
       idempotencyKey: '66666666-6666-4666-8666-666666666666'
     });
   });
+
+  it('attaches the scoped extension device token and extension id to social requests', async () => {
+    const send = vi.fn<NetworkTransport['send']>((_input, init) => {
+      if (typeof init.body !== 'string') throw new Error('expected JSON body');
+      const body = JSON.parse(init.body) as { requestId: string };
+      const headers = new Headers(init.headers);
+      expect(headers.get('Authorization')).toBe(`Bearer ovd_${'a'.repeat(43)}`);
+      expect(headers.get('X-One-Vegetable-Extension-ID')).toBe('aepfdoldflokikbbcpnfifkacpfakmjc');
+      expect(headers.get('X-CSRF-Token')).toBeNull();
+      return Promise.resolve(Response.json({ requestId: body.requestId, ok: true, data: { items: [] } }));
+    });
+    const client = new BffControlClient({
+      baseUrl: 'https://self-hosted.example.com',
+      transport: { send },
+      bearerToken: () => `ovd_${'a'.repeat(43)}`,
+      extensionId: 'aepfdoldflokikbbcpnfifkacpfakmjc'
+    });
+
+    await expect(client.listSocialDestinations()).resolves.toEqual([]);
+    expect(send).toHaveBeenCalledOnce();
+  });
 });
 
 function socialJobFixture(status: 'prepared' | 'published') {

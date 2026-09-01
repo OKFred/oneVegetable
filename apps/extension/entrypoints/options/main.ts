@@ -1,10 +1,12 @@
 import { browser } from 'wxt/browser';
 
 import {
+  BffControlClient,
   GatewayException,
   BundledProductDescriptionTemplateClient,
   BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA,
   ExtensionProductMutationJobClient,
+  EXTENSION_SOCIAL_BACKEND_STORAGE_KEY,
   approximateStorageBytes,
   APP_PREFERENCES_STORAGE_KEY,
   completeOnboarding,
@@ -23,6 +25,9 @@ import {
   type ExtensionAlibabaCredentialAcquisitionRepository,
   type ExtensionAlibabaCredentialAcquisitionRequest,
   type ExtensionAlibabaCredentialAcquisitionResponse,
+  type ExtensionSocialBackendRepository,
+  type ExtensionSocialBackendStatus,
+  type ExtensionSocialDevice,
   type AlibabaCredentialAcquisitionContinueCommand,
   type AlibabaCredentialAcquisitionState,
   type AlibabaOpenApiCredentialBundle,
@@ -37,6 +42,7 @@ import {
   type ResponseOf,
   type RuntimeRequest,
   type RuntimeResponse,
+  type SocialPublishingClient,
   type SettingsRepository
 } from '@one-vegetable/core/runtime';
 import '@one-vegetable/ui/styles.css';
@@ -50,6 +56,102 @@ const operationAvailability = new StaticOperationAvailabilityClient((operation) 
 const productMutationJobs = new ExtensionProductMutationJobClient({
   send: (message) => browser.runtime.sendMessage(message)
 });
+
+interface StoredExtensionSocialBackend {
+  schemaVersion: 1;
+  state: 'pending' | 'paired' | 'expired';
+  baseUrl: string;
+  extensionId: string;
+  deviceName: string;
+  pairingId: string | null;
+  pairingCode: string | null;
+  pairingExpiresTimeUtc: number | null;
+  device: ExtensionSocialDevice | null;
+  deviceToken: string | null;
+}
+
+const extensionSocialBackend: ExtensionSocialBackendRepository = {
+  async status() {
+    return publicExtensionSocialStatus(await readExtensionSocialBackend());
+  },
+  async start(baseUrl, deviceName) {
+    const normalizedBaseUrl = normalizeSocialBackendUrl(baseUrl);
+    await ensureOptionalOrigins([`${new URL(normalizedBaseUrl).origin}/*`], '社交发布后端');
+    const client = new BffControlClient({
+      baseUrl: normalizedBaseUrl,
+      extensionId: browser.runtime.id
+    });
+    const started = await client.startExtensionSocialPairing(browser.runtime.id, deviceName);
+    const stored: StoredExtensionSocialBackend = {
+      schemaVersion: 1,
+      state: 'pending',
+      baseUrl: normalizedBaseUrl,
+      extensionId: browser.runtime.id,
+      deviceName: deviceName.trim(),
+      pairingId: started.pairingId,
+      pairingCode: started.pairingCode,
+      pairingExpiresTimeUtc: started.expiresTimeUtc,
+      device: null,
+      deviceToken: null
+    };
+    await writeExtensionSocialBackend(stored);
+    return publicExtensionSocialStatus(stored);
+  },
+  async refresh() {
+    const stored = await requireExtensionSocialBackend();
+    if (stored.state !== 'pending' || !stored.pairingId || !stored.pairingCode) {
+      return publicExtensionSocialStatus(stored);
+    }
+    const client = new BffControlClient({
+      baseUrl: stored.baseUrl,
+      extensionId: stored.extensionId
+    });
+    const result = await client.extensionSocialPairingStatus(
+      stored.pairingId,
+      stored.pairingCode,
+      stored.extensionId
+    );
+    if (result.status === 'paired' && result.device && result.deviceToken) {
+      const paired: StoredExtensionSocialBackend = {
+        ...stored,
+        state: 'paired',
+        pairingId: null,
+        pairingCode: null,
+        pairingExpiresTimeUtc: null,
+        device: result.device,
+        deviceToken: result.deviceToken
+      };
+      await writeExtensionSocialBackend(paired);
+      return publicExtensionSocialStatus(paired);
+    }
+    if (result.status === 'expired' || result.status === 'cancelled' || result.status === 'consumed') {
+      const expired: StoredExtensionSocialBackend = {
+        ...stored,
+        state: 'expired',
+        pairingCode: null,
+        device: result.device,
+        deviceToken: null
+      };
+      await writeExtensionSocialBackend(expired);
+      return publicExtensionSocialStatus(expired);
+    }
+    return publicExtensionSocialStatus(stored);
+  },
+  async disconnect() {
+    await browser.storage.local.remove(EXTENSION_SOCIAL_BACKEND_STORAGE_KEY);
+    return publicExtensionSocialStatus(null);
+  }
+};
+
+const socialPublishing: SocialPublishingClient = {
+  listSocialDestinations: () => withSocialControl((client) => client.listSocialDestinations()),
+  prepareSocialPost: (input) => withSocialControl((client) => client.prepareSocialPost(input)),
+  publishSocialPost: (jobId) => withSocialControl((client) => client.publishSocialPost(jobId)),
+  advanceSocialPost: (jobId) => withSocialControl((client) => client.advanceSocialPost(jobId)),
+  getSocialPost: (jobId) => withSocialControl((client) => client.getSocialPost(jobId)),
+  listSocialPosts: (limit) => withSocialControl((client) => client.listSocialPosts(limit)),
+  cancelSocialPost: (jobId) => withSocialControl((client) => client.cancelSocialPost(jobId))
+};
 
 const settings: SettingsRepository = {
   load: () => requestVault('get-settings', undefined),
@@ -224,7 +326,10 @@ const localData: LocalDataRepository = {
     const drafts = localEntries.filter(([key]) => isDraftKey(key));
     const preferences = Object.fromEntries([
       ...Object.entries(local).filter(
-        ([key]) => key !== SETTINGS_STORAGE_KEY && key !== EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY
+        ([key]) =>
+          key !== SETTINGS_STORAGE_KEY &&
+          key !== EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY &&
+          key !== EXTENSION_SOCIAL_BACKEND_STORAGE_KEY
       ),
       ...localEntries.filter(([key]) => key === APP_PREFERENCES_STORAGE_KEY)
     ]);
@@ -246,6 +351,15 @@ const localData: LocalDataRepository = {
         approximateBytes: approximateStorageBytes(local[EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY]),
         sensitive: true,
         retention: '未完成任务保留到核验或恢复；完成任务最多保留 30 天、100 条'
+      },
+      {
+        id: 'social-backend-device',
+        label: '社交发布后端设备授权',
+        storage: 'chrome.storage.local',
+        itemCount: EXTENSION_SOCIAL_BACKEND_STORAGE_KEY in local ? 1 : 0,
+        approximateBytes: approximateStorageBytes(local[EXTENSION_SOCIAL_BACKEND_STORAGE_KEY]),
+        sensitive: true,
+        retention: '保留到用户断开社交后端、清除扩展数据、设备授权到期或卸载扩展'
       },
       {
         id: 'drafts',
@@ -371,6 +485,144 @@ async function ensureOptionalOrigins(origins: readonly string[], purpose: string
   });
 }
 
+async function withSocialControl<T>(action: (client: BffControlClient) => Promise<T>): Promise<T> {
+  const stored = await requireExtensionSocialBackend();
+  if (
+    stored.state !== 'paired' ||
+    !stored.deviceToken ||
+    !stored.device ||
+    stored.device.expiresTimeUtc <= Date.now()
+  ) {
+    throw new GatewayException({
+      code: 'EXTENSION_SOCIAL_BACKEND_NOT_PAIRED',
+      message: '请先在设置中配对社交发布后端',
+      retryable: false
+    });
+  }
+  return action(
+    new BffControlClient({
+      baseUrl: stored.baseUrl,
+      bearerToken: () => stored.deviceToken,
+      extensionId: stored.extensionId
+    })
+  );
+}
+
+async function requireExtensionSocialBackend(): Promise<StoredExtensionSocialBackend> {
+  const stored = await readExtensionSocialBackend();
+  if (!stored) {
+    throw new GatewayException({
+      code: 'EXTENSION_SOCIAL_BACKEND_NOT_CONFIGURED',
+      message: '请先填写并配对社交发布后端',
+      retryable: false
+    });
+  }
+  return stored;
+}
+
+async function readExtensionSocialBackend(): Promise<StoredExtensionSocialBackend | null> {
+  const result = await browser.storage.local.get(EXTENSION_SOCIAL_BACKEND_STORAGE_KEY);
+  const value = result[EXTENSION_SOCIAL_BACKEND_STORAGE_KEY];
+  if (!isStoredExtensionSocialBackend(value)) return null;
+  if (value.state === 'paired' && value.device && value.device.expiresTimeUtc <= Date.now()) {
+    const expired: StoredExtensionSocialBackend = {
+      ...value,
+      state: 'expired',
+      deviceToken: null
+    };
+    await writeExtensionSocialBackend(expired);
+    return expired;
+  }
+  if (
+    value.state === 'pending' &&
+    value.pairingExpiresTimeUtc !== null &&
+    value.pairingExpiresTimeUtc <= Date.now()
+  ) {
+    const expired: StoredExtensionSocialBackend = {
+      ...value,
+      state: 'expired',
+      pairingCode: null
+    };
+    await writeExtensionSocialBackend(expired);
+    return expired;
+  }
+  return value;
+}
+
+function writeExtensionSocialBackend(value: StoredExtensionSocialBackend): Promise<void> {
+  return browser.storage.local.set({ [EXTENSION_SOCIAL_BACKEND_STORAGE_KEY]: value });
+}
+
+function publicExtensionSocialStatus(
+  value: StoredExtensionSocialBackend | null
+): ExtensionSocialBackendStatus {
+  if (!value) {
+    return {
+      state: 'unconfigured',
+      baseUrl: null,
+      extensionId: browser.runtime.id,
+      deviceName: null,
+      pairingCode: null,
+      pairingExpiresTimeUtc: null,
+      device: null
+    };
+  }
+  return {
+    state: value.state,
+    baseUrl: value.baseUrl,
+    extensionId: value.extensionId,
+    deviceName: value.deviceName,
+    pairingCode: value.pairingCode,
+    pairingExpiresTimeUtc: value.pairingExpiresTimeUtc,
+    device: value.device
+  };
+}
+
+function isStoredExtensionSocialBackend(value: unknown): value is StoredExtensionSocialBackend {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const candidate = value as Partial<StoredExtensionSocialBackend>;
+  return (
+    candidate.schemaVersion === 1 &&
+    (candidate.state === 'pending' || candidate.state === 'paired' || candidate.state === 'expired') &&
+    typeof candidate.baseUrl === 'string' &&
+    typeof candidate.extensionId === 'string' &&
+    typeof candidate.deviceName === 'string' &&
+    (candidate.pairingId === null || typeof candidate.pairingId === 'string') &&
+    (candidate.pairingCode === null || typeof candidate.pairingCode === 'string') &&
+    (candidate.pairingExpiresTimeUtc === null || typeof candidate.pairingExpiresTimeUtc === 'number') &&
+    (candidate.device === null || typeof candidate.device === 'object') &&
+    (candidate.deviceToken === null || typeof candidate.deviceToken === 'string')
+  );
+}
+
+function normalizeSocialBackendUrl(value: string): string {
+  const url = new URL(value.trim());
+  const loopback =
+    url.protocol === 'http:' &&
+    (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]');
+  if (url.protocol !== 'https:' && !loopback) {
+    throw new GatewayException({
+      code: 'SOCIAL_BACKEND_URL_INVALID',
+      message: '社交发布后端必须使用 HTTPS；本机 localhost 可使用 HTTP',
+      retryable: false
+    });
+  }
+  if (
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash ||
+    (url.pathname !== '/' && url.pathname !== '')
+  ) {
+    throw new GatewayException({
+      code: 'SOCIAL_BACKEND_URL_INVALID',
+      message: '社交发布后端地址不能包含路径、账号、query 或 fragment',
+      retryable: false
+    });
+  }
+  return url.origin;
+}
+
 window.addEventListener('unhandledrejection', (event) => {
   const error = normalizeGatewayError(event.reason as unknown);
   console.error('[oneVegetable]', error.code, error.message);
@@ -390,6 +642,8 @@ async function mountOptionsApp(): Promise<void> {
     onboarding,
     vault,
     alibabaCredentialAcquisition,
+    extensionSocialBackend,
+    socialPublishing,
     productDescriptionTemplates: new BundledProductDescriptionTemplateClient(
       BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates
     ),

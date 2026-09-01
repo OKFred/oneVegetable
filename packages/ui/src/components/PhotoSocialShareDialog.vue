@@ -8,6 +8,7 @@ import {
   encodeBase64,
   validateSocialShareSelection,
   type Photo,
+  type SocialPublishingClient,
   type SocialDestination,
   type SocialPublishJob
 } from '@one-vegetable/core';
@@ -29,7 +30,8 @@ import {
 const props = defineProps<{ open: boolean; photos: readonly Photo[] }>();
 const emit = defineEmits<{ 'update:open': [open: boolean] }>();
 
-const { gateway, control, mode } = useServices();
+const { gateway, control, socialPublishing, mode } = useServices();
+const social = socialPublishing ?? (control as SocialPublishingClient | undefined);
 const caption = ref('');
 const assets = ref<PreparedSocialShareAsset[]>([]);
 const preparing = ref(false);
@@ -64,13 +66,7 @@ const systemShareSupported = computed(() => {
 const selectedDestination = computed(
   () => destinations.value.find((destination) => destination.id === destinationId.value) ?? null
 );
-const officialPublishingSupported = computed(
-  () =>
-    control !== undefined &&
-    'listSocialDestinations' in control &&
-    'prepareSocialPost' in control &&
-    'publishSocialPost' in control
-);
+const officialPublishingSupported = computed(() => social !== undefined);
 const officialIssue = computed(() => {
   if (!officialPublishingSupported.value) {
     return mode === 'extension' ? '请先在插件设置中配对社交发布后端。' : '当前后端未启用社交发布。';
@@ -196,13 +192,13 @@ async function downloadSharePackage(): Promise<void> {
 }
 
 async function refreshOfficialPublishing(): Promise<void> {
-  if (!officialPublishingSupported.value || !control?.listSocialDestinations) return;
+  if (!officialPublishingSupported.value || !social?.listSocialDestinations) return;
   officialBusy.value = true;
   officialError.value = null;
   try {
     const [nextDestinations, recentJobs] = await Promise.all([
-      control.listSocialDestinations(),
-      control.listSocialPosts?.(20) ?? Promise.resolve([])
+      social.listSocialDestinations(),
+      social.listSocialPosts(20)
     ]);
     destinations.value = nextDestinations;
     if (!nextDestinations.some((destination) => destination.id === destinationId.value)) {
@@ -222,11 +218,11 @@ async function refreshOfficialPublishing(): Promise<void> {
 async function prepareOfficialPublish(): Promise<void> {
   const issue = officialIssue.value;
   const asset = assets.value[0];
-  if (issue || !asset || !control?.prepareSocialPost) return;
+  if (issue || !asset || !social?.prepareSocialPost) return;
   officialBusy.value = true;
   officialError.value = null;
   try {
-    publishJob.value = await control.prepareSocialPost({
+    publishJob.value = await social.prepareSocialPost({
       destinationId: destinationId.value,
       caption: caption.value.trim(),
       idempotencyKey: prepareIdempotencyKey.value,
@@ -247,11 +243,11 @@ async function prepareOfficialPublish(): Promise<void> {
 
 async function confirmOfficialPublish(): Promise<void> {
   const job = publishJob.value;
-  if (!job || !control?.publishSocialPost) return;
+  if (!job || !social?.publishSocialPost) return;
   officialBusy.value = true;
   officialError.value = null;
   try {
-    publishJob.value = await control.publishSocialPost(job.id);
+    publishJob.value = await social.publishSocialPost(job.id);
     publishConfirmationOpen.value = false;
     notifyPublishStatus(publishJob.value);
   } catch (error: unknown) {
@@ -263,11 +259,11 @@ async function confirmOfficialPublish(): Promise<void> {
 
 async function advanceOfficialPublish(): Promise<void> {
   const job = publishJob.value;
-  if (job?.status !== 'processing' || !control?.advanceSocialPost || officialBusy.value) return;
+  if (job?.status !== 'processing' || !social?.advanceSocialPost || officialBusy.value) return;
   officialBusy.value = true;
   officialError.value = null;
   try {
-    publishJob.value = await control.advanceSocialPost(job.id);
+    publishJob.value = await social.advanceSocialPost(job.id);
     notifyPublishStatus(publishJob.value);
   } catch (error: unknown) {
     officialError.value = error;
