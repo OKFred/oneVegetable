@@ -46,11 +46,19 @@ export const shell = {
       capabilities: 'Enabled capabilities',
       capabilitiesDescription: 'Eligible capabilities enabled in this project'
     },
-    iterationStatus: 'Iteration status',
-    openApiContract: 'OpenAPI 3.1 contract',
-    migrated: 'Migrated',
-    enabled: 'Enabled',
-    schemaReplacement: 'Replaced by Schema',
-    legacyPublishing: 'Legacy publishing flow'
+    todo: {
+      title: 'Local to-do list',
+      description: 'Stored only in this browser and never synchronized to the backend.',
+      placeholder: 'Add a to-do item…',
+      add: 'Add',
+      empty: 'No to-do items yet',
+      remaining: '{count} remaining',
+      markCompleted: 'Mark “{text}” as completed',
+      markActive: 'Mark “{text}” as active',
+      delete: 'Delete “{text}”',
+      clearCompleted: 'Clear completed ({count})',
+      storageError: 'Browser storage is unavailable. These changes may be lost after a refresh.',
+      limitReached: 'You can keep up to {count} items. Complete or delete an item before adding another.'
+    }
   }
 } as const;

@@ -5,7 +5,7 @@ import { Boxes, Image, PlugZap, ShoppingCart } from '@lucide/vue';
 
 import { useServices } from '../lib/services';
 import DashboardMetricCard from '../components/DashboardMetricCard.vue';
-import Card from '../components/ui/Card.vue';
+import LocalTodoList from '../components/LocalTodoList.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
 import { resolveDataSource } from '../lib/data-source';
@@ -75,32 +75,6 @@ const summary = useQuery({
         <template #icon><PlugZap class="size-4 text-primary" /></template>
       </DashboardMetricCard>
     </div>
-    <div class="mt-5 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-      <Card class="p-5">
-        <h2 class="font-semibold">{{ t('shell.dashboard.iterationStatus') }}</h2>
-        <div class="mt-4 space-y-3 text-sm">
-          <div class="flex items-center justify-between rounded-lg bg-muted/60 p-3">
-            <span>Manifest V3 / WXT</span
-            ><span class="text-emerald-700">{{ t('shell.dashboard.migrated') }}</span>
-          </div>
-          <div class="flex items-center justify-between rounded-lg bg-muted/60 p-3">
-            <span>{{ t('shell.dashboard.openApiContract') }}</span
-            ><span class="text-emerald-700">{{ t('shell.dashboard.enabled') }}</span>
-          </div>
-          <div class="flex items-center justify-between rounded-lg bg-muted/60 p-3">
-            <span>{{ t('shell.dashboard.legacyPublishing') }}</span
-            ><span class="text-amber-700">{{ t('shell.dashboard.schemaReplacement') }}</span>
-          </div>
-        </div>
-      </Card>
-      <Card class="border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/40">
-        <h2 class="font-semibold text-amber-900 dark:text-amber-100">
-          {{ dataSource.label }}
-        </h2>
-        <p class="mt-2 text-sm leading-6 text-amber-800 dark:text-amber-200">
-          {{ dataSource.description }}
-        </p>
-      </Card>
-    </div>
+    <LocalTodoList class="mt-5" />
   </QueryState>
 </template>
