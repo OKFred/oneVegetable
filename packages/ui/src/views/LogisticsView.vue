@@ -16,6 +16,7 @@ import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import Sheet from '../components/ui/Sheet.vue';
+import { useUiI18n } from '../i18n';
 import {
   operationAvailabilityMessage,
   useOperationAvailability
@@ -27,6 +28,7 @@ import type { DataColumn } from '../lib/table';
 type Workspace = 'quote' | 'orders' | 'addresses' | 'draft';
 
 const { gateway } = useServices();
+const { t } = useUiI18n();
 const workspace = ref<Workspace>('quote');
 const logisticsOperations = useOperationAvailability([
   'listLogisticsAddressNodes',
@@ -45,33 +47,33 @@ const createOrderBlocked = computed(() => !logisticsOperations.isAllowed('create
 const logisticsRestrictionReason = computed(() =>
   operationAvailabilityMessage(
     logisticsOperations.reasonCode('calculateLogisticsQuote'),
-    '当前环境未开放 OneTouch 国际物流试算'
+    t('logistics.errors.quoteUnavailable')
   )
 );
 const quoteDisabledReason = computed(() => {
   if (quoteBlocked.value) return logisticsRestrictionReason.value;
-  if (calculateQuote.isPending.value) return '正在向平台查询运费方案';
+  if (calculateQuote.isPending.value) return t('logistics.errors.quoting');
   return '';
 });
 const ordersDisabledReason = computed(() => {
   if (ordersBlocked.value) {
     return operationAvailabilityMessage(
       logisticsOperations.reasonCode('listLogisticsOrders'),
-      '当前环境未开放物流订单查询'
+      t('logistics.errors.ordersUnavailable')
     );
   }
-  if (orders.isFetching.value) return '正在刷新物流订单';
+  if (orders.isFetching.value) return t('logistics.errors.ordersRefreshing');
   return '';
 });
 const createOrderDisabledReason = computed(() => {
   if (createOrderBlocked.value) {
     return operationAvailabilityMessage(
       logisticsOperations.reasonCode('createLogisticsOrder'),
-      '当前环境未开放真实物流下单'
+      t('logistics.errors.createUnavailable')
     );
   }
-  if (!selectedQuote.value) return '请先在“运费试算”生成可用方案';
-  if (createOrder.isPending.value) return '物流订单正在提交';
+  if (!selectedQuote.value) return t('logistics.errors.quoteFirst');
+  if (createOrder.isPending.value) return t('logistics.errors.creating');
   return '';
 });
 const destinationCountryCode = ref('US');
@@ -176,19 +178,19 @@ const addressNodes = useQuery({
 
 const calculateQuote = useMutation({
   mutationFn: () => gateway.request('calculateLogisticsQuote', buildQuoteRequest()),
-  onSuccess: (result) => toast.success(`运费试算完成，共返回 ${result.options.length} 个方案。`)
+  onSuccess: (result) => toast.success(t('logistics.feedback.quoteDone', { count: result.options.length }))
 });
 const selectedQuote = computed(() => calculateQuote.data.value?.options.find((option) => option.available));
 const createOrder = useMutation({
   mutationFn: () => {
     const quote = selectedQuote.value;
-    if (!quote) throw new Error('请先完成运费试算并选择可用方案');
+    if (!quote) throw new Error(t('logistics.errors.quoteSelection'));
     return gateway.request('createLogisticsOrder', {
       quoteRequest: buildQuoteRequest(),
       confirmedProductCode: quote.productCode
     });
   },
-  onSuccess: () => toast.success('物流订单已提交。')
+  onSuccess: () => toast.success(t('logistics.feedback.orderSubmitted'))
 });
 
 function buildQuoteRequest(): LogisticsQuoteRequest {
@@ -271,7 +273,7 @@ function buildQuoteRequest(): LogisticsQuoteRequest {
 }
 
 function formatLogisticsDateTime(value: string | null): string {
-  return formatDateTime(value, '文档未返回');
+  return formatDateTime(value, t('logistics.documentNotReturned'));
 }
 
 function selectLogisticsOrder(order: LogisticsOrderSummary): void {
@@ -288,10 +290,10 @@ watch([logisticsOrderPage, logisticsOrderPageSize], () => {
   selectedOrderNumber.value = '';
 });
 
-const columns: DataColumn<LogisticsOrderSummary>[] = [
+const columns = computed<DataColumn<LogisticsOrderSummary>[]>(() => [
   {
     accessorKey: 'orderNumber',
-    header: '物流订单号',
+    header: t('logistics.columns.orderNumber'),
     cell: ({ row }) =>
       h(
         'button',
@@ -306,47 +308,42 @@ const columns: DataColumn<LogisticsOrderSummary>[] = [
   },
   {
     accessorKey: 'status',
-    header: '状态',
+    header: t('logistics.columns.status'),
     cell: (context) => h(Badge, { variant: 'warning' }, () => context.getValue<string>())
   },
   {
     id: 'freight',
-    header: '运费',
+    header: t('logistics.columns.freight'),
     cell: ({ row }) => `${row.original.currency} ${row.original.freightAmount}`
   },
   {
     accessorKey: 'placedAt',
-    header: '下单时间',
+    header: t('logistics.columns.placedAt'),
     cell: (context) => formatLogisticsDateTime(context.getValue<string | null>())
   }
-];
+]);
 
-const workspaces: { id: Workspace; label: string }[] = [
-  { id: 'quote', label: '运费试算' },
-  { id: 'orders', label: '物流订单' },
-  { id: 'addresses', label: '地址与模板' },
-  { id: 'draft', label: '下单草稿' }
-];
+const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
+  { id: 'quote', label: t('logistics.workspaces.quote') },
+  { id: 'orders', label: t('logistics.workspaces.orders') },
+  { id: 'addresses', label: t('logistics.workspaces.addresses') },
+  { id: 'draft', label: t('logistics.workspaces.draft') }
+]);
 </script>
 
 <template>
-  <PageHeader
-    title="国际物流工作台"
-    description="地址、商品属性、运力试算、物流订单和面单统一转换为稳定类型；金额和业务 ID 全程按字符串处理。"
-  />
+  <PageHeader :title="t('logistics.title')" :description="t('logistics.description')" />
   <Card class="mb-4 flex items-start gap-3 border-amber-200 bg-amber-50 p-4 text-amber-900">
     <ShieldAlert class="mt-0.5 size-4 shrink-0" />
     <div class="text-sm leading-5">
-      <p>OneTouch 国际物流接口需要业务资格，本项目尚无真实账号完成验收。</p>
+      <p>{{ t('logistics.qualification') }}</p>
       <p class="mt-1 text-xs">
-        页面按 operation availability 决定是否调用；{{
-          logisticsRestrictionReason
-        }}。运费模板属于商品域免费接口，可独立查询。
+        {{ t('logistics.availability', { reason: logisticsRestrictionReason }) }}
       </p>
     </div>
   </Card>
 
-  <div class="mb-4 flex flex-wrap gap-2" aria-label="物流工作区">
+  <div class="mb-4 flex flex-wrap gap-2" :aria-label="t('logistics.workspaceLabel')">
     <Button
       v-for="item in workspaces"
       :key="item.id"
@@ -363,16 +360,23 @@ const workspaces: { id: Workspace; label: string }[] = [
       <Card class="p-5">
         <div class="mb-4 flex items-center gap-2">
           <Calculator class="size-4 text-primary" />
-          <h2 class="font-semibold">包裹与货品</h2>
+          <h2 class="font-semibold">{{ t('logistics.quote.parcel') }}</h2>
         </div>
         <div class="grid gap-3 md:grid-cols-3">
-          <label class="space-y-1 text-sm"><span>始发邮编</span><Input v-model="originZipCode" /></label>
           <label class="space-y-1 text-sm"
-            ><span>目的国</span><Input v-model="destinationCountryCode" maxlength="2"
+            ><span>{{ t('logistics.quote.originZip') }}</span
+            ><Input v-model="originZipCode"
           /></label>
-          <label class="space-y-1 text-sm"><span>目的邮编</span><Input v-model="destinationZipCode" /></label>
+          <label class="space-y-1 text-sm"
+            ><span>{{ t('logistics.quote.destinationCountry') }}</span
+            ><Input v-model="destinationCountryCode" maxlength="2"
+          /></label>
+          <label class="space-y-1 text-sm"
+            ><span>{{ t('logistics.quote.destinationZip') }}</span
+            ><Input v-model="destinationZipCode"
+          /></label>
           <label class="space-y-1 text-sm md:col-span-2">
-            <span>运力产品</span>
+            <span>{{ t('logistics.quote.product') }}</span>
             <select v-model="productCode" class="h-9 w-full rounded-md border bg-background px-3 text-sm">
               <option
                 v-for="product in logisticsProducts.data.value ?? []"
@@ -386,24 +390,38 @@ const workspaces: { id: Workspace; label: string }[] = [
               </option>
             </select>
           </label>
-          <label class="space-y-1 text-sm"><span>仓库代码</span><Input v-model="warehouseCode" /></label>
-          <label class="space-y-1 text-sm"><span>中文品名</span><Input v-model="cargoNameCn" /></label>
-          <label class="space-y-1 text-sm"><span>英文品名</span><Input v-model="cargoNameEn" /></label>
+          <label class="space-y-1 text-sm"
+            ><span>{{ t('logistics.quote.warehouse') }}</span
+            ><Input v-model="warehouseCode"
+          /></label>
+          <label class="space-y-1 text-sm"
+            ><span>{{ t('logistics.quote.nameCn') }}</span
+            ><Input v-model="cargoNameCn"
+          /></label>
+          <label class="space-y-1 text-sm"
+            ><span>{{ t('logistics.quote.nameEn') }}</span
+            ><Input v-model="cargoNameEn"
+          /></label>
           <label class="space-y-1 text-sm"><span>HS Code</span><Input v-model="cargoHsCode" /></label>
           <label class="space-y-1 text-sm"
-            ><span>数量</span><Input v-model="cargoQuantity" inputmode="decimal"
+            ><span>{{ t('logistics.quote.quantity') }}</span
+            ><Input v-model="cargoQuantity" inputmode="decimal"
           /></label>
           <label class="space-y-1 text-sm"
-            ><span>单件申报价值 USD</span><Input v-model="cargoValue" inputmode="decimal"
+            ><span>{{ t('logistics.quote.unitValue') }}</span
+            ><Input v-model="cargoValue" inputmode="decimal"
           /></label>
-          <label class="space-y-1 text-sm"><span>材质</span><Input v-model="cargoMaterial" /></label>
+          <label class="space-y-1 text-sm"
+            ><span>{{ t('logistics.quote.material') }}</span
+            ><Input v-model="cargoMaterial"
+          /></label>
           <label class="space-y-1 text-sm md:col-span-3">
-            <span>特殊商品属性</span>
+            <span>{{ t('logistics.quote.specialType') }}</span>
             <select
               v-model="selectedProductType"
               class="h-9 w-full rounded-md border bg-background px-3 text-sm"
             >
-              <option value="">普通商品</option>
+              <option value="">{{ t('logistics.quote.normal') }}</option>
               <option
                 v-for="item in specialProductTypes.data.value ?? []"
                 :key="item.code"
@@ -411,19 +429,35 @@ const workspaces: { id: Workspace; label: string }[] = [
               >
                 {{ item.name }} · {{ item.code }}
               </option>
-              <option v-if="!(specialProductTypes.data.value?.length ?? 0)" value="battery">含电池</option>
+              <option v-if="!(specialProductTypes.data.value?.length ?? 0)" value="battery">
+                {{ t('logistics.quote.battery') }}
+              </option>
             </select>
           </label>
         </div>
         <div class="mt-4 grid gap-3 sm:grid-cols-4">
-          <label class="space-y-1 text-sm"><span>长 cm</span><Input v-model="packageLength" /></label>
-          <label class="space-y-1 text-sm"><span>宽 cm</span><Input v-model="packageWidth" /></label>
-          <label class="space-y-1 text-sm"><span>高 cm</span><Input v-model="packageHeight" /></label>
-          <label class="space-y-1 text-sm"><span>重量 kg</span><Input v-model="packageWeight" /></label>
+          <label class="space-y-1 text-sm"
+            ><span>{{ t('logistics.quote.length') }}</span
+            ><Input v-model="packageLength"
+          /></label>
+          <label class="space-y-1 text-sm"
+            ><span>{{ t('logistics.quote.width') }}</span
+            ><Input v-model="packageWidth"
+          /></label>
+          <label class="space-y-1 text-sm"
+            ><span>{{ t('logistics.quote.height') }}</span
+            ><Input v-model="packageHeight"
+          /></label>
+          <label class="space-y-1 text-sm"
+            ><span>{{ t('logistics.quote.weight') }}</span
+            ><Input v-model="packageWeight"
+          /></label>
         </div>
         <ActionTooltip :disabled="Boolean(quoteDisabledReason)" :reason="quoteDisabledReason">
           <Button class="mt-5" :disabled="Boolean(quoteDisabledReason)" @click="calculateQuote.mutate()">
-            <Calculator class="size-4" />{{ quoteBlocked ? '业务资格待验收' : '开始试算' }}
+            <Calculator class="size-4" />{{
+              quoteBlocked ? t('logistics.quote.qualificationPending') : t('logistics.quote.start')
+            }}
           </Button>
         </ActionTooltip>
         <ErrorNotice
@@ -434,17 +468,17 @@ const workspaces: { id: Workspace; label: string }[] = [
         />
       </Card>
       <Card class="p-5">
-        <h2 class="font-semibold">可用方案</h2>
-        <p class="mt-1 text-xs text-muted-foreground">下单时会再次校验产品代码必须与本次试算一致。</p>
+        <h2 class="font-semibold">{{ t('logistics.quote.options') }}</h2>
+        <p class="mt-1 text-xs text-muted-foreground">{{ t('logistics.quote.consistency') }}</p>
         <div v-if="selectedQuote" class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
           <p class="text-sm font-medium">{{ selectedQuote.productName }}</p>
           <p class="mt-2 text-2xl font-semibold">
             {{ selectedQuote.currency }} {{ selectedQuote.totalAmount }}
           </p>
           <p class="mt-2 font-mono text-xs">{{ selectedQuote.productCode }}</p>
-          <Badge variant="success" class="mt-3">可用</Badge>
+          <Badge variant="success" class="mt-3">{{ t('logistics.quote.available') }}</Badge>
         </div>
-        <p v-else class="mt-4 text-sm text-muted-foreground">填写参数后执行试算。</p>
+        <p v-else class="mt-4 text-sm text-muted-foreground">{{ t('logistics.quote.prompt') }}</p>
         <ul
           v-if="calculateQuote.data.value?.issues.length"
           class="mt-4 list-disc pl-5 text-sm text-amber-700"
@@ -458,10 +492,12 @@ const workspaces: { id: Workspace; label: string }[] = [
   <template v-else-if="workspace === 'orders'">
     <Card class="mb-4 p-4">
       <div class="grid gap-3 md:grid-cols-[1fr_auto]">
-        <Input v-model="orderNumberFilter" placeholder="按物流订单号过滤" />
+        <Input v-model="orderNumberFilter" :placeholder="t('logistics.orders.filter')" />
         <ActionTooltip :disabled="Boolean(ordersDisabledReason)" :reason="ordersDisabledReason">
           <Button variant="outline" :disabled="Boolean(ordersDisabledReason)" @click="orders.refetch()">
-            <RefreshCw :class="['size-4', orders.isFetching.value ? 'animate-spin' : '']" />刷新
+            <RefreshCw :class="['size-4', orders.isFetching.value ? 'animate-spin' : '']" />{{
+              t('common.actions.refresh')
+            }}
           </Button>
         </ActionTooltip>
       </div>
@@ -479,28 +515,36 @@ const workspaces: { id: Workspace; label: string }[] = [
         v-model:page-size="logisticsOrderPageSize"
         :total-rows="orders.data.value?.total ?? 0"
         :pagination-disabled="orders.isFetching.value"
-        empty-text="暂无物流订单"
+        :empty-text="t('logistics.orders.empty')"
         min-width="720px"
         :get-row-key="(order) => order.orderNumber"
         :active-row-key="logisticsOrderSheetOpen ? selectedOrderNumber : undefined"
-        :row-aria-label="(order) => `查看物流订单 ${order.orderNumber}`"
+        :row-aria-label="(order) => t('logistics.orders.view', { number: order.orderNumber })"
         @row-activate="selectLogisticsOrder"
       >
         <template #empty>
           <div class="space-y-3 py-4">
-            <p>{{ orderNumberFilter ? '没有匹配物流订单' : '当前账号暂无物流订单' }}</p>
-            <Button v-if="orderNumberFilter" variant="outline" size="sm" @click="orderNumberFilter = ''"
-              >清除过滤条件</Button
-            >
-            <Button v-else variant="outline" size="sm" @click="orders.refetch()">重新加载</Button>
+            <p>
+              {{ orderNumberFilter ? t('logistics.orders.noMatch') : t('logistics.orders.noOrders') }}
+            </p>
+            <Button v-if="orderNumberFilter" variant="outline" size="sm" @click="orderNumberFilter = ''">{{
+              t('logistics.orders.clear')
+            }}</Button>
+            <Button v-else variant="outline" size="sm" @click="orders.refetch()">
+              {{ t('common.actions.retry') }}
+            </Button>
           </div>
         </template>
       </DataTable>
     </QueryState>
     <Sheet
       :open="logisticsOrderSheetOpen"
-      :title="selectedOrderNumber ? `物流订单 ${selectedOrderNumber}` : '物流订单详情'"
-      description="仓库、追踪信息与面单数据"
+      :title="
+        selectedOrderNumber
+          ? t('logistics.orders.title', { number: selectedOrderNumber })
+          : t('logistics.orders.fallbackTitle')
+      "
+      :description="t('logistics.orders.description')"
       @update:open="logisticsOrderSheetOpen = $event"
     >
       <template #toolbar>
@@ -519,24 +563,24 @@ const workspaces: { id: Workspace; label: string }[] = [
       >
         <Card v-if="orderDetail.data.value" class="p-5">
           <div>
-            <p class="font-semibold">订单信息</p>
+            <p class="font-semibold">{{ t('logistics.orders.information') }}</p>
             <p class="mt-1 text-xs text-muted-foreground">
-              {{ orderDetail.data.value.warehouseName ?? '仓库未返回' }} ·
-              {{ orderDetail.data.value.trackingNumber ?? '追踪号未返回' }}
+              {{ orderDetail.data.value.warehouseName ?? t('logistics.orders.warehouseMissing') }} ·
+              {{ orderDetail.data.value.trackingNumber ?? t('logistics.orders.trackingMissing') }}
             </p>
           </div>
           <div class="mt-4 rounded-lg border p-4 text-sm">
             <p v-if="orderDetail.data.value.labelUrl">
-              面单：<a
+              <a
                 class="text-primary underline"
                 :href="orderDetail.data.value.labelUrl"
                 target="_blank"
                 rel="noreferrer"
-                >HTTPS 地址</a
+                >{{ t('logistics.orders.labelHttps') }}</a
               >
             </p>
-            <p v-else-if="orderDetail.data.value.labelBase64">面单：Base64 数据已返回（不写入持久化存储）</p>
-            <p v-else>面单：文档响应未返回</p>
+            <p v-else-if="orderDetail.data.value.labelBase64">{{ t('logistics.orders.labelBase64') }}</p>
+            <p v-else>{{ t('logistics.orders.labelMissing') }}</p>
           </div>
         </Card>
       </QueryState>
@@ -548,23 +592,25 @@ const workspaces: { id: Workspace; label: string }[] = [
       <Card class="p-5">
         <div class="mb-4 flex items-center gap-2">
           <MapPin class="size-4 text-primary" />
-          <h2 class="font-semibold">地址字典</h2>
+          <h2 class="font-semibold">{{ t('logistics.addresses.dictionary') }}</h2>
         </div>
         <div class="grid gap-3 sm:grid-cols-2">
           <label class="space-y-1 text-sm">
-            <span>层级</span>
+            <span>{{ t('logistics.addresses.level') }}</span>
             <select v-model="addressLevel" class="h-9 w-full rounded-md border bg-background px-3 text-sm">
-              <option value="province">省</option>
-              <option value="city">市</option>
-              <option value="division">区县</option>
-              <option value="street">街道搜索</option>
+              <option value="province">{{ t('logistics.addresses.province') }}</option>
+              <option value="city">{{ t('logistics.addresses.city') }}</option>
+              <option value="division">{{ t('logistics.addresses.division') }}</option>
+              <option value="street">{{ t('logistics.addresses.street') }}</option>
             </select>
           </label>
           <label v-if="addressLevel !== 'province' && addressLevel !== 'street'" class="space-y-1 text-sm">
-            <span>父级 ID</span><Input v-model="addressParentId" />
+            <span>{{ t('logistics.addresses.parentId') }}</span
+            ><Input v-model="addressParentId" />
           </label>
           <label v-else-if="addressLevel === 'street'" class="space-y-1 text-sm">
-            <span>搜索词</span><Input v-model="addressSearchText" />
+            <span>{{ t('logistics.addresses.search') }}</span
+            ><Input v-model="addressSearchText" />
           </label>
         </div>
         <div class="mt-4 space-y-2">
@@ -580,7 +626,7 @@ const workspaces: { id: Workspace; label: string }[] = [
             {{
               operationAvailabilityMessage(
                 logisticsOperations.reasonCode('listLogisticsAddressNodes'),
-                '当前环境不查询 OneTouch 地址字典'
+                t('logistics.errors.addressUnavailable')
               )
             }}
           </p>
@@ -589,7 +635,7 @@ const workspaces: { id: Workspace; label: string }[] = [
       <Card class="p-5">
         <div class="mb-4 flex items-center gap-2">
           <Truck class="size-4 text-primary" />
-          <h2 class="font-semibold">运费模板</h2>
+          <h2 class="font-semibold">{{ t('logistics.addresses.templates') }}</h2>
         </div>
         <QueryState
           :loading="shippingTemplates.isPending.value"
@@ -617,58 +663,62 @@ const workspaces: { id: Workspace; label: string }[] = [
       <Card class="p-5">
         <div class="mb-4 flex items-center gap-2">
           <ClipboardList class="size-4 text-primary" />
-          <h2 class="font-semibold">收发件信息</h2>
+          <h2 class="font-semibold">{{ t('logistics.draft.contacts') }}</h2>
         </div>
         <p class="mb-4 text-xs text-muted-foreground">
-          联系人、电话和地址只保存在当前页面内存；刷新页面即清除。
+          {{ t('logistics.draft.privacy') }}
         </p>
         <div class="grid gap-4 md:grid-cols-2">
           <fieldset class="space-y-3 rounded-lg border p-4">
-            <legend class="px-1 text-sm font-medium">发件人</legend>
-            <Input v-model="consignorPerson" placeholder="联系人" /><Input
+            <legend class="px-1 text-sm font-medium">{{ t('logistics.draft.consignor') }}</legend>
+            <Input v-model="consignorPerson" :placeholder="t('logistics.draft.contact')" /><Input
               v-model="consignorMobile"
-              placeholder="电话"
+              :placeholder="t('logistics.draft.phone')"
             />
             <textarea
               v-model="consignorAddress"
               class="min-h-20 w-full rounded-md border bg-background p-3 text-sm"
-              placeholder="详细地址"
+              :placeholder="t('logistics.draft.address')"
             />
           </fieldset>
           <fieldset class="space-y-3 rounded-lg border p-4">
-            <legend class="px-1 text-sm font-medium">收件人</legend>
-            <Input v-model="consigneePerson" placeholder="联系人" /><Input
+            <legend class="px-1 text-sm font-medium">{{ t('logistics.draft.consignee') }}</legend>
+            <Input v-model="consigneePerson" :placeholder="t('logistics.draft.contact')" /><Input
               v-model="consigneeMobile"
-              placeholder="电话"
+              :placeholder="t('logistics.draft.phone')"
             />
             <textarea
               v-model="consigneeAddress"
               class="min-h-20 w-full rounded-md border bg-background p-3 text-sm"
-              placeholder="详细地址"
+              :placeholder="t('logistics.draft.address')"
             />
           </fieldset>
         </div>
         <ActionTooltip :disabled="Boolean(createOrderDisabledReason)" :reason="createOrderDisabledReason">
           <Button class="mt-5" :disabled="Boolean(createOrderDisabledReason)" @click="createOrder.mutate()">
-            <PackageCheck class="size-4" />{{ createOrderBlocked ? '真实下单保持禁用' : '提交物流订单' }}
+            <PackageCheck class="size-4" />{{
+              createOrderBlocked ? t('logistics.draft.disabled') : t('logistics.draft.submit')
+            }}
           </Button>
         </ActionTooltip>
-        <p v-if="!selectedQuote" class="mt-2 text-xs text-amber-700">请先在“运费试算”生成可用方案。</p>
+        <p v-if="!selectedQuote" class="mt-2 text-xs text-amber-700">
+          {{ t('logistics.draft.quotePrompt') }}
+        </p>
         <ErrorNotice v-if="createOrder.error.value" class="mt-3" :error="createOrder.error.value" compact />
       </Card>
       <Card class="p-5">
         <div class="flex items-center gap-2">
           <PackageCheck class="size-4 text-primary" />
-          <h2 class="font-semibold">提交结果</h2>
+          <h2 class="font-semibold">{{ t('logistics.draft.result') }}</h2>
         </div>
         <div
           v-if="createOrder.data.value"
           class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4"
         >
-          <Badge variant="success">演示下单成功</Badge>
+          <Badge variant="success">{{ t('logistics.draft.demoSuccess') }}</Badge>
           <p class="mt-3 font-mono text-sm">{{ createOrder.data.value.orderNumber }}</p>
         </div>
-        <p v-else class="mt-4 text-sm text-muted-foreground">本工作台不会持久化草稿中的个人信息。</p>
+        <p v-else class="mt-4 text-sm text-muted-foreground">{{ t('logistics.draft.noPersistence') }}</p>
       </Card>
     </div>
   </template>
