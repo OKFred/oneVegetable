@@ -218,7 +218,9 @@ test('web mock exports a product JSON and imports it into the local review queue
   await expect(selectedCount).toHaveText('已选 3 个');
   await page.getByLabel('取消选择本页全部 3 个商品').uncheck();
   await expect(selectedCount).toHaveText('已选 0 个');
-  await page.getByRole('button', { name: '切换到夜间模式' }).click();
+  const themeToggle = page.getByTestId('theme-toggle');
+  await themeToggle.click();
+  await themeToggle.click();
 
   await page.getByRole('button', { name: '导入', exact: true }).click();
   await expect(page.getByRole('dialog', { name: '导入商品' })).toBeVisible();
@@ -694,8 +696,8 @@ test('web mock groups official product hints and locates their fields from revie
 test('web mock persists the API language preference for product editing', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('link', { name: '设置' }).click();
-  await page.getByLabel('偏好语言').selectOption('zh_CN');
-  await expect(page.getByText('接口语言偏好已保存为 zh_CN')).toBeVisible();
+  await page.getByLabel('平台请求语言').selectOption('zh_CN');
+  await expect(page.getByText('Alibaba 接口语言已保存为 zh_CN。')).toBeVisible();
 
   await page.getByRole('link', { name: '商品' }).click();
   await openNewProductEditor(page);

@@ -19,7 +19,9 @@ test('version updates remain accessible in light and dark themes', async ({ page
   await expect(page.getByRole('heading', { name: '版本更新' })).toBeVisible();
   await expectNoAccessibilityViolations(page);
 
-  await page.getByRole('button', { name: '切换到夜间模式' }).click();
+  const themeToggle = page.getByTestId('theme-toggle');
+  await themeToggle.click();
+  await themeToggle.click();
   await expect(page.locator('html')).toHaveClass(/dark/);
   await expectNoAccessibilityViolations(page);
 });

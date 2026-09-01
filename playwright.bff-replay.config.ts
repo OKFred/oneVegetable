@@ -11,6 +11,7 @@ export default defineConfig({
   reporter: process.env.CI ? 'github' : 'list',
   use: {
     baseURL: webOrigin,
+    locale: 'zh-CN',
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure'
   },

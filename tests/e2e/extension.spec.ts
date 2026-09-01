@@ -27,6 +27,7 @@ test.beforeAll(async () => {
   const userDataDir = await mkdtemp(resolve(tmpdir(), 'one-vegetable-e2e-'));
   context = await chromium.launchPersistentContext(userDataDir, {
     headless: false,
+    locale: 'zh-CN',
     args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`]
   });
 });
@@ -127,8 +128,10 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByLabel('Access Token').fill('e2e-token');
   await page.getByLabel('设置保护口令').fill('e2e-vault-password');
   await page.getByLabel('确认保护口令').fill('e2e-vault-password');
-  await page.getByRole('button', { name: '加密保存凭证' }).click();
-  await expect(page.getByText('凭证已加密保存，并将在当前 Chrome 会话内保持可用。').first()).toBeVisible();
+  await page.getByRole('button', { name: '保存设置', exact: true }).click();
+  await expect(
+    page.getByText('凭证与设置已加密保存，并将在当前 Chrome 会话内保持可用。').first()
+  ).toBeVisible();
   const encryptedSettings = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {
@@ -352,7 +355,10 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   expect(platformGateErrors.every((response) => JSON.stringify(response).includes('ok":false'))).toBe(true);
   expect(JSON.stringify(platformGateErrors[0])).toContain('天鹿风控协议');
   expect(JSON.stringify(platformGateErrors[1])).toContain('URL 爬取供应商');
-  expect(JSON.stringify(platformGateErrors[2])).toContain('后台已在出网前拒绝');
+  expect(platformGateErrors[2]).toMatchObject({
+    ok: false,
+    error: { code: 'REAL_MUTATION_DISABLED' }
+  });
 
   await page.evaluate(() => {
     localStorage.setItem(
