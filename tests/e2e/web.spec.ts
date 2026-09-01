@@ -50,6 +50,12 @@ test('web mock labels its in-process source and never calls the BFF', async ({ p
   await expect(page.getByTestId('account-avatar')).toHaveAttribute('aria-label', '当前用户：本地演示用户');
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
   await expect(page.getByText(/当前使用本地契约演示数据/)).toBeVisible();
+
+  await page.getByTestId('todo-input').fill('检查 RFQ 权限');
+  await page.getByTestId('todo-add').click();
+  await expect(page.getByText('检查 RFQ 权限')).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('检查 RFQ 权限')).toBeVisible();
   expect(bffRequests).toEqual([]);
 });
 

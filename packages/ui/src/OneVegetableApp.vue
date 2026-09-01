@@ -378,7 +378,7 @@ function avatarInitials(name: string): string {
                 data-testid="account-avatar"
                 :aria-label="t('shell.identity.avatarLabel', { name: identityName })"
               >
-                <AvatarFallback class="bg-primary/10 text-xs text-primary">
+                <AvatarFallback class="bg-primary text-xs text-primary-foreground">
                   {{ identityInitials }}
                 </AvatarFallback>
               </Avatar>

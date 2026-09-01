@@ -20,10 +20,10 @@ import Card from './ui/Card.vue';
 import Input from './ui/Input.vue';
 
 const { t } = useUiI18n();
-const storage = browserStorage();
-const items = ref<DashboardTodo[]>(storage ? loadDashboardTodos(storage) : []);
+const browserStore = browserStorage();
+const items = ref<DashboardTodo[]>(browserStore ? loadDashboardTodos(browserStore) : []);
 const draft = ref('');
-const persistenceFailed = ref(!storage);
+const persistenceFailed = ref(!browserStore);
 const remainingCount = computed(() => items.value.filter((item) => !item.completed).length);
 const completedCount = computed(() => items.value.length - remainingCount.value);
 const canAdd = computed(() => draft.value.trim().length > 0 && items.value.length < DASHBOARD_TODO_MAX_ITEMS);
@@ -50,12 +50,12 @@ function clearCompleted(): void {
 
 function persist(next: DashboardTodo[]): void {
   items.value = next;
-  if (!storage) {
+  if (!browserStore) {
     persistenceFailed.value = true;
     return;
   }
   try {
-    saveDashboardTodos(storage, next);
+    saveDashboardTodos(browserStore, next);
     persistenceFailed.value = false;
   } catch {
     persistenceFailed.value = true;

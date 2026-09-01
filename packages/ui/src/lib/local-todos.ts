@@ -15,14 +15,14 @@ interface DashboardTodoDocument {
   items: DashboardTodo[];
 }
 
-export function loadDashboardTodos(storage: Storage): DashboardTodo[] {
-  const raw = storage.getItem(DASHBOARD_TODOS_STORAGE_KEY);
+export function loadDashboardTodos(browserStore: Storage): DashboardTodo[] {
+  const raw = browserStore.getItem(DASHBOARD_TODOS_STORAGE_KEY);
   if (!raw) return [];
 
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (!isRecord(parsed) || parsed.version !== 1 || !Array.isArray(parsed.items)) {
-      storage.removeItem(DASHBOARD_TODOS_STORAGE_KEY);
+      browserStore.removeItem(DASHBOARD_TODOS_STORAGE_KEY);
       return [];
     }
 
@@ -36,17 +36,17 @@ export function loadDashboardTodos(storage: Storage): DashboardTodo[] {
       })
       .slice(0, DASHBOARD_TODO_MAX_ITEMS);
   } catch {
-    storage.removeItem(DASHBOARD_TODOS_STORAGE_KEY);
+    browserStore.removeItem(DASHBOARD_TODOS_STORAGE_KEY);
     return [];
   }
 }
 
-export function saveDashboardTodos(storage: Storage, items: readonly DashboardTodo[]): void {
+export function saveDashboardTodos(browserStore: Storage, items: readonly DashboardTodo[]): void {
   const document: DashboardTodoDocument = {
     version: 1,
     items: items.slice(0, DASHBOARD_TODO_MAX_ITEMS)
   };
-  storage.setItem(DASHBOARD_TODOS_STORAGE_KEY, JSON.stringify(document));
+  browserStore.setItem(DASHBOARD_TODOS_STORAGE_KEY, JSON.stringify(document));
 }
 
 export function addDashboardTodo(

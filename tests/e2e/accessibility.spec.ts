@@ -41,6 +41,12 @@ test('mobile navigation has a name and restores keyboard focus after Escape', as
 });
 
 async function expectNoAccessibilityViolations(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const transitions = document
+      .getAnimations()
+      .filter((animation) => animation.constructor.name === 'CSSTransition');
+    await Promise.allSettled(transitions.map((animation) => animation.finished));
+  });
   const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
   expect(results.violations).toEqual([]);
 }
