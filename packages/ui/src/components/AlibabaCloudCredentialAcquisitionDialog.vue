@@ -15,6 +15,7 @@ import type {
   AlibabaCredentialAcquisitionState
 } from '@one-vegetable/core';
 
+import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 import ErrorNotice from './ErrorNotice.vue';
 import Button from './ui/Button.vue';
@@ -28,6 +29,7 @@ const emit = defineEmits<{
 }>();
 
 const { control } = useServices();
+const { t } = useUiI18n();
 const account = ref('');
 const password = ref('');
 const callbackUrl = ref('');
@@ -67,7 +69,7 @@ async function start(): Promise<void> {
     });
     acceptState(next);
   } catch (cause: unknown) {
-    error.value = userError(cause, '云端自动获取暂时失败');
+    error.value = userError(cause, t('admin.cloudAcquisition.errors.start'));
   } finally {
     account.value = '';
     password.value = '';
@@ -100,7 +102,7 @@ async function continueJob(
     const next = await control.continueAlibabaCredentialAcquisition(jobId, command);
     acceptState(next);
   } catch (cause: unknown) {
-    error.value = userError(cause, '凭据获取流程无法继续');
+    error.value = userError(cause, t('admin.cloudAcquisition.errors.continue'));
   } finally {
     busy.value = false;
   }
@@ -124,7 +126,7 @@ async function poll(jobId: string): Promise<void> {
     const next = await control.alibabaCredentialAcquisitionStatus(jobId);
     acceptState(next);
   } catch (cause: unknown) {
-    error.value = userError(cause, '凭据获取状态读取失败');
+    error.value = userError(cause, t('admin.cloudAcquisition.errors.status'));
   }
 }
 
@@ -150,15 +152,15 @@ function clearPoll(): void {
 
 function fallbackMessage(reason: AlibabaCredentialAcquisitionExtensionFallbackReason): string {
   const messages: Record<AlibabaCredentialAcquisitionExtensionFallbackReason, string> = {
-    'browser-unavailable': '云端浏览器当前不可用。',
-    'browser-quota-exhausted': '今日 Browser Run 免费额度不足。',
-    'bot-rejected': 'Alibaba 将云端浏览器识别为自动化访问。',
-    captcha: 'Alibaba 要求完成验证码。',
-    slider: 'Alibaba 要求完成滑块验证。',
-    mfa: 'Alibaba 要求完成二次验证。',
-    'secret-verification': '查看 App Secret 需要安全确认。',
-    'automation-layout-unsupported': 'Alibaba 页面布局或授权协议需要人工确认。',
-    'session-expired': '云端浏览器会话已过期。'
+    'browser-unavailable': t('admin.cloudAcquisition.fallback.browserUnavailable'),
+    'browser-quota-exhausted': t('admin.cloudAcquisition.fallback.browserQuotaExhausted'),
+    'bot-rejected': t('admin.cloudAcquisition.fallback.botRejected'),
+    captcha: t('admin.cloudAcquisition.fallback.captcha'),
+    slider: t('admin.cloudAcquisition.fallback.slider'),
+    mfa: t('admin.cloudAcquisition.fallback.mfa'),
+    'secret-verification': t('admin.cloudAcquisition.fallback.secretVerification'),
+    'automation-layout-unsupported': t('admin.cloudAcquisition.fallback.layoutUnsupported'),
+    'session-expired': t('admin.cloudAcquisition.fallback.sessionExpired')
   };
   return messages[reason];
 }
@@ -181,34 +183,35 @@ onBeforeUnmount(clearPoll);
 <template>
   <ModalDialog
     :open="open"
-    title="一键连接 Alibaba"
-    description="优先用 Cloudflare Browser Run 尝试；安全验证出现时改用正式版 Chrome 插件。"
+    :title="t('admin.cloudAcquisition.title')"
+    :description="t('admin.cloudAcquisition.description')"
     size="lg"
     @update:open="$event ? emit('update:open', true) : void close()"
   >
     <div class="space-y-5">
-      <ErrorNotice v-if="error" :error="error" fallback="凭据获取失败" />
+      <ErrorNotice v-if="error" :error="error" :fallback="t('admin.cloudAcquisition.errors.acquisition')" />
 
       <form v-if="viewState.status === 'form'" class="space-y-4" @submit.prevent="start">
         <div
           class="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100"
         >
-          <p class="flex items-center gap-2 font-medium"><ShieldCheck class="size-4" />敏感信息处理</p>
+          <p class="flex items-center gap-2 font-medium">
+            <ShieldCheck class="size-4" />{{ t('admin.cloudAcquisition.sensitiveTitle') }}
+          </p>
           <p class="mt-1 leading-6">
-            账号和密码只用于当前 HTTPS 请求和临时浏览器内存，不写入
-            D1、日志、审计或截图。系统只复用已有应用，不会创建应用、申请权限或接受协议。
+            {{ t('admin.cloudAcquisition.sensitiveDescription') }}
           </p>
           <p class="mt-2 leading-6">
-            Browser Run 免费额度有限；遇到验证码、滑块或二次验证时，建议直接使用本机插件。
+            {{ t('admin.cloudAcquisition.quotaNotice') }}
           </p>
         </div>
 
         <label class="grid gap-1.5 text-sm">
-          <span class="font-medium">Alibaba 登录账号</span>
+          <span class="font-medium">{{ t('admin.cloudAcquisition.account') }}</span>
           <Input v-model="account" autocomplete="username" maxlength="512" required />
         </label>
         <label class="grid gap-1.5 text-sm">
-          <span class="font-medium">Alibaba 登录密码</span>
+          <span class="font-medium">{{ t('admin.cloudAcquisition.password') }}</span>
           <Input
             v-model="password"
             type="password"
@@ -218,23 +221,27 @@ onBeforeUnmount(clearPoll);
           />
         </label>
         <label class="grid gap-1.5 text-sm">
-          <span class="font-medium">Callback URL（可选）</span>
-          <Input v-model="callbackUrl" type="url" placeholder="留空则保留应用现值" />
-          <span class="text-xs text-muted-foreground"
-            >不会默认写入 example.com；显式修改前会再次展示新旧地址。</span
-          >
+          <span class="font-medium">{{ t('admin.cloudAcquisition.callback') }}</span>
+          <Input
+            v-model="callbackUrl"
+            type="url"
+            :placeholder="t('admin.cloudAcquisition.callbackPlaceholder')"
+          />
+          <span class="text-xs text-muted-foreground">{{ t('admin.cloudAcquisition.callbackNotice') }}</span>
         </label>
 
         <div class="flex flex-wrap justify-between gap-3 border-t pt-4">
-          <Button type="button" variant="outline" @click="close">取消</Button>
+          <Button type="button" variant="outline" @click="close">{{
+            t('admin.cloudAcquisition.cancel')
+          }}</Button>
           <div class="flex flex-wrap justify-end gap-2">
             <Button type="button" variant="outline" @click="manualExtensionGuide = true">
-              <Puzzle class="size-4" />使用本机插件
+              <Puzzle class="size-4" />{{ t('admin.cloudAcquisition.useExtension') }}
             </Button>
             <Button type="submit" :disabled="busy || !account.trim() || !password">
               <LoaderCircle v-if="busy" class="size-4 animate-spin" />
               <Cloud v-else class="size-4" />
-              {{ busy ? '正在安全连接…' : '云端自动获取' }}
+              {{ busy ? t('admin.cloudAcquisition.connecting') : t('admin.cloudAcquisition.automatic') }}
             </Button>
           </div>
         </div>
@@ -242,14 +249,16 @@ onBeforeUnmount(clearPoll);
 
       <div v-else-if="viewState.status === 'running'" class="py-10 text-center">
         <LoaderCircle class="mx-auto size-8 animate-spin text-primary" />
-        <p class="mt-3 font-medium">正在读取应用并完成 OAuth 授权…</p>
-        <p class="mt-1 text-sm text-muted-foreground">最长保留 10 分钟，出现安全验证会自动切换插件方案。</p>
+        <p class="mt-3 font-medium">{{ t('admin.cloudAcquisition.runningTitle') }}</p>
+        <p class="mt-1 text-sm text-muted-foreground">{{ t('admin.cloudAcquisition.runningDescription') }}</p>
       </div>
 
       <div v-else-if="viewState.status === 'selection-required'" class="space-y-3">
         <div>
-          <h3 class="font-semibold">选择已有应用</h3>
-          <p class="text-sm text-muted-foreground">检测到多个应用。这里只显示名称、状态和 AppKey 尾号。</p>
+          <h3 class="font-semibold">{{ t('admin.cloudAcquisition.selectApplication') }}</h3>
+          <p class="text-sm text-muted-foreground">
+            {{ t('admin.cloudAcquisition.selectApplicationDescription') }}
+          </p>
         </div>
         <button
           v-for="application in viewState.applications"
@@ -262,8 +271,12 @@ onBeforeUnmount(clearPoll);
           <span>
             <span class="block font-medium">{{ application.appName }}</span>
             <span class="mt-1 block text-xs text-muted-foreground">
-              {{ application.source === 'legacy-crosstrade' ? '旧版应用中心' : 'Application center' }} ·
-              {{ application.status || '状态未知' }}
+              {{
+                application.source === 'legacy-crosstrade'
+                  ? t('admin.cloudAcquisition.legacyApplicationCenter')
+                  : t('admin.cloudAcquisition.applicationCenter')
+              }}
+              · {{ application.status || t('admin.cloudAcquisition.unknownStatus') }}
             </span>
           </span>
           <code class="rounded bg-muted px-2 py-1 text-xs">••••{{ application.appKeySuffix }}</code>
@@ -274,21 +287,27 @@ onBeforeUnmount(clearPoll);
         <div
           class="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30"
         >
-          <p class="flex items-center gap-2 font-medium"><AlertTriangle class="size-4" />确认修改 Callback</p>
+          <p class="flex items-center gap-2 font-medium">
+            <AlertTriangle class="size-4" />{{ t('admin.cloudAcquisition.callbackConfirmation') }}
+          </p>
           <dl class="mt-3 grid gap-3 text-sm">
             <div>
-              <dt class="text-muted-foreground">当前地址</dt>
+              <dt class="text-muted-foreground">{{ t('admin.cloudAcquisition.currentUrl') }}</dt>
               <dd class="break-all font-mono text-xs">{{ viewState.currentUrl }}</dd>
             </div>
             <div>
-              <dt class="text-muted-foreground">新地址</dt>
+              <dt class="text-muted-foreground">{{ t('admin.cloudAcquisition.newUrl') }}</dt>
               <dd class="break-all font-mono text-xs">{{ viewState.requestedUrl }}</dd>
             </div>
           </dl>
         </div>
         <div class="flex flex-wrap justify-end gap-2">
-          <Button variant="outline" :disabled="busy" @click="confirmCallback(false)">保留现有地址</Button>
-          <Button :disabled="busy" @click="confirmCallback(true)">确认修改并继续</Button>
+          <Button variant="outline" :disabled="busy" @click="confirmCallback(false)">
+            {{ t('admin.cloudAcquisition.keepUrl') }}
+          </Button>
+          <Button :disabled="busy" @click="confirmCallback(true)">
+            {{ t('admin.cloudAcquisition.confirmUrl') }}
+          </Button>
         </div>
       </div>
 
@@ -297,47 +316,55 @@ onBeforeUnmount(clearPoll);
         class="space-y-4"
       >
         <div class="rounded-lg border p-5">
-          <p class="flex items-center gap-2 font-semibold"><Puzzle class="size-5" />改用本机 Chrome 插件</p>
+          <p class="flex items-center gap-2 font-semibold">
+            <Puzzle class="size-5" />{{ t('admin.cloudAcquisition.extensionTitle') }}
+          </p>
           <p class="mt-2 text-sm leading-6 text-muted-foreground">
             <template v-if="viewState.status === 'extension-required'">
               {{ fallbackMessage(viewState.reasonCode) }}
             </template>
-            <template v-else>本机插件不会占用 Browser Run 额度。</template>
-            插件会复用你当前 Chrome 的 Alibaba 登录态，不读取网站密码，并允许你直接完成人机验证。
+            <template v-else>{{ t('admin.cloudAcquisition.extensionNoQuota') }}</template>
+            {{ t('admin.cloudAcquisition.extensionDescription') }}
           </p>
         </div>
         <ol class="list-decimal space-y-2 pl-5 text-sm">
-          <li>安装或打开 oneVegetable 正式版插件。</li>
-          <li>在插件设置中点击“获取开放平台凭证”，按向导完成授权。</li>
-          <li>导出 credentialInfo.json，再回到本页使用“导入凭据”加密保存。</li>
+          <li>{{ t('admin.cloudAcquisition.extensionSteps.install') }}</li>
+          <li>{{ t('admin.cloudAcquisition.extensionSteps.authorize') }}</li>
+          <li>{{ t('admin.cloudAcquisition.extensionSteps.import') }}</li>
         </ol>
         <div class="flex flex-wrap justify-end gap-2">
           <Button
             v-if="viewState.status === 'manual-extension'"
             variant="outline"
             @click="manualExtensionGuide = false"
-            >返回</Button
+            >{{ t('admin.cloudAcquisition.back') }}</Button
           >
-          <Button v-else variant="outline" @click="close">关闭</Button>
-          <Button @click="openChromeStore">打开 Chrome 商店<ExternalLink class="size-4" /></Button>
+          <Button v-else variant="outline" @click="close">{{ t('admin.cloudAcquisition.close') }}</Button>
+          <Button @click="openChromeStore">
+            {{ t('admin.cloudAcquisition.openStore') }}<ExternalLink class="size-4" />
+          </Button>
         </div>
       </div>
 
       <div v-else-if="viewState.status === 'completed'" class="py-6 text-center">
         <CheckCircle2 class="mx-auto size-10 text-emerald-600" />
-        <h3 class="mt-3 text-lg font-semibold">凭据已加密保存</h3>
+        <h3 class="mt-3 text-lg font-semibold">{{ t('admin.cloudAcquisition.completedTitle') }}</h3>
         <p class="mt-1 text-sm text-muted-foreground">
-          {{ viewState.credential.appName }} · AppKey 尾号
-          {{ viewState.credential.appKeySuffix }}；页面不会回显密钥。
+          {{
+            t('admin.cloudAcquisition.completedDescription', {
+              appName: viewState.credential.appName,
+              suffix: viewState.credential.appKeySuffix
+            })
+          }}
         </p>
-        <Button class="mt-5" @click="close">完成</Button>
+        <Button class="mt-5" @click="close">{{ t('admin.cloudAcquisition.done') }}</Button>
       </div>
 
       <div v-else-if="viewState.status === 'failed'" class="space-y-4 py-6 text-center">
         <AlertTriangle class="mx-auto size-9 text-destructive" />
-        <h3 class="font-semibold">自动获取未完成</h3>
+        <h3 class="font-semibold">{{ t('admin.cloudAcquisition.failedTitle') }}</h3>
         <p class="text-sm text-muted-foreground">{{ viewState.error.message }}</p>
-        <Button variant="outline" @click="state = null">重新开始</Button>
+        <Button variant="outline" @click="state = null">{{ t('admin.cloudAcquisition.restart') }}</Button>
       </div>
     </div>
   </ModalDialog>

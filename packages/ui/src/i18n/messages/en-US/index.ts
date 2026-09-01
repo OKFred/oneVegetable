@@ -1,4 +1,5 @@
 import { auth } from './auth';
+import { admin } from './admin';
 import { capabilities } from './capabilities';
 import { common } from './common';
 import { insights } from './insights';
@@ -13,6 +14,7 @@ import { shell } from './shell';
 
 export const enUS = {
   common,
+  admin,
   shell,
   auth,
   products,

@@ -21,6 +21,7 @@ import ErrorNotice from './ErrorNotice.vue';
 import ModalDialog from './ui/ModalDialog.vue';
 import AlibabaCloudCredentialAcquisitionDialog from './AlibabaCloudCredentialAcquisitionDialog.vue';
 import { formatDateTime } from '../lib/date-time';
+import { useUiI18n } from '../i18n';
 
 type Confirmation =
   | { kind: 'credential-import' }
@@ -30,6 +31,7 @@ type Confirmation =
   | { kind: 'recovery-codes' };
 
 const { control } = useServices();
+const { t } = useUiI18n();
 const credentials = ref<ControlGatewayCredentialSummary | null>(null);
 const mutationControl = ref<ControlRealMutationStatus | null>(null);
 const passkeys = ref<ControlPasskeyCredential[]>([]);
@@ -43,23 +45,39 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const acquisitionOpen = ref(false);
 
 const confirmationTitle = computed(() => {
-  if (confirmation.value?.kind === 'credential-import') return '确认导入 Alibaba 凭据';
-  if (confirmation.value?.kind === 'credential-clear') return '确认清空 Alibaba 凭据';
-  if (confirmation.value?.kind === 'passkey-remove') return '确认移除 Passkey';
-  if (confirmation.value?.kind === 'recovery-codes') return '确认重置恢复码';
-  return confirmation.value?.paused ? '暂停全部真实写入' : '恢复已验收真实写入';
+  if (confirmation.value?.kind === 'credential-import') {
+    return t('admin.selfHosted.confirmation.importTitle');
+  }
+  if (confirmation.value?.kind === 'credential-clear') {
+    return t('admin.selfHosted.confirmation.clearTitle');
+  }
+  if (confirmation.value?.kind === 'passkey-remove') {
+    return t('admin.selfHosted.confirmation.removePasskeyTitle');
+  }
+  if (confirmation.value?.kind === 'recovery-codes') {
+    return t('admin.selfHosted.confirmation.recoveryTitle');
+  }
+  return t(
+    confirmation.value?.paused
+      ? 'admin.selfHosted.confirmation.pauseTitle'
+      : 'admin.selfHosted.confirmation.resumeTitle'
+  );
 });
 const confirmationDescription = computed(() => {
   if (confirmation.value?.kind === 'credential-import') {
-    return `将加密导入 ${pendingFileName.value}；页面和接口不会回显密钥。`;
+    return t('admin.selfHosted.confirmation.importDescription', { file: pendingFileName.value });
   }
   if (confirmation.value?.kind === 'credential-clear')
-    return '清空后真实 Alibaba 能力会立即停止，需重新导入。';
-  if (confirmation.value?.kind === 'passkey-remove') return '该设备将不能再用于登录。唯一登录凭据不可移除。';
-  if (confirmation.value?.kind === 'recovery-codes') return '现有恢复码会立即全部失效，新码只显示一次。';
+    return t('admin.selfHosted.confirmation.clearDescription');
+  if (confirmation.value?.kind === 'passkey-remove') {
+    return t('admin.selfHosted.confirmation.removePasskeyDescription');
+  }
+  if (confirmation.value?.kind === 'recovery-codes') {
+    return t('admin.selfHosted.confirmation.recoveryDescription');
+  }
   return confirmation.value?.paused
-    ? '急停优先于所有 operation flag，任何已验收真实写操作都会在出网前被拒绝。'
-    : '仅恢复固定白名单内、已完成真实验收的写操作。';
+    ? t('admin.selfHosted.confirmation.pauseDescription')
+    : t('admin.selfHosted.confirmation.resumeDescription');
 });
 
 onMounted(refresh);
@@ -78,7 +96,7 @@ async function refresh(): Promise<void> {
     mutationControl.value = pauseStatus;
     passkeys.value = credentialList;
   } catch (cause: unknown) {
-    error.value = userError(cause, '自托管设置加载失败');
+    error.value = userError(cause, t('admin.selfHosted.errors.load'));
   } finally {
     loading.value = false;
   }
@@ -91,7 +109,7 @@ async function selectCredentialFile(event: Event): Promise<void> {
   input.value = '';
   if (!file) return;
   try {
-    if (file.size > 1024 * 1024) throw new Error('凭据文件不能超过 1 MiB。');
+    if (file.size > 1024 * 1024) throw new Error(t('admin.selfHosted.errors.fileSize'));
     const parsed: unknown = JSON.parse(await file.text());
     pendingBundle.value = parseAlibabaOpenApiCredentialBundle(parsed);
     pendingFileName.value = file.name;
@@ -99,7 +117,7 @@ async function selectCredentialFile(event: Event): Promise<void> {
   } catch (cause: unknown) {
     pendingBundle.value = null;
     pendingFileName.value = '';
-    error.value = userError(cause, 'credentials.json 无效');
+    error.value = userError(cause, t('admin.selfHosted.errors.invalidFile'));
   }
 }
 
@@ -112,10 +130,10 @@ async function addPasskey(): Promise<void> {
       optionsJSON: ceremony.options as unknown as PublicKeyCredentialCreationOptionsJSON
     });
     await control.registerPasskey(ceremony.challengeId, response, `Passkey ${passkeys.value.length + 1}`);
-    toast.success('新 Passkey 已登记。');
+    toast.success(t('admin.selfHosted.feedback.passkeyRegistered'));
     await refresh();
   } catch (cause: unknown) {
-    error.value = userError(cause, 'Passkey 登记失败');
+    error.value = userError(cause, t('admin.selfHosted.errors.passkeyRegistration'));
   }
 }
 
@@ -124,9 +142,9 @@ async function refreshCredential(): Promise<void> {
   error.value = null;
   try {
     credentials.value = await control.refreshGatewayCredential();
-    toast.success('Alibaba Token 已刷新。');
+    toast.success(t('admin.selfHosted.feedback.tokenRefreshed'));
   } catch (cause: unknown) {
-    error.value = userError(cause, 'Token 刷新失败');
+    error.value = userError(cause, t('admin.selfHosted.errors.tokenRefresh'));
   }
 }
 
@@ -138,38 +156,44 @@ async function confirm(): Promise<void> {
   confirmation.value = null;
   try {
     if (action.kind === 'credential-import') {
-      if (!pendingBundle.value) throw new Error('请重新选择凭据文件。');
+      if (!pendingBundle.value) throw new Error(t('admin.selfHosted.errors.reselect'));
       credentials.value = await control.importGatewayCredential(
         pendingBundle.value,
         credentials.value?.revision ?? null,
-        `从 ${pendingFileName.value} 导入`
+        t('admin.selfHosted.feedback.importRemark', { file: pendingFileName.value })
       );
       pendingBundle.value = null;
       pendingFileName.value = '';
-      toast.success('Alibaba 凭据已加密导入。');
+      toast.success(t('admin.selfHosted.feedback.imported'));
     } else if (action.kind === 'credential-clear') {
       if (credentials.value?.revision === null || credentials.value?.revision === undefined) return;
       await control.clearGatewayCredential(credentials.value.revision);
-      toast.success('Alibaba 凭据已清空。');
+      toast.success(t('admin.selfHosted.feedback.cleared'));
     } else if (action.kind === 'pause') {
-      if (!control.updateRealMutationPause) throw new Error('当前后端不支持真实写入急停。');
+      if (!control.updateRealMutationPause) {
+        throw new Error(t('admin.selfHosted.errors.pauseUnsupported'));
+      }
       mutationControl.value = await control.updateRealMutationPause(
         action.paused,
         mutationControl.value?.revision ?? null,
-        action.paused ? '管理员紧急暂停' : '管理员确认恢复'
+        t(action.paused ? 'admin.selfHosted.feedback.pauseRemark' : 'admin.selfHosted.feedback.resumeRemark')
       );
-      toast.success(action.paused ? '已暂停全部真实写入。' : '已恢复已验收真实写入。');
+      toast.success(
+        t(action.paused ? 'admin.selfHosted.feedback.paused' : 'admin.selfHosted.feedback.resumed')
+      );
     } else if (action.kind === 'passkey-remove') {
-      if (!control.removePasskey) throw new Error('当前后端不支持 Passkey 管理。');
+      if (!control.removePasskey) throw new Error(t('admin.selfHosted.errors.passkeyUnsupported'));
       await control.removePasskey(action.credential.id);
-      toast.success('Passkey 已移除。');
+      toast.success(t('admin.selfHosted.feedback.passkeyRemoved'));
     } else {
-      if (!control.regenerateRecoveryCodes) throw new Error('当前后端不支持恢复码管理。');
+      if (!control.regenerateRecoveryCodes) {
+        throw new Error(t('admin.selfHosted.errors.recoveryUnsupported'));
+      }
       recoveryCodes.value = await control.regenerateRecoveryCodes();
     }
     await refresh();
   } catch (cause: unknown) {
-    error.value = userError(cause, '管理操作失败');
+    error.value = userError(cause, t('admin.selfHosted.errors.operation'));
   } finally {
     loading.value = false;
   }
@@ -178,9 +202,9 @@ async function confirm(): Promise<void> {
 async function copyRecoveryCodes(): Promise<void> {
   try {
     await globalThis.navigator.clipboard.writeText(recoveryCodes.value.join('\n'));
-    toast.success('恢复码已复制。');
+    toast.success(t('admin.selfHosted.feedback.recoveryCopied'));
   } catch {
-    toast.error('复制失败，请手工选择。');
+    toast.error(t('admin.selfHosted.errors.copy'));
   }
 }
 
@@ -193,36 +217,42 @@ function userError(cause: unknown, fallback: string): Error {
   <section class="mt-5 space-y-5" aria-labelledby="self-hosted-settings-title">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h2 id="self-hosted-settings-title" class="text-lg font-semibold">Cloudflare 自托管设置</h2>
-        <p class="text-sm text-muted-foreground">密钥只在 Worker 内解密；管理接口只返回完整性和到期状态。</p>
+        <h2 id="self-hosted-settings-title" class="text-lg font-semibold">
+          {{ t('admin.selfHosted.title') }}
+        </h2>
+        <p class="text-sm text-muted-foreground">{{ t('admin.selfHosted.description') }}</p>
       </div>
       <Button variant="outline" size="sm" :disabled="loading" @click="refresh">
-        <RefreshCw class="size-4" />刷新
+        <RefreshCw class="size-4" />{{ t('common.actions.refresh') }}
       </Button>
     </div>
 
-    <ErrorNotice v-if="error" :error="error" fallback="自托管设置操作失败" />
+    <ErrorNotice v-if="error" :error="error" :fallback="t('admin.selfHosted.errors.panel')" />
 
     <div class="grid gap-5 xl:grid-cols-3">
       <Card class="p-5">
         <div class="flex items-center justify-between gap-3">
-          <h3 class="flex items-center gap-2 font-semibold"><Upload class="size-4" />Alibaba 开放平台凭证</h3>
+          <h3 class="flex items-center gap-2 font-semibold">
+            <Upload class="size-4" />{{ t('admin.selfHosted.credentials') }}
+          </h3>
           <span
             class="rounded-full px-2 py-1 text-xs"
             :class="
               credentials?.configured ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
             "
           >
-            {{ credentials?.configured ? '已配置' : '未配置' }}
+            {{
+              credentials?.configured ? t('admin.selfHosted.configured') : t('admin.selfHosted.notConfigured')
+            }}
           </span>
         </div>
         <dl class="mt-4 space-y-2 text-sm">
           <div class="flex justify-between gap-3">
-            <dt class="text-muted-foreground">Access Token 到期</dt>
+            <dt class="text-muted-foreground">{{ t('admin.selfHosted.expires') }}</dt>
             <dd>{{ formatDateTime(credentials?.accessTokenExpiresTimeUtc ?? null) }}</dd>
           </div>
           <div class="flex justify-between gap-3">
-            <dt class="text-muted-foreground">最近刷新错误</dt>
+            <dt class="text-muted-foreground">{{ t('admin.selfHosted.lastRefreshError') }}</dt>
             <dd>{{ credentials?.lastRefreshErrorCode ?? '—' }}</dd>
           </div>
         </dl>
@@ -234,12 +264,14 @@ function userError(cause: unknown, fallback: string): Error {
           @change="selectCredentialFile"
         />
         <div class="mt-4 flex flex-wrap gap-2">
-          <Button size="sm" @click="acquisitionOpen = true"><Sparkles class="size-4" />一键连接</Button>
+          <Button size="sm" @click="acquisitionOpen = true"
+            ><Sparkles class="size-4" />{{ t('admin.selfHosted.connect') }}</Button
+          >
           <Button size="sm" @click="fileInput?.click()"
-            ><Upload class="size-4" />导入 credentials.json</Button
+            ><Upload class="size-4" />{{ t('admin.selfHosted.import') }}</Button
           >
           <Button size="sm" variant="outline" :disabled="!credentials?.configured" @click="refreshCredential">
-            刷新 Token
+            {{ t('admin.selfHosted.refreshToken') }}
           </Button>
           <Button
             size="sm"
@@ -247,23 +279,27 @@ function userError(cause: unknown, fallback: string): Error {
             :disabled="!credentials?.configured"
             @click="confirmation = { kind: 'credential-clear' }"
           >
-            清空
+            {{ t('admin.selfHosted.clear') }}
           </Button>
         </div>
       </Card>
 
       <Card class="p-5">
         <div class="flex items-center justify-between gap-3">
-          <h3 class="flex items-center gap-2 font-semibold"><Shield class="size-4" />真实写入急停</h3>
+          <h3 class="flex items-center gap-2 font-semibold">
+            <Shield class="size-4" />{{ t('admin.selfHosted.emergency') }}
+          </h3>
           <span
             class="rounded-full px-2 py-1 text-xs"
             :class="mutationControl?.paused ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'"
           >
-            {{ mutationControl?.paused ? '全部暂停' : '白名单开放' }}
+            {{
+              mutationControl?.paused ? t('admin.selfHosted.allPaused') : t('admin.selfHosted.allowlistOpen')
+            }}
           </span>
         </div>
         <p class="mt-4 text-sm text-muted-foreground">
-          急停优先级高于全部 operation flag。管理员也无法绕过未验收能力、资格限制或契约校验。
+          {{ t('admin.selfHosted.emergencyDescription') }}
         </p>
         <Button
           class="mt-4 w-full"
@@ -272,14 +308,16 @@ function userError(cause: unknown, fallback: string): Error {
         >
           <PlayCircle v-if="mutationControl?.paused" class="size-4" />
           <PauseCircle v-else class="size-4" />
-          {{ mutationControl?.paused ? '恢复已验收写入' : '暂停全部真实写入' }}
+          {{ mutationControl?.paused ? t('admin.selfHosted.resume') : t('admin.selfHosted.pause') }}
         </Button>
       </Card>
 
       <Card class="p-5">
         <div class="flex items-center justify-between gap-3">
-          <h3 class="flex items-center gap-2 font-semibold"><KeyRound class="size-4" />我的 Passkey</h3>
-          <Button size="sm" variant="outline" @click="addPasskey">新增</Button>
+          <h3 class="flex items-center gap-2 font-semibold">
+            <KeyRound class="size-4" />{{ t('admin.selfHosted.passkeys') }}
+          </h3>
+          <Button size="sm" variant="outline" @click="addPasskey">{{ t('admin.selfHosted.add') }}</Button>
         </div>
         <div class="mt-4 space-y-2">
           <div
@@ -297,7 +335,7 @@ function userError(cause: unknown, fallback: string): Error {
               :disabled="passkeys.length <= 1"
               @click="confirmation = { kind: 'passkey-remove', credential }"
             >
-              移除
+              {{ t('admin.selfHosted.remove') }}
             </Button>
           </div>
         </div>
@@ -307,7 +345,7 @@ function userError(cause: unknown, fallback: string): Error {
           variant="outline"
           @click="confirmation = { kind: 'recovery-codes' }"
         >
-          重新生成恢复码
+          {{ t('admin.selfHosted.regenerateRecovery') }}
         </Button>
       </Card>
     </div>
@@ -328,8 +366,8 @@ function userError(cause: unknown, fallback: string): Error {
 
     <ModalDialog
       :open="recoveryCodes.length > 0"
-      title="保存新的恢复码"
-      description="旧恢复码已全部失效；新码关闭后不会再次显示。"
+      :title="t('admin.selfHosted.recoveryTitle')"
+      :description="t('admin.selfHosted.recoveryDescription')"
       size="md"
       @update:open="recoveryCodes = []"
     >
@@ -337,8 +375,10 @@ function userError(cause: unknown, fallback: string): Error {
         <code v-for="code in recoveryCodes" :key="code" class="select-all break-all">{{ code }}</code>
       </div>
       <template #footer>
-        <Button variant="outline" @click="copyRecoveryCodes"><Copy class="size-4" />复制</Button>
-        <Button @click="recoveryCodes = []">我已保存</Button>
+        <Button variant="outline" @click="copyRecoveryCodes"
+          ><Copy class="size-4" />{{ t('admin.selfHosted.copy') }}</Button
+        >
+        <Button @click="recoveryCodes = []">{{ t('admin.selfHosted.saved') }}</Button>
       </template>
     </ModalDialog>
   </section>
