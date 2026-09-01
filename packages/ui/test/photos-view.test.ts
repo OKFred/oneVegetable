@@ -74,6 +74,39 @@ describe('PhotosView', () => {
     wrapper.unmount();
   });
 
+  it('switches between card and list views without losing the current selection', async () => {
+    const wrapper = mountView();
+    await flushPromises();
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="photo-card-grid"]').exists()).toBe(true);
+    });
+    const viewSwitcher = wrapper.get('[role="group"][aria-label="图库展示方式"]');
+    const cardButton = viewSwitcher.findAll('button').find((candidate) => candidate.text() === '卡片');
+    const listButton = viewSwitcher.findAll('button').find((candidate) => candidate.text() === '列表');
+    if (!cardButton || !listButton) throw new Error('Missing gallery view switcher buttons');
+
+    expect(cardButton.attributes('aria-pressed')).toBe('true');
+    await listButton.trigger('click');
+
+    expect(wrapper.find('[data-testid="photo-card-grid"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="photo-list-table"] table').exists()).toBe(true);
+    expect(listButton.attributes('aria-pressed')).toBe('true');
+    expect(wrapper.find('[data-testid="photo-list-table"]').text()).toContain('solar-station-front.jpg');
+    expect(wrapper.find('[data-testid="photo-list-table"]').text()).toContain('fileId：ph_001');
+
+    await wrapper.get('input[aria-label="选择 solar-station-front.jpg"]').setValue(true);
+    expect(wrapper.text()).toContain('已选 1 张');
+    await cardButton.trigger('click');
+
+    expect(wrapper.find('[data-testid="photo-card-grid"]').exists()).toBe(true);
+    expect(
+      (wrapper.get('input[aria-label="取消选择 solar-station-front.jpg"]').element as HTMLInputElement)
+        .checked
+    ).toBe(true);
+    wrapper.unmount();
+  });
+
   it('selects gallery images and opens the honest social sharing workflow', async () => {
     const wrapper = mountView();
     await flushPromises();

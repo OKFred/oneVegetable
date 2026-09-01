@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, h, ref, watch } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
-import { Eye, Settings2, Share2, ShieldCheck, Upload } from '@lucide/vue';
+import { Eye, LayoutGrid, List as ListIcon, Settings2, Share2, ShieldCheck, Upload } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
 import type {
@@ -13,6 +13,7 @@ import type {
 import { SOCIAL_SHARE_MAX_PHOTOS } from '@one-vegetable/core';
 
 import ActionTooltip from '../components/ActionTooltip.vue';
+import DataTable from '../components/DataTable.vue';
 import GroupSidebar from '../components/GroupSidebar.vue';
 import PageHeader from '../components/PageHeader.vue';
 import ImagePreview, { type ImagePreviewItem } from '../components/ImagePreview.vue';
@@ -30,12 +31,15 @@ import {
   useOperationAvailability
 } from '../composables/use-operation-availability';
 import { useServices } from '../lib/services';
+import type { DataColumn } from '../lib/table';
 
 type GovernanceFilter = 'all' | 'unreferenced' | 'lowResolution';
+type PhotoViewMode = 'cards' | 'list';
 
 const { gateway } = useServices();
 const selectedGroup = ref('-1');
 const governanceFilter = ref<GovernanceFilter>('all');
+const photoViewMode = ref<PhotoViewMode>('cards');
 const selectedGroupDefinition = ref<PhotoGroup | null>(null);
 const observedDimensions = ref<Record<string, { width: number; height: number }>>({});
 const previewOpen = ref(false);
@@ -164,6 +168,10 @@ function fileSize(value: number): string {
   return value >= 1024 * 1024 ? `${(value / 1024 / 1024).toFixed(1)} MiB` : `${Math.ceil(value / 1024)} KiB`;
 }
 
+function modifiedAtLabel(value: string): string {
+  return new Date(value).toLocaleString('zh-CN');
+}
+
 function openPreview(photo: Photo): void {
   previewIndex.value = Math.max(
     0,
@@ -175,6 +183,120 @@ function openPreview(photo: Photo): void {
 function handleUploaded(photo: Photo): void {
   toast.success(`已上传到图库：${photo.name}`);
 }
+
+const photoColumns: DataColumn<Photo>[] = [
+  {
+    id: 'selection',
+    header: '选择',
+    cell: ({ row }) => {
+      const photo = row.original;
+      const selected = selectedPhotoIdSet.value.has(photo.id);
+      return h(TriStateCheckbox, {
+        checked: selected,
+        label: `${selected ? '取消选择' : '选择'} ${photo.name}`,
+        'onUpdate:checked': (checked: boolean) => {
+          setPhotoSelected(photo.id, checked);
+        }
+      });
+    },
+    meta: { sticky: 'left', stickyOffset: '0px', width: '64px' }
+  },
+  {
+    id: 'thumbnail',
+    header: '图片',
+    cell: ({ row }) => {
+      const photo = row.original;
+      return h(
+        'button',
+        {
+          type: 'button',
+          class:
+            'group relative block size-14 overflow-hidden rounded-md border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          'aria-label': `预览 ${photo.name}`,
+          onClick: () => {
+            openPreview(photo);
+          }
+        },
+        h('img', {
+          src: photo.previewUrl ?? photo.url,
+          alt: photo.name,
+          class: 'size-full object-cover transition-transform duration-200 group-hover:scale-105',
+          onLoad: (event: Event) => {
+            rememberDimensions(photo, event);
+          }
+        })
+      );
+    },
+    meta: { sticky: 'left', stickyOffset: '64px', stickyBoundary: true, width: '88px' }
+  },
+  {
+    id: 'name',
+    header: '名称',
+    cell: ({ row }) =>
+      h('div', { class: 'min-w-56' }, [
+        h('p', { class: 'max-w-72 truncate font-medium', title: row.original.name }, row.original.name),
+        h('p', { class: 'mt-1 font-mono text-[11px] text-muted-foreground' }, `fileId：${row.original.id}`)
+      ])
+  },
+  {
+    id: 'dimensions',
+    header: '尺寸',
+    cell: ({ row }) =>
+      h(
+        'span',
+        {
+          class: isLowResolution(row.original)
+            ? 'whitespace-nowrap text-amber-700 dark:text-amber-300'
+            : 'whitespace-nowrap'
+        },
+        dimensionsLabel(row.original)
+      )
+  },
+  {
+    id: 'fileSize',
+    header: '大小',
+    cell: ({ row }) => h('span', { class: 'whitespace-nowrap' }, fileSize(row.original.fileSize))
+  },
+  {
+    id: 'references',
+    header: '引用情况',
+    cell: ({ row }) => {
+      const photo = row.original;
+      return h('div', { class: 'flex min-w-32 flex-wrap gap-1' }, [
+        h(Badge, { variant: 'secondary' }, () => `引用 ${photo.referenceCount}`),
+        photo.referenceCount === 0 ? h(Badge, { variant: 'outline' }, () => '建议清理') : null,
+        isLowResolution(photo) ? h(Badge, { variant: 'outline' }, () => '建议换高清图') : null
+      ]);
+    }
+  },
+  {
+    id: 'modifiedAt',
+    header: '更新时间',
+    cell: ({ row }) =>
+      h(
+        'span',
+        { class: 'whitespace-nowrap text-muted-foreground' },
+        modifiedAtLabel(row.original.modifiedAt)
+      )
+  },
+  {
+    id: 'actions',
+    header: '操作',
+    cell: ({ row }) =>
+      h(
+        Button,
+        {
+          variant: 'outline',
+          size: 'sm',
+          onClick: () => {
+            openPreview(row.original);
+          }
+        },
+        () => [h(Eye, { class: 'size-4', 'aria-hidden': 'true' }), '预览']
+      ),
+    meta: { sticky: 'right', stickyOffset: '0px', stickyBoundary: true, width: '104px' }
+  }
+];
 </script>
 
 <template>
@@ -235,7 +357,7 @@ function handleUploaded(photo: Photo): void {
             取消选择
           </Button>
         </div>
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap items-center justify-end gap-2">
           <Button
             size="sm"
             :variant="governanceFilter === 'all' ? 'secondary' : 'outline'"
@@ -257,6 +379,30 @@ function handleUploaded(photo: Photo): void {
           >
             低分辨率 {{ governanceCounts.lowResolution }}
           </Button>
+          <div
+            class="inline-flex items-center rounded-md border bg-background p-0.5"
+            role="group"
+            aria-label="图库展示方式"
+          >
+            <Button
+              size="sm"
+              :variant="photoViewMode === 'cards' ? 'secondary' : 'ghost'"
+              class="h-8 gap-1.5 px-2.5"
+              :aria-pressed="photoViewMode === 'cards'"
+              @click="photoViewMode = 'cards'"
+            >
+              <LayoutGrid class="size-4" aria-hidden="true" />卡片
+            </Button>
+            <Button
+              size="sm"
+              :variant="photoViewMode === 'list' ? 'secondary' : 'ghost'"
+              class="h-8 gap-1.5 px-2.5"
+              :aria-pressed="photoViewMode === 'list'"
+              @click="photoViewMode = 'list'"
+            >
+              <ListIcon class="size-4" aria-hidden="true" />列表
+            </Button>
+          </div>
         </div>
       </Card>
 
@@ -266,7 +412,11 @@ function handleUploaded(photo: Photo): void {
         retryable
         @retry="photos.refetch()"
       >
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div
+          v-if="filteredPhotos.length > 0 && photoViewMode === 'cards'"
+          data-testid="photo-card-grid"
+          class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+        >
           <Card
             v-for="photo in filteredPhotos"
             :key="photo.id"
@@ -314,6 +464,18 @@ function handleUploaded(photo: Photo): void {
               </p>
             </div>
           </Card>
+        </div>
+        <div v-else-if="filteredPhotos.length > 0" data-testid="photo-list-table">
+          <DataTable
+            :columns="photoColumns"
+            :data="filteredPhotos"
+            :pagination="false"
+            min-width="980px"
+            max-height="min(64vh, 680px)"
+            :get-row-key="(photo) => photo.id"
+            :row-aria-label="(photo) => `预览 ${photo.name}`"
+            @row-activate="openPreview"
+          />
         </div>
         <Card v-if="filteredPhotos.length === 0" class="p-8 text-center text-sm text-muted-foreground">
           <p>当前筛选下没有素材。</p>
