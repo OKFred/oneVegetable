@@ -18,11 +18,13 @@ describe('TriStateCheckbox', () => {
 
     expect(input.indeterminate).toBe(true);
     expect(input.getAttribute('aria-checked')).toBe('mixed');
+    expect(wrapper.attributes('data-state')).toBe('indeterminate');
 
     await wrapper.setProps({ checked: true, indeterminate: false });
     expect(input.indeterminate).toBe(false);
     expect(input.checked).toBe(true);
     expect(input.getAttribute('aria-checked')).toBe('true');
+    expect(wrapper.attributes('data-state')).toBe('checked');
   });
 
   it('emits changes and exposes its disabled state', async () => {
@@ -39,5 +41,19 @@ describe('TriStateCheckbox', () => {
 
     await wrapper.setProps({ disabled: true });
     expect(wrapper.get('input').attributes('disabled')).toBeDefined();
+  });
+
+  it('renders a larger overlay control for image cards', () => {
+    const wrapper = mount(TriStateCheckbox, {
+      props: {
+        checked: true,
+        label: '选择图片',
+        variant: 'overlay'
+      }
+    });
+
+    expect(wrapper.attributes('data-variant')).toBe('overlay');
+    expect(wrapper.classes()).toContain('size-7');
+    expect(wrapper.find('svg').exists()).toBe(true);
   });
 });

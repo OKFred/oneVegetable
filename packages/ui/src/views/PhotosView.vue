@@ -423,10 +423,11 @@ const photoColumns: DataColumn<Photo>[] = [
             class="relative overflow-hidden transition-[box-shadow,border-color]"
             :class="selectedPhotoIdSet.has(photo.id) ? 'ring-2 ring-primary' : ''"
           >
-            <span class="absolute left-3 top-3 z-20 rounded-md bg-background/90 p-1 shadow backdrop-blur">
+            <span class="absolute left-3 top-3 z-20">
               <TriStateCheckbox
                 :checked="selectedPhotoIdSet.has(photo.id)"
                 :label="`${selectedPhotoIdSet.has(photo.id) ? '取消选择' : '选择'} ${photo.name}`"
+                variant="overlay"
                 @update:checked="setPhotoSelected(photo.id, $event)"
               />
             </span>
