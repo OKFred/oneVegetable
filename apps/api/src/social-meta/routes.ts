@@ -10,6 +10,7 @@ import { authenticateMutation, authenticateRequest } from '../auth/routes';
 import { AuthError } from '../auth/service';
 import { ExtensionSocialDeviceError } from './extension-device-service';
 import { MetaEntityVersionConflictError } from './repository';
+import { withMetaSocialRuntime } from './runtime-summary';
 import { SocialMediaAssetError } from './media-service';
 import { SocialPublishingServiceError } from './publishing-service';
 import { MetaSocialServiceError } from './service';
@@ -22,12 +23,14 @@ import type { ExtensionSocialDeviceService } from './extension-device-service';
 import type { MetaSocialService } from './service';
 import type { SocialMediaAssetService } from './media-service';
 import type { SocialPublishingService } from './publishing-service';
+import type { MetaSocialRuntimeContext } from './runtime-summary';
 
 const REQUEST_IDS = new WeakMap<Request, string>();
 
 export interface MetaSocialRouteOptions {
   authService: AuthService;
   service: MetaSocialService;
+  runtime: MetaSocialRuntimeContext;
   mediaAssets?: SocialMediaAssetService;
   publishing?: SocialPublishingService;
   extensionDevices?: ExtensionSocialDeviceService;
@@ -36,7 +39,12 @@ export interface MetaSocialRouteOptions {
 
 export function registerMetaSocialRoutes(api: Hono, options: MetaSocialRouteOptions): void {
   api.post('/admin/social/meta/config/get', (context) =>
-    adminRead(context, options, async () => options.service.configuration(), ['requestId'])
+    adminRead(
+      context,
+      options,
+      async () => withMetaSocialRuntime(await options.service.configuration(), options.runtime),
+      ['requestId']
+    )
   );
 
   api.post('/admin/social/meta/config/update', (context) =>
@@ -65,7 +73,7 @@ export function registerMetaSocialRoutes(api: Hono, options: MetaSocialRouteOpti
           revisionBefore: current.revision,
           revisionAfter: result.revision
         });
-        return result;
+        return withMetaSocialRuntime(result, options.runtime);
       },
       ['requestId', 'appId', 'appSecret', 'publicOrigin', 'revision', 'remark']
     )

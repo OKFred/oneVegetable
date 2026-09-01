@@ -7,6 +7,7 @@ import {
   MessageCircle,
   RefreshCw,
   Save,
+  Server,
   ShieldCheck,
   Smartphone,
   Trash2,
@@ -65,6 +66,31 @@ const deviceManagementSupported = computed(
     'listExtensionSocialDevices' in control &&
     'revokeExtensionSocialDevice' in control
 );
+const runtimeLabel = computed(() => {
+  const current = configuration.value;
+  if (!current?.apiRuntime) return '';
+  const runtime = current.apiRuntime === 'cloudflare' ? 'Cloudflare Worker' : 'Node.js';
+  const storage =
+    current.mediaStorage === 'r2'
+      ? 'R2 私有素材库'
+      : current.mediaStorage === 'filesystem'
+        ? '本地私有素材目录'
+        : '素材存储不可用';
+  return `${runtime} · ${storage}`;
+});
+const runtimeDescription = computed(() => {
+  const current = configuration.value;
+  if (!current?.apiRuntime) return '';
+  if (current.runtimeIssueCode === 'SOCIAL_MEDIA_STORAGE_UNAVAILABLE') {
+    return '缺少临时素材存储，暂时无法准备 Facebook 或 Instagram 发布任务。';
+  }
+  if (current.runtimeIssueCode === 'SOCIAL_PUBLISHING_SERVICE_UNAVAILABLE') {
+    return '发布服务尚未完成初始化，请检查凭据加密设施与运行时绑定。';
+  }
+  return current.publishingRuntimeAvailable
+    ? '社交发布运行组件已就绪。'
+    : '当前后端未返回完整的社交发布运行状态。';
+});
 const confirmationTitle = computed(() => {
   if (confirmation.value?.kind === 'save') return '确认保存 Meta 应用配置';
   if (confirmation.value?.kind === 'clear') return '确认清除 Meta 应用配置';
@@ -230,6 +256,26 @@ function destinationCount(connectionId: string): number {
           </Badge>
         </div>
         <ErrorNotice v-if="error" :error="error" fallback="Meta 配置操作失败" compact />
+        <div
+          v-if="configuration?.apiRuntime"
+          class="rounded-lg border p-3"
+          :class="
+            configuration.publishingRuntimeAvailable
+              ? 'border-emerald-500/30 bg-emerald-500/5'
+              : 'border-amber-500/40 bg-amber-500/5'
+          "
+        >
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex min-w-0 items-center gap-2 text-sm font-medium">
+              <Server class="size-4 shrink-0" />
+              <span class="truncate">{{ runtimeLabel }}</span>
+            </div>
+            <Badge :variant="configuration.publishingRuntimeAvailable ? 'success' : 'warning'">
+              {{ configuration.publishingRuntimeAvailable ? '发布组件就绪' : '需要处理' }}
+            </Badge>
+          </div>
+          <p class="mt-2 text-xs text-muted-foreground">{{ runtimeDescription }}</p>
+        </div>
         <label class="block space-y-1 text-sm">
           <span>App ID</span>
           <Input v-model="appId" inputmode="numeric" placeholder="Meta App ID" autocomplete="off" />

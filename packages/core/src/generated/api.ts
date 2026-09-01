@@ -7053,6 +7053,20 @@ export interface components {
             publicOrigin: string | null;
             /** Format: uri */
             callbackUrl: string | null;
+            /**
+             * @description Runtime currently serving the Meta administration API.
+             * @enum {string}
+             */
+            apiRuntime?: "node" | "cloudflare";
+            /**
+             * @description Private temporary storage used for social publishing media.
+             * @enum {string}
+             */
+            mediaStorage?: "filesystem" | "r2" | "unavailable";
+            /** @description Whether the current runtime has both media storage and the publishing service wired. */
+            publishingRuntimeAvailable?: boolean;
+            /** @enum {string|null} */
+            runtimeIssueCode?: "SOCIAL_MEDIA_STORAGE_UNAVAILABLE" | "SOCIAL_PUBLISHING_SERVICE_UNAVAILABLE" | null;
             revision: number | null;
             updateTimeUtc: number | null;
             updaterId: string | null;
