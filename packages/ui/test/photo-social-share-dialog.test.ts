@@ -16,6 +16,7 @@ import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import destinationsFixture from '../../../mock/data/social-meta/destinations.json';
 import publishJobFixture from '../../../mock/data/social-meta/publish-job.json';
+import permalinkFixture from '../../../mock/data/social-meta/permalink.json';
 
 import PhotoSocialShareDialog from '../src/components/PhotoSocialShareDialog.vue';
 import { provideServices } from '../src/lib/services';
@@ -74,11 +75,13 @@ describe('PhotoSocialShareDialog', () => {
         revision: 2
       })
     );
+    const getSocialPostPermalink = vi.fn(() => Promise.resolve(permalinkFixture));
     const control = {
       listSocialDestinations: () => Promise.resolve(destinationsFixture as SocialDestination[]),
       listSocialPosts: () => Promise.resolve([]),
       prepareSocialPost,
-      publishSocialPost
+      publishSocialPost,
+      getSocialPostPermalink
     } as unknown as ControlClient;
     const wrapper = mountDialog(control, 'bff');
 
@@ -101,6 +104,16 @@ describe('PhotoSocialShareDialog', () => {
       expect(publishSocialPost).toHaveBeenCalledWith(preparedJob.id);
     });
     expect(document.body.textContent).toContain('发布成功');
+    expect(getSocialPostPermalink).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain('获取 Facebook 链接');
+
+    await clickBodyButton('获取 Facebook 链接');
+    await vi.waitFor(() => {
+      expect(getSocialPostPermalink).toHaveBeenCalledWith(preparedJob.id);
+    });
+    const permalink = document.body.querySelector<HTMLAnchorElement>('a[href*="facebook.com"]');
+    expect(permalink?.href).toBe(permalinkFixture.url);
+    expect(permalink?.textContent).toContain('在 Facebook 查看');
     wrapper.unmount();
   });
 

@@ -4904,6 +4904,90 @@
         }
       }
     },
+    "/social-posts/permalink/get": {
+      "post": {
+        "summary": "Read the platform permalink for one published social post on explicit user request",
+        "operationId": "getSocialPostPermalink",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/SocialPostTargetRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/social-posts/list": {
       "post": {
         "summary": "List recent social publish jobs",
@@ -14802,6 +14886,18 @@
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
           "limit": { "type": "integer", "minimum": 1, "maximum": 100 }
+        }
+      },
+      "SocialPostPermalink": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["platform", "platformPostId", "url", "platformRequestId", "platformTraceId"],
+        "properties": {
+          "platform": { "$ref": "#/components/schemas/SocialPlatform" },
+          "platformPostId": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "url": { "type": "string", "format": "uri", "pattern": "^https://" },
+          "platformRequestId": { "type": ["string", "null"], "maxLength": 256 },
+          "platformTraceId": { "type": ["string", "null"], "maxLength": 256 }
         }
       },
       "SocialPostPrepareRequest": {

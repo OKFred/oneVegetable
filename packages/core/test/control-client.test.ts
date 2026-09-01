@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { BffControlClient } from '../src/control-client';
 import { GatewayException } from '../src/errors';
 
+import permalinkFixture from '../../../mock/data/social-meta/permalink.json';
+
 import type { NetworkTransport } from '../src/network';
 
 describe('BffControlClient', () => {
@@ -269,9 +271,11 @@ describe('BffControlClient', () => {
       });
       const data = url.pathname.endsWith('/destinations/list')
         ? { items: [] }
-        : url.pathname.endsWith('/prepare')
-          ? socialJobFixture('prepared')
-          : socialJobFixture('published');
+        : url.pathname.endsWith('/permalink/get')
+          ? permalinkFixture
+          : url.pathname.endsWith('/prepare')
+            ? socialJobFixture('prepared')
+            : socialJobFixture('published');
       return Promise.resolve(Response.json({ requestId: body.requestId, ok: true, data }));
     });
     const client = new BffControlClient({
@@ -293,11 +297,13 @@ describe('BffControlClient', () => {
       }
     });
     await client.publishSocialPost(prepared.id);
+    await expect(client.getSocialPostPermalink(prepared.id)).resolves.toEqual(permalinkFixture);
 
     expect(calls.map((call) => call.path)).toEqual([
       '/api/v1/social/destinations/list',
       '/api/v1/social-posts/prepare',
-      '/api/v1/social-posts/publish'
+      '/api/v1/social-posts/publish',
+      '/api/v1/social-posts/permalink/get'
     ]);
     expect(calls.every((call) => call.csrf === 'csrf-token')).toBe(true);
     expect(calls[1]?.body).toMatchObject({

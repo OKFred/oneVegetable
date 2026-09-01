@@ -3,7 +3,7 @@ import { normalizeRemark, SOCIAL_MEDIA_JOB_RETENTION_MILLISECONDS } from '@one-v
 import { MetaPublisherError } from './meta-publisher';
 import { publicJob } from './publishing-repository';
 
-import type { SocialPostPrepareRequest, SocialPublishJob } from '@one-vegetable/core';
+import type { SocialPostPermalink, SocialPostPrepareRequest, SocialPublishJob } from '@one-vegetable/core';
 import type { MetaPublisher } from './meta-publisher';
 import type { SocialMediaAssetService } from './media-service';
 import type { SocialPublishingRepository, SocialPublishJobRecord } from './publishing-repository';
@@ -260,6 +260,52 @@ export class SocialPublishingService {
 
   async get(jobId: string, actorId: string): Promise<SocialPublishJob> {
     return publicJob(await this.requireOwnedJob(jobId, actorId));
+  }
+
+  async getPermalink(input: {
+    jobId: string;
+    requestId: string;
+    actorId: string;
+  }): Promise<SocialPostPermalink> {
+    const job = await this.requireOwnedJob(input.jobId, input.actorId);
+    if (job.status !== 'published' || !job.platformPostId) {
+      throw new SocialPublishingServiceError(
+        'SOCIAL_POST_NOT_PUBLISHED',
+        '只有已经发布成功的内容才能获取平台链接',
+        409
+      );
+    }
+    const destination = await this.metaSocial.resolvePublishingDestination(job.destinationId);
+    try {
+      const result = await this.publisher.readPermalink({
+        graphApiVersion: destination.graphApiVersion,
+        platform: job.platform,
+        postId: job.platformPostId,
+        accessToken: destination.accessToken,
+        requestId: input.requestId
+      });
+      return {
+        platform: job.platform,
+        platformPostId: job.platformPostId,
+        url: result.url,
+        platformRequestId: result.requestId,
+        platformTraceId: result.traceId
+      };
+    } catch (error: unknown) {
+      const resolved =
+        error instanceof MetaPublisherError
+          ? error
+          : new MetaPublisherError('META_PERMALINK_FAILED', '无法获取 Meta 内容链接', false, null, null);
+      if (resolved.tokenInvalid) {
+        await this.metaSocial.markConnectionReconnectRequired(destination.destination.connectionId);
+      }
+      throw new SocialPublishingServiceError(
+        resolved.code,
+        resolved.message,
+        resolved.tokenInvalid ? 401 : 502,
+        !resolved.tokenInvalid
+      );
+    }
   }
 
   list(actorId: string, limit = 50): Promise<SocialPublishJob[]> {

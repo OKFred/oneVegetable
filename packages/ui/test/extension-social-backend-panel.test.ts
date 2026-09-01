@@ -105,6 +105,7 @@ describe('ExtensionSocialBackendPanel', () => {
       publishSocialPost: vi.fn(),
       advanceSocialPost: vi.fn(),
       getSocialPost: vi.fn(),
+      getSocialPostPermalink: vi.fn(),
       listSocialPosts: vi.fn(),
       cancelSocialPost: vi.fn()
     } satisfies SocialPublishingClient;

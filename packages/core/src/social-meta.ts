@@ -27,6 +27,7 @@ export type MetaOAuthStartRequest = components['schemas']['MetaOAuthStartRequest
 export type SocialAccountConnection = components['schemas']['SocialAccountConnection'];
 export type SocialDestination = components['schemas']['SocialDestination'];
 export type SocialPublishJob = components['schemas']['SocialPublishJob'];
+export type SocialPostPermalink = components['schemas']['SocialPostPermalink'];
 export type ExtensionSocialDevice = components['schemas']['ExtensionSocialDevice'];
 export type ExtensionSocialPairingStart = components['schemas']['ExtensionSocialPairingStart'];
 export type ExtensionSocialPairingStatus = components['schemas']['ExtensionSocialPairingStatus'];

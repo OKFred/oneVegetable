@@ -149,6 +149,7 @@ const socialPublishing: SocialPublishingClient = {
   publishSocialPost: (jobId) => withSocialControl((client) => client.publishSocialPost(jobId)),
   advanceSocialPost: (jobId) => withSocialControl((client) => client.advanceSocialPost(jobId)),
   getSocialPost: (jobId) => withSocialControl((client) => client.getSocialPost(jobId)),
+  getSocialPostPermalink: (jobId) => withSocialControl((client) => client.getSocialPostPermalink(jobId)),
   listSocialPosts: (limit) => withSocialControl((client) => client.listSocialPosts(limit)),
   cancelSocialPost: (jobId) => withSocialControl((client) => client.cancelSocialPost(jobId))
 };

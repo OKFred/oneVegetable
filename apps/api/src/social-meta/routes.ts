@@ -379,6 +379,18 @@ function registerPublishingRoutes(api: Hono, options: MetaSocialRouteOptions): v
     )
   );
 
+  api.post('/social-posts/permalink/get', (context) =>
+    socialRead(
+      context,
+      options,
+      async (body, actorId) => {
+        const request = readSocialTarget(body);
+        return publishing.getPermalink({ ...request, actorId });
+      },
+      ['requestId', 'jobId']
+    )
+  );
+
   api.post('/social-posts/list', (context) =>
     socialRead(
       context,

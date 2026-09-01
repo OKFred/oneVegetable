@@ -19,6 +19,7 @@ import type {
   SocialAccountConnection,
   SocialDestination,
   SocialPlatform,
+  SocialPostPermalink,
   SocialPostPrepareRequest,
   SocialPublishJob
 } from './social-meta';
@@ -310,6 +311,7 @@ export interface ControlClient {
   publishSocialPost?(jobId: string): Promise<SocialPublishJob>;
   advanceSocialPost?(jobId: string): Promise<SocialPublishJob>;
   getSocialPost?(jobId: string): Promise<SocialPublishJob>;
+  getSocialPostPermalink?(jobId: string): Promise<SocialPostPermalink>;
   listSocialPosts?(limit?: number): Promise<SocialPublishJob[]>;
   cancelSocialPost?(jobId: string): Promise<SocialPublishJob>;
   csrfToken(): string | null;
@@ -713,6 +715,10 @@ export class BffControlClient implements ControlClient {
 
   getSocialPost(jobId: string): Promise<SocialPublishJob> {
     return this.#call('/social-posts/get', { jobId });
+  }
+
+  getSocialPostPermalink(jobId: string): Promise<SocialPostPermalink> {
+    return this.#call('/social-posts/permalink/get', { jobId });
   }
 
   async listSocialPosts(limit = 50): Promise<SocialPublishJob[]> {
