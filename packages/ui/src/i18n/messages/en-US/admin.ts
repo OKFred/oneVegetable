@@ -237,6 +237,163 @@ export const admin = {
       revokeAria: 'Revoke {name}'
     }
   },
+  view: {
+    eyebrow: 'Access control',
+    title: 'Administration',
+    description:
+      'Manage local accounts, the read-only policy matrix, requestId diagnostics, and append-only audit records. Hiding a page is not an authorization boundary; the BFF authorizes every request again.',
+    refresh: 'Refresh',
+    confirmation: {
+      defaultTitle: 'Confirm admin operation',
+      purgeTitle: 'Confirm request diagnostic cleanup',
+      disableTitle: 'Confirm user deactivation',
+      enableTitle: 'Confirm user activation',
+      demoteTitle: 'Confirm administrator demotion',
+      promoteTitle: 'Confirm administrator promotion',
+      passwordTitle: 'Confirm password reset',
+      sessionsTitle: 'Confirm all session revocation',
+      purgeDescription:
+        'Request diagnostic records older than the {days}-day retention period will be deleted.',
+      disableDescription:
+        'After deactivating {username}, current and future requests from this user are rejected.',
+      enableDescription: '{username} can sign in again after activation.',
+      demoteDescription:
+        '{username} will become a regular read-only user. The last active administrator cannot be demoted.',
+      promoteDescription:
+        '{username} will become an administrator with access to user, audit, and system management.',
+      passwordDescription:
+        'The password for {username} will be reset. The generated one-time password is shown only once.',
+      sessionsDescription:
+        'All sessions for {username} will be revoked immediately, requiring the user to sign in again.',
+      configured: 'configured',
+      confirm: 'Confirm and continue',
+      auditNotice: 'The BFF rechecks administrator authorization and records the requestId and audit event.'
+    },
+    errors: {
+      load: 'Could not load administration data',
+      usersLoad: 'Could not load users',
+      auditLoad: 'Could not load audit events',
+      requestsLoad: 'Could not load request diagnostics',
+      filter: 'requestId filtering failed',
+      purge: 'Could not clean up request diagnostics',
+      enrollmentUnsupported: 'This backend does not support Passkey user invitations.',
+      createUser: 'Could not create user',
+      updateUser: 'Could not update user',
+      resetPassword: 'Could not reset password',
+      revokeSessions: 'Could not revoke sessions',
+      operation: 'Administration operation failed',
+      copyPassword: 'Copy failed. Select the one-time password manually.',
+      copyEnrollment: 'Copy failed. Select the registration link manually.'
+    },
+    feedback: {
+      purgedNotice: 'Cleaned {count} request diagnostic records; the latest {days} days are retained.',
+      purgedToast: 'Cleaned {count} expired request diagnostic records.',
+      userCreated: 'User {username} created.',
+      passwordReset: 'Password for {username} reset.',
+      sessionsRevoked: 'All sessions for {username} were revoked',
+      sessionsRevokedToast: 'All sessions for {username} were revoked.',
+      passwordCopied: 'One-time password copied. Share it through a secure channel.',
+      enrollmentCopied: 'Registration link copied.'
+    },
+    localAdmin: {
+      title: 'Local administrator',
+      description:
+        'The extension always uses a local administrator identity. It is not a BFF administrator session, so user management, server audit, and session revocation are unavailable.'
+    },
+    system: {
+      runtime: 'Runtime / environment',
+      database: 'Database / Schema',
+      apiPrefix: 'API prefix',
+      gateway: 'Alibaba gateway',
+      gatewayCredentials: 'Credentials {credential} · Real read calls {read}',
+      galleryMutations: 'Gallery groups / upload / URL transfer {status}',
+      complete: 'complete',
+      notConfigured: 'not configured',
+      enabled: 'enabled',
+      disabled: 'disabled',
+      retention: 'Request diagnostics retained for {days} days'
+    },
+    users: {
+      title: 'User management',
+      empty: 'No users',
+      createTitle: 'Create user',
+      username: 'Username',
+      initialPassword: 'Initial password',
+      passwordPlaceholder: 'Password of at least 12 bytes',
+      role: 'Role',
+      userRole: 'Regular user (read-only)',
+      adminRole: 'Administrator',
+      remarkOptional: 'Remark (optional)',
+      remarkPlaceholder: 'Up to 500 characters',
+      createEnrollment: 'Create and generate registration link',
+      create: 'Create',
+      columns: {
+        user: 'User',
+        remark: 'Remark',
+        save: 'Save',
+        role: 'Role',
+        status: 'Status',
+        actions: 'Actions',
+        disable: 'Deactivate',
+        enable: 'Activate',
+        resetPassword: 'Reset password',
+        revokeSessions: 'Revoke sessions',
+        active: 'Active',
+        disabled: 'Disabled'
+      }
+    },
+    policy: {
+      title: 'Policy matrix (read-only)',
+      capabilityTitle: 'Capability status',
+      total: 'Catalog total',
+      readable: 'Readable active',
+      mutationsLocked: 'Debugger writes disabled',
+      restricted: 'Eligibility restricted',
+      notice: 'Administrators cannot bypass capability, eligibility, Jushita, or mutation-flag restrictions.'
+    },
+    requests: {
+      title: 'Request diagnostics',
+      description:
+        'Correlate runtime, route, status code, and duration precisely by requestId. Request bodies, passwords, Tokens, Cookies, and file Base64 are not stored.',
+      filterAria: 'Filter by requestId',
+      query: 'Search',
+      purge: 'Clean by retention period',
+      empty: 'No request diagnostics'
+    },
+    audit: {
+      title: 'Operation audit',
+      description:
+        'Records actor, action, outcome, and denial reason using the same requestId as request diagnostics.',
+      empty: 'No operation audit records'
+    },
+    columns: {
+      time: 'Time',
+      actor: 'Actor',
+      runtimeRoute: 'Runtime / route',
+      result: 'Result',
+      statusDuration: 'Status / duration',
+      action: 'Action',
+      reason: 'Reason'
+    },
+    temporaryPassword: {
+      title: 'One-time temporary password',
+      description:
+        'The password for {username} was reset. It will not be shown again after this dialog closes.',
+      userFallback: 'User',
+      warning:
+        'Copy and share it through a secure channel. Do not put the password in remarks, logs, or screenshots.',
+      copy: 'Copy password',
+      close: 'Saved, close'
+    },
+    enrollment: {
+      title: 'One-time Passkey registration link',
+      description: 'The registration link for {username} expires at {time}.',
+      warning:
+        'The link is shown only once. Share it through a secure channel. The user registers a Passkey and receives personal recovery codes after opening it.',
+      copy: 'Copy link',
+      close: 'Saved, close'
+    }
+  },
   selfHosted: {
     confirmation: {
       importTitle: 'Confirm Alibaba credential import',

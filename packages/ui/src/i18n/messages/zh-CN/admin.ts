@@ -214,6 +214,153 @@ export const admin = {
       revokeAria: '撤销 {name}'
     }
   },
+  view: {
+    eyebrow: '访问控制',
+    title: '管理后台',
+    description:
+      '管理本地账号、只读策略矩阵、requestId 诊断与 append-only 审计。页面隐藏不是权限边界，BFF 会重新授权。',
+    refresh: '刷新',
+    confirmation: {
+      defaultTitle: '确认管理操作',
+      purgeTitle: '确认清理请求诊断',
+      disableTitle: '确认停用用户',
+      enableTitle: '确认启用用户',
+      demoteTitle: '确认降级管理员',
+      promoteTitle: '确认提升管理员',
+      passwordTitle: '确认重置密码',
+      sessionsTitle: '确认撤销全部会话',
+      purgeDescription: '将删除超过 {days} 天留存周期的请求诊断记录。',
+      disableDescription: '停用 {username} 后，该用户现有和后续请求都会被拒绝。',
+      enableDescription: '启用 {username} 后，该用户可重新登录。',
+      demoteDescription: '将 {username} 降级为普通只读用户。最后一个有效管理员不能被降级。',
+      promoteDescription: '将 {username} 提升为管理员，可访问用户、审计和系统管理能力。',
+      passwordDescription: '将重置 {username} 的密码；生成的一次性密码只会显示一次。',
+      sessionsDescription: '将立即撤销 {username} 的全部登录会话，该用户需要重新登录。',
+      configured: '配置',
+      confirm: '确认继续',
+      auditNotice: '操作会由 BFF 再次校验管理员权限，并记录 requestId 和操作审计。'
+    },
+    errors: {
+      load: '管理数据加载失败',
+      usersLoad: '用户数据加载失败',
+      auditLoad: '操作审计加载失败',
+      requestsLoad: '请求诊断加载失败',
+      filter: 'requestId 筛选失败',
+      purge: '清理请求诊断失败',
+      enrollmentUnsupported: '当前后端不支持 Passkey 用户邀请。',
+      createUser: '创建用户失败',
+      updateUser: '更新用户失败',
+      resetPassword: '重置密码失败',
+      revokeSessions: '撤销会话失败',
+      operation: '管理操作失败',
+      copyPassword: '复制失败，请手工选择一次性密码。',
+      copyEnrollment: '复制失败，请手工选择注册链接。'
+    },
+    feedback: {
+      purgedNotice: '已清理 {count} 条请求诊断；保留最近 {days} 天。',
+      purgedToast: '已清理 {count} 条过期请求诊断。',
+      userCreated: '用户 {username} 创建成功。',
+      passwordReset: '{username} 的密码已重置。',
+      sessionsRevoked: '{username} 的所有会话已撤销',
+      sessionsRevokedToast: '{username} 的全部会话已撤销。',
+      passwordCopied: '一次性密码已复制，请通过安全渠道转交。',
+      enrollmentCopied: '注册链接已复制。'
+    },
+    localAdmin: {
+      title: '本机管理员',
+      description:
+        '插件固定使用本机管理员身份；它不等于 BFF 管理员会话，因此用户管理、服务端审计和会话撤销不可用。'
+    },
+    system: {
+      runtime: '运行时 / 环境',
+      database: '数据库 / Schema',
+      apiPrefix: 'API 前缀',
+      gateway: 'Alibaba 网关',
+      gatewayCredentials: '凭据 {credential} · 只读真实调用 {read}',
+      galleryMutations: '图库分组 / 上传 / URL 转存 {status}',
+      complete: '完整',
+      notConfigured: '未配置',
+      enabled: '已启用',
+      disabled: '关闭',
+      retention: '请求诊断保留 {days} 天'
+    },
+    users: {
+      title: '用户管理',
+      empty: '暂无用户',
+      createTitle: '创建用户',
+      username: '用户名',
+      initialPassword: '初始密码',
+      passwordPlaceholder: '至少 12 字节密码',
+      role: '角色',
+      userRole: '普通用户（只读）',
+      adminRole: '管理员',
+      remarkOptional: '备注（可选）',
+      remarkPlaceholder: '最多 500 字符',
+      createEnrollment: '创建并生成注册链接',
+      create: '创建',
+      columns: {
+        user: '用户',
+        remark: '备注',
+        save: '保存',
+        role: '角色',
+        status: '状态',
+        actions: '操作',
+        disable: '停用',
+        enable: '启用',
+        resetPassword: '重置密码',
+        revokeSessions: '撤销会话',
+        active: '启用',
+        disabled: '停用'
+      }
+    },
+    policy: {
+      title: '策略矩阵（只读）',
+      capabilityTitle: '能力状态',
+      total: '目录总数',
+      readable: '可读 active',
+      mutationsLocked: '通用调试器写能力关闭',
+      restricted: '资格受限',
+      notice: '管理员也不能绕过 capability、资格、聚石塔限制或 mutation flag。'
+    },
+    requests: {
+      title: '请求诊断',
+      description:
+        '按 requestId 精确关联运行时、路由、状态码和耗时；不保存请求体、密码、Token、Cookie 或文件 Base64。',
+      filterAria: '按 requestId 查询',
+      query: '查询',
+      purge: '按留存周期清理',
+      empty: '暂无请求诊断'
+    },
+    audit: {
+      title: '操作审计',
+      description: '记录主体、动作、结果和拒绝原因；与请求诊断共用 requestId。',
+      empty: '暂无操作审计'
+    },
+    columns: {
+      time: '时间',
+      actor: '主体',
+      runtimeRoute: '运行时 / 路由',
+      result: '结果',
+      statusDuration: '状态 / 耗时',
+      action: '动作',
+      reason: '原因'
+    },
+    temporaryPassword: {
+      title: '一次性临时密码',
+      description: '{username} 的密码已重置。关闭后本页面不会再次显示该密码。',
+      userFallback: '用户',
+      warning: '请先复制并通过安全渠道转交；不要把密码写入备注、日志或截图。',
+      copy: '复制密码',
+      close: '我已保存，关闭'
+    },
+    enrollment: {
+      title: '一次性 Passkey 注册链接',
+      description: '{username} 的注册链接将在 {time} 失效。',
+      warning: '链接只显示一次，请通过安全渠道转交。用户打开后会登记自己的 Passkey，并获得个人恢复码。',
+      copy: '复制链接',
+      close: '我已保存，关闭'
+    }
+  },
   selfHosted: {
     confirmation: {
       importTitle: '确认导入 Alibaba 凭据',

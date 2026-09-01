@@ -22,11 +22,13 @@ import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
 import SelfHostedAdminPanel from '../components/SelfHostedAdminPanel.vue';
 import MetaSocialAdminPanel from '../components/MetaSocialAdminPanel.vue';
+import { useUiI18n } from '../i18n';
 import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 
 const { control, mode } = useServices();
+const { t } = useUiI18n();
 const users = ref<ControlUser[]>([]);
 const usersPage = ref(1);
 const usersPageSize = ref(10);
@@ -67,33 +69,43 @@ const selfHosted = computed(() => system.value?.environment === 'self-hosted');
 
 const actionTitle = computed(() => {
   const action = actionConfirmation.value;
-  if (!action) return '确认管理操作';
-  if (action.kind === 'purge') return '确认清理请求诊断';
-  if (action.kind === 'status') return action.user.status === 'active' ? '确认停用用户' : '确认启用用户';
-  if (action.kind === 'role') return action.user.role === 'admin' ? '确认降级管理员' : '确认提升管理员';
-  if (action.kind === 'password') return '确认重置密码';
-  return '确认撤销全部会话';
+  if (!action) return t('admin.view.confirmation.defaultTitle');
+  if (action.kind === 'purge') return t('admin.view.confirmation.purgeTitle');
+  if (action.kind === 'status') {
+    return action.user.status === 'active'
+      ? t('admin.view.confirmation.disableTitle')
+      : t('admin.view.confirmation.enableTitle');
+  }
+  if (action.kind === 'role') {
+    return action.user.role === 'admin'
+      ? t('admin.view.confirmation.demoteTitle')
+      : t('admin.view.confirmation.promoteTitle');
+  }
+  if (action.kind === 'password') return t('admin.view.confirmation.passwordTitle');
+  return t('admin.view.confirmation.sessionsTitle');
 });
 const actionDescription = computed(() => {
   const action = actionConfirmation.value;
   if (!action) return '';
   if (action.kind === 'purge') {
-    return `将删除超过 ${system.value?.requestEventRetentionDays ?? '配置'} 天留存周期的请求诊断记录。`;
+    return t('admin.view.confirmation.purgeDescription', {
+      days: system.value?.requestEventRetentionDays ?? t('admin.view.confirmation.configured')
+    });
   }
   if (action.kind === 'status') {
     return action.user.status === 'active'
-      ? `停用 ${action.user.username} 后，该用户现有和后续请求都会被拒绝。`
-      : `启用 ${action.user.username} 后，该用户可重新登录。`;
+      ? t('admin.view.confirmation.disableDescription', { username: action.user.username })
+      : t('admin.view.confirmation.enableDescription', { username: action.user.username });
   }
   if (action.kind === 'role') {
     return action.user.role === 'admin'
-      ? `将 ${action.user.username} 降级为普通只读用户。最后一个有效管理员不能被降级。`
-      : `将 ${action.user.username} 提升为管理员，可访问用户、审计和系统管理能力。`;
+      ? t('admin.view.confirmation.demoteDescription', { username: action.user.username })
+      : t('admin.view.confirmation.promoteDescription', { username: action.user.username });
   }
   if (action.kind === 'password') {
-    return `将重置 ${action.user.username} 的密码；生成的一次性密码只会显示一次。`;
+    return t('admin.view.confirmation.passwordDescription', { username: action.user.username });
   }
-  return `将立即撤销 ${action.user.username} 的全部登录会话，该用户需要重新登录。`;
+  return t('admin.view.confirmation.sessionsDescription', { username: action.user.username });
 });
 const actionDestructive = computed(() => {
   const action = actionConfirmation.value;
@@ -128,7 +140,7 @@ async function refresh(): Promise<void> {
     system.value = systemInfo;
     policy.value = policyInfo;
   } catch (cause: unknown) {
-    error.value = userVisibleCause(cause, '管理数据加载失败');
+    error.value = userVisibleCause(cause, t('admin.view.errors.load'));
   } finally {
     loading.value = false;
   }
@@ -180,35 +192,35 @@ async function loadSection(loader: () => Promise<void>, fallbackMessage: string)
 
 async function setUsersPage(page: number): Promise<void> {
   usersPage.value = page;
-  await loadSection(loadUsers, '用户数据加载失败');
+  await loadSection(loadUsers, t('admin.view.errors.usersLoad'));
 }
 
 async function setUsersPageSize(pageSize: number): Promise<void> {
   usersPage.value = 1;
   usersPageSize.value = pageSize;
-  await loadSection(loadUsers, '用户数据加载失败');
+  await loadSection(loadUsers, t('admin.view.errors.usersLoad'));
 }
 
 async function setAuditEventsPage(page: number): Promise<void> {
   auditEventsPage.value = page;
-  await loadSection(loadAuditEvents, '操作审计加载失败');
+  await loadSection(loadAuditEvents, t('admin.view.errors.auditLoad'));
 }
 
 async function setAuditEventsPageSize(pageSize: number): Promise<void> {
   auditEventsPage.value = 1;
   auditEventsPageSize.value = pageSize;
-  await loadSection(loadAuditEvents, '操作审计加载失败');
+  await loadSection(loadAuditEvents, t('admin.view.errors.auditLoad'));
 }
 
 async function setRequestEventsPage(page: number): Promise<void> {
   requestEventsPage.value = page;
-  await loadSection(loadRequestEvents, '请求诊断加载失败');
+  await loadSection(loadRequestEvents, t('admin.view.errors.requestsLoad'));
 }
 
 async function setRequestEventsPageSize(pageSize: number): Promise<void> {
   requestEventsPage.value = 1;
   requestEventsPageSize.value = pageSize;
-  await loadSection(loadRequestEvents, '请求诊断加载失败');
+  await loadSection(loadRequestEvents, t('admin.view.errors.requestsLoad'));
 }
 
 async function applyRequestIdFilter(): Promise<void> {
@@ -216,7 +228,7 @@ async function applyRequestIdFilter(): Promise<void> {
   requestEventsPage.value = 1;
   await loadSection(async () => {
     await Promise.all([loadAuditEvents(), loadRequestEvents()]);
-  }, 'requestId 筛选失败');
+  }, t('admin.view.errors.filter'));
 }
 
 async function purgeRequestEvents(): Promise<void> {
@@ -224,11 +236,14 @@ async function purgeRequestEvents(): Promise<void> {
   error.value = null;
   try {
     const result = await control.purgeRequestEvents();
-    notice.value = `已清理 ${result.deletedCount} 条请求诊断；保留最近 ${result.retentionDays} 天。`;
-    toast.success(`已清理 ${result.deletedCount} 条过期请求诊断。`);
+    notice.value = t('admin.view.feedback.purgedNotice', {
+      count: result.deletedCount,
+      days: result.retentionDays
+    });
+    toast.success(t('admin.view.feedback.purgedToast', { count: result.deletedCount }));
     await refresh();
   } catch (cause: unknown) {
-    error.value = userVisibleCause(cause, '清理请求诊断失败');
+    error.value = userVisibleCause(cause, t('admin.view.errors.purge'));
   }
 }
 
@@ -238,7 +253,7 @@ async function createUser(): Promise<void> {
   try {
     const createdUsername = username.value;
     if (selfHosted.value) {
-      if (!control.createUserEnrollment) throw new Error('当前后端不支持 Passkey 用户邀请。');
+      if (!control.createUserEnrollment) throw new Error(t('admin.view.errors.enrollmentUnsupported'));
       const result = await control.createUserEnrollment({
         username: username.value,
         role: role.value,
@@ -260,10 +275,10 @@ async function createUser(): Promise<void> {
     username.value = '';
     password.value = '';
     remark.value = '';
-    toast.success(`用户 ${createdUsername} 创建成功。`);
+    toast.success(t('admin.view.feedback.userCreated', { username: createdUsername }));
     await refresh();
   } catch (cause: unknown) {
-    error.value = userVisibleCause(cause, '创建用户失败');
+    error.value = userVisibleCause(cause, t('admin.view.errors.createUser'));
   }
 }
 
@@ -296,7 +311,7 @@ async function updateUser(
     });
     await refresh();
   } catch (cause: unknown) {
-    error.value = userVisibleCause(cause, '更新用户失败');
+    error.value = userVisibleCause(cause, t('admin.view.errors.updateUser'));
   }
 }
 
@@ -308,11 +323,11 @@ async function resetPassword(user: ControlUser): Promise<void> {
     if (result.temporaryPassword) {
       temporaryPassword.value = { username: user.username, value: result.temporaryPassword };
     } else {
-      toast.success(`${user.username} 的密码已重置。`);
+      toast.success(t('admin.view.feedback.passwordReset', { username: user.username }));
     }
     await refresh();
   } catch (cause: unknown) {
-    error.value = userVisibleCause(cause, '重置密码失败');
+    error.value = userVisibleCause(cause, t('admin.view.errors.resetPassword'));
   }
 }
 
@@ -321,11 +336,11 @@ async function revokeSessions(user: ControlUser): Promise<void> {
   error.value = null;
   try {
     await control.revokeSessions(user.id);
-    notice.value = `${user.username} 的所有会话已撤销`;
-    toast.success(`${user.username} 的全部会话已撤销。`);
+    notice.value = t('admin.view.feedback.sessionsRevoked', { username: user.username });
+    toast.success(t('admin.view.feedback.sessionsRevokedToast', { username: user.username }));
     await refresh();
   } catch (cause: unknown) {
-    error.value = userVisibleCause(cause, '撤销会话失败');
+    error.value = userVisibleCause(cause, t('admin.view.errors.revokeSessions'));
   }
 }
 
@@ -360,9 +375,9 @@ async function copyTemporaryPassword(): Promise<void> {
   if (!temporaryPassword.value) return;
   try {
     await globalThis.navigator.clipboard.writeText(temporaryPassword.value.value);
-    toast.success('一次性密码已复制，请通过安全渠道转交。');
+    toast.success(t('admin.view.feedback.passwordCopied'));
   } catch {
-    toast.error('复制失败，请手工选择一次性密码。');
+    toast.error(t('admin.view.errors.copyPassword'));
   }
 }
 
@@ -377,9 +392,9 @@ function enrollmentUrl(): string {
 async function copyEnrollmentUrl(): Promise<void> {
   try {
     await globalThis.navigator.clipboard.writeText(enrollmentUrl());
-    toast.success('注册链接已复制。');
+    toast.success(t('admin.view.feedback.enrollmentCopied'));
   } catch {
-    toast.error('复制失败，请手工选择注册链接。');
+    toast.error(t('admin.view.errors.copyEnrollment'));
   }
 }
 
@@ -391,10 +406,10 @@ function userVisibleCause(cause: unknown, fallbackMessage: string): Error {
   return cause instanceof Error ? cause : new Error(fallbackMessage);
 }
 
-const userColumns: DataColumn<ControlUser>[] = [
+const userColumns = computed<DataColumn<ControlUser>[]>(() => [
   {
     accessorKey: 'username',
-    header: '用户',
+    header: t('admin.view.users.columns.user'),
     cell: ({ row }) =>
       h('div', { class: 'min-w-56' }, [
         h('p', { class: 'font-medium' }, row.original.username),
@@ -402,18 +417,20 @@ const userColumns: DataColumn<ControlUser>[] = [
           h(Input, {
             modelValue: remarkDrafts.value[row.original.id] ?? '',
             class: 'h-8',
-            placeholder: '备注',
+            placeholder: t('admin.view.users.columns.remark'),
             'onUpdate:modelValue': (value: string) => {
               remarkDrafts.value[row.original.id] = value;
             }
           }),
-          h(Button, { variant: 'ghost', size: 'sm', onClick: () => saveRemark(row.original) }, () => '保存')
+          h(Button, { variant: 'ghost', size: 'sm', onClick: () => saveRemark(row.original) }, () =>
+            t('admin.view.users.columns.save')
+          )
         ])
       ])
   },
   {
     accessorKey: 'role',
-    header: '角色',
+    header: t('admin.view.users.columns.role'),
     cell: ({ row }) =>
       h(
         Button,
@@ -424,14 +441,22 @@ const userColumns: DataColumn<ControlUser>[] = [
             requestAdminAction({ kind: 'role', user: row.original });
           }
         },
-        () => row.original.role
+        () =>
+          row.original.role === 'admin' ? t('admin.view.users.adminRole') : t('admin.view.users.userRole')
       )
   },
-  { accessorKey: 'status', header: '状态' },
+  {
+    accessorKey: 'status',
+    header: t('admin.view.users.columns.status'),
+    cell: ({ row }) =>
+      row.original.status === 'active'
+        ? t('admin.view.users.columns.active')
+        : t('admin.view.users.columns.disabled')
+  },
   { accessorKey: 'revision', header: 'Revision' },
   {
     id: 'actions',
-    header: '操作',
+    header: t('admin.view.users.columns.actions'),
     cell: ({ row }) =>
       h('div', { class: 'flex flex-wrap gap-1' }, [
         h(
@@ -443,7 +468,10 @@ const userColumns: DataColumn<ControlUser>[] = [
               requestAdminAction({ kind: 'status', user: row.original });
             }
           },
-          () => (row.original.status === 'active' ? '停用' : '启用')
+          () =>
+            row.original.status === 'active'
+              ? t('admin.view.users.columns.disable')
+              : t('admin.view.users.columns.enable')
         ),
         h(
           Button,
@@ -455,7 +483,7 @@ const userColumns: DataColumn<ControlUser>[] = [
               requestAdminAction({ kind: 'password', user: row.original });
             }
           },
-          () => '重置密码'
+          () => t('admin.view.users.columns.resetPassword')
         ),
         h(
           Button,
@@ -466,16 +494,16 @@ const userColumns: DataColumn<ControlUser>[] = [
               requestAdminAction({ kind: 'sessions', user: row.original });
             }
           },
-          () => '撤销会话'
+          () => t('admin.view.users.columns.revokeSessions')
         )
       ])
   }
-];
+]);
 
-const requestEventColumns: DataColumn<ControlRequestEvent>[] = [
+const requestEventColumns = computed<DataColumn<ControlRequestEvent>[]>(() => [
   {
     accessorKey: 'eventTimeUtc',
-    header: '时间',
+    header: t('admin.view.columns.time'),
     cell: ({ row }) => h('span', { class: 'whitespace-nowrap' }, formatDateTime(row.original.eventTimeUtc))
   },
   {
@@ -483,25 +511,29 @@ const requestEventColumns: DataColumn<ControlRequestEvent>[] = [
     header: 'requestId',
     cell: ({ row }) => h('code', { class: 'text-xs' }, row.original.requestId)
   },
-  { accessorKey: 'actorId', header: '主体', cell: ({ row }) => row.original.actorId ?? 'anonymous' },
+  {
+    accessorKey: 'actorId',
+    header: t('admin.view.columns.actor'),
+    cell: ({ row }) => row.original.actorId ?? 'anonymous'
+  },
   {
     id: 'runtimeRoute',
-    header: '运行时 / 路由',
+    header: t('admin.view.columns.runtimeRoute'),
     cell: ({ row }) => `${row.original.runtime} / ${row.original.route}`
   },
   { accessorKey: 'operation', header: 'Operation' },
-  { accessorKey: 'outcome', header: '结果' },
+  { accessorKey: 'outcome', header: t('admin.view.columns.result') },
   {
     id: 'statusDuration',
-    header: '状态 / 耗时',
+    header: t('admin.view.columns.statusDuration'),
     cell: ({ row }) => `${row.original.statusCode} / ${row.original.durationMilliseconds} ms`
   }
-];
+]);
 
-const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
+const auditEventColumns = computed<DataColumn<ControlAuditEvent>[]>(() => [
   {
     accessorKey: 'eventTimeUtc',
-    header: '时间',
+    header: t('admin.view.columns.time'),
     cell: ({ row }) => h('span', { class: 'whitespace-nowrap' }, formatDateTime(row.original.eventTimeUtc))
   },
   {
@@ -509,21 +541,25 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
     header: 'requestId',
     cell: ({ row }) => h('code', { class: 'text-xs' }, row.original.requestId)
   },
-  { accessorKey: 'actorId', header: '主体', cell: ({ row }) => row.original.actorId ?? 'anonymous' },
-  { accessorKey: 'action', header: '动作' },
-  { accessorKey: 'outcome', header: '结果' },
-  { accessorKey: 'reasonCode', header: '原因' }
-];
+  {
+    accessorKey: 'actorId',
+    header: t('admin.view.columns.actor'),
+    cell: ({ row }) => row.original.actorId ?? 'anonymous'
+  },
+  { accessorKey: 'action', header: t('admin.view.columns.action') },
+  { accessorKey: 'outcome', header: t('admin.view.columns.result') },
+  { accessorKey: 'reasonCode', header: t('admin.view.columns.reason') }
+]);
 </script>
 
 <template>
   <PageHeader
-    eyebrow="Access control"
-    title="管理后台"
-    description="管理本地账号、只读策略矩阵、requestId 诊断与 append-only 审计。页面隐藏不是权限边界，BFF 会重新授权。"
+    :eyebrow="t('admin.view.eyebrow')"
+    :title="t('admin.view.title')"
+    :description="t('admin.view.description')"
   >
     <Button v-if="control" variant="outline" size="sm" :disabled="loading" @click="refresh">
-      <RefreshCw class="size-4" />刷新
+      <RefreshCw class="size-4" />{{ t('admin.view.refresh') }}
     </Button>
   </PageHeader>
 
@@ -531,15 +567,15 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
     <div class="flex gap-3">
       <ShieldCheck class="size-5 text-emerald-700" />
       <div>
-        <h2 class="font-semibold text-emerald-950">本机管理员</h2>
+        <h2 class="font-semibold text-emerald-950">{{ t('admin.view.localAdmin.title') }}</h2>
         <p class="mt-1 text-sm text-emerald-800">
-          插件固定使用本机管理员身份；它不等于 BFF 管理员会话，因此用户管理、服务端审计和会话撤销不可用。
+          {{ t('admin.view.localAdmin.description') }}
         </p>
       </div>
     </div>
   </Card>
 
-  <ErrorNotice v-if="error" class="mb-4" :error="error" fallback="管理操作失败" />
+  <ErrorNotice v-if="error" class="mb-4" :error="error" :fallback="t('admin.view.errors.operation')" />
   <p
     v-if="notice"
     class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"
@@ -550,26 +586,40 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
   <template v-if="control">
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <Card class="p-5">
-        <p class="text-xs text-muted-foreground">运行时 / 环境</p>
+        <p class="text-xs text-muted-foreground">{{ t('admin.view.system.runtime') }}</p>
         <p class="mt-2 font-semibold">{{ system?.runtime ?? '—' }} / {{ system?.environment ?? '—' }}</p>
       </Card>
       <Card class="p-5">
-        <p class="text-xs text-muted-foreground">数据库 / Schema</p>
+        <p class="text-xs text-muted-foreground">{{ t('admin.view.system.database') }}</p>
         <p class="mt-2 font-semibold">{{ system?.database ?? '—' }} / v{{ system?.schemaVersion ?? '—' }}</p>
       </Card>
       <Card class="p-5">
-        <p class="text-xs text-muted-foreground">API Prefix</p>
+        <p class="text-xs text-muted-foreground">{{ t('admin.view.system.apiPrefix') }}</p>
         <p class="mt-2 font-mono text-sm font-semibold">{{ system?.apiPrefix ?? '—' }}</p>
       </Card>
       <Card class="p-5">
-        <p class="text-xs text-muted-foreground">Alibaba Gateway</p>
+        <p class="text-xs text-muted-foreground">{{ t('admin.view.system.gateway') }}</p>
         <p class="mt-2 font-semibold">{{ system?.gatewayMode ?? '—' }}</p>
         <p class="mt-1 text-xs text-muted-foreground">
-          凭据 {{ system?.gatewayStatus.configured ? '完整' : '未配置' }} · 只读真实调用
-          {{ system?.gatewayStatus.realReadEnabled ? '已启用' : '关闭' }}
+          {{
+            t('admin.view.system.gatewayCredentials', {
+              credential: system?.gatewayStatus.configured
+                ? t('admin.view.system.complete')
+                : t('admin.view.system.notConfigured'),
+              read: system?.gatewayStatus.realReadEnabled
+                ? t('admin.view.system.enabled')
+                : t('admin.view.system.disabled')
+            })
+          }}
         </p>
         <p class="mt-1 text-xs text-muted-foreground">
-          图库分组 / 上传 / URL 转存 {{ system?.gatewayStatus.mutationEnabled ? '已启用' : '关闭' }}
+          {{
+            t('admin.view.system.galleryMutations', {
+              status: system?.gatewayStatus.mutationEnabled
+                ? t('admin.view.system.enabled')
+                : t('admin.view.system.disabled')
+            })
+          }}
         </p>
         <p
           v-if="system?.gatewayStatus.endpointOrigin"
@@ -578,7 +628,7 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
           {{ system.gatewayStatus.endpointOrigin }} · {{ system.gatewayStatus.signMethod }}
         </p>
         <p class="mt-1 text-xs text-muted-foreground">
-          请求诊断保留 {{ system?.requestEventRetentionDays ?? '—' }} 天
+          {{ t('admin.view.system.retention', { days: system?.requestEventRetentionDays ?? '—' }) }}
         </p>
       </Card>
     </div>
@@ -588,7 +638,9 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
 
     <div class="mt-5 grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
       <Card class="overflow-hidden">
-        <div class="border-b p-5"><h2 class="font-semibold">用户管理</h2></div>
+        <div class="border-b p-5">
+          <h2 class="font-semibold">{{ t('admin.view.users.title') }}</h2>
+        </div>
         <DataTable
           :columns="userColumns"
           :data="users"
@@ -598,77 +650,89 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
           :pagination-disabled="loading"
           max-height="min(60vh, 36rem)"
           min-width="760px"
-          empty-text="暂无用户"
+          :empty-text="t('admin.view.users.empty')"
           @update:page="setUsersPage"
           @update:page-size="setUsersPageSize"
         />
       </Card>
 
       <Card class="p-5">
-        <h2 class="flex items-center gap-2 font-semibold"><UserPlus class="size-4" />创建用户</h2>
+        <h2 class="flex items-center gap-2 font-semibold">
+          <UserPlus class="size-4" />{{ t('admin.view.users.createTitle') }}
+        </h2>
         <form class="mt-4 space-y-3" @submit.prevent="createUser">
           <label class="block space-y-1 text-sm">
-            <span>用户名</span>
+            <span>{{ t('admin.view.users.username') }}</span>
             <Input v-model="username" name="username" autocomplete="username" required />
           </label>
           <label v-if="!selfHosted" class="block space-y-1 text-sm">
-            <span>初始密码</span>
+            <span>{{ t('admin.view.users.initialPassword') }}</span>
             <Input
               v-model="password"
               name="password"
               type="password"
               autocomplete="new-password"
-              placeholder="至少 12 字节密码"
+              :placeholder="t('admin.view.users.passwordPlaceholder')"
               :required="!selfHosted"
             />
           </label>
           <label class="block space-y-1 text-sm">
-            <span>角色</span>
+            <span>{{ t('admin.view.users.role') }}</span>
             <select
               v-model="role"
               name="role"
               class="h-9 w-full rounded-md border bg-background px-3 text-sm"
               required
             >
-              <option value="user">普通用户（只读）</option>
-              <option value="admin">管理员</option>
+              <option value="user">{{ t('admin.view.users.userRole') }}</option>
+              <option value="admin">{{ t('admin.view.users.adminRole') }}</option>
             </select>
           </label>
           <label class="block space-y-1 text-sm">
-            <span>备注（可选）</span>
-            <Input v-model="remark" name="remark" maxlength="500" placeholder="最多 500 字符" />
+            <span>{{ t('admin.view.users.remarkOptional') }}</span>
+            <Input
+              v-model="remark"
+              name="remark"
+              maxlength="500"
+              :placeholder="t('admin.view.users.remarkPlaceholder')"
+            />
           </label>
-          <Button class="w-full" type="submit">{{ selfHosted ? '创建并生成注册链接' : '创建' }}</Button>
+          <Button class="w-full" type="submit">
+            {{ selfHosted ? t('admin.view.users.createEnrollment') : t('admin.view.users.create') }}
+          </Button>
         </form>
       </Card>
     </div>
 
     <div class="mt-5 grid gap-5 xl:grid-cols-2">
       <Card class="p-5">
-        <h2 class="font-semibold">策略矩阵（只读）</h2>
+        <h2 class="font-semibold">{{ t('admin.view.policy.title') }}</h2>
         <pre
           class="mt-3 max-h-72 overflow-auto rounded-lg bg-slate-950 p-4 text-xs leading-5 text-slate-200"
           >{{ JSON.stringify(policy, null, 2) }}</pre>
       </Card>
       <Card class="p-5">
-        <h2 class="font-semibold">能力状态</h2>
+        <h2 class="font-semibold">{{ t('admin.view.policy.capabilityTitle') }}</h2>
         <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
           <div class="rounded-lg bg-muted p-3">
-            目录总数 <strong class="float-right">{{ capabilitySummary.total }}</strong>
+            {{ t('admin.view.policy.total') }}
+            <strong class="float-right">{{ capabilitySummary.total }}</strong>
           </div>
           <div class="rounded-lg bg-muted p-3">
-            可读 active <strong class="float-right">{{ capabilitySummary.readable }}</strong>
+            {{ t('admin.view.policy.readable') }}
+            <strong class="float-right">{{ capabilitySummary.readable }}</strong>
           </div>
           <div class="rounded-lg bg-muted p-3">
-            通用调试器写能力关闭
+            {{ t('admin.view.policy.mutationsLocked') }}
             <strong class="float-right">{{ capabilitySummary.mutationsLocked }}</strong>
           </div>
           <div class="rounded-lg bg-muted p-3">
-            资格受限 <strong class="float-right">{{ capabilitySummary.restricted }}</strong>
+            {{ t('admin.view.policy.restricted') }}
+            <strong class="float-right">{{ capabilitySummary.restricted }}</strong>
           </div>
         </div>
         <p class="mt-3 text-xs text-muted-foreground">
-          管理员也不能绕过 capability、资格、聚石塔限制或 mutation flag。
+          {{ t('admin.view.policy.notice') }}
         </p>
       </Card>
     </div>
@@ -676,9 +740,9 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
     <Card class="mt-5 overflow-hidden">
       <div class="flex flex-wrap items-center justify-between gap-3 border-b p-5">
         <div>
-          <h2 class="font-semibold">请求诊断</h2>
+          <h2 class="font-semibold">{{ t('admin.view.requests.title') }}</h2>
           <p class="text-xs text-muted-foreground">
-            按 requestId 精确关联运行时、路由、状态码和耗时；不保存请求体、密码、Token、Cookie 或文件 Base64。
+            {{ t('admin.view.requests.description') }}
           </p>
         </div>
         <div class="flex flex-wrap gap-2">
@@ -687,17 +751,17 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
               v-model="requestIdFilter"
               name="requestId"
               class="w-72"
-              aria-label="按 requestId 查询"
+              :aria-label="t('admin.view.requests.filterAria')"
               placeholder="requestId（UUID v4）"
             />
-            <Button variant="outline" type="submit">查询</Button>
+            <Button variant="outline" type="submit">{{ t('admin.view.requests.query') }}</Button>
           </form>
           <Button
             data-testid="purge-request-events"
             variant="outline"
             @click="requestAdminAction({ kind: 'purge' })"
           >
-            <Trash2 class="size-4" />按留存周期清理
+            <Trash2 class="size-4" />{{ t('admin.view.requests.purge') }}
           </Button>
         </div>
       </div>
@@ -711,7 +775,7 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
           :pagination-disabled="loading"
           max-height="min(60vh, 36rem)"
           min-width="980px"
-          empty-text="暂无请求诊断"
+          :empty-text="t('admin.view.requests.empty')"
           @update:page="setRequestEventsPage"
           @update:page-size="setRequestEventsPageSize"
         />
@@ -720,9 +784,9 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
 
     <Card class="mt-5 overflow-hidden">
       <div class="border-b p-5">
-        <h2 class="font-semibold">操作审计</h2>
+        <h2 class="font-semibold">{{ t('admin.view.audit.title') }}</h2>
         <p class="text-xs text-muted-foreground">
-          记录主体、动作、结果和拒绝原因；与请求诊断共用 requestId。
+          {{ t('admin.view.audit.description') }}
         </p>
       </div>
       <DataTable
@@ -734,7 +798,7 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
         :pagination-disabled="loading"
         max-height="min(60vh, 36rem)"
         min-width="900px"
-        empty-text="暂无操作审计"
+        :empty-text="t('admin.view.audit.empty')"
         @update:page="setAuditEventsPage"
         @update:page-size="setAuditEventsPageSize"
       />
@@ -746,17 +810,21 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
     :title="actionTitle"
     :description="actionDescription"
     :destructive="actionDestructive"
-    confirm-label="确认继续"
+    :confirm-label="t('admin.view.confirmation.confirm')"
     @update:open="actionConfirmation = $event ? actionConfirmation : null"
     @confirm="confirmAdminAction"
   >
-    <p>操作会由 BFF 再次校验管理员权限，并记录 requestId 和操作审计。</p>
+    <p>{{ t('admin.view.confirmation.auditNotice') }}</p>
   </ConfirmActionDialog>
 
   <ModalDialog
     :open="temporaryPassword !== null"
-    title="一次性临时密码"
-    :description="`${temporaryPassword?.username ?? '用户'} 的密码已重置。关闭后本页面不会再次显示该密码。`"
+    :title="t('admin.view.temporaryPassword.title')"
+    :description="
+      t('admin.view.temporaryPassword.description', {
+        username: temporaryPassword?.username ?? t('admin.view.temporaryPassword.userFallback')
+      })
+    "
     size="sm"
     @update:open="closeTemporaryPassword"
   >
@@ -764,20 +832,27 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
       {{ temporaryPassword?.value }}
     </code>
     <p class="mt-3 text-sm text-amber-700 dark:text-amber-400">
-      请先复制并通过安全渠道转交；不要把密码写入备注、日志或截图。
+      {{ t('admin.view.temporaryPassword.warning') }}
     </p>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <Button variant="outline" @click="copyTemporaryPassword"><Copy class="size-4" />复制密码</Button>
-        <Button @click="closeTemporaryPassword">我已保存，关闭</Button>
+        <Button variant="outline" @click="copyTemporaryPassword">
+          <Copy class="size-4" />{{ t('admin.view.temporaryPassword.copy') }}
+        </Button>
+        <Button @click="closeTemporaryPassword">{{ t('admin.view.temporaryPassword.close') }}</Button>
       </div>
     </template>
   </ModalDialog>
 
   <ModalDialog
     :open="enrollment !== null"
-    title="一次性 Passkey 注册链接"
-    :description="`${enrollment?.username ?? '用户'} 的注册链接将在 ${formatDateTime(enrollment?.expiresTimeUtc ?? 0)} 失效。`"
+    :title="t('admin.view.enrollment.title')"
+    :description="
+      t('admin.view.enrollment.description', {
+        username: enrollment?.username ?? t('admin.view.temporaryPassword.userFallback'),
+        time: formatDateTime(enrollment?.expiresTimeUtc ?? 0)
+      })
+    "
     size="md"
     @update:open="enrollment = null"
   >
@@ -785,12 +860,14 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
       {{ enrollmentUrl() }}
     </code>
     <p class="mt-3 text-sm text-amber-700 dark:text-amber-400">
-      链接只显示一次，请通过安全渠道转交。用户打开后会登记自己的 Passkey，并获得个人恢复码。
+      {{ t('admin.view.enrollment.warning') }}
     </p>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <Button variant="outline" @click="copyEnrollmentUrl"><Copy class="size-4" />复制链接</Button>
-        <Button @click="enrollment = null">我已保存，关闭</Button>
+        <Button variant="outline" @click="copyEnrollmentUrl">
+          <Copy class="size-4" />{{ t('admin.view.enrollment.copy') }}
+        </Button>
+        <Button @click="enrollment = null">{{ t('admin.view.enrollment.close') }}</Button>
       </div>
     </template>
   </ModalDialog>
