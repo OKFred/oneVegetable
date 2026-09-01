@@ -58,13 +58,32 @@ export function getSocialPlatformDefinition(id: SocialPlatformId): SocialPlatfor
   return definition;
 }
 
-export function validateSocialShareSelection(photoCount: number, totalBytes: number): string[] {
+export function validateSocialShareSelection(
+  photoCount: number,
+  totalBytes: number,
+  locale: UiLocale = 'zh-CN'
+): string[] {
+  const messages =
+    locale === 'en-US'
+      ? {
+          minimum: 'Select at least one image',
+          maximum: `Prepare at most ${SOCIAL_SHARE_MAX_PHOTOS} images at a time`,
+          invalidSize: 'The total image size is invalid',
+          totalSize: 'Shared assets cannot exceed 50 MiB per operation'
+        }
+      : {
+          minimum: '请至少选择 1 张图片',
+          maximum: `单次最多准备 ${SOCIAL_SHARE_MAX_PHOTOS} 张图片`,
+          invalidSize: '图片大小统计无效',
+          totalSize: '单次分享素材不能超过 50 MiB'
+        };
   const issues: string[] = [];
-  if (!Number.isInteger(photoCount) || photoCount < 1) issues.push('请至少选择 1 张图片');
+  if (!Number.isInteger(photoCount) || photoCount < 1) issues.push(messages.minimum);
   if (photoCount > SOCIAL_SHARE_MAX_PHOTOS) {
-    issues.push(`单次最多准备 ${SOCIAL_SHARE_MAX_PHOTOS} 张图片`);
+    issues.push(messages.maximum);
   }
-  if (!Number.isFinite(totalBytes) || totalBytes < 0) issues.push('图片大小统计无效');
-  if (totalBytes > SOCIAL_SHARE_MAX_TOTAL_BYTES) issues.push('单次分享素材不能超过 50 MiB');
+  if (!Number.isFinite(totalBytes) || totalBytes < 0) issues.push(messages.invalidSize);
+  if (totalBytes > SOCIAL_SHARE_MAX_TOTAL_BYTES) issues.push(messages.totalSize);
   return issues;
 }
+import type { UiLocale } from './preferences';

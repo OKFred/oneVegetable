@@ -6,29 +6,29 @@ import { ChevronDown, ChevronRight, Folder, FolderOpen, LoaderCircle } from '@lu
 import type { PhotoGroup } from '@one-vegetable/core';
 
 import ErrorNotice from './ErrorNotice.vue';
+import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 
-const props = withDefaults(defineProps<{ modelValue: string; allLabel?: string }>(), {
-  allLabel: '全部图片'
-});
+const props = defineProps<{ modelValue: string; allLabel?: string }>();
 const emit = defineEmits<{
   'update:modelValue': [groupId: string];
   select: [group: PhotoGroup];
 }>();
 
 const { gateway } = useServices();
+const { t } = useUiI18n();
 const queryClient = useQueryClient();
 const descendants = ref<Record<string, PhotoGroup[]>>({});
 const expandedRootIds = ref<string[]>([]);
 const loadingRootIds = ref<string[]>([]);
 const error = ref('');
-const allGroup: PhotoGroup = {
+const allGroup = computed<PhotoGroup>(() => ({
   id: '-1',
-  name: props.allLabel,
+  name: props.allLabel ?? t('photos.allPhotos'),
   photoCount: 0,
   parentId: null,
   level: 1
-};
+}));
 const roots = useQuery({
   queryKey: ['photo-groups', 'root'],
   queryFn: () => gateway.request('listPhotoGroups', undefined)
@@ -37,7 +37,7 @@ const rootGroups = computed(() =>
   (roots.data.value ?? []).filter((group) => group.id !== '-1' && group.parentId === null)
 );
 const visibleGroups = computed(() => [
-  allGroup,
+  allGroup.value,
   ...rootGroups.value.flatMap((root) => [
     root,
     ...(expandedRootIds.value.includes(root.id) ? (descendants.value[root.id] ?? []) : [])
@@ -76,7 +76,7 @@ async function expandGroup(group: PhotoGroup): Promise<void> {
         .toSorted((left, right) => left.level - right.level || left.name.localeCompare(right.name))
     };
   } catch (reason: unknown) {
-    error.value = reason instanceof Error ? reason.message : '图库子分组加载失败';
+    error.value = reason instanceof Error ? reason.message : t('photos.groupNavigation.childLoadFailed');
   } finally {
     loadingRootIds.value = loadingRootIds.value.filter((id) => id !== group.id);
   }
@@ -93,7 +93,7 @@ function canToggle(group: PhotoGroup): boolean {
 </script>
 
 <template>
-  <div role="tree" aria-label="图库分组">
+  <div role="tree" :aria-label="t('photos.groupNavigation.tree')">
     <TransitionGroup name="ov-list" tag="div">
       <div
         v-for="group in visibleGroups"
@@ -109,7 +109,14 @@ function canToggle(group: PhotoGroup): boolean {
           v-if="canToggle(group)"
           type="button"
           class="mr-1 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          :aria-label="`${expandedRootIds.includes(group.id) ? '收起' : '展开'}${group.name}`"
+          :aria-label="
+            t(
+              expandedRootIds.includes(group.id)
+                ? 'photos.groupNavigation.collapse'
+                : 'photos.groupNavigation.expand',
+              { name: group.name }
+            )
+          "
           @click="toggleGroup(group)"
         >
           <LoaderCircle v-if="loadingRootIds.includes(group.id)" class="size-4 animate-spin" />
@@ -133,7 +140,7 @@ function canToggle(group: PhotoGroup): boolean {
       v-if="roots.error.value"
       class="mx-2 my-2"
       :error="roots.error.value"
-      fallback="图库分组加载失败"
+      :fallback="t('photos.groupNavigation.loadFailed')"
       compact
     />
     <p v-if="error" class="px-2 py-2 text-xs text-destructive">{{ error }}</p>

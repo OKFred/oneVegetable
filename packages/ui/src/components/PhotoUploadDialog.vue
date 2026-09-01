@@ -12,6 +12,7 @@ import {
   operationAvailabilityMessage,
   useOperationAvailability
 } from '../composables/use-operation-availability';
+import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 
 const props = withDefaults(
@@ -20,7 +21,7 @@ const props = withDefaults(
     groupId: string;
     groupName?: string;
   }>(),
-  { groupName: '全部图片' }
+  {}
 );
 const emit = defineEmits<{
   'update:open': [open: boolean];
@@ -28,6 +29,7 @@ const emit = defineEmits<{
 }>();
 
 const { gateway } = useServices();
+const { t } = useUiI18n();
 const queryClient = useQueryClient();
 const fileInput = ref<HTMLInputElement | null>(null);
 const transferUrl = ref('');
@@ -36,12 +38,12 @@ const photoMutations = useOperationAvailability(['uploadPhoto', 'transferPhotoFr
 const uploadBlocked = computed(() => !photoMutations.isAllowed('uploadPhoto'));
 const transferBlocked = computed(() => !photoMutations.isAllowed('transferPhotoFromUrl'));
 const uploadBlockedReason = computed(() =>
-  operationAvailabilityMessage(photoMutations.reasonCode('uploadPhoto'), '当前环境未开放本地图片上传')
+  operationAvailabilityMessage(photoMutations.reasonCode('uploadPhoto'), t('photos.upload.unavailableLocal'))
 );
 const transferBlockedReason = computed(() =>
   operationAvailabilityMessage(
     photoMutations.reasonCode('transferPhotoFromUrl'),
-    '当前环境未开放外部 URL 转存'
+    t('photos.upload.unavailableTransfer')
   )
 );
 
@@ -58,7 +60,7 @@ const upload = useMutation({
     feedback.value = null;
   },
   onSuccess: async (photo) => {
-    feedback.value = { kind: 'success', message: `已上传到图库：${photo.name}` };
+    feedback.value = { kind: 'success', message: t('photos.upload.uploaded', { name: photo.name }) };
     emit('uploaded', photo);
     await queryClient.invalidateQueries({ queryKey: ['photos'] });
   },
@@ -78,7 +80,7 @@ const transfer = useMutation({
   },
   onSuccess: async (photo) => {
     transferUrl.value = '';
-    feedback.value = { kind: 'success', message: `已转存到图库：${photo.name}` };
+    feedback.value = { kind: 'success', message: t('photos.upload.transferred', { name: photo.name }) };
     emit('uploaded', photo);
     await queryClient.invalidateQueries({ queryKey: ['photos'] });
   },
@@ -100,7 +102,7 @@ function onFileChange(event: Event): void {
   const file = input.files?.[0];
   if (file && uploadBlocked.value) feedback.value = { kind: 'error', message: uploadBlockedReason.value };
   else if (file && file.size <= MAX_PHOTOBANK_IMAGE_BYTES) upload.mutate(file);
-  else if (file) feedback.value = { kind: 'error', message: '图库图片不能超过 5 MiB' };
+  else if (file) feedback.value = { kind: 'error', message: t('photos.upload.tooLarge') };
   input.value = '';
 }
 
@@ -108,11 +110,11 @@ function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => {
-      reject(new Error('读取图片文件失败'));
+      reject(new Error(t('photos.upload.readFailed')));
     };
     reader.onload = () => {
       if (typeof reader.result !== 'string') {
-        reject(new Error('读取图片文件失败'));
+        reject(new Error(t('photos.upload.readFailed')));
         return;
       }
       resolve(reader.result.slice(reader.result.indexOf(',') + 1));
@@ -125,19 +127,19 @@ function fileToBase64(file: File): Promise<string> {
 <template>
   <ModalDialog
     :open="open"
-    title="上传图片到图库"
-    :description="`上传到“${groupName}”；不会自动选入商品。`"
+    :title="t('photos.upload.title')"
+    :description="t('photos.upload.description', { name: groupName ?? t('photos.allPhotos') })"
     @update:open="emit('update:open', $event)"
   >
     <div class="space-y-4">
       <section class="space-y-3">
         <div>
-          <h3 class="text-sm font-semibold">从本机上传</h3>
-          <p class="mt-1 text-xs text-muted-foreground">支持常见图片格式，单张最大 5 MiB。</p>
+          <h3 class="text-sm font-semibold">{{ t('photos.upload.localTitle') }}</h3>
+          <p class="mt-1 text-xs text-muted-foreground">{{ t('photos.upload.localDescription') }}</p>
         </div>
         <Button class="w-full" :disabled="uploadBlocked || upload.isPending.value" @click="chooseLocalFile">
           <LoaderCircle v-if="upload.isPending.value" class="size-4 animate-spin" />
-          {{ upload.isPending.value ? '正在上传…' : '选择本地图片并上传' }}
+          {{ upload.isPending.value ? t('photos.upload.uploading') : t('photos.upload.chooseLocal') }}
         </Button>
         <input
           ref="fileInput"
@@ -151,14 +153,14 @@ function fileToBase64(file: File): Promise<string> {
 
       <section class="space-y-3 border-t pt-4">
         <div>
-          <h3 class="text-sm font-semibold">从外部 URL 转存</h3>
-          <p class="mt-1 text-xs text-muted-foreground">仅支持不超过 5 MiB 的公共 HTTP(S) 图片。</p>
+          <h3 class="text-sm font-semibold">{{ t('photos.upload.transferTitle') }}</h3>
+          <p class="mt-1 text-xs text-muted-foreground">{{ t('photos.upload.transferDescription') }}</p>
         </div>
         <div class="flex flex-col gap-2 sm:flex-row">
           <Input
             v-model="transferUrl"
             class="flex-1"
-            aria-label="外部图片 URL"
+            :aria-label="t('photos.upload.externalUrl')"
             placeholder="https://…"
             :disabled="transferBlocked || transfer.isPending.value"
           />
@@ -168,7 +170,9 @@ function fileToBase64(file: File): Promise<string> {
             @click="transfer.mutate()"
           >
             <LoaderCircle v-if="transfer.isPending.value" class="size-4 animate-spin" />
-            {{ transfer.isPending.value ? '正在转存…' : '下载并存入图库' }}
+            {{
+              transfer.isPending.value ? t('photos.upload.transferring') : t('photos.upload.transferAction')
+            }}
           </Button>
         </div>
       </section>

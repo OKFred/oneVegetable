@@ -10,6 +10,9 @@ import {
   type Photo
 } from '@one-vegetable/core';
 
+import { translateUi } from '../i18n';
+import { readAppPreferences } from './preferences';
+
 export interface PreparedSocialShareAsset {
   photoId: string;
   sourceUrl: string;
@@ -58,13 +61,15 @@ export async function prepareSocialShareAssets(
     const result = await withTimeout(
       gateway.request('downloadProductAsset', { url: photo.url }),
       options.timeoutMilliseconds ?? SOCIAL_SHARE_ASSET_TIMEOUT_MILLISECONDS,
-      `原图 ${photo.name} 准备超时，请重试`
+      translateUi('photos.social.errors.originalTimeout', { name: photo.name })
     );
     const bytes = decodeBase64(result.contentBase64);
     const detectedContentType = validatePhotoBytes(bytes);
-    if (result.byteLength !== bytes.byteLength) throw new Error(`图片 ${photo.name} 的大小校验失败`);
+    if (result.byteLength !== bytes.byteLength) {
+      throw new Error(translateUi('photos.social.errors.byteLengthMismatch', { name: photo.name }));
+    }
     if (result.contentType.toLocaleLowerCase() !== detectedContentType) {
-      throw new Error(`图片 ${photo.name} 的类型校验失败`);
+      throw new Error(translateUi('photos.social.errors.contentTypeMismatch', { name: photo.name }));
     }
     const fileName = uniqueFileName(result.fileName || photo.name, detectedContentType, names);
     assets.push({
@@ -87,7 +92,7 @@ export async function prepareSocialShareAssets(
 
 function withTimeout<T>(operation: Promise<T>, timeoutMilliseconds: number, message: string): Promise<T> {
   if (!Number.isFinite(timeoutMilliseconds) || timeoutMilliseconds <= 0) {
-    return Promise.reject(new Error('原图准备超时时间无效'));
+    return Promise.reject(new Error(translateUi('photos.social.errors.invalidTimeout')));
   }
   return new Promise<T>((resolve, reject) => {
     const timeout = globalThis.setTimeout(() => {
@@ -144,7 +149,9 @@ export async function createSocialShareArchive(
   };
   for (const asset of assets) files[asset.path] = [asset.bytes, { level: 0 }];
   const archive = await zipFiles(files);
-  if (archive.byteLength > SOCIAL_SHARE_MAX_TOTAL_BYTES) throw new Error('ZIP 分享包不能超过 50 MiB');
+  if (archive.byteLength > SOCIAL_SHARE_MAX_TOTAL_BYTES) {
+    throw new Error(translateUi('photos.social.errors.archiveTooLarge'));
+  }
   return archive;
 }
 
@@ -153,13 +160,13 @@ export function normalizeSocialShareCaption(value: string): string {
 }
 
 function assertSelection(photoCount: number, totalBytes: number): void {
-  const issue = validateSocialShareSelection(photoCount, totalBytes)[0];
+  const issue = validateSocialShareSelection(photoCount, totalBytes, readAppPreferences().uiLocale)[0];
   if (issue) throw new Error(issue);
 }
 
 function normalizeCaption(value: string): string {
   const normalized = value.replace(/\r\n?/gu, '\n').trim();
-  if (normalized.length > 4000) throw new Error('分享文案不能超过 4000 个字符');
+  if (normalized.length > 4000) throw new Error(translateUi('photos.social.errors.captionTooLong'));
   return normalized;
 }
 

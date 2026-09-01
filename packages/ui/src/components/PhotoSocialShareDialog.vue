@@ -19,6 +19,7 @@ import Button from './ui/Button.vue';
 import ModalDialog from './ui/ModalDialog.vue';
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import ErrorNotice from './ErrorNotice.vue';
+import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 import {
   createNativeShareFiles,
@@ -32,6 +33,7 @@ const props = defineProps<{ open: boolean; photos: readonly Photo[] }>();
 const emit = defineEmits<{ 'update:open': [open: boolean] }>();
 
 const { gateway, control, socialPublishing, mode } = useServices();
+const { locale, t } = useUiI18n();
 const social = socialPublishing ?? (control as SocialPublishingClient | undefined);
 const caption = ref('');
 const assets = ref<PreparedSocialShareAsset[]>([]);
@@ -53,7 +55,8 @@ const selectionKey = computed(() => props.photos.map((photo) => `${photo.id}:${p
 const selectionIssues = computed(() =>
   validateSocialShareSelection(
     props.photos.length,
-    props.photos.reduce((total, photo) => total + photo.fileSize, 0)
+    props.photos.reduce((total, photo) => total + photo.fileSize, 0),
+    locale.value
   )
 );
 const files = computed(() => createNativeShareFiles(assets.value));
@@ -71,35 +74,34 @@ const selectedDestination = computed(
 const officialPublishingSupported = computed(() => social !== undefined);
 const officialIssue = computed(() => {
   if (!officialPublishingSupported.value) {
-    return mode === 'extension' ? '请先在插件设置中配对社交发布后端。' : '当前后端未启用社交发布。';
+    return t(
+      mode === 'extension' ? 'photos.social.unavailable.extension' : 'photos.social.unavailable.backend'
+    );
   }
-  if (props.photos.length !== 1) return '官方 API 每次只支持选择 1 张图片。';
-  if (preparing.value) return '正在准备原图。';
-  if (assets.value.length !== 1) return '原图尚未准备完成。';
+  if (props.photos.length !== 1) return t('photos.social.unavailable.onePhoto');
+  if (preparing.value) return t('photos.social.unavailable.preparing');
+  if (assets.value.length !== 1) return t('photos.social.unavailable.notPrepared');
   const destination = selectedDestination.value;
-  if (!destination) return '请选择发布目标。';
-  if (!destination.canPublish) return `该目标不可发布：${destination.unavailableReasonCode ?? '权限不足'}`;
+  if (!destination) return t('photos.social.unavailable.chooseDestination');
+  if (!destination.canPublish) {
+    return t('photos.social.unavailable.destination', {
+      reason: destination.unavailableReasonCode ?? t('photos.social.unavailable.permission')
+    });
+  }
   const asset = assets.value[0];
-  if (!asset) return '图片尚未准备完成。';
+  if (!asset) return t('photos.social.unavailable.notPrepared');
   if (destination.platform === 'instagram' && asset.contentType !== 'image/jpeg') {
-    return 'Instagram 首版仅接受 JPEG 图片。';
+    return t('photos.social.unavailable.instagramJpeg');
   }
   const maximum = destination.platform === 'instagram' ? 2200 : 4000;
-  if (Array.from(caption.value.trim()).length > maximum) return `文案不能超过 ${maximum} 个字符。`;
+  if (Array.from(caption.value.trim()).length > maximum) {
+    return t('photos.social.unavailable.captionTooLong', { maximum });
+  }
   return '';
 });
 const publishStatusLabel = computed(() => {
   const status = publishJob.value?.status;
-  const labels: Partial<Record<SocialPublishJob['status'], string>> = {
-    prepared: '等待确认',
-    processing: '平台处理中',
-    published: '发布成功',
-    failed: '发布失败',
-    unknown: '结果未知',
-    cancelled: '已取消',
-    expired: '已过期'
-  };
-  return status ? (labels[status] ?? status) : '';
+  return status ? t(`photos.social.status.${status}`) : '';
 });
 
 watch(
@@ -144,7 +146,10 @@ async function prepareAssets(): Promise<void> {
   preparedCount.value = 0;
   feedback.value = null;
   if (selectionIssues.value.length > 0) {
-    feedback.value = { kind: 'error', message: selectionIssues.value[0] ?? '所选图片无效' };
+    feedback.value = {
+      kind: 'error',
+      message: selectionIssues.value[0] ?? t('photos.social.unavailable.invalidSelection')
+    };
     return;
   }
   preparing.value = true;
@@ -167,7 +172,7 @@ async function shareWithSystem(): Promise<void> {
   if (!systemShareSupported.value || typeof globalThis.navigator.share !== 'function') {
     feedback.value = {
       kind: 'info',
-      message: '当前浏览器或系统不支持分享原图，请下载 ZIP 分享包后手工发布。'
+      message: t('photos.social.feedback.systemUnavailable')
     };
     return;
   }
@@ -175,10 +180,10 @@ async function shareWithSystem(): Promise<void> {
     const text = normalizeSocialShareCaption(caption.value);
     await globalThis.navigator.share({
       files: files.value,
-      title: 'oneVegetable 图库素材',
+      title: t('photos.social.shareTitle'),
       ...(text ? { text } : {})
     });
-    toast.success('素材已交给系统分享面板；最终发布仍由所选应用确认');
+    toast.success(t('photos.social.feedback.systemOpened'));
   } catch (error: unknown) {
     const resolved = toError(error);
     if (resolved.name === 'AbortError') return;
@@ -196,7 +201,7 @@ async function downloadSharePackage(): Promise<void> {
     link.download = `one-vegetable-social-share-${new Date().toISOString().slice(0, 10)}.zip`;
     link.click();
     URL.revokeObjectURL(url);
-    toast.success(`已下载 ${assets.value.length} 张图片的分享包`);
+    toast.success(t('photos.social.feedback.archiveDownloaded', { count: assets.value.length }));
   } catch (error: unknown) {
     feedback.value = { kind: 'error', message: toError(error).message };
   }
@@ -290,7 +295,7 @@ async function getOfficialPostPermalink(): Promise<void> {
   officialError.value = null;
   try {
     postPermalink.value = await social.getSocialPostPermalink(job.id);
-    toast.success('已获取平台内容链接');
+    toast.success(t('photos.social.feedback.permalinkReady'));
   } catch (error: unknown) {
     officialError.value = error;
   } finally {
@@ -317,10 +322,10 @@ function clearAdvanceTimer(): void {
 
 function notifyPublishStatus(job: SocialPublishJob | null): void {
   if (!job) return;
-  if (job.status === 'published') toast.success('图片已通过官方 API 发布');
-  else if (job.status === 'processing') toast.info('Instagram 正在处理图片，将在约 1 分钟后刷新');
-  else if (job.status === 'unknown') toast.warning('发布结果未知，系统不会自动重发，请到平台核对');
-  else if (job.status === 'failed') toast.error(job.message ?? '平台拒绝了发布请求');
+  if (job.status === 'published') toast.success(t('photos.social.feedback.published'));
+  else if (job.status === 'processing') toast.info(t('photos.social.feedback.instagramProcessing'));
+  else if (job.status === 'unknown') toast.warning(t('photos.social.feedback.unknown'));
+  else if (job.status === 'failed') toast.error(job.message ?? t('photos.social.feedback.platformRejected'));
 }
 
 function toError(error: unknown): Error {
@@ -331,8 +336,8 @@ function toError(error: unknown): Error {
 <template>
   <ModalDialog
     :open="open"
-    title="分享图库素材"
-    :description="`已选择 ${photos.length} 张图片；不会保存 Facebook、Instagram、X 或 TikTok 密码。`"
+    :title="t('photos.social.dialogTitle')"
+    :description="t('photos.social.dialogDescription', { count: photos.length })"
     size="lg"
     @update:open="emit('update:open', $event)"
   >
@@ -340,10 +345,10 @@ function toError(error: unknown): Error {
       <section class="space-y-3">
         <div class="flex items-center justify-between gap-3">
           <div>
-            <h3 class="text-sm font-semibold">分享内容</h3>
-            <p class="mt-1 text-xs text-muted-foreground">原图由统一网关读取，页面不会直接访问外部 CDN。</p>
+            <h3 class="text-sm font-semibold">{{ t('photos.social.contentTitle') }}</h3>
+            <p class="mt-1 text-xs text-muted-foreground">{{ t('photos.social.contentDescription') }}</p>
           </div>
-          <Badge variant="secondary">{{ photos.length }} 张</Badge>
+          <Badge variant="secondary">{{ t('photos.social.photoCount', { count: photos.length }) }}</Badge>
         </div>
         <div class="flex gap-2 overflow-x-auto pb-1">
           <img
@@ -355,13 +360,13 @@ function toError(error: unknown): Error {
           />
         </div>
         <label class="block space-y-1 text-sm font-medium">
-          <span>分享文案</span>
+          <span>{{ t('photos.social.caption') }}</span>
           <textarea
             v-model="caption"
             maxlength="4000"
             rows="4"
             class="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-ring"
-            placeholder="输入产品卖点、话题标签或发布备注…"
+            :placeholder="t('photos.social.captionPlaceholder')"
           />
           <span class="block text-right text-xs font-normal text-muted-foreground">
             {{ caption.length }}/4000
@@ -372,14 +377,15 @@ function toError(error: unknown): Error {
       <section class="rounded-lg border p-4">
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 class="text-sm font-semibold">立即分享</h3>
+            <h3 class="text-sm font-semibold">{{ t('photos.social.quickTitle') }}</h3>
             <p class="mt-1 max-w-xl text-xs leading-5 text-muted-foreground">
-              系统分享会把原图交给设备的分享面板，由你选择已安装并已登录的平台；oneVegetable
-              无法读取你最终选择了哪个应用。
+              {{ t('photos.social.quickDescription') }}
             </p>
           </div>
           <Badge :variant="systemShareSupported ? 'success' : 'secondary'">
-            {{ systemShareSupported ? '系统支持原图分享' : '建议下载分享包' }}
+            {{
+              systemShareSupported ? t('photos.social.systemSupported') : t('photos.social.downloadSuggested')
+            }}
           </Badge>
         </div>
         <div
@@ -387,54 +393,60 @@ function toError(error: unknown): Error {
           class="mt-4 flex items-center gap-2 text-sm text-muted-foreground"
           role="status"
         >
-          <LoaderCircle class="size-4 animate-spin" />正在准备原图 {{ preparedCount }}/{{ photos.length }}
+          <LoaderCircle class="size-4 animate-spin" />{{
+            t('photos.social.preparingProgress', { current: preparedCount, total: photos.length })
+          }}
         </div>
         <div v-else class="mt-4 flex flex-wrap gap-2">
           <Button :disabled="assets.length === 0" @click="shareWithSystem">
-            <Share2 class="size-4" />使用系统分享
+            <Share2 class="size-4" />{{ t('photos.social.systemAction') }}
           </Button>
           <Button variant="outline" :disabled="assets.length === 0" @click="downloadSharePackage">
-            <Download class="size-4" />下载 ZIP 分享包
+            <Download class="size-4" />{{ t('photos.social.downloadArchive') }}
           </Button>
           <Button
             v-if="assets.length === 0 && feedback?.kind === 'error' && selectionIssues.length === 0"
             variant="outline"
             @click="prepareAssets"
           >
-            <RefreshCw class="size-4" />重新准备原图
+            <RefreshCw class="size-4" />{{ t('photos.social.retryPreparation') }}
           </Button>
         </div>
       </section>
 
       <section class="space-y-3">
         <div>
-          <h3 class="text-sm font-semibold">官方 API 自动发布</h3>
+          <h3 class="text-sm font-semibold">{{ t('photos.social.officialTitle') }}</h3>
           <p class="mt-1 text-xs text-muted-foreground">
-            以下平台都需要事先连接账号和通过相应开发者权限；当前版本不会用页面自动化绕过审核。
+            {{ t('photos.social.officialDescription') }}
           </p>
         </div>
         <div class="rounded-lg border bg-card p-4">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h4 class="font-semibold">发布到已连接账号</h4>
+              <h4 class="font-semibold">{{ t('photos.social.connectedTitle') }}</h4>
               <p class="mt-1 text-xs leading-5 text-muted-foreground">
-                每次只发布一张图片到一个目标；点击发布前还会再次确认。
+                {{ t('photos.social.connectedDescription') }}
               </p>
             </div>
             <Badge :variant="destinations.some((item) => item.canPublish) ? 'success' : 'secondary'">
-              {{ destinations.filter((item) => item.canPublish).length }} 个可用目标
+              {{
+                t('photos.social.availableDestinations', {
+                  count: destinations.filter((item) => item.canPublish).length
+                })
+              }}
             </Badge>
           </div>
 
           <div v-if="officialPublishingSupported" class="mt-4 space-y-3">
             <label class="block space-y-1 text-sm">
-              <span>发布目标</span>
+              <span>{{ t('photos.social.destination') }}</span>
               <select
                 v-model="destinationId"
                 class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 :disabled="officialBusy"
               >
-                <option value="">请选择目标</option>
+                <option value="">{{ t('photos.social.chooseDestination') }}</option>
                 <option
                   v-for="destination in destinations"
                   :key="destination.id"
@@ -442,14 +454,19 @@ function toError(error: unknown): Error {
                   :disabled="!destination.canPublish"
                 >
                   {{ destination.platform === 'facebook' ? 'Facebook' : 'Instagram' }} · {{ destination.name
-                  }}{{ destination.canPublish ? '' : '（不可用）' }}
+                  }}{{ destination.canPublish ? '' : t('photos.social.destinationUnavailable') }}
                 </option>
               </select>
             </label>
             <p v-if="officialIssue" class="text-xs text-amber-700 dark:text-amber-300">
               {{ officialIssue }}
             </p>
-            <ErrorNotice v-if="officialError" :error="officialError" fallback="社交发布失败" compact />
+            <ErrorNotice
+              v-if="officialError"
+              :error="officialError"
+              :fallback="t('photos.social.publishingFailed')"
+              compact
+            />
             <div v-if="publishJob" class="rounded-md bg-muted/50 p-3 text-sm">
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <span class="flex items-center gap-2 font-medium">
@@ -466,7 +483,7 @@ function toError(error: unknown): Error {
                 {{ publishJob.message }}
               </p>
               <p v-if="publishJob.platformPostId" class="mt-2 text-xs text-muted-foreground">
-                平台发布 ID：{{ publishJob.platformPostId }}
+                {{ t('photos.social.platformPostId', { id: publishJob.platformPostId }) }}
               </p>
               <div v-if="publishJob.status === 'published'" class="mt-3">
                 <a
@@ -476,7 +493,11 @@ function toError(error: unknown): Error {
                   rel="noopener noreferrer"
                   class="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
                 >
-                  在 {{ postPermalink.platform === 'facebook' ? 'Facebook' : 'Instagram' }} 查看
+                  {{
+                    t('photos.social.viewOn', {
+                      platform: postPermalink.platform === 'facebook' ? 'Facebook' : 'Instagram'
+                    })
+                  }}
                   <ExternalLink class="size-3.5" />
                 </a>
                 <Button
@@ -488,13 +509,17 @@ function toError(error: unknown): Error {
                 >
                   <LoaderCircle v-if="officialBusy" class="size-4 animate-spin" />
                   <ExternalLink v-else class="size-4" />
-                  获取 {{ publishJob.platform === 'facebook' ? 'Facebook' : 'Instagram' }} 链接
+                  {{
+                    t('photos.social.getLink', {
+                      platform: publishJob.platform === 'facebook' ? 'Facebook' : 'Instagram'
+                    })
+                  }}
                 </Button>
               </div>
             </div>
             <div class="flex flex-wrap gap-2">
               <Button :disabled="officialBusy || Boolean(officialIssue)" @click="prepareOfficialPublish">
-                <Send class="size-4" />检查并发布
+                <Send class="size-4" />{{ t('photos.social.publishAction') }}
               </Button>
               <Button
                 v-if="publishJob?.status === 'processing'"
@@ -502,7 +527,7 @@ function toError(error: unknown): Error {
                 :disabled="officialBusy"
                 @click="advanceOfficialPublish"
               >
-                <RefreshCw class="size-4" />刷新进度
+                <RefreshCw class="size-4" />{{ t('photos.social.refreshProgress') }}
               </Button>
             </div>
           </div>
@@ -527,16 +552,22 @@ function toError(error: unknown): Error {
               >
                 {{
                   destinations.some((item) => item.platform === platform.id && item.canPublish)
-                    ? '已连接'
-                    : '需要配置'
+                    ? t('photos.social.connected')
+                    : t('photos.social.needsConfiguration')
                 }}
               </Badge>
             </div>
-            <p class="mt-2 text-xs font-medium text-muted-foreground">发布到：{{ platform.destination }}</p>
+            <p class="mt-2 text-xs font-medium text-muted-foreground">
+              {{
+                t('photos.social.publishTo', {
+                  destination: t(`photos.social.requirements.${platform.id}.destination`)
+                })
+              }}
+            </p>
             <ul class="mt-3 space-y-2 text-xs leading-5 text-muted-foreground">
-              <li>{{ platform.accountRequirement }}</li>
-              <li>{{ platform.apiRequirement }}</li>
-              <li>{{ platform.mediaRequirement }}</li>
+              <li>{{ t(`photos.social.requirements.${platform.id}.account`) }}</li>
+              <li>{{ t(`photos.social.requirements.${platform.id}.api`) }}</li>
+              <li>{{ t(`photos.social.requirements.${platform.id}.media`) }}</li>
             </ul>
             <a
               :href="platform.documentationUrl"
@@ -544,7 +575,7 @@ function toError(error: unknown): Error {
               rel="noopener noreferrer"
               class="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
             >
-              查看官方接入要求<ExternalLink class="size-3" />
+              {{ t('photos.social.viewRequirements') }}<ExternalLink class="size-3" />
             </a>
           </article>
         </div>
@@ -562,16 +593,20 @@ function toError(error: unknown): Error {
 
     <template #footer>
       <div class="flex justify-end">
-        <Button variant="outline" @click="emit('update:open', false)">关闭</Button>
+        <Button variant="outline" @click="emit('update:open', false)">{{ t('common.actions.close') }}</Button>
       </div>
     </template>
   </ModalDialog>
 
   <ConfirmActionDialog
     :open="publishConfirmationOpen"
-    title="确认通过官方 API 发布"
-    :description="`将把当前图片发布到 ${selectedDestination?.name ?? '所选目标'}。平台发布属于真实外部写操作，提交后不会自动删除。`"
-    confirm-label="确认发布"
+    :title="t('photos.social.confirmTitle')"
+    :description="
+      t('photos.social.confirmDescription', {
+        name: selectedDestination?.name ?? t('photos.social.selectedDestination')
+      })
+    "
+    :confirm-label="t('photos.social.confirmPublish')"
     :pending="officialBusy"
     @update:open="publishConfirmationOpen = $event"
     @confirm="confirmOfficialPublish"
