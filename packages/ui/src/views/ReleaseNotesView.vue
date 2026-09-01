@@ -2,52 +2,64 @@
 import { computed, type Component } from 'vue';
 import { ArrowUpRight, GitBranch, PackageCheck, ShieldCheck, Sparkles, Wrench } from '@lucide/vue';
 
-import { RELEASE_NOTES, RELEASE_NOTES_REPOSITORY_URL, type ReleaseChangeType } from '@one-vegetable/core';
+import {
+  RELEASE_NOTES,
+  RELEASE_NOTES_REPOSITORY_URL,
+  releaseNoteText,
+  type LocalizedReleaseText,
+  type ReleaseChangeType
+} from '@one-vegetable/core';
 import { APP_VERSION } from '@one-vegetable/core/version';
 
 import PageHeader from '../components/PageHeader.vue';
 import Badge from '../components/ui/Badge.vue';
 import Card from '../components/ui/Card.vue';
 import { formatDate } from '../lib/date-time';
+import { useUiI18n } from '../i18n';
 
 interface ChangePresentation {
-  label: string;
+  labelKey: string;
   icon: Component;
   className: string;
 }
 
 const changePresentation: Record<ReleaseChangeType, ChangePresentation> = {
   feature: {
-    label: '新增',
+    labelKey: 'releases.changeTypes.feature',
     icon: Sparkles,
     className: 'border-emerald-200 bg-emerald-50 text-emerald-800'
   },
   improvement: {
-    label: '改进',
+    labelKey: 'releases.changeTypes.improvement',
     icon: PackageCheck,
     className: 'border-blue-200 bg-blue-50 text-blue-950'
   },
   fix: {
-    label: '修复',
+    labelKey: 'releases.changeTypes.fix',
     icon: Wrench,
     className: 'border-amber-200 bg-amber-50 text-amber-900'
   },
   security: {
-    label: '安全',
+    labelKey: 'releases.changeTypes.security',
     icon: ShieldCheck,
     className: 'border-red-200 bg-red-50 text-red-900'
   }
 };
 
+const { locale, t } = useUiI18n();
 const currentRelease = computed(() => RELEASE_NOTES.find((release) => release.version === APP_VERSION));
+
+function localized(value: LocalizedReleaseText): string {
+  return releaseNoteText(value, locale.value);
+}
 </script>
 
 <template>
   <div class="mx-auto max-w-5xl">
     <PageHeader
-      eyebrow="What's new"
-      title="版本更新"
-      description="查看每个正式版本面向用户的新增功能、体验改进和问题修复。版本说明随应用内置，离线或 GitHub 暂时不可用时也能正常查看。"
+      :eyebrow="t('releases.eyebrow')"
+      :title="t('releases.title')"
+      :description="t('releases.description')"
     >
       <a
         :href="`${RELEASE_NOTES_REPOSITORY_URL}/releases`"
@@ -55,7 +67,7 @@ const currentRelease = computed(() => RELEASE_NOTES.find((release) => release.ve
         rel="noopener noreferrer"
         class="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm font-medium shadow-sm hover:bg-accent"
       >
-        <GitBranch class="size-4" />GitHub 发布页<ArrowUpRight class="size-3.5" />
+        <GitBranch class="size-4" />{{ t('releases.github') }}<ArrowUpRight class="size-3.5" />
       </a>
     </PageHeader>
 
@@ -65,20 +77,22 @@ const currentRelease = computed(() => RELEASE_NOTES.find((release) => release.ve
       />
       <div class="relative flex flex-wrap items-center justify-between gap-5">
         <div>
-          <p class="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">当前安装版本</p>
+          <p class="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+            {{ t('releases.installed') }}
+          </p>
           <div class="mt-2 flex flex-wrap items-center gap-2">
             <p class="text-3xl font-semibold tracking-tight">v{{ APP_VERSION }}</p>
-            <Badge variant="success">当前版本</Badge>
+            <Badge variant="success">{{ t('releases.current') }}</Badge>
           </div>
           <p class="mt-2 text-sm text-muted-foreground">
-            {{ currentRelease?.title ?? '当前构建尚未发布正式版本说明' }}
+            {{ currentRelease ? localized(currentRelease.title) : t('releases.missingCurrent') }}
           </p>
         </div>
         <PackageCheck class="size-11 text-primary" aria-hidden="true" />
       </div>
     </Card>
 
-    <ol class="relative ml-3 border-l" aria-label="正式版本更新记录">
+    <ol class="relative ml-3 border-l" :aria-label="t('releases.timeline')">
       <li v-for="release in RELEASE_NOTES" :key="release.version" class="relative mb-6 pl-7 last:mb-0">
         <span
           class="absolute -left-[0.44rem] top-6 size-3.5 rounded-full border-2 border-background bg-primary shadow-sm"
@@ -89,19 +103,23 @@ const currentRelease = computed(() => RELEASE_NOTES.find((release) => release.ve
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div class="flex flex-wrap items-center gap-2">
-                  <h2 class="text-xl font-semibold">v{{ release.version }} · {{ release.title }}</h2>
-                  <Badge v-if="release.version === APP_VERSION" variant="success">当前版本</Badge>
+                  <h2 class="text-xl font-semibold">
+                    v{{ release.version }} · {{ localized(release.title) }}
+                  </h2>
+                  <Badge v-if="release.version === APP_VERSION" variant="success">{{
+                    t('releases.current')
+                  }}</Badge>
                 </div>
                 <p class="mt-1 text-xs text-muted-foreground">
                   {{ formatDate(release.releasedAt) }}
                 </p>
               </div>
               <Badge variant="outline">
-                {{ release.source === 'release' ? 'GitHub Release' : 'Git Tag' }}
+                {{ release.source === 'release' ? t('releases.sourceRelease') : t('releases.sourceTag') }}
               </Badge>
             </div>
             <p class="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
-              {{ release.summary }}
+              {{ localized(release.summary) }}
             </p>
           </header>
 
@@ -117,11 +135,13 @@ const currentRelease = computed(() => RELEASE_NOTES.find((release) => release.ve
                   :class="changePresentation[change.type].className"
                 >
                   <component :is="changePresentation[change.type].icon" class="size-3" />
-                  {{ changePresentation[change.type].label }}
+                  {{ t(changePresentation[change.type].labelKey) }}
                 </span>
-                <h3 class="font-medium">{{ change.title }}</h3>
+                <h3 class="font-medium">{{ localized(change.title) }}</h3>
               </div>
-              <p class="mt-2 text-sm leading-6 text-muted-foreground">{{ change.description }}</p>
+              <p class="mt-2 text-sm leading-6 text-muted-foreground">
+                {{ localized(change.description) }}
+              </p>
             </article>
           </div>
 
@@ -132,7 +152,7 @@ const currentRelease = computed(() => RELEASE_NOTES.find((release) => release.ve
               rel="noopener noreferrer"
               class="inline-flex items-center gap-1 font-medium text-primary hover:underline"
             >
-              查看 {{ release.source === 'release' ? 'GitHub Release' : '代码标签' }}
+              {{ release.source === 'release' ? t('releases.viewRelease') : t('releases.viewTag') }}
               <ArrowUpRight class="size-3" />
             </a>
             <a
@@ -142,7 +162,7 @@ const currentRelease = computed(() => RELEASE_NOTES.find((release) => release.ve
               rel="noopener noreferrer"
               class="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground hover:underline"
             >
-              完整代码差异<ArrowUpRight class="size-3" />
+              {{ t('releases.compare') }}<ArrowUpRight class="size-3" />
             </a>
           </footer>
         </Card>

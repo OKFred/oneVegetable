@@ -21,5 +21,30 @@ export const shell = {
     admin: 'Administration',
     releases: 'What’s new',
     settings: 'Settings'
+  },
+  dashboard: {
+    title: 'Operations dashboard',
+    descriptions: {
+      bff: 'Alibaba.com products, assets, and orders. Real requests are proxied by the local BFF.',
+      extension:
+        'Alibaba.com products, assets, and orders. Real requests run in the extension service worker.',
+      mock: 'Alibaba.com products, assets, and orders. Local contract demo data is currently in use.'
+    },
+    metrics: {
+      products: 'Products',
+      productsDescription: 'Schema publishing and updates',
+      photos: 'Gallery',
+      photosDescription: 'Total gallery assets',
+      orders: 'Total orders',
+      ordersDescription: 'Order summaries, funds, and logistics',
+      capabilities: 'Enabled capabilities',
+      capabilitiesDescription: 'Eligible capabilities enabled in this project'
+    },
+    iterationStatus: 'Iteration status',
+    openApiContract: 'OpenAPI 3.1 contract',
+    migrated: 'Migrated',
+    enabled: 'Enabled',
+    schemaReplacement: 'Replaced by Schema',
+    legacyPublishing: 'Legacy publishing flow'
   }
 } as const;

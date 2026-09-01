@@ -3,18 +3,24 @@ export const RELEASE_NOTE_SOURCES = ['release', 'tag'] as const;
 
 export type ReleaseChangeType = (typeof RELEASE_CHANGE_TYPES)[number];
 export type ReleaseNoteSource = (typeof RELEASE_NOTE_SOURCES)[number];
+export type ReleaseNoteLocale = 'zh-CN' | 'en-US';
+
+export interface LocalizedReleaseText {
+  'zh-CN': string;
+  'en-US': string;
+}
 
 export interface ReleaseNoteChange {
   type: ReleaseChangeType;
-  title: string;
-  description: string;
+  title: LocalizedReleaseText;
+  description: LocalizedReleaseText;
 }
 
 export interface ReleaseNote {
   version: string;
   releasedAt: string;
-  title: string;
-  summary: string;
+  title: LocalizedReleaseText;
+  summary: LocalizedReleaseText;
   source: ReleaseNoteSource;
   githubUrl: string;
   compareUrl: string | null;
@@ -22,7 +28,7 @@ export interface ReleaseNote {
 }
 
 export interface ReleaseNotesDocument {
-  schemaVersion: 1;
+  schemaVersion: 2;
   repositoryUrl: string;
   releases: ReleaseNote[];
 }
@@ -36,8 +42,8 @@ export function parseReleaseNotesDocument(value: unknown): ReleaseNotesDocument 
     throw new Error('Release notes must be a JSON object.');
   }
 
-  if (value.schemaVersion !== 1) {
-    issues.push('schemaVersion must be 1');
+  if (value.schemaVersion !== 2) {
+    issues.push('schemaVersion must be 2');
   }
   const repositoryUrl = readString(value.repositoryUrl, 'repositoryUrl', issues);
   if (repositoryUrl && !isGitHubUrl(repositoryUrl)) {
@@ -69,7 +75,7 @@ export function parseReleaseNotesDocument(value: unknown): ReleaseNotesDocument 
   if (issues.length > 0) {
     throw new Error(`Invalid release notes:\n- ${issues.join('\n- ')}`);
   }
-  return { schemaVersion: 1, repositoryUrl, releases };
+  return { schemaVersion: 2, repositoryUrl, releases };
 }
 
 export function releaseVersionFromTag(tag: string): string {
@@ -89,27 +95,35 @@ export function findReleaseNote(document: ReleaseNotesDocument, tag: string): Re
   return release;
 }
 
-export function renderReleaseNotesMarkdown(release: ReleaseNote): string {
-  const categoryLabels: Record<ReleaseChangeType, string> = {
-    feature: '新增',
-    improvement: '改进',
-    fix: '修复',
-    security: '安全'
+export function renderReleaseNotesMarkdown(
+  release: ReleaseNote,
+  locale: ReleaseNoteLocale = 'zh-CN'
+): string {
+  const categoryLabels: Record<ReleaseNoteLocale, Record<ReleaseChangeType, string>> = {
+    'zh-CN': { feature: '新增', improvement: '改进', fix: '修复', security: '安全' },
+    'en-US': { feature: 'New', improvement: 'Improved', fix: 'Fixed', security: 'Security' }
   };
   const sections = RELEASE_CHANGE_TYPES.map((type) => ({
     type,
     items: release.changes.filter((change) => change.type === type)
   })).filter((section) => section.items.length > 0);
 
-  const lines = [release.summary];
+  const lines = [release.summary[locale]];
   for (const section of sections) {
-    lines.push('', `## ${categoryLabels[section.type]}`);
+    lines.push('', `## ${categoryLabels[locale][section.type]}`);
     for (const item of section.items) {
-      lines.push(`- **${item.title}**：${item.description}`);
+      lines.push(
+        locale === 'zh-CN'
+          ? `- **${item.title[locale]}**：${item.description[locale]}`
+          : `- **${item.title[locale]}**: ${item.description[locale]}`
+      );
     }
   }
   if (release.compareUrl) {
-    lines.push('', `[查看完整代码差异](${release.compareUrl})`);
+    lines.push(
+      '',
+      `[${locale === 'zh-CN' ? '查看完整代码差异' : 'View full code comparison'}](${release.compareUrl})`
+    );
   }
   return `${lines.join('\n')}\n`;
 }
@@ -129,8 +143,8 @@ function parseReleaseNote(value: unknown, index: number, issues: string[]): Rele
   if (releasedAt && (!RELEASE_DATE.test(releasedAt) || Number.isNaN(Date.parse(`${releasedAt}T00:00:00Z`)))) {
     issues.push(`${path}.releasedAt must be a valid YYYY-MM-DD date`);
   }
-  const title = readString(value.title, `${path}.title`, issues);
-  const summary = readString(value.summary, `${path}.summary`, issues);
+  const title = readLocalizedText(value.title, `${path}.title`, issues);
+  const summary = readLocalizedText(value.summary, `${path}.summary`, issues);
   const source = readSource(value.source, `${path}.source`, issues);
   const githubUrl = readString(value.githubUrl, `${path}.githubUrl`, issues);
   if (githubUrl && !isGitHubUrl(githubUrl)) {
@@ -160,9 +174,20 @@ function parseReleaseChange(value: unknown, path: string, issues: string[]): Rel
     return null;
   }
   const type = readChangeType(value.type, `${path}.type`, issues);
-  const title = readString(value.title, `${path}.title`, issues);
-  const description = readString(value.description, `${path}.description`, issues);
+  const title = readLocalizedText(value.title, `${path}.title`, issues);
+  const description = readLocalizedText(value.description, `${path}.description`, issues);
   return { type, title, description };
+}
+
+function readLocalizedText(value: unknown, path: string, issues: string[]): LocalizedReleaseText {
+  if (!isRecord(value)) {
+    issues.push(`${path} must be a localized object`);
+    return { 'zh-CN': '', 'en-US': '' };
+  }
+  return {
+    'zh-CN': readString(value['zh-CN'], `${path}.zh-CN`, issues),
+    'en-US': readString(value['en-US'], `${path}.en-US`, issues)
+  };
 }
 
 function readString(value: unknown, path: string, issues: string[]): string {

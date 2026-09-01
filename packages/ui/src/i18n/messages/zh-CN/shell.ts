@@ -20,5 +20,29 @@ export const shell = {
     admin: '管理后台',
     releases: '版本更新',
     settings: '设置'
+  },
+  dashboard: {
+    title: '运营总览',
+    descriptions: {
+      bff: '国际站商品、素材与订单工作台。真实请求由本地 BFF 代理。',
+      extension: '国际站商品、素材与订单工作台。真实请求由扩展 service worker 发起。',
+      mock: '国际站商品、素材与订单工作台。当前使用本地契约演示数据。'
+    },
+    metrics: {
+      products: '商品',
+      productsDescription: 'Schema 发品与更新',
+      photos: '图库',
+      photosDescription: '图库素材总数',
+      orders: '订单总数',
+      ordersDescription: '订单摘要、资金与物流',
+      capabilities: '已启用能力',
+      capabilitiesDescription: '项目内已启用的合格能力'
+    },
+    iterationStatus: '本迭代状态',
+    openApiContract: 'OpenAPI 3.1 契约',
+    migrated: '已迁移',
+    enabled: '已启用',
+    schemaReplacement: 'Schema 替代',
+    legacyPublishing: '旧版发品流程'
   }
 } as const;
