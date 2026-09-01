@@ -72,7 +72,8 @@ const officialIssue = computed(() => {
     return mode === 'extension' ? '请先在插件设置中配对社交发布后端。' : '当前后端未启用社交发布。';
   }
   if (props.photos.length !== 1) return '官方 API 每次只支持选择 1 张图片。';
-  if (preparing.value || assets.value.length !== 1) return '正在准备原图。';
+  if (preparing.value) return '正在准备原图。';
+  if (assets.value.length !== 1) return '原图尚未准备完成。';
   const destination = selectedDestination.value;
   if (!destination) return '请选择发布目标。';
   if (!destination.canPublish) return `该目标不可发布：${destination.unavailableReasonCode ?? '权限不足'}`;
@@ -369,6 +370,13 @@ function toError(error: unknown): Error {
           </Button>
           <Button variant="outline" :disabled="assets.length === 0" @click="downloadSharePackage">
             <Download class="size-4" />下载 ZIP 分享包
+          </Button>
+          <Button
+            v-if="assets.length === 0 && feedback?.kind === 'error' && selectionIssues.length === 0"
+            variant="outline"
+            @click="prepareAssets"
+          >
+            <RefreshCw class="size-4" />重新准备原图
           </Button>
         </div>
       </section>

@@ -5,7 +5,13 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { toast } from 'vue-sonner';
 
-import type { ControlClient, Photo, SocialDestination, SocialPublishJob } from '@one-vegetable/core';
+import type {
+  ControlClient,
+  GatewayClient,
+  Photo,
+  SocialDestination,
+  SocialPublishJob
+} from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import destinationsFixture from '../../../mock/data/social-meta/destinations.json';
@@ -97,13 +103,39 @@ describe('PhotoSocialShareDialog', () => {
     expect(document.body.textContent).toContain('发布成功');
     wrapper.unmount();
   });
+
+  it('offers an explicit retry after original preparation fails', async () => {
+    const fallback = new MockGatewayClient(0);
+    let attempts = 0;
+    const request: GatewayClient['request'] = (operation, payload) => {
+      attempts += 1;
+      if (attempts === 1) return Promise.reject(new Error('缓存响应不可读取'));
+      return fallback.request(operation, payload);
+    };
+    const wrapper = mountDialog(undefined, 'mock', { request });
+
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('缓存响应不可读取');
+      expect(document.body.textContent).toContain('重新准备原图');
+    });
+    await clickBodyButton('重新准备原图');
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('系统支持原图分享');
+    });
+    expect(attempts).toBe(2);
+    wrapper.unmount();
+  });
 });
 
-function mountDialog(control?: ControlClient, mode: 'mock' | 'bff' = 'mock') {
+function mountDialog(
+  control?: ControlClient,
+  mode: 'mock' | 'bff' = 'mock',
+  gateway: Pick<GatewayClient, 'request'> = new MockGatewayClient(0)
+) {
   const Host = defineComponent({
     setup() {
       provideServices({
-        gateway: new MockGatewayClient(0),
+        gateway,
         settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
         ...(control ? { control } : {}),
         mode

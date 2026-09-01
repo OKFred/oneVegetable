@@ -26,6 +26,7 @@ export interface NetworkServicePolicy {
   maxRequestBytes?: number;
   maxResponseBytes?: number;
   defaultHeaders?: Readonly<Record<string, string>>;
+  cache?: RequestCache;
   credentials?: RequestCredentials;
   redirect?: RequestRedirect;
 }
@@ -153,6 +154,7 @@ export class NetworkManager {
             ...input.headers,
             'X-Request-ID': requestId
           },
+          ...(policy.cache !== undefined ? { cache: policy.cache } : {}),
           credentials: policy.credentials ?? 'omit',
           // Cloudflare Workers does not implement `redirect: "error"`.
           // Request redirects manually and preserve the same deny-by-default policy below.
