@@ -11,8 +11,8 @@ describe('Web runtime configuration', () => {
   it('accepts only the supported gateway modes', () => {
     expect(readWebGatewayMode('mock')).toBe('mock');
     expect(readWebGatewayMode('bff')).toBe('bff');
-    expect(() => readWebGatewayMode('real')).toThrow('VITE_GATEWAY_MODE 无效');
-    expect(() => readWebGatewayMode('BFF')).toThrow('VITE_GATEWAY_MODE 无效');
+    expect(() => readWebGatewayMode('real')).toThrow('Invalid VITE_GATEWAY_MODE');
+    expect(() => readWebGatewayMode('BFF')).toThrow('Invalid VITE_GATEWAY_MODE');
   });
 
   it('uses the current origin when the BFF base URL is not configured', () => {
