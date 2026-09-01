@@ -5,14 +5,17 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { toast } from 'vue-sonner';
 
-import type { Photo } from '@one-vegetable/core';
+import type { ControlClient, Photo, SocialDestination, SocialPublishJob } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
+
+import destinationsFixture from '../../../mock/data/social-meta/destinations.json';
+import publishJobFixture from '../../../mock/data/social-meta/publish-job.json';
 
 import PhotoSocialShareDialog from '../src/components/PhotoSocialShareDialog.vue';
 import { provideServices } from '../src/lib/services';
 
 vi.mock('vue-sonner', () => ({
-  toast: { success: vi.fn() }
+  toast: { success: vi.fn(), info: vi.fn(), warning: vi.fn(), error: vi.fn() }
 }));
 
 const photo: Photo = {
@@ -51,15 +54,59 @@ describe('PhotoSocialShareDialog', () => {
     expect(toast.success).toHaveBeenCalledWith('素材已交给系统分享面板；最终发布仍由所选应用确认');
     wrapper.unmount();
   });
+
+  it('prepares one image and waits for an explicit second confirmation before a real publish', async () => {
+    const preparedJob = publishJobFixture as SocialPublishJob;
+    const prepareSocialPost = vi.fn(
+      (_input: Parameters<NonNullable<ControlClient['prepareSocialPost']>>[0]) => Promise.resolve(preparedJob)
+    );
+    const publishSocialPost = vi.fn(() =>
+      Promise.resolve({
+        ...preparedJob,
+        status: 'published' as const,
+        platformPostId: 'facebook-post-1',
+        revision: 2
+      })
+    );
+    const control = {
+      listSocialDestinations: () => Promise.resolve(destinationsFixture as SocialDestination[]),
+      listSocialPosts: () => Promise.resolve([]),
+      prepareSocialPost,
+      publishSocialPost
+    } as unknown as ControlClient;
+    const wrapper = mountDialog(control, 'bff');
+
+    await flushPromises();
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('1 个可用目标');
+    });
+    await clickBodyButton('检查并发布');
+    await vi.waitFor(() => {
+      expect(prepareSocialPost).toHaveBeenCalledOnce();
+    });
+    expect(publishSocialPost).not.toHaveBeenCalled();
+    expect(prepareSocialPost.mock.calls[0]?.[0]).toMatchObject({
+      destinationId: '22222222-2222-4222-8222-222222222222',
+      file: { contentType: 'image/jpeg', byteLength: 4 }
+    });
+
+    await clickBodyButton('确认发布');
+    await vi.waitFor(() => {
+      expect(publishSocialPost).toHaveBeenCalledWith(preparedJob.id);
+    });
+    expect(document.body.textContent).toContain('发布成功');
+    wrapper.unmount();
+  });
 });
 
-function mountDialog() {
+function mountDialog(control?: ControlClient, mode: 'mock' | 'bff' = 'mock') {
   const Host = defineComponent({
     setup() {
       provideServices({
         gateway: new MockGatewayClient(0),
         settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
-        mode: 'mock'
+        ...(control ? { control } : {}),
+        mode
       });
       const open = ref(true);
       return () =>

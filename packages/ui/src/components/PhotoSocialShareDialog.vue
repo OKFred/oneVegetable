@@ -1,13 +1,22 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import { Download, ExternalLink, LoaderCircle, Share2 } from '@lucide/vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { CircleCheck, Download, ExternalLink, LoaderCircle, RefreshCw, Send, Share2 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
-import { SOCIAL_PLATFORM_DEFINITIONS, validateSocialShareSelection, type Photo } from '@one-vegetable/core';
+import {
+  SOCIAL_PLATFORM_DEFINITIONS,
+  encodeBase64,
+  validateSocialShareSelection,
+  type Photo,
+  type SocialDestination,
+  type SocialPublishJob
+} from '@one-vegetable/core';
 
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import ModalDialog from './ui/ModalDialog.vue';
+import ConfirmActionDialog from './ConfirmActionDialog.vue';
+import ErrorNotice from './ErrorNotice.vue';
 import { useServices } from '../lib/services';
 import {
   createNativeShareFiles,
@@ -20,13 +29,21 @@ import {
 const props = defineProps<{ open: boolean; photos: readonly Photo[] }>();
 const emit = defineEmits<{ 'update:open': [open: boolean] }>();
 
-const { gateway } = useServices();
+const { gateway, control, mode } = useServices();
 const caption = ref('');
 const assets = ref<PreparedSocialShareAsset[]>([]);
 const preparing = ref(false);
 const preparedCount = ref(0);
 const feedback = ref<{ kind: 'error' | 'info'; message: string } | null>(null);
 let preparationRevision = 0;
+const destinations = ref<SocialDestination[]>([]);
+const destinationId = ref('');
+const officialBusy = ref(false);
+const officialError = ref<unknown>(null);
+const publishConfirmationOpen = ref(false);
+const publishJob = ref<SocialPublishJob | null>(null);
+const prepareIdempotencyKey = ref(globalThis.crypto.randomUUID());
+let advanceTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 
 const selectionKey = computed(() => props.photos.map((photo) => `${photo.id}:${photo.url}`).join('|'));
 const selectionIssues = computed(() =>
@@ -44,6 +61,47 @@ const systemShareSupported = computed(() => {
     return false;
   }
 });
+const selectedDestination = computed(
+  () => destinations.value.find((destination) => destination.id === destinationId.value) ?? null
+);
+const officialPublishingSupported = computed(
+  () =>
+    control !== undefined &&
+    'listSocialDestinations' in control &&
+    'prepareSocialPost' in control &&
+    'publishSocialPost' in control
+);
+const officialIssue = computed(() => {
+  if (!officialPublishingSupported.value) {
+    return mode === 'extension' ? '请先在插件设置中配对社交发布后端。' : '当前后端未启用社交发布。';
+  }
+  if (props.photos.length !== 1) return '官方 API 每次只支持选择 1 张图片。';
+  if (preparing.value || assets.value.length !== 1) return '正在准备原图。';
+  const destination = selectedDestination.value;
+  if (!destination) return '请选择发布目标。';
+  if (!destination.canPublish) return `该目标不可发布：${destination.unavailableReasonCode ?? '权限不足'}`;
+  const asset = assets.value[0];
+  if (!asset) return '图片尚未准备完成。';
+  if (destination.platform === 'instagram' && asset.contentType !== 'image/jpeg') {
+    return 'Instagram 首版仅接受 JPEG 图片。';
+  }
+  const maximum = destination.platform === 'instagram' ? 2200 : 4000;
+  if (Array.from(caption.value.trim()).length > maximum) return `文案不能超过 ${maximum} 个字符。`;
+  return '';
+});
+const publishStatusLabel = computed(() => {
+  const status = publishJob.value?.status;
+  const labels: Partial<Record<SocialPublishJob['status'], string>> = {
+    prepared: '等待确认',
+    processing: '平台处理中',
+    published: '发布成功',
+    failed: '发布失败',
+    unknown: '结果未知',
+    cancelled: '已取消',
+    expired: '已过期'
+  };
+  return status ? (labels[status] ?? status) : '';
+});
 
 watch(
   [() => props.open, selectionKey],
@@ -51,9 +109,27 @@ watch(
     if (!open) return;
     if (!previous[0] || previous[1] !== selectionKey.value) caption.value = '';
     void prepareAssets();
+    void refreshOfficialPublishing();
   },
   { immediate: true }
 );
+
+watch([destinationId, caption, selectionKey], () => {
+  prepareIdempotencyKey.value = globalThis.crypto.randomUUID();
+  if (publishJob.value?.status === 'prepared') publishJob.value = null;
+});
+
+watch(
+  () => publishJob.value,
+  (job) => {
+    scheduleAdvance(job);
+  },
+  { deep: true }
+);
+
+onBeforeUnmount(() => {
+  clearAdvanceTimer();
+});
 
 async function prepareAssets(): Promise<void> {
   const revision = ++preparationRevision;
@@ -117,6 +193,112 @@ async function downloadSharePackage(): Promise<void> {
   } catch (error: unknown) {
     feedback.value = { kind: 'error', message: toError(error).message };
   }
+}
+
+async function refreshOfficialPublishing(): Promise<void> {
+  if (!officialPublishingSupported.value || !control?.listSocialDestinations) return;
+  officialBusy.value = true;
+  officialError.value = null;
+  try {
+    const [nextDestinations, recentJobs] = await Promise.all([
+      control.listSocialDestinations(),
+      control.listSocialPosts?.(20) ?? Promise.resolve([])
+    ]);
+    destinations.value = nextDestinations;
+    if (!nextDestinations.some((destination) => destination.id === destinationId.value)) {
+      destinationId.value = nextDestinations.find((destination) => destination.canPublish)?.id ?? '';
+    }
+    const active = recentJobs.find(
+      (job) => job.status === 'processing' && nextDestinations.some((item) => item.id === job.destinationId)
+    );
+    if (active) publishJob.value = active;
+  } catch (error: unknown) {
+    officialError.value = error;
+  } finally {
+    officialBusy.value = false;
+  }
+}
+
+async function prepareOfficialPublish(): Promise<void> {
+  const issue = officialIssue.value;
+  const asset = assets.value[0];
+  if (issue || !asset || !control?.prepareSocialPost) return;
+  officialBusy.value = true;
+  officialError.value = null;
+  try {
+    publishJob.value = await control.prepareSocialPost({
+      destinationId: destinationId.value,
+      caption: caption.value.trim(),
+      idempotencyKey: prepareIdempotencyKey.value,
+      file: {
+        fileName: asset.fileName,
+        contentBase64: encodeBase64(asset.bytes),
+        contentType: asset.contentType,
+        byteLength: asset.bytes.byteLength
+      }
+    });
+    publishConfirmationOpen.value = true;
+  } catch (error: unknown) {
+    officialError.value = error;
+  } finally {
+    officialBusy.value = false;
+  }
+}
+
+async function confirmOfficialPublish(): Promise<void> {
+  const job = publishJob.value;
+  if (!job || !control?.publishSocialPost) return;
+  officialBusy.value = true;
+  officialError.value = null;
+  try {
+    publishJob.value = await control.publishSocialPost(job.id);
+    publishConfirmationOpen.value = false;
+    notifyPublishStatus(publishJob.value);
+  } catch (error: unknown) {
+    officialError.value = error;
+  } finally {
+    officialBusy.value = false;
+  }
+}
+
+async function advanceOfficialPublish(): Promise<void> {
+  const job = publishJob.value;
+  if (job?.status !== 'processing' || !control?.advanceSocialPost || officialBusy.value) return;
+  officialBusy.value = true;
+  officialError.value = null;
+  try {
+    publishJob.value = await control.advanceSocialPost(job.id);
+    notifyPublishStatus(publishJob.value);
+  } catch (error: unknown) {
+    officialError.value = error;
+  } finally {
+    officialBusy.value = false;
+  }
+}
+
+function scheduleAdvance(job: SocialPublishJob | null): void {
+  clearAdvanceTimer();
+  if (job?.platform !== 'instagram' || job.status !== 'processing') return;
+  const delay = Math.max(0, (job.nextAdvanceTimeUtc ?? Date.now() + 60_000) - Date.now());
+  advanceTimer = globalThis.setTimeout(
+    () => {
+      void advanceOfficialPublish();
+    },
+    Math.min(delay, 2_147_483_647)
+  );
+}
+
+function clearAdvanceTimer(): void {
+  if (advanceTimer !== undefined) globalThis.clearTimeout(advanceTimer);
+  advanceTimer = undefined;
+}
+
+function notifyPublishStatus(job: SocialPublishJob | null): void {
+  if (!job) return;
+  if (job.status === 'published') toast.success('图片已通过官方 API 发布');
+  else if (job.status === 'processing') toast.info('Instagram 正在处理图片，将在约 1 分钟后刷新');
+  else if (job.status === 'unknown') toast.warning('发布结果未知，系统不会自动重发，请到平台核对');
+  else if (job.status === 'failed') toast.error(job.message ?? '平台拒绝了发布请求');
 }
 
 function toError(error: unknown): Error {
@@ -202,6 +384,80 @@ function toError(error: unknown): Error {
             以下平台都需要事先连接账号和通过相应开发者权限；当前版本不会用页面自动化绕过审核。
           </p>
         </div>
+        <div class="rounded-lg border bg-card p-4">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h4 class="font-semibold">发布到已连接账号</h4>
+              <p class="mt-1 text-xs leading-5 text-muted-foreground">
+                每次只发布一张图片到一个目标；点击发布前还会再次确认。
+              </p>
+            </div>
+            <Badge :variant="destinations.some((item) => item.canPublish) ? 'success' : 'secondary'">
+              {{ destinations.filter((item) => item.canPublish).length }} 个可用目标
+            </Badge>
+          </div>
+
+          <div v-if="officialPublishingSupported" class="mt-4 space-y-3">
+            <label class="block space-y-1 text-sm">
+              <span>发布目标</span>
+              <select
+                v-model="destinationId"
+                class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                :disabled="officialBusy"
+              >
+                <option value="">请选择目标</option>
+                <option
+                  v-for="destination in destinations"
+                  :key="destination.id"
+                  :value="destination.id"
+                  :disabled="!destination.canPublish"
+                >
+                  {{ destination.platform === 'facebook' ? 'Facebook' : 'Instagram' }} · {{ destination.name
+                  }}{{ destination.canPublish ? '' : '（不可用）' }}
+                </option>
+              </select>
+            </label>
+            <p v-if="officialIssue" class="text-xs text-amber-700 dark:text-amber-300">
+              {{ officialIssue }}
+            </p>
+            <ErrorNotice v-if="officialError" :error="officialError" fallback="社交发布失败" compact />
+            <div v-if="publishJob" class="rounded-md bg-muted/50 p-3 text-sm">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <span class="flex items-center gap-2 font-medium">
+                  <CircleCheck v-if="publishJob.status === 'published'" class="size-4 text-emerald-600" />
+                  <LoaderCircle
+                    v-else-if="publishJob.status === 'processing'"
+                    class="size-4 animate-spin text-primary"
+                  />
+                  {{ publishStatusLabel }}
+                </span>
+                <code class="text-xs text-muted-foreground">{{ publishJob.id.slice(0, 8) }}</code>
+              </div>
+              <p v-if="publishJob.message" class="mt-2 text-xs text-muted-foreground">
+                {{ publishJob.message }}
+              </p>
+              <p v-if="publishJob.platformPostId" class="mt-2 text-xs text-muted-foreground">
+                平台发布 ID：{{ publishJob.platformPostId }}
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <Button :disabled="officialBusy || Boolean(officialIssue)" @click="prepareOfficialPublish">
+                <Send class="size-4" />检查并发布
+              </Button>
+              <Button
+                v-if="publishJob?.status === 'processing'"
+                variant="outline"
+                :disabled="officialBusy"
+                @click="advanceOfficialPublish"
+              >
+                <RefreshCw class="size-4" />刷新进度
+              </Button>
+            </div>
+          </div>
+          <p v-else class="mt-4 rounded-md bg-muted/50 p-3 text-sm text-muted-foreground">
+            {{ officialIssue }}
+          </p>
+        </div>
         <div class="grid gap-3 md:grid-cols-2">
           <article
             v-for="platform in SOCIAL_PLATFORM_DEFINITIONS"
@@ -210,7 +466,19 @@ function toError(error: unknown): Error {
           >
             <div class="flex items-center justify-between gap-3">
               <h4 class="font-semibold">{{ platform.label }}</h4>
-              <Badge variant="outline">需要配置</Badge>
+              <Badge
+                :variant="
+                  destinations.some((item) => item.platform === platform.id && item.canPublish)
+                    ? 'success'
+                    : 'outline'
+                "
+              >
+                {{
+                  destinations.some((item) => item.platform === platform.id && item.canPublish)
+                    ? '已连接'
+                    : '需要配置'
+                }}
+              </Badge>
             </div>
             <p class="mt-2 text-xs font-medium text-muted-foreground">发布到：{{ platform.destination }}</p>
             <ul class="mt-3 space-y-2 text-xs leading-5 text-muted-foreground">
@@ -246,4 +514,14 @@ function toError(error: unknown): Error {
       </div>
     </template>
   </ModalDialog>
+
+  <ConfirmActionDialog
+    :open="publishConfirmationOpen"
+    title="确认通过官方 API 发布"
+    :description="`将把当前图片发布到 ${selectedDestination?.name ?? '所选目标'}。平台发布属于真实外部写操作，提交后不会自动删除。`"
+    confirm-label="确认发布"
+    :pending="officialBusy"
+    @update:open="publishConfirmationOpen = $event"
+    @confirm="confirmOfficialPublish"
+  />
 </template>

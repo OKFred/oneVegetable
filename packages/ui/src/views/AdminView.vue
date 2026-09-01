@@ -21,6 +21,7 @@ import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
 import SelfHostedAdminPanel from '../components/SelfHostedAdminPanel.vue';
+import MetaSocialAdminPanel from '../components/MetaSocialAdminPanel.vue';
 import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
@@ -583,6 +584,7 @@ const auditEventColumns: DataColumn<ControlAuditEvent>[] = [
     </div>
 
     <SelfHostedAdminPanel v-if="selfHosted" />
+    <MetaSocialAdminPanel />
 
     <div class="mt-5 grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
       <Card class="overflow-hidden">

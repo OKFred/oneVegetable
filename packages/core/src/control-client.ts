@@ -10,6 +10,14 @@ import type {
   AlibabaCredentialAcquisitionContinueCommand,
   AlibabaCredentialAcquisitionState
 } from './alibaba-credential-acquisition';
+import type {
+  MetaAppConfigurationSummary,
+  MetaAppConfigurationUpdateRequest,
+  SocialAccountConnection,
+  SocialDestination,
+  SocialPostPrepareRequest,
+  SocialPublishJob
+} from './social-meta';
 
 export type ControlUserRole = 'admin' | 'user';
 export type ControlUserStatus = 'active' | 'disabled';
@@ -276,6 +284,21 @@ export interface ControlClient {
     revision: number | null,
     remark?: string | null
   ): Promise<ControlRealMutationStatus>;
+  metaAppConfiguration?(): Promise<MetaAppConfigurationSummary>;
+  updateMetaAppConfiguration?(
+    input: Omit<MetaAppConfigurationUpdateRequest, 'requestId'>
+  ): Promise<MetaAppConfigurationSummary>;
+  clearMetaAppConfiguration?(revision: number): Promise<void>;
+  startMetaOAuth?(): Promise<{ authorizationUrl: string; expiresTimeUtc: number }>;
+  listMetaConnections?(): Promise<SocialAccountConnection[]>;
+  disconnectMetaConnection?(connectionId: string, revision: number): Promise<void>;
+  listSocialDestinations?(): Promise<SocialDestination[]>;
+  prepareSocialPost?(input: Omit<SocialPostPrepareRequest, 'requestId'>): Promise<SocialPublishJob>;
+  publishSocialPost?(jobId: string): Promise<SocialPublishJob>;
+  advanceSocialPost?(jobId: string): Promise<SocialPublishJob>;
+  getSocialPost?(jobId: string): Promise<SocialPublishJob>;
+  listSocialPosts?(limit?: number): Promise<SocialPublishJob[]>;
+  cancelSocialPost?(jobId: string): Promise<SocialPublishJob>;
   csrfToken(): string | null;
 }
 
@@ -307,7 +330,7 @@ export class BffControlClient implements ControlClient {
         bff: {
           allowedOrigins: [this.#baseUrl.origin],
           timeoutMilliseconds: 30_000,
-          maxRequestBytes: 1024 * 1024,
+          maxRequestBytes: 8 * 1024 * 1024,
           maxResponseBytes: 4 * 1024 * 1024,
           credentials: 'include',
           redirect: 'error'
@@ -595,6 +618,66 @@ export class BffControlClient implements ControlClient {
     remark: string | null = null
   ): Promise<ControlRealMutationStatus> {
     return this.#call('/admin/real-mutations/pause/update', { paused, revision, remark });
+  }
+
+  metaAppConfiguration(): Promise<MetaAppConfigurationSummary> {
+    return this.#call('/admin/social/meta/config/get', {});
+  }
+
+  updateMetaAppConfiguration(
+    input: Omit<MetaAppConfigurationUpdateRequest, 'requestId'>
+  ): Promise<MetaAppConfigurationSummary> {
+    return this.#call('/admin/social/meta/config/update', input);
+  }
+
+  async clearMetaAppConfiguration(revision: number): Promise<void> {
+    await this.#call('/admin/social/meta/config/clear', { revision });
+  }
+
+  startMetaOAuth(): Promise<{ authorizationUrl: string; expiresTimeUtc: number }> {
+    return this.#call('/admin/social/meta/oauth/start', {});
+  }
+
+  async listMetaConnections(): Promise<SocialAccountConnection[]> {
+    const result = await this.#call<{ items: SocialAccountConnection[] }>(
+      '/admin/social/meta/connections/list',
+      {}
+    );
+    return result.items;
+  }
+
+  async disconnectMetaConnection(connectionId: string, revision: number): Promise<void> {
+    await this.#call('/admin/social/meta/connections/disconnect', { connectionId, revision });
+  }
+
+  async listSocialDestinations(): Promise<SocialDestination[]> {
+    const result = await this.#call<{ items: SocialDestination[] }>('/social/destinations/list', {});
+    return result.items;
+  }
+
+  prepareSocialPost(input: Omit<SocialPostPrepareRequest, 'requestId'>): Promise<SocialPublishJob> {
+    return this.#call('/social-posts/prepare', input);
+  }
+
+  publishSocialPost(jobId: string): Promise<SocialPublishJob> {
+    return this.#call('/social-posts/publish', { jobId });
+  }
+
+  advanceSocialPost(jobId: string): Promise<SocialPublishJob> {
+    return this.#call('/social-posts/advance', { jobId });
+  }
+
+  getSocialPost(jobId: string): Promise<SocialPublishJob> {
+    return this.#call('/social-posts/get', { jobId });
+  }
+
+  async listSocialPosts(limit = 50): Promise<SocialPublishJob[]> {
+    const result = await this.#call<{ items: SocialPublishJob[] }>('/social-posts/list', { limit });
+    return result.items;
+  }
+
+  cancelSocialPost(jobId: string): Promise<SocialPublishJob> {
+    return this.#call('/social-posts/cancel', { jobId });
   }
 
   async #passkeyAuthenticationResult(
