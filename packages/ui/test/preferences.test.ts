@@ -9,6 +9,10 @@ import { readAppPreferences, resolveBrowserUiLocale, useAppPreferences } from '.
 describe('interface preferences', () => {
   beforeEach(() => {
     localStorage.clear();
+    Object.defineProperty(globalThis.navigator, 'languages', {
+      configurable: true,
+      value: ['en-US']
+    });
   });
 
   it('uses the browser UI language and persists Alibaba language independently', () => {

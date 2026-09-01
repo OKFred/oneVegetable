@@ -262,16 +262,16 @@ describe('SettingsView diagnostics', () => {
     const wrapper = mountView('extension', 'locked');
     await flushPromises();
 
-    const language = wrapper.get('select[aria-label="偏好语言"]');
+    const language = wrapper.get('select[aria-label="平台请求语言"]');
     expect((language.element as HTMLSelectElement).value).toBe('en_US');
     await language.setValue('zh_CN');
 
     expect(JSON.parse(localStorage.getItem(APP_PREFERENCES_STORAGE_KEY) ?? '{}')).toEqual({
-      uiLocale: 'en-US',
+      uiLocale: 'zh-CN',
       alibabaLanguage: 'zh_CN',
       theme: 'system'
     });
-    expect(wrapper.text()).toContain('接口语言偏好已保存为 zh_CN');
+    expect(wrapper.text()).toContain('Alibaba 接口语言已保存为 zh_CN');
     wrapper.unmount();
   });
 

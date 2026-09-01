@@ -9,6 +9,7 @@ import type {
 } from '@simplewebauthn/browser';
 import type { ControlBootstrapStatus, ControlSession } from '@one-vegetable/core';
 
+import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 import ErrorNotice from './ErrorNotice.vue';
 import Button from './ui/Button.vue';
@@ -16,6 +17,7 @@ import Card from './ui/Card.vue';
 import Input from './ui/Input.vue';
 
 const emit = defineEmits<{ authenticated: [session: ControlSession] }>();
+const { t } = useUiI18n();
 const { control } = useServices();
 const mode = ref<'login' | 'bootstrap' | 'recovery' | 'enrollment'>('login');
 const username = ref('');
@@ -50,7 +52,7 @@ async function refreshBootstrapStatus(): Promise<void> {
   } catch (cause: unknown) {
     bootstrapStatus.value = null;
     mode.value = 'login';
-    bootstrapStatusError.value = cause instanceof Error ? cause : new Error('无法确认管理员初始化状态');
+    bootstrapStatusError.value = cause instanceof Error ? cause : new Error(t('auth.errors.bootstrapStatus'));
   } finally {
     checkingBootstrapStatus.value = false;
   }
@@ -69,13 +71,12 @@ async function submit(): Promise<void> {
               bootstrapToken: bootstrapToken.value,
               username: username.value,
               password: password.value,
-              remark: '首个本地管理员'
+              remark: t('auth.audit.firstLocalAdmin')
             });
       emit('authenticated', session);
       return;
     }
-    if (!webAuthnSupported)
-      throw new Error('当前浏览器不支持 Passkey，请更换最新版 Chrome、Edge 或 Safari。');
+    if (!webAuthnSupported) throw new Error(t('auth.errors.passkeyUnsupported'));
     const passkeyControl = requiredPasskeyControl();
     if (mode.value === 'login') {
       const ceremony = await passkeyControl.passkeyLoginOptions();
@@ -96,15 +97,27 @@ async function submit(): Promise<void> {
     });
     const result =
       mode.value === 'bootstrap'
-        ? await passkeyControl.passkeyBootstrapVerify(ceremony.challengeId, response, '首个 Passkey')
+        ? await passkeyControl.passkeyBootstrapVerify(
+            ceremony.challengeId,
+            response,
+            t('auth.audit.firstPasskey')
+          )
         : mode.value === 'recovery'
-          ? await passkeyControl.passkeyRecoveryVerify(ceremony.challengeId, response, '恢复设备')
-          : await passkeyControl.passkeyEnrollmentVerify(ceremony.challengeId, response, '受邀设备');
+          ? await passkeyControl.passkeyRecoveryVerify(
+              ceremony.challengeId,
+              response,
+              t('auth.audit.recoveryDevice')
+            )
+          : await passkeyControl.passkeyEnrollmentVerify(
+              ceremony.challengeId,
+              response,
+              t('auth.audit.invitedDevice')
+            );
     pendingSession.value = result.session;
     recoveryCodes.value = result.recoveryCodes;
     if (mode.value === 'enrollment') clearEnrollmentToken();
   } catch (cause: unknown) {
-    error.value = cause instanceof Error ? cause : new Error('认证失败');
+    error.value = cause instanceof Error ? cause : new Error(t('auth.errors.authenticationFailed'));
   } finally {
     submitting.value = false;
   }
@@ -114,7 +127,7 @@ async function copyRecoveryCodes(): Promise<void> {
   try {
     await globalThis.navigator.clipboard.writeText(recoveryCodes.value.join('\n'));
   } catch {
-    error.value = new Error('复制失败，请手工选择并保存恢复码。');
+    error.value = new Error(t('auth.errors.copyRecoveryCodes'));
   }
 }
 
@@ -133,7 +146,7 @@ function requiredPasskeyControl() {
     !control.passkeyEnrollmentOptions ||
     !control.passkeyEnrollmentVerify
   ) {
-    throw new Error('当前客户端版本不支持 Passkey，请刷新页面。');
+    throw new Error(t('auth.errors.passkeyClientUnsupported'));
   }
   return {
     passkeyBootstrapOptions: control.passkeyBootstrapOptions.bind(control),
@@ -167,8 +180,8 @@ function clearEnrollmentToken(): void {
             <ShieldCheck class="size-6" />
           </span>
           <div>
-            <h1 class="text-lg font-semibold">保存一次性恢复码</h1>
-            <p class="text-xs text-slate-400">设备丢失或域名更换时用于注册新 Passkey</p>
+            <h1 class="text-lg font-semibold">{{ t('auth.recoveryCodes.title') }}</h1>
+            <p class="text-xs text-slate-400">{{ t('auth.recoveryCodes.description') }}</p>
           </div>
         </div>
         <div
@@ -177,13 +190,15 @@ function clearEnrollmentToken(): void {
           <code v-for="code in recoveryCodes" :key="code" class="select-all break-all">{{ code }}</code>
         </div>
         <p class="text-xs text-amber-300">
-          这些恢复码只显示一次，每个只能使用一次。请保存到密码管理器，不要放入项目备注或截图。
+          {{ t('auth.recoveryCodes.warning') }}
         </p>
         <div class="grid gap-2 sm:grid-cols-2">
           <Button type="button" variant="outline" @click="copyRecoveryCodes">
-            <Copy class="size-4" />复制恢复码
+            <Copy class="size-4" />{{ t('auth.recoveryCodes.copy') }}
           </Button>
-          <Button type="button" @click="finishRecoveryCodeStep">我已安全保存，进入工作台</Button>
+          <Button type="button" @click="finishRecoveryCodeStep">{{
+            t('auth.recoveryCodes.continue')
+          }}</Button>
         </div>
       </section>
 
@@ -193,9 +208,9 @@ function clearEnrollmentToken(): void {
             <Sprout class="size-6" />
           </span>
           <div>
-            <h1 class="text-lg font-semibold">登录运营工作台</h1>
+            <h1 class="text-lg font-semibold">{{ t('auth.title') }}</h1>
             <p class="text-xs text-slate-400">
-              {{ passkeyMode ? 'Cloudflare 自托管 · Passkey' : '本地账号 · 不透明会话 · ABAC' }}
+              {{ passkeyMode ? t('auth.subtitle.passkey') : t('auth.subtitle.local') }}
             </p>
           </div>
         </div>
@@ -204,8 +219,7 @@ function clearEnrollmentToken(): void {
           <div class="flex gap-2">
             <Info class="mt-0.5 size-4 shrink-0 text-emerald-400" />
             <p>
-              这是 oneVegetable 工作台身份，不是 Alibaba 国际站登录账号。Alibaba OpenAPI
-              凭据需在登录后的管理后台导入。
+              {{ t('auth.identityNotice') }}
             </p>
           </div>
         </div>
@@ -220,7 +234,7 @@ function clearEnrollmentToken(): void {
             :class="mode === 'login' ? 'bg-slate-800 text-white' : 'text-slate-400'"
             @click="mode = 'login'"
           >
-            Passkey 登录
+            {{ t('auth.modes.passkeyLogin') }}
           </button>
           <button
             type="button"
@@ -228,7 +242,7 @@ function clearEnrollmentToken(): void {
             :class="mode === 'recovery' ? 'bg-slate-800 text-white' : 'text-slate-400'"
             @click="mode = 'recovery'"
           >
-            恢复访问
+            {{ t('auth.modes.recovery') }}
           </button>
         </div>
 
@@ -242,7 +256,7 @@ function clearEnrollmentToken(): void {
             :class="mode === 'login' ? 'bg-slate-800 text-white' : 'text-slate-400'"
             @click="mode = 'login'"
           >
-            登录
+            {{ t('auth.modes.login') }}
           </button>
           <button
             type="button"
@@ -250,47 +264,49 @@ function clearEnrollmentToken(): void {
             :class="mode === 'bootstrap' ? 'bg-slate-800 text-white' : 'text-slate-400'"
             @click="mode = 'bootstrap'"
           >
-            初始化管理员
+            {{ t('auth.modes.bootstrap') }}
           </button>
         </div>
 
-        <p v-if="checkingBootstrapStatus" class="text-xs text-slate-500">正在检查初始化状态…</p>
+        <p v-if="checkingBootstrapStatus" class="text-xs text-slate-500">
+          {{ t('auth.status.checking') }}
+        </p>
         <p
           v-else-if="bootstrapStatus?.initialized && mode !== 'recovery'"
           class="rounded-md border border-slate-800 bg-slate-950/50 p-3 text-xs text-slate-400"
         >
-          工作台已经初始化，请使用已登记的{{ passkeyMode ? ' Passkey' : '本地账号' }}登录。
+          {{ passkeyMode ? t('auth.status.initializedPasskey') : t('auth.status.initializedLocal') }}
         </p>
         <p
           v-else-if="bootstrapStatus && !bootstrapStatus.bootstrapTokenConfigured"
           class="rounded-md border border-amber-900/60 bg-amber-950/30 p-3 text-xs text-amber-200"
         >
-          工作台尚未初始化，且服务端未配置一次性管理员引导令牌。
+          {{ t('auth.status.missingBootstrapToken') }}
         </p>
         <ErrorNotice
           v-else-if="bootstrapStatusError"
           :error="bootstrapStatusError"
-          fallback="无法确认管理员初始化状态"
+          :fallback="t('auth.errors.bootstrapStatus')"
           compact
         />
 
         <label v-if="mode === 'bootstrap'" class="block space-y-1.5 text-sm">
-          <span>管理员引导令牌</span>
+          <span>{{ t('auth.fields.bootstrapToken') }}</span>
           <Input v-model="bootstrapToken" name="bootstrapToken" type="password" autocomplete="off" required />
         </label>
         <label
           v-if="(mode !== 'login' && mode !== 'enrollment') || !passkeyMode"
           class="block space-y-1.5 text-sm"
         >
-          <span>工作台用户名</span>
+          <span>{{ t('auth.fields.username') }}</span>
           <Input v-model="username" name="username" autocomplete="username webauthn" required />
         </label>
         <label v-if="mode === 'recovery'" class="block space-y-1.5 text-sm">
-          <span>一次性恢复码</span>
+          <span>{{ t('auth.fields.recoveryCode') }}</span>
           <Input v-model="recoveryCode" name="recoveryCode" autocomplete="off" required />
         </label>
         <label v-if="!passkeyMode" class="block space-y-1.5 text-sm">
-          <span>工作台密码</span>
+          <span>{{ t('auth.fields.password') }}</span>
           <Input
             v-model="password"
             name="password"
@@ -298,25 +314,25 @@ function clearEnrollmentToken(): void {
             :autocomplete="mode === 'bootstrap' ? 'new-password' : 'current-password'"
             required
           />
-          <span class="text-xs text-slate-500">至少 12 个字符左右，建议使用密码管理器生成</span>
+          <span class="text-xs text-slate-500">{{ t('auth.fields.passwordHint') }}</span>
         </label>
-        <ErrorNotice v-if="error" :error="error" fallback="认证失败" compact />
+        <ErrorNotice v-if="error" :error="error" :fallback="t('auth.errors.authenticationFailed')" compact />
         <Button class="w-full" type="submit" :disabled="submitting || checkingBootstrapStatus">
           <KeyRound class="size-4" />
           {{
             submitting
-              ? '请按浏览器提示操作…'
+              ? t('auth.submit.working')
               : passkeyMode
                 ? mode === 'bootstrap'
-                  ? '创建管理员 Passkey'
+                  ? t('auth.submit.createPasskey')
                   : mode === 'recovery'
-                    ? '使用恢复码登记新 Passkey'
+                    ? t('auth.submit.recoverPasskey')
                     : mode === 'enrollment'
-                      ? '接受邀请并登记 Passkey'
-                      : '使用 Passkey 登录'
+                      ? t('auth.submit.enrollPasskey')
+                      : t('auth.submit.loginPasskey')
                 : mode === 'login'
-                  ? '登录'
-                  : '创建管理员'
+                  ? t('auth.submit.login')
+                  : t('auth.submit.createAdmin')
           }}
         </Button>
       </form>

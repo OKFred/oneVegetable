@@ -2,11 +2,13 @@
 import { computed, onMounted, ref } from 'vue';
 import { Check, Database, FlaskConical, KeyRound, ShieldCheck } from '@lucide/vue';
 
+import { useUiI18n } from '../i18n';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
 import { useServices } from '../lib/services';
 
 const emit = defineEmits<{ ready: [destination?: 'settings'] }>();
+const { t } = useUiI18n();
 const { onboarding, mode } = useServices();
 const visible = ref(false);
 const acknowledged = ref(false);
@@ -24,7 +26,7 @@ onMounted(async () => {
     if (!visible.value) emit('ready');
   } catch (reason: unknown) {
     visible.value = true;
-    error.value = reason instanceof Error ? reason.message : '首次使用状态读取失败';
+    error.value = reason instanceof Error ? reason.message : t('auth.onboarding.readError');
   }
 });
 
@@ -37,7 +39,7 @@ async function finish(destination?: 'settings'): Promise<void> {
     visible.value = false;
     emit('ready', destination);
   } catch (reason: unknown) {
-    error.value = reason instanceof Error ? reason.message : '首次使用状态保存失败';
+    error.value = reason instanceof Error ? reason.message : t('auth.onboarding.saveError');
   } finally {
     saving.value = false;
   }
@@ -54,45 +56,47 @@ async function finish(destination?: 'settings'): Promise<void> {
       aria-labelledby="onboarding-title"
     >
       <Card class="ov-modal-panel my-6 w-full max-w-2xl p-6 shadow-2xl">
-        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">首次使用</p>
-        <h1 id="onboarding-title" class="mt-2 text-2xl font-semibold">先确认数据与调用边界</h1>
+        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+          {{ t('auth.onboarding.eyebrow') }}
+        </p>
+        <h1 id="onboarding-title" class="mt-2 text-2xl font-semibold">
+          {{ t('auth.onboarding.title') }}
+        </h1>
         <p class="mt-2 text-sm leading-6 text-muted-foreground">
-          无需开放平台凭证即可查看能力目录和本地编辑；真实查询需要用户自己的凭证，图库分组管理、图片上传和外部图片转存已开放，其他真实写操作保持关闭。
+          {{ t('auth.onboarding.introduction') }}
         </p>
         <ol class="mt-4 grid gap-2 rounded-lg border bg-muted/40 p-4 text-sm leading-6">
-          <li><strong>1.</strong> 在 Alibaba 应用中心创建或选择 Online 应用，取得 App Key 和 App Secret。</li>
-          <li><strong>2.</strong> 完成 OAuth 授权，取得该账号的 Access Token。</li>
-          <li><strong>3.</strong> 前往设置，设置本机保护口令并填写或导入以上三项凭证。</li>
+          <li><strong>1.</strong> {{ t('auth.onboarding.steps.application') }}</li>
+          <li><strong>2.</strong> {{ t('auth.onboarding.steps.oauth') }}</li>
+          <li><strong>3.</strong> {{ t('auth.onboarding.steps.settings') }}</li>
         </ol>
         <div class="mt-5 grid gap-3 sm:grid-cols-2">
           <div class="rounded-lg border p-4">
             <KeyRound class="size-5 text-emerald-700" />
-            <p class="mt-2 font-medium">凭证在本机加密保存</p>
+            <p class="mt-2 font-medium">{{ t('auth.onboarding.vault.title') }}</p>
             <p class="mt-1 text-xs leading-5 text-muted-foreground">
-              App Key、App Secret 和 Access Token 使用用户口令加密后存入
-              chrome.storage.local；口令不保存，内容脚本不能读取。解锁状态仅在当前 Chrome
-              会话内存中保留，刷新页面或后台休眠无需重复输入口令。
+              {{ t('auth.onboarding.vault.description') }}
             </p>
           </div>
           <div class="rounded-lg border p-4">
             <ShieldCheck class="size-5 text-emerald-700" />
-            <p class="mt-2 font-medium">主机权限按用途申请</p>
+            <p class="mt-2 font-medium">{{ t('auth.onboarding.permissions.title') }}</p>
             <p class="mt-1 text-xs leading-5 text-muted-foreground">
-              正式网关为必选权限；自定义网关和外部图片来源只在使用时向 Chrome 请求，可随时从设置撤销。
+              {{ t('auth.onboarding.permissions.description') }}
             </p>
           </div>
           <div class="rounded-lg border p-4">
             <FlaskConical class="size-5 text-emerald-700" />
-            <p class="mt-2 font-medium">本地验证不等于平台授权</p>
+            <p class="mt-2 font-medium">{{ t('auth.onboarding.verification.title') }}</p>
             <p class="mt-1 text-xs leading-5 text-muted-foreground">
-              本地演示、契约验证和浏览器回归不代表国际站已授予接口权限；实际可用能力以当前账号、业务资格和平台响应为准。
+              {{ t('auth.onboarding.verification.description') }}
             </p>
           </div>
           <div class="rounded-lg border p-4">
             <Database class="size-5 text-emerald-700" />
-            <p class="mt-2 font-medium">本地数据可查看和清除</p>
+            <p class="mt-2 font-medium">{{ t('auth.onboarding.localData.title') }}</p>
             <p class="mt-1 text-xs leading-5 text-muted-foreground">
-              设置页提供数据清单与彻底清除入口；脱敏诊断仅保留在当前浏览器会话，不包含请求参数或响应正文。
+              {{ t('auth.onboarding.localData.description') }}
             </p>
           </div>
         </div>
@@ -104,17 +108,19 @@ async function finish(destination?: 'settings'): Promise<void> {
             class="mt-1 size-4 accent-emerald-600"
             required
           />
-          <span>我已理解接口可用性取决于账号权限与业务资格，并知晓本地数据、真实写入和主机权限的用途。</span>
+          <span>{{ t('auth.onboarding.acknowledgement') }}</span>
         </label>
         <p v-if="error" class="mt-3 text-sm text-destructive">{{ error }}</p>
         <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
-          <a class="text-sm text-emerald-700 underline" href="/privacy.html" target="_blank">查看隐私说明</a>
+          <a class="text-sm text-emerald-700 underline" href="/privacy.html" target="_blank">{{
+            t('auth.onboarding.privacy')
+          }}</a>
           <div class="flex flex-wrap justify-end gap-2">
             <Button variant="outline" :disabled="!acknowledged || saving" @click="finish()">
-              稍后，仅浏览
+              {{ t('auth.onboarding.browseOnly') }}
             </Button>
             <Button :disabled="!acknowledged || saving" @click="finish('settings')">
-              <Check class="size-4" />前往设置凭证
+              <Check class="size-4" />{{ t('auth.onboarding.configure') }}
             </Button>
           </div>
         </div>
