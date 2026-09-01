@@ -38,8 +38,7 @@ export const errors = {
     ALIBABA_TOKEN_REFRESH_FAILED: 'The Alibaba Token refresh failed. Authorize again.',
     ALIBABA_DRAFT_UPDATE_UNSUPPORTED:
       'Alibaba does not currently support overwriting an existing platform draft.',
-    ALIBABA_PRODUCT_GROUP_CREATE_UNCONFIRMED:
-      'Product-group creation has not completed real-account verification.',
+    ALIBABA_PRODUCT_GROUP_CREATE_UNCONFIRMED: 'Product-group creation is not enabled in this environment.',
     MISSING_CREDENTIALS: 'Configure the App Key, App Secret, and Access Token in Settings first.',
     CREDENTIAL_VAULT_EMPTY: 'Configure Open Platform credentials in Settings first.',
     CREDENTIAL_VAULT_LOCKED: 'Open Platform credentials are locked. Unlock them in Settings first.',
@@ -77,7 +76,7 @@ export const errors = {
       'The current product gateway does not support the required readback operation.',
     PRODUCT_MUTATION_RECOVERY_UNAVAILABLE: 'This product job cannot be recovered automatically.',
     PRODUCT_DRAFT_READBACK_MISMATCH: 'The platform draft readback does not match the local job.',
-    TRADE_MUTATION_UNVERIFIED: 'Trade Assurance order writes have not passed real-account verification.',
+    TRADE_MUTATION_UNVERIFIED: 'Trade Assurance order writes are not enabled in this environment.',
     CSRF_INVALID: 'CSRF validation failed. Refresh the page and try again.',
     SESSION_REQUIRED: 'Sign in first.',
     SESSION_INVALID: 'The sign-in session is invalid. Sign in again.',

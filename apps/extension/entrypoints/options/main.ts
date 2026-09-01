@@ -46,7 +46,6 @@ import {
   type SocialPublishingClient,
   type SettingsRepository
 } from '@one-vegetable/core/runtime';
-import { translateUi } from '@one-vegetable/ui';
 import '@one-vegetable/ui/styles.css';
 import { ALIBABA_CREDENTIAL_ACQUISITION_ORIGINS } from '../../lib/alibaba-credential-page-driver';
 import { resolveExtensionOperationAvailability } from '../../lib/operation-policy';
@@ -55,6 +54,13 @@ import { EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY } from '../../lib/product-d
 const operationAvailability = new StaticOperationAvailabilityClient((operation) =>
   resolveExtensionOperationAvailability(operation)
 );
+type RuntimeTranslator = (key: string, values?: Record<string, unknown>) => string;
+let activeRuntimeTranslator: RuntimeTranslator | null = null;
+
+function translateUi(key: string, values?: Record<string, unknown>): string {
+  return activeRuntimeTranslator?.(key, values) ?? key;
+}
+
 const productMutationJobs = new ExtensionProductMutationJobClient({
   send: (message) => browser.runtime.sendMessage(message)
 });
@@ -656,11 +662,13 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 async function mountOptionsApp(): Promise<void> {
-  const [{ createApp }, { QueryClient, VueQueryPlugin }, { OneVegetableApp, uiI18n }] = await Promise.all([
+  const [{ createApp }, { QueryClient, VueQueryPlugin }, uiModule] = await Promise.all([
     import('vue'),
     import('@tanstack/vue-query'),
     import('@one-vegetable/ui')
   ]);
+  const { OneVegetableApp, uiI18n } = uiModule;
+  activeRuntimeTranslator = uiModule.translateUi;
   const app = createApp(OneVegetableApp, {
     gateway: new ExtensionGatewayClient(),
     settings,

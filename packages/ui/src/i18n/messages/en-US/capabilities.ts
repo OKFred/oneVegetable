@@ -110,12 +110,24 @@ export const capabilities = {
       ]
     },
     account: {
-      passed: ['Account passed', 'Historical smoke returned valid data.'],
-      noData: ['Valid empty result', 'Historical smoke succeeded, but the account had no data at the time.'],
-      denied: ['Permission denied', 'Historical smoke was denied by platform permissions.'],
-      drift: ['Contract drift', 'The historical smoke response did not match the current contract.'],
-      provider: ['Provider error', 'Historical smoke encountered a platform or network error.'],
-      prerequisite: ['Missing prerequisite', 'Historical smoke lacked real prerequisite data for the call.'],
+      passed: ['Account passed', 'Historical account verification returned valid data.'],
+      noData: [
+        'Valid empty result',
+        'Historical account verification succeeded, but the account had no data at the time.'
+      ],
+      denied: ['Permission denied', 'Historical account verification was denied by platform permissions.'],
+      drift: [
+        'Contract drift',
+        'The historical account-verification response did not match the current contract.'
+      ],
+      provider: [
+        'Provider error',
+        'Historical account verification encountered a platform or network error.'
+      ],
+      prerequisite: [
+        'Missing prerequisite',
+        'Historical account verification lacked prerequisite data for the call.'
+      ],
       notTested: ['Not tested', 'This method is absent from the redacted account verification snapshot.']
     },
     current: {
