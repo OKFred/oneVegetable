@@ -69,19 +69,23 @@ describe('ProductsView selection toolbar', () => {
     wrapper.unmount();
   });
 
-  it('keeps product status and update time on one line', async () => {
+  it('keeps the group column roomy and status and update time on one line', async () => {
     const wrapper = mountView();
     await waitForProducts(wrapper);
     const headers = wrapper.findAll('thead th').map((header) => header.text().trim());
+    const groupIndex = headers.indexOf('分组');
     const statusIndex = headers.indexOf('状态');
     const updatedAtIndex = headers.indexOf('更新时间');
-    if (statusIndex < 0 || updatedAtIndex < 0)
-      throw new Error('Missing product status or update time header');
+    if (groupIndex < 0 || statusIndex < 0 || updatedAtIndex < 0)
+      throw new Error('Missing product group, status or update time header');
     const cells = wrapper.get('tbody tr').findAll('td');
+    const groupCell = cells.at(groupIndex);
     const statusCell = cells.at(statusIndex);
     const updatedAtCell = cells.at(updatedAtIndex);
 
-    if (!statusCell || !updatedAtCell) throw new Error('Missing product status or update time cell');
+    if (!groupCell || !statusCell || !updatedAtCell)
+      throw new Error('Missing product group, status or update time cell');
+    expect(groupCell.get('.min-w-40').classes()).toContain('block');
     expect(statusCell.get('.whitespace-nowrap').text()).toBe('在线');
     expect(updatedAtCell.get('.whitespace-nowrap').classes()).toContain('tabular-nums');
     wrapper.unmount();

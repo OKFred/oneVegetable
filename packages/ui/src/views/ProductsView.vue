@@ -1234,7 +1234,11 @@ const columns: DataColumn<Product>[] = [
         h('p', { class: 'font-mono text-xs text-muted-foreground' }, row.original.id)
       ])
   },
-  { accessorKey: 'groupName', header: '分组' },
+  {
+    accessorKey: 'groupName',
+    header: '分组',
+    cell: (context) => h('span', { class: 'block min-w-40' }, context.getValue<string>() || '—')
+  },
   {
     accessorKey: 'status',
     header: '状态',
