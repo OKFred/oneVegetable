@@ -8,6 +8,7 @@ import {
   FileUp,
   Globe2,
   KeyRound,
+  LoaderCircle,
   LockKeyhole,
   Moon,
   RotateCcw,
@@ -17,6 +18,7 @@ import {
   UnlockKeyhole,
   WandSparkles
 } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 
 import {
   ALIBABA_GATEWAY,
@@ -182,16 +184,21 @@ async function save(): Promise<void> {
       assertMatchingPassphrases(vaultPassphrase.value, vaultPassphraseConfirmation.value);
       applyVaultStatus(await vault.create(vaultPassphrase.value, model.value));
       clearVaultPassphrases();
-      feedback.value = '凭证已加密保存，并将在当前 Chrome 会话内保持可用。';
+      model.value = await settings.load();
+      feedback.value = '凭证与设置已加密保存，并将在当前 Chrome 会话内保持可用。';
+      toast.success('凭证与设置已保存');
       await refreshLocalData();
     } else {
       await settings.save(model.value);
       feedback.value =
         mode === 'mock' ? '演示设置已保存在本地浏览器。' : '设置已重新加密写入 chrome.storage.local。';
       model.value = await settings.load();
+      toast.success(mode === 'mock' ? '演示设置已保存' : '设置已保存');
     }
   } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, '设置保存失败');
+    const visibleError = userVisibleCause(error, '设置保存失败');
+    vaultError.value = visibleError;
+    toast.error(visibleError.message);
   } finally {
     saving.value = false;
   }
@@ -822,13 +829,17 @@ function confirmThemePreference(): void {
         class="mt-4"
         :disabled="
           saving ||
+          vaultBusy ||
           (mode === 'extension' &&
             vaultStatus?.state === 'empty' &&
             (!vaultPassphrase || !vaultPassphraseConfirmation))
         "
         @click="save"
-        ><Save class="size-4" />{{ vaultStatus?.state === 'empty' ? '加密保存凭证' : '保存设置' }}</Button
       >
+        <LoaderCircle v-if="saving" class="size-4 animate-spin" />
+        <Save v-else class="size-4" />
+        {{ saving ? '保存中…' : '保存设置' }}
+      </Button>
     </Card>
     <AlibabaCredentialAcquisitionDialog
       v-if="alibabaCredentialAcquisition"
