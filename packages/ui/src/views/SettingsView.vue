@@ -529,29 +529,6 @@ function confirmLanguagePreference(): void {
     >
       {{ feedback }}
     </p>
-    <Card class="p-5">
-      <div class="flex items-start gap-3">
-        <Globe2 class="mt-0.5 size-5 shrink-0 text-primary" />
-        <div class="min-w-0 flex-1">
-          <h2 class="font-semibold">接口语言偏好</h2>
-          <p class="mt-1 text-sm leading-6 text-muted-foreground">
-            用于商品 Schema、平台草稿、履约通道和地址 Schema 等支持 language 参数的请求；不改变当前界面语言。
-          </p>
-          <label class="mt-3 block max-w-xs text-sm font-medium">
-            偏好语言
-            <select
-              v-model="preferredLanguage"
-              class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
-              aria-label="偏好语言"
-              @change="confirmLanguagePreference"
-            >
-              <option value="zh_CN">简体中文（zh_CN）</option>
-              <option value="en_US">English（en_US）</option>
-            </select>
-          </label>
-        </div>
-      </div>
-    </Card>
     <Card v-if="mode === 'extension' && vault" class="p-5">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -827,6 +804,29 @@ function confirmLanguagePreference(): void {
       </div></Card
     >
     <ExtensionSocialBackendPanel v-if="mode === 'extension' && extensionSocialBackend" />
+    <Card class="p-5">
+      <div class="flex items-start gap-3">
+        <Globe2 class="mt-0.5 size-5 shrink-0 text-primary" />
+        <div class="min-w-0 flex-1">
+          <h2 class="font-semibold">接口语言偏好</h2>
+          <p class="mt-1 text-sm leading-6 text-muted-foreground">
+            用于商品 Schema、平台草稿、履约通道和地址 Schema 等支持 language 参数的请求；不改变当前界面语言。
+          </p>
+          <label class="mt-3 block max-w-xs text-sm font-medium">
+            偏好语言
+            <select
+              v-model="preferredLanguage"
+              class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
+              aria-label="偏好语言"
+              @change="confirmLanguagePreference"
+            >
+              <option value="zh_CN">简体中文（zh_CN）</option>
+              <option value="en_US">English（en_US）</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    </Card>
     <Card v-if="mode === 'extension' && permissions" class="p-5">
       <div class="flex items-center gap-2">
         <Globe2 class="size-4 text-primary" />
