@@ -2,7 +2,9 @@ import { createRequestId, NativeFetchTransport, NetworkManager } from './network
 import {
   MAX_PHOTOBANK_IMAGE_BYTES,
   PHOTOBANK_UPLOAD_CONTENT_TYPES,
-  PHOTO_CONTENT_TYPES
+  PHOTO_CONTENT_TYPES,
+  photoFileExtension,
+  validatePhotoBytes
 } from './encoded-file';
 import { isPhotoBankUrl } from './product-description-url';
 import type {
@@ -41,10 +43,14 @@ export async function downloadProductAsset(
     }
   );
   const bytes = base64ToBytes(downloaded.contentBase64);
+  const contentType = validatePhotoBytes(bytes);
+  if (!PHOTOBANK_UPLOAD_CONTENT_TYPES.has(contentType)) {
+    throw new Error('图库图片实际格式不受支持');
+  }
   return {
-    fileName: downloaded.fileName,
+    fileName: canonicalImageFileName(downloaded.fileName, contentType),
     contentBase64: downloaded.contentBase64,
-    contentType: downloaded.contentType,
+    contentType,
     byteLength: downloaded.byteLength,
     sha256: await sha256Hex(bytes)
   };
@@ -248,6 +254,13 @@ function sanitizeFileName(fileName: string): string {
     .trim()
     .slice(0, 255);
   return sanitized || 'transferred-image.jpg';
+}
+
+function canonicalImageFileName(fileName: string, contentType: string): string {
+  const extension = photoFileExtension(contentType);
+  const lastDot = fileName.lastIndexOf('.');
+  const stem = (lastDot > 0 ? fileName.slice(0, lastDot) : fileName).trim();
+  return `${stem || 'transferred-image'}.${extension}`;
 }
 
 function extensionFor(contentType: string): string {
