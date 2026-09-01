@@ -5,6 +5,41 @@ import { unzipSync } from 'fflate';
 
 import rootPackage from '../../package.json' with { type: 'json' };
 
+const APP_PREFERENCES_STORAGE_KEY = 'one-vegetable:preferences:v2';
+
+test('interface language switches in place without changing the Alibaba request language', async ({
+  page
+}) => {
+  const bffRequests: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/v1/')) bffRequests.push(request.url());
+  });
+  await page.addInitScript(
+    ({ storageKey }) => {
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({ uiLocale: 'zh-CN', alibabaLanguage: 'en_US', theme: 'system' })
+      );
+    },
+    { storageKey: APP_PREFERENCES_STORAGE_KEY }
+  );
+
+  await page.goto('/#/products');
+  await expect(page.getByRole('heading', { name: '商品管理' })).toBeVisible();
+  await page.getByPlaceholder('按标题搜索').fill('solar');
+  await page.getByTestId('language-toggle').click();
+
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+  await expect(page).toHaveTitle('oneVegetable · Alibaba.com Operations Workspace');
+  await expect(page.getByRole('heading', { name: 'Product management' })).toBeVisible();
+  await expect(page.getByPlaceholder('Search by title')).toHaveValue('solar');
+  expect(page.url()).toContain('#/products');
+
+  await page.getByRole('link', { name: 'Settings', exact: true }).click();
+  await expect(page.getByLabel('Platform request language')).toHaveValue('en_US');
+  expect(bffRequests).toEqual([]);
+});
+
 test('web mock labels its in-process source and never calls the BFF', async ({ page }) => {
   const bffRequests: string[] = [];
   page.on('request', (request) => {

@@ -113,6 +113,12 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: '稍后，仅浏览' }).click();
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
+  await page.getByTestId('language-toggle').click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+  await expect(page).toHaveTitle('oneVegetable · Alibaba.com Operations Workspace');
+  await expect(page.getByRole('heading', { name: 'Operations dashboard' })).toBeVisible();
+  await page.getByTestId('language-toggle').click();
+  await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
   await page.getByRole('link', { name: '设置', exact: true }).click();
   await expect(page.getByRole('heading', { name: '开放平台凭证保护' })).toBeVisible();
   await expect(page.getByText('未创建', { exact: true })).toBeVisible();
