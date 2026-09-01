@@ -4,7 +4,11 @@ import { defineComponent, h } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ALIBABA_GATEWAY, type ControlClient } from '@one-vegetable/core';
+import {
+  ALIBABA_GATEWAY,
+  type ControlClient,
+  type MetaAppConfigurationUpdateRequest
+} from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import configurationFixture from '../../../mock/data/social-meta/configuration.json';
@@ -102,6 +106,60 @@ describe('MetaSocialAdminPanel', () => {
     await revoke.trigger('click');
     await clickBodyButton('确认');
     expect(revokeExtensionSocialDevice).toHaveBeenCalledWith('77777777-7777-4777-8777-777777777777', 1);
+    wrapper.unmount();
+  });
+
+  it('preserves the existing App Secret when the password field is blank', async () => {
+    const updateMetaAppConfiguration = vi.fn((input: Omit<MetaAppConfigurationUpdateRequest, 'requestId'>) =>
+      Promise.resolve({
+        ...configurationFixture,
+        publicOrigin: input.publicOrigin,
+        callbackUrl: `${input.publicOrigin}/api/v1/social/meta/oauth/callback`,
+        revision: 3
+      })
+    );
+    const control = {
+      metaAppConfiguration: () => Promise.resolve(configurationFixture),
+      updateMetaAppConfiguration,
+      listMetaConnections: () => Promise.resolve([]),
+      listSocialDestinations: () => Promise.resolve([])
+    } as unknown as ControlClient;
+    const wrapper = mountPanel(control);
+    await flushPromises();
+
+    await wrapper.find('input[placeholder="Meta App ID"]').setValue('123456789012345');
+    await findButton(wrapper, '保存配置').trigger('click');
+    await clickBodyButton('确认');
+
+    expect(updateMetaAppConfiguration).toHaveBeenCalledWith({
+      appId: '123456789012345',
+      appSecret: null,
+      publicOrigin: configurationFixture.publicOrigin,
+      revision: configurationFixture.revision,
+      remark: configurationFixture.remark
+    });
+    wrapper.unmount();
+  });
+
+  it('offers Facebook-only OAuth separately from the Instagram flow', async () => {
+    const startMetaOAuth = vi.fn(() => Promise.reject(new Error('stop before navigation')));
+    const control = {
+      metaAppConfiguration: () => Promise.resolve(configurationFixture),
+      updateMetaAppConfiguration: vi.fn(),
+      startMetaOAuth,
+      listMetaConnections: () => Promise.resolve([]),
+      listSocialDestinations: () => Promise.resolve([])
+    } as unknown as ControlClient;
+    const wrapper = mountPanel(control);
+    await flushPromises();
+
+    await findButton(wrapper, '连接 Facebook Page').trigger('click');
+    await flushPromises();
+    await findButton(wrapper, 'Facebook + Instagram').trigger('click');
+    await flushPromises();
+
+    expect(startMetaOAuth).toHaveBeenNthCalledWith(1, ['facebook']);
+    expect(startMetaOAuth).toHaveBeenNthCalledWith(2, ['facebook', 'instagram']);
     wrapper.unmount();
   });
 });

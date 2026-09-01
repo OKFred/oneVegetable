@@ -41,7 +41,7 @@ describe('Meta social configuration and OAuth', () => {
       .get() as { encrypted_app_secret: string };
     expect(storedConfiguration.encrypted_app_secret).not.toContain('meta-app-secret');
 
-    const started = await service.startOAuth({ actorId });
+    const started = await service.startOAuth({ actorId, platforms: ['facebook', 'instagram'] });
     const authorization = new URL(started.authorizationUrl);
     expect(authorization.origin).toBe('https://www.facebook.com');
     expect(authorization.pathname).toBe('/v26.0/dialog/oauth');
@@ -95,7 +95,7 @@ describe('Meta social configuration and OAuth', () => {
       actorId,
       remark: null
     });
-    const started = await service.startOAuth({ actorId });
+    const started = await service.startOAuth({ actorId, platforms: ['facebook', 'instagram'] });
     const state = new URL(started.authorizationUrl).searchParams.get('state') ?? '';
     await service.completeOAuth({ state, code: 'authorization-code', requestId: createRequestId() });
     await expect(
@@ -111,6 +111,96 @@ describe('Meta social configuration and OAuth', () => {
         remark: null
       })
     ).rejects.toMatchObject({ code: 'META_CONNECTIONS_MUST_BE_DISCONNECTED' });
+  });
+
+  it('preserves the encrypted App Secret when only the public origin changes', async () => {
+    const { database, service, actorId } = await harness(Date.now, metaTransport());
+    await service.configure({
+      appId: '123456789012345',
+      appSecret: 'meta-app-secret',
+      publicOrigin: 'https://app.example.com',
+      expectedRevision: null,
+      actorId,
+      remark: null
+    });
+    const before = database.connection
+      .prepare('SELECT encrypted_app_secret, initialization_vector FROM meta_app_configurations')
+      .get();
+
+    const updated = await service.configure({
+      appId: '123456789012345',
+      appSecret: null,
+      publicOrigin: 'https://preview.example.com',
+      expectedRevision: 1,
+      actorId,
+      remark: 'preview callback'
+    });
+    const after = database.connection
+      .prepare('SELECT encrypted_app_secret, initialization_vector FROM meta_app_configurations')
+      .get();
+
+    expect(after).toEqual(before);
+    expect(updated).toMatchObject({
+      publicOrigin: 'https://preview.example.com',
+      callbackUrl: 'https://preview.example.com/api/v1/social/meta/oauth/callback',
+      revision: 2
+    });
+  });
+
+  it('requests Instagram permissions only when Instagram is selected', async () => {
+    const { service, actorId } = await harness(Date.now, metaTransport());
+    await service.configure({
+      appId: '123456789012345',
+      appSecret: 'meta-app-secret',
+      publicOrigin: 'https://app.example.com',
+      expectedRevision: null,
+      actorId,
+      remark: null
+    });
+
+    const facebookOnly = new URL(
+      (await service.startOAuth({ actorId, platforms: ['facebook'] })).authorizationUrl
+    ).searchParams.get('scope');
+    const withInstagram = new URL(
+      (await service.startOAuth({ actorId, platforms: ['facebook', 'instagram'] })).authorizationUrl
+    ).searchParams.get('scope');
+
+    expect(facebookOnly).toBe('pages_show_list,pages_read_engagement,pages_manage_posts');
+    expect(withInstagram).toContain('instagram_basic');
+    expect(withInstagram).toContain('instagram_content_publish');
+  });
+
+  it('requires App Secret for the first configuration and when changing App ID', async () => {
+    const { service, actorId } = await harness(Date.now, metaTransport());
+    await expect(
+      service.configure({
+        appId: '123456789012345',
+        appSecret: null,
+        publicOrigin: 'https://app.example.com',
+        expectedRevision: null,
+        actorId,
+        remark: null
+      })
+    ).rejects.toMatchObject({ code: 'META_APP_SECRET_REQUIRED' });
+
+    await service.configure({
+      appId: '123456789012345',
+      appSecret: 'meta-app-secret',
+      publicOrigin: 'https://app.example.com',
+      expectedRevision: null,
+      actorId,
+      remark: null
+    });
+    await expect(
+      service.configure({
+        appId: '999999999999999',
+        appSecret: null,
+        publicOrigin: 'https://app.example.com',
+        expectedRevision: 1,
+        actorId,
+        remark: null
+      })
+    ).rejects.toMatchObject({ code: 'META_APP_SECRET_REQUIRED' });
   });
 
   it('binds ciphertext to its record id and secret kind', async () => {

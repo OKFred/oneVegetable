@@ -48,7 +48,7 @@ export function registerMetaSocialRoutes(api: Hono, options: MetaSocialRouteOpti
         const current = await options.service.configuration();
         const result = await options.service.configure({
           appId: readString(body, 'appId'),
-          appSecret: readSensitiveString(body, 'appSecret', 512),
+          appSecret: readNullableSensitiveString(body, 'appSecret', 512),
           publicOrigin: readString(body, 'publicOrigin'),
           expectedRevision: readNullableRevision(body, 'revision'),
           actorId,
@@ -101,7 +101,10 @@ export function registerMetaSocialRoutes(api: Hono, options: MetaSocialRouteOpti
       context,
       options,
       async (body, actorId) => {
-        const result = await options.service.startOAuth({ actorId });
+        const result = await options.service.startOAuth({
+          actorId,
+          platforms: readMetaOAuthPlatforms(body)
+        });
         await options.authService.audit({
           requestId: readRequestId(body),
           actorId,
@@ -113,7 +116,7 @@ export function registerMetaSocialRoutes(api: Hono, options: MetaSocialRouteOpti
         });
         return result;
       },
-      ['requestId']
+      ['requestId', 'platforms']
     )
   );
 
@@ -566,6 +569,30 @@ function readSensitiveString(body: Record<string, unknown>, key: string, maxLeng
     throw new AuthError('INVALID_REQUEST_BODY', `${key} 无效`, 400);
   }
   return value;
+}
+
+function readNullableSensitiveString(
+  body: Record<string, unknown>,
+  key: string,
+  maxLength: number
+): string | null {
+  return body[key] === null ? null : readSensitiveString(body, key, maxLength);
+}
+
+function readMetaOAuthPlatforms(body: Record<string, unknown>): ('facebook' | 'instagram')[] {
+  const value = body.platforms;
+  const platforms = Array.isArray(value) ? (value as unknown[]) : null;
+  if (
+    platforms === null ||
+    platforms.length < 1 ||
+    platforms.length > 2 ||
+    !platforms.includes('facebook') ||
+    platforms.some((platform) => platform !== 'facebook' && platform !== 'instagram') ||
+    new Set(platforms).size !== platforms.length
+  ) {
+    throw new AuthError('INVALID_REQUEST_BODY', 'platforms 无效', 400);
+  }
+  return platforms.map((platform) => (platform === 'instagram' ? 'instagram' : 'facebook'));
 }
 
 function readUuid(body: Record<string, unknown>, key: string): string {

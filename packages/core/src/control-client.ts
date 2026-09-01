@@ -18,6 +18,7 @@ import type {
   ExtensionSocialPairingStatus,
   SocialAccountConnection,
   SocialDestination,
+  SocialPlatform,
   SocialPostPrepareRequest,
   SocialPublishJob
 } from './social-meta';
@@ -292,7 +293,7 @@ export interface ControlClient {
     input: Omit<MetaAppConfigurationUpdateRequest, 'requestId'>
   ): Promise<MetaAppConfigurationSummary>;
   clearMetaAppConfiguration?(revision: number): Promise<void>;
-  startMetaOAuth?(): Promise<{ authorizationUrl: string; expiresTimeUtc: number }>;
+  startMetaOAuth?(platforms: SocialPlatform[]): Promise<{ authorizationUrl: string; expiresTimeUtc: number }>;
   listMetaConnections?(): Promise<SocialAccountConnection[]>;
   disconnectMetaConnection?(connectionId: string, revision: number): Promise<void>;
   startExtensionSocialPairing?(extensionId: string, deviceName: string): Promise<ExtensionSocialPairingStart>;
@@ -652,8 +653,8 @@ export class BffControlClient implements ControlClient {
     await this.#call('/admin/social/meta/config/clear', { revision });
   }
 
-  startMetaOAuth(): Promise<{ authorizationUrl: string; expiresTimeUtc: number }> {
-    return this.#call('/admin/social/meta/oauth/start', {});
+  startMetaOAuth(platforms: SocialPlatform[]): Promise<{ authorizationUrl: string; expiresTimeUtc: number }> {
+    return this.#call('/admin/social/meta/oauth/start', { platforms });
   }
 
   async listMetaConnections(): Promise<SocialAccountConnection[]> {

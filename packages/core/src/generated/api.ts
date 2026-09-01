@@ -7061,7 +7061,8 @@ export interface components {
         MetaAppConfigurationUpdateRequest: {
             requestId: components["schemas"]["RequestId"];
             appId: string;
-            appSecret: string;
+            /** @description 首次配置或更换 App ID 时必填；更新公开地址或备注时传 null 以保留现有密钥。 */
+            appSecret: string | null;
             publicOrigin: string;
             revision: number | null;
             remark: string | null;
@@ -7071,6 +7072,10 @@ export interface components {
             /** Format: uuid */
             connectionId: string;
             revision: number;
+        };
+        MetaOAuthStartRequest: {
+            requestId: components["schemas"]["RequestId"];
+            platforms: components["schemas"]["SocialPlatform"][];
         };
         OperationAvailability: {
             operation: string;

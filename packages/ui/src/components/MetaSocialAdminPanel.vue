@@ -76,7 +76,9 @@ const confirmationDescription = computed(() => {
   const value = confirmation.value;
   if (value?.kind === 'save') {
     return configuration.value?.configured
-      ? 'App Secret 会重新加密保存且不再回显。App ID 或公开地址发生变化时，必须先断开现有账号。'
+      ? appSecret.value
+        ? '新的 App Secret 会重新加密保存且不再回显。App ID 或公开地址发生变化时，必须先断开现有账号。'
+        : '将保留现有 App Secret。App ID 或公开地址发生变化时，必须先断开现有账号。'
       : 'App Secret 会加密保存且不再回显，请确认 App ID 和公开地址正确。';
   }
   if (value?.kind === 'clear') return '只有断开全部 Meta 账号后才能清除应用配置。';
@@ -130,7 +132,7 @@ async function executeConfirmation(): Promise<void> {
       if (!control.updateMetaAppConfiguration) throw new Error('当前后端不支持 Meta 应用配置');
       configuration.value = await control.updateMetaAppConfiguration({
         appId: appId.value.trim(),
-        appSecret: appSecret.value,
+        appSecret: appSecret.value.trim() || null,
         publicOrigin: publicOrigin.value.trim(),
         revision: configuration.value?.revision ?? null,
         remark: remark.value.trim() || null
@@ -171,12 +173,12 @@ async function executeConfirmation(): Promise<void> {
   }
 }
 
-async function startOAuth(): Promise<void> {
+async function startOAuth(includeInstagram: boolean): Promise<void> {
   if (!control?.startMetaOAuth) return;
   loading.value = true;
   error.value = null;
   try {
-    const result = await control.startMetaOAuth();
+    const result = await control.startMetaOAuth(includeInstagram ? ['facebook', 'instagram'] : ['facebook']);
     globalThis.location.assign(result.authorizationUrl);
   } catch (cause: unknown) {
     error.value = cause;
@@ -237,7 +239,7 @@ function destinationCount(connectionId: string): number {
           <Input
             v-model="appSecret"
             type="password"
-            placeholder="保存后不会回显"
+            :placeholder="configuration?.configured ? '留空则保留现有密钥' : '首次配置时必填'"
             autocomplete="new-password"
           />
         </label>
@@ -263,13 +265,29 @@ function destinationCount(connectionId: string): number {
         </div>
         <div class="flex flex-wrap gap-2">
           <Button
-            :disabled="loading || !appId.trim() || !appSecret || !publicOrigin.trim()"
+            :disabled="
+              loading ||
+              !appId.trim() ||
+              (!configuration?.configured && !appSecret.trim()) ||
+              !publicOrigin.trim()
+            "
             @click="confirmation = { kind: 'save' }"
           >
             <Save class="size-4" />保存配置
           </Button>
-          <Button variant="outline" :disabled="loading || !configuration?.configured" @click="startOAuth">
-            <Link2 class="size-4" />连接 Meta 账号
+          <Button
+            variant="outline"
+            :disabled="loading || !configuration?.configured"
+            @click="startOAuth(false)"
+          >
+            <Link2 class="size-4" />连接 Facebook Page
+          </Button>
+          <Button
+            variant="outline"
+            :disabled="loading || !configuration?.configured"
+            @click="startOAuth(true)"
+          >
+            <Camera class="size-4" />Facebook + Instagram
           </Button>
           <Button
             variant="ghost"

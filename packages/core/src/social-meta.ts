@@ -4,12 +4,17 @@ export const META_GRAPH_API_VERSION = 'v26.0';
 export const META_GRAPH_ORIGIN = 'https://graph.facebook.com';
 export const META_OAUTH_ORIGIN = 'https://www.facebook.com';
 
-export const META_REQUIRED_SCOPES = [
+export const META_FACEBOOK_REQUIRED_SCOPES = [
   'pages_show_list',
   'pages_read_engagement',
-  'pages_manage_posts',
-  'instagram_basic',
-  'instagram_content_publish'
+  'pages_manage_posts'
+] as const;
+
+export const META_INSTAGRAM_REQUIRED_SCOPES = ['instagram_basic', 'instagram_content_publish'] as const;
+
+export const META_REQUIRED_SCOPES = [
+  ...META_FACEBOOK_REQUIRED_SCOPES,
+  ...META_INSTAGRAM_REQUIRED_SCOPES
 ] as const;
 
 export const META_PAGE_PUBLISH_TASKS = ['CREATE_CONTENT', 'PROFILE_PLUS_CREATE_CONTENT'] as const;
@@ -18,6 +23,7 @@ export type SocialPlatform = components['schemas']['SocialPlatform'];
 export type MetaAppConfigurationSummary = components['schemas']['MetaAppConfigurationSummary'];
 export type MetaAppConfigurationUpdateRequest = components['schemas']['MetaAppConfigurationUpdateRequest'];
 export type MetaConnectionTargetRequest = components['schemas']['MetaConnectionTargetRequest'];
+export type MetaOAuthStartRequest = components['schemas']['MetaOAuthStartRequest'];
 export type SocialAccountConnection = components['schemas']['SocialAccountConnection'];
 export type SocialDestination = components['schemas']['SocialDestination'];
 export type SocialPublishJob = components['schemas']['SocialPublishJob'];
@@ -39,6 +45,12 @@ export interface MetaDestinationPermissionDecision {
   allowed: boolean;
   reasonCode: string | null;
   missingScopes: string[];
+}
+
+export function metaOAuthScopes(platforms: readonly SocialPlatform[]): string[] {
+  const scopes: string[] = [...META_FACEBOOK_REQUIRED_SCOPES];
+  if (platforms.includes('instagram')) scopes.push(...META_INSTAGRAM_REQUIRED_SCOPES);
+  return scopes;
 }
 
 export function evaluateMetaDestinationPermission(

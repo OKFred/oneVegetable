@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   evaluateMetaDestinationPermission,
   META_GRAPH_API_VERSION,
+  metaOAuthScopes,
   normalizeMetaPublicOrigin,
   validateMetaOAuthCallback
 } from '../src/social-meta';
@@ -10,6 +11,21 @@ import {
 describe('Meta social contract helpers', () => {
   it('pins an explicit Graph API version', () => {
     expect(META_GRAPH_API_VERSION).toMatch(/^v\d+\.0$/u);
+  });
+
+  it('requests Instagram scopes only for the combined connection flow', () => {
+    expect(metaOAuthScopes(['facebook'])).toEqual([
+      'pages_show_list',
+      'pages_read_engagement',
+      'pages_manage_posts'
+    ]);
+    expect(metaOAuthScopes(['facebook', 'instagram'])).toEqual([
+      'pages_show_list',
+      'pages_read_engagement',
+      'pages_manage_posts',
+      'instagram_basic',
+      'instagram_content_publish'
+    ]);
   });
 
   it('requires page publishing permissions and a content task', () => {

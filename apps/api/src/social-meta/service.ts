@@ -3,7 +3,7 @@ import {
   META_GRAPH_API_VERSION,
   META_GRAPH_ORIGIN,
   META_OAUTH_ORIGIN,
-  META_REQUIRED_SCOPES,
+  metaOAuthScopes,
   NetworkManager,
   normalizeMetaPublicOrigin,
   normalizeRemark
@@ -93,14 +93,14 @@ export class MetaSocialService {
 
   async configure(input: {
     appId: string;
-    appSecret: string;
+    appSecret: string | null;
     publicOrigin: string;
     expectedRevision: number | null;
     actorId: string;
     remark: string | null;
   }): Promise<MetaAppConfigurationSummary> {
     const appId = normalizeAppId(input.appId);
-    const appSecret = normalizeSecret(input.appSecret);
+    const appSecret = input.appSecret === null ? null : normalizeSecret(input.appSecret);
     const publicOrigin = normalizeMetaPublicOrigin(input.publicOrigin);
     const current = await this.repository.findConfiguration();
     if (
@@ -108,6 +108,13 @@ export class MetaSocialService {
       (current !== null && current.revision !== input.expectedRevision)
     ) {
       throw new MetaEntityVersionConflictError();
+    }
+    if (appSecret === null && current?.appId !== appId) {
+      throw new MetaSocialServiceError(
+        'META_APP_SECRET_REQUIRED',
+        '首次配置或更换 App ID 时必须填写 App Secret',
+        400
+      );
     }
     if (
       current &&
@@ -120,7 +127,9 @@ export class MetaSocialService {
         409
       );
     }
-    const encrypted = await this.cipher.encrypt('app-secret', 'primary', appSecret);
+    const encrypted = appSecret
+      ? await this.cipher.encrypt('app-secret', 'primary', appSecret)
+      : preservedAppSecret(current);
     const saved = await this.repository.saveConfiguration({
       appId,
       encryptedAppSecret: encrypted.ciphertext,
@@ -150,6 +159,7 @@ export class MetaSocialService {
 
   async startOAuth(input: {
     actorId: string;
+    platforms: readonly SocialDestination['platform'][];
   }): Promise<{ authorizationUrl: string; expiresTimeUtc: number }> {
     const configuration = await this.requireConfiguration();
     const state = randomToken(32);
@@ -169,7 +179,7 @@ export class MetaSocialService {
     url.searchParams.set('redirect_uri', callbackUrl(configuration, this.apiPrefix));
     url.searchParams.set('state', state);
     url.searchParams.set('response_type', 'code');
-    url.searchParams.set('scope', META_REQUIRED_SCOPES.join(','));
+    url.searchParams.set('scope', metaOAuthScopes(input.platforms).join(','));
     return { authorizationUrl: url.href, expiresTimeUtc };
   }
 
@@ -547,6 +557,23 @@ function normalizeSecret(value: string): string {
     throw new MetaSocialServiceError('META_APP_SECRET_INVALID', 'App Secret 无效', 400);
   }
   return secret;
+}
+
+function preservedAppSecret(current: MetaAppConfigurationRecord | null): {
+  ciphertext: string;
+  initializationVector: string;
+} {
+  if (!current) {
+    throw new MetaSocialServiceError(
+      'META_APP_SECRET_REQUIRED',
+      '首次配置或更换 App ID 时必须填写 App Secret',
+      400
+    );
+  }
+  return {
+    ciphertext: current.encryptedAppSecret,
+    initializationVector: current.initializationVector
+  };
 }
 
 function randomToken(bytes: number): string {

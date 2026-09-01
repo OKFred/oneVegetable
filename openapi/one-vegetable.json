@@ -13683,7 +13683,13 @@
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
           "appId": { "type": "string", "pattern": "^[0-9]{5,32}$" },
-          "appSecret": { "type": "string", "minLength": 1, "maxLength": 512, "writeOnly": true },
+          "appSecret": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 512,
+            "writeOnly": true,
+            "description": "首次配置或更换 App ID 时必填；更新公开地址或备注时传 null 以保留现有密钥。"
+          },
           "publicOrigin": {
             "type": "string",
             "pattern": "^https?://[^\\s/?#]+(?::[0-9]+)?/?$",
@@ -13701,6 +13707,22 @@
           "requestId": { "$ref": "#/components/schemas/RequestId" },
           "connectionId": { "type": "string", "format": "uuid" },
           "revision": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "MetaOAuthStartRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "platforms"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "platforms": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SocialPlatform" },
+            "minItems": 1,
+            "maxItems": 2,
+            "uniqueItems": true,
+            "contains": { "const": "facebook" }
+          }
         }
       },
       "OperationAvailability": {
