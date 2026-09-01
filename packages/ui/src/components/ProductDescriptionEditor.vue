@@ -51,7 +51,7 @@ const emit = defineEmits<{
   converted: [];
   imageStatus: [status: ProductDescriptionImageMetadata & { url: string }];
 }>();
-const { t } = useUiI18n();
+const { locale, t } = useUiI18n();
 
 const PhotoBankImage = Image.extend({
   addAttributes() {
@@ -73,7 +73,7 @@ const PhotoBankImage = Image.extend({
   }
 });
 
-const inspection = computed(() => sanitizeProductDescriptionHtml(props.modelValue));
+const inspection = computed(() => sanitizeProductDescriptionHtml(props.modelValue, locale.value));
 const converted = ref(false);
 const reviewingConversion = ref(false);
 const readOnlyView = ref<'preview' | 'source'>('preview');
@@ -121,7 +121,7 @@ const editor = useEditor({
   ],
   onUpdate: ({ editor: currentEditor }) => {
     if (!editable.value) return;
-    emit('update:modelValue', sanitizeProductDescriptionHtml(currentEditor.getHTML()).html);
+    emit('update:modelValue', sanitizeProductDescriptionHtml(currentEditor.getHTML(), locale.value).html);
   }
 });
 
@@ -130,7 +130,7 @@ watch(
   () => props.modelValue,
   (value) => {
     if (!editor.value) return;
-    const safeHtml = sanitizeProductDescriptionHtml(value).html;
+    const safeHtml = sanitizeProductDescriptionHtml(value, locale.value).html;
     if (safeHtml !== editor.value.getHTML())
       editor.value.commands.setContent(safeHtml, { emitUpdate: false });
   }
@@ -177,7 +177,7 @@ function insertPhoto(photos: Photo[]): void {
 
 function applyTemplate(payload: { mode: 'insert' | 'append' | 'replace'; html: string }): void {
   if (!editor.value || !editable.value) return;
-  const html = sanitizeProductDescriptionHtml(payload.html).html;
+  const html = sanitizeProductDescriptionHtml(payload.html, locale.value).html;
   if (payload.mode === 'replace') {
     editor.value.commands.setContent(html);
     emit('update:modelValue', html);

@@ -21,6 +21,28 @@ describe('product description quality suggestions', () => {
     expect(short.every((issue) => issue.level !== 'error')).toBe(true);
   });
 
+  it('emits English project quality suggestions without translating platform content', () => {
+    const issues = analyzeProductDescriptionQuality({
+      html: '',
+      locale: 'en-US',
+      schemaIssues: [
+        {
+          fieldKey: 'field:0',
+          severity: 'warning',
+          rule: 'requiredRule',
+          message: 'Alibaba 原始字段提示'
+        }
+      ]
+    });
+    expect(issues.find((issue) => issue.code === 'empty-description')).toMatchObject({
+      message: 'Product description is empty',
+      remediation: 'Add a buyer-facing introduction, selling points, specifications, and use cases.'
+    });
+    const schemaIssue = issues.find((issue) => issue.code === 'schema-requiredRule');
+    expect(schemaIssue?.message).toBe('Alibaba 原始字段提示');
+    expect(schemaIssue?.remediation).toContain('Alibaba API response is final');
+  });
+
   it('reports long unstructured content and paragraphs', () => {
     const words = Array.from({ length: 301 }, () => 'power').join(' ');
     const issues = analyzeProductDescriptionQuality({ html: `<p>${words}</p>` });

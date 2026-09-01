@@ -1,9 +1,11 @@
 import { parseFragment, serialize } from 'parse5';
 
 import { PRODUCT_DESCRIPTION_TAGS } from './product-description-contract';
+import { productDescriptionSanitizationMessage } from './product-description-messages';
 import { isPhotoBankUrl } from './product-description-url';
 
 import type { DefaultTreeAdapterTypes, Token } from 'parse5';
+import type { UiLocale } from './preferences';
 import type {
   ProductDescriptionSanitizationChange,
   SanitizedProductDescription
@@ -37,16 +39,20 @@ const ALLOWED_ATTRIBUTES: Readonly<Record<string, ReadonlySet<string>>> = {
   td: new Set(['colspan', 'rowspan'])
 };
 
-export function sanitizeProductDescriptionHtml(html: string): SanitizedProductDescription {
+export function sanitizeProductDescriptionHtml(
+  html: string,
+  locale: UiLocale = 'zh-CN'
+): SanitizedProductDescription {
   const fragment = parseFragment(html);
   const changes: ProductDescriptionSanitizationChange[] = [];
-  sanitizeChildren(fragment, changes);
+  sanitizeChildren(fragment, changes, locale);
   return { html: serialize(fragment), supported: changes.length === 0, changes };
 }
 
 function sanitizeChildren(
   parent: DefaultTreeAdapterTypes.ParentNode,
-  changes: ProductDescriptionSanitizationChange[]
+  changes: ProductDescriptionSanitizationChange[],
+  locale: UiLocale
 ): void {
   for (let index = 0; index < parent.childNodes.length;) {
     const child = parent.childNodes[index];
@@ -54,7 +60,7 @@ function sanitizeChildren(
       index += 1;
       continue;
     }
-    index += sanitizeElement(parent, index, child, changes);
+    index += sanitizeElement(parent, index, child, changes, locale);
   }
 }
 
@@ -62,33 +68,43 @@ function sanitizeElement(
   parent: DefaultTreeAdapterTypes.ParentNode,
   index: number,
   element: DefaultTreeAdapterTypes.Element,
-  changes: ProductDescriptionSanitizationChange[]
+  changes: ProductDescriptionSanitizationChange[],
+  locale: UiLocale
 ): number {
   const tag = element.tagName.toLocaleLowerCase();
   if (!ALLOWED_TAGS.has(tag)) {
     if (DROP_WITH_CONTENT.has(tag)) {
-      changes.push({ type: 'removed-element', target: tag, detail: `删除不允许的 <${tag}> 元素及内容` });
+      changes.push({
+        type: 'removed-element',
+        target: tag,
+        detail: productDescriptionSanitizationMessage(locale, 'removedElement', { tag })
+      });
       parent.childNodes.splice(index, 1);
       return 0;
     }
-    changes.push({ type: 'unwrapped-element', target: tag, detail: `删除 <${tag}> 标签，保留其中内容` });
-    sanitizeChildren(element, changes);
+    changes.push({
+      type: 'unwrapped-element',
+      target: tag,
+      detail: productDescriptionSanitizationMessage(locale, 'unwrappedElement', { tag })
+    });
+    sanitizeChildren(element, changes, locale);
     for (const child of element.childNodes) child.parentNode = parent;
     parent.childNodes.splice(index, 1, ...element.childNodes);
     return element.childNodes.length;
   }
 
-  sanitizeAttributes(element, tag, changes);
-  if (tag === 'a') sanitizeLink(element, changes);
-  if (tag === 'img' && !sanitizeImage(parent, index, element, changes)) return 0;
-  sanitizeChildren(element, changes);
+  sanitizeAttributes(element, tag, changes, locale);
+  if (tag === 'a') sanitizeLink(element, changes, locale);
+  if (tag === 'img' && !sanitizeImage(parent, index, element, changes, locale)) return 0;
+  sanitizeChildren(element, changes, locale);
   return 1;
 }
 
 function sanitizeAttributes(
   element: DefaultTreeAdapterTypes.Element,
   tag: string,
-  changes: ProductDescriptionSanitizationChange[]
+  changes: ProductDescriptionSanitizationChange[],
+  locale: UiLocale
 ): void {
   const allowed = ALLOWED_ATTRIBUTES[tag] ?? new Set<string>();
   const safeAttributes: Token.Attribute[] = [];
@@ -101,7 +117,10 @@ function sanitizeAttributes(
     changes.push({
       type: 'removed-attribute',
       target: `${tag}.${attribute.name}`,
-      detail: `删除 <${tag}> 的 ${attribute.name} 属性`
+      detail: productDescriptionSanitizationMessage(locale, 'removedAttribute', {
+        tag,
+        attribute: attribute.name
+      })
     });
   }
   element.attrs = safeAttributes;
@@ -109,12 +128,17 @@ function sanitizeAttributes(
 
 function sanitizeLink(
   element: DefaultTreeAdapterTypes.Element,
-  changes: ProductDescriptionSanitizationChange[]
+  changes: ProductDescriptionSanitizationChange[],
+  locale: UiLocale
 ): void {
   const href = getAttribute(element, 'href');
   if (!href || !isHttpUrl(href)) {
     if (href) {
-      changes.push({ type: 'removed-url', target: 'a.href', detail: `删除不安全链接 ${href}` });
+      changes.push({
+        type: 'removed-url',
+        target: 'a.href',
+        detail: productDescriptionSanitizationMessage(locale, 'removedUrl', { url: href })
+      });
       removeAttribute(element, 'href');
     }
     removeAttribute(element, 'target');
@@ -123,7 +147,11 @@ function sanitizeLink(
   }
   const requiredRel = 'nofollow noopener noreferrer';
   if (getAttribute(element, 'rel') !== requiredRel || getAttribute(element, 'target') !== '_blank') {
-    changes.push({ type: 'secured-link', target: 'a', detail: '链接已增加安全 rel 并在新窗口打开' });
+    changes.push({
+      type: 'secured-link',
+      target: 'a',
+      detail: productDescriptionSanitizationMessage(locale, 'securedLink')
+    });
   }
   setAttribute(element, 'target', '_blank');
   setAttribute(element, 'rel', requiredRel);
@@ -133,14 +161,17 @@ function sanitizeImage(
   parent: DefaultTreeAdapterTypes.ParentNode,
   index: number,
   element: DefaultTreeAdapterTypes.Element,
-  changes: ProductDescriptionSanitizationChange[]
+  changes: ProductDescriptionSanitizationChange[],
+  locale: UiLocale
 ): boolean {
   const src = getAttribute(element, 'src') ?? '';
   if (isPhotoBankUrl(src)) return true;
   changes.push({
     type: 'removed-url',
     target: 'img.src',
-    detail: src ? `删除非国际站图库图片 ${src}` : '删除缺少地址的图片'
+    detail: src
+      ? productDescriptionSanitizationMessage(locale, 'externalImage', { url: src })
+      : productDescriptionSanitizationMessage(locale, 'missingImage')
   });
   parent.childNodes.splice(index, 1);
   return false;

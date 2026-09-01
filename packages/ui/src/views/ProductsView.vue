@@ -139,7 +139,7 @@ const editorStepIds = new Set<ProductEditorStepId>(PRODUCT_EDITOR_STEP_IDS);
 const PRODUCT_SCORE_DISPLAY_MAX = 6;
 
 const { gateway, mode, productMutationJobs } = useServices();
-const { t } = useUiI18n();
+const { locale, t } = useUiI18n();
 const { alibabaLanguage: preferredLanguage } = useAppPreferences();
 const queryClient = useQueryClient();
 const workspace = ref<Workspace>('list');
@@ -390,7 +390,7 @@ const publish = useMutation({
   mutationFn: async (draft: boolean) => {
     if (!schemaModel.value) throw new Error(t('products.view.errors.schemaFirst'));
     if (editProductId.value) {
-      const patch = inspectProductSchemaPatchSerialization(schemaModel.value);
+      const patch = inspectProductSchemaPatchSerialization(schemaModel.value, locale.value);
       if (!patch.safe) {
         throw new Error(
           t('products.view.errors.schemaInvalid', { details: patch.structuralDiffs.join('; ') })
@@ -416,7 +416,7 @@ const publish = useMutation({
       if (!validation.valid || !validation.data) throw new Error(validation.errors.join('；'));
       return gateway.request('updateProduct', validation.data);
     }
-    const inspection = inspectProductSchemaSerialization(schemaModel.value);
+    const inspection = inspectProductSchemaSerialization(schemaModel.value, locale.value);
     if (!inspection.safe) {
       throw new Error(
         t('products.view.errors.schemaInvalid', { details: inspection.structuralDiffs.join('; ') })
@@ -503,6 +503,7 @@ const batchPublish = useMutation({
     return runProductBatchPublish({
       items: selected,
       target: input.target,
+      locale: locale.value,
       shouldStop: () => stopBatchRequested.value,
       onStart: (item) => {
         activeBatchItemId.value = item.id;
@@ -578,7 +579,8 @@ const qualityIssues = computed(() =>
     html: productDescriptionHtml.value,
     schemaIssues: schemaIssues.value,
     officialHints: officialHints.value,
-    imageMetadata: imageMetadata.value
+    imageMetadata: imageMetadata.value,
+    locale: locale.value
   })
 );
 const currentPageProducts = computed(() => products.data.value?.items ?? []);
@@ -824,7 +826,7 @@ function editBatchItem(item: ProductBatchPublishItem): void {
   cancelDraftSave();
   draftCandidate.value = null;
   resetEditorSession({ categoryId: item.categoryId, mode: 'quick' });
-  schemaModel.value = parseProductSchemaXml(item.xml);
+  schemaModel.value = parseProductSchemaXml(item.xml, undefined, locale.value);
   language.value = item.language;
   market.value = item.market;
   editingBatchItemId.value = item.id;
@@ -942,7 +944,9 @@ async function loadProductTransferItems(
 }
 
 async function exportProductZip(transferItems: readonly ProductTransferItemInput[]): Promise<void> {
-  const models = transferItems.map((item) => parseProductSchemaXml(item.schemaXml ?? ''));
+  const models = transferItems.map((item) =>
+    parseProductSchemaXml(item.schemaXml ?? '', undefined, locale.value)
+  );
   const assetUrls = [
     ...new Set(
       models.flatMap((model) =>
@@ -982,7 +986,10 @@ async function exportProductZip(transferItems: readonly ProductTransferItemInput
     if (!item) throw new Error(t('products.view.errors.exportChanged'));
     return {
       ...item,
-      schemaXml: serializeProductSchemaXml(replaceProductSchemaAssetReferences(model, replacements))
+      schemaXml: serializeProductSchemaXml(
+        replaceProductSchemaAssetReferences(model, replacements),
+        locale.value
+      )
     };
   });
   const document = createProductTransferArchiveDocument(archiveItems, productTransferSchemaFormat.value);
@@ -1094,7 +1101,11 @@ async function uploadProductTransferAssets(
     ...selection.archive.document,
     products: selection.archive.document.products.map((product) => {
       const schemaXml = serializeProductSchemaXml(
-        replaceProductSchemaAssetReferences(parseProductSchemaXml(product.schemaXml), replacements)
+        replaceProductSchemaAssetReferences(
+          parseProductSchemaXml(product.schemaXml, undefined, locale.value),
+          replacements
+        ),
+        locale.value
       );
       return { ...product, schemaXml, schemaJson: productSchemaXmlToJson(schemaXml) };
     })
@@ -1688,7 +1699,7 @@ function handleProductRouteChange(): void {
 
 function applySchema(xml: string, message: string, offerLocalDraft = true): void {
   try {
-    schemaModel.value = parseProductSchemaXml(xml);
+    schemaModel.value = parseProductSchemaXml(xml, undefined, locale.value);
     sourceIsLocalDraft.value = false;
     schemaError.value = '';
     feedback.value = message;
@@ -1810,7 +1821,7 @@ function resumeLocalDraft(): void {
   const draft = draftCandidate.value;
   if (!draft) return;
   try {
-    schemaModel.value = parseProductSchemaXml(draft.xml);
+    schemaModel.value = parseProductSchemaXml(draft.xml, undefined, locale.value);
     sourceIsLocalDraft.value = true;
     categoryId.value = draft.categoryId;
     language.value = draft.language;
@@ -1981,7 +1992,7 @@ function formatMutationTime(value: number | null): string {
 }
 
 function guardedSchemaXml(model: ProductSchemaModel): string {
-  const inspection = inspectProductSchemaSerialization(model);
+  const inspection = inspectProductSchemaSerialization(model, locale.value);
   if (!inspection.safe) {
     throw new Error(
       t('products.view.errors.schemaInvalid', { details: inspection.structuralDiffs.join('; ') })

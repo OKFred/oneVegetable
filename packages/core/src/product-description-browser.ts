@@ -1,10 +1,12 @@
 import { PRODUCT_DESCRIPTION_TAGS } from './product-description-contract';
+import { productDescriptionSanitizationMessage } from './product-description-messages';
 import { isPhotoBankUrl } from './product-description-url';
 
 import type {
   ProductDescriptionSanitizationChange,
   SanitizedProductDescription
 } from './product-description-contract';
+import type { UiLocale } from './preferences';
 
 const ALLOWED_TAGS = new Set<string>(PRODUCT_DESCRIPTION_TAGS);
 const DROP_WITH_CONTENT = new Set([
@@ -31,41 +33,61 @@ const ALLOWED_ATTRIBUTES: Readonly<Record<string, ReadonlySet<string>>> = {
   td: new Set(['colspan', 'rowspan'])
 };
 
-export function sanitizeProductDescriptionHtml(html: string): SanitizedProductDescription {
+export function sanitizeProductDescriptionHtml(
+  html: string,
+  locale: UiLocale = 'zh-CN'
+): SanitizedProductDescription {
   const document = new DOMParser().parseFromString(html, 'text/html');
   const changes: ProductDescriptionSanitizationChange[] = [];
-  sanitizeChildren(document.body, changes);
+  sanitizeChildren(document.body, changes, locale);
   return { html: document.body.innerHTML, supported: changes.length === 0, changes };
 }
 
-function sanitizeChildren(parent: ParentNode, changes: ProductDescriptionSanitizationChange[]): void {
-  for (const child of Array.from(parent.children)) sanitizeElement(child, changes);
+function sanitizeChildren(
+  parent: ParentNode,
+  changes: ProductDescriptionSanitizationChange[],
+  locale: UiLocale
+): void {
+  for (const child of Array.from(parent.children)) sanitizeElement(child, changes, locale);
 }
 
-function sanitizeElement(element: Element, changes: ProductDescriptionSanitizationChange[]): void {
+function sanitizeElement(
+  element: Element,
+  changes: ProductDescriptionSanitizationChange[],
+  locale: UiLocale
+): void {
   const tag = element.tagName.toLocaleLowerCase();
   if (!ALLOWED_TAGS.has(tag)) {
     if (DROP_WITH_CONTENT.has(tag)) {
-      changes.push({ type: 'removed-element', target: tag, detail: `删除不允许的 <${tag}> 元素及内容` });
+      changes.push({
+        type: 'removed-element',
+        target: tag,
+        detail: productDescriptionSanitizationMessage(locale, 'removedElement', { tag })
+      });
       element.remove();
       return;
     }
-    changes.push({ type: 'unwrapped-element', target: tag, detail: `删除 <${tag}> 标签，保留其中内容` });
-    sanitizeChildren(element, changes);
+    changes.push({
+      type: 'unwrapped-element',
+      target: tag,
+      detail: productDescriptionSanitizationMessage(locale, 'unwrappedElement', { tag })
+    });
+    sanitizeChildren(element, changes, locale);
     element.replaceWith(...Array.from(element.childNodes));
     return;
   }
 
-  sanitizeAttributes(element, tag, changes);
-  if (tag === 'a') sanitizeLink(element, changes);
-  if (tag === 'img' && !sanitizeImage(element, changes)) return;
-  sanitizeChildren(element, changes);
+  sanitizeAttributes(element, tag, changes, locale);
+  if (tag === 'a') sanitizeLink(element, changes, locale);
+  if (tag === 'img' && !sanitizeImage(element, changes, locale)) return;
+  sanitizeChildren(element, changes, locale);
 }
 
 function sanitizeAttributes(
   element: Element,
   tag: string,
-  changes: ProductDescriptionSanitizationChange[]
+  changes: ProductDescriptionSanitizationChange[],
+  locale: UiLocale
 ): void {
   const allowed = ALLOWED_ATTRIBUTES[tag] ?? new Set<string>();
   for (const attribute of Array.from(element.attributes)) {
@@ -74,17 +96,28 @@ function sanitizeAttributes(
     changes.push({
       type: 'removed-attribute',
       target: `${tag}.${attribute.name}`,
-      detail: `删除 <${tag}> 的 ${attribute.name} 属性`
+      detail: productDescriptionSanitizationMessage(locale, 'removedAttribute', {
+        tag,
+        attribute: attribute.name
+      })
     });
     element.removeAttribute(attribute.name);
   }
 }
 
-function sanitizeLink(element: Element, changes: ProductDescriptionSanitizationChange[]): void {
+function sanitizeLink(
+  element: Element,
+  changes: ProductDescriptionSanitizationChange[],
+  locale: UiLocale
+): void {
   const href = element.getAttribute('href');
   if (!href || !isHttpUrl(href)) {
     if (href) {
-      changes.push({ type: 'removed-url', target: 'a.href', detail: `删除不安全链接 ${href}` });
+      changes.push({
+        type: 'removed-url',
+        target: 'a.href',
+        detail: productDescriptionSanitizationMessage(locale, 'removedUrl', { url: href })
+      });
       element.removeAttribute('href');
     }
     element.removeAttribute('target');
@@ -93,19 +126,29 @@ function sanitizeLink(element: Element, changes: ProductDescriptionSanitizationC
   }
   const requiredRel = 'nofollow noopener noreferrer';
   if (element.getAttribute('rel') !== requiredRel || element.getAttribute('target') !== '_blank') {
-    changes.push({ type: 'secured-link', target: 'a', detail: '链接已增加安全 rel 并在新窗口打开' });
+    changes.push({
+      type: 'secured-link',
+      target: 'a',
+      detail: productDescriptionSanitizationMessage(locale, 'securedLink')
+    });
   }
   element.setAttribute('target', '_blank');
   element.setAttribute('rel', requiredRel);
 }
 
-function sanitizeImage(element: Element, changes: ProductDescriptionSanitizationChange[]): boolean {
+function sanitizeImage(
+  element: Element,
+  changes: ProductDescriptionSanitizationChange[],
+  locale: UiLocale
+): boolean {
   const src = element.getAttribute('src') ?? '';
   if (isPhotoBankUrl(src)) return true;
   changes.push({
     type: 'removed-url',
     target: 'img.src',
-    detail: src ? `删除非国际站图库图片 ${src}` : '删除缺少地址的图片'
+    detail: src
+      ? productDescriptionSanitizationMessage(locale, 'externalImage', { url: src })
+      : productDescriptionSanitizationMessage(locale, 'missingImage')
   });
   element.remove();
   return false;

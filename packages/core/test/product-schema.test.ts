@@ -163,6 +163,28 @@ describe('product Schema XML engine', () => {
     expect(() => serializeProductSchemaXml(model)).toThrow(ProductSchemaSerializationError);
   });
 
+  it('emits English project validation and serialization messages when requested', () => {
+    const model = parseProductSchemaXml(
+      `<itemSchema>
+      <field id="productTitle" name="Product title" type="input"><value/></field>
+      <field id="scImages" name="Main images" type="multiInput"><values/></field>
+    </itemSchema>`,
+      undefined,
+      'en-US'
+    );
+    expect(validateProductSchemaModel(model, 'en-US').map((issue) => issue.message)).toEqual([
+      'Product name is required for formal publishing',
+      'At least one main product image is required for formal publishing'
+    ]);
+
+    at(model.fields, 0).sourceIndex = 99;
+    const inspection = inspectProductSchemaSerialization(model, 'en-US');
+    expect(inspection.structuralDiffs).toContain('field:0 could not be bound to its source field');
+    expect(() => serializeProductSchemaXml(model, 'en-US')).toThrow(
+      'Product Schema XML has structural issues'
+    );
+  });
+
   it('counts populated complex instances and never validates fields templates as user data', () => {
     const model = parseProductSchemaXml(REAL_LAYOUT_XML);
     const issues = validateProductSchemaModel(model);

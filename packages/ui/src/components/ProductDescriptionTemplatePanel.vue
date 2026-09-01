@@ -27,7 +27,7 @@ const props = defineProps<{
 const emit = defineEmits<{ apply: [payload: { mode: ApplyMode; html: string }] }>();
 
 const { productDescriptionTemplates, mode } = useServices();
-const { t } = useUiI18n();
+const { locale, t } = useUiI18n();
 const open = ref(false);
 const view = ref<PanelView>('browse');
 const templates = ref<ProductDescriptionTemplate[]>([]);
@@ -61,9 +61,9 @@ const description = computed(() => {
   if (view.value === 'edit') return t('products.templates.editDescription');
   return t('products.templates.browseDescription');
 });
-const currentSafeHtml = computed(() => sanitizeProductDescriptionHtml(props.currentHtml).html);
+const currentSafeHtml = computed(() => sanitizeProductDescriptionHtml(props.currentHtml, locale.value).html);
 const selectedSafeHtml = computed(() =>
-  selected.value ? sanitizeProductDescriptionHtml(selected.value.html).html : ''
+  selected.value ? sanitizeProductDescriptionHtml(selected.value.html, locale.value).html : ''
 );
 
 watch(open, (value) => {

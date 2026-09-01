@@ -12,7 +12,8 @@ import type {
   ProductMutationResult,
   ProductSchemaField,
   ProductSchemaFieldIssue,
-  SchemaPublishRequest
+  SchemaPublishRequest,
+  UiLocale
 } from '@one-vegetable/core';
 import type { DraftStorage } from './product-editor-drafts';
 import { translateUi } from '../i18n';
@@ -88,6 +89,7 @@ export interface ProductBatchPublishRunnerOptions {
   shouldStop?: (() => boolean) | undefined;
   onStart?: ((item: ProductBatchPublishItem) => void) | undefined;
   onResult?: ((result: ProductBatchPublishRunResult) => void) | undefined;
+  locale?: UiLocale;
 }
 
 export function loadProductBatchPublishItems(
@@ -253,7 +255,8 @@ export function removeProductBatchPublishItem(
 
 export function inspectProductBatchPublishItem(
   item: ProductBatchPublishItem,
-  target: ProductBatchPublishTarget
+  target: ProductBatchPublishTarget,
+  locale: UiLocale = 'zh-CN'
 ): ProductBatchPublishPreflight {
   if (item.status !== 'queued') {
     return blockedPreflight(item.title, translateUi('products.batch.errors.alreadySubmitted'));
@@ -261,7 +264,7 @@ export function inspectProductBatchPublishItem(
 
   let inspection: ReturnType<typeof inspectProductBatchPublishXml>;
   try {
-    inspection = inspectProductBatchPublishXml(item.xml);
+    inspection = inspectProductBatchPublishXml(item.xml, locale);
   } catch (error: unknown) {
     return blockedPreflight(item.title, errorMessage(error));
   }
@@ -305,7 +308,7 @@ export async function runProductBatchPublish(
       continue;
     }
     options.onStart?.(item);
-    const preflight = inspectProductBatchPublishItem(item, options.target);
+    const preflight = inspectProductBatchPublishItem(item, options.target, options.locale);
     if (!preflight.ready || !preflight.request) {
       const blocked = resultFor(
         item,
@@ -342,20 +345,23 @@ export async function runProductBatchPublish(
   return results;
 }
 
-function inspectProductBatchPublishXml(xml: string): {
+function inspectProductBatchPublishXml(
+  xml: string,
+  locale: UiLocale = 'zh-CN'
+): {
   xml: string;
   title: string;
   structuralDiffs: string[];
   schemaIssues: ProductSchemaFieldIssue[];
 } {
-  const model = parseProductSchemaXml(xml);
-  const serialization = inspectProductSchemaSerialization(model);
+  const model = parseProductSchemaXml(xml, undefined, locale);
+  const serialization = inspectProductSchemaSerialization(model, locale);
   const title = findTitle(model.fields) || translateUi('products.batch.errors.unnamed');
   return {
     xml: serialization.xml,
     title,
     structuralDiffs: serialization.safe ? [] : serialization.structuralDiffs,
-    schemaIssues: validateProductSchemaModel(model)
+    schemaIssues: validateProductSchemaModel(model, locale)
   };
 }
 

@@ -16,7 +16,7 @@ import type {
   ProductSchemaSerializationInspection
 } from '@one-vegetable/core';
 import type { ProductEditorMode } from '../lib/product-editor-drafts';
-import { translateUi } from '../i18n';
+import { translateUi, useUiI18n } from '../i18n';
 
 export interface ProductEditorSessionOptions {
   language: AlibabaLanguage;
@@ -24,6 +24,7 @@ export interface ProductEditorSessionOptions {
 }
 
 export function useProductEditorSession(options: ProductEditorSessionOptions) {
+  const { locale } = useUiI18n();
   const model = ref<ProductSchemaModel | null>(null);
   const categoryId = ref('');
   const language = ref<AlibabaLanguage>(options.language);
@@ -33,14 +34,14 @@ export function useProductEditorSession(options: ProductEditorSessionOptions) {
   const mode = ref<ProductEditorMode>('quick');
   const step = ref<ProductEditorStepId>('basics');
 
-  const issues = computed(() => (model.value ? validateProductSchemaModel(model.value) : []));
+  const issues = computed(() => (model.value ? validateProductSchemaModel(model.value, locale.value) : []));
   const blockingIssues = computed(() => issues.value.filter((issue) => issue.severity === 'error'));
   const inspection = computed<ProductSchemaSerializationInspection>(() => {
     if (!model.value) {
       return { xml: '', noOp: true, changedFieldKeys: [], structuralDiffs: [], safe: true };
     }
     try {
-      return inspectProductSchemaSerialization(model.value);
+      return inspectProductSchemaSerialization(model.value, locale.value);
     } catch (error: unknown) {
       return {
         xml: model.value.sourceXml,

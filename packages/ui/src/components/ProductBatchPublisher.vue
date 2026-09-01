@@ -37,7 +37,7 @@ const emit = defineEmits<{
   edit: [item: ProductBatchPublishItem];
   remove: [item: ProductBatchPublishItem];
 }>();
-const { t } = useUiI18n();
+const { locale, t } = useUiI18n();
 
 const queuedItems = computed(() => props.items.filter((item) => item.status === 'queued'));
 const selectedQueuedItems = computed(() =>
@@ -55,8 +55,9 @@ const runDisabledReason = computed(() => {
 });
 const selectedBlockedCount = computed(
   () =>
-    selectedQueuedItems.value.filter((item) => !inspectProductBatchPublishItem(item, props.target).ready)
-      .length
+    selectedQueuedItems.value.filter(
+      (item) => !inspectProductBatchPublishItem(item, props.target, locale.value).ready
+    ).length
 );
 const allQueuedSelected = computed(
   () => queuedItems.value.length > 0 && selectedQueuedItems.value.length === queuedItems.value.length
@@ -218,26 +219,26 @@ function statusVariant(
                 <template v-if="item.status === 'queued'">
                   <p
                     :class="
-                      inspectProductBatchPublishItem(item, target).ready
+                      inspectProductBatchPublishItem(item, target, locale).ready
                         ? 'text-emerald-700 dark:text-emerald-400'
                         : 'text-destructive'
                     "
                   >
                     {{
-                      inspectProductBatchPublishItem(item, target).ready
+                      inspectProductBatchPublishItem(item, target, locale).ready
                         ? t('products.batch.ready')
                         : t('products.batch.minimumMissing', {
-                            count: inspectProductBatchPublishItem(item, target).blockingIssues.length
+                            count: inspectProductBatchPublishItem(item, target, locale).blockingIssues.length
                           })
                     }}
                   </p>
                   <p
-                    v-if="inspectProductBatchPublishItem(item, target).schemaIssueCount"
+                    v-if="inspectProductBatchPublishItem(item, target, locale).schemaIssueCount"
                     class="mt-1 text-xs text-muted-foreground"
                   >
                     {{
                       t('products.batch.advisoryCount', {
-                        count: inspectProductBatchPublishItem(item, target).schemaIssueCount
+                        count: inspectProductBatchPublishItem(item, target, locale).schemaIssueCount
                       })
                     }}
                   </p>
