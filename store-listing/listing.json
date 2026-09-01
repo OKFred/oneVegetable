@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "extensionVersion": "2.1.0",
-  "singlePurpose": "A user-operated local workspace for managing Alibaba.com international products, gallery assets, RFQs, trade and logistics through documented Open Platform APIs.",
+  "singlePurpose": "A user-operated workspace for managing Alibaba.com international products, gallery assets, RFQs, trade and logistics through documented APIs, including publishing a selected gallery image to the user's connected business social account.",
   "category": "productivity",
   "defaultLocale": "zh_CN",
   "privacyPolicyUrl": "https://github.com/OKFred/oneVegetable/blob/master/docs/privacy-policy.md",
@@ -11,7 +11,7 @@
     {
       "permission": "storage",
       "required": true,
-      "justification": "Stores user-entered gateway credentials encrypted with a user passphrase, local settings and onboarding state, durable product display mutation status without secrets or full responses, plus derived unlock material and redacted diagnostics held only in current Chrome-session memory. The passphrase is never stored, local/session storage is hidden from content scripts, and session unlock material is cleared by browser restart, extension update/reload, explicit locking, or the configured idle timeout."
+      "justification": "Stores user-entered gateway credentials encrypted with a user passphrase, local settings and onboarding state, durable product display mutation status without secrets or full responses, and an optional 30-day scoped device token for a user-controlled social publishing BFF. Derived unlock material and redacted diagnostics are held only in current Chrome-session memory. The passphrase is never stored, local/session storage is hidden from content scripts, and session unlock material is cleared by browser restart, extension update/reload, explicit locking, or the configured idle timeout."
     },
     {
       "permission": "scripting",
@@ -26,7 +26,7 @@
     {
       "permission": "http://*/*, https://*/*",
       "required": false,
-      "justification": "Chrome grants only the specific host requested when a user starts credential acquisition, confirms the actual OAuth callback, configures a custom gateway, or explicitly transfers an external image; grants are revocable in settings."
+      "justification": "Chrome grants only the specific host requested when a user starts credential acquisition, confirms the actual OAuth callback, configures a custom gateway, pairs a user-controlled social publishing BFF, or explicitly transfers an external image; grants are revocable in settings."
     }
   ],
   "dataUse": {
@@ -48,6 +48,11 @@
       "uploadPhoto",
       "transferPhotoFromUrl"
     ],
-    "otherRealMutationsEnabled": false
+    "otherRealMutationsEnabled": false,
+    "socialPublishing": {
+      "facebookPageSingleImage": "requires-user-configured-bff-and-meta-app",
+      "instagramProfessionalSingleImage": "requires-user-configured-bff-and-meta-app",
+      "extensionStoresMetaSecrets": false
+    }
   }
 }

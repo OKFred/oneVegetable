@@ -97,7 +97,7 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 - 国际物流工作台覆盖地址字典、特殊商品属性、运力列表、运费试算、物流订单、面单和下单草稿。14 个 OneTouch 方法因业务资格和账号状态在扩展中默认关闭；Web Mock 可完整回归，运费模板保持独立可查询。详见 [物流域说明](docs/logistics-domain.md)。
 - 数据洞察工作台展示供应商全站排名时间序列，以及买家历史信保供应商与下单商品。页面不推断排名含义、不补造供应商名称，并保持长 ID 为字符串。CGS 小满签约客户接口默认关闭且不提供业务密钥表单。详见 [数据与供应商洞察说明](docs/insights-domain.md)。
 - 图库工作台复用按官方 `id` 参数懒加载的三层分组导航，展示文件大小、引用数量、更新时间与图库 `fileId`。真实账号已验证分组、素材读取和 multipart 上传；官方列表不提供尺寸时由浏览器读取自然尺寸后再给出低于 750 × 750 的非阻断建议，避免误报。URL 转存复用已验证上传链路，分组写操作继续关闭。详见 [图库域说明](docs/photo-domain.md)。
-- 图库素材支持多选后交给系统原图分享，或下载包含 `assets/`、文案和清单的 ZIP 分享包。Facebook、Instagram、X 与 TikTok 的官方自动发布均需独立开发者应用、账号 OAuth 及相应审核，未配置时只展示真实前置条件，不回退页面自动化。详见 [图库社交分享](docs/social-gallery-sharing.md)。
+- 图库素材支持多选后交给系统原图分享，或下载包含 `assets/`、文案和清单的 ZIP 分享包。自托管 BFF 已支持管理员连接多个 Meta 身份，并向 Facebook Page 或其关联的 Instagram 专业账号单图直发；插件通过 30 天可撤销设备授权使用同一后端，不保存 Meta 密钥。未配置时明确提示前置条件，不回退页面自动化或 Mock；X、TikTok、轮播和定时发布仍未接入。详见 [图库社交分享](docs/social-gallery-sharing.md)。
 - 普通文件转存、天鹿风控和 URL 爬取任务通知归为平台协作能力。文件转存不会冒充图库入库；风控和任务回调不提供页面采集或发送入口，并由 service worker 二次门禁。详见 [平台协作能力说明](docs/platform-domain.md)。
 - MV3 默认只申请 `storage`、用于用户主动授权向导的 `scripting` 和正式网关主机权限；应用中心、OAuth Callback、自定义网关与外部图片来源均在用户执行对应操作时按具体站点申请权限。设置页可导出或清空最多 100 条会话级脱敏诊断，且构建会执行权限与体积预算检查。详见 [MV3 发布加固说明](docs/mv3-release-hardening.md)。
 - 开放平台凭证使用用户口令派生的 AES-256-GCM 密钥加密保存；local/session 存储对内容脚本不可见，口令不落盘。解锁后只把派生密钥材料保留在当前 Chrome 会话的内存型 `chrome.storage.session`，因此页面刷新和 MV3 service worker 休眠无需重复输入；浏览器重启、扩展更新/重载、主动锁定或所选空闲时限到期后重新锁定。旧版明文设置必须显式迁移，遗忘口令只能清除后重新配置，威胁模型与恢复边界见 [凭证保险库说明](docs/credential-vault.md)。
