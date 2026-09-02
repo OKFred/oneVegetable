@@ -14,6 +14,7 @@ import {
 import Input from './ui/Input.vue';
 import Button from './ui/Button.vue';
 import ProductGroupManagerDialog from './ProductGroupManagerDialog.vue';
+import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 
 const props = withDefaults(
@@ -26,6 +27,7 @@ const props = withDefaults(
 const emit = defineEmits<{ update: [field: ProductSchemaField] }>();
 
 const { gateway } = useServices();
+const { t } = useUiI18n();
 const search = ref('');
 const managerOpen = ref(false);
 const levelFields = computed(() => {
@@ -135,7 +137,7 @@ function filterGroups(groups: readonly ProductGroup[], currentId: string): Produ
 
 function groupName(groups: readonly ProductGroup[] | undefined, id: string): string | null {
   if (!id) return null;
-  return groups?.find((group) => group.id === Number(id))?.name ?? `未知分组 #${id}`;
+  return groups?.find((group) => group.id === Number(id))?.name ?? t('products.common.unknownGroup', { id });
 }
 
 function numericId(value: string): number | null {
@@ -149,28 +151,33 @@ function numericId(value: string): number | null {
     <div class="flex flex-wrap items-center gap-2">
       <div class="relative min-w-52 flex-1">
         <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-        <Input v-model="search" class="pl-9" aria-label="搜索商品分组" placeholder="搜索分组名称或 ID" />
+        <Input
+          v-model="search"
+          class="pl-9"
+          :aria-label="t('products.groupPicker.searchLabel')"
+          :placeholder="t('products.groupPicker.searchPlaceholder')"
+        />
       </div>
       <Button variant="outline" size="sm" @click="managerOpen = true">
-        <FolderTree class="size-4" />管理商品分组
+        <FolderTree class="size-4" />{{ t('products.groupPicker.manage') }}
       </Button>
     </div>
 
     <template v-if="complexGroup">
       <div class="grid gap-3 lg:grid-cols-3">
         <label class="text-xs font-medium">
-          一级分组
+          {{ t('products.groupPicker.firstLevel') }}
           <select
             :value="firstId"
             class="mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm"
             @change="updateLevel(1, ($event.target as HTMLSelectElement).value)"
           >
-            <option value="">不选择</option>
+            <option value="">{{ t('products.groupPicker.none') }}</option>
             <option
               v-if="firstId && !roots.data.value?.some((group) => group.id === Number(firstId))"
               :value="firstId"
             >
-              未知分组 #{{ firstId }}
+              {{ t('products.common.unknownGroup', { id: firstId }) }}
             </option>
             <option v-for="group in visibleRoots" :key="group.id" :value="String(group.id)">
               {{ group.name }}
@@ -178,19 +185,19 @@ function numericId(value: string): number | null {
           </select>
         </label>
         <label class="text-xs font-medium">
-          二级分组
+          {{ t('products.groupPicker.secondLevel') }}
           <select
             :value="secondId"
             :disabled="!firstId || secondLevel.isPending.value"
             class="mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm disabled:opacity-50"
             @change="updateLevel(2, ($event.target as HTMLSelectElement).value)"
           >
-            <option value="">不选择</option>
+            <option value="">{{ t('products.groupPicker.none') }}</option>
             <option
               v-if="secondId && !secondLevel.data.value?.some((group) => group.id === Number(secondId))"
               :value="secondId"
             >
-              未知分组 #{{ secondId }}
+              {{ t('products.common.unknownGroup', { id: secondId }) }}
             </option>
             <option v-for="group in visibleSecondLevel" :key="group.id" :value="String(group.id)">
               {{ group.name }}
@@ -198,19 +205,19 @@ function numericId(value: string): number | null {
           </select>
         </label>
         <label class="text-xs font-medium">
-          三级分组
+          {{ t('products.groupPicker.thirdLevel') }}
           <select
             :value="thirdId"
             :disabled="!secondId || thirdLevel.isPending.value"
             class="mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm disabled:opacity-50"
             @change="updateLevel(3, ($event.target as HTMLSelectElement).value)"
           >
-            <option value="">不选择</option>
+            <option value="">{{ t('products.groupPicker.none') }}</option>
             <option
               v-if="thirdId && !thirdLevel.data.value?.some((group) => group.id === Number(thirdId))"
               :value="thirdId"
             >
-              未知分组 #{{ thirdId }}
+              {{ t('products.common.unknownGroup', { id: thirdId }) }}
             </option>
             <option v-for="group in visibleThirdLevel" :key="group.id" :value="String(group.id)">
               {{ group.name }}
@@ -220,18 +227,18 @@ function numericId(value: string): number | null {
       </div>
     </template>
     <label v-else class="block text-xs font-medium">
-      商品分组
+      {{ t('products.groupPicker.group') }}
       <select
         :value="scalarId()"
         class="mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm"
         @change="updateScalar(($event.target as HTMLSelectElement).value)"
       >
-        <option value="">不选择</option>
+        <option value="">{{ t('products.groupPicker.none') }}</option>
         <option
           v-if="scalarId() && !roots.data.value?.some((group) => group.id === Number(scalarId()))"
           :value="scalarId()"
         >
-          未知分组 #{{ scalarId() }}
+          {{ t('products.common.unknownGroup', { id: scalarId() }) }}
         </option>
         <option v-for="group in visibleRoots" :key="group.id" :value="String(group.id)">
           {{ group.name }}
@@ -240,16 +247,23 @@ function numericId(value: string): number | null {
     </label>
 
     <p v-if="selectedPath" class="flex items-center gap-2 text-xs text-muted-foreground">
-      <FolderTree class="size-4" />当前分组：{{ selectedPath }}
+      <FolderTree class="size-4" />{{ t('products.groupPicker.current', { path: selectedPath }) }}
     </p>
     <p
       v-if="roots.error.value || secondLevel.error.value || thirdLevel.error.value"
       class="text-xs text-destructive"
     >
-      商品分组加载失败；原始 ID 已保留，可稍后重试。
+      {{ t('products.groupPicker.loadFailed') }}
     </p>
     <p v-if="showTechnical" class="text-xs text-muted-foreground">
-      分组 ID：{{ [firstId, secondId, thirdId].filter(Boolean).join(' / ') || scalarId() || '未设置' }}
+      {{
+        t('products.groupPicker.ids', {
+          ids:
+            [firstId, secondId, thirdId].filter(Boolean).join(' / ') ||
+            scalarId() ||
+            t('products.common.notSet')
+        })
+      }}
     </p>
 
     <ProductGroupManagerDialog v-model:open="managerOpen" />

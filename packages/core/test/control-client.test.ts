@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { BffControlClient } from '../src/control-client';
 import { GatewayException } from '../src/errors';
 
+import permalinkFixture from '../../../mock/data/social-meta/permalink.json';
+
 import type { NetworkTransport } from '../src/network';
 
 describe('BffControlClient', () => {
@@ -254,7 +256,113 @@ describe('BffControlClient', () => {
     expect(calls[2]?.body).toMatchObject({ jobId });
     expect(calls[3]?.body).toMatchObject({ jobId });
   });
+
+  it('uses typed Meta and social publishing routes without exposing credentials in responses', async () => {
+    const calls: { path: string; body: Record<string, unknown>; csrf: string | null }[] = [];
+    const send = vi.fn<NetworkTransport['send']>((input, init) => {
+      const url =
+        input instanceof URL ? input : typeof input === 'string' ? new URL(input) : new URL(input.url);
+      if (typeof init.body !== 'string') throw new Error('expected JSON body');
+      const body = JSON.parse(init.body) as Record<string, unknown>;
+      calls.push({
+        path: url.pathname,
+        body,
+        csrf: new Headers(init.headers).get('X-CSRF-Token')
+      });
+      const data = url.pathname.endsWith('/destinations/list')
+        ? { items: [] }
+        : url.pathname.endsWith('/permalink/get')
+          ? permalinkFixture
+          : url.pathname.endsWith('/prepare')
+            ? socialJobFixture('prepared')
+            : socialJobFixture('published');
+      return Promise.resolve(Response.json({ requestId: body.requestId, ok: true, data }));
+    });
+    const client = new BffControlClient({
+      baseUrl: 'https://self-hosted.example.com',
+      transport: { send },
+      csrfToken: () => 'csrf-token'
+    });
+
+    await client.listSocialDestinations();
+    const prepared = await client.prepareSocialPost({
+      destinationId: '22222222-2222-4222-8222-222222222222',
+      caption: 'A safe product image',
+      idempotencyKey: '66666666-6666-4666-8666-666666666666',
+      file: {
+        fileName: 'product.jpg',
+        contentBase64: '/9j/2Q==',
+        contentType: 'image/jpeg',
+        byteLength: 4
+      }
+    });
+    await client.publishSocialPost(prepared.id);
+    await expect(client.getSocialPostPermalink(prepared.id)).resolves.toEqual(permalinkFixture);
+
+    expect(calls.map((call) => call.path)).toEqual([
+      '/api/v1/social/destinations/list',
+      '/api/v1/social-posts/prepare',
+      '/api/v1/social-posts/publish',
+      '/api/v1/social-posts/permalink/get'
+    ]);
+    expect(calls.every((call) => call.csrf === 'csrf-token')).toBe(true);
+    expect(calls[1]?.body).toMatchObject({
+      destinationId: '22222222-2222-4222-8222-222222222222',
+      idempotencyKey: '66666666-6666-4666-8666-666666666666'
+    });
+  });
+
+  it('attaches the scoped extension device token and extension id to social requests', async () => {
+    const send = vi.fn<NetworkTransport['send']>((_input, init) => {
+      if (typeof init.body !== 'string') throw new Error('expected JSON body');
+      const body = JSON.parse(init.body) as { requestId: string };
+      const headers = new Headers(init.headers);
+      expect(headers.get('Authorization')).toBe(`Bearer ovd_${'a'.repeat(43)}`);
+      expect(headers.get('X-One-Vegetable-Extension-ID')).toBe('aepfdoldflokikbbcpnfifkacpfakmjc');
+      expect(headers.get('X-CSRF-Token')).toBeNull();
+      return Promise.resolve(Response.json({ requestId: body.requestId, ok: true, data: { items: [] } }));
+    });
+    const client = new BffControlClient({
+      baseUrl: 'https://self-hosted.example.com',
+      transport: { send },
+      bearerToken: () => `ovd_${'a'.repeat(43)}`,
+      extensionId: 'aepfdoldflokikbbcpnfifkacpfakmjc'
+    });
+
+    await expect(client.listSocialDestinations()).resolves.toEqual([]);
+    expect(send).toHaveBeenCalledOnce();
+  });
 });
+
+function socialJobFixture(status: 'prepared' | 'published') {
+  return {
+    id: '44444444-4444-4444-8444-444444444444',
+    requestId: '55555555-5555-4555-8555-555555555555',
+    idempotencyKey: '66666666-6666-4666-8666-666666666666',
+    destinationId: '22222222-2222-4222-8222-222222222222',
+    platform: 'facebook',
+    status,
+    captionLength: 20,
+    fileName: 'product.jpg',
+    contentType: 'image/jpeg',
+    byteLength: 4,
+    contentSha256: 'fixture-sha256',
+    platformContainerId: null,
+    platformPostId: status === 'published' ? 'facebook-post-1' : null,
+    platformRequestId: null,
+    platformTraceId: null,
+    reasonCode: null,
+    message: null,
+    nextAdvanceTimeUtc: null,
+    expiresTimeUtc: 10_000,
+    createTimeUtc: 1,
+    updateTimeUtc: 1,
+    creatorId: 'admin-1',
+    updaterId: 'admin-1',
+    revision: status === 'published' ? 2 : 1,
+    remark: null
+  };
+}
 
 function userFixture() {
   return {

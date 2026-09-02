@@ -69,7 +69,7 @@ describe('SelfHostedAdminPanel', () => {
     const wrapper = mount(Host, { attachTo: document.body });
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Alibaba 凭据保险库');
+    expect(wrapper.text()).toContain('Alibaba 开放平台凭证');
     expect(wrapper.text()).toContain('一键连接');
     expect(wrapper.text()).toContain('已配置');
     expect(wrapper.text()).toContain('Windows Hello');

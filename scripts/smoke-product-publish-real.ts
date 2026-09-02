@@ -96,7 +96,7 @@ async function main(): Promise<void> {
     };
     if (blockingIssues.length > 0) {
       await writeReport('preflight-blocked', { ...preflight, mutationAttempted: false });
-      throw new Error(`发布前仍有 ${blockingIssues.length} 个 Schema 硬错误，拒绝真实提交`);
+      throw new Error(`发布前仍有 ${blockingIssues.length} 个最低发布条件未满足，拒绝真实提交`);
     }
 
     if (!allowMutation) {

@@ -194,6 +194,65 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     revision: { type: ['integer', 'null'], minimum: 1 },
     remark: { type: ['string', 'null'], maxLength: 500 }
   });
+  schemas.ExtensionSocialPairingStartRequest = objectRequest(['requestId', 'extensionId', 'deviceName'], {
+    extensionId: { type: 'string', pattern: '^[a-p]{32}$' },
+    deviceName: { type: 'string', minLength: 1, maxLength: 80 }
+  });
+  schemas.ExtensionSocialPairingStatusRequest = objectRequest(
+    ['requestId', 'pairingId', 'pairingCode', 'extensionId'],
+    {
+      pairingId: { type: 'string', format: 'uuid' },
+      pairingCode: { type: 'string', pattern: '^[A-Z2-9]{16}$' },
+      extensionId: { type: 'string', pattern: '^[a-p]{32}$' }
+    }
+  );
+  schemas.ExtensionSocialPairingApproveRequest = objectRequest(['requestId', 'pairingCode'], {
+    pairingCode: { type: 'string', pattern: '^[A-Z2-9]{16}$' }
+  });
+  schemas.ExtensionSocialDeviceTargetRequest = objectRequest(['requestId', 'deviceId', 'revision'], {
+    deviceId: { type: 'string', format: 'uuid' },
+    revision: { type: 'integer', minimum: 1 }
+  });
+  schemas.ExtensionSocialPairingStart = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['pairingId', 'pairingCode', 'status', 'expiresTimeUtc'],
+    properties: {
+      pairingId: { type: 'string', format: 'uuid' },
+      pairingCode: { type: 'string', pattern: '^[A-Z2-9]{16}$' },
+      status: { const: 'pending' },
+      expiresTimeUtc: { type: 'integer', minimum: 0 }
+    }
+  };
+  schemas.ExtensionSocialPairingStatus = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['pairingId', 'status', 'expiresTimeUtc', 'device', 'deviceToken'],
+    properties: {
+      pairingId: { type: 'string', format: 'uuid' },
+      status: {
+        type: 'string',
+        enum: ['pending', 'approved', 'paired', 'consumed', 'cancelled', 'expired']
+      },
+      expiresTimeUtc: { type: 'integer', minimum: 0 },
+      device: {
+        oneOf: [{ $ref: '#/components/schemas/ExtensionSocialDevice' }, { type: 'null' }]
+      },
+      deviceToken: { type: ['string', 'null'], minLength: 47, maxLength: 47 }
+    }
+  };
+  schemas.SocialPostPermalink = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['platform', 'platformPostId', 'url', 'platformRequestId', 'platformTraceId'],
+    properties: {
+      platform: { $ref: '#/components/schemas/SocialPlatform' },
+      platformPostId: { type: 'string', minLength: 1, maxLength: 256 },
+      url: { type: 'string', format: 'uri', pattern: '^https://' },
+      platformRequestId: { type: ['string', 'null'], maxLength: 256 },
+      platformTraceId: { type: ['string', 'null'], maxLength: 256 }
+    }
+  };
   schemas.PageRequest = objectRequest([], {
     page: { type: 'integer', minimum: 1, default: 1 },
     pageSize: { type: 'integer', minimum: 1, maximum: 100, default: 20 }
@@ -284,8 +343,11 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     properties: {
       id: { type: 'string', format: 'uuid' },
       requestId: { $ref: '#/components/schemas/RequestId' },
-      productId: { type: 'string', pattern: '^[1-9][0-9]*$' },
-      operation: { type: 'string', enum: ['updateProduct', 'updateProductDisplay'] },
+      productId: { type: 'string', pattern: '^(?:[1-9][0-9]*|pending:[0-9a-f]{64})$' },
+      operation: {
+        type: 'string',
+        enum: ['publishProduct', 'saveProductDraft', 'updateProduct', 'updateProductDisplay']
+      },
       status: {
         type: 'string',
         enum: [
@@ -699,7 +761,140 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       'Purge request diagnostics outside the retention window',
       'purgeAdminRequestEvents',
       'RequestEnvelope'
-    )
+    ),
+    '/admin/social/meta/config/get': postOperation(
+      'Read Meta application configuration summary',
+      'getMetaAppConfiguration',
+      'RequestEnvelope'
+    ),
+    '/admin/social/meta/config/update': postOperation(
+      'Create or update write-only Meta application credentials',
+      'updateMetaAppConfiguration',
+      'MetaAppConfigurationUpdateRequest'
+    ),
+    '/admin/social/meta/config/clear': postOperation(
+      'Clear Meta application credentials after all connections are removed',
+      'clearMetaAppConfiguration',
+      'RevisionRequest'
+    ),
+    '/admin/social/meta/oauth/start': postOperation(
+      'Start a one-time administrator Meta OAuth flow',
+      'startMetaOAuth',
+      'RequestEnvelope'
+    ),
+    '/social/meta/oauth/callback': {
+      get: {
+        summary: 'Receive the Meta OAuth protocol callback',
+        operationId: 'completeMetaOAuth',
+        responses: {
+          '200': { description: 'OAuth callback accepted by a non-navigation client' },
+          '303': { description: 'Redirect to the administrator page with a redacted result' },
+          '400': { description: 'OAuth callback rejected' }
+        }
+      }
+    },
+    '/admin/social/meta/connections/list': postOperation(
+      'List connected Meta identities',
+      'listMetaConnections',
+      'RequestEnvelope'
+    ),
+    '/admin/social/meta/connections/disconnect': postOperation(
+      'Disconnect one Meta identity and its destinations',
+      'disconnectMetaConnection',
+      'MetaConnectionTargetRequest'
+    ),
+    '/extension-pairings/start': postOperation(
+      'Start a short-lived Chrome extension social publishing pairing',
+      'startExtensionSocialPairing',
+      'ExtensionSocialPairingStartRequest'
+    ),
+    '/extension-pairings/status': postOperation(
+      'Poll a Chrome extension social publishing pairing and receive its one-time device token',
+      'getExtensionSocialPairingStatus',
+      'ExtensionSocialPairingStatusRequest'
+    ),
+    '/admin/extension-pairings/approve': postOperation(
+      'Approve one Chrome extension social publishing pairing code',
+      'approveExtensionSocialPairing',
+      'ExtensionSocialPairingApproveRequest'
+    ),
+    '/admin/extension-devices/list': postOperation(
+      'List paired Chrome extension social publishing devices',
+      'listExtensionSocialDevices',
+      'RequestEnvelope'
+    ),
+    '/admin/extension-devices/revoke': postOperation(
+      'Revoke one Chrome extension social publishing device',
+      'revokeExtensionSocialDevice',
+      'ExtensionSocialDeviceTargetRequest'
+    ),
+    '/social/destinations/list': postOperation(
+      'List publishable Facebook Page and Instagram professional destinations',
+      'listSocialDestinations',
+      'RequestEnvelope'
+    ),
+    '/social-posts/prepare': postOperation(
+      'Validate and privately stage one social image',
+      'prepareSocialPost',
+      'SocialPostPrepareRequest'
+    ),
+    '/social-posts/publish': postOperation(
+      'Perform the first and only initial platform publish attempt',
+      'publishSocialPost',
+      'SocialPostTargetRequest'
+    ),
+    '/social-posts/advance': postOperation(
+      'Advance an Instagram container no more than once per minute',
+      'advanceSocialPost',
+      'SocialPostTargetRequest'
+    ),
+    '/social-posts/get': postOperation(
+      'Read one social publish job',
+      'getSocialPost',
+      'SocialPostTargetRequest'
+    ),
+    '/social-posts/permalink/get': postOperation(
+      'Read the platform permalink for one published social post on explicit user request',
+      'getSocialPostPermalink',
+      'SocialPostTargetRequest'
+    ),
+    '/social-posts/list': postOperation(
+      'List recent social publish jobs',
+      'listSocialPosts',
+      'SocialPostListRequest'
+    ),
+    '/social-posts/cancel': postOperation(
+      'Cancel a prepared or not-yet-finalized social publish job',
+      'cancelSocialPost',
+      'SocialPostTargetRequest'
+    ),
+    '/social-media/{opaqueToken}': {
+      get: {
+        summary: 'Read one short-lived private social image through an opaque token',
+        operationId: 'readSocialMediaAsset',
+        parameters: [
+          {
+            name: 'opaqueToken',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', pattern: '^[A-Za-z0-9_-]{43}$' }
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'Short-lived image bytes',
+            headers: {
+              'X-Request-ID': { schema: { $ref: '#/components/schemas/RequestId' } }
+            },
+            content: {
+              'image/jpeg': { schema: { type: 'string', contentEncoding: 'base64' } },
+              'image/png': { schema: { type: 'string', contentEncoding: 'base64' } }
+            }
+          },
+          '404': envelopeResponse('Social media asset not found')
+        }
+      }
+    }
   };
   document.components.responses = {
     ...(document.components.responses ?? {}),

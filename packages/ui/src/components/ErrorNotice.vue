@@ -3,13 +3,16 @@ import { computed, ref } from 'vue';
 import { AlertCircle, Check, Clipboard, Download, Settings } from '@lucide/vue';
 
 import { sanitizeDiagnosticMessage } from '@one-vegetable/core/diagnostics';
-import { describeUserVisibleError } from '@one-vegetable/core/errors';
+import { describeUserVisibleError, splitUserVisibleErrorMessages } from '@one-vegetable/core/errors';
 import { APP_VERSION } from '@one-vegetable/core/version';
 
 import type { DiagnosticsSnapshot } from '@one-vegetable/core';
 
 import Button from './ui/Button.vue';
+import { hasUiTranslation, useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
+
+const { t } = useUiI18n();
 
 const props = withDefaults(
   defineProps<{
@@ -18,13 +21,45 @@ const props = withDefaults(
     compact?: boolean;
   }>(),
   {
-    fallback: '操作失败',
+    fallback: '',
     compact: false
   }
 );
 
 const { gateway, mode } = useServices();
-const details = computed(() => describeUserVisibleError(props.error, props.fallback));
+const details = computed(() =>
+  describeUserVisibleError(props.error, props.fallback || t('common.error.fallback'))
+);
+const localizedMessage = computed(() => {
+  const code = details.value.code;
+  if (!code) return details.value.message;
+  const key = `errors.codes.${code}`;
+  return hasUiTranslation(key) ? t(key) : details.value.message;
+});
+const platformError = computed(() => {
+  const code = details.value.code ?? '';
+  return (
+    code.startsWith('ALIBABA_') ||
+    [
+      'ALIBABA_ERROR',
+      'AUTHENTICATION_FAILED',
+      'PERMISSION_DENIED',
+      'RATE_LIMITED',
+      'UPSTREAM_UNAVAILABLE'
+    ].includes(code)
+  );
+});
+const detailBearingError = computed(
+  () =>
+    platformError.value ||
+    ['INVALID_OPERATION_PAYLOAD', 'REQUEST_CONTRACT_INVALID'].includes(details.value.code ?? '')
+);
+const originalMessage = computed(() => {
+  if (!detailBearingError.value) return null;
+  const raw = details.value.message.trim();
+  return raw && raw !== localizedMessage.value.trim() ? raw : null;
+});
+const messageParts = computed(() => splitUserVisibleErrorMessages(localizedMessage.value));
 const credentialSettingsRequired = computed(
   () => mode === 'extension' && details.value.code?.startsWith('CREDENTIAL_VAULT_') === true
 );
@@ -43,7 +78,7 @@ async function copyRequestId(): Promise<void> {
       copied.value = false;
     }, 1500);
   } catch {
-    exportFeedback.value = '复制失败，请手工选中 requestId。';
+    exportFeedback.value = t('common.error.copyFailed');
   }
 }
 
@@ -84,7 +119,8 @@ async function exportRedactedDiagnostics(): Promise<void> {
     `one-vegetable-error-${requestId?.slice(0, 8) ?? 'local'}-${new Date().toISOString().slice(0, 10)}.json`
   );
   exporting.value = false;
-  exportFeedback.value = matchingEntries.length > 0 ? '已导出匹配的脱敏诊断。' : '已导出脱敏错误摘要。';
+  exportFeedback.value =
+    matchingEntries.length > 0 ? t('common.error.diagnosticsMatched') : t('common.error.diagnosticsSummary');
 }
 
 function downloadJson(value: unknown, fileName: string): void {
@@ -109,16 +145,48 @@ function downloadJson(value: unknown, fileName: string): void {
     <div class="flex items-start gap-2">
       <AlertCircle class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
       <div class="min-w-0 flex-1">
-        <p class="break-words font-medium">{{ details.message }}</p>
-        <p v-if="details.code" class="mt-1 text-xs opacity-80">错误码：{{ details.code }}</p>
-        <div v-if="details.requestId" class="mt-2 flex flex-wrap items-center gap-2">
-          <code class="break-all rounded bg-background/70 px-2 py-1 text-[11px] text-foreground">
+        <p v-if="messageParts.length === 1" class="break-words font-medium">{{ messageParts[0] }}</p>
+        <div v-else>
+          <p class="font-medium">
+            {{ t('common.error.multipleReasons', { count: messageParts.length }) }}
+          </p>
+          <ul class="mt-1 list-disc space-y-1 pl-5">
+            <li v-for="message in messageParts" :key="message" class="break-words">{{ message }}</li>
+          </ul>
+        </div>
+        <p v-if="details.code" class="mt-1 text-xs opacity-80">
+          {{ t('common.error.code', { code: details.code }) }}
+        </p>
+        <details v-if="originalMessage" class="mt-2 rounded border border-current/20 p-2 text-xs">
+          <summary class="cursor-pointer font-medium">
+            {{ t(platformError ? 'common.error.platformResponse' : 'common.error.originalResponse') }}
+          </summary>
+          <p class="mt-2 break-words whitespace-pre-wrap opacity-90">{{ originalMessage }}</p>
+        </details>
+        <div v-if="details.requestId || details.traceId" class="mt-2 flex flex-wrap items-center gap-2">
+          <code
+            v-if="details.requestId"
+            class="break-all rounded bg-background/70 px-2 py-1 text-[11px] text-foreground"
+          >
             requestId: {{ details.requestId }}
           </code>
-          <Button type="button" size="sm" variant="outline" class="h-7 gap-1" @click="copyRequestId">
+          <code
+            v-if="details.traceId"
+            class="break-all rounded bg-background/70 px-2 py-1 text-[11px] text-foreground"
+          >
+            traceId: {{ details.traceId }}
+          </code>
+          <Button
+            v-if="details.requestId"
+            type="button"
+            size="sm"
+            variant="outline"
+            class="h-7 gap-1"
+            @click="copyRequestId"
+          >
             <Check v-if="copied" class="size-3.5" aria-hidden="true" />
             <Clipboard v-else class="size-3.5" aria-hidden="true" />
-            {{ copied ? '已复制' : '复制 requestId' }}
+            {{ copied ? t('common.actions.copied') : t('common.error.copyRequestId') }}
           </Button>
         </div>
         <div class="mt-2 flex flex-wrap items-center gap-2">
@@ -127,7 +195,7 @@ function downloadJson(value: unknown, fileName: string): void {
             href="#/settings"
             class="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-accent"
           >
-            <Settings class="size-3.5" aria-hidden="true" />前往设置凭证
+            <Settings class="size-3.5" aria-hidden="true" />{{ t('common.error.configureCredentials') }}
           </a>
           <Button
             type="button"
@@ -138,7 +206,7 @@ function downloadJson(value: unknown, fileName: string): void {
             @click="exportRedactedDiagnostics"
           >
             <Download class="size-3.5" aria-hidden="true" />
-            {{ exporting ? '正在整理…' : '导出脱敏诊断' }}
+            {{ exporting ? t('common.error.preparingDiagnostics') : t('common.error.exportDiagnostics') }}
           </Button>
           <span v-if="exportFeedback" role="status" class="text-xs text-muted-foreground">
             {{ exportFeedback }}

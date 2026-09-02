@@ -10,6 +10,19 @@ import type {
   AlibabaCredentialAcquisitionContinueCommand,
   AlibabaCredentialAcquisitionState
 } from './alibaba-credential-acquisition';
+import type {
+  MetaAppConfigurationSummary,
+  MetaAppConfigurationUpdateRequest,
+  ExtensionSocialDevice,
+  ExtensionSocialPairingStart,
+  ExtensionSocialPairingStatus,
+  SocialAccountConnection,
+  SocialDestination,
+  SocialPlatform,
+  SocialPostPermalink,
+  SocialPostPrepareRequest,
+  SocialPublishJob
+} from './social-meta';
 
 export type ControlUserRole = 'admin' | 'user';
 export type ControlUserStatus = 'active' | 'disabled';
@@ -276,6 +289,31 @@ export interface ControlClient {
     revision: number | null,
     remark?: string | null
   ): Promise<ControlRealMutationStatus>;
+  metaAppConfiguration?(): Promise<MetaAppConfigurationSummary>;
+  updateMetaAppConfiguration?(
+    input: Omit<MetaAppConfigurationUpdateRequest, 'requestId'>
+  ): Promise<MetaAppConfigurationSummary>;
+  clearMetaAppConfiguration?(revision: number): Promise<void>;
+  startMetaOAuth?(platforms: SocialPlatform[]): Promise<{ authorizationUrl: string; expiresTimeUtc: number }>;
+  listMetaConnections?(): Promise<SocialAccountConnection[]>;
+  disconnectMetaConnection?(connectionId: string, revision: number): Promise<void>;
+  startExtensionSocialPairing?(extensionId: string, deviceName: string): Promise<ExtensionSocialPairingStart>;
+  extensionSocialPairingStatus?(
+    pairingId: string,
+    pairingCode: string,
+    extensionId: string
+  ): Promise<ExtensionSocialPairingStatus>;
+  approveExtensionSocialPairing?(pairingCode: string): Promise<ExtensionSocialPairingStatus>;
+  listExtensionSocialDevices?(): Promise<ExtensionSocialDevice[]>;
+  revokeExtensionSocialDevice?(deviceId: string, revision: number): Promise<void>;
+  listSocialDestinations?(): Promise<SocialDestination[]>;
+  prepareSocialPost?(input: Omit<SocialPostPrepareRequest, 'requestId'>): Promise<SocialPublishJob>;
+  publishSocialPost?(jobId: string): Promise<SocialPublishJob>;
+  advanceSocialPost?(jobId: string): Promise<SocialPublishJob>;
+  getSocialPost?(jobId: string): Promise<SocialPublishJob>;
+  getSocialPostPermalink?(jobId: string): Promise<SocialPostPermalink>;
+  listSocialPosts?(limit?: number): Promise<SocialPublishJob[]>;
+  cancelSocialPost?(jobId: string): Promise<SocialPublishJob>;
   csrfToken(): string | null;
 }
 
@@ -284,6 +322,8 @@ export interface BffControlClientOptions {
   apiPrefix?: string | undefined;
   transport?: NetworkTransport;
   csrfToken?: () => string | null;
+  bearerToken?: () => string | null;
+  extensionId?: string;
 }
 
 export class BffControlClient implements ControlClient {
@@ -291,6 +331,8 @@ export class BffControlClient implements ControlClient {
   readonly #apiPrefix: string;
   readonly #network: NetworkManager;
   readonly #externalCsrfToken: (() => string | null) | undefined;
+  readonly #bearerToken: (() => string | null) | undefined;
+  readonly #extensionId: string | undefined;
   #sessionCsrfToken: string | null = null;
 
   constructor(options: BffControlClientOptions) {
@@ -300,6 +342,8 @@ export class BffControlClient implements ControlClient {
     }
     this.#apiPrefix = normalizeApiPrefix(options.apiPrefix ?? DEFAULT_API_PREFIX);
     this.#externalCsrfToken = options.csrfToken;
+    this.#bearerToken = options.bearerToken;
+    this.#extensionId = options.extensionId;
     this.#network = new NetworkManager({
       ...(options.transport ? { transport: options.transport } : {}),
       policies: {
@@ -307,7 +351,7 @@ export class BffControlClient implements ControlClient {
         bff: {
           allowedOrigins: [this.#baseUrl.origin],
           timeoutMilliseconds: 30_000,
-          maxRequestBytes: 1024 * 1024,
+          maxRequestBytes: 8 * 1024 * 1024,
           maxResponseBytes: 4 * 1024 * 1024,
           credentials: 'include',
           redirect: 'error'
@@ -597,6 +641,95 @@ export class BffControlClient implements ControlClient {
     return this.#call('/admin/real-mutations/pause/update', { paused, revision, remark });
   }
 
+  metaAppConfiguration(): Promise<MetaAppConfigurationSummary> {
+    return this.#call('/admin/social/meta/config/get', {});
+  }
+
+  updateMetaAppConfiguration(
+    input: Omit<MetaAppConfigurationUpdateRequest, 'requestId'>
+  ): Promise<MetaAppConfigurationSummary> {
+    return this.#call('/admin/social/meta/config/update', input);
+  }
+
+  async clearMetaAppConfiguration(revision: number): Promise<void> {
+    await this.#call('/admin/social/meta/config/clear', { revision });
+  }
+
+  startMetaOAuth(platforms: SocialPlatform[]): Promise<{ authorizationUrl: string; expiresTimeUtc: number }> {
+    return this.#call('/admin/social/meta/oauth/start', { platforms });
+  }
+
+  async listMetaConnections(): Promise<SocialAccountConnection[]> {
+    const result = await this.#call<{ items: SocialAccountConnection[] }>(
+      '/admin/social/meta/connections/list',
+      {}
+    );
+    return result.items;
+  }
+
+  async disconnectMetaConnection(connectionId: string, revision: number): Promise<void> {
+    await this.#call('/admin/social/meta/connections/disconnect', { connectionId, revision });
+  }
+
+  startExtensionSocialPairing(extensionId: string, deviceName: string): Promise<ExtensionSocialPairingStart> {
+    return this.#call('/extension-pairings/start', { extensionId, deviceName });
+  }
+
+  extensionSocialPairingStatus(
+    pairingId: string,
+    pairingCode: string,
+    extensionId: string
+  ): Promise<ExtensionSocialPairingStatus> {
+    return this.#call('/extension-pairings/status', { pairingId, pairingCode, extensionId });
+  }
+
+  approveExtensionSocialPairing(pairingCode: string): Promise<ExtensionSocialPairingStatus> {
+    return this.#call('/admin/extension-pairings/approve', { pairingCode });
+  }
+
+  async listExtensionSocialDevices(): Promise<ExtensionSocialDevice[]> {
+    const result = await this.#call<{ items: ExtensionSocialDevice[] }>('/admin/extension-devices/list', {});
+    return result.items;
+  }
+
+  async revokeExtensionSocialDevice(deviceId: string, revision: number): Promise<void> {
+    await this.#call('/admin/extension-devices/revoke', { deviceId, revision });
+  }
+
+  async listSocialDestinations(): Promise<SocialDestination[]> {
+    const result = await this.#call<{ items: SocialDestination[] }>('/social/destinations/list', {});
+    return result.items;
+  }
+
+  prepareSocialPost(input: Omit<SocialPostPrepareRequest, 'requestId'>): Promise<SocialPublishJob> {
+    return this.#call('/social-posts/prepare', input);
+  }
+
+  publishSocialPost(jobId: string): Promise<SocialPublishJob> {
+    return this.#call('/social-posts/publish', { jobId });
+  }
+
+  advanceSocialPost(jobId: string): Promise<SocialPublishJob> {
+    return this.#call('/social-posts/advance', { jobId });
+  }
+
+  getSocialPost(jobId: string): Promise<SocialPublishJob> {
+    return this.#call('/social-posts/get', { jobId });
+  }
+
+  getSocialPostPermalink(jobId: string): Promise<SocialPostPermalink> {
+    return this.#call('/social-posts/permalink/get', { jobId });
+  }
+
+  async listSocialPosts(limit = 50): Promise<SocialPublishJob[]> {
+    const result = await this.#call<{ items: SocialPublishJob[] }>('/social-posts/list', { limit });
+    return result.items;
+  }
+
+  cancelSocialPost(jobId: string): Promise<SocialPublishJob> {
+    return this.#call('/social-posts/cancel', { jobId });
+  }
+
   async #passkeyAuthenticationResult(
     path: string,
     challengeId: string,
@@ -617,6 +750,9 @@ export class BffControlClient implements ControlClient {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     const csrfToken = this.csrfToken();
     if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+    const bearerToken = this.#bearerToken?.();
+    if (bearerToken) headers.Authorization = `Bearer ${bearerToken}`;
+    if (this.#extensionId) headers['X-One-Vegetable-Extension-ID'] = this.#extensionId;
     const response = await this.#network.request({
       service: 'bff',
       url: new URL(`${this.#apiPrefix}${path}`, this.#baseUrl),

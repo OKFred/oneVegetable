@@ -2,7 +2,11 @@ import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
-import { chromium, expect, test, type BrowserContext } from '@playwright/test';
+import { chromium, expect, test, type BrowserContext, type Page } from '@playwright/test';
+import {
+  EXTENSION_REVIEW_PROMPT_INTERVAL_MILLISECONDS,
+  EXTENSION_REVIEW_PROMPT_STORAGE_KEY
+} from '../../packages/core/src/extension-review-prompt';
 
 let context: BrowserContext | null = null;
 
@@ -27,6 +31,7 @@ test.beforeAll(async () => {
   const userDataDir = await mkdtemp(resolve(tmpdir(), 'one-vegetable-e2e-'));
   context = await chromium.launchPersistentContext(userDataDir, {
     headless: false,
+    locale: 'zh-CN',
     args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`]
   });
 });
@@ -90,6 +95,11 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(privacyPage.getByRole('heading', { name: 'oneVegetable Privacy Policy' })).toBeVisible();
   await privacyPage.close();
 
+  const popupPage = await browserContext.newPage();
+  await popupPage.goto(`chrome-extension://${extensionId}/popup.html`);
+  await expect(popupPage.getByText('用得不错？赏个评价。')).toHaveCount(0);
+  await popupPage.close();
+
   const page = await browserContext.newPage();
   await page.goto(`chrome-extension://${extensionId}/options.html`);
 
@@ -113,16 +123,104 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: '稍后，仅浏览' }).click();
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
+  await expect(page.getByText('用得不错？赏个评价。')).toHaveCount(0);
+  await expect
+    .poll(() => readExtensionLocalValue(page, EXTENSION_REVIEW_PROMPT_STORAGE_KEY))
+    .toMatchObject({
+      schemaVersion: 1,
+      lastPromptTimeUtc: null,
+      reviewLinkOpenedTimeUtc: null
+    });
+
+  const firstDueTime = Date.now();
+  await writeExtensionLocalValue(page, EXTENSION_REVIEW_PROMPT_STORAGE_KEY, {
+    schemaVersion: 1,
+    firstSeenTimeUtc: firstDueTime - EXTENSION_REVIEW_PROMPT_INTERVAL_MILLISECONDS,
+    lastPromptTimeUtc: null,
+    reviewLinkOpenedTimeUtc: null
+  });
+  await page.reload();
+  const firstReviewDialog = page.getByRole('dialog', { name: '用得不错？赏个评价。' });
+  await expect(firstReviewDialog).toBeVisible();
+  await expect(firstReviewDialog.getByRole('button')).toHaveCount(2);
+  await firstReviewDialog.getByRole('button', { name: '以后再说' }).click();
+  await expect(firstReviewDialog).toHaveCount(0);
+  const claimedReviewState = (await readExtensionLocalValue(page, EXTENSION_REVIEW_PROMPT_STORAGE_KEY)) as {
+    lastPromptTimeUtc?: unknown;
+  };
+  expect(claimedReviewState.lastPromptTimeUtc).toEqual(expect.any(Number));
+
+  await page.reload();
+  await expect(page.getByText('用得不错？赏个评价。')).toHaveCount(0);
+
+  const secondDueTime = Date.now();
+  await writeExtensionLocalValue(page, EXTENSION_REVIEW_PROMPT_STORAGE_KEY, {
+    schemaVersion: 1,
+    firstSeenTimeUtc: secondDueTime - EXTENSION_REVIEW_PROMPT_INTERVAL_MILLISECONDS * 2,
+    lastPromptTimeUtc: secondDueTime - EXTENSION_REVIEW_PROMPT_INTERVAL_MILLISECONDS,
+    reviewLinkOpenedTimeUtc: null
+  });
+  await page.evaluate(() => {
+    localStorage.setItem(
+      'one-vegetable:preferences:v2',
+      JSON.stringify({ uiLocale: 'zh-CN', alibabaLanguage: 'zh_CN', theme: 'dark' })
+    );
+  });
+  await page.reload();
+  const secondReviewDialog = page.getByRole('dialog', { name: '用得不错？赏个评价。' });
+  await expect(secondReviewDialog).toBeVisible();
+  await expect(page.locator('html')).toHaveClass(/dark/u);
+  const reviewPagePromise = browserContext.waitForEvent('page');
+  await secondReviewDialog.getByRole('button', { name: '去评价' }).click();
+  const reviewPage = await reviewPagePromise;
+  await expect
+    .poll(() => reviewPage.url())
+    .toMatch(/chromewebstore\.google\.com\/detail\/(?:[^/]+\/)?aepfdoldflokikbbcpnfifkacpfakmjc\/reviews$/u);
+  await reviewPage.close().catch(() => undefined);
+
+  const reviewedState = (await readExtensionLocalValue(page, EXTENSION_REVIEW_PROMPT_STORAGE_KEY)) as {
+    reviewLinkOpenedTimeUtc?: unknown;
+  };
+  expect(reviewedState.reviewLinkOpenedTimeUtc).toEqual(expect.any(Number));
+  await writeExtensionLocalValue(page, EXTENSION_REVIEW_PROMPT_STORAGE_KEY, {
+    ...reviewedState,
+    schemaVersion: 1,
+    firstSeenTimeUtc: secondDueTime - EXTENSION_REVIEW_PROMPT_INTERVAL_MILLISECONDS * 3,
+    lastPromptTimeUtc: secondDueTime - EXTENSION_REVIEW_PROMPT_INTERVAL_MILLISECONDS * 2
+  });
+  await page.bringToFront();
+  await page.reload();
+  await expect(page.getByText('用得不错？赏个评价。')).toHaveCount(0);
+
+  await page.getByTestId('language-toggle').click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+  await expect(page).toHaveTitle('oneVegetable · Alibaba.com Operations Workspace');
+  await expect(page.getByRole('heading', { name: 'Operations dashboard' })).toBeVisible();
+  await page.getByTestId('language-toggle').click();
+  await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
   await page.getByRole('link', { name: '设置', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '凭证保险库' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '开放平台凭证保护' })).toBeVisible();
   await expect(page.getByText('未创建', { exact: true })).toBeVisible();
   await page.getByLabel('App Key').fill('e2e-app-key');
   await page.getByLabel('App Secret').fill('e2e-secret');
   await page.getByLabel('Access Token').fill('e2e-token');
-  await page.getByLabel('新建保险库口令').fill('e2e-vault-password');
-  await page.getByLabel('确认保险库口令').fill('e2e-vault-password');
-  await page.getByRole('button', { name: '创建保险库并保存' }).click();
-  await expect(page.getByText('加密凭证保险库已创建并保持解锁。').first()).toBeVisible();
+  await expect(page.getByLabel('App Key')).toHaveAttribute('data-feedback-redact', '');
+  await page.getByTestId('feedback-launcher').click();
+  const feedbackDialog = page.getByRole('dialog', { name: '提交产品反馈' });
+  await expect(feedbackDialog).toBeVisible();
+  await expect(feedbackDialog.getByRole('img', { name: '待提交的页面截图' })).toHaveCount(0);
+  await feedbackDialog.getByRole('button', { name: '截取当前页面' }).click();
+  await expect(feedbackDialog.getByRole('img', { name: '待提交的页面截图' })).toBeVisible({
+    timeout: 20_000
+  });
+  await feedbackDialog.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(feedbackDialog).toHaveCount(0);
+  await page.getByLabel('设置保护口令').fill('e2e-vault-password');
+  await page.getByLabel('确认保护口令').fill('e2e-vault-password');
+  await page.getByRole('button', { name: '保存设置', exact: true }).click();
+  await expect(
+    page.getByText('凭证与设置已加密保存，并将在当前 Chrome 会话内保持可用。').first()
+  ).toBeVisible();
   const encryptedSettings = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {
@@ -169,6 +267,38 @@ test('MV3 options page persists settings and exposes the audited catalog', async
     error: { code: 'LOGISTICS_QUALIFICATION_REQUIRED' }
   });
 
+  const productCreationContractErrors = await page.evaluate(async () => {
+    const extension = (
+      globalThis as unknown as {
+        chrome: { runtime: { sendMessage(value: object): Promise<unknown> } };
+      }
+    ).chrome;
+    return Promise.all(
+      ['saveProductDraft', 'publishProduct'].map((operation) =>
+        extension.runtime.sendMessage({
+          requestId: crypto.randomUUID(),
+          kind: 'gateway-request',
+          operation,
+          payload: { categoryId: 0, language: 'invalid', schemaXml: '' }
+        })
+      )
+    );
+  });
+  expect(productCreationContractErrors).toHaveLength(2);
+  expect(productCreationContractErrors).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        ok: false,
+        error: expect.objectContaining({ code: 'REQUEST_CONTRACT_INVALID' })
+      }),
+      expect.objectContaining({
+        ok: false,
+        error: expect.objectContaining({ code: 'REQUEST_CONTRACT_INVALID' })
+      })
+    ])
+  );
+  expect(JSON.stringify(productCreationContractErrors)).not.toContain('REAL_MUTATION_DISABLED');
+
   const diagnosticsBeforeRestart = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {
@@ -212,38 +342,36 @@ test('MV3 options page persists settings and exposes the audited catalog', async
 
   await page.reload();
   await page.getByRole('link', { name: '设置', exact: true }).click();
-  await expect(page.getByText('已锁定', { exact: true })).toBeVisible();
-  await expect(page.getByText('扩展后台已重新启动，需要重新解锁')).toBeVisible();
-  const lockedGatewayResponse = await page.evaluate(async () => {
+  await expect(page.getByText('已解锁', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
+  const sessionStorageAfterRestart = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {
-        chrome: { runtime: { sendMessage(value: object): Promise<unknown> } };
+        chrome: { storage: { session: { get(key: null): Promise<Record<string, unknown>> } } };
       }
     ).chrome;
-    return extension.runtime.sendMessage({
-      requestId: crypto.randomUUID(),
-      kind: 'gateway-request',
-      operation: 'getDashboard'
-    });
+    return extension.storage.session.get(null);
   });
-  expect(lockedGatewayResponse).toMatchObject({
-    ok: false,
-    error: { code: 'CREDENTIAL_VAULT_WORKER_RESTARTED' }
-  });
-  await page.getByLabel('保险库口令').fill('wrong-vault-password');
+  expect(JSON.stringify(sessionStorageAfterRestart)).not.toContain('e2e-vault-password');
+  expect(JSON.stringify(sessionStorageAfterRestart)).not.toContain('e2e-app-key');
+  expect(JSON.stringify(sessionStorageAfterRestart)).not.toContain('e2e-secret');
+  expect(JSON.stringify(sessionStorageAfterRestart)).not.toContain('e2e-token');
+  await page.getByRole('button', { name: '立即锁定' }).click();
+  await expect(page.getByText('已锁定', { exact: true })).toBeVisible();
+  await page.getByLabel('保护口令').fill('wrong-vault-password');
   await page.getByRole('button', { name: '解锁' }).click();
   await expect(page.getByText(/口令不正确或密文已损坏/)).toBeVisible();
   await expect(page.getByText(/requestId:/u)).toBeVisible();
   await expect(page.getByRole('button', { name: '复制 requestId' })).toBeVisible();
   await expect(page.getByRole('button', { name: '导出脱敏诊断' })).toBeVisible();
-  await page.getByLabel('保险库口令').fill('e2e-vault-password');
+  await page.getByLabel('保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '解锁' }).click();
   await expect(page.getByText('已解锁', { exact: true })).toBeVisible();
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
 
   await page.getByLabel('空闲自动锁定时间').selectOption('5');
   await page.getByRole('button', { name: '保存锁定策略' }).click();
-  await expect(page.getByText(/连续 5 分钟未使用凭证后自动锁定/)).toBeVisible();
+  await expect(page.getByText(/连续 5 分钟未使用后自动锁定/)).toBeVisible();
   const encryptedPolicySettings = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {
@@ -254,16 +382,16 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   });
   expect(JSON.stringify(encryptedPolicySettings)).not.toContain('idleTimeoutMinutes');
 
-  await page.getByLabel('新保险库口令', { exact: true }).fill('e2e-rotated-vault-password');
-  await page.getByLabel('确认新保险库口令', { exact: true }).fill('e2e-rotated-vault-password');
+  await page.getByLabel('新保护口令', { exact: true }).fill('e2e-rotated-vault-password');
+  await page.getByLabel('确认新保护口令', { exact: true }).fill('e2e-rotated-vault-password');
   await page.getByRole('button', { name: '更换口令' }).click();
-  await expect(page.getByText('保险库已使用新 salt 和新口令重新加密。')).toBeVisible();
+  await expect(page.getByText('凭证已使用新 salt 和新口令重新加密。')).toBeVisible();
   await page.getByRole('button', { name: '立即锁定' }).click();
   await expect(page.getByText('已锁定', { exact: true })).toBeVisible();
-  await page.getByLabel('保险库口令').fill('e2e-vault-password');
+  await page.getByLabel('保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '解锁' }).click();
   await expect(page.getByText(/口令不正确或密文已损坏/)).toBeVisible();
-  await page.getByLabel('保险库口令').fill('e2e-rotated-vault-password');
+  await page.getByLabel('保护口令').fill('e2e-rotated-vault-password');
   await page.getByRole('button', { name: '解锁' }).click();
   await expect(page.getByText('已解锁', { exact: true })).toBeVisible();
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
@@ -316,7 +444,10 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   expect(platformGateErrors.every((response) => JSON.stringify(response).includes('ok":false'))).toBe(true);
   expect(JSON.stringify(platformGateErrors[0])).toContain('天鹿风控协议');
   expect(JSON.stringify(platformGateErrors[1])).toContain('URL 爬取供应商');
-  expect(JSON.stringify(platformGateErrors[2])).toContain('后台已在出网前拒绝');
+  expect(platformGateErrors[2]).toMatchObject({
+    ok: false,
+    error: { code: 'REAL_MUTATION_DISABLED' }
+  });
 
   await page.evaluate(() => {
     localStorage.setItem(
@@ -334,7 +465,8 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByText('发现从旧版本迁移的本地草稿')).toBeVisible();
   await page.getByRole('button', { name: '继续本地草稿' }).click();
   await page.getByRole('button', { name: /6\. 检查与提交/ }).click();
-  await expect(page.getByRole('button', { name: /发布商品/ })).toBeDisabled();
+  await expect(page.getByRole('button', { name: /保存平台草稿/ })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /发布商品/ })).toBeEnabled();
   await page.getByRole('button', { name: /4\. 商品详情/ }).click();
   await page.getByRole('button', { name: /更多选填信息/ }).click();
   await page.getByRole('button', { name: '详情模板' }).click();
@@ -497,10 +629,12 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('link', { name: '设置', exact: true }).click();
   await expect(page.getByText('待迁移', { exact: true })).toBeVisible();
   await expect(page.getByText(/真实请求已停止读取该记录/)).toBeVisible();
-  await page.getByLabel('新建保险库口令').fill('migrated-vault-password');
-  await page.getByLabel('确认保险库口令').fill('migrated-vault-password');
+  await page.getByLabel('设置保护口令').fill('migrated-vault-password');
+  await page.getByLabel('确认保护口令').fill('migrated-vault-password');
   await page.getByRole('button', { name: '加密并迁移旧凭证' }).click();
-  await expect(page.getByText('旧版明文凭证已原位迁移到加密保险库。').first()).toBeVisible();
+  await expect(
+    page.getByText('旧版明文凭证已原位加密，并在当前 Chrome 会话内保持可用。').first()
+  ).toBeVisible();
   const migratedEncryptedSettings = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {
@@ -513,3 +647,28 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   expect(JSON.stringify(migratedEncryptedSettings)).not.toContain('legacy-e2e-secret');
   expect(JSON.stringify(migratedEncryptedSettings)).not.toContain('legacy-e2e-token');
 });
+
+async function readExtensionLocalValue(page: Page, key: string): Promise<unknown> {
+  return page.evaluate(async (storageKey) => {
+    const extension = (
+      globalThis as unknown as {
+        chrome: { storage: { local: { get(key: string): Promise<Record<string, unknown>> } } };
+      }
+    ).chrome;
+    return (await extension.storage.local.get(storageKey))[storageKey];
+  }, key);
+}
+
+async function writeExtensionLocalValue(page: Page, key: string, value: unknown): Promise<void> {
+  await page.evaluate(
+    async ({ storageKey, storageValue }) => {
+      const extension = (
+        globalThis as unknown as {
+          chrome: { storage: { local: { set(value: object): Promise<void> } } };
+        }
+      ).chrome;
+      await extension.storage.local.set({ [storageKey]: storageValue });
+    },
+    { storageKey: key, storageValue: value }
+  );
+}

@@ -36,6 +36,7 @@ import ProductDescriptionTemplatePanel from './ProductDescriptionTemplatePanel.v
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
+import { useUiI18n } from '../i18n';
 
 const props = withDefaults(
   defineProps<{
@@ -50,6 +51,7 @@ const emit = defineEmits<{
   converted: [];
   imageStatus: [status: ProductDescriptionImageMetadata & { url: string }];
 }>();
+const { locale, t } = useUiI18n();
 
 const PhotoBankImage = Image.extend({
   addAttributes() {
@@ -71,7 +73,7 @@ const PhotoBankImage = Image.extend({
   }
 });
 
-const inspection = computed(() => sanitizeProductDescriptionHtml(props.modelValue));
+const inspection = computed(() => sanitizeProductDescriptionHtml(props.modelValue, locale.value));
 const converted = ref(false);
 const reviewingConversion = ref(false);
 const readOnlyView = ref<'preview' | 'source'>('preview');
@@ -85,7 +87,7 @@ const conversionChanges = computed<ProductDescriptionSanitizationChange[]>(() =>
     changes.unshift({
       type: 'unwrapped-element',
       target: 'smart-detail',
-      detail: '智能详情将降级为 API 可维护的普通详情（productDescType=2）'
+      detail: t('products.descriptionEditor.smartConversion')
     });
   }
   return changes;
@@ -119,7 +121,7 @@ const editor = useEditor({
   ],
   onUpdate: ({ editor: currentEditor }) => {
     if (!editable.value) return;
-    emit('update:modelValue', sanitizeProductDescriptionHtml(currentEditor.getHTML()).html);
+    emit('update:modelValue', sanitizeProductDescriptionHtml(currentEditor.getHTML(), locale.value).html);
   }
 });
 
@@ -128,7 +130,7 @@ watch(
   () => props.modelValue,
   (value) => {
     if (!editor.value) return;
-    const safeHtml = sanitizeProductDescriptionHtml(value).html;
+    const safeHtml = sanitizeProductDescriptionHtml(value, locale.value).html;
     if (safeHtml !== editor.value.getHTML())
       editor.value.commands.setContent(safeHtml, { emitUpdate: false });
   }
@@ -175,7 +177,7 @@ function insertPhoto(photos: Photo[]): void {
 
 function applyTemplate(payload: { mode: 'insert' | 'append' | 'replace'; html: string }): void {
   if (!editor.value || !editable.value) return;
-  const html = sanitizeProductDescriptionHtml(payload.html).html;
+  const html = sanitizeProductDescriptionHtml(payload.html, locale.value).html;
   if (payload.mode === 'replace') {
     editor.value.commands.setContent(html);
     emit('update:modelValue', html);
@@ -203,13 +205,23 @@ function reportImageStatus(event: Event, loaded: boolean): void {
   <div class="rounded-lg border">
     <div v-if="!editable" class="space-y-3 p-4">
       <div class="flex flex-wrap items-center gap-2">
-        <Badge variant="warning">只读</Badge>
-        <span class="text-sm font-medium">{{ smartDetail ? '智能详情' : '旧详情含不支持的 HTML' }}</span>
+        <Badge variant="warning">{{ t('products.descriptionEditor.readOnly') }}</Badge>
+        <span class="text-sm font-medium">{{
+          t(
+            smartDetail
+              ? 'products.descriptionEditor.smartDetail'
+              : 'products.descriptionEditor.unsupportedHtml'
+          )
+        }}</span>
       </div>
       <p class="text-xs text-muted-foreground">
-        API 只能维护普通详情。确认转换前保留原始内容，不修改商品 Schema。
+        {{ t('products.descriptionEditor.conversionNotice') }}
       </p>
-      <div class="flex w-fit rounded-md bg-muted p-1" role="tablist" aria-label="平台原始详情视图">
+      <div
+        class="flex w-fit rounded-md bg-muted p-1"
+        role="tablist"
+        :aria-label="t('products.descriptionEditor.sourceTabs')"
+      >
         <button
           type="button"
           role="tab"
@@ -218,7 +230,7 @@ function reportImageStatus(event: Event, loaded: boolean): void {
           :aria-selected="readOnlyView === 'preview'"
           @click="readOnlyView = 'preview'"
         >
-          安全预览
+          {{ t('products.descriptionEditor.safePreview') }}
         </button>
         <button
           type="button"
@@ -228,10 +240,14 @@ function reportImageStatus(event: Event, loaded: boolean): void {
           :aria-selected="readOnlyView === 'source'"
           @click="readOnlyView = 'source'"
         >
-          原始 HTML
+          {{ t('products.descriptionEditor.originalHtml') }}
         </button>
       </div>
-      <div v-if="readOnlyView === 'preview'" role="tabpanel" aria-label="平台原始详情安全预览">
+      <div
+        v-if="readOnlyView === 'preview'"
+        role="tabpanel"
+        :aria-label="t('products.descriptionEditor.previewLabel')"
+      >
         <EditorContent
           v-if="editor && inspection.html"
           :editor="editor"
@@ -243,35 +259,41 @@ function reportImageStatus(event: Event, loaded: boolean): void {
           v-else-if="!inspection.html"
           class="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground"
         >
-          原始详情经过安全过滤后没有可展示的内容。
+          {{ t('products.descriptionEditor.emptyPreview') }}
         </p>
         <p v-else class="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-          正在准备详情预览…
+          {{ t('products.descriptionEditor.preparingPreview') }}
         </p>
         <p class="mt-2 text-xs text-muted-foreground">
-          预览会加载国际站图库图片；脚本、iframe、事件和不受支持的样式不会执行。
-          <span v-if="inspection.changes.length">已安全处理 {{ inspection.changes.length }} 项内容。</span>
+          {{ t('products.descriptionEditor.previewNotice') }}
+          <span v-if="inspection.changes.length">
+            {{ t('products.descriptionEditor.sanitizedChanges', { count: inspection.changes.length }) }}
+          </span>
         </p>
       </div>
       <pre
         v-else
         role="tabpanel"
-        aria-label="平台原始详情 HTML 源码"
+        :aria-label="t('products.descriptionEditor.sourceLabel')"
         class="max-h-80 overflow-auto whitespace-pre-wrap rounded-md bg-slate-950 p-3 text-xs text-slate-100"
         >{{ modelValue }}</pre>
       <Button variant="outline" size="sm" @click="reviewingConversion = true">
-        <Braces class="size-4" />查看转换变化
+        <Braces class="size-4" />{{ t('products.descriptionEditor.reviewConversion') }}
       </Button>
       <div v-if="reviewingConversion" class="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
-        <p class="font-medium">转换会产生以下变化</p>
+        <p class="font-medium">{{ t('products.descriptionEditor.conversionChanges') }}</p>
         <ul class="mt-2 list-disc space-y-1 pl-5 text-xs">
           <li v-for="(change, index) in conversionChanges" :key="`${change.target}:${index}`">
             {{ change.detail }}
           </li>
         </ul>
         <div class="mt-3 flex gap-2">
-          <Button size="sm" @click="confirmConversion">确认转换为普通详情</Button>
-          <Button variant="ghost" size="sm" @click="reviewingConversion = false">取消</Button>
+          <Button size="sm" @click="confirmConversion">
+            {{ t('products.descriptionEditor.confirmConversion') }}
+          </Button>
+          <Button variant="ghost" size="sm" @click="reviewingConversion = false">
+            {{ t('common.actions.cancel') }}
+          </Button>
         </div>
       </div>
     </div>
@@ -281,83 +303,91 @@ function reportImageStatus(event: Event, loaded: boolean): void {
         <Button
           size="icon"
           variant="ghost"
-          aria-label="粗体"
+          :aria-label="t('products.descriptionEditor.toolbar.bold')"
           @click="editor?.chain().focus().toggleBold().run()"
           ><Bold class="size-4"
         /></Button>
         <Button
           size="icon"
           variant="ghost"
-          aria-label="斜体"
+          :aria-label="t('products.descriptionEditor.toolbar.italic')"
           @click="editor?.chain().focus().toggleItalic().run()"
           ><Italic class="size-4"
         /></Button>
         <Button
           size="icon"
           variant="ghost"
-          aria-label="下划线"
+          :aria-label="t('products.descriptionEditor.toolbar.underline')"
           @click="editor?.chain().focus().toggleUnderline().run()"
           ><UnderlineIcon class="size-4"
         /></Button>
         <Button
           size="icon"
           variant="ghost"
-          aria-label="二级标题"
+          :aria-label="t('products.descriptionEditor.toolbar.heading2')"
           @click="editor?.chain().focus().toggleHeading({ level: 2 }).run()"
           ><Heading2 class="size-4"
         /></Button>
         <Button
           size="icon"
           variant="ghost"
-          aria-label="三级标题"
+          :aria-label="t('products.descriptionEditor.toolbar.heading3')"
           @click="editor?.chain().focus().toggleHeading({ level: 3 }).run()"
           ><Heading3 class="size-4"
         /></Button>
         <Button
           size="icon"
           variant="ghost"
-          aria-label="四级标题"
+          :aria-label="t('products.descriptionEditor.toolbar.heading4')"
           @click="editor?.chain().focus().toggleHeading({ level: 4 }).run()"
           ><Heading4 class="size-4"
         /></Button>
         <Button
           size="icon"
           variant="ghost"
-          aria-label="无序列表"
+          :aria-label="t('products.descriptionEditor.toolbar.bulletList')"
           @click="editor?.chain().focus().toggleBulletList().run()"
           ><List class="size-4"
         /></Button>
         <Button
           size="icon"
           variant="ghost"
-          aria-label="有序列表"
+          :aria-label="t('products.descriptionEditor.toolbar.orderedList')"
           @click="editor?.chain().focus().toggleOrderedList().run()"
           ><ListOrdered class="size-4"
         /></Button>
         <Button
           size="icon"
           variant="ghost"
-          aria-label="引用"
+          :aria-label="t('products.descriptionEditor.toolbar.quote')"
           @click="editor?.chain().focus().toggleBlockquote().run()"
           ><Quote class="size-4"
         /></Button>
         <Button
           size="icon"
           variant="ghost"
-          aria-label="插入表格"
+          :aria-label="t('products.descriptionEditor.toolbar.table')"
           @click="editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()"
           ><Table2 class="size-4"
         /></Button>
         <div class="ml-1 flex min-w-56 flex-1 gap-1">
-          <Input v-model="linkUrl" placeholder="https://…" aria-label="链接地址" />
-          <Button variant="outline" size="icon" aria-label="设置链接" @click="setLink"
+          <Input
+            v-model="linkUrl"
+            placeholder="https://…"
+            :aria-label="t('products.descriptionEditor.toolbar.linkAddress')"
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            :aria-label="t('products.descriptionEditor.toolbar.setLink')"
+            @click="setLink"
             ><LinkIcon class="size-4"
           /></Button>
         </div>
         <PhotoBankPicker
           :model-value="pickedPhotos"
           :max="1"
-          button-label="插入图库图片"
+          :button-label="t('products.descriptionEditor.toolbar.insertGalleryImage')"
           @update:model-value="insertPhoto"
         />
         <ProductDescriptionTemplatePanel
@@ -374,7 +404,7 @@ function reportImageStatus(event: Event, loaded: boolean): void {
         @error.capture="reportImageStatus($event, false)"
       />
       <p class="border-t px-4 py-2 text-xs text-muted-foreground">
-        输出仅保留安全标签；详情图片必须来自国际站图库。
+        {{ t('products.descriptionEditor.safeOutput') }}
       </p>
     </template>
   </div>

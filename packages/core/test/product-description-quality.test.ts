@@ -21,6 +21,28 @@ describe('product description quality suggestions', () => {
     expect(short.every((issue) => issue.level !== 'error')).toBe(true);
   });
 
+  it('emits English project quality suggestions without translating platform content', () => {
+    const issues = analyzeProductDescriptionQuality({
+      html: '',
+      locale: 'en-US',
+      schemaIssues: [
+        {
+          fieldKey: 'field:0',
+          severity: 'warning',
+          rule: 'requiredRule',
+          message: 'Alibaba 原始字段提示'
+        }
+      ]
+    });
+    expect(issues.find((issue) => issue.code === 'empty-description')).toMatchObject({
+      message: 'Product description is empty',
+      remediation: 'Add a buyer-facing introduction, selling points, specifications, and use cases.'
+    });
+    const schemaIssue = issues.find((issue) => issue.code === 'schema-requiredRule');
+    expect(schemaIssue?.message).toBe('Alibaba 原始字段提示');
+    expect(schemaIssue?.remediation).toContain('Alibaba API response is final');
+  });
+
   it('reports long unstructured content and paragraphs', () => {
     const words = Array.from({ length: 301 }, () => 'power').join(' ');
     const issues = analyzeProductDescriptionQuality({ html: `<p>${words}</p>` });
@@ -55,16 +77,31 @@ describe('product description quality suggestions', () => {
     );
   });
 
-  it('keeps Alibaba Schema errors blocking and official messages advisory', () => {
+  it('distinguishes publish minimum blockers from advisory Alibaba Schema rules', () => {
     const officialHints = createProductScoreOfficialHints(['Use accurate keywords', 'Add scenario images']);
     const issues = analyzeProductDescriptionQuality({
       html: '<p>Short copy</p>',
       schemaIssues: [
-        { fieldKey: 'field:0', severity: 'error', rule: 'requiredRule', message: 'Title is required' }
+        {
+          fieldKey: 'field:0',
+          severity: 'error',
+          rule: 'publishMinimumProductTitle',
+          message: 'Title is required'
+        },
+        {
+          fieldKey: 'field:1',
+          severity: 'warning',
+          rule: 'requiredRule',
+          message: 'Material is recommended'
+        }
       ],
       officialHints
     });
     expect(issues.find((issue) => issue.source === 'alibaba-schema')?.level).toBe('error');
+    expect(issues.find((issue) => issue.code === 'schema-requiredRule')).toMatchObject({
+      level: 'warning',
+      remediation: '建议提交前核对；本地预检不会阻止提交，最终以 Alibaba 接口返回为准。'
+    });
     expect(
       issues.filter((issue) => issue.source === 'official').every((issue) => issue.level === 'warning')
     ).toBe(true);

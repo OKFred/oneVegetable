@@ -1,3 +1,9 @@
+<script setup lang="ts">
+import { useUiI18n } from '../i18n';
+
+const { t } = useUiI18n();
+</script>
+
 <template>
   <div class="space-y-3 rounded-lg border p-5" role="status" aria-live="polite">
     <div class="h-5 w-40 animate-pulse rounded bg-muted"></div>
@@ -6,6 +12,6 @@
       <div class="h-20 animate-pulse rounded bg-muted/70"></div>
       <div class="h-20 animate-pulse rounded bg-muted/70"></div>
     </div>
-    <span class="sr-only">正在加载商品编辑功能</span>
+    <span class="sr-only">{{ t('products.editor.loading') }}</span>
   </div>
 </template>

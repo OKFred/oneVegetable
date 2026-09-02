@@ -18,6 +18,7 @@ export default defineConfig({
   reporter: 'list',
   use: {
     baseURL: webOrigin,
+    locale: 'zh-CN',
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure'
   },

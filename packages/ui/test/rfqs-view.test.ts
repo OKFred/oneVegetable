@@ -135,7 +135,9 @@ describe('RfqsView', () => {
       expect(wrapper.text()).toContain('isv.permission-api-package-limit');
     });
     expect(gateway.calls).toEqual(['getRfqEquity']);
-    expect(wrapper.find('button').text()).not.toContain('RFQ 市场');
+    const marketplace = wrapper.get('a[href="https://sourcing.alibaba.com/"]');
+    expect(marketplace.text()).toContain('前往 Alibaba.com RFQ 市场');
+    expect(marketplace.attributes()).toMatchObject({ target: '_blank', rel: 'noreferrer' });
     wrapper.unmount();
   });
 

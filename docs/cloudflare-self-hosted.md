@@ -8,6 +8,8 @@
 
 部署过程会从仓库根目录构建 Vue Web 与 Hono Worker，自动创建并绑定 `DB` D1 数据库，先执行 `apps/api/drizzle` migration，再部署 Worker。Web 与 API 同源，业务接口默认位于 `/api/v1`，不需要另外部署 Pages 或配置 CORS。
 
+Wrangler 还会自动创建私有 `SOCIAL_MEDIA` R2 binding，供 Facebook/Instagram 单图发布暂存素材。R2 桶不启用公共访问；Worker 仅通过随机临时地址提供单个对象，最长保留 24 小时。
+
 部署页只要求两个互相独立的 Secret：
 
 - `BOOTSTRAP_ADMIN_TOKEN`：至少 32 字节随机值，仅用于创建首个管理员。
@@ -55,6 +57,18 @@ Browser Run 免费额度有限。项目开发和 CI 使用本地模拟、Windows
 - Access Token 到期前 5 分钟自动刷新；刷新失败时真实调用会明确失败，不回退到 Mock。
 
 加密 Secret 丢失时无法恢复原密文，只能在 Cloudflare 中配置新密钥并重新导入授权包。本版本不提供在线密钥轮换。
+
+## Meta 社交发布
+
+Alibaba 凭据和 Meta 凭据互不复用。登录后打开“管理后台 → 社交账号”：
+
+1. 在 Meta for Developers 创建或选择一个 Business 应用，并启用 Facebook Login for Business。
+2. 将 App ID、App Secret 和当前 Worker 的公开 Origin 保存到 oneVegetable。
+3. 复制页面显示的 Callback URL，填入 Meta 的 Valid OAuth Redirect URIs。
+4. 连接一个有 Page 管理权限的 Meta 身份；系统会发现 Facebook Page 和与 Page 关联的 Instagram 专业账号。
+5. 回到图库，选择一张图片，通过二次确认发布到一个目标。
+
+所需权限是 `pages_show_list`、`pages_read_engagement`、`pages_manage_posts`、`instagram_basic` 和 `instagram_content_publish`。开发模式只能用于应用角色和可访问的测试资产；正式范围与权限审核以 Meta 当前后台为准。完整限制、插件配对和平台验收边界见 [图库社交分享](social-gallery-sharing.md)。
 
 ## 真实能力与急停
 

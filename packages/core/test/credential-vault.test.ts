@@ -8,6 +8,7 @@ import {
   CredentialVaultError,
   inspectCredentialStorage,
   resealCredentialVault,
+  restoreCredentialVaultSession,
   unlockCredentialVault,
   validateVaultPassphrase
 } from '../src/credential-vault';
@@ -57,6 +58,18 @@ describe('credential vault', () => {
     await expect(unlockCredentialVault(updated, 'correct horse battery staple')).resolves.toMatchObject({
       settings: { appKey: 'updated-key' }
     });
+  });
+
+  it('restores the non-extractable key from session-only key material', async () => {
+    const created = await createCredentialVault(settings, 'correct horse battery staple');
+    const restored = await restoreCredentialVaultSession(created.record, created.sessionKeyMaterial);
+
+    expect(restored.settings).toEqual(settings);
+    expect(restored.policy).toEqual({ idleTimeoutMinutes: 0 });
+    expect(restored.key.extractable).toBe(false);
+    await expect(
+      restoreCredentialVaultSession(created.record, btoa('not-a-valid-session-key'))
+    ).rejects.toMatchObject({ code: 'VAULT_UNLOCK_FAILED' });
   });
 
   it('classifies empty, legacy, encrypted and invalid storage', async () => {

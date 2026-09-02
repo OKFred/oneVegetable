@@ -28,11 +28,13 @@ import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import Sheet from '../components/ui/Sheet.vue';
+import { useUiI18n } from '../i18n';
 import {
   operationAvailabilityMessage,
   useOperationAvailability
 } from '../composables/use-operation-availability';
 import { appHash, parseAppHash } from '../lib/hash-router';
+import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import type { DataColumn } from '../lib/table';
@@ -41,7 +43,8 @@ type Workspace = 'orders' | 'finance' | 'addresses' | 'assurance';
 type OrderDrawerTab = 'overview' | 'payment';
 
 const { gateway, mode } = useServices();
-const { language: preferredLanguage } = useAppPreferences();
+const { t } = useUiI18n();
+const { alibabaLanguage: preferredLanguage } = useAppPreferences();
 const workspace = ref<Workspace>('orders');
 const status = ref('');
 const buyerLoginId = ref('');
@@ -65,7 +68,7 @@ const mutationBlocked = computed(() => !tradeOrderMutation.isAllowed('createTrad
 const mutationDisabledReason = computed(() =>
   operationAvailabilityMessage(
     tradeOrderMutation.reasonCode('createTradeOrder'),
-    '当前环境未开放信保订单创建'
+    t('orders.errors.createUnavailable')
   )
 );
 
@@ -101,7 +104,7 @@ const aggregate = useQuery({
   enabled: computed(() => orderSheetOpen.value && selectedOrder.value !== undefined),
   queryFn: () => {
     const order = selectedOrder.value;
-    if (!order) throw new Error('请先选择订单');
+    if (!order) throw new Error(t('orders.errors.selectOrder'));
     return gateway.request('getTradeOrderAggregate', { order });
   }
 });
@@ -147,13 +150,13 @@ const draftComplete = computed(
 );
 const createOrderDisabledReason = computed(() => {
   if (mutationBlocked.value) return mutationDisabledReason.value;
-  if (createOrder.isPending.value) return '信保订单正在提交';
-  if (!draftComplete.value) return '请完整填写买家、商品 ID、标题、数量和单价';
+  if (createOrder.isPending.value) return t('orders.errors.creating');
+  if (!draftComplete.value) return t('orders.errors.incompleteDraft');
   return '';
 });
 const createOrder = useMutation({
   mutationFn: () => gateway.request('createTradeOrder', orderDraft()),
-  onSuccess: (result) => toast.success(`信保订单已创建：${result.id}`)
+  onSuccess: (result) => toast.success(t('orders.feedback.created', { id: result.id }))
 });
 
 function orderDraft(): TradeOrderDraft {
@@ -210,20 +213,20 @@ function moveOrder(offset: -1 | 1): void {
 }
 
 function maskedAccountNumber(value: string | null): string {
-  if (!value) return '未返回';
+  if (!value) return t('orders.notReturned');
   if (ttAccountRevealed.value) return value;
   const visible = value.slice(-4);
   return `${'•'.repeat(Math.max(4, value.length - visible.length))}${visible}`;
 }
 
-function formatDate(value: string | null): string {
-  return value ? new Date(value).toLocaleString('zh-CN') : '文档未返回';
+function formatOrderDateTime(value: string | null): string {
+  return formatDateTime(value, t('orders.documentNotReturned'));
 }
 
-const columns: DataColumn<TradeOrderSummary>[] = [
+const columns = computed<DataColumn<TradeOrderSummary>[]>(() => [
   {
     accessorKey: 'id',
-    header: '订单号',
+    header: t('orders.columns.orderId'),
     cell: ({ row }) =>
       h(
         'button',
@@ -236,25 +239,29 @@ const columns: DataColumn<TradeOrderSummary>[] = [
         row.original.id
       )
   },
-  { accessorKey: 'buyerLoginId', header: '买家登录名' },
+  {
+    accessorKey: 'buyerLoginId',
+    header: t('orders.columns.buyer'),
+    cell: ({ row }) => h('span', { 'data-feedback-redact': '' }, row.original.buyerLoginId ?? '—')
+  },
   {
     id: 'amount',
-    header: '金额',
+    header: t('orders.columns.amount'),
     cell: ({ row }) => `${row.original.currency} ${row.original.amount}`
   },
   {
     accessorKey: 'status',
-    header: '状态',
+    header: t('orders.columns.status'),
     cell: (context) => h(Badge, { variant: 'warning' }, () => context.getValue<string>())
   },
   {
     accessorKey: 'modifiedAt',
-    header: '最后修改',
-    cell: (context) => formatDate(context.getValue<string | null>())
+    header: t('orders.columns.modifiedAt'),
+    cell: (context) => formatOrderDateTime(context.getValue<string | null>())
   },
   {
     id: 'actions',
-    header: '操作',
+    header: t('orders.columns.actions'),
     cell: ({ row }) =>
       h(
         Button,
@@ -265,18 +272,18 @@ const columns: DataColumn<TradeOrderSummary>[] = [
             selectOrder(row.original);
           }
         },
-        () => '查看'
+        () => t('orders.view')
       )
   }
-];
+]);
 
-const workspaces: { id: Workspace; label: string }[] = [
-  { id: 'orders', label: '订单与聚合详情' },
-  { id: 'finance', label: '资金与履约' },
-  { id: 'addresses', label: '地址 Schema' },
-  { id: 'assurance', label: '信保订单草稿' }
-];
-const workspaceIds = new Set<Workspace>(workspaces.map(({ id }) => id));
+const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
+  { id: 'orders', label: t('orders.workspaces.orders') },
+  { id: 'finance', label: t('orders.workspaces.finance') },
+  { id: 'addresses', label: t('orders.workspaces.addresses') },
+  { id: 'assurance', label: t('orders.workspaces.assurance') }
+]);
+const workspaceIds = new Set<Workspace>(['orders', 'finance', 'addresses', 'assurance']);
 
 function updateOrdersHash(): void {
   const segments: string[] = [workspace.value];
@@ -333,19 +340,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <PageHeader
-    title="交易 / 订单工作台"
-    description="订单、资金、物流、履约和地址能力采用稳定内部模型；原始 Alibaba 响应只在适配层处理。"
-  />
+  <PageHeader :title="t('orders.title')" :description="t('orders.description')" />
   <Card class="mb-4 flex items-start gap-3 border-amber-200 bg-amber-50 p-4 text-amber-900">
     <ShieldAlert class="mt-0.5 size-4 shrink-0" />
     <p class="text-sm leading-5">
-      <code>alibaba.seller.order.get</code>
-      仅允许聚石塔内调用，所以完整详情明确标记为不可用。页面只组合订单摘要、资金和物流；部分接口失败时保留其余结果。
+      {{ t('orders.jushitaNotice') }}
     </p>
   </Card>
 
-  <div class="mb-4 flex flex-wrap gap-2" aria-label="交易工作区">
+  <div class="mb-4 flex flex-wrap gap-2" :aria-label="t('orders.workspaceLabel')">
     <Button
       v-for="item in workspaces"
       :key="item.id"
@@ -360,22 +363,22 @@ onBeforeUnmount(() => {
   <template v-if="workspace === 'orders'">
     <Card class="mb-4 p-4">
       <div class="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-        <Input v-model="buyerLoginId" placeholder="按买家登录名过滤" />
+        <Input v-model="buyerLoginId" data-feedback-redact :placeholder="t('orders.filters.buyer')" />
         <select v-model="status" class="h-9 rounded-md border bg-background px-3 text-sm">
-          <option value="">全部订单状态</option>
-          <option value="unpay">待付款</option>
-          <option value="paid">已付款</option>
-          <option value="undeliver">待发货</option>
-          <option value="delivering">发货中</option>
-          <option value="trade_success">交易完成</option>
-          <option value="trade_close">交易关闭</option>
+          <option value="">{{ t('orders.filters.allStatuses') }}</option>
+          <option value="unpay">{{ t('orders.filters.unpay') }}</option>
+          <option value="paid">{{ t('orders.filters.paid') }}</option>
+          <option value="undeliver">{{ t('orders.filters.undeliver') }}</option>
+          <option value="delivering">{{ t('orders.filters.delivering') }}</option>
+          <option value="trade_success">{{ t('orders.filters.success') }}</option>
+          <option value="trade_close">{{ t('orders.filters.closed') }}</option>
         </select>
         <Button variant="outline" :disabled="orders.isFetching.value" @click="orders.refetch()">
-          <RefreshCw class="size-4" />刷新
+          <RefreshCw class="size-4" />{{ t('common.actions.refresh') }}
         </Button>
       </div>
       <p v-if="orders.data.value?.documentTimeZoneUnverified" class="mt-3 text-xs text-amber-700">
-        官方文档仅写“美国时间”，未给出精确时区；筛选值将原样发送，不擅自换算。
+        {{ t('orders.filters.timeZoneWarning') }}
       </p>
     </Card>
     <QueryState
@@ -391,16 +394,16 @@ onBeforeUnmount(() => {
         v-model:page-size="orderPageSize"
         :total-rows="orders.data.value?.total ?? 0"
         :pagination-disabled="orders.isFetching.value"
-        empty-text="暂无匹配订单"
+        :empty-text="t('orders.noMatch')"
         min-width="900px"
         :get-row-key="(order) => order.id"
         :active-row-key="orderSheetOpen ? selectedOrderId : undefined"
-        :row-aria-label="(order) => `查看订单 ${order.id}`"
+        :row-aria-label="(order) => t('orders.viewOrder', { id: order.id })"
         @row-activate="selectOrder"
       >
         <template #empty>
           <div class="space-y-3 py-4">
-            <p>{{ status || buyerLoginId ? '没有匹配订单' : '当前账号暂无订单' }}</p>
+            <p>{{ status || buyerLoginId ? t('orders.noMatchingOrder') : t('orders.noOrders') }}</p>
             <Button
               v-if="status || buyerLoginId"
               variant="outline"
@@ -409,9 +412,11 @@ onBeforeUnmount(() => {
                 status = '';
                 buyerLoginId = '';
               "
-              >清除筛选</Button
+              >{{ t('orders.clearFilters') }}</Button
             >
-            <Button v-else variant="outline" size="sm" @click="orders.refetch()">重新加载</Button>
+            <Button v-else variant="outline" size="sm" @click="orders.refetch()">
+              {{ t('common.actions.retry') }}
+            </Button>
           </div>
         </template>
       </DataTable>
@@ -421,7 +426,7 @@ onBeforeUnmount(() => {
   <template v-else-if="workspace === 'finance'">
     <div class="grid gap-4 xl:grid-cols-2">
       <Card class="p-5">
-        <h2 class="font-semibold">履约通道</h2>
+        <h2 class="font-semibold">{{ t('orders.finance.channels') }}</h2>
         <QueryState
           :loading="fulfillmentChannels.isPending.value"
           :error="fulfillmentChannels.error.value"
@@ -441,7 +446,7 @@ onBeforeUnmount(() => {
                 </p>
               </div>
               <Badge :variant="channel.enabled ? 'success' : 'warning'">
-                {{ channel.enabled ? '可用' : '不可用' }}
+                {{ channel.enabled ? t('orders.finance.available') : t('orders.finance.unavailable') }}
               </Badge>
             </div>
           </div>
@@ -449,8 +454,8 @@ onBeforeUnmount(() => {
       </Card>
       <Card class="p-5">
         <div class="flex items-center justify-between gap-3">
-          <h2 class="font-semibold">服务费率</h2>
-          <Input v-model="serviceCurrency" class="w-24" aria-label="服务费币种" />
+          <h2 class="font-semibold">{{ t('orders.finance.serviceCharge') }}</h2>
+          <Input v-model="serviceCurrency" class="w-24" :aria-label="t('orders.finance.currencyLabel')" />
         </div>
         <QueryState
           :loading="serviceCharge.isPending.value"
@@ -463,9 +468,17 @@ onBeforeUnmount(() => {
             :key="index"
             class="mt-3 rounded-lg border p-3 text-sm"
           >
-            <p>费率 {{ item.ratio ?? '未返回' }} · 上限 {{ item.maxFee ?? '未返回' }}</p>
+            <p>
+              {{
+                t('orders.finance.rateAndCap', {
+                  rate: item.ratio ?? t('orders.finance.notReturned'),
+                  cap: item.maxFee ?? t('orders.finance.notReturned')
+                })
+              }}
+            </p>
             <p class="mt-1 text-xs text-muted-foreground">
-              {{ item.exportServiceType ?? '服务类型未返回' }} · {{ item.logisticsType ?? '物流类型未返回' }}
+              {{ item.exportServiceType ?? t('orders.finance.serviceTypeMissing') }} ·
+              {{ item.logisticsType ?? t('orders.finance.logisticsTypeMissing') }}
             </p>
           </div>
         </QueryState>
@@ -477,19 +490,19 @@ onBeforeUnmount(() => {
     <Card class="mb-4 p-5">
       <div class="grid gap-3 md:grid-cols-2">
         <label class="space-y-1 text-sm">
-          <span>目的国代码</span>
+          <span>{{ t('orders.addresses.country') }}</span>
           <Input v-model="addressCountry" maxlength="2" placeholder="US" />
         </label>
         <label class="space-y-1 text-sm">
-          <span>买家邮箱（仅用于当前查询）</span>
-          <Input v-model="buyerEmail" type="email" placeholder="buyer@example.com" />
+          <span>{{ t('orders.addresses.buyerEmail') }}</span>
+          <Input v-model="buyerEmail" type="email" data-feedback-redact placeholder="buyer@example.com" />
         </label>
       </div>
-      <p class="mt-3 text-xs text-muted-foreground">邮箱和地址数据不会持久化；离开或刷新页面后即丢弃。</p>
+      <p class="mt-3 text-xs text-muted-foreground">{{ t('orders.addresses.privacy') }}</p>
     </Card>
     <div class="grid gap-4 xl:grid-cols-2">
       <Card class="p-5">
-        <h2 class="font-semibold">官方地址表单 Schema</h2>
+        <h2 class="font-semibold">{{ t('orders.addresses.schema') }}</h2>
         <QueryState
           :loading="addressSchema.isPending.value"
           :error="addressSchema.error.value"
@@ -504,7 +517,7 @@ onBeforeUnmount(() => {
             >
               <div class="flex items-center gap-2">
                 <span class="text-sm font-medium">{{ field.label }}</span>
-                <Badge v-if="field.required" variant="warning">必填</Badge>
+                <Badge v-if="field.required" variant="warning">{{ t('orders.addresses.required') }}</Badge>
                 <Badge variant="outline">{{ field.type }}</Badge>
               </div>
               <code class="mt-1 block text-xs text-muted-foreground">{{ field.id }}</code>
@@ -513,9 +526,9 @@ onBeforeUnmount(() => {
         </QueryState>
       </Card>
       <Card class="p-5">
-        <h2 class="font-semibold">地址簿</h2>
+        <h2 class="font-semibold">{{ t('orders.addresses.addressBook') }}</h2>
         <p v-if="!buyerEmail.includes('@')" class="mt-3 text-sm text-muted-foreground">
-          输入有效邮箱后查询。
+          {{ t('orders.addresses.emailPrompt') }}
         </p>
         <QueryState
           v-else
@@ -528,6 +541,7 @@ onBeforeUnmount(() => {
             v-for="address in addresses.data.value ?? []"
             :key="address.id"
             class="mt-3 rounded-lg border p-3 text-sm"
+            data-feedback-redact
           >
             <div class="flex items-center gap-2">
               <MapPin class="size-4 text-primary" />
@@ -536,11 +550,8 @@ onBeforeUnmount(() => {
             <code class="mt-2 block text-xs text-muted-foreground">{{ address.id }}</code>
           </div>
         </QueryState>
-        <ActionTooltip
-          :disabled="true"
-          reason="当前只接入地址 Schema 和地址查询；国际站地址写入尚未完成账号验收。"
-        >
-          <Button class="mt-4" variant="outline" disabled>新增地址</Button>
+        <ActionTooltip :disabled="true" :reason="t('orders.addresses.writeUnavailable')">
+          <Button class="mt-4" variant="outline" disabled>{{ t('orders.addresses.add') }}</Button>
         </ActionTooltip>
       </Card>
     </div>
@@ -551,31 +562,31 @@ onBeforeUnmount(() => {
       <div class="flex items-start gap-3">
         <FileSignature class="mt-0.5 size-5 text-primary" />
         <div>
-          <h2 class="font-semibold">信保订单草稿</h2>
+          <h2 class="font-semibold">{{ t('orders.assurance.title') }}</h2>
           <p class="mt-1 text-sm text-muted-foreground">
-            Web 本地演示可验证草稿交互；扩展中的创建和修改保持禁用，以当前开放能力说明为准。
+            {{ t('orders.assurance.description') }}
           </p>
         </div>
       </div>
       <div class="mt-5 grid gap-3 md:grid-cols-2">
-        <Input v-model="draftBuyer" placeholder="买家登录名" />
-        <Input v-model="draftCurrency" placeholder="币种，例如 USD" />
-        <Input v-model="draftProductId" placeholder="商品 ID" />
-        <Input v-model="draftSubject" placeholder="商品名称" />
-        <Input v-model="draftQuantity" inputmode="decimal" placeholder="数量" />
-        <Input v-model="draftUnitPrice" inputmode="decimal" placeholder="单价" />
+        <Input v-model="draftBuyer" data-feedback-redact :placeholder="t('orders.assurance.buyer')" />
+        <Input v-model="draftCurrency" :placeholder="t('orders.assurance.currency')" />
+        <Input v-model="draftProductId" :placeholder="t('orders.assurance.productId')" />
+        <Input v-model="draftSubject" :placeholder="t('orders.assurance.subject')" />
+        <Input v-model="draftQuantity" inputmode="decimal" :placeholder="t('orders.assurance.quantity')" />
+        <Input v-model="draftUnitPrice" inputmode="decimal" :placeholder="t('orders.assurance.unitPrice')" />
       </div>
       <div class="mt-4 flex flex-wrap items-center gap-3">
         <ActionTooltip :disabled="Boolean(createOrderDisabledReason)" :reason="createOrderDisabledReason">
           <Button :disabled="Boolean(createOrderDisabledReason)" @click="createOrder.mutate()">
-            {{ mode === 'mock' ? '创建演示信保订单' : '创建信保订单（未开放）' }}
+            {{ mode === 'mock' ? t('orders.assurance.createDemo') : t('orders.assurance.createUnavailable') }}
           </Button>
         </ActionTooltip>
         <Badge v-if="mutationBlocked" variant="warning">{{ mutationDisabledReason }}</Badge>
-        <Badge v-else variant="success">Web 演示</Badge>
+        <Badge v-else variant="success">{{ t('orders.assurance.webDemo') }}</Badge>
       </div>
       <p v-if="createOrder.data.value" class="mt-3 text-sm text-emerald-700">
-        演示订单创建成功：{{ createOrder.data.value.id }}
+        {{ t('orders.assurance.demoCreated', { id: createOrder.data.value.id }) }}
       </p>
       <ErrorNotice v-if="createOrder.error.value" class="mt-3" :error="createOrder.error.value" compact />
     </Card>
@@ -583,8 +594,10 @@ onBeforeUnmount(() => {
 
   <Sheet
     :open="orderSheetOpen"
-    :title="selectedOrder ? `订单 ${selectedOrder.id}` : '订单详情'"
-    description="订单摘要、资金、物流与汇款信息均为只读"
+    :title="
+      selectedOrder ? t('orders.drawer.title', { id: selectedOrder.id }) : t('orders.drawer.fallbackTitle')
+    "
+    :description="t('orders.drawer.description')"
     @update:open="setOrderSheetOpen"
   >
     <template #toolbar>
@@ -598,26 +611,26 @@ onBeforeUnmount(() => {
             variant="ghost"
             size="sm"
             :disabled="!hasPreviousOrder"
-            aria-label="查看上一条订单"
+            :aria-label="t('orders.drawer.previousLabel')"
             @click="moveOrder(-1)"
           >
-            <ChevronLeft class="size-4" />上一条
+            <ChevronLeft class="size-4" />{{ t('orders.drawer.previous') }}
           </Button>
           <Button
             variant="ghost"
             size="sm"
             :disabled="!hasNextOrder"
-            aria-label="查看下一条订单"
+            :aria-label="t('orders.drawer.nextLabel')"
             @click="moveOrder(1)"
           >
-            下一条<ChevronRight class="size-4" />
+            {{ t('orders.drawer.next') }}<ChevronRight class="size-4" />
           </Button>
         </div>
       </div>
     </template>
 
     <template v-if="selectedOrder">
-      <div class="mb-5 flex gap-2" role="tablist" aria-label="订单详情分区">
+      <div class="mb-5 flex gap-2" role="tablist" :aria-label="t('orders.drawer.tabsLabel')">
         <Button
           size="sm"
           :variant="orderDrawerTab === 'overview' ? 'default' : 'outline'"
@@ -625,7 +638,7 @@ onBeforeUnmount(() => {
           :aria-selected="orderDrawerTab === 'overview'"
           @click="setOrderDrawerTab('overview')"
         >
-          概览
+          {{ t('orders.drawer.overview') }}
         </Button>
         <Button
           size="sm"
@@ -634,32 +647,38 @@ onBeforeUnmount(() => {
           :aria-selected="orderDrawerTab === 'payment'"
           @click="setOrderDrawerTab('payment')"
         >
-          TT 汇款
+          {{ t('orders.drawer.payment') }}
         </Button>
       </div>
 
-      <section v-if="orderDrawerTab === 'overview'" class="space-y-4" aria-label="订单概览">
+      <section
+        v-if="orderDrawerTab === 'overview'"
+        class="space-y-4"
+        :aria-label="t('orders.drawer.overviewLabel')"
+      >
         <Card class="p-4">
           <div class="flex items-start gap-3">
             <ClipboardList class="mt-0.5 size-5 text-primary" />
             <div class="grid flex-1 gap-3 sm:grid-cols-2">
               <div>
-                <p class="text-xs text-muted-foreground">订单金额</p>
+                <p class="text-xs text-muted-foreground">{{ t('orders.drawer.orderAmount') }}</p>
                 <p class="mt-1 text-lg font-semibold">
                   {{ selectedOrder.currency }} {{ selectedOrder.amount }}
                 </p>
               </div>
               <div>
-                <p class="text-xs text-muted-foreground">买家</p>
-                <p class="mt-1 font-medium">{{ selectedOrder.buyerLoginId ?? '未返回' }}</p>
+                <p class="text-xs text-muted-foreground">{{ t('orders.drawer.buyer') }}</p>
+                <p class="mt-1 font-medium" data-feedback-redact>
+                  {{ selectedOrder.buyerLoginId ?? t('orders.notReturned') }}
+                </p>
               </div>
               <div>
-                <p class="text-xs text-muted-foreground">创建时间</p>
-                <p class="mt-1 text-sm">{{ formatDate(selectedOrder.createdAt) }}</p>
+                <p class="text-xs text-muted-foreground">{{ t('orders.drawer.createdAt') }}</p>
+                <p class="mt-1 text-sm">{{ formatOrderDateTime(selectedOrder.createdAt) }}</p>
               </div>
               <div>
-                <p class="text-xs text-muted-foreground">最后修改</p>
-                <p class="mt-1 text-sm">{{ formatDate(selectedOrder.modifiedAt) }}</p>
+                <p class="text-xs text-muted-foreground">{{ t('orders.drawer.modifiedAt') }}</p>
+                <p class="mt-1 text-sm">{{ formatOrderDateTime(selectedOrder.modifiedAt) }}</p>
               </div>
             </div>
           </div>
@@ -674,65 +693,67 @@ onBeforeUnmount(() => {
           <div class="grid gap-4 sm:grid-cols-2">
             <Card class="p-4">
               <Banknote class="mb-2 size-5 text-primary" />
-              <p class="text-xs text-muted-foreground">资金</p>
+              <p class="text-xs text-muted-foreground">{{ t('orders.drawer.funds') }}</p>
               <template v-if="aggregate.data.value?.fund">
                 <p class="mt-1 font-semibold">
                   {{ aggregate.data.value.fund.currency }} {{ aggregate.data.value.fund.paidAmount }}
                 </p>
                 <p class="mt-1 text-sm">{{ aggregate.data.value.fund.status }}</p>
               </template>
-              <Badge v-else variant="warning" class="mt-2">当前接口不可用</Badge>
+              <Badge v-else variant="warning" class="mt-2">{{ t('orders.drawer.apiUnavailable') }}</Badge>
             </Card>
             <Card class="p-4">
               <Truck class="mb-2 size-5 text-primary" />
-              <p class="text-xs text-muted-foreground">物流</p>
+              <p class="text-xs text-muted-foreground">{{ t('orders.drawer.logistics') }}</p>
               <template v-if="aggregate.data.value?.logistics">
                 <p class="mt-1 font-semibold">{{ aggregate.data.value.logistics.status }}</p>
                 <p class="mt-1 text-sm">
-                  {{ aggregate.data.value.logistics.carrier ?? '承运商未返回' }}
+                  {{ aggregate.data.value.logistics.carrier ?? t('orders.drawer.carrierMissing') }}
                 </p>
                 <code class="mt-1 block text-xs text-muted-foreground">
-                  {{ aggregate.data.value.logistics.trackingNumber ?? '物流单号未返回' }}
+                  {{ aggregate.data.value.logistics.trackingNumber ?? t('orders.drawer.trackingMissing') }}
                 </code>
               </template>
-              <Badge v-else variant="warning" class="mt-2">当前接口不可用</Badge>
+              <Badge v-else variant="warning" class="mt-2">{{ t('orders.drawer.apiUnavailable') }}</Badge>
             </Card>
           </div>
         </QueryState>
 
         <Card class="border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <p class="font-medium">完整订单详情不可用</p>
+          <p class="font-medium">{{ t('orders.drawer.fullDetailUnavailable') }}</p>
           <p class="mt-1 leading-6">
-            <code>alibaba.seller.order.get</code> 仅允许聚石塔内调用，本页面不会用演示字段补齐。
+            {{ t('orders.drawer.fullDetailReason') }}
           </p>
         </Card>
       </section>
 
-      <section v-else aria-label="TT 汇款信息">
+      <section v-else :aria-label="t('orders.drawer.paymentLabel')">
         <QueryState
           :loading="ttAccount.isPending.value"
           :error="ttAccount.error.value"
           retryable
           @retry="ttAccount.refetch()"
         >
-          <Card v-if="ttAccount.data.value" class="space-y-4 p-5">
+          <Card v-if="ttAccount.data.value" class="space-y-4 p-5" data-feedback-redact>
             <div class="grid gap-4 sm:grid-cols-2">
               <div>
-                <p class="text-xs text-muted-foreground">应付金额</p>
+                <p class="text-xs text-muted-foreground">{{ t('orders.drawer.payable') }}</p>
                 <p class="mt-1 text-lg font-semibold">
                   {{ ttAccount.data.value.currency }} {{ ttAccount.data.value.payableAmount }}
                 </p>
               </div>
               <div>
-                <p class="text-xs text-muted-foreground">收款人</p>
-                <p class="mt-1 font-medium">{{ ttAccount.data.value.accountName ?? '未返回' }}</p>
+                <p class="text-xs text-muted-foreground">{{ t('orders.drawer.recipient') }}</p>
+                <p class="mt-1 font-medium">
+                  {{ ttAccount.data.value.accountName ?? t('orders.notReturned') }}
+                </p>
               </div>
               <div>
-                <p class="text-xs text-muted-foreground">银行</p>
-                <p class="mt-1 font-medium">{{ ttAccount.data.value.bankName ?? '未返回' }}</p>
+                <p class="text-xs text-muted-foreground">{{ t('orders.drawer.bank') }}</p>
+                <p class="mt-1 font-medium">{{ ttAccount.data.value.bankName ?? t('orders.notReturned') }}</p>
               </div>
               <div>
-                <p class="text-xs text-muted-foreground">账号</p>
+                <p class="text-xs text-muted-foreground">{{ t('orders.drawer.account') }}</p>
                 <div class="mt-1 flex items-center gap-2">
                   <code data-testid="tt-account-number">
                     {{ maskedAccountNumber(ttAccount.data.value.accountNumber) }}
@@ -741,7 +762,9 @@ onBeforeUnmount(() => {
                     variant="ghost"
                     size="icon"
                     :disabled="!ttAccount.data.value.accountNumber"
-                    :aria-label="ttAccountRevealed ? '隐藏完整汇款账号' : '显示完整汇款账号'"
+                    :aria-label="
+                      ttAccountRevealed ? t('orders.drawer.hideAccount') : t('orders.drawer.showAccount')
+                    "
                     @click="ttAccountRevealed = !ttAccountRevealed"
                   >
                     <EyeOff v-if="ttAccountRevealed" class="size-4" />
@@ -756,7 +779,7 @@ onBeforeUnmount(() => {
           </Card>
         </QueryState>
         <p class="mt-4 text-xs leading-5 text-muted-foreground">
-          汇款账号仅保留在当前页面内存中；切换订单或关闭详情后会重新遮罩。
+          {{ t('orders.drawer.sensitiveNotice') }}
         </p>
       </section>
     </template>

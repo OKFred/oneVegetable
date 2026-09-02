@@ -3,6 +3,7 @@ import { computed } from 'vue';
 
 import type { DashboardMetricStatus } from '@one-vegetable/core';
 
+import { useUiI18n } from '../i18n';
 import Card from './ui/Card.vue';
 
 const props = defineProps<{
@@ -12,23 +13,24 @@ const props = defineProps<{
   description: string;
   gatewaySourceLabel: string;
 }>();
+const { t } = useUiI18n();
 
 const formattedValue = computed(() =>
   props.value === null || props.value === undefined ? '—' : props.value.toLocaleString()
 );
 const statusText = computed(() => {
   const status = props.status;
-  if (!status) return '状态检测中';
+  if (!status) return t('common.metric.checking');
   if (status.state === 'available') {
-    if (status.source === 'catalog') return '本地能力目录';
+    if (status.source === 'catalog') return t('common.metric.localCatalog');
     return props.value === 0
-      ? `${props.gatewaySourceLabel} · 已确认为 0`
-      : `${props.gatewaySourceLabel} · 已确认`;
+      ? t('common.metric.confirmedZero', { source: props.gatewaySourceLabel })
+      : t('common.metric.confirmed', { source: props.gatewaySourceLabel });
   }
   const reason = status.reasonCode ? ` · ${status.reasonCode}` : '';
-  if (status.state === 'unknown') return `上游未提供可确认总数${reason}`;
-  if (status.state === 'permission-denied') return `当前账号无权限${reason}`;
-  return `接口请求失败${reason}`;
+  if (status.state === 'unknown') return t('common.metric.upstreamUnknown', { reason });
+  if (status.state === 'permission-denied') return t('common.metric.permissionDenied', { reason });
+  return t('common.metric.requestFailed', { reason });
 });
 const statusClass = computed(() => {
   const state = props.status?.state;

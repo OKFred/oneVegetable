@@ -1,13 +1,21 @@
 import { browser } from 'wxt/browser';
 
 import {
+  BffControlClient,
   GatewayException,
   BundledProductDescriptionTemplateClient,
   BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA,
+  CHROME_WEB_STORE_REVIEW_URL,
+  ExtensionProductMutationJobClient,
+  EXTENSION_SOCIAL_BACKEND_STORAGE_KEY,
   approximateStorageBytes,
   APP_PREFERENCES_STORAGE_KEY,
+  LEGACY_APP_PREFERENCES_STORAGE_KEY,
   completeOnboarding,
   createLocalDataInventory,
+  evaluateExtensionReviewPrompt,
+  EXTENSION_REVIEW_PROMPT_STORAGE_KEY,
+  markExtensionReviewLinkOpened,
   normalizeGatewayError,
   ONBOARDING_STORAGE_KEY,
   readOnboardingState,
@@ -22,6 +30,10 @@ import {
   type ExtensionAlibabaCredentialAcquisitionRepository,
   type ExtensionAlibabaCredentialAcquisitionRequest,
   type ExtensionAlibabaCredentialAcquisitionResponse,
+  type ExtensionSocialBackendRepository,
+  type ExtensionReviewPromptRepository,
+  type ExtensionSocialBackendStatus,
+  type ExtensionSocialDevice,
   type AlibabaCredentialAcquisitionContinueCommand,
   type AlibabaCredentialAcquisitionState,
   type AlibabaOpenApiCredentialBundle,
@@ -36,20 +48,135 @@ import {
   type ResponseOf,
   type RuntimeRequest,
   type RuntimeResponse,
+  type SocialPublishingClient,
   type SettingsRepository
 } from '@one-vegetable/core/runtime';
 import '@one-vegetable/ui/styles.css';
 import { ALIBABA_CREDENTIAL_ACQUISITION_ORIGINS } from '../../lib/alibaba-credential-page-driver';
 import { resolveExtensionOperationAvailability } from '../../lib/operation-policy';
+import { EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY } from '../../lib/product-display-mutation-storage';
 
 const operationAvailability = new StaticOperationAvailabilityClient((operation) =>
   resolveExtensionOperationAvailability(operation)
 );
+type RuntimeTranslator = (key: string, values?: Record<string, unknown>) => string;
+let activeRuntimeTranslator: RuntimeTranslator | null = null;
+
+function translateUi(key: string, values?: Record<string, unknown>): string {
+  return activeRuntimeTranslator?.(key, values) ?? key;
+}
+
+const productMutationJobs = new ExtensionProductMutationJobClient({
+  send: (message) => browser.runtime.sendMessage(message)
+});
+
+interface StoredExtensionSocialBackend {
+  schemaVersion: 1;
+  state: 'pending' | 'paired' | 'expired';
+  baseUrl: string;
+  extensionId: string;
+  deviceName: string;
+  pairingId: string | null;
+  pairingCode: string | null;
+  pairingExpiresTimeUtc: number | null;
+  device: ExtensionSocialDevice | null;
+  deviceToken: string | null;
+}
+
+const extensionSocialBackend: ExtensionSocialBackendRepository = {
+  async status() {
+    return publicExtensionSocialStatus(await readExtensionSocialBackend());
+  },
+  async start(baseUrl, deviceName) {
+    const normalizedBaseUrl = normalizeSocialBackendUrl(baseUrl);
+    await ensureOptionalOrigins(
+      [`${new URL(normalizedBaseUrl).origin}/*`],
+      translateUi('settings.extensionRuntime.permissionPurposes.socialBackend')
+    );
+    const client = new BffControlClient({
+      baseUrl: normalizedBaseUrl,
+      extensionId: browser.runtime.id
+    });
+    const started = await client.startExtensionSocialPairing(browser.runtime.id, deviceName);
+    const stored: StoredExtensionSocialBackend = {
+      schemaVersion: 1,
+      state: 'pending',
+      baseUrl: normalizedBaseUrl,
+      extensionId: browser.runtime.id,
+      deviceName: deviceName.trim(),
+      pairingId: started.pairingId,
+      pairingCode: started.pairingCode,
+      pairingExpiresTimeUtc: started.expiresTimeUtc,
+      device: null,
+      deviceToken: null
+    };
+    await writeExtensionSocialBackend(stored);
+    return publicExtensionSocialStatus(stored);
+  },
+  async refresh() {
+    const stored = await requireExtensionSocialBackend();
+    if (stored.state !== 'pending' || !stored.pairingId || !stored.pairingCode) {
+      return publicExtensionSocialStatus(stored);
+    }
+    const client = new BffControlClient({
+      baseUrl: stored.baseUrl,
+      extensionId: stored.extensionId
+    });
+    const result = await client.extensionSocialPairingStatus(
+      stored.pairingId,
+      stored.pairingCode,
+      stored.extensionId
+    );
+    if (result.status === 'paired' && result.device && result.deviceToken) {
+      const paired: StoredExtensionSocialBackend = {
+        ...stored,
+        state: 'paired',
+        pairingId: null,
+        pairingCode: null,
+        pairingExpiresTimeUtc: null,
+        device: result.device,
+        deviceToken: result.deviceToken
+      };
+      await writeExtensionSocialBackend(paired);
+      return publicExtensionSocialStatus(paired);
+    }
+    if (result.status === 'expired' || result.status === 'cancelled' || result.status === 'consumed') {
+      const expired: StoredExtensionSocialBackend = {
+        ...stored,
+        state: 'expired',
+        pairingCode: null,
+        device: result.device,
+        deviceToken: null
+      };
+      await writeExtensionSocialBackend(expired);
+      return publicExtensionSocialStatus(expired);
+    }
+    return publicExtensionSocialStatus(stored);
+  },
+  async disconnect() {
+    await browser.storage.local.remove(EXTENSION_SOCIAL_BACKEND_STORAGE_KEY);
+    return publicExtensionSocialStatus(null);
+  }
+};
+
+const socialPublishing: SocialPublishingClient = {
+  listSocialDestinations: () => withSocialControl((client) => client.listSocialDestinations()),
+  prepareSocialPost: (input) => withSocialControl((client) => client.prepareSocialPost(input)),
+  publishSocialPost: (jobId) => withSocialControl((client) => client.publishSocialPost(jobId)),
+  advanceSocialPost: (jobId) => withSocialControl((client) => client.advanceSocialPost(jobId)),
+  getSocialPost: (jobId) => withSocialControl((client) => client.getSocialPost(jobId)),
+  getSocialPostPermalink: (jobId) => withSocialControl((client) => client.getSocialPostPermalink(jobId)),
+  listSocialPosts: (limit) => withSocialControl((client) => client.listSocialPosts(limit)),
+  cancelSocialPost: (jobId) => withSocialControl((client) => client.cancelSocialPost(jobId))
+};
 
 const settings: SettingsRepository = {
   load: () => requestVault('get-settings', undefined),
   async save(value) {
-    await ensureOptionalHostPermission(value.endpoint, '自定义网关');
+    await ensureOptionalHostPermission(
+      value.endpoint,
+      translateUi('settings.extensionRuntime.permissionPurposes.customGateway')
+    );
     await requestVault('save', value);
   }
 };
@@ -57,7 +184,10 @@ const settings: SettingsRepository = {
 const vault: CredentialVaultRepository = {
   status: () => requestVault('status', undefined),
   create: async (passphrase, value) => {
-    await ensureOptionalHostPermission(value.endpoint, '自定义网关');
+    await ensureOptionalHostPermission(
+      value.endpoint,
+      translateUi('settings.extensionRuntime.permissionPurposes.customGateway')
+    );
     return requestVault('create', { passphrase, settings: value });
   },
   migrate: (passphrase) => requestVault('migrate', { passphrase }),
@@ -71,17 +201,23 @@ let latestAcquisitionState: AlibabaCredentialAcquisitionState | null = null;
 
 const alibabaCredentialAcquisition: ExtensionAlibabaCredentialAcquisitionRepository = {
   async start(callbackUrl) {
-    await ensureOptionalOrigins(ALIBABA_CREDENTIAL_ACQUISITION_ORIGINS, 'Alibaba 凭证获取');
+    await ensureOptionalOrigins(
+      ALIBABA_CREDENTIAL_ACQUISITION_ORIGINS,
+      translateUi('settings.extensionRuntime.permissionPurposes.credentialAcquisition')
+    );
     return rememberAcquisitionState(await requestAcquisition('start', { callbackUrl }));
   },
   async continue(jobId, command) {
     if (command.type === 'confirm-callback-change') {
       const state = latestAcquisitionState;
       if (state?.status !== 'callback-confirmation-required' || state.jobId !== jobId) {
-        throw new Error('Callback 确认状态已失效，请重新读取任务状态');
+        throw new Error(translateUi('settings.extensionRuntime.errors.callbackStateExpired'));
       }
       const callbackUrl = command.confirmed ? state.requestedUrl : state.currentUrl;
-      await ensureOptionalOrigins([`${new URL(callbackUrl).origin}/*`], 'OAuth Callback');
+      await ensureOptionalOrigins(
+        [`${new URL(callbackUrl).origin}/*`],
+        translateUi('settings.extensionRuntime.permissionPurposes.oauthCallback')
+      );
     }
     return rememberAcquisitionState(await requestAcquisition('continue', { jobId, command }));
   },
@@ -127,7 +263,7 @@ async function requestAcquisition<K extends ExtensionAlibabaCredentialAcquisitio
   if (response.requestId !== message.requestId) {
     throw new GatewayException({
       code: 'INVALID_RUNTIME_RESPONSE',
-      message: '凭证获取响应 requestId 不匹配',
+      message: translateUi('settings.extensionRuntime.errors.acquisitionRequestMismatch'),
       retryable: false
     });
   }
@@ -175,7 +311,7 @@ async function requestVault<K extends CredentialVaultOperation>(
     throw new GatewayException(
       {
         code: 'INVALID_RUNTIME_RESPONSE',
-        message: '保险库响应 requestId 不匹配',
+        message: translateUi('settings.extensionRuntime.errors.vaultRequestMismatch'),
         retryable: false
       },
       message.requestId
@@ -209,54 +345,97 @@ const onboarding: OnboardingRepository = {
   }
 };
 
+const reviewPrompt: ExtensionReviewPromptRepository = {
+  async claimDuePrompt() {
+    const stored = await browser.storage.local.get(EXTENSION_REVIEW_PROMPT_STORAGE_KEY);
+    const evaluation = evaluateExtensionReviewPrompt(stored[EXTENSION_REVIEW_PROMPT_STORAGE_KEY]);
+    await browser.storage.local.set({ [EXTENSION_REVIEW_PROMPT_STORAGE_KEY]: evaluation.state });
+    return evaluation.due;
+  },
+  async openStoreReview() {
+    await browser.tabs.create({ active: true, url: CHROME_WEB_STORE_REVIEW_URL });
+    const stored = await browser.storage.local.get(EXTENSION_REVIEW_PROMPT_STORAGE_KEY);
+    await browser.storage.local.set({
+      [EXTENSION_REVIEW_PROMPT_STORAGE_KEY]: markExtensionReviewLinkOpened(
+        stored[EXTENSION_REVIEW_PROMPT_STORAGE_KEY]
+      )
+    });
+  }
+};
+
 const localData: LocalDataRepository = {
   async inspect() {
     const [local, session] = await Promise.all([
       browser.storage.local.get(null),
-      browser.storage.session.get(null)
+      browser.storage.session.get('diagnosticEntries')
     ]);
     const localEntries = localStorageEntries();
     const drafts = localEntries.filter(([key]) => isDraftKey(key));
     const preferences = Object.fromEntries([
-      ...Object.entries(local).filter(([key]) => key !== SETTINGS_STORAGE_KEY),
-      ...localEntries.filter(([key]) => key === APP_PREFERENCES_STORAGE_KEY)
+      ...Object.entries(local).filter(
+        ([key]) =>
+          key !== SETTINGS_STORAGE_KEY &&
+          key !== EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY &&
+          key !== EXTENSION_SOCIAL_BACKEND_STORAGE_KEY
+      ),
+      ...localEntries.filter(
+        ([key]) => key === APP_PREFERENCES_STORAGE_KEY || key === LEGACY_APP_PREFERENCES_STORAGE_KEY
+      )
     ]);
     const categories: LocalDataCategory[] = [
       {
         id: 'credentials',
-        label: '加密凭证保险库与网关设置',
+        label: translateUi('settings.extensionRuntime.localData.credentials.label'),
         storage: 'chrome.storage.local',
         itemCount: SETTINGS_STORAGE_KEY in local ? 1 : 0,
         approximateBytes: approximateStorageBytes(local[SETTINGS_STORAGE_KEY]),
         sensitive: true,
-        retention: '保留到用户覆盖、清除扩展数据或卸载扩展'
+        retention: translateUi('settings.extensionRuntime.localData.credentials.retention')
+      },
+      {
+        id: 'product-mutation-jobs',
+        label: translateUi('settings.extensionRuntime.localData.productMutationJobs.label'),
+        storage: 'chrome.storage.local',
+        itemCount: productMutationJobCount(local[EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY]),
+        approximateBytes: approximateStorageBytes(local[EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY]),
+        sensitive: true,
+        retention: translateUi('settings.extensionRuntime.localData.productMutationJobs.retention')
+      },
+      {
+        id: 'social-backend-device',
+        label: translateUi('settings.extensionRuntime.localData.socialBackendDevice.label'),
+        storage: 'chrome.storage.local',
+        itemCount: EXTENSION_SOCIAL_BACKEND_STORAGE_KEY in local ? 1 : 0,
+        approximateBytes: approximateStorageBytes(local[EXTENSION_SOCIAL_BACKEND_STORAGE_KEY]),
+        sensitive: true,
+        retention: translateUi('settings.extensionRuntime.localData.socialBackendDevice.retention')
       },
       {
         id: 'drafts',
-        label: '商品与 RFQ 本地草稿',
+        label: translateUi('settings.extensionRuntime.localData.drafts.label'),
         storage: 'localStorage',
         itemCount: drafts.length,
         approximateBytes: approximateStorageBytes(Object.fromEntries(drafts)),
         sensitive: true,
-        retention: '保留到草稿被删除、清除扩展数据或卸载扩展'
+        retention: translateUi('settings.extensionRuntime.localData.drafts.retention')
       },
       {
         id: 'diagnostics',
-        label: '脱敏会话诊断',
+        label: translateUi('settings.extensionRuntime.localData.diagnostics.label'),
         storage: 'chrome.storage.session',
         itemCount: Array.isArray(session.diagnosticEntries) ? session.diagnosticEntries.length : 0,
         approximateBytes: approximateStorageBytes(session),
         sensitive: false,
-        retention: '仅当前浏览器会话，最多 100 条'
+        retention: translateUi('settings.extensionRuntime.localData.diagnostics.retention')
       },
       {
         id: 'preferences',
-        label: '首次使用与界面偏好',
+        label: translateUi('settings.extensionRuntime.localData.preferences.label'),
         storage: 'chrome.storage.local',
         itemCount: Object.keys(preferences).length,
         approximateBytes: approximateStorageBytes(preferences),
         sensitive: false,
-        retention: '保留到清除扩展数据或卸载扩展'
+        retention: translateUi('settings.extensionRuntime.localData.preferences.retention')
       }
     ];
     return createLocalDataInventory(categories);
@@ -285,13 +464,23 @@ function isDraftKey(key: string): boolean {
   return key === 'one-vegetable-product-schema-draft' || key.startsWith('one-vegetable:rfq-draft:');
 }
 
+function productMutationJobCount(value: unknown): number {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return 0;
+  const jobs = Reflect.get(value, 'jobs') as unknown;
+  return Array.isArray(jobs) ? jobs.length : 0;
+}
+
 class ExtensionGatewayClient implements GatewayClient {
   async request<K extends OperationId>(operation: K, payload: RequestOf<K>): Promise<ResponseOf<K>> {
     if (operation === 'transferPhotoFromUrl' || operation === 'downloadProductAsset') {
       const transfer = payload as RequestOf<'transferPhotoFromUrl'> | RequestOf<'downloadProductAsset'>;
       await ensureOptionalHostPermission(
         transfer.url,
-        operation === 'downloadProductAsset' ? '商品 ZIP 图片下载' : '外部图片来源'
+        translateUi(
+          operation === 'downloadProductAsset'
+            ? 'settings.extensionRuntime.permissionPurposes.productZipAsset'
+            : 'settings.extensionRuntime.permissionPurposes.externalPhoto'
+        )
       );
     }
     const message: RuntimeRequest<K> = {
@@ -305,7 +494,7 @@ class ExtensionGatewayClient implements GatewayClient {
       throw new GatewayException(
         {
           code: 'INVALID_RUNTIME_RESPONSE',
-          message: '扩展后台响应 requestId 不匹配',
+          message: translateUi('settings.extensionRuntime.errors.runtimeRequestMismatch'),
           retryable: false
         },
         message.requestId
@@ -321,7 +510,7 @@ async function ensureOptionalHostPermission(rawUrl: string, purpose: string): Pr
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new GatewayException({
       code: 'INVALID_HOST_PERMISSION',
-      message: `${purpose}仅允许 HTTP(S) 地址`,
+      message: translateUi('settings.extensionRuntime.errors.invalidHostProtocol', { purpose }),
       retryable: false
     });
   }
@@ -333,7 +522,10 @@ async function ensureOptionalHostPermission(rawUrl: string, purpose: string): Pr
   if (await browser.permissions.request(permissions)) return;
   throw new GatewayException({
     code: 'HOST_PERMISSION_DENIED',
-    message: `未授予 ${purpose} ${url.hostname} 的访问权限`,
+    message: translateUi('settings.extensionRuntime.errors.permissionDeniedHost', {
+      purpose,
+      host: url.hostname
+    }),
     retryable: false
   });
 }
@@ -344,9 +536,147 @@ async function ensureOptionalOrigins(origins: readonly string[], purpose: string
   if (await browser.permissions.request(request)) return;
   throw new GatewayException({
     code: 'HOST_PERMISSION_DENIED',
-    message: `未授予${purpose}所需的精确站点权限`,
+    message: translateUi('settings.extensionRuntime.errors.permissionDeniedPurpose', { purpose }),
     retryable: false
   });
+}
+
+async function withSocialControl<T>(action: (client: BffControlClient) => Promise<T>): Promise<T> {
+  const stored = await requireExtensionSocialBackend();
+  if (
+    stored.state !== 'paired' ||
+    !stored.deviceToken ||
+    !stored.device ||
+    stored.device.expiresTimeUtc <= Date.now()
+  ) {
+    throw new GatewayException({
+      code: 'EXTENSION_SOCIAL_BACKEND_NOT_PAIRED',
+      message: translateUi('settings.extensionRuntime.errors.socialPairingRequired'),
+      retryable: false
+    });
+  }
+  return action(
+    new BffControlClient({
+      baseUrl: stored.baseUrl,
+      bearerToken: () => stored.deviceToken,
+      extensionId: stored.extensionId
+    })
+  );
+}
+
+async function requireExtensionSocialBackend(): Promise<StoredExtensionSocialBackend> {
+  const stored = await readExtensionSocialBackend();
+  if (!stored) {
+    throw new GatewayException({
+      code: 'EXTENSION_SOCIAL_BACKEND_NOT_CONFIGURED',
+      message: translateUi('settings.extensionRuntime.errors.socialBackendRequired'),
+      retryable: false
+    });
+  }
+  return stored;
+}
+
+async function readExtensionSocialBackend(): Promise<StoredExtensionSocialBackend | null> {
+  const result = await browser.storage.local.get(EXTENSION_SOCIAL_BACKEND_STORAGE_KEY);
+  const value = result[EXTENSION_SOCIAL_BACKEND_STORAGE_KEY];
+  if (!isStoredExtensionSocialBackend(value)) return null;
+  if (value.state === 'paired' && value.device && value.device.expiresTimeUtc <= Date.now()) {
+    const expired: StoredExtensionSocialBackend = {
+      ...value,
+      state: 'expired',
+      deviceToken: null
+    };
+    await writeExtensionSocialBackend(expired);
+    return expired;
+  }
+  if (
+    value.state === 'pending' &&
+    value.pairingExpiresTimeUtc !== null &&
+    value.pairingExpiresTimeUtc <= Date.now()
+  ) {
+    const expired: StoredExtensionSocialBackend = {
+      ...value,
+      state: 'expired',
+      pairingCode: null
+    };
+    await writeExtensionSocialBackend(expired);
+    return expired;
+  }
+  return value;
+}
+
+function writeExtensionSocialBackend(value: StoredExtensionSocialBackend): Promise<void> {
+  return browser.storage.local.set({ [EXTENSION_SOCIAL_BACKEND_STORAGE_KEY]: value });
+}
+
+function publicExtensionSocialStatus(
+  value: StoredExtensionSocialBackend | null
+): ExtensionSocialBackendStatus {
+  if (!value) {
+    return {
+      state: 'unconfigured',
+      baseUrl: null,
+      extensionId: browser.runtime.id,
+      deviceName: null,
+      pairingCode: null,
+      pairingExpiresTimeUtc: null,
+      device: null
+    };
+  }
+  return {
+    state: value.state,
+    baseUrl: value.baseUrl,
+    extensionId: value.extensionId,
+    deviceName: value.deviceName,
+    pairingCode: value.pairingCode,
+    pairingExpiresTimeUtc: value.pairingExpiresTimeUtc,
+    device: value.device
+  };
+}
+
+function isStoredExtensionSocialBackend(value: unknown): value is StoredExtensionSocialBackend {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const candidate = value as Partial<StoredExtensionSocialBackend>;
+  return (
+    candidate.schemaVersion === 1 &&
+    (candidate.state === 'pending' || candidate.state === 'paired' || candidate.state === 'expired') &&
+    typeof candidate.baseUrl === 'string' &&
+    typeof candidate.extensionId === 'string' &&
+    typeof candidate.deviceName === 'string' &&
+    (candidate.pairingId === null || typeof candidate.pairingId === 'string') &&
+    (candidate.pairingCode === null || typeof candidate.pairingCode === 'string') &&
+    (candidate.pairingExpiresTimeUtc === null || typeof candidate.pairingExpiresTimeUtc === 'number') &&
+    (candidate.device === null || typeof candidate.device === 'object') &&
+    (candidate.deviceToken === null || typeof candidate.deviceToken === 'string')
+  );
+}
+
+function normalizeSocialBackendUrl(value: string): string {
+  const url = new URL(value.trim());
+  const loopback =
+    url.protocol === 'http:' &&
+    (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]');
+  if (url.protocol !== 'https:' && !loopback) {
+    throw new GatewayException({
+      code: 'SOCIAL_BACKEND_URL_INVALID',
+      message: translateUi('settings.extensionRuntime.errors.socialHttps'),
+      retryable: false
+    });
+  }
+  if (
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash ||
+    (url.pathname !== '/' && url.pathname !== '')
+  ) {
+    throw new GatewayException({
+      code: 'SOCIAL_BACKEND_URL_INVALID',
+      message: translateUi('settings.extensionRuntime.errors.socialUrlStructure'),
+      retryable: false
+    });
+  }
+  return url.origin;
 }
 
 window.addEventListener('unhandledrejection', (event) => {
@@ -355,25 +685,32 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 async function mountOptionsApp(): Promise<void> {
-  const [{ createApp }, { QueryClient, VueQueryPlugin }, { OneVegetableApp }] = await Promise.all([
+  const [{ createApp }, { QueryClient, VueQueryPlugin }, uiModule] = await Promise.all([
     import('vue'),
     import('@tanstack/vue-query'),
     import('@one-vegetable/ui')
   ]);
+  const { OneVegetableApp, uiI18n } = uiModule;
+  activeRuntimeTranslator = uiModule.translateUi;
   const app = createApp(OneVegetableApp, {
     gateway: new ExtensionGatewayClient(),
     settings,
     permissions,
     localData,
     onboarding,
+    reviewPrompt,
     vault,
     alibabaCredentialAcquisition,
+    extensionSocialBackend,
+    socialPublishing,
     productDescriptionTemplates: new BundledProductDescriptionTemplateClient(
       BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates
     ),
+    productMutationJobs,
     operationAvailability,
     mode: 'extension'
   });
+  app.use(uiI18n);
   app.use(VueQueryPlugin, {
     queryClient: new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000 } } })
   });

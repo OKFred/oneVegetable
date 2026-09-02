@@ -12,6 +12,7 @@ import PhotoUploadDialog from './PhotoUploadDialog.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
+import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 
 const props = withDefaults(
@@ -20,16 +21,17 @@ const props = withDefaults(
     max?: number;
     buttonLabel?: string;
   }>(),
-  { max: 1, buttonLabel: '从图库选择' }
+  { max: 1 }
 );
 const emit = defineEmits<{ 'update:modelValue': [photos: Photo[]] }>();
 
 const { gateway } = useServices();
+const { t } = useUiI18n();
 const queryClient = useQueryClient();
 const open = ref(false);
 const uploadDialogOpen = ref(false);
 const selectedGroup = ref('-1');
-const selectedGroupName = ref('全部图片');
+const selectedGroupName = ref(t('photos.allPhotos'));
 const page = ref(1);
 const pageSize = 12;
 const uploadNotice = ref('');
@@ -90,7 +92,7 @@ function openUploadDialog(): void {
 
 async function handleUploaded(photo: Photo): Promise<void> {
   page.value = 1;
-  uploadNotice.value = `“${photo.name}”已存入图库，请在素材列表中选择。`;
+  uploadNotice.value = t('photos.picker.uploadedNotice', { name: photo.name });
   await queryClient.invalidateQueries({ queryKey: ['photos'] });
 }
 
@@ -107,7 +109,7 @@ function dimensionsLabel(photo: Photo): string {
   const observed = observedDimensions.value[photo.id];
   const width = photo.width ?? observed?.width;
   const height = photo.height ?? observed?.height;
-  return width && height ? `${width}×${height}` : '尺寸读取中';
+  return width && height ? `${width}×${height}` : t('photos.dimensionsLoading');
 }
 
 function photoPreviewUrl(photo: Photo): string {
@@ -144,7 +146,7 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
         <button
           type="button"
           class="block w-full"
-          :aria-label="`预览 ${photo.name}`"
+          :aria-label="t('photos.picker.selectedPreview', { name: photo.name })"
           @click="showPreview(modelValue, photo)"
         >
           <img
@@ -157,7 +159,7 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
         <button
           type="button"
           class="absolute right-1 top-1 rounded-full bg-background/90 p-1 opacity-0 shadow group-hover:opacity-100"
-          :aria-label="`移除 ${photo.name}`"
+          :aria-label="t('photos.picker.remove', { name: photo.name })"
           @click="choose(photo)"
         >
           <X class="size-3" />
@@ -165,7 +167,7 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
       </div>
     </div>
     <Button variant="outline" size="sm" @click="open = true">
-      <ImagePlus class="size-4" />{{ buttonLabel }}
+      <ImagePlus class="size-4" />{{ buttonLabel ?? t('photos.picker.button') }}
       <Badge variant="secondary">{{ modelValue.length }}/{{ max }}</Badge>
     </Button>
 
@@ -179,16 +181,20 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
           <Card class="ov-modal-panel flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden">
             <header class="flex items-center justify-between border-b p-4">
               <div>
-                <h2 class="font-semibold">选择图库素材</h2>
+                <h2 class="font-semibold">{{ t('photos.picker.title') }}</h2>
                 <p class="mt-1 text-xs text-muted-foreground">
-                  仅点击素材才会选入商品；已选 {{ modelValue.length }}/{{ max }}。
+                  {{ t('photos.picker.description', { selected: modelValue.length, maximum: max }) }}
                 </p>
               </div>
               <div class="flex items-center gap-2">
                 <Button variant="outline" size="sm" @click="openUploadDialog">
-                  <Upload class="size-4" />上传新素材
+                  <Upload class="size-4" />{{ t('photos.picker.upload') }}
                 </Button>
-                <Button variant="ghost" size="icon" aria-label="关闭图库" @click="open = false"
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  :aria-label="t('photos.picker.close')"
+                  @click="open = false"
                   ><X class="size-4"
                 /></Button>
               </div>
@@ -201,8 +207,10 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
                   @select="selectGroup"
                 />
                 <div class="mt-4 rounded-md bg-muted p-3 text-xs leading-5 text-muted-foreground">
-                  <p class="font-medium text-foreground">当前分组：{{ selectedGroupName }}</p>
-                  <p class="mt-1">此处只负责选择已有素材；上传新素材是独立操作。</p>
+                  <p class="font-medium text-foreground">
+                    {{ t('photos.picker.currentGroup', { name: selectedGroupName }) }}
+                  </p>
+                  <p class="mt-1">{{ t('photos.picker.selectionOnly') }}</p>
                 </div>
               </aside>
               <main class="min-h-0 overflow-auto p-4">
@@ -224,7 +232,14 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
                       <button
                         type="button"
                         class="block w-full text-left"
-                        :aria-label="`${selectedIds.has(photo.id) ? '取消选择' : '选择'} ${photo.name}`"
+                        :aria-label="
+                          t(
+                            selectedIds.has(photo.id)
+                              ? 'photos.picker.selectedAction'
+                              : 'photos.picker.selectAction',
+                            { name: photo.name }
+                          )
+                        "
                         @click="choose(photo)"
                       >
                         <img
@@ -243,7 +258,7 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
                       <button
                         type="button"
                         class="absolute left-2 top-2 rounded-full bg-background/90 p-1.5 opacity-0 shadow transition-opacity hover:bg-background group-hover:opacity-100 focus-visible:opacity-100"
-                        :aria-label="`预览 ${photo.name}`"
+                        :aria-label="t('photos.previewPhoto', { name: photo.name })"
                         @click="showPreview(photos.data.value?.items ?? [], photo)"
                       >
                         <Eye class="size-4" />
@@ -260,13 +275,15 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
             </div>
             <footer class="flex items-center justify-between border-t p-4">
               <div class="flex items-center gap-2">
-                <Button variant="outline" size="sm" :disabled="page <= 1" @click="page--">上一页</Button>
+                <Button variant="outline" size="sm" :disabled="page <= 1" @click="page--">
+                  {{ t('common.pagination.previous') }}
+                </Button>
                 <span class="text-xs text-muted-foreground">{{ page }}/{{ totalPages }}</span>
-                <Button variant="outline" size="sm" :disabled="page >= totalPages" @click="page++"
-                  >下一页</Button
-                >
+                <Button variant="outline" size="sm" :disabled="page >= totalPages" @click="page++">{{
+                  t('common.pagination.next')
+                }}</Button>
               </div>
-              <Button @click="open = false">完成选择</Button>
+              <Button @click="open = false">{{ t('photos.picker.finish') }}</Button>
             </footer>
           </Card>
         </div>

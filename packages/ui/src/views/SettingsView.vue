@@ -8,8 +8,8 @@ import {
   FileUp,
   Globe2,
   KeyRound,
+  LoaderCircle,
   LockKeyhole,
-  Moon,
   RotateCcw,
   Save,
   ShieldCheck,
@@ -17,12 +17,12 @@ import {
   UnlockKeyhole,
   WandSparkles
 } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 
 import {
   ALIBABA_GATEWAY,
   CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES,
   CREDENTIAL_VAULT_IDLE_TIMEOUT_OPTIONS,
-  CREDENTIAL_VAULT_ITERATIONS,
   CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS,
   validateVaultPassphrase,
   type CredentialVaultStatus,
@@ -38,17 +38,29 @@ import AlibabaCredentialAcquisitionDialog from '../components/AlibabaCredentialA
 import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
+import ExtensionSocialBackendPanel from '../components/ExtensionSocialBackendPanel.vue';
 import PageHeader from '../components/PageHeader.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
+import { useUiI18n } from '../i18n';
+import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import type { DataColumn } from '../lib/table';
 
-const { gateway, settings, permissions, localData, vault, alibabaCredentialAcquisition, mode } =
-  useServices();
-const { language: preferredLanguage, theme: preferredTheme } = useAppPreferences();
+const {
+  gateway,
+  settings,
+  permissions,
+  localData,
+  vault,
+  alibabaCredentialAcquisition,
+  extensionSocialBackend,
+  mode
+} = useServices();
+const { t } = useUiI18n();
+const { alibabaLanguage: preferredLanguage } = useAppPreferences();
 const signMethods: SignMethod[] = ['hmac', 'md5', 'hmac-sha256'];
 const model = ref<GatewaySettings>({
   appKey: '',
@@ -84,18 +96,22 @@ const settingsConfirmation = ref<
   { kind: 'revoke-permission'; origin: string } | { kind: 'clear-diagnostics' } | null
 >(null);
 const settingsConfirmationTitle = computed(() =>
-  settingsConfirmation.value?.kind === 'revoke-permission' ? '确认撤销主机权限' : '确认清空诊断'
+  settingsConfirmation.value?.kind === 'revoke-permission'
+    ? t('settings.confirmation.revokeTitle')
+    : t('settings.confirmation.clearDiagnosticsTitle')
 );
 const settingsConfirmationDescription = computed(() => {
   const confirmation = settingsConfirmation.value;
   if (!confirmation) return '';
   return confirmation.kind === 'revoke-permission'
-    ? `撤销 ${confirmation.origin} 后，再次访问该主机时 Chrome 会重新询问授权。`
-    : `将清除当前保存的 ${diagnostics.value?.entries.length ?? 0} 条脱敏诊断记录。`;
+    ? t('settings.confirmation.revokeDescription', { origin: confirmation.origin })
+    : t('settings.confirmation.clearDiagnosticsDescription', {
+        count: diagnostics.value?.entries.length ?? 0
+      });
 });
 const clearDiagnosticsDisabledReason = computed(() => {
-  if (diagnosticsBusy.value) return '正在处理诊断记录';
-  if ((diagnostics.value?.entries.length ?? 0) === 0) return '当前没有可清空的诊断记录';
+  if (diagnosticsBusy.value) return t('settings.diagnostics.busy');
+  if ((diagnostics.value?.entries.length ?? 0) === 0) return t('settings.diagnostics.emptyDisabled');
   return '';
 });
 const settingsEditable = computed(
@@ -107,40 +123,45 @@ const lastDiagnosticError = computed(() =>
 const vaultActivitySummary = computed(() => {
   const status = vaultStatus.value;
   if (!status?.lastActivityAt || status.idleRemainingSeconds === null) return '';
-  const lastActivity = new Date(status.lastActivityAt).toLocaleString('zh-CN', { hour12: false });
+  const lastActivity = formatDateTime(status.lastActivityAt);
   const remainingMinutes = Math.max(1, Math.ceil(status.idleRemainingSeconds / 60));
-  return `最近活动：${lastActivity}；状态快照剩余约 ${remainingMinutes} 分钟。`;
+  return t('settings.vault.activity', { time: lastActivity, minutes: remainingMinutes });
 });
+const clearPhrase = computed(() => t('settings.localData.clearPhrase'));
 
-const localDataColumns: DataColumn<LocalDataCategory>[] = [
+const localDataColumns = computed<DataColumn<LocalDataCategory>[]>(() => [
   {
     accessorKey: 'label',
-    header: '类别',
+    header: t('settings.localData.columns.category'),
     cell: ({ row }) =>
       h('span', [
         row.original.label,
         row.original.sensitive
-          ? h('span', { class: 'ml-1 text-xs text-amber-700 dark:text-amber-400' }, '敏感')
+          ? h(
+              'span',
+              { class: 'ml-1 text-xs text-amber-700 dark:text-amber-400' },
+              t('settings.localData.sensitive')
+            )
           : null
       ])
   },
   {
     accessorKey: 'storage',
-    header: '存储位置',
+    header: t('settings.localData.columns.storage'),
     cell: ({ row }) => h('code', { class: 'text-xs' }, row.original.storage)
   },
-  { accessorKey: 'itemCount', header: '数量' },
+  { accessorKey: 'itemCount', header: t('settings.localData.columns.count') },
   {
     accessorKey: 'approximateBytes',
-    header: '大小',
+    header: t('settings.localData.columns.size'),
     cell: ({ row }) => formatBytes(row.original.approximateBytes)
   },
   {
     accessorKey: 'retention',
-    header: '保留时间',
+    header: t('settings.localData.columns.retention'),
     cell: ({ row }) => h('span', { class: 'text-xs text-muted-foreground' }, row.original.retention)
   }
-];
+]);
 
 onMounted(async () => {
   settingsInitialization = initializeView();
@@ -173,16 +194,25 @@ async function save(): Promise<void> {
       assertMatchingPassphrases(vaultPassphrase.value, vaultPassphraseConfirmation.value);
       applyVaultStatus(await vault.create(vaultPassphrase.value, model.value));
       clearVaultPassphrases();
-      feedback.value = '加密凭证保险库已创建并保持解锁。';
+      model.value = await settings.load();
+      feedback.value = t('settings.vault.saveEncrypted');
+      toast.success(t('settings.vault.savedToast'));
       await refreshLocalData();
     } else {
       await settings.save(model.value);
       feedback.value =
-        mode === 'mock' ? '演示设置已保存在本地浏览器。' : '设置已重新加密写入 chrome.storage.local。';
+        mode === 'mock'
+          ? t('settings.credentials.mockSavedFeedback')
+          : t('settings.credentials.encryptedSavedFeedback');
       model.value = await settings.load();
+      toast.success(
+        mode === 'mock' ? t('settings.credentials.mockSavedToast') : t('settings.credentials.savedToast')
+      );
     }
   } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, '设置保存失败');
+    const visibleError = userVisibleCause(error, t('settings.credentials.saveError'));
+    vaultError.value = visibleError;
+    toast.error(visibleError.message);
   } finally {
     saving.value = false;
   }
@@ -196,13 +226,12 @@ async function importCredentialBundle(event: Event): Promise<void> {
   credentialImportError.value = null;
   try {
     await settingsInitialization;
-    if (file.size > 256 * 1024) throw new Error('授权包 JSON 不能超过 256 KiB');
+    if (file.size > 256 * 1024) throw new Error(t('settings.credentials.bundleTooLarge'));
     const imported = readImportedCredentials(JSON.parse(await file.text()) as unknown);
     model.value = { ...model.value, ...imported };
-    feedback.value =
-      '已从授权包读取 App Key、App Secret 和 Access Token；尚未保存，请设置保险库口令并确认保存。';
+    feedback.value = t('settings.credentials.bundleLoaded');
   } catch (error: unknown) {
-    credentialImportError.value = userVisibleCause(error, '授权包导入失败');
+    credentialImportError.value = userVisibleCause(error, t('settings.credentials.bundleImportError'));
   } finally {
     input.value = '';
   }
@@ -211,7 +240,7 @@ async function importCredentialBundle(event: Event): Promise<void> {
 async function handleAcquiredCredentialsSaved(status: CredentialVaultStatus): Promise<void> {
   applyVaultStatus(status);
   model.value = await settings.load();
-  feedback.value = 'Alibaba 开放平台凭据已获取并加密保存，可以开始真实查询。';
+  feedback.value = t('settings.credentials.acquired');
   await refreshLocalData();
 }
 
@@ -225,7 +254,7 @@ function readImportedCredentials(
   const appSecret = importedString(root.appSecret) ?? importedString(application.appSecret);
   const accessToken = importedString(root.accessToken) ?? importedString(oauth.accessToken);
   if (!appKey || !appSecret || !accessToken) {
-    throw new Error('授权包缺少 App Key、App Secret 或 Access Token');
+    throw new Error(t('settings.credentials.bundleMissing'));
   }
   return { appKey, appSecret, accessToken };
 }
@@ -246,7 +275,7 @@ async function refreshVaultStatus(): Promise<void> {
   try {
     applyVaultStatus(await vault.status());
   } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, '保险库状态读取失败');
+    vaultError.value = userVisibleCause(error, t('settings.vault.statusError'));
   }
 }
 
@@ -258,9 +287,9 @@ async function unlockVault(): Promise<void> {
     applyVaultStatus(await vault.unlock(vaultPassphrase.value));
     model.value = await settings.load();
     clearVaultPassphrases();
-    feedback.value = '凭证保险库已解锁；service worker 重启后会自动重新锁定。';
+    feedback.value = t('settings.vault.unlockedFeedback');
   } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, '保险库解锁失败');
+    vaultError.value = userVisibleCause(error, t('settings.vault.unlockError'));
   } finally {
     vaultBusy.value = false;
   }
@@ -275,10 +304,10 @@ async function migrateVault(): Promise<void> {
     applyVaultStatus(await vault.migrate(vaultPassphrase.value));
     model.value = await settings.load();
     clearVaultPassphrases();
-    feedback.value = '旧版明文凭证已原位迁移到加密保险库。';
+    feedback.value = t('settings.vault.migratedFeedback');
     await refreshLocalData();
   } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, '保险库迁移失败');
+    vaultError.value = userVisibleCause(error, t('settings.vault.migrateError'));
   } finally {
     vaultBusy.value = false;
   }
@@ -296,9 +325,9 @@ async function lockVault(): Promise<void> {
       endpoint: ALIBABA_GATEWAY,
       signMethod: 'hmac'
     };
-    feedback.value = '保险库已锁定，页面中的可编辑凭证状态已清空。';
+    feedback.value = t('settings.vault.lockedFeedback');
   } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, '保险库锁定失败');
+    vaultError.value = userVisibleCause(error, t('settings.vault.lockError'));
   } finally {
     vaultBusy.value = false;
   }
@@ -312,9 +341,9 @@ async function rotateVaultPassphrase(): Promise<void> {
     assertMatchingPassphrases(newVaultPassphrase.value, newVaultPassphraseConfirmation.value);
     applyVaultStatus(await vault.rotate(newVaultPassphrase.value));
     clearVaultPassphrases();
-    feedback.value = '保险库已使用新 salt 和新口令重新加密。';
+    feedback.value = t('settings.vault.rotatedFeedback');
   } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, '保险库口令更换失败');
+    vaultError.value = userVisibleCause(error, t('settings.vault.rotateError'));
   } finally {
     vaultBusy.value = false;
   }
@@ -328,10 +357,10 @@ async function updateVaultPolicy(): Promise<void> {
     applyVaultStatus(await vault.updatePolicy(idleTimeoutMinutes.value));
     feedback.value =
       idleTimeoutMinutes.value === 0
-        ? '已关闭空闲自动锁定；扩展后台重启后仍需重新解锁。'
-        : `保险库将在连续 ${idleTimeoutMinutes.value} 分钟未使用凭证后自动锁定。`;
+        ? t('settings.vault.idleDisabledFeedback')
+        : t('settings.vault.idleEnabledFeedback', { minutes: idleTimeoutMinutes.value });
   } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, '空闲锁定策略保存失败');
+    vaultError.value = userVisibleCause(error, t('settings.vault.policyError'));
   } finally {
     vaultBusy.value = false;
   }
@@ -344,7 +373,7 @@ function applyVaultStatus(status: CredentialVaultStatus): void {
 
 function assertMatchingPassphrases(passphrase: string, confirmation: string): void {
   validateVaultPassphrase(passphrase);
-  if (passphrase !== confirmation) throw new Error('两次输入的保险库口令不一致');
+  if (passphrase !== confirmation) throw new Error(t('settings.vault.mismatchError'));
 }
 
 function clearVaultPassphrases(): void {
@@ -361,7 +390,7 @@ async function refreshPermissions(): Promise<void> {
   try {
     grantedHosts.value = await permissions.list();
   } catch (error: unknown) {
-    permissionsError.value = userVisibleCause(error, '主机权限加载失败');
+    permissionsError.value = userVisibleCause(error, t('settings.permissions.loadError'));
   } finally {
     permissionsBusy.value = false;
   }
@@ -374,9 +403,11 @@ async function revokePermission(origin: string): Promise<void> {
   try {
     const removed = await permissions.revoke(origin);
     await refreshPermissions();
-    feedback.value = removed ? `已撤销 ${origin}；再次使用时会重新请求授权。` : `${origin} 当前未授权。`;
+    feedback.value = removed
+      ? t('settings.permissions.revoked', { origin })
+      : t('settings.permissions.notGranted', { origin });
   } catch (error: unknown) {
-    permissionsError.value = userVisibleCause(error, '主机权限撤销失败');
+    permissionsError.value = userVisibleCause(error, t('settings.permissions.revokeError'));
   } finally {
     permissionsBusy.value = false;
   }
@@ -388,7 +419,7 @@ async function refreshDiagnostics(): Promise<void> {
   try {
     diagnostics.value = await gateway.request('getDiagnostics', undefined);
   } catch (error: unknown) {
-    diagnosticsError.value = userVisibleCause(error, '诊断加载失败');
+    diagnosticsError.value = userVisibleCause(error, t('settings.diagnostics.loadError'));
   } finally {
     diagnosticsBusy.value = false;
   }
@@ -404,7 +435,7 @@ async function exportDiagnostics(): Promise<void> {
   link.download = `one-vegetable-diagnostics-${new Date().toISOString().slice(0, 10)}.json`;
   link.click();
   URL.revokeObjectURL(url);
-  feedback.value = `已导出 ${diagnostics.value.entries.length} 条脱敏诊断。`;
+  feedback.value = t('settings.diagnostics.exported', { count: diagnostics.value.entries.length });
 }
 
 async function clearDiagnostics(): Promise<void> {
@@ -413,9 +444,9 @@ async function clearDiagnostics(): Promise<void> {
   try {
     await gateway.request('clearDiagnostics', undefined);
     diagnostics.value = await gateway.request('getDiagnostics', undefined);
-    feedback.value = '诊断记录已清空。';
+    feedback.value = t('settings.diagnostics.cleared');
   } catch (error: unknown) {
-    diagnosticsError.value = userVisibleCause(error, '诊断清理失败');
+    diagnosticsError.value = userVisibleCause(error, t('settings.diagnostics.clearError'));
   } finally {
     diagnosticsBusy.value = false;
   }
@@ -439,7 +470,7 @@ async function refreshLocalData(): Promise<void> {
   try {
     dataInventory.value = await localData.inspect();
   } catch (error: unknown) {
-    dataError.value = userVisibleCause(error, '本地数据清单加载失败');
+    dataError.value = userVisibleCause(error, t('settings.localData.loadError'));
   } finally {
     dataBusy.value = false;
   }
@@ -452,11 +483,11 @@ async function exportLocalDataInventory(): Promise<void> {
     dataInventory.value,
     `one-vegetable-local-data-inventory-${new Date().toISOString().slice(0, 10)}.json`
   );
-  feedback.value = '已导出不包含具体值的本地数据清单。';
+  feedback.value = t('settings.localData.exported');
 }
 
 async function clearAllLocalData(): Promise<void> {
-  if (!localData || clearConfirmation.value !== '清除全部数据') return;
+  if (!localData || clearConfirmation.value !== clearPhrase.value) return;
   dataBusy.value = true;
   dataError.value = null;
   try {
@@ -470,9 +501,9 @@ async function clearAllLocalData(): Promise<void> {
       signMethod: 'hmac'
     };
     await Promise.all([refreshLocalData(), refreshDiagnostics(), refreshPermissions()]);
-    feedback.value = '扩展本地数据和额外主机权限已清除；重新加载后会再次显示首次使用说明。';
+    feedback.value = t('settings.localData.cleared');
   } catch (error: unknown) {
-    dataError.value = userVisibleCause(error, '扩展本地数据清除失败');
+    dataError.value = userVisibleCause(error, t('settings.localData.clearError'));
   } finally {
     dataBusy.value = false;
   }
@@ -498,20 +529,12 @@ function formatBytes(bytes: number): string {
 }
 
 function confirmLanguagePreference(): void {
-  feedback.value = `接口语言偏好已保存为 ${preferredLanguage.value}。`;
-}
-
-function confirmThemePreference(): void {
-  const label = { system: '跟随系统', light: '浅色', dark: '深色' }[preferredTheme.value];
-  feedback.value = `界面主题已切换为${label}。`;
+  feedback.value = t('settings.alibabaLanguage.saved', { language: preferredLanguage.value });
 }
 </script>
 
 <template>
-  <PageHeader
-    title="连接设置"
-    description="凭证不会进入页面请求；扩展模式下仅由 MV3 service worker 读取并签名。"
-  />
+  <PageHeader :title="t('settings.page.title')" :description="t('settings.page.description')" />
   <div class="grid max-w-3xl gap-4">
     <p
       v-if="feedback"
@@ -519,104 +542,55 @@ function confirmThemePreference(): void {
     >
       {{ feedback }}
     </p>
-    <Card class="p-5">
-      <div class="flex items-start gap-3">
-        <Globe2 class="mt-0.5 size-5 shrink-0 text-primary" />
-        <div class="min-w-0 flex-1">
-          <h2 class="font-semibold">接口语言偏好</h2>
-          <p class="mt-1 text-sm leading-6 text-muted-foreground">
-            用于商品 Schema、平台草稿、履约通道和地址 Schema 等支持 language 参数的请求；不改变当前界面语言。
-          </p>
-          <label class="mt-3 block max-w-xs text-sm font-medium">
-            偏好语言
-            <select
-              v-model="preferredLanguage"
-              class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
-              aria-label="偏好语言"
-              @change="confirmLanguagePreference"
-            >
-              <option value="zh_CN">简体中文（zh_CN）</option>
-              <option value="en_US">English（en_US）</option>
-            </select>
-          </label>
-        </div>
-      </div>
-    </Card>
-    <Card class="p-5">
-      <div class="flex items-start gap-3">
-        <Moon class="mt-0.5 size-5 shrink-0 text-primary" />
-        <div class="min-w-0 flex-1">
-          <h2 class="font-semibold">界面主题</h2>
-          <p class="mt-1 text-sm leading-6 text-muted-foreground">
-            深色模式会降低夜间使用时的亮度，并保留状态、警告与表格的可读对比度。
-          </p>
-          <label class="mt-3 block max-w-xs text-sm font-medium">
-            主题偏好
-            <select
-              v-model="preferredTheme"
-              class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
-              aria-label="主题偏好"
-              @change="confirmThemePreference"
-            >
-              <option value="system">跟随系统</option>
-              <option value="light">浅色</option>
-              <option value="dark">深色</option>
-            </select>
-          </label>
-        </div>
-      </div>
-    </Card>
     <Card v-if="mode === 'extension' && vault" class="p-5">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div class="flex items-center gap-2">
             <LockKeyhole class="size-4 text-primary" />
-            <h2 class="font-semibold">凭证保险库</h2>
+            <h2 class="font-semibold">{{ t('settings.vault.title') }}</h2>
           </div>
           <p class="mt-2 text-sm text-muted-foreground">
-            PBKDF2-HMAC-SHA256 {{ CREDENTIAL_VAULT_ITERATIONS.toLocaleString() }} 次派生 AES-256-GCM
-            密钥；口令不保存，后台重启后需重新解锁。
+            {{ t('settings.vault.description') }}
           </p>
         </div>
         <span class="rounded-full bg-muted px-3 py-1 text-xs">
           {{
             vaultStatus === null
-              ? '读取中'
+              ? t('settings.vault.status.loading')
               : vaultStatus.state === 'unlocked'
-                ? '已解锁'
+                ? t('settings.vault.status.unlocked')
                 : vaultStatus.state === 'legacy'
-                  ? '待迁移'
+                  ? t('settings.vault.status.legacy')
                   : vaultStatus.state === 'empty'
-                    ? '未创建'
+                    ? t('settings.vault.status.empty')
                     : vaultStatus.state === 'invalid'
-                      ? '格式无效'
-                      : '已锁定'
+                      ? t('settings.vault.status.invalid')
+                      : t('settings.vault.status.locked')
           }}
         </span>
       </div>
 
       <div v-if="vaultStatus?.state === 'legacy'" class="mt-4 rounded-lg bg-amber-50 p-4 text-amber-900">
-        <p class="text-sm font-medium">发现旧版明文凭证</p>
+        <p class="text-sm font-medium">{{ t('settings.vault.legacyTitle') }}</p>
         <p class="mt-1 text-xs leading-5">
-          真实请求已停止读取该记录。设置新口令后会在 service worker 内直接加密迁移，页面不会收到旧 App Secret
-          或 Access Token。
+          {{ t('settings.vault.legacyDescription') }}
         </p>
       </div>
       <div v-else-if="vaultStatus?.state === 'locked'" class="mt-4 rounded-lg border p-4">
         <p class="text-sm font-medium">
           {{
             vaultStatus.lockReason === 'idle'
-              ? '保险库已因空闲超时自动锁定'
-              : vaultStatus.lockReason === 'worker-restart'
-                ? '扩展后台已重新启动，需要重新解锁'
-                : '保险库已手动锁定'
+              ? t('settings.vault.lockReason.idle')
+              : vaultStatus.lockReason === 'session-ended'
+                ? t('settings.vault.lockReason.sessionEnded')
+                : t('settings.vault.lockReason.manual')
           }}
         </p>
         <p class="mt-1 text-xs text-muted-foreground">
           {{
-            vaultStatus.lockReason === 'worker-restart'
-              ? 'MV3 service worker 被浏览器回收或扩展更新后，内存密钥不会保留；本地加密凭据仍然安全保存。'
-              : '页面与后台中的解锁状态已清除，重新输入口令后才能继续真实查询。'
+            vaultStatus.lockReason === 'session-ended'
+              ? t('settings.vault.lockDescription.sessionEnded')
+              : t('settings.vault.lockDescription.other')
           }}
         </p>
         <div class="mt-3 flex flex-wrap gap-2">
@@ -624,30 +598,30 @@ function confirmThemePreference(): void {
             v-model="vaultPassphrase"
             class="max-w-sm"
             type="password"
-            aria-label="保险库口令"
+            :aria-label="t('settings.vault.passphrase')"
             autocomplete="current-password"
           />
           <Button :disabled="vaultBusy || !vaultPassphrase" @click="unlockVault">
-            <UnlockKeyhole class="size-4" />解锁
+            <UnlockKeyhole class="size-4" />{{ t('settings.vault.unlock') }}
           </Button>
         </div>
       </div>
       <div v-else-if="vaultStatus?.state === 'invalid'" class="mt-4 rounded-lg bg-red-50 p-4 text-red-900">
-        <p class="text-sm font-medium">保险库记录无效</p>
+        <p class="text-sm font-medium">{{ t('settings.vault.invalidTitle') }}</p>
         <p class="mt-1 text-xs leading-5">
-          为避免覆盖无法恢复的数据，当前不提供自动修复。请先备份浏览器配置，再使用下方彻底清除功能重新开始。
+          {{ t('settings.vault.invalidDescription') }}
         </p>
       </div>
       <div v-else-if="vaultStatus?.state === 'unlocked'" class="mt-4 grid gap-4">
         <div class="flex flex-wrap gap-2">
           <Button variant="outline" :disabled="vaultBusy" @click="lockVault">
-            <LockKeyhole class="size-4" />立即锁定
+            <LockKeyhole class="size-4" />{{ t('settings.vault.lockNow') }}
           </Button>
         </div>
         <div class="rounded-lg border p-4">
-          <p class="text-sm font-medium">空闲自动锁定</p>
+          <p class="text-sm font-medium">{{ t('settings.vault.idleTitle') }}</p>
           <p class="mt-1 text-xs leading-5 text-muted-foreground">
-            默认不因空闲自动锁定；只有选择时长后才会启用。扩展后台重启时仍需重新解锁。
+            {{ t('settings.vault.idleDescription') }}
           </p>
           <p v-if="vaultActivitySummary" class="mt-2 text-xs text-muted-foreground">
             {{ vaultActivitySummary }}
@@ -656,38 +630,44 @@ function confirmThemePreference(): void {
             <select
               v-model.number="idleTimeoutMinutes"
               class="h-9 rounded-md border bg-background px-3 text-sm"
-              aria-label="空闲自动锁定时间"
+              :aria-label="t('settings.vault.idleLabel')"
             >
               <option
                 v-for="minutes in CREDENTIAL_VAULT_IDLE_TIMEOUT_OPTIONS"
                 :key="minutes"
                 :value="minutes"
               >
-                {{ minutes === 0 ? '不自动锁定（默认）' : `${minutes} 分钟` }}
+                {{ minutes === 0 ? t('settings.vault.neverLock') : t('settings.vault.minutes', { minutes }) }}
               </option>
             </select>
-            <Button variant="outline" :disabled="vaultBusy" @click="updateVaultPolicy">保存锁定策略</Button>
+            <Button variant="outline" :disabled="vaultBusy" @click="updateVaultPolicy">{{
+              t('settings.vault.savePolicy')
+            }}</Button>
           </div>
         </div>
         <div class="rounded-lg border p-4">
-          <p class="text-sm font-medium">更换保险库口令</p>
+          <p class="text-sm font-medium">{{ t('settings.vault.rotateTitle') }}</p>
           <p class="mt-1 text-xs text-muted-foreground">
-            将生成新 salt 和新密钥重新加密，不需要旧口令再次参与。
+            {{ t('settings.vault.rotateDescription') }}
           </p>
           <div class="mt-3 grid gap-2 sm:grid-cols-2">
             <Input
               v-model="newVaultPassphrase"
               type="password"
-              aria-label="新保险库口令"
+              :aria-label="t('settings.vault.newPassphrase')"
               autocomplete="new-password"
-              :placeholder="`至少 ${CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS} 位`"
+              :placeholder="
+                t('settings.vault.minimumCharacters', {
+                  count: CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS
+                })
+              "
             />
             <Input
               v-model="newVaultPassphraseConfirmation"
               type="password"
-              aria-label="确认新保险库口令"
+              :aria-label="t('settings.vault.confirmNewPassphrase')"
               autocomplete="new-password"
-              placeholder="再次输入"
+              :placeholder="t('settings.vault.enterAgain')"
             />
           </div>
           <Button
@@ -696,7 +676,7 @@ function confirmThemePreference(): void {
             :disabled="vaultBusy || !newVaultPassphrase || !newVaultPassphraseConfirmation"
             @click="rotateVaultPassphrase"
           >
-            <RotateCcw class="size-4" />更换口令
+            <RotateCcw class="size-4" />{{ t('settings.vault.rotate') }}
           </Button>
         </div>
       </div>
@@ -708,16 +688,20 @@ function confirmThemePreference(): void {
         <Input
           v-model="vaultPassphrase"
           type="password"
-          aria-label="新建保险库口令"
+          :aria-label="t('settings.vault.setPassphrase')"
           autocomplete="new-password"
-          :placeholder="`至少 ${CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS} 位`"
+          :placeholder="
+            t('settings.vault.minimumCharacters', {
+              count: CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS
+            })
+          "
         />
         <Input
           v-model="vaultPassphraseConfirmation"
           type="password"
-          aria-label="确认保险库口令"
+          :aria-label="t('settings.vault.confirmPassphrase')"
           autocomplete="new-password"
-          placeholder="再次输入"
+          :placeholder="t('settings.vault.enterAgain')"
         />
         <Button
           v-if="vaultStatus?.state === 'legacy'"
@@ -725,7 +709,7 @@ function confirmThemePreference(): void {
           :disabled="vaultBusy || !vaultPassphrase || !vaultPassphraseConfirmation"
           @click="migrateVault"
         >
-          <ShieldCheck class="size-4" />加密并迁移旧凭证
+          <ShieldCheck class="size-4" />{{ t('settings.vault.migrate') }}
         </Button>
       </div>
       <ErrorNotice v-if="vaultError" class="mt-3" :error="vaultError" compact />
@@ -734,14 +718,12 @@ function confirmThemePreference(): void {
     <Card v-if="settingsEditable" class="p-5">
       <div class="mb-4 flex items-center gap-2">
         <KeyRound class="size-4 text-primary" />
-        <h2 class="font-semibold">国际站开放平台凭证</h2>
+        <h2 class="font-semibold">{{ t('settings.credentials.title') }}</h2>
       </div>
       <div class="mb-4 rounded-lg border bg-muted/40 p-4 text-sm leading-6">
-        <p class="font-medium">三步完成真实接口连接</p>
+        <p class="font-medium">{{ t('settings.credentials.guideTitle') }}</p>
         <p class="mt-1 text-muted-foreground">
-          可以用插件向导复用当前 Chrome 登录态，读取已有应用并完成
-          OAuth；遇到滑块、验证码或密钥安全确认时，直接在打开的 Alibaba
-          标签页中处理。也可以手工填写或导入授权包。
+          {{ t('settings.credentials.guideDescription') }}
         </p>
         <div class="mt-3 flex flex-wrap gap-2">
           <Button
@@ -750,7 +732,7 @@ function confirmThemePreference(): void {
             type="button"
             @click="credentialAcquisitionOpen = true"
           >
-            <WandSparkles class="size-3.5" />获取开放平台凭证
+            <WandSparkles class="size-3.5" />{{ t('settings.credentials.acquire') }}
           </Button>
           <a
             href="https://i.alibaba.com/explore/open-api"
@@ -758,17 +740,17 @@ function confirmThemePreference(): void {
             rel="noopener noreferrer"
             class="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent"
           >
-            <ExternalLink class="size-3.5" />打开 Alibaba 应用中心
+            <ExternalLink class="size-3.5" />{{ t('settings.credentials.openCenter') }}
           </a>
           <label
             class="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent"
           >
-            <FileUp class="size-3.5" />一键导入授权包 JSON
+            <FileUp class="size-3.5" />{{ t('settings.credentials.importBundle') }}
             <input
               class="sr-only"
               type="file"
               accept="application/json,.json"
-              aria-label="导入授权包 JSON"
+              :aria-label="t('settings.credentials.importLabel')"
               @change="importCredentialBundle"
             />
           </label>
@@ -777,7 +759,12 @@ function confirmThemePreference(): void {
       </div>
       <div class="grid gap-4 sm:grid-cols-2">
         <label class="text-sm font-medium"
-          >App Key<Input v-model="model.appKey" class="mt-2" autocomplete="off" aria-label="App Key"
+          >App Key<Input
+            v-model="model.appKey"
+            class="mt-2"
+            autocomplete="off"
+            aria-label="App Key"
+            data-feedback-redact
         /></label>
         <label class="text-sm font-medium"
           >App Secret<Input
@@ -786,7 +773,7 @@ function confirmThemePreference(): void {
             type="password"
             aria-label="App Secret"
             autocomplete="new-password"
-            :placeholder="vaultStatus?.hasAppSecret ? '已加密保存，留空保持不变' : ''"
+            :placeholder="vaultStatus?.hasAppSecret ? t('settings.credentials.encryptedPlaceholder') : ''"
         /></label>
         <label class="text-sm font-medium sm:col-span-2"
           >Access Token<Input
@@ -795,13 +782,15 @@ function confirmThemePreference(): void {
             type="password"
             aria-label="Access Token"
             autocomplete="new-password"
-            :placeholder="vaultStatus?.hasAccessToken ? '已加密保存，留空保持不变' : ''"
+            :placeholder="vaultStatus?.hasAccessToken ? t('settings.credentials.encryptedPlaceholder') : ''"
         /></label>
         <label class="text-sm font-medium sm:col-span-2"
-          >HTTPS 网关<Input v-model="model.endpoint" class="mt-2" aria-label="HTTPS 网关"
+          >{{ t('settings.credentials.gateway')
+          }}<Input v-model="model.endpoint" class="mt-2" :aria-label="t('settings.credentials.gateway')"
         /></label>
         <label class="text-sm font-medium"
-          >签名算法<select
+          >{{ t('settings.credentials.signMethod')
+          }}<select
             v-model="model.signMethod"
             class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
           >
@@ -813,13 +802,17 @@ function confirmThemePreference(): void {
         class="mt-4"
         :disabled="
           saving ||
+          vaultBusy ||
           (mode === 'extension' &&
             vaultStatus?.state === 'empty' &&
             (!vaultPassphrase || !vaultPassphraseConfirmation))
         "
         @click="save"
-        ><Save class="size-4" />{{ vaultStatus?.state === 'empty' ? '创建保险库并保存' : '保存设置' }}</Button
       >
+        <LoaderCircle v-if="saving" class="size-4 animate-spin" />
+        <Save v-else class="size-4" />
+        {{ saving ? t('settings.credentials.saving') : t('settings.credentials.save') }}
+      </Button>
     </Card>
     <AlibabaCredentialAcquisitionDialog
       v-if="alibabaCredentialAcquisition"
@@ -829,24 +822,50 @@ function confirmThemePreference(): void {
     <Card class="flex items-start gap-3 border-emerald-200 bg-emerald-50 p-5 text-emerald-900"
       ><ShieldCheck class="mt-0.5 size-5 shrink-0" />
       <div>
-        <p class="font-medium">安全边界</p>
+        <p class="font-medium">{{ t('settings.security.title') }}</p>
         <p class="mt-1 text-sm leading-6">
-          加密可降低本地静态存储泄露风险，但已解锁或被恶意扩展控制的浏览器仍可能暴露 App
-          Secret；高安全场景应迁移到用户控制的 BFF。
+          {{ t('settings.security.description') }}
         </p>
       </div></Card
     >
+    <ExtensionSocialBackendPanel v-if="mode === 'extension' && extensionSocialBackend" />
+    <Card class="p-5">
+      <div class="flex items-start gap-3">
+        <Globe2 class="mt-0.5 size-5 shrink-0 text-primary" />
+        <div class="min-w-0 flex-1">
+          <h2 class="font-semibold">{{ t('settings.alibabaLanguage.title') }}</h2>
+          <p class="mt-1 text-sm leading-6 text-muted-foreground">
+            {{ t('settings.alibabaLanguage.description') }}
+          </p>
+          <p class="mt-1 text-xs leading-5 text-muted-foreground">
+            {{ t('settings.alibabaLanguage.interfaceHint') }}
+          </p>
+          <label class="mt-3 block max-w-xs text-sm font-medium">
+            {{ t('settings.alibabaLanguage.label') }}
+            <select
+              v-model="preferredLanguage"
+              class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
+              :aria-label="t('settings.alibabaLanguage.label')"
+              @change="confirmLanguagePreference"
+            >
+              <option value="zh_CN">{{ t('settings.alibabaLanguage.chinese') }}</option>
+              <option value="en_US">{{ t('settings.alibabaLanguage.english') }}</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    </Card>
     <Card v-if="mode === 'extension' && permissions" class="p-5">
       <div class="flex items-center gap-2">
         <Globe2 class="size-4 text-primary" />
-        <h2 class="font-semibold">主机权限</h2>
+        <h2 class="font-semibold">{{ t('settings.permissions.title') }}</h2>
       </div>
       <p class="mt-2 text-sm text-muted-foreground">
-        正式网关为扩展必选权限；下面只列出曾由自定义网关或外部图片转存按需授予的主机。
+        {{ t('settings.permissions.description') }}
       </p>
       <ErrorNotice v-if="permissionsError" class="mt-3" :error="permissionsError" compact />
       <p v-else-if="grantedHosts.length === 0" class="mt-3 text-sm text-muted-foreground">
-        当前没有额外主机权限。
+        {{ t('settings.permissions.empty') }}
       </p>
       <ul v-else class="mt-3 grid gap-2">
         <li
@@ -858,16 +877,16 @@ function confirmThemePreference(): void {
           <Button
             size="sm"
             variant="outline"
-            :aria-label="`撤销 ${origin}`"
+            :aria-label="t('settings.permissions.revokeLabel', { origin })"
             :disabled="permissionsBusy"
             @click="settingsConfirmation = { kind: 'revoke-permission', origin }"
           >
-            <Trash2 class="size-3.5" />撤销
+            <Trash2 class="size-3.5" />{{ t('settings.permissions.revoke') }}
           </Button>
         </li>
       </ul>
       <Button class="mt-3" variant="outline" :disabled="permissionsBusy" @click="refreshPermissions">
-        <RotateCcw class="size-4" />刷新权限
+        <RotateCcw class="size-4" />{{ t('settings.permissions.refresh') }}
       </Button>
     </Card>
     <Card class="p-5">
@@ -875,18 +894,22 @@ function confirmThemePreference(): void {
         <div>
           <div class="flex items-center gap-2">
             <ShieldCheck class="size-4 text-primary" />
-            <h2 class="font-semibold">脱敏诊断</h2>
+            <h2 class="font-semibold">{{ t('settings.diagnostics.title') }}</h2>
           </div>
           <p class="mt-2 text-sm text-muted-foreground">
-            仅保留最近 100 条操作名、requestId、耗时、错误码和 traceId；不记录请求参数、凭证或响应正文。
+            {{ t('settings.diagnostics.description') }}
           </p>
         </div>
-        <span aria-label="诊断记录数量" class="rounded-full bg-muted px-3 py-1 text-xs">
-          {{ diagnostics?.entries.length ?? 0 }} 条
+        <span
+          :aria-label="t('settings.diagnostics.countLabel')"
+          class="rounded-full bg-muted px-3 py-1 text-xs"
+        >
+          {{ t('settings.diagnostics.count', { count: diagnostics?.entries.length ?? 0 }) }}
         </span>
       </div>
       <div v-if="lastDiagnosticError" class="mt-3 rounded-md bg-amber-50 p-3 text-xs text-amber-800">
-        最近错误：{{ lastDiagnosticError.errorCode }} · {{ lastDiagnosticError.operation }} ·
+        {{ t('settings.diagnostics.latestError') }} {{ lastDiagnosticError.errorCode }} ·
+        {{ lastDiagnosticError.operation }} ·
         {{ lastDiagnosticError.errorMessage }}
         <span class="mt-1 block break-all font-mono text-[11px]">
           requestId：{{ lastDiagnosticError.requestId }}
@@ -895,10 +918,10 @@ function confirmThemePreference(): void {
       <ErrorNotice v-if="diagnosticsError" class="mt-3" :error="diagnosticsError" compact />
       <div class="mt-4 flex flex-wrap gap-2">
         <Button variant="outline" :disabled="diagnosticsBusy" @click="refreshDiagnostics">
-          <RotateCcw class="size-4" />刷新
+          <RotateCcw class="size-4" />{{ t('settings.diagnostics.refresh') }}
         </Button>
         <Button variant="outline" :disabled="diagnosticsBusy" @click="exportDiagnostics">
-          <Download class="size-4" />导出诊断
+          <Download class="size-4" />{{ t('settings.diagnostics.export') }}
         </Button>
         <ActionTooltip
           :disabled="Boolean(clearDiagnosticsDisabledReason)"
@@ -909,7 +932,7 @@ function confirmThemePreference(): void {
             :disabled="Boolean(clearDiagnosticsDisabledReason)"
             @click="settingsConfirmation = { kind: 'clear-diagnostics' }"
           >
-            <Trash2 class="size-4" />清空诊断
+            <Trash2 class="size-4" />{{ t('settings.diagnostics.clear') }}
           </Button>
         </ActionTooltip>
       </div>
@@ -919,10 +942,10 @@ function confirmThemePreference(): void {
         <div>
           <div class="flex items-center gap-2">
             <Database class="size-4 text-primary" />
-            <h2 class="font-semibold">本地数据与隐私</h2>
+            <h2 class="font-semibold">{{ t('settings.localData.title') }}</h2>
           </div>
           <p class="mt-2 text-sm text-muted-foreground">
-            清单只包含类别和估算大小，不导出 App Secret、Access Token、草稿正文或诊断内容。
+            {{ t('settings.localData.description') }}
           </p>
         </div>
         <span class="rounded-full bg-muted px-3 py-1 text-xs">
@@ -936,23 +959,23 @@ function confirmThemePreference(): void {
         :data="dataInventory?.categories ?? []"
         max-height="min(60vh, 36rem)"
         min-width="620px"
-        empty-text="暂无本地数据"
+        :empty-text="t('settings.localData.empty')"
       />
       <div class="mt-4 flex flex-wrap gap-2">
         <Button variant="outline" :disabled="dataBusy" @click="refreshLocalData">
-          <RotateCcw class="size-4" />刷新清单
+          <RotateCcw class="size-4" />{{ t('settings.localData.refresh') }}
         </Button>
         <Button variant="outline" :disabled="dataBusy" @click="exportLocalDataInventory">
-          <Download class="size-4" />导出数据清单
+          <Download class="size-4" />{{ t('settings.localData.export') }}
         </Button>
       </div>
       <div class="mt-5 rounded-lg border border-red-200 bg-red-50 p-4">
         <div class="flex items-start gap-2 text-red-900">
           <AlertTriangle class="mt-0.5 size-4 shrink-0" />
           <div>
-            <p class="text-sm font-medium">彻底清除扩展本地数据</p>
+            <p class="text-sm font-medium">{{ t('settings.localData.dangerTitle') }}</p>
             <p class="mt-1 text-xs leading-5">
-              此操作无法撤销。请输入“清除全部数据”，将删除凭证、设置、草稿、诊断、首次使用状态并撤销额外主机权限。
+              {{ t('settings.localData.dangerDescription', { phrase: clearPhrase }) }}
             </p>
           </div>
         </div>
@@ -960,17 +983,17 @@ function confirmThemePreference(): void {
           <Input
             v-model="clearConfirmation"
             class="max-w-xs bg-white"
-            aria-label="清除确认短语"
+            :aria-label="t('settings.localData.clearLabel')"
             autocomplete="off"
-            placeholder="清除全部数据"
+            :placeholder="clearPhrase"
           />
           <Button
             variant="outline"
             class="border-red-300 text-red-800 hover:bg-red-100"
-            :disabled="dataBusy || clearConfirmation !== '清除全部数据'"
+            :disabled="dataBusy || clearConfirmation !== clearPhrase"
             @click="clearAllLocalData"
           >
-            <Trash2 class="size-4" />彻底清除
+            <Trash2 class="size-4" />{{ t('settings.localData.clear') }}
           </Button>
         </div>
       </div>
@@ -982,13 +1005,13 @@ function confirmThemePreference(): void {
     :title="settingsConfirmationTitle"
     :description="settingsConfirmationDescription"
     destructive
-    confirm-label="确认继续"
+    :confirm-label="t('settings.confirmation.continue')"
     @update:open="settingsConfirmation = $event ? settingsConfirmation : null"
     @confirm="confirmSettingsAction"
   >
     <p v-if="settingsConfirmation?.kind === 'clear-diagnostics'">
-      诊断内容已经脱敏，但清空后无法恢复；该操作不会删除账号凭证或商品草稿。
+      {{ t('settings.confirmation.clearDiagnosticsDetail') }}
     </p>
-    <p v-else>该操作只撤销所选额外主机，不影响 Alibaba 正式网关的必选权限。</p>
+    <p v-else>{{ t('settings.confirmation.revokeDetail') }}</p>
   </ConfirmActionDialog>
 </template>

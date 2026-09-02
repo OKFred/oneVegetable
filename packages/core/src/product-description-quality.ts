@@ -1,5 +1,6 @@
 import type { ProductSchemaFieldIssue } from './product-schema';
 import type { ProductSchemaOfficialHint } from './product-official-hints';
+import type { UiLocale } from './preferences';
 import type { ProductDescriptionQualityIssue } from './types';
 
 export interface ProductDescriptionImageMetadata {
@@ -13,14 +14,16 @@ export interface ProductDescriptionQualityInput {
   schemaIssues?: ProductSchemaFieldIssue[];
   officialHints?: ProductSchemaOfficialHint[];
   imageMetadata?: Readonly<Record<string, ProductDescriptionImageMetadata>>;
+  locale?: UiLocale;
 }
 
 export function analyzeProductDescriptionQuality(
   input: ProductDescriptionQualityInput
 ): ProductDescriptionQualityIssue[] {
+  const locale = input.locale ?? 'zh-CN';
   const issues: ProductDescriptionQualityIssue[] = [];
-  appendSchemaIssues(input.schemaIssues ?? [], issues);
-  appendOfficialIssues(input.officialHints ?? [], issues);
+  appendSchemaIssues(input.schemaIssues ?? [], issues, locale);
+  appendOfficialIssues(input.officialHints ?? [], issues, locale);
 
   const document = new DOMParser().parseFromString(input.html, 'text/html');
   const text = normalizeText(document.body.textContent);
@@ -29,15 +32,19 @@ export function analyzeProductDescriptionQuality(
 
   if (!text && images.length === 0) {
     issues.push(
-      projectIssue('empty-description', '商品详情为空', '补充面向买家的产品介绍、卖点、规格与应用场景。')
+      projectIssue(
+        'empty-description',
+        qualityMessage(locale, 'emptyDescription'),
+        qualityMessage(locale, 'emptyDescriptionRemediation')
+      )
     );
   }
   if (text && englishWordCount < 150) {
     issues.push(
       projectIssue(
         'short-description',
-        `英文正文约 ${englishWordCount} 个单词，少于项目建议的 150 个`,
-        '补充核心卖点、规格参数、应用场景、包装和售后信息。'
+        qualityMessage(locale, 'shortDescription', { count: englishWordCount }),
+        qualityMessage(locale, 'shortDescriptionRemediation')
       )
     );
   }
@@ -45,8 +52,8 @@ export function analyzeProductDescriptionQuality(
     issues.push(
       projectIssue(
         'long-description-without-heading',
-        '英文正文超过 300 个单词但没有分段标题',
-        '使用二至四级标题组织卖点、规格、场景和服务信息。'
+        qualityMessage(locale, 'longWithoutHeading'),
+        qualityMessage(locale, 'longWithoutHeadingRemediation')
       )
     );
   }
@@ -57,22 +64,23 @@ export function analyzeProductDescriptionQuality(
       issues.push(
         projectIssue(
           'long-paragraph',
-          `第 ${index + 1} 段超过 600 个字符`,
-          '拆分长段落，并用标题或列表提高可读性。'
+          qualityMessage(locale, 'longParagraph', { index: index + 1 }),
+          qualityMessage(locale, 'longParagraphRemediation')
         )
       );
     }
   }
 
-  appendImageIssues(images, input.imageMetadata ?? {}, issues);
-  appendEmptyStructureIssues(document, issues);
-  appendContactIssues(text, document, issues);
+  appendImageIssues(images, input.imageMetadata ?? {}, issues, locale);
+  appendEmptyStructureIssues(document, issues, locale);
+  appendContactIssues(text, document, issues, locale);
   return deduplicateIssues(issues);
 }
 
 function appendSchemaIssues(
   schemaIssues: ProductSchemaFieldIssue[],
-  output: ProductDescriptionQualityIssue[]
+  output: ProductDescriptionQualityIssue[],
+  locale: UiLocale
 ): void {
   for (const issue of schemaIssues) {
     output.push({
@@ -80,7 +88,10 @@ function appendSchemaIssues(
       source: 'alibaba-schema',
       level: issue.severity === 'error' ? 'error' : 'warning',
       message: issue.message,
-      remediation: '按 Alibaba Schema 约束修正对应字段后再提交。',
+      remediation:
+        issue.severity === 'error'
+          ? qualityMessage(locale, 'schemaErrorRemediation')
+          : qualityMessage(locale, 'schemaWarningRemediation'),
       fieldIds: [issue.fieldKey]
     });
   }
@@ -88,7 +99,8 @@ function appendSchemaIssues(
 
 function appendOfficialIssues(
   hints: ProductSchemaOfficialHint[],
-  output: ProductDescriptionQualityIssue[]
+  output: ProductDescriptionQualityIssue[],
+  locale: UiLocale
 ): void {
   for (const hint of hints) {
     output.push({
@@ -96,7 +108,7 @@ function appendOfficialIssues(
       source: 'official',
       level: 'warning',
       message: hint.summary,
-      remediation: '参考官方提示完善内容；该提示不会阻止提交。',
+      remediation: qualityMessage(locale, 'officialRemediation'),
       fieldIds: hint.fieldKeys
     });
   }
@@ -105,7 +117,8 @@ function appendOfficialIssues(
 function appendImageIssues(
   images: HTMLImageElement[],
   metadata: Readonly<Record<string, ProductDescriptionImageMetadata>>,
-  output: ProductDescriptionQualityIssue[]
+  output: ProductDescriptionQualityIssue[],
+  locale: UiLocale
 ): void {
   const occurrences = new Map<string, number>();
   for (const image of images) {
@@ -113,22 +126,30 @@ function appendImageIssues(
     occurrences.set(src, (occurrences.get(src) ?? 0) + 1);
     if (!image.getAttribute('alt')?.trim()) {
       output.push(
-        projectIssue('image-missing-alt', '详情图片缺少 alt 文本', '为图片补充简洁、准确的英文说明。')
+        projectIssue(
+          'image-missing-alt',
+          qualityMessage(locale, 'missingAlt'),
+          qualityMessage(locale, 'missingAltRemediation')
+        )
       );
     }
     if (!isAlibabaPhotoBankUrl(src)) {
       output.push(
         projectIssue(
           'external-image',
-          '详情中包含非国际站图库来源的图片',
-          '先将图片转存到国际站图库，再从素材选择器插入。'
+          qualityMessage(locale, 'externalImage'),
+          qualityMessage(locale, 'externalImageRemediation')
         )
       );
     }
     const imageStatus = metadata[src];
     if (imageStatus?.loaded === false) {
       output.push(
-        projectIssue('image-load-failed', '详情图片无法加载', '检查素材是否已删除、过期或不可公开访问。')
+        projectIssue(
+          'image-load-failed',
+          qualityMessage(locale, 'imageLoadFailed'),
+          qualityMessage(locale, 'imageLoadFailedRemediation')
+        )
       );
     }
     const width = imageStatus?.width ?? numericAttribute(image, 'data-photobank-width');
@@ -137,40 +158,61 @@ function appendImageIssues(
       output.push(
         projectIssue(
           'low-resolution-image',
-          `详情图片尺寸 ${width}×${height}，低于项目建议的 750×750`,
-          '替换为宽高均不低于 750 像素的清晰素材。'
+          qualityMessage(locale, 'lowResolution', { width, height }),
+          qualityMessage(locale, 'lowResolutionRemediation')
         )
       );
     }
   }
   if (Array.from(occurrences.values()).some((count) => count > 1)) {
     output.push(
-      projectIssue('duplicate-image', '详情中存在重复图片', '删除重复素材或替换为不同角度和场景图。')
+      projectIssue(
+        'duplicate-image',
+        qualityMessage(locale, 'duplicateImage'),
+        qualityMessage(locale, 'duplicateImageRemediation')
+      )
     );
   }
 }
 
-function appendEmptyStructureIssues(document: Document, output: ProductDescriptionQualityIssue[]): void {
+function appendEmptyStructureIssues(
+  document: Document,
+  output: ProductDescriptionQualityIssue[],
+  locale: UiLocale
+): void {
   if (
     Array.from(document.body.querySelectorAll('table')).some(
       (table) => !normalizeText(table.textContent) && !table.querySelector('img')
     )
   ) {
-    output.push(projectIssue('empty-table', '详情中存在空表格', '填写表格内容或删除空表格。'));
+    output.push(
+      projectIssue(
+        'empty-table',
+        qualityMessage(locale, 'emptyTable'),
+        qualityMessage(locale, 'emptyTableRemediation')
+      )
+    );
   }
   if (
     Array.from(document.body.querySelectorAll('ul,ol')).some(
       (list) => !Array.from(list.querySelectorAll('li')).some((item) => normalizeText(item.textContent))
     )
   ) {
-    output.push(projectIssue('empty-list', '详情中存在空列表', '填写列表项或删除空列表。'));
+    output.push(
+      projectIssue(
+        'empty-list',
+        qualityMessage(locale, 'emptyList'),
+        qualityMessage(locale, 'emptyListRemediation')
+      )
+    );
   }
 }
 
 function appendContactIssues(
   text: string,
   document: Document,
-  output: ProductDescriptionQualityIssue[]
+  output: ProductDescriptionQualityIssue[],
+  locale: UiLocale
 ): void {
   const contactPattern =
     /(?:\b(?:whats?app|wechat|weixin|skype|telegram)\b|\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b|(?:\+?\d[\d\s().-]{7,}\d))/iu;
@@ -191,11 +233,95 @@ function appendContactIssues(
     output.push(
       projectIssue(
         'contact-or-external-traffic',
-        '详情中可能包含联系方式或外部引流信息',
-        '核对国际站内容规范，删除站外联系方式、收款方式或引流链接。'
+        qualityMessage(locale, 'externalTraffic'),
+        qualityMessage(locale, 'externalTrafficRemediation')
       )
     );
   }
+}
+
+const PRODUCT_QUALITY_MESSAGES = {
+  'zh-CN': {
+    emptyDescription: '商品详情为空',
+    emptyDescriptionRemediation: '补充面向买家的产品介绍、卖点、规格与应用场景。',
+    shortDescription: '英文正文约 {count} 个单词，少于项目建议的 150 个',
+    shortDescriptionRemediation: '补充核心卖点、规格参数、应用场景、包装和售后信息。',
+    longWithoutHeading: '英文正文超过 300 个单词但没有分段标题',
+    longWithoutHeadingRemediation: '使用二至四级标题组织卖点、规格、场景和服务信息。',
+    longParagraph: '第 {index} 段超过 600 个字符',
+    longParagraphRemediation: '拆分长段落，并用标题或列表提高可读性。',
+    schemaErrorRemediation: '补齐商品名称、主图等最低发布条件后再提交。',
+    schemaWarningRemediation: '建议提交前核对；本地预检不会阻止提交，最终以 Alibaba 接口返回为准。',
+    officialRemediation: '参考官方提示完善内容；该提示不会阻止提交。',
+    missingAlt: '详情图片缺少 alt 文本',
+    missingAltRemediation: '为图片补充简洁、准确的英文说明。',
+    externalImage: '详情中包含非国际站图库来源的图片',
+    externalImageRemediation: '先将图片转存到国际站图库，再从素材选择器插入。',
+    imageLoadFailed: '详情图片无法加载',
+    imageLoadFailedRemediation: '检查素材是否已删除、过期或不可公开访问。',
+    lowResolution: '详情图片尺寸 {width}×{height}，低于项目建议的 750×750',
+    lowResolutionRemediation: '替换为宽高均不低于 750 像素的清晰素材。',
+    duplicateImage: '详情中存在重复图片',
+    duplicateImageRemediation: '删除重复素材或替换为不同角度和场景图。',
+    emptyTable: '详情中存在空表格',
+    emptyTableRemediation: '填写表格内容或删除空表格。',
+    emptyList: '详情中存在空列表',
+    emptyListRemediation: '填写列表项或删除空列表。',
+    externalTraffic: '详情中可能包含联系方式或外部引流信息',
+    externalTrafficRemediation: '核对国际站内容规范，删除站外联系方式、收款方式或引流链接。'
+  },
+  'en-US': {
+    emptyDescription: 'Product description is empty',
+    emptyDescriptionRemediation:
+      'Add a buyer-facing introduction, selling points, specifications, and use cases.',
+    shortDescription:
+      'The English body contains about {count} words, below the project recommendation of 150',
+    shortDescriptionRemediation:
+      'Add core selling points, specifications, use cases, packaging, and after-sales information.',
+    longWithoutHeading: 'The English body exceeds 300 words but has no section headings',
+    longWithoutHeadingRemediation:
+      'Use level-two through level-four headings to organize selling points, specifications, scenarios, and service information.',
+    longParagraph: 'Paragraph {index} exceeds 600 characters',
+    longParagraphRemediation: 'Split long paragraphs and use headings or lists to improve readability.',
+    schemaErrorRemediation:
+      'Provide the minimum publishing requirements, such as product name and main image, before submission.',
+    schemaWarningRemediation:
+      'Review before submission. Local preflight does not block submission; the Alibaba API response is final.',
+    officialRemediation:
+      'Improve the content according to the official hint. This hint does not block submission.',
+    missingAlt: 'A description image is missing alt text',
+    missingAltRemediation: 'Add a concise and accurate English description for the image.',
+    externalImage: 'The description contains an image that is not from the Alibaba.com gallery',
+    externalImageRemediation:
+      'Transfer the image to the Alibaba.com gallery, then insert it through the asset selector.',
+    imageLoadFailed: 'A description image could not be loaded',
+    imageLoadFailedRemediation:
+      'Check whether the asset was deleted, expired, or is not publicly accessible.',
+    lowResolution: 'Description image size {width}×{height} is below the project recommendation of 750×750',
+    lowResolutionRemediation: 'Replace it with a clear asset at least 750 pixels wide and high.',
+    duplicateImage: 'The description contains duplicate images',
+    duplicateImageRemediation: 'Remove duplicates or use images showing different angles and scenarios.',
+    emptyTable: 'The description contains an empty table',
+    emptyTableRemediation: 'Fill in the table or remove it.',
+    emptyList: 'The description contains an empty list',
+    emptyListRemediation: 'Add list items or remove the list.',
+    externalTraffic: 'The description may contain contact details or off-platform redirection',
+    externalTrafficRemediation:
+      'Review Alibaba.com content rules and remove off-platform contact details, payment methods, or outbound links.'
+  }
+} as const satisfies Record<UiLocale, Record<string, string>>;
+
+type ProductQualityMessageKey = keyof (typeof PRODUCT_QUALITY_MESSAGES)['zh-CN'];
+
+function qualityMessage(
+  locale: UiLocale,
+  key: ProductQualityMessageKey,
+  values: Readonly<Record<string, string | number>> = {}
+): string {
+  return Object.entries(values).reduce<string>(
+    (message, [name, value]) => message.replaceAll(`{${name}}`, String(value)),
+    PRODUCT_QUALITY_MESSAGES[locale][key]
+  );
 }
 
 function projectIssue(code: string, message: string, remediation: string): ProductDescriptionQualityIssue {

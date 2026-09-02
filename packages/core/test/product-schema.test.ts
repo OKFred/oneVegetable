@@ -163,6 +163,28 @@ describe('product Schema XML engine', () => {
     expect(() => serializeProductSchemaXml(model)).toThrow(ProductSchemaSerializationError);
   });
 
+  it('emits English project validation and serialization messages when requested', () => {
+    const model = parseProductSchemaXml(
+      `<itemSchema>
+      <field id="productTitle" name="Product title" type="input"><value/></field>
+      <field id="scImages" name="Main images" type="multiInput"><values/></field>
+    </itemSchema>`,
+      undefined,
+      'en-US'
+    );
+    expect(validateProductSchemaModel(model, 'en-US').map((issue) => issue.message)).toEqual([
+      'Product name is required for formal publishing',
+      'At least one main product image is required for formal publishing'
+    ]);
+
+    at(model.fields, 0).sourceIndex = 99;
+    const inspection = inspectProductSchemaSerialization(model, 'en-US');
+    expect(inspection.structuralDiffs).toContain('field:0 could not be bound to its source field');
+    expect(() => serializeProductSchemaXml(model, 'en-US')).toThrow(
+      'Product Schema XML has structural issues'
+    );
+  });
+
   it('counts populated complex instances and never validates fields templates as user data', () => {
     const model = parseProductSchemaXml(REAL_LAYOUT_XML);
     const issues = validateProductSchemaModel(model);
@@ -281,15 +303,99 @@ describe('product Schema XML engine', () => {
     ]);
   });
 
-  it('validates local rules and never executes server expressions', () => {
+  it('keeps local Schema rules advisory and never executes server expressions', () => {
     const model = parseProductSchemaXml(XML);
     model.fields[0] = withProductSchemaFieldText(at(model.fields, 0), '');
     const packageInstance = at(at(model.fields, 4).instances, 0);
     packageInstance.fields[0] = withProductSchemaFieldText(at(packageInstance.fields, 0), '101');
     const issues = validateProductSchemaModel(model);
-    expect(issues.some((issue) => issue.rule === 'requiredRule' && issue.severity === 'error')).toBe(true);
-    expect(issues.some((issue) => issue.rule === 'maxValueRule' && issue.severity === 'error')).toBe(true);
+    expect(
+      issues.some((issue) => issue.rule === 'publishMinimumProductTitle' && issue.severity === 'error')
+    ).toBe(true);
+    expect(issues.some((issue) => issue.rule === 'maxValueRule' && issue.severity === 'warning')).toBe(true);
     expect(issues.some((issue) => issue.rule === 'serverBizRule' && issue.severity === 'warning')).toBe(true);
+  });
+
+  it('blocks only empty recognized title and main image fields before formal publish', () => {
+    const model = parseProductSchemaXml(`<itemSchema>
+      <field id="subject" name="Product name" type="input"><value/></field>
+      <field id="scImages" name="Main images" type="multiInput"><value/></field>
+      <field id="material" name="Material" type="input">
+        <rules><rule name="requiredRule" value="true"/></rules><value/>
+      </field>
+    </itemSchema>`);
+
+    expect(validateProductSchemaModel(model)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ rule: 'publishMinimumProductTitle', severity: 'error' }),
+        expect.objectContaining({ rule: 'publishMinimumMainImage', severity: 'error' }),
+        expect.objectContaining({ rule: 'requiredRule', severity: 'warning' })
+      ])
+    );
+
+    model.fields[0] = withProductSchemaFieldText(at(model.fields, 0), 'Safe product name');
+    at(model.fields, 1).values = [{ text: '', attributes: { fileId: 'photo-1' }, metadata: {} }];
+    expect(validateProductSchemaModel(model).filter((issue) => issue.severity === 'error')).toEqual([]);
+  });
+
+  it('accepts integer quantity prices within Alibaba decimal value bounds', () => {
+    const model = parseProductSchemaXml(`<itemSchema>
+      <field id="price" name="Quantity price" type="input">
+        <rules>
+          <rule name="valueTypeRule" value="decimal"/>
+          <rule name="minDecimalDigitsRule" value="0.01" exProperty="include"/>
+          <rule name="maxDecimalDigitsRule" value="9999999.99" exProperty="include"/>
+        </rules>
+        <value>199</value>
+      </field>
+    </itemSchema>`);
+
+    expect(validateProductSchemaModel(model)).toEqual([]);
+
+    model.fields[0] = withProductSchemaFieldText(at(model.fields, 0), '0');
+    expect(validateProductSchemaModel(model)).toContainEqual(
+      expect.objectContaining({
+        rule: 'minDecimalDigitsRule',
+        message: 'Quantity price 不能小于 0.01'
+      })
+    );
+
+    model.fields[0] = withProductSchemaFieldText(at(model.fields, 0), '10000000');
+    expect(validateProductSchemaModel(model)).toContainEqual(
+      expect.objectContaining({
+        rule: 'maxDecimalDigitsRule',
+        message: 'Quantity price 不能大于 9999999.99'
+      })
+    );
+  });
+
+  it('does not treat optional repeatable minimums as required fields', () => {
+    const model = parseProductSchemaXml(`<itemSchema>
+      <field id="optionalTiers" name="Optional tiers" type="complex">
+        <rules><rule name="minInputNumRule" value="1"/></rules>
+        <fields><field id="optionalTiers_0" type="complex"><fields>
+          <field id="quantity" type="input"/><field id="price" type="input"/>
+        </fields></field></fields>
+      </field>
+      <field id="requiredTiers" name="Required tiers" type="complex">
+        <rules>
+          <rule name="requiredRule" value="true"/>
+          <rule name="minInputNumRule" value="1"/>
+        </rules>
+        <fields><field id="requiredTiers_0" type="complex"><fields>
+          <field id="quantity" type="input"/><field id="price" type="input"/>
+        </fields></field></fields>
+      </field>
+    </itemSchema>`);
+
+    const issues = validateProductSchemaModel(model);
+    expect(issues.some((issue) => issue.fieldKey === 'field:0')).toBe(false);
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fieldKey: 'field:1', rule: 'requiredRule' }),
+        expect.objectContaining({ fieldKey: 'field:1', rule: 'minInputNumRule' })
+      ])
+    );
   });
 
   it('preserves value attributes such as PhotoBank fileId without normalizing the XML layout', () => {

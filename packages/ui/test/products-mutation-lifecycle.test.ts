@@ -8,12 +8,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import { provideServices } from '../src/lib/services';
+import { uiI18n } from '../src/i18n';
 import ProductsView from '../src/views/ProductsView.vue';
 
-import type { ProductMutationJob, ProductMutationJobClient } from '@one-vegetable/core';
+import {
+  APP_PREFERENCES_STORAGE_KEY,
+  type ProductMutationJob,
+  type ProductMutationJobClient
+} from '@one-vegetable/core';
 
 describe('ProductsView product mutation lifecycle', () => {
   beforeEach(() => {
+    globalThis.localStorage.setItem(
+      APP_PREFERENCES_STORAGE_KEY,
+      JSON.stringify({ uiLocale: 'zh-CN', alibabaLanguage: 'en_US', theme: 'system' })
+    );
+    uiI18n.global.locale.value = 'zh-CN';
     globalThis.history.replaceState(null, '', '#/products/list');
   });
 
@@ -30,7 +40,7 @@ describe('ProductsView product mutation lifecycle', () => {
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('Portable solar power station 1000W');
     });
-    const edit = wrapper.findAll('button').find((button) => button.text().includes('编辑商品'));
+    const edit = wrapper.findAll('button').find((button) => button.text() === '编辑');
     if (!edit) throw new Error('Missing edit button');
     await edit.trigger('click');
     await flushPromises();
@@ -66,7 +76,7 @@ describe('ProductsView product mutation lifecycle', () => {
       refresh: vi.fn(() => Promise.resolve(job)),
       recover
     };
-    const wrapper = mountProductsView(productMutationJobs, 'updateProductDisplay');
+    const wrapper = mountProductsView(productMutationJobs, 'updateProductDisplay', 'extension');
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('最近上下架任务');
       expect(wrapper.text()).toContain('需要人工恢复');
@@ -88,11 +98,71 @@ describe('ProductsView product mutation lifecycle', () => {
     });
     wrapper.unmount();
   });
+
+  it('localizes durable job reasons without exposing the stored Chinese project message', async () => {
+    globalThis.localStorage.setItem(
+      APP_PREFERENCES_STORAGE_KEY,
+      JSON.stringify({ uiLocale: 'en-US', alibabaLanguage: 'en_US', theme: 'system' })
+    );
+    uiI18n.global.locale.value = 'en-US';
+    const job = displayJobFixture();
+    const productMutationJobs: ProductMutationJobClient = {
+      list: vi.fn(() => Promise.resolve({ items: [job], page: 1, pageSize: 100, total: 1 })),
+      get: vi.fn(() => Promise.resolve(job)),
+      refresh: vi.fn(() => Promise.resolve(job)),
+      recover: vi.fn(() => Promise.resolve(job))
+    };
+    const wrapper = mountProductsView(productMutationJobs, 'updateProductDisplay', 'extension');
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Platform-status readback timed out');
+    });
+    expect(wrapper.text()).not.toContain(job.message);
+    wrapper.unmount();
+  });
+
+  it('resumes and displays a persisted product creation readback task', async () => {
+    const job = creationJobFixture();
+    const verified = {
+      ...job,
+      status: 'verified' as const,
+      revision: 3,
+      lastCheckedTimeUtc: 3,
+      completedTimeUtc: 3,
+      reasonCode: 'PRODUCT_PUBLISH_READBACK_MATCHED',
+      message: '商品已在列表回读，当前由平台审核中'
+    };
+    const refresh = vi.fn(() => Promise.resolve(verified));
+    const productMutationJobs: ProductMutationJobClient = {
+      list: vi.fn(() => Promise.resolve({ items: [job], page: 1, pageSize: 100, total: 1 })),
+      get: vi.fn(() => Promise.resolve(job)),
+      refresh,
+      recover: vi.fn(() => Promise.resolve(job))
+    };
+    const wrapper = mountProductsView(productMutationJobs, 'publishProduct', 'extension');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Portable solar power station 1000W');
+    });
+    const create = wrapper.findAll('button').find((button) => button.text().trim() === '新增');
+    if (!create) throw new Error('Missing create product button');
+    await create.trigger('click');
+    await flushPromises();
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('最近的正式发布任务');
+      expect(wrapper.text()).toContain(job.productId);
+      expect(wrapper.text()).toContain(job.requestId);
+      expect(wrapper.text()).toContain('商品已在列表回读');
+    });
+    expect(refresh).toHaveBeenCalledWith(job.id, job.revision);
+    wrapper.unmount();
+  });
 });
 
 function mountProductsView(
   productMutationJobs: ProductMutationJobClient,
-  allowedOperation: 'updateProduct' | 'updateProductDisplay'
+  allowedOperation: 'publishProduct' | 'updateProduct' | 'updateProductDisplay',
+  mode: 'bff' | 'extension' = 'bff'
 ) {
   const Host = defineComponent({
     setup() {
@@ -110,7 +180,7 @@ function mountProductsView(
             })
         },
         productMutationJobs,
-        mode: 'bff'
+        mode
       });
       return () => h(ProductsView);
     }
@@ -175,6 +245,35 @@ function displayJobFixture(): ProductMutationJob {
     creatorId: 'admin-1',
     updaterId: 'admin-1',
     revision: 3,
+    remark: null
+  };
+}
+
+function creationJobFixture(): ProductMutationJob {
+  return {
+    id: '7e5b0112-947d-4f5e-889a-ed06f4045bf7',
+    requestId: '975c76cc-bc6d-4278-b3db-b512c53f0d26',
+    productId: '1600000000002',
+    operation: 'publishProduct',
+    status: 'verifying',
+    categoryId: 100009999,
+    language: 'en_US',
+    payloadFingerprint: 'd'.repeat(64),
+    fieldExpectations: [],
+    encryptedProductId: null,
+    targetDisplay: null,
+    originalDisplay: null,
+    traceId: 'creation-trace',
+    reasonCode: 'ALIBABA_PRODUCT_PUBLISH_ACCEPTED',
+    message: '等待商品列表回读',
+    submittedTimeUtc: 1,
+    lastCheckedTimeUtc: null,
+    completedTimeUtc: null,
+    createTimeUtc: 1,
+    updateTimeUtc: 2,
+    creatorId: 'extension:local-admin',
+    updaterId: 'extension:local-admin',
+    revision: 2,
     remark: null
   };
 }

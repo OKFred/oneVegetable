@@ -3,6 +3,7 @@ import { inject, provide, type InjectionKey } from 'vue';
 import type {
   BackendMeta,
   CredentialVaultRepository,
+  ExtensionSocialBackendRepository,
   ExtensionAlibabaCredentialAcquisitionRepository,
   ControlClient,
   GatewayClient,
@@ -14,6 +15,7 @@ import type {
   ProductMutationJobClient,
   SettingsRepository
 } from '@one-vegetable/core';
+import type { SocialPublishingClient } from '@one-vegetable/core';
 
 import type { RuntimeMetaStatus } from './data-source';
 
@@ -31,6 +33,8 @@ export interface AppServices {
   localData?: LocalDataRepository;
   onboarding?: OnboardingRepository;
   control?: ControlClient;
+  socialPublishing?: SocialPublishingClient;
+  extensionSocialBackend?: ExtensionSocialBackendRepository;
   productDescriptionTemplates?: ProductDescriptionTemplateClient;
   productMutationJobs?: ProductMutationJobClient;
   operationAvailability?: OperationAvailabilityClient;

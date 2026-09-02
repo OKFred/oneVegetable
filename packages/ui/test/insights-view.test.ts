@@ -40,6 +40,8 @@ describe('InsightsView', () => {
     await flushPromises();
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('18.6%');
+      expect(wrapper.text()).toContain('2026-08-12');
+      expect(wrapper.text()).not.toContain('2026/08/12');
       expect(wrapper.text()).toContain('不生成“提升”“下降”或评级结论');
     });
     wrapper.unmount();

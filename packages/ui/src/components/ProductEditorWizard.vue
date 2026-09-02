@@ -23,6 +23,7 @@ import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
 import Input from './ui/Input.vue';
+import { useUiI18n } from '../i18n';
 
 const ProductAdvancedEditor = defineAsyncComponent({
   loader: () => import('./ProductAdvancedEditor.vue'),
@@ -80,6 +81,7 @@ const emit = defineEmits<{
   refreshScore: [];
   submit: [draft: boolean];
 }>();
+const { t } = useUiI18n();
 
 const search = ref('');
 const optionalOpen = ref<Record<string, boolean>>({});
@@ -159,17 +161,27 @@ const officialHintGroups = computed(() => {
 });
 
 function sectionIssueCount(sectionId: ProductEditorStepId): number {
-  if (sectionId === 'review') return blockingIssues.value.length;
+  if (sectionId === 'review') return blockingIssues.value.length + advisoryIssues.value.length;
   const section = sections.value.find((candidate) => candidate.id === sectionId);
   if (!section) return 0;
   const keys = new Set(section.fields.flatMap((entry) => collectFieldReferences(entry.field)));
-  return props.issues.filter((issue) => issue.severity === 'error' && keys.has(issue.fieldKey)).length;
+  return props.issues.filter((issue) => keys.has(issue.fieldKey)).length;
+}
+
+function sectionHasBlockingIssue(sectionId: ProductEditorStepId): boolean {
+  if (sectionId === 'review') return blockingIssues.value.length > 0;
+  const section = sections.value.find((candidate) => candidate.id === sectionId);
+  if (!section) return false;
+  const keys = new Set(section.fields.flatMap((entry) => collectFieldReferences(entry.field)));
+  return blockingIssues.value.some((issue) => keys.has(issue.fieldKey));
 }
 
 function hasRequiredIssue(field: ProductSchemaField): boolean {
   const keys = new Set(collectFieldReferences(field));
   return props.issues.some(
-    (issue) => issue.severity === 'error' && issue.rule === 'requiredRule' && keys.has(issue.fieldKey)
+    (issue) =>
+      ['requiredRule', 'publishMinimumProductTitle', 'publishMinimumMainImage'].includes(issue.rule) &&
+      keys.has(issue.fieldKey)
   );
 }
 
@@ -189,8 +201,19 @@ function moveStep(offset: -1 | 1): void {
 }
 
 function sourceLabel(source: 'alibaba-schema' | 'project'): string {
-  if (source === 'alibaba-schema') return '平台必填与格式';
-  return '内容优化建议';
+  return t(source === 'alibaba-schema' ? 'products.wizard.source.schema' : 'products.wizard.source.project');
+}
+
+function sectionTitle(sectionId: ProductEditorStepId): string {
+  return t(`products.wizard.sections.${sectionId}.title`);
+}
+
+function sectionDescription(sectionId: ProductEditorStepId): string {
+  return t(`products.wizard.sections.${sectionId}.description`);
+}
+
+function sourceHasBlockingIssue(source: 'alibaba-schema' | 'project'): boolean {
+  return issuesBySource.value[source].some((issue) => issue.level === 'error');
 }
 
 async function focusIssue(issue: ProductDescriptionQualityIssue): Promise<void> {
@@ -246,34 +269,42 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
   <Card class="p-5">
     <div class="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
       <div>
-        <h2 class="font-semibold">{{ editing ? '编辑商品' : '发布新商品' }}</h2>
+        <h2 class="font-semibold">
+          {{ t(editing ? 'products.wizard.editTitle' : 'products.wizard.createTitle') }}
+        </h2>
         <p class="mt-1 text-xs text-muted-foreground">
-          必填项完成 {{ completedRequiredCount }}/{{ requiredEntries.length }} ·
-          {{ blockingIssues.length }} 个阻断问题 · {{ advisoryIssues.length }} 条建议
+          {{
+            t('products.wizard.progress', {
+              completed: completedRequiredCount,
+              total: requiredEntries.length,
+              blocking: blockingIssues.length,
+              advisory: advisoryIssues.length
+            })
+          }}
         </p>
       </div>
-      <div class="flex gap-2" role="group" aria-label="商品编辑模式">
+      <div class="flex gap-2" role="group" :aria-label="t('products.wizard.modeGroup')">
         <Button
           v-if="!editing"
           size="sm"
           :variant="mode === 'quick' ? 'default' : 'outline'"
           @click="emit('update:mode', 'quick')"
         >
-          快速发布
+          {{ t('products.wizard.quick') }}
         </Button>
         <Button
           size="sm"
           :variant="mode === 'guided' ? 'default' : 'outline'"
           @click="emit('update:mode', 'guided')"
         >
-          新手向导
+          {{ t('products.wizard.guided') }}
         </Button>
         <Button
           size="sm"
           :variant="mode === 'advanced' ? 'default' : 'outline'"
           @click="emit('update:mode', 'advanced')"
         >
-          高级模式
+          {{ t('products.wizard.advanced') }}
         </Button>
       </div>
     </div>
@@ -301,7 +332,10 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
     />
 
     <template v-else-if="mode === 'guided'">
-      <nav class="my-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-6" aria-label="商品编辑步骤">
+      <nav
+        class="my-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-6"
+        :aria-label="t('products.wizard.stepsLabel')"
+      >
         <button
           v-for="(section, index) in sections"
           :key="section.id"
@@ -312,8 +346,11 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
           @click="emit('update:step', section.id)"
         >
           <span class="flex items-center justify-between gap-1">
-            <span class="font-medium">{{ index + 1 }}. {{ section.title }}</span>
-            <Badge v-if="sectionIssueCount(section.id)" variant="destructive">
+            <span class="font-medium">{{ index + 1 }}. {{ sectionTitle(section.id) }}</span>
+            <Badge
+              v-if="sectionIssueCount(section.id)"
+              :variant="sectionHasBlockingIssue(section.id) ? 'destructive' : 'secondary'"
+            >
               {{ sectionIssueCount(section.id) }}
             </Badge>
           </span>
@@ -325,13 +362,20 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
         :aria-labelledby="`step-${currentSection.id}`"
       >
         <div class="mb-4">
-          <h3 :id="`step-${currentSection.id}`" class="text-lg font-semibold">{{ currentSection.title }}</h3>
-          <p class="mt-1 text-sm text-muted-foreground">{{ currentSection.description }}</p>
+          <h3 :id="`step-${currentSection.id}`" class="text-lg font-semibold">
+            {{ sectionTitle(currentSection.id) }}
+          </h3>
+          <p class="mt-1 text-sm text-muted-foreground">{{ sectionDescription(currentSection.id) }}</p>
         </div>
         <div class="mb-4 flex flex-wrap items-center gap-2">
           <div class="relative min-w-64 flex-1">
             <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-            <Input v-model="search" class="pl-9" aria-label="搜索当前步骤字段" placeholder="搜索当前步骤" />
+            <Input
+              v-model="search"
+              class="pl-9"
+              :aria-label="t('products.wizard.searchLabel')"
+              :placeholder="t('products.wizard.searchPlaceholder')"
+            />
           </div>
           <Button
             v-if="hiddenOptionalCount"
@@ -339,7 +383,11 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
             size="sm"
             @click="optionalOpen[currentSection.id] = !optionalOpen[currentSection.id]"
           >
-            {{ optionalOpen[currentSection.id] ? '收起选填信息' : `更多选填信息（${hiddenOptionalCount}）` }}
+            {{
+              optionalOpen[currentSection.id]
+                ? t('products.wizard.collapseOptional')
+                : t('products.wizard.moreOptional', { count: hiddenOptionalCount })
+            }}
           </Button>
         </div>
         <TransitionGroup name="ov-list" tag="div" class="space-y-4">
@@ -359,7 +407,7 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
             key="empty-fields"
             class="rounded-lg border p-8 text-center text-sm text-muted-foreground"
           >
-            当前筛选下没有字段。
+            {{ t('products.wizard.emptyFields') }}
           </p>
         </TransitionGroup>
       </section>
@@ -367,8 +415,12 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
       <section v-else aria-labelledby="product-review-title">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 id="product-review-title" class="text-lg font-semibold">检查与提交</h3>
-            <p class="mt-1 text-sm text-muted-foreground">平台硬错误会阻止提交，其他建议不会禁用按钮。</p>
+            <h3 id="product-review-title" class="text-lg font-semibold">
+              {{ t('products.wizard.reviewTitle') }}
+            </h3>
+            <p class="mt-1 text-sm text-muted-foreground">
+              {{ t('products.wizard.reviewDescription') }}
+            </p>
           </div>
           <Button
             v-if="scoreAvailable"
@@ -377,17 +429,17 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
             :disabled="scorePending"
             @click="emit('refreshScore')"
           >
-            <RefreshCw class="size-4" />刷新官方评分
+            <RefreshCw class="size-4" />{{ t('products.wizard.refreshScore') }}
           </Button>
         </div>
         <p v-if="scoreError" class="mt-3 text-xs text-amber-700">
-          官方评分暂时不可用，不影响编辑或提交：{{ scoreError }}
+          {{ t('products.wizard.scoreUnavailable', { error: scoreError }) }}
         </p>
         <div
           v-if="!schemaInspection.safe"
           class="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive"
         >
-          <p class="font-medium">Schema XML 结构异常，已阻止提交</p>
+          <p class="font-medium">{{ t('products.wizard.schemaBlocked') }}</p>
           <ul class="mt-2 list-disc pl-5">
             <li v-for="diff in schemaInspection.structuralDiffs" :key="diff">{{ diff }}</li>
           </ul>
@@ -400,16 +452,12 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
           >
             <div class="flex items-center justify-between gap-2">
               <h4 class="font-medium">{{ sourceLabel(source) }}</h4>
-              <Badge
-                :variant="
-                  source === 'alibaba-schema' && issuesBySource[source].length ? 'destructive' : 'secondary'
-                "
-              >
+              <Badge :variant="sourceHasBlockingIssue(source) ? 'destructive' : 'secondary'">
                 {{ issuesBySource[source].length }}
               </Badge>
             </div>
             <p v-if="issuesBySource[source].length === 0" class="mt-4 text-sm text-muted-foreground">
-              暂无问题
+              {{ t('products.wizard.noIssues') }}
             </p>
             <ul v-else class="mt-4 space-y-3 text-sm">
               <li v-for="issue in issuesBySource[source]" :key="`${issue.code}:${issue.message}`">
@@ -426,23 +474,31 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
           <section class="rounded-lg border p-4 lg:col-span-2" aria-labelledby="official-hints-title">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h4 id="official-hints-title" class="font-medium">官方提示</h4>
+                <h4 id="official-hints-title" class="font-medium">
+                  {{ t('products.wizard.officialHints') }}
+                </h4>
                 <p class="mt-1 text-xs text-muted-foreground">
-                  已按字段合并重复内容；展开后可查看官方链接和 Schema 示例。
+                  {{ t('products.wizard.officialHintsDescription') }}
                 </p>
               </div>
               <Badge variant="secondary">{{ officialHints.length }}</Badge>
             </div>
-            <p v-if="officialHintGroups.length === 0" class="mt-4 text-sm text-muted-foreground">暂无问题</p>
+            <p v-if="officialHintGroups.length === 0" class="mt-4 text-sm text-muted-foreground">
+              {{ t('products.wizard.noIssues') }}
+            </p>
             <div v-else class="mt-4 space-y-4">
               <section v-for="group in officialHintGroups" :key="group.id" class="rounded-lg bg-muted/35 p-3">
                 <div class="mb-3 flex flex-wrap items-center gap-2">
                   <h5 class="font-medium">{{ group.label }}</h5>
-                  <Badge variant="outline">{{ group.hints.length }} 条</Badge>
+                  <Badge variant="outline">
+                    {{ t('products.wizard.hintCount', { count: group.hints.length }) }}
+                  </Badge>
                   <span v-if="group.fieldCount" class="text-xs text-muted-foreground">
-                    影响 {{ group.fieldCount }} 个字段
+                    {{ t('products.wizard.affectedFields', { count: group.fieldCount }) }}
                   </span>
-                  <span v-else class="text-xs text-muted-foreground">平台评分</span>
+                  <span v-else class="text-xs text-muted-foreground">
+                    {{ t('products.wizard.platformScore') }}
+                  </span>
                 </div>
                 <div class="space-y-2">
                   <OfficialHintContent
@@ -457,8 +513,10 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
           </section>
         </div>
         <div v-if="model.warnings.length" class="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-900">
-          <p class="font-medium">提交时需由平台最终检查</p>
-          <p class="mt-1 text-xs">有 {{ model.warnings.length }} 条规则无法在浏览器中安全计算。</p>
+          <p class="font-medium">{{ t('products.wizard.platformFinalCheck') }}</p>
+          <p class="mt-1 text-xs">
+            {{ t('products.wizard.browserLimitations', { count: model.warnings.length }) }}
+          </p>
         </div>
       </section>
 
@@ -466,7 +524,7 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
         class="sticky bottom-0 mt-6 flex flex-wrap items-center justify-between gap-3 border-t bg-background/95 py-4 backdrop-blur"
       >
         <Button variant="outline" :disabled="currentStepIndex <= 0" @click="moveStep(-1)">
-          <ChevronLeft class="size-4" />上一步
+          <ChevronLeft class="size-4" />{{ t('products.wizard.previous') }}
         </Button>
         <div v-if="currentSection?.id === 'review'" class="flex flex-wrap gap-2">
           <Button
@@ -475,8 +533,8 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
             "
             @click="emit('submit', false)"
           >
-            <Send class="size-4" />{{ editing ? '更新商品' : '发布商品' }} ·
-            {{ advisoryIssues.length }} 条建议
+            <Send class="size-4" />{{ t(editing ? 'products.editor.update' : 'products.editor.publish') }} ·
+            {{ t('products.common.suggestionCount', { count: advisoryIssues.length }) }}
           </Button>
           <Button
             v-if="!editing"
@@ -486,10 +544,12 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
             "
             @click="emit('submit', true)"
           >
-            <Save class="size-4" />保存平台草稿
+            <Save class="size-4" />{{ t('products.editor.savePlatformDraft') }}
           </Button>
         </div>
-        <Button v-else @click="moveStep(1)">下一步<ChevronRight class="size-4" /></Button>
+        <Button v-else @click="moveStep(1)"
+          >{{ t('products.wizard.next') }}<ChevronRight class="size-4"
+        /></Button>
       </div>
     </template>
 
@@ -520,7 +580,7 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
       <ShieldAlert class="mt-0.5 size-4 shrink-0" />
       {{
         (editing ? publishDisabledReason : draftDisabledReason || publishDisabledReason) ||
-        '当前真实写操作尚未开放。'
+        t('products.wizard.mutationUnavailable')
       }}
     </div>
   </Card>

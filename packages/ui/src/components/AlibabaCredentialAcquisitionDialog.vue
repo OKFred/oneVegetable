@@ -8,6 +8,7 @@ import ErrorNotice from './ErrorNotice.vue';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
 import ModalDialog from './ui/ModalDialog.vue';
+import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 
 const props = defineProps<{ open: boolean }>();
@@ -17,6 +18,7 @@ const emit = defineEmits<{
 }>();
 
 const { alibabaCredentialAcquisition, vault } = useServices();
+const { t } = useUiI18n();
 const callbackUrl = ref('');
 const state = ref<AlibabaCredentialAcquisitionState | null>(null);
 const jobId = ref<string | null>(null);
@@ -118,11 +120,11 @@ async function saveToVault(): Promise<void> {
   if (!alibabaCredentialAcquisition) return;
   if (vaultStatus.value?.state === 'empty') {
     if (vaultPassphrase.value.length < 6) {
-      error.value = new Error('保险库口令至少输入 6 位');
+      error.value = new Error(t('admin.credentialAcquisition.errors.passphraseLength'));
       return;
     }
     if (vaultPassphrase.value !== vaultPassphraseConfirmation.value) {
-      error.value = new Error('两次输入的保险库口令不一致');
+      error.value = new Error(t('admin.credentialAcquisition.errors.passphraseMismatch'));
       return;
     }
   }
@@ -135,7 +137,7 @@ async function saveToVault(): Promise<void> {
     vaultStatus.value = status;
     vaultPassphrase.value = '';
     vaultPassphraseConfirmation.value = '';
-    feedback.value = '凭据已加密保存到插件保险库。';
+    feedback.value = t('admin.credentialAcquisition.feedback.saved');
     emit('saved', status);
   } catch (cause: unknown) {
     error.value = cause;
@@ -151,7 +153,7 @@ async function exportCredentialBundle(): Promise<void> {
   try {
     const bundle = await alibabaCredentialAcquisition.exportBundle();
     downloadJson(bundle, 'credentialInfo.json');
-    feedback.value = 'credentialInfo.json 已下载；请妥善保管并在导入后删除明文文件。';
+    feedback.value = t('admin.credentialAcquisition.feedback.exported');
   } catch (cause: unknown) {
     error.value = cause;
   } finally {
@@ -212,52 +214,55 @@ function downloadJson(value: unknown, filename: string): void {
 <template>
   <ModalDialog
     :open="open"
-    title="获取开放平台凭证"
-    description="复用当前 Chrome 的 Alibaba 登录态；插件不会读取或保存网站密码。"
+    :title="t('admin.credentialAcquisition.title')"
+    :description="t('admin.credentialAcquisition.description')"
     size="lg"
     @update:open="requestClose"
   >
     <div class="grid gap-4">
       <div class="rounded-lg border bg-muted/35 p-4 text-sm leading-6">
-        <p class="font-medium">向导只复用已有应用</p>
+        <p class="font-medium">{{ t('admin.credentialAcquisition.existingApplicationTitle') }}</p>
         <p class="mt-1 text-muted-foreground">
-          启动后会打开 Alibaba 应用中心。若尚未登录、出现滑块、验证码、MFA
-          或密钥查看确认，请直接在打开的标签页中完成；插件不会绕过安全验证，也不会创建应用或接受平台协议。
+          {{ t('admin.credentialAcquisition.existingApplicationDescription') }}
         </p>
       </div>
 
       <template v-if="state === null">
         <label class="text-sm font-medium">
-          Callback URL（可选）
+          {{ t('admin.credentialAcquisition.callbackLabel') }}
           <Input
             v-model="callbackUrl"
             class="mt-2"
             type="url"
-            placeholder="留空则保留应用现有 Callback"
+            :placeholder="t('admin.credentialAcquisition.callbackPlaceholder')"
             autocomplete="off"
           />
         </label>
         <p class="text-xs leading-5 text-muted-foreground">
-          只有显式填写并确认后才会修改应用配置；不会默认写入 example.com。
+          {{ t('admin.credentialAcquisition.callbackNotice') }}
         </p>
         <Button :disabled="busy || !alibabaCredentialAcquisition" @click="start">
-          <ExternalLink class="size-4" />打开 Alibaba 并开始
+          <ExternalLink class="size-4" />{{ t('admin.credentialAcquisition.start') }}
         </Button>
       </template>
 
       <div v-else-if="state.status === 'running'" class="rounded-lg border p-5 text-center">
         <LoaderCircle class="mx-auto size-7 animate-spin text-primary" />
-        <p class="mt-3 font-medium">正在等待 Alibaba 页面完成当前步骤</p>
+        <p class="mt-3 font-medium">{{ t('admin.credentialAcquisition.waitingTitle') }}</p>
         <p class="mt-2 text-sm leading-6 text-muted-foreground">
-          请查看刚打开的 Alibaba 标签页并完成登录、验证码、密钥查看或 OAuth 授权。完成后向导会自动继续。
+          {{ t('admin.credentialAcquisition.waitingDescription') }}
         </p>
-        <Button class="mt-4" variant="outline" :disabled="busy" @click="refreshStatus"> 立即检查 </Button>
+        <Button class="mt-4" variant="outline" :disabled="busy" @click="refreshStatus">
+          {{ t('admin.credentialAcquisition.checkNow') }}
+        </Button>
       </div>
 
       <div v-else-if="state.status === 'selection-required'" class="grid gap-3">
         <div>
-          <h3 class="font-medium">选择要复用的应用</h3>
-          <p class="mt-1 text-sm text-muted-foreground">只展示 AppKey 尾号，不在页面返回完整密钥。</p>
+          <h3 class="font-medium">{{ t('admin.credentialAcquisition.selectApplication') }}</h3>
+          <p class="mt-1 text-sm text-muted-foreground">
+            {{ t('admin.credentialAcquisition.selectApplicationDescription') }}
+          </p>
         </div>
         <button
           v-for="application in state.applications"
@@ -269,35 +274,50 @@ function downloadJson(value: unknown, filename: string): void {
         >
           <span class="font-medium">{{ application.appName }}</span>
           <span class="mt-1 block text-xs text-muted-foreground">
-            {{ application.source }} · AppKey 尾号 {{ application.appKeySuffix }} ·
-            {{ application.status || '状态未知' }}
+            {{
+              t('admin.credentialAcquisition.applicationSummary', {
+                source: application.source,
+                suffix: application.appKeySuffix,
+                status: application.status || t('admin.credentialAcquisition.unknownStatus')
+              })
+            }}
           </span>
         </button>
       </div>
 
       <div v-else-if="state.status === 'callback-confirmation-required'" class="grid gap-4">
         <div class="rounded-lg border p-4 text-sm leading-6">
-          <p class="font-medium">{{ callbackChanged ? '确认 Callback 变更' : '确认 OAuth Callback' }}</p>
+          <p class="font-medium">
+            {{
+              callbackChanged
+                ? t('admin.credentialAcquisition.callbackChangeTitle')
+                : t('admin.credentialAcquisition.callbackOAuthTitle')
+            }}
+          </p>
           <dl class="mt-3 grid gap-2 text-xs">
             <div>
-              <dt class="text-muted-foreground">当前地址</dt>
+              <dt class="text-muted-foreground">{{ t('admin.credentialAcquisition.currentUrl') }}</dt>
               <dd class="break-all font-mono">{{ state.currentUrl }}</dd>
             </div>
             <div v-if="callbackChanged">
-              <dt class="text-muted-foreground">请求修改为</dt>
+              <dt class="text-muted-foreground">{{ t('admin.credentialAcquisition.requestedUrl') }}</dt>
               <dd class="break-all font-mono">{{ state.requestedUrl }}</dd>
             </div>
           </dl>
         </div>
         <p class="text-xs leading-5 text-muted-foreground">
-          下一步 Chrome 会仅为实际 Callback 域名请求临时站点权限，用于捕获本次 OAuth code 并校验 state。
+          {{ t('admin.credentialAcquisition.callbackPermissionNotice') }}
         </p>
         <div class="flex flex-wrap justify-end gap-2">
           <Button v-if="callbackChanged" variant="outline" :disabled="busy" @click="confirmCallback(false)">
-            保留现值并继续
+            {{ t('admin.credentialAcquisition.keepCallback') }}
           </Button>
           <Button :disabled="busy" @click="confirmCallback(callbackChanged)">
-            {{ callbackChanged ? '确认修改并继续' : '继续授权' }}
+            {{
+              callbackChanged
+                ? t('admin.credentialAcquisition.confirmCallback')
+                : t('admin.credentialAcquisition.continueAuthorization')
+            }}
           </Button>
         </div>
       </div>
@@ -309,10 +329,15 @@ function downloadJson(value: unknown, filename: string): void {
           <div class="flex items-start gap-3">
             <CheckCircle2 class="mt-0.5 size-5 shrink-0" />
             <div>
-              <p class="font-medium">凭据获取完成</p>
+              <p class="font-medium">{{ t('admin.credentialAcquisition.completedTitle') }}</p>
               <p class="mt-1 text-sm">
-                {{ completed?.appName }} · AppKey 尾号 {{ completed?.appKeySuffix }} · 权限
-                {{ completed?.permissions.total ?? 0 }} 项
+                {{
+                  t('admin.credentialAcquisition.completedSummary', {
+                    appName: completed?.appName ?? '',
+                    suffix: completed?.appKeySuffix ?? '',
+                    count: completed?.permissions.total ?? 0
+                  })
+                }}
               </p>
             </div>
           </div>
@@ -321,23 +346,23 @@ function downloadJson(value: unknown, filename: string): void {
         <div class="rounded-lg border p-4">
           <div class="flex items-center gap-2">
             <KeyRound class="size-4 text-primary" />
-            <h3 class="font-medium">保存到插件保险库</h3>
+            <h3 class="font-medium">{{ t('admin.credentialAcquisition.saveToExtension') }}</h3>
           </div>
           <p v-if="vaultStatus?.state === 'locked'" class="mt-2 text-sm text-amber-700 dark:text-amber-300">
-            保险库当前已锁定。请关闭向导，在设置页解锁后重新执行获取流程。
+            {{ t('admin.credentialAcquisition.vaultLocked') }}
           </p>
           <div v-else-if="vaultStatus?.state === 'empty'" class="mt-3 grid gap-2 sm:grid-cols-2">
             <Input
               v-model="vaultPassphrase"
               type="password"
               autocomplete="new-password"
-              placeholder="设置本机保险库口令（至少 6 位）"
+              :placeholder="t('admin.credentialAcquisition.passphrasePlaceholder')"
             />
             <Input
               v-model="vaultPassphraseConfirmation"
               type="password"
               autocomplete="new-password"
-              placeholder="再次输入保险库口令"
+              :placeholder="t('admin.credentialAcquisition.passphraseConfirmationPlaceholder')"
             />
           </div>
           <Button
@@ -345,7 +370,7 @@ function downloadJson(value: unknown, filename: string): void {
             :disabled="busy || vaultStatus?.state === 'locked' || vaultStatus?.state === 'invalid'"
             @click="saveToVault"
           >
-            <Save class="size-4" />加密保存
+            <Save class="size-4" />{{ t('admin.credentialAcquisition.saveEncrypted') }}
           </Button>
         </div>
 
@@ -355,14 +380,13 @@ function downloadJson(value: unknown, filename: string): void {
           <div class="flex items-start gap-2">
             <ShieldAlert class="mt-0.5 size-4 shrink-0 text-amber-700 dark:text-amber-300" />
             <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium">导出明文 credentialInfo.json</p>
+              <p class="text-sm font-medium">{{ t('admin.credentialAcquisition.plaintextTitle') }}</p>
               <p class="mt-1 text-xs leading-5 text-muted-foreground">
-                文件包含 App Secret、Access Token 和 Refresh
-                Token，可导入自托管后端；导入后请立即删除并避免同步到网盘或 Git。
+                {{ t('admin.credentialAcquisition.plaintextDescription') }}
               </p>
               <label class="mt-3 flex cursor-pointer items-start gap-2 text-xs">
                 <input v-model="plaintextAcknowledged" class="mt-0.5" type="checkbox" />
-                <span>我知道该文件包含明文密钥，并会妥善保管。</span>
+                <span>{{ t('admin.credentialAcquisition.plaintextAcknowledgement') }}</span>
               </label>
               <Button
                 class="mt-3"
@@ -370,7 +394,7 @@ function downloadJson(value: unknown, filename: string): void {
                 :disabled="busy || !plaintextAcknowledged"
                 @click="exportCredentialBundle"
               >
-                <Download class="size-4" />导出 credentialInfo.json
+                <Download class="size-4" />{{ t('admin.credentialAcquisition.exportPlaintext') }}
               </Button>
             </div>
           </div>
@@ -378,12 +402,16 @@ function downloadJson(value: unknown, filename: string): void {
       </div>
 
       <div v-else-if="state.status === 'failed'" class="grid gap-3">
-        <ErrorNotice :error="state.error" fallback="Alibaba 凭据获取失败" compact />
-        <Button variant="outline" @click="reset">重新开始</Button>
+        <ErrorNotice
+          :error="state.error"
+          :fallback="t('admin.credentialAcquisition.errors.acquisition')"
+          compact
+        />
+        <Button variant="outline" @click="reset">{{ t('admin.credentialAcquisition.restart') }}</Button>
       </div>
 
       <div v-else-if="state.status === 'extension-required'" class="rounded-lg border p-4 text-sm">
-        当前已经在正式插件中运行，请重新开始本机向导。原因：{{ state.reasonCode }}
+        {{ t('admin.credentialAcquisition.extensionRequired', { reason: state.reasonCode }) }}
       </div>
 
       <p
@@ -392,12 +420,19 @@ function downloadJson(value: unknown, filename: string): void {
       >
         {{ feedback }}
       </p>
-      <ErrorNotice v-if="error" :error="error" fallback="凭证向导操作失败" compact />
+      <ErrorNotice
+        v-if="error"
+        :error="error"
+        :fallback="t('admin.credentialAcquisition.errors.operation')"
+        compact
+      />
     </div>
 
     <template #footer>
       <div class="flex justify-end">
-        <Button variant="outline" :disabled="busy" @click="requestClose">关闭</Button>
+        <Button variant="outline" :disabled="busy" @click="requestClose">
+          {{ t('admin.credentialAcquisition.close') }}
+        </Button>
       </div>
     </template>
   </ModalDialog>

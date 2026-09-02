@@ -1,3 +1,5 @@
+import type { UiLocale } from './preferences';
+
 export type ProductSchemaFieldType =
   'input' | 'multiInput' | 'singleCheck' | 'multiCheck' | 'complex' | 'multiComplex' | 'label';
 
@@ -98,8 +100,12 @@ export interface ProductSchemaSerializationInspection {
 export class ProductSchemaSerializationError extends Error {
   readonly inspection: ProductSchemaSerializationInspection;
 
-  constructor(inspection: ProductSchemaSerializationInspection) {
-    super(`商品 Schema XML 存在结构异常：${inspection.structuralDiffs.join('；')}`);
+  constructor(inspection: ProductSchemaSerializationInspection, locale: UiLocale = 'zh-CN') {
+    super(
+      productSchemaMessage(locale, 'serializationError', {
+        details: inspection.structuralDiffs.join(locale === 'zh-CN' ? '；' : '; ')
+      })
+    );
     this.name = 'ProductSchemaSerializationError';
     this.inspection = inspection;
   }
@@ -140,6 +146,14 @@ const LOCAL_RULES = new Set([
 ]);
 
 const INHERITED_RULES = new Set(['regexRule', 'regxRule']);
+const PRODUCT_TITLE_FIELD_IDS = new Set(['producttitle', 'subject', 'title']);
+const PRODUCT_MAIN_IMAGE_FIELD_IDS = new Set([
+  'scimages',
+  'mainimage',
+  'mainimages',
+  'productimage',
+  'productimages'
+]);
 const NON_VALIDATING_RULES = new Set([
   'disableRule',
   'readOnlyRule',
@@ -162,50 +176,141 @@ const VALUE_METADATA_ATTRIBUTES = new Set([
   'modifiedAt'
 ]);
 
-export function parseProductSchemaXml(xml: string, parser?: ProductSchemaXmlParser): ProductSchemaModel {
+const PRODUCT_SCHEMA_MESSAGES = {
+  'zh-CN': {
+    serializationError: '商品 Schema XML 存在结构异常：{details}',
+    parseFailed: '商品 Schema XML 无法解析：{details}',
+    rootCountChanged: '根字段数量发生变化',
+    sourceBinding: '{key} 无法绑定到源字段',
+    sourceNodeMissing: '{key} 的源节点不存在',
+    patchedRootRoundtrip: '安全补丁后的根字段数量无法无损回读：{before} → {after}',
+    patchedValuesRoundtrip: '安全补丁后的字段值无法无损回读：{keys}',
+    patchedXmlParse: '安全补丁后的 XML 无法解析：{details}',
+    patchNodeMissing: '{key} 的增量节点不存在',
+    patchRootCount: '增量 XML 根字段数量不一致：{before} → {after}',
+    patchFieldRoundtrip: '{key} 无法从增量 XML 无损回读',
+    patchXmlParse: '增量 XML 无法解析：{details}',
+    publishTitle: '商品名称不能为空，这是正式发布的最低条件',
+    publishImage: '商品主图至少需要 1 张，这是正式发布的最低条件',
+    unknownFieldType: '{field} 使用未知字段类型 {type}，按只读标签处理',
+    serverRule: '{field} 的 {rule} 需由 Alibaba 服务端校验',
+    unsafeRule: '{rule} 无法在本地安全计算，将由 Alibaba 提交接口最终校验',
+    required: '{field} 为平台必填项',
+    minItems: '{field} 至少填写 {limit} 项',
+    maxItems: '{field} 最多填写 {limit} 项',
+    minLength: '{field} 长度不能小于 {limit}',
+    maxLength: '{field} 长度不能大于 {limit}',
+    minValue: '{field} 不能小于 {limit}',
+    maxValue: '{field} 不能大于 {limit}',
+    invalidFormat: '{field} 格式不正确',
+    invalidRegex: '{field} 的正则规则无效，交由服务端校验',
+    invalidType: '{field} 类型不正确',
+    complexOrderChanged: '{key} 的已有复合实例顺序发生变化',
+    sourceInstanceMissing: '{key} 的源实例不存在',
+    childBinding: '{key} 无法绑定到复合实例子字段',
+    unknownError: '未知错误'
+  },
+  'en-US': {
+    serializationError: 'Product Schema XML has structural issues: {details}',
+    parseFailed: 'Product Schema XML could not be parsed: {details}',
+    rootCountChanged: 'The number of root fields changed',
+    sourceBinding: '{key} could not be bound to its source field',
+    sourceNodeMissing: 'The source node for {key} does not exist',
+    patchedRootRoundtrip:
+      'The root-field count after the safe patch did not round-trip losslessly: {before} → {after}',
+    patchedValuesRoundtrip: 'Field values after the safe patch did not round-trip losslessly: {keys}',
+    patchedXmlParse: 'XML after the safe patch could not be parsed: {details}',
+    patchNodeMissing: 'The incremental node for {key} does not exist',
+    patchRootCount: 'The incremental XML root-field count differs: {before} → {after}',
+    patchFieldRoundtrip: '{key} could not be read back losslessly from incremental XML',
+    patchXmlParse: 'Incremental XML could not be parsed: {details}',
+    publishTitle: 'Product name is required for formal publishing',
+    publishImage: 'At least one main product image is required for formal publishing',
+    unknownFieldType: '{field} uses unknown field type {type} and is treated as a read-only label',
+    serverRule: '{rule} on {field} must be validated by the Alibaba service',
+    unsafeRule:
+      '{rule} cannot be calculated safely locally and will be validated by the Alibaba submission API',
+    required: '{field} is required by the platform',
+    minItems: '{field} requires at least {limit} items',
+    maxItems: '{field} allows at most {limit} items',
+    minLength: '{field} must be at least {limit} characters long',
+    maxLength: '{field} must be no more than {limit} characters long',
+    minValue: '{field} must not be less than {limit}',
+    maxValue: '{field} must not exceed {limit}',
+    invalidFormat: '{field} has an invalid format',
+    invalidRegex: "{field}'s regular-expression rule is invalid and will be validated by the server",
+    invalidType: '{field} has an invalid type',
+    complexOrderChanged: 'The order of existing complex instances for {key} changed',
+    sourceInstanceMissing: 'The source instance for {key} does not exist',
+    childBinding: '{key} could not be bound to a complex-instance child field',
+    unknownError: 'Unknown error'
+  }
+} as const satisfies Record<UiLocale, Record<string, string>>;
+
+type ProductSchemaMessageKey = keyof (typeof PRODUCT_SCHEMA_MESSAGES)['zh-CN'];
+
+function productSchemaMessage(
+  locale: UiLocale,
+  key: ProductSchemaMessageKey,
+  values: Readonly<Record<string, string | number>> = {}
+): string {
+  return Object.entries(values).reduce<string>(
+    (message, [name, value]) => message.replaceAll(`{${name}}`, String(value)),
+    PRODUCT_SCHEMA_MESSAGES[locale][key]
+  );
+}
+
+export function parseProductSchemaXml(
+  xml: string,
+  parser?: ProductSchemaXmlParser,
+  locale: UiLocale = 'zh-CN'
+): ProductSchemaModel {
   const document = parseXml(xml, parser);
   const parserError = document.querySelector('parsererror');
-  if (parserError) throw new Error(`商品 Schema XML 无法解析：${parserError.textContent}`);
+  if (parserError) {
+    throw new Error(productSchemaMessage(locale, 'parseFailed', { details: parserError.textContent }));
+  }
   const warnings: string[] = [];
   const root = document.documentElement;
   return {
     sourceXml: xml,
     fields: schemaFieldElements(root).map((field, index) =>
-      parseField(field, `field:${index}`, index, warnings)
+      parseField(field, `field:${index}`, index, warnings, locale)
     ),
     warnings,
     touchedFieldKeys: []
   };
 }
 
-export function serializeProductSchemaXml(model: ProductSchemaModel): string {
-  const inspection = inspectProductSchemaSerialization(model);
-  if (!inspection.safe) throw new ProductSchemaSerializationError(inspection);
+export function serializeProductSchemaXml(model: ProductSchemaModel, locale: UiLocale = 'zh-CN'): string {
+  const inspection = inspectProductSchemaSerialization(model, locale);
+  if (!inspection.safe) throw new ProductSchemaSerializationError(inspection, locale);
   return inspection.xml;
 }
 
 export function inspectProductSchemaSerialization(
-  model: ProductSchemaModel
+  model: ProductSchemaModel,
+  locale: UiLocale = 'zh-CN'
 ): ProductSchemaSerializationInspection {
   const structuralDiffs: string[] = [];
   let sourceModel: ProductSchemaModel;
   try {
-    sourceModel = parseProductSchemaXml(model.sourceXml);
+    sourceModel = parseProductSchemaXml(model.sourceXml, undefined, locale);
   } catch (error: unknown) {
-    return unsafeInspection(model.sourceXml, errorMessage(error));
+    return unsafeInspection(model.sourceXml, errorMessage(error, locale));
   }
 
   if (model.fields.length !== sourceModel.fields.length) {
-    structuralDiffs.push('根字段数量发生变化');
+    structuralDiffs.push(productSchemaMessage(locale, 'rootCountChanged'));
   }
   const changedFields = model.fields.filter((field) => {
     const sourceField = sourceModel.fields[field.sourceIndex];
     if (sourceField === undefined) {
-      structuralDiffs.push(`${field.key} 无法绑定到源字段`);
+      structuralDiffs.push(productSchemaMessage(locale, 'sourceBinding', { key: field.key }));
       return true;
     }
     if (sourceField.id !== field.id || sourceField.type !== field.type) {
-      structuralDiffs.push(`${field.key} 无法绑定到源字段`);
+      structuralDiffs.push(productSchemaMessage(locale, 'sourceBinding', { key: field.key }));
       return true;
     }
     return !fieldSemanticsEqual(field, sourceField);
@@ -236,29 +341,38 @@ export function inspectProductSchemaSerialization(
     const sourceField = sourceModel.fields[field.sourceIndex];
     const target = targetFields[field.sourceIndex];
     if (!sourceField || !target) {
-      structuralDiffs.push(`${field.key} 的源节点不存在`);
+      structuralDiffs.push(productSchemaMessage(locale, 'sourceNodeMissing', { key: field.key }));
       continue;
     }
-    updateField(document, target, field, sourceField, structuralDiffs);
+    updateField(document, target, field, sourceField, structuralDiffs, locale);
   }
 
   const xml = new XMLSerializer().serializeToString(document);
   try {
-    const roundTrip = parseProductSchemaXml(xml);
+    const roundTrip = parseProductSchemaXml(xml, undefined, locale);
     const mismatchedFieldKeys = model.fields.flatMap((expected, index) => {
       const actual = roundTrip.fields[index];
       return actual && fieldSemanticsEqual(actual, expected) ? [] : [expected.key];
     });
     if (roundTrip.fields.length !== model.fields.length) {
       structuralDiffs.push(
-        `安全补丁后的根字段数量无法无损回读：${model.fields.length} → ${roundTrip.fields.length}`
+        productSchemaMessage(locale, 'patchedRootRoundtrip', {
+          before: model.fields.length,
+          after: roundTrip.fields.length
+        })
       );
     }
     if (mismatchedFieldKeys.length > 0) {
-      structuralDiffs.push(`安全补丁后的字段值无法无损回读：${mismatchedFieldKeys.join('、')}`);
+      structuralDiffs.push(
+        productSchemaMessage(locale, 'patchedValuesRoundtrip', {
+          keys: mismatchedFieldKeys.join(locale === 'zh-CN' ? '、' : ', ')
+        })
+      );
     }
   } catch (error: unknown) {
-    structuralDiffs.push(`安全补丁后的 XML 无法解析：${errorMessage(error)}`);
+    structuralDiffs.push(
+      productSchemaMessage(locale, 'patchedXmlParse', { details: errorMessage(error, locale) })
+    );
   }
 
   return {
@@ -271,9 +385,10 @@ export function inspectProductSchemaSerialization(
 }
 
 export function inspectProductSchemaPatchSerialization(
-  model: ProductSchemaModel
+  model: ProductSchemaModel,
+  locale: UiLocale = 'zh-CN'
 ): ProductSchemaSerializationInspection {
-  const fullInspection = inspectProductSchemaSerialization(model);
+  const fullInspection = inspectProductSchemaSerialization(model, locale);
   if (!fullInspection.safe) return fullInspection;
   if (fullInspection.noOp) return { ...fullInspection, xml: '' };
 
@@ -287,7 +402,7 @@ export function inspectProductSchemaPatchSerialization(
   for (const field of changedFields) {
     const source = sourceFields[field.sourceIndex];
     if (!source) {
-      structuralDiffs.push(`${field.key} 的增量节点不存在`);
+      structuralDiffs.push(productSchemaMessage(locale, 'patchNodeMissing', { key: field.key }));
       continue;
     }
     patchRoot.append(source.cloneNode(true));
@@ -295,18 +410,25 @@ export function inspectProductSchemaPatchSerialization(
 
   const xml = new XMLSerializer().serializeToString(patchRoot);
   try {
-    const roundTrip = parseProductSchemaXml(xml);
+    const roundTrip = parseProductSchemaXml(xml, undefined, locale);
     if (roundTrip.fields.length !== changedFields.length) {
-      structuralDiffs.push(`增量 XML 根字段数量不一致：${changedFields.length} → ${roundTrip.fields.length}`);
+      structuralDiffs.push(
+        productSchemaMessage(locale, 'patchRootCount', {
+          before: changedFields.length,
+          after: roundTrip.fields.length
+        })
+      );
     }
     for (const [index, expected] of changedFields.entries()) {
       const actual = roundTrip.fields[index];
       if (!actual || !fieldSemanticsEqual(actual, expected)) {
-        structuralDiffs.push(`${expected.key} 无法从增量 XML 无损回读`);
+        structuralDiffs.push(productSchemaMessage(locale, 'patchFieldRoundtrip', { key: expected.key }));
       }
     }
   } catch (error: unknown) {
-    structuralDiffs.push(`增量 XML 无法解析：${errorMessage(error)}`);
+    structuralDiffs.push(
+      productSchemaMessage(locale, 'patchXmlParse', { details: errorMessage(error, locale) })
+    );
   }
 
   return {
@@ -318,10 +440,19 @@ export function inspectProductSchemaPatchSerialization(
   };
 }
 
-export function validateProductSchemaModel(model: ProductSchemaModel): ProductSchemaFieldIssue[] {
-  const issues: ProductSchemaFieldIssue[] = [];
+export function validateProductSchemaModel(
+  model: ProductSchemaModel,
+  locale: UiLocale = 'zh-CN'
+): ProductSchemaFieldIssue[] {
+  const ruleIssues: ProductSchemaFieldIssue[] = [];
   const fieldValues = collectFieldValues(model.fields);
-  for (const field of model.fields) validateField(field, issues, fieldValues, []);
+  for (const field of model.fields) validateField(field, ruleIssues, fieldValues, [], locale);
+  const minimumIssues = validateProductPublishMinimums(model, locale);
+  const minimumFieldKeys = new Set(minimumIssues.map((issue) => issue.fieldKey));
+  const issues = [
+    ...minimumIssues,
+    ...ruleIssues.filter((issue) => !(issue.rule === 'requiredRule' && minimumFieldKeys.has(issue.fieldKey)))
+  ];
   const seen = new Set<string>();
   return issues.filter((issue) => {
     const key = `${issue.fieldKey}\u0000${issue.severity}\u0000${issue.rule}\u0000${issue.message}`;
@@ -329,6 +460,31 @@ export function validateProductSchemaModel(model: ProductSchemaModel): ProductSc
     seen.add(key);
     return true;
   });
+}
+
+/**
+ * Keeps only the small, deterministic baseline that is unsafe to omit from a
+ * formal product publish. Category-specific Schema rules remain advisory and
+ * Alibaba is the final source of truth for those rules.
+ */
+export function validateProductPublishMinimums(
+  model: ProductSchemaModel,
+  locale: UiLocale = 'zh-CN'
+): ProductSchemaFieldIssue[] {
+  const issues: ProductSchemaFieldIssue[] = [];
+  appendPublishMinimumIssue(
+    model.fields.filter((field) => PRODUCT_TITLE_FIELD_IDS.has(normalizeFieldId(field.id))),
+    'publishMinimumProductTitle',
+    productSchemaMessage(locale, 'publishTitle'),
+    issues
+  );
+  appendPublishMinimumIssue(
+    model.fields.filter((field) => PRODUCT_MAIN_IMAGE_FIELD_IDS.has(normalizeFieldId(field.id))),
+    'publishMinimumMainImage',
+    productSchemaMessage(locale, 'publishImage'),
+    issues
+  );
+  return issues;
 }
 
 export function cloneProductSchemaInstance(field: ProductSchemaField): ProductSchemaInstance {
@@ -458,20 +614,31 @@ function parseField(
   element: Element,
   key: string,
   sourceIndex: number,
-  warnings: string[]
+  warnings: string[],
+  locale: UiLocale
 ): ProductSchemaField {
   const rawType = element.getAttribute('type') ?? 'label';
   const type = FIELD_TYPES.has(rawType as ProductSchemaFieldType)
     ? (rawType as ProductSchemaFieldType)
     : 'label';
   if (!FIELD_TYPES.has(rawType as ProductSchemaFieldType)) {
-    warnings.push(`${element.getAttribute('id') ?? key} 使用未知字段类型 ${rawType}，按只读标签处理`);
+    warnings.push(
+      productSchemaMessage(locale, 'unknownFieldType', {
+        field: element.getAttribute('id') ?? key,
+        type: rawType
+      })
+    );
   }
 
   const rules = directChildren(firstDirectChild(element, 'rules'), 'rule').map(parseRule);
   for (const rule of rules) {
     if (!LOCAL_RULES.has(rule.name)) {
-      warnings.push(`${element.getAttribute('id') ?? key} 的 ${rule.name} 需由 Alibaba 服务端校验`);
+      warnings.push(
+        productSchemaMessage(locale, 'serverRule', {
+          field: element.getAttribute('id') ?? key,
+          rule: rule.name
+        })
+      );
     }
   }
 
@@ -489,7 +656,7 @@ function parseField(
     sourcePath: `${key}:instance:${instanceIndex}`,
     sourceIndex: instanceIndex,
     fields: schemaFieldElements(complex).map((child, childIndex) =>
-      parseField(child, `${key}:instance:${instanceIndex}:field:${childIndex}`, childIndex, warnings)
+      parseField(child, `${key}:instance:${instanceIndex}:field:${childIndex}`, childIndex, warnings, locale)
     )
   }));
   const fieldsContainer = firstDirectChild(element, 'fields');
@@ -497,7 +664,7 @@ function parseField(
     ? directChildren(fieldsContainer, 'field')
     : directChildren(element, 'field');
   const templateFields = templateElements.map((child, childIndex) =>
-    parseField(child, `${key}:template:${childIndex}`, childIndex, warnings)
+    parseField(child, `${key}:template:${childIndex}`, childIndex, warnings, locale)
   );
 
   return {
@@ -554,13 +721,15 @@ function validateField(
   field: ProductSchemaField,
   issues: ProductSchemaFieldIssue[],
   fieldValues: ReadonlyMap<string, string[]>,
-  inheritedRules: ProductSchemaRule[]
+  inheritedRules: ProductSchemaRule[],
+  locale: UiLocale
 ): void {
   const rules = [...inheritedRules, ...field.rules];
   const activeRules = rules.filter((rule) => ruleApplies(rule, fieldValues));
   const disabled = activeRules.some((rule) => rule.name === 'disableRule' && isTruthy(rule.value));
   const values = effectiveFieldValues(field);
   const nonEmpty = values.filter((value) => value.trim() !== '');
+  const required = activeRules.some((rule) => rule.name === 'requiredRule' && isTruthy(rule.value));
 
   if (!disabled) {
     for (const rule of activeRules) {
@@ -569,38 +738,56 @@ function validateField(
           fieldKey: field.key,
           severity: 'warning',
           rule: rule.name,
-          message: `${rule.name} 无法在本地安全计算，将由 Alibaba 提交接口最终校验`
+          message: productSchemaMessage(locale, 'unsafeRule', { rule: rule.name })
         });
         continue;
       }
       if (NON_VALIDATING_RULES.has(rule.name)) continue;
       const numericRule = Number(rule.value);
-      if (rule.name === 'requiredRule' && isTruthy(rule.value) && nonEmpty.length === 0) {
-        pushError(issues, field, rule.name, `${field.name} 为必填项`);
+      if (rule.name === 'requiredRule' && required && nonEmpty.length === 0) {
+        pushRuleWarning(
+          issues,
+          field,
+          rule.name,
+          productSchemaMessage(locale, 'required', { field: field.name })
+        );
       }
       if (
         rule.name === 'minInputNumRule' &&
         Number.isFinite(numericRule) &&
+        (required || nonEmpty.length > 0) &&
         violatesMinimum(nonEmpty.length, numericRule, rule)
       ) {
-        pushError(issues, field, rule.name, `${field.name} 至少填写 ${numericRule} 项`);
+        pushRuleWarning(
+          issues,
+          field,
+          rule.name,
+          productSchemaMessage(locale, 'minItems', { field: field.name, limit: numericRule })
+        );
       }
       if (
         rule.name === 'maxInputNumRule' &&
         Number.isFinite(numericRule) &&
         violatesMaximum(nonEmpty.length, numericRule, rule)
       ) {
-        pushError(issues, field, rule.name, `${field.name} 最多填写 ${numericRule} 项`);
+        pushRuleWarning(
+          issues,
+          field,
+          rule.name,
+          productSchemaMessage(locale, 'maxItems', { field: field.name, limit: numericRule })
+        );
       }
       if (field.type !== 'complex' && field.type !== 'multiComplex') {
-        for (const value of nonEmpty) validateScalarRule(field, rule, value, issues);
+        for (const value of nonEmpty) validateScalarRule(field, rule, value, issues, locale);
       }
     }
   }
 
   const childInheritedRules = activeRules.filter((rule) => INHERITED_RULES.has(rule.name));
   for (const instance of field.instances) {
-    for (const child of instance.fields) validateField(child, issues, fieldValues, childInheritedRules);
+    for (const child of instance.fields) {
+      validateField(child, issues, fieldValues, childInheritedRules, locale);
+    }
   }
 }
 
@@ -608,7 +795,8 @@ function validateScalarRule(
   field: ProductSchemaField,
   rule: ProductSchemaRule,
   value: string,
-  issues: ProductSchemaFieldIssue[]
+  issues: ProductSchemaFieldIssue[],
+  locale: UiLocale
 ): void {
   const limit = Number(rule.value);
   const length =
@@ -616,10 +804,20 @@ function validateScalarRule(
       ? new TextEncoder().encode(value).byteLength
       : Array.from(value).length;
   if (rule.name === 'minLengthRule' && Number.isFinite(limit) && violatesMinimum(length, limit, rule)) {
-    pushError(issues, field, rule.name, `${field.name} 长度不能小于 ${limit}`);
+    pushRuleWarning(
+      issues,
+      field,
+      rule.name,
+      productSchemaMessage(locale, 'minLength', { field: field.name, limit })
+    );
   }
   if (rule.name === 'maxLengthRule' && Number.isFinite(limit) && violatesMaximum(length, limit, rule)) {
-    pushError(issues, field, rule.name, `${field.name} 长度不能大于 ${limit}`);
+    pushRuleWarning(
+      issues,
+      field,
+      rule.name,
+      productSchemaMessage(locale, 'maxLength', { field: field.name, limit })
+    );
   }
   const numeric = Number(value);
   if (
@@ -628,7 +826,12 @@ function validateScalarRule(
     Number.isFinite(limit) &&
     violatesMinimum(numeric, limit, rule)
   ) {
-    pushError(issues, field, rule.name, `${field.name} 不能小于 ${limit}`);
+    pushRuleWarning(
+      issues,
+      field,
+      rule.name,
+      productSchemaMessage(locale, 'minValue', { field: field.name, limit })
+    );
   }
   if (
     rule.name === 'maxValueRule' &&
@@ -636,35 +839,71 @@ function validateScalarRule(
     Number.isFinite(limit) &&
     violatesMaximum(numeric, limit, rule)
   ) {
-    pushError(issues, field, rule.name, `${field.name} 不能大于 ${limit}`);
+    pushRuleWarning(
+      issues,
+      field,
+      rule.name,
+      productSchemaMessage(locale, 'maxValue', { field: field.name, limit })
+    );
   }
-  const decimalDigits = value.includes('.') ? (value.split('.')[1]?.length ?? 0) : 0;
-  if (rule.name === 'minDecimalDigitsRule' && decimalDigits < limit) {
-    pushError(issues, field, rule.name, `${field.name} 小数位不能少于 ${limit}`);
+  // ICBU Schema uses these legacy rule names for decimal value bounds. For example,
+  // Quantity price currently returns 0.01 and 9999999.99 rather than digit counts.
+  if (
+    rule.name === 'minDecimalDigitsRule' &&
+    Number.isFinite(numeric) &&
+    Number.isFinite(limit) &&
+    violatesMinimum(numeric, limit, rule)
+  ) {
+    pushRuleWarning(
+      issues,
+      field,
+      rule.name,
+      productSchemaMessage(locale, 'minValue', { field: field.name, limit })
+    );
   }
-  if (rule.name === 'maxDecimalDigitsRule' && decimalDigits > limit) {
-    pushError(issues, field, rule.name, `${field.name} 小数位不能多于 ${limit}`);
+  if (
+    rule.name === 'maxDecimalDigitsRule' &&
+    Number.isFinite(numeric) &&
+    Number.isFinite(limit) &&
+    violatesMaximum(numeric, limit, rule)
+  ) {
+    pushRuleWarning(
+      issues,
+      field,
+      rule.name,
+      productSchemaMessage(locale, 'maxValue', { field: field.name, limit })
+    );
   }
-  if (rule.name === 'regexRule' || rule.name === 'regxRule') validateRegexRule(field, rule, value, issues);
-  if (rule.name === 'valueTypeRule') validateValueTypeRule(field, rule, value, issues);
+  if (rule.name === 'regexRule' || rule.name === 'regxRule') {
+    validateRegexRule(field, rule, value, issues, locale);
+  }
+  if (rule.name === 'valueTypeRule') validateValueTypeRule(field, rule, value, issues, locale);
 }
 
 function validateRegexRule(
   field: ProductSchemaField,
   rule: ProductSchemaRule,
   value: string,
-  issues: ProductSchemaFieldIssue[]
+  issues: ProductSchemaFieldIssue[],
+  locale: UiLocale
 ): void {
   try {
     const matches = new RegExp(rule.value).test(value);
     const valid = isExclusive(rule) ? !matches : matches;
-    if (!valid) pushError(issues, field, rule.name, `${field.name} 格式不正确`);
+    if (!valid) {
+      pushRuleWarning(
+        issues,
+        field,
+        rule.name,
+        productSchemaMessage(locale, 'invalidFormat', { field: field.name })
+      );
+    }
   } catch {
     issues.push({
       fieldKey: field.key,
       severity: 'warning',
       rule: rule.name,
-      message: `${field.name} 的正则规则无效，交由服务端校验`
+      message: productSchemaMessage(locale, 'invalidRegex', { field: field.name })
     });
   }
 }
@@ -673,7 +912,8 @@ function validateValueTypeRule(
   field: ProductSchemaField,
   rule: ProductSchemaRule,
   value: string,
-  issues: ProductSchemaFieldIssue[]
+  issues: ProductSchemaFieldIssue[],
+  locale: UiLocale
 ): void {
   const type = rule.value.toLocaleLowerCase();
   let valid = true;
@@ -687,7 +927,14 @@ function validateValueTypeRule(
       valid = false;
     }
   }
-  if (!valid) pushError(issues, field, rule.name, `${field.name} 类型不正确`);
+  if (!valid) {
+    pushRuleWarning(
+      issues,
+      field,
+      rule.name,
+      productSchemaMessage(locale, 'invalidType', { field: field.name })
+    );
+  }
 }
 
 function updateField(
@@ -695,10 +942,11 @@ function updateField(
   target: Element,
   field: ProductSchemaField,
   sourceField: ProductSchemaField,
-  structuralDiffs: string[]
+  structuralDiffs: string[],
+  locale: UiLocale
 ): void {
   if (field.type === 'complex' || field.type === 'multiComplex') {
-    updateComplexField(document, target, field, sourceField, structuralDiffs);
+    updateComplexField(document, target, field, sourceField, structuralDiffs, locale);
     return;
   }
   if (!valuesEqual(field.values, sourceField.values)) updateScalarField(document, target, field);
@@ -734,7 +982,8 @@ function updateComplexField(
   target: Element,
   field: ProductSchemaField,
   sourceField: ProductSchemaField,
-  structuralDiffs: string[]
+  structuralDiffs: string[],
+  locale: UiLocale
 ): void {
   const sourceNodes = complexInstanceElements(target);
   const retainedSourceIndexes = new Set(
@@ -745,7 +994,7 @@ function updateComplexField(
   field.instances.forEach((instance) => {
     if (instance.sourceIndex === null) return;
     if (instance.sourceIndex <= previousSourceIndex) {
-      structuralDiffs.push(`${field.key} 的已有复合实例顺序发生变化`);
+      structuralDiffs.push(productSchemaMessage(locale, 'complexOrderChanged', { key: field.key }));
     }
     previousSourceIndex = instance.sourceIndex;
   });
@@ -759,7 +1008,8 @@ function updateComplexField(
         instance.fields,
         sourceField.instances[0]?.fields ?? sourceField.children,
         structuralDiffs,
-        schemaFieldElements(target)
+        schemaFieldElements(target),
+        locale
       );
       insertComplexInstance(target, created, field.complexLayout);
       return;
@@ -767,7 +1017,7 @@ function updateComplexField(
     const node = sourceNodes[instance.sourceIndex];
     const sourceInstance = sourceField.instances[instance.sourceIndex];
     if (!node || !sourceInstance) {
-      structuralDiffs.push(`${instance.key} 的源实例不存在`);
+      structuralDiffs.push(productSchemaMessage(locale, 'sourceInstanceMissing', { key: instance.key }));
       return;
     }
     updateComplexInstance(
@@ -776,7 +1026,8 @@ function updateComplexField(
       instance.fields,
       sourceInstance.fields,
       structuralDiffs,
-      schemaFieldElements(target)
+      schemaFieldElements(target),
+      locale
     );
   });
 
@@ -791,7 +1042,8 @@ function updateComplexInstance(
   fields: ProductSchemaField[],
   sourceFields: ProductSchemaField[],
   structuralDiffs: string[],
-  templateFields: Element[]
+  templateFields: Element[],
+  locale: UiLocale
 ): void {
   const fieldsParent = firstDirectChild(target, 'fields');
   const targetFields = fieldsParent ? directChildren(fieldsParent, 'field') : directChildren(target, 'field');
@@ -811,15 +1063,15 @@ function updateComplexInstance(
       if (template) {
         targetField = template.cloneNode(true) as Element;
         (fieldsParent ?? target).append(targetField);
-        sourceField = parseField(template, `${field.key}:source-template`, index, []);
+        sourceField = parseField(template, `${field.key}:source-template`, index, [], locale);
       }
     }
     if (!targetField || !sourceField) {
-      structuralDiffs.push(`${field.key} 无法绑定到复合实例子字段`);
+      structuralDiffs.push(productSchemaMessage(locale, 'childBinding', { key: field.key }));
       return;
     }
     retainedTargets.add(targetField);
-    updateField(document, targetField, field, sourceField, structuralDiffs);
+    updateField(document, targetField, field, sourceField, structuralDiffs, locale);
   });
   for (const targetField of targetFields) {
     if (!retainedTargets.has(targetField)) targetField.remove();
@@ -916,14 +1168,22 @@ function collectFieldValues(fields: ProductSchemaField[]): ReadonlyMap<string, s
 }
 
 function effectiveFieldValues(field: ProductSchemaField): string[] {
-  if (field.type !== 'complex' && field.type !== 'multiComplex') return productSchemaFieldTexts(field);
+  if (field.type !== 'complex' && field.type !== 'multiComplex') {
+    return field.values.map((value) =>
+      value.text.trim() === '' ? (value.attributes.fileId ?? '') : value.text
+    );
+  }
   return field.instances.flatMap((instance) =>
     instance.fields.some((child) => fieldHasContent(child)) ? [instance.key] : []
   );
 }
 
 function fieldHasContent(field: ProductSchemaField): boolean {
-  if (productSchemaFieldTexts(field).some((value) => value.trim() !== '')) return true;
+  if (
+    field.values.some((value) => value.text.trim() !== '' || (value.attributes.fileId?.trim() ?? '') !== '')
+  ) {
+    return true;
+  }
   return field.instances.some((instance) => instance.fields.some((child) => fieldHasContent(child)));
 }
 
@@ -1086,8 +1346,8 @@ function uniqueStrings(values: string[]): string[] {
   return [...new Set(values)];
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : '未知错误';
+function errorMessage(error: unknown, locale: UiLocale): string {
+  return error instanceof Error ? error.message : productSchemaMessage(locale, 'unknownError');
 }
 
 function parseXml(xml: string, parser?: ProductSchemaXmlParser): XMLDocument {
@@ -1113,11 +1373,27 @@ function isTruthy(value: string): boolean {
   return value === 'true' || value === '1';
 }
 
-function pushError(
+function appendPublishMinimumIssue(
+  fields: ProductSchemaField[],
+  rule: string,
+  message: string,
+  issues: ProductSchemaFieldIssue[]
+): void {
+  if (fields.length === 0 || fields.some((field) => fieldHasContent(field))) return;
+  const field = fields[0];
+  if (!field) return;
+  issues.push({ fieldKey: field.key, severity: 'error', rule, message });
+}
+
+function normalizeFieldId(fieldId: string): string {
+  return fieldId.replaceAll(/[^a-z0-9]/giu, '').toLocaleLowerCase();
+}
+
+function pushRuleWarning(
   issues: ProductSchemaFieldIssue[],
   field: ProductSchemaField,
   rule: string,
   message: string
 ): void {
-  issues.push({ fieldKey: field.key, severity: 'error', rule, message });
+  issues.push({ fieldKey: field.key, severity: 'warning', rule, message });
 }

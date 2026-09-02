@@ -356,7 +356,7 @@ export interface SettingsRepository {
 }
 
 export type CredentialVaultState = 'empty' | 'legacy' | 'locked' | 'unlocked' | 'invalid';
-export type CredentialVaultLockReason = 'idle' | 'manual' | 'worker-restart' | null;
+export type CredentialVaultLockReason = 'idle' | 'manual' | 'session-ended' | null;
 
 export interface CredentialVaultPolicy {
   idleTimeoutMinutes: number;
@@ -415,7 +415,13 @@ export interface OnboardingRepository {
 }
 
 export interface LocalDataCategory {
-  id: 'credentials' | 'drafts' | 'diagnostics' | 'preferences';
+  id:
+    | 'credentials'
+    | 'product-mutation-jobs'
+    | 'social-backend-device'
+    | 'drafts'
+    | 'diagnostics'
+    | 'preferences';
   label: string;
   storage: 'chrome.storage.local' | 'chrome.storage.session' | 'localStorage';
   itemCount: number;

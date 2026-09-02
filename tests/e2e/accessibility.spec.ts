@@ -14,6 +14,18 @@ test('dashboard and product list have no automatic WCAG A/AA violations', async 
   await expectNoAccessibilityViolations(page);
 });
 
+test('version updates remain accessible in light and dark themes', async ({ page }) => {
+  await page.goto('/#/releases');
+  await expect(page.getByRole('heading', { name: '版本更新' })).toBeVisible();
+  await expectNoAccessibilityViolations(page);
+
+  const themeToggle = page.getByTestId('theme-toggle');
+  await themeToggle.click();
+  await themeToggle.click();
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await expectNoAccessibilityViolations(page);
+});
+
 test('mobile navigation has a name and restores keyboard focus after Escape', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
@@ -29,6 +41,12 @@ test('mobile navigation has a name and restores keyboard focus after Escape', as
 });
 
 async function expectNoAccessibilityViolations(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const transitions = document
+      .getAnimations()
+      .filter((animation) => animation.constructor.name === 'CSSTransition');
+    await Promise.allSettled(transitions.map((animation) => animation.finished));
+  });
   const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
   expect(results.violations).toEqual([]);
 }

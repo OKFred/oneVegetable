@@ -40,6 +40,7 @@ const totalBytes = sizes.reduce((total, entry) => total + entry.size, 0);
 const productTransferWorker = sizes.find((entry) =>
   /^assets\/product-transfer-archive\.worker-[A-Za-z0-9_-]+\.js$/u.test(entry.file)
 );
+const i18nChunk = sizes.find((entry) => /^chunks\/i18n-[A-Za-z0-9_-]+\.js$/u.test(entry.file));
 
 const errors: string[] = [];
 if (!background || background.size > 100_000) {
@@ -57,7 +58,10 @@ if (eagerOptionBytes > 250_000) {
 if (!productTransferWorker || productTransferWorker.size > 50_000) {
   errors.push(`Product transfer worker exceeds 50 KB: ${productTransferWorker?.size ?? 'missing'}`);
 }
-if (totalBytes > 3_500_000) errors.push(`Unpacked extension exceeds 3.50 MB: ${totalBytes}`);
+if (!i18nChunk || i18nChunk.size > 300_000) {
+  errors.push(`Bilingual i18n chunk exceeds 300 KB: ${i18nChunk?.size ?? 'missing'}`);
+}
+if (totalBytes > 4_000_000) errors.push(`Unpacked extension exceeds 4.00 MB: ${totalBytes}`);
 if (sizes.some((entry) => entry.file.endsWith('.map'))) errors.push('Production source maps are not allowed');
 if (manifest.permissions?.includes('cookies')) errors.push('cookies permission is not allowed');
 if (manifest.host_permissions?.includes('<all_urls>'))

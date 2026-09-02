@@ -21,6 +21,7 @@ import {
   type ProductTransferImportSelection,
   type ProductTransferProgress
 } from '../lib/product-transfer-archive';
+import { useUiI18n } from '../i18n';
 
 type ProductTransferMode = 'import' | 'export';
 type ConfirmationKind = 'execute' | 'close';
@@ -55,6 +56,7 @@ const emit = defineEmits<{
   'confirm-import': [selection: ProductTransferImportSelection];
   'confirm-export': [];
 }>();
+const { t } = useUiI18n();
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const selectedFileName = ref('');
@@ -63,15 +65,17 @@ const importSelection = ref<ProductTransferImportSelection | null>(null);
 const importError = ref('');
 const validatingFile = ref(false);
 const targetGroupId = ref('-1');
-const targetGroupName = ref('图库根目录');
+const targetGroupName = ref(t('products.transfer.galleryRoot'));
 const confirmationKind = ref<ConfirmationKind | null>(null);
 let validationSequence = 0;
 
-const title = computed(() => (props.mode === 'import' ? '导入商品' : '导出商品'));
+const title = computed(() =>
+  t(props.mode === 'import' ? 'products.transfer.importTitle' : 'products.transfer.exportTitle')
+);
 const description = computed(() =>
   props.mode === 'import'
-    ? '支持 JSON，或包含 products.json 与 assets/ 图片的 ZIP。确认前只做本地校验。'
-    : `本次将导出打开对话框时选中的 ${props.exportProducts.length} 个商品。`
+    ? t('products.transfer.importDescription')
+    : t('products.transfer.exportDescription', { count: props.exportProducts.length })
 );
 const importDocument = computed(() =>
   importSelection.value?.kind === 'json'
@@ -119,7 +123,7 @@ async function validateFile(event: Event): Promise<void> {
   importSelection.value = null;
   importError.value = '';
   targetGroupId.value = '-1';
-  targetGroupName.value = '图库根目录';
+  targetGroupName.value = t('products.transfer.galleryRoot');
   validatingFile.value = true;
   try {
     const extension = file.name.split('.').pop()?.toLocaleLowerCase();
@@ -130,7 +134,9 @@ async function validateFile(event: Event): Promise<void> {
       file.type === 'application/x-zip-compressed' ||
       isProductTransferZipBytes(bytes);
     if (isZip) {
-      if (file.size > MAX_PRODUCT_TRANSFER_ZIP_BYTES) throw new Error('商品 ZIP 超过 50 MiB 上限');
+      if (file.size > MAX_PRODUCT_TRANSFER_ZIP_BYTES) {
+        throw new Error(t('products.transfer.errors.zipTooLarge'));
+      }
       const archive = await readProductTransferArchive(bytes);
       if (sequence !== validationSequence) return;
       importSelection.value = {
@@ -141,10 +147,12 @@ async function validateFile(event: Event): Promise<void> {
       };
       return;
     }
-    if (file.size > MAX_PRODUCT_TRANSFER_JSON_BYTES) throw new Error('商品导入文件超过 10 MiB 上限');
+    if (file.size > MAX_PRODUCT_TRANSFER_JSON_BYTES) {
+      throw new Error(t('products.transfer.errors.jsonTooLarge'));
+    }
     const text = decodeProductTransferText(bytes);
     if (extension !== 'json' && file.type !== 'application/json' && !text.trimStart().startsWith('{')) {
-      throw new Error('仅支持 .json 或 .zip 商品文件');
+      throw new Error(t('products.transfer.errors.unsupportedFile'));
     }
     const document = parseProductTransferJson(text);
     if (sequence !== validationSequence) return;
@@ -159,7 +167,7 @@ async function validateFile(event: Event): Promise<void> {
 
 function selectTargetGroup(group: PhotoGroup): void {
   targetGroupId.value = group.id;
-  targetGroupName.value = group.id === '-1' ? '图库根目录' : group.name;
+  targetGroupName.value = group.id === '-1' ? t('products.transfer.galleryRoot') : group.name;
   if (importSelection.value?.kind !== 'zip') return;
   importSelection.value = {
     ...importSelection.value,
@@ -219,7 +227,7 @@ function resetDialog(): void {
   importError.value = '';
   validatingFile.value = false;
   targetGroupId.value = '-1';
-  targetGroupName.value = '图库根目录';
+  targetGroupName.value = t('products.transfer.galleryRoot');
   confirmationKind.value = null;
   if (fileInput.value) fileInput.value.value = '';
 }
@@ -244,11 +252,11 @@ function readFileBytes(file: File): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => {
-      reject(new Error('读取商品文件失败'));
+      reject(new Error(t('products.transfer.errors.readFailed')));
     };
     reader.onload = () => {
       if (!(reader.result instanceof ArrayBuffer)) {
-        reject(new Error('读取商品文件失败'));
+        reject(new Error(t('products.transfer.errors.readFailed')));
         return;
       }
       resolve(new Uint8Array(reader.result));
@@ -261,7 +269,7 @@ function decodeProductTransferText(bytes: Uint8Array): string {
   try {
     return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
   } catch {
-    throw new Error('商品 JSON 不是有效 UTF-8 文本');
+    throw new Error(t('products.transfer.errors.invalidUtf8'));
   }
 }
 
@@ -283,13 +291,15 @@ function errorMessage(error: unknown): string {
         <section class="rounded-lg border border-dashed p-4">
           <div class="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
             <div>
-              <h3 class="font-medium">商品文件</h3>
+              <h3 class="font-medium">{{ t('products.transfer.fileTitle') }}</h3>
               <p class="mt-1 text-sm text-muted-foreground">
-                JSON 最大 10 MiB；ZIP 最大 50 MiB、解压后最大 100 MiB，图片位于 assets/。
+                {{ t('products.transfer.fileLimits') }}
               </p>
             </div>
             <Button variant="outline" :disabled="busy || validatingFile" @click="chooseFile">
-              <Upload class="size-4" />{{ selectedFileName ? '重新选择' : '选择文件' }}
+              <Upload class="size-4" />{{
+                t(selectedFileName ? 'products.transfer.reselect' : 'products.transfer.choose')
+              }}
             </Button>
           </div>
           <input
@@ -297,13 +307,17 @@ function errorMessage(error: unknown): string {
             class="sr-only"
             type="file"
             accept=".json,.zip,application/json,application/zip,application/x-zip-compressed"
-            aria-label="选择商品 JSON 或 ZIP 文件"
+            :aria-label="t('products.transfer.chooseLabel')"
             :disabled="busy || validatingFile"
             @change="validateFile"
           />
         </section>
 
-        <section v-if="selectedFileName" class="rounded-lg border bg-muted/30 p-4" aria-label="导入文件预览">
+        <section
+          v-if="selectedFileName"
+          class="rounded-lg border bg-muted/30 p-4"
+          :aria-label="t('products.transfer.importPreview')"
+        >
           <div class="flex items-start gap-3">
             <FileArchive v-if="zipImport" class="mt-0.5 size-5 shrink-0 text-primary" />
             <FileJson v-else class="mt-0.5 size-5 shrink-0 text-primary" />
@@ -311,25 +325,33 @@ function errorMessage(error: unknown): string {
               <p class="break-all font-medium">{{ selectedFileName }}</p>
               <p class="mt-1 text-sm text-muted-foreground">
                 {{ formatBytes(selectedFileSize)
-                }}<template v-if="importDocument"> · {{ productCount }} 个商品</template>
-                <template v-if="zipImport"> · {{ zipAssetCount }} 张引用图片</template>
+                }}<template v-if="importDocument">
+                  · {{ t('products.transfer.productCount', { count: productCount }) }}</template
+                >
+                <template v-if="zipImport">
+                  · {{ t('products.transfer.imageCount', { count: zipAssetCount }) }}</template
+                >
               </p>
               <p v-if="validatingFile" class="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                <LoaderCircle class="size-4 animate-spin" />正在安全解压并校验商品与图片…
+                <LoaderCircle class="size-4 animate-spin" />{{ t('products.transfer.validating') }}
               </p>
               <ul v-else-if="importDocument" class="mt-3 space-y-1 text-sm">
                 <li v-for="product in visibleImportProducts" :key="product.source.productId" class="truncate">
                   {{ product.source.subject }}
                 </li>
                 <li v-if="productCount > visibleImportProducts.length" class="text-muted-foreground">
-                  另有 {{ productCount - visibleImportProducts.length }} 个商品
+                  {{
+                    t('products.transfer.remainingProducts', {
+                      count: productCount - visibleImportProducts.length
+                    })
+                  }}
                 </li>
               </ul>
               <p
                 v-if="zipImport?.unusedAssetPaths.length"
                 class="mt-3 text-xs text-amber-700 dark:text-amber-300"
               >
-                ZIP 中有 {{ zipImport.unusedAssetPaths.length }} 张未被商品引用的图片，将不会上传。
+                {{ t('products.transfer.unusedAssets', { count: zipImport.unusedAssetPaths.length }) }}
               </p>
             </div>
           </div>
@@ -337,34 +359,36 @@ function errorMessage(error: unknown): string {
 
         <section v-if="zipImport && zipAssetCount > 0" class="rounded-lg border p-4">
           <div class="mb-3">
-            <h3 class="font-medium">上传到图库分组</h3>
+            <h3 class="font-medium">{{ t('products.transfer.uploadGroupTitle') }}</h3>
             <p class="mt-1 text-sm text-muted-foreground">
-              确认导入后先上传 {{ zipAssetCount }} 张图片；全部成功后才写入批量发品队列。
+              {{ t('products.transfer.uploadGroupDescription', { count: zipAssetCount }) }}
             </p>
           </div>
           <div class="max-h-52 overflow-auto rounded-md border bg-background p-1">
             <PhotoGroupNavigation
               v-model="targetGroupId"
-              all-label="图库根目录"
+              :all-label="t('products.transfer.galleryRoot')"
               @select="selectTargetGroup"
             />
           </div>
-          <p class="mt-2 text-xs text-muted-foreground">当前目标：{{ targetGroupName }}</p>
+          <p class="mt-2 text-xs text-muted-foreground">
+            {{ t('products.transfer.currentTarget', { name: targetGroupName }) }}
+          </p>
           <p
             v-if="!assetUploadAllowed"
             class="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
           >
-            {{ assetUploadDisabledReason || '当前环境未开放真实图库上传，不能导入含本地图片的 ZIP。' }}
+            {{ assetUploadDisabledReason || t('products.transfer.uploadUnavailable') }}
           </p>
         </section>
       </template>
 
       <template v-else>
-        <section class="rounded-lg border bg-muted/30 p-4" aria-label="导出商品预览">
+        <section class="rounded-lg border bg-muted/30 p-4" :aria-label="t('products.transfer.exportPreview')">
           <div class="flex items-center justify-between gap-3">
-            <h3 class="font-medium">已冻结本次导出范围</h3>
+            <h3 class="font-medium">{{ t('products.transfer.frozen') }}</h3>
             <span class="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-              {{ productCount }} 个商品
+              {{ t('products.transfer.productCount', { count: productCount }) }}
             </span>
           </div>
           <ul class="mt-3 space-y-1 text-sm">
@@ -372,7 +396,11 @@ function errorMessage(error: unknown): string {
               {{ product.subject }}
             </li>
             <li v-if="productCount > visibleExportProducts.length" class="text-muted-foreground">
-              另有 {{ productCount - visibleExportProducts.length }} 个商品
+              {{
+                t('products.transfer.remainingProducts', {
+                  count: productCount - visibleExportProducts.length
+                })
+              }}
             </li>
           </ul>
         </section>
@@ -381,12 +409,12 @@ function errorMessage(error: unknown): string {
           <summary
             class="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-4 py-3 font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <span>高级设置</span>
+            <span>{{ t('products.transfer.advanced') }}</span>
             <ChevronDown class="size-4 transition-transform duration-200 group-open:rotate-180" />
           </summary>
           <div class="space-y-5 border-t p-4">
             <fieldset class="grid gap-3 sm:grid-cols-2">
-              <legend class="mb-2 text-sm font-medium">文件格式</legend>
+              <legend class="mb-2 text-sm font-medium">{{ t('products.transfer.fileFormat') }}</legend>
               <label
                 class="flex cursor-pointer items-start gap-3 rounded-lg border bg-background p-3 text-foreground transition-colors hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5 dark:has-[:checked]:bg-primary/10"
               >
@@ -396,13 +424,15 @@ function errorMessage(error: unknown): string {
                   value="json"
                   :checked="fileFormat === 'json'"
                   :disabled="busy"
-                  aria-label="JSON 文件"
+                  :aria-label="t('products.transfer.jsonFile')"
                   class="mt-1 accent-primary"
                   @change="updateFileFormat"
                 />
                 <span
                   ><span class="block font-medium">JSON</span
-                  ><span class="mt-1 block text-xs text-muted-foreground">仅导出商品数据。</span></span
+                  ><span class="mt-1 block text-xs text-muted-foreground">{{
+                    t('products.transfer.jsonDescription')
+                  }}</span></span
                 >
               </label>
               <label
@@ -414,26 +444,26 @@ function errorMessage(error: unknown): string {
                   value="zip"
                   :checked="fileFormat === 'zip'"
                   :disabled="busy"
-                  aria-label="ZIP 资源包"
+                  :aria-label="t('products.transfer.zipFile')"
                   class="mt-1 accent-primary"
                   @change="updateFileFormat"
                 />
                 <span>
-                  <span class="block font-medium">ZIP（含图片）</span>
-                  <span class="mt-1 block text-xs text-muted-foreground"
-                    >下载图库图片到 assets/，任一图片失败则不生成文件。</span
-                  >
+                  <span class="block font-medium">{{ t('products.transfer.zipTitle') }}</span>
+                  <span class="mt-1 block text-xs text-muted-foreground">{{
+                    t('products.transfer.zipDescription')
+                  }}</span>
                 </span>
               </label>
               <p
                 v-if="fileFormat === 'zip' && !assetDownloadAllowed"
                 class="rounded-md bg-amber-50 p-3 text-sm text-amber-900 sm:col-span-2 dark:bg-amber-950/40 dark:text-amber-200"
               >
-                {{ assetDownloadDisabledReason || '当前环境未开放商品图片下载，不能生成 ZIP。' }}
+                {{ assetDownloadDisabledReason || t('products.transfer.downloadUnavailable') }}
               </p>
             </fieldset>
             <fieldset class="grid gap-3 sm:grid-cols-2">
-              <legend class="mb-2 text-sm font-medium">Schema 字段</legend>
+              <legend class="mb-2 text-sm font-medium">{{ t('products.transfer.schemaField') }}</legend>
               <label
                 class="flex cursor-pointer items-start gap-3 rounded-lg border bg-background p-3 text-foreground transition-colors hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5 dark:has-[:checked]:bg-primary/10"
               >
@@ -449,9 +479,9 @@ function errorMessage(error: unknown): string {
                 />
                 <span>
                   <span class="block font-medium">Schema JSON</span>
-                  <span class="mt-1 block text-xs text-muted-foreground"
-                    >products.json 中仅包含 schemaJson，推荐使用。</span
-                  >
+                  <span class="mt-1 block text-xs text-muted-foreground">{{
+                    t('products.transfer.schemaJsonDescription')
+                  }}</span>
                 </span>
               </label>
               <label
@@ -469,9 +499,9 @@ function errorMessage(error: unknown): string {
                 />
                 <span>
                   <span class="block font-medium">Schema XML</span>
-                  <span class="mt-1 block text-xs text-muted-foreground"
-                    >products.json 中仅包含 schemaXml，用于兼容旧工具。</span
-                  >
+                  <span class="mt-1 block text-xs text-muted-foreground">{{
+                    t('products.transfer.schemaXmlDescription')
+                  }}</span>
                 </span>
               </label>
             </fieldset>
@@ -490,7 +520,7 @@ function errorMessage(error: unknown): string {
           <LoaderCircle class="size-4 animate-spin" />
           {{
             progress?.message ||
-            (mode === 'import' ? '正在处理商品与图片…' : '正在读取商品 Schema 并生成文件…')
+            t(mode === 'import' ? 'products.transfer.processingImport' : 'products.transfer.processingExport')
           }}
         </p>
         <div v-if="progress && progress.total > 0" class="h-2 overflow-hidden rounded-full bg-muted">
@@ -504,10 +534,20 @@ function errorMessage(error: unknown): string {
 
     <template #footer>
       <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button variant="outline" :disabled="busy" @click="requestClose">取消</Button>
+        <Button variant="outline" :disabled="busy" @click="requestClose">
+          {{ t('common.actions.cancel') }}
+        </Button>
         <Button :disabled="busy || !canExecute" @click="requestExecute">
           <LoaderCircle v-if="busy" class="size-4 animate-spin" />
-          {{ busy ? '处理中…' : mode === 'import' ? '导入' : '导出' }}
+          {{
+            t(
+              busy
+                ? 'products.transfer.processing'
+                : mode === 'import'
+                  ? 'products.transfer.import'
+                  : 'products.transfer.export'
+            )
+          }}
         </Button>
       </div>
     </template>
@@ -515,17 +555,28 @@ function errorMessage(error: unknown): string {
 
   <ModalDialog
     :open="confirmationKind !== null"
-    :title="confirmationKind === 'execute' ? `确认${mode === 'import' ? '导入' : '导出'}` : '确认关闭'"
+    :title="
+      t(
+        confirmationKind === 'execute'
+          ? mode === 'import'
+            ? 'products.transfer.confirmImport'
+            : 'products.transfer.confirmExport'
+          : 'products.transfer.confirmClose'
+      )
+    "
     :description="
       confirmationKind === 'execute'
         ? mode === 'import'
           ? importRequiresUpload
-            ? `确认上传 ${zipAssetCount} 张图片，并在全部成功后将 ${productCount} 个商品写入本机队列吗？`
-            : `确认将 ${productCount} 个商品写入本机批量发品队列吗？不会直接写入平台。`
+            ? t('products.transfer.confirmUpload', {
+                images: zipAssetCount,
+                products: productCount
+              })
+            : t('products.transfer.confirmQueue', { count: productCount })
           : fileFormat === 'zip'
-            ? `确认下载商品引用的图库图片并生成 ${productCount} 个商品的 ZIP 吗？`
-            : `确认读取 ${productCount} 个商品的 Schema 并下载 JSON 文件吗？`
-        : '当前内容将被清空，确定关闭吗？'
+            ? t('products.transfer.confirmZip', { count: productCount })
+            : t('products.transfer.confirmJson', { count: productCount })
+        : t('products.transfer.confirmCloseDescription')
     "
     size="sm"
     @update:open="returnToMainDialog"
@@ -535,20 +586,28 @@ function errorMessage(error: unknown): string {
         confirmationKind === 'execute'
           ? mode === 'import'
             ? importRequiresUpload
-              ? '图片上传失败时不会写入本机队列；已经上传成功的图库图片不会自动删除。'
-              : '确认前不会写入本机队列。'
-            : '确认前不会调用商品 Schema 或图片下载接口，也不会触发文件下载。'
-          : '返回可继续当前操作；确认关闭后需要重新选择。'
+              ? t('products.transfer.uploadCaveat')
+              : t('products.transfer.queueCaveat')
+            : t('products.transfer.exportCaveat')
+          : t('products.transfer.closeCaveat')
       }}
     </p>
     <template #footer>
       <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button variant="outline" @click="returnToMainDialog">返回</Button>
+        <Button variant="outline" @click="returnToMainDialog">{{ t('products.transfer.back') }}</Button>
         <Button
           :variant="confirmationKind === 'close' ? 'destructive' : 'default'"
           @click="confirmationKind === 'close' ? confirmClose() : confirmExecute()"
         >
-          {{ confirmationKind === 'close' ? '确认关闭' : `确认${mode === 'import' ? '导入' : '导出'}` }}
+          {{
+            t(
+              confirmationKind === 'close'
+                ? 'products.transfer.confirmClose'
+                : mode === 'import'
+                  ? 'products.transfer.confirmImport'
+                  : 'products.transfer.confirmExport'
+            )
+          }}
         </Button>
       </div>
     </template>

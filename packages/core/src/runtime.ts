@@ -12,6 +12,15 @@ export type {
 export { parseAlibabaOpenApiCredentialBundle } from './alibaba-credential-bundle';
 export type { AlibabaOpenApiCredentialBundle } from './alibaba-credential-bundle';
 export { BffGatewayClient } from './bff-client';
+export { BffControlClient } from './control-client';
+export {
+  CHROME_WEB_STORE_REVIEW_URL,
+  evaluateExtensionReviewPrompt,
+  EXTENSION_REVIEW_PROMPT_STORAGE_KEY,
+  markExtensionReviewLinkOpened
+} from './extension-review-prompt';
+export type { ExtensionReviewPromptRepository } from './extension-review-prompt';
+export { EXTENSION_SOCIAL_BACKEND_STORAGE_KEY } from './extension-social-backend';
 export {
   CREDENTIAL_VAULT_ITERATIONS,
   CREDENTIAL_VAULT_MAX_PASSPHRASE_CHARACTERS,
@@ -21,10 +30,16 @@ export {
   validateVaultPassphrase
 } from './credential-vault';
 export { ALIBABA_GATEWAY } from './signing';
-export { APP_PREFERENCES_STORAGE_KEY } from './preferences';
+export { APP_PREFERENCES_STORAGE_KEY, LEGACY_APP_PREFERENCES_STORAGE_KEY } from './preferences';
 export { StaticOperationAvailabilityClient } from './operation-availability';
+export { ExtensionProductMutationJobClient } from './product-mutation-job-extension';
 export { QUALIFICATION_GATED_OPERATION_IDS } from './operation-id';
 export type { OperationAvailabilityClient } from './product-description-template-client-types';
+export type {
+  ExtensionProductMutationJobOperation,
+  ExtensionProductMutationJobRequest,
+  ExtensionProductMutationJobResponse
+} from './product-mutation-job-extension';
 export {
   BundledProductDescriptionTemplateClient,
   BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA
@@ -59,3 +74,16 @@ export type {
   RuntimeResponse,
   SettingsRepository
 } from './types';
+export type {
+  ExtensionSocialBackendRepository,
+  ExtensionSocialBackendStatus
+} from './extension-social-backend';
+export type { SocialPublishingClient } from './social-publishing-client';
+export type {
+  ExtensionSocialDevice,
+  ExtensionSocialPairingStart,
+  ExtensionSocialPairingStatus,
+  SocialDestination,
+  SocialPostPrepareRequest,
+  SocialPublishJob
+} from './social-meta';

@@ -33,6 +33,10 @@ export interface UnlockedCredentialVault {
   policy: CredentialVaultPolicy;
 }
 
+export interface CredentialVaultUnlockResult extends UnlockedCredentialVault {
+  sessionKeyMaterial: string;
+}
+
 export interface CredentialVaultSessionTiming {
   expired: boolean;
   remainingSeconds: number | null;
@@ -117,11 +121,16 @@ export async function createCredentialVault(
   passphrase: string,
   policy: CredentialVaultPolicy = defaultCredentialVaultPolicy(),
   cryptoSource: Crypto = globalThis.crypto
-): Promise<{ record: CredentialVaultRecord; key: CryptoKey; policy: CredentialVaultPolicy }> {
+): Promise<CredentialVaultUnlockResult & { record: CredentialVaultRecord }> {
   validateVaultPassphrase(passphrase);
   const normalizedPolicy = strictCredentialVaultPolicy(policy);
   const salt = cryptoSource.getRandomValues(new Uint8Array(SALT_BYTES));
-  const key = await deriveKey(passphrase, salt, CREDENTIAL_VAULT_ITERATIONS, cryptoSource);
+  const { key, sessionKeyMaterial } = await deriveKey(
+    passphrase,
+    salt,
+    CREDENTIAL_VAULT_ITERATIONS,
+    cryptoSource
+  );
   const record = await sealCredentialVault(
     settings,
     normalizedPolicy,
@@ -130,38 +139,42 @@ export async function createCredentialVault(
     CREDENTIAL_VAULT_ITERATIONS,
     cryptoSource
   );
-  return { record, key, policy: normalizedPolicy };
+  return { record, key, sessionKeyMaterial, settings, policy: normalizedPolicy };
 }
 
 export async function unlockCredentialVault(
   record: CredentialVaultRecord,
   passphrase: string,
   cryptoSource: Crypto = globalThis.crypto
-): Promise<UnlockedCredentialVault> {
+): Promise<CredentialVaultUnlockResult> {
   validateVaultPassphrase(passphrase);
   if (!isCredentialVaultRecord(record)) {
     throw new CredentialVaultError('VAULT_INVALID', '凭证保险库格式无效');
   }
   const salt = fromBase64(record.kdf.salt);
-  const key = await deriveKey(passphrase, salt, record.kdf.iterations, cryptoSource);
+  const { key, sessionKeyMaterial } = await deriveKey(passphrase, salt, record.kdf.iterations, cryptoSource);
+  const unlocked = await decryptCredentialVault(record, key, cryptoSource);
+  return { ...unlocked, sessionKeyMaterial };
+}
+
+export async function restoreCredentialVaultSession(
+  record: CredentialVaultRecord,
+  sessionKeyMaterial: string,
+  cryptoSource: Crypto = globalThis.crypto
+): Promise<CredentialVaultUnlockResult> {
+  if (!isCredentialVaultRecord(record)) {
+    throw new CredentialVaultError('VAULT_INVALID', '凭证保险库格式无效');
+  }
+  let rawKey: Uint8Array<ArrayBuffer>;
   try {
-    const plaintext = await cryptoSource.subtle.decrypt(
-      {
-        name: 'AES-GCM',
-        iv: fromBase64(record.cipher.iv),
-        additionalData: ADDITIONAL_DATA,
-        tagLength: 128
-      },
-      key,
-      fromBase64(record.cipher.ciphertext)
-    );
-    const parsed: unknown = JSON.parse(new TextDecoder().decode(plaintext));
-    const payload = strictCredentialVaultPayload(parsed);
-    return { key, ...payload };
-  } catch (error: unknown) {
-    if (error instanceof CredentialVaultError) throw error;
+    rawKey = fromBase64(sessionKeyMaterial);
+    if (rawKey.byteLength !== 32) throw new Error('invalid key length');
+  } catch {
     throw new CredentialVaultError('VAULT_UNLOCK_FAILED', '保险库口令不正确或密文已损坏');
   }
+  const key = await importVaultKey(rawKey, cryptoSource);
+  const unlocked = await decryptCredentialVault(record, key, cryptoSource);
+  return { ...unlocked, sessionKeyMaterial };
 }
 
 export async function resealCredentialVault(
@@ -260,21 +273,56 @@ async function deriveKey(
   salt: Uint8Array<ArrayBuffer>,
   iterations: number,
   cryptoSource: Crypto
-): Promise<CryptoKey> {
+): Promise<{ key: CryptoKey; sessionKeyMaterial: string }> {
   const material = await cryptoSource.subtle.importKey(
     'raw',
     new TextEncoder().encode(passphrase),
     'PBKDF2',
     false,
-    ['deriveKey']
+    ['deriveBits']
   );
-  return cryptoSource.subtle.deriveKey(
+  const bits = await cryptoSource.subtle.deriveBits(
     { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
     material,
-    { name: 'AES-GCM', length: 256 },
-    KEY_EXTRACTABLE,
-    ['encrypt', 'decrypt']
+    256
   );
+  const rawKey = new Uint8Array(bits);
+  return {
+    key: await importVaultKey(rawKey, cryptoSource),
+    sessionKeyMaterial: toBase64(rawKey)
+  };
+}
+
+function importVaultKey(rawKey: Uint8Array<ArrayBuffer>, cryptoSource: Crypto): Promise<CryptoKey> {
+  return cryptoSource.subtle.importKey('raw', rawKey, { name: 'AES-GCM', length: 256 }, KEY_EXTRACTABLE, [
+    'encrypt',
+    'decrypt'
+  ]);
+}
+
+async function decryptCredentialVault(
+  record: CredentialVaultRecord,
+  key: CryptoKey,
+  cryptoSource: Crypto
+): Promise<UnlockedCredentialVault> {
+  try {
+    const plaintext = await cryptoSource.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv: fromBase64(record.cipher.iv),
+        additionalData: ADDITIONAL_DATA,
+        tagLength: 128
+      },
+      key,
+      fromBase64(record.cipher.ciphertext)
+    );
+    const parsed: unknown = JSON.parse(new TextDecoder().decode(plaintext));
+    const payload = strictCredentialVaultPayload(parsed);
+    return { key, ...payload };
+  } catch (error: unknown) {
+    if (error instanceof CredentialVaultError) throw error;
+    throw new CredentialVaultError('VAULT_UNLOCK_FAILED', '保险库口令不正确或密文已损坏');
+  }
 }
 
 async function sealCredentialVault(

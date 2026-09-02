@@ -177,6 +177,28 @@ describe('ProductEditorWizard', () => {
     expect(submit.attributes('disabled')).toBeDefined();
   });
 
+  it('keeps category-specific Schema findings advisory for formal publish', async () => {
+    const model = parseProductSchemaXml(`<itemSchema>
+      <field id="subject" name="Product title" type="input"><value>Ready product</value></field>
+      <field id="material" name="Material" type="input">
+        <rules><rule name="requiredRule" value="true"/></rules><value/>
+      </field>
+    </itemSchema>`);
+    const issues = validateProductSchemaModel(model);
+    const wrapper = mountWizard('review', {
+      model,
+      qualityIssues: analyzeProductDescriptionQuality({ html: '', schemaIssues: issues })
+    });
+    await wrapper.setProps({ mutationDisabled: false, publishDisabled: false });
+
+    expect(issues).toEqual([expect.objectContaining({ rule: 'requiredRule', severity: 'warning' })]);
+    expect(wrapper.text()).toContain('其余规则由 Alibaba 接口最终校验');
+    expect(wrapper.text()).toContain('平台规则预检');
+    const submit = wrapper.findAll('button').find((button) => button.text().includes('发布商品'));
+    if (!submit) throw new Error('Missing publish button');
+    expect(submit.attributes('disabled')).toBeUndefined();
+  });
+
   it('groups official hints, expands safe content and locates the related field', async () => {
     const model = parseProductSchemaXml(officialHintFixture.schemaXml);
     const officialHints = collectProductSchemaOfficialHints(model.fields);

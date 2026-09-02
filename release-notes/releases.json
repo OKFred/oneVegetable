@@ -1,0 +1,272 @@
+{
+  "schemaVersion": 2,
+  "repositoryUrl": "https://github.com/OKFred/oneVegetable",
+  "releases": [
+    {
+      "version": "2.2.0",
+      "releasedAt": "2026-09-02",
+      "title": {
+        "zh-CN": "双语工作台与社交发布",
+        "en-US": "Bilingual workspace and social publishing"
+      },
+      "summary": {
+        "zh-CN": "加入完整中英文界面、受控的 Facebook/Instagram 单图发布、扩展真实发品闭环，以及更清晰的反馈与日常运营体验。",
+        "en-US": "Adds a complete Chinese and English interface, guarded Facebook and Instagram single-image publishing, verified extension product creation, and clearer feedback and daily operations."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/releases/tag/v2.2.0",
+      "compareUrl": "https://github.com/OKFred/oneVegetable/compare/v2.1.0...v2.2.0",
+      "changes": [
+        {
+          "type": "feature",
+          "title": {
+            "zh-CN": "完整中英文界面",
+            "en-US": "Complete Chinese and English interface"
+          },
+          "description": {
+            "zh-CN": "工作台、登录、弹窗、提示和扩展 Popup 均可即时切换中英文，且界面语言与 Alibaba 接口语言保持独立。",
+            "en-US": "Switches the workspace, authentication, dialogs, notices, and extension popup between Chinese and English without coupling the UI locale to the Alibaba API language."
+          }
+        },
+        {
+          "type": "feature",
+          "title": {
+            "zh-CN": "图库素材社交发布",
+            "en-US": "Social publishing for gallery media"
+          },
+          "description": {
+            "zh-CN": "支持连接用户自己的 Meta 应用和自托管后端，把一张图库图片经二次确认发布到 Facebook Page 或 Instagram 专业账号，并按需查询帖子链接。",
+            "en-US": "Connects the user's own Meta app and self-hosted backend to publish one confirmed gallery image to a Facebook Page or Instagram professional account and retrieve its post link on demand."
+          }
+        },
+        {
+          "type": "feature",
+          "title": {
+            "zh-CN": "插件真实发品安全闭环",
+            "en-US": "Guarded real product creation in the extension"
+          },
+          "description": {
+            "zh-CN": "开放已验证的平台草稿、正式发品和商品上下架能力，使用持久任务、指纹去重、错误保留和平台回读避免重复写入。",
+            "en-US": "Enables verified platform drafts, product publishing, and product display changes with persistent jobs, fingerprint deduplication, retained errors, and platform read-back checks."
+          }
+        },
+        {
+          "type": "improvement",
+          "title": {
+            "zh-CN": "商品与图库操作更高效",
+            "en-US": "More efficient product and gallery workflows"
+          },
+          "description": {
+            "zh-CN": "发品预检更多采用非阻断提示，优化平台错误展示、整数数量价格、图库列表视图、日期时间格式和常用操作布局。",
+            "en-US": "Makes more product preflight findings advisory, improves platform error details, integer quantity prices, the gallery list view, date and time formatting, and common action layouts."
+          }
+        },
+        {
+          "type": "feature",
+          "title": {
+            "zh-CN": "本地反馈与评价提醒",
+            "en-US": "Local feedback and review reminder"
+          },
+          "description": {
+            "zh-CN": "可在本机脱敏预览截图后前往 GitHub 提交反馈，并在使用满七天后以克制频率邀请用户前往 Chrome 应用商店评价。",
+            "en-US": "Lets users preview a locally redacted screenshot before opening a GitHub feedback form and offers a restrained Chrome Web Store review reminder after seven days of use."
+          }
+        },
+        {
+          "type": "improvement",
+          "title": {
+            "zh-CN": "更简洁的工作台",
+            "en-US": "A cleaner workspace"
+          },
+          "description": {
+            "zh-CN": "简化身份与状态信息，增加本地待办、RFQ 官网指引、版本更新页及更稳定的弹窗和无障碍交互。",
+            "en-US": "Simplifies identity and status chrome while adding local todos, official RFQ guidance, release notes, and more reliable dialogs and accessible interactions."
+          }
+        }
+      ]
+    },
+    {
+      "version": "2.1.0",
+      "releasedAt": "2026-08-31",
+      "title": {
+        "zh-CN": "凭据连接与商品 ZIP 迁移",
+        "en-US": "Credential connections and product ZIP migration"
+      },
+      "summary": {
+        "zh-CN": "完善 Alibaba 开放平台凭据获取路径，并让商品资料及关联图片可以通过 ZIP 安全迁移。",
+        "en-US": "Improves Alibaba Open Platform credential acquisition and enables safe ZIP migration of product data and linked images."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/releases/tag/v2.1.0",
+      "compareUrl": "https://github.com/OKFred/oneVegetable/compare/v2.0.3...v2.1.0",
+      "changes": [
+        {
+          "type": "feature",
+          "title": {
+            "zh-CN": "开放平台凭据向导",
+            "en-US": "Open Platform credential assistant"
+          },
+          "description": {
+            "zh-CN": "新增本机、Chrome 插件与自托管管理端的凭据获取流程，并在遇到验证码或安全确认时提供人工续接路径。",
+            "en-US": "Adds credential acquisition for local Node, the Chrome extension, and self-hosted administration, with a manual continuation path for CAPTCHA or security confirmation."
+          }
+        },
+        {
+          "type": "feature",
+          "title": {
+            "zh-CN": "商品 ZIP 导入导出",
+            "en-US": "Product ZIP import and export"
+          },
+          "description": {
+            "zh-CN": "支持将商品 JSON 与 assets 图片目录一起迁移，导入时可识别相对路径并上传到图库。",
+            "en-US": "Moves product JSON together with an assets image directory, resolves relative paths during import, and uploads those assets to the gallery."
+          }
+        },
+        {
+          "type": "improvement",
+          "title": {
+            "zh-CN": "图片资产传输更安全",
+            "en-US": "Safer image asset transfer"
+          },
+          "description": {
+            "zh-CN": "补充商品资产下载契约、图库域名重定向校验和独立归档处理，降低大文件阻塞主界面的风险。",
+            "en-US": "Adds product asset download contracts, gallery redirect validation, and isolated archive processing to reduce the risk of large files blocking the main interface."
+          }
+        },
+        {
+          "type": "fix",
+          "title": {
+            "zh-CN": "修复资源识别与 CDN 兼容问题",
+            "en-US": "Asset detection and CDN compatibility fixes"
+          },
+          "description": {
+            "zh-CN": "修复导入文件类型识别和部分 Alibaba CDN 图片变体不可用的问题。",
+            "en-US": "Fixes imported file type detection and unsupported Alibaba CDN image variants."
+          }
+        }
+      ]
+    },
+    {
+      "version": "2.0.3",
+      "releasedAt": "2026-08-30",
+      "title": {
+        "zh-CN": "商品详情模板与弹窗稳定性",
+        "en-US": "Product description templates and dialog stability"
+      },
+      "summary": {
+        "zh-CN": "集中修复商品详情模板保存及复杂弹窗重复打开时的交互问题。",
+        "en-US": "Focuses on product description template persistence and repeated interactions with complex dialogs."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/releases/tag/v2.0.3",
+      "compareUrl": "https://github.com/OKFred/oneVegetable/compare/v2.0.2...v2.0.3",
+      "changes": [
+        {
+          "type": "fix",
+          "title": {
+            "zh-CN": "模板保存保持原子性",
+            "en-US": "Atomic template persistence"
+          },
+          "description": {
+            "zh-CN": "避免详情模板替换或保存过程中出现一半完成、一半仍在刷新的状态。",
+            "en-US": "Prevents mixed states where part of a template replacement or save is complete while another part is still refreshing."
+          }
+        },
+        {
+          "type": "fix",
+          "title": {
+            "zh-CN": "弹窗重复打开更稳定",
+            "en-US": "More reliable repeated dialog opening"
+          },
+          "description": {
+            "zh-CN": "修复关闭后立即重开、控件重新挂载和动画期间重复操作引起的状态错乱。",
+            "en-US": "Fixes state corruption caused by immediate reopen, control remounting, and repeated actions during transitions."
+          }
+        },
+        {
+          "type": "improvement",
+          "title": {
+            "zh-CN": "操作期间状态更明确",
+            "en-US": "Clearer in-progress states"
+          },
+          "description": {
+            "zh-CN": "刷新或提交过程中锁定相关模板操作，减少误触和重复提交。",
+            "en-US": "Locks related template actions during refresh or submission to reduce accidental and duplicate actions."
+          }
+        }
+      ]
+    },
+    {
+      "version": "2.0.2",
+      "releasedAt": "2026-08-30",
+      "title": {
+        "zh-CN": "MV3 工程化版本基线",
+        "en-US": "MV3 engineering baseline"
+      },
+      "summary": {
+        "zh-CN": "完成 Vue 3、Manifest V3、类型化契约和双运行时后端的第一版正式工程化交付。",
+        "en-US": "Delivers the first stable engineering baseline with Vue 3, Manifest V3, typed contracts, and a dual-runtime backend."
+      },
+      "source": "tag",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/tree/v2.0.2",
+      "compareUrl": null,
+      "changes": [
+        {
+          "type": "feature",
+          "title": {
+            "zh-CN": "Vue 3 与 Manifest V3 工作台",
+            "en-US": "Vue 3 and Manifest V3 workspace"
+          },
+          "description": {
+            "zh-CN": "以 pnpm workspace 重建 Web、Chrome 插件、共享 core 和 UI，并提供商品、图库、RFQ、订单、物流及能力目录。",
+            "en-US": "Rebuilds the Web app, Chrome extension, shared core, and UI as a pnpm workspace with products, gallery, RFQs, orders, logistics, and a capability catalog."
+          }
+        },
+        {
+          "type": "feature",
+          "title": {
+            "zh-CN": "真实商品发布与批量流程",
+            "en-US": "Real product publishing and batch workflows"
+          },
+          "description": {
+            "zh-CN": "接入 Schema 发品、平台草稿、商品更新、批量发布及真实调用的安全开关和回读验证。",
+            "en-US": "Adds Schema publishing, platform drafts, product updates, batch publishing, safety switches for real calls, and read-back validation."
+          }
+        },
+        {
+          "type": "feature",
+          "title": {
+            "zh-CN": "JSON 商品迁移与分组管理",
+            "en-US": "JSON product migration and group management"
+          },
+          "description": {
+            "zh-CN": "支持 Schema JSON/XML 字段兼容的 JSON 导入导出，并提供商品和图库的树形分组体验。",
+            "en-US": "Supports JSON import and export with Schema JSON/XML field compatibility and tree-based product and gallery group management."
+          }
+        },
+        {
+          "type": "feature",
+          "title": {
+            "zh-CN": "Cloudflare 一键自托管",
+            "en-US": "One-click Cloudflare self-hosting"
+          },
+          "description": {
+            "zh-CN": "提供 Worker、静态 Web 与 D1 的同源部署，加入 Passkey、加密凭据和管理员安全控制。",
+            "en-US": "Deploys the Worker, static Web app, and D1 on one origin with passkeys, encrypted credentials, and administrator security controls."
+          }
+        },
+        {
+          "type": "security",
+          "title": {
+            "zh-CN": "真实能力边界与诊断",
+            "en-US": "Real capability boundaries and diagnostics"
+          },
+          "description": {
+            "zh-CN": "统一 requestId、契约校验、操作可用性和脱敏诊断，避免真实模式静默回退到 Mock。",
+            "en-US": "Unifies request IDs, contract validation, operation availability, and redacted diagnostics so real mode never silently falls back to Mock."
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/vue-query';
 import type { OperationAvailability, OperationId } from '@one-vegetable/core';
 
 import { useServices } from '../lib/services';
+import { translateUi } from '../i18n';
 
 export function useOperationAvailability(operations: readonly OperationId[]) {
   const { operationAvailability } = useServices();
@@ -48,6 +49,6 @@ export function useOperationAvailability(operations: readonly OperationId[]) {
 }
 
 export function operationAvailabilityMessage(reasonCode: string | null, fallback: string): string {
-  if (reasonCode === 'OPERATION_AVAILABILITY_PENDING') return '正在读取当前账号的操作权限…';
+  if (reasonCode === 'OPERATION_AVAILABILITY_PENDING') return translateUi('admin.operationPending');
   return reasonCode ? `${fallback}（${reasonCode}）` : fallback;
 }

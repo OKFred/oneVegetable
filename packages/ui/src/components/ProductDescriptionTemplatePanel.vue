@@ -14,6 +14,7 @@ import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
 import ModalDialog from './ui/ModalDialog.vue';
+import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 
 type ApplyMode = 'insert' | 'append' | 'replace';
@@ -26,6 +27,7 @@ const props = defineProps<{
 const emit = defineEmits<{ apply: [payload: { mode: ApplyMode; html: string }] }>();
 
 const { productDescriptionTemplates, mode } = useServices();
+const { locale, t } = useUiI18n();
 const open = ref(false);
 const view = ref<PanelView>('browse');
 const templates = ref<ProductDescriptionTemplate[]>([]);
@@ -48,18 +50,20 @@ const visibleTemplates = computed(() =>
   templates.value.filter((template) => showArchived.value || template.status === 'active')
 );
 const title = computed(() => {
-  if (view.value === 'edit') return formId.value ? '编辑共享详情模板' : '新建共享详情模板';
-  if (view.value === 'replace') return '确认覆盖商品详情';
-  return '商品详情模板';
+  if (view.value === 'edit') {
+    return t(formId.value ? 'products.templates.editTitle' : 'products.templates.createTitle');
+  }
+  if (view.value === 'replace') return t('products.templates.replaceTitle');
+  return t('products.templates.title');
 });
 const description = computed(() => {
-  if (view.value === 'replace') return '覆盖会替换当前详情全文；确认前请对照两侧预览。';
-  if (view.value === 'edit') return '共享模板对当前 BFF 的所有有效用户可见。';
-  return '模板插入后就是普通富文本，请将占位内容替换为真实信息。';
+  if (view.value === 'replace') return t('products.templates.replaceDescription');
+  if (view.value === 'edit') return t('products.templates.editDescription');
+  return t('products.templates.browseDescription');
 });
-const currentSafeHtml = computed(() => sanitizeProductDescriptionHtml(props.currentHtml).html);
+const currentSafeHtml = computed(() => sanitizeProductDescriptionHtml(props.currentHtml, locale.value).html);
 const selectedSafeHtml = computed(() =>
-  selected.value ? sanitizeProductDescriptionHtml(selected.value.html).html : ''
+  selected.value ? sanitizeProductDescriptionHtml(selected.value.html, locale.value).html : ''
 );
 
 watch(open, (value) => {
@@ -194,48 +198,48 @@ function isBundled(template: ProductDescriptionTemplate): boolean {
 }
 
 function categoryLabel(category: ProductDescriptionTemplateCategory): string {
-  return {
-    company: '公司介绍',
-    logistics: '物流介绍',
-    packaging: '包装说明',
-    service: '服务保障',
-    custom: '自定义'
-  }[category];
+  return t(`products.templates.categories.${category}`);
 }
 
 function messageOf(reason: unknown): string {
-  return reason instanceof Error ? reason.message : '详情模板操作失败';
+  return reason instanceof Error ? reason.message : t('products.templates.operationFailed');
 }
 </script>
 
 <template>
   <Button variant="outline" size="sm" :disabled="!productDescriptionTemplates" @click="open = true">
-    <LayoutTemplate class="size-4" />详情模板
+    <LayoutTemplate class="size-4" />{{ t('products.templates.title') }}
   </Button>
 
   <ModalDialog v-model:open="open" :title="title" :description="description" size="lg">
     <template v-if="view === 'browse'">
       <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
         <label class="flex cursor-pointer items-center gap-2 text-sm">
-          <input v-model="showArchived" type="checkbox" :disabled="loading" />显示已归档共享模板
+          <input v-model="showArchived" type="checkbox" :disabled="loading" />{{
+            t('products.templates.showArchived')
+          }}
         </label>
         <div class="flex flex-wrap justify-end gap-2">
           <Button variant="outline" size="sm" :disabled="loading" @click="loadTemplates">
-            <RefreshCw class="size-4" :class="loading ? 'animate-spin' : ''" />刷新
+            <RefreshCw class="size-4" :class="loading ? 'animate-spin' : ''" />{{
+              t('common.actions.refresh')
+            }}
           </Button>
           <Button v-if="canManage" variant="outline" size="sm" :disabled="loading" @click="startCreate">
-            <FilePlus2 class="size-4" />新建共享模板
+            <FilePlus2 class="size-4" />{{ t('products.templates.create') }}
           </Button>
         </div>
       </div>
       <p v-if="loading && templates.length === 0" class="py-8 text-center text-sm text-muted-foreground">
-        正在读取模板…
+        {{ t('products.templates.loading') }}
       </p>
       <p v-else-if="visibleTemplates.length === 0" class="py-8 text-center text-sm text-muted-foreground">
-        当前语言暂无可用模板。
+        {{ t('products.templates.empty') }}
       </p>
       <template v-else>
-        <p v-if="loading" class="mb-3 text-xs text-muted-foreground" role="status">正在刷新模板…</p>
+        <p v-if="loading" class="mb-3 text-xs text-muted-foreground" role="status">
+          {{ t('products.templates.refreshing') }}
+        </p>
         <div class="grid gap-3 md:grid-cols-2" :aria-busy="loading">
           <article v-for="template in visibleTemplates" :key="template.id" class="rounded-lg border p-4">
             <div class="flex items-start justify-between gap-3">
@@ -243,8 +247,12 @@ function messageOf(reason: unknown): string {
                 <p class="truncate font-medium">{{ template.name }}</p>
                 <div class="mt-2 flex flex-wrap gap-1">
                   <Badge variant="outline">{{ categoryLabel(template.category) }}</Badge>
-                  <Badge v-if="isBundled(template)" variant="secondary">内置</Badge>
-                  <Badge v-if="template.status === 'archived'" variant="warning">已归档</Badge>
+                  <Badge v-if="isBundled(template)" variant="secondary">{{
+                    t('products.templates.bundled')
+                  }}</Badge>
+                  <Badge v-if="template.status === 'archived'" variant="warning">
+                    {{ t('products.templates.archived') }}
+                  </Badge>
                 </div>
               </div>
             </div>
@@ -252,16 +260,16 @@ function messageOf(reason: unknown): string {
               {{ template.remark }}
             </p>
             <div v-if="template.status === 'active'" class="mt-4 flex flex-wrap gap-2">
-              <Button size="sm" :disabled="loading" @click="applyTemplate(template, 'insert')"
-                >插入光标处</Button
-              >
+              <Button size="sm" :disabled="loading" @click="applyTemplate(template, 'insert')">{{
+                t('products.templates.insert')
+              }}</Button>
               <Button
                 size="sm"
                 variant="outline"
                 :disabled="loading"
                 @click="applyTemplate(template, 'append')"
               >
-                追加末尾
+                {{ t('products.templates.append') }}
               </Button>
               <Button
                 size="sm"
@@ -269,7 +277,7 @@ function messageOf(reason: unknown): string {
                 :disabled="loading"
                 @click="applyTemplate(template, 'replace')"
               >
-                覆盖全文
+                {{ t('products.templates.replace') }}
               </Button>
             </div>
             <div v-if="canManage && !isBundled(template)" class="mt-3 flex flex-wrap gap-2 border-t pt-3">
@@ -280,12 +288,16 @@ function messageOf(reason: unknown): string {
                 :disabled="loading"
                 @click="startEdit(template)"
               >
-                <Pencil class="size-3" />编辑
+                <Pencil class="size-3" />{{ t('products.templates.edit') }}
               </Button>
               <Button size="sm" variant="ghost" :disabled="loading || saving" @click="changeStatus(template)">
                 <Archive v-if="template.status === 'active'" class="size-3" />
                 <ArchiveRestore v-else class="size-3" />
-                {{ template.status === 'active' ? '归档' : '恢复' }}
+                {{
+                  t(
+                    template.status === 'active' ? 'products.templates.archive' : 'products.templates.restore'
+                  )
+                }}
               </Button>
             </div>
           </article>
@@ -295,29 +307,33 @@ function messageOf(reason: unknown): string {
 
     <template v-else-if="view === 'edit'">
       <div class="space-y-4">
-        <label class="block text-sm font-medium">模板名称<Input v-model="formName" class="mt-2" /></label>
         <label class="block text-sm font-medium">
-          模板分类
+          {{ t('products.templates.name') }}<Input v-model="formName" class="mt-2" />
+        </label>
+        <label class="block text-sm font-medium">
+          {{ t('products.templates.category') }}
           <select v-model="formCategory" class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm">
-            <option value="company">公司介绍</option>
-            <option value="logistics">物流介绍</option>
-            <option value="packaging">包装说明</option>
-            <option value="service">服务保障</option>
-            <option value="custom">自定义</option>
+            <option value="company">{{ t('products.templates.categories.company') }}</option>
+            <option value="logistics">{{ t('products.templates.categories.logistics') }}</option>
+            <option value="packaging">{{ t('products.templates.categories.packaging') }}</option>
+            <option value="service">{{ t('products.templates.categories.service') }}</option>
+            <option value="custom">{{ t('products.templates.categories.custom') }}</option>
           </select>
         </label>
         <label class="block text-sm font-medium">
-          安全 HTML
+          {{ t('products.templates.safeHtml') }}
           <textarea
             v-model="formHtml"
             class="mt-2 min-h-56 w-full rounded-md border bg-background p-3 font-mono text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </label>
-        <label class="block text-sm font-medium">备注<Input v-model="formRemark" class="mt-2" /></label>
+        <label class="block text-sm font-medium">
+          {{ t('products.templates.remark') }}<Input v-model="formRemark" class="mt-2" />
+        </label>
         <div class="flex justify-end gap-2">
-          <Button variant="ghost" @click="view = 'browse'">取消</Button>
+          <Button variant="ghost" @click="view = 'browse'">{{ t('common.actions.cancel') }}</Button>
           <Button :disabled="saving || !formName.trim() || !formHtml.trim()" @click="saveTemplate">
-            保存共享模板
+            {{ t('products.templates.save') }}
           </Button>
         </div>
       </div>
@@ -326,17 +342,19 @@ function messageOf(reason: unknown): string {
     <template v-else>
       <div class="grid gap-4 md:grid-cols-2">
         <section class="min-w-0 rounded-lg border p-3">
-          <h3 class="mb-3 text-sm font-medium">当前详情</h3>
+          <h3 class="mb-3 text-sm font-medium">{{ t('products.templates.current') }}</h3>
           <SafeHtmlContent :html="currentSafeHtml" class="max-h-80 overflow-auto text-sm" />
         </section>
         <section class="min-w-0 rounded-lg border border-primary/40 p-3">
-          <h3 class="mb-3 text-sm font-medium">覆盖后：{{ selected?.name }}</h3>
+          <h3 class="mb-3 text-sm font-medium">
+            {{ t('products.templates.afterReplace', { name: selected?.name ?? '' }) }}
+          </h3>
           <SafeHtmlContent :html="selectedSafeHtml" class="max-h-80 overflow-auto text-sm" />
         </section>
       </div>
       <div class="mt-4 flex justify-end gap-2">
-        <Button variant="ghost" @click="view = 'browse'">返回</Button>
-        <Button @click="confirmReplace">确认覆盖全文</Button>
+        <Button variant="ghost" @click="view = 'browse'">{{ t('products.templates.back') }}</Button>
+        <Button @click="confirmReplace">{{ t('products.templates.confirmReplace') }}</Button>
       </div>
     </template>
 

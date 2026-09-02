@@ -18,10 +18,10 @@ import {
   CompositeProductDescriptionTemplateClient,
   MemoryProductDescriptionTemplateClient
 } from '@one-vegetable/core/templates';
-import { OneVegetableApp } from '@one-vegetable/ui';
+import { OneVegetableApp, uiI18n } from '@one-vegetable/ui';
 import '@one-vegetable/ui/styles.css';
 
-import { readWebGatewayMode } from './runtime-config';
+import { readWebGatewayMode, resolveWebBffBaseUrl } from './runtime-config';
 
 const SETTINGS_KEY = 'one-vegetable-mock-settings';
 const defaults: GatewaySettings = {
@@ -48,7 +48,7 @@ const settings: SettingsRepository = {
 };
 
 const gatewayMode = readWebGatewayMode(import.meta.env.VITE_GATEWAY_MODE);
-const bffBaseUrl = import.meta.env.VITE_BFF_BASE_URL ?? globalThis.location.origin;
+const bffBaseUrl = resolveWebBffBaseUrl(import.meta.env.VITE_BFF_BASE_URL, globalThis.location.origin);
 const control =
   gatewayMode === 'bff'
     ? new BffControlClient({
@@ -106,10 +106,12 @@ const app = createApp(OneVegetableApp, {
   settings,
   mode: gatewayMode,
   ...(control ? { control } : {}),
+  ...(control ? { socialPublishing: control } : {}),
   ...(productDescriptionTemplates ? { productDescriptionTemplates } : {}),
   ...(productMutationJobs ? { productMutationJobs } : {}),
   operationAvailability
 });
+app.use(uiI18n);
 app.use(VueQueryPlugin, {
   queryClient: new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000 } } })
 });

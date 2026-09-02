@@ -42,6 +42,18 @@ describe('product description HTML sanitizer', () => {
     expect(result.changes).toHaveLength(1);
   });
 
+  it('localizes sanitization changes without changing sanitized HTML', () => {
+    const html = '<div><a href="javascript:alert(1)">Unsafe</a></div>';
+    const chinese = sanitizeProductDescriptionHtml(html);
+    const english = sanitizeProductDescriptionHtml(html, 'en-US');
+
+    expect(english.html).toBe(chinese.html);
+    expect(english.changes.map((change) => change.detail)).toEqual([
+      'Removed <div> while retaining its content',
+      'Removed unsafe link javascript:alert(1)'
+    ]);
+  });
+
   it('preserves supported headings, lists, quotes and tables without changes', () => {
     const html =
       '<h2>Overview</h2><ul><li>One</li></ul><blockquote>Note</blockquote><table><tbody><tr><th colspan="2">Spec</th></tr><tr><td>A</td><td>B</td></tr></tbody></table><hr>';

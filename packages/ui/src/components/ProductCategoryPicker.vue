@@ -7,6 +7,7 @@ import type { ProductCategory } from '@one-vegetable/core';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
 import ModalDialog from './ui/ModalDialog.vue';
+import { useUiI18n } from '../i18n';
 
 const props = withDefaults(
   defineProps<{
@@ -33,6 +34,7 @@ const emit = defineEmits<{
   select: [categoryId: number];
   retry: [];
 }>();
+const { t } = useUiI18n();
 
 const open = ref(false);
 const browseParentId = ref<number | null>(null);
@@ -97,7 +99,7 @@ function findPath(
 
 <template>
   <div>
-    <span class="text-sm font-medium">商品类目</span>
+    <span class="text-sm font-medium">{{ t('products.categoryPicker.label') }}</span>
     <Button
       variant="outline"
       class="mt-2 h-auto min-h-12 w-full justify-start px-3 py-2 text-left"
@@ -109,10 +111,20 @@ function findPath(
     >
       <span class="min-w-0 flex-1">
         <span class="block truncate" :class="selectedCategory ? '' : 'text-muted-foreground'">
-          {{ selectedPathText || (loading ? '正在加载商品类目…' : '请选择商品类目') }}
+          {{
+            selectedPathText ||
+            (loading ? t('products.categoryPicker.loading') : t('products.categoryPicker.choose'))
+          }}
         </span>
         <span v-if="selectedCategory" class="mt-0.5 block truncate text-xs font-normal text-muted-foreground">
-          {{ selectedCategory.leaf ? '可发布类目' : '需要继续选择下级类目' }} · ID {{ selectedCategory.id }}
+          {{
+            t(
+              selectedCategory.leaf
+                ? 'products.categoryPicker.publishable'
+                : 'products.categoryPicker.chooseChild'
+            )
+          }}
+          · ID {{ selectedCategory.id }}
         </span>
       </span>
       <LoaderCircle v-if="loading || loadingCategoryId !== null" class="size-4 shrink-0 animate-spin" />
@@ -123,20 +135,22 @@ function findPath(
       v-if="selectedCategory && !selectedCategory.leaf"
       class="mt-2 text-xs text-amber-700 dark:text-amber-400"
     >
-      当前不是可发布类目，请继续选择下级类目。
+      {{ t('products.categoryPicker.notLeaf') }}
     </p>
     <p v-else-if="selectedCategory" class="mt-2 text-xs text-muted-foreground">
-      已选择：{{ selectedPathText }}
+      {{ t('products.categoryPicker.selected', { path: selectedPathText }) }}
     </p>
     <div v-if="error" class="mt-2 flex items-center gap-2 text-xs text-destructive">
       <span>{{ error }}</span>
-      <Button size="sm" variant="outline" @click="emit('retry')"><RefreshCw class="size-3.5" />重试</Button>
+      <Button size="sm" variant="outline" @click="emit('retry')">
+        <RefreshCw class="size-3.5" />{{ t('products.categoryPicker.retry') }}
+      </Button>
     </div>
 
     <ModalDialog
       :open="open"
-      title="选择商品类目"
-      description="逐级浏览并选择标记为“可发布”的叶子类目。"
+      :title="t('products.categoryPicker.title')"
+      :description="t('products.categoryPicker.description')"
       size="lg"
       @update:open="updateOpen"
     >
@@ -146,19 +160,22 @@ function findPath(
           <Input
             :model-value="search"
             class="pl-9"
-            aria-label="搜索当前层级商品类目"
-            placeholder="搜索当前层级的类目名称或 ID"
+            :aria-label="t('products.categoryPicker.searchLabel')"
+            :placeholder="t('products.categoryPicker.searchPlaceholder')"
             @update:model-value="emit('update:search', $event)"
           />
         </div>
 
-        <nav aria-label="类目路径" class="flex flex-wrap items-center gap-1 text-xs">
+        <nav
+          :aria-label="t('products.categoryPicker.path')"
+          class="flex flex-wrap items-center gap-1 text-xs"
+        >
           <button
             type="button"
             class="cursor-pointer rounded px-2 py-1 text-muted-foreground hover:bg-accent hover:text-foreground"
             @click="navigate(null)"
           >
-            全部类目
+            {{ t('products.categoryPicker.all') }}
           </button>
           <template v-for="category in browsePath" :key="category.id">
             <ChevronRight class="size-3.5 text-muted-foreground" />
@@ -177,19 +194,21 @@ function findPath(
           class="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
         >
           <span>{{ error }}</span>
-          <Button size="sm" variant="outline" @click="emit('retry')">重新加载</Button>
+          <Button size="sm" variant="outline" @click="emit('retry')">
+            {{ t('products.categoryPicker.reload') }}
+          </Button>
         </div>
         <div
           v-if="loading && categories.length === 0"
           class="flex min-h-48 items-center justify-center gap-2 text-sm text-muted-foreground"
         >
-          <LoaderCircle class="size-4 animate-spin" />正在加载一级类目…
+          <LoaderCircle class="size-4 animate-spin" />{{ t('products.categoryPicker.loadingRoot') }}
         </div>
         <div
           v-else-if="loadingCategoryId !== null && loadingCategoryId === browseParentId"
           class="flex min-h-48 items-center justify-center gap-2 text-sm text-muted-foreground"
         >
-          <LoaderCircle class="size-4 animate-spin" />正在加载下级类目…
+          <LoaderCircle class="size-4 animate-spin" />{{ t('products.categoryPicker.loadingChildren') }}
         </div>
         <div v-else-if="visibleCategories.length" class="grid gap-2 sm:grid-cols-2">
           <button
@@ -208,7 +227,7 @@ function findPath(
               v-if="category.leaf"
               class="rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400"
             >
-              可发布
+              {{ t('products.categoryPicker.publishableBadge') }}
             </span>
             <ChevronRight
               v-else
@@ -217,7 +236,7 @@ function findPath(
           </button>
         </div>
         <div v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-          {{ search.trim() ? '当前层级没有匹配类目。' : '当前类目没有可选下级。' }}
+          {{ t(search.trim() ? 'products.categoryPicker.noMatch' : 'products.categoryPicker.noChildren') }}
         </div>
       </div>
     </ModalDialog>

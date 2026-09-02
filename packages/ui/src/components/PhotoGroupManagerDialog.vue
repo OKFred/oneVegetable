@@ -27,6 +27,7 @@ import {
   operationAvailabilityMessage,
   useOperationAvailability
 } from '../composables/use-operation-availability';
+import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 
 interface PhotoGroupRow {
@@ -46,6 +47,7 @@ const emit = defineEmits<{
 }>();
 
 const { gateway, mode } = useServices();
+const { t } = useUiI18n();
 const queryClient = useQueryClient();
 const availability = useOperationAvailability(['operatePhotoGroup']);
 const expandedIds = ref<Set<string>>(new Set());
@@ -78,34 +80,49 @@ const visibleRows = computed<PhotoGroupRow[]>(() => {
 });
 const operationAllowed = computed(() => availability.isAllowed('operatePhotoGroup'));
 const operationUnavailableMessage = computed(() =>
-  operationAvailabilityMessage(availability.reasonCode('operatePhotoGroup'), '当前环境未开放图库分组写入')
+  operationAvailabilityMessage(
+    availability.reasonCode('operatePhotoGroup'),
+    t('photos.groupManager.unavailable')
+  )
 );
 const confirmationTitle = computed(() => {
-  if (pendingRequest.value?.operation === 'add') return '确认新增图库分组';
-  if (pendingRequest.value?.operation === 'rename') return '确认修改图库分组';
-  return '确认删除图库分组';
+  if (pendingRequest.value?.operation === 'add') return t('photos.groupManager.confirmation.addTitle');
+  if (pendingRequest.value?.operation === 'rename') return t('photos.groupManager.confirmation.renameTitle');
+  return t('photos.groupManager.confirmation.deleteTitle');
 });
 const confirmationDescription = computed(() => {
-  if (pendingRequest.value?.operation === 'add') return '该操作会立即在当前国际站账号创建图库分组。';
-  if (pendingRequest.value?.operation === 'rename') return '该操作会立即修改当前国际站账号中的分组名称。';
-  return '该操作会立即删除当前国际站账号中的图库分组。';
+  if (pendingRequest.value?.operation === 'add') {
+    return t('photos.groupManager.confirmation.addDescription');
+  }
+  if (pendingRequest.value?.operation === 'rename') {
+    return t('photos.groupManager.confirmation.renameDescription');
+  }
+  return t('photos.groupManager.confirmation.deleteDescription');
 });
 const confirmationLabel = computed(() => {
-  if (pendingRequest.value?.operation === 'add') return '新增分组';
-  if (pendingRequest.value?.operation === 'rename') return '确认改名';
-  return '确认删除';
+  if (pendingRequest.value?.operation === 'add') return t('photos.groupManager.confirmation.addLabel');
+  if (pendingRequest.value?.operation === 'rename') return t('photos.groupManager.confirmation.renameLabel');
+  return t('photos.groupManager.confirmation.deleteLabel');
 });
 const confirmationTarget = computed(() => {
   const request = pendingRequest.value;
   if (!request) return '';
   const current = findKnownGroup(request.groupId);
   if (request.operation === 'add') {
-    return `将在“${current?.name ?? '全部图片'}”下新增“${request.groupName ?? ''}”。`;
+    return t('photos.groupManager.confirmation.addTarget', {
+      parent: current?.name ?? t('photos.allPhotos'),
+      name: request.groupName ?? ''
+    });
   }
   if (request.operation === 'rename') {
-    return `将“${current?.name ?? '所选分组'}”改名为“${request.groupName ?? ''}”。`;
+    return t('photos.groupManager.confirmation.renameTarget', {
+      current: current?.name ?? t('photos.groupManager.confirmation.selectedGroup'),
+      name: request.groupName ?? ''
+    });
   }
-  return `将删除“${current?.name ?? '所选分组'}”。若分组仍含图片或子分组，平台可能拒绝该请求。`;
+  return t('photos.groupManager.confirmation.deleteTarget', {
+    name: current?.name ?? t('photos.groupManager.confirmation.selectedGroup')
+  });
 });
 
 const operateGroup = useMutation({
@@ -176,7 +193,7 @@ function applyAddedGroup(request: PhotoGroupOperationRequest, result: PhotoGroup
   const parent = findKnownGroup(request.groupId);
   const created: PhotoGroup = {
     id: result.group?.id ?? result.groupId,
-    name: result.group?.name ?? request.groupName ?? '未命名分组',
+    name: result.group?.name ?? request.groupName ?? t('photos.groupManager.unnamed'),
     photoCount: result.group?.photoCount ?? 0,
     parentId: request.groupId,
     level: request.groupId ? Math.min((parent?.level ?? 1) + 1, 3) : 1
@@ -202,7 +219,7 @@ function applyRenamedGroup(request: PhotoGroupOperationRequest, result: PhotoGro
   const current = findKnownGroup(request.groupId);
   const renamed: PhotoGroup = {
     id: request.groupId,
-    name: request.groupName ?? result.group?.name ?? current?.name ?? '未命名分组',
+    name: request.groupName ?? result.group?.name ?? current?.name ?? t('photos.groupManager.unnamed'),
     photoCount: result.group?.photoCount ?? current?.photoCount ?? 0,
     parentId: current?.parentId ?? result.group?.parentId ?? null,
     level: current?.level ?? result.group?.level ?? 1
@@ -282,7 +299,7 @@ async function toggleGroup(row: PhotoGroupRow): Promise<void> {
   } catch (error: unknown) {
     childErrors.value = {
       ...childErrors.value,
-      [row.group.id]: error instanceof Error ? error.message : '子分组加载失败'
+      [row.group.id]: error instanceof Error ? error.message : t('photos.groupManager.childLoadFailed')
     };
   } finally {
     setLoading(row.group.id, false);
@@ -358,28 +375,32 @@ function confirmOperation(): void {
 }
 
 function successMessage(request: PhotoGroupOperationRequest, result: PhotoGroupOperationResult): string {
-  if (request.operation === 'delete') return '已删除所选图库分组';
-  if (request.operation === 'rename') return `图库分组已改名为“${result.group?.name ?? request.groupName}”`;
-  return `图库分组“${result.group?.name ?? request.groupName}”已创建`;
+  if (request.operation === 'delete') return t('photos.groupManager.success.deleted');
+  if (request.operation === 'rename') {
+    return t('photos.groupManager.success.renamed', { name: result.group?.name ?? request.groupName ?? '' });
+  }
+  return t('photos.groupManager.success.added', { name: result.group?.name ?? request.groupName ?? '' });
 }
 </script>
 
 <template>
   <ModalDialog
     :open="open"
-    title="图库分组管理"
-    description="以树形结构管理国际站图库（图片银行）分组。"
+    :title="t('photos.groupManager.title')"
+    :description="t('photos.groupManager.description')"
     size="lg"
     @update:open="emit('update:open', $event)"
   >
     <section class="min-w-0" aria-labelledby="photo-group-tree-heading">
       <div class="mb-3 flex items-center justify-between gap-3">
         <div>
-          <h3 id="photo-group-tree-heading" class="font-medium">分组树</h3>
-          <p class="mt-1 text-xs text-muted-foreground">最多三级；在目标目录右侧直接管理分组。</p>
+          <h3 id="photo-group-tree-heading" class="font-medium">{{ t('photos.groupManager.treeTitle') }}</h3>
+          <p class="mt-1 text-xs text-muted-foreground">{{ t('photos.groupManager.treeDescription') }}</p>
         </div>
         <Button variant="outline" size="sm" :disabled="roots.isFetching.value" @click="refreshGroups">
-          <RefreshCw :class="['size-4', roots.isFetching.value ? 'animate-spin' : '']" />刷新
+          <RefreshCw :class="['size-4', roots.isFetching.value ? 'animate-spin' : '']" />{{
+            t('common.actions.refresh')
+          }}
         </Button>
       </div>
 
@@ -389,7 +410,7 @@ function successMessage(request: PhotoGroupOperationRequest, result: PhotoGroupO
         <div
           class="max-h-[32rem] overflow-auto rounded-lg border bg-card p-2"
           role="tree"
-          aria-label="图库分组树"
+          :aria-label="t('photos.groupManager.treeLabel')"
         >
           <div
             class="flex min-h-10 items-center gap-2 rounded-md bg-muted/50 px-2 transition-colors hover:bg-muted"
@@ -401,15 +422,17 @@ function successMessage(request: PhotoGroupOperationRequest, result: PhotoGroupO
               <ChevronDown class="size-4" />
             </span>
             <FolderOpen class="size-4 shrink-0 text-primary" />
-            <span class="min-w-0 flex-1 truncate text-sm font-semibold">全部图片</span>
-            <span class="text-xs text-muted-foreground">{{ rootGroups.length }} 个一级分组</span>
+            <span class="min-w-0 flex-1 truncate text-sm font-semibold">{{ t('photos.allPhotos') }}</span>
+            <span class="text-xs text-muted-foreground">
+              {{ t('photos.groupManager.rootCount', { count: rootGroups.length }) }}
+            </span>
             <ActionTooltip :disabled="!operationAllowed" :reason="operationUnavailableMessage">
               <Button
                 variant="ghost"
                 size="icon"
                 class="size-8"
                 :disabled="!operationAllowed || operateGroup.isPending.value"
-                aria-label="在全部图片下新增分组"
+                :aria-label="t('photos.groupManager.addToRoot')"
                 @click="beginAdd(null)"
               >
                 <FolderPlus class="size-4" />
@@ -426,24 +449,26 @@ function successMessage(request: PhotoGroupOperationRequest, result: PhotoGroupO
               <Input
                 v-model="groupName"
                 class="min-w-52 flex-1"
-                aria-label="在全部图片下的新分组名称"
+                :aria-label="t('photos.groupManager.rootNameLabel')"
                 maxlength="128"
-                placeholder="输入一级分组名称"
+                :placeholder="t('photos.groupManager.rootNamePlaceholder')"
                 :disabled="operateGroup.isPending.value"
                 @keydown.esc.prevent="cancelEdit"
               />
               <Button type="submit" size="sm" :disabled="!groupName.trim() || operateGroup.isPending.value">
                 <LoaderCircle v-if="operateGroup.isPending.value" class="size-4 animate-spin" />
-                {{ operateGroup.isPending.value ? '正在保存…' : '保存' }}
+                {{
+                  operateGroup.isPending.value ? t('photos.groupManager.saving') : t('common.actions.save')
+                }}
               </Button>
               <Button variant="ghost" size="sm" :disabled="operateGroup.isPending.value" @click="cancelEdit">
-                取消
+                {{ t('common.actions.cancel') }}
               </Button>
             </div>
           </form>
 
           <div v-if="visibleRows.length === 0" class="px-12 py-5 text-sm text-muted-foreground">
-            当前账号暂无图库分组，可从“全部图片”右侧新增。
+            {{ t('photos.groupManager.empty') }}
           </div>
 
           <div v-for="row in visibleRows" :key="row.group.id">
@@ -458,7 +483,14 @@ function successMessage(request: PhotoGroupOperationRequest, result: PhotoGroupO
                 v-if="row.group.level < 3"
                 type="button"
                 class="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                :aria-label="`${expandedIds.has(row.group.id) ? '收起' : '展开'}${row.group.name}`"
+                :aria-label="
+                  t(
+                    expandedIds.has(row.group.id)
+                      ? 'photos.groupNavigation.collapse'
+                      : 'photos.groupNavigation.expand',
+                    { name: row.group.name }
+                  )
+                "
                 @click="toggleGroup(row)"
               >
                 <LoaderCircle v-if="loadingIds.has(row.group.id)" class="size-4 animate-spin" />
@@ -469,7 +501,9 @@ function successMessage(request: PhotoGroupOperationRequest, result: PhotoGroupO
               <FolderOpen v-if="expandedIds.has(row.group.id)" class="size-4 shrink-0 text-primary" />
               <Folder v-else class="size-4 shrink-0 text-muted-foreground" />
               <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ row.group.name }}</span>
-              <span class="text-xs text-muted-foreground">{{ row.group.photoCount }} 张</span>
+              <span class="text-xs text-muted-foreground">
+                {{ t('photos.groupManager.photoCount', { count: row.group.photoCount }) }}
+              </span>
               <span class="font-mono text-[11px] text-muted-foreground">#{{ row.group.id }}</span>
               <ActionTooltip :disabled="!operationAllowed" :reason="operationUnavailableMessage">
                 <Button
@@ -478,7 +512,7 @@ function successMessage(request: PhotoGroupOperationRequest, result: PhotoGroupO
                   size="icon"
                   class="size-8"
                   :disabled="!operationAllowed || operateGroup.isPending.value"
-                  :aria-label="`在 ${row.group.name} 下新增分组`"
+                  :aria-label="t('photos.groupManager.addToGroup', { name: row.group.name })"
                   @click="beginAdd(row.group)"
                 >
                   <FolderPlus class="size-4" />
@@ -490,7 +524,7 @@ function successMessage(request: PhotoGroupOperationRequest, result: PhotoGroupO
                   size="icon"
                   class="size-8"
                   :disabled="!operationAllowed || operateGroup.isPending.value"
-                  :aria-label="`修改分组 ${row.group.name}`"
+                  :aria-label="t('photos.groupManager.renameGroup', { name: row.group.name })"
                   @click="beginRename(row.group)"
                 >
                   <Pencil class="size-3.5" />
@@ -502,7 +536,7 @@ function successMessage(request: PhotoGroupOperationRequest, result: PhotoGroupO
                   size="icon"
                   class="size-8 text-destructive hover:text-destructive"
                   :disabled="!operationAllowed || operateGroup.isPending.value"
-                  :aria-label="`删除分组 ${row.group.name}`"
+                  :aria-label="t('photos.groupManager.deleteGroup', { name: row.group.name })"
                   @click="beginDelete(row.group)"
                 >
                   <Trash2 class="size-3.5" />
@@ -518,7 +552,9 @@ function successMessage(request: PhotoGroupOperationRequest, result: PhotoGroupO
             >
               <p class="mb-2 text-xs font-medium text-muted-foreground">
                 {{
-                  editAction.operation === 'add' ? `在“${row.group.name}”下新增` : `修改“${row.group.name}”`
+                  editAction.operation === 'add'
+                    ? t('photos.groupManager.addEditorTitle', { name: row.group.name })
+                    : t('photos.groupManager.renameEditorTitle', { name: row.group.name })
                 }}
               </p>
               <div class="flex flex-wrap items-center gap-2">
@@ -527,17 +563,23 @@ function successMessage(request: PhotoGroupOperationRequest, result: PhotoGroupO
                   class="min-w-52 flex-1"
                   :aria-label="
                     editAction.operation === 'add'
-                      ? `在 ${row.group.name} 下的新分组名称`
-                      : `${row.group.name} 的新名称`
+                      ? t('photos.groupManager.childNameLabel', { name: row.group.name })
+                      : t('photos.groupManager.newNameLabel', { name: row.group.name })
                   "
                   maxlength="128"
-                  :placeholder="editAction.operation === 'add' ? '输入子分组名称' : '输入新的分组名称'"
+                  :placeholder="
+                    editAction.operation === 'add'
+                      ? t('photos.groupManager.childNamePlaceholder')
+                      : t('photos.groupManager.newNamePlaceholder')
+                  "
                   :disabled="operateGroup.isPending.value"
                   @keydown.esc.prevent="cancelEdit"
                 />
                 <Button type="submit" size="sm" :disabled="!groupName.trim() || operateGroup.isPending.value">
                   <LoaderCircle v-if="operateGroup.isPending.value" class="size-4 animate-spin" />
-                  {{ operateGroup.isPending.value ? '正在保存…' : '保存' }}
+                  {{
+                    operateGroup.isPending.value ? t('photos.groupManager.saving') : t('common.actions.save')
+                  }}
                 </Button>
                 <Button
                   variant="ghost"
@@ -545,7 +587,7 @@ function successMessage(request: PhotoGroupOperationRequest, result: PhotoGroupO
                   :disabled="operateGroup.isPending.value"
                   @click="cancelEdit"
                 >
-                  取消
+                  {{ t('common.actions.cancel') }}
                 </Button>
               </div>
             </form>
@@ -566,7 +608,7 @@ function successMessage(request: PhotoGroupOperationRequest, result: PhotoGroupO
               class="py-1 text-xs text-muted-foreground"
               :style="{ paddingLeft: `${(row.depth + 1) * 20 + 36}px` }"
             >
-              暂无子分组
+              {{ t('photos.groupManager.noChildren') }}
             </p>
           </div>
         </div>
@@ -579,7 +621,7 @@ function successMessage(request: PhotoGroupOperationRequest, result: PhotoGroupO
         v-else-if="mode !== 'mock'"
         class="mt-3 rounded-lg border border-amber-200 bg-amber-50/70 px-4 py-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
       >
-        新增、改名和删除会直接写入当前国际站账号；每次操作都会先要求确认。
+        {{ t('photos.groupManager.realWriteWarning') }}
       </div>
     </section>
 
@@ -590,7 +632,7 @@ function successMessage(request: PhotoGroupOperationRequest, result: PhotoGroupO
           :disabled="operateGroup.isPending.value"
           @click="emit('update:open', false)"
         >
-          关闭
+          {{ t('common.actions.close') }}
         </Button>
       </div>
     </template>

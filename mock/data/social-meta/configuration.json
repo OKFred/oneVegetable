@@ -1,0 +1,15 @@
+{
+  "configured": true,
+  "appIdSuffix": "6789",
+  "graphApiVersion": "v26.0",
+  "publicOrigin": "https://one-vegetable.example.com",
+  "callbackUrl": "https://one-vegetable.example.com/api/v1/social/meta/oauth/callback",
+  "apiRuntime": "cloudflare",
+  "mediaStorage": "r2",
+  "publishingRuntimeAvailable": true,
+  "runtimeIssueCode": null,
+  "revision": 2,
+  "updateTimeUtc": 1788192000000,
+  "updaterId": "admin-1",
+  "remark": "Meta development application"
+}

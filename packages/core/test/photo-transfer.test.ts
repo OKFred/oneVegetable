@@ -93,6 +93,7 @@ describe('PhotoBank URL transfer safety', () => {
 
     const [, init] = fetcher.mock.calls[0] ?? [];
     expect(new Headers(init?.headers).get('accept')).toBe('image/jpeg,image/png,image/gif,image/bmp');
+    expect(init?.cache).toBe('no-store');
 
     expect(result).toEqual({
       fileName: 'product.jpg',
@@ -115,6 +116,39 @@ describe('PhotoBank URL transfer safety', () => {
       downloadProductAsset({ url: 'https://sc04.alicdn.com/kf/redirect.jpg' }, redirectingFetcher)
     ).rejects.toThrow('不允许跳转到图库域名之外');
     expect(redirectingFetcher).toHaveBeenCalledOnce();
+  });
+
+  it('uses the verified file signature when the PhotoBank response header is wrong', async () => {
+    const pngBytes = Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]);
+    const result = await downloadProductAsset(
+      { url: 'https://sc04.alicdn.com/kf/mislabeled.jpg' },
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(pngBytes, {
+          status: 200,
+          headers: { 'content-type': 'image/jpeg', 'content-length': String(pngBytes.byteLength) }
+        })
+      )
+    );
+
+    expect(result).toMatchObject({
+      fileName: 'mislabeled.png',
+      contentType: 'image/png',
+      byteLength: pngBytes.byteLength
+    });
+  });
+
+  it('rejects a PhotoBank asset whose verified format is outside the supported formats', async () => {
+    await expect(
+      downloadProductAsset(
+        { url: 'https://sc04.alicdn.com/kf/mislabeled.jpg' },
+        vi.fn<typeof fetch>().mockResolvedValue(
+          new Response(Uint8Array.from([0, 0, 0, 32, 102, 116, 121, 112, 97, 118, 105, 102]), {
+            status: 200,
+            headers: { 'content-type': 'image/jpeg' }
+          })
+        )
+      )
+    ).rejects.toThrow('实际格式不受支持');
   });
 
   it('rejects negotiated AVIF before attempting a PhotoBank upload', async () => {

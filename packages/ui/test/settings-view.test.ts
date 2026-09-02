@@ -3,6 +3,7 @@
 import { defineComponent, h } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { toast } from 'vue-sonner';
 
 import {
   ALIBABA_GATEWAY,
@@ -16,6 +17,10 @@ import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import SettingsView from '../src/views/SettingsView.vue';
 import { provideServices } from '../src/lib/services';
+
+vi.mock('vue-sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn() }
+}));
 
 const anchorClick = vi.fn();
 const createObjectUrl = vi.fn(() => 'blob:diagnostics');
@@ -74,7 +79,7 @@ function mountView(
               categories: [
                 {
                   id: 'credentials',
-                  label: '加密凭证保险库与网关设置',
+                  label: '加密开放平台凭证与网关设置',
                   storage: 'chrome.storage.local',
                   itemCount: 1,
                   approximateBytes: 512,
@@ -146,7 +151,7 @@ describe('SettingsView diagnostics', () => {
       '0'
     );
     expect(wrapper.get('select[aria-label="空闲自动锁定时间"]').text()).toContain('不自动锁定（默认）');
-    expect(wrapper.get('input[aria-label="新保险库口令"]').attributes('placeholder')).toBe('至少 6 位');
+    expect(wrapper.get('input[aria-label="新保护口令"]').attributes('placeholder')).toBe('至少 6 位');
     expect(wrapper.text()).not.toContain('UTF-8 字节');
 
     const policyButton = wrapper
@@ -161,16 +166,14 @@ describe('SettingsView diagnostics', () => {
     wrapper.unmount();
   });
 
-  it('accepts a six-character passphrase when creating the extension vault', async () => {
+  it('saves credentials and settings in one action when creating the extension vault', async () => {
     const wrapper = mountView('extension', 'empty');
     await flushPromises();
 
-    await wrapper.get('input[aria-label="新建保险库口令"]').setValue('123456');
-    await wrapper.get('input[aria-label="确认保险库口令"]').setValue('123456');
-    const createButton = wrapper
-      .findAll('button')
-      .find((candidate) => candidate.text().includes('创建保险库并保存'));
-    if (!createButton) throw new Error('Missing vault creation button');
+    await wrapper.get('input[aria-label="设置保护口令"]').setValue('123456');
+    await wrapper.get('input[aria-label="确认保护口令"]').setValue('123456');
+    const createButton = wrapper.findAll('button').find((candidate) => candidate.text().includes('保存设置'));
+    if (!createButton) throw new Error('Missing settings save button');
     await createButton.trigger('click');
     await flushPromises();
 
@@ -178,7 +181,37 @@ describe('SettingsView diagnostics', () => {
       '123456',
       expect.objectContaining({ endpoint: ALIBABA_GATEWAY, signMethod: 'hmac' })
     );
-    expect(wrapper.text()).toContain('加密凭证保险库已创建');
+    expect(wrapper.text()).toContain('凭证与设置已加密保存');
+    expect(toast.success).toHaveBeenCalledWith('凭证与设置已保存');
+    expect(wrapper.text()).not.toContain('加密保存凭证');
+    wrapper.unmount();
+  });
+
+  it('shows a busy state while the combined settings save is running', async () => {
+    let finishCreate: ((status: CredentialVaultStatus) => void) | undefined;
+    createVault.mockImplementationOnce(
+      (_passphrase, _settings) =>
+        new Promise((resolve) => {
+          finishCreate = resolve;
+        })
+    );
+    const wrapper = mountView('extension', 'empty');
+    await flushPromises();
+
+    await wrapper.get('input[aria-label="设置保护口令"]').setValue('123456');
+    await wrapper.get('input[aria-label="确认保护口令"]').setValue('123456');
+    const saveButton = wrapper.findAll('button').find((candidate) => candidate.text().includes('保存设置'));
+    if (!saveButton) throw new Error('Missing settings save button');
+    await saveButton.trigger('click');
+
+    expect(saveButton.text()).toContain('保存中');
+    expect(saveButton.attributes('disabled')).toBeDefined();
+    if (!finishCreate) throw new Error('Vault creation did not start');
+    finishCreate(vaultStatus('unlocked'));
+    await flushPromises();
+
+    expect(saveButton.text()).toContain('保存设置');
+    expect(toast.success).toHaveBeenCalledWith('凭证与设置已保存');
     wrapper.unmount();
   });
 
@@ -214,12 +247,15 @@ describe('SettingsView diagnostics', () => {
     expect((wrapper.get('input[aria-label="App Key"]').element as HTMLInputElement).value).toBe(
       'imported-key'
     );
+    expect(wrapper.get('input[aria-label="App Key"]').attributes('data-feedback-redact')).toBe('');
     expect((wrapper.get('input[aria-label="App Secret"]').element as HTMLInputElement).value).toBe(
       'imported-secret'
     );
+    expect(wrapper.get('input[aria-label="App Secret"]').attributes('type')).toBe('password');
     expect((wrapper.get('input[aria-label="Access Token"]').element as HTMLInputElement).value).toBe(
       'imported-token'
     );
+    expect(wrapper.get('input[aria-label="Access Token"]').attributes('type')).toBe('password');
     expect(wrapper.text()).toContain('尚未保存');
     expect(createVault).not.toHaveBeenCalled();
     wrapper.unmount();
@@ -229,33 +265,25 @@ describe('SettingsView diagnostics', () => {
     const wrapper = mountView('extension', 'locked');
     await flushPromises();
 
-    const language = wrapper.get('select[aria-label="偏好语言"]');
+    const language = wrapper.get('select[aria-label="平台请求语言"]');
     expect((language.element as HTMLSelectElement).value).toBe('en_US');
     await language.setValue('zh_CN');
 
     expect(JSON.parse(localStorage.getItem(APP_PREFERENCES_STORAGE_KEY) ?? '{}')).toEqual({
-      language: 'zh_CN',
+      uiLocale: 'zh-CN',
+      alibabaLanguage: 'zh_CN',
       theme: 'system'
     });
-    expect(wrapper.text()).toContain('接口语言偏好已保存为 zh_CN');
+    expect(wrapper.text()).toContain('Alibaba 接口语言已保存为 zh_CN');
     wrapper.unmount();
   });
 
-  it('persists and applies the preferred interface theme', async () => {
+  it('keeps interface theme controls out of connection settings', async () => {
     const wrapper = mountView();
     await flushPromises();
 
-    const theme = wrapper.get('select[aria-label="主题偏好"]');
-    expect((theme.element as HTMLSelectElement).value).toBe('system');
-    await theme.setValue('dark');
-
-    expect(document.documentElement.classList.contains('dark')).toBe(true);
-    expect(document.documentElement.dataset.theme).toBe('dark');
-    expect(JSON.parse(localStorage.getItem(APP_PREFERENCES_STORAGE_KEY) ?? '{}')).toEqual({
-      language: 'en_US',
-      theme: 'dark'
-    });
-    expect(wrapper.text()).toContain('界面主题已切换为深色');
+    expect(wrapper.find('select[aria-label="主题偏好"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('界面主题');
     wrapper.unmount();
   });
 
@@ -315,7 +343,7 @@ describe('SettingsView diagnostics', () => {
     const wrapper = mountView('extension');
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('本地数据与隐私');
-      expect(wrapper.text()).toContain('加密凭证保险库与网关设置');
+      expect(wrapper.text()).toContain('加密开放平台凭证与网关设置');
     });
 
     const clearButton = wrapper.findAll('button').find((candidate) => candidate.text().includes('彻底清除'));
@@ -338,14 +366,14 @@ describe('SettingsView diagnostics', () => {
   it('hides editable credentials while locked and reveals only safe fields after unlock', async () => {
     const wrapper = mountView('extension', 'locked');
     await vi.waitFor(() => {
-      expect(wrapper.find('input[aria-label="保险库口令"]').exists()).toBe(true);
+      expect(wrapper.find('input[aria-label="保护口令"]').exists()).toBe(true);
     });
     expect(wrapper.text()).not.toContain('国际站开放平台凭证');
 
-    await wrapper.get('input[aria-label="保险库口令"]').setValue('correct-vault-password');
+    await wrapper.get('input[aria-label="保护口令"]').setValue('correct-vault-password');
     await wrapper.get('button').trigger('click');
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('凭证保险库已解锁');
+      expect(wrapper.text()).toContain('凭证已解锁');
     });
     expect((wrapper.get('input[aria-label="App Key"]').element as HTMLInputElement).value).toBe(
       'configured-key'
@@ -361,17 +389,17 @@ describe('SettingsView diagnostics', () => {
     await policyButton.trigger('click');
     await vi.waitFor(() => {
       expect(updateVaultPolicy).toHaveBeenCalledWith(30);
-      expect(wrapper.text()).toContain('连续 30 分钟未使用凭证后自动锁定');
+      expect(wrapper.text()).toContain('连续 30 分钟未使用后自动锁定');
     });
     wrapper.unmount();
   });
 
-  it('explains that a worker restart cleared only the in-memory decryption key', async () => {
-    const wrapper = mountView('extension', 'locked', 'worker-restart');
+  it('explains that ending the Chrome session cleared only the in-memory unlock material', async () => {
+    const wrapper = mountView('extension', 'locked', 'session-ended');
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('扩展后台已重新启动，需要重新解锁');
+      expect(wrapper.text()).toContain('Chrome 会话已结束，需要重新解锁');
     });
-    expect(wrapper.text()).toContain('内存密钥不会保留');
+    expect(wrapper.text()).toContain('会清除仅存于内存的会话解锁材料');
     expect(wrapper.text()).toContain('本地加密凭据仍然安全保存');
     wrapper.unmount();
   });
@@ -381,19 +409,19 @@ describe('SettingsView diagnostics', () => {
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('发现旧版明文凭证');
     });
-    await wrapper.get('input[aria-label="新建保险库口令"]').setValue('migrated-vault-password');
-    await wrapper.get('input[aria-label="确认保险库口令"]').setValue('different-vault-password');
+    await wrapper.get('input[aria-label="设置保护口令"]').setValue('migrated-vault-password');
+    await wrapper.get('input[aria-label="确认保护口令"]').setValue('different-vault-password');
     await wrapper.get('button').trigger('click');
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('两次输入的保险库口令不一致');
+      expect(wrapper.text()).toContain('两次输入的本机保护口令不一致');
     });
     expect(migrateVault).not.toHaveBeenCalled();
 
-    await wrapper.get('input[aria-label="确认保险库口令"]').setValue('migrated-vault-password');
+    await wrapper.get('input[aria-label="确认保护口令"]').setValue('migrated-vault-password');
     await wrapper.get('button').trigger('click');
     await vi.waitFor(() => {
       expect(migrateVault).toHaveBeenCalledWith('migrated-vault-password');
-      expect(wrapper.text()).toContain('旧版明文凭证已原位迁移');
+      expect(wrapper.text()).toContain('旧版明文凭证已原位加密，并在当前 Chrome 会话内保持可用');
     });
     wrapper.unmount();
   });

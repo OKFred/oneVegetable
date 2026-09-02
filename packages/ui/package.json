@@ -1,6 +1,6 @@
 {
   "name": "@one-vegetable/ui",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "private": true,
   "type": "module",
   "exports": {
@@ -28,9 +28,11 @@
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "fflate": "0.8.3",
+    "modern-screenshot": "4.7.0",
     "reka-ui": "2.10.3",
     "tailwind-merge": "3.6.0",
     "vue": "3.5.41",
+    "vue-i18n": "11.4.10",
     "vue-sonner": "2.0.9"
   },
   "devDependencies": {

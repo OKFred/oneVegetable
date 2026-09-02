@@ -26,6 +26,7 @@ import {
   MAX_PRODUCT_TRANSFER_ITEMS,
   parseProductSchemaXml,
   PRODUCT_EDITOR_STEP_IDS,
+  productMutationJobHasResolvedProductId,
   productMutationJobIsBlocking,
   productSchemaXmlToJson,
   replaceProductSchemaAssetReferences,
@@ -72,6 +73,7 @@ import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
+import { formatDateTime } from '../lib/date-time';
 import {
   findProductEditorDraft,
   migrateLegacyProductEditorDraft,
@@ -109,9 +111,11 @@ import {
   type ProductTransferImportSelection,
   type ProductTransferProgress
 } from '../lib/product-transfer-archive';
+import { productStatusLabel } from '../lib/product-status';
 import { describeProductExportDisabled, retainCurrentPageSelection } from '../lib/product-selection';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
+import { hasUiTranslation, useUiI18n } from '../i18n';
 import type { DataColumn } from '../lib/table';
 
 const ProductEditorWizard = defineAsyncComponent({
@@ -135,7 +139,8 @@ const editorStepIds = new Set<ProductEditorStepId>(PRODUCT_EDITOR_STEP_IDS);
 const PRODUCT_SCORE_DISPLAY_MAX = 6;
 
 const { gateway, mode, productMutationJobs } = useServices();
-const { language: preferredLanguage } = useAppPreferences();
+const { locale, t } = useUiI18n();
+const { alibabaLanguage: preferredLanguage } = useAppPreferences();
 const queryClient = useQueryClient();
 const workspace = ref<Workspace>('list');
 const subject = ref('');
@@ -262,7 +267,7 @@ const productMutationHistory = useQuery({
       items: page.items.map((job) => (job.id === refreshed.id ? refreshed : job))
     };
   },
-  enabled: computed(() => mode === 'bff' && productMutationJobs !== undefined && editProductId.value !== ''),
+  enabled: computed(() => productMutationJobs !== undefined && editProductId.value !== ''),
   refetchInterval: (query) =>
     query.state.data?.items.some((job) => job.status === 'submitted' || job.status === 'auditing')
       ? 15_000
@@ -289,7 +294,36 @@ const displayMutationHistory = useQuery({
     }
     return refreshed;
   },
-  enabled: computed(() => mode === 'bff' && productMutationJobs !== undefined),
+  enabled: computed(() => productMutationJobs !== undefined),
+  refetchInterval: (query) =>
+    query.state.data?.some((job) => productMutationJobIsBlocking(job.status)) ? 15_000 : false,
+  staleTime: 0
+});
+const creationMutationHistory = useQuery({
+  queryKey: ['product-creation-mutation-jobs'],
+  queryFn: async () => {
+    if (!productMutationJobs) return [];
+    const page = await productMutationJobs.list({ pageSize: 100 });
+    const creationJobs = page.items.filter(
+      (job) => job.operation === 'publishProduct' || job.operation === 'saveProductDraft'
+    );
+    const refreshed: ProductMutationJob[] = [];
+    for (const job of creationJobs) {
+      if (!productMutationJobIsBlocking(job.status)) {
+        refreshed.push(job);
+        continue;
+      }
+      try {
+        refreshed.push(await productMutationJobs.refresh(job.id, job.revision));
+      } catch {
+        refreshed.push(job);
+      }
+    }
+    return refreshed.toSorted(
+      (left, right) => right.submittedTimeUtc - left.submittedTimeUtc || right.id.localeCompare(left.id)
+    );
+  },
+  enabled: computed(() => productMutationJobs !== undefined),
   refetchInterval: (query) =>
     query.state.data?.some((job) => productMutationJobIsBlocking(job.status)) ? 15_000 : false,
   staleTime: 0
@@ -315,6 +349,9 @@ const categoryPickerError = computed(
 const currentProductMutationJob = computed<ProductMutationJob | null>(
   () => productMutationHistory.data.value?.items.find((job) => job.operation === 'updateProduct') ?? null
 );
+const currentCreationMutationJob = computed<ProductMutationJob | null>(
+  () => creationMutationHistory.data.value?.[0] ?? null
+);
 const productMutationBlocksSubmit = computed(() => {
   const job = currentProductMutationJob.value;
   if (!job) return false;
@@ -336,31 +373,39 @@ const productPublishDisabled = computed(() => {
   return !productOperations.isAllowed(operation);
 });
 const platformDraftDisabledReason = computed(() =>
-  mutationDisabledReason('saveProductDraft', '当前环境未开放平台草稿写入')
+  mutationDisabledReason('saveProductDraft', t('products.view.errors.draftWriteDisabled'))
 );
 const productPublishDisabledReason = computed(() =>
   productMutationBlocksSubmit.value
     ? productMutationDisabledReason(currentProductMutationJob.value)
     : mutationDisabledReason(
         editProductId.value ? 'updateProduct' : 'publishProduct',
-        editProductId.value ? '当前环境未开放商品更新' : '当前环境未开放正式发布'
+        editProductId.value
+          ? t('products.view.errors.updateDisabled')
+          : t('products.view.errors.publishDisabled')
       )
 );
 
 const publish = useMutation({
   mutationFn: async (draft: boolean) => {
-    if (!schemaModel.value) throw new Error('请先获取商品 Schema');
+    if (!schemaModel.value) throw new Error(t('products.view.errors.schemaFirst'));
     if (editProductId.value) {
-      const patch = inspectProductSchemaPatchSerialization(schemaModel.value);
-      if (!patch.safe) throw new Error(`Schema XML 结构异常：${patch.structuralDiffs.join('；')}`);
-      if (patch.noOp || patch.changedFieldKeys.length === 0) throw new Error('没有需要提交的商品字段变更');
+      const patch = inspectProductSchemaPatchSerialization(schemaModel.value, locale.value);
+      if (!patch.safe) {
+        throw new Error(
+          t('products.view.errors.schemaInvalid', { details: patch.structuralDiffs.join('; ') })
+        );
+      }
+      if (patch.noOp || patch.changedFieldKeys.length === 0) {
+        throw new Error(t('products.view.errors.noChanges'));
+      }
       const changedFieldKeys = new Set(patch.changedFieldKeys);
       const changedErrors = blockingSchemaIssues.value.filter((issue) =>
         [...changedFieldKeys].some(
           (fieldKey) => issue.fieldKey === fieldKey || issue.fieldKey.startsWith(`${fieldKey}:`)
         )
       );
-      if (changedErrors.length > 0) throw new Error('请先修正本次修改字段中的阻断问题');
+      if (changedErrors.length > 0) throw new Error(t('products.view.errors.changedMinimum'));
       const request = {
         productId: editProductId.value,
         categoryId: Number(categoryId.value),
@@ -371,8 +416,12 @@ const publish = useMutation({
       if (!validation.valid || !validation.data) throw new Error(validation.errors.join('；'));
       return gateway.request('updateProduct', validation.data);
     }
-    const inspection = inspectProductSchemaSerialization(schemaModel.value);
-    if (!inspection.safe) throw new Error(`Schema XML 结构异常：${inspection.structuralDiffs.join('；')}`);
+    const inspection = inspectProductSchemaSerialization(schemaModel.value, locale.value);
+    if (!inspection.safe) {
+      throw new Error(
+        t('products.view.errors.schemaInvalid', { details: inspection.structuralDiffs.join('; ') })
+      );
+    }
     const base = {
       categoryId: Number(categoryId.value),
       language: language.value,
@@ -380,12 +429,13 @@ const publish = useMutation({
     };
     const validation = validateSchemaPublishInput(base);
     if (!validation.valid) throw new Error(validation.errors.join('；'));
-    if (!draft && blockingSchemaIssues.value.length > 0) throw new Error('请先修正表单中的阻断问题');
+    if (!draft && blockingSchemaIssues.value.length > 0)
+      throw new Error(t('products.view.errors.publishingMinimum'));
     return draft ? gateway.request('saveProductDraft', base) : gateway.request('publishProduct', base);
   },
   onSuccess: async (result, draft) => {
     if (editProductId.value && result.job) {
-      feedback.value = `商品 ${result.productId} 已提交平台审核；审核完成并回读一致后才算更新成功。`;
+      feedback.value = t('products.view.feedback.reviewSubmitted', { id: result.productId });
       saveCurrentLocalDraft();
       queryClient.setQueryData(['product-mutation-jobs', editProductId.value], {
         items: [result.job],
@@ -398,9 +448,25 @@ const publish = useMutation({
       });
       return;
     }
+    const creationPending =
+      !editProductId.value && result.job !== undefined && result.job.status !== 'verified';
+    if (!editProductId.value && result.job) {
+      queryClient.setQueryData(['product-creation-mutation-jobs'], [result.job]);
+      await queryClient.invalidateQueries({ queryKey: ['product-creation-mutation-jobs'] });
+    }
     feedback.value = editProductId.value
-      ? `商品 ${result.productId} 已更新`
-      : `${draft ? '草稿已保存' : '商品已发布'}：${result.productId}`;
+      ? t('products.view.feedback.updated', { id: result.productId })
+      : creationPending
+        ? t('products.view.feedback.creationAccepted', {
+            action: t(draft ? 'products.view.feedback.draftCreation' : 'products.view.feedback.publishing'),
+            id: result.productId
+          })
+        : t('products.view.feedback.creationConfirmed', {
+            action: t(
+              draft ? 'products.view.feedback.draftConfirmed' : 'products.view.feedback.publishConfirmed'
+            ),
+            id: result.productId
+          });
     if (!editProductId.value && editingBatchItemId.value && 'localStorage' in globalThis) {
       completeProductBatchPublishItem(
         globalThis.localStorage,
@@ -415,8 +481,10 @@ const publish = useMutation({
     if (draft && !editProductId.value) {
       platformDraftId.value = result.productId;
       saveCurrentLocalDraft();
-    } else {
+    } else if (!creationPending) {
       clearCurrentLocalDraft();
+    } else {
+      saveCurrentLocalDraft();
     }
     if (editScoreProductId.value) scheduleScoreRefresh(editScoreProductId.value);
   }
@@ -435,6 +503,7 @@ const batchPublish = useMutation({
     return runProductBatchPublish({
       items: selected,
       target: input.target,
+      locale: locale.value,
       shouldStop: () => stopBatchRequested.value,
       onStart: (item) => {
         activeBatchItemId.value = item.id;
@@ -455,7 +524,10 @@ const batchPublish = useMutation({
             (itemId) => itemId !== result.itemId
           );
         } catch (error: unknown) {
-          feedback.value = `平台已接受“${result.title}”，但本地队列状态保存失败：${errorMessage(error)}`;
+          feedback.value = t('products.view.feedback.acceptedQueueSaveFailed', {
+            title: result.title,
+            error: errorMessage(error)
+          });
         }
       },
       submit: (request) =>
@@ -469,7 +541,12 @@ const batchPublish = useMutation({
     const failed = results.filter((result) => result.status === 'failed').length;
     const blocked = results.filter((result) => result.status === 'blocked').length;
     const cancelled = results.filter((result) => result.status === 'cancelled').length;
-    feedback.value = `批量任务完成：成功 ${succeeded}，失败 ${failed}，阻断 ${blocked}，停止 ${cancelled}`;
+    feedback.value = t('products.view.feedback.batchFinished', {
+      succeeded,
+      failed,
+      blocked,
+      cancelled
+    });
     if (succeeded > 0) await queryClient.invalidateQueries({ queryKey: ['products'] });
   },
   onSettled: () => {
@@ -502,7 +579,8 @@ const qualityIssues = computed(() =>
     html: productDescriptionHtml.value,
     schemaIssues: schemaIssues.value,
     officialHints: officialHints.value,
-    imageMetadata: imageMetadata.value
+    imageMetadata: imageMetadata.value,
+    locale: locale.value
   })
 );
 const currentPageProducts = computed(() => products.data.value?.items ?? []);
@@ -527,50 +605,74 @@ const productTransferAssetDownloadAllowed = computed(() =>
 const productTransferAssetUploadDisabledReason = computed(() =>
   operationAvailabilityMessage(
     productTransferOperations.reasonCode('uploadPhoto'),
-    '当前环境未开放真实图库上传'
+    t('products.view.errors.uploadDisabled')
   )
 );
 const productTransferAssetDownloadDisabledReason = computed(() =>
   operationAvailabilityMessage(
     productTransferOperations.reasonCode('downloadProductAsset'),
-    '当前环境未开放商品图片下载'
+    t('products.view.errors.downloadDisabled')
   )
 );
 const moreActionsDisabledReason = computed(() =>
-  selectedProducts.value.length === 0 ? '请先勾选至少一个商品' : ''
+  selectedProducts.value.length === 0 ? t('products.view.errors.selectProduct') : ''
 );
 const actionConfirmationTitle = computed(() => {
   const action = actionConfirmation.value;
-  if (!action) return '确认商品操作';
+  if (!action) return t('products.view.confirmation.genericTitle');
   if (action.kind === 'product') {
-    if (editProductId.value) return '确认更新商品';
-    return action.draft ? '确认创建平台草稿' : '确认正式发布商品';
+    if (editProductId.value) return t('products.view.confirmation.updateTitle');
+    return t(
+      action.draft ? 'products.view.confirmation.draftTitle' : 'products.view.confirmation.publishTitle'
+    );
   }
   if (action.kind === 'batch-publish') {
-    return action.target === 'draft' ? '确认批量创建平台草稿' : '确认批量正式发布';
+    return t(
+      action.target === 'draft'
+        ? 'products.view.confirmation.batchDraftTitle'
+        : 'products.view.confirmation.batchPublishTitle'
+    );
   }
-  if (action.kind === 'batch-display') return action.display === 'online' ? '确认批量上架' : '确认批量下架';
-  return '确认恢复商品状态';
+  if (action.kind === 'batch-display') {
+    return t(
+      action.display === 'online'
+        ? 'products.view.confirmation.batchOnlineTitle'
+        : 'products.view.confirmation.batchOfflineTitle'
+    );
+  }
+  return t('products.view.confirmation.recoverTitle');
 });
 const actionConfirmationDescription = computed(() => {
   const action = actionConfirmation.value;
   if (!action) return '';
   if (action.kind === 'product') {
     return editProductId.value
-      ? `该操作会增量修改国际站商品 ${editProductId.value}。`
+      ? t('products.view.confirmation.updateDescription', { id: editProductId.value })
       : action.draft
-        ? '该操作会在当前国际站账号中创建一条平台草稿。'
-        : '该操作会创建真实线上商品并进入平台审核。';
+        ? t('products.view.confirmation.draftDescription')
+        : t('products.view.confirmation.publishDescription');
   }
   if (action.kind === 'batch-publish') {
     return action.target === 'draft'
-      ? `将严格串行创建 ${action.itemIds.length} 条平台草稿，单条失败后继续。`
-      : `将严格串行发布 ${action.itemIds.length} 个真实线上商品，单条失败后继续。`;
+      ? t('products.view.confirmation.batchDraftDescription', { count: action.itemIds.length })
+      : t('products.view.confirmation.batchPublishDescription', { count: action.itemIds.length });
   }
   if (action.kind === 'batch-display') {
-    return `将修改 ${action.productIds.length} 个真实商品的${action.display === 'online' ? '上架' : '下架'}状态。`;
+    return t('products.view.confirmation.batchDisplayDescription', {
+      count: action.productIds.length,
+      action: t(
+        action.display === 'online' ? 'products.view.feedback.online' : 'products.view.feedback.offline'
+      )
+    });
   }
-  return `将把商品 ${action.job.productId} 恢复为操作前的${action.job.originalDisplay === 'online' ? '上架' : '下架'}状态。`;
+  return t('products.view.confirmation.recoverDescription', {
+    id: action.job.productId,
+    action: t(
+      action.job.originalDisplay === 'online'
+        ? 'products.view.feedback.online'
+        : 'products.view.feedback.offline'
+    )
+  });
 });
 const actionConfirmationDestructive = computed(() => {
   const action = actionConfirmation.value;
@@ -593,14 +695,14 @@ const selectedDisplayMutationBlocked = computed(() =>
 const latestDisplayMutationJobs = computed(() => (displayMutationHistory.data.value ?? []).slice(0, 5));
 const refreshDisplayMutation = useMutation({
   mutationFn: (job: ProductMutationJob) => {
-    if (!productMutationJobs) throw new Error('当前模式不支持持久商品写入任务');
+    if (!productMutationJobs) throw new Error(t('products.view.errors.jobUnsupported'));
     return productMutationJobs.refresh(job.id, job.revision);
   },
   onSuccess: () => queryClient.invalidateQueries({ queryKey: ['product-display-mutation-jobs'] })
 });
 const recoverDisplayMutation = useMutation({
   mutationFn: (job: ProductMutationJob) => {
-    if (!productMutationJobs) throw new Error('当前模式不支持持久商品写入任务');
+    if (!productMutationJobs) throw new Error(t('products.view.errors.jobUnsupported'));
     return productMutationJobs.recover(job.id, job.revision);
   },
   onSuccess: () => queryClient.invalidateQueries({ queryKey: ['product-display-mutation-jobs'] })
@@ -617,8 +719,14 @@ const batchDisplay = useMutation({
   },
   onSuccess: async (result, display) => {
     feedback.value = result.jobs?.length
-      ? `${result.jobs.length} 个商品已提交${display === 'online' ? '上架' : '下架'}，正在回读确认`
-      : `${result.encryptedProductIds.length} 个商品已${display === 'online' ? '上架' : '下架'}`;
+      ? t('products.view.feedback.displaySubmitted', {
+          count: result.jobs.length,
+          action: t(display === 'online' ? 'products.view.feedback.online' : 'products.view.feedback.offline')
+        })
+      : t('products.view.feedback.displayDone', {
+          count: result.encryptedProductIds.length,
+          action: t(display === 'online' ? 'products.view.feedback.online' : 'products.view.feedback.offline')
+        });
     selectedProductIds.value = [];
     await queryClient.invalidateQueries({ queryKey: ['product-display-mutation-jobs'] });
     await queryClient.invalidateQueries({ queryKey: ['products'] });
@@ -633,7 +741,7 @@ function submitProduct(draft: boolean): void {
     : [];
   if (editProductId.value) {
     if (changedNames.length === 0) {
-      feedback.value = '没有需要提交的商品字段变更';
+      feedback.value = t('products.view.errors.noChanges');
       return;
     }
   }
@@ -646,15 +754,15 @@ function submitProduct(draft: boolean): void {
 
 function queueCurrentProduct(): void {
   if (editProductId.value) {
-    feedback.value = '批量发品仅接受新增商品；已有商品请使用单品增量更新。';
+    feedback.value = t('products.view.errors.existingBatch');
     return;
   }
   if (!schemaModel.value || !categoryId.value || !schemaInspection.value.safe) {
-    feedback.value = '请先加载商品表单，并修复 Schema XML 结构问题。';
+    feedback.value = t('products.view.errors.loadForm');
     return;
   }
   if (!('localStorage' in globalThis)) {
-    feedback.value = '当前环境不支持本地批量队列。';
+    feedback.value = t('products.view.errors.localQueueUnsupported');
     return;
   }
   try {
@@ -672,7 +780,7 @@ function queueCurrentProduct(): void {
     reloadBatchItems();
     selectedBatchItemIds.value = [...new Set([...selectedBatchItemIds.value, queued.id])];
     feedback.value = '';
-    toast.success(`“${queued.title}”已加入批量发品队列。`);
+    toast.success(t('products.view.feedback.addedToBatch', { title: queued.title }));
     workspace.value = 'batch-publisher';
     updateProductHash('push');
   } catch (error: unknown) {
@@ -685,14 +793,16 @@ function submitBatchPublish(): void {
     (item) => selectedBatchItemIds.value.includes(item.id) && item.status === 'queued'
   );
   if (selected.length === 0) {
-    feedback.value = '请至少选择一个待提交商品。';
+    feedback.value = t('products.view.errors.selectQueued');
     return;
   }
   const operation = batchTarget.value === 'draft' ? 'saveProductDraft' : 'publishProduct';
   if (!productOperations.isAllowed(operation)) {
     feedback.value = mutationDisabledReason(
       operation,
-      batchTarget.value === 'draft' ? '当前环境未开放平台草稿写入' : '当前环境未开放正式发布'
+      batchTarget.value === 'draft'
+        ? t('products.view.errors.draftWriteDisabled')
+        : t('products.view.errors.publishDisabled')
     );
     return;
   }
@@ -709,21 +819,21 @@ function submitBatchPublish(): void {
 
 function stopBatchPublish(): void {
   stopBatchRequested.value = true;
-  feedback.value = '当前正在提交的商品不会中断；完成后将停止剩余任务。';
+  feedback.value = t('products.view.feedback.stopping');
 }
 
 function editBatchItem(item: ProductBatchPublishItem): void {
   cancelDraftSave();
   draftCandidate.value = null;
   resetEditorSession({ categoryId: item.categoryId, mode: 'quick' });
-  schemaModel.value = parseProductSchemaXml(item.xml);
+  schemaModel.value = parseProductSchemaXml(item.xml, undefined, locale.value);
   language.value = item.language;
   market.value = item.market;
   editingBatchItemId.value = item.id;
   currentCategory.value =
     categoryOptions.value.find((category) => String(category.id) === item.categoryId) ?? null;
   workspace.value = 'publisher';
-  feedback.value = `正在编辑批量队列中的“${item.title}”；修改后请重新加入队列。`;
+  feedback.value = t('products.view.feedback.editingBatch', { title: item.title });
   updateProductHash('push');
 }
 
@@ -736,7 +846,7 @@ function removeBatchItem(item: ProductBatchPublishItem): void {
     Object.entries(batchResults.value).filter(([itemId]) => itemId !== item.id)
   );
   feedback.value = '';
-  toast.success(`“${item.title}”已从批量队列移除。`);
+  toast.success(t('products.view.feedback.removedBatch', { title: item.title }));
 }
 
 function reloadBatchItems(): void {
@@ -746,7 +856,7 @@ function reloadBatchItems(): void {
 
 async function exportSelectedProducts(): Promise<void> {
   if (productTransferExportProducts.value.length === 0) {
-    productTransferError.value = '请先选择要导出的商品。';
+    productTransferError.value = t('products.view.errors.exportSelect');
     return;
   }
 
@@ -766,7 +876,11 @@ async function exportSelectedProducts(): Promise<void> {
     }
     feedback.value = '';
     toast.success(
-      `已导出 ${transferItems.length} 个商品（${productTransferFileFormat.value.toLocaleUpperCase()}，${productTransferSchemaFormatLabel(productTransferSchemaFormat.value)}）。`
+      t('products.view.feedback.exported', {
+        count: transferItems.length,
+        fileFormat: productTransferFileFormat.value.toLocaleUpperCase(),
+        schemaFormat: productTransferSchemaFormatLabel(productTransferSchemaFormat.value)
+      })
     );
     productTransferDialogOpen.value = false;
   } catch (error: unknown) {
@@ -784,7 +898,10 @@ async function loadProductTransferItems(
   for (const [index, product] of productsToExport.entries()) {
     productTransferProgress.value = {
       phase: 'reading',
-      message: `正在读取商品 Schema（${index + 1}/${productsToExport.length}）…`,
+      message: t('products.view.progress.readingSchema', {
+        current: index + 1,
+        total: productsToExport.length
+      }),
       current: index,
       total: productsToExport.length
     };
@@ -801,12 +918,14 @@ async function loadProductTransferItems(
               language: language.value,
               productId: product.id
             });
-    if (!schema) throw new Error(`商品 ${product.id} 缺少类目，无法导出完整 Schema`);
+    if (!schema) throw new Error(t('products.view.errors.missingCategory', { id: product.id }));
     const schemaXml = resolveProductSchemaXml(schema);
-    if (!schemaXml) throw new Error(`商品 ${product.id} 未返回 Schema XML 或 Schema JSON`);
+    if (!schemaXml) throw new Error(t('products.view.errors.missingSchema', { id: product.id }));
     const exportedCategoryId =
       product.status === 'draft' && schema.categoryId > 0 ? schema.categoryId : product.categoryId;
-    if (exportedCategoryId === null) throw new Error(`商品 ${product.id} 缺少类目，无法导出完整 Schema`);
+    if (exportedCategoryId === null) {
+      throw new Error(t('products.view.errors.missingCategory', { id: product.id }));
+    }
     transferItems.push({
       source: {
         productId: product.id,
@@ -825,7 +944,9 @@ async function loadProductTransferItems(
 }
 
 async function exportProductZip(transferItems: readonly ProductTransferItemInput[]): Promise<void> {
-  const models = transferItems.map((item) => parseProductSchemaXml(item.schemaXml ?? ''));
+  const models = transferItems.map((item) =>
+    parseProductSchemaXml(item.schemaXml ?? '', undefined, locale.value)
+  );
   const assetUrls = [
     ...new Set(
       models.flatMap((model) =>
@@ -838,7 +959,10 @@ async function exportProductZip(transferItems: readonly ProductTransferItemInput
   for (const [index, url] of assetUrls.entries()) {
     productTransferProgress.value = {
       phase: 'downloading',
-      message: `正在下载图库图片（${index + 1}/${assetUrls.length}）…`,
+      message: t('products.view.progress.downloadingImages', {
+        current: index + 1,
+        total: assetUrls.length
+      }),
       current: index,
       total: assetUrls.length
     };
@@ -859,16 +983,19 @@ async function exportProductZip(transferItems: readonly ProductTransferItemInput
 
   const archiveItems = models.map((model, index) => {
     const item = transferItems[index];
-    if (!item) throw new Error('商品 ZIP 导出范围发生变化');
+    if (!item) throw new Error(t('products.view.errors.exportChanged'));
     return {
       ...item,
-      schemaXml: serializeProductSchemaXml(replaceProductSchemaAssetReferences(model, replacements))
+      schemaXml: serializeProductSchemaXml(
+        replaceProductSchemaAssetReferences(model, replacements),
+        locale.value
+      )
     };
   });
   const document = createProductTransferArchiveDocument(archiveItems, productTransferSchemaFormat.value);
   productTransferProgress.value = {
     phase: 'packing',
-    message: '正在生成 ZIP 资源包…',
+    message: t('products.view.progress.packing'),
     current: 0,
     total: 1
   };
@@ -878,7 +1005,7 @@ async function exportProductZip(transferItems: readonly ProductTransferItemInput
 
 async function importProducts(selection: ProductTransferImportSelection): Promise<void> {
   if (!('localStorage' in globalThis)) {
-    productTransferError.value = '当前环境不支持本地商品导入。';
+    productTransferError.value = t('products.view.errors.localImportUnsupported');
     return;
   }
 
@@ -890,7 +1017,7 @@ async function importProducts(selection: ProductTransferImportSelection): Promis
       selection.kind === 'json' ? selection.document : await uploadProductTransferAssets(selection);
     productTransferProgress.value = {
       phase: 'queuing',
-      message: '正在写入本机批量发品队列…',
+      message: t('products.view.progress.queuing'),
       current: 0,
       total: 1
     };
@@ -902,7 +1029,12 @@ async function importProducts(selection: ProductTransferImportSelection): Promis
     selectedBatchItemIds.value = result.items.map((item) => item.id);
     feedback.value = '';
     toast.success(
-      `商品 ${selection.kind === 'zip' ? 'ZIP' : 'JSON'} 已导入本机队列：新增 ${result.added}，更新 ${result.updated}，已提交跳过 ${result.skipped}。导入不会自动发布商品。`
+      t('products.view.feedback.imported', {
+        format: selection.kind.toLocaleUpperCase(),
+        added: result.added,
+        updated: result.updated,
+        skipped: result.skipped
+      })
     );
     productTransferDialogOpen.value = false;
     workspace.value = 'batch-publisher';
@@ -936,10 +1068,14 @@ async function uploadProductTransferAssets(
   >();
   for (const [index, path] of selection.archive.referencedAssetPaths.entries()) {
     const asset = assetsByPath.get(path);
-    if (!asset) throw new Error(`ZIP 缺少图片：${path}`);
+    if (!asset) throw new Error(t('products.view.errors.zipMissingImage', { path }));
     productTransferProgress.value = {
       phase: 'uploading',
-      message: `正在上传到“${selection.targetGroupName}”（${index + 1}/${selection.archive.referencedAssetPaths.length}）…`,
+      message: t('products.view.progress.uploading', {
+        group: selection.targetGroupName,
+        current: index + 1,
+        total: selection.archive.referencedAssetPaths.length
+      }),
       current: index,
       total: selection.archive.referencedAssetPaths.length
     };
@@ -965,7 +1101,11 @@ async function uploadProductTransferAssets(
     ...selection.archive.document,
     products: selection.archive.document.products.map((product) => {
       const schemaXml = serializeProductSchemaXml(
-        replaceProductSchemaAssetReferences(parseProductSchemaXml(product.schemaXml), replacements)
+        replaceProductSchemaAssetReferences(
+          parseProductSchemaXml(product.schemaXml, undefined, locale.value),
+          replacements
+        ),
+        locale.value
       );
       return { ...product, schemaXml, schemaJson: productSchemaXmlToJson(schemaXml) };
     })
@@ -1122,9 +1262,13 @@ function productSelectionHeader() {
     indeterminate: someCurrentPageProductsSelected.value,
     disabled: count === 0,
     label: allCurrentPageProductsSelected.value
-      ? `取消选择本页全部 ${count} 个商品`
-      : `选择本页全部 ${count} 个商品`,
-    title: allCurrentPageProductsSelected.value ? '取消选择本页全部商品' : '选择本页全部商品',
+      ? t('products.view.selection.deselectPage', { count })
+      : t('products.view.selection.selectPage', { count }),
+    title: t(
+      allCurrentPageProductsSelected.value
+        ? 'products.view.selection.deselectPageTitle'
+        : 'products.view.selection.selectPageTitle'
+    ),
     'onUpdate:checked': toggleCurrentPageProducts
   });
 }
@@ -1132,14 +1276,14 @@ function productSelectionHeader() {
 function productSelectionCell(product: Product) {
   return h(TriStateCheckbox, {
     checked: selectedProductIds.value.includes(product.id),
-    label: `选择 ${product.subject}`,
+    label: t('products.view.selection.selectProduct', { title: product.subject }),
     'onUpdate:checked': (checked: boolean) => {
       toggleProduct(product.id, checked);
     }
   });
 }
 
-const columns: DataColumn<Product>[] = [
+const columns = computed<DataColumn<Product>[]>(() => [
   {
     id: 'select',
     header: productSelectionHeader,
@@ -1148,7 +1292,7 @@ const columns: DataColumn<Product>[] = [
   },
   {
     id: 'image',
-    header: '图片',
+    header: t('products.view.columns.image'),
     cell: ({ row }) =>
       row.original.imageUrl
         ? h(
@@ -1157,14 +1301,14 @@ const columns: DataColumn<Product>[] = [
               type: 'button',
               class:
                 'group relative block size-14 cursor-zoom-in overflow-hidden rounded-md border border-border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              'aria-label': `预览 ${row.original.subject} 主图`,
+              'aria-label': t('products.view.previewMain', { title: row.original.subject }),
               onClick: () => {
                 openProductImagePreview(row.original);
               }
             },
             h('img', {
               src: row.original.imageUrl,
-              alt: `${row.original.subject} 主图`,
+              alt: t('products.view.mainImage', { title: row.original.subject }),
               class: 'size-full object-cover transition-transform duration-200 group-hover:scale-105',
               loading: 'lazy',
               referrerpolicy: 'no-referrer'
@@ -1176,31 +1320,40 @@ const columns: DataColumn<Product>[] = [
               class:
                 'flex size-14 items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground'
             },
-            '暂无'
+            t('products.view.none')
           ),
     meta: { sticky: 'left', stickyOffset: '56px', stickyBoundary: true, width: '96px' }
   },
   {
     accessorKey: 'subject',
-    header: '商品',
+    header: t('products.view.columns.product'),
     cell: ({ row }) =>
       h('div', { class: 'min-w-56 space-y-1' }, [
         h('p', { class: 'font-medium' }, row.original.subject),
         h('p', { class: 'font-mono text-xs text-muted-foreground' }, row.original.id)
       ])
   },
-  { accessorKey: 'groupName', header: '分组' },
+  {
+    accessorKey: 'groupName',
+    header: t('products.view.columns.group'),
+    cell: (context) => h('span', { class: 'block min-w-20' }, context.getValue<string>() || '—')
+  },
   {
     accessorKey: 'status',
-    header: '状态',
+    header: t('products.view.columns.status'),
     cell: (context) =>
-      h(Badge, { variant: statusVariant(context.getValue<Product['status']>()) }, () =>
-        context.getValue<string>()
+      h(
+        Badge,
+        {
+          variant: statusVariant(context.getValue<Product['status']>()),
+          class: 'whitespace-nowrap'
+        },
+        () => productStatusLabel(context.getValue<Product['status']>())
       )
   },
   {
     id: 'productScore',
-    header: '产品分',
+    header: t('products.view.columns.productScore'),
     cell: ({ row }) => {
       const score = scoreForProduct(row.original);
       const error = scoreErrorForProduct(row.original);
@@ -1208,18 +1361,26 @@ const columns: DataColumn<Product>[] = [
         h(
           'span',
           { class: 'font-medium tabular-nums' },
-          score ? `${formatProductScore(score.score)}/${PRODUCT_SCORE_DISPLAY_MAX}` : '未查询'
+          score
+            ? `${formatProductScore(score.score)}/${PRODUCT_SCORE_DISPLAY_MAX}`
+            : t('products.view.scoreNotQueried')
         ),
         score?.issues.length
-          ? h('p', { class: 'text-xs text-amber-700 dark:text-amber-400' }, `${score.issues.length} 项建议`)
+          ? h(
+              'p',
+              { class: 'text-xs text-amber-700 dark:text-amber-400' },
+              t('products.view.scoreSuggestions', { count: score.issues.length })
+            )
           : null,
-        error ? h('p', { class: 'text-xs text-destructive', title: error }, '查询失败') : null
+        error
+          ? h('p', { class: 'text-xs text-destructive', title: error }, t('products.view.scoreFailed'))
+          : null
       ]);
     }
   },
   {
     accessorKey: 'score',
-    header: '质量分',
+    header: t('products.view.columns.qualityScore'),
     cell: (context) => {
       const score = context.getValue<number>();
       return score > 0 ? `${score}/100` : '—';
@@ -1227,12 +1388,13 @@ const columns: DataColumn<Product>[] = [
   },
   {
     accessorKey: 'updatedAt',
-    header: '更新时间',
-    cell: (context) => new Date(context.getValue<string>()).toLocaleString('zh-CN')
+    header: t('products.view.columns.updatedAt'),
+    cell: (context) =>
+      h('span', { class: 'whitespace-nowrap tabular-nums' }, formatDateTime(context.getValue<string>()))
   },
   {
     id: 'actions',
-    header: '操作',
+    header: t('products.view.columns.actions'),
     cell: ({ row }) =>
       h('div', { class: 'flex items-center' }, [
         h(
@@ -1244,12 +1406,12 @@ const columns: DataColumn<Product>[] = [
               void selectProductForSchema(row.original);
             }
           },
-          () => '编辑商品'
+          () => t('products.view.edit')
         )
       ]),
     meta: { sticky: 'right', stickyOffset: '0px', stickyBoundary: true, width: '120px' }
   }
-];
+]);
 
 function scoreForProduct(product: Product): ProductScore | undefined {
   return product.encryptedId ? productScores.value[product.encryptedId] : undefined;
@@ -1264,7 +1426,7 @@ async function querySelectedProductScores(): Promise<void> {
     Boolean(product.encryptedId)
   );
   if (targets.length === 0) {
-    feedback.value = '选中的商品没有可用于查询产品分的平台混淆 ID。';
+    feedback.value = t('products.view.errors.scoreMissingId');
     return;
   }
   queryingSelectedProductScores.value = true;
@@ -1283,7 +1445,11 @@ async function querySelectedProductScores(): Promise<void> {
     queryingSelectedProductScores.value = false;
   }
   const skipped = selectedProducts.value.length - targets.length;
-  const message = `产品分查询完成：成功 ${succeeded} 个，失败 ${failed} 个${skipped > 0 ? `，跳过 ${skipped} 个` : ''}。`;
+  const message = t('products.view.feedback.scoreDone', {
+    succeeded,
+    failed,
+    skipped: skipped > 0 ? t('products.view.feedback.scoreSkipped', { count: skipped }) : ''
+  });
   if (failed > 0 || skipped > 0) toast.warning(message);
   else toast.success(message);
 }
@@ -1298,8 +1464,8 @@ function openProductImagePreview(product: Product): void {
     {
       id: product.id,
       src: product.imageUrl,
-      alt: `${product.subject} 主图`,
-      description: `商品 ${product.id}`
+      alt: t('products.view.mainImage', { title: product.subject }),
+      description: t('products.view.previewDescription', { id: product.id })
     }
   ];
   productPreviewOpen.value = true;
@@ -1340,7 +1506,7 @@ async function loadCategoryBranch(categoryIdToLoad: number): Promise<ProductCate
       parentId: categoryIdToLoad
     });
     const parent = result.find((category) => category.id === categoryIdToLoad) ?? null;
-    if (!parent) throw new Error(`平台未返回类目 ${categoryIdToLoad}`);
+    if (!parent) throw new Error(t('products.view.errors.categoryMissing', { id: categoryIdToLoad }));
     categoryTree.value = replaceCategoryNode(categoryTree.value, parent);
     if (categoryId.value === String(parent.id)) currentCategory.value = parent;
     return parent;
@@ -1358,18 +1524,21 @@ async function selectCategory(categoryIdToSelect: number): Promise<void> {
   schemaModel.value = null;
   schemaError.value = '';
   if (category?.leaf) {
-    feedback.value = `已选择叶子类目：${category.name}`;
+    feedback.value = t('products.view.feedback.leafSelected', { name: category.name });
     return;
   }
   if (category && category.children.length > 0) {
-    feedback.value = `请选择“${category.name}”下的可发布类目。`;
+    feedback.value = t('products.view.feedback.chooseUnder', { name: category.name });
     return;
   }
   const loaded = await loadCategoryBranch(categoryIdToSelect);
   if (!loaded) return;
   feedback.value = loaded.leaf
-    ? `已选择叶子类目：${loaded.name}`
-    : `已加载“${loaded.name}”的 ${loaded.children.length} 个下级类目，请继续选择。`;
+    ? t('products.view.feedback.leafSelected', { name: loaded.name })
+    : t('products.view.feedback.childrenLoaded', {
+        name: loaded.name,
+        count: loaded.children.length
+      });
 }
 
 async function ensureCurrentCategory(categoryIdToLoad: number): Promise<void> {
@@ -1415,8 +1584,8 @@ async function selectProductForSchema(product: Product): Promise<void> {
   schemaError.value = '';
   feedback.value =
     product.categoryId === null
-      ? '已选择商品；列表未返回类目，请选择实际类目后获取编辑 Schema。'
-      : '已选择商品及其真实类目，正在渲染现有商品 Schema。';
+      ? t('products.view.feedback.productWithoutCategory')
+      : t('products.view.feedback.productSelected');
   workspace.value = 'publisher';
   updateProductHash('push');
   if (product.categoryId !== null) {
@@ -1436,7 +1605,7 @@ function startNewProduct(): void {
   categorySearch.value = '';
   categoryLoadError.value = '';
   schemaError.value = '';
-  feedback.value = '请选择叶子类目并开始填写商品信息。';
+  feedback.value = t('products.view.feedback.chooseCategory');
   workspace.value = 'publisher';
   updateProductHash('push');
   if (!migratedDraft) offerCurrentDraft();
@@ -1530,7 +1699,7 @@ function handleProductRouteChange(): void {
 
 function applySchema(xml: string, message: string, offerLocalDraft = true): void {
   try {
-    schemaModel.value = parseProductSchemaXml(xml);
+    schemaModel.value = parseProductSchemaXml(xml, undefined, locale.value);
     sourceIsLocalDraft.value = false;
     schemaError.value = '';
     feedback.value = message;
@@ -1538,7 +1707,7 @@ function applySchema(xml: string, message: string, offerLocalDraft = true): void
     updateProductHash('replace');
     if (offerLocalDraft) offerCurrentDraft();
   } catch (error: unknown) {
-    schemaError.value = error instanceof Error ? error.message : 'Schema XML 无法解析';
+    schemaError.value = error instanceof Error ? error.message : t('products.view.errors.schemaParse');
   }
 }
 
@@ -1546,7 +1715,7 @@ async function loadSchema(): Promise<void> {
   schemaError.value = '';
   const parsedCategoryId = resolveCategoryId();
   if (parsedCategoryId === null) {
-    if (!schemaError.value) schemaError.value = '请先选择有效类目';
+    if (!schemaError.value) schemaError.value = t('products.view.errors.categoryInvalid');
     return;
   }
   try {
@@ -1557,10 +1726,17 @@ async function loadSchema(): Promise<void> {
           language: language.value,
           market: market.value
         });
-    applySchema(result.xml, editProductId.value ? '已渲染现有商品 Schema' : '已按当前类目加载官方 Schema');
+    applySchema(
+      result.xml,
+      t(
+        editProductId.value
+          ? 'products.view.feedback.existingSchema'
+          : 'products.view.feedback.categorySchema'
+      )
+    );
     if (editScoreProductId.value) productScore.mutate(editScoreProductId.value);
   } catch (error: unknown) {
-    schemaError.value = error instanceof Error ? error.message : '获取 Schema 失败';
+    schemaError.value = error instanceof Error ? error.message : t('products.view.errors.schemaFetch');
   }
 }
 
@@ -1568,7 +1744,7 @@ function resolveCategoryId(): number | null {
   const parsed = Number(categoryId.value);
   if (!categoryId.value || !Number.isSafeInteger(parsed) || parsed <= 0) return null;
   if (!editProductId.value && selectedCategory.value?.leaf !== true) {
-    schemaError.value = '请选择可发布的叶子类目；选择上级类目后会自动加载下一级';
+    schemaError.value = t('products.view.errors.chooseLeaf');
     return null;
   }
   return parsed;
@@ -1594,7 +1770,7 @@ async function renderExistingProductSchema(parsedCategoryId: number) {
 
 async function loadDraft(): Promise<void> {
   if (!editProductId.value) {
-    schemaError.value = '请先输入草稿商品 ID';
+    schemaError.value = t('products.view.errors.draftId');
     return;
   }
   try {
@@ -1603,11 +1779,11 @@ async function loadDraft(): Promise<void> {
       language: language.value
     });
     categoryId.value = String(result.categoryId);
-    applySchema(result.schemaXml, `已渲染草稿 ${result.id}`);
+    applySchema(result.schemaXml, t('products.view.feedback.draftSchema', { id: result.id }));
     editScoreProductId.value = result.encryptedId ?? '';
     if (editScoreProductId.value) productScore.mutate(editScoreProductId.value);
   } catch (error: unknown) {
-    schemaError.value = error instanceof Error ? error.message : '草稿渲染失败';
+    schemaError.value = error instanceof Error ? error.message : t('products.view.errors.draftRender');
   }
 }
 
@@ -1619,9 +1795,9 @@ async function refreshLevelSchema(): Promise<void> {
       language: language.value,
       xml: guardedSchemaXml(schemaModel.value)
     });
-    applySchema(result.xml, '层级属性已根据当前选择刷新', false);
+    applySchema(result.xml, t('products.view.feedback.levelRefreshed'), false);
   } catch (error: unknown) {
-    schemaError.value = error instanceof Error ? error.message : '层级属性刷新失败';
+    schemaError.value = error instanceof Error ? error.message : t('products.view.errors.levelRefresh');
   }
 }
 
@@ -1645,7 +1821,7 @@ function resumeLocalDraft(): void {
   const draft = draftCandidate.value;
   if (!draft) return;
   try {
-    schemaModel.value = parseProductSchemaXml(draft.xml);
+    schemaModel.value = parseProductSchemaXml(draft.xml, undefined, locale.value);
     sourceIsLocalDraft.value = true;
     categoryId.value = draft.categoryId;
     language.value = draft.language;
@@ -1656,10 +1832,10 @@ function resumeLocalDraft(): void {
     draftCandidate.value = null;
     migratedDraftKey.value = null;
     draftSaveStatus.value = 'saved';
-    feedback.value = '已继续本地草稿，平台数据尚未被修改。';
+    feedback.value = t('products.view.feedback.localDraftResumed');
     updateProductHash('replace');
   } catch (error: unknown) {
-    schemaError.value = error instanceof Error ? error.message : '本地草稿无法解析';
+    schemaError.value = error instanceof Error ? error.message : t('products.view.errors.localDraftParse');
   }
 }
 
@@ -1755,9 +1931,9 @@ function cancelDraftSave(): void {
 }
 
 function draftSaveLabel(status: DraftSaveStatus): string {
-  if (status === 'saving') return '保存中…';
-  if (status === 'saved') return '已保存到本机';
-  if (status === 'error') return '本地草稿保存失败';
+  if (status === 'saving') return t('products.view.draftSave.saving');
+  if (status === 'saved') return t('products.view.draftSave.saved');
+  if (status === 'error') return t('products.view.draftSave.error');
   return '';
 }
 
@@ -1770,7 +1946,7 @@ function scheduleScoreRefresh(productId: string): void {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : '操作失败';
+  return error instanceof Error ? error.message : t('products.view.errors.generic');
 }
 
 function mutationDisabledReason(operation: OperationId, fallback: string): string {
@@ -1778,27 +1954,45 @@ function mutationDisabledReason(operation: OperationId, fallback: string): strin
 }
 
 function productMutationDisabledReason(job: ProductMutationJob | null): string {
-  if (!job) return '商品写入状态尚未就绪';
+  if (!job) return t('products.view.mutationBlocked.loading');
   if (job.status === 'submitted' || job.status === 'auditing') {
-    return '商品正在平台审核中，请勿重复提交；本地草稿会继续保留';
+    return t('products.view.mutationBlocked.auditing');
   }
-  if (job.status === 'verifying') return '上下架请求已接受，正在等待商品列表回读';
-  if (job.status === 'recovering') return '原状态恢复请求已接受，正在等待商品列表回读';
+  if (job.status === 'verifying') return t('products.view.mutationBlocked.verifying');
+  if (job.status === 'recovering') return t('products.view.mutationBlocked.recovering');
   if (job.status === 'recovery-required') {
-    return '平台回读与提交内容不一致，请先人工确认并恢复商品';
+    return t('products.view.mutationBlocked.recoveryRequired');
   }
-  return '更新已验证，请重新加载商品表单后再继续增量编辑';
+  return t('products.view.mutationBlocked.verified');
 }
 
 function productMutationStatusLabel(status: ProductMutationJob['status']): string {
-  if (status === 'submitted') return '已提交';
-  if (status === 'auditing') return '平台审核中';
-  if (status === 'verifying') return '回读确认中';
-  if (status === 'verified') return '回读已验证';
-  if (status === 'recovery-required') return '需要人工恢复';
-  if (status === 'recovering') return '正在恢复原状态';
-  if (status === 'recovered') return '原状态已恢复';
-  return '提交失败';
+  if (status === 'submitted') return t('products.view.mutationStatus.submitted');
+  if (status === 'auditing') return t('products.view.mutationStatus.auditing');
+  if (status === 'verifying') return t('products.view.mutationStatus.verifying');
+  if (status === 'verified') return t('products.view.mutationStatus.verified');
+  if (status === 'recovery-required') return t('products.view.mutationStatus.recoveryRequired');
+  if (status === 'recovering') return t('products.view.mutationStatus.recovering');
+  if (status === 'recovered') return t('products.view.mutationStatus.recovered');
+  return t('products.view.mutationStatus.failed');
+}
+
+function productMutationMessage(job: ProductMutationJob): string {
+  if (job.reasonCode) {
+    const reasonKey = `products.view.mutationReason.${job.reasonCode}`;
+    if (hasUiTranslation(reasonKey)) {
+      const display = job.targetDisplay ?? job.originalDisplay;
+      return t(reasonKey, {
+        productId: job.productId,
+        display: display
+          ? t(display === 'online' ? 'products.view.feedback.online' : 'products.view.feedback.offline')
+          : ''
+      });
+    }
+    const errorKey = `errors.codes.${job.reasonCode}`;
+    if (hasUiTranslation(errorKey)) return t(errorKey);
+  }
+  return job.message ?? t('products.view.page.awaitingCheck');
 }
 
 function productMutationStatusVariant(
@@ -1812,12 +2006,16 @@ function productMutationStatusVariant(
 }
 
 function formatMutationTime(value: number | null): string {
-  return value === null ? '尚未检查' : new Date(value).toLocaleString();
+  return formatDateTime(value, t('products.view.neverChecked'));
 }
 
 function guardedSchemaXml(model: ProductSchemaModel): string {
-  const inspection = inspectProductSchemaSerialization(model);
-  if (!inspection.safe) throw new Error(`Schema XML 结构异常：${inspection.structuralDiffs.join('；')}`);
+  const inspection = inspectProductSchemaSerialization(model, locale.value);
+  if (!inspection.safe) {
+    throw new Error(
+      t('products.view.errors.schemaInvalid', { details: inspection.structuralDiffs.join('; ') })
+    );
+  }
   return inspection.xml;
 }
 
@@ -1875,16 +2073,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <PageHeader
-    title="商品管理"
-    description="专用页面只使用官方推荐的 Schema 链路；旧类目和旧发品接口保留在通用调试器。"
-  />
+  <PageHeader :title="t('products.view.page.title')" :description="t('products.view.page.description')" />
 
-  <div class="mb-5 flex flex-wrap gap-2" role="tablist" aria-label="商品工作区">
+  <div class="mb-5 flex flex-wrap gap-2" role="tablist" :aria-label="t('products.view.page.workspace')">
     <Button
       v-for="item in [
-        ['list', '商品列表'],
-        ['batch-publisher', '批量发品']
+        ['list', t('products.view.page.list')],
+        ['batch-publisher', t('products.view.page.batch')]
       ] as const"
       :key="item[0]"
       :variant="workspace === item[0] ? 'default' : 'outline'"
@@ -1907,7 +2102,7 @@ onBeforeUnmount(() => {
           : 'lg:grid-cols-[270px_minmax(0,1fr)]'
       "
     >
-      <GroupSidebar v-model:collapsed="productGroupSidebarCollapsed" title="商品分组">
+      <GroupSidebar v-model:collapsed="productGroupSidebarCollapsed" :title="t('products.view.page.groups')">
         <ProductGroupNavigation
           :key="productGroupNavigationRevision"
           v-model="selectedProductGroupId"
@@ -1919,11 +2114,11 @@ onBeforeUnmount(() => {
         <div
           class="mb-4 flex flex-wrap items-center justify-between gap-3"
           role="toolbar"
-          aria-label="商品列表操作"
+          :aria-label="t('products.view.page.toolbar')"
         >
           <div class="relative min-w-64 max-w-md flex-1">
             <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-            <Input v-model="subject" class="pl-9" placeholder="按标题搜索" />
+            <Input v-model="subject" class="pl-9" :placeholder="t('products.view.page.search')" />
           </div>
           <div class="flex flex-wrap items-center justify-end gap-2">
             <span
@@ -1931,19 +2126,21 @@ onBeforeUnmount(() => {
               class="text-xs text-amber-700 dark:text-amber-400"
               role="status"
             >
-              单次最多导出 {{ MAX_PRODUCT_TRANSFER_ITEMS }} 个商品
+              {{ t('products.view.page.exportLimit', { maximum: MAX_PRODUCT_TRANSFER_ITEMS }) }}
             </span>
             <Button
               variant="outline"
               :disabled="products.isFetching.value"
-              aria-label="刷新商品列表"
+              :aria-label="t('products.view.page.refreshLabel')"
               @click="products.refetch()"
             >
               <RefreshCw class="size-4" :class="{ 'animate-spin': products.isFetching.value }" />
-              {{ products.isFetching.value ? '刷新中…' : '刷新' }}
+              {{
+                products.isFetching.value ? t('products.view.page.refreshing') : t('common.actions.refresh')
+              }}
             </Button>
             <Button variant="outline" :disabled="productTransferBusy" @click="openProductImportDialog">
-              <Upload class="size-4" />导入
+              <Upload class="size-4" />{{ t('products.view.page.import') }}
             </Button>
             <ActionTooltip
               :disabled="Boolean(productExportDisabledReason)"
@@ -1954,16 +2151,19 @@ onBeforeUnmount(() => {
                 :disabled="Boolean(productExportDisabledReason)"
                 @click="openProductExportDialog"
               >
-                <Download class="size-4" />导出
+                <Download class="size-4" />{{ t('products.view.page.export') }}
               </Button>
             </ActionTooltip>
-            <Button variant="outline" @click="productGroupDialogOpen = true">分组</Button>
+            <Button variant="outline" @click="productGroupDialogOpen = true">
+              <Layers3 class="size-4" aria-hidden="true" />{{ t('products.view.page.group') }}
+            </Button>
             <ActionTooltip :disabled="Boolean(moreActionsDisabledReason)" :reason="moreActionsDisabledReason">
               <span class="inline-flex">
                 <DropdownMenuRoot :modal="false">
                   <DropdownMenuTrigger as-child>
                     <Button variant="outline" :disabled="selectedProducts.length === 0">
-                      <Ellipsis class="size-4" />更多<ChevronDown class="size-3.5" />
+                      <Ellipsis class="size-4" />{{ t('products.view.page.more')
+                      }}<ChevronDown class="size-3.5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuPortal>
@@ -1977,7 +2177,11 @@ onBeforeUnmount(() => {
                         :disabled="queryingSelectedProductScores"
                         @select="querySelectedProductScores"
                       >
-                        {{ queryingSelectedProductScores ? '批量查询中…' : '批量查询产品分' }}
+                        {{
+                          queryingSelectedProductScores
+                            ? t('products.view.page.batchScorePending')
+                            : t('products.view.page.batchScore')
+                        }}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator class="my-1 h-px bg-border" />
                       <DropdownMenuItem
@@ -1990,7 +2194,7 @@ onBeforeUnmount(() => {
                         "
                         @select="submitBatchDisplay('online')"
                       >
-                        批量上架
+                        {{ t('products.view.page.batchOnline') }}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
@@ -2002,27 +2206,29 @@ onBeforeUnmount(() => {
                         "
                         @select="submitBatchDisplay('offline')"
                       >
-                        批量下架
+                        {{ t('products.view.page.batchOffline') }}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenuPortal>
                 </DropdownMenuRoot>
               </span>
             </ActionTooltip>
-            <Button @click="startNewProduct">新增</Button>
+            <Button @click="startNewProduct"
+              ><ListPlus class="size-4" aria-hidden="true" />{{ t('products.view.page.add') }}</Button
+            >
           </div>
         </div>
         <p
           v-if="selectedProductIds.length && productDisplayMutationDisabled"
           class="mb-3 text-xs text-amber-700 dark:text-amber-400"
         >
-          当前环境尚未开放真实商品上下架。
+          {{ t('products.view.page.displayDisabled') }}
         </p>
         <p v-else-if="selectedProductMissingEncryptedId" class="mb-3 text-xs text-destructive">
-          选中的商品缺少平台混淆 ID，不能执行上下架。
+          {{ t('products.view.page.missingEncryptedId') }}
         </p>
         <p v-else-if="selectedDisplayMutationBlocked" class="mb-3 text-xs text-amber-700 dark:text-amber-400">
-          选中的商品仍有未完成或待恢复的上下架任务，请先确认任务状态。
+          {{ t('products.view.page.displayBlocked') }}
         </p>
         <ErrorNotice v-if="batchDisplay.error.value" class="mb-3" :error="batchDisplay.error.value" compact />
         <QueryState
@@ -2038,16 +2244,20 @@ onBeforeUnmount(() => {
             :page-size="productPageSize"
             :total-rows="products.data.value?.total ?? 0"
             :pagination-disabled="products.isFetching.value"
-            empty-text="没有匹配商品"
+            :empty-text="t('products.view.page.noMatch')"
             min-width="1320px"
             @update:page="setProductPage"
             @update:page-size="setProductPageSize"
           >
             <template #empty>
               <div class="space-y-3 py-4">
-                <p>没有匹配商品</p>
-                <Button v-if="subject" variant="outline" size="sm" @click="subject = ''">清除搜索条件</Button>
-                <Button v-else size="sm" @click="startNewProduct">新增商品</Button>
+                <p>{{ t('products.view.page.noMatch') }}</p>
+                <Button v-if="subject" variant="outline" size="sm" @click="subject = ''">
+                  {{ t('products.view.page.clearSearch') }}
+                </Button>
+                <Button v-else size="sm" @click="startNewProduct">{{
+                  t('products.view.page.addProduct')
+                }}</Button>
               </div>
             </template>
             <template #pagination-summary>
@@ -2056,7 +2266,7 @@ onBeforeUnmount(() => {
                 data-testid="product-selection-count"
                 aria-live="polite"
               >
-                已选 {{ selectedProducts.length }} 个
+                {{ t('products.view.selection.selectedCount', { count: selectedProducts.length }) }}
               </span>
             </template>
           </DataTable>
@@ -2064,9 +2274,9 @@ onBeforeUnmount(() => {
         <Card v-if="latestDisplayMutationJobs.length" class="mt-5 p-5">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 class="font-semibold">最近上下架任务</h2>
+              <h2 class="font-semibold">{{ t('products.view.page.recentDisplayJobs') }}</h2>
               <p class="mt-1 text-sm text-muted-foreground">
-                Alibaba 明确接受后仍需通过商品列表回读，才会标记为完成。
+                {{ t('products.view.page.recentDisplayDescription') }}
               </p>
             </div>
             <Button
@@ -2076,7 +2286,11 @@ onBeforeUnmount(() => {
               @click="displayMutationHistory.refetch()"
             >
               <RefreshCw class="size-4" />
-              {{ displayMutationHistory.isFetching.value ? '检查中…' : '刷新全部' }}
+              {{
+                displayMutationHistory.isFetching.value
+                  ? t('products.view.page.checking')
+                  : t('products.view.page.refreshAll')
+              }}
             </Button>
           </div>
           <div class="mt-4 space-y-3">
@@ -2094,11 +2308,23 @@ onBeforeUnmount(() => {
                     </Badge>
                   </div>
                   <p class="mt-1 text-xs text-muted-foreground">
-                    {{ job.originalDisplay === 'online' ? '上架' : '下架' }} →
-                    {{ job.targetDisplay === 'online' ? '上架' : '下架' }} · requestId
+                    {{
+                      t('products.view.page.statusTransition', {
+                        from: t(
+                          job.originalDisplay === 'online'
+                            ? 'products.view.feedback.online'
+                            : 'products.view.feedback.offline'
+                        ),
+                        to: t(
+                          job.targetDisplay === 'online'
+                            ? 'products.view.feedback.online'
+                            : 'products.view.feedback.offline'
+                        )
+                      })
+                    }}
                     <span class="font-mono">{{ job.requestId }}</span>
                   </p>
-                  <p v-if="job.message" class="mt-2 text-sm text-muted-foreground">{{ job.message }}</p>
+                  <p class="mt-2 text-sm text-muted-foreground">{{ productMutationMessage(job) }}</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
                   <Button
@@ -2106,7 +2332,7 @@ onBeforeUnmount(() => {
                     variant="outline"
                     :disabled="refreshDisplayMutation.isPending.value"
                     @click="refreshDisplayMutation.mutate(job)"
-                    >查询状态</Button
+                    >{{ t('products.view.page.queryStatus') }}</Button
                   >
                   <Button
                     v-if="job.status === 'recovery-required'"
@@ -2114,7 +2340,7 @@ onBeforeUnmount(() => {
                     variant="destructive"
                     :disabled="recoverDisplayMutation.isPending.value"
                     @click="recoverDisplayJob(job)"
-                    >恢复原状态</Button
+                    >{{ t('products.view.page.recover') }}</Button
                   >
                 </div>
               </div>
@@ -2141,12 +2367,20 @@ onBeforeUnmount(() => {
     <Card class="mb-5 p-5">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 class="font-semibold">{{ editProductId ? '编辑已有商品' : '新增商品' }}</h2>
+          <h2 class="font-semibold">
+            {{ editProductId ? t('products.view.page.editExisting') : t('products.view.page.addTitle') }}
+          </h2>
           <p class="mt-1 text-sm text-muted-foreground">
-            {{ editProductId ? `商品 ${editProductId}` : '先选择叶子类目，再加载平台表单。' }}
+            {{
+              editProductId
+                ? t('products.view.page.productId', { id: editProductId })
+                : t('products.view.page.chooseLeaf')
+            }}
           </p>
         </div>
-        <Button variant="outline" size="sm" @click="startNewProduct">重新新建</Button>
+        <Button variant="outline" size="sm" @click="startNewProduct">{{
+          t('products.view.page.restart')
+        }}</Button>
       </div>
       <ProductCategoryPicker
         v-model="categoryId"
@@ -2163,53 +2397,70 @@ onBeforeUnmount(() => {
       />
       <div class="mt-4 flex flex-wrap gap-2">
         <Button :disabled="!categorySelectionReady || categoryLoadingId !== null" @click="loadSchema">
-          <Layers3 class="size-4" />{{ editProductId ? '重新加载商品表单' : '开始填写' }}
+          <Layers3 class="size-4" />{{
+            editProductId ? t('products.view.page.reloadForm') : t('products.view.page.start')
+          }}
         </Button>
-        <Button variant="outline" @click="loadDraft"><RefreshCw class="size-4" />加载平台草稿</Button>
+        <Button variant="outline" @click="loadDraft"
+          ><RefreshCw class="size-4" />{{ t('products.view.page.loadDraft') }}</Button
+        >
         <Button variant="outline" :disabled="!schemaModel" @click="refreshLevelSchema">
-          <RefreshCw class="size-4" />刷新层级属性
+          <RefreshCw class="size-4" />{{ t('products.view.page.refreshAttributes') }}
         </Button>
       </div>
       <details class="mt-4 rounded-lg border p-3">
-        <summary class="cursor-pointer text-sm font-medium">高级设置</summary>
+        <summary class="cursor-pointer text-sm font-medium">{{ t('products.view.page.advanced') }}</summary>
         <div class="mt-3 grid gap-3 md:grid-cols-3">
           <label class="text-sm font-medium">
-            市场
+            {{ t('products.view.page.market') }}
             <select v-model="market" class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm">
               <option value="wholesale">wholesale</option>
               <option value="sourcing">sourcing</option>
             </select>
           </label>
           <label class="text-sm font-medium">
-            语言
+            {{ t('products.view.page.language') }}
             <select
               v-model="language"
               class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
-              aria-label="商品表单语言"
+              :aria-label="t('products.view.page.formLanguage')"
             >
-              <option value="zh_CN">简体中文（zh_CN）</option>
-              <option value="en_US">English（en_US）</option>
+              <option value="zh_CN">{{ t('products.view.page.simplifiedChinese') }}</option>
+              <option value="en_US">{{ t('products.view.page.english') }}</option>
             </select>
           </label>
           <label class="text-sm font-medium">
-            商品明文 ID
-            <Input v-model="editProductId" class="mt-2" placeholder="新建商品时留空" />
+            {{ t('products.view.page.clearProductId') }}
+            <Input
+              v-model="editProductId"
+              class="mt-2"
+              :placeholder="t('products.view.page.newProductIdPlaceholder')"
+            />
           </label>
         </div>
       </details>
       <div v-if="draftCandidate" class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm">
         <p class="font-medium text-amber-950">
-          {{ migratedDraftKey === draftCandidate.draftKey ? '发现从旧版本迁移的本地草稿' : '发现本地草稿' }}
+          {{
+            t(
+              migratedDraftKey === draftCandidate.draftKey
+                ? 'products.view.page.migratedDraft'
+                : 'products.view.page.localDraft'
+            )
+          }}
         </p>
         <p class="mt-1 text-xs text-amber-800">
-          保存于
           {{
-            new Date(draftCandidate.updatedAtUtc).toLocaleString('zh-CN')
-          }}。请选择后再继续，不会静默覆盖平台表单。
+            t('products.view.page.draftSavedAt', {
+              time: formatDateTime(draftCandidate.updatedAtUtc)
+            })
+          }}
         </p>
         <div class="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" @click="resumeLocalDraft">继续本地草稿</Button>
-          <Button size="sm" variant="outline" @click="reloadPlatformData">重新加载平台数据</Button>
+          <Button size="sm" @click="resumeLocalDraft">{{ t('products.view.page.resumeDraft') }}</Button>
+          <Button size="sm" variant="outline" @click="reloadPlatformData">
+            {{ t('products.view.page.reloadPlatform') }}
+          </Button>
         </div>
       </div>
       <p
@@ -2217,7 +2468,7 @@ onBeforeUnmount(() => {
         class="mt-3 text-xs"
         :class="draftSaveStatus === 'error' ? 'text-destructive' : 'text-muted-foreground'"
       >
-        本地草稿：{{ draftSaveLabel(draftSaveStatus) }}
+        {{ t('products.view.page.draftStatus', { status: draftSaveLabel(draftSaveStatus) }) }}
       </p>
       <p v-if="schemaError" class="mt-3 text-sm text-destructive">{{ schemaError }}</p>
     </Card>
@@ -2226,13 +2477,13 @@ onBeforeUnmount(() => {
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div class="flex flex-wrap items-center gap-2">
-            <h2 class="font-semibold">商品更新状态</h2>
+            <h2 class="font-semibold">{{ t('products.view.page.updateStatus') }}</h2>
             <Badge :variant="productMutationStatusVariant(currentProductMutationJob.status)">
               {{ productMutationStatusLabel(currentProductMutationJob.status) }}
             </Badge>
           </div>
           <p class="mt-2 text-sm text-muted-foreground">
-            {{ currentProductMutationJob.message || '等待下一次平台状态检查。' }}
+            {{ productMutationMessage(currentProductMutationJob) }}
           </p>
         </div>
         <Button
@@ -2242,12 +2493,16 @@ onBeforeUnmount(() => {
           @click="productMutationHistory.refetch()"
         >
           <RefreshCw class="size-4" />
-          {{ productMutationHistory.isFetching.value ? '检查中…' : '查询平台状态' }}
+          {{
+            productMutationHistory.isFetching.value
+              ? t('products.view.page.checking')
+              : t('products.view.page.queryPlatform')
+          }}
         </Button>
       </div>
       <dl class="mt-4 grid gap-3 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <dt>商品 ID</dt>
+          <dt>{{ t('products.view.columns.product') }} ID</dt>
           <dd class="mt-1 font-mono text-foreground">{{ currentProductMutationJob.productId }}</dd>
         </div>
         <div>
@@ -2255,13 +2510,13 @@ onBeforeUnmount(() => {
           <dd class="mt-1 break-all font-mono text-foreground">{{ currentProductMutationJob.requestId }}</dd>
         </div>
         <div>
-          <dt>提交时间</dt>
+          <dt>{{ t('products.view.page.submittedAt') }}</dt>
           <dd class="mt-1 text-foreground">
             {{ formatMutationTime(currentProductMutationJob.submittedTimeUtc) }}
           </dd>
         </div>
         <div>
-          <dt>最近检查</dt>
+          <dt>{{ t('products.view.page.lastCheck') }}</dt>
           <dd class="mt-1 text-foreground">
             {{ formatMutationTime(currentProductMutationJob.lastCheckedTimeUtc) }}
           </dd>
@@ -2271,13 +2526,13 @@ onBeforeUnmount(() => {
         v-if="currentProductMutationJob.status === 'recovery-required'"
         class="mt-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive"
       >
-        请先在国际站后台核对商品内容。本地草稿不会自动删除，也不会自动重复提交或覆盖平台商品。
+        {{ t('products.view.page.recoveryWarning') }}
       </p>
       <p
         v-else-if="currentProductMutationJob.status === 'verified'"
         class="mt-4 rounded-md bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
       >
-        平台回读已经匹配。重新加载商品表单后，才会以最新平台内容继续下一次增量编辑。
+        {{ t('products.view.page.verifiedNotice') }}
       </p>
     </Card>
     <ErrorNotice
@@ -2288,20 +2543,100 @@ onBeforeUnmount(() => {
     />
 
     <Card
+      v-if="currentCreationMutationJob && !editProductId"
+      class="mb-5 border-amber-300 p-5 dark:border-amber-800"
+    >
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <p class="font-medium">
+              {{
+                currentCreationMutationJob.operation === 'saveProductDraft'
+                  ? t('products.view.page.recentDraftJob')
+                  : t('products.view.page.recentPublishJob')
+              }}
+            </p>
+            <Badge :variant="productMutationStatusVariant(currentCreationMutationJob.status)">
+              {{ productMutationStatusLabel(currentCreationMutationJob.status) }}
+            </Badge>
+          </div>
+          <p class="mt-2 text-sm text-muted-foreground">
+            {{ productMutationMessage(currentCreationMutationJob) }}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          :disabled="creationMutationHistory.isFetching.value"
+          @click="creationMutationHistory.refetch()"
+        >
+          <RefreshCw class="size-4" />
+          {{
+            creationMutationHistory.isFetching.value
+              ? t('products.view.page.checking')
+              : t('products.view.page.queryPlatform')
+          }}
+        </Button>
+      </div>
+      <dl class="mt-4 grid gap-3 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <dt>{{ t('products.view.columns.product') }} ID</dt>
+          <dd class="mt-1 font-mono text-foreground">
+            {{
+              productMutationJobHasResolvedProductId(currentCreationMutationJob)
+                ? currentCreationMutationJob.productId
+                : t('products.view.page.waitingProductId')
+            }}
+          </dd>
+        </div>
+        <div>
+          <dt>requestId</dt>
+          <dd class="mt-1 break-all font-mono text-foreground">
+            {{ currentCreationMutationJob.requestId }}
+          </dd>
+        </div>
+        <div>
+          <dt>{{ t('products.view.page.submittedAt') }}</dt>
+          <dd class="mt-1 text-foreground">
+            {{ formatMutationTime(currentCreationMutationJob.submittedTimeUtc) }}
+          </dd>
+        </div>
+        <div>
+          <dt>{{ t('products.view.page.lastCheck') }}</dt>
+          <dd class="mt-1 text-foreground">
+            {{ formatMutationTime(currentCreationMutationJob.lastCheckedTimeUtc) }}
+          </dd>
+        </div>
+      </dl>
+      <p
+        v-if="currentCreationMutationJob.status === 'recovery-required'"
+        class="mt-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive"
+      >
+        {{ t('products.view.page.uncertainCreation') }}
+      </p>
+    </Card>
+    <ErrorNotice
+      v-if="creationMutationHistory.error.value"
+      class="mb-4"
+      :error="creationMutationHistory.error.value"
+      compact
+    />
+
+    <Card
       v-if="schemaModel && !editProductId"
       class="mb-4 flex flex-wrap items-center justify-between gap-3 border-dashed p-4"
     >
       <div>
         <p class="font-medium">
-          {{ editingBatchItemId ? '更新批量队列商品' : '加入批量发品队列' }}
+          {{ editingBatchItemId ? t('products.view.page.updateBatch') : t('products.view.page.addBatch') }}
         </p>
         <p class="mt-1 text-xs text-muted-foreground">
-          保存当前 Schema 快照；同一类目可以加入多个商品，稍后统一保存草稿或正式发布。
+          {{ t('products.view.page.batchDescription') }}
         </p>
       </div>
       <Button variant="outline" :disabled="!schemaInspection.safe" @click="queueCurrentProduct">
         <ListPlus class="size-4" />
-        {{ editingBatchItemId ? '更新队列' : '加入队列' }}
+        {{ editingBatchItemId ? t('products.view.page.updateQueue') : t('products.view.page.addQueue') }}
       </Button>
     </Card>
 
@@ -2348,7 +2683,9 @@ onBeforeUnmount(() => {
       :draft-allowed="productOperations.isAllowed('saveProductDraft')"
       :publish-allowed="productOperations.isAllowed('publishProduct')"
       :draft-disabled-reason="platformDraftDisabledReason"
-      :publish-disabled-reason="mutationDisabledReason('publishProduct', '当前环境未开放正式发布')"
+      :publish-disabled-reason="
+        mutationDisabledReason('publishProduct', t('products.view.errors.publishDisabled'))
+      "
       :category-labels="batchCategoryLabels"
       @update:selected-ids="selectedBatchItemIds = $event"
       @update:target="batchTarget = $event"
@@ -2383,17 +2720,23 @@ onBeforeUnmount(() => {
     :title="actionConfirmationTitle"
     :description="actionConfirmationDescription"
     :destructive="actionConfirmationDestructive"
-    confirm-label="确认继续"
+    :confirm-label="t('products.view.confirmation.continue')"
     @update:open="actionConfirmation = $event ? actionConfirmation : null"
     @confirm="confirmProductAction"
   >
     <template v-if="actionConfirmation?.kind === 'product' && actionConfirmation.changedNames.length">
-      <p>本次将更新 {{ actionConfirmation.changedNames.length }} 个字段：</p>
+      <p>
+        {{
+          t('products.view.confirmation.changedFields', {
+            count: actionConfirmation.changedNames.length
+          })
+        }}
+      </p>
       <p class="max-h-28 overflow-auto rounded-md bg-muted p-3 text-foreground">
         {{ actionConfirmation.changedNames.join('、') }}
       </p>
     </template>
-    <p v-else>请确认当前账号、商品数量和目标状态无误。提交后可在任务状态中通过 requestId 排查。</p>
+    <p v-else>{{ t('products.view.confirmation.genericBody') }}</p>
   </ConfirmActionDialog>
   <ImagePreview v-model:open="productPreviewOpen" :images="productPreviewImages" />
 </template>

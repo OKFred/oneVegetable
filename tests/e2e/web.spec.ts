@@ -5,6 +5,92 @@ import { unzipSync } from 'fflate';
 
 import rootPackage from '../../package.json' with { type: 'json' };
 
+const APP_PREFERENCES_STORAGE_KEY = 'one-vegetable:preferences:v2';
+
+test('interface language switches in place without changing the Alibaba request language', async ({
+  page
+}) => {
+  const bffRequests: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/v1/')) bffRequests.push(request.url());
+  });
+  await page.addInitScript(
+    ({ storageKey }) => {
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({ uiLocale: 'zh-CN', alibabaLanguage: 'en_US', theme: 'system' })
+      );
+    },
+    { storageKey: APP_PREFERENCES_STORAGE_KEY }
+  );
+
+  await page.goto('/#/products');
+  await expect(page.getByRole('heading', { name: '商品管理' })).toBeVisible();
+  await page.getByPlaceholder('按标题搜索').fill('solar');
+  await page.getByTestId('language-toggle').click();
+
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+  await expect(page).toHaveTitle('oneVegetable · Alibaba.com Operations Workspace');
+  await expect(page.getByRole('heading', { name: 'Product management' })).toBeVisible();
+  await expect(page.getByPlaceholder('Search by title')).toHaveValue('solar');
+  expect(page.url()).toContain('#/products');
+
+  await page.getByRole('link', { name: 'Settings', exact: true }).click();
+  await expect(page.getByLabel('Platform request language')).toHaveValue('en_US');
+  expect(bffRequests).toEqual([]);
+});
+
+test('feedback captures only on demand and opens a safe prefilled GitHub issue', async ({
+  context,
+  page
+}) => {
+  test.setTimeout(60_000);
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
+    origin: 'http://127.0.0.1:4173'
+  });
+  let requestedIssueUrl = '';
+  await context.route('https://github.com/OKFred/oneVegetable/issues/new**', async (route) => {
+    requestedIssueUrl = route.request().url();
+    await route.fulfill({
+      contentType: 'text/html',
+      body: '<!doctype html><title>GitHub issue preview</title>'
+    });
+  });
+
+  await page.goto('/#/settings');
+  await page.getByLabel('App Key').fill('must-not-enter-feedback-url');
+  await page.getByLabel('App Secret').fill('must-not-enter-feedback-url-secret');
+  await page.getByLabel('Access Token').fill('must-not-enter-feedback-url-token');
+  await page.getByTestId('feedback-launcher').click();
+  const dialog = page.getByRole('dialog', { name: '提交产品反馈' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('img', { name: '待提交的页面截图' })).toHaveCount(0);
+
+  await dialog.getByLabel('标题').fill('设置页反馈流程检查');
+  await dialog.getByLabel('详细说明').fill('验证截图由用户触发，并安全预填公开的 GitHub Issue。');
+  await dialog.getByLabel('复现步骤（选填）').fill('1. 打开设置页\n2. 点击反馈按钮');
+  await dialog.getByRole('button', { name: '截取当前页面' }).click();
+  await expect(dialog.getByRole('img', { name: '待提交的页面截图' })).toBeVisible({ timeout: 20_000 });
+  await expect(dialog.getByText(/\d+ × \d+ · \d+(?:\.\d+)? (?:KiB|MiB)/u)).toBeVisible();
+  await dialog.getByRole('checkbox').check();
+
+  const popupPromise = page.waitForEvent('popup');
+  await dialog.getByRole('button', { name: '复制截图并前往 GitHub粘贴', exact: true }).click();
+  const popup = await popupPromise;
+  await popup.waitForURL('https://github.com/OKFred/oneVegetable/issues/new**');
+  const issueUrl = new URL(requestedIssueUrl || popup.url());
+  expect(issueUrl.searchParams.get('template')).toBe('feedback.yml');
+  expect(issueUrl.searchParams.get('title')).toBe('[Bug] 设置页反馈流程检查');
+  expect(issueUrl.searchParams.get('details')).toContain('截图由用户触发');
+  expect(issueUrl.searchParams.get('environment')).toContain('Route: #/settings');
+  expect(issueUrl.href).not.toContain('must-not-enter-feedback-url');
+  const clipboardTypes = await page.evaluate(async () =>
+    (await navigator.clipboard.read()).flatMap((item) => item.types)
+  );
+  expect(clipboardTypes).toContain('image/png');
+  await popup.close();
+});
+
 test('web mock labels its in-process source and never calls the BFF', async ({ page }) => {
   const bffRequests: string[] = [];
   page.on('request', (request) => {
@@ -12,15 +98,40 @@ test('web mock labels its in-process source and never calls the BFF', async ({ p
   });
 
   await page.goto('/');
-  await expect(page.getByTestId('data-source-status')).toHaveText(/本地 Mock/);
+  await expect(page.getByText('用得不错？赏个评价。')).toHaveCount(0);
+  await expect(page.getByTestId('account-avatar')).toHaveAttribute('aria-label', '当前用户：本地演示用户');
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
+  await expect(page.getByText(/当前使用本地契约演示数据/)).toBeVisible();
+
+  await page.getByTestId('todo-input').fill('检查 RFQ 权限');
+  await page.getByTestId('todo-add').click();
+  await expect(page.getByText('检查 RFQ 权限')).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('检查 RFQ 权限')).toBeVisible();
   expect(bffRequests).toEqual([]);
+});
+
+test('version updates are bundled and link to the formal GitHub record', async ({ page }) => {
+  const githubApiRequests: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().startsWith('https://api.github.com/')) githubApiRequests.push(request.url());
+  });
+
+  await page.goto('/#/releases');
+  await expect(page.getByRole('heading', { name: '版本更新' })).toBeVisible();
+  await expect(page.getByText(`v${rootPackage.version}`, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('开放平台凭据向导')).toBeVisible();
+  await expect(page.getByRole('link', { name: /GitHub 发布页/ })).toHaveAttribute(
+    'href',
+    'https://github.com/OKFred/oneVegetable/releases'
+  );
+  expect(githubApiRequests).toEqual([]);
 });
 
 test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
-  await expect(page.getByTestId('data-source-status')).toHaveText(/本地 Mock/);
+  await expect(page.getByTestId('account-avatar')).toHaveAttribute('aria-label', '当前用户：本地演示用户');
 
   const productNavigation = page.getByRole('link', { name: '商品' });
   await expect
@@ -166,7 +277,9 @@ test('web mock exports a product JSON and imports it into the local review queue
   await expect(selectedCount).toHaveText('已选 3 个');
   await page.getByLabel('取消选择本页全部 3 个商品').uncheck();
   await expect(selectedCount).toHaveText('已选 0 个');
-  await page.getByRole('button', { name: '切换到夜间模式' }).click();
+  const themeToggle = page.getByTestId('theme-toggle');
+  await themeToggle.click();
+  await themeToggle.click();
 
   await page.getByRole('button', { name: '导入', exact: true }).click();
   await expect(page.getByRole('dialog', { name: '导入商品' })).toBeVisible();
@@ -452,6 +565,20 @@ test('web mock manages gallery groups and exposes non-blocking asset governance'
   await page.getByRole('button', { name: '放大图片' }).click();
   await expect(page.getByText('125%')).toBeVisible();
   await page.getByRole('button', { name: '关闭图片预览' }).click();
+  await page.getByLabel('选择 solar-station-front.jpg').check();
+  await expect(page.getByRole('button', { name: '分享 1 张' })).toBeEnabled();
+  await page.getByRole('button', { name: '分享 1 张' }).click();
+  const shareDialog = page.getByRole('dialog', { name: '分享图库素材' });
+  await expect(shareDialog.getByText('发布到：Facebook Page', { exact: true })).toBeVisible();
+  await expect(shareDialog.getByText('发布到：Instagram 专业账号', { exact: true })).toBeVisible();
+  await expect(shareDialog.getByText('需要配置')).toHaveCount(4);
+  const packageButton = shareDialog.getByRole('button', { name: '下载 ZIP 分享包' });
+  await expect(packageButton).toBeEnabled();
+  const downloadPromise = page.waitForEvent('download');
+  await packageButton.click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^one-vegetable-social-share-\d{4}-\d{2}-\d{2}\.zip$/u);
+  await shareDialog.getByRole('button', { name: '关闭', exact: true }).click();
   await page.getByRole('button', { name: '分组管理' }).click();
   const groupManager = page.getByRole('dialog', { name: '图库分组管理' });
   await groupManager.getByRole('button', { name: '修改分组 商品主图' }).click();
@@ -628,8 +755,8 @@ test('web mock groups official product hints and locates their fields from revie
 test('web mock persists the API language preference for product editing', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('link', { name: '设置' }).click();
-  await page.getByLabel('偏好语言').selectOption('zh_CN');
-  await expect(page.getByText('接口语言偏好已保存为 zh_CN')).toBeVisible();
+  await page.getByLabel('平台请求语言').selectOption('zh_CN');
+  await expect(page.getByText('Alibaba 接口语言已保存为 zh_CN。')).toBeVisible();
 
   await page.getByRole('link', { name: '商品' }).click();
   await openNewProductEditor(page);

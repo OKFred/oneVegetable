@@ -15,7 +15,7 @@ export default defineConfig({
     host_permissions: ['https://eco.taobao.com/*'],
     optional_host_permissions: ['http://*/*', 'https://*/*'],
     action: {
-      default_title: '一根青菜',
+      default_title: '__MSG_extName__',
       default_icon: { 16: 'icon.png', 32: 'icon.png', 48: 'icon.png', 128: 'icon.png' }
     },
     icons: { 16: 'icon.png', 32: 'icon.png', 48: 'icon.png', 128: 'icon.png' },

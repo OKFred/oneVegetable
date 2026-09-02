@@ -24,6 +24,16 @@ import { readRealMutationsPaused, RealMutationControlService } from './safety/re
 import { SqlAlibabaCredentialAcquisitionJobRepository } from './alibaba-credential-acquisition/repository';
 import { AlibabaCredentialAcquisitionService } from './alibaba-credential-acquisition/service';
 import { CloudflareAlibabaCredentialAcquisitionDriver } from './alibaba-credential-acquisition/cloudflare-playwright-driver';
+import { SqlMetaSocialRepository } from './social-meta/repository';
+import { MetaSecretCipher } from './social-meta/secret-cipher';
+import { MetaSocialService } from './social-meta/service';
+import { R2SocialMediaStore } from './social-meta/r2-media-store';
+import { SocialMediaAssetService } from './social-meta/media-service';
+import { SqlSocialPublishingRepository } from './social-meta/publishing-repository';
+import { MetaPublisher } from './social-meta/meta-publisher';
+import { SocialPublishingService } from './social-meta/publishing-service';
+import { SqlExtensionSocialDeviceRepository } from './social-meta/extension-device-repository';
+import { ExtensionSocialDeviceService } from './social-meta/extension-device-service';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -46,6 +56,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   const credentialRepository = new SqlGatewayCredentialRepository(database.executor);
   const metadataRepository = createD1MetadataRepository(database.db);
   const credentialCipher = await GatewayCredentialCipher.create(env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY);
+  const metaSecretCipher = await MetaSecretCipher.create(env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY);
   const credentialService = new GatewayCredentialService(credentialRepository, credentialCipher);
   const credentialProvider = new StoredAlibabaCredentialProvider(credentialRepository, credentialCipher);
   const credentialStatus = await credentialProvider.status();
@@ -69,6 +80,29 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     await readRealMutationsPaused(metadataRepository)
   );
   const realMutationControl = new RealMutationControlService(metadataRepository, featureFlags);
+  const metaSocial = new MetaSocialService(new SqlMetaSocialRepository(database.executor), metaSecretCipher, {
+    apiPrefix: runtimeConfiguration.apiPrefix
+  });
+  const socialMediaAssets = env.SOCIAL_MEDIA
+    ? new SocialMediaAssetService(
+        new SqlSocialPublishingRepository(database.executor),
+        // Wrangler exposes the generated R2 binding as an ambient type that ESLint cannot resolve.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        new R2SocialMediaStore(env.SOCIAL_MEDIA)
+      )
+    : undefined;
+  const socialPublishing = socialMediaAssets
+    ? new SocialPublishingService(
+        new SqlSocialPublishingRepository(database.executor),
+        socialMediaAssets,
+        metaSocial,
+        metaSecretCipher,
+        new MetaPublisher()
+      )
+    : undefined;
+  const extensionSocialDevices = new ExtensionSocialDeviceService(
+    new SqlExtensionSocialDeviceRepository(database.executor)
+  );
   const alibabaCredentialAcquisition =
     runtimeConfiguration.environment === 'self-hosted' && env.BROWSER
       ? new AlibabaCredentialAcquisitionService(
@@ -99,6 +133,10 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     gatewayCredentialProvider: credentialProvider,
     featureFlags,
     realMutationControl,
+    metaSocial,
+    ...(socialMediaAssets ? { socialMediaAssets } : {}),
+    ...(socialPublishing ? { socialPublishing } : {}),
+    extensionSocialDevices,
     ...(alibabaCredentialAcquisition ? { alibabaCredentialAcquisition } : {}),
     requestEvents: new SqlRequestEventRepository(database.executor),
     productDescriptionTemplates: new SqlProductDescriptionTemplateRepository(database.executor),

@@ -39,6 +39,8 @@ describe('AuthGate', () => {
     const inputs = wrapper.findAll('input');
     expect(inputs.map((input) => input.attributes('name'))).toEqual(['username', 'password']);
     expect(inputs.every((input) => input.attributes('required') !== undefined)).toBe(true);
+    expect(inputs[0]?.attributes('data-feedback-redact')).toBe('');
+    expect(inputs[1]?.attributes('type')).toBe('password');
     await inputs[0]?.setValue('admin');
     await inputs[1]?.setValue('correct-password-value');
     await wrapper.get('form').trigger('submit');

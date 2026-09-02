@@ -10,7 +10,10 @@ import {
 } from 'reka-ui';
 import { X } from '@lucide/vue';
 
+import { useUiI18n } from '../../i18n';
 import Button from './Button.vue';
+
+const { t } = useUiI18n();
 
 withDefaults(
   defineProps<{
@@ -42,7 +45,7 @@ const emit = defineEmits<{ 'update:open': [open: boolean] }>();
             </DialogDescription>
           </div>
           <DialogClose as-child>
-            <Button variant="ghost" size="icon" aria-label="关闭详情">
+            <Button variant="ghost" size="icon" :aria-label="t('common.dialog.closeDetails')">
               <X class="size-4" />
             </Button>
           </DialogClose>

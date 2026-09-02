@@ -19,6 +19,7 @@ vi.mock('../src/views/LogisticsView.vue', () => ({ default: { template: '<div />
 vi.mock('../src/views/InsightsView.vue', () => ({ default: { template: '<div />' } }));
 vi.mock('../src/views/CapabilitiesView.vue', () => ({ default: { template: '<div />' } }));
 vi.mock('../src/views/AdminView.vue', () => ({ default: { template: '<div />' } }));
+vi.mock('../src/views/ReleaseNotesView.vue', () => ({ default: { template: '<div />' } }));
 vi.mock('../src/views/SettingsView.vue', () => ({ default: { template: '<div />' } }));
 
 const settings = {
@@ -65,6 +66,11 @@ describe('OneVegetableApp hash navigation', () => {
           );
       }
     });
+    const ReviewPromptStub = defineComponent({
+      setup() {
+        return () => h('div', { 'data-testid': 'review-prompt' });
+      }
+    });
     const wrapper = shallowMount(OneVegetableApp, {
       props: {
         gateway: new MockGatewayClient(0),
@@ -73,17 +79,25 @@ describe('OneVegetableApp hash navigation', () => {
           load: () => Promise.resolve({ version: 1 as const, completedAt: null }),
           complete: () => Promise.resolve({ version: 1 as const, completedAt: '2026-08-28T00:00:00.000Z' })
         },
+        reviewPrompt: {
+          claimDuePrompt: () => Promise.resolve(false),
+          openStoreReview: () => Promise.resolve()
+        },
         mode: 'extension'
       },
-      global: { stubs: { OnboardingDialog: OnboardingStub } }
+      global: {
+        stubs: { ExtensionReviewPrompt: ReviewPromptStub, OnboardingDialog: OnboardingStub }
+      }
     });
 
     expect(wrapper.find('nav').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="review-prompt"]').exists()).toBe(false);
     await wrapper.get('[data-testid="finish-onboarding"]').trigger('click');
     await flushPromises();
 
     expect(globalThis.location.hash).toBe('#/settings');
     expect(wrapper.get('nav a[href="#/settings"]').attributes('aria-current')).toBe('page');
+    expect(wrapper.find('[data-testid="review-prompt"]').exists()).toBe(true);
     wrapper.unmount();
   });
 
@@ -147,19 +161,24 @@ describe('OneVegetableApp hash navigation', () => {
 
   it('rejects the admin path for a regular BFF user', async () => {
     globalThis.history.replaceState(null, '', '#/admin');
+    const TooltipStub = defineComponent({
+      props: { text: { type: String, required: true } },
+      template: '<span><slot /></span>'
+    });
     const wrapper = shallowMount(OneVegetableApp, {
       props: {
         gateway: new MockGatewayClient(0),
         settings,
         control: regularUserControl(),
         mode: 'bff'
-      }
+      },
+      global: { stubs: { Tooltip: TooltipStub } }
     });
     await flushPromises();
 
     expect(globalThis.location.hash).toBe('#/dashboard');
     expect(wrapper.find('nav a[href="#/admin"]').exists()).toBe(false);
-    expect(wrapper.text()).toContain('文档 Replay');
+    expect(wrapper.get('[data-testid="account-avatar"]').attributes('aria-label')).toBe('当前用户：member');
     wrapper.unmount();
   });
 });

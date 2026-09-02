@@ -34,6 +34,7 @@ import OfficialHintContent from './OfficialHintContent.vue';
 import PhotoBankPicker from './PhotoBankPicker.vue';
 import ProductEditorLoading from './ProductEditorLoading.vue';
 import ProductGroupPicker from './ProductGroupPicker.vue';
+import { useUiI18n } from '../i18n';
 
 const ProductDescriptionEditor = defineAsyncComponent({
   loader: () => import('./ProductDescriptionEditor.vue'),
@@ -58,6 +59,7 @@ const emit = defineEmits<{
   update: [field: ProductSchemaField];
   imageStatus: [status: ProductDescriptionImageMetadata & { url: string }];
 }>();
+const { t } = useUiI18n();
 
 const fieldIssues = computed(() => props.issues.filter((issue) => issue.fieldKey === props.field.key));
 const displayName = computed(() => props.labelOverride || props.field.name);
@@ -100,7 +102,7 @@ const selectedPhotos = computed(() =>
     .filter((value) => value.text && value.attributes.fileId)
     .map((value): Photo => ({
       id: value.attributes.fileId ?? '',
-      name: value.metadata.fileName ?? value.text.split('/').at(-1) ?? '图库素材',
+      name: value.metadata.fileName ?? value.text.split('/').at(-1) ?? t('products.schemaField.galleryAsset'),
       url: value.text,
       groupId: value.metadata.groupId ?? '-1',
       width: positiveNumberOrNull(value.metadata.width),
@@ -322,10 +324,10 @@ function removeFixedSlot(index: number): void {
   >
     <div class="flex flex-wrap items-center gap-2">
       <legend class="text-sm font-medium">{{ displayName }}</legend>
-      <Badge v-if="required" variant="warning">必填</Badge>
+      <Badge v-if="required" variant="warning">{{ t('products.schemaField.required') }}</Badge>
       <Badge v-if="showTechnical" variant="outline">{{ field.type }}</Badge>
-      <Badge v-if="readOnly" variant="secondary">只读</Badge>
-      <Badge v-if="disabled" variant="secondary">已禁用</Badge>
+      <Badge v-if="readOnly" variant="secondary">{{ t('products.schemaField.readOnly') }}</Badge>
+      <Badge v-if="disabled" variant="secondary">{{ t('products.schemaField.disabled') }}</Badge>
     </div>
     <div v-if="displayedOfficialHints.length" class="space-y-2">
       <OfficialHintContent
@@ -368,15 +370,15 @@ function removeFixedSlot(index: number): void {
         <div v-for="(value, index) in field.values" :key="`${field.key}:value:${index}`" class="flex gap-1">
           <Input
             :model-value="value.text"
-            :aria-label="`${displayName} 第 ${index + 1} 项`"
-            :placeholder="`${displayName} 第 ${index + 1} 项`"
+            :aria-label="t('products.schemaField.itemLabel', { name: displayName, index: index + 1 })"
+            :placeholder="t('products.schemaField.itemLabel', { name: displayName, index: index + 1 })"
             @update:model-value="updateMultiValue(index, $event)"
           />
           <Button
             variant="ghost"
             size="icon"
             class="shrink-0"
-            :aria-label="`删除 ${displayName} 第 ${index + 1} 项`"
+            :aria-label="t('products.schemaField.deleteItem', { name: displayName, index: index + 1 })"
             :disabled="field.values.length <= minimumItems"
             @click="removeMultiValue(index)"
           >
@@ -384,20 +386,22 @@ function removeFixedSlot(index: number): void {
           </Button>
         </div>
       </div>
-      <p v-if="field.values.length === 0" class="text-xs text-muted-foreground">尚未填写任何项目。</p>
+      <p v-if="field.values.length === 0" class="text-xs text-muted-foreground">
+        {{ t('products.schemaField.emptyItems') }}
+      </p>
       <Button
         variant="outline"
         size="sm"
         :disabled="field.values.length >= maximumItems"
         @click="addMultiValue"
       >
-        <Plus class="size-3" />新增 {{ displayName }}
+        <Plus class="size-3" />{{ t('products.schemaField.addNamed', { name: displayName }) }}
       </Button>
       <p
         v-if="field.rules.some((rule) => rule.name === 'valueAttributeRule')"
         class="text-xs text-amber-700 dark:text-amber-400"
       >
-        该字段包含 Alibaba 值属性规则；已有值会保留属性，新项目仍需由提交接口校验。
+        {{ t('products.schemaField.valueAttributesNotice') }}
       </p>
     </div>
     <div v-else-if="field.type === 'singleCheck'" class="flex flex-wrap gap-3">
@@ -423,7 +427,7 @@ function removeFixedSlot(index: number): void {
         </label>
       </div>
       <div v-if="unmatchedOptionValues.length" class="space-y-2">
-        <p class="text-xs text-muted-foreground">Schema 未提供以下已选值的显示名称：</p>
+        <p class="text-xs text-muted-foreground">{{ t('products.schemaField.unmatchedOptions') }}</p>
         <div class="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
           <div
             v-for="entry in unmatchedOptionValues"
@@ -432,14 +436,21 @@ function removeFixedSlot(index: number): void {
           >
             <Input
               :model-value="entry.value.text"
-              :aria-label="`${displayName} 已选值 ${entry.index + 1}`"
+              :aria-label="
+                t('products.schemaField.selectedValue', { name: displayName, index: entry.index + 1 })
+              "
               @update:model-value="updateMultiValue(entry.index, $event)"
             />
             <Button
               variant="ghost"
               size="icon"
               class="shrink-0"
-              :aria-label="`删除 ${displayName} 已选值 ${entry.index + 1}`"
+              :aria-label="
+                t('products.schemaField.deleteSelectedValue', {
+                  name: displayName,
+                  index: entry.index + 1
+                })
+              "
               :disabled="field.values.length <= minimumItems"
               @click="removeMultiValue(entry.index)"
             >
@@ -450,13 +461,13 @@ function removeFixedSlot(index: number): void {
       </div>
       <div v-if="field.options.length === 0" class="space-y-2">
         <p class="text-xs text-amber-700 dark:text-amber-400">
-          Alibaba Schema 未返回候选项；这里维护原始值，提交前仍由平台校验。
+          {{ t('products.schemaField.noOptions') }}
         </p>
         <div class="flex gap-2">
           <Input
             v-model="manualOptionValue"
-            :aria-label="`新增 ${displayName} 原始值`"
-            placeholder="输入 Schema 原始值"
+            :aria-label="t('products.schemaField.addRawValue', { name: displayName })"
+            :placeholder="t('products.schemaField.rawValuePlaceholder')"
             @keydown.enter.prevent="addManualOption"
           />
           <Button
@@ -464,7 +475,7 @@ function removeFixedSlot(index: number): void {
             :disabled="!manualOptionValue.trim() || field.values.length >= maximumItems"
             @click="addManualOption"
           >
-            <Plus class="size-3" />新增
+            <Plus class="size-3" />{{ t('products.schemaField.add') }}
           </Button>
         </div>
       </div>
@@ -491,15 +502,15 @@ function removeFixedSlot(index: number): void {
           class="min-w-0 space-y-3 rounded-lg bg-muted/40 p-3"
         >
           <div class="flex items-center justify-between text-xs font-medium text-muted-foreground">
-            <span>{{ displayName }} #{{ slotIndex + 1 }}</span>
+            <span>{{ t('products.schemaField.numbered', { name: displayName, index: slotIndex + 1 }) }}</span>
             <Button
               variant="ghost"
               size="sm"
               :disabled="fixedSlotFields.length <= minimumItems"
-              :aria-label="`删除 ${displayName} 第 ${slotIndex + 1} 档`"
+              :aria-label="t('products.schemaField.deleteSlot', { name: displayName, index: slotIndex + 1 })"
               @click="removeFixedSlot(slotIndex)"
             >
-              <Trash2 class="size-3" />删除
+              <Trash2 class="size-3" />{{ t('products.schemaField.delete') }}
             </Button>
           </div>
           <ProductSchemaField
@@ -507,7 +518,7 @@ function removeFixedSlot(index: number): void {
             :issues="issues"
             :product-description-type="productDescriptionType"
             :show-technical="showTechnical"
-            :label-override="`${displayName} 第 ${slotIndex + 1} 档`"
+            :label-override="t('products.schemaField.slotLabel', { name: displayName, index: slotIndex + 1 })"
             :official-hints="officialHintsForNestedField(slot)"
             :language="language"
             @update="updateFixedSlot(slotIndex, $event)"
@@ -515,14 +526,16 @@ function removeFixedSlot(index: number): void {
           />
         </div>
       </div>
-      <p v-if="fixedSlotFields.length === 0" class="text-xs text-muted-foreground">尚未填写任何档位。</p>
+      <p v-if="fixedSlotFields.length === 0" class="text-xs text-muted-foreground">
+        {{ t('products.schemaField.emptySlots') }}
+      </p>
       <Button
         variant="outline"
         size="sm"
         :disabled="fixedSlotFields.length >= maximumItems"
         @click="addFixedSlot"
       >
-        <Plus class="size-3" />新增 {{ displayName }}
+        <Plus class="size-3" />{{ t('products.schemaField.addNamed', { name: displayName }) }}
       </Button>
     </div>
     <div v-else-if="repeatableComplex" class="space-y-3">
@@ -536,14 +549,16 @@ function removeFixedSlot(index: number): void {
           class="min-w-0 space-y-3 rounded-lg bg-muted/40 p-3"
         >
           <div class="flex justify-between text-xs font-medium text-muted-foreground">
-            <span>{{ displayName }} #{{ instanceIndex + 1 }}</span>
+            <span>{{
+              t('products.schemaField.numbered', { name: displayName, index: instanceIndex + 1 })
+            }}</span>
             <Button
               variant="ghost"
               size="sm"
               :disabled="field.instances.length <= minimumItems"
               @click="removeInstance(instanceIndex)"
             >
-              <Trash2 class="size-3" />删除
+              <Trash2 class="size-3" />{{ t('products.schemaField.delete') }}
             </Button>
           </div>
           <ProductSchemaField
@@ -555,20 +570,35 @@ function removeFixedSlot(index: number): void {
             :show-technical="showTechnical"
             :official-hints="officialHintsForNestedField(child)"
             :language="language"
-            v-bind="keywordComplex ? { labelOverride: `关键词 ${instanceIndex + 1}` } : {}"
+            v-bind="
+              keywordComplex
+                ? {
+                    labelOverride: t('products.schemaField.complexItemLabel', {
+                      name: t('products.schemaField.keyword'),
+                      index: instanceIndex + 1
+                    })
+                  }
+                : {}
+            "
             @update="updateInstanceChild(instanceIndex, childIndex, $event)"
             @image-status="emit('imageStatus', $event)"
           />
         </div>
       </div>
-      <p v-if="field.instances.length === 0" class="text-xs text-muted-foreground">尚未填写任何项目。</p>
+      <p v-if="field.instances.length === 0" class="text-xs text-muted-foreground">
+        {{ t('products.schemaField.emptyItems') }}
+      </p>
       <Button
         variant="outline"
         size="sm"
         :disabled="field.instances.length >= maximumItems"
         @click="addInstance"
       >
-        <Plus class="size-3" />新增 {{ keywordComplex ? '关键词' : displayName }}
+        <Plus class="size-3" />{{
+          t('products.schemaField.addNamed', {
+            name: keywordComplex ? t('products.schemaField.keyword') : displayName
+          })
+        }}
       </Button>
     </div>
 

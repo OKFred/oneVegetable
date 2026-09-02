@@ -1,5 +1,7 @@
 import { MAX_PRODUCT_TRANSFER_ITEMS } from '@one-vegetable/core';
 
+import { translateUi } from '../i18n';
+
 export function retainCurrentPageSelection(
   selectedProductIds: readonly string[],
   currentPageProductIds: readonly string[]
@@ -9,10 +11,10 @@ export function retainCurrentPageSelection(
 }
 
 export function describeProductExportDisabled(selectedCount: number, busy: boolean): string {
-  if (busy) return '商品传输任务正在执行';
-  if (selectedCount === 0) return '请先选择要导出的商品';
+  if (busy) return translateUi('products.selection.busy');
+  if (selectedCount === 0) return translateUi('products.selection.chooseForExport');
   if (selectedCount > MAX_PRODUCT_TRANSFER_ITEMS) {
-    return `单次最多导出 ${MAX_PRODUCT_TRANSFER_ITEMS} 个商品`;
+    return translateUi('products.selection.exportLimit', { maximum: MAX_PRODUCT_TRANSFER_ITEMS });
   }
   return '';
 }
