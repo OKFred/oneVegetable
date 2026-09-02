@@ -62,7 +62,11 @@ describe('FeedbackLauncher', () => {
 
     await wrapper.get('[data-testid="feedback-launcher"]').trigger('click');
     expect(captureMock).not.toHaveBeenCalled();
-    expect(findButton('复制截图并前往 GitHub').disabled).toBe(true);
+    expect(findButton('复制截图并前往 GitHub').disabled).toBe(false);
+    findButton('复制截图并前往 GitHub').click();
+    await flushPromises();
+    expect(document.body.querySelector('[role="alert"]')?.textContent).toContain('至少 3 个字的标题');
+    expect(document.activeElement).toBe(document.body.querySelector('input[required]'));
 
     const inputs = document.body.querySelectorAll<HTMLInputElement>('input');
     const textareas = document.body.querySelectorAll<HTMLTextAreaElement>('textarea');
@@ -75,8 +79,13 @@ describe('FeedbackLauncher', () => {
     expect(document.body.querySelector('img[alt="待提交的页面截图"]')).not.toBeNull();
     const acknowledgement = document.body.querySelector<HTMLInputElement>('input[type="checkbox"]');
     if (!acknowledgement) throw new Error('Missing public feedback acknowledgement');
+    findButton('复制截图并前往 GitHub').click();
+    await flushPromises();
+    expect(document.body.querySelector('[role="alert"]')?.textContent).toContain('可以公开提交');
+    expect(document.activeElement).toBe(acknowledgement);
     acknowledgement.click();
     await flushPromises();
+    expect(document.body.textContent).toContain('已准备好，可以复制截图并前往 GitHub');
 
     findButton('复制截图并前往 GitHub').click();
     await flushPromises();

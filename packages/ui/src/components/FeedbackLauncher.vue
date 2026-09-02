@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
 import { Camera, ExternalLink, ImageOff, MessageCircleQuestion, RefreshCw, Trash2 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
@@ -25,11 +25,21 @@ const screenshotUrl = ref<string | null>(null);
 const capturing = ref(false);
 const openingGitHub = ref(false);
 const error = ref<string | null>(null);
+const titleInput = ref<HTMLInputElement | null>(null);
+const detailsInput = ref<HTMLTextAreaElement | null>(null);
+const screenshotSection = ref<HTMLElement | null>(null);
+const acknowledgementInput = ref<HTMLInputElement | null>(null);
 
-const validText = computed(() => title.value.trim().length >= 3 && details.value.trim().length >= 10);
-const canOpenGitHub = computed(
-  () => validText.value && screenshot.value !== null && acknowledged.value && !openingGitHub.value
-);
+type FeedbackRequirement = 'title' | 'details' | 'screenshot' | 'acknowledgement';
+
+const unmetRequirement = computed<FeedbackRequirement | null>(() => {
+  if (title.value.trim().length < 3) return 'title';
+  if (details.value.trim().length < 10) return 'details';
+  if (!screenshot.value) return 'screenshot';
+  if (!acknowledged.value) return 'acknowledgement';
+  return null;
+});
+const readinessMessage = computed(() => t(`feedback.readiness.${unmetRequirement.value ?? 'ready'}`));
 
 function openDialog(): void {
   error.value = null;
@@ -61,10 +71,15 @@ async function captureCurrentPage(): Promise<void> {
 }
 
 async function openGitHubIssue(): Promise<void> {
-  if (!canOpenGitHub.value || !screenshot.value) {
-    error.value = validText.value ? t('feedback.screenshot.required') : t('feedback.errors.invalid');
+  const requirement = unmetRequirement.value;
+  if (requirement) {
+    error.value = readinessMessage.value;
+    await nextTick();
+    focusRequirement(requirement);
     return;
   }
+  const currentScreenshot = screenshot.value;
+  if (!currentScreenshot) return;
 
   let issueUrl: string;
   try {
@@ -87,10 +102,10 @@ async function openGitHubIssue(): Promise<void> {
   if (popup) popup.opener = null;
 
   try {
-    const copied = await copyScreenshot(screenshot.value.blob);
+    const copied = await copyScreenshot(currentScreenshot.blob);
     if (copied) toast.success(t('feedback.status.clipboardReady'));
     else {
-      downloadScreenshot(screenshot.value);
+      downloadScreenshot(currentScreenshot);
       toast.warning(t('feedback.status.downloaded'));
     }
 
@@ -104,6 +119,13 @@ async function openGitHubIssue(): Promise<void> {
   } finally {
     openingGitHub.value = false;
   }
+}
+
+function focusRequirement(requirement: FeedbackRequirement): void {
+  if (requirement === 'title') titleInput.value?.focus();
+  else if (requirement === 'details') detailsInput.value?.focus();
+  else if (requirement === 'screenshot') screenshotSection.value?.querySelector('button')?.focus();
+  else acknowledgementInput.value?.focus();
 }
 
 function currentEnvironment(): FeedbackEnvironmentInput {
@@ -220,6 +242,7 @@ onBeforeUnmount(releaseScreenshot);
           <label class="text-sm font-medium">
             {{ t('feedback.fields.title') }}
             <input
+              ref="titleInput"
               v-model="title"
               required
               minlength="3"
@@ -233,6 +256,7 @@ onBeforeUnmount(releaseScreenshot);
         <label class="block text-sm font-medium">
           {{ t('feedback.fields.details') }}
           <textarea
+            ref="detailsInput"
             v-model="details"
             required
             minlength="10"
@@ -254,7 +278,7 @@ onBeforeUnmount(releaseScreenshot);
           />
         </label>
 
-        <section class="rounded-lg border bg-muted/30 p-4">
+        <section ref="screenshotSection" class="rounded-lg border bg-muted/30 p-4">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h3 class="font-medium">{{ t('feedback.screenshot.title') }}</h3>
@@ -315,7 +339,12 @@ onBeforeUnmount(releaseScreenshot);
             {{ t('feedback.privacy.description') }}
           </p>
           <label class="mt-3 flex items-start gap-2 text-xs text-amber-950 dark:text-amber-100">
-            <input v-model="acknowledged" type="checkbox" class="mt-0.5 size-4 rounded border-input" />
+            <input
+              ref="acknowledgementInput"
+              v-model="acknowledged"
+              type="checkbox"
+              class="mt-0.5 size-4 rounded border-input"
+            />
             <span>{{ t('feedback.privacy.acknowledge') }}</span>
           </label>
         </section>
@@ -324,14 +353,23 @@ onBeforeUnmount(releaseScreenshot);
       </form>
 
       <template #footer>
-        <div class="flex flex-wrap justify-end gap-2">
-          <Button variant="outline" :disabled="capturing || openingGitHub" @click="updateOpen(false)">
-            {{ t('common.actions.cancel') }}
-          </Button>
-          <Button :disabled="!canOpenGitHub" @click="openGitHubIssue">
-            <ExternalLink class="size-4" />
-            {{ openingGitHub ? t('feedback.actions.opening') : t('feedback.actions.openGitHub') }}
-          </Button>
+        <div class="flex w-full flex-wrap items-center justify-between gap-3">
+          <p id="feedback-readiness" class="text-xs text-muted-foreground" aria-live="polite">
+            {{ readinessMessage }}
+          </p>
+          <div class="flex flex-wrap justify-end gap-2">
+            <Button variant="outline" :disabled="capturing || openingGitHub" @click="updateOpen(false)">
+              {{ t('common.actions.cancel') }}
+            </Button>
+            <Button
+              :disabled="capturing || openingGitHub"
+              aria-describedby="feedback-readiness"
+              @click="openGitHubIssue"
+            >
+              <ExternalLink class="size-4" />
+              {{ openingGitHub ? t('feedback.actions.opening') : t('feedback.actions.openGitHub') }}
+            </Button>
+          </div>
         </div>
       </template>
     </ModalDialog>
