@@ -40,6 +40,57 @@ test('interface language switches in place without changing the Alibaba request 
   expect(bffRequests).toEqual([]);
 });
 
+test('feedback captures only on demand and opens a safe prefilled GitHub issue', async ({
+  context,
+  page
+}) => {
+  test.setTimeout(60_000);
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
+    origin: 'http://127.0.0.1:4173'
+  });
+  let requestedIssueUrl = '';
+  await context.route('https://github.com/OKFred/oneVegetable/issues/new**', async (route) => {
+    requestedIssueUrl = route.request().url();
+    await route.fulfill({
+      contentType: 'text/html',
+      body: '<!doctype html><title>GitHub issue preview</title>'
+    });
+  });
+
+  await page.goto('/#/settings');
+  await page.getByLabel('App Key').fill('must-not-enter-feedback-url');
+  await page.getByLabel('App Secret').fill('must-not-enter-feedback-url-secret');
+  await page.getByLabel('Access Token').fill('must-not-enter-feedback-url-token');
+  await page.getByTestId('feedback-launcher').click();
+  const dialog = page.getByRole('dialog', { name: '提交产品反馈' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('img', { name: '待提交的页面截图' })).toHaveCount(0);
+
+  await dialog.getByLabel('标题').fill('设置页反馈流程检查');
+  await dialog.getByLabel('详细说明').fill('验证截图由用户触发，并安全预填公开的 GitHub Issue。');
+  await dialog.getByLabel('复现步骤（选填）').fill('1. 打开设置页\n2. 点击反馈按钮');
+  await dialog.getByRole('button', { name: '截取当前页面' }).click();
+  await expect(dialog.getByRole('img', { name: '待提交的页面截图' })).toBeVisible({ timeout: 20_000 });
+  await expect(dialog.getByText(/\d+ × \d+ · \d+(?:\.\d+)? (?:KiB|MiB)/u)).toBeVisible();
+  await dialog.getByRole('checkbox').check();
+
+  const popupPromise = page.waitForEvent('popup');
+  await dialog.getByRole('button', { name: '复制截图并前往 GitHub' }).click();
+  const popup = await popupPromise;
+  await popup.waitForURL('https://github.com/OKFred/oneVegetable/issues/new**');
+  const issueUrl = new URL(requestedIssueUrl || popup.url());
+  expect(issueUrl.searchParams.get('template')).toBe('feedback.yml');
+  expect(issueUrl.searchParams.get('title')).toBe('[Bug] 设置页反馈流程检查');
+  expect(issueUrl.searchParams.get('details')).toContain('截图由用户触发');
+  expect(issueUrl.searchParams.get('environment')).toContain('Route: #/settings');
+  expect(issueUrl.href).not.toContain('must-not-enter-feedback-url');
+  const clipboardTypes = await page.evaluate(async () =>
+    (await navigator.clipboard.read()).flatMap((item) => item.types)
+  );
+  expect(clipboardTypes).toContain('image/png');
+  await popup.close();
+});
+
 test('web mock labels its in-process source and never calls the BFF', async ({ page }) => {
   const bffRequests: string[] = [];
   page.on('request', (request) => {
