@@ -1,7 +1,7 @@
 # oneVegetable Privacy Policy
 
-Effective date: September 2, 2026
-Applicable version: 2.2.0
+Effective date: September 3, 2026
+Applicable version: 2.2.1
 
 ## Single purpose
 
@@ -50,7 +50,7 @@ Use of user data follows the Chrome Web Store User Data Policy, including the Li
 - `https://eco.taobao.com/*`: calls the official Alibaba.com HTTPS Open Platform gateway;
 - optional `http://*/*` and `https://*/*`: Chrome access is requested for a specific host only when the user starts the authorization assistant, confirms the actual OAuth callback, configures a custom gateway, pairs a user-controlled social publishing BFF, or explicitly transfers an external image. The user can revoke each grant in Settings.
 
-The extension does not request cookies, browsing history, `tabs`, `webNavigation`, or a required `<all_urls>` permission. The authorization assistant does not create applications, accept platform agreements for the user, or bypass human verification. Gallery group management, image upload, external image transfer, and product display changes occur only after an explicit user action and confirmation. Other real write operations remain blocked before any network request leaves the extension background.
+The extension does not request cookies, browsing history, `tabs`, `webNavigation`, or a required `<all_urls>` permission. The authorization assistant does not create applications, accept platform agreements for the user, or bypass human verification. Platform drafts, new-product publishing, product display changes, gallery group management, image upload, and external image transfer occur only after an explicit user action and confirmation. Product Schema updates and other write operations not validated through the extension remain blocked before any network request leaves the extension background.
 
 ## Data control and retention
 
