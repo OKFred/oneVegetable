@@ -60,7 +60,7 @@ export const auth = {
     eyebrow: 'First use',
     title: 'Confirm data and API boundaries',
     introduction:
-      'You can browse the capability catalog and edit locally without OpenAPI credentials. Real reads require your own credentials. Gallery group management, image upload, and external-image transfer are enabled; other real writes remain disabled.',
+      'You can browse the capability catalog and edit locally without OpenAPI credentials. Real reads require your own credentials. Platform drafts, new-product publishing, product listing/unlisting, gallery group management, image upload, and external-image transfer are enabled; other unvalidated real writes remain disabled.',
     steps: {
       application:
         'Create or select an Online application in Alibaba Application Center, then obtain its App Key and App Secret.',

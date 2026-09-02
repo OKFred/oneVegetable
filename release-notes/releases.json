@@ -3,6 +3,45 @@
   "repositoryUrl": "https://github.com/OKFred/oneVegetable",
   "releases": [
     {
+      "version": "2.2.1",
+      "releasedAt": "2026-09-03",
+      "title": {
+        "zh-CN": "商店与隐私披露修复",
+        "en-US": "Store and privacy disclosure fix"
+      },
+      "summary": {
+        "zh-CN": "统一商店文案、首次引导和内置隐私页中的真实写能力说明，准确披露已经验收的平台草稿、正式发品与商品上下架。",
+        "en-US": "Aligns the store copy, onboarding, and bundled privacy pages with the verified platform draft, product publishing, and product display capabilities."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/releases/tag/v2.2.1",
+      "compareUrl": "https://github.com/OKFred/oneVegetable/compare/v2.2.0...v2.2.1",
+      "changes": [
+        {
+          "type": "fix",
+          "title": {
+            "zh-CN": "真实写能力说明保持一致",
+            "en-US": "Consistent real-write disclosures"
+          },
+          "description": {
+            "zh-CN": "商店资料和首次引导不再把已开放的平台草稿与正式发品误写为关闭状态。",
+            "en-US": "Store materials and onboarding no longer describe the verified platform draft and product publishing paths as disabled."
+          }
+        },
+        {
+          "type": "security",
+          "title": {
+            "zh-CN": "更新内置隐私页",
+            "en-US": "Updated bundled privacy pages"
+          },
+          "description": {
+            "zh-CN": "中英文隐私页明确区分已验收写能力和仍在后台阻断的未验收操作。",
+            "en-US": "The Chinese and English privacy pages now distinguish verified writes from unvalidated operations that remain blocked in the background."
+          }
+        }
+      ]
+    },
+    {
       "version": "2.2.0",
       "releasedAt": "2026-09-02",
       "title": {

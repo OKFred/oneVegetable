@@ -90,9 +90,16 @@ if (listing.permissions?.length !== 4) errors.push('store permission inventory m
 const enabledRealMutations = listing.submissionStatus?.enabledRealMutations ?? [];
 if (
   JSON.stringify(enabledRealMutations) !==
-  JSON.stringify(['updateProductDisplay', 'operatePhotoGroup', 'uploadPhoto', 'transferPhotoFromUrl'])
+  JSON.stringify([
+    'saveProductDraft',
+    'publishProduct',
+    'updateProductDisplay',
+    'operatePhotoGroup',
+    'uploadPhoto',
+    'transferPhotoFromUrl'
+  ])
 ) {
-  errors.push('store listing must disclose the exact reviewed product and gallery mutation set');
+  errors.push('store listing must disclose the exact reviewed product creation and gallery mutation set');
 }
 if (listing.submissionStatus?.otherRealMutationsEnabled !== false) {
   errors.push('unreviewed real mutations must remain disabled');
@@ -175,7 +182,9 @@ for (const [file, content] of [
     '自动锁定',
     '当前 Chrome 会话',
     '浏览器重启',
-    '真实写'
+    '平台草稿',
+    '正式发品',
+    '真实验收'
   ]) {
     if (!content.includes(phrase)) errors.push(`${file} is missing disclosure phrase: ${phrase}`);
   }
@@ -196,7 +205,9 @@ for (const [file, content] of [
     'current Chrome session',
     'browser restarts',
     'selected idle timeout expires',
-    'real write'
+    'Platform drafts',
+    'new-product publishing',
+    'not validated'
   ]) {
     if (!content.includes(phrase)) errors.push(`${file} is missing disclosure phrase: ${phrase}`);
   }
