@@ -46,6 +46,9 @@ Alibaba CDN 对该素材返回 `Content-Type: image/jpeg` 和 `.jpg` 文件名�
 - Instagram Business/Creator 专业账号 OAuth 与目标发现。
 - Instagram media container 创建、状态轮询和最终发布的真实平台行为。
 - Cloudflare Worker + R2 路径下的真实 Meta 发布。
-- Chrome 插件通过设备配对令牌执行真实 Facebook 发布。
 
 上述能力已有契约、适配器和自动测试，但在获得对应账号或部署环境并完成外部 smoke 前，不应标记为平台侧已验证。
+
+## Chrome 插件配对发布补充验证
+
+2026-09-02，Chrome 插件通过 30 天设备令牌与用户自托管 Worker 配对后，成功发现一个可发布目标，并完成一次人工确认的 Facebook 单图发布。平台返回发布 ID `1364867756699027_122103092019456929`，插件随后通过用户主动触发的永久链接查询展示帖子入口。验证期间没有把 Meta App Secret、用户 Token 或 Page Token保存到插件。

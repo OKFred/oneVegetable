@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "extensionVersion": "2.1.0",
+  "extensionVersion": "2.2.0",
   "singlePurpose": "A user-operated workspace for managing Alibaba.com international products, gallery assets, RFQs, trade and logistics through documented APIs, including publishing a selected gallery image to the user's connected business social account.",
   "category": "productivity",
   "defaultLocale": "zh_CN",
