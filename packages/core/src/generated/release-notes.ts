@@ -4,6 +4,103 @@ export const RELEASE_NOTES_DOCUMENT = {
   repositoryUrl: 'https://github.com/OKFred/oneVegetable',
   releases: [
     {
+      version: '2.2.0',
+      releasedAt: '2026-09-02',
+      title: {
+        'zh-CN': '双语工作台与社交发布',
+        'en-US': 'Bilingual workspace and social publishing'
+      },
+      summary: {
+        'zh-CN':
+          '加入完整中英文界面、受控的 Facebook/Instagram 单图发布、扩展真实发品闭环，以及更清晰的反馈与日常运营体验。',
+        'en-US':
+          'Adds a complete Chinese and English interface, guarded Facebook and Instagram single-image publishing, verified extension product creation, and clearer feedback and daily operations.'
+      },
+      source: 'release',
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.2.0',
+      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.1.0...v2.2.0',
+      changes: [
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '完整中英文界面',
+            'en-US': 'Complete Chinese and English interface'
+          },
+          description: {
+            'zh-CN':
+              '工作台、登录、弹窗、提示和扩展 Popup 均可即时切换中英文，且界面语言与 Alibaba 接口语言保持独立。',
+            'en-US':
+              'Switches the workspace, authentication, dialogs, notices, and extension popup between Chinese and English without coupling the UI locale to the Alibaba API language.'
+          }
+        },
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '图库素材社交发布',
+            'en-US': 'Social publishing for gallery media'
+          },
+          description: {
+            'zh-CN':
+              '支持连接用户自己的 Meta 应用和自托管后端，把一张图库图片经二次确认发布到 Facebook Page 或 Instagram 专业账号，并按需查询帖子链接。',
+            'en-US':
+              "Connects the user's own Meta app and self-hosted backend to publish one confirmed gallery image to a Facebook Page or Instagram professional account and retrieve its post link on demand."
+          }
+        },
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '插件真实发品安全闭环',
+            'en-US': 'Guarded real product creation in the extension'
+          },
+          description: {
+            'zh-CN':
+              '开放已验证的平台草稿、正式发品和商品上下架能力，使用持久任务、指纹去重、错误保留和平台回读避免重复写入。',
+            'en-US':
+              'Enables verified platform drafts, product publishing, and product display changes with persistent jobs, fingerprint deduplication, retained errors, and platform read-back checks.'
+          }
+        },
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '商品与图库操作更高效',
+            'en-US': 'More efficient product and gallery workflows'
+          },
+          description: {
+            'zh-CN':
+              '发品预检更多采用非阻断提示，优化平台错误展示、整数数量价格、图库列表视图、日期时间格式和常用操作布局。',
+            'en-US':
+              'Makes more product preflight findings advisory, improves platform error details, integer quantity prices, the gallery list view, date and time formatting, and common action layouts.'
+          }
+        },
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '本地反馈与评价提醒',
+            'en-US': 'Local feedback and review reminder'
+          },
+          description: {
+            'zh-CN':
+              '可在本机脱敏预览截图后前往 GitHub 提交反馈，并在使用满七天后以克制频率邀请用户前往 Chrome 应用商店评价。',
+            'en-US':
+              'Lets users preview a locally redacted screenshot before opening a GitHub feedback form and offers a restrained Chrome Web Store review reminder after seven days of use.'
+          }
+        },
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '更简洁的工作台',
+            'en-US': 'A cleaner workspace'
+          },
+          description: {
+            'zh-CN':
+              '简化身份与状态信息，增加本地待办、RFQ 官网指引、版本更新页及更稳定的弹窗和无障碍交互。',
+            'en-US':
+              'Simplifies identity and status chrome while adding local todos, official RFQ guidance, release notes, and more reliable dialogs and accessible interactions.'
+          }
+        }
+      ]
+    },
+    {
       version: '2.1.0',
       releasedAt: '2026-08-31',
       title: {
