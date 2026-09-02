@@ -5,6 +5,7 @@ import {
   GatewayException,
   BundledProductDescriptionTemplateClient,
   BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA,
+  CHROME_WEB_STORE_REVIEW_URL,
   ExtensionProductMutationJobClient,
   EXTENSION_SOCIAL_BACKEND_STORAGE_KEY,
   approximateStorageBytes,
@@ -12,6 +13,9 @@ import {
   LEGACY_APP_PREFERENCES_STORAGE_KEY,
   completeOnboarding,
   createLocalDataInventory,
+  evaluateExtensionReviewPrompt,
+  EXTENSION_REVIEW_PROMPT_STORAGE_KEY,
+  markExtensionReviewLinkOpened,
   normalizeGatewayError,
   ONBOARDING_STORAGE_KEY,
   readOnboardingState,
@@ -27,6 +31,7 @@ import {
   type ExtensionAlibabaCredentialAcquisitionRequest,
   type ExtensionAlibabaCredentialAcquisitionResponse,
   type ExtensionSocialBackendRepository,
+  type ExtensionReviewPromptRepository,
   type ExtensionSocialBackendStatus,
   type ExtensionSocialDevice,
   type AlibabaCredentialAcquisitionContinueCommand,
@@ -337,6 +342,24 @@ const onboarding: OnboardingRepository = {
     const state = completeOnboarding();
     await browser.storage.local.set({ [ONBOARDING_STORAGE_KEY]: state });
     return state;
+  }
+};
+
+const reviewPrompt: ExtensionReviewPromptRepository = {
+  async claimDuePrompt() {
+    const stored = await browser.storage.local.get(EXTENSION_REVIEW_PROMPT_STORAGE_KEY);
+    const evaluation = evaluateExtensionReviewPrompt(stored[EXTENSION_REVIEW_PROMPT_STORAGE_KEY]);
+    await browser.storage.local.set({ [EXTENSION_REVIEW_PROMPT_STORAGE_KEY]: evaluation.state });
+    return evaluation.due;
+  },
+  async openStoreReview() {
+    await browser.tabs.create({ active: true, url: CHROME_WEB_STORE_REVIEW_URL });
+    const stored = await browser.storage.local.get(EXTENSION_REVIEW_PROMPT_STORAGE_KEY);
+    await browser.storage.local.set({
+      [EXTENSION_REVIEW_PROMPT_STORAGE_KEY]: markExtensionReviewLinkOpened(
+        stored[EXTENSION_REVIEW_PROMPT_STORAGE_KEY]
+      )
+    });
   }
 };
 
@@ -675,6 +698,7 @@ async function mountOptionsApp(): Promise<void> {
     permissions,
     localData,
     onboarding,
+    reviewPrompt,
     vault,
     alibabaCredentialAcquisition,
     extensionSocialBackend,

@@ -32,6 +32,7 @@ import type {
   ExtensionAlibabaCredentialAcquisitionRepository,
   ControlClient,
   ControlSession,
+  ExtensionReviewPromptRepository,
   GatewayClient,
   HostPermissionsRepository,
   LocalDataRepository,
@@ -50,6 +51,7 @@ import Sonner from './components/ui/Sonner.vue';
 import Tooltip from './components/ui/Tooltip.vue';
 import AuthGate from './components/AuthGate.vue';
 import FeedbackLauncher from './components/FeedbackLauncher.vue';
+import ExtensionReviewPrompt from './components/ExtensionReviewPrompt.vue';
 import LanguageToggle from './components/LanguageToggle.vue';
 import OnboardingDialog from './components/OnboardingDialog.vue';
 import ThemeToggle from './components/ThemeToggle.vue';
@@ -73,6 +75,7 @@ const props = defineProps<{
   productDescriptionTemplates?: ProductDescriptionTemplateClient;
   productMutationJobs?: ProductMutationJobClient;
   operationAvailability?: OperationAvailabilityClient;
+  reviewPrompt?: ExtensionReviewPromptRepository;
   mode: 'mock' | 'extension' | 'bff';
 }>();
 const runtime = reactive<RuntimeState>({
@@ -312,6 +315,10 @@ function avatarInitials(name: string): string {
       @authenticated="handleAuthenticated"
     />
     <OnboardingDialog @ready="handleOnboardingReady" />
+    <ExtensionReviewPrompt
+      v-if="mode === 'extension' && workspaceReady && reviewPrompt"
+      :repository="reviewPrompt"
+    />
     <FeedbackLauncher :mode="mode" />
     <template v-if="!authLoading && (mode !== 'bff' || session) && workspaceReady">
       <aside

@@ -14,6 +14,7 @@ export * from './errors';
 export * from './diagnostics';
 export * from './dashboard-adapter';
 export * from './encoded-file';
+export * from './extension-review-prompt';
 export * from './extension-social-backend';
 export * from './network';
 export * from './operation-availability';
