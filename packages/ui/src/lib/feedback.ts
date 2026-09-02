@@ -24,6 +24,7 @@ export interface GitHubFeedbackInput {
   details: string;
   environment: FeedbackEnvironmentInput;
   kind: FeedbackKind;
+  kindFormValue: string;
   reproduction: string;
   title: string;
 }
@@ -32,7 +33,7 @@ export function buildGitHubFeedbackUrl(input: GitHubFeedbackInput): string {
   const url = new URL(GITHUB_FEEDBACK_URL);
   url.searchParams.set('template', 'feedback.yml');
   url.searchParams.set('title', `${feedbackTitlePrefix(input.kind)} ${normalizeLine(input.title)}`);
-  url.searchParams.set('kind', feedbackKindFormValue(input.kind));
+  url.searchParams.set('kind', normalizeLine(input.kindFormValue));
   url.searchParams.set('details', normalizeMultiline(input.details));
   url.searchParams.set('reproduction', normalizeMultiline(input.reproduction));
   url.searchParams.set('environment', formatFeedbackEnvironment(input.environment));
@@ -80,12 +81,6 @@ export function operatingSystemSummary(userAgent: string): string {
   if (userAgent.includes('Mac OS X')) return 'macOS';
   if (userAgent.includes('Linux')) return 'Linux';
   return 'Unknown';
-}
-
-function feedbackKindFormValue(kind: FeedbackKind): string {
-  if (kind === 'bug') return '问题 / Bug';
-  if (kind === 'experience') return '体验建议 / UX feedback';
-  return '功能建议 / Feature request';
 }
 
 function feedbackTitlePrefix(kind: FeedbackKind): string {

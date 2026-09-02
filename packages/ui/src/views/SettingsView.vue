@@ -759,7 +759,12 @@ function confirmLanguagePreference(): void {
       </div>
       <div class="grid gap-4 sm:grid-cols-2">
         <label class="text-sm font-medium"
-          >App Key<Input v-model="model.appKey" class="mt-2" autocomplete="off" aria-label="App Key"
+          >App Key<Input
+            v-model="model.appKey"
+            class="mt-2"
+            autocomplete="off"
+            aria-label="App Key"
+            data-feedback-redact
         /></label>
         <label class="text-sm font-medium"
           >App Secret<Input

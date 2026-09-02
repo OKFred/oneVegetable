@@ -239,7 +239,11 @@ const columns = computed<DataColumn<TradeOrderSummary>[]>(() => [
         row.original.id
       )
   },
-  { accessorKey: 'buyerLoginId', header: t('orders.columns.buyer') },
+  {
+    accessorKey: 'buyerLoginId',
+    header: t('orders.columns.buyer'),
+    cell: ({ row }) => h('span', { 'data-feedback-redact': '' }, row.original.buyerLoginId ?? '—')
+  },
   {
     id: 'amount',
     header: t('orders.columns.amount'),
@@ -359,7 +363,7 @@ onBeforeUnmount(() => {
   <template v-if="workspace === 'orders'">
     <Card class="mb-4 p-4">
       <div class="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-        <Input v-model="buyerLoginId" :placeholder="t('orders.filters.buyer')" />
+        <Input v-model="buyerLoginId" data-feedback-redact :placeholder="t('orders.filters.buyer')" />
         <select v-model="status" class="h-9 rounded-md border bg-background px-3 text-sm">
           <option value="">{{ t('orders.filters.allStatuses') }}</option>
           <option value="unpay">{{ t('orders.filters.unpay') }}</option>
@@ -491,7 +495,7 @@ onBeforeUnmount(() => {
         </label>
         <label class="space-y-1 text-sm">
           <span>{{ t('orders.addresses.buyerEmail') }}</span>
-          <Input v-model="buyerEmail" type="email" placeholder="buyer@example.com" />
+          <Input v-model="buyerEmail" type="email" data-feedback-redact placeholder="buyer@example.com" />
         </label>
       </div>
       <p class="mt-3 text-xs text-muted-foreground">{{ t('orders.addresses.privacy') }}</p>
@@ -537,6 +541,7 @@ onBeforeUnmount(() => {
             v-for="address in addresses.data.value ?? []"
             :key="address.id"
             class="mt-3 rounded-lg border p-3 text-sm"
+            data-feedback-redact
           >
             <div class="flex items-center gap-2">
               <MapPin class="size-4 text-primary" />
@@ -564,7 +569,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <div class="mt-5 grid gap-3 md:grid-cols-2">
-        <Input v-model="draftBuyer" :placeholder="t('orders.assurance.buyer')" />
+        <Input v-model="draftBuyer" data-feedback-redact :placeholder="t('orders.assurance.buyer')" />
         <Input v-model="draftCurrency" :placeholder="t('orders.assurance.currency')" />
         <Input v-model="draftProductId" :placeholder="t('orders.assurance.productId')" />
         <Input v-model="draftSubject" :placeholder="t('orders.assurance.subject')" />
@@ -663,7 +668,9 @@ onBeforeUnmount(() => {
               </div>
               <div>
                 <p class="text-xs text-muted-foreground">{{ t('orders.drawer.buyer') }}</p>
-                <p class="mt-1 font-medium">{{ selectedOrder.buyerLoginId ?? t('orders.notReturned') }}</p>
+                <p class="mt-1 font-medium" data-feedback-redact>
+                  {{ selectedOrder.buyerLoginId ?? t('orders.notReturned') }}
+                </p>
               </div>
               <div>
                 <p class="text-xs text-muted-foreground">{{ t('orders.drawer.createdAt') }}</p>
@@ -727,7 +734,7 @@ onBeforeUnmount(() => {
           retryable
           @retry="ttAccount.refetch()"
         >
-          <Card v-if="ttAccount.data.value" class="space-y-4 p-5">
+          <Card v-if="ttAccount.data.value" class="space-y-4 p-5" data-feedback-redact>
             <div class="grid gap-4 sm:grid-cols-2">
               <div>
                 <p class="text-xs text-muted-foreground">{{ t('orders.drawer.payable') }}</p>

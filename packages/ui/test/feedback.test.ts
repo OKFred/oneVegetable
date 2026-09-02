@@ -28,6 +28,7 @@ describe('GitHub feedback', () => {
         details: '保存后没有提示。',
         environment,
         kind: 'bug',
+        kindFormValue: '问题 / Bug',
         reproduction: '1. 打开设置\n2. 点击保存',
         title: '保存设置无反馈'
       })
@@ -67,6 +68,7 @@ describe('GitHub feedback', () => {
         details: '很'.repeat(2_000),
         environment,
         kind: 'feature',
+        kindFormValue: '功能建议 / Feature request',
         reproduction: '',
         title: '较长反馈'
       })

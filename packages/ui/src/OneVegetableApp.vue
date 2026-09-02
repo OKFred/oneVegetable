@@ -49,6 +49,7 @@ import { Avatar, AvatarFallback } from './components/ui/avatar';
 import Sonner from './components/ui/Sonner.vue';
 import Tooltip from './components/ui/Tooltip.vue';
 import AuthGate from './components/AuthGate.vue';
+import FeedbackLauncher from './components/FeedbackLauncher.vue';
 import LanguageToggle from './components/LanguageToggle.vue';
 import OnboardingDialog from './components/OnboardingDialog.vue';
 import ThemeToggle from './components/ThemeToggle.vue';
@@ -294,7 +295,7 @@ function avatarInitials(name: string): string {
 </script>
 
 <template>
-  <div class="min-h-screen bg-background text-foreground">
+  <div class="min-h-screen bg-background text-foreground" data-feedback-capture-root>
     <Sonner :theme="darkTheme ? 'dark' : 'light'" />
     <div v-if="authLoading" class="grid min-h-screen place-items-center text-sm text-muted-foreground">
       {{ t('shell.checkingSession') }}
@@ -311,6 +312,7 @@ function avatarInitials(name: string): string {
       @authenticated="handleAuthenticated"
     />
     <OnboardingDialog @ready="handleOnboardingReady" />
+    <FeedbackLauncher :mode="mode" />
     <template v-if="!authLoading && (mode !== 'bff' || session) && workspaceReady">
       <aside
         id="app-primary-navigation"

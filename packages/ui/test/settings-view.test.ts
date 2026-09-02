@@ -247,12 +247,15 @@ describe('SettingsView diagnostics', () => {
     expect((wrapper.get('input[aria-label="App Key"]').element as HTMLInputElement).value).toBe(
       'imported-key'
     );
+    expect(wrapper.get('input[aria-label="App Key"]').attributes('data-feedback-redact')).toBe('');
     expect((wrapper.get('input[aria-label="App Secret"]').element as HTMLInputElement).value).toBe(
       'imported-secret'
     );
+    expect(wrapper.get('input[aria-label="App Secret"]').attributes('type')).toBe('password');
     expect((wrapper.get('input[aria-label="Access Token"]').element as HTMLInputElement).value).toBe(
       'imported-token'
     );
+    expect(wrapper.get('input[aria-label="Access Token"]').attributes('type')).toBe('password');
     expect(wrapper.text()).toContain('尚未保存');
     expect(createVault).not.toHaveBeenCalled();
     wrapper.unmount();

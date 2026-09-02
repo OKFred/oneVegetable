@@ -187,7 +187,9 @@ function clearEnrollmentToken(): void {
         <div
           class="grid grid-cols-2 gap-2 rounded-lg border border-slate-700 bg-slate-950 p-4 font-mono text-xs"
         >
-          <code v-for="code in recoveryCodes" :key="code" class="select-all break-all">{{ code }}</code>
+          <code v-for="code in recoveryCodes" :key="code" class="select-all break-all" data-feedback-redact>{{
+            code
+          }}</code>
         </div>
         <p class="text-xs text-amber-300">
           {{ t('auth.recoveryCodes.warning') }}
@@ -299,11 +301,23 @@ function clearEnrollmentToken(): void {
           class="block space-y-1.5 text-sm"
         >
           <span>{{ t('auth.fields.username') }}</span>
-          <Input v-model="username" name="username" autocomplete="username webauthn" required />
+          <Input
+            v-model="username"
+            name="username"
+            autocomplete="username webauthn"
+            data-feedback-redact
+            required
+          />
         </label>
         <label v-if="mode === 'recovery'" class="block space-y-1.5 text-sm">
           <span>{{ t('auth.fields.recoveryCode') }}</span>
-          <Input v-model="recoveryCode" name="recoveryCode" autocomplete="off" required />
+          <Input
+            v-model="recoveryCode"
+            name="recoveryCode"
+            autocomplete="off"
+            data-feedback-redact
+            required
+          />
         </label>
         <label v-if="!passkeyMode" class="block space-y-1.5 text-sm">
           <span>{{ t('auth.fields.password') }}</span>
