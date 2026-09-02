@@ -25,8 +25,7 @@ test('authenticated Web uses Worker, D1 and documentation replay across every do
   await page.getByRole('button', { name: '创建管理员' }).click();
 
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
-  await expect(page.getByTestId('data-source-status')).toHaveText(/文档 Replay/);
-  await expect(page.getByText('replay-admin')).toBeVisible();
+  await expect(page.getByTestId('account-avatar')).toHaveAttribute('aria-label', '当前用户：replay-admin');
   await expectOperation(successfulOperations, 'getDashboard');
 
   await openDomain(page, successfulOperations, '商品', '商品管理', ['listProducts']);

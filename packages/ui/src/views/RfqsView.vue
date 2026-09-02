@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, h, ref, watch } from 'vue';
 import { useMutation, useQuery } from '@tanstack/vue-query';
-import { FileText, Paperclip, Save, Search, Send, ShieldAlert, Sparkles } from '@lucide/vue';
+import { ExternalLink, FileText, Paperclip, Save, Search, Send, ShieldAlert, Sparkles } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
 import {
@@ -433,6 +433,14 @@ const columns = computed<DataColumn<RfqSummary>[]>(() => [
           traceId：{{ rfqAccessError.traceId }}
         </p>
         <div class="mt-4 flex flex-wrap gap-2">
+          <a
+            href="https://sourcing.alibaba.com/"
+            class="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            target="_blank"
+            rel="noreferrer"
+          >
+            {{ t('rfqs.permissions.marketplace') }}<ExternalLink class="size-3.5" />
+          </a>
           <Button variant="outline" size="sm" :disabled="equity.isFetching.value" @click="equity.refetch()">
             {{ equity.isFetching.value ? t('rfqs.permissions.checking') : t('rfqs.permissions.retry') }}
           </Button>

@@ -13,6 +13,7 @@ export const rfqs = {
       'Alibaba 返回 {code} / {subCode}。页面已停止继续请求搜索、推荐、详情和已读状态，避免重复失败。',
     checking: '检测中…',
     retry: '重新检测权限',
+    marketplace: '前往 Alibaba.com RFQ 市场',
     docs: '查看 RFQ 接口文档',
     failedTitle: 'RFQ 权限检查失败',
     retryLater: '请稍后重试。',

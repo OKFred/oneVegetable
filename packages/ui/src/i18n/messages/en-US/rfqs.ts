@@ -14,6 +14,7 @@ export const rfqs = {
       'Alibaba returned {code} / {subCode}. Further search, recommendation, detail, and read-status requests have been stopped to avoid repeated failures.',
     checking: 'Checking…',
     retry: 'Check permission again',
+    marketplace: 'Open the Alibaba.com RFQ marketplace',
     docs: 'View RFQ API documentation',
     failedTitle: 'RFQ permission check failed',
     retryLater: 'Try again later.',

@@ -9,6 +9,11 @@ export const shell = {
   openWorkspace: '打开运营工作台',
   popupDescription: '开发模式由 WXT 自动重载；真实 API 请求由扩展 service worker 发起。',
   logout: '退出',
+  identity: {
+    extensionAdmin: '本机管理员',
+    localDemo: '本地演示用户',
+    avatarLabel: '当前用户：{name}'
+  },
   navigation: {
     dashboard: '总览',
     products: '商品',
@@ -39,11 +44,19 @@ export const shell = {
       capabilities: '已启用能力',
       capabilitiesDescription: '项目内已启用的合格能力'
     },
-    iterationStatus: '本迭代状态',
-    openApiContract: 'OpenAPI 3.1 契约',
-    migrated: '已迁移',
-    enabled: '已启用',
-    schemaReplacement: 'Schema 替代',
-    legacyPublishing: '旧版发品流程'
+    todo: {
+      title: '本地待办',
+      description: '仅保存在当前浏览器，不会同步到后端。',
+      placeholder: '添加待办事项…',
+      add: '添加',
+      empty: '还没有待办事项',
+      remaining: '{count} 项未完成',
+      markCompleted: '将“{text}”标记为已完成',
+      markActive: '将“{text}”标记为未完成',
+      delete: '删除“{text}”',
+      clearCompleted: '清除已完成（{count}）',
+      storageError: '无法写入浏览器本地存储，本次更改可能在刷新后丢失。',
+      limitReached: '最多保留 {count} 项待办，请完成或删除一些项目后再添加。'
+    }
   }
 } as const;

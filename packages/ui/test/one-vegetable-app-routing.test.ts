@@ -148,19 +148,24 @@ describe('OneVegetableApp hash navigation', () => {
 
   it('rejects the admin path for a regular BFF user', async () => {
     globalThis.history.replaceState(null, '', '#/admin');
+    const TooltipStub = defineComponent({
+      props: { text: { type: String, required: true } },
+      template: '<span><slot /></span>'
+    });
     const wrapper = shallowMount(OneVegetableApp, {
       props: {
         gateway: new MockGatewayClient(0),
         settings,
         control: regularUserControl(),
         mode: 'bff'
-      }
+      },
+      global: { stubs: { Tooltip: TooltipStub } }
     });
     await flushPromises();
 
     expect(globalThis.location.hash).toBe('#/dashboard');
     expect(wrapper.find('nav a[href="#/admin"]').exists()).toBe(false);
-    expect(wrapper.text()).toContain('文档 Replay');
+    expect(wrapper.get('[data-testid="account-avatar"]').attributes('aria-label')).toBe('当前用户：member');
     wrapper.unmount();
   });
 });
