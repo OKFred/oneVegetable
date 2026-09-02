@@ -13,12 +13,14 @@ describe('ReleaseNotesView', () => {
 
     expect(wrapper.get('h1').text()).toBe('版本更新');
     expect(wrapper.text()).toContain(`v${APP_VERSION}`);
+    expect(wrapper.text()).toContain('双语工作台与社交发布');
     expect(wrapper.text()).toContain('开放平台凭据向导');
     expect(wrapper.text()).toContain('商品详情模板与弹窗稳定性');
     expect(wrapper.text()).toContain('MV3 工程化版本基线');
+    expect(wrapper.text()).toContain('2026-09-02');
     expect(wrapper.text()).toContain('2026-08-31');
     expect(wrapper.text()).not.toContain('2026年');
-    expect(wrapper.findAll('[aria-label="正式版本更新记录"] > li')).toHaveLength(3);
+    expect(wrapper.findAll('[aria-label="正式版本更新记录"] > li')).toHaveLength(4);
   });
 
   it('links to GitHub without requiring a runtime API client', () => {
