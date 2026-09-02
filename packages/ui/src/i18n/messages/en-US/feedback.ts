@@ -43,7 +43,7 @@ export const feedback = {
     acknowledge: 'I reviewed the text and screenshot and they are safe to publish.'
   },
   actions: {
-    openGitHub: 'Copy screenshot and open GitHub',
+    openGitHub: 'Copy screenshot, open GitHub, and paste',
     opening: 'Preparing GitHub…'
   },
   readiness: {
@@ -51,7 +51,7 @@ export const feedback = {
     details: 'Enter at least 10 characters in Details.',
     screenshot: 'Capture and review the current page.',
     acknowledgement: 'Confirm that the feedback is safe to publish.',
-    ready: 'Ready to copy the screenshot and open GitHub.'
+    ready: 'Ready to copy the screenshot, open GitHub, and paste it.'
   },
   status: {
     clipboardReady: 'Screenshot copied. Paste it into the GitHub screenshot field with Ctrl+V.',

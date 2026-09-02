@@ -75,7 +75,7 @@ test('feedback captures only on demand and opens a safe prefilled GitHub issue',
   await dialog.getByRole('checkbox').check();
 
   const popupPromise = page.waitForEvent('popup');
-  await dialog.getByRole('button', { name: '复制截图并前往 GitHub' }).click();
+  await dialog.getByRole('button', { name: '复制截图并前往 GitHub粘贴', exact: true }).click();
   const popup = await popupPromise;
   await popup.waitForURL('https://github.com/OKFred/oneVegetable/issues/new**');
   const issueUrl = new URL(requestedIssueUrl || popup.url());

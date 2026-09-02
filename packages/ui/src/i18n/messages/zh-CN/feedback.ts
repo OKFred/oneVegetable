@@ -41,7 +41,7 @@ export const feedback = {
     acknowledge: '我已检查文字和截图，可以公开提交。'
   },
   actions: {
-    openGitHub: '复制截图并前往 GitHub',
+    openGitHub: '复制截图并前往 GitHub粘贴',
     opening: '正在准备 GitHub…'
   },
   readiness: {
@@ -49,7 +49,7 @@ export const feedback = {
     details: '还需填写至少 10 个字的详细说明。',
     screenshot: '还需截取并检查当前页面。',
     acknowledgement: '还需勾选“可以公开提交”。',
-    ready: '已准备好，可以复制截图并前往 GitHub。'
+    ready: '已准备好，可以复制截图并前往 GitHub粘贴。'
   },
   status: {
     clipboardReady: '截图已复制。请在 GitHub 的截图区域按 Ctrl+V 粘贴。',
