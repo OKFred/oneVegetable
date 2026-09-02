@@ -10,6 +10,7 @@ import { orders } from './orders';
 import { photos } from './photos';
 import { products } from './products';
 import { releases } from './releases';
+import { reviewPrompt } from './review-prompt';
 import { rfqs } from './rfqs';
 import { settings } from './settings';
 import { shell } from './shell';
@@ -29,5 +30,6 @@ export const enUS = {
   logistics,
   capabilities,
   settings,
-  releases
+  releases,
+  reviewPrompt
 } as const;

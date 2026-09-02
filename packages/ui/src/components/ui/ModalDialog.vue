@@ -21,8 +21,9 @@ withDefaults(
     title: string;
     description?: string | undefined;
     size?: 'sm' | 'md' | 'lg';
+    showClose?: boolean;
   }>(),
-  { description: undefined, size: 'md' }
+  { description: undefined, showClose: true, size: 'md' }
 );
 
 const emit = defineEmits<{ 'update:open': [open: boolean] }>();
@@ -46,7 +47,7 @@ const emit = defineEmits<{ 'update:open': [open: boolean] }>();
               {{ description }}
             </DialogDescription>
           </div>
-          <DialogClose as-child>
+          <DialogClose v-if="showClose" as-child>
             <Button variant="ghost" size="icon" :aria-label="t('common.dialog.closeNamed', { title })">
               <X class="size-4" />
             </Button>
