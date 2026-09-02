@@ -13,6 +13,13 @@ export { parseAlibabaOpenApiCredentialBundle } from './alibaba-credential-bundle
 export type { AlibabaOpenApiCredentialBundle } from './alibaba-credential-bundle';
 export { BffGatewayClient } from './bff-client';
 export { BffControlClient } from './control-client';
+export {
+  CHROME_WEB_STORE_REVIEW_URL,
+  evaluateExtensionReviewPrompt,
+  EXTENSION_REVIEW_PROMPT_STORAGE_KEY,
+  markExtensionReviewLinkOpened
+} from './extension-review-prompt';
+export type { ExtensionReviewPromptRepository } from './extension-review-prompt';
 export { EXTENSION_SOCIAL_BACKEND_STORAGE_KEY } from './extension-social-backend';
 export {
   CREDENTIAL_VAULT_ITERATIONS,

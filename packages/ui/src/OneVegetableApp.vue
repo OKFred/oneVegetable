@@ -32,6 +32,7 @@ import type {
   ExtensionAlibabaCredentialAcquisitionRepository,
   ControlClient,
   ControlSession,
+  ExtensionReviewPromptRepository,
   GatewayClient,
   HostPermissionsRepository,
   LocalDataRepository,
@@ -73,6 +74,7 @@ const props = defineProps<{
   productDescriptionTemplates?: ProductDescriptionTemplateClient;
   productMutationJobs?: ProductMutationJobClient;
   operationAvailability?: OperationAvailabilityClient;
+  reviewPrompt?: ExtensionReviewPromptRepository;
   mode: 'mock' | 'extension' | 'bff';
 }>();
 const runtime = reactive<RuntimeState>({
