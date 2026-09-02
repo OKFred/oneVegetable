@@ -160,9 +160,16 @@ test('MV3 options page persists settings and exposes the audited catalog', async
     lastPromptTimeUtc: secondDueTime - EXTENSION_REVIEW_PROMPT_INTERVAL_MILLISECONDS,
     reviewLinkOpenedTimeUtc: null
   });
+  await page.evaluate(() => {
+    localStorage.setItem(
+      'one-vegetable:preferences:v2',
+      JSON.stringify({ uiLocale: 'zh-CN', alibabaLanguage: 'zh_CN', theme: 'dark' })
+    );
+  });
   await page.reload();
   const secondReviewDialog = page.getByRole('dialog', { name: '用得不错？赏个评价。' });
   await expect(secondReviewDialog).toBeVisible();
+  await expect(page.locator('html')).toHaveClass(/dark/u);
   const reviewPagePromise = browserContext.waitForEvent('page');
   await secondReviewDialog.getByRole('button', { name: '去评价' }).click();
   const reviewPage = await reviewPagePromise;

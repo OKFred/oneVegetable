@@ -91,6 +91,34 @@ describe('ExtensionReviewPrompt', () => {
     expect(globalThis.document.body.textContent).not.toContain('用得不错？赏个评价。');
     wrapper.unmount();
   });
+
+  it.each([
+    ['the overlay', () => globalThis.document.body.querySelector<HTMLElement>('.ov-dialog-overlay')?.click()],
+    [
+      'Escape',
+      () =>
+        globalThis.document.dispatchEvent(
+          new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Escape' })
+        )
+    ]
+  ])('treats closing with %s as maybe later', async (_label, closeDialog) => {
+    const wrapper = mount(ExtensionReviewPrompt, {
+      attachTo: globalThis.document.body,
+      props: {
+        repository: {
+          claimDuePrompt: () => Promise.resolve(true),
+          openStoreReview: () => Promise.resolve()
+        }
+      }
+    });
+    await flushPromises();
+
+    closeDialog();
+    await flushPromises();
+
+    expect(globalThis.document.body.textContent).not.toContain('用得不错？赏个评价。');
+    wrapper.unmount();
+  });
 });
 
 function actionButtons(): HTMLButtonElement[] {
