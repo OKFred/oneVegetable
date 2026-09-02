@@ -66,6 +66,11 @@ describe('OneVegetableApp hash navigation', () => {
           );
       }
     });
+    const ReviewPromptStub = defineComponent({
+      setup() {
+        return () => h('div', { 'data-testid': 'review-prompt' });
+      }
+    });
     const wrapper = shallowMount(OneVegetableApp, {
       props: {
         gateway: new MockGatewayClient(0),
@@ -74,17 +79,25 @@ describe('OneVegetableApp hash navigation', () => {
           load: () => Promise.resolve({ version: 1 as const, completedAt: null }),
           complete: () => Promise.resolve({ version: 1 as const, completedAt: '2026-08-28T00:00:00.000Z' })
         },
+        reviewPrompt: {
+          claimDuePrompt: () => Promise.resolve(false),
+          openStoreReview: () => Promise.resolve()
+        },
         mode: 'extension'
       },
-      global: { stubs: { OnboardingDialog: OnboardingStub } }
+      global: {
+        stubs: { ExtensionReviewPrompt: ReviewPromptStub, OnboardingDialog: OnboardingStub }
+      }
     });
 
     expect(wrapper.find('nav').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="review-prompt"]').exists()).toBe(false);
     await wrapper.get('[data-testid="finish-onboarding"]').trigger('click');
     await flushPromises();
 
     expect(globalThis.location.hash).toBe('#/settings');
     expect(wrapper.get('nav a[href="#/settings"]').attributes('aria-current')).toBe('page');
+    expect(wrapper.find('[data-testid="review-prompt"]').exists()).toBe(true);
     wrapper.unmount();
   });
 

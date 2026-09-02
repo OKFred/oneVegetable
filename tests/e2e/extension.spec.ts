@@ -2,7 +2,11 @@ import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
-import { chromium, expect, test, type BrowserContext } from '@playwright/test';
+import { chromium, expect, test, type BrowserContext, type Page } from '@playwright/test';
+import {
+  EXTENSION_REVIEW_PROMPT_INTERVAL_MILLISECONDS,
+  EXTENSION_REVIEW_PROMPT_STORAGE_KEY
+} from '../../packages/core/src/extension-review-prompt';
 
 let context: BrowserContext | null = null;
 
@@ -91,6 +95,11 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(privacyPage.getByRole('heading', { name: 'oneVegetable Privacy Policy' })).toBeVisible();
   await privacyPage.close();
 
+  const popupPage = await browserContext.newPage();
+  await popupPage.goto(`chrome-extension://${extensionId}/popup.html`);
+  await expect(popupPage.getByText('用得不错？赏个评价。')).toHaveCount(0);
+  await popupPage.close();
+
   const page = await browserContext.newPage();
   await page.goto(`chrome-extension://${extensionId}/options.html`);
 
@@ -114,6 +123,68 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: '稍后，仅浏览' }).click();
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
+  await expect(page.getByText('用得不错？赏个评价。')).toHaveCount(0);
+  await expect
+    .poll(() => readExtensionLocalValue(page, EXTENSION_REVIEW_PROMPT_STORAGE_KEY))
+    .toMatchObject({
+      schemaVersion: 1,
+      lastPromptTimeUtc: null,
+      reviewLinkOpenedTimeUtc: null
+    });
+
+  const firstDueTime = Date.now();
+  await writeExtensionLocalValue(page, EXTENSION_REVIEW_PROMPT_STORAGE_KEY, {
+    schemaVersion: 1,
+    firstSeenTimeUtc: firstDueTime - EXTENSION_REVIEW_PROMPT_INTERVAL_MILLISECONDS,
+    lastPromptTimeUtc: null,
+    reviewLinkOpenedTimeUtc: null
+  });
+  await page.reload();
+  const firstReviewDialog = page.getByRole('dialog', { name: '用得不错？赏个评价。' });
+  await expect(firstReviewDialog).toBeVisible();
+  await expect(firstReviewDialog.getByRole('button')).toHaveCount(2);
+  await firstReviewDialog.getByRole('button', { name: '以后再说' }).click();
+  await expect(firstReviewDialog).toHaveCount(0);
+  const claimedReviewState = (await readExtensionLocalValue(page, EXTENSION_REVIEW_PROMPT_STORAGE_KEY)) as {
+    lastPromptTimeUtc?: unknown;
+  };
+  expect(claimedReviewState.lastPromptTimeUtc).toEqual(expect.any(Number));
+
+  await page.reload();
+  await expect(page.getByText('用得不错？赏个评价。')).toHaveCount(0);
+
+  const secondDueTime = Date.now();
+  await writeExtensionLocalValue(page, EXTENSION_REVIEW_PROMPT_STORAGE_KEY, {
+    schemaVersion: 1,
+    firstSeenTimeUtc: secondDueTime - EXTENSION_REVIEW_PROMPT_INTERVAL_MILLISECONDS * 2,
+    lastPromptTimeUtc: secondDueTime - EXTENSION_REVIEW_PROMPT_INTERVAL_MILLISECONDS,
+    reviewLinkOpenedTimeUtc: null
+  });
+  await page.reload();
+  const secondReviewDialog = page.getByRole('dialog', { name: '用得不错？赏个评价。' });
+  await expect(secondReviewDialog).toBeVisible();
+  const reviewPagePromise = browserContext.waitForEvent('page');
+  await secondReviewDialog.getByRole('button', { name: '去评价' }).click();
+  const reviewPage = await reviewPagePromise;
+  await expect
+    .poll(() => reviewPage.url())
+    .toMatch(/chromewebstore\.google\.com\/detail\/(?:[^/]+\/)?aepfdoldflokikbbcpnfifkacpfakmjc\/reviews$/u);
+  await reviewPage.close().catch(() => undefined);
+
+  const reviewedState = (await readExtensionLocalValue(page, EXTENSION_REVIEW_PROMPT_STORAGE_KEY)) as {
+    reviewLinkOpenedTimeUtc?: unknown;
+  };
+  expect(reviewedState.reviewLinkOpenedTimeUtc).toEqual(expect.any(Number));
+  await writeExtensionLocalValue(page, EXTENSION_REVIEW_PROMPT_STORAGE_KEY, {
+    ...reviewedState,
+    schemaVersion: 1,
+    firstSeenTimeUtc: secondDueTime - EXTENSION_REVIEW_PROMPT_INTERVAL_MILLISECONDS * 3,
+    lastPromptTimeUtc: secondDueTime - EXTENSION_REVIEW_PROMPT_INTERVAL_MILLISECONDS * 2
+  });
+  await page.bringToFront();
+  await page.reload();
+  await expect(page.getByText('用得不错？赏个评价。')).toHaveCount(0);
+
   await page.getByTestId('language-toggle').click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
   await expect(page).toHaveTitle('oneVegetable · Alibaba.com Operations Workspace');
@@ -569,3 +640,28 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   expect(JSON.stringify(migratedEncryptedSettings)).not.toContain('legacy-e2e-secret');
   expect(JSON.stringify(migratedEncryptedSettings)).not.toContain('legacy-e2e-token');
 });
+
+async function readExtensionLocalValue(page: Page, key: string): Promise<unknown> {
+  return page.evaluate(async (storageKey) => {
+    const extension = (
+      globalThis as unknown as {
+        chrome: { storage: { local: { get(key: string): Promise<Record<string, unknown>> } } };
+      }
+    ).chrome;
+    return (await extension.storage.local.get(storageKey))[storageKey];
+  }, key);
+}
+
+async function writeExtensionLocalValue(page: Page, key: string, value: unknown): Promise<void> {
+  await page.evaluate(
+    async ({ storageKey, storageValue }) => {
+      const extension = (
+        globalThis as unknown as {
+          chrome: { storage: { local: { set(value: object): Promise<void> } } };
+        }
+      ).chrome;
+      await extension.storage.local.set({ [storageKey]: storageValue });
+    },
+    { storageKey: key, storageValue: value }
+  );
+}
