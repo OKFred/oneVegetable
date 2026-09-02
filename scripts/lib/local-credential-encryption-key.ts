@@ -49,10 +49,9 @@ export async function resolveLocalCredentialEncryptionKey(input: {
     };
   } catch (error: unknown) {
     if (!hasErrorCode(error, 'EEXIST')) throw error;
-    const concurrentlyStoredValue = await readStoredKey(input.filePath);
-    if (concurrentlyStoredValue === null) throw error;
+    const concurrentlyStoredValue = await readConcurrentStoredKey(input.filePath, error);
     return {
-      value: validateEncryptionKey(concurrentlyStoredValue),
+      value: concurrentlyStoredValue,
       source: 'local-file',
       filePath: input.filePath
     };
@@ -75,6 +74,28 @@ async function readStoredKey(filePath: string): Promise<string | null> {
     if (hasErrorCode(error, 'ENOENT')) return null;
     throw error;
   }
+}
+
+async function readConcurrentStoredKey(filePath: string, originalError: unknown): Promise<string> {
+  const maximumAttempts = 100;
+  for (let attempt = 0; attempt < maximumAttempts; attempt += 1) {
+    const storedValue = await readStoredKey(filePath);
+    if (storedValue !== null) {
+      try {
+        return validateEncryptionKey(storedValue);
+      } catch {
+        // open(..., 'wx') makes the file visible before the winning process finishes its write.
+      }
+    }
+    if (attempt < maximumAttempts - 1) await delay(5);
+  }
+  throw originalError;
+}
+
+async function delay(milliseconds: number): Promise<void> {
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
 }
 
 function hasErrorCode(error: unknown, code: string): boolean {

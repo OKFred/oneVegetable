@@ -41,17 +41,19 @@ describe('local credential encryption key', () => {
     expect(Buffer.from(first.value, 'base64url')).toHaveLength(32);
   });
 
-  it('converges on one key when two local starts race', async () => {
+  it('converges on one key when concurrent local starts race', async () => {
     const directory = await temporaryDirectory();
     const filePath = join(directory, '.data', 'credential-key');
 
-    const [first, second] = await Promise.all([
-      resolveLocalCredentialEncryptionKey({ configuredValue: undefined, filePath }),
-      resolveLocalCredentialEncryptionKey({ configuredValue: undefined, filePath })
-    ]);
+    const results = await Promise.all(
+      Array.from({ length: 32 }, () =>
+        resolveLocalCredentialEncryptionKey({ configuredValue: undefined, filePath })
+      )
+    );
 
-    expect(first.value).toBe(second.value);
-    expect(new Set([first.source, second.source])).toEqual(new Set(['generated', 'local-file']));
+    expect(new Set(results.map(({ value }) => value)).size).toBe(1);
+    expect(results.filter(({ source }) => source === 'generated')).toHaveLength(1);
+    expect(results.filter(({ source }) => source === 'local-file')).toHaveLength(31);
   });
 
   it('rejects a malformed persisted key instead of silently replacing it', async () => {
