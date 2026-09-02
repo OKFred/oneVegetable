@@ -1,6 +1,6 @@
 # oneVegetable Privacy Policy
 
-Effective date: September 1, 2026  
+Effective date: September 2, 2026
 Applicable version: 2.1.0
 
 ## Single purpose
@@ -15,6 +15,7 @@ oneVegetable is a user-operated local Alibaba.com operations workspace for manag
 - product, gallery, RFQ, trade, logistics, and data insight responses requested from the user's Alibaba.com Open Platform account;
 - one gallery image, caption, destination Page or professional account, publishing status, and platform post identifier selected for a user-confirmed social publication;
 - the BFF origin, device name, 30-day device token, expiry time, and redacted device metadata created when the user pairs a self-hosted backend;
+- a PNG of the currently visible application area generated temporarily in page memory after the user explicitly clicks the feedback screenshot action;
 - up to 100 recent session-scoped redacted diagnostics containing operation names, requestIds, durations, error codes, and available traceIds.
 
 Credentials and settings are encrypted in `chrome.storage.local` with an AES-256-GCM key derived from the user's passphrase using PBKDF2-HMAC-SHA256 with 600,000 iterations. The passphrase is not stored. To avoid repeated unlock prompts after an MV3 service worker becomes dormant, derived key material is held in the in-memory `chrome.storage.session` after unlock and bound to the current ciphertext version and last activity time. It contains no credential plaintext and is cleared when the browser restarts, the extension is disabled, updated, or reloaded, the user locks it, or the selected idle timeout expires. Product display mutation jobs are also stored in `chrome.storage.local`, but do not contain App Secrets, tokens, complete requests, or complete responses. Incomplete jobs remain until verification or recovery; terminal jobs are retained for at most 30 days and 100 entries. Drafts are stored in the extension's own `localStorage`. Redacted diagnostics are also stored in `chrome.storage.session` and are not retained as long-term logs after the browser session ends. The extension runs no first-party analytics or advertising service and does not send this data to a developer-operated server.
@@ -34,6 +35,8 @@ The user may explicitly pair the extension with a oneVegetable BFF under the use
 Real queries and product display changes are sent only after a user action and confirmation. The extension service worker sends them over HTTPS to the Alibaba.com Open Platform gateway configured by the user. Before a product display change leaves the extension, the plaintext product ID, platform-encrypted ID, and current state are cross-checked; accepted changes are verified by reading the product list. An external image is downloaded from the specified public HTTP(S) URL and uploaded to the user's own international gallery only after the user explicitly starts that transfer.
 
 Social media is sent only after the user chooses one image, a destination and a caption and confirms the publication twice. The extension sends that data to the user's configured oneVegetable BFF, which calls the Meta Graph API with the Meta application and connection configured by that user. A Cloudflare deployment temporarily stores the image in the user's private R2 bucket; a Node deployment uses the user's server-local temporary directory. Temporary images are retained for at most 24 hours and publishing metadata for at most 30 days. The extension never holds a Meta App Secret, user token, or Page token and does not send the image to a server controlled by the project developer.
+
+A feedback screenshot is generated locally only after the user clicks “Capture current page” and is shown to the user for review first. The application excludes the feedback dialog and masks password inputs plus marked credentials, tokens, bank accounts, and buyer contact information. The screenshot exists only in current-page memory and is released when it is replaced, deleted, the dialog closes, or the user proceeds to GitHub. When the user clicks “Copy screenshot and open GitHub,” the PNG is written to the local clipboard; if the browser refuses image clipboard access, it is downloaded locally instead. The application only opens a prefilled public GitHub Issue page. It does not upload the screenshot, use a GitHub token, paste the image, or submit the Issue for the user. The user must review the public content again before submitting it on GitHub.
 
 Use of user data follows the Chrome Web Store User Data Policy, including the Limited Use requirements. Data is used only to provide or improve the disclosed single purpose and is not used for personalized advertising, credit assessment, or data resale. The developer does not permit a person to read user data unless the user explicitly authorizes technical support, a security investigation requires it, or the law requires it.
 

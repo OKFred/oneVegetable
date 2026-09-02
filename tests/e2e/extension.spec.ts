@@ -126,6 +126,17 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByLabel('App Key').fill('e2e-app-key');
   await page.getByLabel('App Secret').fill('e2e-secret');
   await page.getByLabel('Access Token').fill('e2e-token');
+  await expect(page.getByLabel('App Key')).toHaveAttribute('data-feedback-redact', '');
+  await page.getByTestId('feedback-launcher').click();
+  const feedbackDialog = page.getByRole('dialog', { name: '提交产品反馈' });
+  await expect(feedbackDialog).toBeVisible();
+  await expect(feedbackDialog.getByRole('img', { name: '待提交的页面截图' })).toHaveCount(0);
+  await feedbackDialog.getByRole('button', { name: '截取当前页面' }).click();
+  await expect(feedbackDialog.getByRole('img', { name: '待提交的页面截图' })).toBeVisible({
+    timeout: 20_000
+  });
+  await feedbackDialog.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(feedbackDialog).toHaveCount(0);
   await page.getByLabel('设置保护口令').fill('e2e-vault-password');
   await page.getByLabel('确认保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();

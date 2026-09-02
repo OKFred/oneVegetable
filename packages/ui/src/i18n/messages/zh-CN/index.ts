@@ -3,6 +3,7 @@ import { admin } from './admin';
 import { capabilities } from './capabilities';
 import { common } from './common';
 import { errors } from './errors';
+import { feedback } from './feedback';
 import { insights } from './insights';
 import { logistics } from './logistics';
 import { orders } from './orders';
@@ -16,6 +17,7 @@ import { shell } from './shell';
 export const zhCN = {
   common,
   errors,
+  feedback,
   admin,
   shell,
   auth,

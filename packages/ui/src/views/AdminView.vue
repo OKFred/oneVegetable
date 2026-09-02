@@ -828,7 +828,10 @@ const auditEventColumns = computed<DataColumn<ControlAuditEvent>[]>(() => [
     size="sm"
     @update:open="closeTemporaryPassword"
   >
-    <code class="block select-all break-all rounded-lg border bg-muted p-4 text-sm text-foreground">
+    <code
+      class="block select-all break-all rounded-lg border bg-muted p-4 text-sm text-foreground"
+      data-feedback-redact
+    >
       {{ temporaryPassword?.value }}
     </code>
     <p class="mt-3 text-sm text-amber-700 dark:text-amber-400">
@@ -856,7 +859,10 @@ const auditEventColumns = computed<DataColumn<ControlAuditEvent>[]>(() => [
     size="md"
     @update:open="enrollment = null"
   >
-    <code class="block select-all break-all rounded-lg border bg-muted p-4 text-sm text-foreground">
+    <code
+      class="block select-all break-all rounded-lg border bg-muted p-4 text-sm text-foreground"
+      data-feedback-redact
+    >
       {{ enrollmentUrl() }}
     </code>
     <p class="mt-3 text-sm text-amber-700 dark:text-amber-400">

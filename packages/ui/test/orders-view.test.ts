@@ -95,6 +95,7 @@ describe('OrdersView', () => {
       expect(document.body.textContent).toContain('2450.50');
       expect(document.body.textContent).toContain('fullDetail: jushita-only');
     });
+    expect(wrapper.get('tbody [data-feedback-redact]').text()).toContain('northwind-buyer');
 
     bodyButton('TT 汇款').click();
     await flushPromises();
@@ -103,6 +104,9 @@ describe('OrdersView', () => {
         '1029200038060'
       );
     });
+    expect(
+      document.body.querySelector('[data-testid="tt-account-number"]')?.closest('[data-feedback-redact]')
+    ).not.toBeNull();
     bodyButton('显示完整汇款账号').click();
     await vi.waitFor(() => {
       expect(document.body.querySelector('[data-testid="tt-account-number"]')?.textContent).toContain(
@@ -150,10 +154,16 @@ describe('OrdersView', () => {
     });
 
     const email = wrapper.find('input[type="email"]');
+    expect(email.attributes('data-feedback-redact')).toBe('');
     await email.setValue('buyer@example.com');
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('Northwind warehouse');
     });
+    expect(
+      wrapper
+        .findAll('[data-feedback-redact]')
+        .some((element) => element.text().includes('Northwind warehouse'))
+    ).toBe(true);
 
     await button(wrapper, '信保订单草稿').trigger('click');
     const values: Record<string, string> = {
