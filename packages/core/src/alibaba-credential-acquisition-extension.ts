@@ -6,7 +6,15 @@ import type { AlibabaOpenApiCredentialBundle } from './alibaba-credential-bundle
 import type { CredentialVaultStatus, GatewayError } from './types';
 
 export type ExtensionAlibabaCredentialAcquisitionOperation =
-  'start' | 'continue' | 'status' | 'cancel' | 'save-to-vault' | 'export-bundle';
+  | 'start'
+  | 'continue'
+  | 'status'
+  | 'cancel'
+  | 'save-to-vault'
+  | 'export-bundle'
+  | 'read-prerequisite'
+  | 'locate-prerequisite-field'
+  | 'focus-prerequisite-page';
 
 export interface ExtensionAlibabaCredentialAcquisitionRequest {
   requestId: string;
@@ -28,4 +36,10 @@ export interface ExtensionAlibabaCredentialAcquisitionRepository {
   cancel(jobId: string): Promise<AlibabaCredentialAcquisitionState>;
   saveToVault(passphrase?: string): Promise<CredentialVaultStatus>;
   exportBundle(): Promise<AlibabaOpenApiCredentialBundle>;
+  readPrerequisite(): Promise<Extract<
+    AlibabaCredentialAcquisitionState,
+    { status: 'prerequisite-required' }
+  > | null>;
+  locatePrerequisiteField(): Promise<string | null>;
+  focusPrerequisitePage(): Promise<void>;
 }

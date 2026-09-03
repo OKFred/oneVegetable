@@ -1,6 +1,7 @@
 export * from './alibaba-client';
 export * from './alibaba-credential-acquisition';
 export * from './alibaba-credential-acquisition-extension';
+export * from './alibaba-developer-onboarding';
 export * from './alibaba-credential-bundle';
 export * from './account-verification';
 export * from './api-contract';

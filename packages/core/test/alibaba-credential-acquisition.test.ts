@@ -10,6 +10,11 @@ import {
   validateAlibabaOAuthCallback
 } from '../src/alibaba-credential-acquisition';
 import { validateAlibabaCredentialAcquisitionStateInput } from '../src/validation';
+import {
+  createAlibabaDeveloperOnboardingSnapshot,
+  parseAlibabaDeveloperOnboardingSnapshot,
+  snapshotToAlibabaCredentialPrerequisiteState
+} from '../src/alibaba-developer-onboarding';
 
 import type { AlibabaCredentialApplicationCandidate } from '../src/alibaba-credential-acquisition';
 import type { AlibabaOpenApiCredentialBundle } from '../src/alibaba-credential-bundle';
@@ -107,6 +112,30 @@ describe('Alibaba credential acquisition contract', () => {
         companyName: 'must-not-be-accepted'
       })
     ).toMatchObject({ valid: false });
+  });
+
+  it('persists only the non-sensitive prerequisite reason and checked time', () => {
+    const prerequisite = {
+      status: 'prerequisite-required' as const,
+      reasonCode: 'developer-registration-under-review' as const,
+      checkedAtUtc: NOW
+    };
+    const snapshot = createAlibabaDeveloperOnboardingSnapshot(prerequisite);
+
+    expect(snapshot).toEqual({
+      schemaVersion: 1,
+      reasonCode: 'developer-registration-under-review',
+      checkedAtUtc: NOW
+    });
+    expect(snapshotToAlibabaCredentialPrerequisiteState(snapshot)).toEqual(prerequisite);
+    expect(parseAlibabaDeveloperOnboardingSnapshot(snapshot, NOW)).toEqual(snapshot);
+    expect(
+      parseAlibabaDeveloperOnboardingSnapshot({ ...snapshot, checkedAtUtc: NOW + 60_001 }, NOW)
+    ).toBeNull();
+    expect(
+      parseAlibabaDeveloperOnboardingSnapshot({ ...snapshot, reasonCode: 'unknown-state' }, NOW)
+    ).toBeNull();
+    expect(JSON.stringify(snapshot)).not.toMatch(/company|registration.?number|file|password|secret/iu);
   });
 
   it('keeps an empty callback unset and rejects private or insecure callbacks', () => {

@@ -21,11 +21,17 @@ const start = vi.fn((_callbackUrl: string | null) => Promise.resolve(selectionSt
 const continueAcquisition = vi.fn((_jobId: string, command: AlibabaCredentialAcquisitionContinueCommand) =>
   Promise.resolve(command.type === 'select-application' ? callbackState() : completedState())
 );
+const statusAcquisition = vi.fn(() => Promise.resolve(selectionState()));
+const cancelAcquisition = vi.fn(() => Promise.resolve(failedState()));
 const saveToVault = vi.fn((_passphrase?: string) => Promise.resolve(vaultStatus('unlocked')));
 const exportBundle = vi.fn(() => Promise.resolve(bundle()));
+const readPrerequisite = vi.fn(() => Promise.resolve(null));
+const locatePrerequisiteField = vi.fn(() => Promise.resolve(null));
+const focusPrerequisitePage = vi.fn(() => Promise.resolve());
 const anchorClick = vi.fn();
 
 beforeEach(() => {
+  vi.clearAllMocks();
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(anchorClick);
   vi.stubGlobal('URL', {
     ...URL,
@@ -69,10 +75,13 @@ describe('AlibabaCredentialAcquisitionDialog', () => {
           alibabaCredentialAcquisition: {
             start,
             continue: continueAcquisition,
-            status: () => Promise.resolve(selectionState()),
-            cancel: () => Promise.resolve(failedState()),
+            status: statusAcquisition,
+            cancel: cancelAcquisition,
             saveToVault,
-            exportBundle
+            exportBundle,
+            readPrerequisite,
+            locatePrerequisiteField,
+            focusPrerequisitePage
           },
           mode: 'extension'
         });
@@ -121,6 +130,66 @@ describe('AlibabaCredentialAcquisitionDialog', () => {
     await flushPromises();
     expect(exportBundle).toHaveBeenCalledOnce();
     expect(anchorClick).toHaveBeenCalledOnce();
+    wrapper.unmount();
+  });
+
+  it('restores an under-review prerequisite without polling and rechecks only on demand', async () => {
+    readPrerequisite.mockResolvedValueOnce({
+      status: 'prerequisite-required',
+      reasonCode: 'developer-registration-under-review',
+      checkedAtUtc: Date.now()
+    });
+    const Host = defineComponent({
+      setup() {
+        provideServices({
+          gateway: new MockGatewayClient(0),
+          settings: {
+            load: () =>
+              Promise.resolve({
+                appKey: '',
+                appSecret: '',
+                accessToken: '',
+                endpoint: ALIBABA_GATEWAY,
+                signMethod: 'hmac'
+              }),
+            save: () => Promise.resolve()
+          },
+          vault: {
+            status: () => Promise.resolve(vaultStatus('empty')),
+            create: () => Promise.resolve(vaultStatus('unlocked')),
+            migrate: () => Promise.resolve(vaultStatus('unlocked')),
+            unlock: () => Promise.resolve(vaultStatus('unlocked')),
+            lock: () => Promise.resolve(vaultStatus('locked')),
+            rotate: () => Promise.resolve(vaultStatus('unlocked')),
+            updatePolicy: () => Promise.resolve(vaultStatus('unlocked'))
+          },
+          alibabaCredentialAcquisition: {
+            start,
+            continue: continueAcquisition,
+            status: statusAcquisition,
+            cancel: cancelAcquisition,
+            saveToVault,
+            exportBundle,
+            readPrerequisite,
+            locatePrerequisiteField,
+            focusPrerequisitePage
+          },
+          mode: 'extension'
+        });
+        return () => h(AlibabaCredentialAcquisitionDialog, { open: true });
+      }
+    });
+    const wrapper = mount(Host, { attachTo: document.body });
+    await flushPromises();
+
+    expect(document.body.textContent).toContain('开发者注册正在审核中');
+    expect(document.body.textContent).toContain('2–5 个工作日');
+    expect(statusAcquisition).not.toHaveBeenCalled();
+
+    clickButton('重新检查');
+    await flushPromises();
+    expect(start).toHaveBeenCalledWith(null);
+
     wrapper.unmount();
   });
 });

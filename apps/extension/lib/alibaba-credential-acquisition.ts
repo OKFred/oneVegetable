@@ -3,14 +3,18 @@ import { browser } from 'wxt/browser';
 import {
   GatewayException,
   NetworkManager,
+  ALIBABA_DEVELOPER_ONBOARDING_STORAGE_KEY,
   createAlibabaCredentialAcquisitionCompletedSummary,
   createAlibabaCredentialAcquisitionFailure,
   createAlibabaCredentialAcquisitionState,
+  createAlibabaDeveloperOnboardingSnapshot,
   createAlibabaOpenApiCredentialBundle,
   optionalAlibabaCredentialCallbackUrl,
+  parseAlibabaDeveloperOnboardingSnapshot,
   parseAlibabaCredentialCallbackUrl,
   parseAlibabaTokenResponse,
   resolveAlibabaCredentialApplication,
+  snapshotToAlibabaCredentialPrerequisiteState,
   transitionAlibabaCredentialAcquisitionState,
   validateAlibabaOAuthCallback,
   type AlibabaCredentialAcquisitionContinueCommand,
@@ -21,7 +25,9 @@ import {
 
 import {
   advanceAlibabaOAuthPage,
+  ALIBABA_APPLICATION_CENTER_URL,
   closeAlibabaTabs,
+  focusNextAlibabaDeveloperRegistrationField,
   inspectAlibabaApplicationCenter,
   inspectAlibabaApplicationPageState,
   openAlibabaApplicationCenterSection,
@@ -96,12 +102,22 @@ export class ExtensionAlibabaCredentialAcquisitionController {
   }
 
   async start(callbackUrl: string | null): Promise<AlibabaCredentialAcquisitionState> {
-    await this.#discardTask();
     const requestedCallbackUrl = optionalAlibabaCredentialCallbackUrl(callbackUrl);
+    const previousTask = this.#task;
+    let applicationTabId: number;
+    if (previousTask?.state.status === 'prerequisite-required') {
+      this.#task = null;
+      await closeAlibabaTabs([previousTask.legacyTabId, previousTask.oauthTabId]);
+      applicationTabId = await activateAlibabaTab(previousTask.applicationTabId).catch(() =>
+        openAlibabaApplicationCenterTab()
+      );
+    } else {
+      await this.#discardTask();
+      applicationTabId = await openAlibabaApplicationCenterTab();
+    }
     const jobId = crypto.randomUUID();
     const state = createAlibabaCredentialAcquisitionState(jobId);
     if (state.status !== 'running') throw acquisitionError('INTERNAL_ERROR', '凭据获取任务初始化失败');
-    const applicationTabId = await openAlibabaApplicationCenterTab();
     this.#task = {
       jobId,
       expiresAtUtc: state.expiresAtUtc,
@@ -192,6 +208,41 @@ export class ExtensionAlibabaCredentialAcquisitionController {
     return cloneState(state);
   }
 
+  async readPrerequisite(): Promise<Extract<
+    AlibabaCredentialAcquisitionState,
+    { status: 'prerequisite-required' }
+  > | null> {
+    const taskState = this.#task?.state;
+    if (taskState?.status === 'prerequisite-required') return structuredClone(taskState);
+    const stored = await browser.storage.local.get(ALIBABA_DEVELOPER_ONBOARDING_STORAGE_KEY);
+    const snapshot = parseAlibabaDeveloperOnboardingSnapshot(
+      stored[ALIBABA_DEVELOPER_ONBOARDING_STORAGE_KEY]
+    );
+    if (!snapshot) {
+      if (Object.prototype.hasOwnProperty.call(stored, ALIBABA_DEVELOPER_ONBOARDING_STORAGE_KEY)) {
+        await browser.storage.local.remove(ALIBABA_DEVELOPER_ONBOARDING_STORAGE_KEY);
+      }
+      return null;
+    }
+    return snapshotToAlibabaCredentialPrerequisiteState(snapshot);
+  }
+
+  async locatePrerequisiteField(): Promise<string | null> {
+    const tabId = await this.#resolvePrerequisiteTabId();
+    if (tabId === null) return null;
+    await activateAlibabaTab(tabId);
+    return focusNextAlibabaDeveloperRegistrationField(tabId);
+  }
+
+  async focusPrerequisitePage(): Promise<void> {
+    const tabId = await this.#resolvePrerequisiteTabId();
+    if (tabId === null) {
+      await openAlibabaApplicationCenterTab();
+      return;
+    }
+    await activateAlibabaTab(tabId);
+  }
+
   async exportBundle(): Promise<AlibabaOpenApiCredentialBundle> {
     const task = await this.#completedTask();
     return structuredClone(task.bundle);
@@ -206,15 +257,22 @@ export class ExtensionAlibabaCredentialAcquisitionController {
     if (!snapshot.application) {
       const pageState = await inspectAlibabaApplicationPageState(task.applicationTabId);
       if (pageState.kind === 'prerequisite') {
-        task.state = transitionAlibabaCredentialAcquisitionState(task.state, {
+        const prerequisite = transitionAlibabaCredentialAcquisitionState(task.state, {
           type: 'require-prerequisite',
           reasonCode: pageState.reasonCode
         });
+        if (prerequisite.status !== 'prerequisite-required') {
+          throw acquisitionError('INTERNAL_ERROR', 'Alibaba 开发者前置状态转换失败');
+        }
+        task.state = prerequisite;
+        await this.#storePrerequisite(prerequisite);
       } else if (pageState.kind === 'ready' || pageState.kind === 'navigation-ready') {
         await openAlibabaApplicationCenterSection(task.applicationTabId);
       }
       return;
     }
+
+    await this.#clearPrerequisite();
 
     if (task.legacyTabId === null) {
       task.legacyTabId = await openAlibabaLegacyApplicationTab();
@@ -364,6 +422,7 @@ export class ExtensionAlibabaCredentialAcquisitionController {
         status: 'completed',
         credential: createAlibabaCredentialAcquisitionCompletedSummary(bundle)
       };
+      await this.#clearPrerequisite();
       await closeAlibabaTabs([task.applicationTabId, task.legacyTabId, task.oauthTabId]);
       task.applicationTabId = -1;
       task.legacyTabId = null;
@@ -445,6 +504,29 @@ export class ExtensionAlibabaCredentialAcquisitionController {
     return task as ExtensionAcquisitionTask & { bundle: AlibabaOpenApiCredentialBundle };
   }
 
+  async #resolvePrerequisiteTabId(): Promise<number | null> {
+    if (this.#task?.state.status === 'prerequisite-required') {
+      const tab = await browser.tabs.get(this.#task.applicationTabId).catch(() => null);
+      if (tab?.id !== undefined) return tab.id;
+    }
+    const tabs = await browser.tabs
+      .query({ url: ['https://i.alibaba.com/*', 'https://openapi-account.alibaba.com/*'] })
+      .catch(() => []);
+    return tabs.find((tab) => tab.id !== undefined)?.id ?? null;
+  }
+
+  async #storePrerequisite(
+    state: Extract<AlibabaCredentialAcquisitionState, { status: 'prerequisite-required' }>
+  ): Promise<void> {
+    await browser.storage.local.set({
+      [ALIBABA_DEVELOPER_ONBOARDING_STORAGE_KEY]: createAlibabaDeveloperOnboardingSnapshot(state)
+    });
+  }
+
+  async #clearPrerequisite(): Promise<void> {
+    await browser.storage.local.remove(ALIBABA_DEVELOPER_ONBOARDING_STORAGE_KEY);
+  }
+
   async #discardTask(): Promise<void> {
     const task = this.#task;
     this.#task = null;
@@ -455,6 +537,13 @@ export class ExtensionAlibabaCredentialAcquisitionController {
     task.bundle = null;
     await closeAlibabaTabs([task.applicationTabId, task.legacyTabId, task.oauthTabId]);
   }
+}
+
+async function activateAlibabaTab(tabId: number): Promise<number> {
+  const tab = await browser.tabs.update(tabId, { active: true });
+  if (tab?.id === undefined) throw new Error(`无法打开 ${ALIBABA_APPLICATION_CENTER_URL}`);
+  await browser.windows.update(tab.windowId, { focused: true }).catch(() => undefined);
+  return tab.id;
 }
 
 function buildApplicationCandidates(
