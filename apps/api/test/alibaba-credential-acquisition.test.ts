@@ -35,6 +35,7 @@ import type {
 import type { NodeDatabaseHandle } from '../src/db/node-database';
 
 let database: NodeDatabaseHandle | undefined;
+const NOW = 1_788_054_400_000;
 
 afterEach(() => {
   database?.connection.close();
@@ -165,6 +166,30 @@ describe('Alibaba credential acquisition service', () => {
       callbackUrl: null
     });
     expect(result).toEqual({ status: 'extension-required', reasonCode: 'slider' });
+    expect(driver.cancelledSessions).toEqual(['browser-session']);
+  });
+
+  it('returns a non-failure prerequisite state and closes the Browser Run context', async () => {
+    const driver = new FakeDriver({
+      kind: 'prerequisite-required',
+      reasonCode: 'developer-registration-under-review'
+    });
+    const { repository, credentialService } = await fixture();
+    const service = new AlibabaCredentialAcquisitionService(repository, driver, credentialService, () => NOW);
+
+    const result = await service.start({
+      requestId: createRequestId(),
+      actorId: 'actor-1',
+      account: 'account',
+      password: 'password',
+      callbackUrl: null
+    });
+
+    expect(result).toEqual({
+      status: 'prerequisite-required',
+      reasonCode: 'developer-registration-under-review',
+      checkedAtUtc: NOW
+    });
     expect(driver.cancelledSessions).toEqual(['browser-session']);
   });
 });

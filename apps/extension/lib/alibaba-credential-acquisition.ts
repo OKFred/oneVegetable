@@ -205,8 +205,14 @@ export class ExtensionAlibabaCredentialAcquisitionController {
     const snapshot = await inspectAlibabaApplicationCenter(task.applicationTabId);
     if (!snapshot.application) {
       const pageState = await inspectAlibabaApplicationPageState(task.applicationTabId);
-      if (pageState === 'no-application') task.state = failedAcquisitionState('NO_APPLICATION');
-      else if (pageState === 'ready') await openAlibabaApplicationCenterSection(task.applicationTabId);
+      if (pageState.kind === 'prerequisite') {
+        task.state = transitionAlibabaCredentialAcquisitionState(task.state, {
+          type: 'require-prerequisite',
+          reasonCode: pageState.reasonCode
+        });
+      } else if (pageState.kind === 'ready' || pageState.kind === 'navigation-ready') {
+        await openAlibabaApplicationCenterSection(task.applicationTabId);
+      }
       return;
     }
 
@@ -530,7 +536,12 @@ function acquisitionError(code: string, message: string): GatewayException {
 }
 
 function isTerminalState(state: AlibabaCredentialAcquisitionState): boolean {
-  return state.status === 'completed' || state.status === 'failed' || state.status === 'extension-required';
+  return (
+    state.status === 'completed' ||
+    state.status === 'failed' ||
+    state.status === 'extension-required' ||
+    state.status === 'prerequisite-required'
+  );
 }
 
 function isOAuthCallback(candidate: URL, registered: URL): boolean {

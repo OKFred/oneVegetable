@@ -1,0 +1,20 @@
+{
+  "registrationRequired": {
+    "html": "<main><h1>Complete information</h1><select id=\"country\"><option value=\"CN\" selected>China</option></select><input id=\"companyName\" value=\"Example Trading\"><input id=\"bizRegistNumber\" value=\"\"><input id=\"address\" value=\"Example Street\"><input id=\"city\" value=\"Hangzhou\"><input id=\"province\" value=\"Zhejiang\"><input id=\"postcode\" value=\"310000\"><input id=\"bizInfoDocs\" type=\"file\"><input id=\"bizInfoDoc\" type=\"hidden\" value=\"\"><label><input type=\"checkbox\">Alibaba.com API Use Agreement</label></main>"
+  },
+  "underReview": {
+    "html": "<main><h1>Under Review</h1><p>It takes about 2-5 working days.</p><select id=\"country\" disabled><option value=\"CN\" selected>China</option></select><input id=\"companyName\" value=\"Example Trading\" disabled><input id=\"bizRegistNumber\" value=\"EXAMPLE-REGISTRATION\" disabled><input id=\"address\" value=\"Example Street\" disabled><input id=\"city\" value=\"Hangzhou\" disabled><input id=\"province\" value=\"Zhejiang\" disabled><input id=\"postcode\" value=\"310000\" disabled><input id=\"bizInfoDocs\" type=\"file\" disabled><input id=\"bizInfoDoc\" type=\"hidden\" value=\"uploaded\"><label><input type=\"checkbox\" checked disabled>Alibaba.com API Use Agreement</label></main>"
+  },
+  "registrationRejected": {
+    "html": "<main><h1>Review failed</h1><p>Your developer registration was rejected. Please revise the information.</p><input id=\"companyName\"><input id=\"bizRegistNumber\"><input id=\"bizInfoDocs\" type=\"file\"><label><input type=\"checkbox\">Alibaba.com API Use Agreement</label></main>"
+  },
+  "applicationRequired": {
+    "html": "<main><button>Application center</button><p>You have not created an application.</p></main>"
+  },
+  "applicationNotReady": {
+    "html": "<main><div class=\"cloud-form\"><span class=\"form-label\">App Status</span><span class=\"form-item\">Under Review</span></div></main>"
+  },
+  "applicationReady": {
+    "html": "<main><div class=\"cloud-form\"><span class=\"form-label\">App Status</span><span class=\"form-item\">Online</span></div></main>"
+  }
+}

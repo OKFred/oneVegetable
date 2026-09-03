@@ -2,6 +2,7 @@ import type { ErrorObject } from 'ajv';
 import localize from 'ajv-i18n';
 
 import {
+  validateAlibabaCredentialAcquisitionState,
   validateCapabilityCallRequest,
   validateLogisticsOrderDraft,
   validateLogisticsQuoteRequest,
@@ -25,6 +26,8 @@ import {
   validateSocialPostListRequest,
   validateSocialPostTargetRequest
 } from '../generated/validators-core';
+
+import type { AlibabaCredentialAcquisitionState } from '../alibaba-credential-acquisition';
 
 import type {
   CapabilityCallRequest,
@@ -219,6 +222,13 @@ export const validateMetaAppConfigurationUpdateInput = (value: unknown, locale?:
 export const validateMetaConnectionTargetInput = (value: unknown, locale?: 'en' | 'zh') =>
   runValidator<MetaConnectionTargetRequest>(
     validateMetaConnectionTargetRequest as StandaloneValidator,
+    value,
+    locale
+  );
+
+export const validateAlibabaCredentialAcquisitionStateInput = (value: unknown, locale?: 'en' | 'zh') =>
+  runValidator<AlibabaCredentialAcquisitionState>(
+    validateAlibabaCredentialAcquisitionState as StandaloneValidator,
     value,
     locale
   );

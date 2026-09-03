@@ -1,12 +1,17 @@
 import { browser } from 'wxt/browser';
 
-import type { AlibabaCredentialApplicationSource, AlibabaOpenApiPermission } from '@one-vegetable/core';
+import type {
+  AlibabaCredentialAcquisitionPrerequisiteReason,
+  AlibabaCredentialApplicationSource,
+  AlibabaOpenApiPermission
+} from '@one-vegetable/core';
 
 export const ALIBABA_APPLICATION_CENTER_URL = 'https://i.alibaba.com/explore/open-api';
 const ALIBABA_LEGACY_APPLICATION_URL = 'https://crosstrade.alibaba.com/ecology/index.htm';
 
 export const ALIBABA_CREDENTIAL_ACQUISITION_ORIGINS = [
   'https://i.alibaba.com/*',
+  'https://openapi-account.alibaba.com/*',
   'https://openapi.alibaba.com/*',
   'https://crosstrade.alibaba.com/*',
   'https://oauth.alibaba.com/*'
@@ -38,8 +43,35 @@ export type ExtensionAlibabaOAuthPageResult =
   | { status: 'challenge'; reason: 'captcha' | 'slider' | 'mfa' | 'secret-verification' }
   | { status: 'failed'; errorCode: string | null };
 
+export const ALIBABA_DEVELOPER_REGISTRATION_FIELD_IDS = [
+  'country',
+  'companyName',
+  'bizRegistNumber',
+  'address',
+  'city',
+  'province',
+  'postcode',
+  'bizInfoDocs'
+] as const;
+
+export type AlibabaDeveloperRegistrationFieldId = (typeof ALIBABA_DEVELOPER_REGISTRATION_FIELD_IDS)[number];
+
+export interface ExtensionAlibabaRegistrationProgress {
+  missingFieldIds: AlibabaDeveloperRegistrationFieldId[];
+  agreementAccepted: boolean;
+}
+
 export type ExtensionAlibabaPageState =
-  'ready' | 'login-required' | 'challenge' | 'no-application' | 'waiting';
+  | { kind: 'ready' }
+  | { kind: 'navigation-ready' }
+  | { kind: 'login-required' }
+  | { kind: 'challenge' }
+  | {
+      kind: 'prerequisite';
+      reasonCode: AlibabaCredentialAcquisitionPrerequisiteReason;
+      registration: ExtensionAlibabaRegistrationProgress | null;
+    }
+  | { kind: 'waiting' };
 
 export async function openAlibabaApplicationCenterTab(): Promise<number> {
   const tab = await browser.tabs.create({ url: ALIBABA_APPLICATION_CENTER_URL, active: true });
@@ -97,12 +129,40 @@ export async function inspectAlibabaApplicationPageState(tabId: number): Promise
     world: 'MAIN',
     func: inspectApplicationPageStateInFrame
   });
-  const states = results.map((result) => result.result).filter(isPageState);
-  if (states.includes('ready')) return 'ready';
-  if (states.includes('challenge')) return 'challenge';
-  if (states.includes('login-required')) return 'login-required';
-  if (states.includes('no-application')) return 'no-application';
-  return 'waiting';
+  return selectAlibabaApplicationPageState(results.map((result) => result.result));
+}
+
+export function selectAlibabaApplicationPageState(values: readonly unknown[]): ExtensionAlibabaPageState {
+  const states = values.map((value) => parsePageState(value)).filter((state) => state !== null);
+  if (states.some((state) => state.kind === 'challenge')) return { kind: 'challenge' };
+  if (states.some((state) => state.kind === 'login-required')) return { kind: 'login-required' };
+  if (states.some((state) => state.kind === 'ready')) return { kind: 'ready' };
+  for (const reasonCode of [
+    'developer-registration-rejected',
+    'developer-registration-under-review',
+    'developer-registration-required',
+    'application-not-ready',
+    'application-required'
+  ] as const) {
+    const prerequisite = states.find(
+      (state) => state.kind === 'prerequisite' && state.reasonCode === reasonCode
+    );
+    if (prerequisite?.kind === 'prerequisite') return prerequisite;
+  }
+  if (states.some((state) => state.kind === 'navigation-ready')) return { kind: 'navigation-ready' };
+  return { kind: 'waiting' };
+}
+
+export async function focusNextAlibabaDeveloperRegistrationField(tabId: number): Promise<string | null> {
+  const results = await browser.scripting.executeScript({
+    target: { tabId, allFrames: true },
+    world: 'MAIN',
+    func: focusNextRegistrationFieldInFrame
+  });
+  for (const result of results) {
+    if (typeof result.result === 'string' && result.result.length <= 64) return result.result;
+  }
+  return null;
 }
 
 export async function revealAlibabaApplicationSecret(tabId: number): Promise<ExtensionAlibabaSecretResult> {
@@ -292,13 +352,47 @@ function safeString(value: unknown, allowEmpty = false): string | null {
   return normalized || (allowEmpty ? '' : null);
 }
 
-function isPageState(value: unknown): value is ExtensionAlibabaPageState {
+function parsePageState(value: unknown): ExtensionAlibabaPageState | null {
+  const record = asRecord(value);
+  if (!record || typeof record.kind !== 'string') return null;
+  if (
+    record.kind === 'ready' ||
+    record.kind === 'navigation-ready' ||
+    record.kind === 'login-required' ||
+    record.kind === 'challenge' ||
+    record.kind === 'waiting'
+  ) {
+    return { kind: record.kind };
+  }
+  if (record.kind !== 'prerequisite' || !isPrerequisiteReason(record.reasonCode)) return null;
+  const progress = asRecord(record.registration);
+  const missingFieldIds = Array.isArray(progress?.missingFieldIds)
+    ? progress.missingFieldIds.filter(isRegistrationFieldId)
+    : [];
+  return {
+    kind: 'prerequisite',
+    reasonCode: record.reasonCode,
+    registration:
+      progress && typeof progress.agreementAccepted === 'boolean'
+        ? { missingFieldIds, agreementAccepted: progress.agreementAccepted }
+        : null
+  };
+}
+
+function isPrerequisiteReason(value: unknown): value is AlibabaCredentialAcquisitionPrerequisiteReason {
   return (
-    value === 'ready' ||
-    value === 'login-required' ||
-    value === 'challenge' ||
-    value === 'no-application' ||
-    value === 'waiting'
+    value === 'developer-registration-required' ||
+    value === 'developer-registration-under-review' ||
+    value === 'developer-registration-rejected' ||
+    value === 'application-required' ||
+    value === 'application-not-ready'
+  );
+}
+
+function isRegistrationFieldId(value: unknown): value is AlibabaDeveloperRegistrationFieldId {
+  return (
+    typeof value === 'string' &&
+    (ALIBABA_DEVELOPER_REGISTRATION_FIELD_IDS as readonly string[]).includes(value)
   );
 }
 
@@ -367,19 +461,143 @@ async function inspectApplicationCenterFrame(): Promise<unknown> {
   };
 }
 
-function inspectApplicationPageStateInFrame(): ExtensionAlibabaPageState {
-  const body = document.body.innerText;
-  if (document.querySelector('.cloud-form .form-label')) return 'ready';
-  const password = document.querySelector('input[type="password"], input[autocomplete="current-password"]');
-  if (password) return 'login-required';
+export function inspectApplicationPageStateInFrame(): unknown {
+  const body = document.body.innerText || document.body.textContent || '';
   if (/captcha|验证码|滑块|slide to verify|security verification|二次验证|安全验证/iu.test(body)) {
-    return 'challenge';
+    return { kind: 'challenge' };
+  }
+  const password = document.querySelector('input[type="password"], input[autocomplete="current-password"]');
+  if (password) return { kind: 'login-required' };
+
+  const applicationForms = [...document.querySelectorAll('.cloud-form')];
+  if (applicationForms.some((element) => element.querySelector('.form-label'))) {
+    const status = applicationForms
+      .find((element) => (element.querySelector('.form-label')?.textContent ?? '').trim() === 'App Status')
+      ?.querySelector('.form-item')
+      ?.textContent.trim();
+    if (
+      status &&
+      /under review|pending|offline|disabled|rejected|审核|待处理|未上线|已停用|已驳回/iu.test(status)
+    ) {
+      return {
+        kind: 'prerequisite',
+        reasonCode: 'application-not-ready',
+        registration: null
+      };
+    }
+    return { kind: 'ready' };
+  }
+
+  const fieldIds = [
+    'country',
+    'companyName',
+    'bizRegistNumber',
+    'address',
+    'city',
+    'province',
+    'postcode',
+    'bizInfoDocs'
+  ];
+  const registrationElements = fieldIds.map((id) => document.getElementById(id));
+  const registrationFormDetected = registrationElements.filter(Boolean).length >= 3;
+  const hasValue = (id: string, element: Element | null): boolean => {
+    if (id === 'bizInfoDocs') {
+      const hiddenResult = document.getElementById('bizInfoDoc');
+      const hiddenValue = hiddenResult instanceof HTMLInputElement ? hiddenResult.value.trim() : '';
+      const upload = element instanceof HTMLInputElement ? element : null;
+      return hiddenValue !== '' || (upload?.files?.length ?? 0) > 0 || (upload?.value.trim() ?? '') !== '';
+    }
+    return element instanceof HTMLInputElement || element instanceof HTMLSelectElement
+      ? element.value.trim() !== ''
+      : false;
+  };
+  const missingFieldIds = fieldIds.filter((id, index) => !hasValue(id, registrationElements[index] ?? null));
+  const agreement = document.querySelector('input[type="checkbox"]');
+  const registration = {
+    missingFieldIds,
+    agreementAccepted: agreement instanceof HTMLInputElement && agreement.checked
+  };
+
+  if (/rejected|review failed|not approved|审核未通过|已驳回|退回修改/iu.test(body)) {
+    return { kind: 'prerequisite', reasonCode: 'developer-registration-rejected', registration };
+  }
+  if (
+    registrationFormDetected &&
+    (/under review|审核中|审核处理中|2\s*[-–]\s*5\s*working days/iu.test(body) ||
+      registrationElements.filter(Boolean).every((element) => {
+        if (element instanceof HTMLInputElement || element instanceof HTMLSelectElement) {
+          return element.disabled || (element instanceof HTMLInputElement && element.readOnly);
+        }
+        return true;
+      }))
+  ) {
+    return { kind: 'prerequisite', reasonCode: 'developer-registration-under-review', registration };
+  }
+  if (
+    registrationFormDetected ||
+    /you have not yet registered as a developer|尚未注册.*开发者/iu.test(body)
+  ) {
+    return { kind: 'prerequisite', reasonCode: 'developer-registration-required', registration };
   }
   if (/no applications?|you have not created an application|暂无应用|还没有应用/iu.test(body)) {
-    return 'no-application';
+    return { kind: 'prerequisite', reasonCode: 'application-required', registration: null };
   }
-  if (body.includes('Application center')) return 'ready';
-  return 'waiting';
+  if (/application center|应用中心/iu.test(body)) return { kind: 'navigation-ready' };
+  return { kind: 'waiting' };
+}
+
+export function focusNextRegistrationFieldInFrame(): string | null {
+  const fieldIds = [
+    'country',
+    'companyName',
+    'bizRegistNumber',
+    'address',
+    'city',
+    'province',
+    'postcode',
+    'bizInfoDocs'
+  ];
+  const hasValue = (id: string, element: HTMLElement): boolean => {
+    if (id === 'bizInfoDocs') {
+      const hiddenResult = document.getElementById('bizInfoDoc');
+      const hiddenValue = hiddenResult instanceof HTMLInputElement ? hiddenResult.value.trim() : '';
+      const upload = element instanceof HTMLInputElement ? element : null;
+      return hiddenValue !== '' || (upload?.files?.length ?? 0) > 0 || (upload?.value.trim() ?? '') !== '';
+    }
+    return element instanceof HTMLInputElement || element instanceof HTMLSelectElement
+      ? element.value.trim() !== ''
+      : true;
+  };
+  let target: HTMLElement | null = null;
+  let targetId: string | null = null;
+  for (const id of fieldIds) {
+    const element = document.getElementById(id);
+    if (element instanceof HTMLElement && !hasValue(id, element)) {
+      target = element;
+      targetId = id;
+      break;
+    }
+  }
+  if (!target) {
+    const agreement = document.querySelector('input[type="checkbox"]');
+    if (agreement instanceof HTMLInputElement && !agreement.checked) {
+      target = agreement;
+      targetId = 'agreements';
+    }
+  }
+  if (!target || !targetId) return null;
+  const focusedTarget = target;
+  focusedTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  focusedTarget.focus({ preventScroll: true });
+  const previousOutline = focusedTarget.style.outline;
+  const previousOffset = focusedTarget.style.outlineOffset;
+  focusedTarget.style.outline = '3px solid #2563eb';
+  focusedTarget.style.outlineOffset = '3px';
+  window.setTimeout(() => {
+    focusedTarget.style.outline = previousOutline;
+    focusedTarget.style.outlineOffset = previousOffset;
+  }, 2_500);
+  return targetId;
 }
 
 function clickApplicationCenterInFrame(): boolean {

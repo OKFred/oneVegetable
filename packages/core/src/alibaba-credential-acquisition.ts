@@ -24,6 +24,8 @@ export type AlibabaCredentialAcquisitionContinueRequest =
 export type AlibabaCredentialAcquisitionJobRequest =
   components['schemas']['AlibabaCredentialAcquisitionJobRequest'];
 export type AlibabaCredentialAcquisitionState = components['schemas']['AlibabaCredentialAcquisitionState'];
+export type AlibabaCredentialAcquisitionPrerequisiteReason =
+  components['schemas']['AlibabaCredentialAcquisitionPrerequisiteState']['reasonCode'];
 
 export interface AlibabaCredentialApplicationCandidate {
   applicationId: string;
@@ -52,13 +54,14 @@ export type AlibabaCredentialAcquisitionFailureCode =
 
 type AlibabaCredentialAcquisitionTerminalState = Extract<
   AlibabaCredentialAcquisitionState,
-  { status: 'completed' | 'extension-required' | 'failed' }
+  { status: 'completed' | 'extension-required' | 'failed' | 'prerequisite-required' }
 >;
 
 export type AlibabaCredentialAcquisitionTransition =
   | { type: 'require-application-selection'; applications: AlibabaCredentialApplicationSummary[] }
   | { type: 'require-callback-confirmation'; currentUrl: string; requestedUrl: string }
   | { type: 'resume' }
+  | { type: 'require-prerequisite'; reasonCode: AlibabaCredentialAcquisitionPrerequisiteReason }
   | { type: 'require-extension'; reasonCode: AlibabaCredentialAcquisitionExtensionFallbackReason }
   | { type: 'complete'; credential: AlibabaCredentialAcquisitionCompletedSummary }
   | { type: 'fail'; code: AlibabaCredentialAcquisitionFailureCode }
@@ -114,6 +117,9 @@ export function transitionAlibabaCredentialAcquisitionState(
   }
   if (transition.type === 'require-extension') {
     return { status: 'extension-required', reasonCode: transition.reasonCode };
+  }
+  if (transition.type === 'require-prerequisite') {
+    return { status: 'prerequisite-required', reasonCode: transition.reasonCode, checkedAtUtc: now };
   }
   if (transition.type === 'fail') return failedState(transition.code);
   if (transition.type === 'cancel') return failedState('ACQUISITION_CANCELLED');
@@ -309,7 +315,12 @@ function failedState(code: AlibabaCredentialAcquisitionFailureCode): AlibabaCred
 function isTerminalState(
   state: AlibabaCredentialAcquisitionState
 ): state is AlibabaCredentialAcquisitionTerminalState {
-  return state.status === 'completed' || state.status === 'failed' || state.status === 'extension-required';
+  return (
+    state.status === 'completed' ||
+    state.status === 'failed' ||
+    state.status === 'extension-required' ||
+    state.status === 'prerequisite-required'
+  );
 }
 
 function normalizedSelector(value: string | null | undefined): string | null {

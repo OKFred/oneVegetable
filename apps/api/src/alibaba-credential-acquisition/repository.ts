@@ -1,7 +1,8 @@
 import {
   ALIBABA_CREDENTIAL_ACQUISITION_RATE_LIMIT_MAXIMUM,
   ALIBABA_CREDENTIAL_ACQUISITION_RATE_LIMIT_WINDOW_MILLISECONDS,
-  createAlibabaCredentialAcquisitionFailure
+  createAlibabaCredentialAcquisitionFailure,
+  validateAlibabaCredentialAcquisitionStateInput
 } from '@one-vegetable/core';
 
 import type { AlibabaCredentialAcquisitionState } from '@one-vegetable/core';
@@ -192,22 +193,11 @@ function parseState(value: string): AlibabaCredentialAcquisitionState {
 }
 
 function assertPublicState(value: unknown): asserts value is AlibabaCredentialAcquisitionState {
-  if (!isRecord(value) || typeof value.status !== 'string') throw new Error('凭据获取任务状态无效');
+  const validation = validateAlibabaCredentialAcquisitionStateInput(value);
+  if (!validation.valid) throw new Error(`凭据获取任务状态无效：${validation.errors.join('；')}`);
   const serialized = JSON.stringify(value);
   if (/"(?:account|password|appSecret|accessToken|refreshToken|authorizationCode)"\s*:/iu.test(serialized)) {
     throw new Error('凭据获取任务状态包含敏感字段');
-  }
-  if (
-    ![
-      'running',
-      'selection-required',
-      'callback-confirmation-required',
-      'extension-required',
-      'completed',
-      'failed'
-    ].includes(value.status)
-  ) {
-    throw new Error('凭据获取任务状态无效');
   }
 }
 
@@ -223,7 +213,12 @@ function expiration(state: AlibabaCredentialAcquisitionState): number {
 }
 
 function isTerminal(state: AlibabaCredentialAcquisitionState): boolean {
-  return state.status === 'extension-required' || state.status === 'completed' || state.status === 'failed';
+  return (
+    state.status === 'extension-required' ||
+    state.status === 'completed' ||
+    state.status === 'failed' ||
+    state.status === 'prerequisite-required'
+  );
 }
 
 function normalizeSessionId(value: string): string {
@@ -248,8 +243,4 @@ function readNumber(row: Record<string, unknown>, key: string): number {
   const value = row[key];
   if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`数据库字段 ${key} 无效`);
   return value;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

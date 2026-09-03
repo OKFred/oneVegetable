@@ -53,12 +53,13 @@ const coreValidators: Record<string, object | undefined> = {
   validateSocialPostTargetRequest: schemas.SocialPostTargetRequest,
   validateSocialPostListRequest: schemas.SocialPostListRequest,
   validateMetaAppConfigurationUpdateRequest: schemas.MetaAppConfigurationUpdateRequest,
-  validateMetaConnectionTargetRequest: schemas.MetaConnectionTargetRequest
+  validateMetaConnectionTargetRequest: schemas.MetaConnectionTargetRequest,
+  validateAlibabaCredentialAcquisitionState: schemas.AlibabaCredentialAcquisitionState
 };
 
 const domains: CapabilityDomain[] = ['product', 'rfq', 'trade', 'logistics', 'insights', 'photo', 'platform'];
 const targets = new Map<string, string>();
-targets.set('validators-core.ts', compileValidators(coreValidators));
+targets.set('validators-core.ts', compileValidators(coreValidators, 'fast'));
 
 for (const domain of domains) {
   const definitions = document[`x-${domain}-capabilities`] ?? {};
@@ -83,14 +84,17 @@ for (const [fileName, output] of targets) {
   }
 }
 
-function compileValidators(selected: Record<string, object | undefined>): string {
+function compileValidators(
+  selected: Record<string, object | undefined>,
+  formatMode: 'fast' | 'full' = 'full'
+): string {
   const ajv = new Ajv2020({
     allErrors: true,
     allowUnionTypes: true,
     code: { esm: true, source: true },
     strict: true
   });
-  addFormats(ajv);
+  addFormats(ajv, { mode: formatMode });
   addErrors(ajv);
 
   for (const [name, schema] of Object.entries(selected)) {
