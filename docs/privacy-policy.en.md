@@ -1,7 +1,7 @@
 # oneVegetable Privacy Policy
 
-Effective date: September 3, 2026
-Applicable version: 2.2.1
+Effective date: September 4, 2026
+Applicable version: 2.3.0
 
 ## Single purpose
 

@@ -11,6 +11,7 @@ Key features:
 - Search RFQs and keep quotation drafts locally.
 - Combine order funding, logistics and fulfillment information.
 - Search audited and typed Open Platform capabilities.
+- Follow a four-step visual journey through developer registration, platform review, application setup, and OAuth, with in-page guidance that does not read submitted registration details.
 - Reuse the current Alibaba sign-in to obtain credentials from an existing application.
 - Inspect and clear local data, session diagnostics, guarded product-display tasks, social-backend device authorization and optional host grants.
 
