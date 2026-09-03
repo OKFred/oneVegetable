@@ -58,41 +58,46 @@ export const auth = {
   },
   onboarding: {
     eyebrow: 'First use',
-    title: 'Confirm data and API boundaries',
-    introduction:
-      'You can browse the capability catalog and edit locally without OpenAPI credentials. Real reads require your own credentials. Platform drafts, new-product publishing, product listing/unlisting, gallery group management, image upload, and external-image transfer are enabled; other unvalidated real writes remain disabled.',
-    steps: {
-      application:
-        'Create or select an Online application in Alibaba Application Center, then obtain its App Key and App Secret.',
-      oauth: 'Complete OAuth authorization to obtain an Access Token for the account.',
-      settings:
-        'Open Settings, choose a local protection passphrase, then enter or import those three credentials.'
+    title: 'Connect Alibaba Open Platform in four steps',
+    introduction: {
+      extension:
+        'The assistant reuses your current Alibaba session in Chrome and guides developer registration, application setup, and OAuth. You personally handle CAPTCHAs and platform agreements on Alibaba.',
+      selfHosted:
+        'An administrator can try cloud connection first. If a slider, CAPTCHA, or security confirmation appears, finish authorization in the Chrome extension and import the credentials securely.'
     },
-    vault: {
-      title: 'Credentials are encrypted on this device',
-      description:
-        'App Key, App Secret, and Access Token are encrypted with your passphrase and stored in chrome.storage.local. The passphrase is never stored and content scripts cannot read it. The unlocked state stays only in the current Chrome session, so a page refresh or background suspension does not require it again.'
+    journey: {
+      label: 'Alibaba Open Platform authorization steps',
+      registration: {
+        title: 'Register as a developer',
+        description:
+          'Prepare company details and supporting documents, then personally accept platform agreements.'
+      },
+      review: {
+        title: 'Wait for review',
+        description: 'The assistant recognizes review status, stops polling, and waits for your manual check.'
+      },
+      application: {
+        title: 'Create an application',
+        description:
+          'Configure the application, Callback, and required permissions until it is ready to authorize.'
+      },
+      authorization: {
+        title: 'Authorize and save',
+        description: 'Validate the OAuth Callback and state, then save the acquired credentials encrypted.'
+      }
     },
-    permissions: {
-      title: 'Host access is requested when needed',
-      description:
-        'The official gateway is required. Chrome asks for custom gateway and external-image origins only when needed, and you can revoke them from Settings.'
-    },
-    verification: {
-      title: 'Local validation is not platform authorization',
-      description:
-        'Local demos, contract validation, and browser regression tests do not mean Alibaba.com granted API access. Availability depends on the current account, business qualifications, and platform response.'
-    },
-    localData: {
-      title: 'Inspect and clear local data',
-      description:
-        'Settings provides an inventory and full-clear action. Redacted diagnostics stay only in the current browser session and contain no request payloads or response bodies.'
+    safety: {
+      title: 'You confirm every sensitive step',
+      extension:
+        'The extension never reads your Alibaba password, fills company data, uploads documents, accepts agreements, or bypasses CAPTCHAs. App Secret and tokens are encrypted only in the trusted extension context.',
+      selfHosted:
+        'Cloud credentials exist only in the current HTTPS request and temporary browser memory. If Alibaba requires human verification, the flow stops and guides you to the local extension.'
     },
     acknowledgement:
       'I understand that API availability depends on account permissions and business qualifications, and I understand the purposes of local data, real writes, and host access.',
     privacy: 'View privacy notice',
     browseOnly: 'Later — browse only',
-    configure: 'Configure credentials',
+    configure: 'Start authorization assistant',
     readError: 'Unable to read first-use status',
     saveError: 'Unable to save first-use status'
   }

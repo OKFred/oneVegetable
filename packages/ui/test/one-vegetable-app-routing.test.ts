@@ -48,10 +48,10 @@ afterEach(() => {
 });
 
 describe('OneVegetableApp hash navigation', () => {
-  it('opens settings when first-time credential setup is selected', async () => {
+  it('opens the extension authorization assistant from first-time onboarding', async () => {
     globalThis.history.replaceState(null, '', '#/dashboard');
     const OnboardingStub = defineComponent({
-      emits: { ready: (_destination?: 'settings') => true },
+      emits: { ready: (_destination?: 'credential-acquisition') => true },
       setup(_props, { emit }) {
         return () =>
           h(
@@ -59,12 +59,16 @@ describe('OneVegetableApp hash navigation', () => {
             {
               'data-testid': 'finish-onboarding',
               onClick: () => {
-                emit('ready', 'settings');
+                emit('ready', 'credential-acquisition');
               }
             },
-            '前往设置凭证'
+            '开始授权向导'
           );
       }
+    });
+    const AcquisitionStub = defineComponent({
+      props: { open: { type: Boolean, required: true } },
+      template: '<div v-if="open" data-testid="extension-credential-acquisition" />'
     });
     const ReviewPromptStub = defineComponent({
       setup() {
@@ -83,10 +87,15 @@ describe('OneVegetableApp hash navigation', () => {
           claimDuePrompt: () => Promise.resolve(false),
           openStoreReview: () => Promise.resolve()
         },
+        alibabaCredentialAcquisition: {} as never,
         mode: 'extension'
       },
       global: {
-        stubs: { ExtensionReviewPrompt: ReviewPromptStub, OnboardingDialog: OnboardingStub }
+        stubs: {
+          AlibabaCredentialAcquisitionDialog: AcquisitionStub,
+          ExtensionReviewPrompt: ReviewPromptStub,
+          OnboardingDialog: OnboardingStub
+        }
       }
     });
 
@@ -95,9 +104,64 @@ describe('OneVegetableApp hash navigation', () => {
     await wrapper.get('[data-testid="finish-onboarding"]').trigger('click');
     await flushPromises();
 
-    expect(globalThis.location.hash).toBe('#/settings');
-    expect(wrapper.get('nav a[href="#/settings"]').attributes('aria-current')).toBe('page');
+    expect(globalThis.location.hash).toBe('#/dashboard');
+    expect(wrapper.get('nav a[href="#/dashboard"]').attributes('aria-current')).toBe('page');
+    expect(wrapper.get('[data-testid="extension-credential-acquisition"]').attributes('data-testid')).toBe(
+      'extension-credential-acquisition'
+    );
     expect(wrapper.find('[data-testid="review-prompt"]').exists()).toBe(true);
+    wrapper.unmount();
+  });
+
+  it('guides a signed-in self-hosted administrator into the cloud authorization assistant', async () => {
+    const OnboardingStub = defineComponent({
+      emits: { ready: (_destination?: 'credential-acquisition') => true },
+      setup(_props, { emit }) {
+        return () =>
+          h(
+            'button',
+            {
+              'data-testid': 'finish-cloud-onboarding',
+              onClick: () => {
+                emit('ready', 'credential-acquisition');
+              }
+            },
+            '开始授权向导'
+          );
+      }
+    });
+    const CloudAcquisitionStub = defineComponent({
+      props: { open: { type: Boolean, required: true } },
+      template: '<div v-if="open" data-testid="cloud-credential-acquisition" />'
+    });
+    const wrapper = shallowMount(OneVegetableApp, {
+      props: {
+        gateway: new MockGatewayClient(0),
+        settings,
+        onboarding: {
+          load: () => Promise.resolve({ version: 1 as const, completedAt: null }),
+          complete: () => Promise.resolve({ version: 1 as const, completedAt: '2026-09-04T00:00:00.000Z' })
+        },
+        control: adminControl(),
+        mode: 'bff'
+      },
+      global: {
+        stubs: {
+          AlibabaCloudCredentialAcquisitionDialog: CloudAcquisitionStub,
+          OnboardingDialog: OnboardingStub
+        }
+      }
+    });
+    await flushPromises();
+
+    expect(wrapper.find('nav').exists()).toBe(false);
+    await wrapper.get('[data-testid="finish-cloud-onboarding"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.get('[data-testid="cloud-credential-acquisition"]').attributes('data-testid')).toBe(
+      'cloud-credential-acquisition'
+    );
+    expect(wrapper.find('nav').exists()).toBe(true);
     wrapper.unmount();
   });
 
@@ -211,6 +275,39 @@ function regularUserControl(): ControlClient {
         gatewayMode: 'replay',
         apiPrefix: '/api/v1',
         version: '2.0.1'
+      }),
+    session: () => Promise.resolve(session)
+  } as unknown as ControlClient;
+}
+
+function adminControl(): ControlClient {
+  const session: ControlSession = {
+    principal: { actorId: 'admin-1', username: 'administrator', role: 'admin', source: 'bff' },
+    user: {
+      id: 'admin-1',
+      username: 'administrator',
+      role: 'admin',
+      status: 'active',
+      lockedUntilUtc: null,
+      createTimeUtc: 1,
+      updateTimeUtc: 1,
+      creatorId: 'system:bootstrap',
+      updaterId: 'system:bootstrap',
+      revision: 1,
+      remark: null
+    },
+    absoluteExpiresTimeUtc: 10_000,
+    idleExpiresTimeUtc: 5_000
+  };
+  return {
+    backendMeta: () =>
+      Promise.resolve({
+        runtime: 'cloudflare',
+        database: 'd1',
+        environment: 'self-hosted',
+        gatewayMode: 'disabled',
+        apiPrefix: '/api/v1',
+        version: '2.2.1'
       }),
     session: () => Promise.resolve(session)
   } as unknown as ControlClient;

@@ -7,9 +7,13 @@ import {
   BffGatewayClient,
   BffProductMutationJobClient,
   BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA,
+  completeOnboarding,
+  ONBOARDING_STORAGE_KEY,
   OPERATION_IDS,
+  readOnboardingState,
   StaticOperationAvailabilityClient,
   type GatewaySettings,
+  type OnboardingRepository,
   type SettingsRepository
 } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
@@ -49,6 +53,7 @@ const settings: SettingsRepository = {
 
 const gatewayMode = readWebGatewayMode(import.meta.env.VITE_GATEWAY_MODE);
 const bffBaseUrl = resolveWebBffBaseUrl(import.meta.env.VITE_BFF_BASE_URL, globalThis.location.origin);
+const onboarding = gatewayMode === 'bff' ? createBrowserOnboardingRepository() : undefined;
 const control =
   gatewayMode === 'bff'
     ? new BffControlClient({
@@ -107,6 +112,7 @@ const app = createApp(OneVegetableApp, {
   mode: gatewayMode,
   ...(control ? { control } : {}),
   ...(control ? { socialPublishing: control } : {}),
+  ...(onboarding ? { onboarding } : {}),
   ...(productDescriptionTemplates ? { productDescriptionTemplates } : {}),
   ...(productMutationJobs ? { productMutationJobs } : {}),
   operationAvailability
@@ -116,6 +122,25 @@ app.use(VueQueryPlugin, {
   queryClient: new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000 } } })
 });
 app.mount('#app');
+
+function createBrowserOnboardingRepository(): OnboardingRepository {
+  return {
+    load() {
+      const stored = globalThis.localStorage.getItem(ONBOARDING_STORAGE_KEY);
+      if (!stored) return Promise.resolve(readOnboardingState(undefined));
+      try {
+        return Promise.resolve(readOnboardingState(JSON.parse(stored) as unknown));
+      } catch {
+        return Promise.resolve(readOnboardingState(undefined));
+      }
+    },
+    complete() {
+      const state = completeOnboarding();
+      globalThis.localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(state));
+      return Promise.resolve(state);
+    }
+  };
+}
 
 function readCookie(name: string): string | null {
   const prefix = `${encodeURIComponent(name)}=`;

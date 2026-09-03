@@ -56,37 +56,43 @@ export const auth = {
   },
   onboarding: {
     eyebrow: '首次使用',
-    title: '先确认数据与调用边界',
-    introduction:
-      '无需开放平台凭证即可查看能力目录和本地编辑；真实查询需要用户自己的凭证，平台草稿、正式发品、商品上下架、图库分组管理、图片上传和外部图片转存已开放，其他未经验收的真实写操作保持关闭。',
-    steps: {
-      application: '在 Alibaba 应用中心创建或选择 Online 应用，取得 App Key 和 App Secret。',
-      oauth: '完成 OAuth 授权，取得该账号的 Access Token。',
-      settings: '前往设置，设置本机保护口令并填写或导入以上三项凭证。'
+    title: '四步连接 Alibaba 开放平台',
+    introduction: {
+      extension:
+        '向导会复用当前 Chrome 的 Alibaba 登录状态，带你完成开发者注册、应用配置和 OAuth 授权；遇到验证码或平台协议时由你在 Alibaba 页面亲自处理。',
+      selfHosted:
+        '管理员可以先尝试云端自动连接；遇到滑块、验证码或安全确认时，改用 Chrome 插件完成授权，再将凭证安全导入当前站点。'
     },
-    vault: {
-      title: '凭证在本机加密保存',
-      description:
-        'App Key、App Secret 和 Access Token 使用用户口令加密后存入 chrome.storage.local；口令不保存，内容脚本不能读取。解锁状态仅在当前 Chrome 会话内存中保留，刷新页面或后台休眠无需重复输入口令。'
+    journey: {
+      label: 'Alibaba 开放平台授权步骤',
+      registration: {
+        title: '注册开发者',
+        description: '准备企业信息和证明材料，并亲自确认平台协议。'
+      },
+      review: {
+        title: '等待审核',
+        description: '向导识别审核状态并停止轮询，状态变化后再手工检查。'
+      },
+      application: {
+        title: '创建应用',
+        description: '配置应用、Callback 和所需权限，等待应用达到可授权状态。'
+      },
+      authorization: {
+        title: '授权并保存',
+        description: '校验 OAuth 回调与 state，然后加密保存获取到的凭证。'
+      }
     },
-    permissions: {
-      title: '主机权限按用途申请',
-      description: '正式网关为必选权限；自定义网关和外部图片来源只在使用时向 Chrome 请求，可随时从设置撤销。'
-    },
-    verification: {
-      title: '本地验证不等于平台授权',
-      description:
-        '本地演示、契约验证和浏览器回归不代表国际站已授予接口权限；实际可用能力以当前账号、业务资格和平台响应为准。'
-    },
-    localData: {
-      title: '本地数据可查看和清除',
-      description:
-        '设置页提供数据清单与彻底清除入口；脱敏诊断仅保留在当前浏览器会话，不包含请求参数或响应正文。'
+    safety: {
+      title: '敏感步骤始终由你确认',
+      extension:
+        '插件不读取 Alibaba 网站密码，也不会代填企业资料、上传证件、接受协议或绕过验证码；App Secret 和 Token 获取后只在插件受信环境中加密保存。',
+      selfHosted:
+        '云端尝试中的账号密码只存在于当前 HTTPS 请求和临时浏览器内存；若平台要求人机验证，流程会停止并引导你改用本机插件。'
     },
     acknowledgement: '我已理解接口可用性取决于账号权限与业务资格，并知晓本地数据、真实写入和主机权限的用途。',
     privacy: '查看隐私说明',
     browseOnly: '稍后，仅浏览',
-    configure: '前往设置凭证',
+    configure: '开始授权向导',
     readError: '首次使用状态读取失败',
     saveError: '首次使用状态保存失败'
   }

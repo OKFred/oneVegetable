@@ -139,7 +139,8 @@ const page = ref<PageId>(parsePageHash(globalThis.location.hash) ?? 'dashboard')
 const sidebarOpen = ref(false);
 const sidebarPanel = ref<HTMLElement | null>(null);
 const sidebarToggle = ref<FocusableButton | null>(null);
-const workspaceReady = ref(props.mode !== 'extension' || props.onboarding === undefined);
+const workspaceReady = ref(props.mode === 'mock' || props.onboarding === undefined);
+const credentialAcquisitionOpen = ref(false);
 const views: Record<PageId, Component> = {
   dashboard: defineAsyncComponent(() => import('./views/DashboardView.vue')),
   products: defineAsyncComponent(() => import('./views/ProductsView.vue')),
@@ -153,7 +154,18 @@ const views: Record<PageId, Component> = {
   releases: defineAsyncComponent(() => import('./views/ReleaseNotesView.vue')),
   settings: defineAsyncComponent(() => import('./views/SettingsView.vue'))
 };
+const AlibabaCredentialAcquisitionDialog = defineAsyncComponent(
+  () => import('./components/AlibabaCredentialAcquisitionDialog.vue')
+);
+const AlibabaCloudCredentialAcquisitionDialog = defineAsyncComponent(
+  () => import('./components/AlibabaCloudCredentialAcquisitionDialog.vue')
+);
 const activeView = computed(() => views[page.value]);
+const onboardingActive = computed(
+  () =>
+    props.onboarding !== undefined &&
+    (props.mode === 'extension' || (props.mode === 'bff' && session.value?.principal.role === 'admin'))
+);
 const colorScheme = globalThis.matchMedia('(prefers-color-scheme: dark)');
 const desktopNavigationQuery = globalThis.matchMedia('(min-width: 1024px)');
 const desktopNavigation = ref(desktopNavigationQuery.matches);
@@ -227,12 +239,16 @@ function syncPageFromHash(): void {
 
 function handleAuthenticated(nextSession: ControlSession): void {
   session.value = nextSession;
+  workspaceReady.value = !onboardingActive.value;
   syncPageFromHash();
 }
 
-function handleOnboardingReady(destination?: 'settings'): void {
+async function handleOnboardingReady(destination?: 'credential-acquisition'): Promise<void> {
   workspaceReady.value = true;
-  if (destination === 'settings') replacePage('settings');
+  if (destination === 'credential-acquisition') {
+    await nextTick();
+    credentialAcquisitionOpen.value = true;
+  }
 }
 
 watch(themePreference, syncTheme);
@@ -251,6 +267,7 @@ onMounted(async () => {
       session.value = null;
     } finally {
       authLoading.value = false;
+      if (!onboardingActive.value) workspaceReady.value = true;
     }
   }
   syncPageFromHash();
@@ -314,7 +331,17 @@ function avatarInitials(name: string): string {
       v-if="!authLoading && mode === 'bff' && control && !session"
       @authenticated="handleAuthenticated"
     />
-    <OnboardingDialog @ready="handleOnboardingReady" />
+    <OnboardingDialog v-if="onboardingActive" @ready="handleOnboardingReady" />
+    <AlibabaCredentialAcquisitionDialog
+      v-if="mode === 'extension' && alibabaCredentialAcquisition"
+      v-model:open="credentialAcquisitionOpen"
+      data-testid="extension-credential-acquisition"
+    />
+    <AlibabaCloudCredentialAcquisitionDialog
+      v-if="mode === 'bff' && control"
+      v-model:open="credentialAcquisitionOpen"
+      data-testid="cloud-credential-acquisition"
+    />
     <ExtensionReviewPrompt
       v-if="mode === 'extension' && workspaceReady && reviewPrompt"
       :repository="reviewPrompt"
