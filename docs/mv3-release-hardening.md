@@ -5,7 +5,7 @@
 生产 manifest 的默认权限保持为：
 
 - `storage`：加密凭证保险库写入 `chrome.storage.local`，当前 Chrome 会话的派生解锁材料和诊断写入内存型 `chrome.storage.session`；两者均限制为 `TRUSTED_CONTEXTS`，内容脚本不能访问，保险库口令不保存。
-- `scripting`：仅在用户主动启动“获取开放平台凭证”向导后，向本次已知 Alibaba 应用中心和 OAuth 标签页注入扩展包内固定代码；不执行远程代码，不做后台网页抓取。
+- `scripting`：仅在用户主动启动“获取开放平台凭证”向导后，向本次已知 Alibaba 开发者注册、应用中心和 OAuth 标签页注入扩展包内固定代码；注册检测只返回状态和缺失字段 ID，不返回资料值，不执行远程代码或后台网页抓取。
 - `https://eco.taobao.com/*`：国际站正式 HTTPS 网关。
 
 扩展不再申请 `cookies` 或必选 `<all_urls>`。自定义网关和外部图片 URL 使用

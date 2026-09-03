@@ -25,7 +25,7 @@ pnpm dev:extension
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/OKFred/oneVegetable)
 
-一键部署会在同一个 Worker 中托管 Vue Web、Hono API 和 D1，并自动执行数据库 migration。部署页只要求两个独立随机 Secret：首次管理员引导令牌 `BOOTSTRAP_ADMIN_TOKEN`，以及 32 字节 Base64URL 凭据加密密钥 `ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY`。Alibaba AppKey、AppSecret 和 Token 不填写到部署表单；部署后管理员可以用 Browser Run 尝试一键连接、改用本机插件，或导入本机授权包。Browser Run 免费额度有限，开发和 CI 只做本地模拟与 Wrangler dry-run，真实云浏览器留到发布候选的受控验收。
+一键部署会在同一个 Worker 中托管 Vue Web、Hono API 和 D1，并自动执行数据库 migration。部署页只要求两个独立随机 Secret：首次管理员引导令牌 `BOOTSTRAP_ADMIN_TOKEN`，以及 32 字节 Base64URL 凭据加密密钥 `ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY`。Alibaba AppKey、AppSecret 和 Token 不填写到部署表单；部署后管理员可以用 Browser Run 尝试一键连接、改用本机插件，或导入本机授权包。凭证向导会明确区分开发者注册、平台审核、应用准备和 OAuth；它不填写企业资料、不接受协议，也不代替用户提交。Browser Run 免费额度有限，开发和 CI 只做本地模拟与 Wrangler dry-run，真实云浏览器留到发布候选的受控验收。
 
 部署后的首次访问使用管理员引导令牌登记 Passkey，并一次性生成 10 个恢复码；详细的部署、凭据导入、域名更换和恢复流程见 [Cloudflare 自托管指南](docs/cloudflare-self-hosted.md)。
 

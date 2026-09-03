@@ -5,7 +5,7 @@
 ## 已自动化验证
 
 - MV3 manifest 的版本、名称和描述本地化、主页地址、权限最小集；
-- 必选扩展权限仅为 `storage`、用户主动凭证向导所需的 `scripting`，必选主机仅为正式 HTTPS 网关；未出现 cookies、`tabs`、`webNavigation` 或必选 `<all_urls>`；
+- 必选扩展权限仅为 `storage`、用户主动凭证向导所需的 `scripting`，必选主机仅为正式 HTTPS 网关；`scripting` 只在用户主动启动后向 Alibaba 开发者注册、应用中心及 OAuth 页面注入包内固定检测/引导代码，不读取注册资料值或代替提交；未出现 cookies、`tabs`、`webNavigation` 或必选 `<all_urls>`；
 - 最低 Chrome 102，local/session 存储限制为可信扩展上下文，内容脚本不可读取；
 - 应用中心、OAuth Callback、自定义网关、用户自托管社交发布 BFF 与外部图片来源保持可选主机权限，并在用户启动对应功能时按具体站点申请；
 - 中英文商店文案、权限理由、本地隐私页和仓库隐私政策存在且版本一致；
