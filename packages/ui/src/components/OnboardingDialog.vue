@@ -2,10 +2,10 @@
 import { computed, onMounted, ref } from 'vue';
 import { ArrowRight, Check, ShieldCheck } from '@lucide/vue';
 
-import applicationSetupImage from '../assets/onboarding/application-setup.png';
-import developerRegistrationImage from '../assets/onboarding/developer-registration.png';
-import oauthSecureImage from '../assets/onboarding/oauth-secure.png';
-import reviewWaitImage from '../assets/onboarding/review-wait.png';
+import applicationSetupImage from '../assets/onboarding/application-setup.webp';
+import developerRegistrationImage from '../assets/onboarding/developer-registration.webp';
+import oauthSecureImage from '../assets/onboarding/oauth-secure.webp';
+import reviewWaitImage from '../assets/onboarding/review-wait.webp';
 import { useUiI18n } from '../i18n';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
