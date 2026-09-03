@@ -2,6 +2,7 @@ import { browser } from 'wxt/browser';
 
 import type {
   AlibabaCredentialAcquisitionPrerequisiteReason,
+  AlibabaCredentialAcquisitionState,
   AlibabaCredentialApplicationSource,
   AlibabaOpenApiPermission
 } from '@one-vegetable/core';
@@ -163,6 +164,41 @@ export async function focusNextAlibabaDeveloperRegistrationField(tabId: number):
     if (typeof result.result === 'string' && result.result.length <= 64) return result.result;
   }
   return null;
+}
+
+export async function showAlibabaDeveloperGuide(
+  tabId: number,
+  state: Extract<AlibabaCredentialAcquisitionState, { status: 'prerequisite-required' }>
+): Promise<void> {
+  await browser.scripting.executeScript({
+    target: { tabId },
+    files: ['/alibaba-developer-guide.js']
+  });
+  await sendAlibabaDeveloperGuideMessage(tabId, {
+    kind: 'one-vegetable-alibaba-developer-guide-update',
+    state
+  });
+}
+
+async function sendAlibabaDeveloperGuideMessage(tabId: number, message: unknown): Promise<void> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    try {
+      await browser.tabs.sendMessage(tabId, message);
+      return;
+    } catch (error: unknown) {
+      lastError = error;
+      await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 50));
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('Alibaba 页面向导未能初始化');
+}
+
+export async function hideAlibabaDeveloperGuide(tabId: number): Promise<void> {
+  if (tabId < 0) return;
+  await browser.tabs
+    .sendMessage(tabId, { kind: 'one-vegetable-alibaba-developer-guide-remove' })
+    .catch(() => undefined);
 }
 
 export async function revealAlibabaApplicationSecret(tabId: number): Promise<ExtensionAlibabaSecretResult> {
