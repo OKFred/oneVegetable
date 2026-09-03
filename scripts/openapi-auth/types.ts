@@ -15,6 +15,17 @@ export type OpenApiAuthStage =
   | 'storage'
   | 'complete';
 
+export interface OpenApiAuthPrerequisite {
+  status: 'prerequisite-required';
+  reasonCode:
+    | 'developer-registration-required'
+    | 'developer-registration-under-review'
+    | 'developer-registration-rejected'
+    | 'application-required'
+    | 'application-not-ready';
+  checkedAtUtc: number;
+}
+
 export interface OpenApiAuthDiagnostic {
   schemaVersion: 1;
   capturedAtUtc: string;
@@ -22,6 +33,7 @@ export interface OpenApiAuthDiagnostic {
   stage: OpenApiAuthStage;
   targetUrl: string;
   currentUrl: string | null;
+  prerequisite: OpenApiAuthPrerequisite | null;
   selectedApplication: {
     appName: string | null;
     appKeySuffix: string | null;

@@ -4,6 +4,12 @@ import { dirname } from 'node:path';
 import type { BrowserContext, Frame, Locator, Page, Request } from '@playwright/test';
 
 import { resolveAlibabaCredentialApplication } from '../../packages/core/src/alibaba-credential-acquisition';
+import {
+  inspectAlibabaDeveloperPrerequisiteDocument,
+  selectAlibabaDeveloperPrerequisite
+} from '../../packages/core/src/alibaba-developer-page-inspection';
+
+import type { AlibabaCredentialAcquisitionPrerequisiteReason } from '../../packages/core/src/alibaba-credential-acquisition';
 
 import { callbackMatches } from './config';
 import { OpenApiAuthError } from './storage';
@@ -37,6 +43,7 @@ export async function ensureAlibabaLogin(
   options: { timeoutMilliseconds: number; manualFallback: boolean; manualTimeoutMilliseconds: number }
 ): Promise<void> {
   await page.goto(targetUrl.href, { waitUntil: 'domcontentloaded', timeout: options.timeoutMilliseconds });
+  await throwForDeveloperPrerequisite(page);
   if (await hasPlatformConfiguration(page)) return;
 
   const loginForm = await findLoginForm(page);
@@ -59,16 +66,32 @@ export async function ensureAlibabaLogin(
 
 export async function openApplicationCenter(page: Page, timeoutMilliseconds: number): Promise<Frame> {
   const applicationCenter = page.getByText('Application center', { exact: true });
-  await applicationCenter.waitFor({ state: 'visible', timeout: timeoutMilliseconds });
-  await applicationCenter.click();
-
   const deadline = Date.now() + timeoutMilliseconds;
+  let opened = false;
+  while (Date.now() < deadline) {
+    if (
+      (await applicationCenter.count()) > 0 &&
+      (await applicationCenter
+        .first()
+        .isVisible()
+        .catch(() => false))
+    ) {
+      await applicationCenter.first().click();
+      opened = true;
+      break;
+    }
+    await throwForDeveloperPrerequisite(page);
+    await page.waitForTimeout(200);
+  }
+  if (!opened) throw new OpenApiAuthError('APPLICATION_CENTER_TIMEOUT', '应用中心入口未在预期时间内就绪');
+
   while (Date.now() < deadline) {
     const frame = page.frames().find((item) => item.url().includes('openapi.alibaba.com/app/index.htm'));
     if (frame) {
       const body = frame.locator('body');
       if (await body.isVisible().catch(() => false)) return frame;
     }
+    await throwForDeveloperPrerequisite(page);
     await page.waitForTimeout(200);
   }
   throw new OpenApiAuthError('APPLICATION_CENTER_TIMEOUT', '应用中心未在预期时间内就绪');
@@ -173,12 +196,20 @@ export async function selectApplication(
   if (selector.appName && selected.appName !== selector.appName) {
     throw new OpenApiAuthError('APPLICATION_NOT_FOUND', '未找到 OPEN_API_APP_NAME 指定的应用');
   }
+  if (isApplicationNotReady(selected.status)) {
+    throw new OpenApiAuthError(
+      'ALIBABA_PREREQUISITE_REQUIRED',
+      prerequisiteMessage('application-not-ready'),
+      'application-not-ready'
+    );
+  }
   return selected;
 }
 
 async function waitForApplicationDetails(frame: Frame, timeoutMilliseconds: number): Promise<void> {
   const deadline = Date.now() + timeoutMilliseconds;
   while (Date.now() < deadline) {
+    await throwForDeveloperPrerequisite(frame.page());
     if (
       await readApplication(frame)
         .then(() => true)
@@ -188,6 +219,10 @@ async function waitForApplicationDetails(frame: Frame, timeoutMilliseconds: numb
     await frame.page().waitForTimeout(200);
   }
   throw new OpenApiAuthError('APPLICATION_DETAILS_TIMEOUT', '等待应用详情加载超时');
+}
+
+function isApplicationNotReady(status: string): boolean {
+  return /under review|pending|offline|disabled|rejected|审核|待处理|未上线|已停用|已驳回/iu.test(status);
 }
 
 export async function updateCallbackUrl(
@@ -400,6 +435,7 @@ async function waitForPlatformConfiguration(
   const deadline = Date.now() + timeoutMilliseconds;
   let nextTargetNavigation = 0;
   while (Date.now() < deadline) {
+    await throwForDeveloperPrerequisite(page);
     if (await hasPlatformConfiguration(page)) return true;
     if (Date.now() >= nextTargetNavigation && (await canReturnToTarget(page))) {
       await page
@@ -414,6 +450,38 @@ async function waitForPlatformConfiguration(
     await page.waitForTimeout(300);
   }
   return false;
+}
+
+export async function detectAlibabaDeveloperPrerequisite(
+  page: Page
+): Promise<AlibabaCredentialAcquisitionPrerequisiteReason | null> {
+  return selectAlibabaDeveloperPrerequisite(
+    await Promise.all(
+      page.frames().map((frame) =>
+        frame
+          .locator('body')
+          .evaluate(inspectAlibabaDeveloperPrerequisiteDocument)
+          .catch(() => null)
+      )
+    )
+  );
+}
+
+async function throwForDeveloperPrerequisite(page: Page): Promise<void> {
+  const reason = await detectAlibabaDeveloperPrerequisite(page);
+  if (!reason) return;
+  throw new OpenApiAuthError('ALIBABA_PREREQUISITE_REQUIRED', prerequisiteMessage(reason), reason);
+}
+
+function prerequisiteMessage(reason: AlibabaCredentialAcquisitionPrerequisiteReason): string {
+  const messages: Record<AlibabaCredentialAcquisitionPrerequisiteReason, string> = {
+    'developer-registration-required': '请先在 Alibaba 页面完成开发者注册',
+    'developer-registration-under-review': 'Alibaba 开发者注册正在审核中，页面提示约需 2–5 个工作日',
+    'developer-registration-rejected': 'Alibaba 开发者注册已被退回，请按页面提示修正',
+    'application-required': '开发者审核通过后，请先创建 Alibaba 开放平台应用',
+    'application-not-ready': 'Alibaba 开放平台应用尚未达到可授权状态'
+  };
+  return messages[reason];
 }
 
 async function canReturnToTarget(page: Page): Promise<boolean> {

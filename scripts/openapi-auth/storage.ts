@@ -2,6 +2,8 @@ import { chmod, mkdir, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
+import type { AlibabaCredentialAcquisitionPrerequisiteReason } from '../../packages/core/src/alibaba-credential-acquisition';
+
 export async function atomicWriteJson(path: string, value: unknown): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
   const temporaryPath = `${path}.${process.pid}.${randomUUID()}.tmp`;
@@ -36,7 +38,8 @@ export function redactText(value: string): string {
 export class OpenApiAuthError extends Error {
   constructor(
     readonly code: string,
-    message: string
+    message: string,
+    readonly prerequisiteReason: AlibabaCredentialAcquisitionPrerequisiteReason | null = null
   ) {
     super(message);
     this.name = 'OpenApiAuthError';
