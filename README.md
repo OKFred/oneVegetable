@@ -103,7 +103,7 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 - MV3 默认只申请 `storage`、用于用户主动授权向导的 `scripting` 和正式网关主机权限；应用中心、OAuth Callback、自定义网关与外部图片来源均在用户执行对应操作时按具体站点申请权限。设置页可导出或清空最多 100 条会话级脱敏诊断，且构建会执行权限与体积预算检查。详见 [MV3 发布加固说明](docs/mv3-release-hardening.md)。
 - 开放平台凭证使用用户口令派生的 AES-256-GCM 密钥加密保存；local/session 存储对内容脚本不可见，口令不落盘。解锁后只把派生密钥材料保留在当前 Chrome 会话的内存型 `chrome.storage.session`，因此页面刷新和 MV3 service worker 休眠无需重复输入；浏览器重启、扩展更新/重载、主动锁定或所选空闲时限到期后重新锁定。旧版明文设置必须显式迁移，遗忘口令只能清除后重新配置，威胁模型与恢复边界见 [凭证保险库说明](docs/credential-vault.md)。
 - RC 构建会迁移旧设置、允许查看/撤销额外主机权限、只对只读请求执行有限重试，并生成可复现 ZIP 与 SHA-256。CI 只保存产物，不自动上架。详见 [RC 发布准备说明](docs/rc-release-readiness.md)。
-- 扩展首次使用会显著说明凭证、权限、Mock 与真实验收边界；设置页可导出不含具体值的数据清单并彻底清除本地数据。商店文案、隐私政策、真实扩展截图和仍待人工完成的阻断项见 [Chrome Web Store 提交清单](docs/store-submission.md)。
+- 扩展和自托管管理员首次使用时会看到“开发者注册 → 平台审核 → 创建应用 → OAuth 授权”的双语图文引导，并可直接进入对应凭证助手；扩展设置页还可导出不含具体值的数据清单并彻底清除本地数据。商店文案、隐私政策、真实扩展截图和仍待人工完成的阻断项见 [Chrome Web Store 提交清单](docs/store-submission.md)。
 - `docs/alibaba-api-audit.json` 是 2026-08-13 的文档审计快照，共 84 个免费且非聚石塔候选 API。特定 ISV/业务资格接口默认关闭。
 - 已提供本地 OpenAPI 授权包获取工具，但真实 API 验收结果仍以显式的 real smoke 报告为准；契约 Mock、签名、Replay 和 MV3 行为不等于真实账号验收。2026-08-20 最新一轮真实只读 Smoke 为 35 项候选中 22 项通过、5 项权限不足、1 项上游错误、7 项缺少前置数据，契约漂移为 0；真实 Web 页面 Smoke 同时确认核心查询没有回退到 Mock，并已跑通真实商品列表到 Schema 可视化解析及评分的只读链路。
 
