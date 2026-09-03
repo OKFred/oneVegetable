@@ -103,9 +103,11 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   const page = await browserContext.newPage();
   await page.goto(`chrome-extension://${extensionId}/options.html`);
 
-  await expect(page.getByRole('heading', { name: '先确认数据与调用边界' })).toBeVisible();
+  const onboardingDialog = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
+  await expect(onboardingDialog).toBeVisible();
+  await expect(onboardingDialog.locator('img')).toHaveCount(4);
   await expect(page.getByRole('button', { name: '稍后，仅浏览' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: '前往设置凭证' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '开始授权向导' })).toBeDisabled();
   await expect(page.getByRole('link', { name: '查看隐私说明' })).toHaveAttribute('href', '/privacy.html');
   const diagnosticsBeforeConsent = await page.evaluate(async () => {
     const extension = (
@@ -121,7 +123,12 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   });
   expect(diagnosticsBeforeConsent).toMatchObject({ ok: true, data: { entries: [] } });
   await page.getByRole('checkbox').check();
-  await page.getByRole('button', { name: '稍后，仅浏览' }).click();
+  await page.getByRole('button', { name: '开始授权向导' }).click();
+  const acquisitionDialog = page.getByRole('dialog', { name: '获取开放平台凭证' });
+  await expect(acquisitionDialog).toBeVisible();
+  await expect(acquisitionDialog.getByText('1. 开发者注册', { exact: true })).toBeVisible();
+  await expect(acquisitionDialog.getByText('2. 平台审核', { exact: true })).toBeVisible();
+  await acquisitionDialog.getByRole('button', { name: '关闭', exact: true }).click();
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
   await expect(page.getByText('用得不错？赏个评价。')).toHaveCount(0);
   await expect
@@ -603,7 +610,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   expect(clearedState).toEqual({ local: {}, session: {}, pageStorageLength: 0 });
 
   await page.reload();
-  await expect(page.getByRole('heading', { name: '先确认数据与调用边界' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '四步连接 Alibaba 开放平台' })).toBeVisible();
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: '稍后，仅浏览' }).click();
   await page.evaluate(async () => {

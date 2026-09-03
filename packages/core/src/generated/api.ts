@@ -1305,6 +1305,13 @@ export interface components {
             /** Format: uuid */
             jobId: string;
         };
+        AlibabaCredentialAcquisitionPrerequisiteState: {
+            /** @constant */
+            status: "prerequisite-required";
+            /** @enum {string} */
+            reasonCode: "developer-registration-required" | "developer-registration-under-review" | "developer-registration-rejected" | "application-required" | "application-not-ready";
+            checkedAtUtc: number;
+        };
         AlibabaCredentialAcquisitionRunningState: {
             /** @constant */
             status: "running";
@@ -1327,7 +1334,7 @@ export interface components {
             /** Format: uri */
             callbackUrl: string | null;
         };
-        AlibabaCredentialAcquisitionState: components["schemas"]["AlibabaCredentialAcquisitionRunningState"] | components["schemas"]["AlibabaCredentialAcquisitionSelectionRequiredState"] | components["schemas"]["AlibabaCredentialAcquisitionCallbackConfirmationState"] | components["schemas"]["AlibabaCredentialAcquisitionExtensionRequiredState"] | components["schemas"]["AlibabaCredentialAcquisitionCompletedState"] | components["schemas"]["AlibabaCredentialAcquisitionFailedState"];
+        AlibabaCredentialAcquisitionState: components["schemas"]["AlibabaCredentialAcquisitionRunningState"] | components["schemas"]["AlibabaCredentialAcquisitionSelectionRequiredState"] | components["schemas"]["AlibabaCredentialAcquisitionCallbackConfirmationState"] | components["schemas"]["AlibabaCredentialAcquisitionPrerequisiteState"] | components["schemas"]["AlibabaCredentialAcquisitionExtensionRequiredState"] | components["schemas"]["AlibabaCredentialAcquisitionCompletedState"] | components["schemas"]["AlibabaCredentialAcquisitionFailedState"];
         AlibabaCredentialAcquisitionStateSuccess: {
             requestId: components["schemas"]["RequestId"];
             /** @constant */

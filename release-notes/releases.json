@@ -3,6 +3,56 @@
   "repositoryUrl": "https://github.com/OKFred/oneVegetable",
   "releases": [
     {
+      "version": "2.3.0",
+      "releasedAt": "2026-09-04",
+      "title": {
+        "zh-CN": "开放平台授权新手引导",
+        "en-US": "Guided Open Platform authorization"
+      },
+      "summary": {
+        "zh-CN": "为 Chrome 插件和自托管工作台增加四步图文首次引导，识别开发者注册、平台审核和应用准备状态，并衔接现有 OAuth 凭证获取流程。",
+        "en-US": "Adds a four-step visual first-use journey for the Chrome extension and self-hosted workspace, detects developer registration, review, and application readiness, and continues into the existing OAuth credential flow."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/releases/tag/v2.3.0",
+      "compareUrl": "https://github.com/OKFred/oneVegetable/compare/v2.2.1...v2.3.0",
+      "changes": [
+        {
+          "type": "feature",
+          "title": {
+            "zh-CN": "双端图文首次引导",
+            "en-US": "Visual onboarding for both runtimes"
+          },
+          "description": {
+            "zh-CN": "插件和自托管管理员首次使用时可查看注册、审核、应用配置与 OAuth 四步说明，并直接进入对应的授权向导。",
+            "en-US": "Extension users and self-hosted administrators now see four illustrated steps covering registration, review, application setup, and OAuth before entering the appropriate authorization assistant."
+          }
+        },
+        {
+          "type": "feature",
+          "title": {
+            "zh-CN": "开发者前置状态识别",
+            "en-US": "Developer prerequisite detection"
+          },
+          "description": {
+            "zh-CN": "能够区分待注册、审核中、审核退回、缺少应用和应用未就绪状态，提供下一步指引并避免无意义的持续等待。",
+            "en-US": "Distinguishes registration required, under review, rejected, missing application, and application not ready states, with actionable guidance instead of indefinite waiting."
+          }
+        },
+        {
+          "type": "security",
+          "title": {
+            "zh-CN": "最小化的页面协助",
+            "en-US": "Privacy-preserving in-page assistance"
+          },
+          "description": {
+            "zh-CN": "仅在用户主动启动向导后显示 Alibaba 页面提示，不读取注册资料值、不代为提交协议，也不尝试绕过验证码或风控。",
+            "en-US": "Shows Alibaba page guidance only after a user starts the assistant, without reading registration values, accepting agreements, submitting forms, or bypassing verification challenges."
+          }
+        }
+      ]
+    },
+    {
       "version": "2.2.1",
       "releasedAt": "2026-09-03",
       "title": {

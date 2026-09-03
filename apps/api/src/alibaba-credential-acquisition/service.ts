@@ -15,6 +15,7 @@ import type {
   AlibabaCredentialAcquisitionContinueCommand,
   AlibabaCredentialAcquisitionExtensionFallbackReason,
   AlibabaCredentialAcquisitionFailureCode,
+  AlibabaCredentialAcquisitionPrerequisiteReason,
   AlibabaCredentialAcquisitionState,
   AlibabaCredentialApplicationSummary,
   AlibabaOpenApiCredentialBundle
@@ -37,6 +38,7 @@ export type AlibabaCredentialAcquisitionDriverResult =
       requestedUrl: string;
     }
   | { kind: 'completed'; bundle: AlibabaOpenApiCredentialBundle }
+  | { kind: 'prerequisite-required'; reasonCode: AlibabaCredentialAcquisitionPrerequisiteReason }
   | { kind: 'extension-required'; reasonCode: AlibabaCredentialAcquisitionExtensionFallbackReason }
   | { kind: 'failed'; code: AlibabaCredentialAcquisitionFailureCode };
 
@@ -219,6 +221,13 @@ export class AlibabaCredentialAcquisitionService {
         },
         this.clock()
       );
+    } else if (result.kind === 'prerequisite-required') {
+      state = transitionAlibabaCredentialAcquisitionState(
+        job.state,
+        { type: 'require-prerequisite', reasonCode: result.reasonCode },
+        this.clock()
+      );
+      await this.closeSession(job.browserSessionId);
     } else if (result.kind === 'extension-required') {
       state = transitionAlibabaCredentialAcquisitionState(
         job.state,

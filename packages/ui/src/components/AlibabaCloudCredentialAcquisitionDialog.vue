@@ -17,6 +17,8 @@ import type {
 
 import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
+import AlibabaCredentialAcquisitionSteps from './AlibabaCredentialAcquisitionSteps.vue';
+import AlibabaCredentialPrerequisiteGuide from './AlibabaCredentialPrerequisiteGuide.vue';
 import ErrorNotice from './ErrorNotice.vue';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
@@ -177,6 +179,10 @@ function openChromeStore(): void {
   );
 }
 
+function openAlibabaApplicationCenter(): void {
+  globalThis.open('https://i.alibaba.com/explore/open-api', '_blank', 'noopener,noreferrer');
+}
+
 onBeforeUnmount(clearPoll);
 </script>
 
@@ -189,6 +195,8 @@ onBeforeUnmount(clearPoll);
     @update:open="$event ? emit('update:open', true) : void close()"
   >
     <div class="space-y-5">
+      <AlibabaCredentialAcquisitionSteps :state="state" />
+
       <ErrorNotice v-if="error" :error="error" :fallback="t('admin.cloudAcquisition.errors.acquisition')" />
 
       <form v-if="viewState.status === 'form'" class="space-y-4" @submit.prevent="start">
@@ -251,6 +259,21 @@ onBeforeUnmount(clearPoll);
         <LoaderCircle class="mx-auto size-8 animate-spin text-primary" />
         <p class="mt-3 font-medium">{{ t('admin.cloudAcquisition.runningTitle') }}</p>
         <p class="mt-1 text-sm text-muted-foreground">{{ t('admin.cloudAcquisition.runningDescription') }}</p>
+      </div>
+
+      <div v-else-if="viewState.status === 'prerequisite-required'" class="space-y-4">
+        <AlibabaCredentialPrerequisiteGuide
+          :state="viewState"
+          :busy="busy"
+          :can-recheck="false"
+          @open-page="openAlibabaApplicationCenter"
+        />
+        <div class="flex flex-wrap justify-end gap-2">
+          <Button variant="outline" @click="state = null">{{ t('admin.cloudAcquisition.restart') }}</Button>
+          <Button @click="manualExtensionGuide = true">
+            <Puzzle class="size-4" />{{ t('admin.cloudAcquisition.useExtension') }}
+          </Button>
+        </div>
       </div>
 
       <div v-else-if="viewState.status === 'selection-required'" class="space-y-3">

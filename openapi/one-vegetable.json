@@ -5467,6 +5467,25 @@
           "jobId": { "type": "string", "format": "uuid" }
         }
       },
+      "AlibabaCredentialAcquisitionPrerequisiteState": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "reasonCode", "checkedAtUtc"],
+        "properties": {
+          "status": { "const": "prerequisite-required" },
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "developer-registration-required",
+              "developer-registration-under-review",
+              "developer-registration-rejected",
+              "application-required",
+              "application-not-ready"
+            ]
+          },
+          "checkedAtUtc": { "type": "integer", "minimum": 0 }
+        }
+      },
       "AlibabaCredentialAcquisitionRunningState": {
         "type": "object",
         "additionalProperties": false,
@@ -5509,6 +5528,7 @@
           { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionRunningState" },
           { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionSelectionRequiredState" },
           { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionCallbackConfirmationState" },
+          { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionPrerequisiteState" },
           { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionExtensionRequiredState" },
           { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionCompletedState" },
           { "$ref": "#/components/schemas/AlibabaCredentialAcquisitionFailedState" }

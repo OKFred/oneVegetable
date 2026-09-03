@@ -24,6 +24,16 @@ test('authenticated Web uses Worker, D1 and documentation replay across every do
   await page.getByLabel(/^工作台密码/).fill('Replay-admin-2026!');
   await page.getByRole('button', { name: '创建管理员' }).click();
 
+  const onboardingDialog = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
+  await expect(onboardingDialog).toBeVisible();
+  await expect(onboardingDialog.locator('img')).toHaveCount(4);
+  await onboardingDialog.getByRole('checkbox').check();
+  await onboardingDialog.getByRole('button', { name: '开始授权向导' }).click();
+  const acquisitionDialog = page.getByRole('dialog', { name: '一键连接 Alibaba' });
+  await expect(acquisitionDialog).toBeVisible();
+  await expect(acquisitionDialog.getByText(/账号和密码只用于当前 HTTPS 请求/u)).toBeVisible();
+  await acquisitionDialog.getByRole('button', { name: '取消' }).click();
+
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
   await expect(page.getByTestId('account-avatar')).toHaveAttribute('aria-label', '当前用户：replay-admin');
   await expectOperation(successfulOperations, 'getDashboard');

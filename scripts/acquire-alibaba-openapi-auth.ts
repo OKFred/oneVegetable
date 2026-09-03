@@ -66,6 +66,7 @@ async function writeDiagnostic(ok: boolean, error: OpenApiAuthDiagnostic['error'
     stage: progress.stage,
     targetUrl: configuration.targetUrl.href,
     currentUrl: safeUrl(progress.currentUrl),
+    prerequisite: progress.prerequisite,
     selectedApplication: progress.selectedApplication,
     callback: progress.callback,
     error,

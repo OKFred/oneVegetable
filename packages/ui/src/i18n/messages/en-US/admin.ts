@@ -1,12 +1,66 @@
 export const admin = {
   operationPending: 'Reading operation availability for the current account…',
+  alibabaPrerequisite: {
+    steps: {
+      label: 'Alibaba Open Platform readiness progress',
+      registration: 'Developer registration',
+      review: 'Platform review',
+      application: 'Create application',
+      authorization: 'OAuth authorization'
+    },
+    checkedAt: 'Last checked: {time}',
+    registration: {
+      title: 'Complete Alibaba developer registration first',
+      description:
+        'Alibaba is showing the developer registration form. Complete each item on Alibaba, then check again.',
+      rejectedTitle: 'Developer registration was returned',
+      rejectedDescription:
+        'Review the reason on Alibaba, correct and resubmit the information, then check again here.',
+      region: 'Country or region',
+      company: 'Legal company name',
+      number: 'Business registration number',
+      address: 'Registered address, city, province, and postcode',
+      document: 'JPG, JPEG, or PNG supporting document (up to 5 MiB)',
+      agreements: 'Read and personally accept the three platform agreements',
+      safety:
+        'Make sure the information matches the supporting document. oneVegetable only checks whether fields are complete; it never reads, stores, or submits company information and never accepts agreements for you.'
+    },
+    review: {
+      title: 'Developer registration is under review',
+      description:
+        'Polling has stopped, so this does not keep consuming browser or cloud quota. Check again manually after the review status changes.',
+      wait: 'Alibaba currently indicates approximately 2–5 business days. Always follow the latest status shown by Alibaba.'
+    },
+    application: {
+      title: 'Create an Alibaba Open Platform application first',
+      notReadyTitle: 'The Alibaba application is not ready yet',
+      description: 'The developer identity is available, but no Online application is ready for OAuth.',
+      basic: 'Application name and basic information',
+      callback: 'Public HTTPS Callback URL',
+      permissions: 'API permissions required by the business',
+      status: 'Application status ready for authorization',
+      safety:
+        'oneVegetable never creates applications, requests permissions, accepts agreements, or bypasses platform review automatically.'
+    },
+    actions: {
+      locate: 'Locate next item',
+      openRegistration: 'Return to registration',
+      openApplication: 'Go to application setup',
+      recheck: 'Check again'
+    },
+    feedback: {
+      fieldFocused: 'The next item is focused on the Alibaba page.',
+      fieldUnavailable:
+        'No missing field could be focused. Return to Alibaba and review the platform message.'
+    }
+  },
   credentialAcquisition: {
     title: 'Get Open Platform credentials',
     description:
       "Reuse Alibaba's current Chrome session. The extension never reads or stores the website password.",
-    existingApplicationTitle: 'The assistant only reuses an existing application',
+    existingApplicationTitle: 'The assistant checks Open Platform readiness first',
     existingApplicationDescription:
-      'The Alibaba application center opens after you start. Complete sign-in, sliders, CAPTCHAs, MFA, or secret-view confirmation directly in that tab. The extension does not bypass security checks, create applications, or accept platform agreements.',
+      'After starting, the assistant checks developer registration, review, application readiness, and OAuth in order. Complete registration data, agreements, CAPTCHAs, and security confirmations on Alibaba; the extension never reads those values, bypasses checks, or submits them for you.',
     callbackLabel: 'Callback URL (optional)',
     callbackPlaceholder: "Leave empty to keep the application's current Callback",
     callbackNotice:

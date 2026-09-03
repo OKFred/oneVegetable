@@ -27,6 +27,7 @@ import type { AlibabaOpenApiCredentialBundle, OpenApiAuthDiagnostic, OpenApiAuth
 export interface NodePlaywrightAuthProgress {
   stage: OpenApiAuthStage;
   currentUrl: string | null;
+  prerequisite: OpenApiAuthDiagnostic['prerequisite'];
   selectedApplication: OpenApiAuthDiagnostic['selectedApplication'];
   callback: OpenApiAuthDiagnostic['callback'];
   screenshotSaved: boolean;
@@ -46,6 +47,7 @@ export function createNodePlaywrightAuthProgress(): NodePlaywrightAuthProgress {
   return {
     stage: 'configuration',
     currentUrl: null,
+    prerequisite: null,
     selectedApplication: { appName: null, appKeySuffix: null, status: null },
     callback: {
       configuredOrigin: null,
@@ -189,6 +191,15 @@ export async function acquireAlibabaCredentialWithNodePlaywright(
     return { bundle, progress: cloneProgress(progress) };
   } catch (error: unknown) {
     update({ currentUrl: page.url() });
+    if (error instanceof OpenApiAuthError && error.prerequisiteReason) {
+      update({
+        prerequisite: {
+          status: 'prerequisite-required',
+          reasonCode: error.prerequisiteReason,
+          checkedAtUtc: Date.now()
+        }
+      });
+    }
     if (!progress.screenshotSaved && !secretRevealStarted) {
       await captureSafeScreenshot(page, configuration.screenshotPath).catch(() => undefined);
       update({ screenshotSaved: true });
@@ -202,6 +213,7 @@ export async function acquireAlibabaCredentialWithNodePlaywright(
 function cloneProgress(progress: NodePlaywrightAuthProgress): NodePlaywrightAuthProgress {
   return {
     ...progress,
+    prerequisite: progress.prerequisite ? { ...progress.prerequisite } : null,
     selectedApplication: { ...progress.selectedApplication },
     callback: { ...progress.callback }
   };

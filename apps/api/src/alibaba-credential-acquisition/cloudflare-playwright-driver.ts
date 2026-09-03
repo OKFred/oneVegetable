@@ -2,9 +2,11 @@ import { acquire, connect, limits } from '@cloudflare/playwright';
 
 import {
   createAlibabaOpenApiCredentialBundle,
+  inspectAlibabaDeveloperPrerequisiteDocument,
   NetworkManager,
   parseAlibabaTokenResponse,
   resolveAlibabaCredentialApplication,
+  selectAlibabaDeveloperPrerequisite,
   toAlibabaCredentialApplicationSummary,
   validateAlibabaOAuthCallback
 } from '@one-vegetable/core';
@@ -12,6 +14,7 @@ import {
 import type {
   AlibabaCredentialAcquisitionContinueCommand,
   AlibabaCredentialAcquisitionExtensionFallbackReason,
+  AlibabaCredentialAcquisitionPrerequisiteReason,
   AlibabaCredentialApplicationCandidate,
   AlibabaOpenApiPermission
 } from '@one-vegetable/core';
@@ -56,6 +59,13 @@ class DriverFallbackError extends Error {
   constructor(public readonly reasonCode: AlibabaCredentialAcquisitionExtensionFallbackReason) {
     super(reasonCode);
     this.name = 'DriverFallbackError';
+  }
+}
+
+class DriverPrerequisiteError extends Error {
+  constructor(public readonly reasonCode: AlibabaCredentialAcquisitionPrerequisiteReason) {
+    super(reasonCode);
+    this.name = 'DriverPrerequisiteError';
   }
 }
 
@@ -182,6 +192,8 @@ export class CloudflareAlibabaCredentialAcquisitionDriver implements AlibabaCred
     if (await hasApplicationCenter(page)) return;
     const challenge = await detectChallenge(page);
     if (challenge) throw new DriverFallbackError(challenge);
+    const prerequisite = await detectDeveloperPrerequisite(page);
+    if (prerequisite) throw new DriverPrerequisiteError(prerequisite);
     const form = await findLoginForm(page);
     if (!form) throw new DriverFallbackError('automation-layout-unsupported');
     await form.account.fill(account);
@@ -191,6 +203,8 @@ export class CloudflareAlibabaCredentialAcquisitionDriver implements AlibabaCred
     while (Date.now() < deadline) {
       const detected = await detectChallenge(page);
       if (detected) throw new DriverFallbackError(detected);
+      const currentPrerequisite = await detectDeveloperPrerequisite(page);
+      if (currentPrerequisite) throw new DriverPrerequisiteError(currentPrerequisite);
       if (await hasApplicationCenter(page)) return;
       await page.waitForTimeout(250);
     }
@@ -204,9 +218,15 @@ export class CloudflareAlibabaCredentialAcquisitionDriver implements AlibabaCred
     selectedApplicationId: string | null,
     callbackConfirmed: boolean | null
   ): Promise<AlibabaCredentialAcquisitionDriverResult> {
+    const challenge = await detectChallenge(connected.page);
+    if (challenge) throw new DriverFallbackError(challenge);
+    const prerequisite = await detectDeveloperPrerequisite(connected.page);
+    if (prerequisite) throw new DriverPrerequisiteError(prerequisite);
     const frame = await openApplicationCenter(connected.page);
     const applications = await readApplications(frame, connected.context);
-    if (applications.length === 0) return { kind: 'failed', code: 'NO_APPLICATION' };
+    if (applications.length === 0) {
+      return { kind: 'prerequisite-required', reasonCode: 'application-required' };
+    }
 
     let selected: CloudApplication;
     if (selectedApplicationId) {
@@ -226,6 +246,10 @@ export class CloudflareAlibabaCredentialAcquisitionDriver implements AlibabaCred
       );
       if (!candidate) return { kind: 'failed', code: 'APPLICATION_NOT_FOUND' };
       selected = await selectApplication(frame, candidate);
+    }
+
+    if (isApplicationNotReady(selected.status)) {
+      return { kind: 'prerequisite-required', reasonCode: 'application-not-ready' };
     }
 
     if (!selected.callbackUrl) return { kind: 'failed', code: 'CALLBACK_INVALID' };
@@ -401,9 +425,30 @@ async function openApplicationCenter(page: Page): Promise<Frame> {
     }
     const challenge = await detectChallenge(page);
     if (challenge) throw new DriverFallbackError(challenge);
+    const prerequisite = await detectDeveloperPrerequisite(page);
+    if (prerequisite) throw new DriverPrerequisiteError(prerequisite);
     await page.waitForTimeout(250);
   }
   throw new DriverFallbackError('automation-layout-unsupported');
+}
+
+async function detectDeveloperPrerequisite(
+  page: Page
+): Promise<AlibabaCredentialAcquisitionPrerequisiteReason | null> {
+  return selectAlibabaDeveloperPrerequisite(
+    await Promise.all(
+      page.frames().map((frame) =>
+        frame
+          .locator('body')
+          .evaluate(inspectAlibabaDeveloperPrerequisiteDocument)
+          .catch(() => null)
+      )
+    )
+  );
+}
+
+function isApplicationNotReady(status: string): boolean {
+  return /under review|pending|offline|disabled|rejected|审核|待处理|未上线|已停用|已驳回/iu.test(status);
 }
 
 async function readApplications(frame: Frame, context: BrowserContext): Promise<CloudApplication[]> {
@@ -680,6 +725,9 @@ class OAuthCallbackCapture {
 }
 
 function mapDriverError(error: unknown): AlibabaCredentialAcquisitionDriverResult {
+  if (error instanceof DriverPrerequisiteError) {
+    return { kind: 'prerequisite-required', reasonCode: error.reasonCode };
+  }
   if (error instanceof DriverFallbackError) {
     return { kind: 'extension-required', reasonCode: error.reasonCode };
   }

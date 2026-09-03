@@ -1,11 +1,60 @@
 export const admin = {
   operationPending: '正在读取当前账号的操作权限…',
+  alibabaPrerequisite: {
+    steps: {
+      label: 'Alibaba 开放平台准备进度',
+      registration: '开发者注册',
+      review: '平台审核',
+      application: '创建应用',
+      authorization: 'OAuth 授权'
+    },
+    checkedAt: '最后检查：{time}',
+    registration: {
+      title: '请先完成 Alibaba 开发者注册',
+      description: '平台当前显示开发者注册表单。请在 Alibaba 页面中逐项完成，完成后再重新检查。',
+      rejectedTitle: '开发者注册已被退回',
+      rejectedDescription: '请根据 Alibaba 页面上的退回原因修正资料并重新提交，然后回来重新检查。',
+      region: '国家或地区',
+      company: '法定公司名称',
+      number: '企业注册号',
+      address: '注册地址、城市、省份和邮编',
+      document: 'JPG、JPEG 或 PNG 证明材料（不超过 5 MiB）',
+      agreements: '阅读并自行确认三份平台协议',
+      safety:
+        '请确保填写资料与证明材料一致。oneVegetable 只判断字段是否完成，不读取、保存或提交公司资料，也不会替你勾选协议。'
+    },
+    review: {
+      title: '开发者注册正在审核中',
+      description: '当前任务已停止轮询，不会持续占用浏览器或云端额度。审核状态变化后可手工重新检查。',
+      wait: 'Alibaba 页面当前提示审核约需 2–5 个工作日；请以平台页面的最新状态为准。'
+    },
+    application: {
+      title: '请先创建 Alibaba 开放平台应用',
+      notReadyTitle: 'Alibaba 应用尚未准备完成',
+      description: '开发者身份已可用，但还没有可供 OAuth 使用的 Online 应用。',
+      basic: '应用名称与基础信息',
+      callback: '公共 HTTPS Callback 地址',
+      permissions: '业务需要的 API 权限',
+      status: '应用状态已可用于授权',
+      safety: 'oneVegetable 不会自动创建应用、申请权限、接受协议或绕过平台审核。'
+    },
+    actions: {
+      locate: '定位下一项',
+      openRegistration: '返回注册页面',
+      openApplication: '前往创建应用',
+      recheck: '重新检查'
+    },
+    feedback: {
+      fieldFocused: '已在 Alibaba 页面定位下一项。',
+      fieldUnavailable: '没有找到可定位的缺失字段，请返回 Alibaba 页面查看平台提示。'
+    }
+  },
   credentialAcquisition: {
     title: '获取开放平台凭证',
     description: '复用当前 Chrome 的 Alibaba 登录态；插件不会读取或保存网站密码。',
-    existingApplicationTitle: '向导只复用已有应用',
+    existingApplicationTitle: '向导会先检查开放平台准备状态',
     existingApplicationDescription:
-      '启动后会打开 Alibaba 应用中心。若尚未登录、出现滑块、验证码、MFA 或密钥查看确认，请直接在打开的标签页中完成；插件不会绕过安全验证，也不会创建应用或接受平台协议。',
+      '启动后会依次检查开发者注册、审核、应用和 OAuth。注册资料、协议、验证码及安全确认均由你在 Alibaba 页面完成；插件不会读取资料值、绕过验证或代替提交。',
     callbackLabel: 'Callback URL（可选）',
     callbackPlaceholder: '留空则保留应用现有 Callback',
     callbackNotice: '只有显式填写并确认后才会修改应用配置；不会默认写入 example.com。',

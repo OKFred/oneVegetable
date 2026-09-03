@@ -4,6 +4,8 @@ import { CheckCircle2, Download, ExternalLink, KeyRound, LoaderCircle, Save, Shi
 
 import type { AlibabaCredentialAcquisitionState, CredentialVaultStatus } from '@one-vegetable/core';
 
+import AlibabaCredentialAcquisitionSteps from './AlibabaCredentialAcquisitionSteps.vue';
+import AlibabaCredentialPrerequisiteGuide from './AlibabaCredentialPrerequisiteGuide.vue';
 import ErrorNotice from './ErrorNotice.vue';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
@@ -42,7 +44,7 @@ const callbackChanged = computed(
 watch(
   () => props.open,
   (open) => {
-    if (open) void refreshVaultStatus();
+    if (open) void initializeDialog();
     else stopPolling();
   },
   { immediate: true }
@@ -60,6 +62,42 @@ async function start(): Promise<void> {
     state.value = next;
     jobId.value = 'jobId' in next ? next.jobId : null;
     schedulePolling();
+  } catch (cause: unknown) {
+    error.value = cause;
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function initializeDialog(): Promise<void> {
+  await refreshVaultStatus();
+  if (!alibabaCredentialAcquisition || state.value !== null) return;
+  const prerequisite = await alibabaCredentialAcquisition.readPrerequisite().catch(() => null);
+  if (prerequisite) state.value = prerequisite;
+}
+
+async function locatePrerequisiteField(): Promise<void> {
+  if (!alibabaCredentialAcquisition) return;
+  busy.value = true;
+  error.value = null;
+  try {
+    const fieldId = await alibabaCredentialAcquisition.locatePrerequisiteField();
+    feedback.value = fieldId
+      ? t('admin.alibabaPrerequisite.feedback.fieldFocused')
+      : t('admin.alibabaPrerequisite.feedback.fieldUnavailable');
+  } catch (cause: unknown) {
+    error.value = cause;
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function focusPrerequisitePage(): Promise<void> {
+  if (!alibabaCredentialAcquisition) return;
+  busy.value = true;
+  error.value = null;
+  try {
+    await alibabaCredentialAcquisition.focusPrerequisitePage();
   } catch (cause: unknown) {
     error.value = cause;
   } finally {
@@ -163,7 +201,7 @@ async function exportCredentialBundle(): Promise<void> {
 
 async function requestClose(): Promise<void> {
   stopPolling();
-  if (alibabaCredentialAcquisition && jobId.value) {
+  if (alibabaCredentialAcquisition && jobId.value && state.value?.status !== 'prerequisite-required') {
     await alibabaCredentialAcquisition.cancel(jobId.value).catch(() => undefined);
   }
   reset();
@@ -220,6 +258,8 @@ function downloadJson(value: unknown, filename: string): void {
     @update:open="requestClose"
   >
     <div class="grid gap-4">
+      <AlibabaCredentialAcquisitionSteps :state="state" />
+
       <div class="rounded-lg border bg-muted/35 p-4 text-sm leading-6">
         <p class="font-medium">{{ t('admin.credentialAcquisition.existingApplicationTitle') }}</p>
         <p class="mt-1 text-muted-foreground">
@@ -256,6 +296,16 @@ function downloadJson(value: unknown, filename: string): void {
           {{ t('admin.credentialAcquisition.checkNow') }}
         </Button>
       </div>
+
+      <AlibabaCredentialPrerequisiteGuide
+        v-else-if="state.status === 'prerequisite-required'"
+        :state="state"
+        :busy="busy"
+        can-locate
+        @locate="locatePrerequisiteField"
+        @open-page="focusPrerequisitePage"
+        @recheck="start"
+      />
 
       <div v-else-if="state.status === 'selection-required'" class="grid gap-3">
         <div>

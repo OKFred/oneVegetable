@@ -255,6 +255,16 @@ async function handleAlibabaCredentialAcquisitionRequest(
       case 'export-bundle':
         data = await alibabaCredentialAcquisition.exportBundle();
         break;
+      case 'read-prerequisite':
+        data = await alibabaCredentialAcquisition.readPrerequisite();
+        break;
+      case 'locate-prerequisite-field':
+        data = await alibabaCredentialAcquisition.locatePrerequisiteField();
+        break;
+      case 'focus-prerequisite-page':
+        await alibabaCredentialAcquisition.focusPrerequisitePage();
+        data = null;
+        break;
     }
     return { requestId: message.requestId, ok: true, data };
   } catch (error: unknown) {
@@ -918,7 +928,10 @@ function asAlibabaCredentialAcquisitionRequest(
     value.operation !== 'status' &&
     value.operation !== 'cancel' &&
     value.operation !== 'save-to-vault' &&
-    value.operation !== 'export-bundle'
+    value.operation !== 'export-bundle' &&
+    value.operation !== 'read-prerequisite' &&
+    value.operation !== 'locate-prerequisite-field' &&
+    value.operation !== 'focus-prerequisite-page'
   ) {
     return null;
   }

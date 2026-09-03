@@ -234,6 +234,17 @@ const alibabaCredentialAcquisition: ExtensionAlibabaCredentialAcquisitionReposit
   },
   exportBundle() {
     return requestAcquisition('export-bundle', undefined);
+  },
+  async readPrerequisite() {
+    const prerequisite = await requestAcquisition('read-prerequisite', undefined);
+    if (prerequisite) latestAcquisitionState = prerequisite;
+    return prerequisite;
+  },
+  locatePrerequisiteField() {
+    return requestAcquisition('locate-prerequisite-field', undefined);
+  },
+  async focusPrerequisitePage() {
+    await requestAcquisition('focus-prerequisite-page', undefined);
   }
 };
 
@@ -247,6 +258,12 @@ interface AcquisitionOperationMap {
   cancel: { request: { jobId: string }; response: AlibabaCredentialAcquisitionState };
   'save-to-vault': { request: { passphrase?: string }; response: CredentialVaultStatus };
   'export-bundle': { request: undefined; response: AlibabaOpenApiCredentialBundle };
+  'read-prerequisite': {
+    request: undefined;
+    response: Extract<AlibabaCredentialAcquisitionState, { status: 'prerequisite-required' }> | null;
+  };
+  'locate-prerequisite-field': { request: undefined; response: string | null };
+  'focus-prerequisite-page': { request: undefined; response: null };
 }
 
 async function requestAcquisition<K extends ExtensionAlibabaCredentialAcquisitionOperation>(
