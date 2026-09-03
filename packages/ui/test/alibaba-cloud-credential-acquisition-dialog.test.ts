@@ -118,6 +118,39 @@ describe('AlibabaCloudCredentialAcquisitionDialog', () => {
     expect(cancel).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111');
     wrapper.unmount();
   });
+
+  it('stops cloud polling and explains an under-review developer prerequisite', async () => {
+    const status = vi.fn(() => Promise.resolve(runningState()));
+    const open = vi.spyOn(globalThis, 'open').mockReturnValue(null);
+    const wrapper = mountDialog({
+      startAlibabaCredentialAcquisition: () =>
+        Promise.resolve({
+          status: 'prerequisite-required',
+          reasonCode: 'developer-registration-under-review',
+          checkedAtUtc: Date.now()
+        }),
+      alibabaCredentialAcquisitionStatus: status
+    });
+    await flushPromises();
+    const inputs = [...document.body.querySelectorAll<HTMLInputElement>('input')];
+    if (inputs.length < 2) throw new Error('credential form inputs missing');
+    await input(inputs[0], 'account');
+    await input(inputs[1], 'password');
+
+    clickButton('云端自动获取');
+    await flushPromises();
+
+    expect(document.body.textContent).toContain('开发者注册正在审核中');
+    expect(document.body.textContent).toContain('2–5 个工作日');
+    expect(status).not.toHaveBeenCalled();
+    clickButton('返回注册页面');
+    expect(open).toHaveBeenCalledWith(
+      'https://i.alibaba.com/explore/open-api',
+      '_blank',
+      'noopener,noreferrer'
+    );
+    wrapper.unmount();
+  });
 });
 
 function mountDialog(controlPatch: Partial<ControlClient>) {

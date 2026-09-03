@@ -25,7 +25,10 @@ const statusAcquisition = vi.fn(() => Promise.resolve(selectionState()));
 const cancelAcquisition = vi.fn(() => Promise.resolve(failedState()));
 const saveToVault = vi.fn((_passphrase?: string) => Promise.resolve(vaultStatus('unlocked')));
 const exportBundle = vi.fn(() => Promise.resolve(bundle()));
-const readPrerequisite = vi.fn(() => Promise.resolve(null));
+const readPrerequisite = vi.fn(
+  (): Promise<Extract<AlibabaCredentialAcquisitionState, { status: 'prerequisite-required' }> | null> =>
+    Promise.resolve(null)
+);
 const locatePrerequisiteField = vi.fn(() => Promise.resolve(null));
 const focusPrerequisitePage = vi.fn(() => Promise.resolve());
 const anchorClick = vi.fn();
