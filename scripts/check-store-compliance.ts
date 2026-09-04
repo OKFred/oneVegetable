@@ -49,6 +49,7 @@ const enListing = await readFile(resolve(root, 'store-listing/en.md'), 'utf8');
 const credentialVaultSource = await readFile(resolve(root, 'packages/core/src/credential-vault.ts'), 'utf8');
 const backgroundSource = await readFile(resolve(root, 'apps/extension/entrypoints/background.ts'), 'utf8');
 const storeIcon = await readFile(resolve(root, 'store-listing/assets/icon-128.png'));
+const smallPromoTile = await readFile(resolve(root, 'store-listing/assets/small-promo-tile-440x280.png'));
 const screenshotDirectory = resolve(root, 'store-listing/assets/screenshots');
 const screenshots = (await readdir(screenshotDirectory))
   .filter((file) => file.endsWith('.png'))
@@ -115,6 +116,10 @@ for (const screenshot of screenshots) {
 const iconDimensions = pngDimensions(storeIcon);
 if (iconDimensions.width !== 128 || iconDimensions.height !== 128)
   errors.push('store icon must be exactly 128x128');
+const smallPromoTileDimensions = pngDimensions(smallPromoTile);
+if (smallPromoTileDimensions.width !== 440 || smallPromoTileDimensions.height !== 280) {
+  errors.push('small promo tile must be exactly 440x280');
+}
 
 for (const locale of ['zh_CN', 'en']) {
   const messages = await readJson<LocaleMessages>(resolve(output, `_locales/${locale}/messages.json`));
@@ -245,7 +250,7 @@ for (const phrase of [
 }
 
 process.stdout.write(
-  `MV3 manifest, 2 locales, bilingual static privacy disclosures, 4 permission declarations and ${screenshots.length} screenshots checked\n`
+  `MV3 manifest, 2 locales, bilingual static privacy disclosures, 4 permission declarations, 440x280 small promo tile and ${screenshots.length} screenshots checked\n`
 );
 if (errors.length > 0) throw new Error(errors.join('\n'));
 
