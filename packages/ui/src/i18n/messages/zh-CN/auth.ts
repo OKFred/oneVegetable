@@ -1,4 +1,10 @@
 export const auth = {
+  alibabaIndependentNotice: {
+    title: '独立第三方工具',
+    description:
+      'oneVegetable 与 Alibaba.com 及其关联公司不存在官方隶属、合作、认可或背书关系。使用前请阅读并遵守 Alibaba.com 平台规则及适用于您业务的规则。',
+    rulesLink: '查看 Alibaba.com 平台规则'
+  },
   errors: {
     bootstrapStatus: '无法确认管理员初始化状态',
     passkeyUnsupported: '当前浏览器不支持 Passkey，请更换最新版 Chrome、Edge 或 Safari。',

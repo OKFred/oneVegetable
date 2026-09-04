@@ -14,6 +14,7 @@ import type {
 } from '@one-vegetable/core';
 
 import { useServices } from '../lib/services';
+import AlibabaIndependentNotice from './AlibabaIndependentNotice.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
@@ -246,6 +247,7 @@ function userError(cause: unknown, fallback: string): Error {
             }}
           </span>
         </div>
+        <AlibabaIndependentNotice class="mt-4" />
         <dl class="mt-4 space-y-2 text-sm">
           <div class="flex justify-between gap-3">
             <dt class="text-muted-foreground">{{ t('admin.selfHosted.expires') }}</dt>

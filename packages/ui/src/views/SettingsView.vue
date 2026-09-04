@@ -35,6 +35,7 @@ import {
 
 import ActionTooltip from '../components/ActionTooltip.vue';
 import AlibabaCredentialAcquisitionDialog from '../components/AlibabaCredentialAcquisitionDialog.vue';
+import AlibabaIndependentNotice from '../components/AlibabaIndependentNotice.vue';
 import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
@@ -720,6 +721,7 @@ function confirmLanguagePreference(): void {
         <KeyRound class="size-4 text-primary" />
         <h2 class="font-semibold">{{ t('settings.credentials.title') }}</h2>
       </div>
+      <AlibabaIndependentNotice class="mb-4" />
       <div class="mb-4 rounded-lg border bg-muted/40 p-4 text-sm leading-6">
         <p class="font-medium">{{ t('settings.credentials.guideTitle') }}</p>
         <p class="mt-1 text-muted-foreground">

@@ -2,6 +2,8 @@
 
 Alibaba.com 国际站商品、图库（图片银行）、RFQ、交易、国际物流和数据洞察运营工具。v2 已迁移到 Vue 3、shadcn-vue、WXT 和 Chrome Extension Manifest V3。
 
+> oneVegetable 是独立开发的第三方工具，与 Alibaba.com 及其关联公司不存在官方隶属、合作、认可或背书关系。使用前请阅读并遵守 [Alibaba.com 平台规则](https://rulechannel.alibaba.com/icbu) 及适用于您业务的规则。
+
 ## 工程结构
 
 - `apps/web`：独立演示站；默认只使用 `mock/data` 生成的类型化 Mock，显式切到 BFF 后不会静默回退。

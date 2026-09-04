@@ -3,6 +3,10 @@
 Effective date: September 4, 2026
 Applicable version: 2.3.0
 
+## Independent third-party notice
+
+oneVegetable is an independently developed third-party tool and is not affiliated with, endorsed by, sponsored by, or officially associated with Alibaba.com or its affiliates. Use of this tool does not mean that Alibaba.com approves or guarantees its features, content, or operation results. Before use, read and follow the [Alibaba.com platform rules](https://rulechannel.alibaba.com/icbu) and any rules applicable to your business. Alibaba.com retains final authority over account permissions, business eligibility, API availability, and platform rules.
+
 ## Single purpose
 
 oneVegetable is a user-operated local Alibaba.com operations workspace for managing products, the gallery (Photo Bank), RFQs, trades, international logistics, related Open Platform capabilities, and user-selected gallery media published to business social accounts connected by the user. The extension does not provide advertising, tracking, or data services unrelated to this purpose.
