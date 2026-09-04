@@ -167,6 +167,17 @@ for (const [file, content, language, canonical] of [
   }
 }
 
+for (const [file, content, phrase] of [
+  ['privacy.html', privacyHtml, '不存在官方隶属、合作、认可或背书关系'],
+  ['docs/privacy-policy.md', privacyPolicy, '不存在官方隶属、合作、认可或背书关系'],
+  ['store-listing/zh_CN.md', zhListing, '不存在官方隶属、合作、认可或背书关系'],
+  ['privacy-en.html', privacyEnglishHtml, 'not affiliated with, endorsed by, sponsored by'],
+  ['docs/privacy-policy.en.md', privacyEnglishPolicy, 'not affiliated with, endorsed by, sponsored by'],
+  ['store-listing/en.md', enListing, 'not affiliated with, endorsed by, sponsored by']
+] as const) {
+  if (!content.includes(phrase)) errors.push(`${file} is missing the independent third-party notice`);
+}
+
 for (const [file, content] of [
   ['privacy.html', privacyHtml],
   ['docs/privacy-policy.md', privacyPolicy]

@@ -4,6 +4,51 @@ export const RELEASE_NOTES_DOCUMENT = {
   repositoryUrl: 'https://github.com/OKFred/oneVegetable',
   releases: [
     {
+      version: '2.3.1',
+      releasedAt: '2026-09-04',
+      title: {
+        'zh-CN': '独立第三方关系说明',
+        'en-US': 'Independent third-party disclosure'
+      },
+      summary: {
+        'zh-CN':
+          '在首次引导、凭证入口、商店说明和隐私政策中明确 oneVegetable 与 Alibaba.com 无官方关联，并提供官方平台规则入口。',
+        'en-US':
+          'Clarifies across onboarding, credential entry points, the store listing, and privacy policy that oneVegetable has no official affiliation with Alibaba.com, with direct access to official platform rules.'
+      },
+      source: 'release',
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.3.1',
+      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.3.0...v2.3.1',
+      changes: [
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '关键入口双语声明',
+            'en-US': 'Bilingual notice at key entry points'
+          },
+          description: {
+            'zh-CN':
+              '首次使用、插件与云端凭证向导、扩展设置和自托管管理页现在都会说明本工具独立开发，且不存在官方隶属、合作、认可或背书关系。',
+            'en-US':
+              'First use, extension and cloud credential assistants, extension settings, and self-hosted administration now explain that the tool is independently developed and is not affiliated with, endorsed by, sponsored by, or officially associated with Alibaba.com.'
+          }
+        },
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '官方规则入口与发布守卫',
+            'en-US': 'Official rules link and release guard'
+          },
+          description: {
+            'zh-CN':
+              '声明可直达 Alibaba.com 官方规则中心，商店合规检查会验证双语声明没有在后续版本中意外丢失。',
+            'en-US':
+              'The notice links directly to the official Alibaba.com rules center, and store compliance checks prevent either localized disclosure from being removed accidentally.'
+          }
+        }
+      ]
+    },
+    {
       version: '2.3.0',
       releasedAt: '2026-09-04',
       title: {

@@ -6,6 +6,7 @@ import type { AlibabaCredentialAcquisitionState, CredentialVaultStatus } from '@
 
 import AlibabaCredentialAcquisitionSteps from './AlibabaCredentialAcquisitionSteps.vue';
 import AlibabaCredentialPrerequisiteGuide from './AlibabaCredentialPrerequisiteGuide.vue';
+import AlibabaIndependentNotice from './AlibabaIndependentNotice.vue';
 import ErrorNotice from './ErrorNotice.vue';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
@@ -259,6 +260,8 @@ function downloadJson(value: unknown, filename: string): void {
   >
     <div class="grid gap-4">
       <AlibabaCredentialAcquisitionSteps :state="state" />
+
+      <AlibabaIndependentNotice />
 
       <div class="rounded-lg border bg-muted/35 p-4 text-sm leading-6">
         <p class="font-medium">{{ t('admin.credentialAcquisition.existingApplicationTitle') }}</p>

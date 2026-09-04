@@ -7,6 +7,7 @@ import developerRegistrationImage from '../assets/onboarding/developer-registrat
 import oauthSecureImage from '../assets/onboarding/oauth-secure.webp';
 import reviewWaitImage from '../assets/onboarding/review-wait.webp';
 import { useUiI18n } from '../i18n';
+import AlibabaIndependentNotice from './AlibabaIndependentNotice.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
 import { useServices } from '../lib/services';
@@ -138,6 +139,7 @@ async function finish(destination?: 'credential-acquisition'): Promise<void> {
             </p>
           </div>
         </div>
+        <AlibabaIndependentNotice class="mt-4" />
         <label class="mt-5 flex items-start gap-3 rounded-lg bg-muted p-4 text-sm leading-6">
           <input
             v-model="acknowledged"

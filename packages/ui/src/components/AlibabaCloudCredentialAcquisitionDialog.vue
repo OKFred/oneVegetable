@@ -19,6 +19,7 @@ import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 import AlibabaCredentialAcquisitionSteps from './AlibabaCredentialAcquisitionSteps.vue';
 import AlibabaCredentialPrerequisiteGuide from './AlibabaCredentialPrerequisiteGuide.vue';
+import AlibabaIndependentNotice from './AlibabaIndependentNotice.vue';
 import ErrorNotice from './ErrorNotice.vue';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
@@ -196,6 +197,8 @@ onBeforeUnmount(clearPoll);
   >
     <div class="space-y-5">
       <AlibabaCredentialAcquisitionSteps :state="state" />
+
+      <AlibabaIndependentNotice />
 
       <ErrorNotice v-if="error" :error="error" :fallback="t('admin.cloudAcquisition.errors.acquisition')" />
 
