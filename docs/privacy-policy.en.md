@@ -1,7 +1,11 @@
 # oneVegetable Privacy Policy
 
 Effective date: September 4, 2026
-Applicable version: 2.3.0
+Applicable version: 2.3.1
+
+## Independent third-party notice
+
+oneVegetable is an independently developed third-party tool and is not affiliated with, endorsed by, sponsored by, or officially associated with Alibaba.com or its affiliates. Use of this tool does not mean that Alibaba.com approves or guarantees its features, content, or operation results. Before use, read and follow the [Alibaba.com platform rules](https://rulechannel.alibaba.com/icbu) and any rules applicable to your business. Alibaba.com retains final authority over account permissions, business eligibility, API availability, and platform rules.
 
 ## Single purpose
 

@@ -1,4 +1,10 @@
 export const auth = {
+  alibabaIndependentNotice: {
+    title: 'Independent third-party tool',
+    description:
+      'oneVegetable is not affiliated with, endorsed by, sponsored by, or officially associated with Alibaba.com or its affiliates. Before use, read and follow the Alibaba.com platform rules and any rules applicable to your business.',
+    rulesLink: 'Read Alibaba.com platform rules'
+  },
   errors: {
     bootstrapStatus: 'Unable to confirm administrator setup status',
     passkeyUnsupported: 'This browser does not support passkeys. Use the latest Chrome, Edge, or Safari.',

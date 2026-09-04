@@ -52,6 +52,10 @@ describe('OnboardingDialog', () => {
     expect(wrapper.text()).toContain('等待审核');
     expect(wrapper.text()).toContain('创建应用');
     expect(wrapper.text()).toContain('授权并保存');
+    expect(wrapper.text()).toContain('不存在官方隶属、合作、认可或背书关系');
+    expect(wrapper.get('a[href="https://rulechannel.alibaba.com/icbu"]').attributes('rel')).toBe(
+      'noopener noreferrer'
+    );
     const startButton = wrapper.findAll('button').find((button) => button.text().includes('开始授权向导'));
     if (!startButton) throw new Error('Missing credential setup action');
     expect(startButton.attributes('disabled')).toBeDefined();
