@@ -102,7 +102,7 @@ Cloudflare Worker，在 4174 端口启动 BFF 模式 Web。Playwright 会通过�
 ## 本地权限与审计
 
 - 密码使用 PBKDF2-HMAC-SHA256（600,000 次），连续 5 次失败锁定 15 分钟。
-- session 绝对有效期 8 小时、空闲有效期 30 分钟；数据库只保存 session 与 CSRF 的 SHA-256 hash。
+- session 绝对有效期 24 小时、空闲有效期 4 小时；成功请求会滑动延长空闲期限，但不会突破绝对期限。数据库只保存 session 与 CSRF 的 SHA-256 hash。
 - 普通用户只允许 active/read 操作；管理员仍不能绕过 capability、资格限制和 mutation flag。
 - 用户实体使用 Unix Epoch 毫秒审计字段、`remark` 与乐观锁 `revision`。
 - `audit_events` 只追加 requestId、主体、动作、资源、结果和 revision，不保存 Cookie、Token、密码、
