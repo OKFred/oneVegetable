@@ -33,6 +33,14 @@ export const auth = {
   },
   identityNotice:
     'This is your oneVegetable workspace identity, not your Alibaba.com account. Import Alibaba OpenAPI credentials from Administration after signing in.',
+  sessionExpired: {
+    title: 'Sign in again',
+    description:
+      'Your session is no longer valid, so this action did not continue. After signing in, you will return to this page and can try the action again.',
+    safety:
+      'To prevent duplicate writes, the previous action will not be retried automatically. The current page address will be preserved.',
+    action: 'Sign in again'
+  },
   modes: {
     passkeyLogin: 'Passkey sign-in',
     recovery: 'Recover access',

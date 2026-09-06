@@ -32,6 +32,12 @@ export const auth = {
   },
   identityNotice:
     '这是 oneVegetable 工作台身份，不是 Alibaba 国际站登录账号。Alibaba OpenAPI 凭据需在登录后的管理后台导入。',
+  sessionExpired: {
+    title: '需要重新登录',
+    description: '登录状态已失效，本次操作没有继续。重新登录后会返回当前页面，请再次执行刚才的操作。',
+    safety: '为避免重复写入，系统不会自动重试刚才的操作。当前页面地址会保留。',
+    action: '重新登录'
+  },
   modes: {
     passkeyLogin: 'Passkey 登录',
     recovery: '恢复访问',

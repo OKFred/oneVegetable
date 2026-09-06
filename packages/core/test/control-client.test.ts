@@ -156,6 +156,31 @@ describe('BffControlClient', () => {
     }
   });
 
+  it('notifies the application when a control request requires a new session', async () => {
+    const onAuthenticationRequired = vi.fn();
+    const client = new BffControlClient({
+      baseUrl: 'https://staging.example.com',
+      onAuthenticationRequired,
+      transport: {
+        send: (_input, init) => {
+          if (typeof init.body !== 'string') throw new Error('expected JSON body');
+          const body = JSON.parse(init.body) as { requestId: string };
+          return Promise.resolve(
+            Response.json({
+              requestId: body.requestId,
+              ok: false,
+              error: { code: 'SESSION_REQUIRED', message: '请先登录', retryable: false }
+            })
+          );
+        }
+      }
+    });
+
+    await expect(client.listUsers()).rejects.toThrow('请先登录');
+    expect(onAuthenticationRequired).toHaveBeenCalledOnce();
+    expect(onAuthenticationRequired.mock.calls[0]?.[0]).toMatchObject({ code: 'SESSION_REQUIRED' });
+  });
+
   it('uses the request diagnostics routes and carries filters in the JSON body', async () => {
     const requestIdFilter = '3d7c8523-93cc-48b7-a615-a23d2976c516';
     const send = vi.fn<NetworkTransport['send']>((input, init) => {

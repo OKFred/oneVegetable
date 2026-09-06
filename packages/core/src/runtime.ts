@@ -1,4 +1,16 @@
 export { GatewayException, normalizeGatewayError } from './errors';
+export {
+  BFF_AUTHENTICATION_REQUIRED_CODES,
+  createBffAuthenticationEvents,
+  isBffAuthenticationRequiredCode
+} from './bff-authentication';
+export type {
+  BffAuthenticationEvents,
+  BffAuthenticationRequiredCode,
+  BffAuthenticationRequiredEvent,
+  BffAuthenticationRequiredHandler,
+  BffAuthenticationRequiredSource
+} from './bff-authentication';
 export type {
   ExtensionAlibabaCredentialAcquisitionOperation,
   ExtensionAlibabaCredentialAcquisitionRepository,
