@@ -99,15 +99,9 @@ await main();
 
 async function main(): Promise<void> {
   try {
-    context = await chromium.launchPersistentContext(profileDirectory, {
-      headless: false,
-      args: [`--disable-extensions-except=${extensionDirectory}`, `--load-extension=${extensionDirectory}`]
-    });
-    let serviceWorker = context.serviceWorkers()[0];
-    serviceWorker ??= await context.waitForEvent('serviceworker', { timeout: 60_000 });
-    const extensionId = new URL(serviceWorker.url()).host;
-    const page = await context.newPage();
-    await page.goto(`chrome-extension://${extensionId}/options.html`);
+    const opened = await launchCurrentUnpackedExtension();
+    context = opened.context;
+    const page = opened.page;
     await configureVault(page, settings, vaultPassphrase);
 
     const existingJobs = await loadUpdateJobs(page);
@@ -190,6 +184,49 @@ async function main(): Promise<void> {
   } finally {
     await context?.close();
   }
+}
+
+async function launchCurrentUnpackedExtension(): Promise<{ context: BrowserContext; page: Page }> {
+  const staleContext = await launchExtensionContext();
+  try {
+    const staleWorker = await requireServiceWorker(staleContext);
+    const extensionId = new URL(staleWorker.url()).host;
+    const stalePage = await staleContext.newPage();
+    await stalePage.goto(`chrome-extension://${extensionId}/options.html`);
+    await stalePage
+      .evaluate(() => {
+        const extension = (
+          globalThis as unknown as {
+            chrome: { runtime: { reload(): void } };
+          }
+        ).chrome;
+        extension.runtime.reload();
+      })
+      .catch(() => undefined);
+    await delay(500);
+  } finally {
+    await staleContext.close();
+  }
+
+  const currentContext = await launchExtensionContext();
+  const currentWorker = await requireServiceWorker(currentContext);
+  const page = await currentContext.newPage();
+  await page.goto(`chrome-extension://${new URL(currentWorker.url()).host}/options.html`);
+  return { context: currentContext, page };
+}
+
+function launchExtensionContext(): Promise<BrowserContext> {
+  return chromium.launchPersistentContext(profileDirectory, {
+    headless: false,
+    args: [`--disable-extensions-except=${extensionDirectory}`, `--load-extension=${extensionDirectory}`]
+  });
+}
+
+async function requireServiceWorker(browserContext: BrowserContext) {
+  return (
+    browserContext.serviceWorkers()[0] ??
+    (await browserContext.waitForEvent('serviceworker', { timeout: 60_000 }))
+  );
 }
 
 async function requireSmokeProduct(page: Page, allowAuditing: boolean): Promise<Product> {

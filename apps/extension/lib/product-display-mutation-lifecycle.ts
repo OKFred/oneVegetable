@@ -340,7 +340,7 @@ export class ExtensionProductDisplayMutationLifecycle {
         );
       }
 
-      const waiting = result.error.code === 'PUB_BIZCHECK_PRODUCT_IN_AUDITING' || result.error.retryable;
+      const waiting = isProductAuditingError(result.error) || result.error.retryable;
       const status: ProductMutationJobStatus =
         current.status === 'recovery-required'
           ? 'recovery-required'
@@ -862,6 +862,11 @@ function transitionJob(
     updaterId: ACTOR_ID,
     revision: current.revision + 1
   };
+}
+
+function isProductAuditingError(error: { code: string; subCode?: string }): boolean {
+  const marker = 'PUB_BIZCHECK_PRODUCT_IN_AUDITING';
+  return error.code.includes(marker) || error.subCode?.includes(marker) === true;
 }
 
 async function readProducts(

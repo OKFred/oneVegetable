@@ -333,9 +333,22 @@ describe('extension product display mutation lifecycle', () => {
       reasonCode: 'PUB_BIZCHECK_PRODUCT_IN_AUDITING'
     });
 
+    const wrappedAuditing = await lifecycle.completeUpdateReadback(auditing.id, auditing.revision, {
+      kind: 'error',
+      error: {
+        code: 'isp.system-service-error:PUB_BIZCHECK_PRODUCT_IN_AUDITING;',
+        message: 'Your product is currently under review. Please do not resubmit.',
+        retryable: false
+      }
+    });
+    expect(wrappedAuditing).toMatchObject({
+      status: 'auditing',
+      reasonCode: 'isp.system-service-error:PUB_BIZCHECK_PRODUCT_IN_AUDITING;'
+    });
+
     gateway.renderedXml =
       '<itemSchema><field id="productTitle"><value>Different</value></field></itemSchema>';
-    const mismatch = await lifecycle.completeUpdateReadback(auditing.id, auditing.revision, {
+    const mismatch = await lifecycle.completeUpdateReadback(wrappedAuditing.id, wrappedAuditing.revision, {
       kind: 'comparison',
       comparison: await compareProductMutationFingerprints(gateway.renderedXml, auditing.fieldExpectations)
     });
