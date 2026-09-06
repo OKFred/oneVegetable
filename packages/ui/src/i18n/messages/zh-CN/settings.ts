@@ -196,6 +196,7 @@ export const settings = {
       acquisitionRequestMismatch: '凭证获取响应 requestId 不匹配。',
       vaultRequestMismatch: '凭证保护响应 requestId 不匹配。',
       runtimeRequestMismatch: '扩展后台响应 requestId 不匹配。',
+      productMutationSnapshotMissing: '商品更新任务缺少类目或语言快照。',
       invalidHostProtocol: '{purpose}仅允许 HTTP(S) 地址。',
       permissionDeniedHost: '未授予 {purpose} 对 {host} 的访问权限。',
       permissionDeniedPurpose: '未授予{purpose}所需的精确站点权限。',
@@ -210,7 +211,7 @@ export const settings = {
         retention: '保留到用户覆盖、清除扩展数据或卸载扩展'
       },
       productMutationJobs: {
-        label: '商品上下架本地任务',
+        label: '商品写入本地任务',
         retention: '未完成任务保留到核验或恢复；完成任务最多保留 30 天、100 条'
       },
       socialBackendDevice: {

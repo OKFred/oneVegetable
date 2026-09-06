@@ -2,7 +2,7 @@ import { getCookie, setCookie } from 'hono/cookie';
 
 import { isRequestId, normalizeRemark } from '@one-vegetable/core';
 import { authorizeAdmin, policySummary } from '../abac';
-import { AuthError } from './service';
+import { AuthError, SESSION_ABSOLUTE_MILLISECONDS } from './service';
 import { markRequestActor } from '../observability/request-context';
 import { requestEventRetentionCutoff } from '../observability/request-events';
 import { CURRENT_SCHEMA_VERSION } from '../db/schema';
@@ -1098,7 +1098,7 @@ function setSessionCookies(
     secure,
     sameSite: 'Strict',
     path: options.apiPrefix,
-    maxAge: 8 * 60 * 60
+    maxAge: SESSION_ABSOLUTE_MILLISECONDS / 1000
   });
   setCsrfCookie(context, options, csrfToken);
 }
@@ -1114,7 +1114,7 @@ function setCsrfCookie(
     secure,
     sameSite: 'Strict',
     path: '/',
-    maxAge: 8 * 60 * 60
+    maxAge: SESSION_ABSOLUTE_MILLISECONDS / 1000
   });
 }
 

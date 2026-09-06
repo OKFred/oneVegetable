@@ -28,6 +28,8 @@ import {
 
 import type {
   CredentialVaultRepository,
+  BffAuthenticationRequiredEvent,
+  BffAuthenticationRequiredSource,
   ExtensionSocialBackendRepository,
   ExtensionAlibabaCredentialAcquisitionRepository,
   ControlClient,
@@ -54,6 +56,7 @@ import FeedbackLauncher from './components/FeedbackLauncher.vue';
 import ExtensionReviewPrompt from './components/ExtensionReviewPrompt.vue';
 import LanguageToggle from './components/LanguageToggle.vue';
 import OnboardingDialog from './components/OnboardingDialog.vue';
+import SessionExpiredDialog from './components/SessionExpiredDialog.vue';
 import ThemeToggle from './components/ThemeToggle.vue';
 import { useUiI18n } from './i18n';
 import { pageHash, parsePageHash, type PageId } from './lib/hash-router';
@@ -76,6 +79,7 @@ const props = defineProps<{
   productMutationJobs?: ProductMutationJobClient;
   operationAvailability?: OperationAvailabilityClient;
   reviewPrompt?: ExtensionReviewPromptRepository;
+  authenticationEvents?: BffAuthenticationRequiredSource;
   mode: 'mock' | 'extension' | 'bff';
 }>();
 const runtime = reactive<RuntimeState>({
@@ -141,6 +145,8 @@ const sidebarPanel = ref<HTMLElement | null>(null);
 const sidebarToggle = ref<FocusableButton | null>(null);
 const workspaceReady = ref(props.mode === 'mock' || props.onboarding === undefined);
 const credentialAcquisitionOpen = ref(false);
+const authenticationRequired = ref<BffAuthenticationRequiredEvent | null>(null);
+let unsubscribeAuthenticationEvents: (() => void) | null = null;
 const views: Record<PageId, Component> = {
   dashboard: defineAsyncComponent(() => import('./views/DashboardView.vue')),
   products: defineAsyncComponent(() => import('./views/ProductsView.vue')),
@@ -238,6 +244,7 @@ function syncPageFromHash(): void {
 }
 
 function handleAuthenticated(nextSession: ControlSession): void {
+  authenticationRequired.value = null;
   session.value = nextSession;
   workspaceReady.value = !onboardingActive.value;
   syncPageFromHash();
@@ -259,6 +266,8 @@ onMounted(async () => {
   globalThis.addEventListener('hashchange', syncPageFromHash);
   globalThis.addEventListener('popstate', syncPageFromHash);
   globalThis.addEventListener('keydown', handleGlobalKeydown);
+  unsubscribeAuthenticationEvents =
+    props.authenticationEvents?.subscribe(handleAuthenticationRequired) ?? null;
   if (props.mode === 'bff' && props.control) {
     void loadBackendMeta(props.control);
     try {
@@ -289,11 +298,25 @@ onBeforeUnmount(() => {
   globalThis.removeEventListener('hashchange', syncPageFromHash);
   globalThis.removeEventListener('popstate', syncPageFromHash);
   globalThis.removeEventListener('keydown', handleGlobalKeydown);
+  unsubscribeAuthenticationEvents?.();
+  unsubscribeAuthenticationEvents = null;
 });
+
+function handleAuthenticationRequired(event: BffAuthenticationRequiredEvent): void {
+  if (props.mode !== 'bff' || !session.value || authenticationRequired.value) return;
+  authenticationRequired.value = event;
+}
+
+function beginReauthentication(): void {
+  authenticationRequired.value = null;
+  session.value = null;
+  workspaceReady.value = true;
+}
 
 async function logout(): Promise<void> {
   if (!props.control) return;
   await props.control.logout();
+  authenticationRequired.value = null;
   session.value = null;
   replacePage('dashboard');
 }
@@ -331,6 +354,7 @@ function avatarInitials(name: string): string {
       v-if="!authLoading && mode === 'bff' && control && !session"
       @authenticated="handleAuthenticated"
     />
+    <SessionExpiredDialog :open="authenticationRequired !== null" @reauthenticate="beginReauthentication" />
     <OnboardingDialog v-if="onboardingActive" @ready="handleOnboardingReady" />
     <AlibabaCredentialAcquisitionDialog
       v-if="mode === 'extension' && alibabaCredentialAcquisition"

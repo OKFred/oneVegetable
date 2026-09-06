@@ -1,8 +1,10 @@
 import { GatewayException } from './errors';
+import { notifyBffAuthenticationRequired } from './bff-authentication';
 import { createRequestId, NetworkManager } from './network';
 import { DEFAULT_API_PREFIX, normalizeApiPrefix } from './api-contract';
 
 import type { ApiResponse } from './api-contract';
+import type { BffAuthenticationRequiredHandler } from './bff-authentication';
 import type { NetworkTransport } from './network';
 import type { GatewayClient, OperationId, RequestOf, ResponseOf } from './types';
 
@@ -11,6 +13,7 @@ export interface BffGatewayClientOptions {
   apiPrefix?: string | undefined;
   transport?: NetworkTransport;
   csrfToken?: () => string | null;
+  onAuthenticationRequired?: BffAuthenticationRequiredHandler;
   maxUploadRequestBytes?: number;
 }
 
@@ -18,6 +21,7 @@ export class BffGatewayClient implements GatewayClient {
   readonly #endpoint: URL;
   readonly #network: NetworkManager;
   readonly #csrfToken: (() => string | null) | undefined;
+  readonly #onAuthenticationRequired: BffAuthenticationRequiredHandler | undefined;
 
   constructor(options: BffGatewayClientOptions) {
     const baseUrl = new URL(options.baseUrl);
@@ -27,6 +31,7 @@ export class BffGatewayClient implements GatewayClient {
     const apiPrefix = normalizeApiPrefix(options.apiPrefix ?? DEFAULT_API_PREFIX);
     this.#endpoint = new URL(`${apiPrefix}/operations/call`, baseUrl);
     this.#csrfToken = options.csrfToken;
+    this.#onAuthenticationRequired = options.onAuthenticationRequired;
     this.#network = new NetworkManager({
       ...(options.transport ? { transport: options.transport } : {}),
       policies: {
@@ -69,7 +74,14 @@ export class BffGatewayClient implements GatewayClient {
         response.requestId
       );
     }
-    if (!response.data.ok) throw new GatewayException(response.data.error, response.data.requestId);
+    if (!response.data.ok) {
+      notifyBffAuthenticationRequired(
+        this.#onAuthenticationRequired,
+        response.data.error,
+        response.data.requestId
+      );
+      throw new GatewayException(response.data.error, response.data.requestId);
+    }
     return response.data.data as ResponseOf<K>;
   }
 }

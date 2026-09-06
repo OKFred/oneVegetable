@@ -12,6 +12,8 @@ import {
   APP_PREFERENCES_STORAGE_KEY,
   LEGACY_APP_PREFERENCES_STORAGE_KEY,
   completeOnboarding,
+  compareProductMutationFingerprints,
+  createProductMutationFingerprints,
   createLocalDataInventory,
   evaluateExtensionReviewPrompt,
   EXTENSION_REVIEW_PROMPT_STORAGE_KEY,
@@ -65,10 +67,6 @@ let activeRuntimeTranslator: RuntimeTranslator | null = null;
 function translateUi(key: string, values?: Record<string, unknown>): string {
   return activeRuntimeTranslator?.(key, values) ?? key;
 }
-
-const productMutationJobs = new ExtensionProductMutationJobClient({
-  send: (message) => browser.runtime.sendMessage(message)
-});
 
 interface StoredExtensionSocialBackend {
   schemaVersion: 1;
@@ -500,11 +498,16 @@ class ExtensionGatewayClient implements GatewayClient {
         )
       );
     }
+    const productMutationFingerprint =
+      operation === 'updateProduct'
+        ? await createProductMutationFingerprints((payload as RequestOf<'updateProduct'>).schemaPatchXml)
+        : undefined;
     const message: RuntimeRequest<K> = {
       requestId: crypto.randomUUID(),
       kind: 'gateway-request',
       operation,
-      payload
+      payload,
+      ...(productMutationFingerprint === undefined ? {} : { productMutationFingerprint })
     };
     const response: RuntimeResponse<K> = await browser.runtime.sendMessage(message);
     if (response.requestId !== message.requestId) {
@@ -709,8 +712,29 @@ async function mountOptionsApp(): Promise<void> {
   ]);
   const { OneVegetableApp, uiI18n } = uiModule;
   activeRuntimeTranslator = uiModule.translateUi;
+  const gateway = new ExtensionGatewayClient();
+  const productMutationJobs = new ExtensionProductMutationJobClient(
+    { send: (message) => browser.runtime.sendMessage(message) },
+    {
+      async compare(job) {
+        if (job.categoryId === null || job.language === null) {
+          throw new GatewayException({
+            code: 'PRODUCT_MUTATION_JOB_INVALID',
+            message: translateUi('settings.extensionRuntime.errors.productMutationSnapshotMissing'),
+            retryable: false
+          });
+        }
+        const rendered = await gateway.request('renderProductSchema', {
+          productId: job.productId,
+          categoryId: job.categoryId,
+          language: job.language
+        });
+        return compareProductMutationFingerprints(rendered.xml, job.fieldExpectations);
+      }
+    }
+  );
   const app = createApp(OneVegetableApp, {
-    gateway: new ExtensionGatewayClient(),
+    gateway,
     settings,
     permissions,
     localData,

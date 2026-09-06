@@ -1,4 +1,5 @@
 import {
+  createProductMutationPayloadFingerprint,
   GatewayException,
   isProductMutationJob,
   PENDING_PRODUCT_MUTATION_ID_PREFIX,
@@ -6,6 +7,7 @@ import {
   productMutationJobIsBlocking,
   productMutationJobIsTerminal,
   type AlibabaLanguage,
+  type ExtensionProductUpdateReadbackResult,
   type Product,
   type ProductDetail,
   type ProductDisplayMutationResult,
@@ -17,7 +19,10 @@ import {
   type ProductMutationJobOperation,
   type ProductMutationResult,
   type ProductMutationJobStatus,
+  type ProductMutationFingerprintComparison,
+  type ProductMutationFingerprintSet,
   type ProductPage,
+  type ProductSchemaUpdateRequest,
   type RequestOf
 } from '@one-vegetable/core';
 import { EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY } from './product-display-mutation-storage';
@@ -53,6 +58,12 @@ export interface ExtensionProductCreationGateway {
   saveDraft(request: RequestOf<'saveProductDraft'>): Promise<ProductMutationResult>;
 }
 
+export interface ExtensionProductUpdateGateway {
+  update(request: ProductSchemaUpdateRequest): Promise<ProductMutationResult>;
+}
+
+type ExtensionProductMutationGateway = ExtensionProductDisplayGateway | ExtensionProductCreationGateway;
+
 export type ExtensionProductDisplaySubmissionResult = ProductDisplayMutationResult & {
   jobs: ProductMutationJob[];
 };
@@ -63,6 +74,10 @@ export type ExtensionProductCreationOperation = Extract<
 >;
 
 export type ExtensionProductCreationSubmissionResult = ProductMutationResult & {
+  job: ProductMutationJob;
+};
+
+export type ExtensionProductUpdateSubmissionResult = ProductMutationResult & {
   job: ProductMutationJob;
 };
 
@@ -232,6 +247,119 @@ export class ExtensionProductDisplayMutationLifecycle {
     });
   }
 
+  submitUpdate(
+    gateway: ExtensionProductUpdateGateway,
+    requestId: string,
+    request: ProductSchemaUpdateRequest,
+    fingerprints: ProductMutationFingerprintSet
+  ): Promise<ExtensionProductUpdateSubmissionResult> {
+    return this.#exclusive(async () => {
+      assertProductMutationFingerprints(fingerprints);
+      const payloadFingerprint = await createProductMutationPayloadFingerprint(request.schemaPatchXml);
+      if (payloadFingerprint !== fingerprints.payloadFingerprint) {
+        throw gatewayError(
+          'PRODUCT_MUTATION_FINGERPRINT_MISMATCH',
+          '商品增量 XML 与受信页面生成的指纹不一致'
+        );
+      }
+      const currentJobs = await this.#readJobs();
+      const blocking = currentJobs.find(
+        (job) => job.productId === request.productId && productMutationJobIsBlocking(job.status)
+      );
+      if (blocking) throw mutationInProgress(blocking);
+
+      const job = createUpdateJob({
+        requestId,
+        productId: request.productId,
+        categoryId: request.categoryId,
+        language: requireCreationLanguage(request.language),
+        payloadFingerprint: fingerprints.payloadFingerprint,
+        fieldExpectations: fingerprints.fieldExpectations,
+        now: this.clock()
+      });
+      await this.#writeJobs([...currentJobs, job]);
+
+      let result: ProductMutationResult;
+      try {
+        result = await gateway.update(request);
+      } catch (error: unknown) {
+        const details = errorDetails(error);
+        await this.#transitionOne(
+          job,
+          details.retryable ? 'recovery-required' : 'failed',
+          {
+            traceId: details.traceId,
+            reasonCode: details.code,
+            message: details.retryable
+              ? `请求结果不确定，已停止重复更新并等待平台回读：${details.message}`
+              : details.message
+          },
+          false
+        );
+        throw error;
+      }
+
+      const accepted = await this.#transitionOne(
+        job,
+        'auditing',
+        {
+          traceId: result.traceId,
+          reasonCode: 'ALIBABA_MUTATION_ACCEPTED',
+          message: 'Alibaba 已接受更新，等待平台审核和回读确认'
+        },
+        false
+      );
+      return { ...result, job: accepted };
+    });
+  }
+
+  completeUpdateReadback(
+    id: string,
+    expectedRevision: number,
+    result: ExtensionProductUpdateReadbackResult
+  ): Promise<ProductMutationJob> {
+    return this.#exclusive(async () => {
+      const current = await this.#requireRevision(id, expectedRevision);
+      if (productMutationJobIsTerminal(current.status)) return structuredClone(current);
+      assertUpdateJob(current);
+      if (result.kind === 'comparison') {
+        const comparison = validateUpdateReadbackComparison(current, result.comparison);
+        const status: ProductMutationJobStatus = comparison.matched ? 'verified' : 'recovery-required';
+        return await this.#transitionOne(
+          current,
+          status,
+          {
+            reasonCode: comparison.matched
+              ? 'PRODUCT_MUTATION_READBACK_MATCHED'
+              : 'PRODUCT_MUTATION_READBACK_MISMATCH',
+            message: comparison.matched
+              ? '平台回读值与本次更新一致'
+              : summarizeMismatch(comparison.missingFieldIds, comparison.mismatchedFieldIds)
+          },
+          true
+        );
+      }
+
+      const waiting = isProductAuditingError(result.error) || result.error.retryable;
+      const status: ProductMutationJobStatus =
+        current.status === 'recovery-required'
+          ? 'recovery-required'
+          : waiting
+            ? 'auditing'
+            : 'recovery-required';
+      return await this.#transitionOne(
+        current,
+        status,
+        {
+          traceId: result.error.traceId ?? null,
+          reasonCode: result.error.code,
+          message: result.error.message
+        },
+        true
+      );
+    });
+  }
+
   async list(input: ProductMutationJobListInput = {}): Promise<ProductMutationJobPage> {
     const page = input.page ?? 1;
     const pageSize = input.pageSize ?? 20;
@@ -264,7 +392,7 @@ export class ExtensionProductDisplayMutationLifecycle {
   }
 
   refresh(
-    gateway: ExtensionProductDisplayGateway | ExtensionProductCreationGateway,
+    gateway: ExtensionProductMutationGateway,
     id: string,
     expectedRevision: number
   ): Promise<ProductMutationJob> {
@@ -273,6 +401,12 @@ export class ExtensionProductDisplayMutationLifecycle {
       if (productMutationJobIsTerminal(current.status)) return structuredClone(current);
       if (isCreationOperation(current.operation)) {
         return await this.#refreshCreation(requireCreationGateway(gateway), current);
+      }
+      if (current.operation === 'updateProduct') {
+        throw gatewayError(
+          'PRODUCT_MUTATION_READBACK_CLIENT_REQUIRED',
+          '商品更新回读必须由受信扩展页面解析 Schema 后完成'
+        );
       }
       assertDisplayJob(current);
       const displayGateway = requireDisplayGateway(gateway);
@@ -665,6 +799,43 @@ function createCreationJob(input: {
   };
 }
 
+function createUpdateJob(input: {
+  requestId: string;
+  productId: string;
+  categoryId: number;
+  language: 'zh_CN' | 'en_US';
+  payloadFingerprint: string;
+  fieldExpectations: ProductMutationJob['fieldExpectations'];
+  now: number;
+}): ProductMutationJob {
+  return {
+    id: crypto.randomUUID(),
+    requestId: input.requestId,
+    productId: input.productId,
+    operation: 'updateProduct',
+    status: 'submitted',
+    categoryId: input.categoryId,
+    language: input.language,
+    payloadFingerprint: input.payloadFingerprint,
+    fieldExpectations: structuredClone(input.fieldExpectations),
+    encryptedProductId: null,
+    targetDisplay: null,
+    originalDisplay: null,
+    traceId: null,
+    reasonCode: null,
+    message: null,
+    submittedTimeUtc: input.now,
+    lastCheckedTimeUtc: null,
+    completedTimeUtc: null,
+    createTimeUtc: input.now,
+    updateTimeUtc: input.now,
+    creatorId: ACTOR_ID,
+    updaterId: ACTOR_ID,
+    revision: 1,
+    remark: null
+  };
+}
+
 function transitionJob(
   current: ProductMutationJob,
   status: ProductMutationJobStatus,
@@ -691,6 +862,11 @@ function transitionJob(
     updaterId: ACTOR_ID,
     revision: current.revision + 1
   };
+}
+
+function isProductAuditingError(error: { code: string; subCode?: string }): boolean {
+  const marker = 'PUB_BIZCHECK_PRODUCT_IN_AUDITING';
+  return error.code.includes(marker) || error.subCode?.includes(marker) === true;
 }
 
 async function readProducts(
@@ -787,9 +963,7 @@ function isCreationOperation(
   return operation === 'publishProduct' || operation === 'saveProductDraft';
 }
 
-function requireCreationGateway(
-  gateway: ExtensionProductDisplayGateway | ExtensionProductCreationGateway
-): ExtensionProductCreationGateway {
+function requireCreationGateway(gateway: ExtensionProductMutationGateway): ExtensionProductCreationGateway {
   const candidate = gateway as Partial<ExtensionProductCreationGateway>;
   if (
     typeof candidate.list !== 'function' ||
@@ -802,9 +976,7 @@ function requireCreationGateway(
   return candidate as ExtensionProductCreationGateway;
 }
 
-function requireDisplayGateway(
-  gateway: ExtensionProductDisplayGateway | ExtensionProductCreationGateway
-): ExtensionProductDisplayGateway {
+function requireDisplayGateway(gateway: ExtensionProductMutationGateway): ExtensionProductDisplayGateway {
   const candidate = gateway as Partial<ExtensionProductDisplayGateway>;
   if (typeof candidate.list !== 'function' || typeof candidate.updateDisplay !== 'function') {
     throw gatewayError('PRODUCT_MUTATION_GATEWAY_INVALID', '当前商品网关不支持上下架回读');
@@ -865,6 +1037,79 @@ function creationAlreadyAccepted(job: ProductMutationJob): GatewayException {
     'PRODUCT_CREATION_ALREADY_ACCEPTED',
     `相同内容已由平台接受为 ${job.productId}；为避免重复商品，本次未再次提交`
   );
+}
+
+function summarizeMismatch(missing: readonly string[], mismatched: readonly string[]): string {
+  const parts: string[] = [];
+  if (missing.length > 0) parts.push(`回读缺少 ${missing.length} 个字段`);
+  if (mismatched.length > 0) parts.push(`回读有 ${mismatched.length} 个字段值不一致`);
+  return `${parts.join('，')}，请保留本地草稿并人工确认`;
+}
+
+function assertProductMutationFingerprints(
+  fingerprints: ProductMutationFingerprintSet
+): asserts fingerprints is ProductMutationFingerprintSet {
+  if (!isSha256Fingerprint(fingerprints.payloadFingerprint)) {
+    throw gatewayError('PRODUCT_MUTATION_FINGERPRINT_INVALID', '商品增量载荷指纹无效');
+  }
+  if (fingerprints.fieldExpectations.length === 0 || fingerprints.fieldExpectations.length > 1_000) {
+    throw gatewayError('PRODUCT_MUTATION_FINGERPRINT_INVALID', '商品增量字段指纹数量无效');
+  }
+  const fieldIds = new Set<string>();
+  for (const expectation of fingerprints.fieldExpectations) {
+    const fieldId = expectation.fieldId.trim();
+    if (
+      fieldId === '' ||
+      fieldId.length > 512 ||
+      fieldId !== expectation.fieldId ||
+      fieldIds.has(fieldId) ||
+      !isSha256Fingerprint(expectation.fingerprint)
+    ) {
+      throw gatewayError('PRODUCT_MUTATION_FINGERPRINT_INVALID', '商品增量字段指纹无效或重复');
+    }
+    fieldIds.add(fieldId);
+  }
+}
+
+function assertUpdateJob(job: ProductMutationJob): asserts job is ProductMutationJob & {
+  categoryId: number;
+  language: 'zh_CN' | 'en_US';
+} {
+  if (job.operation !== 'updateProduct' || job.categoryId === null || job.language === null) {
+    throw gatewayError('PRODUCT_MUTATION_JOB_INVALID', '商品更新任务缺少类目或语言快照');
+  }
+}
+
+function validateUpdateReadbackComparison(
+  job: ProductMutationJob,
+  comparison: ProductMutationFingerprintComparison
+): ProductMutationFingerprintComparison {
+  const expected = new Set(job.fieldExpectations.map((item) => item.fieldId));
+  const missing = validateComparisonFieldIds(comparison.missingFieldIds, expected);
+  const mismatched = validateComparisonFieldIds(comparison.mismatchedFieldIds, expected);
+  if (missing.some((fieldId) => mismatched.includes(fieldId))) {
+    throw gatewayError('PRODUCT_MUTATION_READBACK_INVALID', '商品更新回读结果包含重复字段状态');
+  }
+  const matched = missing.length === 0 && mismatched.length === 0;
+  if (comparison.matched !== matched) {
+    throw gatewayError('PRODUCT_MUTATION_READBACK_INVALID', '商品更新回读匹配状态无效');
+  }
+  return { matched, missingFieldIds: missing, mismatchedFieldIds: mismatched };
+}
+
+function validateComparisonFieldIds(values: readonly string[], expected: ReadonlySet<string>): string[] {
+  const unique = new Set<string>();
+  for (const value of values) {
+    if (!expected.has(value) || unique.has(value)) {
+      throw gatewayError('PRODUCT_MUTATION_READBACK_INVALID', '商品更新回读包含未知或重复字段');
+    }
+    unique.add(value);
+  }
+  return [...unique];
+}
+
+function isSha256Fingerprint(value: string): boolean {
+  return /^[0-9a-f]{64}$/u.test(value);
 }
 
 function targetMismatch(): GatewayException {

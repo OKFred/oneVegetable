@@ -1,8 +1,10 @@
 import { DEFAULT_API_PREFIX, normalizeApiPrefix } from './api-contract';
+import { notifyBffAuthenticationRequired } from './bff-authentication';
 import { GatewayException } from './errors';
 import { createRequestId, NetworkManager } from './network';
 
 import type { ApiResponse, BackendMeta } from './api-contract';
+import type { BffAuthenticationRequiredHandler } from './bff-authentication';
 import type { EntityAuditFields, UnixEpochMilliseconds } from './audit';
 import type { NetworkTransport } from './network';
 import type { AlibabaOpenApiCredentialBundle } from './alibaba-credential-bundle';
@@ -324,6 +326,7 @@ export interface BffControlClientOptions {
   csrfToken?: () => string | null;
   bearerToken?: () => string | null;
   extensionId?: string;
+  onAuthenticationRequired?: BffAuthenticationRequiredHandler;
 }
 
 export class BffControlClient implements ControlClient {
@@ -333,6 +336,7 @@ export class BffControlClient implements ControlClient {
   readonly #externalCsrfToken: (() => string | null) | undefined;
   readonly #bearerToken: (() => string | null) | undefined;
   readonly #extensionId: string | undefined;
+  readonly #onAuthenticationRequired: BffAuthenticationRequiredHandler | undefined;
   #sessionCsrfToken: string | null = null;
 
   constructor(options: BffControlClientOptions) {
@@ -344,6 +348,7 @@ export class BffControlClient implements ControlClient {
     this.#externalCsrfToken = options.csrfToken;
     this.#bearerToken = options.bearerToken;
     this.#extensionId = options.extensionId;
+    this.#onAuthenticationRequired = options.onAuthenticationRequired;
     this.#network = new NetworkManager({
       ...(options.transport ? { transport: options.transport } : {}),
       policies: {
@@ -772,7 +777,14 @@ export class BffControlClient implements ControlClient {
         response.requestId
       );
     }
-    if (!response.data.ok) throw new GatewayException(response.data.error, response.data.requestId);
+    if (!response.data.ok) {
+      notifyBffAuthenticationRequired(
+        this.#onAuthenticationRequired,
+        response.data.error,
+        response.data.requestId
+      );
+      throw new GatewayException(response.data.error, response.data.requestId);
+    }
     return response.data.data as T;
   }
 }

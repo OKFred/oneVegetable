@@ -4,10 +4,16 @@ import { defineComponent, h } from 'vue';
 import { flushPromises, shallowMount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ALIBABA_GATEWAY, type ControlClient, type ControlSession } from '@one-vegetable/core';
+import {
+  ALIBABA_GATEWAY,
+  createBffAuthenticationEvents,
+  type ControlClient,
+  type ControlSession
+} from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import OneVegetableApp from '../src/OneVegetableApp.vue';
+import AuthGate from '../src/components/AuthGate.vue';
 import { appHash, PAGE_IDS, pageHash, parseAppHash } from '../src/lib/hash-router';
 
 vi.mock('../src/views/DashboardView.vue', () => ({ default: { template: '<div />' } }));
@@ -243,6 +249,52 @@ describe('OneVegetableApp hash navigation', () => {
     expect(globalThis.location.hash).toBe('#/dashboard');
     expect(wrapper.find('nav a[href="#/admin"]').exists()).toBe(false);
     expect(wrapper.get('[data-testid="account-avatar"]').attributes('aria-label')).toBe('当前用户：member');
+    wrapper.unmount();
+  });
+
+  it('prompts once for an expired session and preserves the current route for sign-in', async () => {
+    globalThis.history.replaceState(null, '', '#/products');
+    const authenticationEvents = createBffAuthenticationEvents();
+    const SessionExpiredStub = defineComponent({
+      props: { open: { type: Boolean, required: true } },
+      emits: { reauthenticate: () => true },
+      template:
+        '<button v-if="open" data-testid="session-expired-login" @click="$emit(\'reauthenticate\')">重新登录</button>'
+    });
+    const wrapper = shallowMount(OneVegetableApp, {
+      props: {
+        gateway: new MockGatewayClient(0),
+        settings,
+        control: regularUserControl(),
+        authenticationEvents,
+        mode: 'bff'
+      },
+      global: { stubs: { SessionExpiredDialog: SessionExpiredStub } }
+    });
+    await flushPromises();
+
+    authenticationEvents.notify({
+      code: 'SESSION_EXPIRED',
+      requestId: '86f96b63-2f45-4ae5-9362-9e74ab35d5a2'
+    });
+    authenticationEvents.notify({
+      code: 'SESSION_INVALID',
+      requestId: '3d7c8523-93cc-48b7-a615-a23d2976c516'
+    });
+    await flushPromises();
+
+    const dialog = wrapper.findComponent(SessionExpiredStub);
+    expect(dialog.props('open')).toBe(true);
+    expect(wrapper.find('nav').exists()).toBe(true);
+    expect(globalThis.location.hash).toBe('#/products');
+
+    await wrapper.get('[data-testid="session-expired-login"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.findComponent(AuthGate).exists()).toBe(true);
+    expect(wrapper.find('nav').exists()).toBe(false);
+    expect(globalThis.location.hash).toBe('#/products');
+    expect(wrapper.findComponent(SessionExpiredStub).props('open')).toBe(false);
     wrapper.unmount();
   });
 });

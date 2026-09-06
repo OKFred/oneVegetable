@@ -30,6 +30,8 @@ import {
   validateCapabilityRequest,
   validateCapabilityResponse,
   validateProductDisplayInput,
+  validateProductGroupCreateInput,
+  validateProductSchemaUpdateInput,
   validateSchemaPublishInput,
   type ApiCapability,
   type AlibabaLanguage,
@@ -42,9 +44,11 @@ import {
   type ExtensionAlibabaCredentialAcquisitionResponse,
   type ExtensionProductMutationJobRequest,
   type ExtensionProductMutationJobResponse,
+  type ExtensionProductUpdateReadbackResult,
   type GatewaySettings,
   type OperationId,
   type ProductMutationJobListInput,
+  type ProductMutationFingerprintSet,
   type RequestOf,
   type RuntimeRequest,
   type RuntimeResponse
@@ -53,6 +57,7 @@ import { ExtensionAlibabaCredentialAcquisitionController } from '../lib/alibaba-
 import { ExtensionCredentialVaultSession } from '../lib/credential-vault-session';
 import { resolveExtensionOperationAvailability } from '../lib/operation-policy';
 import { ExtensionProductDisplayMutationLifecycle } from '../lib/product-display-mutation-lifecycle';
+import { isTrustedExtensionPageSender } from '../lib/trusted-runtime-sender';
 
 const OPERATIONS = new Set<OperationId>([
   'getDashboard',
@@ -124,7 +129,8 @@ export default defineBackground({
     const storageAccessReady = restrictStorageToTrustedContexts();
     // WebExtension runtime listeners support returning a promise for the response.
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
-    browser.runtime.onMessage.addListener((value: unknown) => {
+    browser.runtime.onMessage.addListener((value: unknown, sender) => {
+      const trustedOptionsPage = isTrustedOptionsPageSender(sender);
       const acquisitionMessage = asAlibabaCredentialAcquisitionRequest(value);
       if (acquisitionMessage) {
         return handleAlibabaCredentialAcquisitionRequest(acquisitionMessage, storageAccessReady);
@@ -133,11 +139,15 @@ export default defineBackground({
       if (vaultMessage) return handleCredentialVaultRequest(vaultMessage, storageAccessReady);
       const productMutationMessage = asProductMutationJobRequest(value);
       if (productMutationMessage) {
-        return handleProductMutationJobRequest(productMutationMessage, storageAccessReady);
+        return handleProductMutationJobRequest(
+          productMutationMessage,
+          storageAccessReady,
+          trustedOptionsPage
+        );
       }
       const message = asRuntimeRequest(value);
       if (!message) return undefined;
-      return handleRequestAfterStorageReady(message, storageAccessReady);
+      return handleRequestAfterStorageReady(message, storageAccessReady, trustedOptionsPage);
     });
   }
 });
@@ -162,7 +172,8 @@ const productMutations = new ExtensionProductDisplayMutationLifecycle({
 
 async function handleProductMutationJobRequest(
   message: ExtensionProductMutationJobRequest,
-  storageAccessReady: Promise<void>
+  storageAccessReady: Promise<void>,
+  trustedOptionsPage: boolean
 ): Promise<ExtensionProductMutationJobResponse> {
   const startedAt = performance.now();
   try {
@@ -183,6 +194,14 @@ async function handleProductMutationJobRequest(
           requiredNumber(payload, 'revision')
         );
         break;
+      case 'complete-update-readback':
+        assertTrustedOptionsPage(trustedOptionsPage);
+        data = await productMutations.completeUpdateReadback(
+          requiredString(payload, 'id'),
+          requiredNumber(payload, 'revision'),
+          requiredProductUpdateReadbackResult(payload.result)
+        );
+        break;
       case 'recover':
         data = await productMutations.recover(
           await loadProductAdapter(),
@@ -194,12 +213,7 @@ async function handleProductMutationJobRequest(
     await safelyRecordDiagnostic({
       requestId: message.requestId,
       operation: `product-mutation-job.${message.operation}`,
-      method:
-        message.operation === 'refresh'
-          ? 'alibaba.icbu.product.list'
-          : message.operation === 'recover'
-            ? 'alibaba.icbu.product.batch.update.display'
-            : null,
+      method: productMutationDiagnosticMethod(message.operation, data),
       outcome: 'success',
       durationMs: Math.max(0, Math.round(performance.now() - startedAt)),
       errorCode: null,
@@ -476,10 +490,16 @@ function normalizeVaultError(error: unknown): ReturnType<typeof normalizeGateway
   return normalizeGatewayError(error);
 }
 
-async function handleRequest(message: RuntimeRequest): Promise<RuntimeResponse> {
+async function handleRequest(message: RuntimeRequest, trustedOptionsPage: boolean): Promise<RuntimeResponse> {
   if (message.operation === 'getDiagnostics' || message.operation === 'clearDiagnostics') {
     try {
-      const data = await executeOperation(message.operation, message.payload, message.requestId);
+      const data = await executeOperation(
+        message.operation,
+        message.payload,
+        message.requestId,
+        message.productMutationFingerprint,
+        trustedOptionsPage
+      );
       return { requestId: message.requestId, ok: true, data } as RuntimeResponse;
     } catch (error: unknown) {
       return { requestId: message.requestId, ok: false, error: normalizeGatewayError(error) };
@@ -487,7 +507,13 @@ async function handleRequest(message: RuntimeRequest): Promise<RuntimeResponse> 
   }
   const startedAt = performance.now();
   try {
-    const data = await executeOperation(message.operation, message.payload, message.requestId);
+    const data = await executeOperation(
+      message.operation,
+      message.payload,
+      message.requestId,
+      message.productMutationFingerprint,
+      trustedOptionsPage
+    );
     await safelyRecordDiagnostic({
       requestId: message.requestId,
       operation: message.operation,
@@ -517,20 +543,23 @@ async function handleRequest(message: RuntimeRequest): Promise<RuntimeResponse> 
 
 async function handleRequestAfterStorageReady(
   message: RuntimeRequest,
-  storageAccessReady: Promise<void>
+  storageAccessReady: Promise<void>,
+  trustedOptionsPage: boolean
 ): Promise<RuntimeResponse> {
   try {
     await storageAccessReady;
   } catch (error: unknown) {
     return { requestId: message.requestId, ok: false, error: normalizeGatewayError(error) };
   }
-  return handleRequest(message);
+  return handleRequest(message, trustedOptionsPage);
 }
 
 async function executeOperation(
   operation: OperationId,
   payload: unknown,
-  requestId: string
+  requestId: string,
+  productMutationFingerprint: ProductMutationFingerprintSet | undefined,
+  trustedOptionsPage: boolean
 ): Promise<unknown> {
   if (operation === 'getDiagnostics') return getDiagnostics();
   if (operation === 'clearDiagnostics') {
@@ -601,8 +630,23 @@ async function executeOperation(
       }
       return productMutations.submitCreation(products, requestId, operation, validation.data);
     }
-    case 'updateProduct':
-      return products.update(payload as RequestOf<'updateProduct'>);
+    case 'updateProduct': {
+      assertTrustedOptionsPage(trustedOptionsPage);
+      const validation = validateProductSchemaUpdateInput(payload);
+      if (!validation.valid || !validation.data) {
+        throw new GatewayException({
+          code: 'REQUEST_CONTRACT_INVALID',
+          message: validation.errors.join('; ') || 'The product update request is invalid.',
+          retryable: false
+        });
+      }
+      return productMutations.submitUpdate(
+        products,
+        requestId,
+        validation.data,
+        requiredProductMutationFingerprint(productMutationFingerprint)
+      );
+    }
     case 'updateProductDisplay': {
       const validation = validateProductDisplayInput(payload);
       if (!validation.valid || !validation.data) {
@@ -628,8 +672,17 @@ async function executeOperation(
       );
     case 'listProductGroups':
       return products.listGroups(readNumber(request, ['parentId']));
-    case 'createProductGroup':
-      return products.createGroup(payload as RequestOf<'createProductGroup'>);
+    case 'createProductGroup': {
+      const validation = validateProductGroupCreateInput(payload);
+      if (!validation.valid || !validation.data) {
+        throw new GatewayException({
+          code: 'REQUEST_CONTRACT_INVALID',
+          message: validation.errors.join('; ') || 'The product group request is invalid.',
+          retryable: false
+        });
+      }
+      return products.createGroup(validation.data);
+    }
     case 'getProductScore':
       return products.getScore(requiredString(request, 'productId'));
     case 'listRfqs':
@@ -867,6 +920,21 @@ function diagnosticMethod(operation: OperationId, payload: unknown): string | nu
   return methods[operation] ?? null;
 }
 
+function productMutationDiagnosticMethod(
+  operation: ExtensionProductMutationJobRequest['operation'],
+  result: unknown
+): string | null {
+  if (operation === 'recover') return 'alibaba.icbu.product.batch.update.display';
+  if (operation !== 'refresh') return null;
+  const jobOperation = readString(asRecord(result), ['operation']);
+  if (jobOperation === 'updateProduct') return 'alibaba.icbu.product.schema.render';
+  if (jobOperation === 'saveProductDraft') return 'alibaba.icbu.product.schema.render.draft';
+  if (jobOperation === 'publishProduct' || jobOperation === 'updateProductDisplay') {
+    return 'alibaba.icbu.product.list';
+  }
+  return null;
+}
+
 function readResultTraceId(value: unknown): string | null {
   return readString(asRecord(value), ['traceId', 'trace_id', 'request_id']) ?? null;
 }
@@ -946,11 +1014,98 @@ function asProductMutationJobRequest(value: unknown): ExtensionProductMutationJo
     value.operation !== 'list' &&
     value.operation !== 'get' &&
     value.operation !== 'refresh' &&
+    value.operation !== 'complete-update-readback' &&
     value.operation !== 'recover'
   ) {
     return null;
   }
   return value as unknown as ExtensionProductMutationJobRequest;
+}
+
+function requiredProductMutationFingerprint(value: unknown): ProductMutationFingerprintSet {
+  const record = asRecord(value);
+  const fieldExpectations = record.fieldExpectations;
+  if (
+    typeof record.payloadFingerprint !== 'string' ||
+    !Array.isArray(fieldExpectations) ||
+    fieldExpectations.length === 0 ||
+    fieldExpectations.length > 1_000
+  ) {
+    throw gatewayFailure('PRODUCT_MUTATION_FINGERPRINT_REQUIRED', '商品更新缺少受信扩展页面生成的字段指纹');
+  }
+  return {
+    payloadFingerprint: record.payloadFingerprint,
+    fieldExpectations: fieldExpectations.map((item) => {
+      const expectation = asRecord(item);
+      return {
+        fieldId: requiredString(expectation, 'fieldId'),
+        fingerprint: requiredString(expectation, 'fingerprint')
+      };
+    })
+  };
+}
+
+function requiredProductUpdateReadbackResult(value: unknown): ExtensionProductUpdateReadbackResult {
+  const record = asRecord(value);
+  if (record.kind === 'comparison') {
+    const comparison = asRecord(record.comparison);
+    if (typeof comparison.matched !== 'boolean') {
+      throw gatewayFailure('PRODUCT_MUTATION_READBACK_INVALID', '商品更新回读匹配状态无效');
+    }
+    return {
+      kind: 'comparison',
+      comparison: {
+        matched: comparison.matched,
+        missingFieldIds: requiredReadbackStringArray(comparison.missingFieldIds),
+        mismatchedFieldIds: requiredReadbackStringArray(comparison.mismatchedFieldIds)
+      }
+    };
+  }
+  if (record.kind === 'error') {
+    const error = asRecord(record.error);
+    if (typeof error.retryable !== 'boolean') {
+      throw gatewayFailure('PRODUCT_MUTATION_READBACK_INVALID', '商品更新回读错误状态无效');
+    }
+    const code = requiredString(error, 'code');
+    const message = requiredString(error, 'message');
+    const subCode = readString(error, ['subCode']);
+    const traceId = readString(error, ['traceId']);
+    if (
+      code.length > 128 ||
+      message.length > 4_096 ||
+      (subCode?.length ?? 0) > 256 ||
+      (traceId?.length ?? 0) > 512
+    ) {
+      throw gatewayFailure('PRODUCT_MUTATION_READBACK_INVALID', '商品更新回读错误内容过长');
+    }
+    return {
+      kind: 'error',
+      error: {
+        code,
+        message,
+        retryable: error.retryable,
+        ...(subCode === undefined ? {} : { subCode }),
+        ...(traceId === undefined ? {} : { traceId })
+      }
+    };
+  }
+  throw gatewayFailure('PRODUCT_MUTATION_READBACK_INVALID', '商品更新回读结果无效');
+}
+
+function requiredReadbackStringArray(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length > 1_000 || !value.every((item) => typeof item === 'string')) {
+    throw gatewayFailure('PRODUCT_MUTATION_READBACK_INVALID', '商品更新回读字段列表无效');
+  }
+  return [...value];
+}
+
+function assertTrustedOptionsPage(trusted: boolean): void {
+  if (trusted) return;
+  throw gatewayFailure('EXTENSION_TRUSTED_PAGE_REQUIRED', '商品更新及其回读只能由插件设置工作台发起');
+}
+
+function isTrustedOptionsPageSender(sender: { id?: string; url?: string }): boolean {
+  return isTrustedExtensionPageSender(sender, browser.runtime.id, browser.runtime.getURL('/options.html'));
 }
 
 function productMutationListInput(payload: Record<string, unknown>): ProductMutationJobListInput {

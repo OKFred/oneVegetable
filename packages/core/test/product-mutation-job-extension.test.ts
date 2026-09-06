@@ -65,9 +65,54 @@ describe('ExtensionProductMutationJobClient', () => {
       gatewayError: { code: 'INVALID_RUNTIME_RESPONSE' }
     });
   });
+
+  it('uses the trusted page readback provider for update jobs', async () => {
+    const sent: ExtensionProductMutationJobRequest[] = [];
+    const current = job({
+      operation: 'updateProduct',
+      status: 'auditing',
+      categoryId: 100,
+      language: 'en_US',
+      encryptedProductId: null,
+      targetDisplay: null,
+      originalDisplay: null,
+      fieldExpectations: [{ fieldId: 'subject', fingerprint: 'b'.repeat(64) }]
+    });
+    const client = new ExtensionProductMutationJobClient(
+      {
+        send(message) {
+          sent.push(message);
+          return Promise.resolve({
+            requestId: message.requestId,
+            ok: true,
+            data:
+              message.operation === 'get'
+                ? current
+                : { ...current, status: 'verified', revision: current.revision + 1 }
+          });
+        }
+      },
+      {
+        compare(value) {
+          expect(value).toEqual(current);
+          return Promise.resolve({ matched: true, missingFieldIds: [], mismatchedFieldIds: [] });
+        }
+      }
+    );
+
+    await expect(client.refresh(current.id, current.revision)).resolves.toMatchObject({
+      status: 'verified'
+    });
+    expect(sent.map((message) => message.operation)).toEqual(['get', 'complete-update-readback']);
+    expect(sent[1]?.payload).toMatchObject({
+      id: current.id,
+      revision: current.revision,
+      result: { kind: 'comparison', comparison: { matched: true } }
+    });
+  });
 });
 
-function job(): ProductMutationJob {
+function job(overrides: Partial<ProductMutationJob> = {}): ProductMutationJob {
   return {
     id: crypto.randomUUID(),
     requestId: crypto.randomUUID(),
@@ -92,6 +137,7 @@ function job(): ProductMutationJob {
     creatorId: 'extension:local-admin',
     updaterId: 'extension:local-admin',
     revision: 2,
-    remark: null
+    remark: null,
+    ...overrides
   };
 }

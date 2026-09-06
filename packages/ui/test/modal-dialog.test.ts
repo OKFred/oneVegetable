@@ -38,4 +38,35 @@ describe('ModalDialog', () => {
     expect(open.value).toBe(false);
     wrapper.unmount();
   });
+
+  it('keeps a non-dismissible dialog open when its overlay is clicked', async () => {
+    const open = ref(true);
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(
+            ModalDialog,
+            {
+              open: open.value,
+              title: '登录已过期',
+              dismissible: false,
+              showClose: false,
+              'onUpdate:open': (value: boolean) => {
+                open.value = value;
+              }
+            },
+            () => h('p', '请重新登录')
+          );
+      }
+    });
+    const wrapper = mount(Host, { attachTo: document.body });
+    await nextTick();
+
+    document.body.querySelector<HTMLButtonElement>('.ov-dialog-overlay')?.click();
+    await nextTick();
+
+    expect(open.value).toBe(true);
+    expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain('请重新登录');
+    wrapper.unmount();
+  });
 });

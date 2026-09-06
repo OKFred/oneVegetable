@@ -13,8 +13,8 @@ describe('extension operation policy', () => {
       reasonCode: 'EXTENSION_OPERATION_ALLOWED'
     });
     expect(resolveExtensionOperationAvailability('updateProduct')).toMatchObject({
-      allowed: false,
-      reasonCode: 'REAL_MUTATION_DISABLED'
+      allowed: true,
+      reasonCode: 'EXTENSION_OPERATION_ALLOWED'
     });
     expect(resolveExtensionOperationAvailability('calculateLogisticsQuote')).toMatchObject({
       allowed: false,
@@ -25,6 +25,10 @@ describe('extension operation policy', () => {
       reasonCode: 'EXTENSION_OPERATION_ALLOWED'
     });
     expect(resolveExtensionOperationAvailability('updateProductDisplay')).toMatchObject({
+      allowed: true,
+      reasonCode: 'EXTENSION_OPERATION_ALLOWED'
+    });
+    expect(resolveExtensionOperationAvailability('createProductGroup')).toMatchObject({
       allowed: true,
       reasonCode: 'EXTENSION_OPERATION_ALLOWED'
     });

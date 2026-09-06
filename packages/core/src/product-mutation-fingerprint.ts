@@ -37,9 +37,13 @@ export async function createProductMutationFingerprints(
     });
   }
   return {
-    payloadFingerprint: await digest(schemaPatchXml),
+    payloadFingerprint: await createProductMutationPayloadFingerprint(schemaPatchXml),
     fieldExpectations
   };
+}
+
+export function createProductMutationPayloadFingerprint(schemaPatchXml: string): Promise<string> {
+  return digest(schemaPatchXml);
 }
 
 export async function compareProductMutationFingerprints(

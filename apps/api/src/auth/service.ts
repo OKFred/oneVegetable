@@ -17,8 +17,8 @@ import type {
   UserStatus
 } from './types';
 
-export const SESSION_ABSOLUTE_MILLISECONDS = 8 * 60 * 60 * 1000;
-export const SESSION_IDLE_MILLISECONDS = 30 * 60 * 1000;
+export const SESSION_ABSOLUTE_MILLISECONDS = 24 * 60 * 60 * 1000;
+export const SESSION_IDLE_MILLISECONDS = 4 * 60 * 60 * 1000;
 export const LOGIN_LOCK_MILLISECONDS = 15 * 60 * 1000;
 export const MAX_LOGIN_FAILURES = 5;
 

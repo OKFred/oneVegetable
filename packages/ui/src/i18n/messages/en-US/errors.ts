@@ -72,6 +72,14 @@ export const errors = {
     PRODUCT_MUTATION_STATUS_INVALID: 'The product-write job status is invalid.',
     PRODUCT_MUTATION_LIST_INVALID: 'The product-write job pagination is invalid.',
     PRODUCT_MUTATION_JOB_INVALID: 'The product-write job data is invalid.',
+    PRODUCT_MUTATION_FINGERPRINT_REQUIRED:
+      'The product update is missing its trusted-page security fingerprint.',
+    PRODUCT_MUTATION_FINGERPRINT_INVALID: 'The product-update security fingerprint is invalid.',
+    PRODUCT_MUTATION_FINGERPRINT_MISMATCH: 'The product update does not match its security fingerprint.',
+    PRODUCT_MUTATION_READBACK_INVALID: 'The product-update readback result is invalid.',
+    PRODUCT_MUTATION_READBACK_CLIENT_REQUIRED: 'Verify the product update from the extension workspace.',
+    PRODUCT_MUTATION_READBACK_UNAVAILABLE: 'This page cannot verify the product update.',
+    EXTENSION_TRUSTED_PAGE_REQUIRED: 'This action can only be started from the extension workspace.',
     PRODUCT_MUTATION_GATEWAY_INVALID:
       'The current product gateway does not support the required readback operation.',
     PRODUCT_MUTATION_RECOVERY_UNAVAILABLE: 'This product job cannot be recovered automatically.',
