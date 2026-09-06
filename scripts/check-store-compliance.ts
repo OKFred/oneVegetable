@@ -94,7 +94,9 @@ if (
   JSON.stringify([
     'saveProductDraft',
     'publishProduct',
+    'updateProduct',
     'updateProductDisplay',
+    'createProductGroup',
     'operatePhotoGroup',
     'uploadPhoto',
     'transferPhotoFromUrl'

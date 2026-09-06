@@ -1,4 +1,16 @@
 export { GatewayException, normalizeGatewayError } from './errors';
+export {
+  BFF_AUTHENTICATION_REQUIRED_CODES,
+  createBffAuthenticationEvents,
+  isBffAuthenticationRequiredCode
+} from './bff-authentication';
+export type {
+  BffAuthenticationEvents,
+  BffAuthenticationRequiredCode,
+  BffAuthenticationRequiredEvent,
+  BffAuthenticationRequiredHandler,
+  BffAuthenticationRequiredSource
+} from './bff-authentication';
 export type {
   ExtensionAlibabaCredentialAcquisitionOperation,
   ExtensionAlibabaCredentialAcquisitionRepository,
@@ -32,13 +44,24 @@ export {
 export { ALIBABA_GATEWAY } from './signing';
 export { APP_PREFERENCES_STORAGE_KEY, LEGACY_APP_PREFERENCES_STORAGE_KEY } from './preferences';
 export { StaticOperationAvailabilityClient } from './operation-availability';
+export {
+  compareProductMutationFingerprints,
+  createProductMutationFingerprints,
+  createProductMutationPayloadFingerprint
+} from './product-mutation-fingerprint';
+export type {
+  ProductMutationFingerprintComparison,
+  ProductMutationFingerprintSet
+} from './product-mutation-fingerprint';
 export { ExtensionProductMutationJobClient } from './product-mutation-job-extension';
 export { QUALIFICATION_GATED_OPERATION_IDS } from './operation-id';
 export type { OperationAvailabilityClient } from './product-description-template-client-types';
 export type {
   ExtensionProductMutationJobOperation,
   ExtensionProductMutationJobRequest,
-  ExtensionProductMutationJobResponse
+  ExtensionProductMutationJobResponse,
+  ExtensionProductUpdateReadbackProvider,
+  ExtensionProductUpdateReadbackResult
 } from './product-mutation-job-extension';
 export {
   BundledProductDescriptionTemplateClient,

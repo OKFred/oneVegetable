@@ -1,4 +1,4 @@
-import { GatewayException } from './errors';
+import { GatewayException, normalizeGatewayError } from './errors';
 import {
   isProductMutationJob,
   isProductMutationJobPage,
@@ -7,9 +7,23 @@ import {
 } from './product-mutation-job-client';
 
 import type { GatewayError } from './types';
-import type { ProductMutationJob, ProductMutationJobPage } from './product-mutation-job';
+import {
+  productMutationJobIsTerminal,
+  type ProductMutationJob,
+  type ProductMutationJobPage
+} from './product-mutation-job';
+import type { ProductMutationFingerprintComparison } from './product-mutation-fingerprint';
 
-export type ExtensionProductMutationJobOperation = 'list' | 'get' | 'refresh' | 'recover';
+export type ExtensionProductMutationJobOperation =
+  'list' | 'get' | 'refresh' | 'complete-update-readback' | 'recover';
+
+export type ExtensionProductUpdateReadbackResult =
+  | { kind: 'comparison'; comparison: ProductMutationFingerprintComparison }
+  | { kind: 'error'; error: GatewayError };
+
+export interface ExtensionProductUpdateReadbackProvider {
+  compare(job: ProductMutationJob): Promise<ProductMutationFingerprintComparison>;
+}
 
 export interface ExtensionProductMutationJobRequest {
   requestId: string;
@@ -26,7 +40,10 @@ export interface ExtensionProductMutationJobMessenger {
 }
 
 export class ExtensionProductMutationJobClient implements ProductMutationJobClient {
-  constructor(private readonly messenger: ExtensionProductMutationJobMessenger) {}
+  constructor(
+    private readonly messenger: ExtensionProductMutationJobMessenger,
+    private readonly updateReadback?: ExtensionProductUpdateReadbackProvider
+  ) {}
 
   async list(input: ProductMutationJobListInput = {}): Promise<ProductMutationJobPage> {
     const data = await this.#call('list', input);
@@ -41,6 +58,33 @@ export class ExtensionProductMutationJobClient implements ProductMutationJobClie
   }
 
   async refresh(id: string, revision: number): Promise<ProductMutationJob> {
+    const current = await this.get(id);
+    if (current.revision !== revision) {
+      throw new GatewayException({
+        code: 'ENTITY_VERSION_CONFLICT',
+        message: '商品写入任务状态已更新，请刷新后重试',
+        retryable: false
+      });
+    }
+    if (productMutationJobIsTerminal(current.status)) return current;
+    if (current.operation === 'updateProduct') {
+      if (!this.updateReadback) {
+        throw new GatewayException({
+          code: 'PRODUCT_MUTATION_READBACK_UNAVAILABLE',
+          message: '当前扩展页面不支持商品更新回读',
+          retryable: false
+        });
+      }
+      let result: ExtensionProductUpdateReadbackResult;
+      try {
+        result = { kind: 'comparison', comparison: await this.updateReadback.compare(current) };
+      } catch (error: unknown) {
+        result = { kind: 'error', error: normalizeGatewayError(error) };
+      }
+      const data = await this.#call('complete-update-readback', { id, revision, result });
+      if (!isProductMutationJob(data)) throw invalidResponse();
+      return data;
+    }
     const data = await this.#call('refresh', { id, revision });
     if (!isProductMutationJob(data)) throw invalidResponse();
     return data;

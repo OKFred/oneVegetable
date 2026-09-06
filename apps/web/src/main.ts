@@ -8,6 +8,7 @@ import {
   BffProductMutationJobClient,
   BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA,
   completeOnboarding,
+  createBffAuthenticationEvents,
   ONBOARDING_STORAGE_KEY,
   OPERATION_IDS,
   readOnboardingState,
@@ -54,12 +55,14 @@ const settings: SettingsRepository = {
 const gatewayMode = readWebGatewayMode(import.meta.env.VITE_GATEWAY_MODE);
 const bffBaseUrl = resolveWebBffBaseUrl(import.meta.env.VITE_BFF_BASE_URL, globalThis.location.origin);
 const onboarding = gatewayMode === 'bff' ? createBrowserOnboardingRepository() : undefined;
+const authenticationEvents = gatewayMode === 'bff' ? createBffAuthenticationEvents() : undefined;
 const control =
   gatewayMode === 'bff'
     ? new BffControlClient({
         baseUrl: bffBaseUrl,
         apiPrefix: import.meta.env.VITE_BFF_API_PREFIX,
-        csrfToken: () => readCookie('ov_csrf')
+        csrfToken: () => readCookie('ov_csrf'),
+        ...(authenticationEvents ? { onAuthenticationRequired: authenticationEvents.notify } : {})
       })
     : undefined;
 const gateway =
@@ -67,7 +70,8 @@ const gateway =
     ? new BffGatewayClient({
         baseUrl: bffBaseUrl,
         apiPrefix: import.meta.env.VITE_BFF_API_PREFIX,
-        csrfToken: () => control?.csrfToken() ?? readCookie('ov_csrf')
+        csrfToken: () => control?.csrfToken() ?? readCookie('ov_csrf'),
+        ...(authenticationEvents ? { onAuthenticationRequired: authenticationEvents.notify } : {})
       })
     : new MockGatewayClient();
 const bffTemplates =
@@ -75,7 +79,8 @@ const bffTemplates =
     ? new BffProductDescriptionTemplateClient({
         baseUrl: bffBaseUrl,
         apiPrefix: import.meta.env.VITE_BFF_API_PREFIX,
-        csrfToken: () => control?.csrfToken() ?? readCookie('ov_csrf')
+        csrfToken: () => control?.csrfToken() ?? readCookie('ov_csrf'),
+        ...(authenticationEvents ? { onAuthenticationRequired: authenticationEvents.notify } : {})
       })
     : undefined;
 const productMutationJobs =
@@ -83,7 +88,8 @@ const productMutationJobs =
     ? new BffProductMutationJobClient({
         baseUrl: bffBaseUrl,
         apiPrefix: import.meta.env.VITE_BFF_API_PREFIX,
-        csrfToken: () => control?.csrfToken() ?? readCookie('ov_csrf')
+        csrfToken: () => control?.csrfToken() ?? readCookie('ov_csrf'),
+        ...(authenticationEvents ? { onAuthenticationRequired: authenticationEvents.notify } : {})
       })
     : undefined;
 const bundledTemplates = new MemoryProductDescriptionTemplateClient(
@@ -111,6 +117,7 @@ const app = createApp(OneVegetableApp, {
   settings,
   mode: gatewayMode,
   ...(control ? { control } : {}),
+  ...(authenticationEvents ? { authenticationEvents } : {}),
   ...(control ? { socialPublishing: control } : {}),
   ...(onboarding ? { onboarding } : {}),
   ...(productDescriptionTemplates ? { productDescriptionTemplates } : {}),

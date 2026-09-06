@@ -214,6 +214,7 @@ export const settings = {
       acquisitionRequestMismatch: 'The credential acquisition response requestId does not match.',
       vaultRequestMismatch: 'The credential protection response requestId does not match.',
       runtimeRequestMismatch: 'The extension background response requestId does not match.',
+      productMutationSnapshotMissing: 'The product update job is missing its category or language snapshot.',
       invalidHostProtocol: '{purpose} only supports HTTP(S) addresses.',
       permissionDeniedHost: 'Access to {host} for {purpose} was not granted.',
       permissionDeniedPurpose: 'The exact site access required for {purpose} was not granted.',
@@ -229,7 +230,7 @@ export const settings = {
         retention: 'Kept until replaced, extension data is cleared, or the extension is uninstalled'
       },
       productMutationJobs: {
-        label: 'Local product display jobs',
+        label: 'Local product mutation jobs',
         retention:
           'Incomplete jobs remain until verified or recovered; completed jobs are kept for up to 30 days and 100 entries'
       },

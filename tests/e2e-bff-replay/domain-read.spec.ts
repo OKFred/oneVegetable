@@ -54,6 +54,23 @@ test('authenticated Web uses Worker, D1 and documentation replay across every do
   await expect(page.getByText(/^d1 \/ v[1-9][0-9]*$/)).toBeVisible();
   expect(failedOperations).toEqual([]);
   expect([...operationOrigins]).toEqual([workerOrigin]);
+
+  await openDomain(page, successfulOperations, '商品', '商品管理', ['listProducts']);
+  await page.context().clearCookies();
+  await page.getByRole('button', { name: '刷新商品列表', exact: true }).click();
+  const expiredDialog = page.getByRole('dialog', { name: '需要重新登录' });
+  await expect(expiredDialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(expiredDialog).toBeVisible();
+  await expiredDialog.getByRole('button', { name: '重新登录', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '登录运营工作台' })).toBeVisible();
+  await expect(page).toHaveURL(/#\/products$/u);
+  await page.getByLabel('工作台用户名').fill('replay-admin');
+  await page.getByLabel(/^工作台密码/).fill('Replay-admin-2026!');
+  await page.getByRole('button', { name: '登录', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '商品管理' })).toBeVisible();
+  await expect(expiredDialog).not.toBeVisible();
+  await expect(page).toHaveURL(/#\/products$/u);
 });
 
 test('BFF replay rejects a write operation while preserving its requestId', async ({ request }) => {

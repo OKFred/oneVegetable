@@ -1,8 +1,10 @@
 import { DEFAULT_API_PREFIX, normalizeApiPrefix } from './api-contract';
+import { notifyBffAuthenticationRequired } from './bff-authentication';
 import { GatewayException } from './errors';
 import { createRequestId, NetworkManager } from './network';
 
 import type { ApiResponse } from './api-contract';
+import type { BffAuthenticationRequiredHandler } from './bff-authentication';
 import type { NetworkTransport } from './network';
 import type {
   ProductMutationJob,
@@ -29,6 +31,7 @@ export interface BffProductMutationJobClientOptions {
   apiPrefix?: string | undefined;
   transport?: NetworkTransport;
   csrfToken?: () => string | null;
+  onAuthenticationRequired?: BffAuthenticationRequiredHandler;
 }
 
 export class BffProductMutationJobClient implements ProductMutationJobClient {
@@ -36,12 +39,14 @@ export class BffProductMutationJobClient implements ProductMutationJobClient {
   readonly #apiPrefix: string;
   readonly #network: NetworkManager;
   readonly #csrfToken: (() => string | null) | undefined;
+  readonly #onAuthenticationRequired: BffAuthenticationRequiredHandler | undefined;
 
   constructor(options: BffProductMutationJobClientOptions) {
     this.#baseUrl = new URL(options.baseUrl);
     if (!['http:', 'https:'].includes(this.#baseUrl.protocol)) throw new Error('BFF 地址仅允许 HTTP(S)');
     this.#apiPrefix = normalizeApiPrefix(options.apiPrefix ?? DEFAULT_API_PREFIX);
     this.#csrfToken = options.csrfToken;
+    this.#onAuthenticationRequired = options.onAuthenticationRequired;
     this.#network = new NetworkManager({
       ...(options.transport ? { transport: options.transport } : {}),
       policies: {
@@ -100,7 +105,14 @@ export class BffProductMutationJobClient implements ProductMutationJobClient {
     if (!isApiResponse(response.data) || response.data.requestId !== requestId) {
       throw new GatewayException(invalidResponse().gatewayError, response.requestId);
     }
-    if (!response.data.ok) throw new GatewayException(response.data.error, response.data.requestId);
+    if (!response.data.ok) {
+      notifyBffAuthenticationRequired(
+        this.#onAuthenticationRequired,
+        response.data.error,
+        response.data.requestId
+      );
+      throw new GatewayException(response.data.error, response.data.requestId);
+    }
     return response.data.data;
   }
 }

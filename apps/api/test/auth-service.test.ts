@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { AuthError, AuthService, LOGIN_LOCK_MILLISECONDS } from '../src/auth/service';
+import {
+  AuthError,
+  AuthService,
+  LOGIN_LOCK_MILLISECONDS,
+  SESSION_ABSOLUTE_MILLISECONDS,
+  SESSION_IDLE_MILLISECONDS
+} from '../src/auth/service';
 import { SqlAuthRepository } from '../src/auth/repository';
 import { applyNodeMigrations, openNodeDatabase } from '../src/db/node-database';
 
@@ -28,7 +34,7 @@ function fixture() {
 
 describe('AuthService', () => {
   it('bootstraps once, stores only token hashes and validates opaque sessions with CSRF', async () => {
-    const { repository, service } = fixture();
+    const { repository, service, now } = fixture();
     const requestId = crypto.randomUUID();
     const result = await service.bootstrap({
       requestId,
@@ -40,6 +46,8 @@ describe('AuthService', () => {
     expect(result.user).toMatchObject({ username: 'admin.one', role: 'admin', revision: 1 });
     expect(result.session.sessionId).toBeTruthy();
     expect(result.session.csrfToken).toHaveLength(43);
+    expect(result.session.idleExpiresTimeUtc - now()).toBe(SESSION_IDLE_MILLISECONDS);
+    expect(result.session.absoluteExpiresTimeUtc - now()).toBe(SESSION_ABSOLUTE_MILLISECONDS);
 
     const authenticated = await service.authenticate(result.sessionToken);
     expect(authenticated.principal).toMatchObject({ role: 'admin', source: 'bff' });
@@ -61,6 +69,30 @@ describe('AuthService', () => {
         password: 'another-strong-password'
       })
     ).rejects.toMatchObject({ code: 'BOOTSTRAP_ALREADY_COMPLETED' });
+  });
+
+  it('extends the four-hour idle window without exceeding the one-day absolute lifetime', async () => {
+    const { service, setNow, now } = fixture();
+    const startedAt = now();
+    const result = await service.bootstrap({
+      requestId: crypto.randomUUID(),
+      bootstrapToken: 'bootstrap-secret-that-is-long',
+      username: 'admin',
+      password: 'correct-password-value'
+    });
+
+    for (let hour = 1; hour < 24; hour += 1) {
+      setNow(startedAt + hour * 60 * 60 * 1000);
+      const active = await service.authenticate(result.sessionToken);
+      expect(active.session.idleExpiresTimeUtc).toBe(
+        Math.min(now() + SESSION_IDLE_MILLISECONDS, startedAt + SESSION_ABSOLUTE_MILLISECONDS)
+      );
+    }
+
+    setNow(startedAt + SESSION_ABSOLUTE_MILLISECONDS);
+    await expect(service.authenticate(result.sessionToken)).rejects.toMatchObject({
+      code: 'SESSION_EXPIRED'
+    });
   });
 
   it('locks after five failures for fifteen minutes and permits login after the lock expires', async () => {

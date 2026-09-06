@@ -78,4 +78,32 @@ describe('BffGatewayClient', () => {
       expect(error.gatewayError.code).toBe('FORBIDDEN');
     }
   });
+
+  it('notifies the application when an authenticated operation finds an expired session', async () => {
+    const onAuthenticationRequired = vi.fn();
+    const client = new BffGatewayClient({
+      baseUrl: 'https://staging.example.com',
+      onAuthenticationRequired,
+      transport: {
+        send: (_input, init) => {
+          if (typeof init.body !== 'string') throw new Error('expected JSON body');
+          const body = JSON.parse(init.body) as { requestId: string };
+          return Promise.resolve(
+            Response.json({
+              requestId: body.requestId,
+              ok: false,
+              error: { code: 'SESSION_EXPIRED', message: '会话已过期', retryable: false }
+            })
+          );
+        }
+      }
+    });
+
+    await expect(client.request('getDashboard', undefined)).rejects.toThrow('会话已过期');
+    expect(onAuthenticationRequired).toHaveBeenCalledOnce();
+    const event = onAuthenticationRequired.mock.calls[0]?.[0] as
+      { code: string; requestId: string } | undefined;
+    expect(event?.code).toBe('SESSION_EXPIRED');
+    expect(event?.requestId).toMatch(/^[0-9a-f-]{36}$/u);
+  });
 });

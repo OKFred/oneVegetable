@@ -7,6 +7,7 @@ export * from './alibaba-credential-bundle';
 export * from './account-verification';
 export * from './api-contract';
 export * from './audit';
+export * from './bff-authentication';
 export * from './bff-client';
 export * from './bundled-product-description-template-client';
 export * from './capability-registry';
