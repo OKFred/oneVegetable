@@ -30,6 +30,7 @@ import {
   validateCapabilityRequest,
   validateCapabilityResponse,
   validateProductDisplayInput,
+  validateProductSchemaUpdateInput,
   validateSchemaPublishInput,
   type ApiCapability,
   type AlibabaLanguage,
@@ -194,12 +195,7 @@ async function handleProductMutationJobRequest(
     await safelyRecordDiagnostic({
       requestId: message.requestId,
       operation: `product-mutation-job.${message.operation}`,
-      method:
-        message.operation === 'refresh'
-          ? 'alibaba.icbu.product.list'
-          : message.operation === 'recover'
-            ? 'alibaba.icbu.product.batch.update.display'
-            : null,
+      method: productMutationDiagnosticMethod(message.operation, data),
       outcome: 'success',
       durationMs: Math.max(0, Math.round(performance.now() - startedAt)),
       errorCode: null,
@@ -601,8 +597,17 @@ async function executeOperation(
       }
       return productMutations.submitCreation(products, requestId, operation, validation.data);
     }
-    case 'updateProduct':
-      return products.update(payload as RequestOf<'updateProduct'>);
+    case 'updateProduct': {
+      const validation = validateProductSchemaUpdateInput(payload);
+      if (!validation.valid || !validation.data) {
+        throw new GatewayException({
+          code: 'REQUEST_CONTRACT_INVALID',
+          message: validation.errors.join('; ') || 'The product update request is invalid.',
+          retryable: false
+        });
+      }
+      return productMutations.submitUpdate(products, requestId, validation.data);
+    }
     case 'updateProductDisplay': {
       const validation = validateProductDisplayInput(payload);
       if (!validation.valid || !validation.data) {
@@ -865,6 +870,21 @@ function diagnosticMethod(operation: OperationId, payload: unknown): string | nu
     listRfqs: 'alibaba.icbu.rfq.search'
   };
   return methods[operation] ?? null;
+}
+
+function productMutationDiagnosticMethod(
+  operation: ExtensionProductMutationJobRequest['operation'],
+  result: unknown
+): string | null {
+  if (operation === 'recover') return 'alibaba.icbu.product.batch.update.display';
+  if (operation !== 'refresh') return null;
+  const jobOperation = readString(asRecord(result), ['operation']);
+  if (jobOperation === 'updateProduct') return 'alibaba.icbu.product.schema.render';
+  if (jobOperation === 'saveProductDraft') return 'alibaba.icbu.product.schema.render.draft';
+  if (jobOperation === 'publishProduct' || jobOperation === 'updateProductDisplay') {
+    return 'alibaba.icbu.product.list';
+  }
+  return null;
 }
 
 function readResultTraceId(value: unknown): string | null {
