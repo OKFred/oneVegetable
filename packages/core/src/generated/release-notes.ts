@@ -4,6 +4,77 @@ export const RELEASE_NOTES_DOCUMENT = {
   repositoryUrl: 'https://github.com/OKFred/oneVegetable',
   releases: [
     {
+      version: '2.4.0',
+      releasedAt: '2026-09-06',
+      title: {
+        'zh-CN': '插件商品更新与分组新增',
+        'en-US': 'Extension product updates and group creation'
+      },
+      summary: {
+        'zh-CN':
+          '插件现在可以安全地增量更新现存商品并新增商品分组，使用持久任务、受信页面指纹和平台回读避免重复或未确认的真实写入。',
+        'en-US':
+          'The extension can now safely update existing products incrementally and create product groups, using durable jobs, trusted-page fingerprints, and platform read-back to prevent duplicate or unverified real writes.'
+      },
+      source: 'release',
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.4.0',
+      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.3.1...v2.4.0',
+      changes: [
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '现存商品安全增量更新',
+            'en-US': 'Guarded incremental product updates'
+          },
+          description: {
+            'zh-CN':
+              '开放插件中的商品更新能力，仅提交实际变化字段，并在 Alibaba 审核结束后通过 Schema 字段指纹回读确认结果。',
+            'en-US':
+              'Enables product updates in the extension, submits only changed fields, and verifies the result with Schema field fingerprints after Alibaba review completes.'
+          }
+        },
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '真实商品分组新增',
+            'en-US': 'Real product group creation'
+          },
+          description: {
+            'zh-CN':
+              '商品分组树可以在平台限制范围内新增根分组或子分组，并在成功后刷新真实分组结构。',
+            'en-US':
+              'The product group tree can create root or child groups within platform limits and refresh the real group hierarchy after success.'
+          }
+        },
+        {
+          type: 'security',
+          title: {
+            'zh-CN': '持久任务与受信回读',
+            'en-US': 'Durable jobs and trusted read-back'
+          },
+          description: {
+            'zh-CN':
+              '更新状态保存在本机，重复写入会被拦截；XML 只在受信工作台解析，service worker 仅校验哈希和回读结果。',
+            'en-US':
+              'Update state is persisted locally and duplicate writes are blocked; XML is parsed only in the trusted workspace while the service worker validates hashes and read-back results.'
+          }
+        },
+        {
+          type: 'fix',
+          title: {
+            'zh-CN': '审核状态与本地验证更稳定',
+            'en-US': 'More reliable review state and local verification'
+          },
+          description: {
+            'zh-CN':
+              '兼容平台包装后的审核中错误码，并在本地验证前刷新 unpacked 扩展，避免旧 service worker 缓存造成误判。',
+            'en-US':
+              'Recognizes wrapped platform review codes and reloads the unpacked extension before local verification to avoid stale service-worker results.'
+          }
+        }
+      ]
+    },
+    {
       version: '2.3.1',
       releasedAt: '2026-09-04',
       title: {
