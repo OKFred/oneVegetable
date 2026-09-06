@@ -14,7 +14,8 @@ import {
   ExtensionProductDisplayMutationLifecycle,
   type ExtensionProductCreationGateway,
   type ExtensionProductDisplayGateway,
-  type ExtensionProductMutationStorage
+  type ExtensionProductMutationStorage,
+  type ExtensionProductUpdateGateway
 } from '../lib/product-display-mutation-lifecycle';
 import { EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY } from '../lib/product-display-mutation-storage';
 
@@ -236,6 +237,92 @@ describe('extension product display mutation lifecycle', () => {
     ).rejects.toMatchObject({ gatewayError: { code: 'PRODUCT_MUTATION_ALREADY_IN_PROGRESS' } });
     expect(gateway.publishCalls).toHaveLength(1);
   });
+
+  it('persists an update before calling Alibaba and verifies field fingerprints after restart', async () => {
+    const storage = new MemoryStorage();
+    const gateway = new FakeUpdateGateway();
+    const lifecycle = new ExtensionProductDisplayMutationLifecycle(storage, () => 50_000);
+
+    const result = await lifecycle.submitUpdate(gateway, crypto.randomUUID(), updateRequest());
+
+    expect(gateway.updates).toHaveLength(1);
+    expect(result).toMatchObject({
+      productId: '1600000000003',
+      success: true,
+      job: {
+        operation: 'updateProduct',
+        productId: '1600000000003',
+        status: 'auditing',
+        reasonCode: 'ALIBABA_MUTATION_ACCEPTED'
+      }
+    });
+    expect(result.job.fieldExpectations).toHaveLength(1);
+
+    const restarted = new ExtensionProductDisplayMutationLifecycle(storage, () => 50_001);
+    await expect(restarted.submitUpdate(gateway, crypto.randomUUID(), updateRequest())).rejects.toMatchObject(
+      { gatewayError: { code: 'PRODUCT_MUTATION_ALREADY_IN_PROGRESS' } }
+    );
+    const persisted = (await restarted.list()).items[0];
+    if (!persisted) throw new Error('missing persisted update job');
+    const verified = await restarted.refresh(gateway, persisted.id, persisted.revision);
+    expect(verified).toMatchObject({
+      status: 'verified',
+      reasonCode: 'PRODUCT_MUTATION_READBACK_MATCHED'
+    });
+  });
+
+  it('blocks duplicate updates after an uncertain network result without resending', async () => {
+    const storage = new MemoryStorage();
+    const gateway = new FakeUpdateGateway();
+    gateway.updateError = new GatewayException({
+      code: 'NETWORK_TIMEOUT',
+      message: '请求超时',
+      retryable: true
+    });
+    const lifecycle = new ExtensionProductDisplayMutationLifecycle(storage, () => 60_000);
+
+    await expect(lifecycle.submitUpdate(gateway, crypto.randomUUID(), updateRequest())).rejects.toMatchObject(
+      { gatewayError: { code: 'NETWORK_TIMEOUT' } }
+    );
+    const pending = (await lifecycle.list()).items[0];
+    expect(pending).toMatchObject({
+      operation: 'updateProduct',
+      status: 'recovery-required',
+      reasonCode: 'NETWORK_TIMEOUT'
+    });
+    gateway.updateError = null;
+    await expect(lifecycle.submitUpdate(gateway, crypto.randomUUID(), updateRequest())).rejects.toMatchObject(
+      { gatewayError: { code: 'PRODUCT_MUTATION_ALREADY_IN_PROGRESS' } }
+    );
+    expect(gateway.updates).toHaveLength(1);
+  });
+
+  it('keeps an update under audit and marks mismatched readback for manual review', async () => {
+    const storage = new MemoryStorage();
+    const gateway = new FakeUpdateGateway();
+    const lifecycle = new ExtensionProductDisplayMutationLifecycle(storage, () => 70_000);
+    const result = await lifecycle.submitUpdate(gateway, crypto.randomUUID(), updateRequest());
+
+    gateway.renderError = new GatewayException({
+      code: 'PUB_BIZCHECK_PRODUCT_IN_AUDITING',
+      message: '商品正在审核',
+      retryable: false
+    });
+    const auditing = await lifecycle.refresh(gateway, result.job.id, result.job.revision);
+    expect(auditing).toMatchObject({
+      status: 'auditing',
+      reasonCode: 'PUB_BIZCHECK_PRODUCT_IN_AUDITING'
+    });
+
+    gateway.renderError = null;
+    gateway.renderedXml =
+      '<itemSchema><field id="productTitle"><value>Different</value></field></itemSchema>';
+    const mismatch = await lifecycle.refresh(gateway, auditing.id, auditing.revision);
+    expect(mismatch).toMatchObject({
+      status: 'recovery-required',
+      reasonCode: 'PRODUCT_MUTATION_READBACK_MISMATCH'
+    });
+  });
 });
 
 class MemoryStorage implements ExtensionProductMutationStorage {
@@ -371,6 +458,33 @@ class FakeCreationGateway implements ExtensionProductCreationGateway {
   }
 }
 
+class FakeUpdateGateway implements ExtensionProductUpdateGateway {
+  readonly updates: RequestOf<'updateProduct'>[] = [];
+  renderedXml = updateRequest().schemaPatchXml;
+  updateError: GatewayException | null = null;
+  renderError: GatewayException | null = null;
+
+  update(request: RequestOf<'updateProduct'>): Promise<ProductMutationResult> {
+    this.updates.push(structuredClone(request));
+    if (this.updateError) return Promise.reject(this.updateError);
+    return Promise.resolve({
+      productId: request.productId,
+      traceId: crypto.randomUUID(),
+      success: true
+    });
+  }
+
+  renderSchema(request: RequestOf<'renderProductSchema'>) {
+    if (this.renderError) return Promise.reject(this.renderError);
+    return Promise.resolve({
+      xml: this.renderedXml,
+      categoryId: request.categoryId,
+      language: request.language,
+      market: 'wholesale' as const
+    });
+  }
+}
+
 function displayRequest(display: 'online' | 'offline'): ProductDisplayRequest {
   return {
     productIds: ['1600000000001'],
@@ -384,5 +498,15 @@ function creationRequest(): RequestOf<'publishProduct'> {
     categoryId: 100,
     language: 'en_US',
     schemaXml: '<schema><field id="subject"><value>Created smoke product</value></field></schema>'
+  };
+}
+
+function updateRequest(): RequestOf<'updateProduct'> {
+  return {
+    productId: '1600000000003',
+    categoryId: 100,
+    language: 'en_US',
+    schemaPatchXml:
+      '<itemSchema><field id="productTitle"><value>Updated smoke product</value></field></itemSchema>'
   };
 }
