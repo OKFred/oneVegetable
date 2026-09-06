@@ -5,7 +5,6 @@ import { ArrowRight, Check, ShieldCheck } from '@lucide/vue';
 import applicationSetupImage from '../assets/onboarding/application-setup.webp';
 import developerRegistrationImage from '../assets/onboarding/developer-registration.webp';
 import oauthSecureImage from '../assets/onboarding/oauth-secure.webp';
-import reviewWaitImage from '../assets/onboarding/review-wait.webp';
 import { useUiI18n } from '../i18n';
 import AlibabaIndependentNotice from './AlibabaIndependentNotice.vue';
 import Button from './ui/Button.vue';
@@ -27,7 +26,7 @@ const steps = computed(() => [
     description: t('auth.onboarding.journey.registration.description')
   },
   {
-    image: reviewWaitImage,
+    image: developerRegistrationImage,
     title: t('auth.onboarding.journey.review.title'),
     description: t('auth.onboarding.journey.review.description')
   },

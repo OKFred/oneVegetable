@@ -1,6 +1,10 @@
+// @vitest-environment jsdom
+
 import { describe, expect, it } from 'vitest';
 
 import {
+  compareProductMutationFingerprints,
+  createProductMutationFingerprints,
   GatewayException,
   type ProductDetail,
   type ProductDisplayMutationResult,
@@ -243,7 +247,12 @@ describe('extension product display mutation lifecycle', () => {
     const gateway = new FakeUpdateGateway();
     const lifecycle = new ExtensionProductDisplayMutationLifecycle(storage, () => 50_000);
 
-    const result = await lifecycle.submitUpdate(gateway, crypto.randomUUID(), updateRequest());
+    const result = await lifecycle.submitUpdate(
+      gateway,
+      crypto.randomUUID(),
+      updateRequest(),
+      await updateFingerprints()
+    );
 
     expect(gateway.updates).toHaveLength(1);
     expect(result).toMatchObject({
@@ -259,12 +268,15 @@ describe('extension product display mutation lifecycle', () => {
     expect(result.job.fieldExpectations).toHaveLength(1);
 
     const restarted = new ExtensionProductDisplayMutationLifecycle(storage, () => 50_001);
-    await expect(restarted.submitUpdate(gateway, crypto.randomUUID(), updateRequest())).rejects.toMatchObject(
-      { gatewayError: { code: 'PRODUCT_MUTATION_ALREADY_IN_PROGRESS' } }
-    );
+    await expect(
+      restarted.submitUpdate(gateway, crypto.randomUUID(), updateRequest(), await updateFingerprints())
+    ).rejects.toMatchObject({ gatewayError: { code: 'PRODUCT_MUTATION_ALREADY_IN_PROGRESS' } });
     const persisted = (await restarted.list()).items[0];
     if (!persisted) throw new Error('missing persisted update job');
-    const verified = await restarted.refresh(gateway, persisted.id, persisted.revision);
+    const verified = await restarted.completeUpdateReadback(persisted.id, persisted.revision, {
+      kind: 'comparison',
+      comparison: await compareProductMutationFingerprints(gateway.renderedXml, persisted.fieldExpectations)
+    });
     expect(verified).toMatchObject({
       status: 'verified',
       reasonCode: 'PRODUCT_MUTATION_READBACK_MATCHED'
@@ -281,9 +293,9 @@ describe('extension product display mutation lifecycle', () => {
     });
     const lifecycle = new ExtensionProductDisplayMutationLifecycle(storage, () => 60_000);
 
-    await expect(lifecycle.submitUpdate(gateway, crypto.randomUUID(), updateRequest())).rejects.toMatchObject(
-      { gatewayError: { code: 'NETWORK_TIMEOUT' } }
-    );
+    await expect(
+      lifecycle.submitUpdate(gateway, crypto.randomUUID(), updateRequest(), await updateFingerprints())
+    ).rejects.toMatchObject({ gatewayError: { code: 'NETWORK_TIMEOUT' } });
     const pending = (await lifecycle.list()).items[0];
     expect(pending).toMatchObject({
       operation: 'updateProduct',
@@ -291,9 +303,9 @@ describe('extension product display mutation lifecycle', () => {
       reasonCode: 'NETWORK_TIMEOUT'
     });
     gateway.updateError = null;
-    await expect(lifecycle.submitUpdate(gateway, crypto.randomUUID(), updateRequest())).rejects.toMatchObject(
-      { gatewayError: { code: 'PRODUCT_MUTATION_ALREADY_IN_PROGRESS' } }
-    );
+    await expect(
+      lifecycle.submitUpdate(gateway, crypto.randomUUID(), updateRequest(), await updateFingerprints())
+    ).rejects.toMatchObject({ gatewayError: { code: 'PRODUCT_MUTATION_ALREADY_IN_PROGRESS' } });
     expect(gateway.updates).toHaveLength(1);
   });
 
@@ -301,27 +313,52 @@ describe('extension product display mutation lifecycle', () => {
     const storage = new MemoryStorage();
     const gateway = new FakeUpdateGateway();
     const lifecycle = new ExtensionProductDisplayMutationLifecycle(storage, () => 70_000);
-    const result = await lifecycle.submitUpdate(gateway, crypto.randomUUID(), updateRequest());
+    const result = await lifecycle.submitUpdate(
+      gateway,
+      crypto.randomUUID(),
+      updateRequest(),
+      await updateFingerprints()
+    );
 
-    gateway.renderError = new GatewayException({
-      code: 'PUB_BIZCHECK_PRODUCT_IN_AUDITING',
-      message: '商品正在审核',
-      retryable: false
+    const auditing = await lifecycle.completeUpdateReadback(result.job.id, result.job.revision, {
+      kind: 'error',
+      error: {
+        code: 'PUB_BIZCHECK_PRODUCT_IN_AUDITING',
+        message: '商品正在审核',
+        retryable: false
+      }
     });
-    const auditing = await lifecycle.refresh(gateway, result.job.id, result.job.revision);
     expect(auditing).toMatchObject({
       status: 'auditing',
       reasonCode: 'PUB_BIZCHECK_PRODUCT_IN_AUDITING'
     });
 
-    gateway.renderError = null;
     gateway.renderedXml =
       '<itemSchema><field id="productTitle"><value>Different</value></field></itemSchema>';
-    const mismatch = await lifecycle.refresh(gateway, auditing.id, auditing.revision);
+    const mismatch = await lifecycle.completeUpdateReadback(auditing.id, auditing.revision, {
+      kind: 'comparison',
+      comparison: await compareProductMutationFingerprints(gateway.renderedXml, auditing.fieldExpectations)
+    });
     expect(mismatch).toMatchObject({
       status: 'recovery-required',
       reasonCode: 'PRODUCT_MUTATION_READBACK_MISMATCH'
     });
+  });
+
+  it('rejects a forged update fingerprint before writing storage or calling Alibaba', async () => {
+    const storage = new MemoryStorage();
+    const gateway = new FakeUpdateGateway();
+    const lifecycle = new ExtensionProductDisplayMutationLifecycle(storage);
+    const fingerprints = await updateFingerprints();
+
+    await expect(
+      lifecycle.submitUpdate(gateway, crypto.randomUUID(), updateRequest(), {
+        ...fingerprints,
+        payloadFingerprint: '0'.repeat(64)
+      })
+    ).rejects.toMatchObject({ gatewayError: { code: 'PRODUCT_MUTATION_FINGERPRINT_MISMATCH' } });
+    expect(gateway.updates).toHaveLength(0);
+    expect(await lifecycle.list()).toMatchObject({ total: 0 });
   });
 });
 
@@ -462,7 +499,6 @@ class FakeUpdateGateway implements ExtensionProductUpdateGateway {
   readonly updates: RequestOf<'updateProduct'>[] = [];
   renderedXml = updateRequest().schemaPatchXml;
   updateError: GatewayException | null = null;
-  renderError: GatewayException | null = null;
 
   update(request: RequestOf<'updateProduct'>): Promise<ProductMutationResult> {
     this.updates.push(structuredClone(request));
@@ -471,16 +507,6 @@ class FakeUpdateGateway implements ExtensionProductUpdateGateway {
       productId: request.productId,
       traceId: crypto.randomUUID(),
       success: true
-    });
-  }
-
-  renderSchema(request: RequestOf<'renderProductSchema'>) {
-    if (this.renderError) return Promise.reject(this.renderError);
-    return Promise.resolve({
-      xml: this.renderedXml,
-      categoryId: request.categoryId,
-      language: request.language,
-      market: 'wholesale' as const
     });
   }
 }
@@ -509,4 +535,8 @@ function updateRequest(): RequestOf<'updateProduct'> {
     schemaPatchXml:
       '<itemSchema><field id="productTitle"><value>Updated smoke product</value></field></itemSchema>'
   };
+}
+
+function updateFingerprints() {
+  return createProductMutationFingerprints(updateRequest().schemaPatchXml);
 }

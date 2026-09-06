@@ -19,6 +19,7 @@ import type {
   PlatformCapabilityResponseMap
 } from './generated/platform-capabilities';
 import type { AlibabaLanguage } from './preferences';
+import type { ProductMutationFingerprintSet } from './product-mutation-fingerprint';
 
 export type DashboardSummary = components['schemas']['DashboardSummary'];
 export type DashboardMetricStatus = components['schemas']['DashboardMetricStatus'];
@@ -326,6 +327,7 @@ export interface RuntimeRequest<K extends OperationId = OperationId> {
   kind: 'gateway-request';
   operation: K;
   payload: RequestOf<K>;
+  productMutationFingerprint?: ProductMutationFingerprintSet;
 }
 
 export type RuntimeResponse<K extends OperationId = OperationId> =

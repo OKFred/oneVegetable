@@ -7,10 +7,13 @@ import { chromium, type BrowserContext, type Page } from '@playwright/test';
 
 import {
   ALIBABA_GATEWAY,
+  compareProductMutationFingerprints,
+  createProductMutationFingerprints,
   GatewayException,
   inspectProductSchemaPatchSerialization,
   isProductMutationJob,
   markProductSchemaFieldTouched,
+  normalizeGatewayError,
   parseAlibabaOpenApiCredentialBundle,
   parseProductSchemaXml,
   productSchemaFieldText,
@@ -237,7 +240,25 @@ async function waitForVerifiedJob(page: Page, initial: ProductMutationJob): Prom
       throw new Error(`商品更新任务意外结束为 ${current.status}：${current.reasonCode ?? 'unknown'}`);
     }
     if (attempt > 0) await delay(15_000);
-    const value = await productJobCall(page, 'refresh', { id: current.id, revision: current.revision });
+    let readbackResult: Record<string, unknown>;
+    try {
+      const rendered = await runtimeCall(page, 'renderProductSchema', {
+        productId: current.productId,
+        categoryId: requireJobCategoryId(current),
+        language: requireJobLanguage(current)
+      });
+      readbackResult = {
+        kind: 'comparison',
+        comparison: await compareProductMutationFingerprints(rendered.xml, current.fieldExpectations)
+      };
+    } catch (error: unknown) {
+      readbackResult = { kind: 'error', error: normalizeGatewayError(error) };
+    }
+    const value = await productJobCall(page, 'complete-update-readback', {
+      id: current.id,
+      revision: current.revision,
+      result: readbackResult
+    });
     if (!isProductMutationJob(value)) throw new Error('插件商品更新任务回读响应无效');
     current = value;
     if (attempt > 0 && attempt % 4 === 0 && current.status !== 'verified') {
@@ -245,6 +266,16 @@ async function waitForVerifiedJob(page: Page, initial: ProductMutationJob): Prom
     }
   }
   throw new Error(`商品更新任务未在限定时间内完成回读：${current.reasonCode ?? current.status}`);
+}
+
+function requireJobCategoryId(job: ProductMutationJob): number {
+  if (job.categoryId === null) throw new Error('商品更新任务缺少类目 ID');
+  return job.categoryId;
+}
+
+function requireJobLanguage(job: ProductMutationJob): 'zh_CN' | 'en_US' {
+  if (job.language === null) throw new Error('商品更新任务缺少语言');
+  return job.language;
 }
 
 async function tryRestoreOriginalTitle(): Promise<{ restored: boolean; reason: string }> {
@@ -351,8 +382,12 @@ async function runtimeCall<K extends OperationId>(
   operation: K,
   payload: RequestOf<K>
 ): Promise<ResponseOf<K>> {
+  const productMutationFingerprint =
+    operation === 'updateProduct'
+      ? await createProductMutationFingerprints((payload as RequestOf<'updateProduct'>).schemaPatchXml)
+      : null;
   const response = await page.evaluate(
-    async ({ runtimeOperation, runtimePayload }) => {
+    async ({ runtimeOperation, runtimePayload, mutationFingerprint }) => {
       const extension = (
         globalThis as unknown as {
           chrome: { runtime: { sendMessage(value: object): Promise<unknown> } };
@@ -362,10 +397,15 @@ async function runtimeCall<K extends OperationId>(
         requestId: crypto.randomUUID(),
         kind: 'gateway-request',
         operation: runtimeOperation,
-        payload: runtimePayload
+        payload: runtimePayload,
+        ...(mutationFingerprint === null ? {} : { productMutationFingerprint: mutationFingerprint })
       });
     },
-    { runtimeOperation: operation, runtimePayload: payload }
+    {
+      runtimeOperation: operation,
+      runtimePayload: payload,
+      mutationFingerprint: productMutationFingerprint
+    }
   );
   if (!isRecord(response) || typeof response.requestId !== 'string' || typeof response.ok !== 'boolean') {
     throw new Error(`插件 ${operation} 返回无效 runtime 响应`);
@@ -389,7 +429,7 @@ async function runtimeCall<K extends OperationId>(
 
 async function productJobCall(
   page: Page,
-  operation: 'list' | 'refresh',
+  operation: 'list' | 'get' | 'refresh' | 'complete-update-readback',
   payload: Record<string, unknown>
 ): Promise<unknown> {
   const response = await page.evaluate(
