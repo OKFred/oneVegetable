@@ -71,6 +71,18 @@ export const RELEASE_NOTES_DOCUMENT = {
             'en-US':
               'Recognizes wrapped platform review codes and reloads the unpacked extension before local verification to avoid stale service-worker results.'
           }
+        },
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '工作台登录体验',
+            'en-US': 'Workspace sessions'
+          },
+          description: {
+            'zh-CN': '登录过期时弹窗引导重新登录；空闲期限延长到 4 小时，最长 24 小时。',
+            'en-US':
+              'A dialog guides sign-in after expiry. Sessions now allow 4 idle hours, up to 24 hours total.'
+          }
         }
       ]
     },
