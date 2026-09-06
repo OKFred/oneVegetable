@@ -30,6 +30,7 @@ import {
   validateCapabilityRequest,
   validateCapabilityResponse,
   validateProductDisplayInput,
+  validateProductGroupCreateInput,
   validateProductSchemaUpdateInput,
   validateSchemaPublishInput,
   type ApiCapability,
@@ -633,8 +634,17 @@ async function executeOperation(
       );
     case 'listProductGroups':
       return products.listGroups(readNumber(request, ['parentId']));
-    case 'createProductGroup':
-      return products.createGroup(payload as RequestOf<'createProductGroup'>);
+    case 'createProductGroup': {
+      const validation = validateProductGroupCreateInput(payload);
+      if (!validation.valid || !validation.data) {
+        throw new GatewayException({
+          code: 'REQUEST_CONTRACT_INVALID',
+          message: validation.errors.join('; ') || 'The product group request is invalid.',
+          retryable: false
+        });
+      }
+      return products.createGroup(validation.data);
+    }
     case 'getProductScore':
       return products.getScore(requiredString(request, 'productId'));
     case 'listRfqs':
