@@ -20,6 +20,7 @@ const product: Product = {
   status: 'online',
   score: 92,
   imageUrl: null,
+  detailUrl: null,
   updatedAt: '2026-08-29T00:00:00.000Z',
   categoryId: 100009999
 };

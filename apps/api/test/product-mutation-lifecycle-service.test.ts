@@ -348,6 +348,7 @@ function productPage(status: 'online' | 'offline' | 'auditing'): ProductPage {
       {
         id: REQUEST.productId,
         encryptedId: 'encrypted-1',
+        detailUrl: null,
         subject: 'Smoke product',
         groupName: 'Smoke',
         status,

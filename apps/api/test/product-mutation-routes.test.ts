@@ -136,6 +136,7 @@ describe('product mutation lifecycle routes', () => {
             {
               id: '1601928079741',
               encryptedId: 'encrypted-1',
+              detailUrl: null,
               subject: 'Smoke product',
               groupName: 'Smoke',
               status: display,

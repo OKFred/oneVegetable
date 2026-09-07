@@ -12,7 +12,8 @@ export const products = {
     offline: '已下架',
     draft: '草稿',
     auditing: '审核中',
-    rejected: '已驳回'
+    rejected: '已驳回',
+    unknown: '待平台确认'
   },
   editor: {
     loading: '正在加载商品编辑功能',
@@ -47,6 +48,9 @@ export const products = {
     busy: '商品传输任务正在执行',
     chooseForExport: '请先选择要导出的商品',
     exportLimit: '单次最多导出 {maximum} 个商品'
+  },
+  links: {
+    viewOnAlibaba: '查看线上商品'
   },
   groupNavigation: {
     tree: '商品分组',

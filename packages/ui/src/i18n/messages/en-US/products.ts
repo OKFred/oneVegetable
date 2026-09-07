@@ -12,7 +12,8 @@ export const products = {
     offline: 'Offline',
     draft: 'Draft',
     auditing: 'Under review',
-    rejected: 'Rejected'
+    rejected: 'Rejected',
+    unknown: 'Pending platform confirmation'
   },
   editor: {
     loading: 'Loading the product editor',
@@ -48,6 +49,9 @@ export const products = {
     busy: 'A product transfer is already running',
     chooseForExport: 'Select products to export first',
     exportLimit: 'Export at most {maximum} products at a time'
+  },
+  links: {
+    viewOnAlibaba: 'View live product'
   },
   groupNavigation: {
     tree: 'Product groups',

@@ -7268,10 +7268,15 @@ export interface components {
             subject: string;
             groupName: string;
             /** @enum {string} */
-            status: "online" | "offline" | "draft" | "auditing" | "rejected";
+            status: "online" | "offline" | "draft" | "auditing" | "rejected" | "unknown";
             score: number;
             /** Format: uri */
             imageUrl: string | null;
+            /**
+             * Format: uri
+             * @description Alibaba 商品接口返回的 PC 端商品详情地址；不得由客户端拼接。
+             */
+            detailUrl: string | null;
             /** Format: date-time */
             updatedAt: string;
             categoryId: number | null;

@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, h, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import { ChevronDown, Download, Ellipsis, Layers3, ListPlus, RefreshCw, Search, Upload } from '@lucide/vue';
+import {
+  ChevronDown,
+  Download,
+  Ellipsis,
+  ExternalLink,
+  Layers3,
+  ListPlus,
+  RefreshCw,
+  Search,
+  Upload
+} from '@lucide/vue';
 import {
   DropdownMenuContent,
   DropdownMenuItem,
@@ -1329,7 +1339,24 @@ const columns = computed<DataColumn<Product>[]>(() => [
     header: t('products.view.columns.product'),
     cell: ({ row }) =>
       h('div', { class: 'min-w-56 space-y-1' }, [
-        h('p', { class: 'font-medium' }, row.original.subject),
+        h('div', { class: 'flex items-start gap-1.5' }, [
+          h('p', { class: 'font-medium' }, row.original.subject),
+          row.original.detailUrl
+            ? h(
+                'a',
+                {
+                  href: row.original.detailUrl,
+                  target: '_blank',
+                  rel: 'noopener noreferrer',
+                  class:
+                    'mt-0.5 inline-flex shrink-0 cursor-pointer text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  title: t('products.links.viewOnAlibaba'),
+                  'aria-label': t('products.links.viewOnAlibaba')
+                },
+                [h(ExternalLink, { class: 'size-3.5', 'aria-hidden': 'true' })]
+              )
+            : null
+        ]),
         h('p', { class: 'font-mono text-xs text-muted-foreground' }, row.original.id)
       ])
   },

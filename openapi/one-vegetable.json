@@ -14135,6 +14135,7 @@
           "status",
           "score",
           "imageUrl",
+          "detailUrl",
           "updatedAt",
           "categoryId"
         ],
@@ -14143,9 +14144,17 @@
           "encryptedId": { "type": ["string", "null"] },
           "subject": { "type": "string" },
           "groupName": { "type": "string" },
-          "status": { "type": "string", "enum": ["online", "offline", "draft", "auditing", "rejected"] },
+          "status": {
+            "type": "string",
+            "enum": ["online", "offline", "draft", "auditing", "rejected", "unknown"]
+          },
           "score": { "type": "integer", "minimum": 0, "maximum": 100 },
           "imageUrl": { "type": ["string", "null"], "format": "uri" },
+          "detailUrl": {
+            "type": ["string", "null"],
+            "format": "uri",
+            "description": "Alibaba 商品接口返回的 PC 端商品详情地址；不得由客户端拼接。"
+          },
           "updatedAt": { "type": "string", "format": "date-time" },
           "categoryId": { "type": ["integer", "null"] }
         }
