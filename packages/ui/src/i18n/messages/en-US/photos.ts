@@ -6,6 +6,8 @@ export const photos = {
     groupManagement: 'Manage groups',
     share: 'Share',
     shareCount: 'Share {count}',
+    import: 'Import',
+    export: 'Export',
     upload: 'Upload image'
   },
   errors: {
@@ -146,6 +148,53 @@ export const photos = {
     noChildren: 'No subgroups',
     realWriteWarning:
       'Create, rename, and delete operations write to the current Alibaba.com account immediately. Every operation requires confirmation.'
+  },
+  transfer: {
+    importTitle: 'Import gallery assets',
+    exportTitle: 'Export gallery assets',
+    importDescription: 'Read a oneVegetable gallery ZIP and upload its images to “{group}”.',
+    exportDescription: 'Download the {count} selected originals with a verifiable manifest.',
+    exportSummary: 'Export {count} images',
+    archiveLimit: 'ZIP files are limited to 50 MiB; each gallery image is limited to 5 MiB.',
+    chooseZip: 'Choose gallery ZIP',
+    assetCount: '{count} images',
+    validating: 'Validating the manifest, image formats, and digests…',
+    importAction: 'Import',
+    exportAction: 'Export',
+    confirmImport: 'Confirm gallery import',
+    confirmExport: 'Confirm gallery export',
+    confirmImportDescription:
+      'Upload {count} images to “{group}” sequentially. Failures are not retried automatically.',
+    confirmExportDescription: 'Download {count} gallery originals and create a ZIP.',
+    imported: 'Imported {count} images into “{group}”',
+    exported: 'Exported {count} gallery images',
+    errors: {
+      missingMetadata: 'Image {path} is missing manifest metadata',
+      countMismatch: 'The gallery ZIP manifest and asset counts differ',
+      assetDirectory: 'Gallery ZIP assets must be stored under assets/',
+      duplicatePath: 'Duplicate gallery ZIP path: {path}',
+      unreferencedAsset: 'The gallery ZIP manifest does not reference {path}',
+      contentMismatch: 'Gallery ZIP asset content does not match its metadata: {path}',
+      sizeMismatch: 'Gallery ZIP asset size does not match its metadata: {path}',
+      digestMismatch: 'Gallery ZIP asset digest does not match its metadata: {path}',
+      uncompressedLimit: 'Gallery ZIP uncompressed content exceeds 100 MiB',
+      entryLimit: 'Gallery ZIP contains too many files',
+      archiveLimit: 'Gallery ZIP exceeds 50 MiB',
+      invalidZip: 'The selected file is not a valid ZIP',
+      unsupportedDirectory: 'Unsupported gallery ZIP directory: {path}',
+      unsupportedPath: 'Unsupported gallery ZIP path: {path}',
+      photoLimit: 'Gallery image exceeds 5 MiB: {path}',
+      manifestMissing: 'Gallery ZIP is missing gallery.json',
+      metadataMismatch: 'Gallery ZIP asset metadata does not match: {path}',
+      assetMissing: 'Gallery ZIP is missing an image referenced by the manifest',
+      invalidSha256: 'Gallery asset SHA-256 is invalid',
+      invalidManifest: 'Gallery ZIP manifest is not valid UTF-8 JSON',
+      unsafePath: 'Gallery ZIP contains an unsafe path',
+      traversalPath: 'Gallery ZIP contains path traversal',
+      nonCanonicalPath: 'Gallery ZIP path is not canonical: {path}',
+      extensionMismatch: 'Gallery ZIP file extension does not match its content: {path}',
+      duplicatePhoto: 'The gallery contains indistinguishable duplicate images: {name}'
+    }
   },
   social: {
     unavailable: {
