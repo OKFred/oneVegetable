@@ -1,9 +1,11 @@
 import {
   normalizeRemark,
+  S3ObjectStorageClient,
   parseS3StorageConfiguration,
   validateS3StorageConfiguration,
   type S3StorageConfiguration,
-  type S3StorageConfigurationSummary
+  type S3StorageConfigurationSummary,
+  type NetworkTransport
 } from '@one-vegetable/core';
 
 import { EntityVersionConflictError } from '../db/repository';
@@ -157,7 +159,8 @@ export class S3StorageConfigurationService {
   constructor(
     private readonly repository: SqlS3StorageConfigurationRepository,
     private readonly cipher: S3StorageConfigurationCipher,
-    private readonly clock: () => number = Date.now
+    private readonly clock: () => number = Date.now,
+    private readonly transport?: NetworkTransport
   ) {}
 
   async summary(): Promise<S3StorageConfigurationSummary> {
@@ -190,6 +193,10 @@ export class S3StorageConfigurationService {
       throw new GatewayConfigurationError('S3_STORAGE_NOT_CONFIGURED', '请先在设置中配置 S3 存储');
     }
     return this.cipher.decrypt(record);
+  }
+
+  async createClient(transport?: NetworkTransport): Promise<S3ObjectStorageClient> {
+    return new S3ObjectStorageClient(await this.requireConfiguration(), transport ?? this.transport);
   }
 
   async clear(expectedRevision: number): Promise<void> {

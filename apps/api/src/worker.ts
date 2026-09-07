@@ -34,6 +34,11 @@ import { MetaPublisher } from './social-meta/meta-publisher';
 import { SocialPublishingService } from './social-meta/publishing-service';
 import { SqlExtensionSocialDeviceRepository } from './social-meta/extension-device-repository';
 import { ExtensionSocialDeviceService } from './social-meta/extension-device-service';
+import {
+  S3StorageConfigurationCipher,
+  S3StorageConfigurationService,
+  SqlS3StorageConfigurationRepository
+} from './storage/s3-configuration';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -57,6 +62,9 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   const metadataRepository = createD1MetadataRepository(database.db);
   const credentialCipher = await GatewayCredentialCipher.create(env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY);
   const metaSecretCipher = await MetaSecretCipher.create(env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY);
+  const s3StorageCipher = await S3StorageConfigurationCipher.create(
+    env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY
+  );
   const credentialService = new GatewayCredentialService(credentialRepository, credentialCipher);
   const credentialProvider = new StoredAlibabaCredentialProvider(credentialRepository, credentialCipher);
   const credentialStatus = await credentialProvider.status();
@@ -134,6 +142,10 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     featureFlags,
     realMutationControl,
     metaSocial,
+    s3Storage: new S3StorageConfigurationService(
+      new SqlS3StorageConfigurationRepository(database.executor),
+      s3StorageCipher
+    ),
     ...(socialMediaAssets ? { socialMediaAssets } : {}),
     ...(socialPublishing ? { socialPublishing } : {}),
     extensionSocialDevices,

@@ -29,6 +29,7 @@ import { registerProductDescriptionTemplateRoutes } from './product-description-
 import { ProductDescriptionTemplateService } from './product-description-templates/service';
 import { registerProductMutationRoutes } from './product-mutations/routes';
 import { registerMetaSocialRoutes } from './social-meta/routes';
+import { registerS3StorageRoutes } from './storage/s3-routes';
 import {
   ProductDisplayNoChangeError,
   ProductDisplayTargetMismatchError,
@@ -71,6 +72,7 @@ import type { MetaSocialService } from './social-meta/service';
 import type { ExtensionSocialDeviceService } from './social-meta/extension-device-service';
 import type { SocialMediaAssetService } from './social-meta/media-service';
 import type { SocialPublishingService } from './social-meta/publishing-service';
+import type { S3StorageConfigurationService } from './storage/s3-configuration';
 
 export type ApiRuntime = 'node' | 'cloudflare';
 export type ApiDatabase = 'sqlite' | 'd1';
@@ -104,6 +106,7 @@ export interface ApiAppOptions {
   socialMediaAssets?: SocialMediaAssetService;
   socialPublishing?: SocialPublishingService;
   extensionSocialDevices?: ExtensionSocialDeviceService;
+  s3Storage?: S3StorageConfigurationService;
 }
 
 export interface RequestLogContext {
@@ -295,6 +298,14 @@ export function createApiApp(options: ApiAppOptions): Hono {
       ...(options.socialMediaAssets ? { mediaAssets: options.socialMediaAssets } : {}),
       ...(options.socialPublishing ? { publishing: options.socialPublishing } : {}),
       ...(options.extensionSocialDevices ? { extensionDevices: options.extensionSocialDevices } : {}),
+      ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
+    });
+  }
+
+  if (options.authService && options.s3Storage) {
+    registerS3StorageRoutes(api, {
+      authService: options.authService,
+      service: options.s3Storage,
       ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
     });
   }
