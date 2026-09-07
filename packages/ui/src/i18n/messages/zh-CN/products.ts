@@ -52,6 +52,31 @@ export const products = {
   links: {
     viewOnAlibaba: '查看线上商品'
   },
+  tasks: {
+    pending: '进行中',
+    attention: '需要人工核对',
+    verified: '已验证',
+    platformTitle: '平台写入任务',
+    platformDescription: '提交不等于成功；任务通过商品列表或 Schema 回读后才标记为已验证。',
+    openManagement: '前往国际站复核',
+    localBatchTitle: '本机批量队列',
+    localBatchDescription: '刷新或关闭页面不会自动重发；中断项需先到国际站后台核对。',
+    empty: '暂无商品写入任务',
+    check: '查询平台状态',
+    operations: {
+      publishProduct: '发布商品',
+      saveProductDraft: '保存平台草稿',
+      updateProduct: '更新商品',
+      updateProductDisplay: '上下架'
+    },
+    columns: {
+      operation: '操作类型',
+      product: '商品',
+      status: '状态',
+      updatedAt: '更新时间',
+      actions: '操作'
+    }
+  },
   groupNavigation: {
     tree: '商品分组',
     expand: '展开{name}',
@@ -624,6 +649,7 @@ export const products = {
       workspace: '商品工作区',
       list: '商品列表',
       batch: '批量发品',
+      tasks: '任务中心',
       groups: '商品分组',
       toolbar: '商品列表操作',
       search: '按标题搜索',

@@ -76,6 +76,7 @@ import ProductCategoryPicker from '../components/ProductCategoryPicker.vue';
 import ProductEditorLoading from '../components/ProductEditorLoading.vue';
 import ProductGroupManagerDialog from '../components/ProductGroupManagerDialog.vue';
 import ProductGroupNavigation from '../components/ProductGroupNavigation.vue';
+import ProductTaskCenter from '../components/ProductTaskCenter.vue';
 import ProductTransferDialog from '../components/ProductTransferDialog.vue';
 import QueryState from '../components/QueryState.vue';
 import TriStateCheckbox from '../components/TriStateCheckbox.vue';
@@ -138,7 +139,7 @@ const ProductEditorWizard = defineAsyncComponent({
   timeout: 30_000
 });
 
-type Workspace = 'list' | 'publisher' | 'batch-publisher';
+type Workspace = 'list' | 'publisher' | 'batch-publisher' | 'tasks';
 type DraftSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type ProductActionConfirmation =
   | { kind: 'product'; draft: boolean; changedNames: string[] }
@@ -146,7 +147,7 @@ type ProductActionConfirmation =
   | { kind: 'batch-display'; display: 'online' | 'offline'; productIds: string[] }
   | { kind: 'recover-display'; job: ProductMutationJob };
 
-const workspaceIds = new Set<Workspace>(['list', 'publisher', 'batch-publisher']);
+const workspaceIds = new Set<Workspace>(['list', 'publisher', 'batch-publisher', 'tasks']);
 const editorModes = new Set<ProductEditorMode>(['quick', 'guided', 'advanced']);
 const editorStepIds = new Set<ProductEditorStepId>(PRODUCT_EDITOR_STEP_IDS);
 const PRODUCT_SCORE_DISPLAY_MAX = 6;
@@ -339,6 +340,15 @@ const creationMutationHistory = useQuery({
   enabled: computed(() => productMutationJobs !== undefined),
   refetchInterval: (query) =>
     query.state.data?.some((job) => productMutationJobIsBlocking(job.status)) ? 15_000 : false,
+  staleTime: 0
+});
+const allProductMutationHistory = useQuery({
+  queryKey: ['product-mutation-jobs', 'all'],
+  queryFn: () =>
+    productMutationJobs
+      ? productMutationJobs.list({ pageSize: 100 })
+      : Promise.resolve({ items: [], page: 1, pageSize: 100, total: 0 }),
+  enabled: computed(() => productMutationJobs !== undefined && workspace.value === 'tasks'),
   staleTime: 0
 });
 
@@ -625,6 +635,13 @@ const currentPageProductIds = computed(() => currentPageProducts.value.map((prod
 const selectedProducts = computed(() =>
   currentPageProducts.value.filter((product) => selectedProductIds.value.includes(product.id))
 );
+const productDetailUrls = computed<Record<string, string>>(() =>
+  Object.fromEntries(
+    currentPageProducts.value.flatMap((product) =>
+      product.detailUrl ? [[product.id, product.detailUrl] as const] : []
+    )
+  )
+);
 const allCurrentPageProductsSelected = computed(
   () =>
     currentPageProducts.value.length > 0 && selectedProducts.value.length === currentPageProducts.value.length
@@ -736,6 +753,20 @@ const refreshDisplayMutation = useMutation({
     return productMutationJobs.refresh(job.id, job.revision);
   },
   onSuccess: () => queryClient.invalidateQueries({ queryKey: ['product-display-mutation-jobs'] })
+});
+const refreshTaskMutation = useMutation({
+  mutationFn: (job: ProductMutationJob) => {
+    if (!productMutationJobs) throw new Error(t('products.view.errors.jobUnsupported'));
+    return productMutationJobs.refresh(job.id, job.revision);
+  },
+  onSuccess: async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['product-mutation-jobs'] }),
+      queryClient.invalidateQueries({ queryKey: ['product-display-mutation-jobs'] }),
+      queryClient.invalidateQueries({ queryKey: ['product-creation-mutation-jobs'] }),
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+    ]);
+  }
 });
 const recoverDisplayMutation = useMutation({
   mutationFn: (job: ProductMutationJob) => {
@@ -1666,7 +1697,7 @@ function startNewProduct(): void {
 }
 
 function setWorkspace(nextWorkspace: Workspace): void {
-  if (nextWorkspace === 'batch-publisher') reloadBatchItems();
+  if (nextWorkspace === 'batch-publisher' || nextWorkspace === 'tasks') reloadBatchItems();
   workspace.value = nextWorkspace;
   updateProductHash('push');
 }
@@ -2135,7 +2166,8 @@ onBeforeUnmount(() => {
     <Button
       v-for="item in [
         ['list', t('products.view.page.list')],
-        ['batch-publisher', t('products.view.page.batch')]
+        ['batch-publisher', t('products.view.page.batch')],
+        ['tasks', t('products.view.page.tasks')]
       ] as const"
       :key="item[0]"
       :variant="workspace === item[0] ? 'default' : 'outline'"
@@ -2751,6 +2783,20 @@ onBeforeUnmount(() => {
       @remove="removeBatchItem"
     />
     <ErrorNotice v-if="batchPublish.error.value" class="mt-3" :error="batchPublish.error.value" compact />
+  </template>
+
+  <template v-else-if="workspace === 'tasks'">
+    <ProductTaskCenter
+      :jobs="allProductMutationHistory.data.value?.items ?? []"
+      :batch-items="batchItems"
+      :loading="allProductMutationHistory.isFetching.value"
+      :error="allProductMutationHistory.error.value"
+      :refreshing-job-id="refreshTaskMutation.variables.value?.id ?? ''"
+      :detail-urls="productDetailUrls"
+      @refresh="allProductMutationHistory.refetch()"
+      @refresh-job="refreshTaskMutation.mutate($event)"
+      @recover="recoverDisplayJob"
+    />
   </template>
 
   <ProductTransferDialog

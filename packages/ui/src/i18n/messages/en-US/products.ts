@@ -53,6 +53,33 @@ export const products = {
   links: {
     viewOnAlibaba: 'View live product'
   },
+  tasks: {
+    pending: 'In progress',
+    attention: 'Manual review required',
+    verified: 'Verified',
+    platformTitle: 'Platform write tasks',
+    platformDescription:
+      'Submission is not completion. A task is verified only after product-list or Schema readback.',
+    openManagement: 'Review on Alibaba.com',
+    localBatchTitle: 'Local batch queue',
+    localBatchDescription:
+      'Refreshing or closing the page never resubmits automatically. Review interrupted items on Alibaba.com first.',
+    empty: 'No product write tasks',
+    check: 'Check platform status',
+    operations: {
+      publishProduct: 'Publish product',
+      saveProductDraft: 'Save platform draft',
+      updateProduct: 'Update product',
+      updateProductDisplay: 'Change listing status'
+    },
+    columns: {
+      operation: 'Operation',
+      product: 'Product',
+      status: 'Status',
+      updatedAt: 'Updated',
+      actions: 'Actions'
+    }
+  },
   groupNavigation: {
     tree: 'Product groups',
     expand: 'Expand {name}',
@@ -696,6 +723,7 @@ export const products = {
       workspace: 'Product workspace',
       list: 'Product list',
       batch: 'Batch publishing',
+      tasks: 'Task center',
       groups: 'Product groups',
       toolbar: 'Product list actions',
       search: 'Search by title',
