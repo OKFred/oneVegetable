@@ -133,7 +133,9 @@ export const productMutationJobs = sqliteTable(
     id: text('id').primaryKey(),
     requestId: text('request_id').notNull(),
     productId: text('product_id').notNull(),
-    operation: text('operation', { enum: ['updateProduct', 'updateProductDisplay'] }).notNull(),
+    operation: text('operation', {
+      enum: ['publishProduct', 'saveProductDraft', 'updateProduct', 'updateProductDisplay']
+    }).notNull(),
     status: text('status', {
       enum: [
         'submitted',
@@ -533,4 +535,4 @@ export const schema = {
   authRecoveryCodes,
   userEnrollmentTokens
 };
-export const CURRENT_SCHEMA_VERSION = 10;
+export const CURRENT_SCHEMA_VERSION = 11;

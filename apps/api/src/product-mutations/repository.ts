@@ -5,6 +5,7 @@ import { EntityVersionConflictError } from '../db/repository';
 import type {
   ProductMutationFieldExpectation,
   ProductMutationJob,
+  ProductMutationJobOperation,
   ProductMutationJobStatus,
   UnixEpochMilliseconds
 } from '@one-vegetable/core';
@@ -39,6 +40,17 @@ export interface ProductMutationJobTransitionInput {
   reasonCode?: string | null;
   message?: string | null;
   checked?: boolean;
+  productId?: string;
+}
+
+export interface ProductCreationMutationJobCreateInput {
+  requestId: string;
+  operation: Extract<ProductMutationJobOperation, 'publishProduct' | 'saveProductDraft'>;
+  categoryId: number;
+  language: 'zh_CN' | 'en_US';
+  payloadFingerprint: string;
+  actorId: string;
+  remark?: string | null;
 }
 
 export interface ProductDisplayMutationJobCreateInput {
@@ -63,8 +75,13 @@ export interface ProductMutationJobListQuery {
 export interface ProductMutationJobRepository {
   get(id: string): Promise<ProductMutationJob | null>;
   findBlocking(productId: string): Promise<ProductMutationJob | null>;
+  findBlockingCreation(
+    operation: ProductCreationMutationJobCreateInput['operation'],
+    payloadFingerprint: string
+  ): Promise<ProductMutationJob | null>;
   list(query: ProductMutationJobListQuery): Promise<{ items: ProductMutationJob[]; total: number }>;
   create(input: ProductMutationJobCreateInput): Promise<ProductMutationJob>;
+  createCreation(input: ProductCreationMutationJobCreateInput): Promise<ProductMutationJob>;
   createDisplay(input: ProductDisplayMutationJobCreateInput): Promise<ProductMutationJob>;
   transition(input: ProductMutationJobTransitionInput): Promise<ProductMutationJob>;
 }
@@ -106,6 +123,22 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
          AND status IN ('submitted', 'auditing', 'verifying', 'recovery-required', 'recovering')
        ORDER BY submitted_time_utc DESC LIMIT 1`,
       [normalizeProductId(productId)]
+    );
+    return rows[0] ? toEntity(rows[0]) : null;
+  }
+
+  async findBlockingCreation(
+    operation: ProductCreationMutationJobCreateInput['operation'],
+    payloadFingerprint: string
+  ): Promise<ProductMutationJob | null> {
+    assertCreationOperation(operation);
+    if (!FINGERPRINT_PATTERN.test(payloadFingerprint)) throw new Error('写入载荷指纹无效');
+    const rows = await this.#executor.query(
+      `SELECT * FROM product_mutation_jobs
+       WHERE operation = ? AND payload_fingerprint = ?
+         AND status IN ('submitted', 'auditing', 'verifying', 'recovery-required', 'recovering')
+       ORDER BY submitted_time_utc DESC LIMIT 1`,
+      [operation, payloadFingerprint]
     );
     return rows[0] ? toEntity(rows[0]) : null;
   }
@@ -191,6 +224,54 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
     return this.#require(id);
   }
 
+  async createCreation(input: ProductCreationMutationJobCreateInput): Promise<ProductMutationJob> {
+    assertCreationOperation(input.operation);
+    if (!FINGERPRINT_PATTERN.test(input.payloadFingerprint)) throw new Error('写入载荷指纹无效');
+    const now = this.#clock();
+    const audit = createEntityAuditFields(input.actorId, now, input.remark);
+    const id = crypto.randomUUID();
+    try {
+      await this.#executor.execute(
+        `INSERT INTO product_mutation_jobs (
+          id, request_id, product_id, operation, status, category_id, language,
+          payload_fingerprint, field_expectations_json,
+          encrypted_product_id, target_display, original_display,
+          trace_id, reason_code, message,
+          submitted_time_utc, last_checked_time_utc, completed_time_utc,
+          create_time_utc, update_time_utc, creator_id, updater_id, revision, remark
+        ) VALUES (?, ?, ?, ?, 'submitted', ?, ?, ?, '[]', NULL, NULL, NULL, NULL, NULL, NULL,
+          ?, NULL, NULL, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          input.requestId,
+          `pending:${id}`,
+          input.operation,
+          input.categoryId,
+          input.language,
+          input.payloadFingerprint,
+          now,
+          audit.createTimeUtc,
+          audit.updateTimeUtc,
+          audit.creatorId,
+          audit.updaterId,
+          audit.revision,
+          audit.remark
+        ]
+      );
+    } catch (error: unknown) {
+      if (
+        error instanceof Error &&
+        /product_mutation_jobs_(open_creation_fingerprint|request_target)_unique|UNIQUE constraint failed/iu.test(
+          error.message
+        )
+      ) {
+        throw new ProductMutationJobConflictError();
+      }
+      throw error;
+    }
+    return this.#require(id);
+  }
+
   async createDisplay(input: ProductDisplayMutationJobCreateInput): Promise<ProductMutationJob> {
     const now = this.#clock();
     const audit = createEntityAuditFields(input.actorId, now, input.remark);
@@ -249,11 +330,12 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
     const audit = updateEntityAuditFields(current, input.actorId, now, current.remark);
     const terminal = input.status === 'verified' || input.status === 'recovered' || input.status === 'failed';
     const result = await this.#executor.execute(
-      `UPDATE product_mutation_jobs SET status = ?, trace_id = ?, reason_code = ?, message = ?,
+      `UPDATE product_mutation_jobs SET status = ?, product_id = ?, trace_id = ?, reason_code = ?, message = ?,
        last_checked_time_utc = ?, completed_time_utc = ?, update_time_utc = ?, updater_id = ?, revision = ?
        WHERE id = ? AND revision = ?`,
       [
         input.status,
+        input.productId ? normalizeProductId(input.productId) : current.productId,
         normalizeNullable(input.traceId ?? current.traceId, 128),
         normalizeNullable(input.reasonCode ?? current.reasonCode, 128),
         normalizeNullable(input.message ?? current.message, 1000),
@@ -323,6 +405,14 @@ function normalizeProductId(value: string): string {
   return productId;
 }
 
+function assertCreationOperation(
+  operation: ProductMutationJobOperation
+): asserts operation is ProductCreationMutationJobCreateInput['operation'] {
+  if (operation !== 'publishProduct' && operation !== 'saveProductDraft') {
+    throw new Error('新增商品任务类型无效');
+  }
+}
+
 function normalizeNullable(value: string | null, maxLength: number): string | null {
   if (value === null) return null;
   const normalized = value.trim();
@@ -335,7 +425,12 @@ function toEntity(row: Record<string, unknown>): ProductMutationJob {
     id: readString(row, 'id'),
     requestId: readString(row, 'request_id'),
     productId: readString(row, 'product_id'),
-    operation: readEnum(row, 'operation', ['updateProduct', 'updateProductDisplay']),
+    operation: readEnum(row, 'operation', [
+      'publishProduct',
+      'saveProductDraft',
+      'updateProduct',
+      'updateProductDisplay'
+    ]),
     status: readEnum(row, 'status', [
       'submitted',
       'auditing',

@@ -60,7 +60,8 @@ export function applyNodeMigrations(handle: NodeDatabaseHandle): void {
     '0007_gateway_credential_vault.sql',
     '0008_passkey_authentication.sql',
     '0009_alibaba_credential_acquisition.sql',
-    '0010_meta_social_publishing.sql'
+    '0010_meta_social_publishing.sql',
+    '0011_product_creation_mutation_jobs.sql'
   ] as const;
   for (const name of names) {
     const version = Number.parseInt(name.slice(0, 4), 10);
