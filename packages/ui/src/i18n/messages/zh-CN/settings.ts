@@ -161,6 +161,35 @@ export const settings = {
     disconnectDescription: '将从插件删除设备令牌；如需立即让服务端令牌失效，还应在后端管理页撤销该设备。',
     disconnectConfirm: '确认断开'
   },
+  s3: {
+    title: 'S3 素材存储',
+    description: '连接兼容 S3 的对象存储，用于图库素材导入、导出和备份。密钥由后端加密保存。',
+    configured: '已配置',
+    notConfigured: '未配置',
+    unsupported: '当前运行模式未提供服务端 S3 配置。',
+    endpoint: 'Endpoint',
+    region: 'Region',
+    bucket: 'Bucket',
+    accessKey: 'Access Key ID',
+    secretKey: 'Secret Access Key',
+    sessionToken: 'Session Token（可选）',
+    rootPrefix: '素材根目录',
+    pathStyle: '使用 Path-style 地址（Cloudflare R2、MinIO 通常需要）',
+    secretHint: '已保存 Access Key 尾号 {suffix}。修改配置时请重新输入完整密钥。',
+    save: '加密保存',
+    test: '测试连接',
+    clear: '清除配置',
+    clearTitle: '确认清除 S3 配置',
+    clearDescription: '将删除后端保存的加密 S3 凭据，不会删除 Bucket 中的对象。',
+    saved: 'S3 配置已加密保存。',
+    cleared: 'S3 配置已清除。',
+    testPassed: 'S3 连接正常，探测到 {count} 个对象。',
+    errors: {
+      save: 'S3 配置保存失败',
+      test: 'S3 连接测试失败',
+      clear: 'S3 配置清除失败'
+    }
+  },
   alibabaLanguage: {
     title: 'Alibaba 接口语言',
     description: '只影响 Schema、官方提示及支持 language 参数的 Alibaba 平台请求，不改变界面语言。',

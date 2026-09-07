@@ -40,6 +40,7 @@ import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import ExtensionSocialBackendPanel from '../components/ExtensionSocialBackendPanel.vue';
+import S3StorageSettingsPanel from '../components/S3StorageSettingsPanel.vue';
 import PageHeader from '../components/PageHeader.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
@@ -58,6 +59,7 @@ const {
   vault,
   alibabaCredentialAcquisition,
   extensionSocialBackend,
+  control,
   mode
 } = useServices();
 const { t } = useUiI18n();
@@ -831,6 +833,7 @@ function confirmLanguagePreference(): void {
       </div></Card
     >
     <ExtensionSocialBackendPanel v-if="mode === 'extension' && extensionSocialBackend" />
+    <S3StorageSettingsPanel v-if="mode === 'bff' && control" />
     <Card class="p-5">
       <div class="flex items-start gap-3">
         <Globe2 class="mt-0.5 size-5 shrink-0 text-primary" />

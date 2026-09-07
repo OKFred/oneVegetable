@@ -177,6 +177,38 @@ export const settings = {
       'This removes the device token from the extension. To invalidate the server-side token immediately, also revoke this device in backend Administration.',
     disconnectConfirm: 'Disconnect'
   },
+  s3: {
+    title: 'S3 asset storage',
+    description:
+      'Connect S3-compatible object storage for gallery imports, exports, and backups. Secrets are encrypted by the backend.',
+    configured: 'Configured',
+    notConfigured: 'Not configured',
+    unsupported: 'Server-side S3 configuration is unavailable in this runtime.',
+    endpoint: 'Endpoint',
+    region: 'Region',
+    bucket: 'Bucket',
+    accessKey: 'Access Key ID',
+    secretKey: 'Secret Access Key',
+    sessionToken: 'Session Token (optional)',
+    rootPrefix: 'Asset root prefix',
+    pathStyle: 'Use path-style addressing (usually required by Cloudflare R2 and MinIO)',
+    secretHint:
+      'Access Key ending in {suffix} is saved. Enter the full credentials again when changing settings.',
+    save: 'Save encrypted',
+    test: 'Test connection',
+    clear: 'Clear configuration',
+    clearTitle: 'Clear S3 configuration?',
+    clearDescription:
+      'This deletes the encrypted S3 credentials from the backend. Objects in the bucket are not deleted.',
+    saved: 'S3 configuration saved encrypted.',
+    cleared: 'S3 configuration cleared.',
+    testPassed: 'S3 connection is healthy. The probe found {count} object.',
+    errors: {
+      save: 'Unable to save the S3 configuration',
+      test: 'S3 connection test failed',
+      clear: 'Unable to clear the S3 configuration'
+    }
+  },
   alibabaLanguage: {
     title: 'Alibaba API language',
     description:
