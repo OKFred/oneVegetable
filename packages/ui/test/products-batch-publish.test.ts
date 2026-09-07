@@ -47,7 +47,7 @@ describe('ProductsView batch publishing', () => {
     await run.trigger('click');
 
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('批量任务完成：成功 2，失败 0，阻断 0，停止 0');
+      expect(wrapper.text()).toContain('批量任务完成：已验证 2，待回读 0，失败 0，阻断 0，停止 0');
     });
     expect(
       request.mock.calls
