@@ -153,6 +153,17 @@ export const photos = {
     exportDescription: '下载所选 {count} 张图库原图及可校验清单。',
     exportSummary: '将导出 {count} 张图片',
     archiveLimit: 'ZIP 最大 50 MiB；单张图库图片最大 5 MiB。',
+    localZip: '本地 ZIP',
+    s3Unavailable: 'S3 仅在已配置服务端存储的 Web 模式中可用。',
+    s3ExportDescription: '原图和 gallery.json 将写入 S3 的独立时间目录。',
+    exportToS3: '导出到 S3',
+    s3Exported: '已将 {count} 张图片导出到 S3：{prefix}',
+    s3Imported: '已从 S3 导入 {count} 张图片',
+    s3ScanTitle: '按本机规则扫描 S3',
+    s3ScanDescription: '最多读取 500 个对象，只有匹配规则的图片会进入导入确认。',
+    scanS3: '扫描 S3',
+    s3ScanResult: '发现 {total} 张图片，计划导入 {count} 张。',
+    skipped: '跳过',
     chooseZip: '选择图库 ZIP',
     assetCount: '{count} 张图片',
     validating: '正在校验清单、图片格式和摘要…',
@@ -161,6 +172,7 @@ export const photos = {
     confirmImport: '确认导入图库',
     confirmExport: '确认导出图库',
     confirmImportDescription: '将 {count} 张图片逐张上传到“{group}”；失败后不会自动重试。',
+    confirmS3ImportDescription: '将 {count} 张 S3 图片按规则逐张上传到对应图库分组；失败后不会自动重试。',
     confirmExportDescription: '将下载 {count} 张图库原图并生成 ZIP。',
     imported: '已向“{group}”导入 {count} 张图片',
     exported: '已导出 {count} 张图库图片',
@@ -189,7 +201,8 @@ export const photos = {
       traversalPath: '图库 ZIP 包含路径穿越',
       nonCanonicalPath: '图库 ZIP 路径不规范：{path}',
       extensionMismatch: '图库 ZIP 文件扩展名与内容不匹配：{path}',
-      duplicatePhoto: '图库中存在无法区分的重复图片：{name}'
+      duplicatePhoto: '图库中存在无法区分的重复图片：{name}',
+      groupMissing: '规则目标图库分组不存在：{group}。请先在分组管理中创建。'
     }
   },
   social: {

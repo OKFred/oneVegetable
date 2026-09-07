@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { Download, FileArchive, LoaderCircle, Upload } from '@lucide/vue';
+import { Cloud, Download, FileArchive, LoaderCircle, RefreshCw, Upload } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
 import {
   decodeBase64,
   encodeBase64,
+  evaluateGalleryImportRules,
   type GalleryTransferAssetV1,
   type GalleryTransferDocumentV1,
-  type Photo
+  type GalleryImportDecision,
+  type Photo,
+  type PhotoGroup
 } from '@one-vegetable/core';
 
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
@@ -23,8 +26,14 @@ import {
   type GalleryTransferArchive
 } from '../lib/gallery-transfer-archive';
 import { useServices } from '../lib/services';
+import { loadGalleryImportRuleSet } from '../lib/gallery-import-rules-storage';
 
 type GalleryTransferMode = 'import' | 'export';
+type GalleryTransferStorage = 'zip' | 's3';
+
+interface S3ImportDecision extends GalleryImportDecision {
+  etag: string | null;
+}
 
 const props = withDefaults(
   defineProps<{
@@ -42,7 +51,7 @@ const emit = defineEmits<{
   'update:open': [open: boolean];
   imported: [count: number];
 }>();
-const { gateway } = useServices();
+const { gateway, control } = useServices();
 const { t } = useUiI18n();
 const fileInput = ref<HTMLInputElement | null>(null);
 const selectedFileName = ref('');
@@ -52,10 +61,23 @@ const error = ref('');
 const busy = ref(false);
 const validating = ref(false);
 const confirmOpen = ref(false);
+const storage = ref<GalleryTransferStorage>('zip');
+const s3Decisions = ref<S3ImportDecision[]>([]);
+const s3Scanning = ref(false);
 
-const canExecute = computed(() =>
-  props.mode === 'export' ? props.photos.length > 0 : selectedArchive.value !== null && props.uploadAllowed
+const s3Supported = computed(
+  () =>
+    control?.listS3Objects !== undefined &&
+    control.getS3Object !== undefined &&
+    control.putS3Object !== undefined
 );
+const s3ImportCount = computed(() => s3Decisions.value.filter((item) => item.action === 'import').length);
+const canExecute = computed(() => {
+  if (props.mode === 'export')
+    return props.photos.length > 0 && (storage.value === 'zip' || s3Supported.value);
+  if (!props.uploadAllowed) return false;
+  return storage.value === 'zip' ? selectedArchive.value !== null : s3ImportCount.value > 0;
+});
 const title = computed(() =>
   t(props.mode === 'export' ? 'photos.transfer.exportTitle' : 'photos.transfer.importTitle')
 );
@@ -100,13 +122,54 @@ async function execute(): Promise<void> {
   busy.value = true;
   error.value = '';
   try {
-    if (props.mode === 'export') await exportPhotos();
+    if (props.mode === 'export') {
+      if (storage.value === 's3') await exportPhotosToS3();
+      else await exportPhotos();
+    } else if (storage.value === 's3') await importPhotosFromS3();
     else await importPhotos();
     emit('update:open', false);
   } catch (reason: unknown) {
     error.value = message(reason);
   } finally {
     busy.value = false;
+  }
+}
+
+async function scanS3(): Promise<void> {
+  if (!control?.listS3Objects) return;
+  s3Scanning.value = true;
+  error.value = '';
+  try {
+    const objects = [];
+    let continuationToken: string | undefined;
+    do {
+      const page = await control.listS3Objects({
+        maximum: Math.min(500 - objects.length, 500),
+        ...(continuationToken ? { continuationToken } : {})
+      });
+      objects.push(...page.items);
+      continuationToken = page.nextContinuationToken ?? undefined;
+    } while (continuationToken && objects.length < 500);
+    const candidates = objects
+      .map((object) => ({ ...object, contentType: imageContentType(object.key) }))
+      .filter((object) => object.contentType !== null);
+    s3Decisions.value = evaluateGalleryImportRules(
+      candidates.map((object) => ({
+        sourcePath: object.key,
+        fileName: fileNameFromPath(object.key),
+        byteLength: object.size,
+        contentType: object.contentType
+      })),
+      loadGalleryImportRuleSet()
+    ).map((decision) => ({
+      ...decision,
+      etag: candidates.find((object) => object.key === decision.sourcePath)?.etag ?? null
+    }));
+  } catch (reason: unknown) {
+    error.value = message(reason);
+    s3Decisions.value = [];
+  } finally {
+    s3Scanning.value = false;
   }
 }
 
@@ -176,6 +239,80 @@ async function importPhotos(): Promise<void> {
   toast.success(t('photos.transfer.imported', { count: imported, group: props.targetGroupName }));
 }
 
+async function exportPhotosToS3(): Promise<void> {
+  if (!control?.putS3Object) return;
+  const prefix = `exports/${timestamp(new Date())}`;
+  const assets: GalleryTransferAssetV1[] = [];
+  for (const photo of props.photos) {
+    const downloaded = await gateway.request('downloadProductAsset', { url: photo.url });
+    const bytes = decodeBase64(downloaded.contentBase64);
+    const sha256 = downloaded.sha256 || (await galleryAssetSha256(bytes));
+    const relativePath = galleryTransferAssetPath(downloaded.fileName, downloaded.contentType, sha256);
+    await control.putS3Object({
+      key: `${prefix}/${relativePath}`,
+      bytes,
+      contentType: downloaded.contentType
+    });
+    assets.push({
+      path: relativePath,
+      fileName: downloaded.fileName,
+      sourcePhotoId: photo.id,
+      groupPath: props.targetGroupName,
+      contentType: downloaded.contentType,
+      byteLength: downloaded.byteLength,
+      sha256,
+      width: photo.width,
+      height: photo.height,
+      modifiedTimeUtc: validTime(photo.modifiedAt)
+    });
+  }
+  const document: GalleryTransferDocumentV1 = {
+    schemaVersion: 1,
+    kind: 'one-vegetable-gallery-transfer',
+    createdTimeUtc: Date.now(),
+    assets
+  };
+  await control.putS3Object({
+    key: `${prefix}/gallery.json`,
+    bytes: new TextEncoder().encode(JSON.stringify(document, null, 2)),
+    contentType: 'application/json'
+  });
+  toast.success(t('photos.transfer.s3Exported', { count: props.photos.length, prefix }));
+}
+
+async function importPhotosFromS3(): Promise<void> {
+  if (!control?.getS3Object) return;
+  const groupIds = await loadPhotoGroupPaths();
+  const namesByGroup = new Map<string, Set<string>>();
+  const ruleSet = loadGalleryImportRuleSet();
+  let imported = 0;
+  for (const decision of s3Decisions.value) {
+    if (decision.action !== 'import' || !decision.targetGroupPath || !decision.contentType) continue;
+    const groupId = groupIds.get(decision.targetGroupPath.toLocaleLowerCase());
+    if (!groupId)
+      throw new Error(t('photos.transfer.errors.groupMissing', { group: decision.targetGroupPath }));
+    const names = namesByGroup.get(groupId) ?? (await loadPhotoNames(groupId));
+    namesByGroup.set(groupId, names);
+    let fileName = decision.fileName;
+    if (names.has(fileName.toLocaleLowerCase())) {
+      if (ruleSet.conflictPolicy === 'skip') continue;
+      fileName = renamedFileName(fileName);
+    }
+    const object = await control.getS3Object(decision.sourcePath);
+    await gateway.request('uploadPhoto', {
+      fileName,
+      contentType: object.contentType ?? decision.contentType,
+      contentBase64: encodeBase64(object.bytes),
+      byteLength: object.bytes.byteLength,
+      groupId
+    });
+    names.add(fileName.toLocaleLowerCase());
+    imported += 1;
+  }
+  emit('imported', imported);
+  toast.success(t('photos.transfer.s3Imported', { count: imported }));
+}
+
 function reset(): void {
   selectedFileName.value = '';
   selectedFileSize.value = 0;
@@ -183,6 +320,69 @@ function reset(): void {
   error.value = '';
   validating.value = false;
   confirmOpen.value = false;
+  storage.value = 'zip';
+  s3Decisions.value = [];
+  s3Scanning.value = false;
+}
+
+async function loadPhotoGroupPaths(): Promise<Map<string, string>> {
+  const paths = new Map<string, string>();
+  const roots = (await gateway.request('listPhotoGroups', undefined)).filter(
+    (group) => group.id !== '-1' && group.parentId === null
+  );
+  await appendGroupPaths(roots, '', paths);
+  if (props.targetGroupId && props.targetGroupName) {
+    paths.set(props.targetGroupName.toLocaleLowerCase(), props.targetGroupId);
+  }
+  return paths;
+}
+
+async function appendGroupPaths(
+  groups: readonly PhotoGroup[],
+  parentPath: string,
+  paths: Map<string, string>
+): Promise<void> {
+  for (const group of groups) {
+    const path = parentPath ? `${parentPath}/${group.name}` : group.name;
+    paths.set(path.toLocaleLowerCase(), group.id);
+    if (group.level < 3) {
+      const children = (await gateway.request('listPhotoGroups', { parentId: group.id })).filter(
+        (candidate) => candidate.id !== group.id && candidate.id !== '-1' && candidate.parentId === group.id
+      );
+      await appendGroupPaths(children, path, paths);
+    }
+  }
+}
+
+async function loadPhotoNames(groupId: string): Promise<Set<string>> {
+  const names = new Set<string>();
+  let page = 1;
+  while (page <= 20) {
+    const result = await gateway.request('listPhotos', { groupId, page, pageSize: 50 });
+    for (const photo of result.items) names.add(photo.name.toLocaleLowerCase());
+    if (page * result.pageSize >= result.total) break;
+    page += 1;
+  }
+  return names;
+}
+
+function imageContentType(path: string): string | null {
+  const extension = path.split('.').at(-1)?.toLocaleLowerCase();
+  if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg';
+  if (extension === 'png') return 'image/png';
+  if (extension === 'gif') return 'image/gif';
+  if (extension === 'bmp') return 'image/bmp';
+  return null;
+}
+
+function fileNameFromPath(path: string): string {
+  return path.split('/').at(-1) ?? path;
+}
+
+function renamedFileName(fileName: string): string {
+  const dot = fileName.lastIndexOf('.');
+  const suffix = `-${Date.now().toString(36)}`;
+  return dot > 0 ? `${fileName.slice(0, dot)}${suffix}${fileName.slice(dot)}` : `${fileName}${suffix}`;
 }
 
 function download(fileName: string, bytes: Uint8Array): void {
@@ -232,14 +432,34 @@ function message(reason: unknown): string {
     @update:open="requestOpen"
   >
     <div class="space-y-4">
+      <div class="flex flex-wrap gap-2 rounded-lg bg-muted/40 p-1">
+        <Button size="sm" :variant="storage === 'zip' ? 'default' : 'ghost'" @click="storage = 'zip'">
+          <FileArchive class="size-4" />{{ t('photos.transfer.localZip') }}
+        </Button>
+        <Button
+          size="sm"
+          :variant="storage === 's3' ? 'default' : 'ghost'"
+          :disabled="!s3Supported"
+          @click="storage = 's3'"
+        >
+          <Cloud class="size-4" />S3
+        </Button>
+      </div>
+      <p v-if="!s3Supported" class="text-xs text-muted-foreground">
+        {{ t('photos.transfer.s3Unavailable') }}
+      </p>
       <template v-if="mode === 'export'">
         <div class="rounded-lg border bg-muted/30 p-4">
           <p class="font-medium">{{ t('photos.transfer.exportSummary', { count: photos.length }) }}</p>
-          <p class="mt-1 text-sm text-muted-foreground">{{ t('photos.transfer.archiveLimit') }}</p>
+          <p class="mt-1 text-sm text-muted-foreground">
+            {{
+              storage === 's3' ? t('photos.transfer.s3ExportDescription') : t('photos.transfer.archiveLimit')
+            }}
+          </p>
         </div>
       </template>
       <template v-else>
-        <div class="rounded-lg border border-dashed p-4">
+        <div v-if="storage === 'zip'" class="rounded-lg border border-dashed p-4">
           <Button variant="outline" :disabled="busy || validating" @click="chooseFile">
             <Upload class="size-4" />{{ t('photos.transfer.chooseZip') }}
           </Button>
@@ -253,7 +473,7 @@ function message(reason: unknown): string {
           />
           <p class="mt-2 text-xs text-muted-foreground">{{ t('photos.transfer.archiveLimit') }}</p>
         </div>
-        <div v-if="selectedFileName" class="rounded-lg border bg-muted/30 p-4">
+        <div v-if="storage === 'zip' && selectedFileName" class="rounded-lg border bg-muted/30 p-4">
           <div class="flex items-start gap-3">
             <FileArchive class="mt-0.5 size-5 text-primary" />
             <div>
@@ -264,6 +484,40 @@ function message(reason: unknown): string {
                   · {{ t('photos.transfer.assetCount', { count: selectedArchive.document.assets.length }) }}
                 </template>
               </p>
+            </div>
+          </div>
+        </div>
+        <div v-if="storage === 's3'" class="rounded-lg border p-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="font-medium">{{ t('photos.transfer.s3ScanTitle') }}</p>
+              <p class="mt-1 text-xs text-muted-foreground">{{ t('photos.transfer.s3ScanDescription') }}</p>
+            </div>
+            <Button variant="outline" :disabled="s3Scanning || busy" @click="scanS3">
+              <LoaderCircle v-if="s3Scanning" class="size-4 animate-spin" />
+              <RefreshCw v-else class="size-4" />
+              {{ t('photos.transfer.scanS3') }}
+            </Button>
+          </div>
+          <p v-if="s3Decisions.length" class="mt-3 text-sm">
+            {{ t('photos.transfer.s3ScanResult', { total: s3Decisions.length, count: s3ImportCount }) }}
+          </p>
+          <div v-if="s3Decisions.length" class="mt-3 max-h-56 overflow-auto rounded-md border">
+            <div
+              v-for="decision in s3Decisions.slice(0, 50)"
+              :key="decision.sourcePath"
+              class="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b px-3 py-2 text-xs last:border-b-0"
+            >
+              <span class="truncate" :title="decision.sourcePath">{{ decision.sourcePath }}</span>
+              <span
+                :class="
+                  decision.action === 'import'
+                    ? 'text-emerald-700 dark:text-emerald-300'
+                    : 'text-muted-foreground'
+                "
+              >
+                {{ decision.action === 'import' ? decision.targetGroupPath : t('photos.transfer.skipped') }}
+              </span>
             </div>
           </div>
         </div>
@@ -290,7 +544,9 @@ function message(reason: unknown): string {
               busy
                 ? 'common.actions.processing'
                 : mode === 'export'
-                  ? 'photos.transfer.exportAction'
+                  ? storage === 's3'
+                    ? 'photos.transfer.exportToS3'
+                    : 'photos.transfer.exportAction'
                   : 'photos.transfer.importAction'
             )
           }}
@@ -306,14 +562,29 @@ function message(reason: unknown): string {
       t(
         mode === 'export'
           ? 'photos.transfer.confirmExportDescription'
-          : 'photos.transfer.confirmImportDescription',
+          : storage === 's3'
+            ? 'photos.transfer.confirmS3ImportDescription'
+            : 'photos.transfer.confirmImportDescription',
         {
-          count: mode === 'export' ? photos.length : (selectedArchive?.document.assets.length ?? 0),
+          count:
+            mode === 'export'
+              ? photos.length
+              : storage === 's3'
+                ? s3ImportCount
+                : (selectedArchive?.document.assets.length ?? 0),
           group: targetGroupName
         }
       )
     "
-    :confirm-label="t(mode === 'export' ? 'photos.transfer.exportAction' : 'photos.transfer.importAction')"
+    :confirm-label="
+      t(
+        mode === 'export'
+          ? storage === 's3'
+            ? 'photos.transfer.exportToS3'
+            : 'photos.transfer.exportAction'
+          : 'photos.transfer.importAction'
+      )
+    "
     @confirm="execute"
   />
 </template>

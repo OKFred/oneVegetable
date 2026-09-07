@@ -156,6 +156,18 @@ export const photos = {
     exportDescription: 'Download the {count} selected originals with a verifiable manifest.',
     exportSummary: 'Export {count} images',
     archiveLimit: 'ZIP files are limited to 50 MiB; each gallery image is limited to 5 MiB.',
+    localZip: 'Local ZIP',
+    s3Unavailable: 'S3 is available only in Web mode with server-side storage configured.',
+    s3ExportDescription: 'Original images and gallery.json will be written to a timestamped S3 prefix.',
+    exportToS3: 'Export to S3',
+    s3Exported: 'Exported {count} images to S3 at {prefix}',
+    s3Imported: 'Imported {count} images from S3',
+    s3ScanTitle: 'Scan S3 with local rules',
+    s3ScanDescription:
+      'Up to 500 objects are read. Only images matching a rule enter the import confirmation.',
+    scanS3: 'Scan S3',
+    s3ScanResult: 'Found {total} images; {count} will be imported.',
+    skipped: 'Skipped',
     chooseZip: 'Choose gallery ZIP',
     assetCount: '{count} images',
     validating: 'Validating the manifest, image formats, and digests…',
@@ -165,6 +177,8 @@ export const photos = {
     confirmExport: 'Confirm gallery export',
     confirmImportDescription:
       'Upload {count} images to “{group}” sequentially. Failures are not retried automatically.',
+    confirmS3ImportDescription:
+      'Upload {count} S3 images sequentially to their rule-selected gallery groups. Failures are not retried automatically.',
     confirmExportDescription: 'Download {count} gallery originals and create a ZIP.',
     imported: 'Imported {count} images into “{group}”',
     exported: 'Exported {count} gallery images',
@@ -193,7 +207,8 @@ export const photos = {
       traversalPath: 'Gallery ZIP contains path traversal',
       nonCanonicalPath: 'Gallery ZIP path is not canonical: {path}',
       extensionMismatch: 'Gallery ZIP file extension does not match its content: {path}',
-      duplicatePhoto: 'The gallery contains indistinguishable duplicate images: {name}'
+      duplicatePhoto: 'The gallery contains indistinguishable duplicate images: {name}',
+      groupMissing: 'The target gallery group does not exist: {group}. Create it in group management first.'
     }
   },
   social: {
