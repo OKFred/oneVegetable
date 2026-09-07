@@ -1,12 +1,11 @@
+import { normalizeRemark, type NetworkTransport } from '@one-vegetable/core';
 import {
-  normalizeRemark,
   S3ObjectStorageClient,
   parseS3StorageConfiguration,
   validateS3StorageConfiguration,
   type S3StorageConfiguration,
-  type S3StorageConfigurationSummary,
-  type NetworkTransport
-} from '@one-vegetable/core';
+  type S3StorageConfigurationSummary
+} from '@one-vegetable/core/s3-storage';
 
 import { EntityVersionConflictError } from '../db/repository';
 import { GatewayConfigurationError } from '../gateway/credentials';

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent, h, onMounted, ref } from 'vue';
 import {
   AlertTriangle,
   Database,
@@ -40,7 +40,6 @@ import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import ExtensionSocialBackendPanel from '../components/ExtensionSocialBackendPanel.vue';
-import S3StorageSettingsPanel from '../components/S3StorageSettingsPanel.vue';
 import PageHeader from '../components/PageHeader.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
@@ -63,6 +62,10 @@ const {
   mode
 } = useServices();
 const { t } = useUiI18n();
+const S3StorageSettingsPanel =
+  import.meta.env.VITE_APP_RUNTIME === 'extension'
+    ? null
+    : defineAsyncComponent(() => import('../components/S3StorageSettingsPanel.vue'));
 const { alibabaLanguage: preferredLanguage } = useAppPreferences();
 const signMethods: SignMethod[] = ['hmac', 'md5', 'hmac-sha256'];
 const model = ref<GatewaySettings>({

@@ -11,6 +11,7 @@
     "./errors": "./src/errors.ts",
     "./mock": "./src/mock-client.ts",
     "./runtime": "./src/runtime.ts",
+    "./s3-storage": "./src/s3-storage.ts",
     "./templates": "./src/product-description-template-client.ts",
     "./version": "./src/version.ts"
   },

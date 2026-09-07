@@ -177,59 +177,63 @@ export const settings = {
       'This removes the device token from the extension. To invalidate the server-side token immediately, also revoke this device in backend Administration.',
     disconnectConfirm: 'Disconnect'
   },
-  s3: {
-    title: 'S3 asset storage',
-    description:
-      'Connect S3-compatible object storage for gallery imports, exports, and backups. Secrets are encrypted by the backend.',
-    configured: 'Configured',
-    notConfigured: 'Not configured',
-    unsupported: 'Server-side S3 configuration is unavailable in this runtime.',
-    endpoint: 'Endpoint',
-    region: 'Region',
-    bucket: 'Bucket',
-    accessKey: 'Access Key ID',
-    secretKey: 'Secret Access Key',
-    sessionToken: 'Session Token (optional)',
-    rootPrefix: 'Asset root prefix',
-    pathStyle: 'Use path-style addressing (usually required by Cloudflare R2 and MinIO)',
-    secretHint:
-      'Access Key ending in {suffix} is saved. Enter the full credentials again when changing settings.',
-    save: 'Save encrypted',
-    test: 'Test connection',
-    clear: 'Clear configuration',
-    clearTitle: 'Clear S3 configuration?',
-    clearDescription:
-      'This deletes the encrypted S3 credentials from the backend. Objects in the bucket are not deleted.',
-    saved: 'S3 configuration saved encrypted.',
-    cleared: 'S3 configuration cleared.',
-    testPassed: 'S3 connection is healthy. The probe found {count} object.',
-    errors: {
-      save: 'Unable to save the S3 configuration',
-      test: 'S3 connection test failed',
-      clear: 'Unable to clear the S3 configuration'
-    },
-    rules: {
-      title: 'Automatic import rules',
-      description:
-        'S3 object paths are matched in order. The first match selects an existing gallery group. Rules stay in this browser.',
-      add: 'Add rule',
-      newRule: 'New rule',
-      enabled: 'Enabled',
-      remove: 'Remove rule',
-      conflict: 'Name conflicts',
-      rename: 'Rename automatically',
-      skip: 'Skip',
-      name: 'Rule name',
-      sourcePrefix: 'Source prefix',
-      include: 'Include glob',
-      exclude: 'Exclude globs (comma-separated)',
-      targetGroup: 'Target gallery group path',
-      empty: 'No rules. S3 assets will not enter the import queue until a rule is added.',
-      save: 'Save import rules',
-      saved: 'Gallery S3 import rules saved locally.',
-      invalid: 'Gallery import rules are invalid'
-    }
-  },
+  ...(typeof __ONE_VEGETABLE_EXTENSION__ !== 'undefined' && __ONE_VEGETABLE_EXTENSION__
+    ? {}
+    : {
+        s3: {
+          title: 'S3 asset storage',
+          description:
+            'Connect S3-compatible object storage for gallery imports, exports, and backups. Secrets are encrypted by the backend.',
+          configured: 'Configured',
+          notConfigured: 'Not configured',
+          unsupported: 'Server-side S3 configuration is unavailable in this runtime.',
+          endpoint: 'Endpoint',
+          region: 'Region',
+          bucket: 'Bucket',
+          accessKey: 'Access Key ID',
+          secretKey: 'Secret Access Key',
+          sessionToken: 'Session Token (optional)',
+          rootPrefix: 'Asset root prefix',
+          pathStyle: 'Use path-style addressing (usually required by Cloudflare R2 and MinIO)',
+          secretHint:
+            'Access Key ending in {suffix} is saved. Enter the full credentials again when changing settings.',
+          save: 'Save encrypted',
+          test: 'Test connection',
+          clear: 'Clear configuration',
+          clearTitle: 'Clear S3 configuration?',
+          clearDescription:
+            'This deletes the encrypted S3 credentials from the backend. Objects in the bucket are not deleted.',
+          saved: 'S3 configuration saved encrypted.',
+          cleared: 'S3 configuration cleared.',
+          testPassed: 'S3 connection is healthy. The probe found {count} object.',
+          errors: {
+            save: 'Unable to save the S3 configuration',
+            test: 'S3 connection test failed',
+            clear: 'Unable to clear the S3 configuration'
+          },
+          rules: {
+            title: 'Automatic import rules',
+            description:
+              'S3 object paths are matched in order. The first match selects an existing gallery group. Rules stay in this browser.',
+            add: 'Add rule',
+            newRule: 'New rule',
+            enabled: 'Enabled',
+            remove: 'Remove rule',
+            conflict: 'Name conflicts',
+            rename: 'Rename automatically',
+            skip: 'Skip',
+            name: 'Rule name',
+            sourcePrefix: 'Source prefix',
+            include: 'Include glob',
+            exclude: 'Exclude globs (comma-separated)',
+            targetGroup: 'Target gallery group path',
+            empty: 'No rules. S3 assets will not enter the import queue until a rule is added.',
+            save: 'Save import rules',
+            saved: 'Gallery S3 import rules saved locally.',
+            invalid: 'Gallery import rules are invalid'
+          }
+        }
+      }),
   alibabaLanguage: {
     title: 'Alibaba API language',
     description:

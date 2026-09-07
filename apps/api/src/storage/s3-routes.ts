@@ -1,4 +1,5 @@
-import { isRequestId, parseS3StorageConfiguration } from '@one-vegetable/core';
+import { isRequestId } from '@one-vegetable/core';
+import { parseS3StorageConfiguration } from '@one-vegetable/core/s3-storage';
 
 import { authorizeAdmin } from '../abac';
 import { authenticateMutation, authenticateRequest } from '../auth/routes';

@@ -3,7 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { Cloud, LoaderCircle, Save, Trash2, Unplug } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
-import type { S3StorageConfiguration, S3StorageConfigurationSummary } from '@one-vegetable/core';
+import type { S3StorageConfiguration, S3StorageConfigurationSummary } from '@one-vegetable/core/s3-storage';
 
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import ErrorNotice from './ErrorNotice.vue';

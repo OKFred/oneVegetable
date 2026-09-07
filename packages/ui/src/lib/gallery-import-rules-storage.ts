@@ -21,9 +21,9 @@ export function defaultGalleryImportRuleSet(): GalleryImportRuleSet {
 }
 
 export function loadGalleryImportRuleSet(
-  storage: Pick<Storage, 'getItem'> = localStorage
+  storageArea: Pick<Storage, 'getItem'> = globalThis.localStorage
 ): GalleryImportRuleSet {
-  const value = storage.getItem(GALLERY_IMPORT_RULES_STORAGE_KEY);
+  const value = storageArea.getItem(GALLERY_IMPORT_RULES_STORAGE_KEY);
   if (!value) return defaultGalleryImportRuleSet();
   try {
     return validateGalleryImportRuleSet(JSON.parse(value) as unknown);
@@ -34,9 +34,9 @@ export function loadGalleryImportRuleSet(
 
 export function saveGalleryImportRuleSet(
   ruleSet: GalleryImportRuleSet,
-  storage: Pick<Storage, 'setItem'> = localStorage
+  storageArea: Pick<Storage, 'setItem'> = globalThis.localStorage
 ): GalleryImportRuleSet {
   const validated = validateGalleryImportRuleSet(ruleSet);
-  storage.setItem(GALLERY_IMPORT_RULES_STORAGE_KEY, JSON.stringify(validated));
+  storageArea.setItem(GALLERY_IMPORT_RULES_STORAGE_KEY, JSON.stringify(validated));
   return validated;
 }
