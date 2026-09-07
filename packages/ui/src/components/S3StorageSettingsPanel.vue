@@ -7,6 +7,7 @@ import type { S3StorageConfiguration, S3StorageConfigurationSummary } from '@one
 
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import ErrorNotice from './ErrorNotice.vue';
+import GalleryImportRulesSettings from './GalleryImportRulesSettings.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
 import Input from './ui/Input.vue';
@@ -227,6 +228,7 @@ async function clearConfiguration(): Promise<void> {
         </Button>
       </div>
     </div>
+    <GalleryImportRulesSettings v-if="supported" />
   </Card>
 
   <ConfirmActionDialog

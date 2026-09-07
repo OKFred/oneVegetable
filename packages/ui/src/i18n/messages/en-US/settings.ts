@@ -207,6 +207,27 @@ export const settings = {
       save: 'Unable to save the S3 configuration',
       test: 'S3 connection test failed',
       clear: 'Unable to clear the S3 configuration'
+    },
+    rules: {
+      title: 'Automatic import rules',
+      description:
+        'S3 object paths are matched in order. The first match selects an existing gallery group. Rules stay in this browser.',
+      add: 'Add rule',
+      newRule: 'New rule',
+      enabled: 'Enabled',
+      remove: 'Remove rule',
+      conflict: 'Name conflicts',
+      rename: 'Rename automatically',
+      skip: 'Skip',
+      name: 'Rule name',
+      sourcePrefix: 'Source prefix',
+      include: 'Include glob',
+      exclude: 'Exclude globs (comma-separated)',
+      targetGroup: 'Target gallery group path',
+      empty: 'No rules. S3 assets will not enter the import queue until a rule is added.',
+      save: 'Save import rules',
+      saved: 'Gallery S3 import rules saved locally.',
+      invalid: 'Gallery import rules are invalid'
     }
   },
   alibabaLanguage: {

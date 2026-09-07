@@ -188,6 +188,27 @@ export const settings = {
       save: 'S3 配置保存失败',
       test: 'S3 连接测试失败',
       clear: 'S3 配置清除失败'
+    },
+    rules: {
+      title: '自动导入规则',
+      description:
+        '按顺序匹配 S3 对象路径；第一条命中的规则决定导入到哪个现有图库分组。规则仅保存在当前浏览器。',
+      add: '新增规则',
+      newRule: '新规则',
+      enabled: '启用',
+      remove: '删除规则',
+      conflict: '同名冲突',
+      rename: '自动重命名',
+      skip: '跳过',
+      name: '规则名称',
+      sourcePrefix: '来源前缀',
+      include: '包含 Glob',
+      exclude: '排除 Glob（逗号分隔）',
+      targetGroup: '目标图库分组路径',
+      empty: '尚无规则；没有规则时 S3 素材不会进入导入队列。',
+      save: '保存导入规则',
+      saved: '图库 S3 导入规则已保存在本机。',
+      invalid: '图库导入规则无效'
     }
   },
   alibabaLanguage: {
