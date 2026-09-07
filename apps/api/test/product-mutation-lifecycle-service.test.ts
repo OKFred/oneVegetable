@@ -22,6 +22,12 @@ const REQUEST = {
   language: 'en_US',
   schemaPatchXml: PATCH
 } as const;
+const CREATION_REQUEST = {
+  categoryId: 201712702,
+  language: 'en_US',
+  schemaXml:
+    '<itemSchema><field id="subject"><values><value>New product</value></values></field></itemSchema>'
+} as const;
 
 let handle: NodeDatabaseHandle | undefined;
 
@@ -31,6 +37,93 @@ afterEach(() => {
 });
 
 describe('product mutation lifecycle service', () => {
+  it('persists and verifies a platform draft through draft Schema readback', async () => {
+    const { service, gateway } = createService();
+    gateway.saveDraft.mockResolvedValueOnce({
+      productId: '1601928079991',
+      traceId: 'draft-trace',
+      success: true
+    });
+    gateway.get.mockResolvedValueOnce(productDetail('1601928079991', 'draft'));
+
+    const result = await service.submitCreation({
+      requestId: '75f6f32e-bc29-4cba-b29f-90e1f08a8e19',
+      actor: ACTOR,
+      operation: 'saveProductDraft',
+      request: CREATION_REQUEST
+    });
+
+    expect(result.job).toMatchObject({
+      operation: 'saveProductDraft',
+      productId: '1601928079991',
+      status: 'verified',
+      reasonCode: 'PRODUCT_DRAFT_READBACK_MATCHED'
+    });
+    expect(gateway.saveDraft).toHaveBeenCalledOnce();
+    expect(gateway.get).toHaveBeenCalledWith('1601928079991', true, 'en_US', expect.any(String));
+  });
+
+  it('keeps accepted publishing pending and prevents a duplicate platform mutation', async () => {
+    const { service, gateway } = createService();
+    gateway.publish.mockResolvedValueOnce({
+      productId: '1601928079992',
+      traceId: 'publish-trace',
+      success: true
+    });
+    gateway.list.mockResolvedValueOnce({ items: [], page: 1, pageSize: 30, total: 0 });
+
+    const result = await service.submitCreation({
+      requestId: '146dd1cb-55ca-4655-a5c3-7616f38734e2',
+      actor: ACTOR,
+      operation: 'publishProduct',
+      request: CREATION_REQUEST
+    });
+    expect(result.job).toMatchObject({ status: 'verifying', productId: '1601928079992' });
+
+    await expect(
+      service.submitCreation({
+        requestId: '9f6461ae-fcd3-4568-8e30-d43e6d34280a',
+        actor: ACTOR,
+        operation: 'publishProduct',
+        request: CREATION_REQUEST
+      })
+    ).rejects.toBeInstanceOf(ProductMutationAlreadyInProgressError);
+    expect(gateway.publish).toHaveBeenCalledOnce();
+
+    gateway.list.mockResolvedValueOnce(productPage('auditing', '1601928079992'));
+    await expect(
+      service.refresh({
+        requestId: '33d4573c-e6de-429d-ae57-e3101f48fe85',
+        actor: ACTOR,
+        id: result.job.id,
+        expectedRevision: result.job.revision
+      })
+    ).resolves.toMatchObject({ status: 'verified', reasonCode: 'PRODUCT_PUBLISH_READBACK_MATCHED' });
+  });
+
+  it('marks an uncertain creation response for recovery and never retries it', async () => {
+    const { service, gateway } = createService();
+    gateway.publish.mockRejectedValueOnce(
+      new GatewayException({ code: 'NETWORK_TIMEOUT', message: 'Request timed out', retryable: true })
+    );
+
+    await expect(
+      service.submitCreation({
+        requestId: '3851068d-0e5b-43ac-b73c-179fba2d0da0',
+        actor: ACTOR,
+        operation: 'publishProduct',
+        request: CREATION_REQUEST
+      })
+    ).rejects.toMatchObject({ gatewayError: { code: 'NETWORK_TIMEOUT' } });
+    const jobs = await service.list({ page: 1, pageSize: 20 }, ACTOR);
+    expect(jobs.items[0]).toMatchObject({
+      operation: 'publishProduct',
+      status: 'recovery-required',
+      reasonCode: 'NETWORK_TIMEOUT'
+    });
+    expect(gateway.publish).toHaveBeenCalledOnce();
+  });
+
   it('returns auditing instead of synchronous success and blocks duplicate writes', async () => {
     const { service, gateway } = createService();
     const submitted = await service.submitUpdate({
@@ -313,7 +406,10 @@ describe('product mutation lifecycle service', () => {
 function createService(clock: () => number = Date.now): {
   service: ProductMutationLifecycleService;
   gateway: {
+    publish: ReturnType<typeof vi.fn<ProductMutationGateway['publish']>>;
+    saveDraft: ReturnType<typeof vi.fn<ProductMutationGateway['saveDraft']>>;
     update: ReturnType<typeof vi.fn<ProductMutationGateway['update']>>;
+    get: ReturnType<typeof vi.fn<ProductMutationGateway['get']>>;
     render: ReturnType<typeof vi.fn<ProductMutationGateway['render']>>;
     updateDisplay: ReturnType<typeof vi.fn<ProductMutationGateway['updateDisplay']>>;
     list: ReturnType<typeof vi.fn<ProductMutationGateway['list']>>;
@@ -324,11 +420,14 @@ function createService(clock: () => number = Date.now): {
   applyNodeMigrations(handle);
   const repository = new SqlProductMutationJobRepository(handle.executor, clock);
   const gateway = {
+    publish: vi.fn<ProductMutationGateway['publish']>(),
+    saveDraft: vi.fn<ProductMutationGateway['saveDraft']>(),
     update: vi.fn<ProductMutationGateway['update']>().mockResolvedValue({
       productId: REQUEST.productId,
       traceId: 'trace-1',
       success: true
     }),
+    get: vi.fn<ProductMutationGateway['get']>(),
     render: vi.fn<ProductMutationGateway['render']>(),
     updateDisplay: vi.fn<ProductMutationGateway['updateDisplay']>(),
     list: vi.fn<ProductMutationGateway['list']>()
@@ -342,11 +441,14 @@ function createService(clock: () => number = Date.now): {
   };
 }
 
-function productPage(status: 'online' | 'offline' | 'auditing'): ProductPage {
+function productPage(
+  status: 'online' | 'offline' | 'auditing',
+  productId: string = REQUEST.productId
+): ProductPage {
   return {
     items: [
       {
-        id: REQUEST.productId,
+        id: productId,
         encryptedId: 'encrypted-1',
         detailUrl: null,
         subject: 'Smoke product',
@@ -362,4 +464,16 @@ function productPage(status: 'online' | 'offline' | 'auditing'): ProductPage {
     pageSize: 100,
     total: 1
   };
+}
+
+function productDetail(productId: string, status: 'draft' | 'online' | 'offline') {
+  const item = productPage(status === 'draft' ? 'offline' : status, productId).items[0];
+  if (!item) throw new Error('Missing product fixture');
+  return {
+    ...item,
+    categoryId: CREATION_REQUEST.categoryId,
+    status,
+    language: 'en_US',
+    schemaXml: CREATION_REQUEST.schemaXml
+  } as const;
 }
