@@ -1,4 +1,6 @@
 export const GALLERY_TRANSFER_MAX_ARCHIVE_BYTES = 50 * 1024 * 1024;
+export const GALLERY_TRANSFER_MAX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
+export const GALLERY_TRANSFER_MAX_ENTRIES = 500;
 export const GALLERY_TRANSFER_ASSET_DIRECTORY = 'assets/';
 export const GALLERY_IMPORT_RULE_LIMIT = 50;
 
@@ -55,7 +57,7 @@ export interface GalleryTransferDocumentV1 {
 }
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/u;
-const SUPPORTED_IMAGE_CONTENT_TYPES = new Set(['image/jpeg', 'image/png']);
+const SUPPORTED_IMAGE_CONTENT_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/bmp']);
 
 export function validateGalleryImportRuleSet(value: unknown): GalleryImportRuleSet {
   if (!isRecord(value) || value.schemaVersion !== 1 || !Array.isArray(value.rules)) {
