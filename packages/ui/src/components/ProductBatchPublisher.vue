@@ -77,12 +77,16 @@ function toggleAll(checked: boolean): void {
 function storedStatusLabel(item: ProductBatchPublishItem): string {
   if (item.status === 'draft-saved') return t('products.batch.storedStatus.draft');
   if (item.status === 'published') return t('products.batch.storedStatus.published');
+  if (item.status === 'submitting') return t('products.batch.storedStatus.submitting');
+  if (item.status === 'verifying') return t('products.batch.storedStatus.verifying');
+  if (item.status === 'attention-required') return t('products.batch.storedStatus.attentionRequired');
   return t('products.batch.storedStatus.queued');
 }
 
 function runStatusLabel(result: ProductBatchPublishRunResult | undefined): string {
   if (!result) return '';
   if (result.status === 'succeeded') return t('products.batch.runStatus.succeeded');
+  if (result.status === 'accepted') return t('products.batch.runStatus.accepted');
   if (result.status === 'failed') return t('products.batch.runStatus.failed');
   if (result.status === 'blocked') return t('products.batch.runStatus.blocked');
   return t('products.batch.runStatus.stopped');
@@ -93,7 +97,13 @@ function statusVariant(
   result: ProductBatchPublishRunResult | undefined
 ): 'success' | 'warning' | 'secondary' | 'destructive' {
   if (result?.status === 'failed' || result?.status === 'blocked') return 'destructive';
-  if (result?.status === 'succeeded' || item.status !== 'queued') return 'success';
+  if (result?.status === 'succeeded' || item.status === 'draft-saved' || item.status === 'published') {
+    return 'success';
+  }
+  if (result?.status === 'accepted' || item.status === 'submitting' || item.status === 'verifying') {
+    return 'warning';
+  }
+  if (item.status === 'attention-required') return 'destructive';
   if (props.activeItemId === item.id) return 'warning';
   return 'secondary';
 }
@@ -253,11 +263,17 @@ function statusVariant(
                       : runStatusLabel(results[item.id]) || storedStatusLabel(item)
                   }}
                 </Badge>
-                <p v-if="results[item.id]?.message" class="mt-2 max-w-80 text-xs text-destructive">
-                  {{ results[item.id]?.message }}
+                <p
+                  v-if="results[item.id]?.message || item.lastError"
+                  class="mt-2 max-w-80 text-xs text-destructive"
+                >
+                  {{ results[item.id]?.message || item.lastError }}
                 </p>
-                <p v-if="results[item.id]?.traceId" class="mt-1 font-mono text-xs text-muted-foreground">
-                  traceId {{ results[item.id]?.traceId }}
+                <p
+                  v-if="results[item.id]?.traceId || item.traceId"
+                  class="mt-1 font-mono text-xs text-muted-foreground"
+                >
+                  traceId {{ results[item.id]?.traceId || item.traceId }}
                 </p>
               </td>
               <td class="px-4 py-3 align-top">

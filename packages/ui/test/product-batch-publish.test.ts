@@ -6,11 +6,15 @@ import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
+  beginProductBatchPublishItem,
   completeProductBatchPublishItem,
   importProductBatchPublishItems,
   inspectProductBatchPublishImport,
   inspectProductBatchPublishItem,
   loadProductBatchPublishItems,
+  reconcileProductBatchPublishJobs,
+  recordProductBatchPublishResult,
+  recoverInterruptedProductBatchPublishItems,
   runProductBatchPublish,
   upsertProductBatchPublishItem
 } from '../src/lib/product-batch-publish';
@@ -117,6 +121,75 @@ describe('product batch publish queue', () => {
     expect(inspectProductBatchPublishItem(completed, 'draft')).toMatchObject({ ready: false });
   });
 
+  it('migrates the v1 queue and marks an interrupted submission for manual review', () => {
+    const item = upsert('first', fixture.validXml, NOW);
+    localStorage.removeItem('one-vegetable-product-batch-publish-v2');
+    localStorage.setItem(
+      'one-vegetable-product-batch-publish-v1',
+      JSON.stringify([{ ...item, schemaVersion: 1, status: 'queued' }])
+    );
+
+    const migrated = loadProductBatchPublishItems(localStorage, NOW + 1);
+    expect(migrated[0]).toMatchObject({ schemaVersion: 2, status: 'queued', attemptCount: 0 });
+    beginProductBatchPublishItem(localStorage, 'first', 'publish', NOW + 2);
+
+    expect(recoverInterruptedProductBatchPublishItems(localStorage, NOW + 3)[0]).toMatchObject({
+      status: 'attention-required',
+      target: 'publish',
+      attemptCount: 1
+    });
+  });
+
+  it('keeps an accepted platform job pending until readback verifies it', () => {
+    const item = upsert('first', fixture.validXml, NOW);
+    beginProductBatchPublishItem(localStorage, item.id, 'draft', NOW + 1);
+    const job = mutationJob('job-1', 'verifying');
+    recordProductBatchPublishResult(
+      localStorage,
+      {
+        itemId: item.id,
+        title: item.title,
+        target: 'draft',
+        status: 'accepted',
+        productId: job.productId,
+        traceId: job.traceId,
+        message: null,
+        job
+      },
+      NOW + 2
+    );
+
+    expect(loadProductBatchPublishItems(localStorage, NOW + 3)[0]).toMatchObject({
+      status: 'verifying',
+      mutationJobId: 'job-1'
+    });
+    const reconciled = reconcileProductBatchPublishJobs(
+      localStorage,
+      [{ ...job, status: 'verified', revision: 2 }],
+      NOW + 4
+    );
+    expect(reconciled[0]).toMatchObject({ status: 'draft-saved', platformProductId: '1600000000001' });
+  });
+
+  it('does not report a pending platform mutation job as a completed batch item', async () => {
+    const item = upsert('pending', fixture.validXml, NOW);
+    const job = mutationJob('job-pending', 'verifying');
+
+    await expect(
+      runProductBatchPublish({
+        items: [item],
+        target: 'publish',
+        submit: () =>
+          Promise.resolve({
+            productId: job.productId,
+            traceId: job.traceId,
+            success: true,
+            job
+          })
+      })
+    ).resolves.toMatchObject([{ status: 'accepted', job: { id: 'job-pending' } }]);
+  });
+
   it('imports multiple products atomically and safely skips completed stable ids', () => {
     const inputs = [
       importInput('import:10000001:en_US', 'Imported first'),
@@ -195,5 +268,34 @@ function importInput(id: string, title: string) {
     language: 'en_US' as const,
     market: 'wholesale' as const,
     xml: fixture.validXml.replace('Batch portable power station', title)
+  };
+}
+
+function mutationJob(id: string, status: 'verifying' | 'verified') {
+  return {
+    id,
+    requestId: '00000000-0000-4000-8000-000000000001',
+    productId: '1600000000001',
+    operation: 'saveProductDraft' as const,
+    status,
+    categoryId: 201712702,
+    language: 'en_US' as const,
+    payloadFingerprint: 'a'.repeat(64),
+    fieldExpectations: [],
+    encryptedProductId: null,
+    targetDisplay: null,
+    originalDisplay: null,
+    traceId: 'trace-1',
+    reasonCode: null,
+    message: null,
+    submittedTimeUtc: NOW,
+    lastCheckedTimeUtc: null,
+    completedTimeUtc: null,
+    createTimeUtc: NOW,
+    updateTimeUtc: NOW,
+    creatorId: 'extension:local-admin',
+    updaterId: 'extension:local-admin',
+    revision: 1,
+    remark: null
   };
 }

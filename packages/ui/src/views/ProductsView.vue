@@ -96,11 +96,14 @@ import {
   type ProductEditorMode
 } from '../lib/product-editor-drafts';
 import {
-  completeProductBatchPublishItem,
+  beginProductBatchPublishItem,
   importProductBatchPublishItems,
   inspectProductBatchPublishImport,
   loadProductBatchPublishItems,
   removeProductBatchPublishItem,
+  reconcileProductBatchPublishJobs,
+  recordProductBatchPublishResult,
+  recoverInterruptedProductBatchPublishItems,
   runProductBatchPublish,
   upsertProductBatchPublishItem,
   type ProductBatchPublishItem,
@@ -339,6 +342,14 @@ const creationMutationHistory = useQuery({
   staleTime: 0
 });
 
+watch(
+  () => creationMutationHistory.data.value,
+  (jobs) => {
+    if (!jobs || !('localStorage' in globalThis)) return;
+    batchItems.value = reconcileProductBatchPublishJobs(globalThis.localStorage, jobs);
+  }
+);
+
 const categoryOptions = computed(() => flattenCategories(categoryTree.value));
 const batchCategoryLabels = computed<Record<string, string>>(() =>
   Object.fromEntries(categoryOptions.value.map((category) => [String(category.id), category.name]))
@@ -478,12 +489,21 @@ const publish = useMutation({
             id: result.productId
           });
     if (!editProductId.value && editingBatchItemId.value && 'localStorage' in globalThis) {
-      completeProductBatchPublishItem(
-        globalThis.localStorage,
-        editingBatchItemId.value,
-        draft ? 'draft' : 'publish',
-        result.productId
-      );
+      recordProductBatchPublishResult(globalThis.localStorage, {
+        itemId: editingBatchItemId.value,
+        title: '',
+        target: draft ? 'draft' : 'publish',
+        status:
+          result.job && ['submitted', 'auditing', 'verifying', 'recovering'].includes(result.job.status)
+            ? 'accepted'
+            : result.job && result.job.status !== 'verified'
+              ? 'failed'
+              : 'succeeded',
+        productId: result.productId,
+        traceId: result.traceId,
+        message: result.job?.status === 'recovery-required' ? result.job.message : null,
+        job: result.job ?? null
+      });
       editingBatchItemId.value = '';
       reloadBatchItems();
     }
@@ -517,22 +537,27 @@ const batchPublish = useMutation({
       shouldStop: () => stopBatchRequested.value,
       onStart: (item) => {
         activeBatchItemId.value = item.id;
+        if ('localStorage' in globalThis) {
+          beginProductBatchPublishItem(globalThis.localStorage, item.id, input.target);
+          reloadBatchItems();
+        }
       },
       onResult: (result) => {
         activeBatchItemId.value = '';
         batchResults.value = { ...batchResults.value, [result.itemId]: result };
-        if (result.status !== 'succeeded' || !result.productId || !('localStorage' in globalThis)) return;
+        if (
+          (result.status !== 'succeeded' && result.status !== 'accepted' && result.status !== 'failed') ||
+          !('localStorage' in globalThis)
+        )
+          return;
         try {
-          completeProductBatchPublishItem(
-            globalThis.localStorage,
-            result.itemId,
-            result.target,
-            result.productId
-          );
+          recordProductBatchPublishResult(globalThis.localStorage, result);
           reloadBatchItems();
-          selectedBatchItemIds.value = selectedBatchItemIds.value.filter(
-            (itemId) => itemId !== result.itemId
-          );
+          if (result.status !== 'failed') {
+            selectedBatchItemIds.value = selectedBatchItemIds.value.filter(
+              (itemId) => itemId !== result.itemId
+            );
+          }
         } catch (error: unknown) {
           feedback.value = t('products.view.feedback.acceptedQueueSaveFailed', {
             title: result.title,
@@ -548,11 +573,13 @@ const batchPublish = useMutation({
   },
   onSuccess: async (results) => {
     const succeeded = results.filter((result) => result.status === 'succeeded').length;
+    const accepted = results.filter((result) => result.status === 'accepted').length;
     const failed = results.filter((result) => result.status === 'failed').length;
     const blocked = results.filter((result) => result.status === 'blocked').length;
     const cancelled = results.filter((result) => result.status === 'cancelled').length;
     feedback.value = t('products.view.feedback.batchFinished', {
       succeeded,
+      accepted,
       failed,
       blocked,
       cancelled
@@ -2071,7 +2098,9 @@ watch(
 onMounted(async () => {
   globalThis.addEventListener('hashchange', handleProductRouteChange);
   globalThis.addEventListener('popstate', handleProductRouteChange);
-  reloadBatchItems();
+  if ('localStorage' in globalThis) {
+    batchItems.value = recoverInterruptedProductBatchPublishItems(globalThis.localStorage);
+  }
   if (await syncProductsFromHash()) return;
   if (!('localStorage' in globalThis)) return;
   const migratedV2 = migrateProductEditorDraftsV2(globalThis.localStorage);

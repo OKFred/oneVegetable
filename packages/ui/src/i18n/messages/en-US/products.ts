@@ -335,9 +335,17 @@ export const products = {
   batch: {
     selectFirst: 'Select at least one queued product',
     unavailable: 'Batch publishing cannot run right now',
-    storedStatus: { draft: 'Platform draft saved', published: 'Published', queued: 'Awaiting submission' },
+    storedStatus: {
+      draft: 'Platform draft saved',
+      published: 'Published',
+      queued: 'Awaiting submission',
+      submitting: 'Submitting',
+      verifying: 'Awaiting platform readback',
+      attentionRequired: 'Manual review required'
+    },
     runStatus: {
-      succeeded: 'Succeeded this run',
+      succeeded: 'Verified this run',
+      accepted: 'Accepted; awaiting readback',
       failed: 'Failed this run',
       blocked: 'Blocked before submission',
       stopped: 'Stopped'
@@ -389,6 +397,10 @@ export const products = {
       stopped: 'Remaining tasks stopped',
       preflight: 'The product failed pre-submission checks',
       platformNotAccepted: 'The platform did not explicitly accept the request',
+      interrupted:
+        'The previous submission ended before a definitive result was received. Check Alibaba.com before retrying to avoid a duplicate product.',
+      verifyFailed:
+        'The platform accepted the request, but readback could not confirm the result. Review it manually before retrying.',
       unnamed: 'Unnamed product',
       categoryPositive: 'The product category must be a positive integer',
       xmlRequired: 'Product Schema XML is required',
@@ -542,7 +554,7 @@ export const products = {
       acceptedQueueSaveFailed:
         'The platform accepted “{title}”, but saving local queue status failed: {error}',
       batchFinished:
-        'Batch complete: {succeeded} succeeded, {failed} failed, {blocked} blocked, {cancelled} stopped',
+        'Batch complete: {succeeded} verified, {accepted} awaiting readback, {failed} failed, {blocked} blocked, {cancelled} stopped',
       displaySubmitted: '{count} products submitted for {action}; verifying by list readback',
       displayDone: '{count} products {action}',
       online: 'listing',
