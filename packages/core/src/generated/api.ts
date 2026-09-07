@@ -7619,6 +7619,39 @@ export interface components {
             read: boolean;
             recommended: boolean;
         };
+        S3ObjectListRequest: {
+            requestId: components["schemas"]["RequestId"];
+            prefix?: string;
+            continuationToken?: string;
+            maximum?: number;
+        };
+        S3ObjectPutRequest: {
+            requestId: components["schemas"]["RequestId"];
+            key: string;
+            contentBase64: string;
+            contentType: string;
+        };
+        S3ObjectTargetRequest: {
+            requestId: components["schemas"]["RequestId"];
+            key: string;
+        };
+        S3StorageConfiguration: {
+            /** Format: uri */
+            endpoint: string;
+            region: string;
+            bucket: string;
+            accessKeyId: string;
+            secretAccessKey: string;
+            sessionToken: string | null;
+            pathStyle: boolean;
+            rootPrefix: string;
+        };
+        S3StorageConfigurationUpdateRequest: {
+            requestId: components["schemas"]["RequestId"];
+            configuration: components["schemas"]["S3StorageConfiguration"];
+            revision: number | null;
+            remark: string | null;
+        };
         SchemaPublishRequest: {
             categoryId: number;
             /** @default en_US */
