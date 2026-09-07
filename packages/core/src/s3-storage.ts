@@ -16,6 +16,21 @@ export interface S3StorageConfiguration {
   rootPrefix: string;
 }
 
+export interface S3StorageConfigurationSummary {
+  configured: boolean;
+  endpoint: string | null;
+  region: string | null;
+  bucket: string | null;
+  accessKeyIdSuffix: string | null;
+  hasSessionToken: boolean;
+  pathStyle: boolean | null;
+  rootPrefix: string | null;
+  revision: number | null;
+  updateTimeUtc: number | null;
+  updaterId: string | null;
+  remark: string | null;
+}
+
 export interface S3ObjectSummary {
   key: string;
   size: number;
@@ -213,6 +228,33 @@ export function validateS3StorageConfiguration(value: S3StorageConfiguration): S
   };
 }
 
+export function parseS3StorageConfiguration(value: unknown): S3StorageConfiguration {
+  if (!isRecord(value)) throw new Error('S3 配置格式无效');
+  const sessionToken = value.sessionToken;
+  if (
+    typeof value.endpoint !== 'string' ||
+    typeof value.region !== 'string' ||
+    typeof value.bucket !== 'string' ||
+    typeof value.accessKeyId !== 'string' ||
+    typeof value.secretAccessKey !== 'string' ||
+    !(sessionToken === null || typeof sessionToken === 'string') ||
+    typeof value.pathStyle !== 'boolean' ||
+    typeof value.rootPrefix !== 'string'
+  ) {
+    throw new Error('S3 配置字段无效');
+  }
+  return validateS3StorageConfiguration({
+    endpoint: value.endpoint,
+    region: value.region,
+    bucket: value.bucket,
+    accessKeyId: value.accessKeyId,
+    secretAccessKey: value.secretAccessKey,
+    sessionToken,
+    pathStyle: value.pathStyle,
+    rootPrefix: value.rootPrefix
+  });
+}
+
 function parseListObjectsV2(xml: string): S3ObjectPage {
   const items = [...xml.matchAll(/<Contents>([\s\S]*?)<\/Contents>/gu)].map((match) => {
     const block = match[1] ?? '';
@@ -280,4 +322,8 @@ function normalizeEtag(value: string | null): string | null {
 
 function s3HttpError(status: number): Error {
   return new Error(`S3 请求失败（HTTP ${status}）`);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

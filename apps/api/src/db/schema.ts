@@ -535,4 +535,19 @@ export const schema = {
   authRecoveryCodes,
   userEnrollmentTokens
 };
-export const CURRENT_SCHEMA_VERSION = 11;
+export const s3StorageConfigurations = sqliteTable('s3_storage_configurations', {
+  id: text('id').primaryKey(),
+  encryptedConfiguration: text('encrypted_configuration').notNull(),
+  initializationVector: text('initialization_vector').notNull(),
+  algorithm: text('algorithm', { enum: ['AES-256-GCM'] }).notNull(),
+  schemaVersion: integer('schema_version').notNull(),
+  keyVersion: integer('key_version').notNull(),
+  createTimeUtc: integer('create_time_utc').notNull(),
+  updateTimeUtc: integer('update_time_utc').notNull(),
+  creatorId: text('creator_id').notNull(),
+  updaterId: text('updater_id').notNull(),
+  revision: integer('revision').notNull().default(1),
+  remark: text('remark')
+});
+
+export const CURRENT_SCHEMA_VERSION = 12;
