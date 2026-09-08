@@ -22,6 +22,78 @@ afterEach(() => {
 });
 
 describe('product mutation lifecycle routes', () => {
+  it('routes platform draft creation through a durable job and readback', async () => {
+    database = openNodeDatabase(':memory:');
+    applyNodeMigrations(database);
+    const authRepository = new SqlAuthRepository(database.executor);
+    const authService = new AuthService({
+      repository: authRepository,
+      bootstrapToken: 'bootstrap-secret-that-is-long'
+    });
+    const session = await authService.bootstrap({
+      requestId: createRequestId(),
+      bootstrapToken: 'bootstrap-secret-that-is-long',
+      username: 'admin',
+      password: 'correct-password-value'
+    });
+    const gatewayRequest = vi.fn((operation: OperationId) => {
+      if (operation === 'saveProductDraft') {
+        return Promise.resolve({ productId: '1601928079993', traceId: 'draft-trace', success: true });
+      }
+      if (operation === 'getProductDraft') {
+        return Promise.resolve({
+          id: '1601928079993',
+          encryptedId: null,
+          subject: 'New product draft',
+          groupName: '',
+          status: 'draft',
+          score: 0,
+          imageUrl: null,
+          detailUrl: null,
+          updatedAt: '2026-09-08T00:00:00.000Z',
+          categoryId: 201712702,
+          language: 'en_US',
+          schemaXml: '<itemSchema />'
+        });
+      }
+      return Promise.reject(new Error(`unexpected operation: ${operation}`));
+    });
+    const app = createApiApp({
+      runtime: 'node',
+      database: 'sqlite',
+      environment: 'test',
+      gatewayMode: 'real',
+      gateway: { request: gatewayRequest as GatewayClient['request'] },
+      authService,
+      adminService: new AdminService(authRepository),
+      featureFlags: new StaticOperationFeatureFlags(new Set(['operation:saveProductDraft'])),
+      productMutationJobs: new SqlProductMutationJobRepository(database.executor),
+      allowedOrigins: ['http://localhost']
+    });
+
+    const response = await app.request('/api/v1/operations/call', {
+      method: 'POST',
+      headers: authHeaders(session.sessionToken, session.session.csrfToken),
+      body: JSON.stringify({
+        requestId: createRequestId(),
+        operation: 'saveProductDraft',
+        payload: { categoryId: 201712702, language: 'en_US', schemaXml: '<itemSchema />' }
+      })
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: {
+        productId: '1601928079993',
+        job: { operation: 'saveProductDraft', status: 'verified' }
+      }
+    });
+    expect(gatewayRequest.mock.calls.map(([operation]) => operation)).toEqual([
+      'saveProductDraft',
+      'getProductDraft'
+    ]);
+  });
+
   it('returns an auditing job, blocks duplicates and verifies through readback', async () => {
     database = openNodeDatabase(':memory:');
     applyNodeMigrations(database);
@@ -136,6 +208,7 @@ describe('product mutation lifecycle routes', () => {
             {
               id: '1601928079741',
               encryptedId: 'encrypted-1',
+              detailUrl: null,
               subject: 'Smoke product',
               groupName: 'Smoke',
               status: display,

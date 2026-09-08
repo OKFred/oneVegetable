@@ -12,7 +12,8 @@ export const products = {
     offline: '已下架',
     draft: '草稿',
     auditing: '审核中',
-    rejected: '已驳回'
+    rejected: '已驳回',
+    unknown: '待平台确认'
   },
   editor: {
     loading: '正在加载商品编辑功能',
@@ -47,6 +48,34 @@ export const products = {
     busy: '商品传输任务正在执行',
     chooseForExport: '请先选择要导出的商品',
     exportLimit: '单次最多导出 {maximum} 个商品'
+  },
+  links: {
+    viewOnAlibaba: '查看线上商品'
+  },
+  tasks: {
+    pending: '进行中',
+    attention: '需要人工核对',
+    verified: '已验证',
+    platformTitle: '平台写入任务',
+    platformDescription: '提交不等于成功；任务通过商品列表或 Schema 回读后才标记为已验证。',
+    openManagement: '前往国际站复核',
+    localBatchTitle: '本机批量队列',
+    localBatchDescription: '刷新或关闭页面不会自动重发；中断项需先到国际站后台核对。',
+    empty: '暂无商品写入任务',
+    check: '查询平台状态',
+    operations: {
+      publishProduct: '发布商品',
+      saveProductDraft: '保存平台草稿',
+      updateProduct: '更新商品',
+      updateProductDisplay: '上下架'
+    },
+    columns: {
+      operation: '操作类型',
+      product: '商品',
+      status: '状态',
+      updatedAt: '更新时间',
+      actions: '操作'
+    }
   },
   groupNavigation: {
     tree: '商品分组',
@@ -296,8 +325,21 @@ export const products = {
   batch: {
     selectFirst: '请先选择至少一个待提交商品',
     unavailable: '当前不能执行批量发品',
-    storedStatus: { draft: '已保存平台草稿', published: '已正式发布', queued: '等待提交' },
-    runStatus: { succeeded: '本轮成功', failed: '本轮失败', blocked: '提交前阻断', stopped: '已停止' },
+    storedStatus: {
+      draft: '已保存平台草稿',
+      published: '已正式发布',
+      queued: '等待提交',
+      submitting: '正在提交',
+      verifying: '等待平台回读',
+      attentionRequired: '需要人工核对'
+    },
+    runStatus: {
+      succeeded: '本轮已验证',
+      accepted: '已受理，等待回读',
+      failed: '本轮失败',
+      blocked: '提交前阻断',
+      stopped: '已停止'
+    },
     title: '批量发品队列',
     description: '复用单品 Schema 链路并严格串行提交；单条失败不会停止后续商品，也不会自动重试。',
     summary: '待提交 {queued} · 已选择 {selected}',
@@ -341,6 +383,8 @@ export const products = {
       stopped: '已停止后续任务',
       preflight: '商品未通过提交前检查',
       platformNotAccepted: '平台未明确接受请求',
+      interrupted: '上次提交在取得明确结果前中断；为避免重复发品，请先到国际站后台核对。',
+      verifyFailed: '平台已受理请求，但回读未能确认结果；请先人工核对。',
       unnamed: '未命名商品',
       categoryPositive: '商品类目必须是正整数',
       xmlRequired: '商品 Schema XML 不能为空',
@@ -480,7 +524,8 @@ export const products = {
       draftConfirmed: '草稿已保存并回读确认',
       publishConfirmed: '商品已发布并回读确认',
       acceptedQueueSaveFailed: '平台已接受“{title}”，但本地队列状态保存失败：{error}',
-      batchFinished: '批量任务完成：成功 {succeeded}，失败 {failed}，阻断 {blocked}，停止 {cancelled}',
+      batchFinished:
+        '批量任务完成：已验证 {succeeded}，待回读 {accepted}，失败 {failed}，阻断 {blocked}，停止 {cancelled}',
       displaySubmitted: '{count} 个商品已提交{action}，正在回读确认',
       displayDone: '{count} 个商品已{action}',
       online: '上架',
@@ -604,6 +649,7 @@ export const products = {
       workspace: '商品工作区',
       list: '商品列表',
       batch: '批量发品',
+      tasks: '任务中心',
       groups: '商品分组',
       toolbar: '商品列表操作',
       search: '按标题搜索',

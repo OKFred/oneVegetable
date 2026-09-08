@@ -36,20 +36,7 @@ export class ProductAdapter {
       ...productGroupFilterParameters(request)
     });
     const root = unwrap(call.data, call.method);
-    const items = findRecords(root, ['products', 'product_list', 'result_list']).map((item) => {
-      const mainImage = asRecord(item.main_image);
-      return {
-        id: readString(item, ['id', 'product_id']) ?? '',
-        encryptedId: readString(item, ['product_id']) ?? null,
-        subject: readString(item, ['subject', 'product_subject']) ?? '未命名商品',
-        groupName: readString(item, ['group_name']) ?? '未分组',
-        status: normalizeProductStatus(readString(item, ['display']), readString(item, ['status'])),
-        score: readNumber(item, ['score']) ?? 0,
-        imageUrl: readStringList(mainImage.images)[0] ?? null,
-        updatedAt: normalizeDate(readString(item, ['gmt_modified', 'modified_time'])),
-        categoryId: readNumber(item, ['category_id', 'cat_id']) ?? null
-      };
-    });
+    const items = findRecords(root, ['products', 'product_list', 'result_list']).map(normalizeProduct);
     return {
       items,
       page: request.page ?? 1,
@@ -68,19 +55,39 @@ export class ProductAdapter {
       param_product_top_publish_request: { product_id: numericProductId, language }
     });
     const root = unwrap(call.data, call.method);
+    const summary = draft ? null : await this.getProductSummary(numericProductId, language);
     return {
       id: productId,
-      encryptedId: null,
-      subject: `商品 ${productId}`,
-      groupName: 'Schema 商品',
-      status: draft ? 'draft' : 'online',
-      score: 0,
-      imageUrl: null,
-      updatedAt: new Date().toISOString(),
-      categoryId: 0,
+      encryptedId: summary?.encryptedId ?? null,
+      subject: summary?.subject ?? `商品 ${productId}`,
+      groupName: summary?.groupName ?? 'Schema 商品',
+      status: draft ? 'draft' : (summary?.status ?? 'unknown'),
+      score: summary?.score ?? 0,
+      imageUrl: summary?.imageUrl ?? null,
+      detailUrl: summary?.detailUrl ?? null,
+      updatedAt: summary?.updatedAt ?? new Date().toISOString(),
+      categoryId: summary?.categoryId ?? 0,
       language,
       schemaXml: requireSchemaXml(root, 'ALIBABA_DRAFT_SCHEMA_RENDER_FAILED')
     };
+  }
+
+  private async getProductSummary(
+    productId: number,
+    language: AlibabaLanguage
+  ): Promise<ProductPage['items'][number] | null> {
+    const method = 'alibaba.icbu.product.list';
+    const call = await this.client.call(method, {
+      id: productId,
+      language: productListLanguage(language),
+      current_page: 1,
+      page_size: 1
+    });
+    const root = unwrap(call.data, call.method);
+    const record = findRecords(root, ['products', 'product_list', 'result_list']).find(
+      (item) => readString(item, ['id']) === String(productId)
+    );
+    return record ? normalizeProduct(record) : null;
   }
 
   async getSchema(request: RequestOf<'getProductSchema'>): Promise<ProductSchema> {
@@ -381,6 +388,36 @@ function normalizeGroup(record: Record<string, unknown>): ProductGroup {
     name: readString(record, ['group_name', 'name']) ?? '未命名分组',
     children: findRecords(record, ['children', 'child_groups']).map(normalizeGroup)
   };
+}
+
+function normalizeProduct(record: Record<string, unknown>): ProductPage['items'][number] {
+  const mainImage = asRecord(record.main_image);
+  return {
+    id: readString(record, ['id', 'product_id']) ?? '',
+    encryptedId: readString(record, ['product_id']) ?? null,
+    subject: readString(record, ['subject', 'product_subject']) ?? '未命名商品',
+    groupName: readString(record, ['group_name']) ?? '未分组',
+    status: normalizeProductStatus(readString(record, ['display']), readString(record, ['status'])),
+    score: readNumber(record, ['score']) ?? 0,
+    imageUrl: readStringList(mainImage.images)[0] ?? null,
+    detailUrl: normalizeProductDetailUrl(readString(record, ['pc_detail_url'])),
+    updatedAt: normalizeDate(readString(record, ['gmt_modified', 'modified_time'])),
+    categoryId: readNumber(record, ['category_id', 'cat_id']) ?? null
+  };
+}
+
+function normalizeProductDetailUrl(value: string | undefined): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    const hostname = url.hostname.toLowerCase();
+    if (url.protocol !== 'https:' || (hostname !== 'alibaba.com' && !hostname.endsWith('.alibaba.com'))) {
+      return null;
+    }
+    return url.href;
+  } catch {
+    return null;
+  }
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

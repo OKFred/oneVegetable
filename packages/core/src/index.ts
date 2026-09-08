@@ -14,6 +14,7 @@ export * from './capability-registry';
 export * from './credential-vault';
 export * from './control-client';
 export * from './errors';
+export * from './gallery-transfer';
 export * from './diagnostics';
 export * from './dashboard-adapter';
 export * from './encoded-file';

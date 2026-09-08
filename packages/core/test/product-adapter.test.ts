@@ -36,6 +36,7 @@ describe('ProductAdapter', () => {
                 images: { string: ['https://sc04.alicdn.com/kf/product-cover.jpg'] }
               },
               display: 'Y',
+              pc_detail_url: 'https://www.alibaba.com/product-detail/real-product_123.html',
               gmt_modified: '2026-08-20 12:30:00'
             }
           ],
@@ -55,6 +56,7 @@ describe('ProductAdapter', () => {
           encryptedId: 'encrypted-product-id',
           categoryId: 456,
           imageUrl: 'https://sc04.alicdn.com/kf/product-cover.jpg',
+          detailUrl: 'https://www.alibaba.com/product-detail/real-product_123.html',
           status: 'online'
         }
       ]
@@ -63,6 +65,21 @@ describe('ProductAdapter', () => {
       'alibaba.icbu.product.list',
       expect.objectContaining({ language: 'CHINESE' })
     );
+  });
+
+  it('drops a non-Alibaba product detail URL returned by the provider', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve({
+        method,
+        data: {
+          products: [{ id: 123, subject: 'Unsafe URL', pc_detail_url: 'https://example.com/product/123' }],
+          total_item: 1
+        }
+      })
+    );
+    const adapter = new ProductAdapter({ call });
+
+    await expect(adapter.list({})).resolves.toMatchObject({ items: [{ detailUrl: null }] });
   });
 
   it('keeps a modified product in auditing even while display is N', async () => {
@@ -186,6 +203,55 @@ describe('ProductAdapter', () => {
       language: 'zh_CN',
       schemaXml: '<itemSchema />'
     });
+  });
+
+  it('reads status and detail URL from the list API instead of inferring online from Schema render', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) => {
+      if (method === 'alibaba.icbu.product.schema.render') {
+        return Promise.resolve({ method, data: { data: '<itemSchema />' } });
+      }
+      return Promise.resolve({
+        method,
+        data: {
+          products: [
+            {
+              id: 123,
+              product_id: 'encrypted-product-id',
+              subject: 'Offline product',
+              display: 'N',
+              status: 'approved',
+              pc_detail_url: 'https://www.alibaba.com/product-detail/offline-product_123.html'
+            }
+          ]
+        }
+      });
+    });
+    const adapter = new ProductAdapter({ call });
+
+    await expect(adapter.get('123', false, 'en_US')).resolves.toMatchObject({
+      status: 'offline',
+      encryptedId: 'encrypted-product-id',
+      detailUrl: 'https://www.alibaba.com/product-detail/offline-product_123.html'
+    });
+    expect(call).toHaveBeenNthCalledWith(2, 'alibaba.icbu.product.list', {
+      id: 123,
+      language: 'ENGLISH',
+      current_page: 1,
+      page_size: 1
+    });
+  });
+
+  it('reports an unknown status when the exact list lookup cannot confirm the Schema product', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve(
+        method === 'alibaba.icbu.product.schema.render'
+          ? { method, data: { data: '<itemSchema />' } }
+          : { method, data: { products: [] } }
+      )
+    );
+    const adapter = new ProductAdapter({ call });
+
+    await expect(adapter.get('123')).resolves.toMatchObject({ status: 'unknown', detailUrl: null });
   });
 
   it('uses the encrypted product id and reads the real nested score response', async () => {

@@ -5,6 +5,10 @@ import vue from '@vitejs/plugin-vue';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  define: {
+    __ONE_VEGETABLE_EXTENSION__: 'false',
+    'import.meta.env.VITE_APP_RUNTIME': JSON.stringify('web')
+  },
   plugins: [vue(), tailwindcss()],
   build: {
     rolldownOptions: {

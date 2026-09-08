@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent, h, onMounted, ref } from 'vue';
 import {
   AlertTriangle,
   Database,
@@ -58,9 +58,12 @@ const {
   vault,
   alibabaCredentialAcquisition,
   extensionSocialBackend,
+  control,
+  s3Storage,
   mode
 } = useServices();
 const { t } = useUiI18n();
+const S3StorageSettingsPanel = defineAsyncComponent(() => import('../components/S3StorageSettingsPanel.vue'));
 const { alibabaLanguage: preferredLanguage } = useAppPreferences();
 const signMethods: SignMethod[] = ['hmac', 'md5', 'hmac-sha256'];
 const model = ref<GatewaySettings>({
@@ -831,6 +834,7 @@ function confirmLanguagePreference(): void {
       </div></Card
     >
     <ExtensionSocialBackendPanel v-if="mode === 'extension' && extensionSocialBackend" />
+    <S3StorageSettingsPanel v-if="(mode === 'bff' && control) || s3Storage" />
     <Card class="p-5">
       <div class="flex items-start gap-3">
         <Globe2 class="mt-0.5 size-5 shrink-0 text-primary" />

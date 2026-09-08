@@ -1,0 +1,24 @@
+{
+  "fileName": "csp-probe.png",
+  "path": "assets/csp-probe.png",
+  "paddingBytes": 600000,
+  "sourcePhotoId": "csp-fixture",
+  "groupPath": "Extension validation",
+  "createdTimeUtc": 1788825600000,
+  "archive": {
+    "document": {
+      "schemaVersion": 1,
+      "kind": "one-vegetable-gallery-transfer",
+      "createdTimeUtc": 1788825600000,
+      "assets": [
+        { "path": "assets/a.png", "fileName": "a.png", "contentType": "image/png" },
+        { "path": "assets/b.png", "fileName": "b.png", "contentType": "image/png" }
+      ]
+    },
+    "assets": [
+      { "path": "assets/a.png", "bytes": [1, 2, 3, 4] },
+      { "path": "assets/b.png", "bytes": [5, 6, 7, 8] }
+    ],
+    "totalUncompressedBytes": 8
+  }
+}

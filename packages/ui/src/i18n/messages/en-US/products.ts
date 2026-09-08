@@ -12,7 +12,8 @@ export const products = {
     offline: 'Offline',
     draft: 'Draft',
     auditing: 'Under review',
-    rejected: 'Rejected'
+    rejected: 'Rejected',
+    unknown: 'Pending platform confirmation'
   },
   editor: {
     loading: 'Loading the product editor',
@@ -48,6 +49,36 @@ export const products = {
     busy: 'A product transfer is already running',
     chooseForExport: 'Select products to export first',
     exportLimit: 'Export at most {maximum} products at a time'
+  },
+  links: {
+    viewOnAlibaba: 'View live product'
+  },
+  tasks: {
+    pending: 'In progress',
+    attention: 'Manual review required',
+    verified: 'Verified',
+    platformTitle: 'Platform write tasks',
+    platformDescription:
+      'Submission is not completion. A task is verified only after product-list or Schema readback.',
+    openManagement: 'Review on Alibaba.com',
+    localBatchTitle: 'Local batch queue',
+    localBatchDescription:
+      'Refreshing or closing the page never resubmits automatically. Review interrupted items on Alibaba.com first.',
+    empty: 'No product write tasks',
+    check: 'Check platform status',
+    operations: {
+      publishProduct: 'Publish product',
+      saveProductDraft: 'Save platform draft',
+      updateProduct: 'Update product',
+      updateProductDisplay: 'Change listing status'
+    },
+    columns: {
+      operation: 'Operation',
+      product: 'Product',
+      status: 'Status',
+      updatedAt: 'Updated',
+      actions: 'Actions'
+    }
   },
   groupNavigation: {
     tree: 'Product groups',
@@ -331,9 +362,17 @@ export const products = {
   batch: {
     selectFirst: 'Select at least one queued product',
     unavailable: 'Batch publishing cannot run right now',
-    storedStatus: { draft: 'Platform draft saved', published: 'Published', queued: 'Awaiting submission' },
+    storedStatus: {
+      draft: 'Platform draft saved',
+      published: 'Published',
+      queued: 'Awaiting submission',
+      submitting: 'Submitting',
+      verifying: 'Awaiting platform readback',
+      attentionRequired: 'Manual review required'
+    },
     runStatus: {
-      succeeded: 'Succeeded this run',
+      succeeded: 'Verified this run',
+      accepted: 'Accepted; awaiting readback',
       failed: 'Failed this run',
       blocked: 'Blocked before submission',
       stopped: 'Stopped'
@@ -385,6 +424,10 @@ export const products = {
       stopped: 'Remaining tasks stopped',
       preflight: 'The product failed pre-submission checks',
       platformNotAccepted: 'The platform did not explicitly accept the request',
+      interrupted:
+        'The previous submission ended before a definitive result was received. Check Alibaba.com before retrying to avoid a duplicate product.',
+      verifyFailed:
+        'The platform accepted the request, but readback could not confirm the result. Review it manually before retrying.',
       unnamed: 'Unnamed product',
       categoryPositive: 'The product category must be a positive integer',
       xmlRequired: 'Product Schema XML is required',
@@ -538,7 +581,7 @@ export const products = {
       acceptedQueueSaveFailed:
         'The platform accepted “{title}”, but saving local queue status failed: {error}',
       batchFinished:
-        'Batch complete: {succeeded} succeeded, {failed} failed, {blocked} blocked, {cancelled} stopped',
+        'Batch complete: {succeeded} verified, {accepted} awaiting readback, {failed} failed, {blocked} blocked, {cancelled} stopped',
       displaySubmitted: '{count} products submitted for {action}; verifying by list readback',
       displayDone: '{count} products {action}',
       online: 'listing',
@@ -680,6 +723,7 @@ export const products = {
       workspace: 'Product workspace',
       list: 'Product list',
       batch: 'Batch publishing',
+      tasks: 'Task center',
       groups: 'Product groups',
       toolbar: 'Product list actions',
       search: 'Search by title',

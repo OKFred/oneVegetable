@@ -63,6 +63,7 @@ import { pageHash, parsePageHash, type PageId } from './lib/hash-router';
 import type { RuntimeState } from './lib/data-source';
 import { applyAppTheme, useAppPreferences } from './lib/preferences';
 import { provideServices } from './lib/services';
+import type { S3StorageControl } from '@one-vegetable/core/s3-storage';
 
 const props = defineProps<{
   gateway: GatewayClient;
@@ -73,6 +74,7 @@ const props = defineProps<{
   localData?: LocalDataRepository;
   onboarding?: OnboardingRepository;
   control?: ControlClient;
+  s3Storage?: S3StorageControl;
   socialPublishing?: SocialPublishingClient;
   extensionSocialBackend?: ExtensionSocialBackendRepository;
   productDescriptionTemplates?: ProductDescriptionTemplateClient;
@@ -99,6 +101,7 @@ provideServices({
     ? { alibabaCredentialAcquisition: props.alibabaCredentialAcquisition }
     : {}),
   ...(props.control ? { control: props.control } : {}),
+  ...(props.s3Storage ? { s3Storage: props.s3Storage } : {}),
   ...(props.socialPublishing ? { socialPublishing: props.socialPublishing } : {}),
   ...(props.extensionSocialBackend ? { extensionSocialBackend: props.extensionSocialBackend } : {}),
   ...(props.productDescriptionTemplates

@@ -10,12 +10,14 @@ import type {
   ProductMutationJobPage,
   ProductMutationJobStatus,
   Product,
+  ProductDetail,
   ProductDisplayMutationResult,
   ProductDisplayRequest,
   ProductListQuery,
   ProductPage,
   ProductMutationResult,
   ProductSchema,
+  SchemaPublishRequest,
   ProductSchemaRenderRequest,
   ProductSchemaUpdateRequest,
   ProductSchemaXmlParser
@@ -31,7 +33,15 @@ const SERVER_XML_PARSER: ProductSchemaXmlParser = {
 };
 
 export interface ProductMutationGateway {
+  publish(request: SchemaPublishRequest, requestId: string): Promise<ProductMutationResult>;
+  saveDraft(request: SchemaPublishRequest, requestId: string): Promise<ProductMutationResult>;
   update(request: ProductSchemaUpdateRequest, requestId: string): Promise<ProductMutationResult>;
+  get(
+    productId: string,
+    draft: boolean,
+    language: 'zh_CN' | 'en_US',
+    requestId: string
+  ): Promise<ProductDetail>;
   render(request: ProductSchemaRenderRequest, requestId: string): Promise<ProductSchema>;
   updateDisplay(request: ProductDisplayRequest, requestId: string): Promise<ProductDisplayMutationResult>;
   list(request: ProductListQuery, requestId: string): Promise<ProductPage>;
@@ -43,6 +53,7 @@ export type ProductDisplayMutationSubmissionResult = ProductDisplayMutationResul
 };
 
 const DISPLAY_VERIFICATION_TIMEOUT_MILLISECONDS = 2 * 60 * 1000;
+const CREATION_VERIFICATION_TIMEOUT_MILLISECONDS = 2 * 60 * 1000;
 
 export class ProductMutationLifecycleService {
   readonly #repository: ProductMutationJobRepository;
@@ -60,6 +71,68 @@ export class ProductMutationLifecycleService {
     this.#gateway = gateway;
     this.#authService = authService;
     this.#clock = clock;
+  }
+
+  async submitCreation(input: {
+    requestId: string;
+    actor: AuthPrincipal;
+    operation: 'publishProduct' | 'saveProductDraft';
+    request: SchemaPublishRequest;
+  }): Promise<ProductMutationSubmissionResult> {
+    const payloadFingerprint = await createCreationFingerprint(input.operation, input.request);
+    const blocking = await this.#repository.findBlockingCreation(input.operation, payloadFingerprint);
+    if (blocking) throw new ProductMutationAlreadyInProgressError(blocking);
+    let job = await this.#repository.createCreation({
+      requestId: input.requestId,
+      operation: input.operation,
+      categoryId: input.request.categoryId,
+      language: normalizeLanguage(input.request.language),
+      payloadFingerprint,
+      actorId: input.actor.actorId
+    });
+    await this.#audit(job, input.requestId, input.actor.actorId, 'submitted', null);
+    let result: ProductMutationResult;
+    try {
+      result =
+        input.operation === 'saveProductDraft'
+          ? await this.#gateway.saveDraft(input.request, input.requestId)
+          : await this.#gateway.publish(input.request, input.requestId);
+    } catch (error: unknown) {
+      const details = errorDetails(error);
+      const status: ProductMutationJobStatus = details.retryable ? 'recovery-required' : 'failed';
+      const transitioned = await this.#repository.transition({
+        id: job.id,
+        expectedRevision: job.revision,
+        status,
+        actorId: input.actor.actorId,
+        traceId: details.traceId,
+        reasonCode: details.code,
+        message: details.retryable
+          ? `请求结果不确定，已停止重复创建并等待人工核对：${details.message}`
+          : details.message
+      });
+      await this.#audit(transitioned, input.requestId, input.actor.actorId, status, job.revision);
+      throw error;
+    }
+    job = await this.#repository.transition({
+      id: job.id,
+      expectedRevision: job.revision,
+      status: 'verifying',
+      actorId: input.actor.actorId,
+      productId: result.productId,
+      traceId: result.traceId,
+      reasonCode:
+        input.operation === 'saveProductDraft'
+          ? 'ALIBABA_PRODUCT_DRAFT_ACCEPTED'
+          : 'ALIBABA_PRODUCT_PUBLISH_ACCEPTED',
+      message:
+        input.operation === 'saveProductDraft'
+          ? 'Alibaba 已接受平台草稿创建，等待草稿 Schema 回读确认'
+          : 'Alibaba 已接受正式发布，等待商品列表回读确认'
+    });
+    await this.#audit(job, input.requestId, input.actor.actorId, 'verifying', 1);
+    job = await this.#refreshCreation(job, input.requestId, input.actor);
+    return { ...result, job };
   }
 
   async submitDisplay(input: {
@@ -196,6 +269,9 @@ export class ProductMutationLifecycleService {
       return current;
     }
     if (current.operation === 'updateProductDisplay') return this.#refreshDisplay(current, input);
+    if (isCreationOperation(current.operation)) {
+      return this.#refreshCreation(current, input.requestId, input.actor);
+    }
     if (current.categoryId === null || current.language === null) {
       throw new Error('商品 Schema 写入任务缺少类目或语言');
     }
@@ -414,6 +490,113 @@ export class ProductMutationLifecycleService {
     }
   }
 
+  async #refreshCreation(
+    current: ProductMutationJob,
+    requestId: string,
+    actor: AuthPrincipal
+  ): Promise<ProductMutationJob> {
+    if (!isCreationOperation(current.operation) || current.categoryId === null || current.language === null) {
+      throw new Error('新增商品任务缺少类目或语言快照');
+    }
+    if (!/^[1-9][0-9]*$/u.test(current.productId)) {
+      const uncertain = await this.#repository.transition({
+        id: current.id,
+        expectedRevision: current.revision,
+        status: 'recovery-required',
+        actorId: actor.actorId,
+        reasonCode: 'PRODUCT_CREATION_RESULT_UNKNOWN',
+        message: '请求可能已经到达平台，但本地未取得商品 ID；为避免重复创建，请先在国际站后台人工核对',
+        checked: true
+      });
+      await this.#audit(uncertain, requestId, actor.actorId, 'recovery-required', current.revision);
+      return uncertain;
+    }
+    try {
+      if (current.operation === 'saveProductDraft') {
+        const detail = await this.#gateway.get(current.productId, true, current.language, requestId);
+        if (detail.id !== current.productId || detail.schemaXml.trim() === '') {
+          throw new Error('平台草稿回读缺少匹配的商品 ID 或 Schema');
+        }
+        const verified = await this.#repository.transition({
+          id: current.id,
+          expectedRevision: current.revision,
+          status: 'verified',
+          actorId: actor.actorId,
+          reasonCode: 'PRODUCT_DRAFT_READBACK_MATCHED',
+          message: `平台草稿 ${current.productId} 已通过 schema.render.draft 回读确认`,
+          checked: true
+        });
+        await this.#audit(verified, requestId, actor.actorId, 'verified', current.revision);
+        return verified;
+      }
+
+      const product = await this.#findProductById(current.productId, current.language, requestId);
+      if (product) {
+        const verified = await this.#repository.transition({
+          id: current.id,
+          expectedRevision: current.revision,
+          status: 'verified',
+          actorId: actor.actorId,
+          reasonCode: 'PRODUCT_PUBLISH_READBACK_MATCHED',
+          message:
+            product.status === 'auditing'
+              ? `商品 ${current.productId} 已在列表回读，当前由平台审核中`
+              : `商品 ${current.productId} 已在列表回读，当前状态为${productStatusDescription(product.status)}`,
+          checked: true
+        });
+        await this.#audit(verified, requestId, actor.actorId, 'verified', current.revision);
+        return verified;
+      }
+      const timedOut = this.#clock() - current.submittedTimeUtc >= CREATION_VERIFICATION_TIMEOUT_MILLISECONDS;
+      const status: ProductMutationJobStatus = timedOut ? 'recovery-required' : 'verifying';
+      const pending = await this.#repository.transition({
+        id: current.id,
+        expectedRevision: current.revision,
+        status,
+        actorId: actor.actorId,
+        reasonCode: timedOut ? 'PRODUCT_PUBLISH_READBACK_TIMEOUT' : 'PRODUCT_PUBLISH_READBACK_PENDING',
+        message: timedOut
+          ? '平台已受理发布，但商品列表暂未回读到该商品；已禁止重复创建，请稍后人工核对'
+          : '平台已受理发布，商品列表暂未回读到该商品',
+        checked: true
+      });
+      await this.#audit(pending, requestId, actor.actorId, status, current.revision);
+      return pending;
+    } catch (error: unknown) {
+      const details = errorDetails(error);
+      const timedOut = this.#clock() - current.submittedTimeUtc >= CREATION_VERIFICATION_TIMEOUT_MILLISECONDS;
+      const status: ProductMutationJobStatus = timedOut ? 'recovery-required' : 'verifying';
+      const pending = await this.#repository.transition({
+        id: current.id,
+        expectedRevision: current.revision,
+        status,
+        actorId: actor.actorId,
+        traceId: details.traceId,
+        reasonCode: details.code,
+        message: timedOut
+          ? `平台回读超时，已禁止重复创建：${details.message}`
+          : `平台回读尚未完成：${details.message}`,
+        checked: true
+      });
+      await this.#audit(pending, requestId, actor.actorId, status, current.revision);
+      return pending;
+    }
+  }
+
+  async #findProductById(
+    productId: string,
+    language: 'zh_CN' | 'en_US',
+    requestId: string
+  ): Promise<Product | null> {
+    for (let page = 1; page <= 100; page += 1) {
+      const result = await this.#gateway.list({ page, pageSize: 30, language }, requestId);
+      const product = result.items.find((candidate) => candidate.id === productId);
+      if (product) return product;
+      if (page * result.pageSize >= result.total) return null;
+    }
+    return null;
+  }
+
   async #readDisplayProducts(request: ProductDisplayRequest, requestId: string): Promise<Product[]> {
     const expectedByEncryptedId = new Map(
       request.encryptedProductIds.map((encryptedId, index) => [encryptedId, request.productIds[index]])
@@ -568,4 +751,30 @@ async function createDisplayFingerprint(
   const bytes = new TextEncoder().encode(`${productId}\n${encryptedProductId}\n${display}`);
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('');
+}
+
+async function createCreationFingerprint(
+  operation: 'publishProduct' | 'saveProductDraft',
+  request: SchemaPublishRequest
+): Promise<string> {
+  const bytes = new TextEncoder().encode(
+    `${operation}\n${request.categoryId}\n${request.language}\n${request.schemaXml}`
+  );
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('');
+}
+
+function isCreationOperation(
+  operation: ProductMutationJob['operation']
+): operation is 'publishProduct' | 'saveProductDraft' {
+  return operation === 'publishProduct' || operation === 'saveProductDraft';
+}
+
+function productStatusDescription(status: Product['status']): string {
+  if (status === 'online') return '上架';
+  if (status === 'offline') return '下架';
+  if (status === 'draft') return '草稿';
+  if (status === 'auditing') return '审核中';
+  if (status === 'rejected') return '已驳回';
+  return '待平台确认';
 }

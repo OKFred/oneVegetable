@@ -7,6 +7,12 @@ import type { ApiResponse, BackendMeta } from './api-contract';
 import type { BffAuthenticationRequiredHandler } from './bff-authentication';
 import type { EntityAuditFields, UnixEpochMilliseconds } from './audit';
 import type { NetworkTransport } from './network';
+import type {
+  S3ObjectContent,
+  S3ObjectPage,
+  S3StorageConfiguration,
+  S3StorageConfigurationSummary
+} from './s3-storage';
 import type { AlibabaOpenApiCredentialBundle } from './alibaba-credential-bundle';
 import type {
   AlibabaCredentialAcquisitionContinueCommand,
@@ -274,6 +280,25 @@ export interface ControlClient {
   ): Promise<ControlGatewayCredentialSummary>;
   refreshGatewayCredential(): Promise<ControlGatewayCredentialSummary>;
   clearGatewayCredential(revision: number): Promise<void>;
+  s3StorageConfiguration?(): Promise<S3StorageConfigurationSummary>;
+  updateS3StorageConfiguration?(
+    configuration: S3StorageConfiguration,
+    revision: number | null,
+    remark?: string | null
+  ): Promise<S3StorageConfigurationSummary>;
+  clearS3StorageConfiguration?(revision: number): Promise<void>;
+  testS3StorageConnection?(): Promise<{ connected: boolean; visibleObjectCount: number }>;
+  listS3Objects?(input?: {
+    prefix?: string;
+    continuationToken?: string;
+    maximum?: number;
+  }): Promise<S3ObjectPage>;
+  getS3Object?(key: string): Promise<S3ObjectContent>;
+  putS3Object?(input: {
+    key: string;
+    bytes: Uint8Array;
+    contentType: string;
+  }): Promise<{ key: string; etag: string | null }>;
   startAlibabaCredentialAcquisition?(input: {
     account: string;
     password: string;
@@ -611,6 +636,57 @@ export class BffControlClient implements ControlClient {
     await this.#call('/admin/gateway-credentials/clear', { revision });
   }
 
+  s3StorageConfiguration(): Promise<S3StorageConfigurationSummary> {
+    return this.#call('/admin/storage/s3/get', {});
+  }
+
+  updateS3StorageConfiguration(
+    configuration: S3StorageConfiguration,
+    revision: number | null,
+    remark: string | null = null
+  ): Promise<S3StorageConfigurationSummary> {
+    return this.#call('/admin/storage/s3/update', { configuration, revision, remark });
+  }
+
+  async clearS3StorageConfiguration(revision: number): Promise<void> {
+    await this.#call('/admin/storage/s3/clear', { revision });
+  }
+
+  testS3StorageConnection(): Promise<{ connected: boolean; visibleObjectCount: number }> {
+    return this.#call('/admin/storage/s3/test', {});
+  }
+
+  listS3Objects(
+    input: { prefix?: string; continuationToken?: string; maximum?: number } = {}
+  ): Promise<S3ObjectPage> {
+    return this.#call('/admin/storage/s3/objects/list', input);
+  }
+
+  async getS3Object(key: string): Promise<S3ObjectContent> {
+    const result = await this.#call<{
+      key: string;
+      contentBase64: string;
+      contentType: string | null;
+      byteLength: number;
+      etag: string | null;
+    }>('/admin/storage/s3/objects/get', { key });
+    const bytes = decodeBase64(result.contentBase64);
+    if (bytes.byteLength !== result.byteLength) throw new Error('S3 对象长度校验失败');
+    return { key: result.key, bytes, contentType: result.contentType, etag: result.etag };
+  }
+
+  putS3Object(input: {
+    key: string;
+    bytes: Uint8Array;
+    contentType: string;
+  }): Promise<{ key: string; etag: string | null }> {
+    return this.#call('/admin/storage/s3/objects/put', {
+      key: input.key,
+      contentBase64: encodeBase64(input.bytes),
+      contentType: input.contentType
+    });
+  }
+
   startAlibabaCredentialAcquisition(input: {
     account: string;
     password: string;
@@ -805,4 +881,14 @@ function isApiResponse(value: unknown): value is ApiResponse<unknown> {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function encodeBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function decodeBase64(value: string): Uint8Array {
+  return Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
 }

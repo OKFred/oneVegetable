@@ -58,6 +58,8 @@ import { ExtensionCredentialVaultSession } from '../lib/credential-vault-session
 import { resolveExtensionOperationAvailability } from '../lib/operation-policy';
 import { ExtensionProductDisplayMutationLifecycle } from '../lib/product-display-mutation-lifecycle';
 import { isTrustedExtensionPageSender } from '../lib/trusted-runtime-sender';
+import { ExtensionS3Service } from '../lib/s3-service';
+import { s3LocalStore } from '../lib/s3-local-store';
 
 const OPERATIONS = new Set<OperationId>([
   'getDashboard',
@@ -127,10 +129,19 @@ export default defineBackground({
   type: 'module',
   main() {
     const storageAccessReady = restrictStorageToTrustedContexts();
+    const s3 = new ExtensionS3Service(s3LocalStore, (origins) => browser.permissions.contains({ origins }));
     // WebExtension runtime listeners support returning a promise for the response.
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     browser.runtime.onMessage.addListener((value: unknown, sender) => {
       const trustedOptionsPage = isTrustedOptionsPageSender(sender);
+      if (
+        typeof value === 'object' &&
+        value !== null &&
+        'kind' in value &&
+        value.kind === 's3-storage-request'
+      ) {
+        return storageAccessReady.then(() => s3.handle(value, trustedOptionsPage));
+      }
       const acquisitionMessage = asAlibabaCredentialAcquisitionRequest(value);
       if (acquisitionMessage) {
         return handleAlibabaCredentialAcquisitionRequest(acquisitionMessage, storageAccessReady);

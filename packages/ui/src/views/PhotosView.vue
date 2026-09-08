@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { computed, h, ref, watch } from 'vue';
-import { useQuery } from '@tanstack/vue-query';
-import { Eye, LayoutGrid, List as ListIcon, Settings2, Share2, ShieldCheck, Upload } from '@lucide/vue';
+import { useQuery, useQueryClient } from '@tanstack/vue-query';
+import {
+  Download,
+  Eye,
+  FileInput,
+  LayoutGrid,
+  List as ListIcon,
+  Settings2,
+  Share2,
+  ShieldCheck,
+  Upload
+} from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
 import type {
@@ -17,6 +27,7 @@ import DataTable from '../components/DataTable.vue';
 import GroupSidebar from '../components/GroupSidebar.vue';
 import PageHeader from '../components/PageHeader.vue';
 import ImagePreview, { type ImagePreviewItem } from '../components/ImagePreview.vue';
+import GalleryTransferDialog from '../components/GalleryTransferDialog.vue';
 import PhotoGroupManagerDialog from '../components/PhotoGroupManagerDialog.vue';
 import PhotoGroupNavigation from '../components/PhotoGroupNavigation.vue';
 import PhotoSocialShareDialog from '../components/PhotoSocialShareDialog.vue';
@@ -39,6 +50,7 @@ type GovernanceFilter = 'all' | 'unreferenced' | 'lowResolution';
 type PhotoViewMode = 'cards' | 'list';
 
 const { gateway } = useServices();
+const queryClient = useQueryClient();
 const { t } = useUiI18n();
 const selectedGroup = ref('-1');
 const governanceFilter = ref<GovernanceFilter>('all');
@@ -50,6 +62,8 @@ const previewIndex = ref(0);
 const uploadDialogOpen = ref(false);
 const shareDialogOpen = ref(false);
 const groupManagerOpen = ref(false);
+const galleryTransferMode = ref<'import' | 'export'>('export');
+const galleryTransferOpen = ref(false);
 const groupNavigationRevision = ref(0);
 const groupSidebarCollapsed = ref(false);
 const selectedPhotoIds = ref<string[]>([]);
@@ -183,6 +197,21 @@ function handleUploaded(photo: Photo): void {
   toast.success(t('photos.feedback.uploaded', { name: photo.name }));
 }
 
+function openGalleryTransfer(mode: 'import' | 'export'): void {
+  galleryTransferMode.value = mode;
+  galleryTransferOpen.value = true;
+}
+
+function handleGalleryImported(): void {
+  selectedPhotoIds.value = [];
+  void photos.refetch();
+}
+
+function handleImportedGroupsChanged(): void {
+  void queryClient.invalidateQueries({ queryKey: ['photo-groups'] });
+  groupNavigationRevision.value += 1;
+}
+
 const photoColumns = computed<DataColumn<Photo>[]>(() => [
   {
     id: 'selection',
@@ -303,6 +332,16 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
     <div class="flex flex-wrap items-center justify-end gap-2">
       <Button variant="outline" @click="groupManagerOpen = true">
         <Settings2 class="size-4" />{{ t('photos.page.groupManagement') }}
+      </Button>
+      <Button variant="outline" @click="openGalleryTransfer('import')">
+        <FileInput class="size-4" />{{ t('photos.page.import') }}
+      </Button>
+      <Button
+        variant="outline"
+        :disabled="selectedPhotos.length === 0"
+        @click="openGalleryTransfer('export')"
+      >
+        <Download class="size-4" />{{ t('photos.page.export') }}
       </Button>
       <Button variant="outline" :disabled="selectedPhotos.length === 0" @click="shareDialogOpen = true">
         <Share2 class="size-4" />{{
@@ -515,6 +554,23 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
   </div>
 
   <PhotoGroupManagerDialog v-model:open="groupManagerOpen" @changed="handleGroupChanged" />
+
+  <GalleryTransferDialog
+    v-model:open="galleryTransferOpen"
+    :mode="galleryTransferMode"
+    :photos="selectedPhotos"
+    :target-group-id="selectedGroup"
+    :target-group-name="selectedGroupName"
+    :upload-allowed="photoMutations.isAllowed('uploadPhoto')"
+    :upload-disabled-reason="
+      operationAvailabilityMessage(
+        photoMutations.reasonCode('uploadPhoto'),
+        t('photos.errors.uploadUnavailable')
+      )
+    "
+    @imported="handleGalleryImported"
+    @groups-changed="handleImportedGroupsChanged"
+  />
 
   <PhotoSocialShareDialog v-model:open="shareDialogOpen" :photos="selectedPhotos" />
 

@@ -7268,10 +7268,15 @@ export interface components {
             subject: string;
             groupName: string;
             /** @enum {string} */
-            status: "online" | "offline" | "draft" | "auditing" | "rejected";
+            status: "online" | "offline" | "draft" | "auditing" | "rejected" | "unknown";
             score: number;
             /** Format: uri */
             imageUrl: string | null;
+            /**
+             * Format: uri
+             * @description Alibaba 商品接口返回的 PC 端商品详情地址；不得由客户端拼接。
+             */
+            detailUrl: string | null;
             /** Format: date-time */
             updatedAt: string;
             categoryId: number | null;
@@ -7613,6 +7618,39 @@ export interface components {
             expiresAt: string | null;
             read: boolean;
             recommended: boolean;
+        };
+        S3ObjectListRequest: {
+            requestId: components["schemas"]["RequestId"];
+            prefix?: string;
+            continuationToken?: string;
+            maximum?: number;
+        };
+        S3ObjectPutRequest: {
+            requestId: components["schemas"]["RequestId"];
+            key: string;
+            contentBase64: string;
+            contentType: string;
+        };
+        S3ObjectTargetRequest: {
+            requestId: components["schemas"]["RequestId"];
+            key: string;
+        };
+        S3StorageConfiguration: {
+            /** Format: uri */
+            endpoint: string;
+            region: string;
+            bucket: string;
+            accessKeyId: string;
+            secretAccessKey: string;
+            sessionToken: string | null;
+            pathStyle: boolean;
+            rootPrefix: string;
+        };
+        S3StorageConfigurationUpdateRequest: {
+            requestId: components["schemas"]["RequestId"];
+            configuration: components["schemas"]["S3StorageConfiguration"];
+            revision: number | null;
+            remark: string | null;
         };
         SchemaPublishRequest: {
             categoryId: number;

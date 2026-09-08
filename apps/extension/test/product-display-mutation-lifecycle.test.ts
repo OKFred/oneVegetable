@@ -412,6 +412,7 @@ class FakeGateway implements ExtensionProductDisplayGateway {
         {
           id: '1600000000001',
           encryptedId: 'encrypted-product-id',
+          detailUrl: null,
           subject: 'Smoke product',
           groupName: 'Default',
           status: this.status,
@@ -453,6 +454,7 @@ class FakeCreationGateway implements ExtensionProductCreationGateway {
           {
             id: this.productId,
             encryptedId: 'encrypted-created-product',
+            detailUrl: null,
             subject: 'Created smoke product',
             groupName: 'Default',
             status: 'auditing' as const,
@@ -480,6 +482,7 @@ class FakeCreationGateway implements ExtensionProductCreationGateway {
     return Promise.resolve({
       id: productId,
       encryptedId: null,
+      detailUrl: null,
       subject: 'Created draft',
       groupName: 'Schema 商品',
       status: 'draft',

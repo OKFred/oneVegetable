@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, h, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import { ChevronDown, Download, Ellipsis, Layers3, ListPlus, RefreshCw, Search, Upload } from '@lucide/vue';
+import {
+  ChevronDown,
+  Download,
+  Ellipsis,
+  ExternalLink,
+  Layers3,
+  ListPlus,
+  RefreshCw,
+  Search,
+  Upload
+} from '@lucide/vue';
 import {
   DropdownMenuContent,
   DropdownMenuItem,
@@ -66,6 +76,7 @@ import ProductCategoryPicker from '../components/ProductCategoryPicker.vue';
 import ProductEditorLoading from '../components/ProductEditorLoading.vue';
 import ProductGroupManagerDialog from '../components/ProductGroupManagerDialog.vue';
 import ProductGroupNavigation from '../components/ProductGroupNavigation.vue';
+import ProductTaskCenter from '../components/ProductTaskCenter.vue';
 import ProductTransferDialog from '../components/ProductTransferDialog.vue';
 import QueryState from '../components/QueryState.vue';
 import TriStateCheckbox from '../components/TriStateCheckbox.vue';
@@ -86,11 +97,14 @@ import {
   type ProductEditorMode
 } from '../lib/product-editor-drafts';
 import {
-  completeProductBatchPublishItem,
+  beginProductBatchPublishItem,
   importProductBatchPublishItems,
   inspectProductBatchPublishImport,
   loadProductBatchPublishItems,
   removeProductBatchPublishItem,
+  reconcileProductBatchPublishJobs,
+  recordProductBatchPublishResult,
+  recoverInterruptedProductBatchPublishItems,
   runProductBatchPublish,
   upsertProductBatchPublishItem,
   type ProductBatchPublishItem,
@@ -125,7 +139,7 @@ const ProductEditorWizard = defineAsyncComponent({
   timeout: 30_000
 });
 
-type Workspace = 'list' | 'publisher' | 'batch-publisher';
+type Workspace = 'list' | 'publisher' | 'batch-publisher' | 'tasks';
 type DraftSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type ProductActionConfirmation =
   | { kind: 'product'; draft: boolean; changedNames: string[] }
@@ -133,7 +147,7 @@ type ProductActionConfirmation =
   | { kind: 'batch-display'; display: 'online' | 'offline'; productIds: string[] }
   | { kind: 'recover-display'; job: ProductMutationJob };
 
-const workspaceIds = new Set<Workspace>(['list', 'publisher', 'batch-publisher']);
+const workspaceIds = new Set<Workspace>(['list', 'publisher', 'batch-publisher', 'tasks']);
 const editorModes = new Set<ProductEditorMode>(['quick', 'guided', 'advanced']);
 const editorStepIds = new Set<ProductEditorStepId>(PRODUCT_EDITOR_STEP_IDS);
 const PRODUCT_SCORE_DISPLAY_MAX = 6;
@@ -328,6 +342,23 @@ const creationMutationHistory = useQuery({
     query.state.data?.some((job) => productMutationJobIsBlocking(job.status)) ? 15_000 : false,
   staleTime: 0
 });
+const allProductMutationHistory = useQuery({
+  queryKey: ['product-mutation-jobs', 'all'],
+  queryFn: () =>
+    productMutationJobs
+      ? productMutationJobs.list({ pageSize: 100 })
+      : Promise.resolve({ items: [], page: 1, pageSize: 100, total: 0 }),
+  enabled: computed(() => productMutationJobs !== undefined && workspace.value === 'tasks'),
+  staleTime: 0
+});
+
+watch(
+  () => creationMutationHistory.data.value,
+  (jobs) => {
+    if (!jobs || !('localStorage' in globalThis)) return;
+    batchItems.value = reconcileProductBatchPublishJobs(globalThis.localStorage, jobs);
+  }
+);
 
 const categoryOptions = computed(() => flattenCategories(categoryTree.value));
 const batchCategoryLabels = computed<Record<string, string>>(() =>
@@ -468,12 +499,21 @@ const publish = useMutation({
             id: result.productId
           });
     if (!editProductId.value && editingBatchItemId.value && 'localStorage' in globalThis) {
-      completeProductBatchPublishItem(
-        globalThis.localStorage,
-        editingBatchItemId.value,
-        draft ? 'draft' : 'publish',
-        result.productId
-      );
+      recordProductBatchPublishResult(globalThis.localStorage, {
+        itemId: editingBatchItemId.value,
+        title: '',
+        target: draft ? 'draft' : 'publish',
+        status:
+          result.job && ['submitted', 'auditing', 'verifying', 'recovering'].includes(result.job.status)
+            ? 'accepted'
+            : result.job && result.job.status !== 'verified'
+              ? 'failed'
+              : 'succeeded',
+        productId: result.productId,
+        traceId: result.traceId,
+        message: result.job?.status === 'recovery-required' ? result.job.message : null,
+        job: result.job ?? null
+      });
       editingBatchItemId.value = '';
       reloadBatchItems();
     }
@@ -507,22 +547,27 @@ const batchPublish = useMutation({
       shouldStop: () => stopBatchRequested.value,
       onStart: (item) => {
         activeBatchItemId.value = item.id;
+        if ('localStorage' in globalThis) {
+          beginProductBatchPublishItem(globalThis.localStorage, item.id, input.target);
+          reloadBatchItems();
+        }
       },
       onResult: (result) => {
         activeBatchItemId.value = '';
         batchResults.value = { ...batchResults.value, [result.itemId]: result };
-        if (result.status !== 'succeeded' || !result.productId || !('localStorage' in globalThis)) return;
+        if (
+          (result.status !== 'succeeded' && result.status !== 'accepted' && result.status !== 'failed') ||
+          !('localStorage' in globalThis)
+        )
+          return;
         try {
-          completeProductBatchPublishItem(
-            globalThis.localStorage,
-            result.itemId,
-            result.target,
-            result.productId
-          );
+          recordProductBatchPublishResult(globalThis.localStorage, result);
           reloadBatchItems();
-          selectedBatchItemIds.value = selectedBatchItemIds.value.filter(
-            (itemId) => itemId !== result.itemId
-          );
+          if (result.status !== 'failed') {
+            selectedBatchItemIds.value = selectedBatchItemIds.value.filter(
+              (itemId) => itemId !== result.itemId
+            );
+          }
         } catch (error: unknown) {
           feedback.value = t('products.view.feedback.acceptedQueueSaveFailed', {
             title: result.title,
@@ -538,11 +583,13 @@ const batchPublish = useMutation({
   },
   onSuccess: async (results) => {
     const succeeded = results.filter((result) => result.status === 'succeeded').length;
+    const accepted = results.filter((result) => result.status === 'accepted').length;
     const failed = results.filter((result) => result.status === 'failed').length;
     const blocked = results.filter((result) => result.status === 'blocked').length;
     const cancelled = results.filter((result) => result.status === 'cancelled').length;
     feedback.value = t('products.view.feedback.batchFinished', {
       succeeded,
+      accepted,
       failed,
       blocked,
       cancelled
@@ -587,6 +634,13 @@ const currentPageProducts = computed(() => products.data.value?.items ?? []);
 const currentPageProductIds = computed(() => currentPageProducts.value.map((product) => product.id));
 const selectedProducts = computed(() =>
   currentPageProducts.value.filter((product) => selectedProductIds.value.includes(product.id))
+);
+const productDetailUrls = computed<Record<string, string>>(() =>
+  Object.fromEntries(
+    currentPageProducts.value.flatMap((product) =>
+      product.detailUrl ? [[product.id, product.detailUrl] as const] : []
+    )
+  )
 );
 const allCurrentPageProductsSelected = computed(
   () =>
@@ -699,6 +753,20 @@ const refreshDisplayMutation = useMutation({
     return productMutationJobs.refresh(job.id, job.revision);
   },
   onSuccess: () => queryClient.invalidateQueries({ queryKey: ['product-display-mutation-jobs'] })
+});
+const refreshTaskMutation = useMutation({
+  mutationFn: (job: ProductMutationJob) => {
+    if (!productMutationJobs) throw new Error(t('products.view.errors.jobUnsupported'));
+    return productMutationJobs.refresh(job.id, job.revision);
+  },
+  onSuccess: async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['product-mutation-jobs'] }),
+      queryClient.invalidateQueries({ queryKey: ['product-display-mutation-jobs'] }),
+      queryClient.invalidateQueries({ queryKey: ['product-creation-mutation-jobs'] }),
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+    ]);
+  }
 });
 const recoverDisplayMutation = useMutation({
   mutationFn: (job: ProductMutationJob) => {
@@ -1329,7 +1397,24 @@ const columns = computed<DataColumn<Product>[]>(() => [
     header: t('products.view.columns.product'),
     cell: ({ row }) =>
       h('div', { class: 'min-w-56 space-y-1' }, [
-        h('p', { class: 'font-medium' }, row.original.subject),
+        h('div', { class: 'flex items-start gap-1.5' }, [
+          h('p', { class: 'font-medium' }, row.original.subject),
+          row.original.detailUrl
+            ? h(
+                'a',
+                {
+                  href: row.original.detailUrl,
+                  target: '_blank',
+                  rel: 'noopener noreferrer',
+                  class:
+                    'mt-0.5 inline-flex shrink-0 cursor-pointer text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  title: t('products.links.viewOnAlibaba'),
+                  'aria-label': t('products.links.viewOnAlibaba')
+                },
+                [h(ExternalLink, { class: 'size-3.5', 'aria-hidden': 'true' })]
+              )
+            : null
+        ]),
         h('p', { class: 'font-mono text-xs text-muted-foreground' }, row.original.id)
       ])
   },
@@ -1612,7 +1697,7 @@ function startNewProduct(): void {
 }
 
 function setWorkspace(nextWorkspace: Workspace): void {
-  if (nextWorkspace === 'batch-publisher') reloadBatchItems();
+  if (nextWorkspace === 'batch-publisher' || nextWorkspace === 'tasks') reloadBatchItems();
   workspace.value = nextWorkspace;
   updateProductHash('push');
 }
@@ -2044,7 +2129,9 @@ watch(
 onMounted(async () => {
   globalThis.addEventListener('hashchange', handleProductRouteChange);
   globalThis.addEventListener('popstate', handleProductRouteChange);
-  reloadBatchItems();
+  if ('localStorage' in globalThis) {
+    batchItems.value = recoverInterruptedProductBatchPublishItems(globalThis.localStorage);
+  }
   if (await syncProductsFromHash()) return;
   if (!('localStorage' in globalThis)) return;
   const migratedV2 = migrateProductEditorDraftsV2(globalThis.localStorage);
@@ -2079,7 +2166,8 @@ onBeforeUnmount(() => {
     <Button
       v-for="item in [
         ['list', t('products.view.page.list')],
-        ['batch-publisher', t('products.view.page.batch')]
+        ['batch-publisher', t('products.view.page.batch')],
+        ['tasks', t('products.view.page.tasks')]
       ] as const"
       :key="item[0]"
       :variant="workspace === item[0] ? 'default' : 'outline'"
@@ -2695,6 +2783,20 @@ onBeforeUnmount(() => {
       @remove="removeBatchItem"
     />
     <ErrorNotice v-if="batchPublish.error.value" class="mt-3" :error="batchPublish.error.value" compact />
+  </template>
+
+  <template v-else-if="workspace === 'tasks'">
+    <ProductTaskCenter
+      :jobs="allProductMutationHistory.data.value?.items ?? []"
+      :batch-items="batchItems"
+      :loading="allProductMutationHistory.isFetching.value"
+      :error="allProductMutationHistory.error.value"
+      :refreshing-job-id="refreshTaskMutation.variables.value?.id ?? ''"
+      :detail-urls="productDetailUrls"
+      @refresh="allProductMutationHistory.refetch()"
+      @refresh-job="refreshTaskMutation.mutate($event)"
+      @recover="recoverDisplayJob"
+    />
   </template>
 
   <ProductTransferDialog

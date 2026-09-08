@@ -16,14 +16,14 @@ const definitions: PrivacyPageDefinition[] = [
     canonicalUrl: 'https://github.com/OKFred/oneVegetable/blob/master/docs/privacy-policy.md',
     input: 'docs/privacy-policy.md',
     language: 'zh-CN',
-    output: 'apps/extension/public/privacy.html',
+    output: 'store-listing/privacy/privacy.html',
     title: '一根青菜隐私政策'
   },
   {
     canonicalUrl: 'https://github.com/OKFred/oneVegetable/blob/master/docs/privacy-policy.en.md',
     input: 'docs/privacy-policy.en.md',
     language: 'en',
-    output: 'apps/extension/public/privacy-en.html',
+    output: 'store-listing/privacy/privacy-en.html',
     title: 'oneVegetable Privacy Policy'
   }
 ];

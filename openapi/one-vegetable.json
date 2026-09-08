@@ -14135,6 +14135,7 @@
           "status",
           "score",
           "imageUrl",
+          "detailUrl",
           "updatedAt",
           "categoryId"
         ],
@@ -14143,9 +14144,17 @@
           "encryptedId": { "type": ["string", "null"] },
           "subject": { "type": "string" },
           "groupName": { "type": "string" },
-          "status": { "type": "string", "enum": ["online", "offline", "draft", "auditing", "rejected"] },
+          "status": {
+            "type": "string",
+            "enum": ["online", "offline", "draft", "auditing", "rejected", "unknown"]
+          },
           "score": { "type": "integer", "minimum": 0, "maximum": 100 },
           "imageUrl": { "type": ["string", "null"], "format": "uri" },
+          "detailUrl": {
+            "type": ["string", "null"],
+            "format": "uri",
+            "description": "Alibaba 商品接口返回的 PC 端商品详情地址；不得由客户端拼接。"
+          },
           "updatedAt": { "type": "string", "format": "date-time" },
           "categoryId": { "type": ["integer", "null"] }
         }
@@ -14805,6 +14814,72 @@
           "expiresAt": { "type": ["string", "null"], "format": "date-time" },
           "read": { "type": "boolean" },
           "recommended": { "type": "boolean" }
+        }
+      },
+      "S3ObjectListRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "prefix": { "type": "string", "maxLength": 2048 },
+          "continuationToken": { "type": "string", "maxLength": 2048 },
+          "maximum": { "type": "integer", "minimum": 1, "maximum": 1000 }
+        }
+      },
+      "S3ObjectPutRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "key", "contentBase64", "contentType"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "key": { "type": "string", "minLength": 1, "maxLength": 1024 },
+          "contentBase64": { "type": "string", "contentEncoding": "base64", "maxLength": 6990508 },
+          "contentType": { "type": "string", "minLength": 1, "maxLength": 128 }
+        }
+      },
+      "S3ObjectTargetRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "key"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "key": { "type": "string", "minLength": 1, "maxLength": 1024 }
+        }
+      },
+      "S3StorageConfiguration": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "endpoint",
+          "region",
+          "bucket",
+          "accessKeyId",
+          "secretAccessKey",
+          "sessionToken",
+          "pathStyle",
+          "rootPrefix"
+        ],
+        "properties": {
+          "endpoint": { "type": "string", "format": "uri", "pattern": "^https://" },
+          "region": { "type": "string", "minLength": 1, "maxLength": 63 },
+          "bucket": { "type": "string", "minLength": 3, "maxLength": 63 },
+          "accessKeyId": { "type": "string", "minLength": 1, "maxLength": 512, "writeOnly": true },
+          "secretAccessKey": { "type": "string", "minLength": 1, "maxLength": 1024, "writeOnly": true },
+          "sessionToken": { "type": ["string", "null"], "maxLength": 4096, "writeOnly": true },
+          "pathStyle": { "type": "boolean" },
+          "rootPrefix": { "type": "string", "maxLength": 1024 }
+        }
+      },
+      "S3StorageConfigurationUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "configuration", "revision", "remark"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "configuration": { "$ref": "#/components/schemas/S3StorageConfiguration" },
+          "revision": { "type": ["integer", "null"], "minimum": 1 },
+          "remark": { "type": ["string", "null"], "maxLength": 500 }
         }
       },
       "SchemaPublishRequest": {

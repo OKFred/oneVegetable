@@ -10,6 +10,7 @@ import {
 import type {
   AlibabaLanguage,
   ProductMutationResult,
+  ProductMutationJob,
   ProductSchemaField,
   ProductSchemaFieldIssue,
   SchemaPublishRequest,
@@ -18,19 +19,21 @@ import type {
 import type { DraftStorage } from './product-editor-drafts';
 import { translateUi } from '../i18n';
 
-export const PRODUCT_BATCH_PUBLISH_STORAGE_KEY = 'one-vegetable-product-batch-publish-v1';
+export const PRODUCT_BATCH_PUBLISH_STORAGE_KEY = 'one-vegetable-product-batch-publish-v2';
+const LEGACY_PRODUCT_BATCH_PUBLISH_STORAGE_KEY = 'one-vegetable-product-batch-publish-v1';
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const MAX_ITEMS = 20;
 const MAX_AGE_MILLISECONDS = 30 * 24 * 60 * 60 * 1000;
 const TITLE_FIELD_IDS = new Set(['producttitle', 'product_title', 'subject']);
 
 export type ProductBatchPublishTarget = 'draft' | 'publish';
-export type ProductBatchPublishStoredStatus = 'queued' | 'draft-saved' | 'published';
-export type ProductBatchPublishRunStatus = 'succeeded' | 'failed' | 'blocked' | 'cancelled';
+export type ProductBatchPublishStoredStatus =
+  'queued' | 'submitting' | 'verifying' | 'attention-required' | 'draft-saved' | 'published';
+export type ProductBatchPublishRunStatus = 'succeeded' | 'accepted' | 'failed' | 'blocked' | 'cancelled';
 
 export interface ProductBatchPublishItem {
-  schemaVersion: 1;
+  schemaVersion: 2;
   id: string;
   title: string;
   categoryId: string;
@@ -39,6 +42,11 @@ export interface ProductBatchPublishItem {
   xml: string;
   status: ProductBatchPublishStoredStatus;
   platformProductId: string | null;
+  target: ProductBatchPublishTarget | null;
+  mutationJobId: string | null;
+  traceId: string | null;
+  lastError: string | null;
+  attemptCount: number;
   createdAtUtc: number;
   updatedAtUtc: number;
 }
@@ -80,6 +88,7 @@ export interface ProductBatchPublishRunResult {
   productId: string | null;
   traceId: string | null;
   message: string | null;
+  job: ProductMutationJob | null;
 }
 
 export interface ProductBatchPublishRunnerOptions {
@@ -96,7 +105,9 @@ export function loadProductBatchPublishItems(
   draftStorage: DraftStorage,
   now = Date.now()
 ): ProductBatchPublishItem[] {
-  const raw = draftStorage.getItem(PRODUCT_BATCH_PUBLISH_STORAGE_KEY);
+  const raw =
+    draftStorage.getItem(PRODUCT_BATCH_PUBLISH_STORAGE_KEY) ??
+    draftStorage.getItem(LEGACY_PRODUCT_BATCH_PUBLISH_STORAGE_KEY);
   if (!raw) return [];
 
   let parsed: unknown;
@@ -107,13 +118,130 @@ export function loadProductBatchPublishItems(
     return [];
   }
 
-  const valid = Array.isArray(parsed) ? parsed.filter(isProductBatchPublishItem) : [];
+  const valid = Array.isArray(parsed) ? parsed.flatMap(migrateProductBatchPublishItem) : [];
   const retained = valid
     .filter((item) => now - item.updatedAtUtc <= MAX_AGE_MILLISECONDS && item.updatedAtUtc <= now + 60_000)
     .sort((left, right) => right.updatedAtUtc - left.updatedAtUtc)
     .slice(0, MAX_ITEMS);
-  if (!Array.isArray(parsed) || retained.length !== parsed.length) writeItems(draftStorage, retained);
+  if (
+    !Array.isArray(parsed) ||
+    retained.length !== parsed.length ||
+    draftStorage.getItem(PRODUCT_BATCH_PUBLISH_STORAGE_KEY) === null
+  ) {
+    writeItems(draftStorage, retained);
+  }
+  draftStorage.removeItem(LEGACY_PRODUCT_BATCH_PUBLISH_STORAGE_KEY);
   return retained;
+}
+
+export function recoverInterruptedProductBatchPublishItems(
+  draftStorage: DraftStorage,
+  now = Date.now()
+): ProductBatchPublishItem[] {
+  const items = loadProductBatchPublishItems(draftStorage, now).map((item) =>
+    item.status === 'submitting'
+      ? {
+          ...item,
+          status: 'attention-required' as const,
+          lastError: translateUi('products.batch.errors.interrupted'),
+          updatedAtUtc: now
+        }
+      : item
+  );
+  writeItems(draftStorage, items);
+  return items;
+}
+
+export function beginProductBatchPublishItem(
+  draftStorage: DraftStorage,
+  id: string,
+  target: ProductBatchPublishTarget,
+  now = Date.now()
+): ProductBatchPublishItem {
+  return updateStoredItem(draftStorage, id, now, (item) => ({
+    ...item,
+    status: 'submitting',
+    target,
+    mutationJobId: null,
+    traceId: null,
+    lastError: null,
+    attemptCount: item.attemptCount + 1
+  }));
+}
+
+export function recordProductBatchPublishResult(
+  draftStorage: DraftStorage,
+  result: ProductBatchPublishRunResult,
+  now = Date.now()
+): ProductBatchPublishItem {
+  return updateStoredItem(draftStorage, result.itemId, now, (item) => {
+    if (result.status === 'blocked' || result.status === 'cancelled') return item;
+    if (result.status === 'failed') {
+      return {
+        ...item,
+        status: 'attention-required',
+        traceId: result.traceId,
+        lastError: result.message,
+        mutationJobId: result.job?.id ?? item.mutationJobId
+      };
+    }
+    if (result.status === 'accepted' && result.job) {
+      return {
+        ...item,
+        status: 'verifying',
+        platformProductId: result.productId,
+        target: result.target,
+        mutationJobId: result.job.id,
+        traceId: result.traceId,
+        lastError: null
+      };
+    }
+    return {
+      ...item,
+      status: result.target === 'draft' ? 'draft-saved' : 'published',
+      platformProductId: result.productId,
+      target: result.target,
+      mutationJobId: result.job?.id ?? null,
+      traceId: result.traceId,
+      lastError: null
+    };
+  });
+}
+
+export function reconcileProductBatchPublishJobs(
+  draftStorage: DraftStorage,
+  jobs: readonly ProductMutationJob[],
+  now = Date.now()
+): ProductBatchPublishItem[] {
+  const byId = new Map(jobs.map((job) => [job.id, job]));
+  const items = loadProductBatchPublishItems(draftStorage, now).map((item) => {
+    if (item.status !== 'verifying' || !item.mutationJobId || !item.target) return item;
+    const job = byId.get(item.mutationJobId);
+    if (!job) return item;
+    if (job.status === 'verified') {
+      return {
+        ...item,
+        status: item.target === 'draft' ? ('draft-saved' as const) : ('published' as const),
+        platformProductId: job.productId,
+        traceId: job.traceId,
+        lastError: null,
+        updatedAtUtc: now
+      };
+    }
+    if (job.status === 'failed' || job.status === 'recovery-required') {
+      return {
+        ...item,
+        status: 'attention-required' as const,
+        platformProductId: job.productId,
+        traceId: job.traceId,
+        lastError: job.message,
+        updatedAtUtc: now
+      };
+    }
+    return item;
+  });
+  writeItems(draftStorage, items);
+  return items;
 }
 
 export function upsertProductBatchPublishItem(
@@ -233,6 +361,8 @@ export function completeProductBatchPublishItem(
     ...current,
     status: target === 'draft' ? 'draft-saved' : 'published',
     platformProductId: productId,
+    target,
+    lastError: null,
     updatedAtUtc: now
   };
   writeItems(
@@ -307,7 +437,6 @@ export async function runProductBatchPublish(
       options.onResult?.(cancelled);
       continue;
     }
-    options.onStart?.(item);
     const preflight = inspectProductBatchPublishItem(item, options.target, options.locale);
     if (!preflight.ready || !preflight.request) {
       const blocked = resultFor(
@@ -322,22 +451,36 @@ export async function runProductBatchPublish(
       options.onResult?.(blocked);
       continue;
     }
+    options.onStart?.(item);
     try {
       const response = await options.submit(preflight.request, item);
+      const jobFailed = response.job?.status === 'failed' || response.job?.status === 'recovery-required';
+      const jobPending =
+        response.job !== undefined &&
+        ['submitted', 'auditing', 'verifying', 'recovering'].includes(response.job.status);
       const result = response.success
-        ? resultFor(item, options.target, 'succeeded', response.productId, response.traceId, null)
+        ? resultFor(
+            item,
+            options.target,
+            jobFailed ? 'failed' : jobPending ? 'accepted' : 'succeeded',
+            response.productId,
+            response.traceId,
+            jobFailed ? (response.job?.message ?? translateUi('products.batch.errors.verifyFailed')) : null,
+            response.job ?? null
+          )
         : resultFor(
             item,
             options.target,
             'failed',
             response.productId,
             response.traceId,
-            translateUi('products.batch.errors.platformNotAccepted')
+            translateUi('products.batch.errors.platformNotAccepted'),
+            response.job ?? null
           );
       results.push(result);
       options.onResult?.(result);
     } catch (error: unknown) {
-      const failed = resultFor(item, options.target, 'failed', null, null, errorMessage(error));
+      const failed = resultFor(item, options.target, 'failed', null, null, errorMessage(error), null);
       results.push(failed);
       options.onResult?.(failed);
     }
@@ -387,9 +530,10 @@ function resultFor(
   status: ProductBatchPublishRunStatus,
   productId: string | null,
   traceId: string | null,
-  message: string | null
+  message: string | null,
+  job: ProductMutationJob | null = null
 ): ProductBatchPublishRunResult {
-  return { itemId: item.id, title: item.title, target, status, productId, traceId, message };
+  return { itemId: item.id, title: item.title, target, status, productId, traceId, message, job };
 }
 
 function normalizeCategoryId(value: string): string {
@@ -419,6 +563,11 @@ function createProductBatchPublishItem(
     xml: normalizedXml,
     status: 'queued',
     platformProductId: null,
+    target: null,
+    mutationJobId: null,
+    traceId: null,
+    lastError: null,
+    attemptCount: 0,
     createdAtUtc: options.createdAtUtc ?? options.updatedAtUtc,
     updatedAtUtc: options.updatedAtUtc
   };
@@ -438,11 +587,52 @@ function isProductBatchPublishItem(value: unknown): value is ProductBatchPublish
     isAlibabaLanguage(value.language) &&
     (value.market === 'wholesale' || value.market === 'sourcing') &&
     typeof value.xml === 'string' &&
-    (value.status === 'queued' || value.status === 'draft-saved' || value.status === 'published') &&
+    ['queued', 'submitting', 'verifying', 'attention-required', 'draft-saved', 'published'].includes(
+      value.status as string
+    ) &&
     (value.platformProductId === null || typeof value.platformProductId === 'string') &&
+    (value.target === null || value.target === 'draft' || value.target === 'publish') &&
+    (value.mutationJobId === null || typeof value.mutationJobId === 'string') &&
+    (value.traceId === null || typeof value.traceId === 'string') &&
+    (value.lastError === null || typeof value.lastError === 'string') &&
+    typeof value.attemptCount === 'number' &&
+    Number.isSafeInteger(value.attemptCount) &&
+    value.attemptCount >= 0 &&
     isTimestamp(value.createdAtUtc) &&
     isTimestamp(value.updatedAtUtc)
   );
+}
+
+function migrateProductBatchPublishItem(value: unknown): ProductBatchPublishItem[] {
+  if (isProductBatchPublishItem(value)) return [value];
+  if (!isRecord(value) || value.schemaVersion !== 1) return [];
+  const migrated = {
+    ...value,
+    schemaVersion: SCHEMA_VERSION,
+    target: null,
+    mutationJobId: null,
+    traceId: null,
+    lastError: null,
+    attemptCount: 0
+  };
+  return isProductBatchPublishItem(migrated) ? [migrated] : [];
+}
+
+function updateStoredItem(
+  draftStorage: DraftStorage,
+  id: string,
+  now: number,
+  update: (item: ProductBatchPublishItem) => ProductBatchPublishItem
+): ProductBatchPublishItem {
+  const items = loadProductBatchPublishItems(draftStorage, now);
+  const current = items.find((item) => item.id === id);
+  if (!current) throw new Error(translateUi('products.batch.errors.missing'));
+  const updated = { ...update(current), updatedAtUtc: now };
+  writeItems(
+    draftStorage,
+    items.map((item) => (item.id === id ? updated : item))
+  );
+  return updated;
 }
 
 function isTimestamp(value: unknown): value is number {

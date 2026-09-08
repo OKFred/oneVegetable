@@ -12,13 +12,18 @@ import Card from './ui/Card.vue';
 import { useServices } from '../lib/services';
 
 const emit = defineEmits<{ ready: [destination?: 'credential-acquisition'] }>();
-const { t } = useUiI18n();
+const { locale, t } = useUiI18n();
 const { onboarding, mode } = useServices();
 const visible = ref(false);
 const acknowledged = ref(false);
 const saving = ref(false);
 const error = ref('');
 const available = computed(() => mode !== 'mock' && onboarding !== undefined);
+const privacyPolicyUrl = computed(() =>
+  locale.value === 'zh-CN'
+    ? 'https://github.com/OKFred/oneVegetable/blob/master/docs/privacy-policy.md'
+    : 'https://github.com/OKFred/oneVegetable/blob/master/docs/privacy-policy.en.md'
+);
 const steps = computed(() => [
   {
     image: developerRegistrationImage,
@@ -151,9 +156,13 @@ async function finish(destination?: 'credential-acquisition'): Promise<void> {
         </label>
         <p v-if="error" class="mt-3 text-sm text-destructive">{{ error }}</p>
         <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
-          <a class="text-sm text-emerald-700 underline" href="/privacy.html" target="_blank">{{
-            t('auth.onboarding.privacy')
-          }}</a>
+          <a
+            class="text-sm text-emerald-700 underline"
+            :href="privacyPolicyUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            >{{ t('auth.onboarding.privacy') }}</a
+          >
           <div class="flex flex-wrap justify-end gap-2">
             <Button variant="outline" :disabled="!acknowledged || saving" @click="finish()">
               {{ t('auth.onboarding.browseOnly') }}

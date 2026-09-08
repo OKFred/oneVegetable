@@ -29,6 +29,7 @@ import { registerProductDescriptionTemplateRoutes } from './product-description-
 import { ProductDescriptionTemplateService } from './product-description-templates/service';
 import { registerProductMutationRoutes } from './product-mutations/routes';
 import { registerMetaSocialRoutes } from './social-meta/routes';
+import { registerS3StorageRoutes } from './storage/s3-routes';
 import {
   ProductDisplayNoChangeError,
   ProductDisplayTargetMismatchError,
@@ -45,9 +46,11 @@ import type {
   ProbeResponse,
   ProductDisplayMutationResult,
   ProductDisplayRequest,
+  ProductDetail,
   ProductListQuery,
   ProductPage,
   ProductMutationResult,
+  SchemaPublishRequest,
   ProductSchema,
   ProductSchemaRenderRequest,
   ProductSchemaUpdateRequest
@@ -69,6 +72,7 @@ import type { MetaSocialService } from './social-meta/service';
 import type { ExtensionSocialDeviceService } from './social-meta/extension-device-service';
 import type { SocialMediaAssetService } from './social-meta/media-service';
 import type { SocialPublishingService } from './social-meta/publishing-service';
+import type { S3StorageConfigurationService } from './storage/s3-configuration';
 
 export type ApiRuntime = 'node' | 'cloudflare';
 export type ApiDatabase = 'sqlite' | 'd1';
@@ -102,6 +106,7 @@ export interface ApiAppOptions {
   socialMediaAssets?: SocialMediaAssetService;
   socialPublishing?: SocialPublishingService;
   extensionSocialDevices?: ExtensionSocialDeviceService;
+  s3Storage?: S3StorageConfigurationService;
 }
 
 export interface RequestLogContext {
@@ -142,6 +147,16 @@ export function createApiApp(options: ApiAppOptions): Hono {
     ? new ProductMutationLifecycleService(
         options.productMutationJobs,
         {
+          async publish(request: SchemaPublishRequest, requestId: string) {
+            return (await dynamicGateway.request('publishProduct', request, {
+              requestId
+            })) as ProductMutationResult;
+          },
+          async saveDraft(request: SchemaPublishRequest, requestId: string) {
+            return (await dynamicGateway.request('saveProductDraft', request, {
+              requestId
+            })) as ProductMutationResult;
+          },
           async update(request: ProductSchemaUpdateRequest, requestId: string) {
             return (await dynamicGateway.request('updateProduct', request, {
               requestId
@@ -151,6 +166,13 @@ export function createApiApp(options: ApiAppOptions): Hono {
             return (await dynamicGateway.request('renderProductSchema', request, {
               requestId
             })) as ProductSchema;
+          },
+          async get(productId: string, draft: boolean, language: 'zh_CN' | 'en_US', requestId: string) {
+            return (await dynamicGateway.request(
+              draft ? 'getProductDraft' : 'getProduct',
+              draft ? { productId, language } : { productId },
+              { requestId }
+            )) as ProductDetail;
           },
           async updateDisplay(request: ProductDisplayRequest, requestId: string) {
             return (await dynamicGateway.request('updateProductDisplay', request, {
@@ -276,6 +298,14 @@ export function createApiApp(options: ApiAppOptions): Hono {
       ...(options.socialMediaAssets ? { mediaAssets: options.socialMediaAssets } : {}),
       ...(options.socialPublishing ? { publishing: options.socialPublishing } : {}),
       ...(options.extensionSocialDevices ? { extensionDevices: options.extensionSocialDevices } : {}),
+      ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
+    });
+  }
+
+  if (options.authService && options.s3Storage) {
+    registerS3StorageRoutes(api, {
+      authService: options.authService,
+      service: options.s3Storage,
       ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
     });
   }
@@ -432,21 +462,28 @@ export function createApiApp(options: ApiAppOptions): Hono {
         }
       }
       const data = productMutations
-        ? parsed.body.operation === 'updateProduct'
-          ? await productMutations.submitUpdate({
+        ? parsed.body.operation === 'publishProduct' || parsed.body.operation === 'saveProductDraft'
+          ? await productMutations.submitCreation({
               requestId: parsed.requestId,
               actor: authenticated?.principal ?? extensionAdminPrincipal(),
-              request: parsed.body.payload as unknown as ProductSchemaUpdateRequest
+              operation: parsed.body.operation,
+              request: parsed.body.payload as unknown as SchemaPublishRequest
             })
-          : parsed.body.operation === 'updateProductDisplay'
-            ? await productMutations.submitDisplay({
+          : parsed.body.operation === 'updateProduct'
+            ? await productMutations.submitUpdate({
                 requestId: parsed.requestId,
                 actor: authenticated?.principal ?? extensionAdminPrincipal(),
-                request: parsed.body.payload as unknown as ProductDisplayRequest
+                request: parsed.body.payload as unknown as ProductSchemaUpdateRequest
               })
-            : await dynamicGateway.request(parsed.body.operation, parsed.body.payload, {
-                requestId: parsed.requestId
-              })
+            : parsed.body.operation === 'updateProductDisplay'
+              ? await productMutations.submitDisplay({
+                  requestId: parsed.requestId,
+                  actor: authenticated?.principal ?? extensionAdminPrincipal(),
+                  request: parsed.body.payload as unknown as ProductDisplayRequest
+                })
+              : await dynamicGateway.request(parsed.body.operation, parsed.body.payload, {
+                  requestId: parsed.requestId
+                })
         : await dynamicGateway.request(parsed.body.operation, parsed.body.payload, {
             requestId: parsed.requestId
           });
