@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AlibabaClient } from '../src/alibaba-client';
 import { PhotoAdapter } from '../src/photo-adapter';
 import hierarchyFixture from '../../../mock/data/photobank-level-coordinates.json';
+import incompleteUploads from '../../../mock/data/photobank-incomplete-upload.json';
 
 function response(method: string, body: Record<string, unknown>) {
   return {
@@ -19,6 +20,34 @@ function client(
 }
 
 describe('PhotoAdapter', () => {
+  it('returns the requested parent ID when a newly created group uses level coordinates', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve(response(method, { photobank_group: hierarchyFixture.groups[1] }))
+    );
+    const result = await new PhotoAdapter(client(call)).operateGroup({
+      operation: 'add',
+      groupId: '300000001',
+      groupName: 'Child A'
+    });
+    expect(result.group?.parentId).toBe('300000001');
+  });
+  it.each(incompleteUploads)(
+    'does not treat an incomplete upload response as a successful photo: %j',
+    async (incomplete) => {
+      const callWithFile = vi.fn<AlibabaClient['callWithFile']>((method) =>
+        Promise.resolve(response(method, { upload_image_response: incomplete }))
+      );
+      await expect(
+        new PhotoAdapter(client(vi.fn(), callWithFile)).upload({
+          contentBase64: '/9j/2Q==',
+          contentType: 'image/jpeg',
+          byteLength: 4,
+          fileName: 'test.jpg',
+          groupId: '2001'
+        })
+      ).rejects.toThrow('有效素材标识');
+    }
+  );
   it('resolves ancestor IDs from complete level coordinates, not level numbers', async () => {
     const call = vi.fn<AlibabaClient['call']>((method) =>
       Promise.resolve(response(method, hierarchyFixture))

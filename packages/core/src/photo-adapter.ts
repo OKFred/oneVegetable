@@ -58,6 +58,8 @@ export class PhotoAdapter {
     }
     if (!record) throw new Error('图库分组操作未返回分组信息');
     const group = normalizeGroup(record);
+    if (request.operation === 'add')
+      group.parentId = request.groupId && request.groupId !== '-1' ? request.groupId : null;
     return { operation: request.operation, groupId: group.id, group };
   }
 
@@ -103,10 +105,14 @@ export class PhotoAdapter {
     );
     const root = findRecord(unwrap(call.data, call.method), ['upload_image_response']);
     if (!root) throw new Error('图库上传未返回素材信息');
+    const id = readString(root, ['file_id', 'id']);
+    const rawUrl = readString(root, ['photobank_url', 'url']);
+    if (!id?.trim() || !rawUrl?.trim()) throw new Error('图库上传未返回有效素材标识或地址');
+    const url = normalizeUrl(rawUrl);
     return {
-      id: readString(root, ['file_id', 'id']) ?? '',
+      id,
       name: readString(root, ['file_name']) ?? fileName,
-      url: normalizeUrl(readString(root, ['photobank_url', 'url'])),
+      url,
       groupId: request.groupId ?? '-1',
       width: readInteger(root, ['width']) ?? null,
       height: readInteger(root, ['height']) ?? null,
