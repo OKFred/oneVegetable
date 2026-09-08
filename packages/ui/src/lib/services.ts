@@ -18,6 +18,7 @@ import type {
 import type { SocialPublishingClient } from '@one-vegetable/core';
 
 import type { RuntimeMetaStatus } from './data-source';
+import type { S3StorageControl } from '@one-vegetable/core/s3-storage';
 
 export interface AppRuntimeState {
   backendMeta: BackendMeta | null;
@@ -33,6 +34,7 @@ export interface AppServices {
   localData?: LocalDataRepository;
   onboarding?: OnboardingRepository;
   control?: ControlClient;
+  s3Storage?: S3StorageControl;
   socialPublishing?: SocialPublishingClient;
   extensionSocialBackend?: ExtensionSocialBackendRepository;
   productDescriptionTemplates?: ProductDescriptionTemplateClient;

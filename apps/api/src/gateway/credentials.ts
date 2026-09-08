@@ -44,7 +44,10 @@ export class GatewayConfigurationError extends Error {
       | 'ALIBABA_ENDPOINT_INVALID'
       | 'ALIBABA_SIGN_METHOD_INVALID'
       | 'META_CREDENTIAL_ENCRYPTION_KEY_INVALID'
-      | 'META_CREDENTIAL_VAULT_UNREADABLE',
+      | 'META_CREDENTIAL_VAULT_UNREADABLE'
+      | 'S3_CREDENTIAL_ENCRYPTION_KEY_INVALID'
+      | 'S3_CREDENTIAL_VAULT_UNREADABLE'
+      | 'S3_STORAGE_NOT_CONFIGURED',
     message: string
   ) {
     super(message);

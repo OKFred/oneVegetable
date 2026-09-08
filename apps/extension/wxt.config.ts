@@ -4,7 +4,13 @@ import rootPackage from '../../package.json' with { type: 'json' };
 
 export default defineConfig({
   modules: ['@wxt-dev/module-vue'],
-  vite: () => ({ plugins: [tailwindcss()] }),
+  vite: () => ({
+    define: {
+      __ONE_VEGETABLE_EXTENSION__: 'true',
+      'import.meta.env.VITE_APP_RUNTIME': JSON.stringify('extension')
+    },
+    plugins: [tailwindcss()]
+  }),
   manifest: {
     name: '__MSG_extName__',
     version: rootPackage.version,

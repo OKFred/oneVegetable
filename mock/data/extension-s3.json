@@ -1,0 +1,14 @@
+{
+  "configuration": {
+    "endpoint": "https://storage.example.com",
+    "region": "auto",
+    "bucket": "gallery",
+    "accessKeyId": "fixture-access-key",
+    "secretAccessKey": "fixture-secret-never-log",
+    "sessionToken": null,
+    "pathStyle": true,
+    "rootPrefix": "test-gallery"
+  },
+  "listXml": "<ListBucketResult><IsTruncated>false</IsTruncated><Contents><Key>test-gallery/assets/photo.png</Key><Size>4</Size><ETag>test-etag</ETag></Contents></ListBucketResult>",
+  "bytes": [1, 2, 3, 4]
+}

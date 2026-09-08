@@ -421,6 +421,7 @@ export interface LocalDataCategory {
     | 'credentials'
     | 'product-mutation-jobs'
     | 'social-backend-device'
+    | 's3-credentials'
     | 'drafts'
     | 'diagnostics'
     | 'preferences';

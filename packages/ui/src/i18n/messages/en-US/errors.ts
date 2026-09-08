@@ -1,5 +1,15 @@
 export const errors = {
   codes: {
+    S3_PERMISSION_REQUIRED: 'Save your S3 settings again and allow access to the storage host.',
+    S3_NOT_CONFIGURED: 'Configure S3 asset storage in Settings first.',
+    S3_CONFIGURATION_INVALID: 'Invalid S3 configuration. Check the HTTPS endpoint, bucket and credentials.',
+    S3_CONFIGURATION_CORRUPT:
+      'Local S3 credentials cannot be decrypted. Clear local data and configure S3 again.',
+    S3_UNTRUSTED_SENDER: 'Only the extension workbench can access S3.',
+    S3_RESPONSE_INVALID: 'Invalid S3 background response. Reopen the workbench.',
+    S3_OBJECT_TOO_LARGE: 'An S3 asset must not exceed 5 MiB.',
+    S3_STORAGE_FAILED:
+      'S3 operation failed. Check host permissions, credentials and connectivity. After an upload error, check storage before retrying.',
     UNKNOWN_ERROR: 'An unknown error occurred.',
     GATEWAY_ERROR: 'The gateway operation failed.',
     INTERNAL_ERROR: 'The service could not complete the operation.',

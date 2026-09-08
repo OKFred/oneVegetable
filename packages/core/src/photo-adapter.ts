@@ -21,7 +21,21 @@ export class PhotoAdapter {
     const call = await this.client.call('alibaba.icbu.photobank.group.list', {
       ...(parentId && parentId !== '-1' ? { id: numericOrString(parentId) } : {})
     });
-    return findRecords(unwrap(call.data, call.method), ['photo_album_group']).map(normalizeGroup);
+    const records = findRecords(unwrap(call.data, call.method), ['photo_album_group']);
+    const groups = records.map(normalizeGroup);
+    return groups.map((group, index) => {
+      if (group.level === 1) return group;
+      const record = records[index];
+      const parentIndex = records.findIndex(
+        (candidate, candidateIndex) =>
+          groups[candidateIndex]?.level === group.level - 1 &&
+          Array.from({ length: group.level - 1 }, (_, level) => `level${level + 1}`).every(
+            (key) => readString(candidate, [key]) === (record ? readString(record, [key]) : null)
+          )
+      );
+      // level1/2/3 are coordinates, not API group IDs. Resolve the complete ancestor prefix.
+      return { ...group, parentId: groups[parentIndex]?.id ?? null };
+    });
   }
 
   async operateGroup(request: PhotoGroupOperationRequest): Promise<PhotoGroupOperationResult> {
@@ -44,6 +58,8 @@ export class PhotoAdapter {
     }
     if (!record) throw new Error('图库分组操作未返回分组信息');
     const group = normalizeGroup(record);
+    if (request.operation === 'add')
+      group.parentId = request.groupId && request.groupId !== '-1' ? request.groupId : null;
     return { operation: request.operation, groupId: group.id, group };
   }
 
@@ -89,10 +105,14 @@ export class PhotoAdapter {
     );
     const root = findRecord(unwrap(call.data, call.method), ['upload_image_response']);
     if (!root) throw new Error('图库上传未返回素材信息');
+    const id = readString(root, ['file_id', 'id']);
+    const rawUrl = readString(root, ['photobank_url', 'url']);
+    if (!id?.trim() || !rawUrl?.trim()) throw new Error('图库上传未返回有效素材标识或地址');
+    const url = normalizeUrl(rawUrl);
     return {
-      id: readString(root, ['file_id', 'id']) ?? '',
+      id,
       name: readString(root, ['file_name']) ?? fileName,
-      url: normalizeUrl(readString(root, ['photobank_url', 'url'])),
+      url,
       groupId: request.groupId ?? '-1',
       width: readInteger(root, ['width']) ?? null,
       height: readInteger(root, ['height']) ?? null,

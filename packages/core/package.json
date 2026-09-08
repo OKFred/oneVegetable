@@ -1,6 +1,6 @@
 {
   "name": "@one-vegetable/core",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "private": true,
   "type": "module",
   "exports": {
@@ -11,6 +11,7 @@
     "./errors": "./src/errors.ts",
     "./mock": "./src/mock-client.ts",
     "./runtime": "./src/runtime.ts",
+    "./s3-storage": "./src/s3-storage.ts",
     "./templates": "./src/product-description-template-client.ts",
     "./version": "./src/version.ts"
   },
@@ -21,6 +22,7 @@
     "@noble/hashes": "2.3.0",
     "ajv": "8.20.0",
     "ajv-i18n": "4.2.0",
+    "aws4fetch": "1.0.20",
     "parse5": "8.0.1"
   },
   "devDependencies": {

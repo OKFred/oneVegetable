@@ -1,6 +1,6 @@
 import { GatewayException, withGatewayRequestId } from './errors';
 
-export type NetworkServiceId = 'alibaba' | 'bff' | 'external-photo' | 'meta';
+export type NetworkServiceId = 'alibaba' | 'bff' | 'external-photo' | 'meta' | 's3';
 export type NetworkResponseType = 'json' | 'text' | 'bytes';
 
 export interface NetworkTransport {
@@ -35,7 +35,7 @@ export interface NetworkRequest {
   service: NetworkServiceId;
   url: string | URL;
   requestId?: string;
-  method?: 'GET' | 'POST';
+  method?: 'GET' | 'POST' | 'PUT' | 'HEAD' | 'DELETE';
   headers?: Readonly<Record<string, string>>;
   body?: BodyInit | null;
   bodySizeBytes?: number;

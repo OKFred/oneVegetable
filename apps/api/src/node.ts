@@ -28,6 +28,11 @@ import { MetaPublisher } from './social-meta/meta-publisher';
 import { SocialPublishingService } from './social-meta/publishing-service';
 import { SqlExtensionSocialDeviceRepository } from './social-meta/extension-device-repository';
 import { ExtensionSocialDeviceService } from './social-meta/extension-device-service';
+import {
+  S3StorageConfigurationCipher,
+  S3StorageConfigurationService,
+  SqlS3StorageConfigurationRepository
+} from './storage/s3-configuration';
 
 const port = readPort(process.env.ONE_VEGETABLE_PORT);
 const runtimeConfiguration = readRuntimeConfiguration(process.env, 'local-node');
@@ -76,6 +81,12 @@ const metaSocial = metaSecretCipher
       apiPrefix: runtimeConfiguration.apiPrefix
     })
   : undefined;
+const s3Storage = metaSecretCipher
+  ? new S3StorageConfigurationService(
+      new SqlS3StorageConfigurationRepository(database.executor),
+      await S3StorageConfigurationCipher.create(process.env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY)
+    )
+  : undefined;
 const socialPublishingRepository = new SqlSocialPublishingRepository(database.executor);
 const extensionSocialDevices = new ExtensionSocialDeviceService(
   new SqlExtensionSocialDeviceRepository(database.executor)
@@ -113,6 +124,7 @@ const app = createApiApp({
   featureFlags,
   realMutationControl: new RealMutationControlService(metadataRepository, featureFlags),
   ...(metaSocial ? { metaSocial } : {}),
+  ...(s3Storage ? { s3Storage } : {}),
   socialMediaAssets,
   ...(socialPublishing ? { socialPublishing } : {}),
   extensionSocialDevices,

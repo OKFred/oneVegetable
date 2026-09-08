@@ -1,5 +1,14 @@
 export const errors = {
   codes: {
+    S3_PERMISSION_REQUIRED: '请在设置中重新保存 S3 配置，并允许访问对应存储域名。',
+    S3_NOT_CONFIGURED: '请先在设置中配置 S3 素材存储。',
+    S3_CONFIGURATION_INVALID: 'S3 配置无效，请检查 HTTPS 地址、Bucket 和密钥。',
+    S3_CONFIGURATION_CORRUPT: '本机 S3 凭据无法解密，请清除本地数据后重新配置。',
+    S3_UNTRUSTED_SENDER: '只有插件工作台可以访问 S3。',
+    S3_RESPONSE_INVALID: 'S3 后台响应无效，请重新打开工作台。',
+    S3_OBJECT_TOO_LARGE: '单个 S3 素材不能超过 5 MiB。',
+    S3_STORAGE_FAILED:
+      'S3 操作失败。请检查域名权限、密钥和网络；上传失败时请先核对存储中的结果，不要直接重复上传。',
     UNKNOWN_ERROR: '发生未知错误。',
     GATEWAY_ERROR: '网关操作失败。',
     INTERNAL_ERROR: '服务暂时无法完成操作。',

@@ -57,6 +57,8 @@ import '@one-vegetable/ui/styles.css';
 import { ALIBABA_CREDENTIAL_ACQUISITION_ORIGINS } from '../../lib/alibaba-credential-page-driver';
 import { resolveExtensionOperationAvailability } from '../../lib/operation-policy';
 import { EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY } from '../../lib/product-display-mutation-storage';
+import { extensionS3Storage, requestS3 } from '../../lib/s3-client';
+import { EXTENSION_S3_STORAGE_KEY } from '../../lib/s3-protocol';
 
 const operationAvailability = new StaticOperationAvailabilityClient((operation) =>
   resolveExtensionOperationAvailability(operation)
@@ -391,13 +393,23 @@ const localData: LocalDataRepository = {
         ([key]) =>
           key !== SETTINGS_STORAGE_KEY &&
           key !== EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY &&
-          key !== EXTENSION_SOCIAL_BACKEND_STORAGE_KEY
+          key !== EXTENSION_SOCIAL_BACKEND_STORAGE_KEY &&
+          key !== EXTENSION_S3_STORAGE_KEY
       ),
       ...localEntries.filter(
         ([key]) => key === APP_PREFERENCES_STORAGE_KEY || key === LEGACY_APP_PREFERENCES_STORAGE_KEY
       )
     ]);
     const categories: LocalDataCategory[] = [
+      {
+        id: 's3-credentials',
+        label: translateUi('settings.s3.title'),
+        storage: 'chrome.storage.local',
+        itemCount: EXTENSION_S3_STORAGE_KEY in local ? 1 : 0,
+        approximateBytes: approximateStorageBytes(local[EXTENSION_S3_STORAGE_KEY]),
+        sensitive: true,
+        retention: translateUi('settings.extensionRuntime.localData.credentials.retention')
+      },
       {
         id: 'credentials',
         label: translateUi('settings.extensionRuntime.localData.credentials.label'),
@@ -456,6 +468,7 @@ const localData: LocalDataRepository = {
     return createLocalDataInventory(categories);
   },
   async clearAll() {
+    await requestS3('reset', {});
     const granted = await permissions.list();
     await Promise.all([
       browser.storage.local.clear(),
@@ -736,6 +749,7 @@ async function mountOptionsApp(): Promise<void> {
   const app = createApp(OneVegetableApp, {
     gateway,
     settings,
+    s3Storage: extensionS3Storage,
     permissions,
     localData,
     onboarding,
