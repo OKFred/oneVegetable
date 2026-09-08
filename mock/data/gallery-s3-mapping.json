@@ -1,0 +1,20 @@
+{
+  "page": {
+    "items": [{ "key": "catalog/a.png", "size": 4, "etag": null, "lastModifiedTimeUtc": null }],
+    "nextContinuationToken": null
+  },
+  "uploaded": { "id": "reused-file" },
+  "downloaded": {
+    "fileName": "a.png",
+    "contentBase64": "AQIDBA==",
+    "contentType": "image/png",
+    "byteLength": 4,
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "createdGroup": {
+    "operation": "add",
+    "groupId": "new-group",
+    "group": { "id": "new-group", "name": "Imported", "parentId": null, "level": 1, "photoCount": 0 }
+  },
+  "emptyPhotos": { "items": [], "page": 1, "pageSize": 100, "total": 0 }
+}

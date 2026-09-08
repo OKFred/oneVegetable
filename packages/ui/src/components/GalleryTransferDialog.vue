@@ -16,6 +16,7 @@ import {
 
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import Button from './ui/Button.vue';
+import Input from './ui/Input.vue';
 import ModalDialog from './ui/ModalDialog.vue';
 import { useUiI18n } from '../i18n';
 import {
@@ -64,6 +65,14 @@ const confirmOpen = ref(false);
 const storage = ref<GalleryTransferStorage>('zip');
 const s3Decisions = ref<S3ImportDecision[]>([]);
 const s3Scanning = ref(false);
+const importMapping = ref<'rules' | 'current'>('rules');
+const createMissingGroups = ref(true);
+const exportMapping = ref<'flat' | 'groups'>('flat');
+const exportPrefix = ref('exports');
+const importResult = ref('');
+watch(importMapping, () => {
+  s3Decisions.value = [];
+});
 
 const s3Supported = computed(
   () =>
@@ -118,16 +127,17 @@ async function selectFile(event: Event): Promise<void> {
 
 async function execute(): Promise<void> {
   confirmOpen.value = false;
-  if (!canExecute.value) return;
+  if (busy.value || !canExecute.value) return;
   busy.value = true;
   error.value = '';
+  importResult.value = '';
   try {
     if (props.mode === 'export') {
       if (storage.value === 's3') await exportPhotosToS3();
       else await exportPhotos();
     } else if (storage.value === 's3') await importPhotosFromS3();
     else await importPhotos();
-    emit('update:open', false);
+    if (!importResult.value) emit('update:open', false);
   } catch (reason: unknown) {
     error.value = message(reason);
   } finally {
@@ -160,7 +170,23 @@ async function scanS3(): Promise<void> {
         byteLength: object.size,
         contentType: object.contentType
       })),
-      loadGalleryImportRuleSet()
+      importMapping.value === 'rules'
+        ? loadGalleryImportRuleSet()
+        : {
+            schemaVersion: 1,
+            conflictPolicy: loadGalleryImportRuleSet().conflictPolicy,
+            rules: [
+              {
+                id: 'current',
+                name: 'Current',
+                enabled: true,
+                sourcePrefix: '',
+                includeGlob: '**',
+                excludeGlobs: [],
+                targetGroupPath: props.targetGroupName
+              }
+            ]
+          }
     ).map((decision) => ({
       ...decision,
       etag: candidates.find((object) => object.key === decision.sourcePath)?.etag ?? null
@@ -241,13 +267,38 @@ async function importPhotos(): Promise<void> {
 
 async function exportPhotosToS3(): Promise<void> {
   if (!control?.putS3Object) return;
-  const prefix = `exports/${timestamp(new Date())}`;
+  const base = exportPrefix.value.trim().replace(/\/$/u, '');
+  if (
+    base &&
+    (base.startsWith('/') ||
+      base.includes('\\') ||
+      base.split('/').some((part) => !part || part === '.' || part === '..') ||
+      /\p{Cc}/u.test(base))
+  )
+    throw new Error(t('photos.transfer.invalidPrefix'));
+  const prefix = [base, `${timestamp(new Date())}-${globalThis.crypto.randomUUID().slice(0, 8)}`]
+    .filter(Boolean)
+    .join('/');
+  const groupPaths = await loadPhotoGroupPaths(true);
+  const pathsById = new Map([...groupPaths].map(([path, id]) => [id, path]));
   const assets: GalleryTransferAssetV1[] = [];
   for (const photo of props.photos) {
     const downloaded = await gateway.request('downloadProductAsset', { url: photo.url });
     const bytes = decodeBase64(downloaded.contentBase64);
     const sha256 = downloaded.sha256 || (await galleryAssetSha256(bytes));
-    const relativePath = galleryTransferAssetPath(downloaded.fileName, downloaded.contentType, sha256);
+    const groupPath = pathsById.get(photo.groupId) ?? (photo.groupId === '-1' ? 'Ungrouped' : photo.groupId);
+    const leaf = galleryTransferAssetPath(
+      `${photo.id}-${downloaded.fileName}`,
+      downloaded.contentType,
+      sha256
+    ).slice('assets/'.length);
+    const relativePath =
+      exportMapping.value === 'groups'
+        ? `assets/${groupPath
+            .split('/')
+            .map((part) => encodeURIComponent(part))
+            .join('/')}/${leaf}`
+        : `assets/${leaf}`;
     await control.putS3Object({
       key: `${prefix}/${relativePath}`,
       bytes,
@@ -257,7 +308,7 @@ async function exportPhotosToS3(): Promise<void> {
       path: relativePath,
       fileName: downloaded.fileName,
       sourcePhotoId: photo.id,
-      groupPath: props.targetGroupName,
+      groupPath,
       contentType: downloaded.contentType,
       byteLength: downloaded.byteLength,
       sha256,
@@ -286,7 +337,44 @@ async function importPhotosFromS3(): Promise<void> {
   const namesByGroup = new Map<string, Set<string>>();
   const ruleSet = loadGalleryImportRuleSet();
   let imported = 0;
-  for (const decision of s3Decisions.value) {
+  const outcomes: string[] = [];
+  const plan = s3Decisions.value.filter((item) => item.action === 'import');
+  // Validate the complete plan before creating any remote group.
+  for (const item of plan) {
+    const parts = item.targetGroupPath?.split('/') ?? [];
+    if (
+      !parts.length ||
+      parts.length > 3 ||
+      parts.some((part) => !part.trim() || part === '.' || part === '..')
+    )
+      throw new Error(t('photos.transfer.invalidGroupPath'));
+    if (
+      !createMissingGroups.value &&
+      (!item.targetGroupPath || !groupIds.has(item.targetGroupPath.toLocaleLowerCase()))
+    )
+      throw new Error(t('photos.transfer.errors.groupMissing', { group: item.targetGroupPath ?? '' }));
+  }
+  for (const item of plan) {
+    let parentId: string | undefined;
+    let path = '';
+    for (const name of (item.targetGroupPath ?? '').split('/')) {
+      path = path ? `${path}/${name}` : name;
+      const key = path.toLocaleLowerCase();
+      let id = groupIds.get(key);
+      if (!id) {
+        const created = await gateway.request('operatePhotoGroup', {
+          operation: 'add',
+          groupName: name,
+          groupId: parentId ?? null
+        });
+        if (!created.groupId) throw new Error(t('photos.transfer.errors.groupMissing', { group: path }));
+        id = created.groupId;
+        groupIds.set(key, id);
+      }
+      parentId = id;
+    }
+  }
+  for (const decision of plan) {
     if (decision.action !== 'import' || !decision.targetGroupPath || !decision.contentType) continue;
     const groupId = groupIds.get(decision.targetGroupPath.toLocaleLowerCase());
     if (!groupId)
@@ -299,7 +387,7 @@ async function importPhotosFromS3(): Promise<void> {
       fileName = renamedFileName(fileName);
     }
     const object = await control.getS3Object(decision.sourcePath);
-    await gateway.request('uploadPhoto', {
+    const uploaded = await gateway.request('uploadPhoto', {
       fileName,
       contentType: object.contentType ?? decision.contentType,
       contentBase64: encodeBase64(object.bytes),
@@ -308,6 +396,22 @@ async function importPhotosFromS3(): Promise<void> {
     });
     names.add(fileName.toLocaleLowerCase());
     imported += 1;
+    s3Decisions.value = s3Decisions.value.filter((item) => item.sourcePath !== decision.sourcePath);
+    // A successful upload may reuse an existing file without moving it to the requested group.
+    let verified = false;
+    try {
+      const page = await gateway.request('listPhotos', { groupId, page: 1, pageSize: 100 });
+      verified = page.items.some((photo) => photo.id === uploaded.id);
+    } catch {
+      /* A readback failure must never retry the successful upload. */
+    }
+    outcomes.push(
+      t(verified ? 'photos.transfer.locationConfirmed' : 'photos.transfer.locationUnconfirmed', {
+        name: fileName,
+        id: uploaded.id
+      })
+    );
+    importResult.value = outcomes.join('\n');
   }
   emit('imported', imported);
   toast.success(t('photos.transfer.s3Imported', { count: imported }));
@@ -323,18 +427,19 @@ function reset(): void {
   storage.value = 'zip';
   s3Decisions.value = [];
   s3Scanning.value = false;
+  importResult.value = '';
 }
 
-async function loadPhotoGroupPaths(): Promise<Map<string, string>> {
+async function loadPhotoGroupPaths(preserveCase = false): Promise<Map<string, string>> {
   const paths = new Map<string, string>();
   const roots = (await gateway.request('listPhotoGroups', undefined)).filter(
     (group) => group.id !== '-1' && group.parentId === null
   );
   await appendGroupPaths(roots, '', paths);
-  if (props.targetGroupId && props.targetGroupName) {
-    paths.set(props.targetGroupName.toLocaleLowerCase(), props.targetGroupId);
+  if (!preserveCase && props.targetGroupId && props.targetGroupName) {
+    if (!paths.has(props.targetGroupName)) paths.set(props.targetGroupName, props.targetGroupId);
   }
-  return paths;
+  return preserveCase ? paths : new Map([...paths].map(([path, id]) => [path.toLocaleLowerCase(), id]));
 }
 
 async function appendGroupPaths(
@@ -344,7 +449,7 @@ async function appendGroupPaths(
 ): Promise<void> {
   for (const group of groups) {
     const path = parentPath ? `${parentPath}/${group.name}` : group.name;
-    paths.set(path.toLocaleLowerCase(), group.id);
+    paths.set(path, group.id);
     if (group.level < 3) {
       const children = (await gateway.request('listPhotoGroups', { parentId: group.id })).filter(
         (candidate) => candidate.id !== group.id && candidate.id !== '-1' && candidate.parentId === group.id
@@ -458,6 +563,20 @@ function message(reason: unknown): string {
         {{ t('photos.transfer.s3Unavailable') }}
       </p>
       <template v-if="mode === 'export'">
+        <div v-if="storage === 's3'" class="grid gap-3">
+          <label>{{ t('photos.transfer.prefix') }}<Input v-model="exportPrefix" :disabled="busy" /></label>
+          <label
+            >{{ t('photos.transfer.mapping') }}
+            <select
+              v-model="exportMapping"
+              :disabled="busy"
+              class="mt-1 w-full rounded-md border bg-background p-2"
+            >
+              <option value="flat">{{ t('photos.transfer.flat') }}</option>
+              <option value="groups">{{ t('photos.transfer.groups') }}</option>
+            </select>
+          </label>
+        </div>
         <div class="rounded-lg border bg-muted/30 p-4">
           <p class="font-medium">{{ t('photos.transfer.exportSummary', { count: photos.length }) }}</p>
           <p class="mt-1 text-sm text-muted-foreground">
@@ -497,6 +616,26 @@ function message(reason: unknown): string {
           </div>
         </div>
         <div v-if="storage === 's3'" class="rounded-lg border p-4">
+          <label class="mb-3 flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              v-model="createMissingGroups"
+              type="checkbox"
+              :disabled="busy || s3Scanning"
+              class="size-4 accent-primary"
+            />
+            {{ t('photos.transfer.createMissingGroups') }}
+          </label>
+          <label class="mb-3 block"
+            >{{ t('photos.transfer.mapping') }}
+            <select
+              v-model="importMapping"
+              :disabled="busy || s3Scanning"
+              class="mt-1 w-full rounded-md border bg-background p-2"
+            >
+              <option value="rules">{{ t('photos.transfer.rules') }}</option>
+              <option value="current">{{ t('photos.transfer.current', { group: targetGroupName }) }}</option>
+            </select>
+          </label>
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p class="font-medium">{{ t('photos.transfer.s3ScanTitle') }}</p>
@@ -530,6 +669,9 @@ function message(reason: unknown): string {
             </div>
           </div>
         </div>
+        <p v-if="importResult" role="status" class="whitespace-pre-line rounded-md border p-3 text-sm">
+          {{ importResult }}
+        </p>
         <p v-if="!uploadAllowed" class="text-sm text-amber-700 dark:text-amber-300">
           {{ uploadDisabledReason }}
         </p>

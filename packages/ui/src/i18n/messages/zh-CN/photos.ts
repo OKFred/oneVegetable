@@ -158,10 +158,23 @@ export const photos = {
       ? {}
       : {
           s3Unavailable: 'S3 仅在已配置服务端存储的 Web 模式中可用。',
-          s3ExportDescription: '原图和 gallery.json 将写入 S3 的独立时间目录。',
+          s3ExportDescription:
+            '原图和 gallery.json 将按所选方式写入配置根前缀下的独立批次目录，不覆盖旧文件。',
+          prefix: '导出前缀（相对于设置中的根前缀）',
+          mapping: '目录映射方式',
+          createMissingGroups: '自动创建缺失的图库分组（最多三级）',
+          invalidGroupPath: '图库分组路径必须为一至三级，不能包含空目录或点目录。',
+          flat: '全部平铺到一个 assets 目录',
+          groups: '在 assets 下保留图库分组层级',
+          rules: '按设置中保存的前缀映射规则',
+          current: '全部导入当前图库分组：{group}',
+          invalidPrefix: '请输入安全的相对前缀，不能包含空目录、点目录或反斜杠。',
+          locationConfirmed: '{name}：已上传并回读确认分组，fileId：{id}',
+          locationUnconfirmed:
+            '{name}：上传接口已接收，fileId：{id}；目标分组前 100 项未找到，可能复用旧图或同步延迟。请核对，勿重复上传。',
           exportToS3: '导出到 S3',
           s3Exported: '已将 {count} 张图片导出到 S3：{prefix}',
-          s3Imported: '已从 S3 导入 {count} 张图片',
+          s3Imported: '上传接口已接收 {count} 张 S3 图片，请查看逐项分组回读结果。',
           s3ScanTitle: '按本机规则扫描 S3',
           s3ScanDescription: '最多读取 500 个对象，只有匹配规则的图片会进入导入确认。',
           scanS3: '扫描 S3',
