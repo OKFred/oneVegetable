@@ -11,7 +11,7 @@
     {
       "permission": "storage",
       "required": true,
-      "justification": "Stores user-entered gateway credentials encrypted with a user passphrase, local settings and onboarding state, durable product mutation status without secrets or full responses, and an optional 30-day scoped device token for a user-controlled social publishing BFF. Derived unlock material and redacted diagnostics are held only in current Chrome-session memory. The passphrase is never stored, local/session storage is hidden from content scripts, and session unlock material is cleared by browser restart, extension update/reload, explicit locking, or the configured idle timeout."
+      "justification": "Stores user-entered gateway credentials encrypted with a user passphrase, local settings and onboarding state, durable product mutation status without secrets or full responses, and an optional 30-day scoped device token for a user-controlled social publishing BFF. Derived unlock material and redacted diagnostics are held only in current Chrome-session memory. The passphrase is never stored, local/session storage is hidden from content scripts, and session unlock material is cleared by browser restart, extension update/reload, explicit locking, or the configured idle timeout. Optional S3 configuration uses separate AES-GCM ciphertext in local storage and a non-exportable device key in local IndexedDB, with no additional password. Clearing S3 configuration removes both."
     },
     {
       "permission": "scripting",
@@ -26,7 +26,7 @@
     {
       "permission": "http://*/*, https://*/*",
       "required": false,
-      "justification": "Chrome grants only the specific host requested when a user starts credential acquisition, confirms the actual OAuth callback, configures a custom gateway, pairs a user-controlled social publishing BFF, or explicitly transfers an external image; grants are revocable in settings."
+      "justification": "Chrome grants only the specific host requested when a user starts credential acquisition, confirms the actual OAuth callback, configures a custom gateway or S3-compatible asset storage, pairs a user-controlled social publishing BFF, or explicitly transfers an external image. S3 requests are signed in the extension background and limited to the configured storage host. Grants are revocable in settings."
     }
   ],
   "dataUse": {
