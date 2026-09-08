@@ -150,6 +150,8 @@ export const photos = {
       'Create, rename, and delete operations write to the current Alibaba.com account immediately. Every operation requires confirmation.'
   },
   transfer: {
+    uploadUnknown:
+      '{name}: upload success was not confirmed. Check Alibaba before reopening import; this session will not resend it.',
     importTitle: 'Import gallery assets',
     exportTitle: 'Export gallery assets',
     importDescription: 'Read a oneVegetable gallery ZIP and upload its images to “{group}”.',
@@ -167,8 +169,6 @@ export const photos = {
           mapping: 'Directory mapping',
           groupCreationUnconfirmed:
             'Creation of group “{group}” was not confirmed. Check Alibaba before reopening import. This session will not repeat creation.',
-          uploadUnknown:
-            '{name}: upload success was not confirmed; the outcome may be unknown. Removed from this session queue. Check Alibaba before resending.',
           conflictSkipped: '{name}: skipped because the target group already contains that filename.',
           createMissingGroups: 'Automatically create missing gallery groups (up to 3 levels)',
           invalidGroupPath: 'Gallery paths must have 1–3 levels without empty or dot segments.',

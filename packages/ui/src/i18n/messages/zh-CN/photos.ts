@@ -147,6 +147,8 @@ export const photos = {
     realWriteWarning: '新增、改名和删除会直接写入当前国际站账号；每次操作都会先要求确认。'
   },
   transfer: {
+    uploadUnknown:
+      '{name}：上传未取得成功确认，结果可能不明。请先到平台核对，再重新打开导入弹窗；本次不会重复上传。',
     importTitle: '导入图库素材',
     exportTitle: '导出图库素材',
     importDescription: '读取 oneVegetable 图库 ZIP，并将图片上传到“{group}”。',
@@ -164,8 +166,6 @@ export const photos = {
           mapping: '目录映射方式',
           groupCreationUnconfirmed:
             '分组“{group}”未取得创建成功确认。请先到平台核对，再重新打开导入弹窗；本次不会重复创建。',
-          uploadUnknown:
-            '{name}：上传未取得成功确认，结果可能不明。已移出本次待执行队列；请先到平台核对，不要直接重发。',
           conflictSkipped: '{name}：目标分组已有同名图片，已按规则跳过。',
           createMissingGroups: '自动创建缺失的图库分组（最多三级）',
           invalidGroupPath: '图库分组路径必须为一至三级，不能包含空目录或点目录。',

@@ -80,3 +80,13 @@ S3 测试对象保留在 smoke 前缀；未自动删除线上图库素材。
 - 组件测试覆盖关闭重开、旧请求失败、新扫描等待、目标分组变化；图库管理和商品 ZIP 回归 E2E 各一项通过。
 - 本地真实 Web/BFF 只读复查：扫描返回 4 张图片，1 张匹配 `S3-fresh-0908/Auto-child`，其余跳过；关闭重开后导入按钮禁用，等待重新扫描。
 - 本次复查没有上传、新建分组或删除素材。模拟故障验证不代表线上故障验收；未新增图片删除 API。
+
+## 扩展运行时回归（2026-09-08）
+
+- 正式 MV3 构建在隔离 Chromium Profile 中验证首次引导、双语、凭据保护、service worker 重启、设置持久化和各领域权限边界。
+- 隐私页已移到 GitHub；修正仍访问旧本地 privacy.html 的过时 E2E，核对首次引导中的正式隐私链接。
+- 通过扩展图库导入入口预校验超过 512 KiB 的压缩图片 ZIP，确认可解析且不在用户确认前上传。组件测试另覆盖导出、导入、双击确认、部分失败及关闭后的异步回写。
+- 插件 ZIP 上传结果不明时暂停本次批次，保留成功数量并刷新图库，提示到平台核对后重开；不直接重发前面的成功图片。
+- `ONE_VEGETABLE_EXTENSION_GALLERY_READ_SMOKE=1 pnpm exec tsx scripts/smoke-extension-gallery-read-real.ts` 只在 Windows 本地显式执行，不进 CI。授权包读取后写入隔离的加密扩展配置，报告不保存凭据或完整响应。
+- 本次真实读取得到 15 个一级分组、24 张当前页图片，并确认 `S3-fresh-0908/Auto-child` 的真实 parentId。脱敏回执保存在 `artifacts/extension-gallery-validation/read-report.json`。
+- 插件提供本地 ZIP；S3 配置与映射仅 Web/BFF 提供。以上真实扩展验收为只读，没有重新上传、删除素材或发布商品；ZIP 写交互使用隔离测试验证，不宣称新一轮真实写入已验收。

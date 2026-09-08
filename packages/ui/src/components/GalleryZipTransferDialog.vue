@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { Download, FileArchive, LoaderCircle, Upload } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
@@ -53,17 +53,33 @@ const error = ref('');
 const busy = ref(false);
 const validating = ref(false);
 const confirmOpen = ref(false);
+const uploadedCount = ref(0);
+const unconfirmedUpload = ref('');
+let previewEpoch = 0;
+onBeforeUnmount(() => {
+  previewEpoch += 1;
+});
 const title = computed(() =>
   t(props.mode === 'export' ? 'photos.transfer.exportTitle' : 'photos.transfer.importTitle')
 );
-const canExecute = computed(() =>
-  props.mode === 'export' ? props.photos.length > 0 : props.uploadAllowed && selectedArchive.value !== null
+const canExecute = computed(
+  () =>
+    props.open &&
+    !busy.value &&
+    !validating.value &&
+    !unconfirmedUpload.value &&
+    (props.mode === 'export'
+      ? props.photos.length > 0
+      : props.uploadAllowed && selectedArchive.value !== null)
 );
 
 watch(
   () => props.open,
   (open) => {
     if (open) return;
+    previewEpoch += 1;
+    uploadedCount.value = 0;
+    unconfirmedUpload.value = '';
     selectedFileName.value = '';
     selectedFileSize.value = 0;
     selectedArchive.value = null;
@@ -82,17 +98,21 @@ async function selectFile(event: Event): Promise<void> {
   const file = input.files?.[0];
   input.value = '';
   if (!file) return;
+  const epoch = ++previewEpoch;
   selectedFileName.value = file.name;
   selectedFileSize.value = file.size;
   selectedArchive.value = null;
   error.value = '';
   validating.value = true;
   try {
-    selectedArchive.value = await readGalleryTransferArchive(new Uint8Array(await file.arrayBuffer()));
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (epoch !== previewEpoch) return;
+    const archive = await readGalleryTransferArchive(bytes);
+    if (epoch === previewEpoch) selectedArchive.value = archive;
   } catch (reason: unknown) {
-    error.value = message(reason);
+    if (epoch === previewEpoch) error.value = message(reason);
   } finally {
-    validating.value = false;
+    if (epoch === previewEpoch) validating.value = false;
   }
 }
 
@@ -162,19 +182,25 @@ async function importPhotos(): Promise<void> {
   if (!archive) return;
   const metadataByPath = new Map(archive.document.assets.map((asset) => [asset.path, asset]));
   let imported = 0;
-  for (const asset of archive.assets) {
-    const metadata = metadataByPath.get(asset.path);
-    if (!metadata) throw new Error(t('photos.transfer.errors.missingMetadata', { path: asset.path }));
-    await gateway.request('uploadPhoto', {
-      fileName: metadata.fileName,
-      contentType: metadata.contentType,
-      contentBase64: encodeBase64(asset.bytes),
-      byteLength: asset.bytes.byteLength,
-      groupId: props.targetGroupId
-    });
-    imported += 1;
+  try {
+    for (const asset of archive.assets) {
+      const metadata = metadataByPath.get(asset.path);
+      if (!metadata) throw new Error(t('photos.transfer.errors.missingMetadata', { path: asset.path }));
+      unconfirmedUpload.value = metadata.fileName;
+      await gateway.request('uploadPhoto', {
+        fileName: metadata.fileName,
+        contentType: metadata.contentType,
+        contentBase64: encodeBase64(asset.bytes),
+        byteLength: asset.bytes.byteLength,
+        groupId: props.targetGroupId
+      });
+      unconfirmedUpload.value = '';
+      imported += 1;
+      uploadedCount.value += 1;
+    }
+  } finally {
+    if (imported) emit('imported', imported);
   }
-  emit('imported', imported);
   toast.success(t('photos.transfer.imported', { count: imported, group: props.targetGroupName }));
 }
 
@@ -266,6 +292,12 @@ function message(reason: unknown): string {
         <LoaderCircle class="size-4 animate-spin" />{{ t('photos.transfer.validating') }}
       </p>
       <p v-if="error" class="text-sm text-destructive">{{ error }}</p>
+      <p v-if="uploadedCount" role="status" class="text-sm">
+        {{ t('photos.transfer.imported', { count: uploadedCount, group: targetGroupName }) }}
+      </p>
+      <p v-if="unconfirmedUpload && !busy" role="alert" class="text-sm text-destructive">
+        {{ t('photos.transfer.uploadUnknown', { name: unconfirmedUpload }) }}
+      </p>
     </div>
     <template #footer>
       <div class="flex justify-end gap-2">

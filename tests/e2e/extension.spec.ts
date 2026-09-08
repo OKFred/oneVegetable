@@ -1,6 +1,9 @@
 import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
+import { createHash } from 'node:crypto';
+import { zipSync } from 'fflate';
+import galleryFixture from '../../mock/data/gallery-extension-transfer.json' with { type: 'json' };
 
 import { chromium, expect, test, type BrowserContext, type Page } from '@playwright/test';
 import {
@@ -77,24 +80,6 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await storageProbePage.close();
   await browserContext.unroute('https://storage-probe.alibaba.com/**');
 
-  const privacyPage = await browserContext.newPage();
-  await privacyPage.goto(`chrome-extension://${extensionId}/privacy.html`);
-  await expect(privacyPage.locator('html')).toHaveAttribute('lang', 'zh-CN');
-  await expect(privacyPage.getByRole('heading', { name: '一根青菜隐私政策' })).toBeVisible();
-  await expect(privacyPage.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute(
-    'content',
-    /default-src 'none'/u
-  );
-  await expect(privacyPage.locator('link[rel="canonical"]')).toHaveAttribute(
-    'href',
-    'https://github.com/OKFred/oneVegetable/blob/master/docs/privacy-policy.md'
-  );
-  await expect(privacyPage.locator('script')).toHaveCount(0);
-  await privacyPage.getByRole('link', { name: 'English' }).click();
-  await expect(privacyPage.locator('html')).toHaveAttribute('lang', 'en');
-  await expect(privacyPage.getByRole('heading', { name: 'oneVegetable Privacy Policy' })).toBeVisible();
-  await privacyPage.close();
-
   const popupPage = await browserContext.newPage();
   await popupPage.goto(`chrome-extension://${extensionId}/popup.html`);
   await expect(popupPage.getByText('用得不错？赏个评价。')).toHaveCount(0);
@@ -108,7 +93,10 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(onboardingDialog.locator('img')).toHaveCount(4);
   await expect(page.getByRole('button', { name: '稍后，仅浏览' })).toBeDisabled();
   await expect(page.getByRole('button', { name: '开始授权向导' })).toBeDisabled();
-  await expect(page.getByRole('link', { name: '查看隐私说明' })).toHaveAttribute('href', '/privacy.html');
+  await expect(page.getByRole('link', { name: '查看隐私说明' })).toHaveAttribute(
+    'href',
+    'https://github.com/OKFred/oneVegetable/blob/master/docs/privacy-policy.md'
+  );
   const diagnosticsBeforeConsent = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {
@@ -499,6 +487,45 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   const photoGroupDialog = page.getByRole('dialog', { name: '图库分组管理' });
   await expect(photoGroupDialog.getByText(/新增、改名和删除会直接写入当前国际站账号/)).toBeVisible();
   await photoGroupDialog.getByRole('button', { name: '关闭', exact: true }).click();
+
+  // Large deflated entries must work under MV3 CSP, not just tiny stored ZIPs.
+  const png = Buffer.concat([
+    await readFile(resolve('apps/extension/public/icon.png')),
+    Buffer.alloc(galleryFixture.paddingBytes)
+  ]);
+  const galleryDocument = {
+    schemaVersion: 1,
+    kind: 'one-vegetable-gallery-transfer',
+    createdTimeUtc: galleryFixture.createdTimeUtc,
+    assets: [
+      {
+        path: galleryFixture.path,
+        fileName: galleryFixture.fileName,
+        sourcePhotoId: galleryFixture.sourcePhotoId,
+        groupPath: galleryFixture.groupPath,
+        contentType: 'image/png',
+        byteLength: png.byteLength,
+        sha256: createHash('sha256').update(png).digest('hex'),
+        width: 128,
+        height: 128,
+        modifiedTimeUtc: null
+      }
+    ]
+  };
+  const galleryZip = zipSync({
+    'gallery.json': Buffer.from(JSON.stringify(galleryDocument)),
+    [galleryFixture.path]: png
+  });
+  await page.getByRole('button', { name: '导入', exact: true }).click();
+  const galleryImport = page.getByRole('dialog', { name: '导入图库素材' });
+  await expect(galleryImport.getByRole('button', { name: 'S3', exact: true })).toHaveCount(0);
+  await galleryImport.locator('input[type="file"]').setInputFiles({
+    name: 'gallery-csp.zip',
+    mimeType: 'application/zip',
+    buffer: Buffer.from(galleryZip)
+  });
+  await expect(galleryImport.getByRole('button', { name: '导入', exact: true })).toBeEnabled();
+  await galleryImport.getByRole('button', { name: '关闭导入图库素材' }).click();
 
   await page.getByRole('link', { name: 'RFQ' }).click();
   await expect(page.getByRole('heading', { name: 'RFQ 工作台' })).toBeVisible();
