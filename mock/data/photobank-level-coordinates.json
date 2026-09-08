@@ -1,0 +1,9 @@
+{
+  "groups": [
+    { "id": 300000001, "level1": 40, "name": "Root A" },
+    { "id": 300000002, "level1": 40, "level2": 1, "name": "Child A" },
+    { "id": 300000003, "level1": 40, "level2": 1, "level3": 2, "name": "Leaf A" },
+    { "id": 300000004, "level1": 41, "name": "Root B" },
+    { "id": 300000005, "level1": 41, "level2": 1, "name": "Child B" }
+  ]
+}

@@ -21,7 +21,21 @@ export class PhotoAdapter {
     const call = await this.client.call('alibaba.icbu.photobank.group.list', {
       ...(parentId && parentId !== '-1' ? { id: numericOrString(parentId) } : {})
     });
-    return findRecords(unwrap(call.data, call.method), ['photo_album_group']).map(normalizeGroup);
+    const records = findRecords(unwrap(call.data, call.method), ['photo_album_group']);
+    const groups = records.map(normalizeGroup);
+    return groups.map((group, index) => {
+      if (group.level === 1) return group;
+      const record = records[index];
+      const parentIndex = records.findIndex(
+        (candidate, candidateIndex) =>
+          groups[candidateIndex]?.level === group.level - 1 &&
+          Array.from({ length: group.level - 1 }, (_, level) => `level${level + 1}`).every(
+            (key) => readString(candidate, [key]) === (record ? readString(record, [key]) : null)
+          )
+      );
+      // level1/2/3 are coordinates, not API group IDs. Resolve the complete ancestor prefix.
+      return { ...group, parentId: groups[parentIndex]?.id ?? null };
+    });
   }
 
   async operateGroup(request: PhotoGroupOperationRequest): Promise<PhotoGroupOperationResult> {

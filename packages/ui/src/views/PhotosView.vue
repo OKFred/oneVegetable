@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, h, ref, watch } from 'vue';
-import { useQuery } from '@tanstack/vue-query';
+import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import {
   Download,
   Eye,
@@ -50,6 +50,7 @@ type GovernanceFilter = 'all' | 'unreferenced' | 'lowResolution';
 type PhotoViewMode = 'cards' | 'list';
 
 const { gateway } = useServices();
+const queryClient = useQueryClient();
 const { t } = useUiI18n();
 const selectedGroup = ref('-1');
 const governanceFilter = ref<GovernanceFilter>('all');
@@ -204,6 +205,11 @@ function openGalleryTransfer(mode: 'import' | 'export'): void {
 function handleGalleryImported(): void {
   selectedPhotoIds.value = [];
   void photos.refetch();
+}
+
+function handleImportedGroupsChanged(): void {
+  void queryClient.invalidateQueries({ queryKey: ['photo-groups'] });
+  groupNavigationRevision.value += 1;
 }
 
 const photoColumns = computed<DataColumn<Photo>[]>(() => [
@@ -563,6 +569,7 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
       )
     "
     @imported="handleGalleryImported"
+    @groups-changed="handleImportedGroupsChanged"
   />
 
   <PhotoSocialShareDialog v-model:open="shareDialogOpen" :photos="selectedPhotos" />

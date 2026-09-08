@@ -75,6 +75,7 @@ describe('S3 gallery mapping', () => {
       groupId: null,
       groupName: 'Imported'
     });
+    expect(wrapper.emitted('groupsChanged')).toHaveLength(1);
     expect(mocks.request).toHaveBeenCalledWith(
       'uploadPhoto',
       expect.objectContaining({ groupId: 'new-group' })

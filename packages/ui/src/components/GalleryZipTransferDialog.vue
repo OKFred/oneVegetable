@@ -41,6 +41,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   'update:open': [open: boolean];
   imported: [count: number];
+  groupsChanged: [];
 }>();
 const { gateway } = useServices();
 const { t } = useUiI18n();

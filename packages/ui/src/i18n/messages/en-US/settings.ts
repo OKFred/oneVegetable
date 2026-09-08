@@ -214,7 +214,7 @@ export const settings = {
           rules: {
             title: 'Automatic import rules',
             description:
-              'S3 object paths are matched in order. The first match selects an existing gallery group. Rules stay in this browser.',
+              'S3 object paths are matched in order. The first match selects the target gallery group. Missing groups can be created automatically during import. Rules stay in this browser.',
             add: 'Add rule',
             newRule: 'New rule',
             enabled: 'Enabled',

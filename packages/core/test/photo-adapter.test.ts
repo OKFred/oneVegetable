@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { AlibabaClient } from '../src/alibaba-client';
 import { PhotoAdapter } from '../src/photo-adapter';
+import hierarchyFixture from '../../../mock/data/photobank-level-coordinates.json';
 
 function response(method: string, body: Record<string, unknown>) {
   return {
@@ -18,6 +19,19 @@ function client(
 }
 
 describe('PhotoAdapter', () => {
+  it('resolves ancestor IDs from complete level coordinates, not level numbers', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve(response(method, hierarchyFixture))
+    );
+    const groups = await new PhotoAdapter(client(call)).listGroups('300000001');
+    expect(groups.map(({ id, parentId }) => ({ id, parentId }))).toEqual([
+      { id: '300000001', parentId: null },
+      { id: '300000002', parentId: '300000001' },
+      { id: '300000003', parentId: '300000002' },
+      { id: '300000004', parentId: null },
+      { id: '300000005', parentId: '300000004' }
+    ]);
+  });
   it('normalizes nested official groups and derives hierarchy metadata', async () => {
     const call = vi.fn<AlibabaClient['call']>((method) =>
       Promise.resolve(

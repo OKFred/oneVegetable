@@ -51,6 +51,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   'update:open': [open: boolean];
   imported: [count: number];
+  groupsChanged: [];
 }>();
 const { gateway, control } = useServices();
 const { t } = useUiI18n();
@@ -370,6 +371,7 @@ async function importPhotosFromS3(): Promise<void> {
         if (!created.groupId) throw new Error(t('photos.transfer.errors.groupMissing', { group: path }));
         id = created.groupId;
         groupIds.set(key, id);
+        emit('groupsChanged');
       }
       parentId = id;
     }
