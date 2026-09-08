@@ -44,7 +44,77 @@ function setup() {
     global: { stubs: { ModalDialog: modal, ConfirmActionDialog: confirmation } }
   });
 }
+async function scan(wrapper: ReturnType<typeof setup>): Promise<void> {
+  await wrapper
+    .findAll('button')
+    .find((button) => button.text() === 'S3')
+    ?.trigger('click');
+  await wrapper
+    .findAll('button')
+    .find((button) => button.text() === '扫描 S3')
+    ?.trigger('click');
+  await flushPromises();
+}
+function deferredPage() {
+  type Page = Omit<typeof fixture.page, 'nextContinuationToken'> & { nextContinuationToken: string | null };
+  let resolve!: (value: Page) => void;
+  let reject!: (reason: Error) => void;
+  const promise = new Promise<Page>((accept, fail) => {
+    resolve = accept;
+    reject = fail;
+  });
+  return { promise, resolve, reject };
+}
+
 describe('S3 gallery mapping', () => {
+  it('discards a closed dialog scan without continuing pagination or enabling uploads', async () => {
+    const pending = deferredPage();
+    mocks.list.mockReturnValueOnce(pending.promise);
+    const wrapper = setup();
+    await scan(wrapper);
+    await wrapper.setProps({ open: false });
+    await wrapper.setProps({ open: true });
+    pending.resolve({ ...fixture.page, nextContinuationToken: 'next' });
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('catalog/a.png');
+    expect(mocks.list).toHaveBeenCalledTimes(1);
+    await wrapper.get('[data-test="confirm"]').trigger('click');
+    expect(mocks.request).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+  it('does not let a stale rejection clear the next session loading state', async () => {
+    const oldPage = deferredPage();
+    const newPage = deferredPage();
+    mocks.list.mockReturnValueOnce(oldPage.promise).mockReturnValueOnce(newPage.promise);
+    const wrapper = setup();
+    await scan(wrapper);
+    await wrapper.setProps({ open: false });
+    await wrapper.setProps({ open: true });
+    await scan(wrapper);
+    oldPage.reject(new Error('Stale failure'));
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('Stale failure');
+    const button = wrapper.findAll('button').find((item) => item.text() === '扫描 S3');
+    expect(button?.attributes('disabled')).toBeDefined();
+    newPage.resolve(fixture.page);
+    await flushPromises();
+    expect(wrapper.text()).toContain('catalog/a.png');
+    expect(button?.attributes('disabled')).toBeUndefined();
+    wrapper.unmount();
+  });
+  it('invalidates an in-flight plan when its target group changes', async () => {
+    const pending = deferredPage();
+    mocks.list.mockReturnValueOnce(pending.promise);
+    const wrapper = setup();
+    await scan(wrapper);
+    await wrapper.setProps({ targetGroupId: '2101', targetGroupName: '白底主图' });
+    pending.resolve(fixture.page);
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('catalog/a.png');
+    await wrapper.get('[data-test="confirm"]').trigger('click');
+    expect(mocks.request).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
   it('creates only the missing third level under its actual parent ID', async () => {
     const rules = defaultGalleryImportRuleSet();
     if (rules.rules[0]) rules.rules[0].targetGroupPath = '商品主图/白底主图/Leaf';

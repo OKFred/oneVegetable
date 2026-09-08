@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { Cloud, Download, FileArchive, LoaderCircle, RefreshCw, Upload } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
@@ -76,6 +76,12 @@ const importReceipts = ref<
   { status: 'confirmed' | 'unconfirmed' | 'unknown' | 'skipped'; name: string; id: string }[]
 >([]);
 const attemptedS3Items = new Set<string>();
+let previewEpoch = 0;
+let archiveEpoch = 0;
+onBeforeUnmount(() => {
+  previewEpoch += 1;
+  archiveEpoch += 1;
+});
 const importResult = computed(() =>
   importReceipts.value
     .map((receipt) =>
@@ -94,7 +100,9 @@ const importResult = computed(() =>
 function importDecisionKey(decision: S3ImportDecision): string {
   return JSON.stringify([decision.sourcePath, decision.etag, decision.targetGroupPath]);
 }
-watch(importMapping, () => {
+watch([importMapping, () => props.targetGroupId, () => props.targetGroupName], () => {
+  previewEpoch += 1;
+  s3Scanning.value = false;
   s3Decisions.value = [];
 });
 
@@ -106,7 +114,7 @@ const s3Supported = computed(
 );
 const s3ImportCount = computed(() => s3Decisions.value.filter((item) => item.action === 'import').length);
 const canExecute = computed(() => {
-  if (busy.value || s3Scanning.value || validating.value) return false;
+  if (!props.open || busy.value || s3Scanning.value || validating.value) return false;
   if (props.mode === 'export')
     return props.photos.length > 0 && (storage.value === 'zip' || s3Supported.value);
   if (!props.uploadAllowed) return false;
@@ -137,17 +145,21 @@ async function selectFile(event: Event): Promise<void> {
   const file = input.files?.[0];
   input.value = '';
   if (!file) return;
+  const epoch = ++archiveEpoch;
   selectedFileName.value = file.name;
   selectedFileSize.value = file.size;
   selectedArchive.value = null;
   error.value = '';
   validating.value = true;
   try {
-    selectedArchive.value = await readGalleryTransferArchive(new Uint8Array(await file.arrayBuffer()));
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (epoch !== archiveEpoch) return;
+    const archive = await readGalleryTransferArchive(bytes);
+    if (epoch === archiveEpoch) selectedArchive.value = archive;
   } catch (reason: unknown) {
-    error.value = message(reason);
+    if (epoch === archiveEpoch) error.value = message(reason);
   } finally {
-    validating.value = false;
+    if (epoch === archiveEpoch) validating.value = false;
   }
 }
 
@@ -171,7 +183,8 @@ async function execute(): Promise<void> {
 }
 
 async function scanS3(): Promise<void> {
-  if (!control?.listS3Objects) return;
+  if (!props.open || busy.value || s3Scanning.value || !control?.listS3Objects) return;
+  const epoch = ++previewEpoch;
   s3Scanning.value = true;
   error.value = '';
   try {
@@ -182,6 +195,7 @@ async function scanS3(): Promise<void> {
         maximum: Math.min(500 - objects.length, 500),
         ...(continuationToken ? { continuationToken } : {})
       });
+      if (epoch !== previewEpoch) return;
       objects.push(...page.items);
       continuationToken = page.nextContinuationToken ?? undefined;
     } while (continuationToken && objects.length < 500);
@@ -219,10 +233,12 @@ async function scanS3(): Promise<void> {
       }))
       .filter((decision) => !attemptedS3Items.has(importDecisionKey(decision)));
   } catch (reason: unknown) {
-    error.value = message(reason);
-    s3Decisions.value = [];
+    if (epoch === previewEpoch) {
+      error.value = message(reason);
+      s3Decisions.value = [];
+    }
   } finally {
-    s3Scanning.value = false;
+    if (epoch === previewEpoch) s3Scanning.value = false;
   }
 }
 
@@ -465,6 +481,8 @@ async function importPhotosFromS3(): Promise<void> {
 }
 
 function reset(): void {
+  previewEpoch += 1;
+  archiveEpoch += 1;
   selectedFileName.value = '';
   selectedFileSize.value = 0;
   selectedArchive.value = null;
