@@ -423,10 +423,19 @@ function message(reason: unknown): string {
     :open="open"
     :title="title"
     :description="
-      t(mode === 'export' ? 'photos.transfer.exportDescription' : 'photos.transfer.importDescription', {
-        count: photos.length,
-        group: targetGroupName
-      })
+      t(
+        storage === 's3'
+          ? mode === 'export'
+            ? 'photos.transfer.s3ExportDescription'
+            : 'photos.transfer.s3ScanDescription'
+          : mode === 'export'
+            ? 'photos.transfer.exportDescription'
+            : 'photos.transfer.importDescription',
+        {
+          count: photos.length,
+          group: targetGroupName
+        }
+      )
     "
     :dismissible="!busy"
     @update:open="requestOpen"
@@ -561,7 +570,9 @@ function message(reason: unknown): string {
     :description="
       t(
         mode === 'export'
-          ? 'photos.transfer.confirmExportDescription'
+          ? storage === 's3'
+            ? 'photos.transfer.s3ExportDescription'
+            : 'photos.transfer.confirmExportDescription'
           : storage === 's3'
             ? 'photos.transfer.confirmS3ImportDescription'
             : 'photos.transfer.confirmImportDescription',
