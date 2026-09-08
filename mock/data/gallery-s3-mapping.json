@@ -4,6 +4,13 @@
     "nextContinuationToken": null
   },
   "uploaded": { "id": "reused-file" },
+  "batchPage": {
+    "items": [
+      { "key": "catalog/a.png", "size": 4, "etag": "a1", "lastModifiedTimeUtc": null },
+      { "key": "catalog/b.png", "size": 4, "etag": "b1", "lastModifiedTimeUtc": null }
+    ],
+    "nextContinuationToken": null
+  },
   "downloaded": {
     "fileName": "a.png",
     "contentBase64": "AQIDBA==",

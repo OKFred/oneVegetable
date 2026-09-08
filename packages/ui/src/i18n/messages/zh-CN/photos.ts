@@ -162,6 +162,11 @@ export const photos = {
             '原图和 gallery.json 将按所选方式写入配置根前缀下的独立批次目录，不覆盖旧文件。',
           prefix: '导出前缀（相对于设置中的根前缀）',
           mapping: '目录映射方式',
+          groupCreationUnconfirmed:
+            '分组“{group}”未取得创建成功确认。请先到平台核对，再重新打开导入弹窗；本次不会重复创建。',
+          uploadUnknown:
+            '{name}：上传未取得成功确认，结果可能不明。已移出本次待执行队列；请先到平台核对，不要直接重发。',
+          conflictSkipped: '{name}：目标分组已有同名图片，已按规则跳过。',
           createMissingGroups: '自动创建缺失的图库分组（最多三级）',
           invalidGroupPath: '图库分组路径必须为一至三级，不能包含空目录或点目录。',
           flat: '全部平铺到一个 assets 目录',

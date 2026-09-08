@@ -6,6 +6,10 @@ import fixture from '../../../mock/data/gallery-s3-mapping.json';
 import photoFixture from '../../../mock/data/photos.json';
 import GalleryTransferDialog from '../src/components/GalleryTransferDialog.vue';
 import type { Photo } from '@one-vegetable/core';
+import {
+  defaultGalleryImportRuleSet,
+  saveGalleryImportRuleSet
+} from '../src/lib/gallery-import-rules-storage';
 
 const mocks = vi.hoisted(() => ({ request: vi.fn(), list: vi.fn(), get: vi.fn(), put: vi.fn() }));
 vi.mock('../src/lib/services', () => ({
@@ -20,18 +24,19 @@ const confirmation = defineComponent({
   emits: ['confirm'],
   template: '<button data-test="confirm" @click="$emit(\'confirm\')">Confirm</button>'
 });
+function defaultResponse(operation: string): Promise<unknown> {
+  if (operation === 'listPhotoGroups') return Promise.resolve(photoFixture.photoGroups);
+  if (operation === 'uploadPhoto') return Promise.resolve(fixture.uploaded);
+  if (operation === 'downloadProductAsset') return Promise.resolve(fixture.downloaded);
+  if (operation === 'operatePhotoGroup') return Promise.resolve(fixture.createdGroup);
+  return Promise.resolve(fixture.emptyPhotos);
+}
 beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
   mocks.list.mockResolvedValue(fixture.page);
   mocks.get.mockResolvedValue({ bytes: new Uint8Array([1, 2, 3, 4]), contentType: 'image/png' });
-  mocks.request.mockImplementation((operation: string) => {
-    if (operation === 'listPhotoGroups') return Promise.resolve(photoFixture.photoGroups);
-    if (operation === 'uploadPhoto') return Promise.resolve(fixture.uploaded);
-    if (operation === 'downloadProductAsset') return Promise.resolve(fixture.downloaded);
-    if (operation === 'operatePhotoGroup') return Promise.resolve(fixture.createdGroup);
-    return Promise.resolve(fixture.emptyPhotos);
-  });
+  mocks.request.mockImplementation(defaultResponse);
 });
 function setup() {
   return mount(GalleryTransferDialog, {
@@ -40,6 +45,138 @@ function setup() {
   });
 }
 describe('S3 gallery mapping', () => {
+  it('creates only the missing third level under its actual parent ID', async () => {
+    const rules = defaultGalleryImportRuleSet();
+    if (rules.rules[0]) rules.rules[0].targetGroupPath = '商品主图/白底主图/Leaf';
+    saveGalleryImportRuleSet(rules);
+    const wrapper = setup();
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'S3')
+      ?.trigger('click');
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '扫描 S3')
+      ?.trigger('click');
+    await flushPromises();
+    await wrapper.get('[data-test="confirm"]').trigger('click');
+    await flushPromises();
+    expect(mocks.request.mock.calls.filter((call) => call[0] === 'operatePhotoGroup')).toEqual([
+      ['operatePhotoGroup', { operation: 'add', groupId: '2101', groupName: 'Leaf' }]
+    ]);
+    wrapper.unmount();
+  });
+  it('retains successful receipts and never resends an uncertain upload on retry or rescan', async () => {
+    mocks.list.mockResolvedValue(fixture.batchPage);
+    let uploads = 0;
+    mocks.request.mockImplementation((operation: string) => {
+      if (operation === 'uploadPhoto' && ++uploads === 2)
+        return Promise.reject(new Error('Simulated response timeout'));
+      return defaultResponse(operation);
+    });
+    const wrapper = setup();
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'S3')
+      ?.trigger('click');
+    await wrapper.get('select').setValue('current');
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '扫描 S3')
+      ?.trigger('click');
+    await flushPromises();
+    await wrapper.get('[data-test="confirm"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('reused-file');
+    expect(wrapper.text()).toContain('b.png：上传未取得成功确认');
+    expect(wrapper.emitted('imported')).toEqual([[1]]);
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '扫描 S3')
+      ?.trigger('click');
+    await flushPromises();
+    await wrapper.get('[data-test="confirm"]').trigger('click');
+    await flushPromises();
+    expect(uploads).toBe(2);
+    expect(wrapper.text()).toContain('reused-file');
+    wrapper.unmount();
+  });
+  it('retries a download failure without losing prior receipts or re-uploading successful items', async () => {
+    mocks.list.mockResolvedValue(fixture.batchPage);
+    let downloads = 0;
+    mocks.get.mockImplementation(() =>
+      ++downloads === 2
+        ? Promise.reject(new Error('Download unavailable'))
+        : Promise.resolve({ bytes: new Uint8Array([1, 2, 3, 4]), contentType: 'image/png' })
+    );
+    const wrapper = setup();
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'S3')
+      ?.trigger('click');
+    await wrapper.get('select').setValue('current');
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '扫描 S3')
+      ?.trigger('click');
+    await flushPromises();
+    await wrapper.get('[data-test="confirm"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Download unavailable');
+    await wrapper.get('[data-test="confirm"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('a.png：上传接口已接收');
+    expect(wrapper.text()).toContain('b.png：上传接口已接收');
+    expect(mocks.request.mock.calls.filter((call) => call[0] === 'uploadPhoto')).toHaveLength(2);
+    wrapper.unmount();
+  });
+  it('rejects a fourth directory level before creating anything', async () => {
+    const rules = defaultGalleryImportRuleSet();
+    if (rules.rules[0]) rules.rules[0].targetGroupPath = 'One/Two/Three/Four';
+    saveGalleryImportRuleSet(rules);
+    const wrapper = setup();
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'S3')
+      ?.trigger('click');
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '扫描 S3')
+      ?.trigger('click');
+    await flushPromises();
+    await wrapper.get('[data-test="confirm"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('一至三级');
+    expect(
+      mocks.request.mock.calls.some((call) => call[0] === 'operatePhotoGroup' || call[0] === 'uploadPhoto')
+    ).toBe(false);
+    wrapper.unmount();
+  });
+  it('requires platform review after an uncertain group creation instead of retrying it', async () => {
+    mocks.request.mockImplementation((operation: string) =>
+      operation === 'operatePhotoGroup'
+        ? Promise.reject(new Error('Simulated creation timeout'))
+        : defaultResponse(operation)
+    );
+    const wrapper = setup();
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'S3')
+      ?.trigger('click');
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '扫描 S3')
+      ?.trigger('click');
+    await flushPromises();
+    await wrapper.get('[data-test="confirm"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('本次不会重复创建');
+    await wrapper.get('[data-test="confirm"]').trigger('click');
+    await flushPromises();
+    expect(mocks.request.mock.calls.filter((call) => call[0] === 'operatePhotoGroup')).toHaveLength(1);
+    expect(mocks.request.mock.calls.some((call) => call[0] === 'uploadPhoto')).toBe(false);
+    wrapper.unmount();
+  });
   it('exports to a custom prefix with group hierarchy and a manifest', async () => {
     const wrapper = setup();
     await wrapper.setProps({ mode: 'export', photos: [photoFixture.responses.listPhotos.items[0] as Photo] });

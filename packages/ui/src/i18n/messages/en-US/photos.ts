@@ -165,6 +165,11 @@ export const photos = {
             'Originals and gallery.json use the selected layout in an isolated batch under the configured root prefix. Existing files are not overwritten.',
           prefix: 'Export prefix (relative to the configured root)',
           mapping: 'Directory mapping',
+          groupCreationUnconfirmed:
+            'Creation of group “{group}” was not confirmed. Check Alibaba before reopening import. This session will not repeat creation.',
+          uploadUnknown:
+            '{name}: upload success was not confirmed; the outcome may be unknown. Removed from this session queue. Check Alibaba before resending.',
+          conflictSkipped: '{name}: skipped because the target group already contains that filename.',
           createMissingGroups: 'Automatically create missing gallery groups (up to 3 levels)',
           invalidGroupPath: 'Gallery paths must have 1–3 levels without empty or dot segments.',
           flat: 'Put all images in one assets directory',

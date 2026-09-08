@@ -11,6 +11,7 @@ import {
   type GalleryTransferDocumentV1,
   type GalleryImportDecision,
   type Photo,
+  type PhotoGroupOperationResult,
   type PhotoGroup
 } from '@one-vegetable/core';
 
@@ -68,9 +69,31 @@ const s3Decisions = ref<S3ImportDecision[]>([]);
 const s3Scanning = ref(false);
 const importMapping = ref<'rules' | 'current'>('rules');
 const createMissingGroups = ref(true);
+const groupCreationIssue = ref('');
 const exportMapping = ref<'flat' | 'groups'>('flat');
 const exportPrefix = ref('exports');
-const importResult = ref('');
+const importReceipts = ref<
+  { status: 'confirmed' | 'unconfirmed' | 'unknown' | 'skipped'; name: string; id: string }[]
+>([]);
+const attemptedS3Items = new Set<string>();
+const importResult = computed(() =>
+  importReceipts.value
+    .map((receipt) =>
+      t(
+        {
+          confirmed: 'photos.transfer.locationConfirmed',
+          unconfirmed: 'photos.transfer.locationUnconfirmed',
+          unknown: 'photos.transfer.uploadUnknown',
+          skipped: 'photos.transfer.conflictSkipped'
+        }[receipt.status],
+        { name: receipt.name, id: receipt.id }
+      )
+    )
+    .join('\n')
+);
+function importDecisionKey(decision: S3ImportDecision): string {
+  return JSON.stringify([decision.sourcePath, decision.etag, decision.targetGroupPath]);
+}
 watch(importMapping, () => {
   s3Decisions.value = [];
 });
@@ -83,9 +106,11 @@ const s3Supported = computed(
 );
 const s3ImportCount = computed(() => s3Decisions.value.filter((item) => item.action === 'import').length);
 const canExecute = computed(() => {
+  if (busy.value || s3Scanning.value || validating.value) return false;
   if (props.mode === 'export')
     return props.photos.length > 0 && (storage.value === 'zip' || s3Supported.value);
   if (!props.uploadAllowed) return false;
+  if (storage.value === 's3' && groupCreationIssue.value) return false;
   return storage.value === 'zip' ? selectedArchive.value !== null : s3ImportCount.value > 0;
 });
 const title = computed(() =>
@@ -131,7 +156,6 @@ async function execute(): Promise<void> {
   if (busy.value || !canExecute.value) return;
   busy.value = true;
   error.value = '';
-  importResult.value = '';
   try {
     if (props.mode === 'export') {
       if (storage.value === 's3') await exportPhotosToS3();
@@ -188,10 +212,12 @@ async function scanS3(): Promise<void> {
               }
             ]
           }
-    ).map((decision) => ({
-      ...decision,
-      etag: candidates.find((object) => object.key === decision.sourcePath)?.etag ?? null
-    }));
+    )
+      .map((decision) => ({
+        ...decision,
+        etag: candidates.find((object) => object.key === decision.sourcePath)?.etag ?? null
+      }))
+      .filter((decision) => !attemptedS3Items.has(importDecisionKey(decision)));
   } catch (reason: unknown) {
     error.value = message(reason);
     s3Decisions.value = [];
@@ -338,7 +364,6 @@ async function importPhotosFromS3(): Promise<void> {
   const namesByGroup = new Map<string, Set<string>>();
   const ruleSet = loadGalleryImportRuleSet();
   let imported = 0;
-  const outcomes: string[] = [];
   const plan = s3Decisions.value.filter((item) => item.action === 'import');
   // Validate the complete plan before creating any remote group.
   for (const item of plan) {
@@ -363,12 +388,18 @@ async function importPhotosFromS3(): Promise<void> {
       const key = path.toLocaleLowerCase();
       let id = groupIds.get(key);
       if (!id) {
-        const created = await gateway.request('operatePhotoGroup', {
-          operation: 'add',
-          groupName: name,
-          groupId: parentId ?? null
-        });
-        if (!created.groupId) throw new Error(t('photos.transfer.errors.groupMissing', { group: path }));
+        let created: PhotoGroupOperationResult;
+        try {
+          created = await gateway.request('operatePhotoGroup', {
+            operation: 'add',
+            groupName: name,
+            groupId: parentId ?? null
+          });
+          if (!created.groupId) throw new Error(t('photos.transfer.errors.groupMissing', { group: path }));
+        } catch (reason: unknown) {
+          groupCreationIssue.value = path;
+          throw reason;
+        }
         id = created.groupId;
         groupIds.set(key, id);
         emit('groupsChanged');
@@ -376,46 +407,60 @@ async function importPhotosFromS3(): Promise<void> {
       parentId = id;
     }
   }
-  for (const decision of plan) {
-    if (decision.action !== 'import' || !decision.targetGroupPath || !decision.contentType) continue;
-    const groupId = groupIds.get(decision.targetGroupPath.toLocaleLowerCase());
-    if (!groupId)
-      throw new Error(t('photos.transfer.errors.groupMissing', { group: decision.targetGroupPath }));
-    const names = namesByGroup.get(groupId) ?? (await loadPhotoNames(groupId));
-    namesByGroup.set(groupId, names);
-    let fileName = decision.fileName;
-    if (names.has(fileName.toLocaleLowerCase())) {
-      if (ruleSet.conflictPolicy === 'skip') continue;
-      fileName = renamedFileName(fileName);
-    }
-    const object = await control.getS3Object(decision.sourcePath);
-    const uploaded = await gateway.request('uploadPhoto', {
-      fileName,
-      contentType: object.contentType ?? decision.contentType,
-      contentBase64: encodeBase64(object.bytes),
-      byteLength: object.bytes.byteLength,
-      groupId
-    });
-    names.add(fileName.toLocaleLowerCase());
-    imported += 1;
-    s3Decisions.value = s3Decisions.value.filter((item) => item.sourcePath !== decision.sourcePath);
-    // A successful upload may reuse an existing file without moving it to the requested group.
-    let verified = false;
-    try {
-      const page = await gateway.request('listPhotos', { groupId, page: 1, pageSize: 100 });
-      verified = page.items.some((photo) => photo.id === uploaded.id);
-    } catch {
-      /* A readback failure must never retry the successful upload. */
-    }
-    outcomes.push(
-      t(verified ? 'photos.transfer.locationConfirmed' : 'photos.transfer.locationUnconfirmed', {
+  try {
+    for (const decision of plan) {
+      if (decision.action !== 'import' || !decision.targetGroupPath || !decision.contentType) continue;
+      const groupId = groupIds.get(decision.targetGroupPath.toLocaleLowerCase());
+      if (!groupId)
+        throw new Error(t('photos.transfer.errors.groupMissing', { group: decision.targetGroupPath }));
+      const names = namesByGroup.get(groupId) ?? (await loadPhotoNames(groupId));
+      namesByGroup.set(groupId, names);
+      let fileName = decision.fileName;
+      if (names.has(fileName.toLocaleLowerCase())) {
+        if (ruleSet.conflictPolicy === 'skip') {
+          attemptedS3Items.add(importDecisionKey(decision));
+          s3Decisions.value = s3Decisions.value.filter((item) => item.sourcePath !== decision.sourcePath);
+          importReceipts.value.push({ status: 'skipped', name: fileName, id: '' });
+          continue;
+        }
+        fileName = renamedFileName(fileName);
+      }
+      const object = await control.getS3Object(decision.sourcePath);
+      // Once sent, an uncertain mutation must not be resubmitted by retrying or scanning again.
+      attemptedS3Items.add(importDecisionKey(decision));
+      s3Decisions.value = s3Decisions.value.filter((item) => item.sourcePath !== decision.sourcePath);
+      let uploaded: Photo;
+      try {
+        uploaded = await gateway.request('uploadPhoto', {
+          fileName,
+          contentType: object.contentType ?? decision.contentType,
+          contentBase64: encodeBase64(object.bytes),
+          byteLength: object.bytes.byteLength,
+          groupId
+        });
+      } catch (reason: unknown) {
+        importReceipts.value.push({ status: 'unknown', name: fileName, id: '' });
+        throw reason;
+      }
+      names.add(fileName.toLocaleLowerCase());
+      imported += 1;
+      // A successful upload may reuse an existing file without moving it to the requested group.
+      let verified = false;
+      try {
+        const page = await gateway.request('listPhotos', { groupId, page: 1, pageSize: 100 });
+        verified = page.items.some((photo) => photo.id === uploaded.id);
+      } catch {
+        /* A readback failure must never retry the successful upload. */
+      }
+      importReceipts.value.push({
+        status: verified ? 'confirmed' : 'unconfirmed',
         name: fileName,
         id: uploaded.id
-      })
-    );
-    importResult.value = outcomes.join('\n');
+      });
+    }
+  } finally {
+    if (imported > 0) emit('imported', imported);
   }
-  emit('imported', imported);
   toast.success(t('photos.transfer.s3Imported', { count: imported }));
 }
 
@@ -429,7 +474,9 @@ function reset(): void {
   storage.value = 'zip';
   s3Decisions.value = [];
   s3Scanning.value = false;
-  importResult.value = '';
+  importReceipts.value = [];
+  attemptedS3Items.clear();
+  groupCreationIssue.value = '';
 }
 
 async function loadPhotoGroupPaths(preserveCase = false): Promise<Map<string, string>> {
@@ -549,13 +596,18 @@ function message(reason: unknown): string {
   >
     <div class="space-y-4">
       <div class="flex flex-wrap gap-2 rounded-lg bg-muted/40 p-1">
-        <Button size="sm" :variant="storage === 'zip' ? 'default' : 'ghost'" @click="storage = 'zip'">
+        <Button
+          size="sm"
+          :variant="storage === 'zip' ? 'default' : 'ghost'"
+          :disabled="busy || s3Scanning || validating"
+          @click="storage = 'zip'"
+        >
           <FileArchive class="size-4" />{{ t('photos.transfer.localZip') }}
         </Button>
         <Button
           size="sm"
           :variant="storage === 's3' ? 'default' : 'ghost'"
-          :disabled="!s3Supported"
+          :disabled="!s3Supported || busy || s3Scanning || validating"
           @click="storage = 's3'"
         >
           <Cloud class="size-4" />S3
@@ -673,6 +725,13 @@ function message(reason: unknown): string {
         </div>
         <p v-if="importResult" role="status" class="whitespace-pre-line rounded-md border p-3 text-sm">
           {{ importResult }}
+        </p>
+        <p
+          v-if="groupCreationIssue"
+          role="alert"
+          class="rounded-md border p-3 text-sm text-amber-700 dark:text-amber-300"
+        >
+          {{ t('photos.transfer.groupCreationUnconfirmed', { group: groupCreationIssue }) }}
         </p>
         <p v-if="!uploadAllowed" class="text-sm text-amber-700 dark:text-amber-300">
           {{ uploadDisabledReason }}
