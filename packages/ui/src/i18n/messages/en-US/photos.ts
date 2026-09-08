@@ -160,7 +160,7 @@ export const photos = {
     archiveLimit: 'ZIP files are limited to 50 MiB; each gallery image is limited to 5 MiB.',
     localZip: 'Local ZIP',
     ...{
-      s3Unavailable: 'S3 is available only in Web mode with server-side storage configured.',
+      s3Unavailable: 'S3 storage is unavailable in this runtime. Check S3 configuration in Settings.',
       s3ExportDescription:
         'Originals and gallery.json use the selected layout in an isolated batch under the configured root prefix. Existing files are not overwritten.',
       prefix: 'Export prefix (relative to the configured root)',

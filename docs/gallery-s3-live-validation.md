@@ -1,5 +1,7 @@
 # 图库 S3 本地真实验证（2026-09-08）
 
+后续补充：插件已增加独立 S3 直连，见 [插件 S3 验收](extension-s3-validation.md)。本文下方“仅 Web/BFF”的描述保留为当时的验收边界，并非当前功能限制。
+
 ## 环境与边界
 
 - Windows Node BFF + Web，独立 SQLite 验证库；Alibaba 使用真实凭据，不回退 Mock。

@@ -1,13 +1,19 @@
 # oneVegetable Privacy Policy
 
-Effective date: September 6, 2026
-Applicable version: 2.4.0
+Effective date: September 8, 2026
+Applicable version: 2.5.0
 
 ## Independent third-party notice
 
 oneVegetable is an independently developed third-party tool and is not affiliated with, endorsed by, sponsored by, or officially associated with Alibaba.com or its affiliates. Use of this tool does not mean that Alibaba.com approves or guarantees its features, content, or operation results. Before use, read and follow the [Alibaba.com platform rules](https://rulechannel.alibaba.com/icbu) and any rules applicable to your business. Alibaba.com retains final authority over account permissions, business eligibility, API availability, and platform rules.
 
 ## Single purpose
+
+### Optional S3 asset transfers
+
+You may configure an S3 endpoint, bucket, region, root prefix and access credentials. The extension connects directly to the exact storage host you authorize, without a oneVegetable backend. Configuration is AES-256-GCM encrypted in trusted-context `chrome.storage.local`, with a separate non-exportable device key in local IndexedDB. No additional password is required; this survives browser restarts but does not protect a compromised browser profile. Server mode retains backend encryption. Settings only return non-secret configuration and the Access Key suffix.
+
+Transfers start only after your confirmation. Signing and credentials stay in the extension background. Images, manifests and object paths go to your selected storage; imported images also go to the Alibaba gallery. Import rules remain local and do not run scheduled synchronization. Clearing S3 configuration or all local data removes local ciphertext and its device key, not remote objects or gallery images. An interrupted upload may have reached the provider; verify its result before retrying. Uploads are never automatically retried.
 
 oneVegetable is a user-operated local Alibaba.com operations workspace for managing products, the gallery (Photo Bank), RFQs, trades, international logistics, related Open Platform capabilities, and user-selected gallery media published to business social accounts connected by the user. The extension does not provide advertising, tracking, or data services unrelated to this purpose.
 

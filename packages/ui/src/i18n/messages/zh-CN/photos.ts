@@ -157,7 +157,7 @@ export const photos = {
     archiveLimit: 'ZIP 最大 50 MiB；单张图库图片最大 5 MiB。',
     localZip: '本地 ZIP',
     ...{
-      s3Unavailable: 'S3 仅在已配置服务端存储的 Web 模式中可用。',
+      s3Unavailable: '当前环境尚未提供 S3 存储，请检查设置中的 S3 配置。',
       s3ExportDescription: '原图和 gallery.json 将按所选方式写入配置根前缀下的独立批次目录，不覆盖旧文件。',
       prefix: '导出前缀（相对于设置中的根前缀）',
       mapping: '目录映射方式',

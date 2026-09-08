@@ -12,9 +12,9 @@ export const RELEASE_NOTES_DOCUMENT = {
       },
       summary: {
         'zh-CN':
-          '图库支持 ZIP 导入导出，Web/BFF 支持 S3 目录映射，并完善任务恢复、分组回填和失败提示。',
+          '图库支持 ZIP 导入导出，Web/BFF 与插件均支持 S3 目录映射，并完善任务恢复、分组回填和失败提示。',
         'en-US':
-          'Transfer gallery assets as ZIPs, map S3 folders in Web/BFF mode, and improve task recovery, group hierarchy and failure guidance.'
+          'Transfer gallery assets as ZIPs, map S3 folders in Web/BFF and the extension, and improve task recovery, group hierarchy and failure guidance.'
       },
       source: 'release',
       githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.5.0',
@@ -35,14 +35,14 @@ export const RELEASE_NOTES_DOCUMENT = {
         {
           type: 'feature',
           title: {
-            'zh-CN': 'Web/BFF S3 目录映射',
-            'en-US': 'Web/BFF S3 folder mapping'
+            'zh-CN': 'S3 目录映射与插件直连',
+            'en-US': 'S3 folder mapping and direct extension access'
           },
           description: {
             'zh-CN':
-              '加密保存 S3 配置，按前缀规则或指定图库分组导入，可选自动创建三级以内目录；插件不提供 S3 配置。',
+              '加密保存 S3 配置，按前缀规则或指定图库分组导入，可选自动创建三级以内目录。插件可独立直连，无需部署后端；传输时需保持工作台打开。',
             'en-US':
-              'Store S3 configuration encrypted and import using prefix rules or one gallery group, with optional creation of up to three folder levels. S3 configuration is not available in the extension.'
+              'Store S3 configuration encrypted and import using prefix rules or one gallery group, with optional creation of up to three folder levels. The extension connects directly without a backend; keep the workbench open during transfers.'
           }
         },
         {
