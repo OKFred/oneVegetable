@@ -4,6 +4,7 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 
 import { APP_VERSION } from '@one-vegetable/core/version';
+import { RELEASE_NOTES, releaseNoteText } from '@one-vegetable/core';
 
 import ReleaseNotesView from '../src/views/ReleaseNotesView.vue';
 
@@ -28,8 +29,11 @@ describe('ReleaseNotesView', () => {
     expect(wrapper.text()).toContain('2026-08-31');
     expect(wrapper.text()).not.toContain('2026年');
     const releases = wrapper.findAll('[aria-label="正式版本更新记录"] > li');
-    expect(releases).toHaveLength(8);
-    expect(releases[0]?.text()).toContain('v2.4.0 · 插件商品更新与分组新增');
+    expect(releases).toHaveLength(RELEASE_NOTES.length);
+    const currentRelease = RELEASE_NOTES.find((release) => release.version === APP_VERSION);
+    expect(currentRelease).toBeDefined();
+    expect(releases[0]?.text()).toContain(`v${APP_VERSION}`);
+    if (currentRelease) expect(releases[0]?.text()).toContain(releaseNoteText(currentRelease.title, 'zh-CN'));
   });
 
   it('links to GitHub without requiring a runtime API client', () => {
