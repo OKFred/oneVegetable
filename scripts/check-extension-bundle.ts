@@ -61,7 +61,9 @@ if (!productTransferWorker || productTransferWorker.size > 50_000) {
 if (!i18nChunk || i18nChunk.size > 300_000) {
   errors.push(`Bilingual i18n chunk exceeds 300 KB: ${i18nChunk?.size ?? 'missing'}`);
 }
-if (totalBytes > 4_000_000) errors.push(`Unpacked extension exceeds 4.00 MB: ${totalBytes}`);
+// v2.5 adds offline bilingual release notes (+2.3 KB). Keep only 10 KB extra total headroom;
+// per-chunk, eager-page, worker, permissions and sensitive-content gates remain unchanged.
+if (totalBytes > 4_010_000) errors.push(`Unpacked extension exceeds 4.01 MB: ${totalBytes}`);
 if (sizes.some((entry) => entry.file.endsWith('.map'))) errors.push('Production source maps are not allowed');
 if (manifest.permissions?.includes('cookies')) errors.push('cookies permission is not allowed');
 if (manifest.host_permissions?.includes('<all_urls>'))

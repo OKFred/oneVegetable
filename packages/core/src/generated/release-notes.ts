@@ -4,6 +4,75 @@ export const RELEASE_NOTES_DOCUMENT = {
   repositoryUrl: 'https://github.com/OKFred/oneVegetable',
   releases: [
     {
+      version: '2.5.0',
+      releasedAt: '2026-09-08',
+      title: {
+        'zh-CN': '图库素材迁移与发品回读',
+        'en-US': 'Gallery transfers and publishing verification'
+      },
+      summary: {
+        'zh-CN':
+          '图库支持 ZIP 导入导出，Web/BFF 支持 S3 目录映射，并完善任务恢复、分组回填和失败提示。',
+        'en-US':
+          'Transfer gallery assets as ZIPs, map S3 folders in Web/BFF mode, and improve task recovery, group hierarchy and failure guidance.'
+      },
+      source: 'release',
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.5.0',
+      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.4.0...v2.5.0',
+      changes: [
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '图库 ZIP 导入导出',
+            'en-US': 'Gallery ZIP import and export'
+          },
+          description: {
+            'zh-CN': 'Web 与插件可下载原图及校验清单，或导入最多 50 MiB 的图库 ZIP；确认后才上传。',
+            'en-US':
+              'Web and extension users can export originals with a verified manifest or import gallery ZIPs up to 50 MiB. Uploads require confirmation.'
+          }
+        },
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': 'Web/BFF S3 目录映射',
+            'en-US': 'Web/BFF S3 folder mapping'
+          },
+          description: {
+            'zh-CN':
+              '加密保存 S3 配置，按前缀规则或指定图库分组导入，可选自动创建三级以内目录；插件不提供 S3 配置。',
+            'en-US':
+              'Store S3 configuration encrypted and import using prefix rules or one gallery group, with optional creation of up to three folder levels. S3 configuration is not available in the extension.'
+          }
+        },
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '发品任务与商品直达',
+            'en-US': 'Publishing tasks and product links'
+          },
+          description: {
+            'zh-CN': '保留批量任务恢复状态，结合平台回读确认发品结果，并提供已验证的商品详情链接。',
+            'en-US':
+              'Retain batch recovery state, verify publishing results by reading them back from Alibaba, and expose verified product detail links.'
+          }
+        },
+        {
+          type: 'fix',
+          title: {
+            'zh-CN': '目录回填与安全重试',
+            'en-US': 'Group hierarchy and safer retries'
+          },
+          description: {
+            'zh-CN':
+              '修正图库子目录层级映射，保留部分成功提示；上传结果不明时提示平台核对，关闭弹窗后丢弃旧预览。',
+            'en-US':
+              'Correct nested gallery group mapping, preserve partial-success feedback, require platform checks after uncertain uploads, and discard stale previews after closing dialogs.'
+          }
+        }
+      ]
+    },
+    {
       version: '2.4.0',
       releasedAt: '2026-09-06',
       title: {
