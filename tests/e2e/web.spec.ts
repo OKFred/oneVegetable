@@ -248,8 +248,8 @@ test('web mock queues multiple products and saves platform drafts sequentially',
 
   await page.getByLabel('选择全部待发布商品').check();
   await page.getByRole('button', { name: /开始保存草稿/ }).click();
-  await expect(page.getByText('批量任务完成：成功 2，失败 0，阻断 0，停止 0')).toBeVisible();
-  await expect(page.getByText('本轮成功')).toHaveCount(2);
+  await expect(page.getByText('批量任务完成：已验证 2，待回读 0，失败 0，阻断 0，停止 0')).toBeVisible();
+  await expect(page.getByText('本轮已验证', { exact: true })).toHaveCount(2);
 });
 
 test('web mock exports a product JSON and imports it into the local review queue', async ({ page }) => {
