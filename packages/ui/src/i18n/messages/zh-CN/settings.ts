@@ -161,60 +161,60 @@ export const settings = {
     disconnectDescription: '将从插件删除设备令牌；如需立即让服务端令牌失效，还应在后端管理页撤销该设备。',
     disconnectConfirm: '确认断开'
   },
-  ...(typeof __ONE_VEGETABLE_EXTENSION__ !== 'undefined' && __ONE_VEGETABLE_EXTENSION__
-    ? {}
-    : {
-        s3: {
-          title: 'S3 素材存储',
-          description: '连接兼容 S3 的对象存储，用于图库素材导入、导出和备份。密钥由后端加密保存。',
-          configured: '已配置',
-          notConfigured: '未配置',
-          unsupported: '当前运行模式未提供服务端 S3 配置。',
-          endpoint: 'Endpoint',
-          region: 'Region',
-          bucket: 'Bucket',
-          accessKey: 'Access Key ID',
-          secretKey: 'Secret Access Key',
-          sessionToken: 'Session Token（可选）',
-          rootPrefix: '素材根目录',
-          pathStyle: '使用 Path-style 地址（Cloudflare R2、MinIO 通常需要）',
-          secretHint: '已保存 Access Key 尾号 {suffix}。修改配置时请重新输入完整密钥。',
-          save: '加密保存',
-          test: '测试连接',
-          clear: '清除配置',
-          clearTitle: '确认清除 S3 配置',
-          clearDescription: '将删除后端保存的加密 S3 凭据，不会删除 Bucket 中的对象。',
-          saved: 'S3 配置已加密保存。',
-          cleared: 'S3 配置已清除。',
-          testPassed: 'S3 连接正常，探测到 {count} 个对象。',
-          errors: {
-            save: 'S3 配置保存失败',
-            test: 'S3 连接测试失败',
-            clear: 'S3 配置清除失败'
-          },
-          rules: {
-            title: '自动导入规则',
-            description:
-              '按顺序匹配 S3 对象路径；第一条命中的规则决定目标图库分组。导入时可选择自动创建缺失分组。规则仅保存在当前浏览器。',
-            add: '新增规则',
-            newRule: '新规则',
-            enabled: '启用',
-            remove: '删除规则',
-            conflict: '同名冲突',
-            rename: '自动重命名',
-            skip: '跳过',
-            name: '规则名称',
-            sourcePrefix: '来源前缀',
-            include: '包含 Glob',
-            exclude: '排除 Glob（逗号分隔）',
-            targetGroup: '目标图库分组路径',
-            empty: '尚无规则；没有规则时 S3 素材不会进入导入队列。',
-            save: '保存导入规则',
-            saved: '图库 S3 导入规则已保存在本机。',
-            invalid: '图库导入规则无效'
-          }
-        }
-      }),
+  ...{
+    s3: {
+      title: 'S3 素材存储',
+      extensionDescription:
+        '插件独立连接 S3，无需部署后端。密钥在本机加密保存，由后台签名；不另设口令，不能防止浏览器配置文件被入侵。保存时仅申请对应存储域名权限。传输时请保持工作台打开；中断后先核对结果，不会自动重传。',
+      description: '连接兼容 S3 的对象存储，用于图库素材导入、导出和备份。密钥由后端加密保存。',
+      configured: '已配置',
+      notConfigured: '未配置',
+      unsupported: '当前运行模式未提供服务端 S3 配置。',
+      endpoint: 'Endpoint',
+      region: 'Region',
+      bucket: 'Bucket',
+      accessKey: 'Access Key ID',
+      secretKey: 'Secret Access Key',
+      sessionToken: 'Session Token（可选）',
+      rootPrefix: '素材根目录',
+      pathStyle: '使用 Path-style 地址（Cloudflare R2、MinIO 通常需要）',
+      secretHint: '已保存 Access Key 尾号 {suffix}。修改配置时请重新输入完整密钥。',
+      save: '加密保存',
+      test: '测试连接',
+      clear: '清除配置',
+      clearTitle: '确认清除 S3 配置',
+      clearDescription: '将删除当前运行环境保存的加密 S3 凭据，不会删除 Bucket 中的对象。',
+      saved: 'S3 配置已加密保存。',
+      cleared: 'S3 配置已清除。',
+      testPassed: 'S3 连接正常，探测到 {count} 个对象。',
+      errors: {
+        save: 'S3 配置保存失败',
+        test: 'S3 连接测试失败',
+        clear: 'S3 配置清除失败'
+      },
+      rules: {
+        title: '自动导入规则',
+        description:
+          '按顺序匹配 S3 对象路径；第一条命中的规则决定目标图库分组。导入时可选择自动创建缺失分组。规则仅保存在当前浏览器。',
+        add: '新增规则',
+        newRule: '新规则',
+        enabled: '启用',
+        remove: '删除规则',
+        conflict: '同名冲突',
+        rename: '自动重命名',
+        skip: '跳过',
+        name: '规则名称',
+        sourcePrefix: '来源前缀',
+        include: '包含 Glob',
+        exclude: '排除 Glob（逗号分隔）',
+        targetGroup: '目标图库分组路径',
+        empty: '尚无规则；没有规则时 S3 素材不会进入导入队列。',
+        save: '保存导入规则',
+        saved: '图库 S3 导入规则已保存在本机。',
+        invalid: '图库导入规则无效'
+      }
+    }
+  },
   alibabaLanguage: {
     title: 'Alibaba 接口语言',
     description: '只影响 Schema、官方提示及支持 language 参数的 Alibaba 平台请求，不改变界面语言。',

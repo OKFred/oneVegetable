@@ -14,7 +14,8 @@ import Input from './ui/Input.vue';
 import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 
-const { control } = useServices();
+const { control: bffControl, s3Storage, mode } = useServices();
+const control = s3Storage ?? bffControl;
 const { t } = useUiI18n();
 const summary = ref<S3StorageConfigurationSummary | null>(null);
 const busy = ref<'load' | 'save' | 'test' | 'clear' | null>(null);
@@ -148,7 +149,9 @@ async function clearConfiguration(): Promise<void> {
           <Cloud class="size-4 text-primary" />
           <h2 class="font-semibold">{{ t('settings.s3.title') }}</h2>
         </div>
-        <p class="mt-2 text-sm text-muted-foreground">{{ t('settings.s3.description') }}</p>
+        <p class="mt-2 text-sm text-muted-foreground">
+          {{ t(mode === 'extension' ? 'settings.s3.extensionDescription' : 'settings.s3.description') }}
+        </p>
       </div>
       <span class="rounded-full bg-muted px-3 py-1 text-xs">
         {{ summary?.configured ? t('settings.s3.configured') : t('settings.s3.notConfigured') }}

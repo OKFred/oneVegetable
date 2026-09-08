@@ -50,6 +50,36 @@ export interface S3ObjectContent {
   etag: string | null;
 }
 
+/** Shared by the BFF and the trusted extension service worker. */
+export interface S3StorageControl {
+  s3StorageConfiguration(): Promise<S3StorageConfigurationSummary>;
+  updateS3StorageConfiguration(
+    configuration: S3StorageConfiguration,
+    revision: number | null,
+    remark?: string | null
+  ): Promise<S3StorageConfigurationSummary>;
+  clearS3StorageConfiguration(revision: number): Promise<void>;
+  testS3StorageConnection(): Promise<{ connected: boolean; visibleObjectCount: number }>;
+  listS3Objects(input?: {
+    prefix?: string;
+    continuationToken?: string;
+    maximum?: number;
+  }): Promise<S3ObjectPage>;
+  getS3Object(key: string): Promise<S3ObjectContent>;
+  putS3Object(input: {
+    key: string;
+    bytes: Uint8Array;
+    contentType: string;
+  }): Promise<{ key: string; etag: string | null }>;
+}
+
+export function s3PermissionOrigins(configuration: S3StorageConfiguration): string[] {
+  const normalized = validateS3StorageConfiguration(configuration);
+  const endpoint = new URL(normalized.endpoint);
+  if (!normalized.pathStyle) endpoint.hostname = `${normalized.bucket}.${endpoint.hostname}`;
+  return [`${endpoint.origin}/*`];
+}
+
 export class S3ObjectStorageClient {
   readonly #configuration: S3StorageConfiguration;
   readonly #signer: AwsClient;

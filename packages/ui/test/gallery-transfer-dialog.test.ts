@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({ request: vi.fn(), list: vi.fn(), get: vi.fn(),
 vi.mock('../src/lib/services', () => ({
   useServices: () => ({
     gateway: { request: mocks.request },
-    control: { listS3Objects: mocks.list, getS3Object: mocks.get, putS3Object: mocks.put }
+    s3Storage: { listS3Objects: mocks.list, getS3Object: mocks.get, putS3Object: mocks.put }
   })
 }));
 vi.mock('vue-sonner', () => ({ toast: { success: vi.fn() } }));

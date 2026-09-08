@@ -518,7 +518,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   });
   await page.getByRole('button', { name: '导入', exact: true }).click();
   const galleryImport = page.getByRole('dialog', { name: '导入图库素材' });
-  await expect(galleryImport.getByRole('button', { name: 'S3', exact: true })).toHaveCount(0);
+  await expect(galleryImport.getByRole('button', { name: 'S3', exact: true })).toBeVisible();
   await galleryImport.locator('input[type="file"]').setInputFiles({
     name: 'gallery-csp.zip',
     mimeType: 'application/zip',

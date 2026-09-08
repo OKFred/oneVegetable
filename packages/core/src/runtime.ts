@@ -1,4 +1,5 @@
 export { GatewayException, normalizeGatewayError } from './errors';
+export { decodeBase64, encodeBase64 } from './encoded-file';
 export {
   BFF_AUTHENTICATION_REQUIRED_CODES,
   createBffAuthenticationEvents,

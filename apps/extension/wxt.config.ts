@@ -1,6 +1,5 @@
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'wxt';
-import { fileURLToPath } from 'node:url';
 import rootPackage from '../../package.json' with { type: 'json' };
 
 export default defineConfig({
@@ -10,19 +9,7 @@ export default defineConfig({
       __ONE_VEGETABLE_EXTENSION__: 'true',
       'import.meta.env.VITE_APP_RUNTIME': JSON.stringify('extension')
     },
-    plugins: [tailwindcss()],
-    resolve: {
-      alias: {
-        '../components/GalleryTransferDialog.vue': fileURLToPath(
-          new URL('../../packages/ui/src/components/GalleryZipTransferDialog.vue', import.meta.url)
-        ),
-        [fileURLToPath(
-          new URL('../../packages/ui/src/components/GalleryTransferDialog.vue', import.meta.url)
-        )]: fileURLToPath(
-          new URL('../../packages/ui/src/components/GalleryZipTransferDialog.vue', import.meta.url)
-        )
-      }
-    }
+    plugins: [tailwindcss()]
   }),
   manifest: {
     name: '__MSG_extName__',

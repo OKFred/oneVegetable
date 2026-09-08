@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import fixture from '../../../mock/data/gallery-extension-transfer.json';
 import photoFixture from '../../../mock/data/photos.json';
 import transferFixture from '../../../mock/data/gallery-s3-mapping.json';
-import GalleryZipTransferDialog from '../src/components/GalleryZipTransferDialog.vue';
+import GalleryZipTransferDialog from '../src/components/GalleryTransferDialog.vue';
 import type { Photo } from '@one-vegetable/core';
 
 const mocks = vi.hoisted(() => ({ request: vi.fn(), read: vi.fn(), create: vi.fn() }));

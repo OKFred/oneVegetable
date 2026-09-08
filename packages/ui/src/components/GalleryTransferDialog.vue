@@ -5,6 +5,7 @@ import { toast } from 'vue-sonner';
 
 import {
   decodeBase64,
+  GatewayException,
   encodeBase64,
   evaluateGalleryImportRules,
   type GalleryTransferAssetV1,
@@ -29,6 +30,7 @@ import {
 } from '../lib/gallery-transfer-archive';
 import { useServices } from '../lib/services';
 import { loadGalleryImportRuleSet } from '../lib/gallery-import-rules-storage';
+import type { S3ObjectPage } from '@one-vegetable/core/s3-storage';
 
 type GalleryTransferMode = 'import' | 'export';
 type GalleryTransferStorage = 'zip' | 's3';
@@ -54,7 +56,8 @@ const emit = defineEmits<{
   imported: [count: number];
   groupsChanged: [];
 }>();
-const { gateway, control } = useServices();
+const { gateway, control: bffControl, s3Storage } = useServices();
+const control = s3Storage ?? bffControl;
 const { t } = useUiI18n();
 const fileInput = ref<HTMLInputElement | null>(null);
 const selectedFileName = ref('');
@@ -70,6 +73,7 @@ const s3Scanning = ref(false);
 const importMapping = ref<'rules' | 'current'>('rules');
 const createMissingGroups = ref(true);
 const groupCreationIssue = ref('');
+const unconfirmedUpload = ref('');
 const exportMapping = ref<'flat' | 'groups'>('flat');
 const exportPrefix = ref('exports');
 const importReceipts = ref<
@@ -114,7 +118,8 @@ const s3Supported = computed(
 );
 const s3ImportCount = computed(() => s3Decisions.value.filter((item) => item.action === 'import').length);
 const canExecute = computed(() => {
-  if (!props.open || busy.value || s3Scanning.value || validating.value) return false;
+  if (!props.open || busy.value || s3Scanning.value || validating.value || unconfirmedUpload.value)
+    return false;
   if (props.mode === 'export')
     return props.photos.length > 0 && (storage.value === 'zip' || s3Supported.value);
   if (!props.uploadAllowed) return false;
@@ -176,7 +181,9 @@ async function execute(): Promise<void> {
     else await importPhotos();
     if (!importResult.value) emit('update:open', false);
   } catch (reason: unknown) {
-    error.value = message(reason);
+    error.value = unconfirmedUpload.value
+      ? t('photos.transfer.uploadUnknown', { name: unconfirmedUpload.value })
+      : message(reason);
   } finally {
     busy.value = false;
   }
@@ -191,7 +198,7 @@ async function scanS3(): Promise<void> {
     const objects = [];
     let continuationToken: string | undefined;
     do {
-      const page = await control.listS3Objects({
+      const page: S3ObjectPage = await control.listS3Objects({
         maximum: Math.min(500 - objects.length, 500),
         ...(continuationToken ? { continuationToken } : {})
       });
@@ -292,19 +299,24 @@ async function importPhotos(): Promise<void> {
   if (!archive) return;
   const metadataByPath = new Map(archive.document.assets.map((asset) => [asset.path, asset]));
   let imported = 0;
-  for (const asset of archive.assets) {
-    const metadata = metadataByPath.get(asset.path);
-    if (!metadata) throw new Error(t('photos.transfer.errors.missingMetadata', { path: asset.path }));
-    await gateway.request('uploadPhoto', {
-      fileName: metadata.fileName,
-      contentType: metadata.contentType,
-      contentBase64: encodeBase64(asset.bytes),
-      byteLength: asset.bytes.byteLength,
-      groupId: props.targetGroupId
-    });
-    imported += 1;
+  try {
+    for (const asset of archive.assets) {
+      const metadata = metadataByPath.get(asset.path);
+      if (!metadata) throw new Error(t('photos.transfer.errors.missingMetadata', { path: asset.path }));
+      unconfirmedUpload.value = metadata.fileName;
+      await gateway.request('uploadPhoto', {
+        fileName: metadata.fileName,
+        contentType: metadata.contentType,
+        contentBase64: encodeBase64(asset.bytes),
+        byteLength: asset.bytes.byteLength,
+        groupId: props.targetGroupId
+      });
+      imported += 1;
+      unconfirmedUpload.value = '';
+    }
+  } finally {
+    if (imported) emit('imported', imported);
   }
-  emit('imported', imported);
   toast.success(t('photos.transfer.imported', { count: imported, group: props.targetGroupName }));
 }
 
@@ -481,6 +493,7 @@ async function importPhotosFromS3(): Promise<void> {
 }
 
 function reset(): void {
+  unconfirmedUpload.value = '';
   previewEpoch += 1;
   archiveEpoch += 1;
   selectedFileName.value = '';
@@ -586,6 +599,8 @@ function formatBytes(bytes: number): string {
 }
 
 function message(reason: unknown): string {
+  if (reason instanceof GatewayException && reason.gatewayError.code.startsWith('S3_'))
+    return t(`errors.codes.${reason.gatewayError.code}`);
   return reason instanceof Error ? reason.message : String(reason);
 }
 </script>

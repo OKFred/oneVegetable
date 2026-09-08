@@ -159,40 +159,37 @@ export const photos = {
     exportSummary: 'Export {count} images',
     archiveLimit: 'ZIP files are limited to 50 MiB; each gallery image is limited to 5 MiB.',
     localZip: 'Local ZIP',
-    ...(typeof __ONE_VEGETABLE_EXTENSION__ !== 'undefined' && __ONE_VEGETABLE_EXTENSION__
-      ? {}
-      : {
-          s3Unavailable: 'S3 is available only in Web mode with server-side storage configured.',
-          s3ExportDescription:
-            'Originals and gallery.json use the selected layout in an isolated batch under the configured root prefix. Existing files are not overwritten.',
-          prefix: 'Export prefix (relative to the configured root)',
-          mapping: 'Directory mapping',
-          groupCreationUnconfirmed:
-            'Creation of group “{group}” was not confirmed. Check Alibaba before reopening import. This session will not repeat creation.',
-          conflictSkipped: '{name}: skipped because the target group already contains that filename.',
-          createMissingGroups: 'Automatically create missing gallery groups (up to 3 levels)',
-          invalidGroupPath: 'Gallery paths must have 1–3 levels without empty or dot segments.',
-          flat: 'Put all images in one assets directory',
-          groups: 'Preserve gallery group hierarchy under assets',
-          rules: 'Use saved prefix mapping rules',
-          current: 'Import all into the current gallery group: {group}',
-          invalidPrefix: 'Enter a safe relative prefix without empty segments, dot segments or backslashes.',
-          locationConfirmed: '{name}: uploaded and confirmed in the group; fileId: {id}',
-          locationUnconfirmed:
-            '{name}: upload accepted; fileId: {id}. Not found in the first 100 group entries. It may reuse an existing image or be awaiting synchronization. Check before uploading again.',
-          exportToS3: 'Export to S3',
-          s3Exported: 'Exported {count} images to S3 at {prefix}',
-          s3Imported:
-            'Upload accepted for {count} S3 images. Check the per-image group verification results.',
-          s3ScanTitle: 'Scan S3 with local rules',
-          s3ScanDescription:
-            'Up to 500 objects are read. Only images matching a rule enter the import confirmation.',
-          scanS3: 'Scan S3',
-          s3ScanResult: 'Found {total} images; {count} will be imported.',
-          skipped: 'Skipped',
-          confirmS3ImportDescription:
-            'Upload {count} S3 images sequentially to their rule-selected gallery groups. Failures are not retried automatically.'
-        }),
+    ...{
+      s3Unavailable: 'S3 is available only in Web mode with server-side storage configured.',
+      s3ExportDescription:
+        'Originals and gallery.json use the selected layout in an isolated batch under the configured root prefix. Existing files are not overwritten.',
+      prefix: 'Export prefix (relative to the configured root)',
+      mapping: 'Directory mapping',
+      groupCreationUnconfirmed:
+        'Creation of group “{group}” was not confirmed. Check Alibaba before reopening import. This session will not repeat creation.',
+      conflictSkipped: '{name}: skipped because the target group already contains that filename.',
+      createMissingGroups: 'Automatically create missing gallery groups (up to 3 levels)',
+      invalidGroupPath: 'Gallery paths must have 1–3 levels without empty or dot segments.',
+      flat: 'Put all images in one assets directory',
+      groups: 'Preserve gallery group hierarchy under assets',
+      rules: 'Use saved prefix mapping rules',
+      current: 'Import all into the current gallery group: {group}',
+      invalidPrefix: 'Enter a safe relative prefix without empty segments, dot segments or backslashes.',
+      locationConfirmed: '{name}: uploaded and confirmed in the group; fileId: {id}',
+      locationUnconfirmed:
+        '{name}: upload accepted; fileId: {id}. Not found in the first 100 group entries. It may reuse an existing image or be awaiting synchronization. Check before uploading again.',
+      exportToS3: 'Export to S3',
+      s3Exported: 'Exported {count} images to S3 at {prefix}',
+      s3Imported: 'Upload accepted for {count} S3 images. Check the per-image group verification results.',
+      s3ScanTitle: 'Scan S3 with local rules',
+      s3ScanDescription:
+        'Up to 500 objects are read. Only images matching a rule enter the import confirmation.',
+      scanS3: 'Scan S3',
+      s3ScanResult: 'Found {total} images; {count} will be imported.',
+      skipped: 'Skipped',
+      confirmS3ImportDescription:
+        'Upload {count} S3 images sequentially to their rule-selected gallery groups. Failures are not retried automatically.'
+    },
     chooseZip: 'Choose gallery ZIP',
     assetCount: '{count} images',
     validating: 'Validating the manifest, image formats, and digests…',

@@ -156,38 +156,34 @@ export const photos = {
     exportSummary: '将导出 {count} 张图片',
     archiveLimit: 'ZIP 最大 50 MiB；单张图库图片最大 5 MiB。',
     localZip: '本地 ZIP',
-    ...(typeof __ONE_VEGETABLE_EXTENSION__ !== 'undefined' && __ONE_VEGETABLE_EXTENSION__
-      ? {}
-      : {
-          s3Unavailable: 'S3 仅在已配置服务端存储的 Web 模式中可用。',
-          s3ExportDescription:
-            '原图和 gallery.json 将按所选方式写入配置根前缀下的独立批次目录，不覆盖旧文件。',
-          prefix: '导出前缀（相对于设置中的根前缀）',
-          mapping: '目录映射方式',
-          groupCreationUnconfirmed:
-            '分组“{group}”未取得创建成功确认。请先到平台核对，再重新打开导入弹窗；本次不会重复创建。',
-          conflictSkipped: '{name}：目标分组已有同名图片，已按规则跳过。',
-          createMissingGroups: '自动创建缺失的图库分组（最多三级）',
-          invalidGroupPath: '图库分组路径必须为一至三级，不能包含空目录或点目录。',
-          flat: '全部平铺到一个 assets 目录',
-          groups: '在 assets 下保留图库分组层级',
-          rules: '按设置中保存的前缀映射规则',
-          current: '全部导入当前图库分组：{group}',
-          invalidPrefix: '请输入安全的相对前缀，不能包含空目录、点目录或反斜杠。',
-          locationConfirmed: '{name}：已上传并回读确认分组，fileId：{id}',
-          locationUnconfirmed:
-            '{name}：上传接口已接收，fileId：{id}；目标分组前 100 项未找到，可能复用旧图或同步延迟。请核对，勿重复上传。',
-          exportToS3: '导出到 S3',
-          s3Exported: '已将 {count} 张图片导出到 S3：{prefix}',
-          s3Imported: '上传接口已接收 {count} 张 S3 图片，请查看逐项分组回读结果。',
-          s3ScanTitle: '按本机规则扫描 S3',
-          s3ScanDescription: '最多读取 500 个对象，只有匹配规则的图片会进入导入确认。',
-          scanS3: '扫描 S3',
-          s3ScanResult: '发现 {total} 张图片，计划导入 {count} 张。',
-          skipped: '跳过',
-          confirmS3ImportDescription:
-            '将 {count} 张 S3 图片按规则逐张上传到对应图库分组；失败后不会自动重试。'
-        }),
+    ...{
+      s3Unavailable: 'S3 仅在已配置服务端存储的 Web 模式中可用。',
+      s3ExportDescription: '原图和 gallery.json 将按所选方式写入配置根前缀下的独立批次目录，不覆盖旧文件。',
+      prefix: '导出前缀（相对于设置中的根前缀）',
+      mapping: '目录映射方式',
+      groupCreationUnconfirmed:
+        '分组“{group}”未取得创建成功确认。请先到平台核对，再重新打开导入弹窗；本次不会重复创建。',
+      conflictSkipped: '{name}：目标分组已有同名图片，已按规则跳过。',
+      createMissingGroups: '自动创建缺失的图库分组（最多三级）',
+      invalidGroupPath: '图库分组路径必须为一至三级，不能包含空目录或点目录。',
+      flat: '全部平铺到一个 assets 目录',
+      groups: '在 assets 下保留图库分组层级',
+      rules: '按设置中保存的前缀映射规则',
+      current: '全部导入当前图库分组：{group}',
+      invalidPrefix: '请输入安全的相对前缀，不能包含空目录、点目录或反斜杠。',
+      locationConfirmed: '{name}：已上传并回读确认分组，fileId：{id}',
+      locationUnconfirmed:
+        '{name}：上传接口已接收，fileId：{id}；目标分组前 100 项未找到，可能复用旧图或同步延迟。请核对，勿重复上传。',
+      exportToS3: '导出到 S3',
+      s3Exported: '已将 {count} 张图片导出到 S3：{prefix}',
+      s3Imported: '上传接口已接收 {count} 张 S3 图片，请查看逐项分组回读结果。',
+      s3ScanTitle: '按本机规则扫描 S3',
+      s3ScanDescription: '最多读取 500 个对象，只有匹配规则的图片会进入导入确认。',
+      scanS3: '扫描 S3',
+      s3ScanResult: '发现 {total} 张图片，计划导入 {count} 张。',
+      skipped: '跳过',
+      confirmS3ImportDescription: '将 {count} 张 S3 图片按规则逐张上传到对应图库分组；失败后不会自动重试。'
+    },
     chooseZip: '选择图库 ZIP',
     assetCount: '{count} 张图片',
     validating: '正在校验清单、图片格式和摘要…',
