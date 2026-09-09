@@ -8,9 +8,8 @@ import {
   type GalleryTransferTaskV1 as Task,
   type GalleryTransferItemV1 as Item
 } from '@one-vegetable/core/gallery-transfer-task';
-import { BrowserGalleryTransferDriver, galleryGroupPaths, allGalleryPhotos } from './gallery-transfer-driver';
+import { LazyGalleryTransferDriver } from './gallery-transfer-lazy-driver';
 import { IndexedDbGalleryTaskRepository } from './gallery-task-repository';
-import { galleryAssetSha256, readGalleryTransferArchive } from './gallery-transfer-archive';
 import type { AppServices } from './services';
 
 export interface GalleryTaskPlanInput {
@@ -79,13 +78,13 @@ export class GalleryTransferService {
   readonly selectedId = ref<string | null>(null);
   readonly error = ref('');
   readonly repository = new IndexedDbGalleryTaskRepository();
-  readonly driver: BrowserGalleryTransferDriver;
+  readonly driver: LazyGalleryTransferDriver;
   readonly runner: GalleryTransferRunner;
   private channel: BroadcastChannel | null = null;
   private executing: Promise<void> | null = null;
   private disposed = false;
   constructor(private readonly services: AppServices) {
-    this.driver = new BrowserGalleryTransferDriver(services, downloadGalleryFile);
+    this.driver = new LazyGalleryTransferDriver(services, downloadGalleryFile);
     this.runner = new GalleryTransferRunner(
       this.repository,
       this.driver,
@@ -152,6 +151,7 @@ export class GalleryTransferService {
     }
   }
   async preview(input: GalleryTaskPlanInput): Promise<Task> {
+    const { galleryGroupPaths, allGalleryPhotos } = await import('./gallery-transfer-driver');
     if (!('locks' in navigator)) throw new GalleryTaskError('GALLERY_TASK_LOCK_UNAVAILABLE');
     const context = await this.driver.context();
     if (input.storage === 's3' && !context.storage) throw new GalleryTaskError('GALLERY_CONTEXT_UNAVAILABLE');
@@ -223,6 +223,7 @@ export class GalleryTransferService {
       }[];
       if (input.storage === 'zip') {
         if (!input.archiveBytes) throw new GalleryTaskError('GALLERY_TASK_ARCHIVE_REQUIRED');
+        const { readGalleryTransferArchive, galleryAssetSha256 } = await import('./gallery-transfer-archive');
         const archive = await readGalleryTransferArchive(input.archiveBytes);
         task.archiveSha256 = await galleryAssetSha256(input.archiveBytes);
         sources = archive.document.assets.map((a) => ({
@@ -353,9 +354,9 @@ export class GalleryTransferService {
     await navigator.locks.request(GALLERY_TASK_LOCK, { ifAvailable: true }, async (lock) => {
       if (!lock) throw new GalleryTaskError('GALLERY_TASK_BUSY');
       for (const task of await this.repository.list()) {
-        await this.repository.remove(task.id);
         this.driver.forgetArchive(task.id);
       }
+      await this.repository.clearAll();
     });
     this.tasks.value = [];
   }

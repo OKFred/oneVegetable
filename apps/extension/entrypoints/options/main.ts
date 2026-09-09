@@ -1,9 +1,6 @@
 import { browser } from 'wxt/browser';
 
-import {
-  requireGalleryContext,
-  type GalleryRequestOptions
-} from '@one-vegetable/core/gallery-transfer-context';
+import type { GalleryRequestOptions } from '@one-vegetable/core/gallery-transfer-context';
 import {
   BffControlClient,
   GatewayException,
@@ -504,6 +501,7 @@ function productMutationJobCount(value: unknown): number {
 
 class ExtensionGatewayClient implements GatewayClient {
   async galleryTransferContext() {
+    const { requireGalleryContext } = await import('@one-vegetable/core/gallery-transfer-context');
     const requestId = crypto.randomUUID();
     const response: unknown = await browser.runtime.sendMessage({
       kind: 'gallery-transfer-context',

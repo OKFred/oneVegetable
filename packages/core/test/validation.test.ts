@@ -12,7 +12,8 @@ describe('standalone OpenAPI validators', () => {
   it('contains no CSP-unsafe runtime code', async () => {
     const directory = new URL('../src/generated/', import.meta.url);
     const files = (await readdir(directory)).filter((file) => file.startsWith('validators-'));
-    expect(files).toHaveLength(8);
+    expect(files).toHaveLength(9);
+    expect(files).toContain('validators-gallery.ts');
     for (const file of files) {
       const source = await readFile(new URL(file, directory), 'utf8');
       expect(source, file).not.toMatch(/\brequire\(|\beval\(|new Function/);

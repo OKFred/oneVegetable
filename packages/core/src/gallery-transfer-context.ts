@@ -2,7 +2,7 @@ import { GatewayException } from './errors';
 import type { GatewayCredentials } from './types';
 import type { S3StorageConfiguration } from './s3-storage';
 import { validGalleryTransferContext, type GalleryTransferContext } from './gallery-transfer-task';
-import { validateGalleryTransferContext } from './generated/validators-core';
+import { validateGalleryTransferContext } from './generated/validators-gallery';
 
 export interface GalleryRequestOptions {
   requestId?: string;

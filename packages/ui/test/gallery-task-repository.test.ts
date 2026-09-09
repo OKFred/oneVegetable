@@ -20,10 +20,11 @@ describe('local durable gallery repository', () => {
     });
     expect((await first.get(task.id)).revision).toBe(2);
     await expect(first.remove(task.id)).rejects.toThrow();
+    await expect(first.clearAll()).rejects.toThrow();
     await first.update(task.id, (current) => {
       current.status = 'paused';
     });
-    await first.remove(task.id);
+    await first.clearAll();
     expect(await second.list()).toEqual([]);
   });
   it('retains old unresolved records and purges only old terminal records', async () => {

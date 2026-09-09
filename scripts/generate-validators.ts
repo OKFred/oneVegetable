@@ -32,7 +32,6 @@ const schemas = document.components?.schemas;
 if (!schemas) throw new Error('OpenAPI components.schemas is missing');
 
 const coreValidators: Record<string, object | undefined> = {
-  validateGalleryTransferContext: schemas.GalleryTransferContext,
   validateProductSchemaRequest: schemas.ProductSchemaRequest,
   validateProductSchemaRenderRequest: schemas.ProductSchemaRenderRequest,
   validateSchemaPublishRequest: schemas.SchemaPublishRequest,
@@ -61,6 +60,10 @@ const coreValidators: Record<string, object | undefined> = {
 const domains: CapabilityDomain[] = ['product', 'rfq', 'trade', 'logistics', 'insights', 'photo', 'platform'];
 const targets = new Map<string, string>();
 targets.set('validators-core.ts', compileValidators(coreValidators, 'fast'));
+targets.set(
+  'validators-gallery.ts',
+  compileValidators({ validateGalleryTransferContext: schemas.GalleryTransferContext }, 'fast')
+);
 
 for (const domain of domains) {
   const definitions = document[`x-${domain}-capabilities`] ?? {};

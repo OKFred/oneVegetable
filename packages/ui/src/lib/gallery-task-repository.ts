@@ -157,4 +157,24 @@ export class IndexedDbGalleryTaskRepository implements GalleryTransferTaskReposi
       };
     });
   }
+  async clearAll(): Promise<void> {
+    return this.transaction((store, tx, done) => {
+      const request = store.getAll();
+      request.onsuccess = () => {
+        const values: unknown[] = request.result;
+        if (
+          values.some(
+            (value) =>
+              typeof value === 'object' && value !== null && 'status' in value && value.status === 'running'
+          )
+        ) {
+          tx.abort();
+          return;
+        }
+        store.clear();
+        tx.objectStore('quarantine').clear();
+        done(undefined);
+      };
+    });
+  }
 }
