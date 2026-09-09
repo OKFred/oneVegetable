@@ -159,7 +159,8 @@ export class S3StorageConfigurationService {
     private readonly repository: SqlS3StorageConfigurationRepository,
     private readonly cipher: S3StorageConfigurationCipher,
     private readonly clock: () => number = Date.now,
-    private readonly transport?: NetworkTransport
+    private readonly transport?: NetworkTransport,
+    private readonly allowLocalHttp = false
   ) {}
 
   async summary(): Promise<S3StorageConfigurationSummary> {
@@ -175,6 +176,7 @@ export class S3StorageConfigurationService {
     remark: string | null;
   }): Promise<S3StorageConfigurationSummary> {
     const configuration = validateS3StorageConfiguration(input.configuration);
+    this.assertRuntime(configuration);
     const encrypted = await this.cipher.encrypt(configuration);
     const record = await this.repository.save({
       ...encrypted,
@@ -191,7 +193,9 @@ export class S3StorageConfigurationService {
     if (!record) {
       throw new GatewayConfigurationError('S3_STORAGE_NOT_CONFIGURED', '请先在设置中配置 S3 存储');
     }
-    return this.cipher.decrypt(record);
+    const configuration = await this.cipher.decrypt(record);
+    this.assertRuntime(configuration);
+    return configuration;
   }
 
   async galleryStorageContextId(): Promise<string | null> {
@@ -215,6 +219,10 @@ export class S3StorageConfigurationService {
 
   async clear(expectedRevision: number): Promise<void> {
     if (!(await this.repository.delete(expectedRevision))) throw new EntityVersionConflictError();
+  }
+  private assertRuntime(configuration: S3StorageConfiguration): void {
+    if (configuration.endpoint.startsWith('http:') && !this.allowLocalHttp)
+      throw new GatewayConfigurationError('S3_LOCAL_HTTP_DISABLED', 'S3_LOCAL_HTTP_DISABLED');
   }
 }
 

@@ -1,4 +1,53 @@
 export const photos = {
+  tasks: {
+    retention: '完成/取消后保留 30 天；未解决记录不自动删除，最多 100 个任务。',
+    title: '传输记录',
+    boundary: '关闭此窗口或切换页面不停止任务。刷新或关闭标签页后，请手工确认恢复。记录仅保存在本机。',
+    created: '传输任务已创建，可在传输记录中查看进度。',
+    preview: '以下是冻结的执行计划：',
+    filter: '任务状态',
+    all: '全部',
+    refresh: '刷新',
+    empty: '还没有传输记录',
+    detail: '任务详情',
+    progress: '图库传输 {count}/{total}',
+    pause: '暂停',
+    resume: '继续 / 重试明确失败项',
+    verify: '核对结果',
+    cancel: '取消后续传输',
+    remove: '清理记录',
+    report: '导出脱敏报告',
+    reselect: '重新选择原 ZIP',
+    archiveReady: '原 ZIP 已核对一致，请点击继续。',
+    downloadStarted: '下载已发起，请检查浏览器的下载列表。',
+    noRepeat:
+      '已成功项目不会再次上传；结果不明仅核对，不自动重发。配置变化需要重新预览。ZIP 导入恢复时需重新选择原文件。',
+    confirm: '确认任务操作',
+    clearWarning: '仅清理本机记录，不删除远端素材。未解决记录清理后将无法核对或恢复。',
+    skip: '标记跳过',
+    reason: '请填写跳过原因',
+    error:
+      '传输需要处理（{code}）。请检查登录、权限和配置，或重新选择原 ZIP 后继续。结果不明时请先核对，不能直接重传。',
+    status: {
+      pending: '待开始',
+      running: '执行中',
+      paused: '已暂停',
+      attention: '需处理',
+      completed: '已完成',
+      cancelled: '已取消'
+    },
+    item: {
+      pending: '待处理',
+      running: '执行中',
+      unconfirmed: '成功待核对',
+      confirmed: '已确认',
+      failed: '明确失败',
+      unknown: '结果不明',
+      skipped: '已跳过'
+    },
+    kind: { asset: '素材', group: '创建分组', manifest: '写入清单', archive: '生成下载包' },
+    direction: { import: '导入', export: '导出' }
+  },
   page: {
     title: '图库',
     description: '管理国际站图库（图片银行）的分组、发品素材与非阻断治理提示。',

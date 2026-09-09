@@ -149,11 +149,10 @@ export default defineBackground({
       ) {
         return (async () => {
           const requestId =
-            'requestId' in value && isRequestId(value.requestId)
-              ? value.requestId
-              : crypto.randomUUID();
+            'requestId' in value && isRequestId(value.requestId) ? value.requestId : crypto.randomUUID();
           try {
-            if (!('requestId' in value) || !isRequestId(value.requestId)) throw gatewayFailure('INVALID_REQUEST_ID', 'INVALID_REQUEST_ID');
+            if (!('requestId' in value) || !isRequestId(value.requestId))
+              throw gatewayFailure('INVALID_REQUEST_ID', 'INVALID_REQUEST_ID');
             if (!trustedOptionsPage)
               throw gatewayFailure('GALLERY_CONTEXT_UNTRUSTED', 'GALLERY_CONTEXT_UNTRUSTED');
             await storageAccessReady;
@@ -186,7 +185,7 @@ export default defineBackground({
               assertGalleryContextId(expected.identity, await opaqueGalleryId('extension:local-admin'));
               assertGalleryContextId(expected.gateway, await galleryGatewayId(await loadSettings()));
             }
-            return s3.handle(value, trustedOptionsPage);
+            return await s3.handle(value, trustedOptionsPage);
           } catch (error) {
             return {
               requestId: 'requestId' in value ? value.requestId : '',

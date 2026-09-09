@@ -1193,20 +1193,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        GalleryTransferContext: {
-            identity: string;
-            gateway: string;
-            storage: string | null;
-        };
-        GalleryTransferContextRequest: {
-            requestId: components["schemas"]["RequestId"];
-        };
-        GalleryTransferContextResponse: {
-            requestId: components["schemas"]["RequestId"];
-            /** @constant */
-            ok: true;
-            data: components["schemas"]["GalleryTransferContext"];
-        };
         AdminAuditListRequest: {
             requestId: components["schemas"]["RequestId"];
             requestIdFilter?: components["schemas"]["RequestId"];
@@ -6899,6 +6885,20 @@ export interface components {
             pairingCode: string;
             extensionId: string;
         };
+        GalleryTransferContext: {
+            identity: string;
+            gateway: string;
+            storage: string | null;
+        };
+        GalleryTransferContextRequest: {
+            requestId: components["schemas"]["RequestId"];
+        };
+        GalleryTransferContextResponse: {
+            requestId: components["schemas"]["RequestId"];
+            /** @constant */
+            ok: true;
+            data: components["schemas"]["GalleryTransferContext"];
+        };
         GatewayCredentialClearRequest: {
             requestId: components["schemas"]["RequestId"];
             revision: number;
@@ -7160,8 +7160,8 @@ export interface components {
         };
         OperationCallRequest: {
             requestId: components["schemas"]["RequestId"];
-            galleryContext?: components["schemas"]["GalleryTransferContext"];
             operation: string;
+            galleryContext?: components["schemas"]["GalleryTransferContext"];
             payload: {
                 [key: string]: unknown;
             };
@@ -7673,6 +7673,8 @@ export interface components {
         S3StorageConfiguration: {
             /** Format: uri */
             endpoint: string;
+            /** @description Explicit local RFC1918 IPv4 HTTP opt-in. Node additionally requires the local environment flag; Worker rejects HTTP. */
+            allowInsecureLocal?: boolean;
             region: string;
             bucket: string;
             accessKeyId: string;
@@ -7968,22 +7970,34 @@ export interface operations {
                     "application/json": components["schemas"]["GalleryTransferContextResponse"];
                 };
             };
-            /** @description Sign in required */
-            401: {
+            /** @description Invalid request */
+            400: {
                 headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApiFailure"];
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
                 };
             };
             /** @description Context unavailable */
             503: {
                 headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApiFailure"];
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
                 };
             };
         };

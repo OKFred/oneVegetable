@@ -48,6 +48,8 @@ import type { SocialPublishingClient } from '@one-vegetable/core';
 import { APP_VERSION } from '@one-vegetable/core/version';
 
 import Button from './components/ui/Button.vue';
+import GalleryTransferTaskCenter from './components/GalleryTransferTaskCenter.vue';
+import { GalleryTransferService, provideGalleryTransfers } from './lib/gallery-transfer-service';
 import { Avatar, AvatarFallback } from './components/ui/avatar';
 import Sonner from './components/ui/Sonner.vue';
 import Tooltip from './components/ui/Tooltip.vue';
@@ -111,6 +113,18 @@ provideServices({
   ...(props.operationAvailability ? { operationAvailability: props.operationAvailability } : {})
 });
 
+const galleryTransfers = new GalleryTransferService({
+  gateway: props.gateway,
+  settings: props.settings,
+  mode: props.mode,
+  ...(props.control ? { control: props.control } : {}),
+  ...(props.s3Storage ? { s3Storage: props.s3Storage } : {})
+});
+provideGalleryTransfers(galleryTransfers);
+onBeforeUnmount(() => {
+  galleryTransfers.dispose();
+});
+
 interface NavigationItem {
   id: PageId;
   labelKey: string;
@@ -147,6 +161,18 @@ const sidebarOpen = ref(false);
 const sidebarPanel = ref<HTMLElement | null>(null);
 const sidebarToggle = ref<FocusableButton | null>(null);
 const workspaceReady = ref(props.mode === 'mock' || props.onboarding === undefined);
+let galleryInitialized = false;
+watch(
+  [workspaceReady, session],
+  () => {
+    if (!workspaceReady.value || (props.mode === 'bff' && !session.value)) return;
+    if (!galleryInitialized) {
+      galleryInitialized = true;
+      void galleryTransfers.initialize();
+    } else void galleryTransfers.reload();
+  },
+  { immediate: true }
+);
 const credentialAcquisitionOpen = ref(false);
 const authenticationRequired = ref<BffAuthenticationRequiredEvent | null>(null);
 let unsubscribeAuthenticationEvents: (() => void) | null = null;
@@ -452,6 +478,7 @@ function avatarInitials(name: string): string {
           </div>
         </header>
         <main class="p-4 lg:p-7"><component :is="activeView" /></main>
+        <GalleryTransferTaskCenter />
       </div>
       <Transition name="ov-fade">
         <button

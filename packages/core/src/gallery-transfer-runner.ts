@@ -64,6 +64,7 @@ export class GalleryTransferRunner {
   async run(id: string, verifyOnly = false): Promise<void> {
     const acquired = await this.exclusive(async () => {
       let task = await this.repository.get(id);
+      const wasCancelled = task.status === 'cancelled';
       if (task.status === 'completed' || (task.status === 'cancelled' && !verifyOnly)) return;
       if (!sameGalleryTransferContext(task.context, await this.driver.context(task)))
         throw new GalleryTaskError('GALLERY_CONTEXT_CHANGED');
@@ -139,7 +140,7 @@ export class GalleryTransferRunner {
         try {
           await this.repository.update(id, (current) => {
             current.status =
-              current.command === 'cancel'
+              current.command === 'cancel' || wasCancelled
                 ? 'cancelled'
                 : current.command === 'pause'
                   ? 'paused'
@@ -183,10 +184,22 @@ export function safeCode(reason: unknown): string {
 function knownUnsent(reason: unknown): boolean {
   // Only local/preflight denials, not generic provider failures or timeouts.
   const code = safeCode(reason);
-  return (reason instanceof GatewayException || reason instanceof GalleryTaskError) && new Set([
-    'AUTH_REQUIRED', 'AUTH_SESSION_EXPIRED', 'SESSION_EXPIRED', 'CSRF_INVALID', 'ABAC_DENIED',
-    'REAL_MUTATION_DISABLED', 'GALLERY_CONTEXT_CHANGED', 'GALLERY_CONTEXT_INVALID',
-    'GALLERY_CONTEXT_UNTRUSTED', 'S3_PERMISSION_REQUIRED', 'S3_NOT_CONFIGURED',
-    'GALLERY_TASK_SOURCE_CHANGED', 'GALLERY_CONTEXT_UNAVAILABLE'
-  ]).has(code);
+  return (
+    (reason instanceof GatewayException || reason instanceof GalleryTaskError) &&
+    new Set([
+      'AUTH_REQUIRED',
+      'AUTH_SESSION_EXPIRED',
+      'SESSION_EXPIRED',
+      'CSRF_INVALID',
+      'ABAC_DENIED',
+      'REAL_MUTATION_DISABLED',
+      'GALLERY_CONTEXT_CHANGED',
+      'GALLERY_CONTEXT_INVALID',
+      'GALLERY_CONTEXT_UNTRUSTED',
+      'S3_PERMISSION_REQUIRED',
+      'S3_NOT_CONFIGURED',
+      'GALLERY_TASK_SOURCE_CHANGED',
+      'GALLERY_CONTEXT_UNAVAILABLE'
+    ]).has(code)
+  );
 }

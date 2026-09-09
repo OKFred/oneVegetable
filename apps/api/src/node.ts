@@ -84,7 +84,11 @@ const metaSocial = metaSecretCipher
 const s3Storage = metaSecretCipher
   ? new S3StorageConfigurationService(
       new SqlS3StorageConfigurationRepository(database.executor),
-      await S3StorageConfigurationCipher.create(process.env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY)
+      await S3StorageConfigurationCipher.create(process.env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY),
+      Date.now,
+      undefined,
+      !['staging', 'production', 'self-hosted'].includes(runtimeConfiguration.environment) &&
+        process.env.ONE_VEGETABLE_ALLOW_LOCAL_S3_HTTP === '1'
     )
   : undefined;
 const socialPublishingRepository = new SqlSocialPublishingRepository(database.executor);

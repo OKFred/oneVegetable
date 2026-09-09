@@ -28,6 +28,8 @@ import GroupSidebar from '../components/GroupSidebar.vue';
 import PageHeader from '../components/PageHeader.vue';
 import ImagePreview, { type ImagePreviewItem } from '../components/ImagePreview.vue';
 import GalleryTransferDialog from '../components/GalleryTransferDialog.vue';
+import { useGalleryTransfers } from '../lib/gallery-transfer-service';
+const galleryTransfers = useGalleryTransfers();
 import PhotoGroupManagerDialog from '../components/PhotoGroupManagerDialog.vue';
 import PhotoGroupNavigation from '../components/PhotoGroupNavigation.vue';
 import PhotoSocialShareDialog from '../components/PhotoSocialShareDialog.vue';
@@ -211,6 +213,17 @@ function handleImportedGroupsChanged(): void {
   void queryClient.invalidateQueries({ queryKey: ['photo-groups'] });
   groupNavigationRevision.value += 1;
 }
+watch(
+  () =>
+    galleryTransfers?.tasks.value
+      .filter((task) => task.direction === 'import')
+      .map((task) => `${task.id}:${task.items.filter((item) => item.status === 'confirmed').length}`)
+      .join(','),
+  () => {
+    handleGalleryImported();
+    handleImportedGroupsChanged();
+  }
+);
 
 const photoColumns = computed<DataColumn<Photo>[]>(() => [
   {
@@ -336,6 +349,9 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
       <Button variant="outline" @click="openGalleryTransfer('import')">
         <FileInput class="size-4" />{{ t('photos.page.import') }}
       </Button>
+      <Button v-if="galleryTransfers" variant="outline" @click="galleryTransfers.show()">{{
+        t('photos.tasks.title')
+      }}</Button>
       <Button
         variant="outline"
         :disabled="selectedPhotos.length === 0"
@@ -568,8 +584,6 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
         t('photos.errors.uploadUnavailable')
       )
     "
-    @imported="handleGalleryImported"
-    @groups-changed="handleImportedGroupsChanged"
   />
 
   <PhotoSocialShareDialog v-model:open="shareDialogOpen" :photos="selectedPhotos" />

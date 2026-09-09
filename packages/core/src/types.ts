@@ -1,3 +1,5 @@
+import type { GalleryRequestOptions } from './gallery-transfer-context';
+import type { GalleryTransferContext } from './gallery-transfer-task';
 import type { components } from './generated/api';
 import type {
   ProductCapabilityRequestMap,
@@ -319,11 +321,11 @@ export type RequestOf<K extends OperationId> = OperationMap[K]['request'];
 export type ResponseOf<K extends OperationId> = OperationMap[K]['response'];
 
 export interface GatewayClient {
-  galleryTransferContext?(): Promise<import('./gallery-transfer-task').GalleryTransferContext>;
+  galleryTransferContext?(): Promise<GalleryTransferContext>;
   request<K extends OperationId>(
     operation: K,
     request: RequestOf<K>,
-    options?: import('./gallery-transfer-context').GalleryRequestOptions
+    options?: GalleryRequestOptions
   ): Promise<ResponseOf<K>>;
 }
 
@@ -333,7 +335,7 @@ export interface RuntimeRequest<K extends OperationId = OperationId> {
   operation: K;
   payload: RequestOf<K>;
   productMutationFingerprint?: ProductMutationFingerprintSet;
-  galleryContext?: import('./gallery-transfer-task').GalleryTransferContext;
+  galleryContext?: GalleryTransferContext;
 }
 
 export type RuntimeResponse<K extends OperationId = OperationId> =
@@ -430,11 +432,12 @@ export interface LocalDataCategory {
     | 'product-mutation-jobs'
     | 'social-backend-device'
     | 's3-credentials'
+    | 'gallery-transfer-tasks'
     | 'drafts'
     | 'diagnostics'
     | 'preferences';
   label: string;
-  storage: 'chrome.storage.local' | 'chrome.storage.session' | 'localStorage';
+  storage: 'chrome.storage.local' | 'chrome.storage.session' | 'localStorage' | 'IndexedDB';
   itemCount: number;
   approximateBytes: number;
   sensitive: boolean;

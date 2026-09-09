@@ -33,6 +33,7 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     properties: {
       requestId: { $ref: '#/components/schemas/RequestId' },
       operation: { type: 'string', minLength: 1 },
+      galleryContext: { $ref: '#/components/schemas/GalleryTransferContext' },
       payload: { type: 'object', additionalProperties: true }
     }
   };
@@ -486,6 +487,25 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
   });
 
   document.paths = {
+    '/gallery-transfers/context/get': {
+      post: {
+        summary: 'Read opaque gallery transfer execution context',
+        operationId: 'getGalleryTransferContext',
+        requestBody: requestBody('GalleryTransferContextRequest'),
+        responses: {
+          '200': {
+            description: 'Opaque account and configuration identifiers, never credentials',
+            headers: { 'X-Request-ID': { schema: { $ref: '#/components/schemas/RequestId' } } },
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/GalleryTransferContextResponse' } }
+            }
+          },
+          '400': envelopeResponse('Invalid request'),
+          '401': envelopeResponse('Authentication required'),
+          '503': envelopeResponse('Context unavailable')
+        }
+      }
+    },
     '/healthz': {
       get: {
         summary: 'Check whether the API process is alive',

@@ -1,3 +1,4 @@
+import type { GalleryTransferContext } from './gallery-transfer-task';
 import type {
   LogisticsOrderSummary,
   OperationId,
@@ -36,7 +37,7 @@ export interface ProductMockData {
 }
 
 export interface PhotoMockData {
-  transferContext: import('./gallery-transfer-task').GalleryTransferContext;
+  transferContext: GalleryTransferContext;
   photoGroups: PhotoGroup[];
   responses: OperationResponses<
     | 'listPhotoGroups'

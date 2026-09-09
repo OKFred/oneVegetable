@@ -1,4 +1,55 @@
 export const photos = {
+  tasks: {
+    retention: 'Terminal records: 30 days. Unresolved records are retained. Maximum 100 tasks.',
+    title: 'Transfer history',
+    boundary:
+      'Transfers continue when this panel is closed or you navigate within the workspace. Reloading or closing the tab requires manual resume. History stays on this device.',
+    created: 'Transfer task created. Follow its progress in Transfer history.',
+    preview: 'Frozen execution plan:',
+    filter: 'Task status',
+    all: 'All',
+    refresh: 'Refresh',
+    empty: 'No transfer tasks yet',
+    detail: 'Task details',
+    progress: 'Gallery transfer {count}/{total}',
+    pause: 'Pause',
+    resume: 'Resume / retry confirmed failures',
+    verify: 'Verify results',
+    cancel: 'Cancel remaining work',
+    remove: 'Clear record',
+    report: 'Export redacted report',
+    reselect: 'Reselect original ZIP',
+    archiveReady: 'Original ZIP verified. Select Resume to continue.',
+    downloadStarted: 'Download initiated. Check your browser downloads.',
+    noRepeat:
+      'Successful items are not uploaded again. Unknown writes are verified, never automatically resent. Changed configuration requires a new preview. ZIP imports require the original archive to resume.',
+    confirm: 'Confirm task action',
+    clearWarning:
+      'Only local history is removed, not remote files. Clearing unresolved records prevents recovery and verification.',
+    skip: 'Mark skipped',
+    reason: 'Reason for skipping',
+    error:
+      'Transfer needs attention ({code}). Check sign-in, permissions and configuration, or reselect the original ZIP. Verify unknown results before proceeding; do not blindly resend.',
+    status: {
+      pending: 'Pending',
+      running: 'Running',
+      paused: 'Paused',
+      attention: 'Needs attention',
+      completed: 'Completed',
+      cancelled: 'Cancelled'
+    },
+    item: {
+      pending: 'Pending',
+      running: 'Running',
+      unconfirmed: 'Succeeded; verification pending',
+      confirmed: 'Verified',
+      failed: 'Confirmed failure',
+      unknown: 'Unknown outcome',
+      skipped: 'Skipped'
+    },
+    kind: { asset: 'Asset', group: 'Create group', manifest: 'Write manifest', archive: 'Create download' },
+    direction: { import: 'Import', export: 'Export' }
+  },
   page: {
     title: 'Gallery',
     description:

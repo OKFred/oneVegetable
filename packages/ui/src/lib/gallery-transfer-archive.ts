@@ -63,7 +63,7 @@ export async function createGalleryTransferArchive(input: GalleryTransferArchive
     }
     files[normalizedPath] = [asset.bytes, { level: 0 }];
   }
-  if (Object.keys(files).length > GALLERY_TRANSFER_MAX_ENTRIES) throw transferError('entryLimit');
+  if (input.assets.length > GALLERY_TRANSFER_MAX_ENTRIES) throw transferError('entryLimit');
   const archive = await zipArchive(files);
   if (archive.byteLength > GALLERY_TRANSFER_MAX_ARCHIVE_BYTES) throw transferError('archiveLimit');
   return archive;
@@ -77,7 +77,8 @@ export async function readGalleryTransferArchive(bytes: Uint8Array): Promise<Gal
   const names = new Set<string>();
   const files = await unzipArchive(bytes, (entry) => {
     entries += 1;
-    if (entries > GALLERY_TRANSFER_MAX_ENTRIES) throw transferError('entryLimit');
+    // One manifest and the optional assets/ directory do not count as materials.
+    if (entries > GALLERY_TRANSFER_MAX_ENTRIES + 2) throw transferError('entryLimit');
     totalUncompressedBytes += entry.originalSize;
     if (totalUncompressedBytes > GALLERY_TRANSFER_MAX_UNCOMPRESSED_BYTES) {
       throw transferError('uncompressedLimit');

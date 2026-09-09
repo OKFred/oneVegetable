@@ -1,3 +1,4 @@
+import type { GalleryRequestOptions } from './gallery-transfer-context';
 import { DEFAULT_API_PREFIX, normalizeApiPrefix } from './api-contract';
 import { notifyBffAuthenticationRequired } from './bff-authentication';
 import { GatewayException } from './errors';
@@ -294,19 +295,16 @@ export interface ControlClient {
       continuationToken?: string;
       maximum?: number;
     },
-    options?: import('./gallery-transfer-context').GalleryRequestOptions
+    options?: GalleryRequestOptions
   ): Promise<S3ObjectPage>;
-  getS3Object?(
-    key: string,
-    options?: import('./gallery-transfer-context').GalleryRequestOptions
-  ): Promise<S3ObjectContent>;
+  getS3Object?(key: string, options?: GalleryRequestOptions): Promise<S3ObjectContent>;
   putS3Object?(
     input: {
       key: string;
       bytes: Uint8Array;
       contentType: string;
     },
-    options?: import('./gallery-transfer-context').GalleryRequestOptions
+    options?: GalleryRequestOptions
   ): Promise<{ key: string; etag: string | null }>;
   startAlibabaCredentialAcquisition?(input: {
     account: string;
@@ -667,15 +665,12 @@ export class BffControlClient implements ControlClient {
 
   listS3Objects(
     input: { prefix?: string; continuationToken?: string; maximum?: number } = {},
-    options?: import('./gallery-transfer-context').GalleryRequestOptions
+    options?: GalleryRequestOptions
   ): Promise<S3ObjectPage> {
     return this.#call('/admin/storage/s3/objects/list', { ...input, ...options });
   }
 
-  async getS3Object(
-    key: string,
-    options?: import('./gallery-transfer-context').GalleryRequestOptions
-  ): Promise<S3ObjectContent> {
+  async getS3Object(key: string, options?: GalleryRequestOptions): Promise<S3ObjectContent> {
     const result = await this.#call<{
       key: string;
       contentBase64: string;
@@ -694,7 +689,7 @@ export class BffControlClient implements ControlClient {
       bytes: Uint8Array;
       contentType: string;
     },
-    options?: import('./gallery-transfer-context').GalleryRequestOptions
+    options?: GalleryRequestOptions
   ): Promise<{ key: string; etag: string | null }> {
     return this.#call('/admin/storage/s3/objects/put', {
       key: input.key,

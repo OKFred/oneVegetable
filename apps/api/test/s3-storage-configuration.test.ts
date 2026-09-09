@@ -16,6 +16,17 @@ afterEach(() => {
 });
 
 describe('S3 storage configuration', () => {
+  it('rejects private HTTP in server compositions unless explicitly opted in', async () => {
+    const { service } = await harness();
+    await expect(
+      service.save({
+        configuration: { ...configuration(), endpoint: 'http://192.168.1.4:9000', allowInsecureLocal: true },
+        actorId: 'admin',
+        expectedRevision: null,
+        remark: null
+      })
+    ).rejects.toThrow('S3_LOCAL_HTTP_DISABLED');
+  });
   it('encrypts credentials and returns only a redacted summary', async () => {
     const { repository, service } = await harness();
     const summary = await service.save({

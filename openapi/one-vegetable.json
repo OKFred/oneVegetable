@@ -12,9 +12,8 @@
   "paths": {
     "/gallery-transfers/context/get": {
       "post": {
-        "operationId": "getGalleryTransferContext",
         "summary": "Read opaque gallery transfer execution context",
-        "tags": ["System"],
+        "operationId": "getGalleryTransferContext",
         "requestBody": {
           "required": true,
           "content": {
@@ -31,13 +30,47 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
           "401": {
-            "description": "Sign in required",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiFailure" } } }
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
           },
           "503": {
             "description": "Context unavailable",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiFailure" } } }
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -5273,32 +5306,6 @@
       }
     },
     "schemas": {
-      "GalleryTransferContext": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["identity", "gateway", "storage"],
-        "properties": {
-          "identity": { "type": "string", "minLength": 1, "maxLength": 128 },
-          "gateway": { "type": "string", "minLength": 1, "maxLength": 128 },
-          "storage": { "type": ["string", "null"], "minLength": 1, "maxLength": 128 }
-        }
-      },
-      "GalleryTransferContextRequest": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["requestId"],
-        "properties": { "requestId": { "$ref": "#/components/schemas/RequestId" } }
-      },
-      "GalleryTransferContextResponse": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["requestId", "ok", "data"],
-        "properties": {
-          "requestId": { "$ref": "#/components/schemas/RequestId" },
-          "ok": { "const": true },
-          "data": { "$ref": "#/components/schemas/GalleryTransferContext" }
-        }
-      },
       "AdminAuditListRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -13391,6 +13398,32 @@
           "extensionId": { "type": "string", "pattern": "^[a-p]{32}$" }
         }
       },
+      "GalleryTransferContext": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["identity", "gateway", "storage"],
+        "properties": {
+          "identity": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "gateway": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "storage": { "type": ["string", "null"], "minLength": 1, "maxLength": 128 }
+        }
+      },
+      "GalleryTransferContextRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId"],
+        "properties": { "requestId": { "$ref": "#/components/schemas/RequestId" } }
+      },
+      "GalleryTransferContextResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "ok", "data"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "ok": { "const": true },
+          "data": { "$ref": "#/components/schemas/GalleryTransferContext" }
+        }
+      },
       "GatewayCredentialClearRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -13944,8 +13977,8 @@
         "required": ["requestId", "operation", "payload"],
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
-          "galleryContext": { "$ref": "#/components/schemas/GalleryTransferContext" },
           "operation": { "type": "string", "minLength": 1 },
+          "galleryContext": { "$ref": "#/components/schemas/GalleryTransferContext" },
           "payload": { "type": "object", "additionalProperties": true }
         }
       },
@@ -14923,7 +14956,11 @@
           "rootPrefix"
         ],
         "properties": {
-          "endpoint": { "type": "string", "format": "uri", "pattern": "^https://" },
+          "endpoint": { "type": "string", "format": "uri", "pattern": "^https?://" },
+          "allowInsecureLocal": {
+            "type": "boolean",
+            "description": "Explicit local RFC1918 IPv4 HTTP opt-in. Node additionally requires the local environment flag; Worker rejects HTTP."
+          },
           "region": { "type": "string", "minLength": 1, "maxLength": 63 },
           "bucket": { "type": "string", "minLength": 3, "maxLength": 63 },
           "accessKeyId": { "type": "string", "minLength": 1, "maxLength": 512, "writeOnly": true },
