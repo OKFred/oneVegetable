@@ -96,14 +96,23 @@ function compileValidators(
     allErrors: true,
     allowUnionTypes: true,
     code: { esm: true, source: true },
+    inlineRefs: false,
     strict: true
   });
   addFormats(ajv, { mode: formatMode });
   addErrors(ajv);
 
+  const dependencies = new Map<string, object>();
   for (const [name, schema] of Object.entries(selected)) {
     if (!schema) throw new Error(`OpenAPI schema ${name} is missing`);
-    ajv.addSchema({ ...(withAjvExtensions(schema) as object), $id: name }, name);
+    ajv.addSchema({ ...(withAjvExtensions(schema, dependencies) as object), $id: name }, name);
+  }
+  // Keep referenced schemas shared instead of expanding identical validators at every call site.
+  for (const [name, schema] of dependencies) {
+    ajv.addSchema({
+      ...(withAjvExtensions(schema, dependencies) as object),
+      $id: `urn:one-vegetable:schema:${name}`
+    });
   }
 
   const validators = Object.fromEntries(
@@ -122,20 +131,22 @@ function compileValidators(
   return `// @ts-nocheck\n// Generated from openapi/one-vegetable.json. Do not edit.\n${browserSafeCode}\n`;
 }
 
-function withAjvExtensions(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(withAjvExtensions);
+function withAjvExtensions(value: unknown, dependencies: Map<string, object>): unknown {
+  if (Array.isArray(value)) return value.map((child) => withAjvExtensions(child, dependencies));
   if (typeof value !== 'object' || value === null) return value;
   if ('$ref' in value && typeof value.$ref === 'string') {
     const prefix = '#/components/schemas/';
     if (value.$ref.startsWith(prefix)) {
-      const referenced = schemas?.[value.$ref.slice(prefix.length)];
+      const name = value.$ref.slice(prefix.length);
+      const referenced = schemas?.[name];
       if (!referenced) throw new Error(`OpenAPI schema ${value.$ref} is missing`);
-      return withAjvExtensions(referenced);
+      dependencies.set(name, referenced);
+      return { $ref: `urn:one-vegetable:schema:${name}` };
     }
   }
   const result: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value)) {
-    result[key === 'x-ajv-errorMessage' ? 'errorMessage' : key] = withAjvExtensions(child);
+    result[key === 'x-ajv-errorMessage' ? 'errorMessage' : key] = withAjvExtensions(child, dependencies);
   }
   return result;
 }
