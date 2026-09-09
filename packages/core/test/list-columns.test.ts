@@ -8,7 +8,12 @@ const fixture = JSON.parse(
   readFileSync(new URL('../../../mock/data/list-columns.json', import.meta.url), 'utf8')
 ) as Record<'product' | 'photo' | 'order', Record<string, unknown>>;
 function client(body: Record<string, unknown>) {
-  return { call: vi.fn<AlibabaClient['call']>((method) => Promise.resolve({ method, data: body })) };
+  return {
+    call: vi.fn<AlibabaClient['call']>((method) => Promise.resolve({ method, data: body })),
+    callWithFile: vi.fn<AlibabaClient['callWithFile']>(() =>
+      Promise.reject(new Error('Unexpected file upload'))
+    )
+  };
 }
 describe('list column fields', () => {
   it('preserves documented product fields including false and wrapped arrays', async () => {

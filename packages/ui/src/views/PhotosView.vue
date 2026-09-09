@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, ref, watch } from 'vue';
+import { computed, h, onScopeDispose, ref, watch } from 'vue';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import {
   Download,
@@ -24,6 +24,7 @@ import { SOCIAL_SHARE_MAX_PHOTOS } from '@one-vegetable/core';
 
 import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
+import { fieldColumn, photoExtraFields } from '../lib/field-columns';
 import GroupSidebar from '../components/GroupSidebar.vue';
 import PageHeader from '../components/PageHeader.vue';
 import ImagePreview, { type ImagePreviewItem } from '../components/ImagePreview.vue';
@@ -53,6 +54,29 @@ type PhotoViewMode = 'cards' | 'list';
 
 const { gateway } = useServices();
 const queryClient = useQueryClient();
+const groupCacheRevision = ref(0);
+onScopeDispose(
+  queryClient.getQueryCache().subscribe((event) => {
+    const key: unknown = event.query.queryKey;
+    if (Array.isArray(key) && (key as unknown[])[0] === 'photo-groups') groupCacheRevision.value++;
+  })
+);
+function groupPath(id: string): string {
+  void groupCacheRevision.value;
+  const groups = queryClient
+    .getQueriesData<PhotoGroup[]>({ queryKey: ['photo-groups'] })
+    .flatMap(([, data]) => data ?? []);
+  const names: string[] = [];
+  const seen = new Set<string>();
+  let current: string | null = id;
+  while (current && !seen.has(current)) {
+    seen.add(current);
+    const group = groups.find((item) => item.id === current);
+    names.unshift(group?.name ?? current);
+    current = group?.parentId ?? null;
+  }
+  return names.join(' / ');
+}
 const { t } = useUiI18n();
 const selectedGroup = ref('-1');
 const governanceFilter = ref<GovernanceFilter>('all');
@@ -320,6 +344,16 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
     cell: ({ row }) =>
       h('span', { class: 'whitespace-nowrap text-muted-foreground' }, formatDateTime(row.original.modifiedAt))
   },
+  ...photoExtraFields.map((id) =>
+    fieldColumn<Photo>(id, t(`common.fields.${id}`), (row) => row[id], [
+      t('common.fields.yes'),
+      t('common.fields.no')
+    ])
+  ),
+  fieldColumn<Photo>('groupPath', t('common.fields.groupPath'), (row) => groupPath(row.groupId), [
+    t('common.fields.yes'),
+    t('common.fields.no')
+  ]),
   {
     id: 'actions',
     header: t('photos.columns.actions'),
@@ -541,6 +575,9 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
         <div v-else-if="filteredPhotos.length > 0" data-testid="photo-list-table">
           <DataTable
             :columns="photoColumns"
+            column-settings-key="photos"
+            :locked-columns="['selection', 'name', 'actions']"
+            :hidden-columns="[...photoExtraFields, 'groupPath']"
             :data="filteredPhotos"
             :pagination="false"
             min-width="980px"

@@ -16,10 +16,14 @@ import {
 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
-import type { TradeOrderDraft, TradeOrderSummary } from '@one-vegetable/core';
+import type { TradeOrderDraft, TradeOrderSummary, TradeOrderAggregate } from '@one-vegetable/core';
 
 import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
+import { fieldColumn } from '../lib/field-columns';
+import { detailErrorState, pageDetailIdentity, requestPageDetail, usePageDetails } from '../lib/page-details';
+import { useGalleryTransfers } from '../lib/gallery-transfer-service';
+import PageDetailActions from '../components/PageDetailActions.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
@@ -100,14 +104,67 @@ const hasNextOrder = computed(() => {
   return selectedOrderIndex.value >= 0 && selectedOrderIndex.value < items.length - 1;
 });
 const aggregate = useQuery({
-  queryKey: computed(() => ['trade-order-aggregate', selectedOrderId.value]),
+  queryKey: computed(() => ['trade-order-aggregate', selectedOrderId.value, preferredLanguage.value]),
+  retry: false,
   enabled: computed(() => orderSheetOpen.value && selectedOrder.value !== undefined),
   queryFn: () => {
     const order = selectedOrder.value;
     if (!order) throw new Error(t('orders.errors.selectOrder'));
-    return gateway.request('getTradeOrderAggregate', { order });
+    return requestPageDetail(gateway, mode, preferredLanguage.value, { kind: 'order', order }).then(
+      (data) => {
+        if (!('order' in data)) throw new Error('INVALID_RESPONSE');
+        return data;
+      }
+    );
   }
 });
+const orderDetailColumns = ['paidAmount', 'paymentStatus', 'logisticsStatus', 'carrier', 'trackingNumber'];
+const orderDetails = ref<Record<string, TradeOrderAggregate>>({});
+const accountContext = useGalleryTransfers()?.currentContext;
+const detailBoundary = computed(() =>
+  JSON.stringify([
+    status.value,
+    buyerLoginId.value,
+    orderPage.value,
+    orderPageSize.value,
+    preferredLanguage.value,
+    workspace.value,
+    accountContext?.value?.identity,
+    accountContext?.value?.gateway
+  ])
+);
+const pageDetails = usePageDetails(
+  computed(() => orders.data.value?.items ?? []),
+  detailBoundary,
+  (row) => row.id,
+  (row, identity) =>
+    requestPageDetail(gateway, mode, preferredLanguage.value, { kind: 'order', order: row }, identity),
+  (row, data) => {
+    if ('order' in data) {
+      orderDetails.value = { ...orderDetails.value, [row.id]: data };
+      if (!data.fund || !data.logistics) throw new Error('DETAIL_PARTIALLY_UNAVAILABLE');
+    }
+  },
+  () => pageDetailIdentity(gateway, mode)
+);
+watch(detailBoundary, () => {
+  orderDetails.value = {};
+});
+function detailValue(row: TradeOrderSummary, field: string): unknown {
+  const data = orderDetails.value[row.id];
+  if (!data && pageDetails.errors.value[row.id])
+    return t(`common.columns.${detailErrorState(pageDetails.errors.value[row.id])}`);
+  if (!data)
+    return t(
+      `common.columns.${pageDetails.states.value[row.id] === 'loading' ? 'loading' : pageDetails.states.value[row.id] === 'failed' ? 'failed' : 'pending'}`
+    );
+  if (field === 'paidAmount')
+    return data.fund ? `${data.fund.currency} ${data.fund.paidAmount}` : t('common.columns.missing');
+  if (field === 'paymentStatus') return data.fund?.status ?? t('common.columns.missing');
+  if (field === 'logisticsStatus') return data.logistics?.status ?? t('common.columns.missing');
+  if (field === 'carrier') return data.logistics?.carrier ?? t('common.columns.missing');
+  return data.logistics?.trackingNumber ?? t('common.columns.missing');
+}
 const fulfillmentChannels = useQuery({
   queryKey: computed(() => ['trade-fulfillment-channels', preferredLanguage.value]),
   enabled: computed(() => workspace.value === 'finance'),
@@ -247,7 +304,8 @@ const columns = computed<DataColumn<TradeOrderSummary>[]>(() => [
   {
     id: 'amount',
     header: t('orders.columns.amount'),
-    cell: ({ row }) => `${row.original.currency} ${row.original.amount}`
+    cell: ({ row }) =>
+      row.original.amount === null ? '—' : `${row.original.currency ?? ''} ${row.original.amount}`.trim()
   },
   {
     accessorKey: 'status',
@@ -259,6 +317,18 @@ const columns = computed<DataColumn<TradeOrderSummary>[]>(() => [
     header: t('orders.columns.modifiedAt'),
     cell: (context) => formatOrderDateTime(context.getValue<string | null>())
   },
+  ...(['createdAt', 'currency'] as const).map((id) =>
+    fieldColumn<TradeOrderSummary>(id, t(`common.fields.${id}`), (row) => row[id], [
+      t('common.fields.yes'),
+      t('common.fields.no')
+    ])
+  ),
+  ...orderDetailColumns.map((id) =>
+    fieldColumn<TradeOrderSummary>(id, t(`common.fields.${id}`), (row) => detailValue(row, id), [
+      t('common.fields.yes'),
+      t('common.fields.no')
+    ])
+  ),
   {
     id: 'actions',
     header: t('orders.columns.actions'),
@@ -389,6 +459,17 @@ onBeforeUnmount(() => {
     >
       <DataTable
         :columns="columns"
+        column-settings-key="orders"
+        :locked-columns="['id', 'actions']"
+        :hidden-columns="[
+          'createdAt',
+          'currency',
+          'paidAmount',
+          'paymentStatus',
+          'logisticsStatus',
+          'carrier',
+          'trackingNumber'
+        ]"
         :data="orders.data.value?.items ?? []"
         v-model:page="orderPage"
         v-model:page-size="orderPageSize"
@@ -419,6 +500,18 @@ onBeforeUnmount(() => {
             </Button>
           </div>
         </template>
+        <template #column-actions="{ visible }"
+          ><PageDetailActions
+            v-if="orderDetailColumns.some((id) => visible.includes(id))"
+            :busy="pageDetails.busy.value"
+            :done="pageDetails.done.value"
+            :total="pageDetails.total.value"
+            :count="orders.data.value?.items.length ?? 0"
+            :failed="Object.keys(pageDetails.errors.value).length > 0"
+            :load="pageDetails.load"
+            aggregate
+            @stop="pageDetails.stop"
+        /></template>
       </DataTable>
     </QueryState>
   </template>
@@ -663,7 +756,11 @@ onBeforeUnmount(() => {
               <div>
                 <p class="text-xs text-muted-foreground">{{ t('orders.drawer.orderAmount') }}</p>
                 <p class="mt-1 text-lg font-semibold">
-                  {{ selectedOrder.currency }} {{ selectedOrder.amount }}
+                  {{
+                    selectedOrder.amount === null
+                      ? '—'
+                      : `${selectedOrder.currency ?? ''} ${selectedOrder.amount}`
+                  }}
                 </p>
               </div>
               <div>
