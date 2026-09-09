@@ -319,7 +319,12 @@ export type RequestOf<K extends OperationId> = OperationMap[K]['request'];
 export type ResponseOf<K extends OperationId> = OperationMap[K]['response'];
 
 export interface GatewayClient {
-  request<K extends OperationId>(operation: K, request: RequestOf<K>): Promise<ResponseOf<K>>;
+  galleryTransferContext?(): Promise<import('./gallery-transfer-task').GalleryTransferContext>;
+  request<K extends OperationId>(
+    operation: K,
+    request: RequestOf<K>,
+    options?: import('./gallery-transfer-context').GalleryRequestOptions
+  ): Promise<ResponseOf<K>>;
 }
 
 export interface RuntimeRequest<K extends OperationId = OperationId> {
@@ -328,6 +333,7 @@ export interface RuntimeRequest<K extends OperationId = OperationId> {
   operation: K;
   payload: RequestOf<K>;
   productMutationFingerprint?: ProductMutationFingerprintSet;
+  galleryContext?: import('./gallery-transfer-task').GalleryTransferContext;
 }
 
 export type RuntimeResponse<K extends OperationId = OperationId> =
@@ -335,6 +341,8 @@ export type RuntimeResponse<K extends OperationId = OperationId> =
   | { requestId: string; ok: false; error: GatewayError };
 
 export interface GatewayCredentials {
+  /** Stable bundle identity; automatic token refresh does not change this value. Never sent to Alibaba. */
+  galleryAccountGeneration?: string;
   appKey: string;
   appSecret: string;
   accessToken: string;

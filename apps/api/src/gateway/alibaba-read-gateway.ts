@@ -21,6 +21,11 @@ import {
   validateCapabilityResponse
 } from '@one-vegetable/core';
 import { GatewayConfigurationError } from './credentials';
+import {
+  galleryGatewayId,
+  assertGalleryContextId,
+  type GalleryRequestOptions
+} from '@one-vegetable/core/gallery-transfer-context';
 
 import type {
   CapabilityCallRequest,
@@ -34,7 +39,7 @@ import type {
 } from '@one-vegetable/core';
 import type { StoredAlibabaCredentialProvider } from './credential-vault';
 
-export interface GatewayRequestContext {
+export interface GatewayRequestContext extends GalleryRequestOptions {
   requestId: string;
 }
 
@@ -46,6 +51,10 @@ export interface AlibabaReadGatewayOptions {
 
 export class CredentialBackedAlibabaGatewayClient implements GatewayClient {
   constructor(private readonly provider: StoredAlibabaCredentialProvider) {}
+
+  async galleryGatewayContextId(): Promise<string> {
+    return galleryGatewayId(await this.provider.requireCredentials());
+  }
 
   async request<K extends OperationId>(
     operation: K,
@@ -97,11 +106,16 @@ export class AlibabaReadGatewayClient implements GatewayClient {
     });
   }
 
+  async galleryGatewayContextId(): Promise<string> {
+    return galleryGatewayId(this.#credentials);
+  }
+
   async request<K extends OperationId>(
     operation: K,
     request: RequestOf<K>,
     context?: GatewayRequestContext
   ): Promise<ResponseOf<K>> {
+    assertGalleryContextId(context?.galleryContext?.gateway, await this.galleryGatewayContextId());
     if (operation === 'listCapabilities') return listCapabilitiesWithAccountVerification();
     if (operation === 'getCapabilityDefinition') {
       const method = readString(readRecord(request), 'method');

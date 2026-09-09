@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "task-test",
+  "direction": "import",
+  "storage": "s3",
+  "status": "pending",
+  "command": null,
+  "context": { "identity": "actor-test", "gateway": "gateway-test", "storage": "storage-test" },
+  "createTimeUtc": 1780000000000,
+  "updateTimeUtc": 1780000000000,
+  "revision": 1,
+  "archiveSha256": null,
+  "archiveName": null,
+  "batchPrefix": "test",
+  "conflictPolicy": "skip",
+  "createMissingGroups": true,
+  "errorCode": null,
+  "items": [
+    {
+      "id": "asset-test",
+      "kind": "asset",
+      "status": "pending",
+      "mutation": true,
+      "sourcePath": "a.png",
+      "sourcePhotoId": null,
+      "sourceUrl": null,
+      "sourceSize": 12,
+      "sourceEtag": "etag-test",
+      "sha256": null,
+      "contentType": "image/png",
+      "targetPath": "group",
+      "targetGroupId": "1",
+      "parentItemId": null,
+      "fileName": "a.png",
+      "requestId": null,
+      "fileId": null,
+      "errorCode": null,
+      "skipReason": null
+    }
+  ]
+}

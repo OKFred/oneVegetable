@@ -36,6 +36,7 @@ export interface ProductMockData {
 }
 
 export interface PhotoMockData {
+  transferContext: import('./gallery-transfer-task').GalleryTransferContext;
   photoGroups: PhotoGroup[];
   responses: OperationResponses<
     | 'listPhotoGroups'

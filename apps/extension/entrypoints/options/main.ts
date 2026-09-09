@@ -1,6 +1,10 @@
 import { browser } from 'wxt/browser';
 
 import {
+  requireGalleryContext,
+  type GalleryRequestOptions
+} from '@one-vegetable/core/gallery-transfer-context';
+import {
   BffControlClient,
   GatewayException,
   BundledProductDescriptionTemplateClient,
@@ -499,7 +503,29 @@ function productMutationJobCount(value: unknown): number {
 }
 
 class ExtensionGatewayClient implements GatewayClient {
-  async request<K extends OperationId>(operation: K, payload: RequestOf<K>): Promise<ResponseOf<K>> {
+  async galleryTransferContext() {
+    const requestId = crypto.randomUUID();
+    const response: unknown = await browser.runtime.sendMessage({
+      kind: 'gallery-transfer-context',
+      requestId
+    });
+    if (
+      typeof response !== 'object' ||
+      response === null ||
+      !('ok' in response) ||
+      response.ok !== true ||
+      !('requestId' in response) ||
+      response.requestId !== requestId ||
+      !('data' in response)
+    )
+      throw new Error('GALLERY_CONTEXT_UNAVAILABLE');
+    return requireGalleryContext(response.data);
+  }
+  async request<K extends OperationId>(
+    operation: K,
+    payload: RequestOf<K>,
+    options?: GalleryRequestOptions
+  ): Promise<ResponseOf<K>> {
     if (operation === 'transferPhotoFromUrl' || operation === 'downloadProductAsset') {
       const transfer = payload as RequestOf<'transferPhotoFromUrl'> | RequestOf<'downloadProductAsset'>;
       await ensureOptionalHostPermission(
@@ -516,8 +542,9 @@ class ExtensionGatewayClient implements GatewayClient {
         ? await createProductMutationFingerprints((payload as RequestOf<'updateProduct'>).schemaPatchXml)
         : undefined;
     const message: RuntimeRequest<K> = {
-      requestId: crypto.randomUUID(),
+      requestId: options?.requestId ?? crypto.randomUUID(),
       kind: 'gateway-request',
+      ...(options?.galleryContext ? { galleryContext: options.galleryContext } : {}),
       operation,
       payload,
       ...(productMutationFingerprint === undefined ? {} : { productMutationFingerprint })

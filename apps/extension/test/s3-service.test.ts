@@ -62,6 +62,14 @@ function setup() {
   };
 }
 describe('extension S3 isolated service', () => {
+  it('rejects stale task context before using the storage client', async () => {
+    const s = setup(); await s.save();
+    const context = await s.service.contextId();
+    expect(context).toMatch(/^[a-f0-9]{64}$/u);
+    const result = await s.service.handle({ requestId: crypto.randomUUID(), operation: 'get', payload: { key: 'a.png' }, galleryContext: { identity: 'test', gateway: 'test', storage: 'other' } }, true);
+    expect(result.error?.code).toBe('GALLERY_CONTEXT_CHANGED');
+    expect(s.send).not.toHaveBeenCalled();
+  });
   it('encrypts configuration, redacts summaries, survives worker recreation, and clears the key', async () => {
     const s = setup();
     expect((await s.save()).ok).toBe(true);

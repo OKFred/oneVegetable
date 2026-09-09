@@ -1,4 +1,9 @@
-import { isRequestId } from '@one-vegetable/core';
+import { isRequestId, GatewayException } from '@one-vegetable/core';
+import {
+  opaqueGalleryId,
+  requireGalleryContext,
+  assertGalleryContextId
+} from '@one-vegetable/core/gallery-transfer-context';
 import { parseS3StorageConfiguration } from '@one-vegetable/core/s3-storage';
 
 import { authorizeAdmin } from '../abac';
@@ -20,6 +25,7 @@ export function registerS3StorageRoutes(
     authService: AuthService;
     service: S3StorageConfigurationService;
     allowedOrigins?: readonly string[];
+    galleryGatewayContextId?: () => Promise<string>;
   }
 ): void {
   api.post('/admin/storage/s3/get', (context) =>
@@ -95,7 +101,10 @@ export function registerS3StorageRoutes(
       context,
       options,
       async (body) => {
-        const client = await options.service.createClient();
+        const client = await options.service.createClient(
+          undefined,
+          body.galleryContext === undefined ? undefined : requireGalleryContext(body.galleryContext).storage
+        );
         const prefix = readOptionalString(body.prefix);
         const continuationToken = readOptionalString(body.continuationToken);
         const maximum = readOptionalPositiveInteger(body.maximum, 1000);
@@ -114,7 +123,10 @@ export function registerS3StorageRoutes(
       context,
       options,
       async (body) => {
-        const client = await options.service.createClient();
+        const client = await options.service.createClient(
+          undefined,
+          body.galleryContext === undefined ? undefined : requireGalleryContext(body.galleryContext).storage
+        );
         const object = await client.getObject(readRequiredString(body.key, 1024), readRequestId(body));
         if (object.bytes.byteLength > MAX_OBJECT_BYTES)
           throw new AuthError('S3_OBJECT_TOO_LARGE', 'S3 对象过大', 400);
@@ -138,7 +150,10 @@ export function registerS3StorageRoutes(
         if (bytes.byteLength > MAX_OBJECT_BYTES)
           throw new AuthError('S3_OBJECT_TOO_LARGE', 'S3 对象过大', 400);
         const key = readRequiredString(body.key, 1024);
-        const client = await options.service.createClient();
+        const client = await options.service.createClient(
+          undefined,
+          body.galleryContext === undefined ? undefined : requireGalleryContext(body.galleryContext).storage
+        );
         const result = await client.putObject({
           key,
           bytes,
@@ -163,7 +178,7 @@ export function registerS3StorageRoutes(
 
 async function adminRead(
   context: Context,
-  options: { authService: AuthService },
+  options: { authService: AuthService; galleryGatewayContextId?: () => Promise<string> },
   action: (body: Record<string, unknown>, actorId: string) => Promise<unknown>,
   allowedKeys: readonly string[]
 ): Promise<Response> {
@@ -172,13 +187,18 @@ async function adminRead(
     const authenticated = await authenticateRequest(context, options.authService);
     const decision = authorizeAdmin(authenticated.principal, 'admin.read');
     if (!decision.allowed) throw new AuthError(decision.reasonCode, '需要管理员权限', 403);
+    await checkTransferIdentity(body, authenticated.principal.actorId, options.galleryGatewayContextId);
     return success(context, readRequestId(body), await action(body, authenticated.principal.actorId));
   });
 }
 
 async function adminWrite(
   context: Context,
-  options: { authService: AuthService; allowedOrigins?: readonly string[] },
+  options: {
+    authService: AuthService;
+    allowedOrigins?: readonly string[];
+    galleryGatewayContextId?: () => Promise<string>;
+  },
   action: (body: Record<string, unknown>, actorId: string) => Promise<unknown>,
   allowedKeys: readonly string[]
 ): Promise<Response> {
@@ -190,6 +210,7 @@ async function adminWrite(
     });
     const decision = authorizeAdmin(authenticated.principal, 'admin.write');
     if (!decision.allowed) throw new AuthError(decision.reasonCode, '需要管理员权限', 403);
+    await checkTransferIdentity(body, authenticated.principal.actorId, options.galleryGatewayContextId);
     return success(context, readRequestId(body), await action(body, authenticated.principal.actorId));
   });
 }
@@ -204,12 +225,27 @@ async function readBody(context: Context, allowedKeys: readonly string[]): Promi
   } catch {
     throw new AuthError('INVALID_JSON', '请求 Body 不是有效 JSON', 400);
   }
-  if (!isRecord(value) || Object.keys(value).some((key) => !allowedKeys.includes(key))) {
+  if (
+    !isRecord(value) ||
+    Object.keys(value).some((key) => key !== 'galleryContext' && !allowedKeys.includes(key))
+  ) {
     throw new AuthError('INVALID_REQUEST_BODY', '请求 Body 无效或包含未定义字段', 400);
   }
   readRequestId(value);
   REQUEST_IDS.set(context.req.raw, value.requestId as string);
   return value;
+}
+
+async function checkTransferIdentity(
+  body: Record<string, unknown>,
+  actorId: string,
+  gatewayId?: () => Promise<string>
+): Promise<void> {
+  if (body.galleryContext === undefined) return;
+  const expected = requireGalleryContext(body.galleryContext);
+  assertGalleryContextId(expected.identity, await opaqueGalleryId(actorId));
+  if (!gatewayId) throw new AuthError('GALLERY_CONTEXT_UNAVAILABLE', 'GALLERY_CONTEXT_UNAVAILABLE', 503);
+  assertGalleryContextId(expected.gateway, await gatewayId());
 }
 
 async function handle(context: Context, action: () => Promise<Response>): Promise<Response> {
@@ -222,6 +258,7 @@ async function handle(context: Context, action: () => Promise<Response>): Promis
     if (error instanceof EntityVersionConflictError) {
       return failure(context, requestId, 409, 'ENTITY_VERSION_CONFLICT', error.message);
     }
+    if (error instanceof GatewayException) return failure(context, requestId, 409, error.gatewayError.code, error.gatewayError.message);
     return failure(
       context,
       requestId,

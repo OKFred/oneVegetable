@@ -10,6 +10,38 @@
   "security": [],
   "servers": [{ "url": "/api/v1" }],
   "paths": {
+    "/gallery-transfers/context/get": {
+      "post": {
+        "operationId": "getGalleryTransferContext",
+        "summary": "Read opaque gallery transfer execution context",
+        "tags": ["System"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/GalleryTransferContextRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Opaque account and configuration identifiers, never credentials",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GalleryTransferContextResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in required",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiFailure" } } }
+          },
+          "503": {
+            "description": "Context unavailable",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiFailure" } } }
+          }
+        }
+      }
+    },
     "/healthz": {
       "get": {
         "summary": "Check whether the API process is alive",
@@ -5241,6 +5273,32 @@
       }
     },
     "schemas": {
+      "GalleryTransferContext": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["identity", "gateway", "storage"],
+        "properties": {
+          "identity": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "gateway": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "storage": { "type": ["string", "null"], "minLength": 1, "maxLength": 128 }
+        }
+      },
+      "GalleryTransferContextRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId"],
+        "properties": { "requestId": { "$ref": "#/components/schemas/RequestId" } }
+      },
+      "GalleryTransferContextResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "ok", "data"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "ok": { "const": true },
+          "data": { "$ref": "#/components/schemas/GalleryTransferContext" }
+        }
+      },
       "AdminAuditListRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -13886,6 +13944,7 @@
         "required": ["requestId", "operation", "payload"],
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "galleryContext": { "$ref": "#/components/schemas/GalleryTransferContext" },
           "operation": { "type": "string", "minLength": 1 },
           "payload": { "type": "object", "additionalProperties": true }
         }
@@ -14822,6 +14881,7 @@
         "required": ["requestId"],
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "galleryContext": { "$ref": "#/components/schemas/GalleryTransferContext" },
           "prefix": { "type": "string", "maxLength": 2048 },
           "continuationToken": { "type": "string", "maxLength": 2048 },
           "maximum": { "type": "integer", "minimum": 1, "maximum": 1000 }
@@ -14833,6 +14893,7 @@
         "required": ["requestId", "key", "contentBase64", "contentType"],
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "galleryContext": { "$ref": "#/components/schemas/GalleryTransferContext" },
           "key": { "type": "string", "minLength": 1, "maxLength": 1024 },
           "contentBase64": { "type": "string", "contentEncoding": "base64", "maxLength": 6990508 },
           "contentType": { "type": "string", "minLength": 1, "maxLength": 128 }
@@ -14844,6 +14905,7 @@
         "required": ["requestId", "key"],
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "galleryContext": { "$ref": "#/components/schemas/GalleryTransferContext" },
           "key": { "type": "string", "minLength": 1, "maxLength": 1024 }
         }
       },

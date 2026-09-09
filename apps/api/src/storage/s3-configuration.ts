@@ -194,8 +194,23 @@ export class S3StorageConfigurationService {
     return this.cipher.decrypt(record);
   }
 
-  async createClient(transport?: NetworkTransport): Promise<S3ObjectStorageClient> {
-    return new S3ObjectStorageClient(await this.requireConfiguration(), transport ?? this.transport);
+  async galleryStorageContextId(): Promise<string | null> {
+    if (!(await this.repository.find())) return null;
+    const { galleryStorageId } = await import('@one-vegetable/core/gallery-transfer-context');
+    return galleryStorageId(await this.requireConfiguration());
+  }
+
+  async createClient(
+    transport?: NetworkTransport,
+    expectedContextId?: string | null
+  ): Promise<S3ObjectStorageClient> {
+    const configuration = await this.requireConfiguration();
+    if (expectedContextId !== undefined) {
+      const { assertGalleryContextId, galleryStorageId } =
+        await import('@one-vegetable/core/gallery-transfer-context');
+      assertGalleryContextId(expectedContextId, await galleryStorageId(configuration));
+    }
+    return new S3ObjectStorageClient(configuration, transport ?? this.transport);
   }
 
   async clear(expectedRevision: number): Promise<void> {

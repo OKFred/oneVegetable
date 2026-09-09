@@ -24,6 +24,22 @@ afterEach(() => {
 });
 
 describe('S3 storage admin routes', () => {
+  it('returns opaque context and rejects stale configuration before network', async () => {
+    const { app, authService, service, send } = await fixture();
+    const session = await bootstrap(authService);
+    await service.save({ configuration: configuration(), actorId: session.user.id, expectedRevision: null, remark: null });
+    const requestId = createRequestId();
+    const response = await app.request('/api/v1/gallery-transfers/context/get', { method: 'POST', headers: authHeaders(session.sessionToken), body: JSON.stringify({ requestId }) });
+    expect(response.status).toBe(200);
+    expect(response.headers.get('X-Request-ID')).toBe(requestId);
+    const result: unknown = await response.json();
+    expect(result).toMatchObject({ requestId, ok: true, data: { identity: expect.any(String), gateway: expect.any(String), storage: expect.any(String) } });
+    expect(JSON.stringify(result)).not.toContain('secret-value');
+    const denied = await app.request('/api/v1/admin/storage/s3/objects/get', { method: 'POST', headers: authHeaders(session.sessionToken), body: JSON.stringify({ requestId: createRequestId(), key: 'test.jpg', galleryContext: { identity: 'wrong', gateway: 'wrong', storage: 'wrong' } }) });
+    expect(denied.status).toBe(409);
+    expect(await denied.json()).toMatchObject({ ok: false, error: { code: 'GALLERY_CONTEXT_CHANGED' } });
+    expect(send).not.toHaveBeenCalled();
+  });
   it('requires CSRF for secrets and returns only redacted configuration', async () => {
     const { app, authService, repository } = await fixture();
     const session = await bootstrap(authService);

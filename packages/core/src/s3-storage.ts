@@ -1,4 +1,5 @@
 import { AwsClient } from 'aws4fetch';
+import type { GalleryRequestOptions } from './gallery-transfer-context';
 
 import { NativeFetchTransport, NetworkManager, type NetworkTransport } from './network';
 
@@ -60,17 +61,23 @@ export interface S3StorageControl {
   ): Promise<S3StorageConfigurationSummary>;
   clearS3StorageConfiguration(revision: number): Promise<void>;
   testS3StorageConnection(): Promise<{ connected: boolean; visibleObjectCount: number }>;
-  listS3Objects(input?: {
-    prefix?: string;
-    continuationToken?: string;
-    maximum?: number;
-  }): Promise<S3ObjectPage>;
-  getS3Object(key: string): Promise<S3ObjectContent>;
-  putS3Object(input: {
-    key: string;
-    bytes: Uint8Array;
-    contentType: string;
-  }): Promise<{ key: string; etag: string | null }>;
+  listS3Objects(
+    input?: {
+      prefix?: string;
+      continuationToken?: string;
+      maximum?: number;
+    },
+    options?: GalleryRequestOptions
+  ): Promise<S3ObjectPage>;
+  getS3Object(key: string, options?: GalleryRequestOptions): Promise<S3ObjectContent>;
+  putS3Object(
+    input: {
+      key: string;
+      bytes: Uint8Array;
+      contentType: string;
+    },
+    options?: GalleryRequestOptions
+  ): Promise<{ key: string; etag: string | null }>;
 }
 
 export function s3PermissionOrigins(configuration: S3StorageConfiguration): string[] {

@@ -1,4 +1,9 @@
-import { decodeBase64, encodeBase64, isRequestId } from '@one-vegetable/core';
+import { decodeBase64, encodeBase64, isRequestId, GatewayException } from '@one-vegetable/core';
+import {
+  galleryStorageId,
+  assertGalleryContextId,
+  requireGalleryContext
+} from '@one-vegetable/core/gallery-transfer-context';
 import {
   parseS3StorageConfiguration,
   s3PermissionOrigins,
@@ -47,6 +52,11 @@ export class ExtensionS3Service {
       new S3ObjectStorageClient(configuration)
   ) {}
 
+  async contextId(): Promise<string | null> {
+    const saved = await this.#read();
+    return saved ? galleryStorageId(saved.value.configuration) : null;
+  }
+
   handle(value: unknown, trusted: boolean): Promise<S3Response<unknown>> {
     const action = this.#queue.then(() => this.#handle(value, trusted));
     this.#queue = action.catch(() => undefined);
@@ -72,11 +82,18 @@ export class ExtensionS3Service {
       const keys = allowed[value.operation];
       if (!keys || Object.keys(value.payload).some((key) => !keys.includes(key)))
         fail('INVALID_REQUEST_BODY');
-      const data = await this.#execute(value.operation, value.payload, requestId);
+      const expectedStorage =
+        value.galleryContext === undefined ? undefined : requireGalleryContext(value.galleryContext).storage;
+      const data = await this.#execute(value.operation, value.payload, requestId, expectedStorage);
       return { requestId, ok: true, data };
     } catch (cause: unknown) {
       // Never serialize provider errors, configuration, signing headers or response bodies.
-      const code = cause instanceof S3LocalError ? cause.code : 'S3_STORAGE_FAILED';
+      const code =
+        cause instanceof S3LocalError
+          ? cause.code
+          : cause instanceof GatewayException && cause.gatewayError.code.startsWith('GALLERY_CONTEXT_')
+            ? cause.gatewayError.code
+            : 'S3_STORAGE_FAILED';
       return { requestId, ok: false, error: { code, message: code, retryable: false } };
     }
   }
@@ -156,13 +173,19 @@ export class ExtensionS3Service {
     };
   }
 
-  async #execute(operation: string, payload: Record<string, unknown>, requestId: string): Promise<unknown> {
+  async #execute(
+    operation: string,
+    payload: Record<string, unknown>,
+    requestId: string,
+    expectedStorage?: string | null
+  ): Promise<unknown> {
     if (operation === 'reset') {
       await this.store.remove();
       await this.store.removeKey();
       return null;
     }
     const saved = await this.#read();
+    assertGalleryContextId(expectedStorage, saved ? await galleryStorageId(saved.value.configuration) : null);
     if (operation === 'summary') return this.#summary(saved);
     if (operation === 'save' || operation === 'clear') {
       if (payload.revision !== (saved?.stored.revision ?? null)) fail('ENTITY_VERSION_CONFLICT');

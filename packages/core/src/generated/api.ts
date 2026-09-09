@@ -1,4 +1,21 @@
 export interface paths {
+    "/gallery-transfers/context/get": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read opaque gallery transfer execution context */
+        post: operations["getGalleryTransferContext"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -1176,6 +1193,20 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        GalleryTransferContext: {
+            identity: string;
+            gateway: string;
+            storage: string | null;
+        };
+        GalleryTransferContextRequest: {
+            requestId: components["schemas"]["RequestId"];
+        };
+        GalleryTransferContextResponse: {
+            requestId: components["schemas"]["RequestId"];
+            /** @constant */
+            ok: true;
+            data: components["schemas"]["GalleryTransferContext"];
+        };
         AdminAuditListRequest: {
             requestId: components["schemas"]["RequestId"];
             requestIdFilter?: components["schemas"]["RequestId"];
@@ -7129,6 +7160,7 @@ export interface components {
         };
         OperationCallRequest: {
             requestId: components["schemas"]["RequestId"];
+            galleryContext?: components["schemas"]["GalleryTransferContext"];
             operation: string;
             payload: {
                 [key: string]: unknown;
@@ -7621,18 +7653,21 @@ export interface components {
         };
         S3ObjectListRequest: {
             requestId: components["schemas"]["RequestId"];
+            galleryContext?: components["schemas"]["GalleryTransferContext"];
             prefix?: string;
             continuationToken?: string;
             maximum?: number;
         };
         S3ObjectPutRequest: {
             requestId: components["schemas"]["RequestId"];
+            galleryContext?: components["schemas"]["GalleryTransferContext"];
             key: string;
             contentBase64: string;
             contentType: string;
         };
         S3ObjectTargetRequest: {
             requestId: components["schemas"]["RequestId"];
+            galleryContext?: components["schemas"]["GalleryTransferContext"];
             key: string;
         };
         S3StorageConfiguration: {
@@ -7910,6 +7945,49 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getGalleryTransferContext: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GalleryTransferContextRequest"];
+            };
+        };
+        responses: {
+            /** @description Opaque account and configuration identifiers, never credentials */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GalleryTransferContextResponse"];
+                };
+            };
+            /** @description Sign in required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Context unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
     healthCheck: {
         parameters: {
             query?: never;

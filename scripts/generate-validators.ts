@@ -32,6 +32,7 @@ const schemas = document.components?.schemas;
 if (!schemas) throw new Error('OpenAPI components.schemas is missing');
 
 const coreValidators: Record<string, object | undefined> = {
+  validateGalleryTransferContext: schemas.GalleryTransferContext,
   validateProductSchemaRequest: schemas.ProductSchemaRequest,
   validateProductSchemaRenderRequest: schemas.ProductSchemaRenderRequest,
   validateSchemaPublishRequest: schemas.SchemaPublishRequest,
