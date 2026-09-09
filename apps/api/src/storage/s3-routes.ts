@@ -258,7 +258,8 @@ async function handle(context: Context, action: () => Promise<Response>): Promis
     if (error instanceof EntityVersionConflictError) {
       return failure(context, requestId, 409, 'ENTITY_VERSION_CONFLICT', error.message);
     }
-    if (error instanceof GatewayException) return failure(context, requestId, 409, error.gatewayError.code, error.gatewayError.message);
+    if (error instanceof GatewayException)
+      return failure(context, requestId, 409, error.gatewayError.code, error.gatewayError.message);
     return failure(
       context,
       requestId,

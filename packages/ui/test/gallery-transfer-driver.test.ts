@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { allGalleryPhotos, BrowserGalleryTransferDriver } from '../src/lib/gallery-transfer-driver';
+import {
+  allGalleryPhotos,
+  BrowserGalleryTransferDriver,
+  checkGalleryZipSize
+} from '../src/lib/gallery-transfer-driver';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 import fixture from '../../../mock/data/photos.json';
 import taskFixture from '../../../mock/data/gallery-transfer-task.json';
@@ -19,6 +23,25 @@ function setup() {
   return { gateway, driver: new BrowserGalleryTransferDriver(services, () => undefined) };
 }
 describe('gallery transfer readback', () => {
+  it('bounds cumulative ZIP bytes, including already-confirmed items after reload', () => {
+    const task = validateGalleryTransferTask(structuredClone(taskFixture));
+    task.direction = 'export';
+    task.storage = 'zip';
+    const first = task.items[0];
+    if (!first) throw new Error('fixture');
+    first.status = 'confirmed';
+    first.sourceSize = 100 * 1024 * 1024;
+    expect(() => {
+      checkGalleryZipSize(task, 'next-item', 1);
+    }).toThrow('GALLERY_TASK_ARCHIVE_LIMIT');
+    expect(() => {
+      checkGalleryZipSize(task, first.id, first.sourceSize ?? 0);
+    }).not.toThrow();
+    task.storage = 's3';
+    expect(() => {
+      checkGalleryZipSize(task, 'next-item', 1);
+    }).not.toThrow();
+  });
   it('finds uploaded file IDs beyond the first 100 entries', async () => {
     const s = setup();
     const photo = fixture.responses.listPhotos.items[0];

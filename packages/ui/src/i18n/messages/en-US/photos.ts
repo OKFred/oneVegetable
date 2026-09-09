@@ -1,16 +1,17 @@
 export const photos = {
   tasks: {
-    retention: 'Terminal records: 30 days. Unresolved records are retained. Maximum 100 tasks.',
+    retention: '100 tasks max. Keep unresolved records; clear terminal records after 30 days.',
     title: 'Transfer history',
-    boundary:
-      'Transfers continue when this panel is closed or you navigate within the workspace. Reloading or closing the tab requires manual resume. History stays on this device.',
-    created: 'Transfer task created. Follow its progress in Transfer history.',
+    boundary: 'Continues across dialogs and navigation. After reload, confirm to resume. Local history only.',
+    created: 'Task created. See Transfer history for progress.',
     preview: 'Frozen execution plan:',
     filter: 'Task status',
     all: 'All',
     refresh: 'Refresh',
     empty: 'No transfer tasks yet',
     detail: 'Task details',
+    changedContext: 'Account or configuration changed. This task is read-only.',
+    newPreview: 'New preview',
     progress: 'Gallery transfer {count}/{total}',
     pause: 'Pause',
     resume: 'Resume / retry confirmed failures',
@@ -22,14 +23,14 @@ export const photos = {
     archiveReady: 'Original ZIP verified. Select Resume to continue.',
     downloadStarted: 'Download initiated. Check your browser downloads.',
     noRepeat:
-      'Successful items are not uploaded again. Unknown writes are verified, never automatically resent. Changed configuration requires a new preview. ZIP imports require the original archive to resume.',
+      'Keep successful receipts; verify unknown writes, never resend. Re-preview changed settings; reselect the original ZIP to resume imports.',
     confirm: 'Confirm task action',
     clearWarning:
-      'Only local history is removed, not remote files. Clearing unresolved records prevents recovery and verification.',
+      'Removes local history, not remote files. Unresolved records can no longer be recovered or verified.',
     skip: 'Mark skipped',
     reason: 'Reason for skipping',
     error:
-      'Transfer needs attention ({code}). Check sign-in, permissions and configuration, or reselect the original ZIP. Verify unknown results before proceeding; do not blindly resend.',
+      'Needs attention ({code}). Check sign-in, permissions/settings or reselect the ZIP. Verify uncertain writes before continuing.',
     status: {
       pending: 'Pending',
       running: 'Running',
@@ -215,12 +216,10 @@ export const photos = {
       prefix: 'Export prefix (relative to the configured root)',
       mapping: 'Directory mapping',
       createMissingGroups: 'Automatically create missing gallery groups (up to 3 levels)',
-      invalidGroupPath: 'Gallery paths must have 1–3 levels without empty or dot segments.',
       flat: 'Put all images in one assets directory',
       groups: 'Preserve gallery group hierarchy under assets',
       rules: 'Use saved prefix mapping rules',
       current: 'Import all into the current gallery group: {group}',
-      invalidPrefix: 'Enter a safe relative prefix without empty segments, dot segments or backslashes.',
       exportToS3: 'Export to S3',
       s3ScanTitle: 'Scan S3 with local rules',
       s3ScanDescription:
@@ -241,10 +240,7 @@ export const photos = {
     confirmImportDescription:
       'Upload {count} images to “{group}” sequentially. Failures are not retried automatically.',
     confirmExportDescription: 'Download {count} gallery originals and create a ZIP.',
-    imported: 'Imported {count} images into “{group}”',
-    exported: 'Exported {count} gallery images',
     errors: {
-      missingMetadata: 'Image {path} is missing manifest metadata',
       countMismatch: 'The gallery ZIP manifest and asset counts differ',
       assetDirectory: 'Gallery ZIP assets must be stored under assets/',
       duplicatePath: 'Duplicate gallery ZIP path: {path}',
@@ -267,9 +263,7 @@ export const photos = {
       unsafePath: 'Gallery ZIP contains an unsafe path',
       traversalPath: 'Gallery ZIP contains path traversal',
       nonCanonicalPath: 'Gallery ZIP path is not canonical: {path}',
-      extensionMismatch: 'Gallery ZIP file extension does not match its content: {path}',
-      duplicatePhoto: 'The gallery contains indistinguishable duplicate images: {name}',
-      groupMissing: 'The target gallery group does not exist: {group}. Create it in group management first.'
+      extensionMismatch: 'Gallery ZIP file extension does not match its content: {path}'
     }
   },
   social: {

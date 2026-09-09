@@ -77,6 +77,21 @@ function deferredPage() {
 }
 
 describe('S3 gallery mapping', () => {
+  it('rejects oversized ZIPs before allocating or reading their bytes', async () => {
+    const wrapper = setup();
+    const read = vi.fn();
+    const file = new File([], 'oversized.zip', { type: 'application/zip' });
+    Object.defineProperty(file, 'size', { value: 50 * 1024 * 1024 + 1 });
+    Object.defineProperty(file, 'arrayBuffer', { value: read });
+    const input = wrapper.get('input[type="file"]');
+    Object.defineProperty(input.element, 'files', { value: [file] });
+    await input.trigger('change');
+    await flushPromises();
+    expect(read).not.toHaveBeenCalled();
+    expect(mocks.preview).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain('50 MiB');
+    wrapper.unmount();
+  });
   it('discards a closed dialog scan without continuing pagination or enabling uploads', async () => {
     const pending = deferredPage();
     mocks.list.mockReturnValueOnce(pending.promise);

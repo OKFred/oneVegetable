@@ -6,6 +6,7 @@ import {
   GalleryTaskError,
   validateGalleryTransferTask,
   type GalleryTransferTaskV1 as Task,
+  type GalleryTransferContext,
   type GalleryTransferItemV1 as Item
 } from '@one-vegetable/core/gallery-transfer-task';
 import { LazyGalleryTransferDriver } from './gallery-transfer-lazy-driver';
@@ -77,6 +78,7 @@ export class GalleryTransferService {
   readonly open = ref(false);
   readonly selectedId = ref<string | null>(null);
   readonly error = ref('');
+  readonly currentContext = ref<GalleryTransferContext | null>(null);
   readonly repository = new IndexedDbGalleryTaskRepository();
   readonly driver: LazyGalleryTransferDriver;
   readonly runner: GalleryTransferRunner;
@@ -125,11 +127,13 @@ export class GalleryTransferService {
     if (this.disposed) return;
     try {
       const context = await this.driver.context();
+      this.currentContext.value = context;
       // Identity is an authorization boundary even for local task history.
       this.tasks.value = (await this.repository.list()).filter(
         (task) => task.context.identity === context.identity
       );
     } catch (e) {
+      this.currentContext.value = null;
       this.tasks.value = [];
       this.error.value = safeCode(e);
     }

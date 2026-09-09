@@ -11,6 +11,7 @@ import {
 } from '../apps/api/src/storage/s3-configuration';
 import { atomicWriteJson } from './openapi-auth/storage';
 import { validS3Output, type S3Operation } from '../apps/extension/lib/s3-protocol';
+import { parseS3StorageConfiguration } from '../packages/core/src/s3-storage';
 declare const chrome: {
   runtime: { sendMessage(message: unknown): Promise<unknown> };
   storage: { local: { get(key: string): Promise<Record<string, unknown>> } };
@@ -27,16 +28,11 @@ if (existsSync('.env')) loadEnvFile('.env');
 const databasePath = resolve(
   process.env.ONE_VEGETABLE_S3_SMOKE_DATABASE ?? 'artifacts/s3-live-validation/ui.sqlite'
 );
-if (!existsSync(databasePath)) throw new Error('Local encrypted S3 database is missing.');
-const database = openNodeDatabase(databasePath);
-const saved = await new SqlS3StorageConfigurationRepository(database.executor).find();
-database.connection.close();
-if (!saved) throw new Error('Local encrypted S3 configuration is missing.');
-const encodedKey =
-  process.env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY?.trim() ??
-  (await readFile('.data/local-credential-encryption-key', 'utf8')).trim();
-const configuration = await (await S3StorageConfigurationCipher.create(encodedKey)).decrypt(saved);
-const directory = resolve('artifacts/extension-s3-validation');
+const configurationFile = process.env.ONE_VEGETABLE_S3_SMOKE_CONFIGURATION;
+const configuration = configurationFile
+  ? parseS3StorageConfiguration(JSON.parse(await readFile(configurationFile, 'utf8')) as unknown)
+  : await loadSavedConfiguration();
+const directory = resolve(process.env.ONE_VEGETABLE_S3_SMOKE_OUTPUT ?? 'artifacts/extension-s3-validation');
 await mkdir(directory, { recursive: true });
 const profile = await mkdtemp(resolve(directory, 'profile-'));
 let extension = resolve('apps/extension/.output/chrome-mv3');
@@ -85,12 +81,13 @@ try {
   await page.getByLabel('Secret Access Key', { exact: true }).fill(configuration.secretAccessKey);
   await page.getByLabel('素材根目录', { exact: true }).fill(configuration.rootPrefix);
   await page.getByLabel('使用 Path-style 地址', { exact: false }).setChecked(configuration.pathStyle);
+  if (configuration.allowInsecureLocal) await page.getByRole('checkbox', { name: /仅在可信局域网/ }).check();
   if (configuration.sessionToken)
     await page.getByLabel('Session Token（可选）', { exact: true }).fill(configuration.sessionToken);
   stage = 'save-and-permission';
   console.log('Saving S3 configuration. Approve the exact storage-host permission in Chromium if prompted.');
   await page.getByRole('button', { name: '加密保存', exact: true }).click();
-  await expect(page.getByText('S3 配置已加密保存。', { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('S3 配置已加密保存。', { exact: true })).toBeVisible({ timeout: 180_000 });
   await expect(page.getByLabel('Secret Access Key', { exact: true })).toHaveValue('');
   stage = 'test';
   await call(page, 'test');
@@ -244,4 +241,15 @@ async function call(
 }
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+async function loadSavedConfiguration() {
+  if (!existsSync(databasePath)) throw new Error('Local encrypted S3 database is missing.');
+  const database = openNodeDatabase(databasePath);
+  const saved = await new SqlS3StorageConfigurationRepository(database.executor).find();
+  database.connection.close();
+  if (!saved) throw new Error('Local encrypted S3 configuration is missing.');
+  const encodedKey =
+    process.env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY?.trim() ??
+    (await readFile('.data/local-credential-encryption-key', 'utf8')).trim();
+  return (await S3StorageConfigurationCipher.create(encodedKey)).decrypt(saved);
 }

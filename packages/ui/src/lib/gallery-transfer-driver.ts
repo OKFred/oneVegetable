@@ -3,6 +3,7 @@ import {
   encodeBase64,
   validatePhotoBytes,
   photoFileExtension,
+  GALLERY_TRANSFER_MAX_UNCOMPRESSED_BYTES,
   type GalleryTransferDocumentV1,
   type GatewayClient,
   type Photo,
@@ -25,6 +26,14 @@ import {
 
 export function transferOptions(task: Task, item?: Item): GalleryRequestOptions {
   return { galleryContext: task.context, ...(item?.requestId ? { requestId: item.requestId } : {}) };
+}
+export function checkGalleryZipSize(task: Task, itemId: string, size: number): void {
+  if (task.direction !== 'export' || task.storage !== 'zip') return;
+  const previous = task.items
+    .filter((i) => i.id !== itemId && i.kind === 'asset' && i.status === 'confirmed')
+    .reduce((total, i) => total + (i.sourceSize ?? 0), 0);
+  if (previous + size > GALLERY_TRANSFER_MAX_UNCOMPRESSED_BYTES)
+    throw new GalleryTaskError('GALLERY_TASK_ARCHIVE_LIMIT');
 }
 
 /** Refuse an incomplete, repeated or shifting pagination snapshot; absence is not success. */
@@ -168,6 +177,7 @@ export class BrowserGalleryTransferDriver implements GalleryTransferDriver {
     }
     if (task.storage === 's3' && data.length > 5 * 1024 * 1024)
       throw new GalleryTaskError('S3_OBJECT_TOO_LARGE');
+    checkGalleryZipSize(task, item.id, data.length);
     const sha256 = await galleryAssetSha256(data);
     if (item.sha256 && item.sha256 !== sha256) throw new GalleryTaskError('GALLERY_TASK_SOURCE_CHANGED');
     const contentType = validatePhotoBytes(data);
@@ -221,6 +231,7 @@ export class BrowserGalleryTransferDriver implements GalleryTransferDriver {
         options
       );
       this.verifiedPages.delete(item.targetGroupId ?? '-1');
+      this.bytes.delete(item.id);
       return { ...item, status: result.id ? 'unconfirmed' : 'unknown', fileId: result.id || null };
     }
     if (task.storage === 's3') {
@@ -230,6 +241,7 @@ export class BrowserGalleryTransferDriver implements GalleryTransferDriver {
         { key: `${task.batchPrefix}/${item.targetPath}`, bytes, contentType: item.contentType ?? '' },
         options
       );
+      this.bytes.delete(item.id);
       return { ...item, status: 'unconfirmed' };
     }
     if (item.kind === 'archive') this.download(task.archiveName ?? 'one-vegetable-gallery.zip', bytes);

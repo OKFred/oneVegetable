@@ -8,6 +8,7 @@ import { safeCode } from '@one-vegetable/core/gallery-transfer-runner';
 
 import {
   GatewayException,
+  GALLERY_TRANSFER_MAX_ARCHIVE_BYTES,
   evaluateGalleryImportRules,
   type GalleryImportDecision,
   type Photo
@@ -123,6 +124,7 @@ async function selectFile(event: Event): Promise<void> {
   error.value = '';
   validating.value = true;
   try {
+    if (file.size > GALLERY_TRANSFER_MAX_ARCHIVE_BYTES) throw new Error(t('photos.transfer.archiveLimit'));
     const bytes = new Uint8Array(await file.arrayBuffer());
     if (epoch !== archiveEpoch) return;
     const archive = await readGalleryTransferArchive(bytes);

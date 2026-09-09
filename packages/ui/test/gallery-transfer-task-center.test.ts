@@ -54,6 +54,16 @@ function button(label: string): HTMLButtonElement {
   return found;
 }
 describe('gallery task center', () => {
+  it('makes changed configuration read-only and offers settings and a new preview', async () => {
+    const s = setup();
+    s.service.currentContext.value = { ...s.task.context, storage: 'different-configuration' };
+    await nextTick();
+    expect(button('继续 / 重试明确失败项').disabled).toBe(true);
+    expect(button('核对结果').disabled).toBe(true);
+    expect(document.body.querySelector('a[href="#/settings"]')?.textContent.trim()).toBe('连接设置');
+    expect(document.body.querySelector('a[href="#/photos"]')?.textContent).toBe('重新预览');
+    expect(s.run).not.toHaveBeenCalled();
+  });
   it('keeps uncertain items visible and requires confirmation before verification', async () => {
     const s = setup();
     await nextTick();

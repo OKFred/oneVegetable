@@ -2,7 +2,11 @@
 import { computed, ref } from 'vue';
 import { History, Pause, Play, RefreshCw } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { galleryTaskReport, type GalleryTransferTaskV1 } from '@one-vegetable/core/gallery-transfer-task';
+import {
+  galleryTaskReport,
+  sameGalleryTransferContext,
+  type GalleryTransferTaskV1
+} from '@one-vegetable/core/gallery-transfer-task';
 import { safeCode } from '@one-vegetable/core/gallery-transfer-runner';
 import { useGalleryTransfers, downloadGalleryFile } from '../lib/gallery-transfer-service';
 import { formatDateTime } from '../lib/date-time';
@@ -26,6 +30,14 @@ const tasks = computed(
   () => transfers?.tasks.value.filter((v) => filter.value === 'all' || v.status === filter.value) ?? []
 );
 const active = computed(() => transfers?.tasks.value.find((v) => v.status === 'running'));
+const contextChanged = computed(
+  () =>
+    !!(
+      task.value &&
+      transfers?.currentContext.value &&
+      !sameGalleryTransferContext(task.value.context, transfers.currentContext.value)
+    )
+);
 const reselect = ref<HTMLInputElement | null>(null);
 async function safely(action: () => Promise<void>): Promise<void> {
   busy.value = true;
@@ -146,6 +158,18 @@ async function pause(): Promise<void> {
         <p v-if="task.errorCode" role="alert" class="text-sm text-destructive">
           {{ t('photos.tasks.error', { code: task.errorCode }) }}
         </p>
+        <div
+          v-if="contextChanged || task.errorCode || transfers.error.value"
+          class="flex flex-wrap gap-3 text-sm"
+        >
+          <span v-if="contextChanged">{{ t('photos.tasks.changedContext') }}</span>
+          <a href="#/settings" class="underline" @click="transfers.open.value = false">{{
+            t('settings.page.title')
+          }}</a>
+          <a href="#/photos" class="underline" @click="transfers.open.value = false">{{
+            t('photos.tasks.newPreview')
+          }}</a>
+        </div>
         <div class="flex flex-wrap gap-2">
           <Button
             v-if="task.status === 'running'"
@@ -158,7 +182,7 @@ async function pause(): Promise<void> {
           <Button
             v-else-if="!['completed', 'cancelled'].includes(task.status)"
             size="sm"
-            :disabled="busy"
+            :disabled="busy || contextChanged"
             @click="pending = { task, action: 'resume' }"
             ><Play class="size-4" />{{ t('photos.tasks.resume') }}</Button
           >
@@ -169,6 +193,7 @@ async function pause(): Promise<void> {
             "
             variant="outline"
             size="sm"
+            :disabled="busy || contextChanged"
             @click="pending = { task, action: 'verify' }"
             >{{ t('photos.tasks.verify') }}</Button
           >

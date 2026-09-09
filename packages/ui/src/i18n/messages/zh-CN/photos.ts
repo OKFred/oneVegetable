@@ -2,7 +2,7 @@ export const photos = {
   tasks: {
     retention: '完成/取消后保留 30 天；未解决记录不自动删除，最多 100 个任务。',
     title: '传输记录',
-    boundary: '关闭此窗口或切换页面不停止任务。刷新或关闭标签页后，请手工确认恢复。记录仅保存在本机。',
+    boundary: '关窗或切页继续；刷新或关闭标签页后手工恢复。记录仅存本机。',
     created: '传输任务已创建，可在传输记录中查看进度。',
     preview: '以下是冻结的执行计划：',
     filter: '任务状态',
@@ -10,6 +10,8 @@ export const photos = {
     refresh: '刷新',
     empty: '还没有传输记录',
     detail: '任务详情',
+    changedContext: '账号或配置已变化，此任务只读。',
+    newPreview: '重新预览',
     progress: '图库传输 {count}/{total}',
     pause: '暂停',
     resume: '继续 / 重试明确失败项',
@@ -20,14 +22,12 @@ export const photos = {
     reselect: '重新选择原 ZIP',
     archiveReady: '原 ZIP 已核对一致，请点击继续。',
     downloadStarted: '下载已发起，请检查浏览器的下载列表。',
-    noRepeat:
-      '已成功项目不会再次上传；结果不明仅核对，不自动重发。配置变化需要重新预览。ZIP 导入恢复时需重新选择原文件。',
+    noRepeat: '成功项不重传，未知项先核对。配置变化须重新预览；ZIP 恢复须选原包。',
     confirm: '确认任务操作',
     clearWarning: '仅清理本机记录，不删除远端素材。未解决记录清理后将无法核对或恢复。',
     skip: '标记跳过',
     reason: '请填写跳过原因',
-    error:
-      '传输需要处理（{code}）。请检查登录、权限和配置，或重新选择原 ZIP 后继续。结果不明时请先核对，不能直接重传。',
+    error: '需要处理（{code}）：检查登录、权限、配置或重选原 ZIP。未知结果须先核对，不能重传。',
     status: {
       pending: '待开始',
       running: '执行中',
@@ -209,12 +209,10 @@ export const photos = {
       prefix: '导出前缀（相对于设置中的根前缀）',
       mapping: '目录映射方式',
       createMissingGroups: '自动创建缺失的图库分组（最多三级）',
-      invalidGroupPath: '图库分组路径必须为一至三级，不能包含空目录或点目录。',
       flat: '全部平铺到一个 assets 目录',
       groups: '在 assets 下保留图库分组层级',
       rules: '按设置中保存的前缀映射规则',
       current: '全部导入当前图库分组：{group}',
-      invalidPrefix: '请输入安全的相对前缀，不能包含空目录、点目录或反斜杠。',
       exportToS3: '导出到 S3',
       s3ScanTitle: '按本机规则扫描 S3',
       s3ScanDescription: '最多读取 500 个对象，只有匹配规则的图片会进入导入确认。',
@@ -232,10 +230,7 @@ export const photos = {
     confirmExport: '确认导出图库',
     confirmImportDescription: '将 {count} 张图片逐张上传到“{group}”；失败后不会自动重试。',
     confirmExportDescription: '将下载 {count} 张图库原图并生成 ZIP。',
-    imported: '已向“{group}”导入 {count} 张图片',
-    exported: '已导出 {count} 张图库图片',
     errors: {
-      missingMetadata: '图片 {path} 缺少清单元数据',
       countMismatch: '图库 ZIP 的清单与资源数量不一致',
       assetDirectory: '图库 ZIP 资源必须放在 assets/ 目录',
       duplicatePath: '图库 ZIP 路径重复：{path}',
@@ -258,9 +253,7 @@ export const photos = {
       unsafePath: '图库 ZIP 包含不安全路径',
       traversalPath: '图库 ZIP 包含路径穿越',
       nonCanonicalPath: '图库 ZIP 路径不规范：{path}',
-      extensionMismatch: '图库 ZIP 文件扩展名与内容不匹配：{path}',
-      duplicatePhoto: '图库中存在无法区分的重复图片：{name}',
-      groupMissing: '规则目标图库分组不存在：{group}。请先在分组管理中创建。'
+      extensionMismatch: '图库 ZIP 文件扩展名与内容不匹配：{path}'
     }
   },
   social: {
