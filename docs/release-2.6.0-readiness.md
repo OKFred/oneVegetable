@@ -1,6 +1,6 @@
 # 2.6.0 候选包验收
 
-状态：准备中，仅开发分支。没有创建发布 Tag、GitHub Release、合入 master、部署 Worker 或提交 Chrome Web Store。
+状态：本地候选包已通过检查，仅开发分支。没有创建发布 Tag、GitHub Release、合入 master、部署 Worker 或提交 Chrome Web Store。
 
 ## 本次变化
 
@@ -27,6 +27,14 @@
 
 ## 发布检查
 
-最终格式、Lint、类型、OpenAPI/i18n 漂移、全量单测、三端构建、Web/扩展 E2E、Worker/D1 与商店合规检查完成后记录包名及 SHA-256。
+2026-09-10，Windows 本地完成：
+
+- `pnpm check` 完整通过：格式、Lint（0 error / 21 warning）、i18n、6 个 workspace 版本、OpenAPI/生成物漂移、84 项离线目录、35/35 replay、类型、817 项单测、Web/MV3/Worker dry-run 构建和商店合规。
+- Web/扩展 Playwright 26 项通过；Worker 本地单测 1 项、Worker/D1/BFF replay E2E 2 项通过。模拟故障检查与真实图库验收分开记录。
+- Options 首次加载 JS 126,371 字节；解包总量 4,099,974 字节，126 个文件。没有放宽现有启动/总量预算；总量接近 4.1 MB，后续新增功能需重新评估。
+- 候选 ZIP：`artifacts/one-vegetable-v2.6.0-chrome-mv3.zip`，974,522 字节。
+- SHA-256：`8a3ff33ee345cea92f6b3f106c55f8a9a68a428299671c5dab134973f45a3763`。
+
+打包器重复压缩确认可复现，并核对完整文件列表；商店材料副本从仓库来源重新生成。不包含本机授权包、S3 密钥或真实验收 Profile。
 
 应用版本历史明确标为“候选、尚未上架”，链接到本文件；正式发版时再移除候选标记并更新正式 Release 链接。
