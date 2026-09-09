@@ -7253,6 +7253,8 @@ export interface components {
             /** @description Image size in bytes. */
             fileSize: number;
             referenceCount: number;
+            originalName?: string | null;
+            ownerName?: string | null;
             /** Format: date-time */
             modifiedAt: string;
         };
@@ -7312,6 +7314,22 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             categoryId: number | null;
+            groupId?: number | null;
+            keywords?: string[] | null;
+            /** Format: date-time */
+            createdAt?: string | null;
+            ownerName?: string | null;
+            productType?: string | null;
+            language?: string | null;
+            model?: string | null;
+            isRts?: boolean | null;
+            isSpecific?: boolean | null;
+            smartEdit?: boolean | null;
+            imageCount?: number | null;
+            watermark?: boolean | null;
+            watermarkPosition?: string | null;
+            watermarkFrame?: string | null;
+            platformStatus?: string | null;
         };
         ProductAssetDownloadRequest: {
             /**
@@ -7877,8 +7895,8 @@ export interface components {
             id: string;
             buyerLoginId: string | null;
             status: string;
-            amount: string;
-            currency: string;
+            amount: string | null;
+            currency: string | null;
             /** Format: date-time */
             createdAt: string | null;
             /** Format: date-time */

@@ -402,7 +402,22 @@ function normalizeProduct(record: Record<string, unknown>): ProductPage['items']
     imageUrl: readStringList(mainImage.images)[0] ?? null,
     detailUrl: normalizeProductDetailUrl(readString(record, ['pc_detail_url'])),
     updatedAt: normalizeDate(readString(record, ['gmt_modified', 'modified_time'])),
-    categoryId: readNumber(record, ['category_id', 'cat_id']) ?? null
+    categoryId: readNumber(record, ['category_id', 'cat_id']) ?? null,
+    groupId: readNumber(record, ['group_id']) ?? null,
+    keywords: record.keywords === undefined ? null : readStringList(record.keywords),
+    createdAt: nullableProductDate(record.gmt_create),
+    ownerName: readString(record, ['owner_member_display_name']) ?? null,
+    productType: readString(record, ['product_type']) ?? null,
+    language: readString(record, ['language']) ?? null,
+    model: readString(record, ['red_model']) ?? null,
+    isRts: readBoolean(record, ['is_rts']) ?? null,
+    isSpecific: readBoolean(record, ['is_specific']) ?? null,
+    smartEdit: readBoolean(record, ['smart_edit']) ?? null,
+    imageCount: mainImage.images === undefined ? null : readStringList(mainImage.images).length,
+    watermark: readBoolean(mainImage, ['watermark']) ?? null,
+    watermarkPosition: readString(mainImage, ['watermark_position']) ?? null,
+    watermarkFrame: readString(mainImage, ['watermark_frame']) ?? null,
+    platformStatus: readString(record, ['status']) ?? null
   };
 }
 
@@ -562,6 +577,18 @@ function normalizeProductStatus(
   if (normalizedDisplay?.includes('online') || normalizedDisplay === 'true' || normalizedDisplay === 'y')
     return 'online';
   return 'offline';
+}
+
+function nullableProductDate(value: unknown): string | null {
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
+  const normalized =
+    typeof value === 'string' && /^\d{13}$/.test(value)
+      ? Number(value)
+      : typeof value === 'string' && /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(value)
+        ? `${value.replace(' ', 'T')}+08:00`
+        : value;
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
 function normalizeDate(value: string | undefined): string {

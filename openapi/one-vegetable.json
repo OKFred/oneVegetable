@@ -14140,6 +14140,8 @@
           },
           "fileSize": { "type": "integer", "minimum": 0, "description": "Image size in bytes." },
           "referenceCount": { "type": "integer", "minimum": 0 },
+          "originalName": { "type": ["string", "null"] },
+          "ownerName": { "type": ["string", "null"] },
           "modifiedAt": { "type": "string", "format": "date-time" }
         }
       },
@@ -14248,7 +14250,22 @@
             "description": "Alibaba 商品接口返回的 PC 端商品详情地址；不得由客户端拼接。"
           },
           "updatedAt": { "type": "string", "format": "date-time" },
-          "categoryId": { "type": ["integer", "null"] }
+          "categoryId": { "type": ["integer", "null"] },
+          "groupId": { "type": ["number", "null"] },
+          "keywords": { "type": ["array", "null"], "items": { "type": "string" } },
+          "createdAt": { "type": ["string", "null"], "format": "date-time" },
+          "ownerName": { "type": ["string", "null"] },
+          "productType": { "type": ["string", "null"] },
+          "language": { "type": ["string", "null"] },
+          "model": { "type": ["string", "null"] },
+          "isRts": { "type": ["boolean", "null"] },
+          "isSpecific": { "type": ["boolean", "null"] },
+          "smartEdit": { "type": ["boolean", "null"] },
+          "imageCount": { "type": ["integer", "null"] },
+          "watermark": { "type": ["boolean", "null"] },
+          "watermarkPosition": { "type": ["string", "null"] },
+          "watermarkFrame": { "type": ["string", "null"] },
+          "platformStatus": { "type": ["string", "null"] }
         }
       },
       "ProductAssetDownloadRequest": {
@@ -15323,8 +15340,8 @@
           "id": { "type": "string" },
           "buyerLoginId": { "type": ["string", "null"] },
           "status": { "type": "string" },
-          "amount": { "type": "string", "pattern": "^-?\\d+(?:\\.\\d+)?$" },
-          "currency": { "type": "string" },
+          "amount": { "type": ["string", "null"], "pattern": "^-?\\d+(?:\\.\\d+)?$" },
+          "currency": { "type": ["string", "null"] },
           "createdAt": { "type": ["string", "null"], "format": "date-time" },
           "modifiedAt": { "type": ["string", "null"], "format": "date-time" }
         }

@@ -1,0 +1,28 @@
+{
+  "product": {
+    "id": 123,
+    "subject": "Sample shirt",
+    "product_id": "sample-encrypted-id",
+    "group_id": 7,
+    "keywords": { "string": ["shirt", "cotton"] },
+    "main_image": { "images": { "string": ["https://sc04.alicdn.com/kf/sample.jpg"] }, "watermark": false },
+    "gmt_create": "2026-09-10 10:00:00",
+    "owner_member_display_name": "Sample owner",
+    "product_type": "sourcing",
+    "language": "english",
+    "red_model": "SH-1",
+    "is_rts": false,
+    "is_specific": true,
+    "smart_edit": false,
+    "status": "approved",
+    "display": "Y"
+  },
+  "photo": {
+    "id": "photo-1",
+    "display_name": "Sample",
+    "file_name": "original.jpg",
+    "owner_member_display_name": "Sample owner",
+    "url": "https://sc04.alicdn.com/kf/sample.jpg"
+  },
+  "order": { "trade_id": "order-1" }
+}
