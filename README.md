@@ -68,6 +68,8 @@ pnpm capture:store-assets # 从构建后的扩展刷新 1280×800 商店截图
 
 正式版本使用与 workspace 版本一致的 annotated Git Tag（如 `v2.0.2`）和 GitHub Release；release 分支仅在 RC 冻结时临时使用。Tag 工作流会重新执行完整检查并附加扩展 ZIP、SHA-256 与发布元数据，但不会自动提交 Chrome Web Store 或部署生产环境。详见 [正式版本与回退流程](docs/release-process.md)。
 
+2.6.0 开发候选：图库 ZIP/S3 任务可跨页面继续、刷新后手工恢复，详见 [任务中心与安全恢复](docs/gallery-transfer-task-recovery.md) 和 [候选包验收](docs/release-2.6.0-readiness.md)。真实写入仍需确认；清理记录不删除远端素材。
+
 ## 扩展调试
 
 日常开发使用 `pnpm dev:extension`。WXT 会启动独立 Chromium profile，并在 options、popup、service worker、content script 或 manifest 变化后自动更新/重载扩展；不需要像 MV2 一样每次打开 `chrome://extensions` 手工点击“重新加载”。

@@ -3,6 +3,31 @@
   "repositoryUrl": "https://github.com/OKFred/oneVegetable",
   "releases": [
     {
+      "version": "2.6.0",
+      "releasedAt": "2026-09-10",
+      "title": {
+        "zh-CN": "图库任务与安全恢复（候选）",
+        "en-US": "Gallery tasks and safe recovery (candidate)"
+      },
+      "summary": {
+        "zh-CN": "开发候选，尚未上架。ZIP/S3 传输支持本机记录、暂停和手工恢复。",
+        "en-US": "Development candidate, not yet published. Local ZIP/S3 task history, pause and manual recovery."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/blob/codex/gallery-transfer-task-recovery/docs/release-2.6.0-readiness.md",
+      "compareUrl": null,
+      "changes": [
+        {
+          "type": "feature",
+          "title": { "zh-CN": "跨页面传输", "en-US": "Cross-page transfers" },
+          "description": {
+            "zh-CN": "关闭弹窗不停止；刷新后确认恢复，成功项不重传，未知结果先核对。Web 与插件均支持。",
+            "en-US": "Continue across dialogs; confirm after reload. Keep successful receipts and verify uncertain writes. Available in Web and extension."
+          }
+        }
+      ]
+    },
+    {
       "version": "2.5.0",
       "releasedAt": "2026-09-08",
       "title": {
