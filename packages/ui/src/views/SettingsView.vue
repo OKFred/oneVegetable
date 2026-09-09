@@ -514,6 +514,8 @@ async function clearAllLocalData(): Promise<void> {
   try {
     await galleryTransfers?.stopAndClear();
     await localData.clearAll();
+    const { clearColumnPreferences } = await import('../lib/column-preferences');
+    clearColumnPreferences();
     clearConfirmation.value = '';
     model.value = {
       appKey: '',
