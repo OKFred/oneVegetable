@@ -2,10 +2,35 @@
 import { effectScope, nextTick, ref } from 'vue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
+import { GatewayException } from '@one-vegetable/core';
 import { requestPageDetail, usePageDetails } from '../src/lib/page-details';
 
 describe('page details', () => {
   afterEach(() => vi.useRealTimers());
+  it('rejects changed credentials before networking and isolates languages', async () => {
+    const gateway = new MockGatewayClient(0);
+    const context = await gateway.galleryTransferContext();
+    const identity = JSON.stringify([context.identity, context.gateway]);
+    const spy = vi.spyOn(gateway, 'request');
+    vi.spyOn(gateway, 'galleryTransferContext').mockResolvedValue({ ...context, gateway: 'new-account' });
+    await expect(
+      requestPageDetail(gateway, 'extension', 'en_US', { kind: 'score', id: 'one' }, identity)
+    ).rejects.toThrow('GALLERY_CONTEXT_CHANGED');
+    expect(spy).not.toHaveBeenCalled();
+    await requestPageDetail(gateway, 'extension', 'en_US', { kind: 'score', id: 'one' });
+    await requestPageDetail(gateway, 'extension', 'zh_CN', { kind: 'score', id: 'one' });
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+  it('rejects a response when the account changed in flight', async () => {
+    const gateway = new MockGatewayClient(0);
+    const context = await gateway.galleryTransferContext();
+    vi.spyOn(gateway, 'galleryTransferContext')
+      .mockResolvedValueOnce(context)
+      .mockResolvedValue({ ...context, identity: 'different-user' });
+    await expect(
+      requestPageDetail(gateway, 'extension', 'en_US', { kind: 'score', id: 'one' })
+    ).rejects.toThrow('GALLERY_CONTEXT_CHANGED');
+  });
   it('deduplicates requests and expires the scoped cache after five minutes', async () => {
     vi.useFakeTimers();
     const gateway = new MockGatewayClient(0);
@@ -51,7 +76,11 @@ describe('page details', () => {
     scope.stop();
   });
   it('stops scheduling on permission failure and retries only failed rows', async () => {
-    const query = vi.fn().mockRejectedValue({ code: 'PERMISSION_DENIED' });
+    const query = vi
+      .fn()
+      .mockRejectedValue(
+        new GatewayException({ code: 'PERMISSION_DENIED', message: 'Access unavailable', retryable: false })
+      );
     const scope = effectScope();
     const service = scope.run(() =>
       usePageDetails(ref([{ id: 'one' }, { id: 'two' }]), ref('page'), (row) => row.id, query, vi.fn())

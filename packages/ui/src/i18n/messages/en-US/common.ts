@@ -34,6 +34,7 @@ export const common = {
     reset: 'Reset defaults',
     selection: 'Selection',
     load: 'Load page details',
+    resume: 'Continue querying',
     pending: 'Not queried',
     loading: 'Loading',
     failed: 'Query failed',

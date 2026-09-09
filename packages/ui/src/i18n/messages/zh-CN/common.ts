@@ -34,6 +34,7 @@ export const common = {
     reset: '恢复默认',
     selection: '选择',
     load: '加载本页扩展信息',
+    resume: '继续查询',
     pending: '待查询',
     loading: '查询中',
     failed: '查询失败',

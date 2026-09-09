@@ -663,6 +663,9 @@ watch(detailBoundary, () => {
   productScores.value = {};
   productScoreErrors.value = {};
 });
+watch(pageDetails.securityFailure, (failed) => {
+  if (failed) productScores.value = {};
+});
 const currentPageProductIds = computed(() => currentPageProducts.value.map((product) => product.id));
 const selectedProducts = computed(() =>
   currentPageProducts.value.filter((product) => selectedProductIds.value.includes(product.id))
@@ -1273,6 +1276,22 @@ function productTransferSchemaFormatLabel(format: ProductTransferSchemaFormat): 
 }
 
 function submitBatchDisplay(display: 'online' | 'offline'): void {
+  if (
+    productDisplayMutationDisabled.value ||
+    selectedProductMissingEncryptedId.value ||
+    selectedDisplayMutationBlocked.value
+  ) {
+    toast.warning(
+      t(
+        productDisplayMutationDisabled.value
+          ? 'products.view.page.displayDisabled'
+          : selectedProductMissingEncryptedId.value
+            ? 'products.view.page.missingEncryptedId'
+            : 'products.view.page.displayBlocked'
+      )
+    );
+    return;
+  }
   if (mode !== 'mock') {
     actionConfirmation.value = {
       kind: 'batch-display',
@@ -1400,7 +1419,7 @@ const columns = computed<DataColumn<Product>[]>(() => [
             {
               type: 'button',
               class:
-                'group relative block size-14 cursor-zoom-in overflow-hidden rounded-md border border-border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                'group relative block size-20 cursor-zoom-in overflow-hidden rounded-md border border-border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               'aria-label': t('products.view.previewMain', { title: row.original.subject }),
               onClick: () => {
                 openProductImagePreview(row.original);
@@ -1418,11 +1437,11 @@ const columns = computed<DataColumn<Product>[]>(() => [
             'span',
             {
               class:
-                'flex size-14 items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground'
+                'flex size-20 items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground'
             },
             t('products.view.none')
           ),
-    meta: { sticky: 'left', stickyOffset: '56px', stickyBoundary: true, width: '96px' }
+    meta: { sticky: 'left', stickyOffset: '56px', stickyBoundary: true, width: '112px' }
   },
   {
     accessorKey: 'subject',
@@ -2252,7 +2271,7 @@ onBeforeUnmount(() => {
 
       <section class="min-w-0">
         <div
-          class="mb-4 flex flex-wrap items-center justify-between gap-3"
+          class="flex flex-wrap items-center justify-between gap-3 rounded-t-lg border border-b-0 p-2"
           role="toolbar"
           :aria-label="t('products.view.page.toolbar')"
         >
@@ -2326,24 +2345,14 @@ onBeforeUnmount(() => {
                       <DropdownMenuSeparator class="my-1 h-px bg-border" />
                       <DropdownMenuItem
                         class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-                        :disabled="
-                          productDisplayMutationDisabled ||
-                          selectedProductMissingEncryptedId ||
-                          selectedDisplayMutationBlocked ||
-                          batchDisplay.isPending.value
-                        "
+                        :disabled="batchDisplay.isPending.value"
                         @select="submitBatchDisplay('online')"
                       >
                         {{ t('products.view.page.batchOnline') }}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-                        :disabled="
-                          productDisplayMutationDisabled ||
-                          selectedProductMissingEncryptedId ||
-                          selectedDisplayMutationBlocked ||
-                          batchDisplay.isPending.value
-                        "
+                        :disabled="batchDisplay.isPending.value"
                         @select="submitBatchDisplay('offline')"
                       >
                         {{ t('products.view.page.batchOffline') }}
@@ -2358,18 +2367,6 @@ onBeforeUnmount(() => {
             >
           </div>
         </div>
-        <p
-          v-if="selectedProductIds.length && productDisplayMutationDisabled"
-          class="mb-3 text-xs text-amber-700 dark:text-amber-400"
-        >
-          {{ t('products.view.page.displayDisabled') }}
-        </p>
-        <p v-else-if="selectedProductMissingEncryptedId" class="mb-3 text-xs text-destructive">
-          {{ t('products.view.page.missingEncryptedId') }}
-        </p>
-        <p v-else-if="selectedDisplayMutationBlocked" class="mb-3 text-xs text-amber-700 dark:text-amber-400">
-          {{ t('products.view.page.displayBlocked') }}
-        </p>
         <ErrorNotice v-if="batchDisplay.error.value" class="mb-3" :error="batchDisplay.error.value" compact />
         <QueryState
           :loading="products.isPending.value"
@@ -2380,6 +2377,7 @@ onBeforeUnmount(() => {
           <DataTable
             :columns="columns"
             column-settings-key="products"
+            class="rounded-t-none"
             :locked-columns="['select', 'subject', 'actions']"
             :hidden-columns="[...productExtraFields, 'watermark', 'scoreIssues']"
             :data="products.data.value?.items ?? []"
@@ -2406,6 +2404,7 @@ onBeforeUnmount(() => {
             <template #column-actions="{ visible }">
               <PageDetailActions
                 v-if="visible.includes('productScore') || visible.includes('scoreIssues')"
+                :page-key="JSON.stringify([detailBoundary, currentPageProducts.map((product) => product.id)])"
                 :busy="pageDetails.busy.value"
                 :done="pageDetails.done.value"
                 :total="pageDetails.total.value"

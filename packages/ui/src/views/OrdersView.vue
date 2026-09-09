@@ -103,8 +103,14 @@ const hasNextOrder = computed(() => {
   const items = orders.data.value?.items ?? [];
   return selectedOrderIndex.value >= 0 && selectedOrderIndex.value < items.length - 1;
 });
+const detailViewId = globalThis.crypto.randomUUID();
 const aggregate = useQuery({
-  queryKey: computed(() => ['trade-order-aggregate', selectedOrderId.value, preferredLanguage.value]),
+  queryKey: computed(() => [
+    'trade-order-aggregate',
+    detailViewId,
+    selectedOrderId.value,
+    preferredLanguage.value
+  ]),
   retry: false,
   enabled: computed(() => orderSheetOpen.value && selectedOrder.value !== undefined),
   queryFn: () => {
@@ -149,6 +155,9 @@ const pageDetails = usePageDetails(
 );
 watch(detailBoundary, () => {
   orderDetails.value = {};
+});
+watch(pageDetails.securityFailure, (failed) => {
+  if (failed) orderDetails.value = {};
 });
 function detailValue(row: TradeOrderSummary, field: string): unknown {
   const data = orderDetails.value[row.id];
@@ -503,6 +512,7 @@ onBeforeUnmount(() => {
         <template #column-actions="{ visible }"
           ><PageDetailActions
             v-if="orderDetailColumns.some((id) => visible.includes(id))"
+            :page-key="JSON.stringify([detailBoundary, orders.data.value?.items.map((order) => order.id)])"
             :busy="pageDetails.busy.value"
             :done="pageDetails.done.value"
             :total="pageDetails.total.value"

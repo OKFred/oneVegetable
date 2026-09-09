@@ -19,10 +19,14 @@ const filtered = computed(() =>
 <template>
   <PopoverRoot>
     <PopoverTrigger as-child
-      ><Button variant="outline"
-        ><Columns3 class="size-4" />{{ t('common.columns.title') }}</Button
-      ></PopoverTrigger
-    >
+      ><Button
+        variant="ghost"
+        size="icon"
+        class="size-7"
+        :aria-label="t('common.columns.title')"
+        :title="t('common.columns.title')"
+        ><Columns3 class="size-3.5" /></Button
+    ></PopoverTrigger>
     <PopoverPortal>
       <PopoverContent
         align="end"

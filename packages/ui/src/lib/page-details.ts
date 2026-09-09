@@ -1,4 +1,5 @@
 import { onScopeDispose, ref, shallowRef, watch, type Ref } from 'vue';
+import { describeUserVisibleError } from '@one-vegetable/core';
 import type {
   GatewayClient,
   ProductScore,
@@ -23,8 +24,16 @@ export async function pageDetailIdentity(gateway: GatewayClient, mode: string): 
 }
 
 export function detailErrorState(error: unknown): 'denied' | 'failed' {
-  const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : String(error);
+  const code = detailErrorCode(error);
   return /PERMISSION|FORBIDDEN|ACCESS_DENIED|QUALIFICATION/.test(code) ? 'denied' : 'failed';
+}
+
+function detailErrorCode(error: unknown): string {
+  const details = describeUserVisibleError(error, '');
+  return (
+    details.code ??
+    (error && typeof error === 'object' && 'code' in error ? String(error.code) : details.message)
+  );
 }
 
 export async function requestPageDetail(
@@ -94,6 +103,7 @@ export function usePageDetails<T>(
   const total = ref(0);
   const states = shallowRef<Record<string, 'loading' | 'ready' | 'failed'>>({});
   const errors = shallowRef<Record<string, unknown>>({});
+  const securityFailure = ref(false);
   let epoch = 0;
   const stopRequested = ref(false);
   function stop(): void {
@@ -123,6 +133,7 @@ export function usePageDetails<T>(
     busy.value = true;
     done.value = 0;
     total.value = targets.length;
+    securityFailure.value = false;
     let success = 0;
     let failed = 0;
     let identity: string | undefined;
@@ -137,6 +148,7 @@ export function usePageDetails<T>(
           const result = await query(row, identity);
           if (current !== epoch) break;
           accept(row, result);
+          errors.value = Object.fromEntries(Object.entries(errors.value).filter(([id]) => id !== key));
           success++;
           states.value = { ...states.value, [key]: 'ready' };
         } catch (error: unknown) {
@@ -144,9 +156,11 @@ export function usePageDetails<T>(
           failed++;
           errors.value = { ...errors.value, [key]: error };
           states.value = { ...states.value, [key]: 'failed' };
-          const code =
-            error && typeof error === 'object' && 'code' in error ? String(error.code) : String(error);
-          if (/SESSION|AUTH|CREDENTIAL|PERMISSION|CONTEXT|VAULT/.test(code)) stop();
+          const code = detailErrorCode(error);
+          if (/SESSION|AUTH|TOKEN|CREDENTIAL|PERMISSION|CONTEXT|VAULT|FORBIDDEN/.test(code)) {
+            securityFailure.value = true;
+            stop();
+          }
         }
         done.value++;
         if (!stopped() && done.value < targets.length)
@@ -157,5 +171,5 @@ export function usePageDetails<T>(
     }
     return current === epoch ? { success, failed } : null;
   }
-  return { busy, done, total, states, errors, load, stop };
+  return { busy, done, total, states, errors, securityFailure, load, stop };
 }

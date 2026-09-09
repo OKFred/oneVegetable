@@ -182,15 +182,6 @@ function stickyColumnStyle(value: unknown): Record<string, string> | undefined {
 
 <template>
   <div class="max-w-full overflow-hidden rounded-lg border">
-    <div v-if="columnSettingsKey" class="flex flex-wrap items-center justify-end gap-2 border-b p-2">
-      <slot name="column-actions" :visible="columnPreferences.visible.value" />
-      <ColumnSettings
-        :options="columnOptions"
-        :visible="columnPreferences.visible.value"
-        @toggle="columnPreferences.toggle"
-        @reset="columnPreferences.reset"
-      />
-    </div>
     <div class="relative max-w-full overflow-auto" :style="{ maxHeight }">
       <table class="w-full text-sm" :style="{ minWidth }">
         <thead
@@ -204,7 +195,21 @@ function stickyColumnStyle(value: unknown): Record<string, string> | undefined {
               :class="stickyColumnClasses(header.column.columnDef.meta, true)"
               :style="stickyColumnStyle(header.column.columnDef.meta)"
             >
-              <FlexRender v-if="!header.isPlaceholder" :header="header" />
+              <span class="inline-flex items-center gap-1">
+                <FlexRender v-if="!header.isPlaceholder" :header="header" />
+                <ColumnSettings
+                  v-if="
+                    columnSettingsKey &&
+                    (header.column.id === 'actions' ||
+                      (!columnOptions.some((column) => column.id === 'actions') &&
+                        header === headerGroup.headers.at(-1)))
+                  "
+                  :options="columnOptions"
+                  :visible="columnPreferences.visible.value"
+                  @toggle="columnPreferences.toggle"
+                  @reset="columnPreferences.reset"
+                />
+              </span>
             </th>
           </tr>
         </thead>
@@ -245,6 +250,7 @@ function stickyColumnStyle(value: unknown): Record<string, string> | undefined {
         </tbody>
       </table>
     </div>
+    <slot name="column-actions" :visible="columnPreferences.visible.value" />
     <TablePagination
       v-if="pagination"
       :page="currentPage"

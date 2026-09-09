@@ -276,7 +276,7 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
         {
           type: 'button',
           class:
-            'group relative block size-14 overflow-hidden rounded-md border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            'group relative block size-20 overflow-hidden rounded-md border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
           'aria-label': t('photos.previewPhoto', { name: photo.name }),
           onClick: () => {
             openPreview(photo);
@@ -292,7 +292,7 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
         })
       );
     },
-    meta: { sticky: 'left', stickyOffset: '64px', stickyBoundary: true, width: '88px' }
+    meta: { sticky: 'left', stickyOffset: '64px', stickyBoundary: true, width: '112px' }
   },
   {
     id: 'name',

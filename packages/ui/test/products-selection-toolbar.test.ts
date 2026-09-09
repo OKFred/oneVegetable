@@ -10,6 +10,7 @@ import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import { provideServices } from '../src/lib/services';
 import ProductsView from '../src/views/ProductsView.vue';
+import ColumnSettings from '../src/components/ColumnSettings.vue';
 
 vi.mock('vue-sonner', () => ({
   toast: {
@@ -19,6 +20,20 @@ vi.mock('vue-sonner', () => ({
 }));
 
 describe('ProductsView selection toolbar', () => {
+  it('does not query details on column changes and makes the returned product ID the link', async () => {
+    const gateway = new MockGatewayClient(0);
+    const request = vi.spyOn(gateway, 'request');
+    const wrapper = mountView(gateway);
+    await waitForProducts(wrapper);
+    const before = request.mock.calls.length;
+    const settings = wrapper.getComponent(ColumnSettings);
+    (settings.vm as { $emit: (event: 'toggle', id: string) => void }).$emit('toggle', 'keywords');
+    await flushPromises();
+    expect(request.mock.calls.length).toBe(before);
+    expect(wrapper.get('a[href^="https://www.alibaba.com/product-detail/"]').text()).toBe('10000001');
+    expect(request.mock.calls.some(([operation]) => operation === 'getProductScore')).toBe(true);
+    wrapper.unmount();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
@@ -217,12 +232,15 @@ describe('ProductsView selection toolbar', () => {
     await wrapper.get('input[aria-label="选择 Custom recycled cotton canvas tote bag"]').setValue(true);
     button(wrapper.element as Node, '更多').click();
     await flushPromises();
+    await vi.waitFor(() => {
+      expect(menuItem('批量查询产品分').getAttribute('data-disabled')).toBeNull();
+    });
     menuItem('批量查询产品分').click();
     await flushPromises();
 
     await vi.waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith('产品分查询完成：成功 2 个，失败 0 个。');
-      expect(wrapper.text().match(/4\.6\/6/g)).toHaveLength(2);
+      expect(wrapper.text().match(/4\.6\/6/g)).toHaveLength(3);
     });
     expect(wrapper.text()).not.toContain('质量与上下架');
     wrapper.unmount();
