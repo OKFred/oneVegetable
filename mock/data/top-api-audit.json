@@ -1,0 +1,38 @@
+{
+  "catalog": {
+    "treeCategories": [
+      {
+        "catelogTrees": [
+          {
+            "treeName": "ICBU－商品",
+            "catelogList": [
+              {
+                "docId": 58734,
+                "docType": 2,
+                "name": "alibaba.icbu.product.country.getcountrylist",
+                "subName": "国家列表",
+                "children": []
+              }
+            ]
+          },
+          {
+            "treeName": "重复分类",
+            "catelogList": [
+              { "docId": 58734, "docType": 2, "name": "alibaba.icbu.product.country.getcountrylist" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "success": {
+    "success": true,
+    "data": {
+      "name": "alibaba.icbu.product.country.getcountrylist",
+      "labels": [{ "displayName": "￥免费" }, { "displayName": "必须用户授权" }],
+      "description": "国家列表",
+      "applyScopes": { "name": "国际站基础权限包", "descprition": "ICBU应用" }
+    }
+  },
+  "expired": { "success": false, "code": "500", "data": {}, "msg": "页面已过期，请刷新重试！" }
+}
