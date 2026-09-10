@@ -32,6 +32,7 @@ describe('ProductsView selection toolbar', () => {
     expect(request.mock.calls.length).toBe(before);
     const link = wrapper.get('a[href^="https://www.alibaba.com/product-detail/"]');
     expect(link.text()).toBe('链接');
+    expect(link.classes()).toEqual(expect.arrayContaining(['h-8', 'border', 'border-input', 'px-3']));
     expect(link.attributes('target')).toBe('_blank');
     expect(link.attributes('rel')).toBe('noopener noreferrer');
     expect(link.attributes('title')).toContain('10000001');

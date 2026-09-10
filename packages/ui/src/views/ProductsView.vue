@@ -1558,7 +1558,8 @@ const columns = computed<DataColumn<Product>[]>(() => [
                 href: row.original.detailUrl,
                 target: '_blank',
                 rel: 'noopener noreferrer',
-                class: 'text-primary hover:underline',
+                class:
+                  'inline-flex h-8 cursor-pointer items-center justify-center rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 title: `${t('products.links.viewOnAlibaba')} · ${row.original.id}`,
                 onClick: (event: MouseEvent) => {
                   event.stopPropagation();

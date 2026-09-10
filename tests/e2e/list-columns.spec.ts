@@ -31,6 +31,11 @@ test('product action link and per-table column preferences persist without chang
   );
   const actionCell = table.locator('tbody tr').first().locator('td').last();
   await expect(actionCell).toHaveText('链接编辑');
+  await expect(actionCell.getByRole('link', { name: '链接', exact: true })).toHaveCSS(
+    'border-top-style',
+    'solid'
+  );
+  await expect(actionCell.getByRole('link', { name: '链接', exact: true })).toHaveCSS('height', '32px');
   const widths = await table.evaluate((element) => ({
     table: element.getBoundingClientRect().width,
     product: element.querySelector('tbody tr td:nth-child(3)')?.getBoundingClientRect().width ?? Infinity
