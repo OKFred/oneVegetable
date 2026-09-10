@@ -15,5 +15,9 @@ test('five stock and showcase read definitions are searchable in the debugger', 
             ? /type_request/
             : /^\{\}$/
     );
+    await page.getByRole('button', { name: '调用能力', exact: true }).click();
+    await expect(page.getByRole('dialog').locator('pre').last()).toContainText('"contractValid": true');
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
   }
 });

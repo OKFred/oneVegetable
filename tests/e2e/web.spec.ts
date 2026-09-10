@@ -223,7 +223,7 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await expect(page.locator('tbody tr')).toHaveCount(10);
   await expect(page.getByText(`共 ${listCapabilities().length} 条，当前 1–10 条`)).toBeVisible();
   await page.getByRole('button', { name: '下一页' }).click();
-  await expect(page.getByText('第 2 / 9 页')).toBeVisible();
+  await expect(page.getByText(`第 2 / ${Math.ceil(listCapabilities().length / 10)} 页`)).toBeVisible();
   await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.category.attr.get');
   await expect(page.getByText('第 1 / 1 页')).toBeVisible();
   await page.getByRole('button', { name: 'alibaba.icbu.category.attr.get' }).click();

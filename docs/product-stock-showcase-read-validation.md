@@ -40,3 +40,10 @@ pnpm exec tsx scripts/smoke-product-stock-showcase-real.ts
 ## 校验生成器包体优化
 
 新增五项后未压缩扩展为 4,130,922 bytes，超出原有 4,100,000 bytes 门槛。AJV standalone 设置 `loopRequired: 4`，将四项及以上必填规则生成循环而非展开重复错误分支；不减少规则、不关闭 allErrors、不使用运行时代码生成。优化后扩展 4,067,964 bytes，启动 JS 126,479 bytes，未放宽预算或修改权限。另有 16 种必填字段子集测试验证缺失字段仍全部报告。
+
+## 自动回归结果
+
+- `pnpm check`：通过；196 个测试文件、879 个测试，包含格式、Lint、中英文键、OpenAPI/审计漂移、类型检查、Web/Worker dry-run/扩展构建与商店合规。Lint 保留原有 21 项 warning，无 error。
+- `pnpm exec playwright test --workers=2`：32 项通过；五项新能力均可搜索、打开详情和调用 Mock 契约。修复测试中未关闭详情抽屉及写死 9 页的断言，分页预期由实际目录数量计算。
+- `pnpm test:e2e:bff-replay`：2 项通过；隔离本地 D1、Worker、登录、跨领域 Replay 和写操作拒绝。不是云端真实验收。
+- 本地日志位于 `artifacts/top-api-audit/check-stock-final.log`、`e2e-stock-final.log`、`e2e-bff-stock.log`。
