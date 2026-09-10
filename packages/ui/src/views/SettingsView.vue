@@ -62,6 +62,7 @@ const {
   extensionSocialBackend,
   control,
   s3Storage,
+  runtime,
   mode
 } = useServices();
 const { t } = useUiI18n();
@@ -566,6 +567,39 @@ function confirmLanguagePreference(): void {
     >
       {{ feedback }}
     </p>
+    <Card v-if="mode === 'bff'" class="space-y-3 p-5" data-testid="bff-credential-guide">
+      <h2 class="flex items-center gap-2 font-semibold">
+        <KeyRound class="size-4 text-primary" />{{ t('settings.credentials.title') }}
+      </h2>
+      <p class="text-sm text-muted-foreground">{{ t('settings.bffCredentials.boundary') }}</p>
+      <template v-if="runtime?.backendMeta?.runtime === 'node'">
+        <p class="text-sm">{{ t('settings.bffCredentials.node') }}</p>
+        <p class="text-sm">{{ t('settings.bffCredentials.bundle') }}</p>
+        <code class="block break-all rounded bg-muted p-2 text-xs"
+          >artifacts/openapi-auth/credentials.json</code
+        >
+        <p class="text-sm">{{ t('settings.bffCredentials.environment') }}</p>
+        <pre class="overflow-x-auto rounded bg-muted p-2 text-xs">
+ONE_VEGETABLE_GATEWAY_MODE=real
+ONE_VEGETABLE_ALIBABA_APP_KEY
+ONE_VEGETABLE_ALIBABA_APP_SECRET
+ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN</pre>
+        <p class="text-sm text-muted-foreground">{{ t('settings.bffCredentials.restart') }}</p>
+      </template>
+      <template v-else-if="runtime?.backendMeta?.runtime === 'cloudflare'">
+        <p class="text-sm">{{ t('settings.bffCredentials.cloud') }}</p>
+        <a href="#/admin" class="inline-block text-sm text-primary hover:underline">{{
+          t('settings.bffCredentials.admin')
+        }}</a>
+      </template>
+      <a
+        href="https://i.alibaba.com/explore/open-api"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+        ><ExternalLink class="size-4" />{{ t('settings.credentials.openCenter') }}</a
+      >
+    </Card>
     <Card v-if="mode === 'extension' && vault" class="p-5">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>

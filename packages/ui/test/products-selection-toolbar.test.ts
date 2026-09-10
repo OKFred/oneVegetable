@@ -20,7 +20,7 @@ vi.mock('vue-sonner', () => ({
 }));
 
 describe('ProductsView selection toolbar', () => {
-  it('does not query details on column changes and makes the returned product ID the link', async () => {
+  it('does not query details on column changes and puts the returned product link before Edit', async () => {
     const gateway = new MockGatewayClient(0);
     const request = vi.spyOn(gateway, 'request');
     const wrapper = mountView(gateway);
@@ -30,7 +30,13 @@ describe('ProductsView selection toolbar', () => {
     (settings.vm as { $emit: (event: 'toggle', id: string) => void }).$emit('toggle', 'keywords');
     await flushPromises();
     expect(request.mock.calls.length).toBe(before);
-    expect(wrapper.get('a[href^="https://www.alibaba.com/product-detail/"]').text()).toBe('10000001');
+    const link = wrapper.get('a[href^="https://www.alibaba.com/product-detail/"]');
+    expect(link.text()).toBe('链接');
+    expect(link.attributes('target')).toBe('_blank');
+    expect(link.attributes('rel')).toBe('noopener noreferrer');
+    expect(link.attributes('title')).toContain('10000001');
+    expect(link.element.parentElement?.textContent).toBe('链接编辑');
+    expect(wrapper.get('tbody tr td:nth-child(3)').text()).not.toContain('10000001');
     expect(request.mock.calls.some(([operation]) => operation === 'getProductScore')).toBe(true);
     wrapper.unmount();
   });

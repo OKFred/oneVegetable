@@ -1,4 +1,13 @@
 export const settings = {
+  bffCredentials: {
+    boundary: 'App Key、App Secret、Access Token 由后端保管，网页不回显。',
+    node: 'Node 模式请在后端电脑配置，暂无网页编辑器。',
+    bundle: 'pnpm openapi:auth 生成授权包；pnpm dev:api:real 默认读取：',
+    environment: '或配置以下后端进程环境变量，再运行 pnpm dev:api：',
+    restart: '修改后重启后端。网站密码不能替代凭据；密钥勿放入 VITE_ 变量。',
+    cloud: 'Cloudflare 用户请由管理员导入授权包或发起授权。',
+    admin: '前往管理后台配置'
+  },
   page: {
     title: '连接设置',
     description: '凭证不会进入页面请求；扩展模式下仅由 MV3 service worker 读取并签名。'

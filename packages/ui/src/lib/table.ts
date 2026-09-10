@@ -16,6 +16,7 @@ export interface DataTableColumnMeta {
   stickyOffset?: string;
   stickyBoundary?: boolean;
   width?: string;
+  maxWidth?: string;
 }
 
 export type DataColumn<TData extends RowData> = ColumnDef<typeof dataTableFeatures, TData> & {

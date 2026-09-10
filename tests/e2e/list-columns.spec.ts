@@ -1,18 +1,25 @@
 import { expect, test } from '@playwright/test';
 
-test('product ID link and per-table column preferences persist without changing selection', async ({
+test('product action link and per-table column preferences persist without changing selection', async ({
   page
 }) => {
   await page.goto('/#/products');
   const table = page.locator('table').first();
-  await expect(table.getByRole('link', { name: '10000001', exact: true })).toHaveAttribute(
+  await expect(table.getByRole('link', { name: '链接', exact: true }).first()).toHaveAttribute(
     'href',
     /https:\/\/www\.alibaba\.com\/product-detail\//
   );
-  await expect(table.getByRole('link', { name: '10000001', exact: true })).toHaveAttribute(
+  await expect(table.getByRole('link', { name: '链接', exact: true }).first()).toHaveAttribute(
     'rel',
     'noopener noreferrer'
   );
+  const actionCell = table.locator('tbody tr').first().locator('td').last();
+  await expect(actionCell).toHaveText('链接编辑');
+  const widths = await table.evaluate((element) => ({
+    table: element.getBoundingClientRect().width,
+    product: element.querySelector('tbody tr td:nth-child(3)')?.getBoundingClientRect().width ?? Infinity
+  }));
+  expect(widths.product).toBeLessThanOrEqual(widths.table * 0.4);
   await page.getByRole('button', { name: '显示列', exact: true }).click();
   await page.getByRole('textbox', { name: '搜索列', exact: true }).fill('关键词');
   await page.getByRole('checkbox', { name: '关键词', exact: true }).check();

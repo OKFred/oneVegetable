@@ -42,9 +42,10 @@ beforeEach(() => {
 });
 
 function mountView(
-  mode: 'mock' | 'extension' = 'mock',
+  mode: 'mock' | 'extension' | 'bff' = 'mock',
   initialVaultState?: CredentialVaultState,
-  initialLockReason: CredentialVaultLockReason = 'manual'
+  initialLockReason: CredentialVaultLockReason = 'manual',
+  backendRuntime: 'node' | 'cloudflare' = 'node'
 ) {
   let grantedHosts = ['https://images.example.com/*'];
   let currentVaultState = initialVaultState;
@@ -110,6 +111,17 @@ function mountView(
               }
             }
           : {}),
+        runtime: {
+          metaStatus: 'ready',
+          backendMeta: {
+            runtime: backendRuntime,
+            database: backendRuntime === 'node' ? 'sqlite' : 'd1',
+            environment: backendRuntime === 'node' ? 'local-node' : 'self-hosted',
+            gatewayMode: 'real',
+            apiPrefix: '/api/v1',
+            version: '2.6.0'
+          }
+        },
         mode
       });
       return () => h(SettingsView);
@@ -143,6 +155,25 @@ afterEach(() => {
 });
 
 describe('SettingsView diagnostics', () => {
+  it('explains Node credential configuration without showing secret inputs', async () => {
+    const wrapper = mountView('bff');
+    await flushPromises();
+    const guide = wrapper.get('[data-testid="bff-credential-guide"]');
+    expect(guide.text()).toContain('artifacts/openapi-auth/credentials.json');
+    expect(guide.text()).toContain('ONE_VEGETABLE_ALIBABA_APP_KEY');
+    expect(guide.text()).toContain('pnpm dev:api');
+    expect(guide.find('input').exists()).toBe(false);
+    expect(guide.find('a[href="#/admin"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+  it('directs Cloudflare users to admin credential import', async () => {
+    const wrapper = mountView('bff', undefined, 'manual', 'cloudflare');
+    await flushPromises();
+    const guide = wrapper.get('[data-testid="bff-credential-guide"]');
+    expect(guide.get('a[href="#/admin"]').text()).toContain('配置');
+    expect(guide.text()).not.toContain('artifacts/openapi-auth/credentials.json');
+    wrapper.unmount();
+  });
   it('shows no idle auto-lock as the default and explains the six-character minimum', async () => {
     const wrapper = mountView('extension', 'unlocked');
     await flushPromises();

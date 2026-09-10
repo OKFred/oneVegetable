@@ -1447,22 +1447,16 @@ const columns = computed<DataColumn<Product>[]>(() => [
     accessorKey: 'subject',
     header: t('products.view.columns.product'),
     cell: ({ row }) =>
-      h('div', { class: 'min-w-56 space-y-1' }, [
-        h('p', { class: 'font-medium' }, row.original.subject),
-        row.original.detailUrl
-          ? h(
-              'a',
-              {
-                href: row.original.detailUrl,
-                target: '_blank',
-                rel: 'noopener noreferrer',
-                class: 'font-mono text-xs text-primary hover:underline',
-                title: t('products.links.viewOnAlibaba')
-              },
-              row.original.id
-            )
-          : h('p', { class: 'font-mono text-xs text-muted-foreground' }, row.original.id)
-      ])
+      h(
+        'p',
+        {
+          class: 'line-clamp-3 break-words font-medium [overflow-wrap:anywhere]',
+          style: { maxWidth: 'max(0px, calc(40cqi - 32px))' },
+          title: row.original.subject
+        },
+        row.original.subject
+      ),
+    meta: { width: '320px', maxWidth: '40cqi' }
   },
   {
     accessorKey: 'groupName',
@@ -1556,7 +1550,23 @@ const columns = computed<DataColumn<Product>[]>(() => [
     id: 'actions',
     header: t('products.view.columns.actions'),
     cell: ({ row }) =>
-      h('div', { class: 'flex items-center' }, [
+      h('div', { class: 'flex items-center gap-2 whitespace-nowrap' }, [
+        row.original.detailUrl
+          ? h(
+              'a',
+              {
+                href: row.original.detailUrl,
+                target: '_blank',
+                rel: 'noopener noreferrer',
+                class: 'text-primary hover:underline',
+                title: `${t('products.links.viewOnAlibaba')} · ${row.original.id}`,
+                onClick: (event: MouseEvent) => {
+                  event.stopPropagation();
+                }
+              },
+              t('products.links.open')
+            )
+          : h('span', { class: 'text-muted-foreground', title: t('products.links.unavailable') }, '—'),
         h(
           Button,
           {
@@ -1569,7 +1579,7 @@ const columns = computed<DataColumn<Product>[]>(() => [
           () => t('products.view.edit')
         )
       ]),
-    meta: { sticky: 'right', stickyOffset: '0px', stickyBoundary: true, width: '120px' }
+    meta: { sticky: 'right', stickyOffset: '0px', stickyBoundary: true, width: '160px' }
   }
 ]);
 

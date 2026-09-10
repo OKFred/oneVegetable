@@ -167,21 +167,24 @@ function stickyColumnClasses(value: unknown, header: boolean): string[] {
 
 function stickyColumnStyle(value: unknown): Record<string, string> | undefined {
   const meta = columnMeta(value);
-  if (!meta?.sticky) return undefined;
-  const style: Record<string, string> = {
-    [meta.sticky]: meta.stickyOffset ?? '0px'
-  };
+  if (!meta) return undefined;
+  const style: Record<string, string> = {};
+  if (meta.sticky) style[meta.sticky] = meta.stickyOffset ?? '0px';
   if (meta.width) {
     style.width = meta.width;
     style.minWidth = meta.width;
     style.maxWidth = meta.width;
+  }
+  if (meta.maxWidth) {
+    style.maxWidth = meta.maxWidth;
+    delete style.minWidth;
   }
   return style;
 }
 </script>
 
 <template>
-  <div class="max-w-full overflow-hidden rounded-lg border">
+  <div class="max-w-full overflow-hidden rounded-lg border" style="container-type: inline-size">
     <div class="relative max-w-full overflow-auto" :style="{ maxHeight }">
       <table class="w-full text-sm" :style="{ minWidth }">
         <thead
