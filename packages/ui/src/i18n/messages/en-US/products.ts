@@ -51,6 +51,8 @@ export const products = {
     exportLimit: 'Export at most {maximum} products at a time'
   },
   links: {
+    open: 'Link',
+    unavailable: 'The platform did not return a product URL',
     viewOnAlibaba: 'View live product'
   },
   tasks: {
@@ -81,6 +83,7 @@ export const products = {
     }
   },
   groupNavigation: {
+    retry: 'Reload groups',
     tree: 'Product groups',
     expand: 'Expand {name}',
     collapse: 'Collapse {name}',

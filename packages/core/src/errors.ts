@@ -27,6 +27,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function normalizeGatewayError(error: unknown): GatewayError {
   if (error instanceof GatewayException) return error.gatewayError;
 
+  if (hasConnectionFailure(error)) {
+    return {
+      code: 'NETWORK_ERROR',
+      message: '网络连接失败，请检查网络后重新加载；写操作请先核对结果。',
+      retryable: true
+    };
+  }
+
   if (isRecord(error) && typeof error.message === 'string') {
     return { code: 'GATEWAY_ERROR', message: error.message, retryable: false };
   }
@@ -36,6 +44,26 @@ export function normalizeGatewayError(error: unknown): GatewayError {
 
 export function gatewayErrorRequestId(error: unknown): string | null {
   return error instanceof GatewayException ? error.requestId : null;
+}
+
+// Inspect only known transport codes; never expose nested causes, URLs or credentials.
+function hasConnectionFailure(error: unknown, depth = 0): boolean {
+  if (depth > 4 || !isRecord(error)) return false;
+  if (
+    typeof error.code === 'string' &&
+    [
+      'ETIMEDOUT',
+      'ENETUNREACH',
+      'EHOSTUNREACH',
+      'ECONNREFUSED',
+      'ECONNRESET',
+      'EAI_AGAIN',
+      'UND_ERR_CONNECT_TIMEOUT',
+      'UND_ERR_SOCKET'
+    ].includes(error.code)
+  )
+    return true;
+  return hasConnectionFailure(error.cause, depth + 1);
 }
 
 export function withGatewayRequestId(error: unknown, requestId: string): GatewayException {

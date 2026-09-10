@@ -5,6 +5,7 @@ import { loadEnvFile } from 'node:process';
 
 import { resolveLocalCredentialEncryptionKey } from './lib/local-credential-encryption-key';
 import { resolveLocalRealMutationFlags } from './lib/local-real-mutation-flags';
+import { localNodeNetworkOptions } from './lib/local-node-network';
 
 if (existsSync('.env')) loadEnvFile('.env');
 
@@ -33,6 +34,7 @@ const child = spawn(command, args, {
   cwd: process.cwd(),
   env: {
     ...process.env,
+    NODE_OPTIONS: localNodeNetworkOptions(process.env.NODE_OPTIONS),
     ONE_VEGETABLE_ENVIRONMENT: 'local-node',
     ONE_VEGETABLE_GATEWAY_MODE: 'real',
     ONE_VEGETABLE_MUTATION_FLAGS: resolveLocalRealMutationFlags(process.env.ONE_VEGETABLE_MUTATION_FLAGS),

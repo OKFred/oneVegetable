@@ -13,6 +13,25 @@ const credentials = {
 };
 
 describe('AlibabaClient retry policy', () => {
+  it('retries connection failures only when the caller explicitly permits the read', async () => {
+    const failure = new TypeError('fetch failed', { cause: { code: 'ETIMEDOUT' } });
+    const send = vi
+      .fn()
+      .mockRejectedValueOnce(failure)
+      .mockResolvedValue(Response.json({ result: true }));
+    const client = new AlibabaClient(credentials, network(send), {
+      maxAttempts: 3,
+      shouldRetry: (method) => method === 'alibaba.icbu.product.group.get',
+      wait: () => Promise.resolve()
+    });
+    await expect(client.call('alibaba.icbu.product.group.get', {})).resolves.toBeDefined();
+    expect(send).toHaveBeenCalledTimes(2);
+    send.mockClear().mockRejectedValue(failure);
+    await expect(client.call('alibaba.icbu.product.schema.update', {})).rejects.toMatchObject({
+      gatewayError: { code: 'NETWORK_ERROR' }
+    });
+    expect(send).toHaveBeenCalledTimes(1);
+  });
   it('retries retryable reads with bounded exponential delays', async () => {
     const send = vi
       .fn()

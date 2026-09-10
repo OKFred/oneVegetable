@@ -25,7 +25,8 @@ export const errors = {
     INVALID_CONTENT_TYPE: 'The content type is not supported.',
     ROUTE_NOT_FOUND: 'The API route does not exist.',
     SERVICE_NOT_READY: 'The service is not ready.',
-    NETWORK_ERROR: 'The network request failed.',
+    NETWORK_ERROR:
+      'Connection failed. Check your network and reload. For write operations, verify the result first.',
     REQUEST_TIMEOUT: 'The network request timed out or was cancelled.',
     RETRY_EXHAUSTED: 'All request retries were exhausted.',
     NETWORK_REDIRECT_DENIED: 'Network redirects are not allowed.',

@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight, Folder, FolderOpen, LoaderCircle } from '@lu
 import type { ProductGroup } from '@one-vegetable/core';
 
 import ErrorNotice from './ErrorNotice.vue';
+import Button from './ui/Button.vue';
 import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 
@@ -179,11 +180,21 @@ function setLoading(groupId: number, loading: boolean): void {
       compact
     />
     <p
-      v-if="visibleRows.length === 0 && !roots.isPending.value"
+      v-if="visibleRows.length === 0 && !roots.isPending.value && !roots.error.value"
       class="px-2 py-3 text-xs text-muted-foreground"
     >
       {{ t('products.groupNavigation.empty') }}
     </p>
+    <Button
+      v-if="roots.error.value"
+      variant="outline"
+      size="sm"
+      class="mx-2 mb-2"
+      :disabled="roots.isFetching.value"
+      @click="roots.refetch()"
+    >
+      {{ t('products.groupNavigation.retry') }}
+    </Button>
     <p
       v-for="(message, groupId) in childErrors"
       v-show="message"

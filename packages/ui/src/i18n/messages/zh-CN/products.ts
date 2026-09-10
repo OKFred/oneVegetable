@@ -50,6 +50,8 @@ export const products = {
     exportLimit: '单次最多导出 {maximum} 个商品'
   },
   links: {
+    open: '链接',
+    unavailable: '平台未返回商品链接',
     viewOnAlibaba: '查看线上商品'
   },
   tasks: {
@@ -78,6 +80,7 @@ export const products = {
     }
   },
   groupNavigation: {
+    retry: '重新加载分组',
     tree: '商品分组',
     expand: '展开{name}',
     collapse: '收起{name}',

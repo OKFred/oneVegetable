@@ -24,7 +24,7 @@ export const errors = {
     INVALID_CONTENT_TYPE: '内容类型不受支持。',
     ROUTE_NOT_FOUND: '接口路由不存在。',
     SERVICE_NOT_READY: '服务尚未就绪。',
-    NETWORK_ERROR: '网络请求失败。',
+    NETWORK_ERROR: '网络连接失败，请检查网络后重新加载；写操作请先核对结果。',
     REQUEST_TIMEOUT: '网络请求超时或已取消。',
     RETRY_EXHAUSTED: '请求重试次数已用尽。',
     NETWORK_REDIRECT_DENIED: '网络请求不允许重定向。',
