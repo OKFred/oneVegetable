@@ -387,7 +387,9 @@ describe('SettingsView diagnostics', () => {
     await clearButton.trigger('click');
     await flushPromises();
 
-    expect(clearAllLocalData).toHaveBeenCalledOnce();
+    await vi.waitFor(() => {
+      expect(clearAllLocalData).toHaveBeenCalledOnce();
+    });
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('扩展本地数据和额外主机权限已清除');
     });

@@ -1193,24 +1193,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        ProductShowcaseSnapshot: {
-            total: number;
-            used: number;
-            available: number;
-            entries: {
-                windowId: string;
-                productId: string;
-                subject: string | null;
-                imageUrl: string | null;
-                valid: boolean | null;
-            }[];
-        };
-        ProductShowcaseMutationResult: {
-            /** @enum {string} */
-            outcome: "confirmed" | "unconfirmed";
-            traceId: string | null;
-            snapshot: components["schemas"]["ProductShowcaseSnapshot"] | null;
-        };
         AdminAuditListRequest: {
             requestId: components["schemas"]["RequestId"];
             requestIdFilter?: components["schemas"]["RequestId"];
@@ -7835,6 +7817,24 @@ export interface components {
             issues: string[];
             /** @description Optional normalized official issues when the upstream response provides structured details. */
             qualityIssues?: components["schemas"]["ProductDescriptionQualityIssue"][];
+        };
+        ProductShowcaseMutationResult: {
+            /** @enum {string} */
+            outcome: "confirmed" | "unconfirmed";
+            traceId: string | null;
+            snapshot: components["schemas"]["ProductShowcaseSnapshot"] | null;
+        };
+        ProductShowcaseSnapshot: {
+            total: number;
+            used: number;
+            available: number;
+            entries: {
+                windowId: string;
+                productId: string;
+                subject: string | null;
+                imageUrl: string | null;
+                valid: boolean | null;
+            }[];
         };
         RealMutationPauseUpdateRequest: {
             requestId: components["schemas"]["RequestId"];
