@@ -9173,6 +9173,93 @@
         },
         "title": "alibaba.icbu.product.batch.update.display response"
       },
+      "AlibabaProductAlibabaIcbuProductCountryGetcountrylistRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["country_request"],
+        "properties": {
+          "country_request": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": { "language": { "type": "string", "description": "返回结果语种；文档示例 zh_cn" } },
+            "description": "请求对象；官方 curl 的 '-' 不是有效对象示例"
+          }
+        },
+        "title": "alibaba.icbu.product.country.getcountrylist request"
+      },
+      "AlibabaProductAlibabaIcbuProductCountryGetcountrylistResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["biz_success"],
+        "properties": {
+          "trace_id": { "type": "string", "description": "平台追踪码" },
+          "data": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "continent_code": { "type": "string" },
+                    "continent_name": { "type": "string" },
+                    "country_list": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "country_code": { "type": "string" },
+                          "country_name": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "continent_d_t_o": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "continent_code": { "type": "string" },
+                        "continent_name": { "type": "string" },
+                        "country_list": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "country_d_t_o": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                  "country_code": { "type": "string" },
+                                  "country_name": { "type": "string" }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "biz_success": { "type": "boolean", "description": "业务是否成功" },
+          "message": { "type": "string", "description": "错误信息" },
+          "msg_code": { "type": "string", "description": "错误码，以分号分隔" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
+        "title": "alibaba.icbu.product.country.getcountrylist response"
+      },
       "AlibabaProductAlibabaIcbuProductGetRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -13179,6 +13266,9 @@
           "traceId": { "type": "string" },
           "data": {
             "oneOf": [
+              {
+                "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductCountryGetcountrylistResponse"
+              },
               { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuTextTransResponse" },
               { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryAttrGetResponse" },
               { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryAttributeGetResponse" },
@@ -15492,6 +15582,35 @@
     }
   },
   "x-product-capabilities": {
+    "alibaba.icbu.product.country.getcountrylist": {
+      "requestSchema": "AlibabaProductAlibabaIcbuProductCountryGetcountrylistRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuProductCountryGetcountrylistResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-09-10",
+      "updatedAt": null,
+      "title": "国际站获取商品国家列表",
+      "description": "免费，必须用户授权。按大洲返回国家及热门国家；不是商品可售国家或物流可达性。来源为用户提供的官方文档全文，尚未提供详情 docId。",
+      "errorCodes": [],
+      "requestExample": { "country_request": { "language": "zh_cn" } },
+      "responseExample": {
+        "trace_id": "fixture-country-trace",
+        "data": {
+          "continent_d_t_o": [
+            {
+              "continent_code": "NA",
+              "continent_name": "北美洲",
+              "country_list": { "country_d_t_o": [{ "country_code": "US", "country_name": "美国" }] }
+            }
+          ]
+        },
+        "biz_success": true
+      },
+      "docUrl": "https://open.taobao.com/api.htm"
+    },
     "alibaba.icbu.text.trans": {
       "requestSchema": "AlibabaProductAlibabaIcbuTextTransRequest",
       "responseSchema": "AlibabaProductAlibabaIcbuTextTransResponse",

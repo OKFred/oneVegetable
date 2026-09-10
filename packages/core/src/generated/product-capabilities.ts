@@ -2,6 +2,7 @@
 import type { components } from './api';
 
 export interface ProductCapabilityRequestMap {
+  'alibaba.icbu.product.country.getcountrylist': components['schemas']['AlibabaProductAlibabaIcbuProductCountryGetcountrylistRequest'];
   'alibaba.icbu.text.trans': components['schemas']['AlibabaProductAlibabaIcbuTextTransRequest'];
   'alibaba.icbu.category.attr.get': components['schemas']['AlibabaProductAlibabaIcbuCategoryAttrGetRequest'];
   'alibaba.icbu.category.attribute.get': components['schemas']['AlibabaProductAlibabaIcbuCategoryAttributeGetRequest'];
@@ -33,6 +34,7 @@ export interface ProductCapabilityRequestMap {
 }
 
 export interface ProductCapabilityResponseMap {
+  'alibaba.icbu.product.country.getcountrylist': components['schemas']['AlibabaProductAlibabaIcbuProductCountryGetcountrylistResponse'];
   'alibaba.icbu.text.trans': components['schemas']['AlibabaProductAlibabaIcbuTextTransResponse'];
   'alibaba.icbu.category.attr.get': components['schemas']['AlibabaProductAlibabaIcbuCategoryAttrGetResponse'];
   'alibaba.icbu.category.attribute.get': components['schemas']['AlibabaProductAlibabaIcbuCategoryAttributeGetResponse'];
@@ -64,6 +66,46 @@ export interface ProductCapabilityResponseMap {
 }
 
 export const PRODUCT_CAPABILITY_DEFINITIONS = {
+  "alibaba.icbu.product.country.getcountrylist": {
+    "requestSchema": "AlibabaProductAlibabaIcbuProductCountryGetcountrylistRequest",
+    "responseSchema": "AlibabaProductAlibabaIcbuProductCountryGetcountrylistResponse",
+    "source": "catalog",
+    "lifecycle": "active",
+    "risk": "read",
+    "verification": "documented",
+    "realCallEnabled": true,
+    "checkedAt": "2026-09-10",
+    "updatedAt": null,
+    "title": "国际站获取商品国家列表",
+    "description": "免费，必须用户授权。按大洲返回国家及热门国家；不是商品可售国家或物流可达性。来源为用户提供的官方文档全文，尚未提供详情 docId。",
+    "errorCodes": [],
+    "requestExample": {
+      "country_request": {
+        "language": "zh_cn"
+      }
+    },
+    "responseExample": {
+      "trace_id": "fixture-country-trace",
+      "data": {
+        "continent_d_t_o": [
+          {
+            "continent_code": "NA",
+            "continent_name": "北美洲",
+            "country_list": {
+              "country_d_t_o": [
+                {
+                  "country_code": "US",
+                  "country_name": "美国"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "biz_success": true
+    },
+    "docUrl": "https://open.taobao.com/api.htm"
+  },
   "alibaba.icbu.text.trans": {
     "requestSchema": "AlibabaProductAlibabaIcbuTextTransRequest",
     "responseSchema": "AlibabaProductAlibabaIcbuTextTransResponse",

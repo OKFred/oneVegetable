@@ -1,6 +1,81 @@
 {
   "checkedAt": "2026-08-15",
   "overrides": {
+    "alibaba.icbu.product.country.getcountrylist": {
+      "reason": "用户提供 2026-09-10 官方全文；curl 的 country_request=- 与对象参数表冲突，按对象实现。真实 simplify=true 返回 data 数组，兼容文档 DTO 包装。biz_success=true 同时附 SYS_ERROR 的示例不代表成功，失败响应允许无 data。语言仅给出 zh_cn 示例，不臆造枚举。",
+      "requestExampleFile": "mock/data/product-country-list.json",
+      "responseExampleFile": "mock/data/product-country-list.json",
+      "responseSchemaPatches": {
+        "/properties/data": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "continent_code": { "type": "string" },
+                  "continent_name": { "type": "string" },
+                  "country_list": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "country_code": { "type": "string" },
+                        "country_name": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "continent_d_t_o": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "continent_code": {
+                        "type": "string"
+                      },
+                      "continent_name": {
+                        "type": "string"
+                      },
+                      "country_list": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "country_d_t_o": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "country_code": {
+                                  "type": "string"
+                                },
+                                "country_name": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
     "alibaba.icbu.text.trans": {
       "reason": "2026-09-10 用户提供 TOP docId=67157 参数表。数组优先于 Java 单对象示例；query 仅允许 text。示例 app_name 是占位业务场景，不代表权限；success=true 与 error_code 同时出现的官方示例不能作为成功证据。",
       "requestSchemaPatches": {

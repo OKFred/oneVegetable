@@ -8,7 +8,7 @@ import { API_CAPABILITIES } from '../src/generated/capabilities';
 describe('Alibaba API audit snapshot', () => {
   it('contains the 84 legacy catalog methods and the documented TOP translation supplement', () => {
     const methods = new Set<string>(API_CAPABILITIES.map((item) => item.method));
-    expect(API_CAPABILITIES).toHaveLength(85);
+    expect(API_CAPABILITIES).toHaveLength(86);
     expect(new Set(API_CAPABILITIES.map((item) => item.jushitaOnly))).toEqual(new Set([false]));
     expect(methods.has('alibaba.seller.order.get')).toBe(false);
   });

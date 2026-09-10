@@ -443,6 +443,26 @@ export const API_CAPABILITIES = [
     "responseSchema": "AlibabaProductAlibabaIcbuProductBatchUpdateDisplayResponse"
   },
   {
+    "method": "alibaba.icbu.product.country.getcountrylist",
+    "domain": "product",
+    "chargeLabel": "￥免费",
+    "auth": "required",
+    "jushitaOnly": false,
+    "restricted": false,
+    "restrictionReason": null,
+    "enabled": true,
+    "docUrl": "https://open.taobao.com/api.htm",
+    "checkedAt": "2026-09-10",
+    "updatedAt": null,
+    "source": "catalog",
+    "lifecycle": "active",
+    "risk": "read",
+    "verification": "documented",
+    "realCallEnabled": true,
+    "requestSchema": "AlibabaProductAlibabaIcbuProductCountryGetcountrylistRequest",
+    "responseSchema": "AlibabaProductAlibabaIcbuProductCountryGetcountrylistResponse"
+  },
+  {
     "method": "alibaba.icbu.product.get",
     "domain": "product",
     "chargeLabel": "￥开放平台免费API",
