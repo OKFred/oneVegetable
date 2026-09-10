@@ -21,3 +21,19 @@ test('five stock and showcase read definitions are searchable in the debugger', 
     await expect(page.getByRole('dialog')).not.toBeVisible();
   }
 });
+
+test('showcase mutations expose typed examples only in the Mock debugger', async ({ page }) => {
+  await page.goto('/#/capabilities');
+  for (const [method, field] of [
+    ['alibaba.scbp.showcase.addproduct', 'product_id_list'],
+    ['alibaba.scbp.showcase.deleteproduct', 'window_id_list']
+  ] as const) {
+    await page.getByPlaceholder('搜索 API 方法').fill(method);
+    await page.getByRole('button', { name: method, exact: true }).click();
+    await expect(page.locator('textarea').first()).toHaveValue(new RegExp(field));
+    await page.getByRole('button', { name: '调用能力', exact: true }).click();
+    await expect(page.getByRole('dialog').locator('pre').last()).toContainText('"contractValid": true');
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+  }
+});
