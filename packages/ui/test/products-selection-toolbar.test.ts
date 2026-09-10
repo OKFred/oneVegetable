@@ -99,7 +99,7 @@ describe('ProductsView selection toolbar', () => {
     wrapper.unmount();
   });
 
-  it('keeps the group column roomy and status and update time on one line', async () => {
+  it('keeps group and status columns compact with full group names available on hover', async () => {
     const wrapper = mountView();
     await waitForProducts(wrapper);
     const headers = wrapper.findAll('thead th').map((header) => header.text().trim());
@@ -115,7 +115,11 @@ describe('ProductsView selection toolbar', () => {
 
     if (!groupCell || !statusCell || !updatedAtCell)
       throw new Error('Missing product group, status or update time cell');
-    expect(groupCell.get('.min-w-20').classes()).toContain('block');
+    expect(groupCell.attributes('style')).toContain('width: 128px');
+    expect(statusCell.attributes('style')).toContain('width: 112px');
+    const groupName = groupCell.get('.truncate');
+    expect(groupName.attributes('title')).toBe(groupName.text());
+    expect(groupName.classes()).toContain('block');
     expect(statusCell.get('.whitespace-nowrap').text()).toBe('在线');
     expect(updatedAtCell.get('.whitespace-nowrap').classes()).toContain('tabular-nums');
     wrapper.unmount();

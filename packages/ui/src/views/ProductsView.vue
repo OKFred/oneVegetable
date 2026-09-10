@@ -1461,7 +1461,11 @@ const columns = computed<DataColumn<Product>[]>(() => [
   {
     accessorKey: 'groupName',
     header: t('products.view.columns.group'),
-    cell: (context) => h('span', { class: 'block min-w-20' }, context.getValue<string>() || '—')
+    cell: (context) => {
+      const name = context.getValue<string>() || '—';
+      return h('span', { class: 'block truncate', title: name }, name);
+    },
+    meta: { width: '128px' }
   },
   {
     accessorKey: 'status',
@@ -1474,7 +1478,8 @@ const columns = computed<DataColumn<Product>[]>(() => [
           class: 'whitespace-nowrap'
         },
         () => productStatusLabel(context.getValue<Product['status']>())
-      )
+      ),
+    meta: { width: '112px' }
   },
   {
     id: 'productScore',

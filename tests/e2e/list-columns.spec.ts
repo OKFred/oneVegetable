@@ -1,5 +1,21 @@
 import { expect, test } from '@playwright/test';
 
+test('product group and status columns stay compact on wide and narrow screens', async ({ page }) => {
+  await page.goto('/#/products');
+  const table = page.locator('table').first();
+  for (const viewport of [
+    { width: 1600, height: 900 },
+    { width: 768, height: 900 }
+  ]) {
+    await page.setViewportSize(viewport);
+    await expect(table.getByRole('columnheader', { name: '分组', exact: true })).toHaveCSS('width', '128px');
+    await expect(table.getByRole('columnheader', { name: '状态', exact: true })).toHaveCSS('width', '112px');
+    const groupName = table.locator('tbody tr').first().locator('td').nth(3).locator('span');
+    await expect(groupName).toHaveCSS('text-overflow', 'ellipsis');
+    await expect(groupName).toHaveAttribute('title', await groupName.innerText());
+  }
+});
+
 test('product title stays within forty percent even with only locked columns visible', async ({ page }) => {
   await page.goto('/#/products');
   await page.getByRole('button', { name: '显示列', exact: true }).click();
