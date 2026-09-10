@@ -31,6 +31,11 @@ export interface ProductCapabilityRequestMap {
   'alibaba.icbu.product.score.get': components['schemas']['AlibabaProductAlibabaIcbuProductScoreGetRequest'];
   'alibaba.icbu.product.update': components['schemas']['AlibabaProductAlibabaIcbuProductUpdateRequest'];
   'alibaba.icbu.product.update.field': components['schemas']['AlibabaProductAlibabaIcbuProductUpdateFieldRequest'];
+  'alibaba.icbu.product.type.available.get': components['schemas']['AlibabaProductAlibabaIcbuProductTypeAvailableGetRequest'];
+  'alibaba.icbu.product.inventory.get': components['schemas']['AlibabaProductAlibabaIcbuProductInventoryGetRequest'];
+  'alibaba.icbu.product.sku.inventory.get': components['schemas']['AlibabaProductAlibabaIcbuProductSkuInventoryGetRequest'];
+  'alibaba.scbp.showcase.list': components['schemas']['AlibabaProductAlibabaScbpShowcaseListRequest'];
+  'alibaba.scbp.showcase.status': components['schemas']['AlibabaProductAlibabaScbpShowcaseStatusRequest'];
 }
 
 export interface ProductCapabilityResponseMap {
@@ -63,6 +68,11 @@ export interface ProductCapabilityResponseMap {
   'alibaba.icbu.product.score.get': components['schemas']['AlibabaProductAlibabaIcbuProductScoreGetResponse'];
   'alibaba.icbu.product.update': components['schemas']['AlibabaProductAlibabaIcbuProductUpdateResponse'];
   'alibaba.icbu.product.update.field': components['schemas']['AlibabaProductAlibabaIcbuProductUpdateFieldResponse'];
+  'alibaba.icbu.product.type.available.get': components['schemas']['AlibabaProductAlibabaIcbuProductTypeAvailableGetResponse'];
+  'alibaba.icbu.product.inventory.get': components['schemas']['AlibabaProductAlibabaIcbuProductInventoryGetResponse'];
+  'alibaba.icbu.product.sku.inventory.get': components['schemas']['AlibabaProductAlibabaIcbuProductSkuInventoryGetResponse'];
+  'alibaba.scbp.showcase.list': components['schemas']['AlibabaProductAlibabaScbpShowcaseListResponse'];
+  'alibaba.scbp.showcase.status': components['schemas']['AlibabaProductAlibabaScbpShowcaseStatusResponse'];
 }
 
 export const PRODUCT_CAPABILITY_DEFINITIONS = {
@@ -2188,5 +2198,151 @@ export const PRODUCT_CAPABILITY_DEFINITIONS = {
       "product_id": "62wert43twrtw4"
     },
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=27010"
+  },
+  "alibaba.icbu.product.type.available.get": {
+    "requestSchema": "AlibabaProductAlibabaIcbuProductTypeAvailableGetRequest",
+    "responseSchema": "AlibabaProductAlibabaIcbuProductTypeAvailableGetResponse",
+    "source": "catalog",
+    "lifecycle": "active",
+    "risk": "read",
+    "verification": "documented",
+    "realCallEnabled": true,
+    "checkedAt": "2026-09-10",
+    "updatedAt": "2022-04-13",
+    "title": "商家发品类型查询",
+    "description": "查询商家发品权限",
+    "errorCodes": [],
+    "requestExample": {
+      "type_request": {
+        "language": "zh_cn"
+      }
+    },
+    "responseExample": {
+      "biz_success": true,
+      "data": {
+        "support_post_whole_sale": true,
+        "support_post_sourcing": true
+      }
+    },
+    "docUrl": "https://open.taobao.com/api.htm?docId=62123&docType=2"
+  },
+  "alibaba.icbu.product.inventory.get": {
+    "requestSchema": "AlibabaProductAlibabaIcbuProductInventoryGetRequest",
+    "responseSchema": "AlibabaProductAlibabaIcbuProductInventoryGetResponse",
+    "source": "catalog",
+    "lifecycle": "active",
+    "risk": "read",
+    "verification": "documented",
+    "realCallEnabled": true,
+    "checkedAt": "2026-09-10",
+    "updatedAt": "2022-09-15",
+    "title": "获取商品库存信息",
+    "description": "获取商品库存信息",
+    "errorCodes": [],
+    "requestExample": {
+      "language": "en_US",
+      "product_id": 1000000
+    },
+    "responseExample": {
+      "result": {
+        "data_list": [
+          {
+            "sku_id": 33323,
+            "inventory_code": "CN_LOCAL_01",
+            "inventory": 100,
+            "sku_outer_id": "红色"
+          }
+        ],
+        "biz_message": "success",
+        "msg_code": "",
+        "success": true,
+        "trace_id": "484792239344223"
+      }
+    },
+    "docUrl": "https://open.taobao.com/api.htm?docId=64125&docType=2"
+  },
+  "alibaba.icbu.product.sku.inventory.get": {
+    "requestSchema": "AlibabaProductAlibabaIcbuProductSkuInventoryGetRequest",
+    "responseSchema": "AlibabaProductAlibabaIcbuProductSkuInventoryGetResponse",
+    "source": "catalog",
+    "lifecycle": "active",
+    "risk": "read",
+    "verification": "documented",
+    "realCallEnabled": true,
+    "checkedAt": "2026-09-10",
+    "updatedAt": "2024-08-08",
+    "title": "商品sku库存获取",
+    "description": "读取商品的库存",
+    "errorCodes": [],
+    "requestExample": {
+      "language": "en_US",
+      "product_id": 1000000
+    },
+    "responseExample": {
+      "result": {
+        "data_list": [
+          {
+            "sku_id": 33323,
+            "inventory_code": "CN_LOCAL_01",
+            "inventory": 444
+          }
+        ],
+        "biz_message": "",
+        "msg_code": "",
+        "success": true,
+        "trace_id": "484792239344223"
+      }
+    },
+    "docUrl": "https://open.taobao.com/api.htm?docId=57873&docType=2"
+  },
+  "alibaba.scbp.showcase.list": {
+    "requestSchema": "AlibabaProductAlibabaScbpShowcaseListRequest",
+    "responseSchema": "AlibabaProductAlibabaScbpShowcaseListResponse",
+    "source": "catalog",
+    "lifecycle": "active",
+    "risk": "read",
+    "verification": "documented",
+    "realCallEnabled": true,
+    "checkedAt": "2026-09-10",
+    "updatedAt": "2021-11-23",
+    "title": "橱窗查询",
+    "description": "橱窗查询",
+    "errorCodes": [],
+    "requestExample": {
+      "per_page_size": 20,
+      "to_page": 1
+    },
+    "responseExample": {
+      "results": [
+        {
+          "id": 188888,
+          "product_id": 1000000,
+          "subject": "mp3",
+          "image_url": "//sc01.alicdn.com/kf/HTB1_K8AFACWBuNjy0Faq6xUlXXaD/obama.jpg",
+          "valid": true
+        }
+      ]
+    },
+    "docUrl": "https://open.taobao.com/api.htm?docId=40938&docType=2"
+  },
+  "alibaba.scbp.showcase.status": {
+    "requestSchema": "AlibabaProductAlibabaScbpShowcaseStatusRequest",
+    "responseSchema": "AlibabaProductAlibabaScbpShowcaseStatusResponse",
+    "source": "catalog",
+    "lifecycle": "active",
+    "risk": "read",
+    "verification": "documented",
+    "realCallEnabled": true,
+    "checkedAt": "2026-09-10",
+    "updatedAt": "2021-11-23",
+    "title": "橱窗状态",
+    "description": "查询橱窗状态，如总数、可用数量",
+    "errorCodes": [],
+    "requestExample": {},
+    "responseExample": {
+      "total_count": 50,
+      "current_count": 40
+    },
+    "docUrl": "https://open.taobao.com/api.htm?docId=40936&docType=2"
   }
 } as const;

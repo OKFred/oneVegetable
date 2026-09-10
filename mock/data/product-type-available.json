@@ -1,0 +1,15 @@
+{
+  "method": "alibaba.icbu.product.type.available.get",
+  "request": {
+    "type_request": {
+      "language": "zh_cn"
+    }
+  },
+  "response": {
+    "biz_success": true,
+    "data": {
+      "support_post_whole_sale": true,
+      "support_post_sourcing": true
+    }
+  }
+}

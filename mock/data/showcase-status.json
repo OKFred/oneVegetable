@@ -1,0 +1,8 @@
+{
+  "method": "alibaba.scbp.showcase.status",
+  "request": {},
+  "response": {
+    "total_count": 50,
+    "current_count": 40
+  }
+}

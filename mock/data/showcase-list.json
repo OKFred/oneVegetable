@@ -1,0 +1,18 @@
+{
+  "method": "alibaba.scbp.showcase.list",
+  "request": {
+    "per_page_size": 20,
+    "to_page": 1
+  },
+  "response": {
+    "results": [
+      {
+        "id": 188888,
+        "product_id": 1000000,
+        "subject": "mp3",
+        "image_url": "//sc01.alicdn.com/kf/HTB1_K8AFACWBuNjy0Faq6xUlXXaD/obama.jpg",
+        "valid": true
+      }
+    ]
+  }
+}

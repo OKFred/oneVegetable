@@ -1,6 +1,79 @@
 {
   "checkedAt": "2026-08-15",
   "overrides": {
+    "alibaba.icbu.product.type.available.get": {
+      "reason": "2026-09-10 TOP 参数表与 simplify=true 示例为来源；文档成功示例中的错误码不作为成功依据。示例 ID 仅供 Mock，真实核验使用实际商品。",
+      "requestExampleFile": "mock/data/product-type-available.json",
+      "responseExampleFile": "mock/data/product-type-available.json"
+    },
+    "alibaba.icbu.product.inventory.get": {
+      "reason": "2026-09-10 TOP 参数表与 simplify=true 示例为来源；文档成功示例中的错误码不作为成功依据。示例 ID 仅供 Mock，真实核验使用实际商品。",
+      "requestExampleFile": "mock/data/product-inventory.json",
+      "responseExampleFile": "mock/data/product-inventory.json",
+      "requestSchemaPatches": {
+        "/properties/product_id": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          ]
+        },
+        "/properties/language": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "alibaba.icbu.product.sku.inventory.get": {
+      "reason": "2026-09-10 TOP 参数表与 simplify=true 示例为来源；文档成功示例中的错误码不作为成功依据。示例 ID 仅供 Mock，真实核验使用实际商品。",
+      "requestExampleFile": "mock/data/product-sku-inventory.json",
+      "responseExampleFile": "mock/data/product-sku-inventory.json",
+      "requestSchemaPatches": {
+        "/properties/product_id": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          ]
+        },
+        "/properties/language": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "alibaba.scbp.showcase.list": {
+      "reason": "2026-09-10 TOP 参数表与 simplify=true 示例为来源；文档成功示例中的错误码不作为成功依据。示例 ID 仅供 Mock，真实核验使用实际商品。",
+      "requestExampleFile": "mock/data/showcase-list.json",
+      "responseExampleFile": "mock/data/showcase-list.json",
+      "requestSchemaPatches": {
+        "/properties/per_page_size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "/properties/to_page": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "alibaba.scbp.showcase.status": {
+      "reason": "2026-09-10 TOP 参数表与 simplify=true 示例为来源；文档成功示例中的错误码不作为成功依据。示例 ID 仅供 Mock，真实核验使用实际商品。",
+      "requestExampleFile": "mock/data/showcase-status.json",
+      "responseExampleFile": "mock/data/showcase-status.json"
+    },
     "alibaba.icbu.product.country.getcountrylist": {
       "reason": "用户提供 2026-09-10 官方全文；curl 的 country_request=- 与对象参数表冲突，按对象实现。真实 simplify=true 返回 data 数组，兼容文档 DTO 包装。biz_success=true 同时附 SYS_ERROR 的示例不代表成功，失败响应允许无 data。语言仅给出 zh_cn 示例，不臆造枚举。",
       "requestExampleFile": "mock/data/product-country-list.json",

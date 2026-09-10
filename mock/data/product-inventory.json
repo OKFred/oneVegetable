@@ -1,0 +1,23 @@
+{
+  "method": "alibaba.icbu.product.inventory.get",
+  "request": {
+    "language": "en_US",
+    "product_id": 1000000
+  },
+  "response": {
+    "result": {
+      "data_list": [
+        {
+          "sku_id": 33323,
+          "inventory_code": "CN_LOCAL_01",
+          "inventory": 100,
+          "sku_outer_id": "红色"
+        }
+      ],
+      "biz_message": "success",
+      "msg_code": "",
+      "success": true,
+      "trace_id": "484792239344223"
+    }
+  }
+}
