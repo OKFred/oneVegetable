@@ -56,6 +56,24 @@ export function createAlibabaRequest(
   businessParameters: Readonly<Record<string, unknown>>,
   now = new Date()
 ): Record<string, string> {
+  const showcaseField =
+    method === 'alibaba.scbp.showcase.addproduct'
+      ? 'product_id_list'
+      : method === 'alibaba.scbp.showcase.deleteproduct'
+        ? 'window_id_list'
+        : null;
+  if (showcaseField) {
+    const ids = businessParameters[showcaseField];
+    if (
+      !Array.isArray(ids) ||
+      ids.length < 1 ||
+      ids.length > 20 ||
+      ids.some((id: unknown) => typeof id !== 'string' || !/^[1-9][0-9]*$/.test(id)) ||
+      new Set(ids).size !== ids.length
+    )
+      throw new Error('INVALID_SHOWCASE_IDS');
+    businessParameters = { ...businessParameters, [showcaseField]: ids.join(',') };
+  }
   const parameters = serializeAlibabaParameters({
     app_key: credentials.appKey,
     format: 'json',

@@ -10896,6 +10896,54 @@
         },
         "title": "alibaba.icbu.text.trans response"
       },
+      "AlibabaProductAlibabaScbpShowcaseAddproductRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["product_id_list"],
+        "properties": {
+          "product_id_list": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "uniqueItems": true,
+            "items": { "type": "string", "pattern": "^[1-9][0-9]*$" }
+          }
+        },
+        "title": "alibaba.scbp.showcase.addproduct request"
+      },
+      "AlibabaProductAlibabaScbpShowcaseAddproductResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": { "type": "boolean", "description": "是否成功" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
+        "title": "alibaba.scbp.showcase.addproduct response"
+      },
+      "AlibabaProductAlibabaScbpShowcaseDeleteproductRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["window_id_list"],
+        "properties": {
+          "window_id_list": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "uniqueItems": true,
+            "items": { "type": "string", "pattern": "^[1-9][0-9]*$" }
+          }
+        },
+        "title": "alibaba.scbp.showcase.deleteproduct request"
+      },
+      "AlibabaProductAlibabaScbpShowcaseDeleteproductResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": { "type": "boolean", "description": "是否成功" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
+        "title": "alibaba.scbp.showcase.deleteproduct response"
+      },
       "AlibabaProductAlibabaScbpShowcaseListRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -13453,6 +13501,8 @@
           "traceId": { "type": "string" },
           "data": {
             "oneOf": [
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaScbpShowcaseAddproductResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaScbpShowcaseDeleteproductResponse" },
               {
                 "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductCountryGetcountrylistResponse"
               },
@@ -15774,6 +15824,40 @@
     }
   },
   "x-product-capabilities": {
+    "alibaba.scbp.showcase.addproduct": {
+      "requestSchema": "AlibabaProductAlibabaScbpShowcaseAddproductRequest",
+      "responseSchema": "AlibabaProductAlibabaScbpShowcaseAddproductResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "checkedAt": "2026-09-10",
+      "updatedAt": "2021-11-18",
+      "title": "批量添加橱窗商品",
+      "description": "按商品 ID 添加橱窗，最多 20 项，实际传输使用逗号分隔。",
+      "errorCodes": [],
+      "requestExample": { "product_id_list": ["100", "200"] },
+      "responseExample": { "result": true },
+      "docUrl": "https://open.taobao.com/api.htm?docId=40964&docType=2"
+    },
+    "alibaba.scbp.showcase.deleteproduct": {
+      "requestSchema": "AlibabaProductAlibabaScbpShowcaseDeleteproductRequest",
+      "responseSchema": "AlibabaProductAlibabaScbpShowcaseDeleteproductResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "checkedAt": "2026-09-10",
+      "updatedAt": "2021-11-18",
+      "title": "批量移出橱窗商品",
+      "description": "按橱窗 ID 移出，不是商品 ID，也不是删除商品。",
+      "errorCodes": [],
+      "requestExample": { "window_id_list": ["100", "200"] },
+      "responseExample": { "result": true },
+      "docUrl": "https://open.taobao.com/api.htm?docId=40963&docType=2"
+    },
     "alibaba.icbu.product.country.getcountrylist": {
       "requestSchema": "AlibabaProductAlibabaIcbuProductCountryGetcountrylistRequest",
       "responseSchema": "AlibabaProductAlibabaIcbuProductCountryGetcountrylistResponse",

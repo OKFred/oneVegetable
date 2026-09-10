@@ -275,6 +275,20 @@ describe('BFF Alibaba read gateway', () => {
         { requestId: createRequestId() }
       )
     ).rejects.toMatchObject({ gatewayError: { code: 'REAL_MUTATION_DISABLED' } });
+    for (const method of ['alibaba.scbp.showcase.addproduct', 'alibaba.scbp.showcase.deleteproduct']) {
+      await expect(
+        gateway.request(
+          'callCapability',
+          {
+            method,
+            parameters: method.endsWith('addproduct')
+              ? { product_id_list: ['100'] }
+              : { window_id_list: ['200'] }
+          },
+          { requestId: createRequestId() }
+        )
+      ).rejects.toMatchObject({ gatewayError: { code: 'REAL_MUTATION_DISABLED' } });
+    }
     await expect(gateway.request('listLogisticsProducts', undefined)).rejects.toMatchObject({
       gatewayError: { code: 'LOGISTICS_QUALIFICATION_REQUIRED' }
     });

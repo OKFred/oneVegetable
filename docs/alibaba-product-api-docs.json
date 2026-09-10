@@ -1,8 +1,72 @@
 {
   "checkedAt": "2026-08-12",
-  "catalogCount": 32,
+  "catalogCount": 34,
   "articleCount": 2,
   "definitions": [
+    {
+      "method": "alibaba.scbp.showcase.addproduct",
+      "source": "catalog",
+      "docId": 40964,
+      "docUrl": "https://open.taobao.com/api.htm?docId=40964&docType=2",
+      "title": "批量添加橱窗商品",
+      "description": "按商品 ID 添加橱窗，最多 20 项，实际传输使用逗号分隔。",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "checkedAt": "2026-09-10",
+      "updatedAt": "2021-11-18",
+      "requestParams": [
+        {
+          "name": "product_id_list",
+          "type": "String[]",
+          "required": true,
+          "description": "需要添加的产品ids",
+          "demoValue": "100,200,300",
+          "maxListSize": 20
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "Boolean",
+          "required": false,
+          "description": "是否成功",
+          "demoValue": "true"
+        }
+      ],
+      "errorCodes": []
+    },
+    {
+      "method": "alibaba.scbp.showcase.deleteproduct",
+      "source": "catalog",
+      "docId": 40963,
+      "docUrl": "https://open.taobao.com/api.htm?docId=40963&docType=2",
+      "title": "批量移出橱窗商品",
+      "description": "按橱窗 ID 移出，不是商品 ID，也不是删除商品。",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "checkedAt": "2026-09-10",
+      "updatedAt": "2021-11-18",
+      "requestParams": [
+        {
+          "name": "window_id_list",
+          "type": "String[]",
+          "required": true,
+          "description": "橱窗idList",
+          "demoValue": "100,200,300",
+          "maxListSize": 20
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "Boolean",
+          "required": false,
+          "description": "是否成功",
+          "demoValue": "true"
+        }
+      ],
+      "errorCodes": []
+    },
     {
       "method": "alibaba.icbu.product.country.getcountrylist",
       "source": "catalog",

@@ -1,6 +1,40 @@
 {
   "checkedAt": "2026-08-15",
   "overrides": {
+    "alibaba.scbp.showcase.addproduct": {
+      "reason": "TOP 官方示例要求逗号分隔 ID；内部数组严格验证后在签名前转换。成功必须明确返回 result=true。",
+      "requestExampleFile": "mock/data/showcase-add.json",
+      "responseExampleFile": "mock/data/showcase-add.json",
+      "requestSchemaPatches": {
+        "/properties/product_id_list": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          }
+        }
+      }
+    },
+    "alibaba.scbp.showcase.deleteproduct": {
+      "reason": "TOP 官方示例要求逗号分隔 ID；内部数组严格验证后在签名前转换。成功必须明确返回 result=true。",
+      "requestExampleFile": "mock/data/showcase-remove.json",
+      "responseExampleFile": "mock/data/showcase-remove.json",
+      "requestSchemaPatches": {
+        "/properties/window_id_list": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          }
+        }
+      }
+    },
     "alibaba.icbu.product.type.available.get": {
       "reason": "2026-09-10 TOP 参数表与 simplify=true 示例为来源；文档成功示例中的错误码不作为成功依据。示例 ID 仅供 Mock，真实核验使用实际商品。",
       "requestExampleFile": "mock/data/product-type-available.json",
