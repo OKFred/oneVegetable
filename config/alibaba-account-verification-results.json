@@ -1,7 +1,8 @@
 {
   "schemaVersion": 1,
-  "checkedAtUtc": "2026-09-10T00:51:14.824Z",
+  "checkedAtUtc": "2026-09-10T02:37:41.199Z",
   "results": [
+    { "method": "alibaba.icbu.product.country.getcountrylist", "status": "passed", "reasonCode": null },
     {
       "method": "alibaba.icbu.text.trans",
       "status": "permission-denied",

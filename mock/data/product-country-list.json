@@ -24,6 +24,17 @@
     },
     "biz_success": true
   },
+  "simplifiedResponse": {
+    "biz_success": true,
+    "trace_id": "fixture-simple-country",
+    "data": [
+      {
+        "continent_code": "NA",
+        "continent_name": "北美洲",
+        "country_list": [{ "country_code": "US", "country_name": "美国" }]
+      }
+    ]
+  },
   "failure": {
     "biz_success": false,
     "msg_code": "SYS_ERROR",

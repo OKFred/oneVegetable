@@ -457,7 +457,7 @@ export const API_CAPABILITIES = [
     "source": "catalog",
     "lifecycle": "active",
     "risk": "read",
-    "verification": "documented",
+    "verification": "account-verified",
     "realCallEnabled": true,
     "requestSchema": "AlibabaProductAlibabaIcbuProductCountryGetcountrylistRequest",
     "responseSchema": "AlibabaProductAlibabaIcbuProductCountryGetcountrylistResponse"

@@ -34,6 +34,7 @@ describe('product country list', () => {
   });
   it('preserves nested DTO wrappers and business failures without inventing countries', async () => {
     expect(await validateCapabilityResponse(method, fixture.response)).toEqual([]);
+    expect(await validateCapabilityResponse(method, fixture.simplifiedResponse)).toEqual([]);
     expect(await validateCapabilityResponse(method, fixture.failure)).toEqual([]);
     expect(await validateCapabilityResponse(method, { ...fixture.response, data: [] })).toEqual([]);
     expect(

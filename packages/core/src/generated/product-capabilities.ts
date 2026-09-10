@@ -72,7 +72,7 @@ export const PRODUCT_CAPABILITY_DEFINITIONS = {
     "source": "catalog",
     "lifecycle": "active",
     "risk": "read",
-    "verification": "documented",
+    "verification": "account-verified",
     "realCallEnabled": true,
     "checkedAt": "2026-09-10",
     "updatedAt": null,
