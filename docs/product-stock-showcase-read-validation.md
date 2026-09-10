@@ -36,3 +36,7 @@ pnpm exec tsx scripts/smoke-product-stock-showcase-real.ts
 - 账号核验快照新增这五项；旧项不是本次全部重测。翻译接口之前的权限拒绝保持不变。
 
 实际验收路径是 Windows Node 共享网关；正式扩展/Worker 上的真实调用未在本轮重复验收。没有部署、上架或 Alibaba mutation。
+
+## 校验生成器包体优化
+
+新增五项后未压缩扩展为 4,130,922 bytes，超出原有 4,100,000 bytes 门槛。AJV standalone 设置 `loopRequired: 4`，将四项及以上必填规则生成循环而非展开重复错误分支；不减少规则、不关闭 allErrors、不使用运行时代码生成。优化后扩展 4,067,964 bytes，启动 JS 126,479 bytes，未放宽预算或修改权限。另有 16 种必填字段子集测试验证缺失字段仍全部报告。

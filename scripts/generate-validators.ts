@@ -97,6 +97,8 @@ function compileValidators(
     allowUnionTypes: true,
     code: { esm: true, source: true },
     inlineRefs: false,
+    // Generate a loop for larger required sets rather than duplicating each error branch.
+    loopRequired: 4,
     strict: true
   });
   addFormats(ajv, { mode: formatMode });
