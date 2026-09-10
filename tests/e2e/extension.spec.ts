@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { zipSync } from 'fflate';
 import galleryFixture from '../../mock/data/gallery-extension-transfer.json' with { type: 'json' };
 import { MockGatewayClient } from '../../packages/core/src/mock-client';
+import { listCapabilities } from '../../packages/core/src/capability-registry';
 
 import { chromium, expect, test, type BrowserContext, type Page } from '@playwright/test';
 import {
@@ -64,10 +65,9 @@ test('formal MV3 workbench supports persistent columns and automatic detail load
   );
   await page.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#/products`);
   const guide = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
-  if (await guide.isVisible()) {
-    await guide.getByRole('checkbox').check();
-    await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
-  }
+  await expect(guide).toBeVisible();
+  await guide.getByRole('checkbox').check();
+  await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
   await expect(page.getByRole('button', { name: '显示列', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '显示列', exact: true }).click();
   await page.getByRole('checkbox', { name: '关键词', exact: true }).check();
@@ -473,7 +473,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
 
   await page.getByRole('link', { name: 'API 能力' }).click();
   await expect(page.locator('tbody tr')).toHaveCount(10);
-  await expect(page.getByText('共 86 条，当前 1–10 条')).toBeVisible();
+  await expect(page.getByText(`共 ${listCapabilities().length} 条，当前 1–10 条`)).toBeVisible();
   await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.product.schema.add');
   await page.getByRole('button', { name: 'alibaba.icbu.product.schema.add', exact: true }).click();
   await expect(page.getByText(/该真实写能力未在当前扩展版本开放/)).toBeVisible();
