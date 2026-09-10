@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { mkdir, open } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { setTimeout } from 'node:timers/promises';
@@ -11,9 +12,12 @@ import {
 import { AlibabaReadGatewayClient } from '../apps/api/src/gateway/alibaba-read-gateway';
 import { createNodeAlibabaCredentialProvider } from '../apps/api/src/gateway/node-credential-bundle';
 import { atomicWriteJson, redactText } from './openapi-auth/storage';
-import { isRecord } from './lib/product-stock-smoke';
+import { isRecord, responseShape } from './lib/product-stock-smoke';
+import { runShowcaseSwap } from './lib/showcase-swap';
+import { ProductAdapter } from '../packages/core/src/product-adapter';
 import {
   mutationConfirmed,
+  unwrapShowcaseResponse,
   newShowcaseEntry,
   restorationConfirmed,
   showcaseEntries,
@@ -22,6 +26,9 @@ import {
 
 // Default is read-only. No generic runtime mutation flags are changed.
 const execute = process.env.ONE_VEGETABLE_SHOWCASE_SMOKE === '1';
+const replaceWindowId = process.env.ONE_VEGETABLE_SHOWCASE_REPLACE_WINDOW_ID;
+if (replaceWindowId && !/^[1-9][0-9]*$/.test(replaceWindowId))
+  throw new Error('INVALID_REPLACEMENT_WINDOW_ID');
 const productId = process.env.ONE_VEGETABLE_SHOWCASE_PRODUCT_ID;
 if (!productId || !/^[1-9][0-9]*$/.test(productId)) throw new Error('EXPLICIT_PRODUCT_ID_REQUIRED');
 const credentials = createNodeAlibabaCredentialProvider({
@@ -42,6 +49,7 @@ const persist = () =>
     runId,
     capturedAtUtc: new Date().toISOString(),
     productId,
+    replaceWindowId: replaceWindowId ?? null,
     execute,
     stage,
     before,
@@ -115,13 +123,13 @@ async function mutate(
       method,
       parameters
     );
-    const data = isRecord(response.data)
-      ? response.data[`${method.replaceAll('.', '_')}_response`]
-      : undefined;
+    const data = unwrapShowcaseResponse(response.data, method);
     const issues = await validateCapabilityResponse(method, data);
     Object.assign(record, {
       status: issues.length === 0 && mutationConfirmed(data) ? 'acknowledged' : 'unknown',
       contractValid: issues.length === 0,
+      contractIssues: issues,
+      responseShape: responseShape(response.data),
       traceId: isRecord(data) && typeof data.request_id === 'string' ? data.request_id : null
     });
   } catch (error: unknown) {
@@ -146,10 +154,39 @@ try {
     { requestId }
   );
   const product = products.items.find((item) => item.id === productId);
-  if (product?.status !== 'online' || /dont.edit/i.test(product.subject))
+  if (product?.status !== 'online' || /dont.edit/i.test(product.subject)) {
+    reports.push({
+      eligibleProductIds: products.items
+        .filter(
+          (item) =>
+            item.status === 'online' &&
+            !/dont.edit/i.test(item.subject) &&
+            !before.some((row) => row.productId === item.id)
+        )
+        .slice(0, 5)
+        .map((item) => item.id)
+    });
     throw new Error('TARGET_NOT_ELIGIBLE_ON_FIRST_PAGE');
+  }
   reports.push({ method: 'alibaba.icbu.product.list', requestId, targetFound: true, status: product.status });
-  if (status.total_count <= status.current_count) throw new Error('NO_FREE_SHOWCASE_SLOT');
+  const original = replaceWindowId ? before.find((entry) => entry.windowId === replaceWindowId) : undefined;
+  if (replaceWindowId && !original) throw new Error('REPLACEMENT_NOT_FOUND');
+  if (status.total_count <= status.current_count && !original) throw new Error('NO_FREE_SHOWCASE_SLOT');
+  if (original) {
+    const requestId = randomUUID();
+    const detail = await new ProductAdapter(
+      AlibabaClient.create(credentials, { maxAttempts: 1, requestId })
+    ).get(original.productId);
+    if (detail.status !== 'online' || /dont.edit/i.test(detail.subject))
+      throw new Error('ORIGINAL_NOT_ELIGIBLE_FOR_RESTORE');
+    reports.push({
+      operation: 'original-product-read',
+      requestId,
+      productId: original.productId,
+      status: detail.status,
+      schemaHash: createHash('sha256').update(detail.schemaXml).digest('hex')
+    });
+  }
   stage = 'ready';
   await persist();
   if (execute) {
@@ -158,32 +195,50 @@ try {
     const marker = await open(resolve(directory, `${productId}.once`), 'wx', 0o600);
     await marker.writeFile(runId);
     await marker.close();
-    stage = 'adding';
-    const acknowledged = await mutate('alibaba.scbp.showcase.addproduct', { product_id_list: [productId] });
-    // Bounded read-only reconciliation; never repeat the mutation.
-    for (let attempt = 0; attempt < 3 && !added; attempt++) {
-      await setTimeout(2000);
-      const after = await list();
-      if (after.some((row) => row.productId === productId))
-        added = newShowcaseEntry(before, after, productId);
+    if (original) {
+      await runShowcaseSwap({
+        before,
+        original,
+        targetId: productId,
+        list: async () => {
+          await setTimeout(2000);
+          return list();
+        },
+        mutate,
+        checkpoint: async (nextStage, entry) => {
+          stage = nextStage;
+          reports.push({ stage, ...(entry ? { entry } : {}) });
+          await persist();
+        }
+      });
+    } else {
+      stage = 'adding';
+      const acknowledged = await mutate('alibaba.scbp.showcase.addproduct', { product_id_list: [productId] });
+      // Bounded read-only reconciliation; never repeat the mutation.
+      for (let attempt = 0; attempt < 3 && !added; attempt++) {
+        await setTimeout(2000);
+        const after = await list();
+        if (after.some((row) => row.productId === productId))
+          added = newShowcaseEntry(before, after, productId);
+      }
+      if (!added) throw new Error('ADD_NOT_CONFIRMED_NO_RETRY');
+      if (!acknowledged) throw new Error('ADD_RECEIPT_UNKNOWN_MANUAL_REVIEW');
+      stage = 'added-confirmed';
+      await persist();
+      const current = newShowcaseEntry(before, await list(), productId);
+      if (current.windowId !== added.windowId) throw new Error('TARGET_CHANGED_STOP_RESTORE');
+      stage = 'restoring';
+      await mutate('alibaba.scbp.showcase.deleteproduct', { window_id_list: [added.windowId] });
+      let restored = false;
+      for (let attempt = 0; attempt < 3 && !restored; attempt++) {
+        await setTimeout(2000);
+        restored = restorationConfirmed(before, await list(), added);
+      }
+      if (!restored) throw new Error('RESTORE_NOT_CONFIRMED_NO_RETRY');
+      stage = 'restored';
+      await persist();
+      if (reports.some((record) => record.status === 'unknown')) process.exitCode = 1;
     }
-    if (!added) throw new Error('ADD_NOT_CONFIRMED_NO_RETRY');
-    if (!acknowledged) throw new Error('ADD_RECEIPT_UNKNOWN_MANUAL_REVIEW');
-    stage = 'added-confirmed';
-    await persist();
-    const current = newShowcaseEntry(before, await list(), productId);
-    if (current.windowId !== added.windowId) throw new Error('TARGET_CHANGED_STOP_RESTORE');
-    stage = 'restoring';
-    await mutate('alibaba.scbp.showcase.deleteproduct', { window_id_list: [added.windowId] });
-    let restored = false;
-    for (let attempt = 0; attempt < 3 && !restored; attempt++) {
-      await setTimeout(2000);
-      restored = restorationConfirmed(before, await list(), added);
-    }
-    if (!restored) throw new Error('RESTORE_NOT_CONFIRMED_NO_RETRY');
-    stage = 'restored';
-    await persist();
-    if (reports.some((record) => record.status === 'unknown')) process.exitCode = 1;
   }
 } catch (error: unknown) {
   reports.push({

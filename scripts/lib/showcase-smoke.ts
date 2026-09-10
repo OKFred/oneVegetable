@@ -52,3 +52,9 @@ export function restorationConfirmed(
 export function mutationConfirmed(value: unknown): boolean {
   return isRecord(value) && value.result === true;
 }
+
+export function unwrapShowcaseResponse(value: unknown, method: string): unknown {
+  if (!isRecord(value)) return value;
+  const wrapper = `${method.replaceAll('.', '_')}_response`;
+  return Object.hasOwn(value, wrapper) ? value[wrapper] : value;
+}
