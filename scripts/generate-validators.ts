@@ -5,6 +5,7 @@ import Ajv2020 from 'ajv/dist/2020.js';
 import standaloneCode from 'ajv/dist/standalone/index.js';
 import addErrors from 'ajv-errors';
 import addFormats from 'ajv-formats';
+import { validationSchema } from './lib/validator-schema';
 
 type CapabilityDomain = 'product' | 'rfq' | 'trade' | 'logistics' | 'insights' | 'photo' | 'platform';
 
@@ -59,6 +60,16 @@ const coreValidators: Record<string, object | undefined> = {
 
 const domains: CapabilityDomain[] = ['product', 'rfq', 'trade', 'logistics', 'insights', 'photo', 'platform'];
 const targets = new Map<string, string>();
+targets.set(
+  'validators-showcase.ts',
+  compileValidators(
+    {
+      validateProductShowcaseSnapshot: schemas.ProductShowcaseSnapshot,
+      validateProductShowcaseMutationResult: schemas.ProductShowcaseMutationResult
+    },
+    'fast'
+  )
+);
 targets.set('validators-core.ts', compileValidators(coreValidators, 'fast'));
 targets.set(
   'validators-gallery.ts',
@@ -107,12 +118,15 @@ function compileValidators(
   const dependencies = new Map<string, object>();
   for (const [name, schema] of Object.entries(selected)) {
     if (!schema) throw new Error(`OpenAPI schema ${name} is missing`);
-    ajv.addSchema({ ...(withAjvExtensions(schema, dependencies) as object), $id: name }, name);
+    ajv.addSchema(
+      { ...(withAjvExtensions(validationSchema(schema), dependencies) as object), $id: name },
+      name
+    );
   }
   // Keep referenced schemas shared instead of expanding identical validators at every call site.
   for (const [name, schema] of dependencies) {
     ajv.addSchema({
-      ...(withAjvExtensions(schema, dependencies) as object),
+      ...(withAjvExtensions(validationSchema(schema), dependencies) as object),
       $id: `urn:one-vegetable:schema:${name}`
     });
   }

@@ -1,4 +1,5 @@
 export * from './alibaba-client';
+export * from './product-showcase';
 export * from './alibaba-credential-acquisition';
 export * from './alibaba-credential-acquisition-extension';
 export * from './alibaba-developer-onboarding';

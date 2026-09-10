@@ -31,6 +31,9 @@ export interface ProductMockData {
     | 'getProductLevelSchema'
     | 'getProductDraft'
     | 'listProductGroups'
+    | 'getProductShowcase'
+    | 'addShowcaseProducts'
+    | 'removeShowcaseProducts'
     | 'createProductGroup'
     | 'getProductScore'
   >;

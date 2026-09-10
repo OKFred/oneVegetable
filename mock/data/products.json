@@ -1,5 +1,21 @@
 {
   "responses": {
+    "getProductShowcase": {
+      "total": 2,
+      "used": 1,
+      "available": 1,
+      "entries": [
+        {
+          "windowId": "8001",
+          "productId": "10000001",
+          "subject": "Portable solar power station 1000W",
+          "imageUrl": null,
+          "valid": true
+        }
+      ]
+    },
+    "addShowcaseProducts": { "outcome": "confirmed", "traceId": "showcase-add", "snapshot": null },
+    "removeShowcaseProducts": { "outcome": "confirmed", "traceId": "showcase-remove", "snapshot": null },
     "listProducts": {
       "items": [
         {

@@ -32,6 +32,7 @@ import {
   unlockCredentialVault,
   PhotoAdapter,
   ProductAdapter,
+  ProductShowcaseAdapter,
   RfqAdapter,
   TradeAdapter,
   validateCapabilityRequest,
@@ -96,6 +97,9 @@ const OPERATIONS = new Set<OperationId>([
   'getProductLevelSchema',
   'getProductDraft',
   'listProductGroups',
+  'getProductShowcase',
+  'addShowcaseProducts',
+  'removeShowcaseProducts',
   'createProductGroup',
   'getProductScore',
   'listRfqs',
@@ -628,6 +632,8 @@ async function executeOperation(
   galleryContext?: GalleryTransferContext
 ): Promise<unknown> {
   if (operation === 'getDiagnostics') return getDiagnostics();
+  if ((operation === 'addShowcaseProducts' || operation === 'removeShowcaseProducts') && !trustedOptionsPage)
+    throw gatewayFailure('SHOWCASE_UNTRUSTED', 'Showcase writes require the trusted workbench.');
   if (operation === 'clearDiagnostics') {
     await clearDiagnostics();
     return undefined;
@@ -662,6 +668,7 @@ async function executeOperation(
     });
   }
   const client = AlibabaClient.create(settings, {
+    requestId,
     maxAttempts: 3,
     shouldRetry: (method, error) => error.retryable && findCapability(method)?.risk === 'read'
   });
@@ -683,6 +690,15 @@ async function executeOperation(
   const request = asRecord(payload);
 
   switch (operation) {
+    case 'getProductShowcase':
+      return new ProductShowcaseAdapter(client).get();
+    case 'addShowcaseProducts':
+      return new ProductShowcaseAdapter(client).mutate('add', payload as RequestOf<'addShowcaseProducts'>);
+    case 'removeShowcaseProducts':
+      return new ProductShowcaseAdapter(client).mutate(
+        'remove',
+        payload as RequestOf<'removeShowcaseProducts'>
+      );
     case 'getDashboard': {
       return dashboard.get();
     }

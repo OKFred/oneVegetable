@@ -1193,6 +1193,24 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ProductShowcaseSnapshot: {
+            total: number;
+            used: number;
+            available: number;
+            entries: {
+                windowId: string;
+                productId: string;
+                subject: string | null;
+                imageUrl: string | null;
+                valid: boolean | null;
+            }[];
+        };
+        ProductShowcaseMutationResult: {
+            /** @enum {string} */
+            outcome: "confirmed" | "unconfirmed";
+            traceId: string | null;
+            snapshot: components["schemas"]["ProductShowcaseSnapshot"] | null;
+        };
         AdminAuditListRequest: {
             requestId: components["schemas"]["RequestId"];
             requestIdFilter?: components["schemas"]["RequestId"];

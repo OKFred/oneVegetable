@@ -60,6 +60,8 @@ export type CapabilityCallResult = CapabilityResponseEnvelope;
 export type ProductCategory = components['schemas']['ProductCategory'];
 export type ProductCategoryMapping = components['schemas']['ProductCategoryMapping'];
 export type ProductGroup = components['schemas']['ProductGroup'];
+export type ProductShowcaseSnapshot = components['schemas']['ProductShowcaseSnapshot'];
+export type ProductShowcaseMutationResult = components['schemas']['ProductShowcaseMutationResult'];
 export type ProductGroupCreateRequest = components['schemas']['ProductGroupCreateRequest'];
 export type ProductScore = components['schemas']['ProductScore'];
 export type RfqSummary = components['schemas']['RfqSummary'];
@@ -251,6 +253,15 @@ export interface OperationMap {
     response: ProductDetail;
   };
   listProductGroups: { request: { parentId?: number } | undefined; response: ProductGroup[] };
+  getProductShowcase: { request: undefined; response: ProductShowcaseSnapshot };
+  addShowcaseProducts: {
+    request: ProductCapabilityRequestMap['alibaba.scbp.showcase.addproduct'];
+    response: ProductShowcaseMutationResult;
+  };
+  removeShowcaseProducts: {
+    request: ProductCapabilityRequestMap['alibaba.scbp.showcase.deleteproduct'];
+    response: ProductShowcaseMutationResult;
+  };
   createProductGroup: { request: ProductGroupCreateRequest; response: ProductGroup };
   getProductScore: { request: { productId: string }; response: ProductScore };
   listRfqs: { request: RfqListQuery; response: RfqPage };

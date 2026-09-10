@@ -1,0 +1,15 @@
+{
+  "status": { "total_count": 2, "current_count": 1 },
+  "before": {
+    "results": [
+      { "id": 8001, "product_id": 10000001, "subject": "Portable solar power station 1000W", "valid": true }
+    ]
+  },
+  "after": {
+    "results": [
+      { "id": 8001, "product_id": 10000001, "subject": "Portable solar power station 1000W", "valid": true },
+      { "id": 8002, "product_id": 10000002, "subject": "Travel jacket", "valid": true }
+    ]
+  },
+  "acknowledgement": { "result": true, "request_id": "showcase-test-trace" }
+}

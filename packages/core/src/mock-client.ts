@@ -98,6 +98,8 @@ export class MockGatewayClient implements GatewayClient {
   private photoGroups: PhotoGroup[] = structuredClone(MOCK_DATA.listPhotoGroups);
   private photos: Photo[] = structuredClone(PHOTOS);
   private productGroups: ProductGroup[] = structuredClone(MOCK_DATA.listProductGroups);
+  private showcase = structuredClone(PRODUCT_MOCK_DATA.responses.getProductShowcase);
+  private nextWindowId = 8002;
   private nextProductGroupId = maxProductGroupId(this.productGroups) + 1;
   private diagnostics: DiagnosticEntry[] = structuredClone(MOCK_DATA.getDiagnostics.entries);
 
@@ -105,6 +107,38 @@ export class MockGatewayClient implements GatewayClient {
 
   async request<K extends OperationId>(operation: K, _request: RequestOf<K>): Promise<ResponseOf<K>> {
     await new Promise<void>((resolve) => setTimeout(resolve, this.latency));
+    if (operation === 'getProductShowcase') return structuredClone(this.showcase);
+    if (operation === 'addShowcaseProducts' || operation === 'removeShowcaseProducts') {
+      if (operation === 'addShowcaseProducts') {
+        const { product_id_list: ids } = _request as RequestOf<'addShowcaseProducts'>;
+        if (ids.length > this.showcase.available) throw new Error('SHOWCASE_FULL');
+        for (const id of ids) {
+          if (this.showcase.entries.some((row) => row.productId === id))
+            throw new Error('SHOWCASE_ALREADY_PRESENT');
+          const product = PRODUCTS.find((row) => row.id === id);
+          this.showcase.entries.push({
+            windowId: String(this.nextWindowId++),
+            productId: id,
+            subject: product?.subject ?? null,
+            imageUrl: null,
+            valid: true
+          });
+        }
+      } else {
+        const { window_id_list: ids } = _request as RequestOf<'removeShowcaseProducts'>;
+        this.showcase.entries = this.showcase.entries.filter((row) => !ids.includes(row.windowId));
+      }
+      this.showcase.used = this.showcase.entries.length;
+      this.showcase.available = this.showcase.total - this.showcase.used;
+      return {
+        ...structuredClone(
+          PRODUCT_MOCK_DATA.responses[
+            operation === 'addShowcaseProducts' ? 'addShowcaseProducts' : 'removeShowcaseProducts'
+          ]
+        ),
+        snapshot: structuredClone(this.showcase)
+      };
+    }
     if (operation === 'listProducts') {
       const payload = _request as OperationMap['listProducts']['request'];
       const { page, pageSize, start, end } = paginationWindow(payload.page, payload.pageSize, 20);

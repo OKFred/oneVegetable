@@ -6,6 +6,7 @@ import inventoryFixture from '../../../mock/data/product-inventory.json';
 import skuFixture from '../../../mock/data/product-sku-inventory.json';
 import showcaseFixture from '../../../mock/data/showcase-list.json';
 import showcaseStatusFixture from '../../../mock/data/showcase-status.json';
+import managementFixture from '../../../mock/data/showcase-management.json';
 
 import { createRequestId, getCapabilityDefinition } from '@one-vegetable/core';
 import { AlibabaReadGatewayClient } from '../src/gateway/alibaba-read-gateway';
@@ -23,6 +24,69 @@ const method = 'alibaba.icbu.product.list';
 const parameters = getCapabilityDefinition(method)?.requestExample as Record<string, unknown>;
 
 describe('BFF Alibaba read gateway', () => {
+  it.each(['add', 'remove'] as const)(
+    'runs dedicated showcase %s on TOP once and verifies it',
+    async (action) => {
+      let wrote = false;
+      let timeOut = false;
+      const mutation = action === 'add' ? 'addproduct' : 'deleteproduct';
+      const send = vi.fn<NetworkTransport['send']>((input, init) => {
+        expect(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url).toBe(
+          credentials.endpoint
+        );
+        if (!(init.body instanceof URLSearchParams)) throw new Error('Expected form body');
+        const method = init.body.get('method') ?? '';
+        if (method.endsWith(mutation)) {
+          expect(init.body.get(action === 'add' ? 'product_id_list' : 'window_id_list')).toBe(
+            action === 'add' ? '10000002' : '8001'
+          );
+          wrote = true;
+          if (timeOut) return Promise.reject(new TypeError('fetch failed'));
+          return Promise.resolve(Response.json(managementFixture.acknowledgement));
+        }
+        const data = method.endsWith('status')
+          ? { ...managementFixture.status, current_count: wrote ? (action === 'add' ? 2 : 0) : 1 }
+          : wrote
+            ? action === 'add'
+              ? managementFixture.after
+              : { results: [] }
+            : managementFixture.before;
+        return Promise.resolve(Response.json(data));
+      });
+      const gateway = new AlibabaReadGatewayClient(credentials, {
+        transport: { send },
+        maxAttempts: 3,
+        wait: () => Promise.resolve()
+      });
+      const run = () =>
+        action === 'add'
+          ? gateway.request(
+              'addShowcaseProducts',
+              { product_id_list: ['10000002'] },
+              { requestId: createRequestId() }
+            )
+          : gateway.request(
+              'removeShowcaseProducts',
+              { window_id_list: ['8001'] },
+              { requestId: createRequestId() }
+            );
+      expect(await run()).toMatchObject({ outcome: 'confirmed' });
+      expect(
+        send.mock.calls.filter(
+          ([, init]) => init.body instanceof URLSearchParams && init.body.get('method')?.endsWith(mutation)
+        )
+      ).toHaveLength(1);
+      wrote = false;
+      timeOut = true;
+      send.mockClear();
+      await expect(run()).rejects.toBeInstanceOf(Error);
+      expect(
+        send.mock.calls.filter(
+          ([, init]) => init.body instanceof URLSearchParams && init.body.get('method')?.endsWith(mutation)
+        )
+      ).toHaveLength(1);
+    }
+  );
   it.each([typeFixture, inventoryFixture, skuFixture, showcaseFixture, showcaseStatusFixture])(
     'transports $method with session and one validated response',
     async (fixture) => {

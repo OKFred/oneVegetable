@@ -15,6 +15,7 @@ import {
   NetworkManager,
   PhotoAdapter,
   ProductAdapter,
+  ProductShowcaseAdapter,
   RfqAdapter,
   TradeAdapter,
   validateCapabilityRequest,
@@ -195,6 +196,18 @@ export class AlibabaReadGatewayClient implements GatewayClient {
     const photos = new PhotoAdapter(client);
     const record = readRecord(request);
     switch (operation) {
+      case 'getProductShowcase':
+        return await new ProductShowcaseAdapter(client).get();
+      case 'addShowcaseProducts':
+        return await new ProductShowcaseAdapter(client).mutate(
+          'add',
+          request as RequestOf<'addShowcaseProducts'>
+        );
+      case 'removeShowcaseProducts':
+        return await new ProductShowcaseAdapter(client).mutate(
+          'remove',
+          request as RequestOf<'removeShowcaseProducts'>
+        );
       case 'getDashboard':
         return await dashboard.get();
       case 'getDiagnostics':

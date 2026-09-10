@@ -5306,6 +5306,43 @@
       }
     },
     "schemas": {
+      "ProductShowcaseSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["total", "used", "available", "entries"],
+        "properties": {
+          "total": { "type": "integer", "minimum": 0 },
+          "used": { "type": "integer", "minimum": 0 },
+          "available": { "type": "integer", "minimum": 0 },
+          "entries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["windowId", "productId", "subject", "imageUrl", "valid"],
+              "properties": {
+                "windowId": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+                "productId": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+                "subject": { "type": ["string", "null"] },
+                "imageUrl": { "type": ["string", "null"], "pattern": "^https://" },
+                "valid": { "type": ["boolean", "null"] }
+              }
+            }
+          }
+        }
+      },
+      "ProductShowcaseMutationResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["outcome", "traceId", "snapshot"],
+        "properties": {
+          "outcome": { "type": "string", "enum": ["confirmed", "unconfirmed"] },
+          "traceId": { "type": ["string", "null"] },
+          "snapshot": {
+            "anyOf": [{ "$ref": "#/components/schemas/ProductShowcaseSnapshot" }, { "type": "null" }]
+          }
+        }
+      },
       "AdminAuditListRequest": {
         "type": "object",
         "additionalProperties": false,
