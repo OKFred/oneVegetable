@@ -16,7 +16,7 @@
       "source": "catalog",
       "lifecycle": "active",
       "risk": "read",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "requestSchema": "AlibabaProductAlibabaIcbuProductTypeAvailableGetRequest",
       "responseSchema": "AlibabaProductAlibabaIcbuProductTypeAvailableGetResponse"
@@ -36,7 +36,7 @@
       "source": "catalog",
       "lifecycle": "active",
       "risk": "read",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "requestSchema": "AlibabaProductAlibabaIcbuProductInventoryGetRequest",
       "responseSchema": "AlibabaProductAlibabaIcbuProductInventoryGetResponse"
@@ -56,7 +56,7 @@
       "source": "catalog",
       "lifecycle": "active",
       "risk": "read",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "requestSchema": "AlibabaProductAlibabaIcbuProductSkuInventoryGetRequest",
       "responseSchema": "AlibabaProductAlibabaIcbuProductSkuInventoryGetResponse"
@@ -76,7 +76,7 @@
       "source": "catalog",
       "lifecycle": "active",
       "risk": "read",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "requestSchema": "AlibabaProductAlibabaScbpShowcaseListRequest",
       "responseSchema": "AlibabaProductAlibabaScbpShowcaseListResponse"
@@ -96,7 +96,7 @@
       "source": "catalog",
       "lifecycle": "active",
       "risk": "read",
-      "verification": "documented",
+      "verification": "account-verified",
       "realCallEnabled": true,
       "requestSchema": "AlibabaProductAlibabaScbpShowcaseStatusRequest",
       "responseSchema": "AlibabaProductAlibabaScbpShowcaseStatusResponse"

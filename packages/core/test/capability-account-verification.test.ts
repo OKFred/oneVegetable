@@ -12,7 +12,7 @@ describe('capability account verification matrix', () => {
       verification: 'documented',
       accountVerificationStatus: 'passed',
       accountVerificationReasonCode: null,
-      accountVerificationCheckedAt: '2026-09-10T02:37:41.199Z'
+      accountVerificationCheckedAt: '2026-09-10T06:40:47.891Z'
     });
     expect(findCapabilityWithAccountVerification('alibaba.icbu.rfq.search')).toMatchObject({
       enabled: true,

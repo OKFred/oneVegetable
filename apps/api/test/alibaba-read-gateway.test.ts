@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import countryFixture from '../../../mock/data/product-country-list.json';
+import typeFixture from '../../../mock/data/product-type-available.json';
+import inventoryFixture from '../../../mock/data/product-inventory.json';
+import skuFixture from '../../../mock/data/product-sku-inventory.json';
+import showcaseFixture from '../../../mock/data/showcase-list.json';
+import showcaseStatusFixture from '../../../mock/data/showcase-status.json';
 
 import { createRequestId, getCapabilityDefinition } from '@one-vegetable/core';
 import { AlibabaReadGatewayClient } from '../src/gateway/alibaba-read-gateway';
@@ -18,6 +23,33 @@ const method = 'alibaba.icbu.product.list';
 const parameters = getCapabilityDefinition(method)?.requestExample as Record<string, unknown>;
 
 describe('BFF Alibaba read gateway', () => {
+  it.each([typeFixture, inventoryFixture, skuFixture, showcaseFixture, showcaseStatusFixture])(
+    'transports $method with session and one validated response',
+    async (fixture) => {
+      const send = vi.fn<NetworkTransport['send']>((_input, init) => {
+        if (!(init.body instanceof URLSearchParams)) throw new Error('Expected form body');
+        expect(init.body.get('session')).toBe(credentials.accessToken);
+        expect(init.body.get('method')).toBe(fixture.method);
+        expect(init.body.get('simplify')).toBe('true');
+        for (const [key, value] of Object.entries(fixture.request)) {
+          expect(init.body.get(key)).toBe(typeof value === 'object' ? JSON.stringify(value) : String(value));
+        }
+        return Promise.resolve(
+          Response.json({ [`${fixture.method.replaceAll('.', '_')}_response`]: fixture.response })
+        );
+      });
+      const gateway = new AlibabaReadGatewayClient(credentials, { transport: { send }, maxAttempts: 1 });
+      const response = await gateway.request('callCapability', {
+        method: fixture.method,
+        parameters: fixture.request
+      });
+      expect(response).toMatchObject({ contractValid: true, data: fixture.response });
+      await expect(
+        gateway.request('callCapability', { method: fixture.method, parameters: { unexpected: true } })
+      ).rejects.toMatchObject({ gatewayError: { code: 'REQUEST_CONTRACT_INVALID' } });
+      expect(send).toHaveBeenCalledOnce();
+    }
+  );
   it('signs country requests with session and preserves wrapped data and business failure', async () => {
     const countryMethod = 'alibaba.icbu.product.country.getcountrylist';
     let body: unknown = countryFixture.response;

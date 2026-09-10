@@ -1,6 +1,11 @@
 {
-  "checkedAtUtc": "2026-09-10T02:37:41.199Z",
+  "checkedAtUtc": "2026-09-10T06:40:47.891Z",
   "methods": [
+    "alibaba.icbu.product.type.available.get",
+    "alibaba.icbu.product.inventory.get",
+    "alibaba.icbu.product.sku.inventory.get",
+    "alibaba.scbp.showcase.list",
+    "alibaba.scbp.showcase.status",
     "alibaba.icbu.product.country.getcountrylist",
     "alibaba.icbu.category.attribute.get",
     "alibaba.icbu.category.get.new",
