@@ -65,7 +65,15 @@ targets.set(
   compileValidators(
     {
       validateProductShowcaseSnapshot: schemas.ProductShowcaseSnapshot,
-      validateProductShowcaseMutationResult: schemas.ProductShowcaseMutationResult
+      validateProductShowcaseMutationResult: schemas.ProductShowcaseMutationResult,
+      ...Object.fromEntries(
+        ['Addproduct', 'Deleteproduct', 'List', 'Status'].flatMap((method) =>
+          ['Request', 'Response'].map((kind) => [
+            `validateShowcase${method}${kind}`,
+            schemas[`AlibabaProductAlibabaScbpShowcase${method}${kind}`]
+          ])
+        )
+      )
     },
     'fast'
   )

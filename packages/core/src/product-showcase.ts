@@ -1,5 +1,14 @@
 import type { AlibabaClient } from './alibaba-client';
-import { validateCapabilityRequest, validateCapabilityResponse } from './capability-registry';
+import {
+  validateShowcaseAddproductRequest,
+  validateShowcaseAddproductResponse,
+  validateShowcaseDeleteproductRequest,
+  validateShowcaseDeleteproductResponse,
+  validateShowcaseListRequest,
+  validateShowcaseListResponse,
+  validateShowcaseStatusRequest,
+  validateShowcaseStatusResponse
+} from './generated/validators-showcase';
 import { GatewayException } from './errors';
 import type { ProductShowcaseSnapshot, ProductShowcaseMutationResult, RequestOf } from './types';
 export {
@@ -8,6 +17,14 @@ export {
 } from './generated/validators-showcase';
 
 const prefix = 'alibaba.scbp.showcase.';
+// MV3 service workers cannot load page-oriented Vite preload helpers. These
+// small validators are static and generated from the same official contracts.
+const rawValidators = {
+  addproduct: [validateShowcaseAddproductRequest, validateShowcaseAddproductResponse],
+  deleteproduct: [validateShowcaseDeleteproductRequest, validateShowcaseDeleteproductResponse],
+  list: [validateShowcaseListRequest, validateShowcaseListResponse],
+  status: [validateShowcaseStatusRequest, validateShowcaseStatusResponse]
+} as const;
 export function showcaseError(code: string): GatewayException {
   return new GatewayException({ code, message: code, retryable: false });
 }
@@ -38,14 +55,16 @@ function imageUrl(value: unknown): string | null {
 export class ProductShowcaseAdapter {
   constructor(private readonly client: Pick<AlibabaClient, 'call'>) {}
 
-  private async call(suffix: string, parameters: Record<string, unknown>): Promise<Record<string, unknown>> {
+  private async call(
+    suffix: keyof typeof rawValidators,
+    parameters: Record<string, unknown>
+  ): Promise<Record<string, unknown>> {
     const method = prefix + suffix;
-    if ((await validateCapabilityRequest(method, parameters)).length)
-      throw showcaseError('REQUEST_CONTRACT_INVALID');
+    if (!rawValidators[suffix][0](parameters)) throw showcaseError('REQUEST_CONTRACT_INVALID');
     const result = await this.client.call(method, parameters);
     const envelope = record(result.data);
     const data = record(envelope[`${method.replaceAll('.', '_')}_response`] ?? envelope);
-    if ((await validateCapabilityResponse(method, data)).length) throw showcaseError('SHOWCASE_INCOMPLETE');
+    if (!rawValidators[suffix][1](data)) throw showcaseError('SHOWCASE_INCOMPLETE');
     return data;
   }
 
@@ -97,10 +116,9 @@ export class ProductShowcaseAdapter {
     action: 'add' | 'remove',
     request: RequestOf<'addShowcaseProducts'> | RequestOf<'removeShowcaseProducts'>
   ): Promise<ProductShowcaseMutationResult> {
-    const method = prefix + (action === 'add' ? 'addproduct' : 'deleteproduct');
+    const suffix = action === 'add' ? 'addproduct' : 'deleteproduct';
     // Validate before even the read preflight, including duplicate IDs and extra properties.
-    if ((await validateCapabilityRequest(method, request)).length)
-      throw showcaseError('REQUEST_CONTRACT_INVALID');
+    if (!rawValidators[suffix][0](request)) throw showcaseError('REQUEST_CONTRACT_INVALID');
     const ids = 'product_id_list' in request ? request.product_id_list : request.window_id_list;
     const before = await this.get();
     if (action === 'add') {
