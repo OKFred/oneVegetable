@@ -2,6 +2,7 @@
 import type { components } from './api';
 
 export interface ProductCapabilityRequestMap {
+  'alibaba.icbu.text.trans': components['schemas']['AlibabaProductAlibabaIcbuTextTransRequest'];
   'alibaba.icbu.category.attr.get': components['schemas']['AlibabaProductAlibabaIcbuCategoryAttrGetRequest'];
   'alibaba.icbu.category.attribute.get': components['schemas']['AlibabaProductAlibabaIcbuCategoryAttributeGetRequest'];
   'alibaba.icbu.category.attrvalue.get': components['schemas']['AlibabaProductAlibabaIcbuCategoryAttrvalueGetRequest'];
@@ -32,6 +33,7 @@ export interface ProductCapabilityRequestMap {
 }
 
 export interface ProductCapabilityResponseMap {
+  'alibaba.icbu.text.trans': components['schemas']['AlibabaProductAlibabaIcbuTextTransResponse'];
   'alibaba.icbu.category.attr.get': components['schemas']['AlibabaProductAlibabaIcbuCategoryAttrGetResponse'];
   'alibaba.icbu.category.attribute.get': components['schemas']['AlibabaProductAlibabaIcbuCategoryAttributeGetResponse'];
   'alibaba.icbu.category.attrvalue.get': components['schemas']['AlibabaProductAlibabaIcbuCategoryAttrvalueGetResponse'];
@@ -62,6 +64,51 @@ export interface ProductCapabilityResponseMap {
 }
 
 export const PRODUCT_CAPABILITY_DEFINITIONS = {
+  "alibaba.icbu.text.trans": {
+    "requestSchema": "AlibabaProductAlibabaIcbuTextTransRequest",
+    "responseSchema": "AlibabaProductAlibabaIcbuTextTransResponse",
+    "source": "catalog",
+    "lifecycle": "active",
+    "risk": "read",
+    "verification": "documented",
+    "realCallEnabled": true,
+    "checkedAt": "2026-09-10",
+    "updatedAt": null,
+    "title": "ICBU 文本翻译",
+    "description": "免费、不需用户授权；应用需具备 ICBU翻译能力。app_name 为业务场景标识，不能假定示例 xiaoman 或应用展示名已获准。",
+    "errorCodes": [],
+    "requestExample": {
+      "icbu_translate_task_dto": [
+        {
+          "trans_engine": "ALI_TRANS",
+          "target_language": "es",
+          "app_name": "oneVegetable",
+          "source_text": "A cotton T-shirt.",
+          "format": "text",
+          "field_type": "title",
+          "source_language": "en"
+        }
+      ]
+    },
+    "responseExample": {
+      "result": [
+        {
+          "trans_engine": "ALI_TRANS",
+          "target_language": "es",
+          "app_name": "oneVegetable",
+          "source_text": "A cotton T-shirt.",
+          "format": "text",
+          "field_type": "title",
+          "source_language": "en",
+          "translate_result_text": "Una camiseta de algodón.",
+          "success": true,
+          "trace_id": "fixture-trace",
+          "trans_char": 17
+        }
+      ]
+    },
+    "docUrl": "https://open.taobao.com/api.htm?docId=67157&docType=2"
+  },
   "alibaba.icbu.category.attr.get": {
     "requestSchema": "AlibabaProductAlibabaIcbuCategoryAttrGetRequest",
     "responseSchema": "AlibabaProductAlibabaIcbuCategoryAttrGetResponse",

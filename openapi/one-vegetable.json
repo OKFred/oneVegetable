@@ -10573,6 +10573,104 @@
         },
         "title": "alibaba.icbu.product.update response"
       },
+      "AlibabaProductAlibabaIcbuTextTransRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["icbu_translate_task_dto"],
+        "properties": {
+          "icbu_translate_task_dto": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "trans_engine",
+                "target_language",
+                "app_name",
+                "source_text",
+                "format",
+                "field_type",
+                "source_language"
+              ],
+              "properties": {
+                "trans_engine": { "type": "string", "minLength": 1, "description": "翻译引擎名称" },
+                "target_language": { "type": "string", "minLength": 1, "description": "目标语种" },
+                "app_name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "业务场景 appName；示例不代表已获准的值"
+                },
+                "source_text": { "type": "string", "minLength": 1, "description": "需要翻译的内容" },
+                "format": {
+                  "type": "string",
+                  "minLength": 1,
+                  "enum": ["text", "html"],
+                  "description": "html 或 text；query 仅支持 text"
+                },
+                "field_type": {
+                  "type": "string",
+                  "minLength": 1,
+                  "enum": ["query", "offer", "title", "message", "feedback"],
+                  "description": "query、offer、title、message、feedback"
+                },
+                "param_map": { "type": "string", "description": "业务透传参数（字符串）" },
+                "source_language": { "type": "string", "minLength": 1, "description": "原始语种" }
+              },
+              "allOf": [
+                {
+                  "if": { "properties": { "field_type": { "const": "query" } }, "required": ["field_type"] },
+                  "then": { "properties": { "format": { "const": "text" } } }
+                }
+              ]
+            }
+          }
+        },
+        "title": "alibaba.icbu.text.trans request"
+      },
+      "AlibabaProductAlibabaIcbuTextTransResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["result"],
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["success"],
+              "properties": {
+                "trans_engine": { "type": "string", "description": "翻译引擎名称" },
+                "target_language": { "type": "string", "description": "目标语种" },
+                "app_name": { "type": "string", "description": "业务场景 appName；示例不代表已获准的值" },
+                "source_text": { "type": "string", "description": "需要翻译的内容" },
+                "format": { "type": "string", "description": "html 或 text；query 仅支持 text" },
+                "field_type": { "type": "string", "description": "query、offer、title、message、feedback" },
+                "param_map": { "type": "string", "description": "业务透传参数（字符串）" },
+                "source_language": { "type": "string", "description": "原始语种" },
+                "translate_result_text": { "type": "string", "description": "译文" },
+                "trace_id": { "type": "string", "description": "平台追踪 ID" },
+                "ext": { "type": "string", "description": "扩展信息" },
+                "trans_char": { "type": "number", "description": "翻译字符数" },
+                "success": { "type": "boolean", "description": "单项业务是否成功" },
+                "error_code": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": { "type": "string", "description": "错误码" },
+                    "display_text": { "type": "string", "description": "错误描述" }
+                  },
+                  "description": "业务错误"
+                }
+              },
+              "description": "逐项翻译结果"
+            },
+            "description": "逐项翻译结果"
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
+        "title": "alibaba.icbu.text.trans response"
+      },
       "AlibabaRfqAlibabaIcbuAnnexUploadRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -13081,6 +13179,7 @@
           "traceId": { "type": "string" },
           "data": {
             "oneOf": [
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuTextTransResponse" },
               { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryAttrGetResponse" },
               { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryAttributeGetResponse" },
               { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryAttrvalueGetResponse" },
@@ -15393,6 +15492,51 @@
     }
   },
   "x-product-capabilities": {
+    "alibaba.icbu.text.trans": {
+      "requestSchema": "AlibabaProductAlibabaIcbuTextTransRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuTextTransResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-09-10",
+      "updatedAt": null,
+      "title": "ICBU 文本翻译",
+      "description": "免费、不需用户授权；应用需具备 ICBU翻译能力。app_name 为业务场景标识，不能假定示例 xiaoman 或应用展示名已获准。",
+      "errorCodes": [],
+      "requestExample": {
+        "icbu_translate_task_dto": [
+          {
+            "trans_engine": "ALI_TRANS",
+            "target_language": "es",
+            "app_name": "oneVegetable",
+            "source_text": "A cotton T-shirt.",
+            "format": "text",
+            "field_type": "title",
+            "source_language": "en"
+          }
+        ]
+      },
+      "responseExample": {
+        "result": [
+          {
+            "trans_engine": "ALI_TRANS",
+            "target_language": "es",
+            "app_name": "oneVegetable",
+            "source_text": "A cotton T-shirt.",
+            "format": "text",
+            "field_type": "title",
+            "source_language": "en",
+            "translate_result_text": "Una camiseta de algodón.",
+            "success": true,
+            "trace_id": "fixture-trace",
+            "trans_char": 17
+          }
+        ]
+      },
+      "docUrl": "https://open.taobao.com/api.htm?docId=67157&docType=2"
+    },
     "alibaba.icbu.category.attr.get": {
       "requestSchema": "AlibabaProductAlibabaIcbuCategoryAttrGetRequest",
       "responseSchema": "AlibabaProductAlibabaIcbuCategoryAttrGetResponse",

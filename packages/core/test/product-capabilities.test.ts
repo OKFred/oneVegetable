@@ -20,7 +20,7 @@ interface ProductDocumentSnapshot {
 }
 
 describe('typed product capability domain', () => {
-  it('keeps 25 catalog methods and two article-only Schema mutations', async () => {
+  it('keeps 26 catalog methods including translation and two article-only Schema mutations', async () => {
     const source = await readFile(
       resolve(import.meta.dirname, '../../../docs/alibaba-product-api-docs.json'),
       'utf8'
@@ -30,7 +30,7 @@ describe('typed product capability domain', () => {
     const definitions = listCapabilityDefinitions().filter((definition) =>
       productMethods.has(definition.method)
     );
-    expect(snapshot.catalogCount).toBe(25);
+    expect(snapshot.catalogCount).toBe(26);
     expect(snapshot.articleCount).toBe(2);
     expect(definitions).toHaveLength(snapshot.catalogCount + snapshot.articleCount);
     expect(definitions.filter((item) => item.source === 'article').map((item) => item.method)).toEqual([

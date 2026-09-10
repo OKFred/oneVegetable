@@ -1,6 +1,92 @@
 {
   "checkedAt": "2026-08-15",
   "overrides": {
+    "alibaba.icbu.text.trans": {
+      "reason": "2026-09-10 用户提供 TOP docId=67157 参数表。数组优先于 Java 单对象示例；query 仅允许 text。示例 app_name 是占位业务场景，不代表权限；success=true 与 error_code 同时出现的官方示例不能作为成功证据。",
+      "requestSchemaPatches": {
+        "/properties/icbu_translate_task_dto": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "trans_engine",
+              "target_language",
+              "app_name",
+              "source_text",
+              "format",
+              "field_type",
+              "source_language"
+            ],
+            "properties": {
+              "trans_engine": {
+                "type": "string",
+                "minLength": 1,
+                "description": "翻译引擎名称"
+              },
+              "target_language": {
+                "type": "string",
+                "minLength": 1,
+                "description": "目标语种"
+              },
+              "app_name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "业务场景 appName；示例不代表已获准的值"
+              },
+              "source_text": {
+                "type": "string",
+                "minLength": 1,
+                "description": "需要翻译的内容"
+              },
+              "format": {
+                "type": "string",
+                "minLength": 1,
+                "enum": ["text", "html"],
+                "description": "html 或 text；query 仅支持 text"
+              },
+              "field_type": {
+                "type": "string",
+                "minLength": 1,
+                "enum": ["query", "offer", "title", "message", "feedback"],
+                "description": "query、offer、title、message、feedback"
+              },
+              "param_map": {
+                "type": "string",
+                "description": "业务透传参数（字符串）"
+              },
+              "source_language": {
+                "type": "string",
+                "minLength": 1,
+                "description": "原始语种"
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "field_type": {
+                      "const": "query"
+                    }
+                  },
+                  "required": ["field_type"]
+                },
+                "then": {
+                  "properties": {
+                    "format": {
+                      "const": "text"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "responseExampleFile": "mock/data/text-trans.json",
+      "requestExampleFile": "mock/data/text-trans.json"
+    },
     "alibaba.icbu.category.attribute.get": {
       "reason": "官方响应示例将 child_attrs 与 units 数组包裹在 string 对象中，与参数表的 String[] 类型不一致。保留元素并移除示例包装。",
       "responseExample": {

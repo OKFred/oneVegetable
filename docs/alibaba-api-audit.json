@@ -1,6 +1,6 @@
 {
   "checkedAt": "2026-08-13",
-  "count": 84,
+  "count": 85,
   "entries": [
     {
       "method": "alibaba.icbu.annex.upload",
@@ -921,6 +921,26 @@
       "realCallEnabled": false,
       "requestSchema": "AlibabaPlatformAlibabaIcbuTaskStatusNotifyRequest",
       "responseSchema": "AlibabaPlatformAlibabaIcbuTaskStatusNotifyResponse"
+    },
+    {
+      "method": "alibaba.icbu.text.trans",
+      "domain": "product",
+      "chargeLabel": "￥免费",
+      "auth": "none",
+      "jushitaOnly": false,
+      "restricted": false,
+      "restrictionReason": null,
+      "enabled": true,
+      "docUrl": "https://open.taobao.com/api.htm?docId=67157&docType=2",
+      "checkedAt": "2026-09-10",
+      "updatedAt": null,
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaProductAlibabaIcbuTextTransRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuTextTransResponse"
     },
     {
       "method": "alibaba.icbu.xiaoman.va.list",

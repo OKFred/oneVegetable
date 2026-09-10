@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 import { createRequestId, getCapabilityDefinition } from '@one-vegetable/core';
 import { AlibabaReadGatewayClient } from '../src/gateway/alibaba-read-gateway';
@@ -16,6 +17,31 @@ const method = 'alibaba.icbu.product.list';
 const parameters = getCapabilityDefinition(method)?.requestExample as Record<string, unknown>;
 
 describe('BFF Alibaba read gateway', () => {
+  it('sends the translation batch without session and preserves API permission denials', async () => {
+    const fixture = JSON.parse(
+      readFileSync(new URL('../../../mock/data/text-trans.json', import.meta.url), 'utf8')
+    ) as { request: Record<string, unknown>; permissionError: unknown };
+    const send = vi.fn<NetworkTransport['send']>((_input, init) => {
+      if (!(init.body instanceof URLSearchParams)) throw new Error('Expected form body');
+      expect(init.body.has('session')).toBe(false);
+      expect(JSON.parse(init.body.get('icbu_translate_task_dto') ?? 'null')).toEqual(
+        fixture.request.icbu_translate_task_dto
+      );
+      return Promise.resolve(Response.json(fixture.permissionError));
+    });
+    const gateway = new AlibabaReadGatewayClient(credentials, { transport: { send } });
+    await expect(
+      gateway.request('callCapability', { method: 'alibaba.icbu.text.trans', parameters: fixture.request })
+    ).rejects.toMatchObject({ gatewayError: { code: '11', subCode: 'isv.permission-api-package-limit' } });
+    expect(send).toHaveBeenCalledOnce();
+    await expect(
+      gateway.request('callCapability', {
+        method: 'alibaba.icbu.text.trans',
+        parameters: { icbu_translate_task_dto: [] }
+      })
+    ).rejects.toMatchObject({ gatewayError: { code: 'REQUEST_CONTRACT_INVALID' } });
+    expect(send).toHaveBeenCalledOnce();
+  });
   it('validates, signs and correlates a typed read capability', async () => {
     const requestId = createRequestId();
     const example = getCapabilityDefinition(method)?.responseExample;

@@ -1,8 +1,209 @@
 {
   "checkedAt": "2026-08-12",
-  "catalogCount": 25,
+  "catalogCount": 26,
   "articleCount": 2,
   "definitions": [
+    {
+      "method": "alibaba.icbu.text.trans",
+      "source": "catalog",
+      "docId": 67157,
+      "docUrl": "https://open.taobao.com/api.htm?docId=67157&docType=2",
+      "title": "ICBU 文本翻译",
+      "description": "免费、不需用户授权；应用需具备 ICBU翻译能力。app_name 为业务场景标识，不能假定示例 xiaoman 或应用展示名已获准。",
+      "lifecycle": "active",
+      "risk": "read",
+      "labels": ["￥免费", "不需用户授权"],
+      "checkedAt": "2026-09-10",
+      "updatedAt": null,
+      "requestParams": [
+        {
+          "name": "icbu_translate_task_dto",
+          "type": "IcbuTranslateTaskDTO[]",
+          "required": true,
+          "description": "翻译任务数组；参数表与 Java 单对象示例不一致，按参数表处理并真实验证",
+          "subParams": [
+            {
+              "name": "trans_engine",
+              "type": "String",
+              "description": "翻译引擎名称",
+              "demoValue": "ALI_TRANS",
+              "required": true
+            },
+            {
+              "name": "target_language",
+              "type": "String",
+              "description": "目标语种",
+              "demoValue": "es",
+              "required": true
+            },
+            {
+              "name": "app_name",
+              "type": "String",
+              "description": "业务场景 appName；示例不代表已获准的值",
+              "demoValue": "xiaoman",
+              "required": true
+            },
+            {
+              "name": "source_text",
+              "type": "String",
+              "description": "需要翻译的内容",
+              "demoValue": "this is a test text",
+              "required": true
+            },
+            {
+              "name": "format",
+              "type": "String",
+              "description": "html 或 text；query 仅支持 text",
+              "demoValue": "text",
+              "required": true
+            },
+            {
+              "name": "field_type",
+              "type": "String",
+              "description": "query、offer、title、message、feedback",
+              "demoValue": "title",
+              "required": true
+            },
+            {
+              "name": "param_map",
+              "type": "String",
+              "description": "业务透传参数（字符串）",
+              "demoValue": "{\"key\":\"value\"}",
+              "required": false
+            },
+            {
+              "name": "source_language",
+              "type": "String",
+              "description": "原始语种",
+              "demoValue": "en",
+              "required": true
+            }
+          ]
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "IcbuTranslateResultDTO[]",
+          "required": true,
+          "description": "逐项翻译结果",
+          "subParams": [
+            {
+              "name": "trans_engine",
+              "type": "String",
+              "description": "翻译引擎名称",
+              "demoValue": "ALI_TRANS",
+              "required": false
+            },
+            {
+              "name": "target_language",
+              "type": "String",
+              "description": "目标语种",
+              "demoValue": "es",
+              "required": false
+            },
+            {
+              "name": "app_name",
+              "type": "String",
+              "description": "业务场景 appName；示例不代表已获准的值",
+              "demoValue": "oneVegetable",
+              "required": false
+            },
+            {
+              "name": "source_text",
+              "type": "String",
+              "description": "需要翻译的内容",
+              "demoValue": "A cotton T-shirt.",
+              "required": false
+            },
+            {
+              "name": "format",
+              "type": "String",
+              "description": "html 或 text；query 仅支持 text",
+              "demoValue": "text",
+              "required": false
+            },
+            {
+              "name": "field_type",
+              "type": "String",
+              "description": "query、offer、title、message、feedback",
+              "demoValue": "title",
+              "required": false
+            },
+            {
+              "name": "param_map",
+              "type": "String",
+              "description": "业务透传参数（字符串）",
+              "demoValue": "{\"key\":\"value\"}",
+              "required": false
+            },
+            {
+              "name": "source_language",
+              "type": "String",
+              "description": "原始语种",
+              "demoValue": "en",
+              "required": false
+            },
+            {
+              "name": "translate_result_text",
+              "type": "String",
+              "required": false,
+              "description": "译文",
+              "demoValue": "Una camiseta de algodón."
+            },
+            {
+              "name": "trace_id",
+              "type": "String",
+              "required": false,
+              "description": "平台追踪 ID",
+              "demoValue": "fixture-trace"
+            },
+            {
+              "name": "ext",
+              "type": "String",
+              "required": false,
+              "description": "扩展信息"
+            },
+            {
+              "name": "trans_char",
+              "type": "Number",
+              "required": false,
+              "description": "翻译字符数",
+              "demoValue": "17"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "单项业务是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "error_code",
+              "type": "ErrorCode",
+              "required": false,
+              "description": "业务错误",
+              "subParams": [
+                {
+                  "name": "code",
+                  "type": "String",
+                  "required": false,
+                  "description": "错误码"
+                },
+                {
+                  "name": "display_text",
+                  "type": "String",
+                  "required": false,
+                  "description": "错误描述"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "responseExample": null
+    },
     {
       "method": "alibaba.icbu.category.attr.get",
       "source": "catalog",

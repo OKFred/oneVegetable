@@ -1,0 +1,40 @@
+{
+  "request": {
+    "icbu_translate_task_dto": [
+      {
+        "trans_engine": "ALI_TRANS",
+        "target_language": "es",
+        "app_name": "oneVegetable",
+        "source_text": "A cotton T-shirt.",
+        "format": "text",
+        "field_type": "title",
+        "source_language": "en"
+      }
+    ]
+  },
+  "response": {
+    "result": [
+      {
+        "trans_engine": "ALI_TRANS",
+        "target_language": "es",
+        "app_name": "oneVegetable",
+        "source_text": "A cotton T-shirt.",
+        "format": "text",
+        "field_type": "title",
+        "source_language": "en",
+        "translate_result_text": "Una camiseta de algodón.",
+        "success": true,
+        "trace_id": "fixture-trace",
+        "trans_char": 17
+      }
+    ]
+  },
+  "permissionError": {
+    "error_response": {
+      "code": 11,
+      "msg": "Insufficient permissions",
+      "sub_code": "isv.permission-api-package-limit",
+      "sub_msg": "ICBU translation permission is unavailable"
+    }
+  }
+}
