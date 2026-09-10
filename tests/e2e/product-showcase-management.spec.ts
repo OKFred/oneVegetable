@@ -12,7 +12,9 @@ test('showcase drawer confirms removal and addition without changing product lis
   await expect(drawer.getByText('总额度 2 · 已用 1 · 剩余 1')).toBeVisible();
   await confirmation.getByRole('button', { name: '确认', exact: true }).click();
   await expect(drawer.getByText('总额度 2 · 已用 0 · 剩余 2')).toBeVisible();
+  await expect(confirmation).toHaveCount(0);
   await page.keyboard.press('Escape');
+  await expect(drawer).toHaveCount(0);
   await page.getByRole('checkbox', { name: '选择 Portable solar power station 1000W', exact: true }).check();
   await page.getByRole('button', { name: '更多', exact: true }).click();
   await page.getByRole('menuitem', { name: '加入橱窗', exact: true }).click();
@@ -20,7 +22,9 @@ test('showcase drawer confirms removal and addition without changing product lis
   await expect(add).toBeVisible();
   await add.getByRole('button', { name: '确认', exact: true }).click();
   await expect(drawer.getByText('总额度 2 · 已用 1 · 剩余 1')).toBeVisible();
+  await expect(add).toHaveCount(0);
   await page.keyboard.press('Escape');
+  await expect(drawer).toHaveCount(0);
   await page.getByRole('button', { name: '显示列', exact: true }).click();
   await page.getByRole('checkbox', { name: '橱窗', exact: true }).check();
   await page.keyboard.press('Escape');
