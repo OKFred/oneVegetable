@@ -1,4 +1,5 @@
 import { AwsClient } from 'aws4fetch';
+import type { GalleryRequestOptions } from './gallery-transfer-context';
 
 import { NativeFetchTransport, NetworkManager, type NetworkTransport } from './network';
 
@@ -6,6 +7,7 @@ const MAX_GALLERY_OBJECT_BYTES = 5 * 1024 * 1024;
 const MAX_LIST_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 export interface S3StorageConfiguration {
+  allowInsecureLocal?: boolean;
   endpoint: string;
   region: string;
   bucket: string;
@@ -60,17 +62,23 @@ export interface S3StorageControl {
   ): Promise<S3StorageConfigurationSummary>;
   clearS3StorageConfiguration(revision: number): Promise<void>;
   testS3StorageConnection(): Promise<{ connected: boolean; visibleObjectCount: number }>;
-  listS3Objects(input?: {
-    prefix?: string;
-    continuationToken?: string;
-    maximum?: number;
-  }): Promise<S3ObjectPage>;
-  getS3Object(key: string): Promise<S3ObjectContent>;
-  putS3Object(input: {
-    key: string;
-    bytes: Uint8Array;
-    contentType: string;
-  }): Promise<{ key: string; etag: string | null }>;
+  listS3Objects(
+    input?: {
+      prefix?: string;
+      continuationToken?: string;
+      maximum?: number;
+    },
+    options?: GalleryRequestOptions
+  ): Promise<S3ObjectPage>;
+  getS3Object(key: string, options?: GalleryRequestOptions): Promise<S3ObjectContent>;
+  putS3Object(
+    input: {
+      key: string;
+      bytes: Uint8Array;
+      contentType: string;
+    },
+    options?: GalleryRequestOptions
+  ): Promise<{ key: string; etag: string | null }>;
 }
 
 export function s3PermissionOrigins(configuration: S3StorageConfiguration): string[] {
@@ -231,7 +239,13 @@ export function validateS3StorageConfiguration(value: S3StorageConfiguration): S
     throw new Error('S3 Endpoint 地址无效');
   }
   if (
-    endpoint.protocol !== 'https:' ||
+    (endpoint.protocol !== 'https:' &&
+      !(
+        value.allowInsecureLocal === true &&
+        value.pathStyle &&
+        endpoint.protocol === 'http:' &&
+        isPrivateS3Host(endpoint.hostname)
+      )) ||
     endpoint.username ||
     endpoint.password ||
     endpoint.search ||
@@ -254,7 +268,8 @@ export function validateS3StorageConfiguration(value: S3StorageConfiguration): S
     secretAccessKey: value.secretAccessKey,
     sessionToken: value.sessionToken?.trim() ? value.sessionToken.trim() : null,
     pathStyle: value.pathStyle,
-    rootPrefix: normalizeS3Key(value.rootPrefix, true)
+    rootPrefix: normalizeS3Key(value.rootPrefix, true),
+    ...(value.allowInsecureLocal === true ? { allowInsecureLocal: true } : {})
   };
 }
 
@@ -269,7 +284,8 @@ export function parseS3StorageConfiguration(value: unknown): S3StorageConfigurat
     typeof value.secretAccessKey !== 'string' ||
     !(sessionToken === null || typeof sessionToken === 'string') ||
     typeof value.pathStyle !== 'boolean' ||
-    typeof value.rootPrefix !== 'string'
+    typeof value.rootPrefix !== 'string' ||
+    (value.allowInsecureLocal !== undefined && typeof value.allowInsecureLocal !== 'boolean')
   ) {
     throw new Error('S3 配置字段无效');
   }
@@ -281,7 +297,8 @@ export function parseS3StorageConfiguration(value: unknown): S3StorageConfigurat
     secretAccessKey: value.secretAccessKey,
     sessionToken,
     pathStyle: value.pathStyle,
-    rootPrefix: value.rootPrefix
+    rootPrefix: value.rootPrefix,
+    ...(value.allowInsecureLocal === true ? { allowInsecureLocal: true } : {})
   });
 }
 
@@ -301,7 +318,17 @@ function parseListObjectsV2(xml: string): S3ObjectPage {
   });
   const truncated = xmlText(xml, 'IsTruncated').toLocaleLowerCase() === 'true';
   const token = xmlText(xml, 'NextContinuationToken');
+  if (truncated && !token) throw new Error('S3_PAGINATION_INCOMPLETE');
   return { items, nextContinuationToken: truncated && token ? token : null };
+}
+
+export function isPrivateS3Host(host: string): boolean {
+  // Literal RFC1918 IPv4 only: no DNS rebinding, loopback, link-local or metadata targets.
+  const parts = host.split('.');
+  if (parts.length !== 4 || parts.some((part) => !/^\d{1,3}$/u.test(part) || Number(part) > 255))
+    return false;
+  const [a, b] = parts.map(Number);
+  return a === 10 || (a === 172 && b !== undefined && b >= 16 && b <= 31) || (a === 192 && b === 168);
 }
 
 function xmlText(xml: string, tag: string): string {

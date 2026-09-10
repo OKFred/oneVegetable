@@ -393,6 +393,7 @@ export class StoredAlibabaCredentialProvider {
       appKey: bundle.application.appKey,
       appSecret: bundle.application.appSecret,
       accessToken: bundle.oauth.accessToken,
+      galleryAccountGeneration: bundle.capturedAtUtc,
       endpoint: this.#endpoint.href,
       signMethod: this.#signMethod
     };

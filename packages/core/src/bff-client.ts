@@ -2,6 +2,7 @@ import { GatewayException } from './errors';
 import { notifyBffAuthenticationRequired } from './bff-authentication';
 import { createRequestId, NetworkManager } from './network';
 import { DEFAULT_API_PREFIX, normalizeApiPrefix } from './api-contract';
+import { requireGalleryContext, type GalleryRequestOptions } from './gallery-transfer-context';
 
 import type { ApiResponse } from './api-contract';
 import type { BffAuthenticationRequiredHandler } from './bff-authentication';
@@ -49,9 +50,35 @@ export class BffGatewayClient implements GatewayClient {
     });
   }
 
-  async request<K extends OperationId>(operation: K, request: RequestOf<K>): Promise<ResponseOf<K>> {
-    const payload = request ?? {};
+  async galleryTransferContext() {
     const requestId = createRequestId();
+    const response = await this.#network.request({
+      service: 'bff',
+      url: new URL('./gallery-transfers/context/get', new URL('../', this.#endpoint)),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      requestId,
+      body: JSON.stringify({ requestId }),
+      responseType: 'json'
+    });
+    if (!isApiResponse(response.data) || response.data.requestId !== requestId)
+      throw new GatewayException(
+        { code: 'INVALID_BFF_RESPONSE', message: 'INVALID_BFF_RESPONSE', retryable: false },
+        requestId
+      );
+    if (!response.data.ok) {
+      notifyBffAuthenticationRequired(this.#onAuthenticationRequired, response.data.error, requestId);
+      throw new GatewayException(response.data.error, requestId);
+    }
+    return requireGalleryContext(response.data.data);
+  }
+  async request<K extends OperationId>(
+    operation: K,
+    request: RequestOf<K>,
+    options?: GalleryRequestOptions
+  ): Promise<ResponseOf<K>> {
+    const payload = request ?? {};
+    const requestId = options?.requestId ?? createRequestId();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     const csrfToken = this.#csrfToken?.();
     if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
@@ -61,7 +88,12 @@ export class BffGatewayClient implements GatewayClient {
       method: 'POST',
       headers,
       requestId,
-      body: JSON.stringify({ requestId, operation, payload }),
+      body: JSON.stringify({
+        requestId,
+        operation,
+        payload,
+        ...(options?.galleryContext ? { galleryContext: options.galleryContext } : {})
+      }),
       responseType: 'json'
     });
     if (!isApiResponse(response.data) || response.data.requestId !== response.requestId) {

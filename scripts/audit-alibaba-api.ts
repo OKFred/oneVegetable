@@ -226,14 +226,39 @@ async function fetchInBatches<T, R>(
 
 const jsonPath = resolve(root, 'docs/alibaba-api-audit.json');
 const tsPath = resolve(root, 'packages/core/src/generated/capabilities.ts');
+const supplements = JSON.parse(
+  await readFile(resolve(root, 'docs/alibaba-api-supplements.json'), 'utf8')
+) as { entries: AuditEntry[] };
+function includeSupplements(entries: AuditEntry[]): AuditEntry[] {
+  for (const supplement of supplements.entries) {
+    const existing = entries.find((entry) => entry.method === supplement.method);
+    if (existing && existing.docUrl !== supplement.docUrl) {
+      throw new Error(`Reconcile catalog and supplemental evidence before replacing ${supplement.method}`);
+    }
+  }
+  return [
+    ...entries.filter((entry) => !supplements.entries.some((item) => item.method === entry.method)),
+    ...supplements.entries
+  ].sort((left, right) => left.method.localeCompare(right.method));
+}
 
-if (process.argv.includes('--check')) {
+if (process.argv.includes('--offline')) {
+  const snapshot = JSON.parse(await readFile(jsonPath, 'utf8')) as {
+    checkedAt: string;
+    entries: AuditEntry[];
+  };
+  const entries = includeSupplements(snapshot.entries);
+  await writeFile(jsonPath, `${JSON.stringify({ ...snapshot, count: entries.length, entries }, null, 2)}\n`);
+  await writeFile(tsPath, generatedCapabilities(entries));
+} else if (process.argv.includes('--check')) {
   const currentJson = await readFile(jsonPath, 'utf8');
   const snapshot = JSON.parse(currentJson) as { count: number; entries: AuditEntry[] };
   if (snapshot.count !== snapshot.entries.length) {
     throw new Error('Alibaba API audit snapshot count does not match its entries');
   }
   const currentTs = await readFile(tsPath, 'utf8');
+  if (JSON.stringify(snapshot.entries) !== JSON.stringify(includeSupplements(snapshot.entries)))
+    throw new Error('API supplement snapshot drift');
   if (currentTs !== generatedCapabilities(snapshot.entries)) {
     throw new Error('Generated API capabilities are stale; run pnpm audit:apis');
   }
@@ -311,9 +336,7 @@ if (process.argv.includes('--check')) {
     } satisfies AuditEntry;
   });
 
-  const entries = audited
-    .filter((entry): entry is AuditEntry => entry !== null)
-    .sort((left, right) => left.method.localeCompare(right.method));
+  const entries = includeSupplements(audited.filter((entry): entry is AuditEntry => entry !== null));
   const json = `${JSON.stringify({ checkedAt, count: entries.length, entries }, null, 2)}\n`;
   await Promise.all([
     writeFile(jsonPath, json, 'utf8'),

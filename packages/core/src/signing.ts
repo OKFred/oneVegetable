@@ -60,7 +60,7 @@ export function createAlibabaRequest(
     app_key: credentials.appKey,
     format: 'json',
     method,
-    session: credentials.accessToken,
+    session: method === 'alibaba.icbu.text.trans' ? undefined : credentials.accessToken,
     sign_method: credentials.signMethod,
     simplify: true,
     timestamp: formatAlibabaTimestamp(now),

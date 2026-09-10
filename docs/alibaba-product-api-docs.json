@@ -1,8 +1,305 @@
 {
   "checkedAt": "2026-08-12",
-  "catalogCount": 25,
+  "catalogCount": 27,
   "articleCount": 2,
   "definitions": [
+    {
+      "method": "alibaba.icbu.product.country.getcountrylist",
+      "source": "catalog",
+      "docUrl": "https://open.taobao.com/api.htm",
+      "title": "国际站获取商品国家列表",
+      "description": "免费，必须用户授权。按大洲返回国家及热门国家；不是商品可售国家或物流可达性。来源为用户提供的官方文档全文，尚未提供详情 docId。",
+      "lifecycle": "active",
+      "risk": "read",
+      "labels": ["￥免费", "必须用户授权"],
+      "checkedAt": "2026-09-10",
+      "updatedAt": null,
+      "requestParams": [
+        {
+          "name": "country_request",
+          "type": "ProductTopRequest",
+          "required": true,
+          "description": "请求对象；官方 curl 的 '-' 不是有效对象示例",
+          "subParams": [
+            {
+              "name": "language",
+              "type": "String",
+              "required": false,
+              "description": "返回结果语种；文档示例 zh_cn"
+            }
+          ]
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "trace_id",
+          "type": "String",
+          "required": false,
+          "description": "平台追踪码"
+        },
+        {
+          "name": "data",
+          "type": "ContinentDTO[]",
+          "required": false,
+          "description": "按大洲分组，JSON 示例带 DTO 包装",
+          "subParams": [
+            {
+              "name": "continent_code",
+              "type": "String",
+              "required": false,
+              "description": "大洲代码"
+            },
+            {
+              "name": "continent_name",
+              "type": "String",
+              "required": false,
+              "description": "大洲名称"
+            },
+            {
+              "name": "country_list",
+              "type": "CountryDTO[]",
+              "required": false,
+              "description": "国家列表",
+              "subParams": [
+                {
+                  "name": "country_code",
+                  "type": "String",
+                  "required": false,
+                  "description": "国家代码"
+                },
+                {
+                  "name": "country_name",
+                  "type": "String",
+                  "required": false,
+                  "description": "国家名称"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "biz_success",
+          "type": "Boolean",
+          "required": true,
+          "description": "业务是否成功"
+        },
+        {
+          "name": "message",
+          "type": "String",
+          "required": false,
+          "description": "错误信息"
+        },
+        {
+          "name": "msg_code",
+          "type": "String",
+          "required": false,
+          "description": "错误码，以分号分隔"
+        }
+      ],
+      "errorCodes": [],
+      "responseExample": null
+    },
+    {
+      "method": "alibaba.icbu.text.trans",
+      "source": "catalog",
+      "docId": 67157,
+      "docUrl": "https://open.taobao.com/api.htm?docId=67157&docType=2",
+      "title": "ICBU 文本翻译",
+      "description": "免费、不需用户授权；应用需具备 ICBU翻译能力。app_name 为业务场景标识，不能假定示例 xiaoman 或应用展示名已获准。",
+      "lifecycle": "active",
+      "risk": "read",
+      "labels": ["￥免费", "不需用户授权"],
+      "checkedAt": "2026-09-10",
+      "updatedAt": null,
+      "requestParams": [
+        {
+          "name": "icbu_translate_task_dto",
+          "type": "IcbuTranslateTaskDTO[]",
+          "required": true,
+          "description": "翻译任务数组；参数表与 Java 单对象示例不一致，按参数表处理并真实验证",
+          "subParams": [
+            {
+              "name": "trans_engine",
+              "type": "String",
+              "description": "翻译引擎名称",
+              "demoValue": "ALI_TRANS",
+              "required": true
+            },
+            {
+              "name": "target_language",
+              "type": "String",
+              "description": "目标语种",
+              "demoValue": "es",
+              "required": true
+            },
+            {
+              "name": "app_name",
+              "type": "String",
+              "description": "业务场景 appName；示例不代表已获准的值",
+              "demoValue": "xiaoman",
+              "required": true
+            },
+            {
+              "name": "source_text",
+              "type": "String",
+              "description": "需要翻译的内容",
+              "demoValue": "this is a test text",
+              "required": true
+            },
+            {
+              "name": "format",
+              "type": "String",
+              "description": "html 或 text；query 仅支持 text",
+              "demoValue": "text",
+              "required": true
+            },
+            {
+              "name": "field_type",
+              "type": "String",
+              "description": "query、offer、title、message、feedback",
+              "demoValue": "title",
+              "required": true
+            },
+            {
+              "name": "param_map",
+              "type": "String",
+              "description": "业务透传参数（字符串）",
+              "demoValue": "{\"key\":\"value\"}",
+              "required": false
+            },
+            {
+              "name": "source_language",
+              "type": "String",
+              "description": "原始语种",
+              "demoValue": "en",
+              "required": true
+            }
+          ]
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "IcbuTranslateResultDTO[]",
+          "required": true,
+          "description": "逐项翻译结果",
+          "subParams": [
+            {
+              "name": "trans_engine",
+              "type": "String",
+              "description": "翻译引擎名称",
+              "demoValue": "ALI_TRANS",
+              "required": false
+            },
+            {
+              "name": "target_language",
+              "type": "String",
+              "description": "目标语种",
+              "demoValue": "es",
+              "required": false
+            },
+            {
+              "name": "app_name",
+              "type": "String",
+              "description": "业务场景 appName；示例不代表已获准的值",
+              "demoValue": "oneVegetable",
+              "required": false
+            },
+            {
+              "name": "source_text",
+              "type": "String",
+              "description": "需要翻译的内容",
+              "demoValue": "A cotton T-shirt.",
+              "required": false
+            },
+            {
+              "name": "format",
+              "type": "String",
+              "description": "html 或 text；query 仅支持 text",
+              "demoValue": "text",
+              "required": false
+            },
+            {
+              "name": "field_type",
+              "type": "String",
+              "description": "query、offer、title、message、feedback",
+              "demoValue": "title",
+              "required": false
+            },
+            {
+              "name": "param_map",
+              "type": "String",
+              "description": "业务透传参数（字符串）",
+              "demoValue": "{\"key\":\"value\"}",
+              "required": false
+            },
+            {
+              "name": "source_language",
+              "type": "String",
+              "description": "原始语种",
+              "demoValue": "en",
+              "required": false
+            },
+            {
+              "name": "translate_result_text",
+              "type": "String",
+              "required": false,
+              "description": "译文",
+              "demoValue": "Una camiseta de algodón."
+            },
+            {
+              "name": "trace_id",
+              "type": "String",
+              "required": false,
+              "description": "平台追踪 ID",
+              "demoValue": "fixture-trace"
+            },
+            {
+              "name": "ext",
+              "type": "String",
+              "required": false,
+              "description": "扩展信息"
+            },
+            {
+              "name": "trans_char",
+              "type": "Number",
+              "required": false,
+              "description": "翻译字符数",
+              "demoValue": "17"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "单项业务是否成功",
+              "demoValue": "true"
+            },
+            {
+              "name": "error_code",
+              "type": "ErrorCode",
+              "required": false,
+              "description": "业务错误",
+              "subParams": [
+                {
+                  "name": "code",
+                  "type": "String",
+                  "required": false,
+                  "description": "错误码"
+                },
+                {
+                  "name": "display_text",
+                  "type": "String",
+                  "required": false,
+                  "description": "错误描述"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "responseExample": null
+    },
     {
       "method": "alibaba.icbu.category.attr.get",
       "source": "catalog",

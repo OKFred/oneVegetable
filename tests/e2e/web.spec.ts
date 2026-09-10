@@ -4,6 +4,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { unzipSync } from 'fflate';
 
 import rootPackage from '../../package.json' with { type: 'json' };
+import { listCapabilities } from '../../packages/core/src/capability-registry';
 
 const APP_PREFERENCES_STORAGE_KEY = 'one-vegetable:preferences:v2';
 
@@ -220,7 +221,7 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await page.getByRole('link', { name: 'API 能力' }).click();
   await expect(page.getByRole('heading', { name: 'API 能力目录' })).toBeVisible();
   await expect(page.locator('tbody tr')).toHaveCount(10);
-  await expect(page.getByText('共 86 条，当前 1–10 条')).toBeVisible();
+  await expect(page.getByText(`共 ${listCapabilities().length} 条，当前 1–10 条`)).toBeVisible();
   await page.getByRole('button', { name: '下一页' }).click();
   await expect(page.getByText('第 2 / 9 页')).toBeVisible();
   await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.category.attr.get');

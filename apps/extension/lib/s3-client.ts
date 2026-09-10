@@ -1,17 +1,20 @@
 import { browser } from 'wxt/browser';
+import type { GalleryRequestOptions } from '@one-vegetable/core/gallery-transfer-context';
 import { decodeBase64, encodeBase64, GatewayException } from '@one-vegetable/core/runtime';
 import { s3PermissionOrigins, type S3StorageControl } from '@one-vegetable/core/s3-storage';
 import { validS3Output, type S3MessageMap, type S3Operation } from './s3-protocol';
 
 export async function requestS3<T extends S3Operation>(
   operation: T,
-  payload: S3MessageMap[T]['input']
+  payload: S3MessageMap[T]['input'],
+  options?: GalleryRequestOptions
 ): Promise<S3MessageMap[T]['output']> {
-  const requestId = crypto.randomUUID();
+  const requestId = options?.requestId ?? crypto.randomUUID();
   const response: unknown = await browser.runtime.sendMessage({
     kind: 's3-storage-request',
     requestId,
     operation,
+    ...(options?.galleryContext ? { galleryContext: options.galleryContext } : {}),
     payload
   });
   if (
@@ -63,9 +66,9 @@ export const extensionS3Storage: S3StorageControl = {
     await requestS3('clear', { revision });
   },
   testS3StorageConnection: () => requestS3('test', {}),
-  listS3Objects: (input = {}) => requestS3('list', input),
-  async getS3Object(key) {
-    const result = await requestS3('get', { key });
+  listS3Objects: (input = {}, options) => requestS3('list', input, options),
+  async getS3Object(key, options) {
+    const result = await requestS3('get', { key }, options);
     const bytes = decodeBase64(result.contentBase64);
     if (bytes.byteLength !== result.byteLength || bytes.byteLength > 5 * 1024 * 1024)
       throw new GatewayException({
@@ -75,6 +78,6 @@ export const extensionS3Storage: S3StorageControl = {
       });
     return { key: result.key, bytes, contentType: result.contentType, etag: result.etag };
   },
-  putS3Object: ({ key, bytes, contentType }) =>
-    requestS3('put', { key, contentBase64: encodeBase64(bytes), contentType })
+  putS3Object: ({ key, bytes, contentType }, options) =>
+    requestS3('put', { key, contentBase64: encodeBase64(bytes), contentType }, options)
 };

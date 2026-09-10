@@ -1,0 +1,44 @@
+{
+  "request": {
+    "country_request": {
+      "language": "zh_cn"
+    }
+  },
+  "response": {
+    "trace_id": "fixture-country-trace",
+    "data": {
+      "continent_d_t_o": [
+        {
+          "continent_code": "NA",
+          "continent_name": "北美洲",
+          "country_list": {
+            "country_d_t_o": [
+              {
+                "country_code": "US",
+                "country_name": "美国"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "biz_success": true
+  },
+  "simplifiedResponse": {
+    "biz_success": true,
+    "trace_id": "fixture-simple-country",
+    "data": [
+      {
+        "continent_code": "NA",
+        "continent_name": "北美洲",
+        "country_list": [{ "country_code": "US", "country_name": "美国" }]
+      }
+    ]
+  },
+  "failure": {
+    "biz_success": false,
+    "msg_code": "SYS_ERROR",
+    "message": "系统异常，请稍后再试",
+    "trace_id": "fixture-failure"
+  }
+}

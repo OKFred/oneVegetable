@@ -1,6 +1,6 @@
 # 2.5.0 候选包验收
 
-本版本尚未提交 Chrome Web Store，不代表已上架或 Worker 已部署。
+项目所有者于 2026-09-09 确认本版本已在 Chrome Web Store 上架；这不代表 Worker 已部署。
 
 ## 范围
 
@@ -23,4 +23,4 @@
 
 候选包通过后仍按 feature → staging → master → annotated tag / GitHub Release 流程发布。先核对最终 SHA-256，再上传商店；不移动或复用 v2.4.0。
 
-正式提交前仍需在未预授权的 Chrome 中点击 S3“加密保存”，人工允许精确域名并确认成功提示。本轮原生弹窗等待超时，未将其记作已通过。
+2026-09-08 已补齐正式包原生权限验收：用户允许精确 S3 域名后保存成功，真实 PUT/LIST/GET 与 SHA-256 回读通过，后台重启恢复通过，撤销权限后在出网前拒绝。报告标记 `production-optional-grant`；未执行 Alibaba mutation。上面的隔离副本记录保留为历史，不再是待验收阻断项。

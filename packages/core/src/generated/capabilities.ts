@@ -443,6 +443,26 @@ export const API_CAPABILITIES = [
     "responseSchema": "AlibabaProductAlibabaIcbuProductBatchUpdateDisplayResponse"
   },
   {
+    "method": "alibaba.icbu.product.country.getcountrylist",
+    "domain": "product",
+    "chargeLabel": "￥免费",
+    "auth": "required",
+    "jushitaOnly": false,
+    "restricted": false,
+    "restrictionReason": null,
+    "enabled": true,
+    "docUrl": "https://open.taobao.com/api.htm",
+    "checkedAt": "2026-09-10",
+    "updatedAt": null,
+    "source": "catalog",
+    "lifecycle": "active",
+    "risk": "read",
+    "verification": "account-verified",
+    "realCallEnabled": true,
+    "requestSchema": "AlibabaProductAlibabaIcbuProductCountryGetcountrylistRequest",
+    "responseSchema": "AlibabaProductAlibabaIcbuProductCountryGetcountrylistResponse"
+  },
+  {
     "method": "alibaba.icbu.product.get",
     "domain": "product",
     "chargeLabel": "￥开放平台免费API",
@@ -921,6 +941,26 @@ export const API_CAPABILITIES = [
     "realCallEnabled": false,
     "requestSchema": "AlibabaPlatformAlibabaIcbuTaskStatusNotifyRequest",
     "responseSchema": "AlibabaPlatformAlibabaIcbuTaskStatusNotifyResponse"
+  },
+  {
+    "method": "alibaba.icbu.text.trans",
+    "domain": "product",
+    "chargeLabel": "￥免费",
+    "auth": "none",
+    "jushitaOnly": false,
+    "restricted": false,
+    "restrictionReason": null,
+    "enabled": true,
+    "docUrl": "https://open.taobao.com/api.htm?docId=67157&docType=2",
+    "checkedAt": "2026-09-10",
+    "updatedAt": null,
+    "source": "catalog",
+    "lifecycle": "active",
+    "risk": "read",
+    "verification": "documented",
+    "realCallEnabled": true,
+    "requestSchema": "AlibabaProductAlibabaIcbuTextTransRequest",
+    "responseSchema": "AlibabaProductAlibabaIcbuTextTransResponse"
   },
   {
     "method": "alibaba.icbu.xiaoman.va.list",

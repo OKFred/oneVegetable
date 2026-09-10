@@ -1,6 +1,13 @@
 import { browser } from 'wxt/browser';
 
 import {
+  galleryGatewayId,
+  opaqueGalleryId,
+  requireGalleryContext,
+  assertGalleryContextId
+} from '@one-vegetable/core/gallery-transfer-context';
+import type { GalleryTransferContext } from '@one-vegetable/core/gallery-transfer-task';
+import {
   AlibabaClient,
   ALIBABA_GATEWAY,
   ALIBABA_SYNC_GATEWAY,
@@ -138,9 +145,55 @@ export default defineBackground({
         typeof value === 'object' &&
         value !== null &&
         'kind' in value &&
+        value.kind === 'gallery-transfer-context'
+      ) {
+        return (async () => {
+          const requestId =
+            'requestId' in value && isRequestId(value.requestId) ? value.requestId : crypto.randomUUID();
+          try {
+            if (!('requestId' in value) || !isRequestId(value.requestId))
+              throw gatewayFailure('INVALID_REQUEST_ID', 'INVALID_REQUEST_ID');
+            if (!trustedOptionsPage)
+              throw gatewayFailure('GALLERY_CONTEXT_UNTRUSTED', 'GALLERY_CONTEXT_UNTRUSTED');
+            await storageAccessReady;
+            return {
+              requestId,
+              ok: true,
+              data: {
+                identity: await opaqueGalleryId('extension:local-admin'),
+                gateway: await galleryGatewayId(await loadSettings()),
+                storage: await s3.contextId()
+              }
+            };
+          } catch (error) {
+            return { requestId, ok: false, error: normalizeGatewayError(error) };
+          }
+        })();
+      }
+      if (
+        typeof value === 'object' &&
+        value !== null &&
+        'kind' in value &&
         value.kind === 's3-storage-request'
       ) {
-        return storageAccessReady.then(() => s3.handle(value, trustedOptionsPage));
+        return storageAccessReady.then(async () => {
+          try {
+            if ('galleryContext' in value && value.galleryContext !== undefined) {
+              if (!trustedOptionsPage)
+                throw gatewayFailure('GALLERY_CONTEXT_UNTRUSTED', 'GALLERY_CONTEXT_UNTRUSTED');
+              const expected = requireGalleryContext(value.galleryContext);
+              assertGalleryContextId(expected.identity, await opaqueGalleryId('extension:local-admin'));
+              assertGalleryContextId(expected.gateway, await galleryGatewayId(await loadSettings()));
+            }
+            return await s3.handle(value, trustedOptionsPage);
+          } catch (error) {
+            return {
+              requestId: 'requestId' in value ? value.requestId : '',
+              ok: false,
+              error: normalizeGatewayError(error)
+            };
+          }
+        });
       }
       const acquisitionMessage = asAlibabaCredentialAcquisitionRequest(value);
       if (acquisitionMessage) {
@@ -523,7 +576,8 @@ async function handleRequest(message: RuntimeRequest, trustedOptionsPage: boolea
       message.payload,
       message.requestId,
       message.productMutationFingerprint,
-      trustedOptionsPage
+      trustedOptionsPage,
+      message.galleryContext
     );
     await safelyRecordDiagnostic({
       requestId: message.requestId,
@@ -570,7 +624,8 @@ async function executeOperation(
   payload: unknown,
   requestId: string,
   productMutationFingerprint: ProductMutationFingerprintSet | undefined,
-  trustedOptionsPage: boolean
+  trustedOptionsPage: boolean,
+  galleryContext?: GalleryTransferContext
 ): Promise<unknown> {
   if (operation === 'getDiagnostics') return getDiagnostics();
   if (operation === 'clearDiagnostics') {
@@ -587,6 +642,16 @@ async function executeOperation(
   }
 
   const settings = await loadSettings();
+  if (galleryContext) {
+    if (!trustedOptionsPage) throw gatewayFailure('GALLERY_CONTEXT_UNTRUSTED', 'GALLERY_CONTEXT_UNTRUSTED');
+    requireGalleryContext(galleryContext);
+    assertGalleryContextId(galleryContext.identity, await opaqueGalleryId('extension:local-admin'));
+    assertGalleryContextId(galleryContext.gateway, await galleryGatewayId(settings));
+    const currentS3 = new ExtensionS3Service(s3LocalStore, (origins) =>
+      browser.permissions.contains({ origins })
+    );
+    assertGalleryContextId(galleryContext.storage, await currentS3.contextId());
+  }
   assertCredentials(settings);
   const availability = resolveExtensionOperationAvailability(operation);
   if (!availability.allowed) {

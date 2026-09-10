@@ -1,4 +1,10 @@
 import { Hono } from 'hono';
+import {
+  opaqueGalleryId,
+  requireGalleryContext,
+  assertGalleryContextId,
+  type GalleryRequestOptions
+} from '@one-vegetable/core/gallery-transfer-context';
 import { cors } from 'hono/cors';
 
 import {
@@ -130,7 +136,12 @@ interface OperationCallBody extends RequestEnvelope, Record<string, unknown> {
 }
 
 interface DynamicGateway {
-  request(operation: OperationId, request: unknown, context?: { requestId: string }): Promise<unknown>;
+  galleryGatewayContextId?(): Promise<string>;
+  request(
+    operation: OperationId,
+    request: unknown,
+    context?: GalleryRequestOptions & { requestId: string }
+  ): Promise<unknown>;
 }
 
 export function createApiApp(options: ApiAppOptions): Hono {
@@ -306,6 +317,10 @@ export function createApiApp(options: ApiAppOptions): Hono {
     registerS3StorageRoutes(api, {
       authService: options.authService,
       service: options.s3Storage,
+      galleryGatewayContextId: () =>
+        dynamicGateway.galleryGatewayContextId
+          ? dynamicGateway.galleryGatewayContextId()
+          : opaqueGalleryId(`local:${options.gatewayMode}`),
       ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
     });
   }
@@ -390,9 +405,41 @@ export function createApiApp(options: ApiAppOptions): Hono {
     }
   });
 
+  api.post('/gallery-transfers/context/get', async (context) => {
+    const parsed = await parseEnvelope(context, ['requestId']);
+    if (!parsed.ok) return parsed.response;
+    try {
+      const session = options.authService ? await authenticateRequest(context, options.authService) : null;
+      if (!session) throw new AuthError('AUTH_REQUIRED', 'AUTH_REQUIRED', 401);
+      context.header('X-Request-ID', parsed.requestId);
+      return context.json({
+        requestId: parsed.requestId,
+        ok: true,
+        data: {
+          identity: await opaqueGalleryId(session.principal.actorId),
+          gateway: dynamicGateway.galleryGatewayContextId
+            ? await dynamicGateway.galleryGatewayContextId()
+            : await opaqueGalleryId(`local:${options.gatewayMode}`),
+          storage: (await options.s3Storage?.galleryStorageContextId()) ?? null
+        }
+      });
+    } catch (error) {
+      if (error instanceof AuthError)
+        return failure(context, parsed.requestId, error.status, {
+          code: error.code,
+          message: error.message,
+          retryable: false
+        });
+      return failure(context, parsed.requestId, 503, {
+        code: 'GALLERY_CONTEXT_UNAVAILABLE',
+        message: 'GALLERY_CONTEXT_UNAVAILABLE',
+        retryable: false
+      });
+    }
+  });
   api.post('/operations/call', async (context) => {
     const startedAt = (options.clock ?? Date.now)();
-    const parsed = await parseEnvelope(context, ['requestId', 'operation', 'payload']);
+    const parsed = await parseEnvelope(context, ['requestId', 'operation', 'payload', 'galleryContext']);
     if (!parsed.ok) return parsed.response;
     if (options.gatewayMode === 'disabled') {
       logRequest(options, parsed.requestId, 'operations/call', 'denied', 503, startedAt);
@@ -461,6 +508,24 @@ export function createApiApp(options: ApiAppOptions): Hono {
           });
         }
       }
+      const galleryContext =
+        parsed.body.galleryContext === undefined
+          ? undefined
+          : requireGalleryContext(parsed.body.galleryContext);
+      if (galleryContext) {
+        if (!authenticated) throw new AuthError('AUTH_REQUIRED', 'AUTH_REQUIRED', 401);
+        assertGalleryContextId(
+          galleryContext.identity,
+          await opaqueGalleryId(authenticated.principal.actorId)
+        );
+        if (!dynamicGateway.galleryGatewayContextId && options.gatewayMode === 'real')
+          throw new AuthError('GALLERY_CONTEXT_UNAVAILABLE', 'GALLERY_CONTEXT_UNAVAILABLE', 503);
+        assertGalleryContextId(
+          galleryContext.storage,
+          (await options.s3Storage?.galleryStorageContextId()) ?? null
+        );
+      }
+      const transferOptions = { requestId: parsed.requestId, ...(galleryContext ? { galleryContext } : {}) };
       const data = productMutations
         ? parsed.body.operation === 'publishProduct' || parsed.body.operation === 'saveProductDraft'
           ? await productMutations.submitCreation({
@@ -482,10 +547,10 @@ export function createApiApp(options: ApiAppOptions): Hono {
                   request: parsed.body.payload as unknown as ProductDisplayRequest
                 })
               : await dynamicGateway.request(parsed.body.operation, parsed.body.payload, {
-                  requestId: parsed.requestId
+                  ...transferOptions
                 })
         : await dynamicGateway.request(parsed.body.operation, parsed.body.payload, {
-            requestId: parsed.requestId
+            ...transferOptions
           });
       if (options.authService && authenticated) {
         await auditOperation(

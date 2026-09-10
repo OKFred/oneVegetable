@@ -163,6 +163,8 @@ export const settings = {
   },
   ...{
     s3: {
+      localHttp:
+        '仅在可信局域网使用 HTTP，流量未加密。只允许私有 IPv4 和 path-style；本地 Node 需显式开启，云端 Worker 不支持。',
       title: 'S3 素材存储',
       extensionDescription:
         '插件独立连接 S3，无需部署后端。密钥在本机加密保存，由后台签名；不另设口令，不能防止浏览器配置文件被入侵。保存时仅申请对应存储域名权限。传输时请保持工作台打开；中断后先核对结果，不会自动重传。',

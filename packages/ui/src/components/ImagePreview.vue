@@ -164,7 +164,7 @@ function handleKeydown(event: KeyboardEvent): void {
               :key="current.id"
               :src="current.src"
               :alt="current.alt"
-              class="max-h-full max-w-full select-none object-contain transition-transform duration-200 ease-out"
+              class="h-full w-full select-none object-contain transition-transform duration-200 ease-out"
               :style="imageStyle"
               draggable="false"
               @dblclick="toggleZoom"

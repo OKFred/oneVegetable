@@ -1,3 +1,4 @@
+import type { GalleryRequestOptions } from './gallery-transfer-context';
 import { DEFAULT_API_PREFIX, normalizeApiPrefix } from './api-contract';
 import { notifyBffAuthenticationRequired } from './bff-authentication';
 import { GatewayException } from './errors';
@@ -288,17 +289,23 @@ export interface ControlClient {
   ): Promise<S3StorageConfigurationSummary>;
   clearS3StorageConfiguration?(revision: number): Promise<void>;
   testS3StorageConnection?(): Promise<{ connected: boolean; visibleObjectCount: number }>;
-  listS3Objects?(input?: {
-    prefix?: string;
-    continuationToken?: string;
-    maximum?: number;
-  }): Promise<S3ObjectPage>;
-  getS3Object?(key: string): Promise<S3ObjectContent>;
-  putS3Object?(input: {
-    key: string;
-    bytes: Uint8Array;
-    contentType: string;
-  }): Promise<{ key: string; etag: string | null }>;
+  listS3Objects?(
+    input?: {
+      prefix?: string;
+      continuationToken?: string;
+      maximum?: number;
+    },
+    options?: GalleryRequestOptions
+  ): Promise<S3ObjectPage>;
+  getS3Object?(key: string, options?: GalleryRequestOptions): Promise<S3ObjectContent>;
+  putS3Object?(
+    input: {
+      key: string;
+      bytes: Uint8Array;
+      contentType: string;
+    },
+    options?: GalleryRequestOptions
+  ): Promise<{ key: string; etag: string | null }>;
   startAlibabaCredentialAcquisition?(input: {
     account: string;
     password: string;
@@ -657,33 +664,38 @@ export class BffControlClient implements ControlClient {
   }
 
   listS3Objects(
-    input: { prefix?: string; continuationToken?: string; maximum?: number } = {}
+    input: { prefix?: string; continuationToken?: string; maximum?: number } = {},
+    options?: GalleryRequestOptions
   ): Promise<S3ObjectPage> {
-    return this.#call('/admin/storage/s3/objects/list', input);
+    return this.#call('/admin/storage/s3/objects/list', { ...input, ...options });
   }
 
-  async getS3Object(key: string): Promise<S3ObjectContent> {
+  async getS3Object(key: string, options?: GalleryRequestOptions): Promise<S3ObjectContent> {
     const result = await this.#call<{
       key: string;
       contentBase64: string;
       contentType: string | null;
       byteLength: number;
       etag: string | null;
-    }>('/admin/storage/s3/objects/get', { key });
+    }>('/admin/storage/s3/objects/get', { key, ...options });
     const bytes = decodeBase64(result.contentBase64);
     if (bytes.byteLength !== result.byteLength) throw new Error('S3 对象长度校验失败');
     return { key: result.key, bytes, contentType: result.contentType, etag: result.etag };
   }
 
-  putS3Object(input: {
-    key: string;
-    bytes: Uint8Array;
-    contentType: string;
-  }): Promise<{ key: string; etag: string | null }> {
+  putS3Object(
+    input: {
+      key: string;
+      bytes: Uint8Array;
+      contentType: string;
+    },
+    options?: GalleryRequestOptions
+  ): Promise<{ key: string; etag: string | null }> {
     return this.#call('/admin/storage/s3/objects/put', {
       key: input.key,
       contentBase64: encodeBase64(input.bytes),
-      contentType: input.contentType
+      contentType: input.contentType,
+      ...options
     });
   }
 
@@ -827,7 +839,7 @@ export class BffControlClient implements ControlClient {
   }
 
   async #call<T>(path: string, body: Record<string, unknown>): Promise<T> {
-    const requestId = createRequestId();
+    const requestId = typeof body.requestId === 'string' ? body.requestId : createRequestId();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     const csrfToken = this.csrfToken();
     if (csrfToken) headers['X-CSRF-Token'] = csrfToken;

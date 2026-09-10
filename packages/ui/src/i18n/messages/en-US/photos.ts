@@ -1,4 +1,56 @@
 export const photos = {
+  tasks: {
+    retention: '100 tasks max. Keep unresolved records; clear terminal records after 30 days.',
+    title: 'Transfer history',
+    boundary: 'Continues across dialogs and navigation. After reload, confirm to resume. Local history only.',
+    created: 'Task created. See Transfer history for progress.',
+    preview: 'Frozen execution plan:',
+    filter: 'Task status',
+    all: 'All',
+    refresh: 'Refresh',
+    empty: 'No transfer tasks yet',
+    detail: 'Task details',
+    changedContext: 'Account or configuration changed. This task is read-only.',
+    newPreview: 'New preview',
+    progress: 'Gallery transfer {count}/{total}',
+    pause: 'Pause',
+    resume: 'Resume / retry confirmed failures',
+    verify: 'Verify results',
+    cancel: 'Cancel remaining work',
+    remove: 'Clear record',
+    report: 'Export redacted report',
+    reselect: 'Reselect original ZIP',
+    archiveReady: 'Original ZIP verified. Select Resume to continue.',
+    downloadStarted: 'Download initiated. Check your browser downloads.',
+    noRepeat:
+      'Keep successful receipts; verify unknown writes, never resend. Re-preview changed settings; reselect the original ZIP to resume imports.',
+    confirm: 'Confirm task action',
+    clearWarning:
+      'Removes local history, not remote files. Unresolved records can no longer be recovered or verified.',
+    skip: 'Mark skipped',
+    reason: 'Reason for skipping',
+    error:
+      'Needs attention ({code}). Check sign-in, permissions/settings or reselect the ZIP. Verify uncertain writes before continuing.',
+    status: {
+      pending: 'Pending',
+      running: 'Running',
+      paused: 'Paused',
+      attention: 'Needs attention',
+      completed: 'Completed',
+      cancelled: 'Cancelled'
+    },
+    item: {
+      pending: 'Pending',
+      running: 'Running',
+      unconfirmed: 'Succeeded; verification pending',
+      confirmed: 'Verified',
+      failed: 'Confirmed failure',
+      unknown: 'Unknown outcome',
+      skipped: 'Skipped'
+    },
+    kind: { asset: 'Asset', group: 'Create group', manifest: 'Write manifest', archive: 'Create download' },
+    direction: { import: 'Import', export: 'Export' }
+  },
   page: {
     title: 'Gallery',
     description:
@@ -150,8 +202,6 @@ export const photos = {
       'Create, rename, and delete operations write to the current Alibaba.com account immediately. Every operation requires confirmation.'
   },
   transfer: {
-    uploadUnknown:
-      '{name}: upload success was not confirmed. Check Alibaba before reopening import; this session will not resend it.',
     importTitle: 'Import gallery assets',
     exportTitle: 'Export gallery assets',
     importDescription: 'Read a oneVegetable gallery ZIP and upload its images to “{group}”.',
@@ -165,22 +215,12 @@ export const photos = {
         'Originals and gallery.json use the selected layout in an isolated batch under the configured root prefix. Existing files are not overwritten.',
       prefix: 'Export prefix (relative to the configured root)',
       mapping: 'Directory mapping',
-      groupCreationUnconfirmed:
-        'Creation of group “{group}” was not confirmed. Check Alibaba before reopening import. This session will not repeat creation.',
-      conflictSkipped: '{name}: skipped because the target group already contains that filename.',
       createMissingGroups: 'Automatically create missing gallery groups (up to 3 levels)',
-      invalidGroupPath: 'Gallery paths must have 1–3 levels without empty or dot segments.',
       flat: 'Put all images in one assets directory',
       groups: 'Preserve gallery group hierarchy under assets',
       rules: 'Use saved prefix mapping rules',
       current: 'Import all into the current gallery group: {group}',
-      invalidPrefix: 'Enter a safe relative prefix without empty segments, dot segments or backslashes.',
-      locationConfirmed: '{name}: uploaded and confirmed in the group; fileId: {id}',
-      locationUnconfirmed:
-        '{name}: upload accepted; fileId: {id}. Not found in the first 100 group entries. It may reuse an existing image or be awaiting synchronization. Check before uploading again.',
       exportToS3: 'Export to S3',
-      s3Exported: 'Exported {count} images to S3 at {prefix}',
-      s3Imported: 'Upload accepted for {count} S3 images. Check the per-image group verification results.',
       s3ScanTitle: 'Scan S3 with local rules',
       s3ScanDescription:
         'Up to 500 objects are read. Only images matching a rule enter the import confirmation.',
@@ -200,10 +240,7 @@ export const photos = {
     confirmImportDescription:
       'Upload {count} images to “{group}” sequentially. Failures are not retried automatically.',
     confirmExportDescription: 'Download {count} gallery originals and create a ZIP.',
-    imported: 'Imported {count} images into “{group}”',
-    exported: 'Exported {count} gallery images',
     errors: {
-      missingMetadata: 'Image {path} is missing manifest metadata',
       countMismatch: 'The gallery ZIP manifest and asset counts differ',
       assetDirectory: 'Gallery ZIP assets must be stored under assets/',
       duplicatePath: 'Duplicate gallery ZIP path: {path}',
@@ -226,9 +263,7 @@ export const photos = {
       unsafePath: 'Gallery ZIP contains an unsafe path',
       traversalPath: 'Gallery ZIP contains path traversal',
       nonCanonicalPath: 'Gallery ZIP path is not canonical: {path}',
-      extensionMismatch: 'Gallery ZIP file extension does not match its content: {path}',
-      duplicatePhoto: 'The gallery contains indistinguishable duplicate images: {name}',
-      groupMissing: 'The target gallery group does not exist: {group}. Create it in group management first.'
+      extensionMismatch: 'Gallery ZIP file extension does not match its content: {path}'
     }
   },
   social: {

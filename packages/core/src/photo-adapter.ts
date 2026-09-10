@@ -163,6 +163,8 @@ function normalizePhoto(record: Record<string, unknown>): Photo {
     height: readInteger(record, ['height']) ?? null,
     fileSize: readInteger(record, ['file_size']) ?? 0,
     referenceCount: readInteger(record, ['reference_count']) ?? 0,
+    originalName: readString(record, ['file_name']) ?? null,
+    ownerName: readString(record, ['owner_member_display_name']) ?? null,
     modifiedAt: normalizeDate(readString(record, ['gmt_modified', 'modified_at']))
   };
 }

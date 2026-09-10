@@ -10,6 +10,71 @@
   "security": [],
   "servers": [{ "url": "/api/v1" }],
   "paths": {
+    "/gallery-transfers/context/get": {
+      "post": {
+        "summary": "Read opaque gallery transfer execution context",
+        "operationId": "getGalleryTransferContext",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/GalleryTransferContextRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Opaque account and configuration identifiers, never credentials",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GalleryTransferContextResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Context unavailable",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/healthz": {
       "get": {
         "summary": "Check whether the API process is alive",
@@ -9108,6 +9173,93 @@
         },
         "title": "alibaba.icbu.product.batch.update.display response"
       },
+      "AlibabaProductAlibabaIcbuProductCountryGetcountrylistRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["country_request"],
+        "properties": {
+          "country_request": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": { "language": { "type": "string", "description": "返回结果语种；文档示例 zh_cn" } },
+            "description": "请求对象；官方 curl 的 '-' 不是有效对象示例"
+          }
+        },
+        "title": "alibaba.icbu.product.country.getcountrylist request"
+      },
+      "AlibabaProductAlibabaIcbuProductCountryGetcountrylistResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["biz_success"],
+        "properties": {
+          "trace_id": { "type": "string", "description": "平台追踪码" },
+          "data": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "continent_code": { "type": "string" },
+                    "continent_name": { "type": "string" },
+                    "country_list": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "country_code": { "type": "string" },
+                          "country_name": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "continent_d_t_o": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "continent_code": { "type": "string" },
+                        "continent_name": { "type": "string" },
+                        "country_list": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "country_d_t_o": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                  "country_code": { "type": "string" },
+                                  "country_name": { "type": "string" }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "biz_success": { "type": "boolean", "description": "业务是否成功" },
+          "message": { "type": "string", "description": "错误信息" },
+          "msg_code": { "type": "string", "description": "错误码，以分号分隔" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
+        "title": "alibaba.icbu.product.country.getcountrylist response"
+      },
       "AlibabaProductAlibabaIcbuProductGetRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -10507,6 +10659,104 @@
           "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.product.update response"
+      },
+      "AlibabaProductAlibabaIcbuTextTransRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["icbu_translate_task_dto"],
+        "properties": {
+          "icbu_translate_task_dto": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "trans_engine",
+                "target_language",
+                "app_name",
+                "source_text",
+                "format",
+                "field_type",
+                "source_language"
+              ],
+              "properties": {
+                "trans_engine": { "type": "string", "minLength": 1, "description": "翻译引擎名称" },
+                "target_language": { "type": "string", "minLength": 1, "description": "目标语种" },
+                "app_name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "业务场景 appName；示例不代表已获准的值"
+                },
+                "source_text": { "type": "string", "minLength": 1, "description": "需要翻译的内容" },
+                "format": {
+                  "type": "string",
+                  "minLength": 1,
+                  "enum": ["text", "html"],
+                  "description": "html 或 text；query 仅支持 text"
+                },
+                "field_type": {
+                  "type": "string",
+                  "minLength": 1,
+                  "enum": ["query", "offer", "title", "message", "feedback"],
+                  "description": "query、offer、title、message、feedback"
+                },
+                "param_map": { "type": "string", "description": "业务透传参数（字符串）" },
+                "source_language": { "type": "string", "minLength": 1, "description": "原始语种" }
+              },
+              "allOf": [
+                {
+                  "if": { "properties": { "field_type": { "const": "query" } }, "required": ["field_type"] },
+                  "then": { "properties": { "format": { "const": "text" } } }
+                }
+              ]
+            }
+          }
+        },
+        "title": "alibaba.icbu.text.trans request"
+      },
+      "AlibabaProductAlibabaIcbuTextTransResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["result"],
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["success"],
+              "properties": {
+                "trans_engine": { "type": "string", "description": "翻译引擎名称" },
+                "target_language": { "type": "string", "description": "目标语种" },
+                "app_name": { "type": "string", "description": "业务场景 appName；示例不代表已获准的值" },
+                "source_text": { "type": "string", "description": "需要翻译的内容" },
+                "format": { "type": "string", "description": "html 或 text；query 仅支持 text" },
+                "field_type": { "type": "string", "description": "query、offer、title、message、feedback" },
+                "param_map": { "type": "string", "description": "业务透传参数（字符串）" },
+                "source_language": { "type": "string", "description": "原始语种" },
+                "translate_result_text": { "type": "string", "description": "译文" },
+                "trace_id": { "type": "string", "description": "平台追踪 ID" },
+                "ext": { "type": "string", "description": "扩展信息" },
+                "trans_char": { "type": "number", "description": "翻译字符数" },
+                "success": { "type": "boolean", "description": "单项业务是否成功" },
+                "error_code": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": { "type": "string", "description": "错误码" },
+                    "display_text": { "type": "string", "description": "错误描述" }
+                  },
+                  "description": "业务错误"
+                }
+              },
+              "description": "逐项翻译结果"
+            },
+            "description": "逐项翻译结果"
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
+        "title": "alibaba.icbu.text.trans response"
       },
       "AlibabaRfqAlibabaIcbuAnnexUploadRequest": {
         "type": "object",
@@ -13016,6 +13266,10 @@
           "traceId": { "type": "string" },
           "data": {
             "oneOf": [
+              {
+                "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductCountryGetcountrylistResponse"
+              },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuTextTransResponse" },
               { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryAttrGetResponse" },
               { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryAttributeGetResponse" },
               { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuCategoryAttrvalueGetResponse" },
@@ -13331,6 +13585,32 @@
           "pairingId": { "type": "string", "format": "uuid" },
           "pairingCode": { "type": "string", "pattern": "^[A-Z2-9]{16}$" },
           "extensionId": { "type": "string", "pattern": "^[a-p]{32}$" }
+        }
+      },
+      "GalleryTransferContext": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["identity", "gateway", "storage"],
+        "properties": {
+          "identity": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "gateway": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "storage": { "type": ["string", "null"], "minLength": 1, "maxLength": 128 }
+        }
+      },
+      "GalleryTransferContextRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId"],
+        "properties": { "requestId": { "$ref": "#/components/schemas/RequestId" } }
+      },
+      "GalleryTransferContextResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "ok", "data"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "ok": { "const": true },
+          "data": { "$ref": "#/components/schemas/GalleryTransferContext" }
         }
       },
       "GatewayCredentialClearRequest": {
@@ -13887,6 +14167,7 @@
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
           "operation": { "type": "string", "minLength": 1 },
+          "galleryContext": { "$ref": "#/components/schemas/GalleryTransferContext" },
           "payload": { "type": "object", "additionalProperties": true }
         }
       },
@@ -14048,6 +14329,8 @@
           },
           "fileSize": { "type": "integer", "minimum": 0, "description": "Image size in bytes." },
           "referenceCount": { "type": "integer", "minimum": 0 },
+          "originalName": { "type": ["string", "null"] },
+          "ownerName": { "type": ["string", "null"] },
           "modifiedAt": { "type": "string", "format": "date-time" }
         }
       },
@@ -14156,7 +14439,22 @@
             "description": "Alibaba 商品接口返回的 PC 端商品详情地址；不得由客户端拼接。"
           },
           "updatedAt": { "type": "string", "format": "date-time" },
-          "categoryId": { "type": ["integer", "null"] }
+          "categoryId": { "type": ["integer", "null"] },
+          "groupId": { "type": ["number", "null"] },
+          "keywords": { "type": ["array", "null"], "items": { "type": "string" } },
+          "createdAt": { "type": ["string", "null"], "format": "date-time" },
+          "ownerName": { "type": ["string", "null"] },
+          "productType": { "type": ["string", "null"] },
+          "language": { "type": ["string", "null"] },
+          "model": { "type": ["string", "null"] },
+          "isRts": { "type": ["boolean", "null"] },
+          "isSpecific": { "type": ["boolean", "null"] },
+          "smartEdit": { "type": ["boolean", "null"] },
+          "imageCount": { "type": ["integer", "null"] },
+          "watermark": { "type": ["boolean", "null"] },
+          "watermarkPosition": { "type": ["string", "null"] },
+          "watermarkFrame": { "type": ["string", "null"] },
+          "platformStatus": { "type": ["string", "null"] }
         }
       },
       "ProductAssetDownloadRequest": {
@@ -14822,6 +15120,7 @@
         "required": ["requestId"],
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "galleryContext": { "$ref": "#/components/schemas/GalleryTransferContext" },
           "prefix": { "type": "string", "maxLength": 2048 },
           "continuationToken": { "type": "string", "maxLength": 2048 },
           "maximum": { "type": "integer", "minimum": 1, "maximum": 1000 }
@@ -14833,6 +15132,7 @@
         "required": ["requestId", "key", "contentBase64", "contentType"],
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "galleryContext": { "$ref": "#/components/schemas/GalleryTransferContext" },
           "key": { "type": "string", "minLength": 1, "maxLength": 1024 },
           "contentBase64": { "type": "string", "contentEncoding": "base64", "maxLength": 6990508 },
           "contentType": { "type": "string", "minLength": 1, "maxLength": 128 }
@@ -14844,6 +15144,7 @@
         "required": ["requestId", "key"],
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "galleryContext": { "$ref": "#/components/schemas/GalleryTransferContext" },
           "key": { "type": "string", "minLength": 1, "maxLength": 1024 }
         }
       },
@@ -14861,7 +15162,11 @@
           "rootPrefix"
         ],
         "properties": {
-          "endpoint": { "type": "string", "format": "uri", "pattern": "^https://" },
+          "endpoint": { "type": "string", "format": "uri", "pattern": "^https?://" },
+          "allowInsecureLocal": {
+            "type": "boolean",
+            "description": "Explicit local RFC1918 IPv4 HTTP opt-in. Node additionally requires the local environment flag; Worker rejects HTTP."
+          },
           "region": { "type": "string", "minLength": 1, "maxLength": 63 },
           "bucket": { "type": "string", "minLength": 3, "maxLength": 63 },
           "accessKeyId": { "type": "string", "minLength": 1, "maxLength": 512, "writeOnly": true },
@@ -15224,8 +15529,8 @@
           "id": { "type": "string" },
           "buyerLoginId": { "type": ["string", "null"] },
           "status": { "type": "string" },
-          "amount": { "type": "string", "pattern": "^-?\\d+(?:\\.\\d+)?$" },
-          "currency": { "type": "string" },
+          "amount": { "type": ["string", "null"], "pattern": "^-?\\d+(?:\\.\\d+)?$" },
+          "currency": { "type": ["string", "null"] },
           "createdAt": { "type": ["string", "null"], "format": "date-time" },
           "modifiedAt": { "type": ["string", "null"], "format": "date-time" }
         }
@@ -15277,6 +15582,80 @@
     }
   },
   "x-product-capabilities": {
+    "alibaba.icbu.product.country.getcountrylist": {
+      "requestSchema": "AlibabaProductAlibabaIcbuProductCountryGetcountrylistRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuProductCountryGetcountrylistResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "account-verified",
+      "realCallEnabled": true,
+      "checkedAt": "2026-09-10",
+      "updatedAt": null,
+      "title": "国际站获取商品国家列表",
+      "description": "免费，必须用户授权。按大洲返回国家及热门国家；不是商品可售国家或物流可达性。来源为用户提供的官方文档全文，尚未提供详情 docId。",
+      "errorCodes": [],
+      "requestExample": { "country_request": { "language": "zh_cn" } },
+      "responseExample": {
+        "trace_id": "fixture-country-trace",
+        "data": {
+          "continent_d_t_o": [
+            {
+              "continent_code": "NA",
+              "continent_name": "北美洲",
+              "country_list": { "country_d_t_o": [{ "country_code": "US", "country_name": "美国" }] }
+            }
+          ]
+        },
+        "biz_success": true
+      },
+      "docUrl": "https://open.taobao.com/api.htm"
+    },
+    "alibaba.icbu.text.trans": {
+      "requestSchema": "AlibabaProductAlibabaIcbuTextTransRequest",
+      "responseSchema": "AlibabaProductAlibabaIcbuTextTransResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-09-10",
+      "updatedAt": null,
+      "title": "ICBU 文本翻译",
+      "description": "免费、不需用户授权；应用需具备 ICBU翻译能力。app_name 为业务场景标识，不能假定示例 xiaoman 或应用展示名已获准。",
+      "errorCodes": [],
+      "requestExample": {
+        "icbu_translate_task_dto": [
+          {
+            "trans_engine": "ALI_TRANS",
+            "target_language": "es",
+            "app_name": "oneVegetable",
+            "source_text": "A cotton T-shirt.",
+            "format": "text",
+            "field_type": "title",
+            "source_language": "en"
+          }
+        ]
+      },
+      "responseExample": {
+        "result": [
+          {
+            "trans_engine": "ALI_TRANS",
+            "target_language": "es",
+            "app_name": "oneVegetable",
+            "source_text": "A cotton T-shirt.",
+            "format": "text",
+            "field_type": "title",
+            "source_language": "en",
+            "translate_result_text": "Una camiseta de algodón.",
+            "success": true,
+            "trace_id": "fixture-trace",
+            "trans_char": 17
+          }
+        ]
+      },
+      "docUrl": "https://open.taobao.com/api.htm?docId=67157&docType=2"
+    },
     "alibaba.icbu.category.attr.get": {
       "requestSchema": "AlibabaProductAlibabaIcbuCategoryAttrGetRequest",
       "responseSchema": "AlibabaProductAlibabaIcbuCategoryAttrGetResponse",

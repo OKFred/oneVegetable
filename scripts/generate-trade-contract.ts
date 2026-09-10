@@ -244,8 +244,8 @@ document.components.schemas.TradeOrderSummary = {
     id: { type: 'string' },
     buyerLoginId: { type: ['string', 'null'] },
     status: { type: 'string' },
-    amount: decimalString,
-    currency: { type: 'string' },
+    amount: { ...decimalString, type: ['string', 'null'] },
+    currency: { type: ['string', 'null'] },
     createdAt: nullableDateTime,
     modifiedAt: nullableDateTime
   }

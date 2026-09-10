@@ -1,3 +1,5 @@
+import type { GalleryRequestOptions } from './gallery-transfer-context';
+import type { GalleryTransferContext } from './gallery-transfer-task';
 import type { components } from './generated/api';
 import type {
   ProductCapabilityRequestMap,
@@ -319,7 +321,12 @@ export type RequestOf<K extends OperationId> = OperationMap[K]['request'];
 export type ResponseOf<K extends OperationId> = OperationMap[K]['response'];
 
 export interface GatewayClient {
-  request<K extends OperationId>(operation: K, request: RequestOf<K>): Promise<ResponseOf<K>>;
+  galleryTransferContext?(): Promise<GalleryTransferContext>;
+  request<K extends OperationId>(
+    operation: K,
+    request: RequestOf<K>,
+    options?: GalleryRequestOptions
+  ): Promise<ResponseOf<K>>;
 }
 
 export interface RuntimeRequest<K extends OperationId = OperationId> {
@@ -328,6 +335,7 @@ export interface RuntimeRequest<K extends OperationId = OperationId> {
   operation: K;
   payload: RequestOf<K>;
   productMutationFingerprint?: ProductMutationFingerprintSet;
+  galleryContext?: GalleryTransferContext;
 }
 
 export type RuntimeResponse<K extends OperationId = OperationId> =
@@ -335,6 +343,8 @@ export type RuntimeResponse<K extends OperationId = OperationId> =
   | { requestId: string; ok: false; error: GatewayError };
 
 export interface GatewayCredentials {
+  /** Stable bundle identity; automatic token refresh does not change this value. Never sent to Alibaba. */
+  galleryAccountGeneration?: string;
   appKey: string;
   appSecret: string;
   accessToken: string;
@@ -422,11 +432,12 @@ export interface LocalDataCategory {
     | 'product-mutation-jobs'
     | 'social-backend-device'
     | 's3-credentials'
+    | 'gallery-transfer-tasks'
     | 'drafts'
     | 'diagnostics'
     | 'preferences';
   label: string;
-  storage: 'chrome.storage.local' | 'chrome.storage.session' | 'localStorage';
+  storage: 'chrome.storage.local' | 'chrome.storage.session' | 'localStorage' | 'IndexedDB';
   itemCount: number;
   approximateBytes: number;
   sensitive: boolean;

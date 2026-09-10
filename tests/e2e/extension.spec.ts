@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { zipSync } from 'fflate';
 import galleryFixture from '../../mock/data/gallery-extension-transfer.json' with { type: 'json' };
+import { MockGatewayClient } from '../../packages/core/src/mock-client';
+import { listCapabilities } from '../../packages/core/src/capability-registry';
 
 import { chromium, expect, test, type BrowserContext, type Page } from '@playwright/test';
 import {
@@ -13,9 +15,86 @@ import {
 
 let context: BrowserContext | null = null;
 
+test('formal MV3 workbench supports persistent columns and automatic detail loading', async () => {
+  if (!context) throw new Error('Missing extension context');
+  const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+  const fixtureClient = new MockGatewayClient(0);
+  const fixtureData = {
+    listProducts: await fixtureClient.request('listProducts', { page: 1, pageSize: 20, language: 'en_US' }),
+    listProductGroups: await fixtureClient.request('listProductGroups', undefined),
+    listProductCategories: await fixtureClient.request('listProductCategories', { language: 'en_US' }),
+    getProductScore: await fixtureClient.request('getProductScore', {
+      productId: 'mock-encrypted-product-1'
+    }),
+    getDashboard: await fixtureClient.request('getDashboard', undefined)
+  };
+  const page = await context.newPage();
+  await page.addInitScript(
+    ({ data, account }) => {
+      const runtime = (
+        globalThis as unknown as {
+          chrome: { runtime: { sendMessage: (message: unknown) => Promise<unknown> } };
+        }
+      ).chrome.runtime;
+      const original = runtime.sendMessage.bind(runtime);
+      runtime.sendMessage = (message) => {
+        if (message && typeof message === 'object' && 'kind' in message && 'requestId' in message) {
+          if (message.kind === 'gallery-transfer-context')
+            return Promise.resolve({ requestId: message.requestId, ok: true, data: account });
+          if (
+            message.kind === 'gateway-request' &&
+            'operation' in message &&
+            typeof message.operation === 'string'
+          ) {
+            const result: unknown = (data as Record<string, unknown>)[message.operation];
+            return Promise.resolve(
+              result
+                ? { requestId: message.requestId, ok: true, data: result }
+                : {
+                    requestId: message.requestId,
+                    ok: false,
+                    error: { code: 'TEST_READ_ONLY', message: 'Read-only fixture', retryable: false }
+                  }
+            );
+          }
+        }
+        return original(message);
+      };
+    },
+    { data: fixtureData, account: await fixtureClient.galleryTransferContext() }
+  );
+  await page.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#/products`);
+  const guide = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
+  await expect(guide).toBeVisible();
+  await guide.getByRole('checkbox').check();
+  await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
+  await expect(page.getByRole('button', { name: '显示列', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '显示列', exact: true }).click();
+  await page.getByRole('checkbox', { name: '关键词', exact: true }).check();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('columnheader', { name: '关键词', exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('columnheader', { name: '关键词', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '加载本页扩展信息', exact: true })).toHaveCount(0);
+  await expect(
+    page
+      .locator('table')
+      .getByText(/\d(?:\.\d)?\/6/)
+      .first()
+  ).toBeVisible();
+  // This suite owns a fresh temporary profile; restore it for the existing first-use tests.
+  await page.evaluate(async () => {
+    localStorage.clear();
+    await (
+      globalThis as unknown as { chrome: { storage: { local: { clear(): Promise<void> } } } }
+    ).chrome.storage.local.clear();
+  });
+  await page.close();
+});
+
 test.setTimeout(90_000);
 
-test.beforeAll(async () => {
+test.beforeEach(async () => {
   const extensionPath = resolve(import.meta.dirname, '../../apps/extension/.output/chrome-mv3');
   const manifest = JSON.parse(await readFile(resolve(extensionPath, 'manifest.json'), 'utf8')) as {
     background?: { service_worker?: string; type?: string };
@@ -39,7 +118,7 @@ test.beforeAll(async () => {
   });
 });
 
-test.afterAll(async () => {
+test.afterEach(async () => {
   if (context) await context.close();
 });
 
@@ -394,7 +473,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
 
   await page.getByRole('link', { name: 'API 能力' }).click();
   await expect(page.locator('tbody tr')).toHaveCount(10);
-  await expect(page.getByText('共 86 条，当前 1–10 条')).toBeVisible();
+  await expect(page.getByText(`共 ${listCapabilities().length} 条，当前 1–10 条`)).toBeVisible();
   await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.product.schema.add');
   await page.getByRole('button', { name: 'alibaba.icbu.product.schema.add', exact: true }).click();
   await expect(page.getByText(/该真实写能力未在当前扩展版本开放/)).toBeVisible();

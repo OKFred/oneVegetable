@@ -179,6 +179,8 @@ export const settings = {
   },
   ...{
     s3: {
+      localHttp:
+        'Use HTTP only on a trusted LAN; traffic is unencrypted. Requires a private IPv4 address and path-style. Local Node needs explicit opt-in; cloud Workers do not support it.',
       title: 'S3 asset storage',
       extensionDescription:
         'Connect directly from the extension without a backend. Credentials are encrypted locally and signed in the background. There is no extra password; this does not protect a compromised browser profile. Saving requests only the storage host permission. Keep the workbench open during transfers; check interrupted results before retrying. Transfers never resume automatically.',

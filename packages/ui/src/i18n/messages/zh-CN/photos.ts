@@ -1,4 +1,53 @@
 export const photos = {
+  tasks: {
+    retention: '完成/取消后保留 30 天；未解决记录不自动删除，最多 100 个任务。',
+    title: '传输记录',
+    boundary: '关窗或切页继续；刷新或关闭标签页后手工恢复。记录仅存本机。',
+    created: '传输任务已创建，可在传输记录中查看进度。',
+    preview: '以下是冻结的执行计划：',
+    filter: '任务状态',
+    all: '全部',
+    refresh: '刷新',
+    empty: '还没有传输记录',
+    detail: '任务详情',
+    changedContext: '账号或配置已变化，此任务只读。',
+    newPreview: '重新预览',
+    progress: '图库传输 {count}/{total}',
+    pause: '暂停',
+    resume: '继续 / 重试明确失败项',
+    verify: '核对结果',
+    cancel: '取消后续传输',
+    remove: '清理记录',
+    report: '导出脱敏报告',
+    reselect: '重新选择原 ZIP',
+    archiveReady: '原 ZIP 已核对一致，请点击继续。',
+    downloadStarted: '下载已发起，请检查浏览器的下载列表。',
+    noRepeat: '成功项不重传，未知项先核对。配置变化须重新预览；ZIP 恢复须选原包。',
+    confirm: '确认任务操作',
+    clearWarning: '仅清理本机记录，不删除远端素材。未解决记录清理后将无法核对或恢复。',
+    skip: '标记跳过',
+    reason: '请填写跳过原因',
+    error: '需要处理（{code}）：检查登录、权限、配置或重选原 ZIP。未知结果须先核对，不能重传。',
+    status: {
+      pending: '待开始',
+      running: '执行中',
+      paused: '已暂停',
+      attention: '需处理',
+      completed: '已完成',
+      cancelled: '已取消'
+    },
+    item: {
+      pending: '待处理',
+      running: '执行中',
+      unconfirmed: '成功待核对',
+      confirmed: '已确认',
+      failed: '明确失败',
+      unknown: '结果不明',
+      skipped: '已跳过'
+    },
+    kind: { asset: '素材', group: '创建分组', manifest: '写入清单', archive: '生成下载包' },
+    direction: { import: '导入', export: '导出' }
+  },
   page: {
     title: '图库',
     description: '管理国际站图库（图片银行）的分组、发品素材与非阻断治理提示。',
@@ -147,8 +196,6 @@ export const photos = {
     realWriteWarning: '新增、改名和删除会直接写入当前国际站账号；每次操作都会先要求确认。'
   },
   transfer: {
-    uploadUnknown:
-      '{name}：上传未取得成功确认，结果可能不明。请先到平台核对，再重新打开导入弹窗；本次不会重复上传。',
     importTitle: '导入图库素材',
     exportTitle: '导出图库素材',
     importDescription: '读取 oneVegetable 图库 ZIP，并将图片上传到“{group}”。',
@@ -161,22 +208,12 @@ export const photos = {
       s3ExportDescription: '原图和 gallery.json 将按所选方式写入配置根前缀下的独立批次目录，不覆盖旧文件。',
       prefix: '导出前缀（相对于设置中的根前缀）',
       mapping: '目录映射方式',
-      groupCreationUnconfirmed:
-        '分组“{group}”未取得创建成功确认。请先到平台核对，再重新打开导入弹窗；本次不会重复创建。',
-      conflictSkipped: '{name}：目标分组已有同名图片，已按规则跳过。',
       createMissingGroups: '自动创建缺失的图库分组（最多三级）',
-      invalidGroupPath: '图库分组路径必须为一至三级，不能包含空目录或点目录。',
       flat: '全部平铺到一个 assets 目录',
       groups: '在 assets 下保留图库分组层级',
       rules: '按设置中保存的前缀映射规则',
       current: '全部导入当前图库分组：{group}',
-      invalidPrefix: '请输入安全的相对前缀，不能包含空目录、点目录或反斜杠。',
-      locationConfirmed: '{name}：已上传并回读确认分组，fileId：{id}',
-      locationUnconfirmed:
-        '{name}：上传接口已接收，fileId：{id}；目标分组前 100 项未找到，可能复用旧图或同步延迟。请核对，勿重复上传。',
       exportToS3: '导出到 S3',
-      s3Exported: '已将 {count} 张图片导出到 S3：{prefix}',
-      s3Imported: '上传接口已接收 {count} 张 S3 图片，请查看逐项分组回读结果。',
       s3ScanTitle: '按本机规则扫描 S3',
       s3ScanDescription: '最多读取 500 个对象，只有匹配规则的图片会进入导入确认。',
       scanS3: '扫描 S3',
@@ -193,10 +230,7 @@ export const photos = {
     confirmExport: '确认导出图库',
     confirmImportDescription: '将 {count} 张图片逐张上传到“{group}”；失败后不会自动重试。',
     confirmExportDescription: '将下载 {count} 张图库原图并生成 ZIP。',
-    imported: '已向“{group}”导入 {count} 张图片',
-    exported: '已导出 {count} 张图库图片',
     errors: {
-      missingMetadata: '图片 {path} 缺少清单元数据',
       countMismatch: '图库 ZIP 的清单与资源数量不一致',
       assetDirectory: '图库 ZIP 资源必须放在 assets/ 目录',
       duplicatePath: '图库 ZIP 路径重复：{path}',
@@ -219,9 +253,7 @@ export const photos = {
       unsafePath: '图库 ZIP 包含不安全路径',
       traversalPath: '图库 ZIP 包含路径穿越',
       nonCanonicalPath: '图库 ZIP 路径不规范：{path}',
-      extensionMismatch: '图库 ZIP 文件扩展名与内容不匹配：{path}',
-      duplicatePhoto: '图库中存在无法区分的重复图片：{name}',
-      groupMissing: '规则目标图库分组不存在：{group}。请先在分组管理中创建。'
+      extensionMismatch: '图库 ZIP 文件扩展名与内容不匹配：{path}'
     }
   },
   social: {

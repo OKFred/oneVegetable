@@ -15,6 +15,18 @@ const configuration: S3StorageConfiguration = {
 };
 
 describe('S3ObjectStorageClient', () => {
+  it('requires explicit private HTTP opt-in and rejects public or metadata destinations', () => {
+    const local = { ...configuration, allowInsecureLocal: true, endpoint: 'http://192.168.1.4:9000' };
+    expect(() => new S3ObjectStorageClient(local)).not.toThrow();
+    for (const endpoint of [
+      'http://example.com',
+      'http://127.0.0.1',
+      'http://169.254.169.254',
+      'http://[::1]'
+    ])
+      expect(() => new S3ObjectStorageClient({ ...local, endpoint })).toThrow();
+    expect(() => new S3ObjectStorageClient({ ...local, pathStyle: false })).toThrow();
+  });
   it('signs and parses a bounded object listing through NetworkManager', async () => {
     const send = vi
       .fn()

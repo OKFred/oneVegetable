@@ -5,6 +5,8 @@ import { FlexRender, useTable, type PaginationState, type RowData, type Updater 
 import { dataTableFeatures, type DataColumn, type DataTableColumnMeta } from '../lib/table';
 import { useUiI18n } from '../i18n';
 import TablePagination from './TablePagination.vue';
+import ColumnSettings from './ColumnSettings.vue';
+import { useColumnPreferences } from '../lib/column-preferences';
 
 const { t } = useUiI18n();
 
@@ -24,6 +26,9 @@ const props = withDefaults(
     totalRows?: number | null;
     pageSizeOptions?: readonly number[];
     paginationDisabled?: boolean;
+    columnSettingsKey?: string;
+    hiddenColumns?: string[];
+    lockedColumns?: string[];
   }>(),
   {
     emptyText: '',
@@ -37,7 +42,10 @@ const props = withDefaults(
     pageSize: 10,
     totalRows: null,
     pageSizeOptions: () => [10, 20, 50],
-    paginationDisabled: false
+    paginationDisabled: false,
+    columnSettingsKey: '',
+    hiddenColumns: () => [],
+    lockedColumns: () => []
   }
 );
 const emit = defineEmits<{
@@ -46,6 +54,30 @@ const emit = defineEmits<{
   'update:pageSize': [pageSize: number];
 }>();
 const data = computed(() => props.data);
+function columnId(column: DataColumn<TData>): string {
+  return column.id ?? ('accessorKey' in column ? String(column.accessorKey) : '');
+}
+const columnOptions = computed(() =>
+  props.columns.map((column) => ({
+    id: columnId(column),
+    label: typeof column.header === 'string' ? column.header : t('common.columns.selection'),
+    locked: props.lockedColumns.includes(columnId(column)),
+    defaultVisible: !props.hiddenColumns.includes(columnId(column))
+  }))
+);
+const columnPreferences = useColumnPreferences(props.columnSettingsKey, columnOptions);
+const visibleColumns = computed(() => {
+  const columns = props.columnSettingsKey
+    ? props.columns.filter((column) => columnPreferences.visible.value.includes(columnId(column)))
+    : props.columns;
+  let left = 0;
+  return columns.map((column) => {
+    if (column.meta?.sticky !== 'left') return column;
+    const next = { ...column, meta: { ...column.meta, stickyOffset: `${left}px` } };
+    left += Number.parseFloat(column.meta.width ?? '0');
+    return next;
+  });
+});
 const manualPagination = computed(() => !props.pagination || props.totalRows !== null);
 const internalPagination = ref<PaginationState>({ pageIndex: 0, pageSize: props.pageSize });
 const paginationState = computed<PaginationState>(() =>
@@ -69,7 +101,7 @@ function updatePagination(updater: Updater<PaginationState>): void {
 const table = useTable<typeof dataTableFeatures, TData>({
   features: dataTableFeatures,
   data,
-  columns: props.columns,
+  columns: visibleColumns,
   state: tableState,
   onPaginationChange: updatePagination,
   manualPagination,
@@ -163,7 +195,21 @@ function stickyColumnStyle(value: unknown): Record<string, string> | undefined {
               :class="stickyColumnClasses(header.column.columnDef.meta, true)"
               :style="stickyColumnStyle(header.column.columnDef.meta)"
             >
-              <FlexRender v-if="!header.isPlaceholder" :header="header" />
+              <span class="inline-flex items-center gap-1">
+                <FlexRender v-if="!header.isPlaceholder" :header="header" />
+                <ColumnSettings
+                  v-if="
+                    columnSettingsKey &&
+                    (header.column.id === 'actions' ||
+                      (!columnOptions.some((column) => column.id === 'actions') &&
+                        header === headerGroup.headers.at(-1)))
+                  "
+                  :options="columnOptions"
+                  :visible="columnPreferences.visible.value"
+                  @toggle="columnPreferences.toggle"
+                  @reset="columnPreferences.reset"
+                />
+              </span>
             </th>
           </tr>
         </thead>
@@ -195,7 +241,7 @@ function stickyColumnStyle(value: unknown): Record<string, string> | undefined {
             </td>
           </tr>
           <tr v-if="table.getRowModel().rows.length === 0">
-            <td :colspan="columns.length" class="h-32 text-center text-muted-foreground">
+            <td :colspan="visibleColumns.length" class="h-32 text-center text-muted-foreground">
               <slot name="empty">
                 {{ emptyText || t('common.data.empty') }}
               </slot>
@@ -204,6 +250,7 @@ function stickyColumnStyle(value: unknown): Record<string, string> | undefined {
         </tbody>
       </table>
     </div>
+    <slot name="column-actions" :visible="columnPreferences.visible.value" />
     <TablePagination
       v-if="pagination"
       :page="currentPage"

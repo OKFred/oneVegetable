@@ -1,7 +1,7 @@
 # oneVegetable Privacy Policy
 
-Effective date: September 8, 2026
-Applicable version: 2.5.0
+Effective date: September 10, 2026
+Applicable version: 2.6.0
 
 ## Independent third-party notice
 
@@ -16,6 +16,12 @@ oneVegetable is a user-operated local Alibaba.com operations workspace for manag
 You may configure an S3 endpoint, bucket, region, root prefix and access credentials. The extension connects directly to the exact storage host you authorize, without a oneVegetable backend. Configuration is AES-256-GCM encrypted in trusted-context `chrome.storage.local`, with a separate non-exportable device key in local IndexedDB. No additional password is required; this survives browser restarts but does not protect a compromised browser profile. Server mode retains backend encryption. Settings only return non-secret configuration and the Access Key suffix.
 
 Transfers start only after your confirmation. Signing and credentials stay in the extension background. Images, manifests and object paths go to your selected storage; imported images also go to the Alibaba gallery. Import rules remain local and do not run scheduled synchronization. Clearing S3 configuration or all local data removes local ciphertext and its device key, not remote objects or gallery images. An interrupted upload may have reached the provider; verify its result before retrying. Uploads are never automatically retried.
+
+### Local transfer records
+
+Gallery ZIP/S3 tasks store paths, target groups, file fingerprints, request IDs, platform fileIds and execution states in this site's or extension's IndexedDB. They do not store image bytes, Base64, credentials or complete provider responses. Up to 100 tasks with 500 images each are retained. Completed/cancelled records expire after 30 days; unresolved records are not automatically removed. Tasks continue when their dialog closes or you navigate within the workbench. After reload or tab closure, only records are restored; continuing requires confirmation. Uncertain writes are never automatically repeated. Clearing records does not delete remote assets.
+
+HTTP S3 access on a trusted LAN requires explicit opt-in, a private IPv4 address and Path-style addressing. HTTP does not encrypt network traffic; do not use it on public or untrusted networks. HTTPS remains the default.
 
 ## Data processed
 

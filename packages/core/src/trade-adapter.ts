@@ -222,8 +222,8 @@ function normalizeOrder(record: Record<string, unknown>): TradeOrderSummary {
     id: readString(record, ['trade_id', 'e_trade_id', 'order_id']) ?? '',
     buyerLoginId: readString(record, ['other_login_id', 'buyer_login_id', 'buyer_name']) ?? null,
     status: readString(record, ['status', 'order_status']) ?? 'unknown',
-    amount: total ? (readString(total, ['amount', 'value']) ?? '0') : '0',
-    currency: total ? (readString(total, ['currency']) ?? 'USD') : 'USD',
+    amount: total ? (readString(total, ['amount', 'value']) ?? null) : null,
+    currency: total ? (readString(total, ['currency']) ?? null) : null,
     createdAt: readDate(record, ['create_date', 'gmt_create', 'create_time']),
     modifiedAt: readDate(record, ['modify_date', 'gmt_modified', 'modified_time'])
   };

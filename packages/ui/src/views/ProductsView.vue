@@ -1,17 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, h, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import {
-  ChevronDown,
-  Download,
-  Ellipsis,
-  ExternalLink,
-  Layers3,
-  ListPlus,
-  RefreshCw,
-  Search,
-  Upload
-} from '@lucide/vue';
+import { ChevronDown, Download, Ellipsis, Layers3, ListPlus, RefreshCw, Search, Upload } from '@lucide/vue';
 import {
   DropdownMenuContent,
   DropdownMenuItem,
@@ -67,6 +57,10 @@ import {
 import ActionTooltip from '../components/ActionTooltip.vue';
 import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import DataTable from '../components/DataTable.vue';
+import { fieldColumn, productExtraFields } from '../lib/field-columns';
+import { detailErrorState, pageDetailIdentity, requestPageDetail, usePageDetails } from '../lib/page-details';
+import { useGalleryTransfers } from '../lib/gallery-transfer-service';
+import PageDetailActions from '../components/PageDetailActions.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import GroupSidebar from '../components/GroupSidebar.vue';
 import ImagePreview, { type ImagePreviewItem } from '../components/ImagePreview.vue';
@@ -603,16 +597,23 @@ const batchPublish = useMutation({
 });
 
 const productScore = useMutation({
-  mutationFn: (productId: string) => gateway.request('getProductScore', { productId }),
+  mutationFn: async (productId: string) => {
+    const result = await requestPageDetail(gateway, mode, language.value, { kind: 'score', id: productId });
+    if (!('score' in result)) throw new Error('INVALID_RESPONSE');
+    return result;
+  },
   onMutate: (productId) => {
     productScoreErrors.value = Object.fromEntries(
       Object.entries(productScoreErrors.value).filter(([key]) => key !== productId)
     );
+    return detailBoundary.value;
   },
-  onSuccess: (result, productId) => {
+  onSuccess: (result, productId, boundary) => {
+    if (boundary !== detailBoundary.value) return;
     productScores.value = { ...productScores.value, [productId]: result };
   },
-  onError: (error, productId) => {
+  onError: (error, productId, boundary) => {
+    if (boundary !== detailBoundary.value) return;
     productScoreErrors.value = { ...productScoreErrors.value, [productId]: errorMessage(error) };
   }
 });
@@ -631,6 +632,40 @@ const qualityIssues = computed(() =>
   })
 );
 const currentPageProducts = computed(() => products.data.value?.items ?? []);
+const accountContext = useGalleryTransfers()?.currentContext;
+const detailBoundary = computed(() =>
+  JSON.stringify([
+    subject.value,
+    language.value,
+    productPage.value,
+    productPageSize.value,
+    selectedProductGroupId.value,
+    accountContext?.value?.identity,
+    accountContext?.value?.gateway,
+    workspace.value
+  ])
+);
+const pageDetails = usePageDetails(
+  currentPageProducts,
+  detailBoundary,
+  (row) => row.id,
+  async (row, identity) => {
+    if (!row.encryptedId) throw new Error('PRODUCT_ENCRYPTED_ID_MISSING');
+    return requestPageDetail(gateway, mode, language.value, { kind: 'score', id: row.encryptedId }, identity);
+  },
+  (row, data) => {
+    if ('score' in data && row.encryptedId)
+      productScores.value = { ...productScores.value, [row.encryptedId]: data };
+  },
+  () => pageDetailIdentity(gateway, mode)
+);
+watch(detailBoundary, () => {
+  productScores.value = {};
+  productScoreErrors.value = {};
+});
+watch(pageDetails.securityFailure, (failed) => {
+  if (failed) productScores.value = {};
+});
 const currentPageProductIds = computed(() => currentPageProducts.value.map((product) => product.id));
 const selectedProducts = computed(() =>
   currentPageProducts.value.filter((product) => selectedProductIds.value.includes(product.id))
@@ -1241,6 +1276,22 @@ function productTransferSchemaFormatLabel(format: ProductTransferSchemaFormat): 
 }
 
 function submitBatchDisplay(display: 'online' | 'offline'): void {
+  if (
+    productDisplayMutationDisabled.value ||
+    selectedProductMissingEncryptedId.value ||
+    selectedDisplayMutationBlocked.value
+  ) {
+    toast.warning(
+      t(
+        productDisplayMutationDisabled.value
+          ? 'products.view.page.displayDisabled'
+          : selectedProductMissingEncryptedId.value
+            ? 'products.view.page.missingEncryptedId'
+            : 'products.view.page.displayBlocked'
+      )
+    );
+    return;
+  }
   if (mode !== 'mock') {
     actionConfirmation.value = {
       kind: 'batch-display',
@@ -1368,7 +1419,7 @@ const columns = computed<DataColumn<Product>[]>(() => [
             {
               type: 'button',
               class:
-                'group relative block size-14 cursor-zoom-in overflow-hidden rounded-md border border-border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                'group relative block size-20 cursor-zoom-in overflow-hidden rounded-md border border-border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               'aria-label': t('products.view.previewMain', { title: row.original.subject }),
               onClick: () => {
                 openProductImagePreview(row.original);
@@ -1386,36 +1437,31 @@ const columns = computed<DataColumn<Product>[]>(() => [
             'span',
             {
               class:
-                'flex size-14 items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground'
+                'flex size-20 items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground'
             },
             t('products.view.none')
           ),
-    meta: { sticky: 'left', stickyOffset: '56px', stickyBoundary: true, width: '96px' }
+    meta: { sticky: 'left', stickyOffset: '56px', stickyBoundary: true, width: '112px' }
   },
   {
     accessorKey: 'subject',
     header: t('products.view.columns.product'),
     cell: ({ row }) =>
       h('div', { class: 'min-w-56 space-y-1' }, [
-        h('div', { class: 'flex items-start gap-1.5' }, [
-          h('p', { class: 'font-medium' }, row.original.subject),
-          row.original.detailUrl
-            ? h(
-                'a',
-                {
-                  href: row.original.detailUrl,
-                  target: '_blank',
-                  rel: 'noopener noreferrer',
-                  class:
-                    'mt-0.5 inline-flex shrink-0 cursor-pointer text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  title: t('products.links.viewOnAlibaba'),
-                  'aria-label': t('products.links.viewOnAlibaba')
-                },
-                [h(ExternalLink, { class: 'size-3.5', 'aria-hidden': 'true' })]
-              )
-            : null
-        ]),
-        h('p', { class: 'font-mono text-xs text-muted-foreground' }, row.original.id)
+        h('p', { class: 'font-medium' }, row.original.subject),
+        row.original.detailUrl
+          ? h(
+              'a',
+              {
+                href: row.original.detailUrl,
+                target: '_blank',
+                rel: 'noopener noreferrer',
+                class: 'font-mono text-xs text-primary hover:underline',
+                title: t('products.links.viewOnAlibaba')
+              },
+              row.original.id
+            )
+          : h('p', { class: 'font-mono text-xs text-muted-foreground' }, row.original.id)
       ])
   },
   {
@@ -1448,7 +1494,9 @@ const columns = computed<DataColumn<Product>[]>(() => [
           { class: 'font-medium tabular-nums' },
           score
             ? `${formatProductScore(score.score)}/${PRODUCT_SCORE_DISPLAY_MAX}`
-            : t('products.view.scoreNotQueried')
+            : t(
+                `common.columns.${pageDetails.states.value[row.original.id] === 'loading' ? 'loading' : pageDetails.states.value[row.original.id] === 'failed' ? 'failed' : 'pending'}`
+              )
         ),
         score?.issues.length
           ? h(
@@ -1477,6 +1525,33 @@ const columns = computed<DataColumn<Product>[]>(() => [
     cell: (context) =>
       h('span', { class: 'whitespace-nowrap tabular-nums' }, formatDateTime(context.getValue<string>()))
   },
+  ...productExtraFields.map((id) =>
+    fieldColumn<Product>(id, t(`common.fields.${id}`), (row) => row[id], [
+      t('common.fields.yes'),
+      t('common.fields.no')
+    ])
+  ),
+  fieldColumn<Product>(
+    'watermark',
+    t('common.fields.watermark'),
+    (row) =>
+      row.watermark == null
+        ? null
+        : [
+            t(row.watermark ? 'common.fields.yes' : 'common.fields.no'),
+            row.watermarkPosition,
+            row.watermarkFrame
+          ]
+            .filter(Boolean)
+            .join(' / '),
+    [t('common.fields.yes'), t('common.fields.no')]
+  ),
+  fieldColumn<Product>(
+    'scoreIssues',
+    t('common.fields.scoreIssues'),
+    (row) => scoreForProduct(row)?.issues.length ?? t('common.columns.pending'),
+    [t('common.fields.yes'), t('common.fields.no')]
+  ),
   {
     id: 'actions',
     header: t('products.view.columns.actions'),
@@ -1503,6 +1578,8 @@ function scoreForProduct(product: Product): ProductScore | undefined {
 }
 
 function scoreErrorForProduct(product: Product): string | undefined {
+  if (pageDetails.errors.value[product.id])
+    return t(`common.columns.${detailErrorState(pageDetails.errors.value[product.id])}`);
   return product.encryptedId ? productScoreErrors.value[product.encryptedId] : undefined;
 }
 
@@ -1515,20 +1592,14 @@ async function querySelectedProductScores(): Promise<void> {
     return;
   }
   queryingSelectedProductScores.value = true;
-  let succeeded = 0;
-  let failed = 0;
+  let summary: { success: number; failed: number } | null;
   try {
-    for (const product of targets) {
-      try {
-        await productScore.mutateAsync(product.encryptedId);
-        succeeded += 1;
-      } catch {
-        failed += 1;
-      }
-    }
+    summary = await pageDetails.load(false, targets);
   } finally {
     queryingSelectedProductScores.value = false;
   }
+  if (!summary) return;
+  const { success: succeeded, failed } = summary;
   const skipped = selectedProducts.value.length - targets.length;
   const message = t('products.view.feedback.scoreDone', {
     succeeded,
@@ -2200,7 +2271,7 @@ onBeforeUnmount(() => {
 
       <section class="min-w-0">
         <div
-          class="mb-4 flex flex-wrap items-center justify-between gap-3"
+          class="flex flex-wrap items-center justify-between gap-3 rounded-t-lg border border-b-0 p-2"
           role="toolbar"
           :aria-label="t('products.view.page.toolbar')"
         >
@@ -2262,7 +2333,7 @@ onBeforeUnmount(() => {
                     >
                       <DropdownMenuItem
                         class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-                        :disabled="queryingSelectedProductScores"
+                        :disabled="queryingSelectedProductScores || pageDetails.busy.value"
                         @select="querySelectedProductScores"
                       >
                         {{
@@ -2274,24 +2345,14 @@ onBeforeUnmount(() => {
                       <DropdownMenuSeparator class="my-1 h-px bg-border" />
                       <DropdownMenuItem
                         class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-                        :disabled="
-                          productDisplayMutationDisabled ||
-                          selectedProductMissingEncryptedId ||
-                          selectedDisplayMutationBlocked ||
-                          batchDisplay.isPending.value
-                        "
+                        :disabled="batchDisplay.isPending.value"
                         @select="submitBatchDisplay('online')"
                       >
                         {{ t('products.view.page.batchOnline') }}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-                        :disabled="
-                          productDisplayMutationDisabled ||
-                          selectedProductMissingEncryptedId ||
-                          selectedDisplayMutationBlocked ||
-                          batchDisplay.isPending.value
-                        "
+                        :disabled="batchDisplay.isPending.value"
                         @select="submitBatchDisplay('offline')"
                       >
                         {{ t('products.view.page.batchOffline') }}
@@ -2306,18 +2367,6 @@ onBeforeUnmount(() => {
             >
           </div>
         </div>
-        <p
-          v-if="selectedProductIds.length && productDisplayMutationDisabled"
-          class="mb-3 text-xs text-amber-700 dark:text-amber-400"
-        >
-          {{ t('products.view.page.displayDisabled') }}
-        </p>
-        <p v-else-if="selectedProductMissingEncryptedId" class="mb-3 text-xs text-destructive">
-          {{ t('products.view.page.missingEncryptedId') }}
-        </p>
-        <p v-else-if="selectedDisplayMutationBlocked" class="mb-3 text-xs text-amber-700 dark:text-amber-400">
-          {{ t('products.view.page.displayBlocked') }}
-        </p>
         <ErrorNotice v-if="batchDisplay.error.value" class="mb-3" :error="batchDisplay.error.value" compact />
         <QueryState
           :loading="products.isPending.value"
@@ -2327,6 +2376,10 @@ onBeforeUnmount(() => {
         >
           <DataTable
             :columns="columns"
+            column-settings-key="products"
+            class="rounded-t-none"
+            :locked-columns="['select', 'subject', 'actions']"
+            :hidden-columns="[...productExtraFields, 'watermark', 'scoreIssues']"
             :data="products.data.value?.items ?? []"
             :page="productPage"
             :page-size="productPageSize"
@@ -2347,6 +2400,19 @@ onBeforeUnmount(() => {
                   t('products.view.page.addProduct')
                 }}</Button>
               </div>
+            </template>
+            <template #column-actions="{ visible }">
+              <PageDetailActions
+                v-if="visible.includes('productScore') || visible.includes('scoreIssues')"
+                :page-key="JSON.stringify([detailBoundary, currentPageProducts.map((product) => product.id)])"
+                :busy="pageDetails.busy.value"
+                :done="pageDetails.done.value"
+                :total="pageDetails.total.value"
+                :count="currentPageProducts.length"
+                :failed="Object.keys(pageDetails.errors.value).length > 0"
+                :load="pageDetails.load"
+                @stop="pageDetails.stop"
+              />
             </template>
             <template #pagination-summary>
               <span

@@ -47,7 +47,8 @@ export class GatewayConfigurationError extends Error {
       | 'META_CREDENTIAL_VAULT_UNREADABLE'
       | 'S3_CREDENTIAL_ENCRYPTION_KEY_INVALID'
       | 'S3_CREDENTIAL_VAULT_UNREADABLE'
-      | 'S3_STORAGE_NOT_CONFIGURED',
+      | 'S3_STORAGE_NOT_CONFIGURED'
+      | 'S3_LOCAL_HTTP_DISABLED',
     message: string
   ) {
     super(message);

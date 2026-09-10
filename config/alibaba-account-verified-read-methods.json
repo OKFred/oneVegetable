@@ -1,6 +1,7 @@
 {
-  "checkedAtUtc": "2026-08-20T05:16:29.691Z",
+  "checkedAtUtc": "2026-09-10T02:37:41.199Z",
   "methods": [
+    "alibaba.icbu.product.country.getcountrylist",
     "alibaba.icbu.category.attribute.get",
     "alibaba.icbu.category.get.new",
     "alibaba.icbu.category.schema.level.get",

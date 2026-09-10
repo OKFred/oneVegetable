@@ -26,6 +26,7 @@ interface ProductDefinition {
   method: string;
   source: 'catalog' | 'article';
   docId?: number;
+  docUrl?: string;
   articleId?: number;
   title: string;
   description: string;
@@ -43,6 +44,8 @@ interface ProductContractOverride {
   reason: string;
   requestSchemaPatches?: Record<string, JsonSchema>;
   responseExample?: unknown;
+  responseExampleFile?: string;
+  requestExampleFile?: string;
   responseSchemaPatches?: Record<string, JsonSchema>;
 }
 
@@ -189,6 +192,12 @@ document.components.schemas = Object.fromEntries(
   Object.entries(document.components.schemas).filter(([name]) => !name.startsWith('AlibabaProduct'))
 );
 const capabilityMap: Record<string, unknown> = {};
+async function readExample(file: string, key: 'request' | 'response'): Promise<unknown> {
+  const fixture: unknown = JSON.parse(await readFile(resolve(root, file), 'utf8'));
+  if (!fixture || typeof fixture !== 'object' || !(key in fixture))
+    throw new Error('Missing contract fixture');
+  return (fixture as Record<string, unknown>)[key];
+}
 for (const definition of snapshot.definitions) {
   const override = overrideDocument.overrides[definition.method];
   const baseName = schemaName(definition.method);
@@ -221,17 +230,19 @@ for (const definition of snapshot.definitions) {
     title: definition.title,
     description: definition.description,
     errorCodes: definition.errorCodes,
-    requestExample: Object.fromEntries(
-      definition.requestParams.map((node) => [node.name, exampleValue(node)])
-    ),
-    responseExample:
-      override && Object.hasOwn(override, 'responseExample')
+    requestExample: override?.requestExampleFile
+      ? await readExample(override.requestExampleFile, 'request')
+      : Object.fromEntries(definition.requestParams.map((node) => [node.name, exampleValue(node)])),
+    responseExample: override?.responseExampleFile
+      ? await readExample(override.responseExampleFile, 'response')
+      : override && Object.hasOwn(override, 'responseExample')
         ? override.responseExample
         : responseExample(definition),
     docUrl:
-      definition.source === 'catalog'
+      definition.docUrl ??
+      (definition.source === 'catalog'
         ? `https://developer.alibaba.com/docs/api.htm?apiId=${definition.docId ?? ''}`
-        : `https://developer.alibaba.com/docs/doc.htm?articleId=${definition.articleId ?? ''}&docType=1`
+        : `https://developer.alibaba.com/docs/doc.htm?articleId=${definition.articleId ?? ''}&docType=1`)
   };
 }
 document['x-product-capabilities'] = capabilityMap;

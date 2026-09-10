@@ -29,6 +29,7 @@ const model = reactive<S3StorageConfiguration>({
   secretAccessKey: '',
   sessionToken: null,
   pathStyle: true,
+  allowInsecureLocal: false,
   rootPrefix: 'one-vegetable/gallery'
 });
 const remark = ref<string | null>(null);
@@ -58,6 +59,7 @@ async function load(): Promise<void> {
     summary.value = await control.s3StorageConfiguration();
     if (summary.value.configured) {
       model.endpoint = summary.value.endpoint ?? '';
+      model.allowInsecureLocal = model.endpoint.startsWith('http:');
       model.region = summary.value.region ?? 'auto';
       model.bucket = summary.value.bucket ?? '';
       model.pathStyle = summary.value.pathStyle ?? true;
@@ -127,6 +129,7 @@ async function clearConfiguration(): Promise<void> {
       secretAccessKey: '',
       sessionToken: null,
       pathStyle: true,
+      allowInsecureLocal: false,
       rootPrefix: 'one-vegetable/gallery'
     });
     remark.value = null;
@@ -169,6 +172,14 @@ async function clearConfiguration(): Promise<void> {
       <label class="text-sm font-medium">
         {{ t('settings.s3.region') }}
         <Input v-model="model.region" class="mt-2" placeholder="auto" />
+      </label>
+      <label
+        v-if="model.endpoint.startsWith('http:')"
+        class="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-300 sm:col-span-2"
+      >
+        <input v-model="model.allowInsecureLocal" type="checkbox" class="mt-1 size-4" />{{
+          t('settings.s3.localHttp')
+        }}
       </label>
       <label class="text-sm font-medium">
         {{ t('settings.s3.bucket') }}

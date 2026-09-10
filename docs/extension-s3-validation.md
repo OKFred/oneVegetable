@@ -38,4 +38,9 @@ ZIP 限制仍为 50 MiB，S3 单对象限制为 5 MiB。所有图片上传仍经
 - 脱敏报告：`artifacts/extension-s3-validation/report.json`；`permissionMode=isolated-manifest-pregrant`，不将原生权限点击或真实撤销记为已验收。
 - 图片 PUT requestId：`fcfc2b04-7427-4130-aa14-d00ad742eaee`；GET：`e476df0b-e3cc-4053-a6cb-ed3fc397f412`。
 
-待人工补验：正式包中未预授权的域名 → 保存时点击允许 → 测试连接 → 撤销该域名 → 验证提示重新授权。完整图库目录映射的真实验收沿用 Web/BFF 已完成记录；本轮插件特有验收覆盖直连传输，不新增真实图库上传。
+后续正式包补验已通过（2026-09-08）：未预授权域名 → 用户点击允许 → 加密保存 → 真实测试、PUT/LIST/GET + SHA-256 → worker 重启恢复 → 撤销域名后拒绝请求 → 清除隔离配置。未改正式 manifest，未执行 Alibaba mutation。
+
+- 最终报告：`artifacts/extension-s3-validation/report.json`，`permissionMode=production-optional-grant`、`workerRestart=true`、`revokedPermissionBlocked=true`。
+- 独立相对前缀：`extension-1788848288280-67fb0de6`；保留一张 2635 字节插件图标及清单，不覆盖或删除用户对象。
+- 图片 PUT：`dea4039f-08ae-4df2-89c3-35e99a856cec`；GET：`57dd61c5-a08b-49c4-8ba6-0cbe09ed9d8a`。
+- 2026-09-09 项目所有者确认 2.5.0 已上架。完整图库目录映射的真实验收沿用 Web/BFF 记录；此处插件特有验收不代表新增真实图库上传。

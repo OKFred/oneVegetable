@@ -10,6 +10,7 @@ Key features:
 - Import and export products as JSON or ZIP archives with managed `assets` image resources.
 - Select gallery assets and receive non-blocking content guidance.
 - Import and export gallery ZIPs up to 50 MiB with originals and an integrity manifest; uploads require confirmation. Connect directly to S3-compatible storage and map prefixes to gallery groups without deploying a backend.
+- Pause, verify and resume ZIP/S3 tasks from local transfer history. Transfers continue across dialogs and workbench navigation, but require manual confirmation after reload. Confirmed items are not resent and uncertain results are not presented as complete success.
 - Share one gallery asset through the operating system, export a sharing package, or publish it through the user's own backend to a connected Facebook Page or Instagram professional account.
 - Search RFQs and keep quotation drafts locally.
 - Combine order funding, logistics and fulfillment information.

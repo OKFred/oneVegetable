@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useGalleryTransfers } from '../lib/gallery-transfer-service';
+const galleryTransfers = useGalleryTransfers();
 import { computed, defineAsyncComponent, h, onMounted, ref } from 'vue';
 import {
   AlertTriangle,
@@ -473,6 +475,21 @@ async function refreshLocalData(): Promise<void> {
   dataError.value = null;
   try {
     dataInventory.value = await localData.inspect();
+    if (galleryTransfers) {
+      await galleryTransfers.reload();
+      const tasks = galleryTransfers.tasks.value;
+      const size = new TextEncoder().encode(JSON.stringify(tasks)).length;
+      dataInventory.value.categories.push({
+        id: 'gallery-transfer-tasks',
+        label: t('photos.tasks.title'),
+        storage: 'IndexedDB',
+        itemCount: tasks.length,
+        approximateBytes: size,
+        sensitive: false,
+        retention: t('photos.tasks.retention')
+      });
+      dataInventory.value.totalApproximateBytes += size;
+    }
   } catch (error: unknown) {
     dataError.value = userVisibleCause(error, t('settings.localData.loadError'));
   } finally {
@@ -495,7 +512,10 @@ async function clearAllLocalData(): Promise<void> {
   dataBusy.value = true;
   dataError.value = null;
   try {
+    await galleryTransfers?.stopAndClear();
     await localData.clearAll();
+    const { clearColumnPreferences } = await import('../lib/column-preferences');
+    clearColumnPreferences();
     clearConfirmation.value = '';
     model.value = {
       appKey: '',

@@ -187,6 +187,11 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
 };
 
 export const PHOTO_MOCK_DATA: PhotoMockData = {
+  "transferContext": {
+    "identity": "mock-gallery-user",
+    "gateway": "mock-gallery-gateway",
+    "storage": null
+  },
   "photoGroups": [
     {
       "id": "-1",

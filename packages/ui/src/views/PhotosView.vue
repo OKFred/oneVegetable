@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, ref, watch } from 'vue';
+import { computed, h, onScopeDispose, ref, watch } from 'vue';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import {
   Download,
@@ -24,10 +24,13 @@ import { SOCIAL_SHARE_MAX_PHOTOS } from '@one-vegetable/core';
 
 import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
+import { fieldColumn, photoExtraFields } from '../lib/field-columns';
 import GroupSidebar from '../components/GroupSidebar.vue';
 import PageHeader from '../components/PageHeader.vue';
 import ImagePreview, { type ImagePreviewItem } from '../components/ImagePreview.vue';
 import GalleryTransferDialog from '../components/GalleryTransferDialog.vue';
+import { useGalleryTransfers } from '../lib/gallery-transfer-service';
+const galleryTransfers = useGalleryTransfers();
 import PhotoGroupManagerDialog from '../components/PhotoGroupManagerDialog.vue';
 import PhotoGroupNavigation from '../components/PhotoGroupNavigation.vue';
 import PhotoSocialShareDialog from '../components/PhotoSocialShareDialog.vue';
@@ -51,6 +54,29 @@ type PhotoViewMode = 'cards' | 'list';
 
 const { gateway } = useServices();
 const queryClient = useQueryClient();
+const groupCacheRevision = ref(0);
+onScopeDispose(
+  queryClient.getQueryCache().subscribe((event) => {
+    const key: unknown = event.query.queryKey;
+    if (Array.isArray(key) && (key as unknown[])[0] === 'photo-groups') groupCacheRevision.value++;
+  })
+);
+function groupPath(id: string): string {
+  void groupCacheRevision.value;
+  const groups = queryClient
+    .getQueriesData<PhotoGroup[]>({ queryKey: ['photo-groups'] })
+    .flatMap(([, data]) => data ?? []);
+  const names: string[] = [];
+  const seen = new Set<string>();
+  let current: string | null = id;
+  while (current && !seen.has(current)) {
+    seen.add(current);
+    const group = groups.find((item) => item.id === current);
+    names.unshift(group?.name ?? current);
+    current = group?.parentId ?? null;
+  }
+  return names.join(' / ');
+}
 const { t } = useUiI18n();
 const selectedGroup = ref('-1');
 const governanceFilter = ref<GovernanceFilter>('all');
@@ -211,6 +237,17 @@ function handleImportedGroupsChanged(): void {
   void queryClient.invalidateQueries({ queryKey: ['photo-groups'] });
   groupNavigationRevision.value += 1;
 }
+watch(
+  () =>
+    galleryTransfers?.tasks.value
+      .filter((task) => task.direction === 'import')
+      .map((task) => `${task.id}:${task.items.filter((item) => item.status === 'confirmed').length}`)
+      .join(','),
+  () => {
+    handleGalleryImported();
+    handleImportedGroupsChanged();
+  }
+);
 
 const photoColumns = computed<DataColumn<Photo>[]>(() => [
   {
@@ -239,7 +276,7 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
         {
           type: 'button',
           class:
-            'group relative block size-14 overflow-hidden rounded-md border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            'group relative block size-20 overflow-hidden rounded-md border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
           'aria-label': t('photos.previewPhoto', { name: photo.name }),
           onClick: () => {
             openPreview(photo);
@@ -255,7 +292,7 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
         })
       );
     },
-    meta: { sticky: 'left', stickyOffset: '64px', stickyBoundary: true, width: '88px' }
+    meta: { sticky: 'left', stickyOffset: '64px', stickyBoundary: true, width: '112px' }
   },
   {
     id: 'name',
@@ -307,6 +344,16 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
     cell: ({ row }) =>
       h('span', { class: 'whitespace-nowrap text-muted-foreground' }, formatDateTime(row.original.modifiedAt))
   },
+  ...photoExtraFields.map((id) =>
+    fieldColumn<Photo>(id, t(`common.fields.${id}`), (row) => row[id], [
+      t('common.fields.yes'),
+      t('common.fields.no')
+    ])
+  ),
+  fieldColumn<Photo>('groupPath', t('common.fields.groupPath'), (row) => groupPath(row.groupId), [
+    t('common.fields.yes'),
+    t('common.fields.no')
+  ]),
   {
     id: 'actions',
     header: t('photos.columns.actions'),
@@ -336,6 +383,9 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
       <Button variant="outline" @click="openGalleryTransfer('import')">
         <FileInput class="size-4" />{{ t('photos.page.import') }}
       </Button>
+      <Button v-if="galleryTransfers" variant="outline" @click="galleryTransfers.show()">{{
+        t('photos.tasks.title')
+      }}</Button>
       <Button
         variant="outline"
         :disabled="selectedPhotos.length === 0"
@@ -525,6 +575,9 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
         <div v-else-if="filteredPhotos.length > 0" data-testid="photo-list-table">
           <DataTable
             :columns="photoColumns"
+            column-settings-key="photos"
+            :locked-columns="['selection', 'name', 'actions']"
+            :hidden-columns="[...photoExtraFields, 'groupPath']"
             :data="filteredPhotos"
             :pagination="false"
             min-width="980px"
@@ -568,8 +621,6 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
         t('photos.errors.uploadUnavailable')
       )
     "
-    @imported="handleGalleryImported"
-    @groups-changed="handleImportedGroupsChanged"
   />
 
   <PhotoSocialShareDialog v-model:open="shareDialogOpen" :photos="selectedPhotos" />

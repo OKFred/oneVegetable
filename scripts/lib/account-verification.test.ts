@@ -9,7 +9,17 @@ describe('account verification snapshot', () => {
     const snapshot = await readAccountVerificationSnapshot(resolve(import.meta.dirname, '../..'));
 
     expect(snapshot.schemaVersion).toBe(1);
-    expect(snapshot.results).toHaveLength(35);
+    expect(snapshot.results).toHaveLength(37);
+    expect(snapshot.results).toContainEqual({
+      method: 'alibaba.icbu.product.country.getcountrylist',
+      status: 'passed',
+      reasonCode: null
+    });
+    expect(snapshot.results).toContainEqual({
+      method: 'alibaba.icbu.text.trans',
+      status: 'permission-denied',
+      reasonCode: 'isv.permission-api-package-limit'
+    });
     expect(snapshot.results).toContainEqual({
       method: 'alibaba.icbu.rfq.search',
       status: 'permission-denied',

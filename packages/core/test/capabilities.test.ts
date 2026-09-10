@@ -6,9 +6,9 @@ import { describe, expect, it } from 'vitest';
 import { API_CAPABILITIES } from '../src/generated/capabilities';
 
 describe('Alibaba API audit snapshot', () => {
-  it('contains the audited 84 free non-Jushita APIs', () => {
+  it('contains the 84 legacy catalog methods and the documented TOP translation supplement', () => {
     const methods = new Set<string>(API_CAPABILITIES.map((item) => item.method));
-    expect(API_CAPABILITIES).toHaveLength(84);
+    expect(API_CAPABILITIES).toHaveLength(86);
     expect(new Set(API_CAPABILITIES.map((item) => item.jushitaOnly))).toEqual(new Set([false]));
     expect(methods.has('alibaba.seller.order.get')).toBe(false);
   });

@@ -92,6 +92,9 @@ const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
 };
 
 export class MockGatewayClient implements GatewayClient {
+  galleryTransferContext() {
+    return Promise.resolve(structuredClone(PHOTO_MOCK_DATA.transferContext));
+  }
   private photoGroups: PhotoGroup[] = structuredClone(MOCK_DATA.listPhotoGroups);
   private photos: Photo[] = structuredClone(PHOTOS);
   private productGroups: ProductGroup[] = structuredClone(MOCK_DATA.listProductGroups);
