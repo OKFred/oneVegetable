@@ -1,7 +1,12 @@
 {
   "schemaVersion": 1,
-  "checkedAtUtc": "2026-08-20T16:39:50.512Z",
+  "checkedAtUtc": "2026-09-10T00:51:14.824Z",
   "results": [
+    {
+      "method": "alibaba.icbu.text.trans",
+      "status": "permission-denied",
+      "reasonCode": "isv.permission-api-package-limit"
+    },
     { "method": "alibaba.icbu.category.get.new", "status": "passed", "reasonCode": null },
     { "method": "alibaba.icbu.product.list", "status": "passed", "reasonCode": null },
     { "method": "alibaba.icbu.photobank.group.list", "status": "passed", "reasonCode": null },

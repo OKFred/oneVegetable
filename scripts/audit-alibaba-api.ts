@@ -230,6 +230,12 @@ const supplements = JSON.parse(
   await readFile(resolve(root, 'docs/alibaba-api-supplements.json'), 'utf8')
 ) as { entries: AuditEntry[] };
 function includeSupplements(entries: AuditEntry[]): AuditEntry[] {
+  for (const supplement of supplements.entries) {
+    const existing = entries.find((entry) => entry.method === supplement.method);
+    if (existing && existing.docUrl !== supplement.docUrl) {
+      throw new Error(`Reconcile catalog and supplemental evidence before replacing ${supplement.method}`);
+    }
+  }
   return [
     ...entries.filter((entry) => !supplements.entries.some((item) => item.method === entry.method)),
     ...supplements.entries
