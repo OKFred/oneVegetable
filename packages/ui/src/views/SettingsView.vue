@@ -514,7 +514,8 @@ async function clearAllLocalData(): Promise<void> {
   dataError.value = null;
   try {
     await galleryTransfers?.stopAndClear();
-    await localData.clearAll();
+    const { clearShowcaseLocalData } = await import('../lib/showcase-storage');
+    await clearShowcaseLocalData(() => localData.clearAll());
     const { clearColumnPreferences } = await import('../lib/column-preferences');
     clearColumnPreferences();
     clearConfirmation.value = '';

@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { zipSync } from 'fflate';
 import galleryFixture from '../../mock/data/gallery-extension-transfer.json' with { type: 'json' };
+import showcaseFixture from '../../mock/data/showcase-management.json' with { type: 'json' };
 import { MockGatewayClient } from '../../packages/core/src/mock-client';
 import { listCapabilities } from '../../packages/core/src/capability-registry';
 
@@ -14,6 +15,118 @@ import {
 } from '../../packages/core/src/extension-review-prompt';
 
 let context: BrowserContext | null = null;
+
+test('formal MV3 showcase uses the actual worker with isolated TOP responses', async () => {
+  if (!context) throw new Error('Missing extension context');
+  const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+  let included = true;
+  const writes: { method: string; ids: string | null }[] = [];
+  await context.route('https://eco.taobao.com/**', async (route) => {
+    const form = new URLSearchParams(route.request().postData() ?? '');
+    const method = form.get('method') ?? '';
+    let response: unknown;
+    if (method === 'alibaba.scbp.showcase.status')
+      response = { ...showcaseFixture.status, current_count: included ? 1 : 0 };
+    else if (method === 'alibaba.scbp.showcase.list')
+      response = included ? showcaseFixture.before : { results: [] };
+    else if (
+      method === 'alibaba.scbp.showcase.deleteproduct' ||
+      method === 'alibaba.scbp.showcase.addproduct'
+    ) {
+      writes.push({
+        method,
+        ids: form.get(method.endsWith('addproduct') ? 'product_id_list' : 'window_id_list')
+      });
+      included = method.endsWith('addproduct');
+      response = showcaseFixture.acknowledgement;
+    } else return route.abort();
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify(response) });
+  });
+  const mock = new MockGatewayClient(0);
+  const data = {
+    listProducts: await mock.request('listProducts', { page: 1, pageSize: 20 }),
+    listProductGroups: await mock.request('listProductGroups', undefined),
+    listProductCategories: await mock.request('listProductCategories', {}),
+    getDashboard: await mock.request('getDashboard', undefined)
+  };
+  const page = await context.newPage();
+  await page.addInitScript((data) => {
+    const runtime = (
+      globalThis as unknown as { chrome: { runtime: { sendMessage(message: unknown): Promise<unknown> } } }
+    ).chrome.runtime;
+    const original = runtime.sendMessage.bind(runtime);
+    runtime.sendMessage = (message) => {
+      if (
+        message &&
+        typeof message === 'object' &&
+        'kind' in message &&
+        message.kind === 'gateway-request' &&
+        'operation' in message &&
+        typeof message.operation === 'string' &&
+        'requestId' in message &&
+        Object.hasOwn(data, message.operation)
+      ) {
+        return Promise.resolve({
+          requestId: message.requestId,
+          ok: true,
+          data: (data as Record<string, unknown>)[message.operation]
+        });
+      }
+      return original(message);
+    };
+  }, data);
+  const origin = `chrome-extension://${new URL(worker.url()).host}`;
+  await page.goto(`${origin}/options.html#/settings`);
+  const guide = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
+  await guide.getByRole('checkbox').check();
+  await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
+  await page.getByLabel('App Key').fill('e2e-app-key');
+  await page.getByLabel('App Secret').fill('e2e-secret');
+  await page.getByLabel('Access Token').fill('e2e-token');
+  await page.getByLabel('设置保护口令').fill('e2e-vault-password');
+  await page.getByLabel('确认保护口令').fill('e2e-vault-password');
+  await page.getByRole('button', { name: '保存设置', exact: true }).click();
+  await expect(
+    page.getByText('凭证与设置已加密保存，并将在当前 Chrome 会话内保持可用。').first()
+  ).toBeVisible();
+  await page.goto(`${origin}/options.html#/products`);
+  await page.getByRole('button', { name: '更多', exact: true }).click();
+  await page.getByRole('menuitem', { name: '橱窗管理', exact: true }).click();
+  const drawer = page.getByRole('dialog', { name: '橱窗管理', exact: true });
+  const probe = await page.evaluate(async () => {
+    const runtime = (
+      globalThis as unknown as { chrome: { runtime: { sendMessage(value: unknown): Promise<unknown> } } }
+    ).chrome.runtime;
+    return runtime.sendMessage({
+      kind: 'gateway-request',
+      requestId: crypto.randomUUID(),
+      operation: 'getProductShowcase'
+    });
+  });
+  expect(probe, JSON.stringify(probe)).toMatchObject({ ok: true, data: { used: 1 } });
+  await expect(drawer.getByText('总额度 2 · 已用 1 · 剩余 1')).toBeVisible();
+  await drawer.getByRole('button', { name: '移出橱窗', exact: true }).click();
+  expect(writes).toHaveLength(0);
+  await page
+    .getByRole('dialog', { name: '确认移出橱窗 1 个商品？' })
+    .getByRole('button', { name: '确认', exact: true })
+    .click();
+  await expect(drawer.getByText('总额度 2 · 已用 0 · 剩余 2')).toBeVisible();
+  await page.reload();
+  await page.getByRole('checkbox', { name: '选择 Portable solar power station 1000W', exact: true }).check();
+  await page.getByRole('button', { name: '更多', exact: true }).click();
+  await page.getByRole('menuitem', { name: '加入橱窗', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: '确认加入橱窗 1 个商品？' })
+    .getByRole('button', { name: '确认', exact: true })
+    .click();
+  await expect(drawer.getByText('总额度 2 · 已用 1 · 剩余 1')).toBeVisible();
+  expect(writes).toEqual([
+    { method: 'alibaba.scbp.showcase.deleteproduct', ids: '8001' },
+    { method: 'alibaba.scbp.showcase.addproduct', ids: '10000001' }
+  ]);
+  await page.close();
+});
 
 test('formal MV3 workbench supports persistent columns and automatic detail loading', async () => {
   if (!context) throw new Error('Missing extension context');

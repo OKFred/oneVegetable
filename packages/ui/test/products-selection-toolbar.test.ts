@@ -66,7 +66,7 @@ describe('ProductsView selection toolbar', () => {
       [...toolbar.element.querySelectorAll('button')].some((item) => item.textContent.trim() === '清空')
     ).toBe(false);
     expect(button(toolbar.element, '导出').disabled).toBe(true);
-    expect(button(toolbar.element, '更多').disabled).toBe(true);
+    expect(button(toolbar.element, '更多').disabled).toBe(false);
     expect(button(toolbar.element, '分组').querySelector('svg')).not.toBeNull();
     expect(button(toolbar.element, '新增').querySelector('svg')).not.toBeNull();
     expect(wrapper.findAll('[role="tab"]').map((tab) => tab.text())).toEqual([

@@ -11,6 +11,28 @@ import {
   DropdownMenuTrigger
 } from 'reka-ui';
 import { toast } from 'vue-sonner';
+import { useProductShowcase, type ShowcaseTarget } from '../lib/product-showcase';
+import { useShowcaseI18n } from '../i18n/showcase';
+
+const ProductShowcaseDrawer = defineAsyncComponent(() => import('../components/ProductShowcaseDrawer.vue'));
+const showcase = useProductShowcase();
+const st = useShowcaseI18n();
+const showcaseOpen = ref(false);
+const showcaseAction = ref<'add' | 'remove' | null>(null);
+const showcaseSelection = ref<ShowcaseTarget[]>([]);
+const showcaseColumnVisible = ref(false);
+watch(showcaseColumnVisible, (visible) => {
+  if (visible) void showcase.load();
+});
+function openShowcase(action: 'add' | 'remove' | null = null): void {
+  showcaseSelection.value = selectedProducts.value.map(({ id, subject, status }) => ({
+    id,
+    subject,
+    status
+  }));
+  showcaseAction.value = action;
+  showcaseOpen.value = true;
+}
 
 import {
   analyzeProductDescriptionQuality,
@@ -633,6 +655,13 @@ const qualityIssues = computed(() =>
 );
 const currentPageProducts = computed(() => products.data.value?.items ?? []);
 const accountContext = useGalleryTransfers()?.currentContext;
+watch(
+  () => JSON.stringify([accountContext?.value?.identity, accountContext?.value?.gateway]),
+  () => {
+    showcase.invalidate();
+    if (!showcase.busy.value) showcaseOpen.value = false;
+  }
+);
 const detailBoundary = computed(() =>
   JSON.stringify([
     subject.value,
@@ -702,9 +731,6 @@ const productTransferAssetDownloadDisabledReason = computed(() =>
     productTransferOperations.reasonCode('downloadProductAsset'),
     t('products.view.errors.downloadDisabled')
   )
-);
-const moreActionsDisabledReason = computed(() =>
-  selectedProducts.value.length === 0 ? t('products.view.errors.selectProduct') : ''
 );
 const actionConfirmationTitle = computed(() => {
   const action = actionConfirmation.value;
@@ -1480,6 +1506,21 @@ const columns = computed<DataColumn<Product>[]>(() => [
         () => productStatusLabel(context.getValue<Product['status']>())
       ),
     meta: { width: '112px' }
+  },
+  {
+    id: 'showcase',
+    header: st('column'),
+    cell: ({ row }) =>
+      showcase.loading.value
+        ? t('common.columns.loading')
+        : !showcase.snapshot.value
+          ? t(showcase.error.value ? 'common.columns.failed' : 'common.columns.pending')
+          : st(
+              showcase.snapshot.value.entries.some((entry) => entry.productId === row.original.id)
+                ? 'in'
+                : 'out'
+            ),
+    meta: { width: '120px' }
   },
   {
     id: 'productScore',
@@ -2332,52 +2373,72 @@ onBeforeUnmount(() => {
             <Button variant="outline" @click="productGroupDialogOpen = true">
               <Layers3 class="size-4" aria-hidden="true" />{{ t('products.view.page.group') }}
             </Button>
-            <ActionTooltip :disabled="Boolean(moreActionsDisabledReason)" :reason="moreActionsDisabledReason">
-              <span class="inline-flex">
-                <DropdownMenuRoot :modal="false">
-                  <DropdownMenuTrigger as-child>
-                    <Button variant="outline" :disabled="selectedProducts.length === 0">
-                      <Ellipsis class="size-4" />{{ t('products.view.page.more')
-                      }}<ChevronDown class="size-3.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuContent
-                      class="ov-dropdown-content z-[65] min-w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg outline-none"
-                      :side-offset="6"
-                      align="end"
+            <span class="inline-flex">
+              <DropdownMenuRoot :modal="false">
+                <DropdownMenuTrigger as-child>
+                  <Button variant="outline">
+                    <Ellipsis class="size-4" />{{ t('products.view.page.more')
+                    }}<ChevronDown class="size-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuContent
+                    class="ov-dropdown-content z-[65] min-w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg outline-none"
+                    :side-offset="6"
+                    align="end"
+                  >
+                    <DropdownMenuItem
+                      class="flex cursor-pointer items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent"
+                      @select="openShowcase()"
+                      >{{ st('title') }}</DropdownMenuItem
                     >
-                      <DropdownMenuItem
-                        class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-                        :disabled="queryingSelectedProductScores || pageDetails.busy.value"
-                        @select="querySelectedProductScores"
-                      >
-                        {{
-                          queryingSelectedProductScores
-                            ? t('products.view.page.batchScorePending')
-                            : t('products.view.page.batchScore')
-                        }}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator class="my-1 h-px bg-border" />
-                      <DropdownMenuItem
-                        class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-                        :disabled="batchDisplay.isPending.value"
-                        @select="submitBatchDisplay('online')"
-                      >
-                        {{ t('products.view.page.batchOnline') }}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-                        :disabled="batchDisplay.isPending.value"
-                        @select="submitBatchDisplay('offline')"
-                      >
-                        {{ t('products.view.page.batchOffline') }}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuRoot>
-              </span>
-            </ActionTooltip>
+                    <DropdownMenuItem
+                      class="flex cursor-pointer items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent data-[disabled]:opacity-50"
+                      :disabled="selectedProducts.length === 0"
+                      @select="openShowcase('add')"
+                      >{{ st('add') }}</DropdownMenuItem
+                    >
+                    <DropdownMenuItem
+                      class="flex cursor-pointer items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent data-[disabled]:opacity-50"
+                      :disabled="selectedProducts.length === 0"
+                      @select="openShowcase('remove')"
+                      >{{ st('remove') }}</DropdownMenuItem
+                    >
+                    <DropdownMenuSeparator class="my-1 h-px bg-border" />
+                    <DropdownMenuItem
+                      class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
+                      :disabled="
+                        selectedProducts.length === 0 ||
+                        queryingSelectedProductScores ||
+                        pageDetails.busy.value
+                      "
+                      @select="querySelectedProductScores"
+                    >
+                      {{
+                        queryingSelectedProductScores
+                          ? t('products.view.page.batchScorePending')
+                          : t('products.view.page.batchScore')
+                      }}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator class="my-1 h-px bg-border" />
+                    <DropdownMenuItem
+                      class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
+                      :disabled="selectedProducts.length === 0 || batchDisplay.isPending.value"
+                      @select="submitBatchDisplay('online')"
+                    >
+                      {{ t('products.view.page.batchOnline') }}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
+                      :disabled="selectedProducts.length === 0 || batchDisplay.isPending.value"
+                      @select="submitBatchDisplay('offline')"
+                    >
+                      {{ t('products.view.page.batchOffline') }}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenuPortal>
+              </DropdownMenuRoot>
+            </span>
             <Button @click="startNewProduct"
               ><ListPlus class="size-4" aria-hidden="true" />{{ t('products.view.page.add') }}</Button
             >
@@ -2395,7 +2456,7 @@ onBeforeUnmount(() => {
             column-settings-key="products"
             class="rounded-t-none"
             :locked-columns="['select', 'subject', 'actions']"
-            :hidden-columns="[...productExtraFields, 'watermark', 'scoreIssues']"
+            :hidden-columns="[...productExtraFields, 'watermark', 'scoreIssues', 'showcase']"
             :data="products.data.value?.items ?? []"
             :page="productPage"
             :page-size="productPageSize"
@@ -2405,6 +2466,7 @@ onBeforeUnmount(() => {
             min-width="1320px"
             @update:page="setProductPage"
             @update:page-size="setProductPageSize"
+            @visible-columns-change="showcaseColumnVisible = $event.includes('showcase')"
           >
             <template #empty>
               <div class="space-y-3 py-4">
@@ -2898,6 +2960,13 @@ onBeforeUnmount(() => {
     @confirm-export="exportSelectedProducts"
   />
   <ProductGroupManagerDialog v-model:open="productGroupDialogOpen" @changed="handleProductGroupChanged" />
+  <ProductShowcaseDrawer
+    v-if="showcaseOpen"
+    v-model:open="showcaseOpen"
+    :controller="showcase"
+    :selection="showcaseSelection"
+    :action="showcaseAction"
+  />
 
   <ConfirmActionDialog
     :open="actionConfirmation !== null"

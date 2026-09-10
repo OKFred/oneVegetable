@@ -1,0 +1,28 @@
+export const showcase = {
+  title: 'Showcase',
+  refresh: 'Refresh',
+  column: 'Showcase',
+  add: 'Add to showcase',
+  remove: 'Remove from showcase',
+  in: 'Included',
+  out: 'Not included',
+  quota: 'Total {total} · Used {used} · Available {available}',
+  empty: 'No showcase products',
+  note: 'Adding changes public promotion. Removing does not delete or unlist the product.',
+  confirm: '{action} for {count} products?',
+  success: 'Showcase change verified',
+  uncertain: 'Result is unconfirmed. Refresh and verify before continuing. No automatic resend.',
+  unlock: 'I verified the platform result',
+  recovered: 'A previous request may have been sent. Verify before continuing.',
+  full: 'Not enough showcase slots. Other products will not be replaced.',
+  select: 'Select 1–20 products first',
+  online: 'Only online products not already in the showcase can be added.',
+  missing: 'Not all selected products are in the showcase. Select again.',
+  disabled: 'Your identity or environment does not allow this showcase action.',
+  changed: 'Account or configuration changed. Reopen showcase management.',
+  incomplete: 'Showcase data is incomplete or changing. Reload it.',
+  rejected: 'The platform did not confirm success. Check its response.',
+  locked: 'Another page is changing the showcase, or local storage is unavailable. Try again later.',
+  acknowledge:
+    'Verify the showcase status of these products on the platform first. Clearing this notice does not resend the request.'
+};

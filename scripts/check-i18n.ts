@@ -3,6 +3,8 @@ import { relative, resolve } from 'node:path';
 
 import { enUS } from '../packages/ui/src/i18n/messages/en-US/index';
 import { zhCN } from '../packages/ui/src/i18n/messages/zh-CN/index';
+import { showcase as showcaseZh } from '../packages/ui/src/i18n/messages/zh-CN/showcase';
+import { showcase as showcaseEn } from '../packages/ui/src/i18n/messages/en-US/showcase';
 
 interface TranslationLeaf {
   kind: 'boolean' | 'null' | 'number' | 'string';
@@ -25,7 +27,11 @@ const hardcodedHanAllowlist: Readonly<Record<string, readonly RegExp[]>> = {
   ]
 };
 
-const errors = [...compareCatalogs(zhCN, enUS), ...(await findHardcodedInterfaceText())];
+const errors = [
+  ...compareCatalogs(zhCN, enUS),
+  ...compareCatalogs(showcaseZh, showcaseEn),
+  ...(await findHardcodedInterfaceText())
+];
 
 if (errors.length > 0) {
   throw new Error(`i18n checks failed:\n${errors.map((error) => `- ${error}`).join('\n')}`);

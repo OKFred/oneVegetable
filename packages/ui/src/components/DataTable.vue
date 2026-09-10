@@ -52,6 +52,7 @@ const emit = defineEmits<{
   rowActivate: [row: TData];
   'update:page': [page: number];
   'update:pageSize': [pageSize: number];
+  'visible-columns-change': [ids: string[]];
 }>();
 const data = computed(() => props.data);
 function columnId(column: DataColumn<TData>): string {
@@ -90,6 +91,13 @@ const visibleColumns = computed(() => {
   return result;
 });
 const boundedLayout = computed(() => visibleColumns.value.some((column) => column.meta?.maxWidth));
+watch(
+  () => visibleColumns.value.map(columnId),
+  (ids) => {
+    emit('visible-columns-change', ids);
+  },
+  { immediate: true }
+);
 const tableMinimumWidth = computed(() => {
   if (!boundedLayout.value) return props.minWidth;
   const pixels = visibleColumns.value.reduce((total, column) => {
