@@ -16,6 +16,20 @@ function rows(count: number): Row[] {
 }
 
 describe('DataTable', () => {
+  it('keeps bounded columns fixed and uses a non-interactive filler before pinned actions', () => {
+    const columns: DataColumn<Row>[] = [
+      { accessorKey: 'name', header: 'Name', meta: { width: '320px', maxWidth: '40cqi' } },
+      { id: 'actions', header: 'Actions', cell: () => null, meta: { sticky: 'right', width: '160px' } }
+    ];
+    const Host = defineComponent(() => () => h(DataTable<Row>, { columns, data: [] }));
+    const wrapper = mount(Host);
+    expect(wrapper.get('table').attributes('style')).toContain('table-layout: fixed');
+    expect(wrapper.findAll('th[aria-hidden="true"]')).toHaveLength(1);
+    expect(wrapper.get('th[aria-hidden="true"]').find('button').exists()).toBe(false);
+    expect(wrapper.get('thead th:last-child').text()).toBe('Actions');
+    expect(wrapper.get('tbody td').attributes('colspan')).toBe('3');
+    wrapper.unmount();
+  });
   it('keeps every column title on one line and constrains both table axes', () => {
     const columns: DataColumn<Row>[] = [{ accessorKey: 'name', header: '很长的表格列标题' }];
     const Host = defineComponent(

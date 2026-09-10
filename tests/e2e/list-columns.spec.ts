@@ -1,5 +1,21 @@
 import { expect, test } from '@playwright/test';
 
+test('product title stays within forty percent even with only locked columns visible', async ({ page }) => {
+  await page.goto('/#/products');
+  await page.getByRole('button', { name: '显示列', exact: true }).click();
+  for (const checkbox of await page.getByRole('checkbox').all()) {
+    if (await checkbox.isEnabled()) await checkbox.uncheck();
+  }
+  await page.keyboard.press('Escape');
+  const table = page.locator('table').first();
+  await expect(table.getByRole('columnheader')).toHaveCount(3);
+  const widths = await table.evaluate((element) => ({
+    table: element.getBoundingClientRect().width,
+    product: element.querySelector('tbody tr td:nth-child(2)')?.getBoundingClientRect().width ?? Infinity
+  }));
+  expect(widths.product).toBeLessThanOrEqual(widths.table * 0.4);
+});
+
 test('product action link and per-table column preferences persist without changing selection', async ({
   page
 }) => {

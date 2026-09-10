@@ -71,12 +71,33 @@ const visibleColumns = computed(() => {
     ? props.columns.filter((column) => columnPreferences.visible.value.includes(columnId(column)))
     : props.columns;
   let left = 0;
-  return columns.map((column) => {
+  const result: DataColumn<TData>[] = columns.map((column) => {
     if (column.meta?.sticky !== 'left') return column;
     const next = { ...column, meta: { ...column.meta, stickyOffset: `${left}px` } };
     left += Number.parseFloat(column.meta.width ?? '0');
     return next;
   });
+  // A flexible presentation-only column absorbs spare width when every business
+  // column is bounded. Otherwise the table algorithm stretches pinned/title cells.
+  if (columns.some((column) => column.meta?.maxWidth) && columns.every((column) => column.meta?.width)) {
+    const right = result.findIndex((column) => column.meta?.sticky === 'right');
+    result.splice(right < 0 ? result.length : right, 0, {
+      id: '__layout_filler',
+      header: () => null,
+      cell: () => null
+    });
+  }
+  return result;
+});
+const boundedLayout = computed(() => visibleColumns.value.some((column) => column.meta?.maxWidth));
+const tableMinimumWidth = computed(() => {
+  if (!boundedLayout.value) return props.minWidth;
+  const pixels = visibleColumns.value.reduce((total, column) => {
+    if (column.id === '__layout_filler') return total;
+    const width = column.meta?.width;
+    return total + (width && /^\d+(?:\.\d+)?px$/u.test(width) ? Number.parseFloat(width) : 192);
+  }, 0);
+  return `max(${props.minWidth}, ${pixels}px)`;
 });
 const manualPagination = computed(() => !props.pagination || props.totalRows !== null);
 const internalPagination = ref<PaginationState>({ pageIndex: 0, pageSize: props.pageSize });
@@ -177,6 +198,7 @@ function stickyColumnStyle(value: unknown): Record<string, string> | undefined {
   }
   if (meta.maxWidth) {
     style.maxWidth = meta.maxWidth;
+    if (meta.width) style.width = `min(${meta.width}, ${meta.maxWidth})`;
     delete style.minWidth;
   }
   return style;
@@ -186,7 +208,10 @@ function stickyColumnStyle(value: unknown): Record<string, string> | undefined {
 <template>
   <div class="max-w-full overflow-hidden rounded-lg border" style="container-type: inline-size">
     <div class="relative max-w-full overflow-auto" :style="{ maxHeight }">
-      <table class="w-full text-sm" :style="{ minWidth }">
+      <table
+        class="w-full text-sm"
+        :style="{ minWidth: tableMinimumWidth, tableLayout: boundedLayout ? 'fixed' : undefined }"
+      >
         <thead
           class="sticky top-0 z-10 bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground shadow-[0_1px_0_hsl(var(--border))]"
         >
@@ -194,6 +219,7 @@ function stickyColumnStyle(value: unknown): Record<string, string> | undefined {
             <th
               v-for="header in headerGroup.headers"
               :key="header.id"
+              :aria-hidden="header.column.id === '__layout_filler' ? true : undefined"
               class="h-10 whitespace-nowrap px-4 font-medium"
               :class="stickyColumnClasses(header.column.columnDef.meta, true)"
               :style="stickyColumnStyle(header.column.columnDef.meta)"
@@ -236,6 +262,7 @@ function stickyColumnStyle(value: unknown): Record<string, string> | undefined {
             <td
               v-for="cell in row.getAllCells()"
               :key="cell.id"
+              :aria-hidden="cell.column.id === '__layout_filler' ? true : undefined"
               class="px-4 py-3 align-middle"
               :class="stickyColumnClasses(cell.column.columnDef.meta, false)"
               :style="stickyColumnStyle(cell.column.columnDef.meta)"
