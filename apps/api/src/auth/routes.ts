@@ -23,6 +23,8 @@ import type { AlibabaCredentialAcquisitionService } from '../alibaba-credential-
 import { AlibabaCredentialAcquisitionServiceError } from '../alibaba-credential-acquisition/service';
 import { AlibabaCredentialAcquisitionContractError } from '@one-vegetable/core';
 import { toPublicUser } from './types';
+import { testGatewayCredential } from '../gateway/credential-test';
+import { validateGatewayCredentialSaveRequest } from '@one-vegetable/core/gateway-credential-validators';
 
 export const SESSION_COOKIE = 'ov_session';
 export const CSRF_COOKIE = 'ov_csrf';
@@ -345,6 +347,61 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
   const gatewayCredentialService = options.gatewayCredentialService;
   const gatewayCredentialProvider = options.gatewayCredentialProvider;
   if (gatewayCredentialService && gatewayCredentialProvider) {
+    api.post('/admin/gateway-credentials/save', async (context) =>
+      adminWrite(
+        context,
+        options,
+        async (body, authenticated) => {
+          if (!validateGatewayCredentialSaveRequest(body))
+            throw new AuthError('GATEWAY_CREDENTIAL_INVALID', '凭据格式无效', 400);
+          try {
+            const result = await gatewayCredentialService.save({
+              credentials: body.credentials,
+              actorId: authenticated.principal.actorId,
+              expectedRevision: readNullableRevision(body, 'revision'),
+              remark: readOptionalRemark(body, 'remark') ?? null
+            });
+            await options.authService.audit({
+              requestId: readRequestId(body),
+              actorId: authenticated.principal.actorId,
+              action: 'admin.gateway-credentials.save',
+              resourceKind: 'gateway-credential',
+              resourceId: 'primary',
+              outcome: 'success',
+              reasonCode: 'GATEWAY_CREDENTIAL_SAVED',
+              revisionAfter: result.revision
+            });
+            return result;
+          } catch (error: unknown) {
+            throw credentialRouteError(error);
+          }
+        },
+        ['requestId', 'credentials', 'revision', 'remark']
+      )
+    );
+
+    api.post('/admin/gateway-credentials/test', async (context) =>
+      adminWrite(
+        context,
+        options,
+        async (body, authenticated) => {
+          if (options.gatewayMode !== 'real')
+            throw new AuthError('REAL_GATEWAY_DISABLED', '当前环境不执行真实连接测试', 403);
+          const result = await testGatewayCredential(gatewayCredentialProvider, readRequestId(body));
+          await options.authService.audit({
+            requestId: result.requestId,
+            actorId: authenticated.principal.actorId,
+            action: 'admin.gateway-credentials.test',
+            resourceKind: 'gateway-credential',
+            resourceId: 'primary',
+            outcome: ['passed', 'no-data'].includes(result.status) ? 'success' : 'error',
+            reasonCode: result.errorCode ?? 'GATEWAY_CONNECTION_VERIFIED'
+          });
+          return result;
+        },
+        ['requestId']
+      )
+    );
     api.post('/admin/gateway-credentials/get', async (context) => {
       return adminRead(
         context,
@@ -416,7 +473,7 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
         options,
         async (body, authenticated) => {
           const requestId = readRequestId(body);
-          const revision = readInteger(body, 'revision');
+          const revision = readNullableRevision(body, 'revision');
           try {
             await gatewayCredentialService.clear(revision);
           } catch (error: unknown) {

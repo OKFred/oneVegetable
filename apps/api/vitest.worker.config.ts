@@ -1,4 +1,4 @@
-import { cloudflareTest } from '@cloudflare/vitest-plugin';
+import { cloudflareTest, readD1Migrations } from '@cloudflare/vitest-plugin';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
@@ -9,7 +9,9 @@ export default defineConfig({
       miniflare: {
         compatibilityDate: '2026-08-29',
         compatibilityFlags: ['nodejs_compat'],
-        r2Buckets: ['SOCIAL_MEDIA']
+        r2Buckets: ['SOCIAL_MEDIA'],
+        d1Databases: ['DB'],
+        bindings: { TEST_MIGRATIONS: await readD1Migrations('apps/api/drizzle') }
       }
     })
   ],

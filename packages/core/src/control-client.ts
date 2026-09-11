@@ -16,6 +16,11 @@ import type {
 } from './s3-storage';
 import type { AlibabaOpenApiCredentialBundle } from './alibaba-credential-bundle';
 import type {
+  ManualGatewayCredentialInput,
+  GatewayCredentialTestResult
+} from './gateway-credential-management';
+import type { components } from './generated/api';
+import type {
   AlibabaCredentialAcquisitionContinueCommand,
   AlibabaCredentialAcquisitionState
 } from './alibaba-credential-acquisition';
@@ -148,17 +153,7 @@ export interface ControlRealMutationStatus {
   remark: string | null;
 }
 
-export interface ControlGatewayCredentialSummary {
-  configured: boolean;
-  revision: number | null;
-  accessTokenExpiresTimeUtc: UnixEpochMilliseconds | null;
-  refreshTokenExpiresTimeUtc: UnixEpochMilliseconds | null;
-  lastRefreshTimeUtc: UnixEpochMilliseconds | null;
-  lastRefreshErrorCode: string | null;
-  updateTimeUtc: UnixEpochMilliseconds | null;
-  updaterId: string | null;
-  remark: string | null;
-}
+export type ControlGatewayCredentialSummary = components['schemas']['GatewayCredentialSummary'];
 
 export interface ControlRequestEvent {
   id: string;
@@ -280,7 +275,13 @@ export interface ControlClient {
     remark?: string | null
   ): Promise<ControlGatewayCredentialSummary>;
   refreshGatewayCredential(): Promise<ControlGatewayCredentialSummary>;
-  clearGatewayCredential(revision: number): Promise<void>;
+  clearGatewayCredential(revision: number | null): Promise<void>;
+  saveGatewayCredential?(
+    credentials: ManualGatewayCredentialInput,
+    revision: number | null,
+    remark?: string | null
+  ): Promise<ControlGatewayCredentialSummary>;
+  testGatewayCredential?(): Promise<GatewayCredentialTestResult>;
   s3StorageConfiguration?(): Promise<S3StorageConfigurationSummary>;
   updateS3StorageConfiguration?(
     configuration: S3StorageConfiguration,
@@ -639,8 +640,20 @@ export class BffControlClient implements ControlClient {
     return this.#call('/admin/gateway-credentials/refresh', {});
   }
 
-  async clearGatewayCredential(revision: number): Promise<void> {
+  async clearGatewayCredential(revision: number | null): Promise<void> {
     await this.#call('/admin/gateway-credentials/clear', { revision });
+  }
+
+  saveGatewayCredential(
+    credentials: ManualGatewayCredentialInput,
+    revision: number | null,
+    remark: string | null = null
+  ): Promise<ControlGatewayCredentialSummary> {
+    return this.#call('/admin/gateway-credentials/save', { credentials, revision, remark });
+  }
+
+  testGatewayCredential(): Promise<GatewayCredentialTestResult> {
+    return this.#call('/admin/gateway-credentials/test', {});
   }
 
   s3StorageConfiguration(): Promise<S3StorageConfigurationSummary> {

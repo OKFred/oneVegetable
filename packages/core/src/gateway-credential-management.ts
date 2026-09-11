@@ -1,23 +1,7 @@
+import type { components } from './generated/api';
 /** Server-side configuration input; secrets must never be returned or persisted in the browser. */
-export interface ManualGatewayCredentialInput {
-  appName: string | null;
-  appKey: string;
-  appSecret: string;
-  accessToken: string;
-  refreshToken: string | null;
-  accessTokenExpiresTimeUtc: number | null;
-  refreshTokenExpiresTimeUtc: number | null;
-}
-
-export interface GatewayCredentialTestResult {
-  status:
-    'passed' | 'no-data' | 'permission-denied' | 'credentials-invalid' | 'network-error' | 'contract-drift';
-  requestId: string;
-  checkedAtUtc: number;
-  durationMilliseconds: number;
-  configurationId: string | null;
-  errorCode: string | null;
-}
+export type ManualGatewayCredentialInput = components['schemas']['ManualGatewayCredentialInput'];
+export type GatewayCredentialTestResult = components['schemas']['GatewayCredentialTestResult'];
 
 export function parseManualGatewayCredential(value: unknown): ManualGatewayCredentialInput {
   if (typeof value !== 'object' || value === null || Array.isArray(value))

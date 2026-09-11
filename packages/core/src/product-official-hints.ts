@@ -282,7 +282,7 @@ function sanitizeElement(element: Element): void {
   const tag = element.localName.toLocaleLowerCase();
   if (tag === 'div') {
     const paragraph = element.ownerDocument.createElement('p');
-    paragraph.append(...Array.from(element.childNodes));
+    for (const child of Array.from(element.childNodes)) paragraph.appendChild(child);
     element.replaceWith(paragraph);
     sanitizeElement(paragraph);
     return;

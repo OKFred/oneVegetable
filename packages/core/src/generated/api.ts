@@ -7157,7 +7157,7 @@ export interface components {
         };
         GatewayCredentialClearRequest: {
             requestId: components["schemas"]["RequestId"];
-            revision: number;
+            revision: number | null;
         };
         GatewayCredentialImportRequest: {
             requestId: components["schemas"]["RequestId"];
@@ -7165,7 +7165,23 @@ export interface components {
             revision: number | null;
             remark?: string | null;
         };
+        GatewayCredentialSaveRequest: {
+            requestId: components["schemas"]["RequestId"];
+            credentials: components["schemas"]["ManualGatewayCredentialInput"];
+            revision: number | null;
+            remark?: string | null;
+        };
         GatewayCredentialSummary: {
+            /** @enum {string} */
+            source?: "environment" | "credential-bundle" | "d1-vault" | "sqlite-vault" | "documentation-replay";
+            configurationId?: string | null;
+            appName?: string | null;
+            appKeySuffix?: string | null;
+            /** @enum {string|null} */
+            inputSource?: "oauth-import" | "manual" | null;
+            canRefresh?: boolean;
+            managementAvailable?: boolean;
+            errorCode?: string | null;
             configured: boolean;
             revision: number | null;
             accessTokenExpiresTimeUtc: number | null;
@@ -7181,6 +7197,21 @@ export interface components {
             /** @constant */
             ok: true;
             data: components["schemas"]["GatewayCredentialSummary"];
+        };
+        GatewayCredentialTestResponse: {
+            requestId: components["schemas"]["RequestId"];
+            /** @constant */
+            ok: true;
+            data: components["schemas"]["GatewayCredentialTestResult"];
+        };
+        GatewayCredentialTestResult: {
+            /** @enum {string} */
+            status: "passed" | "no-data" | "permission-denied" | "credentials-invalid" | "network-error" | "contract-drift";
+            requestId: components["schemas"]["RequestId"];
+            checkedAtUtc: number;
+            durationMilliseconds: number;
+            configurationId: string | null;
+            errorCode: string | null;
         };
         GatewayError: {
             code: string;
@@ -7355,6 +7386,15 @@ export interface components {
             code: string;
             name: string;
             children: components["schemas"]["LogisticsSpecialProductType"][];
+        };
+        ManualGatewayCredentialInput: {
+            appName: string | null;
+            appKey: string;
+            appSecret: string;
+            accessToken: string;
+            refreshToken: string | null;
+            accessTokenExpiresTimeUtc: number | null;
+            refreshTokenExpiresTimeUtc: number | null;
         };
         MetaAppConfigurationSummary: {
             configured: boolean;

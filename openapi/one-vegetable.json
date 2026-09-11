@@ -13861,7 +13861,7 @@
         "required": ["requestId", "revision"],
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
-          "revision": { "type": "integer", "minimum": 1 }
+          "revision": { "type": ["integer", "null"], "minimum": 1 }
         }
       },
       "GatewayCredentialImportRequest": {
@@ -13871,6 +13871,17 @@
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
           "bundle": { "$ref": "#/components/schemas/AlibabaOpenApiCredentialBundle" },
+          "revision": { "type": ["integer", "null"], "minimum": 1 },
+          "remark": { "type": ["string", "null"], "maxLength": 500 }
+        }
+      },
+      "GatewayCredentialSaveRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "credentials", "revision"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "credentials": { "$ref": "#/components/schemas/ManualGatewayCredentialInput" },
           "revision": { "type": ["integer", "null"], "minimum": 1 },
           "remark": { "type": ["string", "null"], "maxLength": 500 }
         }
@@ -13890,6 +13901,17 @@
           "remark"
         ],
         "properties": {
+          "source": {
+            "type": "string",
+            "enum": ["environment", "credential-bundle", "d1-vault", "sqlite-vault", "documentation-replay"]
+          },
+          "configurationId": { "type": ["string", "null"], "maxLength": 128 },
+          "appName": { "type": ["string", "null"] },
+          "appKeySuffix": { "type": ["string", "null"], "maxLength": 4 },
+          "inputSource": { "type": ["string", "null"], "enum": ["oauth-import", "manual", null] },
+          "canRefresh": { "type": "boolean" },
+          "managementAvailable": { "type": "boolean" },
+          "errorCode": { "type": ["string", "null"] },
           "configured": { "type": "boolean" },
           "revision": { "type": ["integer", "null"], "minimum": 1 },
           "accessTokenExpiresTimeUtc": { "type": ["integer", "null"], "minimum": 0 },
@@ -13909,6 +13931,46 @@
           "requestId": { "$ref": "#/components/schemas/RequestId" },
           "ok": { "const": true },
           "data": { "$ref": "#/components/schemas/GatewayCredentialSummary" }
+        }
+      },
+      "GatewayCredentialTestResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "ok", "data"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "ok": { "const": true },
+          "data": { "$ref": "#/components/schemas/GatewayCredentialTestResult" }
+        }
+      },
+      "GatewayCredentialTestResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "requestId",
+          "checkedAtUtc",
+          "durationMilliseconds",
+          "configurationId",
+          "errorCode"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "no-data",
+              "permission-denied",
+              "credentials-invalid",
+              "network-error",
+              "contract-drift"
+            ]
+          },
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "checkedAtUtc": { "type": "integer", "minimum": 0 },
+          "durationMilliseconds": { "type": "integer", "minimum": 0 },
+          "configurationId": { "type": ["string", "null"], "maxLength": 128 },
+          "errorCode": { "type": ["string", "null"], "maxLength": 128 }
         }
       },
       "GatewayError": {
@@ -14273,6 +14335,36 @@
           "children": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/LogisticsSpecialProductType" }
+          }
+        }
+      },
+      "ManualGatewayCredentialInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "appName",
+          "appKey",
+          "appSecret",
+          "accessToken",
+          "refreshToken",
+          "accessTokenExpiresTimeUtc",
+          "refreshTokenExpiresTimeUtc"
+        ],
+        "properties": {
+          "appName": { "type": ["string", "null"], "maxLength": 256 },
+          "appKey": { "type": "string", "minLength": 1, "maxLength": 4096, "writeOnly": true },
+          "appSecret": { "type": "string", "minLength": 1, "maxLength": 4096, "writeOnly": true },
+          "accessToken": { "type": "string", "minLength": 1, "maxLength": 4096, "writeOnly": true },
+          "refreshToken": { "type": ["string", "null"], "maxLength": 4096, "writeOnly": true },
+          "accessTokenExpiresTimeUtc": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "maximum": 8640000000000000
+          },
+          "refreshTokenExpiresTimeUtc": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "maximum": 8640000000000000
           }
         }
       },

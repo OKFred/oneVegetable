@@ -74,6 +74,7 @@ export interface GatewayCredentialSummary {
 
 export interface GatewayCredentialRepository {
   managed(): Promise<boolean>;
+  disableLegacy(): Promise<boolean>;
   find(): Promise<GatewayCredentialRecord | null>;
   save(input: {
     encryptedBundle: string;
@@ -103,6 +104,14 @@ export interface GatewayCredentialRepository {
 
 export class SqlGatewayCredentialRepository implements GatewayCredentialRepository {
   constructor(private readonly executor: SqlExecutor) {}
+
+  async disableLegacy(): Promise<boolean> {
+    const result = await this.executor.execute(
+      "INSERT INTO alibaba_gateway_credential_control SELECT 'primary', 1, ? WHERE NOT EXISTS(SELECT 1 FROM alibaba_gateway_credentials) AND NOT EXISTS(SELECT 1 FROM alibaba_gateway_credential_control)",
+      [crypto.randomUUID()]
+    );
+    return result.changes === 1;
+  }
 
   async managed(): Promise<boolean> {
     return (
@@ -138,7 +147,7 @@ export class SqlGatewayCredentialRepository implements GatewayCredentialReposito
     );
     const revision =
       input.expectedRevision === null ? Number(previous[0]?.revision ?? 0) + 1 : input.expectedRevision + 1;
-    const result = await this.executor.execute(
+    const result = await this.executor.query(
       `INSERT INTO alibaba_gateway_credentials (
         id, encrypted_bundle, initialization_vector, algorithm, schema_version, key_version,
         access_token_expires_time_utc, refresh_token_expires_time_utc,
@@ -162,7 +171,7 @@ export class SqlGatewayCredentialRepository implements GatewayCredentialReposito
         updater_id = excluded.updater_id,
         revision = excluded.revision,
         remark = excluded.remark
-      WHERE alibaba_gateway_credentials.revision = ?`,
+      WHERE alibaba_gateway_credentials.revision = ? RETURNING *`,
       [
         CREDENTIAL_ID,
         input.encryptedBundle,
@@ -183,28 +192,26 @@ export class SqlGatewayCredentialRepository implements GatewayCredentialReposito
         input.expectedRevision
       ]
     );
-    if (result.changes !== 1) throw new EntityVersionConflictError();
-    const stored = await this.find();
-    if (!stored) throw new Error('Alibaba 凭据保存后无法读取');
-    return stored;
+    if (!result[0]) throw new EntityVersionConflictError();
+    return toCredentialRecord(result[0]);
   }
 
   async delete(expectedRevision: number): Promise<boolean> {
-    const result = await this.executor.execute(
-      'DELETE FROM alibaba_gateway_credentials WHERE id = ? AND revision = ?',
+    const result = await this.executor.query(
+      'DELETE FROM alibaba_gateway_credentials WHERE id = ? AND revision = ? RETURNING id',
       [CREDENTIAL_ID, expectedRevision]
     );
-    return result.changes === 1;
+    return result.length === 1;
   }
 
   async acquireRefreshLease(leaseId: string, now: number): Promise<boolean> {
-    const result = await this.executor.execute(
+    const result = await this.executor.query(
       `UPDATE alibaba_gateway_credentials
        SET refresh_lease_id = ?, refresh_lease_until_utc = ?
-       WHERE id = ? AND (refresh_lease_until_utc IS NULL OR refresh_lease_until_utc < ?)`,
+       WHERE id = ? AND (refresh_lease_until_utc IS NULL OR refresh_lease_until_utc < ?) RETURNING id`,
       [leaseId, now + REFRESH_LEASE_MS, CREDENTIAL_ID, now]
     );
-    return result.changes === 1;
+    return result.length === 1;
   }
 
   async completeRefresh(input: {
@@ -217,14 +224,14 @@ export class SqlGatewayCredentialRepository implements GatewayCredentialReposito
     refreshTokenExpiresTimeUtc: number | null;
     now: number;
   }): Promise<GatewayCredentialRecord> {
-    const result = await this.executor.execute(
+    const result = await this.executor.query(
       `UPDATE alibaba_gateway_credentials SET
         encrypted_bundle = ?, initialization_vector = ?, schema_version = ?,
         access_token_expires_time_utc = ?, refresh_token_expires_time_utc = ?,
         refresh_lease_id = NULL, refresh_lease_until_utc = NULL,
         last_refresh_time_utc = ?, last_refresh_error_code = NULL,
         update_time_utc = ?, updater_id = 'system:maintenance', revision = revision + 1
-       WHERE id = ? AND revision = ? AND refresh_lease_id = ?`,
+       WHERE id = ? AND revision = ? AND refresh_lease_id = ? RETURNING *`,
       [
         input.encryptedBundle,
         input.initializationVector,
@@ -238,10 +245,8 @@ export class SqlGatewayCredentialRepository implements GatewayCredentialReposito
         input.leaseId
       ]
     );
-    if (result.changes !== 1) throw new EntityVersionConflictError();
-    const stored = await this.find();
-    if (!stored) throw new Error('Alibaba 凭据刷新后无法读取');
-    return stored;
+    if (!result[0]) throw new EntityVersionConflictError();
+    return toCredentialRecord(result[0]);
   }
 
   async failRefresh(leaseId: string, errorCode: string, now: number): Promise<void> {
@@ -425,7 +430,11 @@ export class GatewayCredentialService {
     return this.status();
   }
 
-  async clear(expectedRevision: number): Promise<void> {
+  async clear(expectedRevision: number | null): Promise<void> {
+    if (expectedRevision === null) {
+      if (!(await this.repository.disableLegacy())) throw new EntityVersionConflictError();
+      return;
+    }
     if (!(await this.repository.delete(expectedRevision))) throw new EntityVersionConflictError();
   }
 }
@@ -582,6 +591,19 @@ export class StoredAlibabaCredentialProvider {
       const refreshedAt = this.clock();
       const refreshedBundle: GatewayCredentialDocument = {
         ...bundle,
+        authorization: bundle.authorization
+          ? {
+              ...bundle.authorization,
+              oauth: {
+                accessToken: token.accessToken,
+                refreshToken: token.refreshToken ?? bundle.credentials.refreshToken,
+                expiresAtUtc: credentialExpiryFromSeconds(refreshedAt, token.expiresInSeconds),
+                refreshExpiresAtUtc:
+                  credentialExpiryFromSeconds(refreshedAt, token.refreshExpiresInSeconds) ??
+                  bundle.authorization.oauth.refreshExpiresAtUtc
+              }
+            }
+          : null,
         credentials: {
           ...bundle.credentials,
           accessToken: token.accessToken,

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { createRequestId } from '@one-vegetable/core';
+import credentialFixture from '../../../mock/data/node-gateway-credentials.json';
 
 import { createApiApp } from '../src/app';
 import { AdminService } from '../src/auth/admin-service';
@@ -24,6 +25,61 @@ afterEach(() => {
 });
 
 describe('gateway credential admin routes', () => {
+  it('supports manual save, CSRF and conflict checks without persisting OAuth evidence', async () => {
+    const { app, authService, credentialRepository } = await fixture();
+    const session = await bootstrap(authService);
+    const request = (revision: number | null, csrf = true) =>
+      app.request('/api/v1/admin/gateway-credentials/save', {
+        method: 'POST',
+        headers: authHeaders(session.sessionToken, csrf ? session.session.csrfToken : undefined),
+        body: JSON.stringify({
+          requestId: createRequestId(),
+          credentials: credentialFixture.manual,
+          revision
+        })
+      });
+    expect((await request(null, false)).status).toBe(403);
+    const saved = await request(null);
+    expect(saved.status).toBe(200);
+    const text = await saved.text();
+    expect(text).not.toContain(credentialFixture.manual.appSecret);
+    expect(text).not.toContain(credentialFixture.manual.accessToken);
+    expect(JSON.parse(text)).toMatchObject({
+      data: { inputSource: 'manual', canRefresh: false, revision: 1 }
+    });
+    expect((await request(null)).status).toBe(409);
+    expect((await credentialRepository.find())?.schemaVersion).toBe(2);
+    const test = await app.request('/api/v1/admin/gateway-credentials/test', {
+      method: 'POST',
+      headers: authHeaders(session.sessionToken, session.session.csrfToken),
+      body: JSON.stringify({ requestId: createRequestId() })
+    });
+    expect(test.status).toBe(403); // test/mock gateway must never access Alibaba
+  });
+
+  it('clears legacy configuration using a persistent tombstone and rejects untrusted input', async () => {
+    const { app, authService, credentialRepository } = await fixture();
+    const session = await bootstrap(authService);
+    const headers = authHeaders(session.sessionToken, session.session.csrfToken);
+    const invalid = await app.request('/api/v1/admin/gateway-credentials/save', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        requestId: createRequestId(),
+        credentials: { ...credentialFixture.manual, unexpectedSecret: 'do-not-echo' },
+        revision: null
+      })
+    });
+    expect(invalid.status).toBe(400);
+    expect(await invalid.text()).not.toContain('do-not-echo');
+    const cleared = await app.request('/api/v1/admin/gateway-credentials/clear', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ requestId: createRequestId(), revision: null })
+    });
+    expect(cleared.status).toBe(200);
+    expect(await credentialRepository.managed()).toBe(true);
+  });
   it('requires admin CSRF, imports encrypted credentials and never returns secrets', async () => {
     const { app, authService, credentialRepository } = await fixture();
     const session = await bootstrap(authService);

@@ -405,7 +405,7 @@ export function inspectProductSchemaPatchSerialization(
       structuralDiffs.push(productSchemaMessage(locale, 'patchNodeMissing', { key: field.key }));
       continue;
     }
-    patchRoot.append(source.cloneNode(true));
+    patchRoot.appendChild(source.cloneNode(true));
   }
 
   const xml = new XMLSerializer().serializeToString(patchRoot);
@@ -959,7 +959,7 @@ function updateScalarField(document: XMLDocument, target: Element, field: Produc
   const parent = usesWrappedValues ? (valuesElement ?? document.createElement('values')) : target;
   if (usesWrappedValues && !valuesElement) {
     valuesElement = parent;
-    target.append(valuesElement);
+    target.appendChild(valuesElement);
   }
   const existingNodes = usesWrappedValues ? directChildren(parent, 'value') : directValueNodes;
   const template = existingNodes[0];
@@ -969,7 +969,7 @@ function updateScalarField(document: XMLDocument, target: Element, field: Produc
     let node = existingNodes[index];
     if (!node) {
       node = (template?.cloneNode(true) as Element | undefined) ?? document.createElement('value');
-      parent.append(node);
+      parent.appendChild(node);
     }
     syncAttributes(node, value.attributes);
     setValueText(node, value.text, document);
@@ -1062,7 +1062,7 @@ function updateComplexInstance(
       const template = templateFields.find((candidate) => candidate.getAttribute('id') === field.id);
       if (template) {
         targetField = template.cloneNode(true) as Element;
-        (fieldsParent ?? target).append(targetField);
+        (fieldsParent ?? target).appendChild(targetField);
         sourceField = parseField(template, `${field.key}:source-template`, index, [], locale);
       }
     }
@@ -1097,7 +1097,7 @@ function createComplexInstanceNode(
       ) ?? templates[index];
     if (template) {
       usedTemplates.add(template);
-      node.append(template.cloneNode(true));
+      node.appendChild(template.cloneNode(true));
     }
   }
   return node;
@@ -1109,7 +1109,7 @@ function insertComplexInstance(target: Element, instance: Element, layout: Produ
       (candidate) => directChildren(candidate, 'complex-value').length > 0
     );
     if (wrapper) {
-      wrapper.append(instance);
+      wrapper.appendChild(instance);
       return;
     }
   }

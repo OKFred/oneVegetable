@@ -68,8 +68,11 @@ describe('D1-compatible Alibaba credential vault', () => {
       transport,
       clock: () => now
     });
+    const before = await service.status();
     const credentials = await provider.requireCredentials('3d7c8523-93cc-48b7-a615-a23d2976c516');
     expect(credentials.accessToken).toBe('refreshed-access');
+    expect((await service.status()).configurationId).toBe(before.configurationId);
+    expect(credentials.galleryAccountGeneration).toBe(before.configurationId);
     expect(await service.status()).toMatchObject({
       revision: 2,
       lastRefreshTimeUtc: now,

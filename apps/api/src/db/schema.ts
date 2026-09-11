@@ -511,6 +511,12 @@ export const userEnrollmentTokens = sqliteTable(
   (table) => [index('idx_user_enrollment_tokens_expiry').on(table.expiresTimeUtc, table.consumedTimeUtc)]
 );
 
+export const alibabaGatewayCredentialControl = sqliteTable('alibaba_gateway_credential_control', {
+  id: text('id').primaryKey(),
+  revision: integer('revision').notNull(),
+  configurationId: text('configuration_id').notNull()
+});
+
 export const schema = {
   schemaMigrations,
   appMetadata,
@@ -521,6 +527,7 @@ export const schema = {
   productDescriptionTemplates,
   productMutationJobs,
   alibabaGatewayCredentials,
+  alibabaGatewayCredentialControl,
   alibabaCredentialAcquisitionJobs,
   metaAppConfigurations,
   metaOauthGrants,

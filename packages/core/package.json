@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./browser": "./src/product-description-browser.ts",
     "./credential-bundle": "./src/alibaba-credential-bundle.ts",
+    "./gateway-credential-validators": "./src/gateway-credential-validation.ts",
     "./diagnostics": "./src/diagnostics.ts",
     "./errors": "./src/errors.ts",
     "./showcase": "./src/product-showcase.ts",

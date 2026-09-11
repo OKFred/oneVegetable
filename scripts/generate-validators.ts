@@ -61,6 +61,18 @@ const coreValidators: Record<string, object | undefined> = {
 const domains: CapabilityDomain[] = ['product', 'rfq', 'trade', 'logistics', 'insights', 'photo', 'platform'];
 const targets = new Map<string, string>();
 targets.set(
+  'validators-gateway-credentials.ts',
+  compileValidators(
+    {
+      validateManualGatewayCredentialInput: schemas.ManualGatewayCredentialInput,
+      validateGatewayCredentialSaveRequest: schemas.GatewayCredentialSaveRequest,
+      validateGatewayCredentialSummary: schemas.GatewayCredentialSummary,
+      validateGatewayCredentialTestResult: schemas.GatewayCredentialTestResult
+    },
+    'fast'
+  )
+);
+targets.set(
   'validators-showcase.ts',
   compileValidators(
     {
