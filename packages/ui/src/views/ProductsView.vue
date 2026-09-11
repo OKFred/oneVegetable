@@ -1528,7 +1528,10 @@ const columns = computed<DataColumn<Product>[]>(() => [
     cell: ({ row }) => {
       const score = scoreForProduct(row.original);
       const error = scoreErrorForProduct(row.original);
-      return h('div', { class: 'min-w-24 space-y-0.5' }, [
+      const suggestions = score?.issues.length
+        ? t('products.view.scoreSuggestions', { count: score.issues.length })
+        : null;
+      return h('div', { class: 'min-w-0 space-y-0.5 whitespace-nowrap' }, [
         h(
           'span',
           { class: 'font-medium tabular-nums' },
@@ -1538,18 +1541,19 @@ const columns = computed<DataColumn<Product>[]>(() => [
                 `common.columns.${pageDetails.states.value[row.original.id] === 'loading' ? 'loading' : pageDetails.states.value[row.original.id] === 'failed' ? 'failed' : 'pending'}`
               )
         ),
-        score?.issues.length
+        suggestions
           ? h(
               'p',
-              { class: 'text-xs text-amber-700 dark:text-amber-400' },
-              t('products.view.scoreSuggestions', { count: score.issues.length })
+              { class: 'truncate text-xs text-amber-700 dark:text-amber-400', title: suggestions },
+              suggestions
             )
           : null,
         error
           ? h('p', { class: 'text-xs text-destructive', title: error }, t('products.view.scoreFailed'))
           : null
       ]);
-    }
+    },
+    meta: { width: '128px' }
   },
   {
     accessorKey: 'score',

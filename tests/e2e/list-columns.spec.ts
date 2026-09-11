@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 
-test('product group and status columns stay compact on wide and narrow screens', async ({ page }) => {
+test('product group, status and product score columns stay compact on wide and narrow screens', async ({
+  page
+}) => {
   await page.goto('/#/products');
   const table = page.locator('table').first();
   for (const viewport of [
@@ -10,6 +12,10 @@ test('product group and status columns stay compact on wide and narrow screens',
     await page.setViewportSize(viewport);
     await expect(table.getByRole('columnheader', { name: '分组', exact: true })).toHaveCSS('width', '128px');
     await expect(table.getByRole('columnheader', { name: '状态', exact: true })).toHaveCSS('width', '112px');
+    await expect(table.getByRole('columnheader', { name: '产品分', exact: true })).toHaveCSS(
+      'width',
+      '128px'
+    );
     const groupName = table.locator('tbody tr').first().locator('td').nth(3).locator('span');
     await expect(groupName).toHaveCSS('text-overflow', 'ellipsis');
     await expect(groupName).toHaveAttribute('title', await groupName.innerText());
@@ -102,6 +108,12 @@ test('English column picker remains readable in dark mode and hiding images pres
     .getByRole('button', { name: /Switch.*English|切换.*英文|English/ })
     .first()
     .click();
+  const scoreHeader = page.getByRole('columnheader', { name: 'Product score', exact: true });
+  await expect(scoreHeader).toHaveCSS('width', '128px');
+  await expect(scoreHeader).toHaveCSS('white-space', 'nowrap');
+  const scoreCell = page.locator('table tbody tr').first().locator('td').nth(4);
+  await expect(scoreCell).toHaveCSS('width', '128px');
+  await expect(scoreCell.locator('div').first()).toHaveCSS('white-space', 'nowrap');
   await page.getByRole('button', { name: 'Columns', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Search columns', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Reset defaults', exact: true })).toBeVisible();
