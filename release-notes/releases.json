@@ -4,17 +4,17 @@
   "releases": [
     {
       "version": "2.6.0",
-      "releasedAt": "2026-09-10",
+      "releasedAt": "2026-09-11",
       "title": {
-        "zh-CN": "图库任务与安全恢复（候选）",
-        "en-US": "Gallery tasks and safe recovery (candidate)"
+        "zh-CN": "图库任务、商品橱窗与凭据管理（候选）",
+        "en-US": "Gallery tasks, showcases and credentials (candidate)"
       },
       "summary": {
-        "zh-CN": "开发候选，尚未上架。ZIP/S3 传输支持本机记录、暂停和手工恢复。",
-        "en-US": "Development candidate, not yet published. Local ZIP/S3 task history, pause and manual recovery."
+        "zh-CN": "发布候选，尚未上架。新增图库任务恢复、商品橱窗、列表自定义列与 Node 后端凭据配置。",
+        "en-US": "Release candidate, not yet published. Gallery recovery, product showcases, configurable columns and Node credential settings."
       },
       "source": "release",
-      "githubUrl": "https://github.com/OKFred/oneVegetable/blob/codex/gallery-transfer-task-recovery/docs/release-2.6.0-readiness.md",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/blob/master/docs/release-2.6.0-readiness.md",
       "compareUrl": null,
       "changes": [
         {
@@ -23,6 +23,38 @@
           "description": {
             "zh-CN": "关闭弹窗不停止；刷新后确认恢复，成功项不重传，未知结果先核对。Web 与插件均支持。",
             "en-US": "Continue across dialogs; confirm after reload. Keep successful receipts and verify uncertain writes. Available in Web and extension."
+          }
+        },
+        {
+          "type": "feature",
+          "title": { "zh-CN": "商品橱窗管理", "en-US": "Product showcases" },
+          "description": {
+            "zh-CN": "查看额度与商品，确认后批量加入或移出并回读核对。插件和本地 Node 支持，云端写入策略不变。",
+            "en-US": "Inspect quota and products, confirm additions or removals, then verify by read-back. Available in the extension and local Node; cloud write policy is unchanged."
+          }
+        },
+        {
+          "type": "feature",
+          "title": { "zh-CN": "Node 凭据配置", "en-US": "Node credential settings" },
+          "description": {
+            "zh-CN": "管理员可在设置页导入或填写凭据、测试连接、更换和清除。加密保存即时生效，清除后不回退旧配置。",
+            "en-US": "Administrators can import or enter credentials, test, replace and clear them in Settings. Encrypted changes apply immediately; clearing never revives old settings."
+          }
+        },
+        {
+          "type": "improvement",
+          "title": { "zh-CN": "列表与查询体验", "en-US": "Lists and queries" },
+          "description": {
+            "zh-CN": "商品、图库和订单支持自定义列；相关列按需加载扩展数据。商品链接使用独立按钮，标题、分组、状态和产品分列更紧凑。",
+            "en-US": "Customize product, gallery and order columns; relevant columns load extra data on demand. Product links use dedicated buttons, with compact title, group, status and score columns."
+          }
+        },
+        {
+          "type": "improvement",
+          "title": { "zh-CN": "能力目录与安全边界", "en-US": "Capabilities and safeguards" },
+          "description": {
+            "zh-CN": "补充国家、发品类型、库存和橱窗等类型化能力。无权限和空结果明确区分，不以模拟数据替代真实错误。",
+            "en-US": "Adds typed country, product-type, inventory and showcase capabilities. Permission denials and empty results stay distinct; real errors never fall back to sample data."
           }
         }
       ]

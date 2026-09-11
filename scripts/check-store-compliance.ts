@@ -97,6 +97,8 @@ if (
     'updateProduct',
     'updateProductDisplay',
     'createProductGroup',
+    'addShowcaseProducts',
+    'removeShowcaseProducts',
     'operatePhotoGroup',
     'uploadPhoto',
     'transferPhotoFromUrl'
