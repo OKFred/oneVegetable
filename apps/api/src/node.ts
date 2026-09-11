@@ -8,7 +8,14 @@ import { AuthService } from './auth/service';
 import { applyNodeMigrations, isNodeDatabaseReady, openNodeDatabase } from './db/node-database';
 import { createSqliteMetadataRepository } from './db/repository';
 import { SqlRequestEventRepository } from './observability/request-events';
-import { AlibabaReadGatewayClient } from './gateway/alibaba-read-gateway';
+import { CredentialBackedAlibabaGatewayClient } from './gateway/alibaba-read-gateway';
+import {
+  GatewayCredentialCipher,
+  GatewayCredentialService,
+  SqlGatewayCredentialRepository,
+  StoredAlibabaCredentialProvider
+} from './gateway/credential-vault';
+import { NodeManagedCredentialProvider } from './gateway/node-managed-credentials';
 import { createNodeAlibabaCredentialProvider } from './gateway/node-credential-bundle';
 
 import type { NodeAlibabaCredentialEnvironment } from './gateway/node-credential-bundle';
@@ -57,7 +64,6 @@ const credentialEnvironment = {
     process.env.ONE_VEGETABLE_ALIBABA_SIGN_METHOD
   )
 } satisfies NodeAlibabaCredentialEnvironment;
-const credentialProvider = createNodeAlibabaCredentialProvider(credentialEnvironment);
 const database = openNodeDatabase(process.env.ONE_VEGETABLE_SQLITE_PATH ?? '.data/one-vegetable.sqlite');
 if (environment === 'local-node' && process.env.ONE_VEGETABLE_AUTO_MIGRATE !== 'false') {
   applyNodeMigrations(database);
@@ -76,6 +82,36 @@ const featureFlags = new EmergencyPauseFeatureFlags(
 const metaSecretCipher = process.env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY
   ? await MetaSecretCipher.create(process.env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY)
   : undefined;
+const gatewayCredentialRepository = new SqlGatewayCredentialRepository(database.executor);
+const gatewayCredentialCipher = process.env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY
+  ? await GatewayCredentialCipher.create(process.env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY)
+  : undefined;
+const gatewayCredentialService = gatewayCredentialCipher
+  ? new GatewayCredentialService(
+      gatewayCredentialRepository,
+      gatewayCredentialCipher,
+      Date.now,
+      'sqlite-vault'
+    )
+  : undefined;
+const managedCredentialProvider =
+  gatewayCredentialCipher && gatewayCredentialService
+    ? new NodeManagedCredentialProvider(
+        gatewayCredentialRepository,
+        new StoredAlibabaCredentialProvider(gatewayCredentialRepository, gatewayCredentialCipher, {
+          source: 'sqlite-vault',
+          ...(credentialEnvironment.ONE_VEGETABLE_ALIBABA_ENDPOINT
+            ? { endpoint: credentialEnvironment.ONE_VEGETABLE_ALIBABA_ENDPOINT }
+            : {}),
+          ...(credentialEnvironment.ONE_VEGETABLE_ALIBABA_SIGN_METHOD
+            ? { signMethod: credentialEnvironment.ONE_VEGETABLE_ALIBABA_SIGN_METHOD }
+            : {})
+        }),
+        gatewayCredentialService,
+        credentialEnvironment
+      )
+    : undefined;
+const legacyCredentialProvider = () => createNodeAlibabaCredentialProvider(credentialEnvironment);
 const metaSocial = metaSecretCipher
   ? new MetaSocialService(new SqlMetaSocialRepository(database.executor), metaSecretCipher, {
       apiPrefix: runtimeConfiguration.apiPrefix
@@ -114,9 +150,21 @@ const app = createApiApp({
   database: 'sqlite',
   environment,
   gatewayMode,
-  gatewayStatus: gatewayMode === 'replay' ? documentationReplayStatus() : credentialProvider.status(),
+  gatewayStatus:
+    gatewayMode === 'replay'
+      ? documentationReplayStatus()
+      : managedCredentialProvider
+        ? () => managedCredentialProvider.status()
+        : () => Promise.resolve(legacyCredentialProvider().status()),
   ...(gatewayMode === 'real'
-    ? { gateway: new AlibabaReadGatewayClient(credentialProvider.requireCredentials()) }
+    ? {
+        gateway: managedCredentialProvider
+          ? new CredentialBackedAlibabaGatewayClient(managedCredentialProvider)
+          : new CredentialBackedAlibabaGatewayClient({
+              status: () => Promise.resolve(legacyCredentialProvider().status()),
+              requireCredentials: () => Promise.resolve(legacyCredentialProvider().requireCredentials())
+            })
+      }
     : gatewayMode === 'replay'
       ? { gateway: createDocumentationReplayGateway() }
       : {}),
@@ -127,6 +175,13 @@ const app = createApiApp({
   adminService: new AdminService(authRepository),
   featureFlags,
   realMutationControl: new RealMutationControlService(metadataRepository, featureFlags),
+  ...(gatewayCredentialService && managedCredentialProvider
+    ? {
+        gatewayCredentialService,
+        gatewayCredentialProvider: managedCredentialProvider,
+        gatewayCredentialSummary: () => managedCredentialProvider.summary()
+      }
+    : {}),
   ...(metaSocial ? { metaSocial } : {}),
   ...(s3Storage ? { s3Storage } : {}),
   socialMediaAssets,

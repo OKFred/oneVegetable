@@ -15,9 +15,9 @@ import type { AuthenticatedSession, AuthService } from './service';
 import type { PasskeyService } from './passkey-service';
 import type { PublicUser, UserRole, UserStatus } from './types';
 import type { RequestEventRepository } from '../observability/request-events';
-import type { AlibabaCredentialStatus } from '../gateway/credentials';
+import type { AlibabaCredentialStatus, AsyncAlibabaCredentialProvider } from '../gateway/credentials';
 import type { GatewayMode } from '../runtime-config';
-import type { GatewayCredentialService, StoredAlibabaCredentialProvider } from '../gateway/credential-vault';
+import type { GatewayCredentialService, GatewayCredentialSummary } from '../gateway/credential-vault';
 import type { RealMutationControlService } from '../safety/real-mutation-control';
 import type { AlibabaCredentialAcquisitionService } from '../alibaba-credential-acquisition/service';
 import { AlibabaCredentialAcquisitionServiceError } from '../alibaba-credential-acquisition/service';
@@ -38,9 +38,10 @@ export interface AuthRoutesOptions {
   runtime: 'node' | 'cloudflare';
   database: 'sqlite' | 'd1';
   gatewayMode: GatewayMode;
-  gatewayStatus?: AlibabaCredentialStatus;
+  gatewayStatus?: AlibabaCredentialStatus | (() => Promise<AlibabaCredentialStatus>);
   gatewayCredentialService?: GatewayCredentialService;
-  gatewayCredentialProvider?: StoredAlibabaCredentialProvider;
+  gatewayCredentialProvider?: AsyncAlibabaCredentialProvider;
+  gatewayCredentialSummary?: () => Promise<GatewayCredentialSummary>;
   mutationEnabled?: boolean;
   allowedOrigins?: readonly string[];
   requestEvents?: RequestEventRepository;
@@ -264,6 +265,8 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
       options,
       async () => {
         const mutationControl = await options.realMutationControl?.status();
+        const gatewayStatus =
+          typeof options.gatewayStatus === 'function' ? await options.gatewayStatus() : options.gatewayStatus;
         return {
           runtime: options.runtime,
           environment: options.environment,
@@ -271,7 +274,7 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
           database: options.database,
           gatewayMode: options.gatewayMode,
           gatewayStatus: {
-            ...(options.gatewayStatus ?? {
+            ...(gatewayStatus ?? {
               source: 'environment',
               configured: false,
               hasAppKey: false,
@@ -280,7 +283,7 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
               endpointOrigin: '',
               signMethod: 'hmac'
             }),
-            realReadEnabled: options.gatewayMode === 'real' && options.gatewayStatus?.configured === true,
+            realReadEnabled: options.gatewayMode === 'real' && gatewayStatus?.configured === true,
             mutationEnabled: options.mutationEnabled === true
           },
           schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -343,7 +346,12 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
   const gatewayCredentialProvider = options.gatewayCredentialProvider;
   if (gatewayCredentialService && gatewayCredentialProvider) {
     api.post('/admin/gateway-credentials/get', async (context) => {
-      return adminRead(context, options, () => gatewayCredentialService.status(), ['requestId']);
+      return adminRead(
+        context,
+        options,
+        () => options.gatewayCredentialSummary?.() ?? gatewayCredentialService.status(),
+        ['requestId']
+      );
     });
 
     api.post('/admin/gateway-credentials/import', async (context) => {

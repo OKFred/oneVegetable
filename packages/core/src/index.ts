@@ -50,6 +50,7 @@ export * from './logistics-adapter';
 export * from './insights-adapter';
 export * from './signing';
 export * from './settings-storage';
+export * from './gateway-credential-management';
 export * from './social-sharing';
 export * from './social-meta';
 export * from './social-media';

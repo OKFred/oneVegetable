@@ -67,8 +67,8 @@ import type { AdminService } from './auth/admin-service';
 import type { AuthenticatedSession, AuthService } from './auth/service';
 import type { PasskeyService } from './auth/passkey-service';
 import type { RequestEventRepository } from './observability/request-events';
-import type { AlibabaCredentialStatus } from './gateway/credentials';
-import type { GatewayCredentialService, StoredAlibabaCredentialProvider } from './gateway/credential-vault';
+import type { AlibabaCredentialStatus, AsyncAlibabaCredentialProvider } from './gateway/credentials';
+import type { GatewayCredentialService, GatewayCredentialSummary } from './gateway/credential-vault';
 import type { GatewayMode } from './runtime-config';
 import type { ProductDescriptionTemplateRepository } from './product-description-templates/repository';
 import type { ProductMutationJobRepository } from './product-mutations/repository';
@@ -101,9 +101,10 @@ export interface ApiAppOptions {
   featureFlags?: OperationFeatureFlags;
   requestEvents?: RequestEventRepository;
   requestEventRetentionDays?: number;
-  gatewayStatus?: AlibabaCredentialStatus;
+  gatewayStatus?: AlibabaCredentialStatus | (() => Promise<AlibabaCredentialStatus>);
   gatewayCredentialService?: GatewayCredentialService;
-  gatewayCredentialProvider?: StoredAlibabaCredentialProvider;
+  gatewayCredentialProvider?: AsyncAlibabaCredentialProvider;
+  gatewayCredentialSummary?: () => Promise<GatewayCredentialSummary>;
   productDescriptionTemplates?: ProductDescriptionTemplateRepository;
   productMutationJobs?: ProductMutationJobRepository;
   realMutationControl?: RealMutationControlService;
@@ -262,6 +263,9 @@ export function createApiApp(options: ApiAppOptions): Hono {
       ].some((operation) => featureFlags.isEnabled(`operation:${operation}`)),
       ...(options.requestEvents ? { requestEvents: options.requestEvents } : {}),
       ...(options.gatewayStatus ? { gatewayStatus: options.gatewayStatus } : {}),
+      ...(options.gatewayCredentialSummary
+        ? { gatewayCredentialSummary: options.gatewayCredentialSummary }
+        : {}),
       ...(options.gatewayCredentialService
         ? { gatewayCredentialService: options.gatewayCredentialService }
         : {}),

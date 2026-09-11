@@ -11,7 +11,7 @@ export interface AlibabaCredentialEnvironment {
 }
 
 export interface AlibabaCredentialStatus {
-  source: 'environment' | 'credential-bundle' | 'd1-vault' | 'documentation-replay';
+  source: 'environment' | 'credential-bundle' | 'd1-vault' | 'sqlite-vault' | 'documentation-replay';
   configured: boolean;
   hasAppKey: boolean;
   hasAppSecret: boolean;
@@ -26,6 +26,11 @@ export interface AlibabaCredentialStatus {
 export interface AlibabaCredentialProvider {
   status(): AlibabaCredentialStatus;
   requireCredentials(): GatewayCredentials;
+}
+
+export interface AsyncAlibabaCredentialProvider {
+  status(): Promise<AlibabaCredentialStatus>;
+  requireCredentials(requestId?: string, forceRefresh?: boolean): Promise<GatewayCredentials>;
 }
 
 export class GatewayConfigurationError extends Error {

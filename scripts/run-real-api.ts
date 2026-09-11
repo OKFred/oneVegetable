@@ -14,9 +14,6 @@ const configuredPath =
   process.env.OPEN_API_OUTPUT ??
   'artifacts/openapi-auth/credentials.json';
 const credentialFile = isAbsolute(configuredPath) ? configuredPath : resolve(process.cwd(), configuredPath);
-if (!existsSync(credentialFile)) {
-  throw new Error('未找到 Alibaba 授权包，请先运行 pnpm openapi:auth');
-}
 const localEncryptionKey = await resolveLocalCredentialEncryptionKey({
   configuredValue: process.env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY,
   filePath: resolve(process.cwd(), '.data/local-credential-encryption-key')
@@ -38,7 +35,7 @@ const child = spawn(command, args, {
     ONE_VEGETABLE_ENVIRONMENT: 'local-node',
     ONE_VEGETABLE_GATEWAY_MODE: 'real',
     ONE_VEGETABLE_MUTATION_FLAGS: resolveLocalRealMutationFlags(process.env.ONE_VEGETABLE_MUTATION_FLAGS),
-    ONE_VEGETABLE_ALIBABA_CREDENTIAL_FILE: credentialFile,
+    ...(existsSync(credentialFile) ? { ONE_VEGETABLE_ALIBABA_CREDENTIAL_FILE: credentialFile } : {}),
     ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY: localEncryptionKey.value
   },
   stdio: 'inherit',

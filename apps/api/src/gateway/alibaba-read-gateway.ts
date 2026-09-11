@@ -38,7 +38,7 @@ import type {
   RequestOf,
   ResponseOf
 } from '@one-vegetable/core';
-import type { StoredAlibabaCredentialProvider } from './credential-vault';
+import type { AsyncAlibabaCredentialProvider } from './credentials';
 
 export interface GatewayRequestContext extends GalleryRequestOptions {
   requestId: string;
@@ -51,7 +51,7 @@ export interface AlibabaReadGatewayOptions {
 }
 
 export class CredentialBackedAlibabaGatewayClient implements GatewayClient {
-  constructor(private readonly provider: StoredAlibabaCredentialProvider) {}
+  constructor(private readonly provider: AsyncAlibabaCredentialProvider) {}
 
   async galleryGatewayContextId(): Promise<string> {
     return galleryGatewayId(await this.provider.requireCredentials());

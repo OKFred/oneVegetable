@@ -550,4 +550,4 @@ export const s3StorageConfigurations = sqliteTable('s3_storage_configurations', 
   remark: text('remark')
 });
 
-export const CURRENT_SCHEMA_VERSION = 12;
+export const CURRENT_SCHEMA_VERSION = 13;
