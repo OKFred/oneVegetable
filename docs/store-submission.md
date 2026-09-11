@@ -1,6 +1,6 @@
 # Chrome Web Store 提交清单
 
-检查日期：2026-09-08；当前候选版本：2.5.0。
+检查日期：2026-09-11；当前候选版本：2.6.0。2.5.0 已由项目所有者确认上架；本文件不表示 2.6.0 已上传、提交审核或发布。
 
 ## 已自动化验证
 
@@ -10,7 +10,7 @@
 - 应用中心、OAuth Callback、自定义网关、用户自托管社交发布 BFF、外部图片来源与用户配置的 S3 Endpoint 保持可选主机权限，并在用户启动对应功能时按具体站点申请；S3 不增加永久主机权限；
 - 中英文商店文案、权限理由、本地隐私页和仓库隐私政策存在且版本一致；
 - 128 × 128 商店图标、440 × 280 Small promo tile、3 张商店主截图，以及中英文各 4 张真实扩展页面的 1280 × 800 备选截图；
-- 平台草稿、正式发品、商品上下架、图库分组管理、图片上传和外部图片转存只在用户主动操作后开放；其他未经扩展路径真实验收的 mutation 在出网前关闭；
+- 平台草稿、正式发品、商品更新/上下架、商品分组创建、橱窗加入/移出、图库分组管理、图片上传和外部图片转存只在用户主动操作后开放；其他未经扩展路径真实验收的 mutation 在出网前关闭；
 - 插件社交发布必须先与用户自己的 BFF 一次性配对；设备令牌只允许读取发布目标和社交发布，不包含 Meta 密钥，单图发布仍需二次确认；
 - 发布 ZIP 可复现，manifest 位于根目录，CI 产物同时包含 SHA-256 和 `store-listing/` 提交资料。
 
@@ -86,7 +86,23 @@ pnpm upload:extension:draft -- --confirm-draft-upload
 - [x] 已提供 V2 API 草稿包上传工具；未配置 Publisher、service account 和短期 Token 时只保留本地预检能力；
 - [ ] 本文件不是法律意见，正式公开发布前仍需项目所有者确认隐私文本和适用地区要求。
 
-## 2.5.0 上传交接
+## 2.6.0 候选上传交接
+
+- 候选 ZIP：`artifacts/one-vegetable-v2.6.0-chrome-mv3.zip`，986,342 字节；SHA-256 `e4fe497bd04d80fa687f49eec25d467e8890a46278b4f3a20cc6dc4987e2dd3d`。正式发布标记变化后需重新打包，以新的 `.zip.sha256` 为准，不混用历史同名 ZIP。
+- 中英文完整说明：`store-listing/zh_CN.md`、`store-listing/en.md`；权限与数据用途：`store-listing/listing.json`。打包后的副本位于 `artifacts/store-listing/`。
+- 截图：`store-listing/assets/screenshots/zh-CN/`、`en-US/` 各 4 张，1280 × 800。全部来自 2.6.0 正式扩展构建的空白 Profile；没有开发凭据、测试账号或虚构商品。原 Small promo tile 与图标可继续使用。
+- 本版不新增 Manifest 权限。更新商店功能描述中的图库任务恢复、列表可选列和橱窗管理；权限用途继续按现有声明填写。Node 凭据管理属于 Web/BFF，不宣传为插件新增的后端必需条件。
+- 2.5.0 和早期 2.6.0 到候选包的 28 项升级检查通过；刷新/重启不会丢失加密配置和草稿，中断传输需手工核对。升级会重新锁定保险库，用户应保留原口令。
+- 无账号审核步骤沿用上节。真实任务需要用户自有的 Alibaba 权限和可选 S3 配置；正式商店材料不得附带本项目的真实授权包。新任务能力及真实验收边界见 [2.6.0 候选包验收](release-2.6.0-readiness.md)。
+- 本轮没有执行 Alibaba 写操作、远端数据库迁移、Worker 部署、Store 上传或提交审核；正式 tag/Release 与商店动作后续分别确认。
+
+可用于版本更新摘要（不是替代完整商店描述）：
+
+> 2.6.0 新增图库 ZIP/S3 传输记录、暂停与安全恢复，支持商品、图库和订单列表自定义显示列，以及商品橱窗管理。优化商品链接和表格布局；升级保留本机配置与草稿。发生中断或结果不明时提示手工核对，避免重复上传。未新增扩展权限；实际接口可用性仍取决于账号权限。
+
+> Version 2.6.0 adds gallery ZIP/S3 transfer history, pause and safe recovery, customizable columns for product, gallery and order lists, and product showcase management. Product links and table layouts are improved. Local settings and drafts are retained during upgrades. Interrupted or uncertain transfers require manual verification to avoid duplicate uploads. No new extension permissions; API availability still depends on account permissions.
+
+## 2.5.0 上传交接（历史记录，已上架）
 
 - ZIP：`artifacts/one-vegetable-v2.5.0-chrome-mv3.zip`；校验值以同目录 `.zip.sha256` 和 `release.json` 为准。
 - 中英文说明、权限理由及审核说明：`artifacts/store-listing/`（由 `pnpm release:extension` 从仓库提交资料复制）。

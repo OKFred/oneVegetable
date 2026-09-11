@@ -68,9 +68,17 @@ await copyFile(
   resolve(screenshotsDirectory, 'zh-CN/01-onboarding.png'),
   resolve(screenshotsDirectory, '01-onboarding.png')
 );
+await copyFile(
+  resolve(screenshotsDirectory, 'zh-CN/03-capability-catalog.png'),
+  resolve(screenshotsDirectory, '02-capability-catalog.png')
+);
+await copyFile(
+  resolve(screenshotsDirectory, 'zh-CN/04-credential-settings.png'),
+  resolve(screenshotsDirectory, '03-local-data-control.png')
+);
 
 process.stdout.write(
-  'Captured 8 extension screenshots (4 zh-CN and 4 en-US) at 1280x800, refreshed the primary onboarding screenshot, and copied the 128px store icon.\n'
+  'Captured 8 extension screenshots (4 zh-CN and 4 en-US) at 1280x800, refreshed all 3 primary screenshots, and copied the 128px store icon.\n'
 );
 
 async function captureLocale(screenshotLocale: StoreScreenshotLocale): Promise<void> {
