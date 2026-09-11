@@ -46,6 +46,9 @@ import type {
 } from '@one-vegetable/core';
 import type { SocialPublishingClient } from '@one-vegetable/core';
 import { APP_VERSION } from '@one-vegetable/core/version';
+import { createGatewayConfigurationScope } from './lib/gateway-configuration-scope';
+import { useQueryClient } from '@tanstack/vue-query';
+import { GATEWAY_CONFIGURATION_EVENT } from './lib/gateway-configuration-events';
 
 import Button from './components/ui/Button.vue';
 import GalleryTransferTaskCenter from './components/GalleryTransferTaskCenter.vue';
@@ -90,8 +93,20 @@ const runtime = reactive<RuntimeState>({
   backendMeta: null,
   metaStatus: props.mode === 'bff' ? 'loading' : 'ready'
 });
+const queryClient = useQueryClient();
+const credentialEpoch = ref(0);
+const credentialScope = createGatewayConfigurationScope(props.gateway);
+const scopedGateway = credentialScope.gateway;
+let credentialChannel: BroadcastChannel | undefined;
+function handleCredentialConfigurationChange(): void {
+  credentialScope.invalidate();
+  void queryClient.cancelQueries();
+  queryClient.clear();
+  credentialEpoch.value += 1;
+  void galleryTransfers.pauseForConfigurationChange().catch(() => undefined);
+}
 provideServices({
-  gateway: props.gateway,
+  gateway: scopedGateway,
   settings: props.settings,
   mode: props.mode,
   runtime,
@@ -114,7 +129,7 @@ provideServices({
 });
 
 const galleryTransfers = new GalleryTransferService({
-  gateway: props.gateway,
+  gateway: scopedGateway,
   settings: props.settings,
   mode: props.mode,
   ...(props.control ? { control: props.control } : {}),
@@ -290,6 +305,13 @@ async function handleOnboardingReady(destination?: 'credential-acquisition'): Pr
 watch(themePreference, syncTheme);
 
 onMounted(async () => {
+  if (props.mode === 'bff') {
+    globalThis.addEventListener(GATEWAY_CONFIGURATION_EVENT, handleCredentialConfigurationChange);
+    if (typeof BroadcastChannel !== 'undefined') {
+      credentialChannel = new BroadcastChannel(GATEWAY_CONFIGURATION_EVENT);
+      credentialChannel.onmessage = handleCredentialConfigurationChange;
+    }
+  }
   colorScheme.addEventListener('change', syncTheme);
   desktopNavigationQuery.addEventListener('change', syncDesktopNavigation);
   globalThis.addEventListener('hashchange', syncPageFromHash);
@@ -322,6 +344,8 @@ async function loadBackendMeta(control: ControlClient): Promise<void> {
 }
 
 onBeforeUnmount(() => {
+  globalThis.removeEventListener(GATEWAY_CONFIGURATION_EVENT, handleCredentialConfigurationChange);
+  credentialChannel?.close();
   colorScheme.removeEventListener('change', syncTheme);
   desktopNavigationQuery.removeEventListener('change', syncDesktopNavigation);
   globalThis.removeEventListener('hashchange', syncPageFromHash);
@@ -477,7 +501,9 @@ function avatarInitials(name: string): string {
             </Button>
           </div>
         </header>
-        <main class="p-4 lg:p-7"><component :is="activeView" /></main>
+        <main class="p-4 lg:p-7">
+          <component :is="activeView" :key="page === 'settings' ? 'settings' : credentialEpoch" />
+        </main>
         <GalleryTransferTaskCenter />
       </div>
       <Transition name="ov-fade">

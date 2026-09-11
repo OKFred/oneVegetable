@@ -155,13 +155,15 @@ afterEach(() => {
 });
 
 describe('SettingsView diagnostics', () => {
-  it('explains Node credential configuration without showing secret inputs', async () => {
+  it('shows the Node credential panel instead of environment-variable-only instructions', async () => {
     const wrapper = mountView('bff');
     await flushPromises();
-    const guide = wrapper.get('[data-testid="bff-credential-guide"]');
-    expect(guide.text()).toContain('artifacts/openapi-auth/credentials.json');
-    expect(guide.text()).toContain('ONE_VEGETABLE_ALIBABA_APP_KEY');
-    expect(guide.text()).toContain('pnpm dev:api');
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="gateway-credential-panel"]').exists()).toBe(true);
+    });
+    const guide = wrapper.get('[data-testid="gateway-credential-panel"]');
+    expect(guide.text()).toContain('Alibaba 凭据配置');
+    expect(guide.text()).not.toContain('ONE_VEGETABLE_ALIBABA_APP_KEY');
     expect(guide.find('input').exists()).toBe(false);
     expect(guide.find('a[href="#/admin"]').exists()).toBe(false);
     wrapper.unmount();

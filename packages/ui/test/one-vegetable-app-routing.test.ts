@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import { defineComponent, h } from 'vue';
-import { flushPromises, shallowMount } from '@vue/test-utils';
+import { config, flushPromises, shallowMount } from '@vue/test-utils';
+import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -41,6 +42,9 @@ const settings = {
 };
 
 beforeEach(() => {
+  config.global.plugins = [
+    [VueQueryPlugin, { queryClient: new QueryClient({ defaultOptions: { queries: { retry: false } } }) }]
+  ];
   vi.stubGlobal('matchMedia', () => ({
     matches: false,
     addEventListener: vi.fn(),

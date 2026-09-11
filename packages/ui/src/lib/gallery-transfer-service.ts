@@ -364,6 +364,12 @@ export class GalleryTransferService {
     });
     this.tasks.value = [];
   }
+  async pauseForConfigurationChange(): Promise<void> {
+    for (const task of await this.repository.list()) {
+      if (task.status === 'running') await this.runner.command(task.id, 'pause');
+    }
+    this.currentContext.value = null;
+  }
   dispose(): void {
     this.disposed = true;
     this.channel?.close();

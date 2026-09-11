@@ -1,57 +1,40 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
 import { startRegistration } from '@simplewebauthn/browser';
-import { Copy, KeyRound, PauseCircle, PlayCircle, RefreshCw, Shield, Sparkles, Upload } from '@lucide/vue';
+import { Copy, KeyRound, PauseCircle, PlayCircle, RefreshCw, Shield, Sparkles } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
-import { parseAlibabaOpenApiCredentialBundle } from '@one-vegetable/core';
 import type { PublicKeyCredentialCreationOptionsJSON } from '@simplewebauthn/browser';
-import type {
-  AlibabaOpenApiCredentialBundle,
-  ControlGatewayCredentialSummary,
-  ControlPasskeyCredential,
-  ControlRealMutationStatus
-} from '@one-vegetable/core';
+import type { ControlPasskeyCredential, ControlRealMutationStatus } from '@one-vegetable/core';
 
 import { useServices } from '../lib/services';
-import AlibabaIndependentNotice from './AlibabaIndependentNotice.vue';
+import { notifyGatewayConfigurationChanged } from '../lib/gateway-configuration-events';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import ErrorNotice from './ErrorNotice.vue';
 import ModalDialog from './ui/ModalDialog.vue';
 import AlibabaCloudCredentialAcquisitionDialog from './AlibabaCloudCredentialAcquisitionDialog.vue';
-import { formatDateTime } from '../lib/date-time';
 import { useUiI18n } from '../i18n';
 
 type Confirmation =
-  | { kind: 'credential-import' }
-  | { kind: 'credential-clear' }
   | { kind: 'pause'; paused: boolean }
   | { kind: 'passkey-remove'; credential: ControlPasskeyCredential }
   | { kind: 'recovery-codes' };
 
 const { control } = useServices();
 const { t } = useUiI18n();
-const credentials = ref<ControlGatewayCredentialSummary | null>(null);
+const GatewayCredentialPanel = defineAsyncComponent(() => import('./GatewayCredentialPanel.vue'));
+const credentialPanel = ref<{ reload: () => Promise<void> } | null>(null);
 const mutationControl = ref<ControlRealMutationStatus | null>(null);
 const passkeys = ref<ControlPasskeyCredential[]>([]);
-const pendingBundle = ref<AlibabaOpenApiCredentialBundle | null>(null);
-const pendingFileName = ref('');
 const confirmation = ref<Confirmation | null>(null);
 const recoveryCodes = ref<string[]>([]);
 const loading = ref(false);
 const error = ref<unknown>(null);
-const fileInput = ref<HTMLInputElement | null>(null);
 const acquisitionOpen = ref(false);
 
 const confirmationTitle = computed(() => {
-  if (confirmation.value?.kind === 'credential-import') {
-    return t('admin.selfHosted.confirmation.importTitle');
-  }
-  if (confirmation.value?.kind === 'credential-clear') {
-    return t('admin.selfHosted.confirmation.clearTitle');
-  }
   if (confirmation.value?.kind === 'passkey-remove') {
     return t('admin.selfHosted.confirmation.removePasskeyTitle');
   }
@@ -65,11 +48,6 @@ const confirmationTitle = computed(() => {
   );
 });
 const confirmationDescription = computed(() => {
-  if (confirmation.value?.kind === 'credential-import') {
-    return t('admin.selfHosted.confirmation.importDescription', { file: pendingFileName.value });
-  }
-  if (confirmation.value?.kind === 'credential-clear')
-    return t('admin.selfHosted.confirmation.clearDescription');
   if (confirmation.value?.kind === 'passkey-remove') {
     return t('admin.selfHosted.confirmation.removePasskeyDescription');
   }
@@ -88,37 +66,16 @@ async function refresh(): Promise<void> {
   loading.value = true;
   error.value = null;
   try {
-    const [credentialStatus, pauseStatus, credentialList] = await Promise.all([
-      control.gatewayCredentialStatus(),
+    const [pauseStatus, credentialList] = await Promise.all([
       control.realMutationStatus?.() ?? Promise.resolve(null),
       control.listPasskeys?.() ?? Promise.resolve([])
     ]);
-    credentials.value = credentialStatus;
     mutationControl.value = pauseStatus;
     passkeys.value = credentialList;
   } catch (cause: unknown) {
     error.value = userError(cause, t('admin.selfHosted.errors.load'));
   } finally {
     loading.value = false;
-  }
-}
-
-async function selectCredentialFile(event: Event): Promise<void> {
-  error.value = null;
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  input.value = '';
-  if (!file) return;
-  try {
-    if (file.size > 1024 * 1024) throw new Error(t('admin.selfHosted.errors.fileSize'));
-    const parsed: unknown = JSON.parse(await file.text());
-    pendingBundle.value = parseAlibabaOpenApiCredentialBundle(parsed);
-    pendingFileName.value = file.name;
-    confirmation.value = { kind: 'credential-import' };
-  } catch (cause: unknown) {
-    pendingBundle.value = null;
-    pendingFileName.value = '';
-    error.value = userError(cause, t('admin.selfHosted.errors.invalidFile'));
   }
 }
 
@@ -138,17 +95,6 @@ async function addPasskey(): Promise<void> {
   }
 }
 
-async function refreshCredential(): Promise<void> {
-  if (!control) return;
-  error.value = null;
-  try {
-    credentials.value = await control.refreshGatewayCredential();
-    toast.success(t('admin.selfHosted.feedback.tokenRefreshed'));
-  } catch (cause: unknown) {
-    error.value = userError(cause, t('admin.selfHosted.errors.tokenRefresh'));
-  }
-}
-
 async function confirm(): Promise<void> {
   if (!control || !confirmation.value) return;
   loading.value = true;
@@ -156,21 +102,7 @@ async function confirm(): Promise<void> {
   const action = confirmation.value;
   confirmation.value = null;
   try {
-    if (action.kind === 'credential-import') {
-      if (!pendingBundle.value) throw new Error(t('admin.selfHosted.errors.reselect'));
-      credentials.value = await control.importGatewayCredential(
-        pendingBundle.value,
-        credentials.value?.revision ?? null,
-        t('admin.selfHosted.feedback.importRemark', { file: pendingFileName.value })
-      );
-      pendingBundle.value = null;
-      pendingFileName.value = '';
-      toast.success(t('admin.selfHosted.feedback.imported'));
-    } else if (action.kind === 'credential-clear') {
-      if (credentials.value?.revision === null || credentials.value?.revision === undefined) return;
-      await control.clearGatewayCredential(credentials.value.revision);
-      toast.success(t('admin.selfHosted.feedback.cleared'));
-    } else if (action.kind === 'pause') {
+    if (action.kind === 'pause') {
       if (!control.updateRealMutationPause) {
         throw new Error(t('admin.selfHosted.errors.pauseUnsupported'));
       }
@@ -200,6 +132,10 @@ async function confirm(): Promise<void> {
   }
 }
 
+async function credentialsAcquired(): Promise<void> {
+  notifyGatewayConfigurationChanged();
+  await credentialPanel.value?.reload();
+}
 async function copyRecoveryCodes(): Promise<void> {
   try {
     await globalThis.navigator.clipboard.writeText(recoveryCodes.value.join('\n'));
@@ -231,60 +167,11 @@ function userError(cause: unknown, fallback: string): Error {
     <ErrorNotice v-if="error" :error="error" :fallback="t('admin.selfHosted.errors.panel')" />
 
     <div class="grid gap-5 xl:grid-cols-3">
-      <Card class="p-5">
-        <div class="flex items-center justify-between gap-3">
-          <h3 class="flex items-center gap-2 font-semibold">
-            <Upload class="size-4" />{{ t('admin.selfHosted.credentials') }}
-          </h3>
-          <span
-            class="rounded-full px-2 py-1 text-xs"
-            :class="
-              credentials?.configured ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-            "
-          >
-            {{
-              credentials?.configured ? t('admin.selfHosted.configured') : t('admin.selfHosted.notConfigured')
-            }}
-          </span>
-        </div>
-        <AlibabaIndependentNotice class="mt-4" />
-        <dl class="mt-4 space-y-2 text-sm">
-          <div class="flex justify-between gap-3">
-            <dt class="text-muted-foreground">{{ t('admin.selfHosted.expires') }}</dt>
-            <dd>{{ formatDateTime(credentials?.accessTokenExpiresTimeUtc ?? null) }}</dd>
-          </div>
-          <div class="flex justify-between gap-3">
-            <dt class="text-muted-foreground">{{ t('admin.selfHosted.lastRefreshError') }}</dt>
-            <dd>{{ credentials?.lastRefreshErrorCode ?? '—' }}</dd>
-          </div>
-        </dl>
-        <input
-          ref="fileInput"
-          class="hidden"
-          type="file"
-          accept="application/json,.json"
-          @change="selectCredentialFile"
-        />
-        <div class="mt-4 flex flex-wrap gap-2">
-          <Button size="sm" @click="acquisitionOpen = true"
-            ><Sparkles class="size-4" />{{ t('admin.selfHosted.connect') }}</Button
-          >
-          <Button size="sm" @click="fileInput?.click()"
-            ><Upload class="size-4" />{{ t('admin.selfHosted.import') }}</Button
-          >
-          <Button size="sm" variant="outline" :disabled="!credentials?.configured" @click="refreshCredential">
-            {{ t('admin.selfHosted.refreshToken') }}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            :disabled="!credentials?.configured"
-            @click="confirmation = { kind: 'credential-clear' }"
-          >
-            {{ t('admin.selfHosted.clear') }}
-          </Button>
-        </div>
-      </Card>
+      <GatewayCredentialPanel ref="credentialPanel">
+        <Button size="sm" @click="acquisitionOpen = true"
+          ><Sparkles class="size-4" />{{ t('admin.selfHosted.connect') }}</Button
+        >
+      </GatewayCredentialPanel>
 
       <Card class="p-5">
         <div class="flex items-center justify-between gap-3">
@@ -356,15 +243,16 @@ function userError(cause: unknown, fallback: string): Error {
       :open="confirmation !== null"
       :title="confirmationTitle"
       :description="confirmationDescription"
-      :destructive="
-        confirmation?.kind === 'credential-clear' || (confirmation?.kind === 'pause' && confirmation.paused)
-      "
+      :destructive="confirmation?.kind === 'pause' && confirmation.paused"
       :pending="loading"
       @update:open="confirmation = $event ? confirmation : null"
       @confirm="confirm"
     />
 
-    <AlibabaCloudCredentialAcquisitionDialog v-model:open="acquisitionOpen" @completed="refresh" />
+    <AlibabaCloudCredentialAcquisitionDialog
+      v-model:open="acquisitionOpen"
+      @completed="credentialsAcquired"
+    />
 
     <ModalDialog
       :open="recoveryCodes.length > 0"

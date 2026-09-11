@@ -67,6 +67,7 @@ const {
 } = useServices();
 const { t } = useUiI18n();
 const S3StorageSettingsPanel = defineAsyncComponent(() => import('../components/S3StorageSettingsPanel.vue'));
+const GatewayCredentialPanel = defineAsyncComponent(() => import('../components/GatewayCredentialPanel.vue'));
 const { alibabaLanguage: preferredLanguage } = useAppPreferences();
 const signMethods: SignMethod[] = ['hmac', 'md5', 'hmac-sha256'];
 const model = ref<GatewaySettings>({
@@ -568,26 +569,13 @@ function confirmLanguagePreference(): void {
     >
       {{ feedback }}
     </p>
-    <Card v-if="mode === 'bff'" class="space-y-3 p-5" data-testid="bff-credential-guide">
+    <GatewayCredentialPanel v-if="mode === 'bff' && runtime?.backendMeta?.runtime === 'node'" />
+    <Card v-else-if="mode === 'bff'" class="space-y-3 p-5" data-testid="bff-credential-guide">
       <h2 class="flex items-center gap-2 font-semibold">
         <KeyRound class="size-4 text-primary" />{{ t('settings.credentials.title') }}
       </h2>
       <p class="text-sm text-muted-foreground">{{ t('settings.bffCredentials.boundary') }}</p>
-      <template v-if="runtime?.backendMeta?.runtime === 'node'">
-        <p class="text-sm">{{ t('settings.bffCredentials.node') }}</p>
-        <p class="text-sm">{{ t('settings.bffCredentials.bundle') }}</p>
-        <code class="block break-all rounded bg-muted p-2 text-xs"
-          >artifacts/openapi-auth/credentials.json</code
-        >
-        <p class="text-sm">{{ t('settings.bffCredentials.environment') }}</p>
-        <pre class="overflow-x-auto rounded bg-muted p-2 text-xs">
-ONE_VEGETABLE_GATEWAY_MODE=real
-ONE_VEGETABLE_ALIBABA_APP_KEY
-ONE_VEGETABLE_ALIBABA_APP_SECRET
-ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN</pre>
-        <p class="text-sm text-muted-foreground">{{ t('settings.bffCredentials.restart') }}</p>
-      </template>
-      <template v-else-if="runtime?.backendMeta?.runtime === 'cloudflare'">
+      <template v-if="runtime?.backendMeta?.runtime === 'cloudflare'">
         <p class="text-sm">{{ t('settings.bffCredentials.cloud') }}</p>
         <a href="#/admin" class="inline-block text-sm text-primary hover:underline">{{
           t('settings.bffCredentials.admin')

@@ -5,6 +5,8 @@ import { enUS } from '../packages/ui/src/i18n/messages/en-US/index';
 import { zhCN } from '../packages/ui/src/i18n/messages/zh-CN/index';
 import { showcase as showcaseZh } from '../packages/ui/src/i18n/messages/zh-CN/showcase';
 import { showcase as showcaseEn } from '../packages/ui/src/i18n/messages/en-US/showcase';
+import { gatewayCredentials as credentialsZh } from '../packages/ui/src/i18n/messages/zh-CN/gatewayCredentials';
+import { gatewayCredentials as credentialsEn } from '../packages/ui/src/i18n/messages/en-US/gatewayCredentials';
 
 interface TranslationLeaf {
   kind: 'boolean' | 'null' | 'number' | 'string';
@@ -30,6 +32,7 @@ const hardcodedHanAllowlist: Readonly<Record<string, readonly RegExp[]>> = {
 const errors = [
   ...compareCatalogs(zhCN, enUS),
   ...compareCatalogs(showcaseZh, showcaseEn),
+  ...compareCatalogs(credentialsZh, credentialsEn),
   ...(await findHardcodedInterfaceText())
 ];
 

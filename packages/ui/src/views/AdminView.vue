@@ -633,6 +633,12 @@ const auditEventColumns = computed<DataColumn<ControlAuditEvent>[]>(() => [
       </Card>
     </div>
 
+    <a
+      v-if="system?.runtime === 'node'"
+      href="#/settings"
+      class="inline-flex text-sm text-primary hover:underline"
+      >{{ t('settings.credentials.title') }}</a
+    >
     <SelfHostedAdminPanel v-if="selfHosted" />
     <MetaSocialAdminPanel />
 

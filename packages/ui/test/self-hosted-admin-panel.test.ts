@@ -18,6 +18,7 @@ describe('SelfHostedAdminPanel', () => {
       Promise.resolve({ paused: true, revision: 2, updateTimeUtc: 2, updaterId: 'admin-1', remark: null })
     );
     const control = {
+      session: () => Promise.resolve({ principal: { role: 'admin' } }),
       gatewayCredentialStatus: () =>
         Promise.resolve({
           configured: true,
@@ -69,7 +70,9 @@ describe('SelfHostedAdminPanel', () => {
     const wrapper = mount(Host, { attachTo: document.body });
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Alibaba 开放平台凭证');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Alibaba 凭据配置');
+    });
     expect(wrapper.text()).toContain('一键连接');
     expect(wrapper.text()).toContain('已配置');
     expect(wrapper.text()).toContain('Windows Hello');
