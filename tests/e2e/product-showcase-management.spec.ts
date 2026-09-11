@@ -13,6 +13,8 @@ test('showcase drawer confirms removal and addition without changing product lis
   await confirmation.getByRole('button', { name: '确认', exact: true }).click();
   await expect(drawer.getByText('总额度 2 · 已用 0 · 剩余 2')).toBeVisible();
   await expect(confirmation).toHaveCount(0);
+  // The closing confirmation changes its accessible title before its exit animation finishes.
+  await expect(page.getByRole('dialog')).toHaveCount(1);
   await page.keyboard.press('Escape');
   await expect(drawer).toHaveCount(0);
   await page.getByRole('checkbox', { name: '选择 Portable solar power station 1000W', exact: true }).check();
@@ -23,6 +25,7 @@ test('showcase drawer confirms removal and addition without changing product lis
   await add.getByRole('button', { name: '确认', exact: true }).click();
   await expect(drawer.getByText('总额度 2 · 已用 1 · 剩余 1')).toBeVisible();
   await expect(add).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toHaveCount(1);
   await page.keyboard.press('Escape');
   await expect(drawer).toHaveCount(0);
   await page.getByRole('button', { name: '显示列', exact: true }).click();
