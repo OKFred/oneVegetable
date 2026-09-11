@@ -1,0 +1,26 @@
+{
+  "passphrase": "upgrade-fixture-only",
+  "settings": {
+    "appKey": "upgrade-fixture-app",
+    "appSecret": "upgrade-fixture-secret",
+    "accessToken": "upgrade-fixture-token",
+    "endpoint": "https://eco.taobao.com/router/rest",
+    "signMethod": "hmac-sha256"
+  },
+  "preferences": { "uiLocale": "zh-CN", "alibabaLanguage": "en_US", "theme": "dark" },
+  "columns": { "version": 1, "visible": ["select", "subject", "productScore", "actions"] },
+  "draft": {
+    "schemaVersion": 3,
+    "draftKey": "new:201712702",
+    "kind": "new",
+    "productId": null,
+    "categoryId": "201712702",
+    "language": "en_US",
+    "market": "wholesale",
+    "xml": "<itemSchema><field id=\"productTitle\" type=\"input\"><value>Upgrade fixture</value></field></itemSchema>",
+    "mode": "quick",
+    "step": "basics",
+    "platformDraftId": null,
+    "updatedAtUtc": 0
+  }
+}

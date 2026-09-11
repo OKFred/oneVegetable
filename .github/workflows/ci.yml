@@ -16,6 +16,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      - run: pnpm test:worker
       - run: pnpm exec playwright install --with-deps chromium
       - run: xvfb-run --auto-servernum pnpm test:e2e
       - run: xvfb-run --auto-servernum pnpm test:e2e:bff-replay

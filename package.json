@@ -36,6 +36,7 @@
     "check:i18n": "tsx scripts/check-i18n.ts",
     "check:release-version": "tsx scripts/check-release-version.ts",
     "capture:store-assets": "pnpm run build:extension && tsx scripts/capture-store-assets.ts",
+    "verify:extension-upgrade": "tsx scripts/verify-extension-upgrade.ts",
     "zip:extension": "pnpm run release:extension",
     "release:extension": "pnpm run build:extension && pnpm run check:extension-bundle && pnpm run check:store-compliance && tsx scripts/package-extension.ts",
     "upload:extension:draft": "tsx scripts/upload-chrome-web-store-draft.ts",
