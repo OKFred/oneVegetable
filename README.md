@@ -70,6 +70,8 @@ pnpm capture:store-assets # 从构建后的扩展刷新 1280×800 商店截图
 
 2.6.0 开发候选：图库 ZIP/S3 任务可跨页面继续、刷新后手工恢复，详见 [任务中心与安全恢复](docs/gallery-transfer-task-recovery.md) 和 [候选包验收](docs/release-2.6.0-readiness.md)。真实写入仍需确认；清理记录不删除远端素材。
 
+Node 管理员可在设置页导入授权 JSON 或手动填写 Alibaba 开放平台凭据，保存即时生效、清除不回退旧账号；详见 [Node 凭据管理与验证](docs/node-credential-management.md)。
+
 ## 扩展调试
 
 日常开发使用 `pnpm dev:extension`。WXT 会启动独立 Chromium profile，并在 options、popup、service worker、content script 或 manifest 变化后自动更新/重载扩展；不需要像 MV2 一样每次打开 `chrome://extensions` 手工点击“重新加载”。

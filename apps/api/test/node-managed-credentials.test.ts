@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
+import { parseAlibabaOpenApiCredentialBundle } from '@one-vegetable/core/credential-bundle';
 import fixture from '../../../mock/data/node-gateway-credentials.json';
 import { applyNodeMigrations, openNodeDatabase } from '../src/db/node-database';
 import {
@@ -42,6 +44,33 @@ async function harness() {
 const input = () => ({ credentials: fixture.manual, actorId: 'admin', expectedRevision: null, remark: null });
 
 describe('Node live credential configuration', () => {
+  it('migrates an actual schema-v12 encrypted row without changing ciphertext or OAuth evidence', async () => {
+    const database = openNodeDatabase(':memory:');
+    databases.push(database);
+    const migrationDirectory = new URL('../drizzle/', import.meta.url);
+    for (const name of readdirSync(migrationDirectory)
+      .filter((name) => /^00(?:0[1-9]|1[0-2])_.+\.sql$/u.test(name))
+      .sort()) {
+      database.connection.exec(readFileSync(new URL(name, migrationDirectory), 'utf8'));
+    }
+    const cipher = await GatewayCredentialCipher.create(btoa('k'.repeat(32)).replace(/=+$/u, ''));
+    const bundle = parseAlibabaOpenApiCredentialBundle(fixture.oauthBundle);
+    const encrypted = await cipher.encrypt(bundle);
+    database.connection
+      .prepare(
+        "INSERT INTO alibaba_gateway_credentials (id, encrypted_bundle, initialization_vector, algorithm, schema_version, key_version, create_time_utc, update_time_utc, creator_id, updater_id, revision) VALUES ('primary', ?, ?, 'AES-256-GCM', 1, 1, 0, 0, 'legacy', 'legacy', 1)"
+      )
+      .run(encrypted.encryptedBundle, encrypted.initializationVector);
+    applyNodeMigrations(database);
+    const repository = new SqlGatewayCredentialRepository(database.executor);
+    expect(await repository.managed()).toBe(true);
+    const row = await repository.find();
+    expect(row?.encryptedBundle).toBe(encrypted.encryptedBundle);
+    if (!row) throw new Error('Missing migrated credential');
+    expect(await cipher.decrypt(row)).toEqual(bundle);
+    const provider = new StoredAlibabaCredentialProvider(repository, cipher);
+    expect((await provider.requireCredentials()).appKey).toBe(bundle.application.appKey);
+  });
   it('switches immediately from legacy to encrypted manual input and never revives legacy on clear or restart', async () => {
     const h = await harness();
     expect((await h.provider.requireCredentials()).appKey).toBe('old-app');

@@ -19,6 +19,7 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: xvfb-run --auto-servernum pnpm test:e2e
       - run: xvfb-run --auto-servernum pnpm test:e2e:bff-replay
+      - run: pnpm test:e2e:node-credentials
       - run: pnpm release:extension
       - uses: actions/upload-artifact@v7
         with:

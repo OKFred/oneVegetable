@@ -15,6 +15,19 @@ const provider = {
   requireCredentials: () => Promise.resolve(legacy.requireCredentials())
 };
 describe('explicit read-only credential test', () => {
+  it.each([
+    ['isv.invalid-appkey', 'credentials-invalid'],
+    ['RESPONSE_CONTRACT_INVALID', 'contract-drift'],
+    ['NETWORK_TIMEOUT', 'network-error']
+  ])('classifies %s without exposing provider data', async (code, expected) => {
+    const client = new MockGatewayClient(0);
+    vi.spyOn(client, 'request').mockRejectedValue(
+      new GatewayException({ code, message: 'sensitive-remote-response', retryable: false })
+    );
+    const result = await testGatewayCredential(provider, createRequestId(), () => client);
+    expect(result.status).toBe(expected);
+    expect(JSON.stringify(result)).not.toContain('sensitive-remote-response');
+  });
   it('uses exactly one minimal list operation and does not expose product data', async () => {
     const client = new MockGatewayClient(0);
     const spy = vi.spyOn(client, 'request');

@@ -13,6 +13,7 @@ export interface LocalCredentialEncryptionKey {
 export async function resolveLocalCredentialEncryptionKey(input: {
   configuredValue: string | undefined;
   filePath: string;
+  hasEncryptedData?: boolean;
 }): Promise<LocalCredentialEncryptionKey> {
   const configuredValue = input.configuredValue?.trim();
   if (configuredValue) {
@@ -32,6 +33,8 @@ export async function resolveLocalCredentialEncryptionKey(input: {
     };
   }
 
+  if (input.hasEncryptedData)
+    throw new Error('数据库已有加密配置，但本地加密密钥丢失。请恢复原密钥，不能自动生成替代密钥。');
   await mkdir(dirname(input.filePath), { recursive: true });
   const generatedValue = randomBytes(32).toString('base64url');
   try {

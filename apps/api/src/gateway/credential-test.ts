@@ -16,7 +16,7 @@ export async function testGatewayCredential(
   let configurationId: string | null = null;
   try {
     const credentials = await provider.requireCredentials(requestId);
-    configurationId = await galleryGatewayId(credentials);
+    configurationId = credentials.galleryAccountGeneration ?? (await galleryGatewayId(credentials));
     const page = await createGateway(credentials).request(
       'listProducts',
       { page: 1, pageSize: 1 },
@@ -40,7 +40,9 @@ export async function testGatewayCredential(
     const safeCode = /^[A-Za-z0-9._:-]{1,128}$/u.test(code) ? code : 'GATEWAY_CONNECTION_FAILED';
     const status =
       error instanceof GatewayConfigurationError ||
-      /TOKEN|CREDENTIAL|SIGNATURE|invalid-session|invalid-signature/iu.test(safeCode)
+      /TOKEN|CREDENTIAL|SIGNATURE|invalid-session|invalid-signature|invalid-app-?key|invalid-app-secret/iu.test(
+        safeCode
+      )
         ? 'credentials-invalid'
         : /PERMISSION|AUTHORITY|ACCESS_DENIED|insufficient-isv-permissions|insufficient-user-permissions/iu.test(
               safeCode

@@ -6,6 +6,7 @@ import { loadEnvFile } from 'node:process';
 import { resolveLocalCredentialEncryptionKey } from './lib/local-credential-encryption-key';
 import { resolveLocalRealMutationFlags } from './lib/local-real-mutation-flags';
 import { localNodeNetworkOptions } from './lib/local-node-network';
+import { hasNodeEncryptedData } from './lib/node-encrypted-data';
 
 if (existsSync('.env')) loadEnvFile('.env');
 
@@ -16,7 +17,10 @@ const configuredPath =
 const credentialFile = isAbsolute(configuredPath) ? configuredPath : resolve(process.cwd(), configuredPath);
 const localEncryptionKey = await resolveLocalCredentialEncryptionKey({
   configuredValue: process.env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY,
-  filePath: resolve(process.cwd(), '.data/local-credential-encryption-key')
+  filePath: resolve(process.cwd(), '.data/local-credential-encryption-key'),
+  hasEncryptedData: hasNodeEncryptedData(
+    resolve(process.cwd(), 'apps/api', process.env.ONE_VEGETABLE_SQLITE_PATH ?? '.data/one-vegetable.sqlite')
+  )
 });
 if (localEncryptionKey.source === 'generated') {
   process.stdout.write('已生成本地凭据加密密钥并保存到 .data；后续启动会自动复用。\n');

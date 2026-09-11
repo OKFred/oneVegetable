@@ -88,7 +88,7 @@ export interface GatewayCredentialRepository {
     now: number;
   }): Promise<GatewayCredentialRecord>;
   delete(expectedRevision: number): Promise<boolean>;
-  acquireRefreshLease(leaseId: string, now: number): Promise<boolean>;
+  acquireRefreshLease(leaseId: string, now: number, expectedRevision: number): Promise<boolean>;
   completeRefresh(input: {
     leaseId: string;
     expectedRevision: number;
@@ -166,6 +166,7 @@ export class SqlGatewayCredentialRepository implements GatewayCredentialReposito
         refresh_token_expires_time_utc = excluded.refresh_token_expires_time_utc,
         refresh_lease_id = NULL,
         refresh_lease_until_utc = NULL,
+        last_refresh_time_utc = NULL,
         last_refresh_error_code = NULL,
         update_time_utc = excluded.update_time_utc,
         updater_id = excluded.updater_id,
@@ -204,12 +205,12 @@ export class SqlGatewayCredentialRepository implements GatewayCredentialReposito
     return result.length === 1;
   }
 
-  async acquireRefreshLease(leaseId: string, now: number): Promise<boolean> {
+  async acquireRefreshLease(leaseId: string, now: number, expectedRevision: number): Promise<boolean> {
     const result = await this.executor.query(
       `UPDATE alibaba_gateway_credentials
        SET refresh_lease_id = ?, refresh_lease_until_utc = ?
-       WHERE id = ? AND (refresh_lease_until_utc IS NULL OR refresh_lease_until_utc < ?) RETURNING id`,
-      [leaseId, now + REFRESH_LEASE_MS, CREDENTIAL_ID, now]
+       WHERE id = ? AND revision = ? AND (refresh_lease_until_utc IS NULL OR refresh_lease_until_utc < ?) RETURNING id`,
+      [leaseId, now + REFRESH_LEASE_MS, CREDENTIAL_ID, expectedRevision, now]
     );
     return result.length === 1;
   }
@@ -554,7 +555,7 @@ export class StoredAlibabaCredentialProvider {
       );
     }
     const leaseId = crypto.randomUUID();
-    if (!(await this.repository.acquireRefreshLease(leaseId, now))) {
+    if (!(await this.repository.acquireRefreshLease(leaseId, now, record.revision))) {
       const latest = await this.repository.find();
       if (latest && !shouldRefresh(latest.accessTokenExpiresTimeUtc, this.clock())) {
         return { record: latest, bundle: await this.cipher.decryptDocument(latest) };

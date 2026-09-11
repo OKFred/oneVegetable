@@ -76,6 +76,8 @@
     "test:e2e": "pnpm build:extension && playwright test",
     "test:e2e:bff-replay": "node scripts/prepare-bff-replay-e2e.mjs && playwright test --config playwright.bff-replay.config.ts",
     "smoke:local-auth": "node scripts/smoke-local-auth.mjs",
+    "test:e2e:node-credentials": "playwright test --config playwright.node-credentials.config.ts",
+    "smoke:node-credentials:real": "tsx scripts/smoke-node-credential-management.ts",
     "smoke:alibaba:real": "tsx scripts/smoke-alibaba-real.ts",
     "smoke:photobank:upload:real": "tsx scripts/smoke-photobank-upload-real.ts",
     "smoke:photobank:group:real": "tsx scripts/smoke-photobank-group-real.ts",

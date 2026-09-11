@@ -15,6 +15,14 @@ afterEach(async () => {
 });
 
 describe('local credential encryption key', () => {
+  it('never replaces a missing key when encrypted data already exists', async () => {
+    const directory = await temporaryDirectory();
+    const filePath = join(directory, 'missing-key');
+    await expect(
+      resolveLocalCredentialEncryptionKey({ configuredValue: undefined, filePath, hasEncryptedData: true })
+    ).rejects.toThrow('恢复原密钥');
+    await expect(stat(filePath)).rejects.toMatchObject({ code: 'ENOENT' });
+  });
   it('uses an explicit environment key without creating a local file', async () => {
     const directory = await temporaryDirectory();
     const filePath = join(directory, 'nested', 'credential-key');

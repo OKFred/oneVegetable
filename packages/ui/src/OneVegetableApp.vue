@@ -48,7 +48,10 @@ import type { SocialPublishingClient } from '@one-vegetable/core';
 import { APP_VERSION } from '@one-vegetable/core/version';
 import { createGatewayConfigurationScope } from './lib/gateway-configuration-scope';
 import { useQueryClient } from '@tanstack/vue-query';
-import { GATEWAY_CONFIGURATION_EVENT } from './lib/gateway-configuration-events';
+import {
+  GATEWAY_CONFIGURATION_EVENT,
+  isExternalGatewayConfigurationChange
+} from './lib/gateway-configuration-events';
 
 import Button from './components/ui/Button.vue';
 import GalleryTransferTaskCenter from './components/GalleryTransferTaskCenter.vue';
@@ -309,7 +312,9 @@ onMounted(async () => {
     globalThis.addEventListener(GATEWAY_CONFIGURATION_EVENT, handleCredentialConfigurationChange);
     if (typeof BroadcastChannel !== 'undefined') {
       credentialChannel = new BroadcastChannel(GATEWAY_CONFIGURATION_EVENT);
-      credentialChannel.onmessage = handleCredentialConfigurationChange;
+      credentialChannel.onmessage = (event: MessageEvent<unknown>) => {
+        if (isExternalGatewayConfigurationChange(event.data)) handleCredentialConfigurationChange();
+      };
     }
   }
   colorScheme.addEventListener('change', syncTheme);
