@@ -56,10 +56,27 @@ test('authenticated Web uses Worker, D1 and documentation replay across every do
   expect([...operationOrigins]).toEqual([workerOrigin]);
 
   await openDomain(page, successfulOperations, '商品', '商品管理', ['listProducts']);
-  await page.context().clearCookies();
-  await page.getByRole('button', { name: '刷新商品列表', exact: true }).click();
+  const refreshProducts = page.getByRole('button', { name: '刷新商品列表', exact: true });
+  await expect(refreshProducts).toBeEnabled();
+  let expireRefresh = true;
+  await page.route('**/api/v1/operations/call', async (route) => {
+    const body = route.request().postDataJSON() as { operation?: unknown } | null;
+    if (expireRefresh && body?.operation === 'listProducts') {
+      expireRefresh = false;
+      // Expire only after refresh is dispatched. Clearing cookies before clicking can
+      // let a background query open the session dialog and intercept the button.
+      await page.context().clearCookies();
+      const headers = await route.request().allHeaders();
+      delete headers.cookie;
+      await route.continue({ headers });
+      return;
+    }
+    await route.continue();
+  });
+  await refreshProducts.click();
   const expiredDialog = page.getByRole('dialog', { name: '需要重新登录' });
   await expect(expiredDialog).toBeVisible();
+  expect(expireRefresh).toBe(false);
   await page.keyboard.press('Escape');
   await expect(expiredDialog).toBeVisible();
   await expiredDialog.getByRole('button', { name: '重新登录', exact: true }).click();
