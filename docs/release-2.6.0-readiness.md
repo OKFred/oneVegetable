@@ -4,7 +4,19 @@
 
 送审交接源码固定为 `adb1b1349f5dc3644423e57c9f41d8f1a21be007`，已合入 `staging`、`master`；运行内容基线为 `013db1c`，之后仅有测试时序修正和验收文档。主线 [CI 34670896436](https://github.com/OKFred/oneVegetable/actions/runs/34670896436) 全部通过，Windows 与 CI 生成的 ZIP SHA-256 一致。版本标签 `v2.6.0` 锁定送审交接提交，后续仅更新仓库审核记录，不修改送审包或移动标签。
 
-**包内候选文案保持原样**：用户已提交审核后，不为更新版本历史文案重建一个内容不同的同版本包。最新审核状态以本文件和 GitHub Release 说明为准；包内文案留到下一版本调整。本次没有重新上传商店、代替提交审核或部署 Worker。
+**包内候选文案保持原样**：用户已提交审核后，不为更新版本历史文案重建一个内容不同的同版本包。最新审核状态以本文件和 GitHub Release 说明为准；包内文案留到下一版本调整。本次没有重新上传商店或代替提交审核；Worker 在用户单独确认后部署，见下节。
+
+## 正式发布与 Cloudflare 部署（2026-09-12）
+
+- 正式 [Release workflow 34691898453](https://github.com/OKFred/oneVegetable/actions/runs/34691898453) 全部通过，已生成 [GitHub Release v2.6.0](https://github.com/OKFred/oneVegetable/releases/tag/v2.6.0)。实际下载的 Release ZIP 与 Windows、主线 CI 及送审包 SHA-256 完全一致；仅更新 Release 说明，不替换附件或移动标签。
+- 用户明确要求同步部署现有 [Cloudflare 网站](https://one-vegetable.this-time.workers.dev)。从干净的 `v2.6.0` 标签运行 `pnpm cloudflare:build`，完成契约、类型、Worker 测试、同源 Web 构建及 Worker dry-run；构建后 tracked 文件未改变。
+- 部署前备份 D1 至本机忽略文件 `artifacts/release-2.6.0-d1-before.sql`（315,545 字节，SHA-256 `3f2e7fb451b4aa3f06994bbd6f0e98273d045423a168890785f3d96748ffbc4c`）。备份包含敏感数据库内容，不提交、不上传到 Release；原加密密钥保持不变。
+- 应用 `0011_product_creation_mutation_jobs.sql`、`0012_s3_storage_configuration.sql`、`0013_node_gateway_credentials.sql`，D1 schema v10 → v13。前后只读聚合核对：用户 1、凭据记录 1、凭据 revision 1、密文长度 854、创建商品任务 0，均一致。该检查不等同于逐字节比较整个数据库；凭据复制及 AAD 保留另有迁移单测覆盖。
+- 2026-09-12 11:55:05 UTC 部署成功，100% 流量使用 Worker version `c1c4ff32-1985-4199-a35a-5beee6ebf43f`，deployment `692dcf86-910d-43ee-8120-b2bbc847b408`。前一版本 `560ca9ea-2537-4040-bea7-a17ad7924d27` 仅作为回退参照；没有执行回退。11 个资源/变量绑定一致，沿用原 D1、R2、Browser、Secret 名称和七项 mutation 白名单，没有新建或删除资源。
+- 线上 `/api/v1/healthz`、`/api/v1/readyz` 均 200；响应 Body 与 `X-Request-ID` 对应，分别为 `dc0e5276-2d58-44e0-9f62-735ca9b72452`、`6e83bbd1-bbe4-463f-8ff0-27afdbfa9485`。`POST /api/v1/meta/get`（`932902d3-a4cd-4038-b866-a1fd06651f66`）确认 `version=2.6.0`、`runtime=cloudflare`、`database=d1`、`environment=self-hosted`、`gatewayMode=real`。
+- 线上首页和入口脚本 `/assets/index-CTPE7S4I.js` 与标签构建的本地文件哈希一致。实际 Chrome 刷新后显示 2.6.0，已有管理员会话保留；真实图库正常加载，手工点击“刷新”后完成并恢复可点击状态。
+- 本轮没有执行 Alibaba 商品、图库或 S3 业务写入，不将健康探针或离线回归当成新的真实写验收。商店仍为“已提交审核”，等待通过/上架确认。
+- 本机证据：`artifacts/release-2.6.0-{cloudflare-build,worker-deploy,d1-backup}.log`、`artifacts/release-2.6.0-d1-integrity-{before,after}.json`、`artifacts/release-2.6.0-worker-{before,after}.json`、`artifacts/release-2.6.0-worker-version-{before,after}.json`；文件均留在忽略目录。
 
 ## 最终准备复验（2026-09-12）
 
@@ -16,7 +28,7 @@
 - 已从本次正式 MV3 构建重新拍摄中英文各 4 张截图，并逐张检查；使用空白隔离 Profile，不包含真实凭据、测试账号或虚构业务数据。
 - 当前唯一交付 ZIP：`artifacts/one-vegetable-v2.6.0-chrome-mv3.zip`，**986,893 字节 / 137 文件**；SHA-256：`3acd177478d685578faef9fd8a44a43b38cf8ff808d3f8100f57d17d8e9cc72c`。已核对独立文件哈希、完整归档列表及重复压缩结果。
 - 解包 **4,085,410 字节**，Options 首次 JS **127,565 字节**；总量门槛余 **14,590 字节**，i18n chunk 余 **67 字节**。权限不变，产物不含本地 `.env`、授权包、S3 密钥和 Mock 响应。
-- 本轮只执行隔离测试和本地构建，没有 Alibaba/S3 真实写操作、远端 migration、Worker 部署、Store 上传或审核提交；不把自动回归当作新增真实平台验收。
+- 本节准备复验阶段只执行隔离测试和本地构建，没有 Alibaba/S3 真实写操作、远端 migration、Worker 部署、Store 上传或审核提交；其后经单独授权执行的远端 migration 和部署见顶部，不把自动回归当作新增真实平台验收。
 
 ## 最新候选补丁（2026-09-12）
 
@@ -52,7 +64,7 @@
 - 浏览器重启/扩展更新后保险库重新锁定是预期安全行为；原口令仍可解密，不表示凭据丢失。已发出但没有回执的任务保持“结果不明”，只提供手工核对，不自动上传。
 - 2.5.0 不包含后续列偏好和持久任务，这两类升级由早期 2.6.0 基线补充验证。此次使用隔离合成数据、不读取用户真实 Profile，所有 HTTP 请求被阻断；不等于 Chrome 商店自动更新已经验收。
 - Node SQLite 和 workerd/D1 均覆盖 migration `0013_node_gateway_credentials.sql` 对原有加密凭据、AAD、审计字段及 revision 的保留；CI 不访问远端 D1。
-- 后续部署 Node/Worker 前必须备份数据库并保留原加密密钥。旧版客户端未验证读取新版任务格式；不能把卸载扩展或降级数据库当作无损回退。迁移回退需使用匹配的代码、数据库备份和密钥，本轮没有执行生产迁移。
+- 部署 Node/Worker 前必须备份数据库并保留原加密密钥。旧版客户端未验证读取新版任务格式；不能把卸载扩展或降级数据库当作无损回退。迁移回退需使用匹配的代码、数据库备份和密钥。升级测试阶段没有执行远端迁移；后续已获授权的 Cloudflare 迁移记录见顶部。
 
 重跑升级检查：
 
@@ -66,7 +78,7 @@ pnpm verify:extension-upgrade
 
 1. 发布准备分支已经快进至 `staging`、`master`，用户已自行提交商店审核；不要重复上传或撤回当前审核。
 2. 固定 `v2.6.0` 对应的送审源码、ZIP 和 SHA-256；不再按此前候选阶段计划移除包内标记。仓库状态单独维护，未来运行内容变化必须使用新版本。
-3. GitHub Release、Worker 部署、商店审核通过及上架分别记录；不将其中一步当成全部完成。Worker 部署仍需另行确认，商店上架待项目所有者确认。
+3. GitHub Release 与已获授权的 Worker 部署均完成；商店审核通过及上架仍待确认，不将其中一步当成全部完成。
 4. 扩展总量仅余 **14,590 字节**，i18n chunk 仅余 **67 字节**；下一迭代优先拆分/去重，不直接放宽门槛。
 
 ## 先前橱窗候选（历史记录，不是当前包）

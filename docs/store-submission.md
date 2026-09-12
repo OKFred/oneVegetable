@@ -95,7 +95,7 @@ pnpm upload:extension:draft -- --confirm-draft-upload
 - 本版不新增 Manifest 权限。更新商店功能描述中的图库任务恢复、列表可选列和橱窗管理；权限用途继续按现有声明填写。Node 凭据管理属于 Web/BFF，不宣传为插件新增的后端必需条件。
 - 09-12 已对当前候选重新执行完整 `pnpm check`（946 项单测及三端构建）、38 项 Web/MV3 E2E、3 项 Worker 单测、2 项 BFF replay、2 项 Node 凭据 E2E和 28 项旧包升级检查；刷新/重启不会丢失加密配置和草稿，中断传输需手工核对。升级会重新锁定保险库，用户应保留原口令。
 - 无账号审核步骤沿用上节。真实任务需要用户自有的 Alibaba 权限和可选 S3 配置；正式商店材料不得附带本项目的真实授权包。新任务能力及真实验收边界见 [2.6.0 候选包验收](release-2.6.0-readiness.md)。
-- 送审由用户手工完成；本轮仅推进仓库 tag/Release 和审核记录，没有执行 Alibaba 写操作、远端数据库迁移、Worker 部署、重复 Store 上传或审核提交。审核中不等于已上架。
+- 送审由用户手工完成；仓库 tag/Release 已发布，现有 Cloudflare 网站经用户单独确认、备份 D1 并迁移后已部署 2.6.0，详见 [部署记录](release-2.6.0-readiness.md)。没有执行 Alibaba 业务写操作、重复 Store 上传或审核提交。审核中不等于已上架。
 
 可用于版本更新摘要（不是替代完整商店描述）：
 
@@ -110,4 +110,4 @@ pnpm upload:extension:draft -- --confirm-draft-upload
 - 本版重点：图库 ZIP/S3 导入导出、前缀与图库分组映射、可选自动创建目录，以及插件独立直连 S3。
 - S3 密钥仅在受信插件后台使用；本地加密不能防御已被攻破的浏览器 Profile。不得在商店表单或截图中提供测试账号、Endpoint 密钥或真实业务数据。
 - 验收边界与遗留项见 `docs/release-2.5.0-readiness.md` 和 `docs/extension-s3-validation.md`。
-- 本轮不自动部署 Worker、不调用商店发布 API；最终上传、审核提交与上架状态分别确认。
+- Worker 仅在用户另行确认后部署，不调用商店发布 API；最终上传、审核提交与上架状态分别确认。
