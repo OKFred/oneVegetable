@@ -1,0 +1,12 @@
+{
+  "method": "alibaba.scbp.showcase.sort",
+  "request": {
+    "window_id": "8001",
+    "source_order": 1,
+    "target_order": 2
+  },
+  "response": {
+    "result": true,
+    "request_id": "showcase-sort-trace"
+  }
+}

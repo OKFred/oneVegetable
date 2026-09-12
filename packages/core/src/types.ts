@@ -262,6 +262,14 @@ export interface OperationMap {
     request: ProductCapabilityRequestMap['alibaba.scbp.showcase.deleteproduct'];
     response: ProductShowcaseMutationResult;
   };
+  sortShowcaseProduct: {
+    request: components['schemas']['ProductShowcaseSortRequest'];
+    response: ProductShowcaseMutationResult;
+  };
+  replaceShowcaseProduct: {
+    request: components['schemas']['ProductShowcaseReplaceRequest'];
+    response: ProductShowcaseMutationResult;
+  };
   createProductGroup: { request: ProductGroupCreateRequest; response: ProductGroup };
   getProductScore: { request: { productId: string }; response: ProductScore };
   listRfqs: { request: RfqListQuery; response: RfqPage };

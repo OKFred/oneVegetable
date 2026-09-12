@@ -27,6 +27,16 @@ export const PRODUCT_MOCK_DATA: ProductMockData = {
       "traceId": "showcase-remove",
       "snapshot": null
     },
+    "sortShowcaseProduct": {
+      "outcome": "confirmed",
+      "traceId": "showcase-sort",
+      "snapshot": null
+    },
+    "replaceShowcaseProduct": {
+      "outcome": "confirmed",
+      "traceId": "showcase-replace",
+      "snapshot": null
+    },
     "listProducts": {
       "items": [
         {

@@ -16,6 +16,8 @@
     },
     "addShowcaseProducts": { "outcome": "confirmed", "traceId": "showcase-add", "snapshot": null },
     "removeShowcaseProducts": { "outcome": "confirmed", "traceId": "showcase-remove", "snapshot": null },
+    "sortShowcaseProduct": { "outcome": "confirmed", "traceId": "showcase-sort", "snapshot": null },
+    "replaceShowcaseProduct": { "outcome": "confirmed", "traceId": "showcase-replace", "snapshot": null },
     "listProducts": {
       "items": [
         {

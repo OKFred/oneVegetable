@@ -2,6 +2,8 @@
 import type { components } from './api';
 
 export interface ProductCapabilityRequestMap {
+  'alibaba.scbp.showcase.sort': components['schemas']['AlibabaProductAlibabaScbpShowcaseSortRequest'];
+  'alibaba.scbp.showcase.updateproduct': components['schemas']['AlibabaProductAlibabaScbpShowcaseUpdateproductRequest'];
   'alibaba.scbp.showcase.addproduct': components['schemas']['AlibabaProductAlibabaScbpShowcaseAddproductRequest'];
   'alibaba.scbp.showcase.deleteproduct': components['schemas']['AlibabaProductAlibabaScbpShowcaseDeleteproductRequest'];
   'alibaba.icbu.product.country.getcountrylist': components['schemas']['AlibabaProductAlibabaIcbuProductCountryGetcountrylistRequest'];
@@ -41,6 +43,8 @@ export interface ProductCapabilityRequestMap {
 }
 
 export interface ProductCapabilityResponseMap {
+  'alibaba.scbp.showcase.sort': components['schemas']['AlibabaProductAlibabaScbpShowcaseSortResponse'];
+  'alibaba.scbp.showcase.updateproduct': components['schemas']['AlibabaProductAlibabaScbpShowcaseUpdateproductResponse'];
   'alibaba.scbp.showcase.addproduct': components['schemas']['AlibabaProductAlibabaScbpShowcaseAddproductResponse'];
   'alibaba.scbp.showcase.deleteproduct': components['schemas']['AlibabaProductAlibabaScbpShowcaseDeleteproductResponse'];
   'alibaba.icbu.product.country.getcountrylist': components['schemas']['AlibabaProductAlibabaIcbuProductCountryGetcountrylistResponse'];
@@ -80,6 +84,53 @@ export interface ProductCapabilityResponseMap {
 }
 
 export const PRODUCT_CAPABILITY_DEFINITIONS = {
+  "alibaba.scbp.showcase.sort": {
+    "requestSchema": "AlibabaProductAlibabaScbpShowcaseSortRequest",
+    "responseSchema": "AlibabaProductAlibabaScbpShowcaseSortResponse",
+    "source": "catalog",
+    "lifecycle": "active",
+    "risk": "mutation",
+    "verification": "documented",
+    "realCallEnabled": false,
+    "checkedAt": "2026-09-10",
+    "updatedAt": "2021-11-18",
+    "title": "橱窗顺序变更",
+    "description": "橱窗顺序变更",
+    "errorCodes": [],
+    "requestExample": {
+      "window_id": "8001",
+      "source_order": 1,
+      "target_order": 2
+    },
+    "responseExample": {
+      "result": true,
+      "request_id": "showcase-sort-trace"
+    },
+    "docUrl": "https://open.taobao.com/api.htm?docId=40996&docType=2"
+  },
+  "alibaba.scbp.showcase.updateproduct": {
+    "requestSchema": "AlibabaProductAlibabaScbpShowcaseUpdateproductRequest",
+    "responseSchema": "AlibabaProductAlibabaScbpShowcaseUpdateproductResponse",
+    "source": "catalog",
+    "lifecycle": "active",
+    "risk": "mutation",
+    "verification": "documented",
+    "realCallEnabled": false,
+    "checkedAt": "2026-09-10",
+    "updatedAt": "2021-11-22",
+    "title": "替换橱窗商品",
+    "description": "替换橱窗商品",
+    "errorCodes": [],
+    "requestExample": {
+      "window_id": "8001",
+      "new_product_id": "10000002"
+    },
+    "responseExample": {
+      "result": true,
+      "request_id": "showcase-replace-trace"
+    },
+    "docUrl": "https://open.taobao.com/api.htm?docId=40997&docType=2"
+  },
   "alibaba.scbp.showcase.addproduct": {
     "requestSchema": "AlibabaProductAlibabaScbpShowcaseAddproductRequest",
     "responseSchema": "AlibabaProductAlibabaScbpShowcaseAddproductResponse",

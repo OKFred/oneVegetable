@@ -10977,6 +10977,26 @@
         },
         "title": "alibaba.scbp.showcase.list response"
       },
+      "AlibabaProductAlibabaScbpShowcaseSortRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["window_id", "source_order", "target_order"],
+        "properties": {
+          "window_id": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+          "source_order": { "type": "integer", "minimum": 1 },
+          "target_order": { "type": "integer", "minimum": 1 }
+        },
+        "title": "alibaba.scbp.showcase.sort request"
+      },
+      "AlibabaProductAlibabaScbpShowcaseSortResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": { "type": "boolean", "description": "是否更新成功" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
+        "title": "alibaba.scbp.showcase.sort response"
+      },
       "AlibabaProductAlibabaScbpShowcaseStatusRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -10992,6 +11012,25 @@
           "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.scbp.showcase.status response"
+      },
+      "AlibabaProductAlibabaScbpShowcaseUpdateproductRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["window_id", "new_product_id"],
+        "properties": {
+          "window_id": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+          "new_product_id": { "type": "string", "pattern": "^[1-9][0-9]*$" }
+        },
+        "title": "alibaba.scbp.showcase.updateproduct request"
+      },
+      "AlibabaProductAlibabaScbpShowcaseUpdateproductResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": { "type": "boolean", "description": "是否修改成功" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
+        "title": "alibaba.scbp.showcase.updateproduct response"
       },
       "AlibabaRfqAlibabaIcbuAnnexUploadRequest": {
         "type": "object",
@@ -13501,6 +13540,8 @@
           "traceId": { "type": "string" },
           "data": {
             "oneOf": [
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaScbpShowcaseSortResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductAlibabaScbpShowcaseUpdateproductResponse" },
               { "$ref": "#/components/schemas/AlibabaProductAlibabaScbpShowcaseAddproductResponse" },
               { "$ref": "#/components/schemas/AlibabaProductAlibabaScbpShowcaseDeleteproductResponse" },
               {
@@ -15245,6 +15286,20 @@
           }
         }
       },
+      "ProductShowcaseBaseline": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 2000,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["windowId", "productId"],
+          "properties": {
+            "windowId": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+            "productId": { "type": "string", "pattern": "^[1-9][0-9]*$" }
+          }
+        }
+      },
       "ProductShowcaseMutationResult": {
         "type": "object",
         "additionalProperties": false,
@@ -15255,6 +15310,16 @@
           "snapshot": {
             "anyOf": [{ "$ref": "#/components/schemas/ProductShowcaseSnapshot" }, { "type": "null" }]
           }
+        }
+      },
+      "ProductShowcaseReplaceRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["windowId", "newProductId", "expectedEntries"],
+        "properties": {
+          "windowId": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+          "newProductId": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+          "expectedEntries": { "$ref": "#/components/schemas/ProductShowcaseBaseline" }
         }
       },
       "ProductShowcaseSnapshot": {
@@ -15280,6 +15345,17 @@
               }
             }
           }
+        }
+      },
+      "ProductShowcaseSortRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["windowId", "sourceOrder", "targetOrder", "expectedEntries"],
+        "properties": {
+          "windowId": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+          "sourceOrder": { "type": "integer", "minimum": 1 },
+          "targetOrder": { "type": "integer", "minimum": 1 },
+          "expectedEntries": { "$ref": "#/components/schemas/ProductShowcaseBaseline" }
         }
       },
       "RealMutationPauseUpdateRequest": {
@@ -15953,6 +16029,40 @@
     }
   },
   "x-product-capabilities": {
+    "alibaba.scbp.showcase.sort": {
+      "requestSchema": "AlibabaProductAlibabaScbpShowcaseSortRequest",
+      "responseSchema": "AlibabaProductAlibabaScbpShowcaseSortResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "checkedAt": "2026-09-10",
+      "updatedAt": "2021-11-18",
+      "title": "橱窗顺序变更",
+      "description": "橱窗顺序变更",
+      "errorCodes": [],
+      "requestExample": { "window_id": "8001", "source_order": 1, "target_order": 2 },
+      "responseExample": { "result": true, "request_id": "showcase-sort-trace" },
+      "docUrl": "https://open.taobao.com/api.htm?docId=40996&docType=2"
+    },
+    "alibaba.scbp.showcase.updateproduct": {
+      "requestSchema": "AlibabaProductAlibabaScbpShowcaseUpdateproductRequest",
+      "responseSchema": "AlibabaProductAlibabaScbpShowcaseUpdateproductResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "checkedAt": "2026-09-10",
+      "updatedAt": "2021-11-22",
+      "title": "替换橱窗商品",
+      "description": "替换橱窗商品",
+      "errorCodes": [],
+      "requestExample": { "window_id": "8001", "new_product_id": "10000002" },
+      "responseExample": { "result": true, "request_id": "showcase-replace-trace" },
+      "docUrl": "https://open.taobao.com/api.htm?docId=40997&docType=2"
+    },
     "alibaba.scbp.showcase.addproduct": {
       "requestSchema": "AlibabaProductAlibabaScbpShowcaseAddproductRequest",
       "responseSchema": "AlibabaProductAlibabaScbpShowcaseAddproductResponse",

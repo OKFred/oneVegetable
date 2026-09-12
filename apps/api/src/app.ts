@@ -257,6 +257,8 @@ export function createApiApp(options: ApiAppOptions): Hono {
         'createProductGroup',
         'addShowcaseProducts',
         'removeShowcaseProducts',
+        'sortShowcaseProduct',
+        'replaceShowcaseProduct',
         'operatePhotoGroup',
         'uploadPhoto',
         'transferPhotoFromUrl'

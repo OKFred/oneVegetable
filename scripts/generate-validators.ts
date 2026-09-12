@@ -78,8 +78,10 @@ targets.set(
     {
       validateProductShowcaseSnapshot: schemas.ProductShowcaseSnapshot,
       validateProductShowcaseMutationResult: schemas.ProductShowcaseMutationResult,
+      validateProductShowcaseSortRequest: schemas.ProductShowcaseSortRequest,
+      validateProductShowcaseReplaceRequest: schemas.ProductShowcaseReplaceRequest,
       ...Object.fromEntries(
-        ['Addproduct', 'Deleteproduct', 'List', 'Status'].flatMap((method) =>
+        ['Addproduct', 'Deleteproduct', 'List', 'Status', 'Sort', 'Updateproduct'].flatMap((method) =>
           ['Request', 'Response'].map((kind) => [
             `validateShowcase${method}${kind}`,
             schemas[`AlibabaProductAlibabaScbpShowcase${method}${kind}`]

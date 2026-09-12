@@ -1,0 +1,11 @@
+{
+  "method": "alibaba.scbp.showcase.updateproduct",
+  "request": {
+    "window_id": "8001",
+    "new_product_id": "10000002"
+  },
+  "response": {
+    "result": true,
+    "request_id": "showcase-replace-trace"
+  }
+}

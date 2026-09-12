@@ -7,13 +7,22 @@ import {
   validateShowcaseListRequest,
   validateShowcaseListResponse,
   validateShowcaseStatusRequest,
-  validateShowcaseStatusResponse
+  validateShowcaseStatusResponse,
+  validateShowcaseSortRequest,
+  validateShowcaseSortResponse,
+  validateShowcaseUpdateproductRequest,
+  validateShowcaseUpdateproductResponse,
+  validateProductShowcaseSortRequest,
+  validateProductShowcaseReplaceRequest
 } from './generated/validators-showcase';
+import { ProductAdapter } from './product-adapter';
 import { GatewayException } from './errors';
 import type { ProductShowcaseSnapshot, ProductShowcaseMutationResult, RequestOf } from './types';
 export {
   validateProductShowcaseSnapshot,
-  validateProductShowcaseMutationResult
+  validateProductShowcaseMutationResult,
+  validateProductShowcaseSortRequest,
+  validateProductShowcaseReplaceRequest
 } from './generated/validators-showcase';
 
 const prefix = 'alibaba.scbp.showcase.';
@@ -23,8 +32,22 @@ const rawValidators = {
   addproduct: [validateShowcaseAddproductRequest, validateShowcaseAddproductResponse],
   deleteproduct: [validateShowcaseDeleteproductRequest, validateShowcaseDeleteproductResponse],
   list: [validateShowcaseListRequest, validateShowcaseListResponse],
-  status: [validateShowcaseStatusRequest, validateShowcaseStatusResponse]
+  status: [validateShowcaseStatusRequest, validateShowcaseStatusResponse],
+  sort: [validateShowcaseSortRequest, validateShowcaseSortResponse],
+  updateproduct: [validateShowcaseUpdateproductRequest, validateShowcaseUpdateproductResponse]
 } as const;
+export type ShowcaseBaseline = RequestOf<'sortShowcaseProduct'>['expectedEntries'];
+export function showcaseBaseline(snapshot: ProductShowcaseSnapshot): ShowcaseBaseline {
+  return snapshot.entries.map(({ windowId, productId }) => ({ windowId, productId }));
+}
+export function sameShowcaseBaseline(left: ShowcaseBaseline, right: ShowcaseBaseline): boolean {
+  return (
+    left.length === right.length &&
+    left.every(
+      (row, index) => row.windowId === right[index]?.windowId && row.productId === right[index].productId
+    )
+  );
+}
 export function showcaseError(code: string): GatewayException {
   return new GatewayException({ code, message: code, retryable: false });
 }
@@ -102,6 +125,89 @@ export class ProductShowcaseAdapter {
       }
     }
     throw showcaseError('SHOWCASE_INCOMPLETE');
+  }
+
+  async sort(request: RequestOf<'sortShowcaseProduct'>): Promise<ProductShowcaseMutationResult> {
+    if (!validateProductShowcaseSortRequest(request)) throw showcaseError('REQUEST_CONTRACT_INVALID');
+    const { windowId, sourceOrder, targetOrder, expectedEntries } = request;
+    if (
+      sourceOrder === targetOrder ||
+      !expectedEntries[targetOrder - 1] ||
+      expectedEntries[sourceOrder - 1]?.windowId !== windowId
+    )
+      throw showcaseError('REQUEST_CONTRACT_INVALID');
+    const before = await this.get();
+    if (!sameShowcaseBaseline(expectedEntries, showcaseBaseline(before)))
+      throw showcaseError('SHOWCASE_BASELINE_CHANGED');
+    const desired = showcaseBaseline(before);
+    const [moved] = desired.splice(sourceOrder - 1, 1);
+    if (!moved) throw showcaseError('SHOWCASE_BASELINE_CHANGED');
+    desired.splice(targetOrder - 1, 0, moved);
+    return this.editAndVerify(
+      'sort',
+      {
+        window_id: windowId,
+        source_order: sourceOrder,
+        target_order: targetOrder
+      },
+      before,
+      desired
+    );
+  }
+
+  async replace(request: RequestOf<'replaceShowcaseProduct'>): Promise<ProductShowcaseMutationResult> {
+    if (!validateProductShowcaseReplaceRequest(request)) throw showcaseError('REQUEST_CONTRACT_INVALID');
+    const { windowId, newProductId, expectedEntries } = request;
+    if (
+      !expectedEntries.some((row) => row.windowId === windowId) ||
+      expectedEntries.some((row) => row.productId === newProductId)
+    )
+      throw showcaseError('SHOWCASE_ALREADY_PRESENT');
+    // Do not trust a product's status or existence supplied by the UI.
+    const replacement = await new ProductAdapter(this.client).getSummary(newProductId);
+    if (replacement?.status !== 'online') throw showcaseError('SHOWCASE_PRODUCT_NOT_ONLINE');
+    const before = await this.get();
+    if (!sameShowcaseBaseline(expectedEntries, showcaseBaseline(before)))
+      throw showcaseError('SHOWCASE_BASELINE_CHANGED');
+    const desired = showcaseBaseline(before).map((row) =>
+      row.windowId === windowId ? { ...row, productId: newProductId } : row
+    );
+    return this.editAndVerify(
+      'updateproduct',
+      {
+        window_id: windowId,
+        new_product_id: newProductId
+      },
+      before,
+      desired
+    );
+  }
+
+  private async editAndVerify(
+    suffix: 'sort' | 'updateproduct',
+    parameters: Record<string, unknown>,
+    before: ProductShowcaseSnapshot,
+    desired: ShowcaseBaseline
+  ): Promise<ProductShowcaseMutationResult> {
+    const data = await this.call(suffix, parameters);
+    if (data.result !== true)
+      throw showcaseError(data.result === false ? 'SHOWCASE_REJECTED' : 'SHOWCASE_UNCONFIRMED');
+    const traceId = typeof data.request_id === 'string' ? data.request_id : null;
+    try {
+      const snapshot = await this.get();
+      return {
+        outcome:
+          snapshot.total === before.total &&
+          snapshot.used === before.used &&
+          sameShowcaseBaseline(desired, showcaseBaseline(snapshot))
+            ? 'confirmed'
+            : 'unconfirmed',
+        traceId,
+        snapshot
+      };
+    } catch {
+      return { outcome: 'unconfirmed', traceId, snapshot: null };
+    }
   }
 
   async mutate(

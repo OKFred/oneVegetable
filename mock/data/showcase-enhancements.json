@@ -1,0 +1,8 @@
+{
+  "onlineProduct": {
+    "products": [{ "id": 10000003, "subject": "Test jacket", "display": "Y", "status": "approved" }]
+  },
+  "offlineProduct": {
+    "products": [{ "id": 10000003, "subject": "Test jacket", "display": "N", "status": "approved" }]
+  }
+}

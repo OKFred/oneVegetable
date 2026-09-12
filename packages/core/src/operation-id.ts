@@ -32,6 +32,8 @@ const OPERATION_ID_RECORD = {
   getProductShowcase: true,
   addShowcaseProducts: true,
   removeShowcaseProducts: true,
+  sortShowcaseProduct: true,
+  replaceShowcaseProduct: true,
   createProductGroup: true,
   getProductScore: true,
   listRfqs: true,

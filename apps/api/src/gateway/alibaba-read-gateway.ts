@@ -198,6 +198,12 @@ export class AlibabaReadGatewayClient implements GatewayClient {
     switch (operation) {
       case 'getProductShowcase':
         return await new ProductShowcaseAdapter(client).get();
+      case 'sortShowcaseProduct':
+        return await new ProductShowcaseAdapter(client).sort(request as RequestOf<'sortShowcaseProduct'>);
+      case 'replaceShowcaseProduct':
+        return await new ProductShowcaseAdapter(client).replace(
+          request as RequestOf<'replaceShowcaseProduct'>
+        );
       case 'addShowcaseProducts':
         return await new ProductShowcaseAdapter(client).mutate(
           'add',

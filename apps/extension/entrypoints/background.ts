@@ -100,6 +100,8 @@ const OPERATIONS = new Set<OperationId>([
   'getProductShowcase',
   'addShowcaseProducts',
   'removeShowcaseProducts',
+  'sortShowcaseProduct',
+  'replaceShowcaseProduct',
   'createProductGroup',
   'getProductScore',
   'listRfqs',
@@ -632,7 +634,15 @@ async function executeOperation(
   galleryContext?: GalleryTransferContext
 ): Promise<unknown> {
   if (operation === 'getDiagnostics') return getDiagnostics();
-  if ((operation === 'addShowcaseProducts' || operation === 'removeShowcaseProducts') && !trustedOptionsPage)
+  if (
+    [
+      'addShowcaseProducts',
+      'removeShowcaseProducts',
+      'sortShowcaseProduct',
+      'replaceShowcaseProduct'
+    ].includes(operation) &&
+    !trustedOptionsPage
+  )
     throw gatewayFailure('SHOWCASE_UNTRUSTED', 'Showcase writes require the trusted workbench.');
   if (operation === 'clearDiagnostics') {
     await clearDiagnostics();
@@ -692,6 +702,10 @@ async function executeOperation(
   switch (operation) {
     case 'getProductShowcase':
       return new ProductShowcaseAdapter(client).get();
+    case 'sortShowcaseProduct':
+      return new ProductShowcaseAdapter(client).sort(payload as RequestOf<'sortShowcaseProduct'>);
+    case 'replaceShowcaseProduct':
+      return new ProductShowcaseAdapter(client).replace(payload as RequestOf<'replaceShowcaseProduct'>);
     case 'addShowcaseProducts':
       return new ProductShowcaseAdapter(client).mutate('add', payload as RequestOf<'addShowcaseProducts'>);
     case 'removeShowcaseProducts':

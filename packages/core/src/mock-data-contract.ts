@@ -34,6 +34,8 @@ export interface ProductMockData {
     | 'getProductShowcase'
     | 'addShowcaseProducts'
     | 'removeShowcaseProducts'
+    | 'sortShowcaseProduct'
+    | 'replaceShowcaseProduct'
     | 'createProductGroup'
     | 'getProductScore'
   >;

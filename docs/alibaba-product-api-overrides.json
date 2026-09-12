@@ -1,6 +1,40 @@
 {
   "checkedAt": "2026-08-15",
   "overrides": {
+    "alibaba.scbp.showcase.sort": {
+      "reason": "TOP 2026-09-10 离线快照。ID 采用十进制字符串避免精度损失；排序位置从 1 开始。正式写入只通过带完整基线校验的专用操作，要求明确成功并回读，不开放通用 mutation。",
+      "requestExampleFile": "mock/data/showcase-sort.json",
+      "responseExampleFile": "mock/data/showcase-sort.json",
+      "requestSchemaPatches": {
+        "/properties/window_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "/properties/source_order": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "/properties/target_order": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "alibaba.scbp.showcase.updateproduct": {
+      "reason": "TOP 2026-09-10 离线快照。ID 采用十进制字符串避免精度损失；排序位置从 1 开始。正式写入只通过带完整基线校验的专用操作，要求明确成功并回读，不开放通用 mutation。",
+      "requestExampleFile": "mock/data/showcase-replace.json",
+      "responseExampleFile": "mock/data/showcase-replace.json",
+      "requestSchemaPatches": {
+        "/properties/window_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "/properties/new_product_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        }
+      }
+    },
     "alibaba.scbp.showcase.addproduct": {
       "reason": "TOP 官方示例要求逗号分隔 ID；内部数组严格验证后在签名前转换。成功必须明确返回 result=true。",
       "requestExampleFile": "mock/data/showcase-add.json",

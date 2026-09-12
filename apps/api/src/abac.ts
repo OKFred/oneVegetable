@@ -55,6 +55,8 @@ const MUTATION_OPERATIONS: ReadonlySet<OperationId> = new Set([
   'createProductGroup',
   'addShowcaseProducts',
   'removeShowcaseProducts',
+  'sortShowcaseProduct',
+  'replaceShowcaseProduct',
   'operatePhotoGroup',
   'uploadPhoto',
   'transferPhotoFromUrl',

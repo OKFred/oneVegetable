@@ -72,6 +72,20 @@ export class ProductAdapter {
     };
   }
 
+  async getSummary(
+    productId: string,
+    language: AlibabaLanguage = 'en_US'
+  ): Promise<ProductPage['items'][number] | null> {
+    const numericId = Number(productId);
+    if (!/^[1-9][0-9]*$/.test(productId) || !Number.isSafeInteger(numericId))
+      throw new GatewayException({
+        code: 'REQUEST_CONTRACT_INVALID',
+        message: 'Invalid product ID',
+        retryable: false
+      });
+    return this.getProductSummary(numericId, language);
+  }
+
   private async getProductSummary(
     productId: number,
     language: AlibabaLanguage
