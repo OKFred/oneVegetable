@@ -18,15 +18,17 @@ const user: AuthPrincipal = {
 const admin: AuthPrincipal = { ...user, actorId: 'admin-1', username: 'admin', role: 'admin' };
 
 describe('ABAC', () => {
-  it.each(['addShowcaseProducts', 'removeShowcaseProducts'] as const)(
-    'protects %s with admin and operation flag',
-    (operation) => {
-      const flags = new StaticOperationFeatureFlags(new Set([`operation:${operation}`]));
-      expect(authorizeOperation(user, operation, {}, flags).allowed).toBe(false);
-      expect(authorizeOperation(admin, operation, {}, new StaticOperationFeatureFlags()).allowed).toBe(false);
-      expect(authorizeOperation(admin, operation, {}, flags).allowed).toBe(true);
-    }
-  );
+  it.each([
+    'addShowcaseProducts',
+    'removeShowcaseProducts',
+    'sortShowcaseProduct',
+    'replaceShowcaseProduct'
+  ] as const)('protects %s with admin and operation flag', (operation) => {
+    const flags = new StaticOperationFeatureFlags(new Set([`operation:${operation}`]));
+    expect(authorizeOperation(user, operation, {}, flags).allowed).toBe(false);
+    expect(authorizeOperation(admin, operation, {}, new StaticOperationFeatureFlags()).allowed).toBe(false);
+    expect(authorizeOperation(admin, operation, {}, flags).allowed).toBe(true);
+  });
   it('allows users only active read operations and keeps admin endpoints exclusive', () => {
     expect(authorizeOperation(user, 'listProducts', {}, new StaticOperationFeatureFlags())).toMatchObject({
       allowed: true

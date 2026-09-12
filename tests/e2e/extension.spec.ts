@@ -5,6 +5,8 @@ import { createHash } from 'node:crypto';
 import { zipSync } from 'fflate';
 import galleryFixture from '../../mock/data/gallery-extension-transfer.json' with { type: 'json' };
 import showcaseFixture from '../../mock/data/showcase-management.json' with { type: 'json' };
+import showcaseProducts from '../../mock/data/showcase-enhancements.json' with { type: 'json' };
+import postingTypeFixture from '../../mock/data/product-type-available.json' with { type: 'json' };
 import { MockGatewayClient } from '../../packages/core/src/mock-client';
 import { listCapabilities } from '../../packages/core/src/capability-registry';
 
@@ -19,17 +21,37 @@ let context: BrowserContext | null = null;
 test('formal MV3 showcase uses the actual worker with isolated TOP responses', async () => {
   if (!context) throw new Error('Missing extension context');
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
-  let included = true;
+  let showcaseRows = structuredClone(showcaseFixture.before.results);
   const writes: { method: string; ids: string | null }[] = [];
+  const postingRequests: unknown[] = [];
   await context.route('https://eco.taobao.com/**', async (route) => {
     const form = new URLSearchParams(route.request().postData() ?? '');
     const method = form.get('method') ?? '';
     let response: unknown;
     if (method === 'alibaba.scbp.showcase.status')
-      response = { ...showcaseFixture.status, current_count: included ? 1 : 0 };
-    else if (method === 'alibaba.scbp.showcase.list')
-      response = included ? showcaseFixture.before : { results: [] };
-    else if (
+      response = { ...showcaseFixture.status, current_count: showcaseRows.length };
+    else if (method === 'alibaba.scbp.showcase.list') response = { results: showcaseRows };
+    else if (method === 'alibaba.icbu.product.type.available.get') {
+      postingRequests.push(JSON.parse(form.get('type_request') ?? '{}'));
+      response = postingTypeFixture.response;
+    } else if (method === 'alibaba.icbu.product.list') response = showcaseProducts.onlineProduct;
+    else if (method === 'alibaba.scbp.showcase.sort') {
+      const source = Number(form.get('source_order'));
+      const target = Number(form.get('target_order'));
+      const [entry] = showcaseRows.splice(source - 1, 1);
+      if (!entry || String(entry.id) !== form.get('window_id')) throw new Error('Unexpected sort');
+      showcaseRows.splice(target - 1, 0, entry);
+      writes.push({ method, ids: form.get('window_id') });
+      response = showcaseFixture.acknowledgement;
+    } else if (method === 'alibaba.scbp.showcase.updateproduct') {
+      showcaseRows = showcaseRows.map((row) =>
+        String(row.id) === form.get('window_id')
+          ? { ...row, product_id: Number(form.get('new_product_id')) }
+          : row
+      );
+      writes.push({ method, ids: form.get('window_id') });
+      response = showcaseFixture.acknowledgement;
+    } else if (
       method === 'alibaba.scbp.showcase.deleteproduct' ||
       method === 'alibaba.scbp.showcase.addproduct'
     ) {
@@ -37,7 +59,7 @@ test('formal MV3 showcase uses the actual worker with isolated TOP responses', a
         method,
         ids: form.get(method.endsWith('addproduct') ? 'product_id_list' : 'window_id_list')
       });
-      included = method.endsWith('addproduct');
+      showcaseRows = method.endsWith('addproduct') ? structuredClone(showcaseFixture.before.results) : [];
       response = showcaseFixture.acknowledgement;
     } else return route.abort();
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify(response) });
@@ -49,6 +71,8 @@ test('formal MV3 showcase uses the actual worker with isolated TOP responses', a
     listProductCategories: await mock.request('listProductCategories', {}),
     getDashboard: await mock.request('getDashboard', undefined)
   };
+  // Local fixture variation: the replacement candidate is online in this scenario.
+  for (const product of data.listProducts.items) if (product.id === '10000003') product.status = 'online';
   const page = await context.newPage();
   await page.addInitScript((data) => {
     const runtime = (
@@ -125,6 +149,73 @@ test('formal MV3 showcase uses the actual worker with isolated TOP responses', a
     { method: 'alibaba.scbp.showcase.deleteproduct', ids: '8001' },
     { method: 'alibaba.scbp.showcase.addproduct', ids: '10000001' }
   ]);
+  showcaseRows = structuredClone(showcaseFixture.after.results);
+  await drawer.getByRole('button', { name: '刷新', exact: true }).click();
+  await expect(drawer.getByText('总额度 2 · 已用 2 · 剩余 0')).toBeVisible();
+  await drawer.getByRole('button', { name: '下移', exact: true }).first().click();
+  const sort = page.getByRole('dialog', { name: /从第 1 位移到第 2 位/ });
+  await expect(sort).toBeVisible();
+  expect(writes).toHaveLength(2);
+  await sort.getByRole('button', { name: '确认', exact: true }).click();
+  await expect(sort).toHaveCount(0);
+  await expect(drawer.locator('li').first()).toContainText('10000002');
+  await drawer.getByRole('button', { name: '替换商品', exact: true }).first().click();
+  const picker = page.getByRole('dialog', { name: '选择替换商品', exact: true });
+  await expect(picker).toBeVisible();
+  const target = picker.locator('li').filter({ hasText: '10000003' });
+  await target.getByRole('button').click();
+  const replace = page.getByRole('dialog', { name: '替换商品', exact: true });
+  await expect(replace).toBeVisible();
+  expect(writes).toHaveLength(3);
+  await replace.getByRole('button', { name: '确认', exact: true }).click();
+  await expect(replace).toHaveCount(0);
+  await expect(drawer.locator('li').first()).toContainText('10000003');
+  expect(writes.slice(2)).toEqual([
+    { method: 'alibaba.scbp.showcase.sort', ids: '8001' },
+    { method: 'alibaba.scbp.showcase.updateproduct', ids: '8002' }
+  ]);
+  await expect(page.getByRole('dialog')).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(drawer).toHaveCount(0);
+  await page.getByRole('button', { name: '新增', exact: true }).click();
+  expect(postingRequests).toHaveLength(0);
+  await page.getByRole('combobox').click();
+  const categories = page.getByRole('dialog', { name: '选择商品类目' });
+  await categories.getByRole('button', { name: /Consumer Electronics/ }).click();
+  await categories.getByRole('button', { name: /Portable Power Stations/ }).click();
+  await expect(page.getByRole('radio', { name: '直接下单品', exact: true })).toBeEnabled();
+  await expect
+    .poll(async () => {
+      const diagnostic = await worker.evaluate(async () => {
+        const storage = (
+          globalThis as unknown as {
+            chrome: { storage: { session: { get(key: string): Promise<Record<string, unknown>> } } };
+          }
+        ).chrome.storage.session;
+        const { diagnosticEntries } = await storage.get('diagnosticEntries');
+        const entries: readonly unknown[] = Array.isArray(diagnosticEntries) ? diagnosticEntries : [];
+        return entries.filter(
+          (entry: unknown) =>
+            entry &&
+            typeof entry === 'object' &&
+            'method' in entry &&
+            entry.method === 'alibaba.icbu.product.type.available.get'
+        );
+      });
+      return {
+        count: postingRequests.length,
+        errors: diagnostic.filter(
+          (entry: unknown) =>
+            entry && typeof entry === 'object' && 'outcome' in entry && entry.outcome === 'error'
+        )
+      };
+    })
+    .toEqual({ count: 1, errors: [] });
+  expect(postingRequests).toEqual([{ cat_id: 100009999, language: 'en_us' }]);
+  await expect(page.getByText('尚未取得类型支持信息', { exact: false })).toHaveCount(0);
+  await page.getByRole('radio', { name: '询盘 / 定制品', exact: true }).check();
+  await expect(page.getByRole('radio', { name: '询盘 / 定制品', exact: true })).toBeChecked();
+  await page.screenshot({ path: 'artifacts/showcase-posting-extension.png' });
   await page.close();
 });
 

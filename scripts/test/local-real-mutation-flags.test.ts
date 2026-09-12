@@ -9,6 +9,8 @@ describe('local real mutation flags', () => {
   it('enables reviewed local mutations while keeping unsupported domains closed', () => {
     expect(DEFAULT_LOCAL_REAL_MUTATION_FLAGS).toContain('operation:updateProductDisplay');
     expect(DEFAULT_LOCAL_REAL_MUTATION_FLAGS).toContain('operation:createProductGroup');
+    expect(DEFAULT_LOCAL_REAL_MUTATION_FLAGS).toContain('operation:sortShowcaseProduct');
+    expect(DEFAULT_LOCAL_REAL_MUTATION_FLAGS).toContain('operation:replaceShowcaseProduct');
     expect(DEFAULT_LOCAL_REAL_MUTATION_FLAGS).not.toContain('operation:submitRfqQuotation');
   });
 

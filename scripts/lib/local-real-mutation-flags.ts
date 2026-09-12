@@ -6,6 +6,8 @@ export const DEFAULT_LOCAL_REAL_MUTATION_FLAGS = [
   'operation:createProductGroup',
   'operation:addShowcaseProducts',
   'operation:removeShowcaseProducts',
+  'operation:sortShowcaseProduct',
+  'operation:replaceShowcaseProduct',
   'operation:operatePhotoGroup',
   'operation:uploadPhoto',
   'operation:transferPhotoFromUrl'

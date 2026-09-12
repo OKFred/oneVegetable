@@ -3,12 +3,15 @@ import { describe, expect, it } from 'vitest';
 import { resolveExtensionOperationAvailability } from '../lib/operation-policy';
 
 describe('extension operation policy', () => {
-  it.each(['getProductShowcase', 'addShowcaseProducts', 'removeShowcaseProducts'] as const)(
-    'allows dedicated showcase operation %s',
-    (operation) => {
-      expect(resolveExtensionOperationAvailability(operation).allowed).toBe(true);
-    }
-  );
+  it.each([
+    'getProductShowcase',
+    'addShowcaseProducts',
+    'removeShowcaseProducts',
+    'sortShowcaseProduct',
+    'replaceShowcaseProduct'
+  ] as const)('allows dedicated showcase operation %s', (operation) => {
+    expect(resolveExtensionOperationAvailability(operation).allowed).toBe(true);
+  });
   it('distinguishes disabled real mutations, qualification gates and supported local writes', () => {
     expect(resolveExtensionOperationAvailability('publishProduct')).toMatchObject({
       allowed: true,

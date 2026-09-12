@@ -16,7 +16,7 @@ function setup(locked = false) {
   const gateway = new MockGatewayClient(0);
   const response = {
     method: fixture.method,
-    traceId: null,
+    traceId: 'product-posting-test-trace',
     data: structuredClone(fixture.response),
     contractValid: true,
     contractIssues: []

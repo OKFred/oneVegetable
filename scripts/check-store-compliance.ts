@@ -99,6 +99,8 @@ if (
     'createProductGroup',
     'addShowcaseProducts',
     'removeShowcaseProducts',
+    'sortShowcaseProduct',
+    'replaceShowcaseProduct',
     'operatePhotoGroup',
     'uploadPhoto',
     'transferPhotoFromUrl'

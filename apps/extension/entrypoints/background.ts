@@ -1304,7 +1304,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function unwrap(value: unknown, method: string): Record<string, unknown> {
   const record = asRecord(value);
-  return asRecord(record[`${method.replaceAll('.', '_')}_response`]);
+  // TOP simplify=true may omit the method envelope. Match the Node adapter;
+  // preserve the payload for the method-specific response validator.
+  const key = `${method.replaceAll('.', '_')}_response`;
+  return Object.hasOwn(record, key) ? asRecord(record[key]) : record;
 }
 
 function readString(record: Record<string, unknown>, keys: string[]): string | undefined {
