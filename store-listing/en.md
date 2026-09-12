@@ -8,6 +8,7 @@ Key features:
 
 - Visually edit Schema-based products and standard descriptions, choosing category-supported direct-order or inquiry/custom types when creating a product.
 - Customize product, gallery and order columns, load extra fields on demand, and open platform product links with dedicated buttons.
+- Read product/SKU inventory in a drawer or optional columns, with batch queries and a stop control. Empty records are not zero stock, quantities are not summed across sources, and inventory is never modified.
 - Inspect showcase quota and products, then confirm additions, removals, reordering or replacement and verify by read-back. Uncertain writes are never automatically retried; removing a showcase entry does not delete the product.
 - Import and export products as JSON or ZIP archives with managed `assets` image resources.
 - Select gallery assets and receive non-blocking content guidance.

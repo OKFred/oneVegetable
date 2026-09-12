@@ -1,6 +1,6 @@
 # 2.8.0 商品库存只读工作区
 
-状态：开发候选。没有部署 Worker、创建 Release 或提交商店。
+本页记录 2.8.0 开发候选的实现和验收基线。正式发版准备见 [2.8.0 发版说明](release-2.8.0-readiness.md)；主线合并不代表 Worker 部署或商店发布。
 
 ## 使用
 
@@ -25,7 +25,7 @@ OpenAPI JSON 定义 `ProductInventoryRequest` / `ProductInventorySnapshot`，构
 原有解包 4.1 MB、主线程启动资源、service worker 与 i18n 门槛保持不变。
 通过共享重复 AJV 错误文本节省空间；未减少校验规则或错误信息，未引入运行时代码生成。
 
-本地候选包：`artifacts/one-vegetable-v2.8.0-chrome-mv3.zip`，999,142 字节、140 个文件；解包 4,083,673 字节。
+早期开发候选备份：`artifacts/release-2.8-readiness/baseline-3afc07c/one-vegetable-v2.8.0-chrome-mv3.zip`，999,142 字节、140 个文件；解包 4,083,673 字节。正式说明更新后的产物记录见发版说明，不以本节旧候选作为正式下载包。
 SHA-256：`56ed90e97277bedc480e22d915f51766f66810ac2890933101bd3401865c16e2`。
 候选包不是商店上架记录；2.7.0 及更早版本的 ZIP 未改动。
 
@@ -72,5 +72,5 @@ pnpm test:e2e:bff-replay
 - [开发分支 GitHub CI](https://github.com/OKFred/oneVegetable/actions/runs/34706534026) 全部通过，包含 `pnpm check`、Worker 测试、Web/正式 MV3 E2E、BFF replay、Node 凭据 E2E 和扩展打包。
 - 原 2.6.0 正式包、2.7.0 候选包升级到 2.8.0：28 项检查通过。扩展身份、权限清单、加密凭据、S3 配置、语言/主题和 XML 草稿保留；2.6.0 的列偏好及未完成传输任务保留，任务仍需手工核对，不自动重传。
 - 升级报告：`artifacts/extension-upgrade/5e54eee5-a992-4311-a9b7-160f9d1a9734/report.json`。测试使用隔离 Profile 和 `mock/data`，阻断外部 HTTP(S)，不读取真实凭据，不修改远端素材。
-- `v2.8.0` 与六个 workspace 包及商店资料版本一致；本地 ZIP 仍为本页记录的 999,142 字节及 SHA-256。
+- 当次检查中 `v2.8.0` 与六个 workspace 包及商店资料版本一致；当次开发候选为本页记录的 999,142 字节及 SHA-256，已保留备份。
 - 本轮只推进代码合并；不创建正式 Tag/Release，不部署 Worker，不上传或提交商店审核。真实非空库存待办不因合并而标记完成。

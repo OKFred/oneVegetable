@@ -7,18 +7,18 @@ export const RELEASE_NOTES_DOCUMENT = {
       version: '2.8.0',
       releasedAt: '2026-09-13',
       title: {
-        'zh-CN': '商品库存只读工作区（候选）',
-        'en-US': 'Read-only product inventory workspace (candidate)'
+        'zh-CN': '商品库存与橱窗工作区',
+        'en-US': 'Product inventory and showcase workspace'
       },
       summary: {
-        'zh-CN': '开发候选，尚未发布。新增商品库存抽屉、可选库存列和批量查询；不修改平台库存。',
+        'zh-CN':
+          '新增商品库存抽屉、可选库存列和批量只读查询，并包含自 2.6.0 以来的橱窗排序/替换、类目发品类型引导及插件后台校验改进。不增加库存写入能力。',
         'en-US':
-          'Unpublished development candidate. Inventory drawer, optional columns and batch queries without changing platform inventory.'
+          'Adds an inventory drawer, optional columns and read-only batch queries, including showcase reordering/replacement, category-specific posting guidance and extension worker validation improvements since 2.6.0. No inventory writes are added.'
       },
       source: 'release',
-      githubUrl:
-        'https://github.com/OKFred/oneVegetable/blob/codex/product-inventory-workspace/docs/product-inventory-workspace.md',
-      compareUrl: null,
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.8.0',
+      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.6.0...v2.8.0',
       changes: [
         {
           type: 'feature',
@@ -42,6 +42,45 @@ export const RELEASE_NOTES_DOCUMENT = {
             'zh-CN': '库存列和抽屉共用五分钟缓存，支持停止；账号或页面变化后不应用迟到结果。',
             'en-US':
               'Columns and drawer share a five-minute cache. Stop remaining queries; late results cannot cross page or account boundaries.'
+          }
+        },
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '橱窗排序与替换',
+            'en-US': 'Reorder and replace showcase products'
+          },
+          description: {
+            'zh-CN':
+              '确认后调整顺序或替换商品，并回读核对。结果不明时不自动重试；移出橱窗不会删除商品。',
+            'en-US':
+              'Confirm reordering or replacement, then verify by read-back. Uncertain writes are not automatically retried; removing a showcase entry does not delete the product.'
+          }
+        },
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '类目发品类型引导',
+            'en-US': 'Category-specific posting guidance'
+          },
+          description: {
+            'zh-CN':
+              '新建商品时查询类目支持的直接下单或询盘定制类型，再加载对应表单；不可用时明确提示。',
+            'en-US':
+              'Check category support for direct-order or inquiry/custom products before loading the form, with clear unavailable-state guidance.'
+          }
+        },
+        {
+          type: 'fix',
+          title: {
+            'zh-CN': '插件校验与升级恢复',
+            'en-US': 'Extension validation and upgrade recovery'
+          },
+          description: {
+            'zh-CN':
+              'MV3 静态校验在后台重启后继续生效。旧版升级保留加密凭据、S3 配置和草稿；未完成传输仍需手工核对。',
+            'en-US':
+              'Static MV3 validation survives worker restarts. Upgrades preserve encrypted credentials, S3 settings and drafts; interrupted transfers still require manual verification.'
           }
         }
       ]
