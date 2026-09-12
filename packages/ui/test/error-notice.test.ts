@@ -9,6 +9,7 @@ import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import ErrorNotice from '../src/components/ErrorNotice.vue';
 import { uiI18n } from '../src/i18n';
+import s3Errors from '../../../mock/data/gallery-s3-errors.json';
 import { provideServices } from '../src/lib/services';
 
 const requestId = '3d7c8523-93cc-48b7-a615-a23d2976c516';
@@ -68,6 +69,19 @@ afterEach(() => {
 });
 
 describe('ErrorNotice', () => {
+  it('explains the local HTTP server opt-in without implying that cloud runtimes can enable it', async () => {
+    const wrapper = mountErrorNotice(new GatewayException(s3Errors.localHttpDisabled), 'mock');
+    expect(wrapper.text()).toContain('本地 Node 需显式开启');
+    expect(wrapper.text()).toContain('云端 Worker 不支持');
+    expect(wrapper.text()).toContain('ONE_VEGETABLE_ALLOW_LOCAL_S3_HTTP=1');
+    expect(wrapper.get('a').attributes('href')).toBe('#/settings');
+    expect(wrapper.text()).not.toContain('errors.codes.');
+    uiI18n.global.locale.value = 'en-US';
+    await flushPromises();
+    expect(wrapper.text()).toContain(uiI18n.global.t('settings.s3.localHttp'));
+    expect(wrapper.get('a').text()).toBe('S3 asset storage');
+    wrapper.unmount();
+  });
   it('copies requestId and exports only redacted diagnostic context', async () => {
     const secret = 'abcdefghijklmnopqrstuvwxyz0123456789-secret';
     const error = new GatewayException(

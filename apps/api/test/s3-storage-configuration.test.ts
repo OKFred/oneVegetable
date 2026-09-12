@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import fixture from '../../../mock/data/extension-s3.json';
 
 import { applyNodeMigrations, openNodeDatabase } from '../src/db/node-database';
 import {
@@ -20,11 +21,31 @@ describe('S3 storage configuration', () => {
     const { service } = await harness();
     await expect(
       service.save({
-        configuration: { ...configuration(), endpoint: 'http://192.168.1.4:9000', allowInsecureLocal: true },
+        configuration: { ...configuration(), endpoint: fixture.localHttpEndpoint, allowInsecureLocal: true },
         actorId: 'admin',
         expectedRevision: null,
         remark: null
       })
+    ).rejects.toThrow('S3_LOCAL_HTTP_DISABLED');
+  });
+  it('accepts explicitly opted-in private HTTP without weakening the default service', async () => {
+    const { repository, service, cipher } = await harness(true);
+    const localConfiguration = {
+      ...configuration(),
+      endpoint: fixture.localHttpEndpoint,
+      allowInsecureLocal: true
+    };
+    await expect(
+      service.save({
+        configuration: localConfiguration,
+        actorId: 'admin',
+        expectedRevision: null,
+        remark: null
+      })
+    ).resolves.toMatchObject({ configured: true, endpoint: fixture.localHttpEndpoint });
+    expect(await service.requireConfiguration()).toEqual(localConfiguration);
+    await expect(
+      new S3StorageConfigurationService(repository, cipher).requireConfiguration()
     ).rejects.toThrow('S3_LOCAL_HTTP_DISABLED');
   });
   it('encrypts credentials and returns only a redacted summary', async () => {
@@ -75,13 +96,17 @@ describe('S3 storage configuration', () => {
   });
 });
 
-async function harness() {
+async function harness(allowLocalHttp = false) {
   const database = openNodeDatabase(':memory:');
   databases.push(database);
   applyNodeMigrations(database);
   const repository = new SqlS3StorageConfigurationRepository(database.executor);
   const cipher = await S3StorageConfigurationCipher.create(encodedKey(1));
-  return { repository, service: new S3StorageConfigurationService(repository, cipher) };
+  return {
+    repository,
+    cipher,
+    service: new S3StorageConfigurationService(repository, cipher, undefined, undefined, allowLocalHttp)
+  };
 }
 
 function configuration() {

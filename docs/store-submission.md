@@ -88,7 +88,7 @@ pnpm upload:extension:draft -- --confirm-draft-upload
 
 ## 2.6.0 候选上传交接
 
-- 候选 ZIP：`artifacts/one-vegetable-v2.6.0-chrome-mv3.zip`，986,406 字节；SHA-256 `c8df835c4f57ffed035da876d171cd4568902bfce126944fc20a45edae38333e`。已含 09-12 S3 错误提示补丁。正式发布标记变化后需重新打包，以新的 `.zip.sha256` 为准，不混用历史同名 ZIP。
+- 候选 ZIP：`artifacts/one-vegetable-v2.6.0-chrome-mv3.zip`，986,558 字节；SHA-256 `1c8a9541061b6a2999f13f06dda9039495a5b74001ba1e3b7bf2040571e64590`。已含 09-12 S3 缺少配置及本地 HTTP 提示补丁。正式发布标记变化后需重新打包，以新的 `.zip.sha256` 为准，不混用历史同名 ZIP。
 - 中英文完整说明：`store-listing/zh_CN.md`、`store-listing/en.md`；权限与数据用途：`store-listing/listing.json`。打包后的副本位于 `artifacts/store-listing/`。
 - 截图：`store-listing/assets/screenshots/zh-CN/`、`en-US/` 各 4 张，1280 × 800。全部来自 2.6.0 正式扩展构建的空白 Profile；没有开发凭据、测试账号或虚构商品。原 Small promo tile 与图标可继续使用。
 - 本版不新增 Manifest 权限。更新商店功能描述中的图库任务恢复、列表可选列和橱窗管理；权限用途继续按现有声明填写。Node 凭据管理属于 Web/BFF，不宣传为插件新增的后端必需条件。

@@ -33,6 +33,7 @@ const details = computed(() =>
 const localizedMessage = computed(() => {
   const code = details.value.code;
   if (!code) return details.value.message;
+  if (code === 'S3_LOCAL_HTTP_DISABLED') return t('settings.s3.localHttp');
   // The BFF and extension historically use different codes for the same missing configuration.
   const key = `errors.codes.${code === 'S3_STORAGE_NOT_CONFIGURED' ? 'S3_NOT_CONFIGURED' : code}`;
   if (hasUiTranslation(key)) return t(key);
@@ -61,7 +62,11 @@ const originalMessage = computed(() => {
   const raw = details.value.message.trim();
   return raw && raw !== localizedMessage.value.trim() ? raw : null;
 });
-const messageParts = computed(() => splitUserVisibleErrorMessages(localizedMessage.value));
+const messageParts = computed(() =>
+  details.value.code === 'S3_LOCAL_HTTP_DISABLED'
+    ? [localizedMessage.value]
+    : splitUserVisibleErrorMessages(localizedMessage.value)
+);
 const credentialSettingsRequired = computed(
   () => mode === 'extension' && details.value.code?.startsWith('CREDENTIAL_VAULT_') === true
 );
@@ -70,7 +75,8 @@ const s3SettingsRequired = computed(() =>
     'S3_NOT_CONFIGURED',
     'S3_STORAGE_NOT_CONFIGURED',
     'S3_CONFIGURATION_INVALID',
-    'S3_PERMISSION_REQUIRED'
+    'S3_PERMISSION_REQUIRED',
+    'S3_LOCAL_HTTP_DISABLED'
   ].includes(details.value.code ?? '')
 );
 const copied = ref(false);
@@ -167,6 +173,9 @@ function downloadJson(value: unknown, fileName: string): void {
         <p v-if="details.code" class="mt-1 text-xs opacity-80">
           {{ t('common.error.code', { code: details.code }) }}
         </p>
+        <code v-if="details.code === 'S3_LOCAL_HTTP_DISABLED'" class="mt-2 block break-all text-xs">
+          ONE_VEGETABLE_ALLOW_LOCAL_S3_HTTP=1
+        </code>
         <details v-if="originalMessage" class="mt-2 rounded border border-current/20 p-2 text-xs">
           <summary class="cursor-pointer font-medium">
             {{ t(platformError ? 'common.error.platformResponse' : 'common.error.originalResponse') }}

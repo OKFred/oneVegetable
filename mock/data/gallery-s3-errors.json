@@ -10,6 +10,11 @@
     "message": "S3_NOT_CONFIGURED",
     "retryable": false
   },
+  "localHttpDisabled": {
+    "code": "S3_LOCAL_HTTP_DISABLED",
+    "message": "S3_LOCAL_HTTP_DISABLED",
+    "retryable": false
+  },
   "unknown": {
     "code": "S3_UNRECOGNIZED_FAILURE",
     "message": "Internal storage implementation detail",
