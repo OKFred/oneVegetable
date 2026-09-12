@@ -20,10 +20,12 @@ const emit = defineEmits<{ close: []; refresh: []; source: [source: 'product' | 
 const it = useInventoryI18n();
 const search = ref('');
 const rows = computed(() =>
-  (props.snapshot?.records ?? []).filter((row) =>
-    [row.skuId, row.skuOuterId, row.inventoryCode].some((value) =>
-      value?.toLowerCase().includes(search.value.toLowerCase())
-    )
+  (props.snapshot?.records ?? []).filter(
+    (row) =>
+      !search.value.trim() ||
+      [row.skuId, row.skuOuterId, row.inventoryCode].some((value) =>
+        value?.toLowerCase().includes(search.value.trim().toLowerCase())
+      )
   )
 );
 const columns = computed<DataColumn<ProductInventorySnapshot['records'][number]>[]>(() =>

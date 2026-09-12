@@ -25,8 +25,8 @@ OpenAPI JSON 定义 `ProductInventoryRequest` / `ProductInventorySnapshot`，构
 原有解包 4.1 MB、主线程启动资源、service worker 与 i18n 门槛保持不变。
 通过共享重复 AJV 错误文本节省空间；未减少校验规则或错误信息，未引入运行时代码生成。
 
-本地候选包：`artifacts/one-vegetable-v2.8.0-chrome-mv3.zip`，999,134 字节、140 个文件；解包 4,083,649 字节。
-SHA-256：`a6356278fa77dfe1f3a01192a58b6f01d40884361c410bcc793b0d9cfb2deb26`。
+本地候选包：`artifacts/one-vegetable-v2.8.0-chrome-mv3.zip`，999,142 字节、140 个文件；解包 4,083,673 字节。
+SHA-256：`56ed90e97277bedc480e22d915f51766f66810ac2890933101bd3401865c16e2`。
 候选包不是商店上架记录；2.7.0 及更早版本的 ZIP 未改动。
 
 ## 真实只读验证
