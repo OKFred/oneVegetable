@@ -62,6 +62,16 @@ const coreValidators: Record<string, object | undefined> = {
 const domains: CapabilityDomain[] = ['product', 'rfq', 'trade', 'logistics', 'insights', 'photo', 'platform'];
 const targets = new Map<string, string>();
 targets.set(
+  'validators-inventory.ts',
+  compileValidators(
+    {
+      validateProductInventoryRequest: schemas.ProductInventoryRequest,
+      validateProductInventorySnapshot: schemas.ProductInventorySnapshot
+    },
+    'fast'
+  )
+);
+targets.set(
   'validators-gateway-credentials.ts',
   compileValidators(
     {

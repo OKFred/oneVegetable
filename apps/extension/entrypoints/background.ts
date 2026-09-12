@@ -100,6 +100,7 @@ const OPERATIONS = new Set<OperationId>([
   'getProductDraft',
   'listProductGroups',
   'getProductShowcase',
+  'getProductInventory',
   'addShowcaseProducts',
   'removeShowcaseProducts',
   'sortShowcaseProduct',
@@ -681,7 +682,7 @@ async function executeOperation(
   }
   const client = AlibabaClient.create(settings, {
     requestId,
-    maxAttempts: 3,
+    maxAttempts: operation === 'getProductInventory' ? 1 : 3,
     shouldRetry: (method, error) => error.retryable && findCapability(method)?.risk === 'read'
   });
   const mutationClient = AlibabaClient.create(
@@ -702,6 +703,10 @@ async function executeOperation(
   const request = asRecord(payload);
 
   switch (operation) {
+    case 'getProductInventory':
+      return new ProductInventoryAdapter(client, validateCapabilityRequest, validateCapabilityResponse).get(
+        payload as RequestOf<'getProductInventory'>
+      );
     case 'getProductShowcase':
       return new ProductShowcaseAdapter(client).get();
     case 'sortShowcaseProduct':
@@ -1394,3 +1399,4 @@ function assertCallable(capability: ApiCapability | undefined): asserts capabili
 function gatewayFailure(code: string, message: string): GatewayException {
   return new GatewayException({ code, message, retryable: false });
 }
+import { ProductInventoryAdapter } from '@one-vegetable/core/inventory';

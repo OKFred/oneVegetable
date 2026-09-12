@@ -2,6 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { compactStandaloneSchemaConstants as compact } from './standalone-schema-constants';
 
 describe('standalone schema constant compaction', () => {
+  it('shares repeated literal error text without touching paths, expressions or keys', () => {
+    const message = 'must NOT have additional properties';
+    const source = `const errors=[{message:"${message}",instancePath:'/a'},{message:"${message}",instancePath:'/b'},{message:"${message}",instancePath:'/c'}]; const dynamic={message:prefix+'x'};`;
+    const output = compact(source);
+    expect(output.match(/must NOT have additional properties/g)).toHaveLength(1);
+    expect(output).toContain("instancePath:'/a'");
+    expect(output).toContain("message:prefix+'x'");
+    expect(compact(output)).toBe(output);
+  });
   it('keeps only statically read branches without changing validation statements', () => {
     const input =
       'const schema1 = {"type":"object","required":["x"],"properties":{"x":{"enum":[1,2]},"y":{"type":"string"}}}; for(const key of schema1.required){ check(data[key]); } check(schema1.properties.x.enum);';

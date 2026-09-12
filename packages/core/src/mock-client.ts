@@ -108,6 +108,15 @@ export class MockGatewayClient implements GatewayClient {
   async request<K extends OperationId>(operation: K, _request: RequestOf<K>): Promise<ResponseOf<K>> {
     await new Promise<void>((resolve) => setTimeout(resolve, this.latency));
     if (operation === 'getProductShowcase') return structuredClone(this.showcase);
+    if (operation === 'getProductInventory') {
+      const input = _request as RequestOf<'getProductInventory'>;
+      return {
+        ...structuredClone(PRODUCT_MOCK_DATA.responses.getProductInventory),
+        productId: input.productId,
+        source: input.source,
+        queriedAt: Date.now()
+      };
+    }
     if (operation === 'sortShowcaseProduct' || operation === 'replaceShowcaseProduct') {
       const request = _request as RequestOf<'sortShowcaseProduct'> | RequestOf<'replaceShowcaseProduct'>;
       const baseline = this.showcase.entries.map(({ windowId, productId }) => ({ windowId, productId }));

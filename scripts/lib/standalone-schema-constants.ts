@@ -67,7 +67,40 @@ export function compactStandaloneSchemaConstants(source: string): string {
   }
   for (const edit of edits.toSorted((a, b) => b.start - a.start))
     source = source.slice(0, edit.start) + edit.text + source.slice(edit.end);
-  return source;
+  return shareErrorMessages(source);
+}
+
+/** Reuse repeated immutable error text. No validation branches or error details are removed. */
+function shareErrorMessages(source: string): string {
+  const file = ts.createSourceFile('standalone.js', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  const messages = new Map<string, ts.StringLiteral[]>();
+  function visit(node: ts.Node): void {
+    if (
+      ts.isPropertyAssignment(node) &&
+      (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name)) &&
+      node.name.text === 'message' &&
+      ts.isStringLiteral(node.initializer) &&
+      node.initializer.text.length >= 20
+    ) {
+      const uses = messages.get(node.initializer.text) ?? [];
+      uses.push(node.initializer);
+      messages.set(node.initializer.text, uses);
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(file);
+  const edits: { start: number; end: number; text: string }[] = [];
+  const declarations: string[] = [];
+  for (const [message, nodes] of messages) {
+    if (nodes.length < 3) continue;
+    const name = `sharedValidationMessage${declarations.length}`;
+    if (source.includes(name)) continue;
+    declarations.push(`const ${name} = ${JSON.stringify(message)};`);
+    for (const node of nodes) edits.push({ start: node.getStart(file), end: node.getEnd(), text: name });
+  }
+  for (const edit of edits.toSorted((a, b) => b.start - a.start))
+    source = source.slice(0, edit.start) + edit.text + source.slice(edit.end);
+  return declarations.length ? `${declarations.join('\n')}\n${source}` : source;
 }
 
 function prune(value: unknown, paths: string[][]): unknown {

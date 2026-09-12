@@ -1,6 +1,7 @@
 import type { OperationId } from './types';
 
 const OPERATION_ID_RECORD = {
+  getProductInventory: true,
   getDashboard: true,
   getDiagnostics: true,
   clearDiagnostics: true,

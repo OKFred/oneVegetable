@@ -124,20 +124,28 @@ export class AlibabaReadGatewayClient implements GatewayClient {
       if (!definition) throw gatewayError('CAPABILITY_UNKNOWN', '该能力尚无类型化定义');
       return definition;
     }
-    const client = this.createClient(context);
+    const client = this.createClient(
+      context,
+      'top',
+      operation === 'getProductInventory' ? 1 : this.#maxAttempts
+    );
     if (operation !== 'callCapability') {
       return this.requestDedicated(operation, request, client, this.createClient(context, 'sync'));
     }
     return this.callCapability(request as CapabilityCallRequest, client, context) as Promise<ResponseOf<K>>;
   }
 
-  private createClient(context?: GatewayRequestContext, protocol: 'top' | 'sync' = 'top'): AlibabaClient {
+  private createClient(
+    context?: GatewayRequestContext,
+    protocol: 'top' | 'sync' = 'top',
+    maxAttempts = this.#maxAttempts
+  ): AlibabaClient {
     const credentials =
       protocol === 'sync'
         ? { ...this.#credentials, endpoint: ALIBABA_SYNC_GATEWAY, signMethod: 'hmac-sha256' as const }
         : this.#credentials;
     return new AlibabaClient(credentials, this.#network, {
-      maxAttempts: this.#maxAttempts,
+      maxAttempts,
       shouldRetry: (method, error) => error.retryable && getCapabilityDefinition(method)?.risk === 'read',
       protocol,
       ...(this.#wait ? { wait: this.#wait } : {}),
@@ -196,6 +204,12 @@ export class AlibabaReadGatewayClient implements GatewayClient {
     const photos = new PhotoAdapter(client);
     const record = readRecord(request);
     switch (operation) {
+      case 'getProductInventory':
+        return await new ProductInventoryAdapter(
+          client,
+          validateCapabilityRequest,
+          validateCapabilityResponse
+        ).get(request as RequestOf<'getProductInventory'>);
       case 'getProductShowcase':
         return await new ProductShowcaseAdapter(client).get();
       case 'sortShowcaseProduct':
@@ -480,3 +494,4 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function readRecord(value: unknown): Record<string, unknown> {
   return isRecord(value) ? value : {};
 }
+import { ProductInventoryAdapter } from '@one-vegetable/core/inventory';

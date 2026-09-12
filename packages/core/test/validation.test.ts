@@ -12,7 +12,8 @@ describe('standalone OpenAPI validators', () => {
   it('contains no CSP-unsafe runtime code', async () => {
     const directory = new URL('../src/generated/', import.meta.url);
     const files = (await readdir(directory)).filter((file) => file.startsWith('validators-'));
-    expect(files).toHaveLength(11);
+    expect(files).toHaveLength(12);
+    expect(files).toContain('validators-inventory.ts');
     expect(files).toContain('validators-gateway-credentials.ts');
     expect(files).toContain('validators-showcase.ts');
     // Posting type now shares the domain validator through the static MV3 entry.

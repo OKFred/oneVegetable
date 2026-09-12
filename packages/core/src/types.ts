@@ -209,7 +209,11 @@ export interface PhotoGroupOperationResult {
   group: PhotoGroup | null;
 }
 
+export type ProductInventoryRequest = components['schemas']['ProductInventoryRequest'];
+export type ProductInventorySnapshot = components['schemas']['ProductInventorySnapshot'];
+
 export interface OperationMap {
+  getProductInventory: { request: ProductInventoryRequest; response: ProductInventorySnapshot };
   getDashboard: { request: undefined; response: DashboardSummary };
   getDiagnostics: { request: undefined; response: DiagnosticsSnapshot };
   clearDiagnostics: { request: undefined; response: undefined };

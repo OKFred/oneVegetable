@@ -3,6 +3,39 @@
   "repositoryUrl": "https://github.com/OKFred/oneVegetable",
   "releases": [
     {
+      "version": "2.8.0",
+      "releasedAt": "2026-09-13",
+      "title": {
+        "zh-CN": "商品库存只读工作区（候选）",
+        "en-US": "Read-only product inventory workspace (candidate)"
+      },
+      "summary": {
+        "zh-CN": "开发候选，尚未发布。新增商品库存抽屉、可选库存列和批量查询；不修改平台库存。",
+        "en-US": "Unpublished development candidate. Inventory drawer, optional columns and batch queries without changing platform inventory."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/blob/codex/product-inventory-workspace/docs/product-inventory-workspace.md",
+      "compareUrl": null,
+      "changes": [
+        {
+          "type": "feature",
+          "title": { "zh-CN": "商品与 SKU 库存查询", "en-US": "Product and SKU inventory queries" },
+          "description": {
+            "zh-CN": "按需切换接口来源，区分空记录、真实零值及数据待核对，不推算总库存。",
+            "en-US": "Choose the API source explicitly. Empty records, true zero and contract issues are distinct; no total stock is inferred."
+          }
+        },
+        {
+          "type": "feature",
+          "title": { "zh-CN": "批量查询与共享缓存", "en-US": "Batch queries and shared cache" },
+          "description": {
+            "zh-CN": "库存列和抽屉共用五分钟缓存，支持停止；账号或页面变化后不应用迟到结果。",
+            "en-US": "Columns and drawer share a five-minute cache. Stop remaining queries; late results cannot cross page or account boundaries."
+          }
+        }
+      ]
+    },
+    {
       "version": "2.7.0",
       "releasedAt": "2026-09-12",
       "title": {

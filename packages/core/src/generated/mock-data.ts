@@ -3,6 +3,29 @@ import type { InsightsMockData, LogisticsMockData, PhotoMockData, ProductMockDat
 
 export const PRODUCT_MOCK_DATA: ProductMockData = {
   "responses": {
+    "getProductInventory": {
+      "productId": "10000001",
+      "source": "product",
+      "queriedAt": 1789200000000,
+      "traceId": "mock-inventory",
+      "status": "ready",
+      "issues": [],
+      "reasonCode": null,
+      "records": [
+        {
+          "skuId": "33323",
+          "skuOuterId": "RED-S",
+          "inventoryCode": "CN_LOCAL_01",
+          "inventory": 100
+        },
+        {
+          "skuId": "33324",
+          "skuOuterId": "BLUE-M",
+          "inventoryCode": "CN_LOCAL_01",
+          "inventory": 0
+        }
+      ]
+    },
     "getProductShowcase": {
       "total": 2,
       "used": 1,

@@ -24,6 +24,28 @@ const method = 'alibaba.icbu.product.list';
 const parameters = getCapabilityDefinition(method)?.requestExample as Record<string, unknown>;
 
 describe('BFF Alibaba read gateway', () => {
+  it('dedicated inventory validates before networking and never retries', async () => {
+    const send = vi
+      .fn<NetworkTransport['send']>()
+      .mockResolvedValue(Response.json(inventoryFixture.response));
+    const gateway = new AlibabaReadGatewayClient(credentials, {
+      transport: { send },
+      maxAttempts: 3,
+      wait: () => Promise.resolve()
+    });
+    const input = { productId: '10000001', language: 'en_US', source: 'product' } as const;
+    await expect(
+      gateway.request('getProductInventory', { ...input, productId: 'not-an-id' })
+    ).rejects.toThrow();
+    expect(send).not.toHaveBeenCalled();
+    expect(await gateway.request('getProductInventory', input)).toMatchObject({
+      status: 'ready',
+      productId: input.productId
+    });
+    send.mockClear().mockRejectedValue(new TypeError('fetch failed'));
+    await expect(gateway.request('getProductInventory', input)).rejects.toThrow();
+    expect(send).toHaveBeenCalledTimes(1);
+  });
   it.each(['add', 'remove'] as const)(
     'runs dedicated showcase %s on TOP once and verifies it',
     async (action) => {

@@ -19,6 +19,7 @@ type OperationResponses<K extends OperationId> = {
 
 export interface ProductMockData {
   responses: OperationResponses<
+    | 'getProductInventory'
     | 'listProducts'
     | 'getProduct'
     | 'getProductSchema'

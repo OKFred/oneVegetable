@@ -7776,6 +7776,30 @@ export interface components {
             name: string;
             parentId: number;
         };
+        ProductInventoryRequest: {
+            productId: string;
+            /** @enum {string} */
+            source: "product" | "sku";
+            /** @enum {string} */
+            language: "zh_CN" | "en_US";
+        };
+        ProductInventorySnapshot: {
+            productId: string;
+            /** @enum {string} */
+            source: "product" | "sku";
+            queriedAt: number;
+            traceId: string;
+            /** @enum {string} */
+            status: "ready" | "no-data" | "drift" | "failed";
+            reasonCode: string | null;
+            issues: string[];
+            records: {
+                skuId: string | null;
+                skuOuterId: string | null;
+                inventoryCode: string | null;
+                inventory: number | null;
+            }[];
+        };
         ProductMutationFieldExpectation: {
             fieldId: string;
             fingerprint: string;

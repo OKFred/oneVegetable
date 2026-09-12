@@ -15062,6 +15062,53 @@
           "parentId": { "type": "integer", "minimum": -1 }
         }
       },
+      "ProductInventoryRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["productId", "source", "language"],
+        "properties": {
+          "productId": { "type": "string", "pattern": "^[1-9][0-9]*$", "maxLength": 32 },
+          "source": { "type": "string", "enum": ["product", "sku"] },
+          "language": { "type": "string", "enum": ["zh_CN", "en_US"] }
+        }
+      },
+      "ProductInventorySnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "productId",
+          "source",
+          "queriedAt",
+          "traceId",
+          "status",
+          "records",
+          "issues",
+          "reasonCode"
+        ],
+        "properties": {
+          "productId": { "type": "string" },
+          "source": { "type": "string", "enum": ["product", "sku"] },
+          "queriedAt": { "type": "integer", "minimum": 0 },
+          "traceId": { "type": "string" },
+          "status": { "type": "string", "enum": ["ready", "no-data", "drift", "failed"] },
+          "reasonCode": { "type": ["string", "null"] },
+          "issues": { "type": "array", "items": { "type": "string" } },
+          "records": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["skuId", "skuOuterId", "inventoryCode", "inventory"],
+              "properties": {
+                "skuId": { "type": ["string", "null"] },
+                "skuOuterId": { "type": ["string", "null"] },
+                "inventoryCode": { "type": ["string", "null"] },
+                "inventory": { "type": ["number", "null"] }
+              }
+            }
+          }
+        }
+      },
       "ProductMutationFieldExpectation": {
         "type": "object",
         "additionalProperties": false,

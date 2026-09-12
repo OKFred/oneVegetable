@@ -1,6 +1,6 @@
 {
   "name": "@one-vegetable/core",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "private": true,
   "type": "module",
   "exports": {
@@ -12,6 +12,7 @@
     "./capability-validation-worker": "./src/capability-validation-worker.ts",
     "./errors": "./src/errors.ts",
     "./showcase": "./src/product-showcase.ts",
+    "./inventory": "./src/product-inventory.ts",
     "./gallery-transfer-task": "./src/gallery-transfer-task.ts",
     "./gallery-transfer-context": "./src/gallery-transfer-context.ts",
     "./gallery-transfer-runner": "./src/gallery-transfer-runner.ts",
