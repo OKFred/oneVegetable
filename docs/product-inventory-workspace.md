@@ -64,3 +64,13 @@ pnpm release:extension
 pnpm exec playwright test --workers=2
 pnpm test:e2e:bff-replay
 ```
+
+## 2026-09-13 合并前复核
+
+- 运行时代码与最终回归基线：`13e9a3423b897c676908fd8e71d292cff748c4a0`。
+- Windows 推送门禁：217 个测试文件、995 项单测及全工作区类型检查通过。
+- [开发分支 GitHub CI](https://github.com/OKFred/oneVegetable/actions/runs/34706534026) 全部通过，包含 `pnpm check`、Worker 测试、Web/正式 MV3 E2E、BFF replay、Node 凭据 E2E 和扩展打包。
+- 原 2.6.0 正式包、2.7.0 候选包升级到 2.8.0：28 项检查通过。扩展身份、权限清单、加密凭据、S3 配置、语言/主题和 XML 草稿保留；2.6.0 的列偏好及未完成传输任务保留，任务仍需手工核对，不自动重传。
+- 升级报告：`artifacts/extension-upgrade/5e54eee5-a992-4311-a9b7-160f9d1a9734/report.json`。测试使用隔离 Profile 和 `mock/data`，阻断外部 HTTP(S)，不读取真实凭据，不修改远端素材。
+- `v2.8.0` 与六个 workspace 包及商店资料版本一致；本地 ZIP 仍为本页记录的 999,142 字节及 SHA-256。
+- 本轮只推进代码合并；不创建正式 Tag/Release，不部署 Worker，不上传或提交商店审核。真实非空库存待办不因合并而标记完成。
