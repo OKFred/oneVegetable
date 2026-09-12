@@ -33,8 +33,10 @@ const details = computed(() =>
 const localizedMessage = computed(() => {
   const code = details.value.code;
   if (!code) return details.value.message;
-  const key = `errors.codes.${code}`;
-  return hasUiTranslation(key) ? t(key) : details.value.message;
+  // The BFF and extension historically use different codes for the same missing configuration.
+  const key = `errors.codes.${code === 'S3_STORAGE_NOT_CONFIGURED' ? 'S3_NOT_CONFIGURED' : code}`;
+  if (hasUiTranslation(key)) return t(key);
+  return code.startsWith('S3_') ? t('errors.codes.S3_STORAGE_FAILED') : details.value.message;
 });
 const platformError = computed(() => {
   const code = details.value.code ?? '';
@@ -62,6 +64,14 @@ const originalMessage = computed(() => {
 const messageParts = computed(() => splitUserVisibleErrorMessages(localizedMessage.value));
 const credentialSettingsRequired = computed(
   () => mode === 'extension' && details.value.code?.startsWith('CREDENTIAL_VAULT_') === true
+);
+const s3SettingsRequired = computed(() =>
+  [
+    'S3_NOT_CONFIGURED',
+    'S3_STORAGE_NOT_CONFIGURED',
+    'S3_CONFIGURATION_INVALID',
+    'S3_PERMISSION_REQUIRED'
+  ].includes(details.value.code ?? '')
 );
 const copied = ref(false);
 const exporting = ref(false);
@@ -138,7 +148,7 @@ function downloadJson(value: unknown, fileName: string): void {
   <div
     role="alert"
     :class="[
-      'rounded-lg border border-destructive/30 bg-destructive/5 text-destructive',
+      'rounded-lg border border-destructive/30 bg-destructive/5 text-destructive dark:text-red-300',
       compact ? 'p-3 text-xs' : 'p-4 text-sm'
     ]"
   >
@@ -190,6 +200,13 @@ function downloadJson(value: unknown, fileName: string): void {
           </Button>
         </div>
         <div class="mt-2 flex flex-wrap items-center gap-2">
+          <a
+            v-if="s3SettingsRequired"
+            href="#/settings"
+            class="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            <Settings class="size-3.5" aria-hidden="true" />{{ t('settings.s3.title') }}
+          </a>
           <a
             v-if="credentialSettingsRequired"
             href="#/settings"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { Cloud, Download, FileArchive, LoaderCircle, RefreshCw, Upload } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { GalleryTaskError, type GalleryTransferTaskV1 } from '@one-vegetable/core/gallery-transfer-task';
@@ -7,7 +7,6 @@ import { useGalleryTransfers } from '../lib/gallery-transfer-service';
 import { safeCode } from '@one-vegetable/core/gallery-transfer-runner';
 
 import {
-  GatewayException,
   GALLERY_TRANSFER_MAX_ARCHIVE_BYTES,
   evaluateGalleryImportRules,
   type GalleryImportDecision,
@@ -15,6 +14,7 @@ import {
 } from '@one-vegetable/core';
 
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
+import ErrorNotice from './ErrorNotice.vue';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
 import ModalDialog from './ui/ModalDialog.vue';
@@ -56,7 +56,12 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const selectedFileName = ref('');
 const selectedFileSize = ref(0);
 const selectedArchive = ref<GalleryTransferArchive | null>(null);
-const error = ref('');
+const error = shallowRef<unknown>(null);
+const displayError = computed(() =>
+  error.value instanceof GalleryTaskError
+    ? new Error(t('photos.tasks.error', { code: safeCode(error.value) }))
+    : error.value
+);
 const busy = ref(false);
 const validating = ref(false);
 const confirmOpen = ref(false);
@@ -121,7 +126,7 @@ async function selectFile(event: Event): Promise<void> {
   selectedFileName.value = file.name;
   selectedFileSize.value = file.size;
   selectedArchive.value = null;
-  error.value = '';
+  error.value = null;
   validating.value = true;
   try {
     if (file.size > GALLERY_TRANSFER_MAX_ARCHIVE_BYTES) throw new Error(t('photos.transfer.archiveLimit'));
@@ -133,7 +138,7 @@ async function selectFile(event: Event): Promise<void> {
       archiveBytes.value = bytes;
     }
   } catch (reason: unknown) {
-    if (epoch === archiveEpoch) error.value = message(reason);
+    if (epoch === archiveEpoch) error.value = reason;
   } finally {
     if (epoch === archiveEpoch) validating.value = false;
   }
@@ -142,7 +147,7 @@ async function selectFile(event: Event): Promise<void> {
 async function prepareTask(): Promise<void> {
   if (!canExecute.value) return;
   busy.value = true;
-  error.value = '';
+  error.value = null;
   try {
     if (!transfers) throw new GalleryTaskError('GALLERY_CONTEXT_UNAVAILABLE');
     preparedTask.value = await transfers.preview({
@@ -162,7 +167,7 @@ async function prepareTask(): Promise<void> {
     });
     confirmOpen.value = true;
   } catch (reason) {
-    error.value = t('photos.tasks.error', { code: safeCode(reason) });
+    error.value = reason;
   } finally {
     busy.value = false;
   }
@@ -179,7 +184,7 @@ async function execute(): Promise<void> {
     toast.success(t('photos.tasks.created'));
     void transfers.run(task.id);
   } catch (reason) {
-    error.value = t('photos.tasks.error', { code: safeCode(reason) });
+    error.value = reason;
   } finally {
     busy.value = false;
   }
@@ -189,7 +194,7 @@ async function scanS3(): Promise<void> {
   if (!props.open || busy.value || s3Scanning.value || !control?.listS3Objects) return;
   const epoch = ++previewEpoch;
   s3Scanning.value = true;
-  error.value = '';
+  error.value = null;
   try {
     const objects = [];
     let continuationToken: string | undefined;
@@ -240,7 +245,7 @@ async function scanS3(): Promise<void> {
     }));
   } catch (reason: unknown) {
     if (epoch === previewEpoch) {
-      error.value = message(reason);
+      error.value = reason;
       s3Decisions.value = [];
     }
   } finally {
@@ -256,7 +261,7 @@ function reset(): void {
   selectedArchive.value = null;
   archiveBytes.value = null;
   preparedTask.value = null;
-  error.value = '';
+  error.value = null;
   validating.value = false;
   confirmOpen.value = false;
   storage.value = 'zip';
@@ -279,12 +284,6 @@ function fileNameFromPath(path: string): string {
 
 function formatBytes(bytes: number): string {
   return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MiB` : `${Math.ceil(bytes / 1024)} KiB`;
-}
-
-function message(reason: unknown): string {
-  if (reason instanceof GatewayException && reason.gatewayError.code.startsWith('S3_'))
-    return t(`errors.codes.${reason.gatewayError.code}`);
-  return reason instanceof Error ? reason.message : String(reason);
 }
 </script>
 
@@ -446,7 +445,7 @@ function message(reason: unknown): string {
       <p v-if="validating" class="flex items-center gap-2 text-sm text-muted-foreground">
         <LoaderCircle class="size-4 animate-spin" />{{ t('photos.transfer.validating') }}
       </p>
-      <p v-if="error" class="text-sm text-destructive">{{ error }}</p>
+      <ErrorNotice v-if="error" :error="displayError" compact />
     </div>
     <template #footer>
       <div class="flex justify-end gap-2">

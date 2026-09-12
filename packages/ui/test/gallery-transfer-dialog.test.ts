@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
 import { defineComponent } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { GatewayException } from '@one-vegetable/core';
 import fixture from '../../../mock/data/gallery-s3-mapping.json';
 import photoFixture from '../../../mock/data/photos.json';
 import GalleryTransferDialog from '../src/components/GalleryTransferDialog.vue';
 import taskFixture from '../../../mock/data/gallery-transfer-task.json';
+import errorFixture from '../../../mock/data/gallery-s3-errors.json';
+import { uiI18n } from '../src/i18n';
 
 const mocks = vi.hoisted(() => ({
   request: vi.fn(),
@@ -39,14 +42,18 @@ function defaultResponse(operation: string): Promise<unknown> {
   return Promise.resolve(fixture.emptyPhotos);
 }
 beforeEach(() => {
+  uiI18n.global.locale.value = 'zh-CN';
   localStorage.clear();
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   mocks.preview.mockResolvedValue(structuredClone(taskFixture));
   mocks.createTask.mockResolvedValue(undefined);
   mocks.run.mockResolvedValue(undefined);
   mocks.list.mockResolvedValue(fixture.page);
   mocks.get.mockResolvedValue({ bytes: new Uint8Array([1, 2, 3, 4]), contentType: 'image/png' });
   mocks.request.mockImplementation(defaultResponse);
+});
+afterEach(() => {
+  uiI18n.global.locale.value = 'zh-CN';
 });
 function setup() {
   return mount(GalleryTransferDialog, {
@@ -77,6 +84,59 @@ function deferredPage() {
 }
 
 describe('S3 gallery mapping', () => {
+  it.each(['backendMissing', 'extensionMissing'] as const)(
+    'guides %s to settings and preserves requestId without exposing translation keys',
+    async (kind) => {
+      mocks.list.mockRejectedValueOnce(new GatewayException(errorFixture[kind], errorFixture.requestId));
+      const wrapper = setup();
+      await scan(wrapper);
+      const notice = wrapper.get('[role="alert"]');
+      expect(notice.text()).toContain('请先在设置中配置 S3 素材存储。');
+      expect(notice.text()).toContain(errorFixture.requestId);
+      expect(notice.text()).not.toContain('errors.codes.');
+      expect(notice.get('a').attributes('href')).toBe('#/settings');
+      expect(notice.get('a').text()).toBe('S3 素材存储');
+      uiI18n.global.locale.value = 'en-US';
+      await flushPromises();
+      expect(notice.text()).toContain('Configure S3 asset storage in Settings first.');
+      expect(notice.get('a').text()).toBe('S3 asset storage');
+      expect(mocks.preview).not.toHaveBeenCalled();
+      expect(mocks.createTask).not.toHaveBeenCalled();
+      wrapper.unmount();
+    }
+  );
+  it('uses a readable fallback for unknown S3 errors without exposing internal details', async () => {
+    mocks.list.mockRejectedValueOnce(new GatewayException(errorFixture.unknown, errorFixture.requestId));
+    const wrapper = setup();
+    await scan(wrapper);
+    const notice = wrapper.get('[role="alert"]');
+    expect(notice.text()).toContain('S3 操作失败。');
+    expect(notice.text()).toContain(errorFixture.unknown.code);
+    expect(notice.text()).not.toContain('errors.codes.');
+    expect(notice.text()).not.toContain(errorFixture.unknown.message);
+    expect(notice.find('a').exists()).toBe(false);
+    uiI18n.global.locale.value = 'en-US';
+    await flushPromises();
+    expect(notice.text()).toContain('S3 operation failed.');
+    wrapper.unmount();
+  });
+  it('also explains missing S3 configuration when previewing an export', async () => {
+    mocks.preview.mockRejectedValueOnce(new GatewayException(errorFixture.backendMissing));
+    const wrapper = setup();
+    await wrapper.setProps({ mode: 'export', photos: photoFixture.responses.listPhotos.items.slice(0, 1) });
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'S3')
+      ?.trigger('click');
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '导出到 S3')
+      ?.trigger('click');
+    await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toContain('请先在设置中配置 S3 素材存储。');
+    expect(mocks.createTask).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
   it('rejects oversized ZIPs before allocating or reading their bytes', async () => {
     const wrapper = setup();
     const read = vi.fn();

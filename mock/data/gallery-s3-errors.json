@@ -1,0 +1,18 @@
+{
+  "requestId": "b6825298-75bc-4066-b3ec-5746fa6c5101",
+  "backendMissing": {
+    "code": "S3_STORAGE_NOT_CONFIGURED",
+    "message": "请先在设置中配置 S3 存储",
+    "retryable": false
+  },
+  "extensionMissing": {
+    "code": "S3_NOT_CONFIGURED",
+    "message": "S3_NOT_CONFIGURED",
+    "retryable": false
+  },
+  "unknown": {
+    "code": "S3_UNRECOGNIZED_FAILURE",
+    "message": "Internal storage implementation detail",
+    "retryable": false
+  }
+}

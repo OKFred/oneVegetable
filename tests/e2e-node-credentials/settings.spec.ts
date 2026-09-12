@@ -90,5 +90,32 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     await panel.getByRole('button', { name: en ? 'Clear configuration' : '清除配置', exact: true }).click();
     await clear.getByRole('button', { name: en ? 'Confirm' : '确认', exact: true }).click();
     await expect(panel.getByText(en ? 'Not configured' : '尚未配置', { exact: true })).toBeVisible();
+
+    // Exercise the actual BFF missing-S3 response, not an intercepted error or a live storage account.
+    await page.goto('/#/photos');
+    await page.getByRole('button', { name: en ? 'Import' : '导入', exact: true }).click();
+    const galleryImport = page.getByRole('dialog', {
+      name: en ? 'Import gallery assets' : '导入图库素材',
+      exact: true
+    });
+    await galleryImport.getByRole('button', { name: 'S3', exact: true }).click();
+    const scanResponse = page.waitForResponse((response) =>
+      response.url().endsWith('/admin/storage/s3/objects/list')
+    );
+    await galleryImport.getByRole('button', { name: en ? 'Scan S3' : '扫描 S3', exact: true }).click();
+    expect((await scanResponse).ok()).toBe(false);
+    const error = galleryImport.getByRole('alert');
+    await expect(error).toContainText(
+      en ? 'Configure S3 asset storage in Settings first.' : '请先在设置中配置 S3 素材存储。'
+    );
+    await expect(error).toContainText('S3_STORAGE_NOT_CONFIGURED');
+    await expect(error).not.toContainText('errors.codes.');
+    await error
+      .getByRole('link', { name: en ? 'S3 asset storage' : 'S3 素材存储', exact: true })
+      .scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `artifacts/gallery-s3-error-${locale}.png` });
+    await error.getByRole('link', { name: en ? 'S3 asset storage' : 'S3 素材存储', exact: true }).click();
+    await expect(page).toHaveURL(/\/#\/settings$/u);
+    await expect(galleryImport).toBeHidden();
   });
 }

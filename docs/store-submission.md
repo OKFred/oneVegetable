@@ -1,6 +1,6 @@
 # Chrome Web Store 提交清单
 
-检查日期：2026-09-11；当前候选版本：2.6.0。2.5.0 已由项目所有者确认上架；本文件不表示 2.6.0 已上传、提交审核或发布。
+检查日期：2026-09-12；当前候选版本：2.6.0。2.5.0 已由项目所有者确认上架；本文件不表示 2.6.0 已上传、提交审核或发布。
 
 ## 已自动化验证
 
@@ -88,7 +88,7 @@ pnpm upload:extension:draft -- --confirm-draft-upload
 
 ## 2.6.0 候选上传交接
 
-- 候选 ZIP：`artifacts/one-vegetable-v2.6.0-chrome-mv3.zip`，986,342 字节；SHA-256 `e4fe497bd04d80fa687f49eec25d467e8890a46278b4f3a20cc6dc4987e2dd3d`。正式发布标记变化后需重新打包，以新的 `.zip.sha256` 为准，不混用历史同名 ZIP。
+- 候选 ZIP：`artifacts/one-vegetable-v2.6.0-chrome-mv3.zip`，986,406 字节；SHA-256 `c8df835c4f57ffed035da876d171cd4568902bfce126944fc20a45edae38333e`。已含 09-12 S3 错误提示补丁。正式发布标记变化后需重新打包，以新的 `.zip.sha256` 为准，不混用历史同名 ZIP。
 - 中英文完整说明：`store-listing/zh_CN.md`、`store-listing/en.md`；权限与数据用途：`store-listing/listing.json`。打包后的副本位于 `artifacts/store-listing/`。
 - 截图：`store-listing/assets/screenshots/zh-CN/`、`en-US/` 各 4 张，1280 × 800。全部来自 2.6.0 正式扩展构建的空白 Profile；没有开发凭据、测试账号或虚构商品。原 Small promo tile 与图标可继续使用。
 - 本版不新增 Manifest 权限。更新商店功能描述中的图库任务恢复、列表可选列和橱窗管理；权限用途继续按现有声明填写。Node 凭据管理属于 Web/BFF，不宣传为插件新增的后端必需条件。
