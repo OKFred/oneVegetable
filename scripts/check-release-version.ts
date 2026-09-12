@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { assertStoreListingVersion } from './lib/extension-package-budget';
 
 import {
   releaseTagFromArguments,
@@ -18,6 +19,10 @@ const packageFiles = [
 ] as const;
 const tagName = releaseTagFromArguments(process.argv.slice(2), process.env.GITHUB_REF_NAME);
 const packages = await Promise.all(packageFiles.map((fileName) => readPackageVersion(fileName)));
+assertStoreListingVersion(
+  packages[0]?.version ?? '',
+  JSON.parse(await readFile(resolve(root, 'store-listing/listing.json'), 'utf8')) as unknown
+);
 const issues = releaseVersionIssues(tagName, packages);
 
 if (issues.length > 0) {

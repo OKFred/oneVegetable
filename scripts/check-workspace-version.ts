@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { assertStoreListingVersion } from './lib/extension-package-budget';
 
 interface PackageManifest {
   name: string;
@@ -18,6 +19,10 @@ const packageFiles = [
 
 const manifests = await Promise.all(packageFiles.map((fileName) => readManifest(fileName)));
 const rootVersion = manifests[0].version;
+assertStoreListingVersion(
+  rootVersion,
+  JSON.parse(await readFile(resolve(root, 'store-listing/listing.json'), 'utf8')) as unknown
+);
 const mismatches = manifests.filter(({ version }) => version !== rootVersion);
 
 if (mismatches.length > 0) {

@@ -3,6 +3,7 @@ import { copyFile, cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'nod
 import { basename, resolve } from 'node:path';
 
 import { unzipSync, zipSync, type Zippable } from 'fflate';
+import { assertExtensionZipBudget, assertStoreListingVersion } from './lib/extension-package-budget';
 
 interface PackageManifest {
   version: string;
@@ -15,6 +16,10 @@ const manifest = JSON.parse(
   await readFile(resolve(extensionOutput, 'manifest.json'), 'utf8')
 ) as PackageManifest;
 const rootPackage = JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8')) as PackageManifest;
+assertStoreListingVersion(
+  rootPackage.version,
+  JSON.parse(await readFile(resolve(root, 'store-listing/listing.json'), 'utf8')) as unknown
+);
 const extensionPackage = JSON.parse(
   await readFile(resolve(root, 'apps/extension/package.json'), 'utf8')
 ) as PackageManifest;
@@ -33,6 +38,8 @@ for (const file of files) {
 }
 
 const archive = zipSync(zippable, { level: 9, mtime: fixedMtime });
+// Fail before modifying any existing release artifact.
+assertExtensionZipBudget(archive.byteLength);
 const verificationArchive = zipSync(zippable, { level: 9, mtime: fixedMtime });
 if (!Buffer.from(archive).equals(Buffer.from(verificationArchive))) {
   throw new Error('Extension ZIP is not reproducible within the same build.');
