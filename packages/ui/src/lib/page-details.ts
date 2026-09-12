@@ -2,12 +2,13 @@ import { onScopeDispose, ref, shallowRef, watch, type Ref } from 'vue';
 import { describeUserVisibleError } from '@one-vegetable/core';
 import type {
   GatewayClient,
+  ProductInventorySnapshot,
   ProductScore,
   TradeOrderAggregate,
   TradeOrderSummary
 } from '@one-vegetable/core';
 
-type Detail = ProductScore | TradeOrderAggregate;
+type Detail = ProductScore | TradeOrderAggregate | ProductInventorySnapshot;
 interface Entry {
   at: number;
   data: Detail;
@@ -40,8 +41,12 @@ export async function requestPageDetail(
   gateway: GatewayClient,
   mode: string,
   language: string,
-  request: { kind: 'score'; id: string } | { kind: 'order'; order: TradeOrderSummary },
-  expectedIdentity?: string
+  request:
+    | { kind: 'score'; id: string }
+    | { kind: 'order'; order: TradeOrderSummary }
+    | { kind: 'inventory'; id: string; source: 'product' | 'sku' },
+  expectedIdentity?: string,
+  refresh = false
 ): Promise<Detail> {
   let store = stores.get(gateway);
   if (!store) {
@@ -59,26 +64,40 @@ export async function requestPageDetail(
     identity,
     language,
     request.kind,
-    request.kind === 'score' ? request.id : request.order.id
+    request.kind === 'order' ? request.order.id : request.id,
+    request.kind === 'inventory' ? request.source : null
   ]);
   const cached = store.cache.get(key);
-  if (cached && Date.now() - cached.at < 300_000) return cached.data;
+  if (!refresh && cached && Date.now() - cached.at < 300_000) return cached.data;
   const pending = store.pending.get(key);
   if (pending) return pending;
   const capturedStore = store;
   const job = (async () => {
     const options = context ? { galleryContext: context } : undefined;
     const data =
-      request.kind === 'score'
-        ? await gateway.request('getProductScore', { productId: request.id }, options)
-        : await gateway.request('getTradeOrderAggregate', { order: request.order }, options);
+      request.kind === 'inventory'
+        ? await gateway.request(
+            'getProductInventory',
+            {
+              productId: request.id,
+              source: request.source,
+              language: language === 'zh_CN' ? 'zh_CN' : 'en_US'
+            },
+            options
+          )
+        : request.kind === 'score'
+          ? await gateway.request('getProductScore', { productId: request.id }, options)
+          : await gateway.request('getTradeOrderAggregate', { order: request.order }, options);
     const latest = await gateway.galleryTransferContext?.();
     if (context && JSON.stringify([latest?.identity, latest?.gateway]) !== identity)
       throw new Error('GALLERY_CONTEXT_CHANGED');
     for (const [oldKey, entry] of capturedStore.cache)
       if (Date.now() - entry.at >= 300_000) capturedStore.cache.delete(oldKey);
     if (capturedStore.cache.size >= 500) capturedStore.cache.clear();
-    if (!('order' in data) || (data.fund && data.logistics))
+    if (
+      (!('order' in data) || (data.fund && data.logistics)) &&
+      (!('records' in data) || data.status === 'ready' || data.status === 'no-data')
+    )
       capturedStore.cache.set(key, { at: Date.now(), data });
     return data;
   })();
@@ -156,7 +175,7 @@ export function usePageDetails<T>(
           failed++;
           errors.value = { ...errors.value, [key]: error };
           states.value = { ...states.value, [key]: 'failed' };
-          const code = detailErrorCode(error);
+          const code = detailErrorCode(error).toUpperCase();
           if (/SESSION|AUTH|TOKEN|CREDENTIAL|PERMISSION|CONTEXT|VAULT|FORBIDDEN/.test(code)) {
             securityFailure.value = true;
             stop();

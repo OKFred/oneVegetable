@@ -13,6 +13,12 @@ import {
 import { toast } from 'vue-sonner';
 import { useProductShowcase, type ShowcaseTarget } from '../lib/product-showcase';
 import { useShowcaseI18n } from '../i18n/showcase';
+import { useInventoryI18n } from '../i18n/inventory';
+import { useProductInventory } from '../lib/product-inventory';
+const ProductInventoryDrawer = defineAsyncComponent(() => import('../components/ProductInventoryDrawer.vue'));
+const it = useInventoryI18n();
+const inventoryColumnIds = ['inventoryRecordCount', 'inventoryState', 'inventoryQueriedAt'] as const;
+const inventoryColumnsVisible = ref(false);
 
 const ProductShowcaseDrawer = defineAsyncComponent(() => import('../components/ProductShowcaseDrawer.vue'));
 const showcase = useProductShowcase();
@@ -690,6 +696,15 @@ const pageDetails = usePageDetails(
   },
   () => pageDetailIdentity(gateway, mode)
 );
+const inventory = useProductInventory(gateway, mode, language, currentPageProducts, detailBoundary);
+async function querySelectedInventory(): Promise<void> {
+  const result = await inventory.load(false, selectedProducts.value);
+  if (result) toast(it('summary', result));
+}
+async function retryInventory(): Promise<void> {
+  const result = await inventory.load(true);
+  if (result) toast(it('summary', result));
+}
 watch(detailBoundary, () => {
   productScores.value = {};
   productScoreErrors.value = {};
@@ -1430,6 +1445,25 @@ function productSelectionCell(product: Product) {
   });
 }
 
+const inventoryTableColumns = computed<DataColumn<Product>[]>(() =>
+  inventoryColumnIds.map((id): DataColumn<Product> => ({
+    id,
+    header: it(id),
+    meta: { width: id === 'inventoryQueriedAt' ? '180px' : '140px' },
+    cell: ({ row }) => {
+      const result = inventory.snapshots.value[row.original.id];
+      if (inventory.states.value[row.original.id] === 'loading') return it('loading');
+      if (!result)
+        return inventory.errors.value[row.original.id]
+          ? it(detailErrorState(inventory.errors.value[row.original.id]))
+          : it('pending');
+      if (id === 'inventoryState') return it(result.status);
+      if (id === 'inventoryQueriedAt')
+        return h('span', { class: 'whitespace-nowrap tabular-nums' }, formatDateTime(result.queriedAt));
+      return result.status === 'ready' ? String(result.records.length) : it(result.status);
+    }
+  }))
+);
 const columns = computed<DataColumn<Product>[]>(() => [
   {
     id: 'select',
@@ -1571,6 +1605,7 @@ const columns = computed<DataColumn<Product>[]>(() => [
     cell: (context) =>
       h('span', { class: 'whitespace-nowrap tabular-nums' }, formatDateTime(context.getValue<string>()))
   },
+  ...inventoryTableColumns.value,
   ...productExtraFields.map((id) =>
     fieldColumn<Product>(id, t(`common.fields.${id}`), (row) => row[id], [
       t('common.fields.yes'),
@@ -1603,6 +1638,17 @@ const columns = computed<DataColumn<Product>[]>(() => [
     header: t('products.view.columns.actions'),
     cell: ({ row }) =>
       h('div', { class: 'flex items-center gap-2 whitespace-nowrap' }, [
+        h(
+          Button,
+          {
+            size: 'sm',
+            variant: 'outline',
+            onClick: () => {
+              inventory.selected.value = row.original;
+            }
+          },
+          () => it('title')
+        ),
         row.original.detailUrl
           ? h(
               'a',
@@ -1632,7 +1678,7 @@ const columns = computed<DataColumn<Product>[]>(() => [
           () => t('products.view.edit')
         )
       ]),
-    meta: { sticky: 'right', stickyOffset: '0px', stickyBoundary: true, width: '160px' }
+    meta: { sticky: 'right', stickyOffset: '0px', stickyBoundary: true, width: '230px' }
   }
 ]);
 
@@ -2412,6 +2458,12 @@ onBeforeUnmount(() => {
                     >
                     <DropdownMenuSeparator class="my-1 h-px bg-border" />
                     <DropdownMenuItem
+                      class="flex cursor-pointer items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent data-[disabled]:opacity-50"
+                      :disabled="selectedProducts.length === 0 || inventory.busy.value"
+                      @select="querySelectedInventory"
+                      >{{ it('batch') }}</DropdownMenuItem
+                    >
+                    <DropdownMenuItem
                       class="flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
                       :disabled="
                         selectedProducts.length === 0 ||
@@ -2450,6 +2502,21 @@ onBeforeUnmount(() => {
             >
           </div>
         </div>
+        <div
+          v-if="
+            !inventoryColumnsVisible &&
+            (inventory.busy.value || Object.keys(inventory.errors.value).length > 0)
+          "
+          class="flex items-center justify-end gap-2 border-x px-3 py-1 text-xs"
+        >
+          <span aria-live="polite">{{
+            it('progress', { done: inventory.done.value, total: inventory.total.value })
+          }}</span>
+          <Button v-if="inventory.busy.value" variant="outline" size="sm" @click="inventory.stop">{{
+            it('stop')
+          }}</Button>
+          <Button v-else variant="outline" size="sm" @click="retryInventory">{{ it('retry') }}</Button>
+        </div>
         <ErrorNotice v-if="batchDisplay.error.value" class="mb-3" :error="batchDisplay.error.value" compact />
         <QueryState
           :loading="products.isPending.value"
@@ -2462,7 +2529,13 @@ onBeforeUnmount(() => {
             column-settings-key="products"
             class="rounded-t-none"
             :locked-columns="['select', 'subject', 'actions']"
-            :hidden-columns="[...productExtraFields, 'watermark', 'scoreIssues', 'showcase']"
+            :hidden-columns="[
+              ...productExtraFields,
+              ...inventoryColumnIds,
+              'watermark',
+              'scoreIssues',
+              'showcase'
+            ]"
             :data="products.data.value?.items ?? []"
             :page="productPage"
             :page-size="productPageSize"
@@ -2472,7 +2545,10 @@ onBeforeUnmount(() => {
             min-width="1320px"
             @update:page="setProductPage"
             @update:page-size="setProductPageSize"
-            @visible-columns-change="showcaseColumnVisible = $event.includes('showcase')"
+            @visible-columns-change="
+              showcaseColumnVisible = $event.includes('showcase');
+              inventoryColumnsVisible = inventoryColumnIds.some((id) => $event.includes(id));
+            "
           >
             <template #empty>
               <div class="space-y-3 py-4">
@@ -2486,6 +2562,17 @@ onBeforeUnmount(() => {
               </div>
             </template>
             <template #column-actions="{ visible }">
+              <PageDetailActions
+                v-if="inventoryColumnsVisible"
+                :page-key="JSON.stringify([detailBoundary, inventory.source.value, currentPageProductIds])"
+                :busy="inventory.busy.value"
+                :done="inventory.done.value"
+                :total="inventory.total.value"
+                :count="currentPageProducts.length"
+                :failed="Object.keys(inventory.errors.value).length > 0"
+                :load="inventory.load"
+                @stop="inventory.stop"
+              />
               <PageDetailActions
                 v-if="visible.includes('productScore') || visible.includes('scoreIssues')"
                 :page-key="JSON.stringify([detailBoundary, currentPageProducts.map((product) => product.id)])"
@@ -2978,6 +3065,17 @@ onBeforeUnmount(() => {
     :controller="showcase"
     :selection="showcaseSelection"
     :action="showcaseAction"
+  />
+  <ProductInventoryDrawer
+    v-if="inventory.selected.value"
+    :product="inventory.selected.value"
+    :snapshot="inventory.snapshots.value[inventory.selected.value.id]"
+    :error="inventory.errors.value[inventory.selected.value.id]"
+    :busy="inventory.busy.value"
+    :source="inventory.source.value"
+    @close="inventory.selected.value = null"
+    @source="inventory.source.value = $event"
+    @refresh="inventory.refreshSelected"
   />
 
   <ConfirmActionDialog

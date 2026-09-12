@@ -8,6 +8,8 @@ import showcaseFixture from '../../mock/data/showcase-management.json' with { ty
 import showcaseProducts from '../../mock/data/showcase-enhancements.json' with { type: 'json' };
 import postingTypeFixture from '../../mock/data/product-type-available.json' with { type: 'json' };
 import capabilityWorkerFixture from '../../mock/data/capability-worker.json' with { type: 'json' };
+import inventoryFixture from '../../mock/data/product-inventory.json' with { type: 'json' };
+import skuInventoryFixture from '../../mock/data/product-sku-inventory.json' with { type: 'json' };
 import { MockGatewayClient } from '../../packages/core/src/mock-client';
 import {
   getCapabilityDefinition,
@@ -436,6 +438,68 @@ test('formal MV3 workbench supports persistent columns and automatic detail load
     ).chrome.storage.local.clear();
   });
   await page.close();
+});
+
+test('formal MV3 dedicated inventory survives worker restart with no writes', async () => {
+  if (!context) throw new Error('Missing extension context');
+  const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+  const methods: string[] = [];
+  await context.route('https://eco.taobao.com/**', async (route) => {
+    const method = new URLSearchParams(route.request().postData() ?? '').get('method') ?? '';
+    methods.push(method);
+    expect([inventoryFixture.method, skuInventoryFixture.method]).toContain(method);
+    await route.fulfill({
+      json: method === inventoryFixture.method ? inventoryFixture.response : skuInventoryFixture.response
+    });
+  });
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#/settings`);
+  const guide = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
+  await guide.getByRole('checkbox').check();
+  await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
+  await page.getByLabel('App Key').fill('e2e-app-key');
+  await page.getByLabel('App Secret').fill('e2e-secret');
+  await page.getByLabel('Access Token').fill('e2e-token');
+  await page.getByLabel('设置保护口令').fill('e2e-vault-password');
+  await page.getByLabel('确认保护口令').fill('e2e-vault-password');
+  await page.getByRole('button', { name: '保存设置', exact: true }).click();
+  await expect(
+    page.getByText('凭证与设置已加密保存，并将在当前 Chrome 会话内保持可用。').first()
+  ).toBeVisible();
+  async function query(source: 'product' | 'sku', productId = '10000001') {
+    return page.evaluate(
+      async (payload) => {
+        const runtime = (
+          globalThis as unknown as {
+            chrome: { runtime: { sendMessage(message: unknown): Promise<unknown> } };
+          }
+        ).chrome.runtime;
+        return runtime.sendMessage({
+          requestId: crypto.randomUUID(),
+          kind: 'gateway-request',
+          operation: 'getProductInventory',
+          payload
+        });
+      },
+      { productId, source, language: 'en_US' }
+    );
+  }
+  expect(await query('product', 'invalid')).toMatchObject({
+    ok: false,
+    error: { code: 'REQUEST_CONTRACT_INVALID' }
+  });
+  expect(methods).toHaveLength(0);
+  expect(await query('product')).toMatchObject({ ok: true, data: { status: 'ready', source: 'product' } });
+  expect(await query('sku')).toMatchObject({ ok: true, data: { status: 'ready', source: 'sku' } });
+  const before = await worker.evaluate(() => performance.timeOrigin);
+  const internals = await context.newPage();
+  await internals.goto('chrome://serviceworker-internals');
+  await internals.getByText('Stop', { exact: true }).click();
+  await expect(internals.locator('body')).toContainText('STOPPED');
+  expect(await query('product')).toMatchObject({ ok: true, data: { status: 'ready' } });
+  const restarted = context.serviceWorkers().at(-1) ?? (await context.waitForEvent('serviceworker'));
+  expect(await restarted.evaluate(() => performance.timeOrigin)).toBeGreaterThan(before);
+  expect(methods).toEqual([inventoryFixture.method, skuInventoryFixture.method, inventoryFixture.method]);
 });
 
 test.setTimeout(90_000);

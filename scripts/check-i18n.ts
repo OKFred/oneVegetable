@@ -2,6 +2,8 @@ import { readdir, readFile } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
 
 import { enUS } from '../packages/ui/src/i18n/messages/en-US/index';
+import { inventory as inventoryZh } from '../packages/ui/src/i18n/messages/zh-CN/inventory';
+import { inventory as inventoryEn } from '../packages/ui/src/i18n/messages/en-US/inventory';
 import { zhCN } from '../packages/ui/src/i18n/messages/zh-CN/index';
 import { showcase as showcaseZh } from '../packages/ui/src/i18n/messages/zh-CN/showcase';
 import { showcase as showcaseEn } from '../packages/ui/src/i18n/messages/en-US/showcase';
@@ -33,6 +35,7 @@ const hardcodedHanAllowlist: Readonly<Record<string, readonly RegExp[]>> = {
 
 const errors = [
   ...compareCatalogs(zhCN, enUS),
+  ...compareCatalogs(inventoryZh, inventoryEn),
   ...compareCatalogs(showcaseZh, showcaseEn),
   ...compareCatalogs(postingZh, postingEn),
   ...compareCatalogs(credentialsZh, credentialsEn),

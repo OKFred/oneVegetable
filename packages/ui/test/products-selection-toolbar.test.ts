@@ -36,7 +36,8 @@ describe('ProductsView selection toolbar', () => {
     expect(link.attributes('target')).toBe('_blank');
     expect(link.attributes('rel')).toBe('noopener noreferrer');
     expect(link.attributes('title')).toContain('10000001');
-    expect(link.element.parentElement?.textContent).toBe('链接编辑');
+    expect(link.element.parentElement?.textContent).toBe('库存链接编辑');
+    expect(request.mock.calls.some(([operation]) => operation === 'getProductInventory')).toBe(false);
     expect(wrapper.get('tbody tr td:nth-child(3)').text()).not.toContain('10000001');
     expect(request.mock.calls.some(([operation]) => operation === 'getProductScore')).toBe(true);
     wrapper.unmount();

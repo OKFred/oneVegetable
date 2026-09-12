@@ -52,7 +52,7 @@ test('product action link and per-table column preferences persist without chang
     'noopener noreferrer'
   );
   const actionCell = table.locator('tbody tr').first().locator('td').last();
-  await expect(actionCell).toHaveText('链接编辑');
+  await expect(actionCell).toHaveText('库存链接编辑');
   await expect(actionCell.getByRole('link', { name: '链接', exact: true })).toHaveCSS(
     'border-top-style',
     'solid'
