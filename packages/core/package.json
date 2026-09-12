@@ -9,6 +9,7 @@
     "./credential-bundle": "./src/alibaba-credential-bundle.ts",
     "./gateway-credential-validators": "./src/gateway-credential-validation.ts",
     "./diagnostics": "./src/diagnostics.ts",
+    "./capability-validation-worker": "./src/capability-validation-worker.ts",
     "./errors": "./src/errors.ts",
     "./showcase": "./src/product-showcase.ts",
     "./gallery-transfer-task": "./src/gallery-transfer-task.ts",

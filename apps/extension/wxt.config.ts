@@ -11,6 +11,26 @@ export default defineConfig({
     },
     plugins: [tailwindcss()]
   }),
+  hooks: {
+    'vite:build:extendConfig'(entrypoints, config) {
+      // Only the ESM group can split modules. Content scripts stay single-file.
+      if (!entrypoints.some((entry) => entry.type === 'background')) return;
+      config.build ??= {};
+      config.build.rollupOptions ??= {};
+      const output = config.build.rollupOptions.output;
+      if (Array.isArray(output)) throw new Error('Expected one MV3 ESM output');
+      config.build.rollupOptions.output = {
+        ...output,
+        manualChunks(id) {
+          const match =
+            /\/generated\/(validators-(?:product|rfq|trade|logistics|insights|photo|platform))\.ts$/.exec(
+              id.replaceAll('\\', '/')
+            );
+          return match?.[1];
+        }
+      };
+    }
+  },
   manifest: {
     name: '__MSG_extName__',
     version: rootPackage.version,

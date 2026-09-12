@@ -35,8 +35,6 @@ import {
   ProductShowcaseAdapter,
   RfqAdapter,
   TradeAdapter,
-  validateCapabilityRequest,
-  validateCapabilityResponse,
   validateProductDisplayInput,
   validateProductGroupCreateInput,
   validateProductSchemaUpdateInput,
@@ -61,6 +59,10 @@ import {
   type RuntimeRequest,
   type RuntimeResponse
 } from '@one-vegetable/core';
+import {
+  validateCapabilityRequest,
+  validateCapabilityResponse
+} from '@one-vegetable/core/capability-validation-worker';
 import { ExtensionAlibabaCredentialAcquisitionController } from '../lib/alibaba-credential-acquisition';
 import { ExtensionCredentialVaultSession } from '../lib/credential-vault-session';
 import { resolveExtensionOperationAvailability } from '../lib/operation-policy';

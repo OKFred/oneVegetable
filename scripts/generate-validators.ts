@@ -62,16 +62,6 @@ const coreValidators: Record<string, object | undefined> = {
 const domains: CapabilityDomain[] = ['product', 'rfq', 'trade', 'logistics', 'insights', 'photo', 'platform'];
 const targets = new Map<string, string>();
 targets.set(
-  'validators-product-posting.ts',
-  compileValidators(
-    {
-      validateProductPostingTypeRequest: schemas.AlibabaProductAlibabaIcbuProductTypeAvailableGetRequest,
-      validateProductPostingTypeResponse: schemas.AlibabaProductAlibabaIcbuProductTypeAvailableGetResponse
-    },
-    'fast'
-  )
-);
-targets.set(
   'validators-gateway-credentials.ts',
   compileValidators(
     {

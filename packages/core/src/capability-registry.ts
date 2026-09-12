@@ -1,9 +1,4 @@
-import type { ErrorObject } from 'ajv';
-import {
-  validateProductPostingTypeRequest,
-  validateProductPostingTypeResponse
-} from './generated/validators-product-posting';
-
+export { validateCapabilityRequest, validateCapabilityResponse } from './capability-validation-lazy';
 import { API_CAPABILITIES } from './generated/capabilities';
 import { PRODUCT_CAPABILITY_DEFINITIONS } from './generated/product-capabilities';
 import { RFQ_CAPABILITY_DEFINITIONS } from './generated/rfq-capabilities';
@@ -14,18 +9,12 @@ import { PHOTO_CAPABILITY_DEFINITIONS } from './generated/photo-capabilities';
 import { PLATFORM_CAPABILITY_DEFINITIONS } from './generated/platform-capabilities';
 import type {
   ApiCapability,
-  CapabilityContractIssue,
   CapabilityDefinition,
   CapabilityRequestMap,
   CapabilityResponseEnvelope,
   CapabilityResponseMap,
   GatewayClient
 } from './types';
-
-interface StandaloneValidator {
-  (value: unknown): boolean;
-  errors?: ErrorObject[] | null;
-}
 
 export type ProductCapabilityMethod = keyof typeof PRODUCT_CAPABILITY_DEFINITIONS;
 export type RfqCapabilityMethod = keyof typeof RFQ_CAPABILITY_DEFINITIONS;
@@ -59,65 +48,6 @@ const methods: CapabilityMethod[] = [
   ...photoMethods,
   ...platformMethods
 ];
-type ValidatorModule = Record<string, unknown>;
-
-async function validatorFor(
-  method: string,
-  kind: 'Request' | 'Response'
-): Promise<StandaloneValidator | null> {
-  // This read is part of extension onboarding for a new product. MV3 cannot
-  // execute the page-oriented dynamic-import preload/error helper; keep these
-  // two tiny, generated validators static (without making every domain eager).
-  if (method === 'alibaba.icbu.product.type.available.get')
-    return kind === 'Request' ? validateProductPostingTypeRequest : validateProductPostingTypeResponse;
-  const productIndex = productMethods.indexOf(method as ProductCapabilityMethod);
-  const rfqIndex = rfqMethods.indexOf(method as RfqCapabilityMethod);
-  const tradeIndex = tradeMethods.indexOf(method as TradeCapabilityMethod);
-  const logisticsIndex = logisticsMethods.indexOf(method as LogisticsCapabilityMethod);
-  const insightsIndex = insightsMethods.indexOf(method as InsightsCapabilityMethod);
-  const photoIndex = photoMethods.indexOf(method as PhotoCapabilityMethod);
-  const platformIndex = platformMethods.indexOf(method as PlatformCapabilityMethod);
-  const validators: ValidatorModule =
-    productIndex >= 0
-      ? await import('./generated/validators-product')
-      : rfqIndex >= 0
-        ? await import('./generated/validators-rfq')
-        : tradeIndex >= 0
-          ? await import('./generated/validators-trade')
-          : logisticsIndex >= 0
-            ? await import('./generated/validators-logistics')
-            : insightsIndex >= 0
-              ? await import('./generated/validators-insights')
-              : photoIndex >= 0
-                ? await import('./generated/validators-photo')
-                : platformIndex >= 0
-                  ? await import('./generated/validators-platform')
-                  : {};
-  const candidate =
-    productIndex >= 0
-      ? validators[`validateProductCapability${productIndex}${kind}`]
-      : rfqIndex >= 0
-        ? validators[`validateRfqCapability${rfqIndex}${kind}`]
-        : tradeIndex >= 0
-          ? validators[`validateTradeCapability${tradeIndex}${kind}`]
-          : logisticsIndex >= 0
-            ? validators[`validateLogisticsCapability${logisticsIndex}${kind}`]
-            : insightsIndex >= 0
-              ? validators[`validateInsightsCapability${insightsIndex}${kind}`]
-              : photoIndex >= 0
-                ? validators[`validatePhotoCapability${photoIndex}${kind}`]
-                : validators[`validatePlatformCapability${platformIndex}${kind}`];
-  return typeof candidate === 'function' ? (candidate as StandaloneValidator) : null;
-}
-
-function issuesOf(errors: ErrorObject[] | null | undefined): CapabilityContractIssue[] {
-  return (errors ?? []).map((error) => ({
-    instancePath: error.instancePath || '/',
-    keyword: error.keyword,
-    message: error.message ?? '契约校验失败'
-  }));
-}
-
 export function isProductCapabilityMethod(method: string): method is ProductCapabilityMethod {
   return method in PRODUCT_CAPABILITY_DEFINITIONS;
 }
@@ -184,24 +114,6 @@ export function listCapabilityDefinitions(): CapabilityDefinition[] {
     const definition = getCapabilityDefinition(method);
     return definition ? [definition] : [];
   });
-}
-
-export async function validateCapabilityRequest(
-  method: string,
-  parameters: unknown
-): Promise<CapabilityContractIssue[]> {
-  const validator = await validatorFor(method, 'Request');
-  if (!validator || validator(parameters)) return [];
-  return issuesOf(validator.errors);
-}
-
-export async function validateCapabilityResponse(
-  method: string,
-  data: unknown
-): Promise<CapabilityContractIssue[]> {
-  const validator = await validatorFor(method, 'Response');
-  if (!validator || validator(data)) return [];
-  return issuesOf(validator.errors);
 }
 
 function articleCapabilities(): ApiCapability[] {
