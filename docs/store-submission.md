@@ -88,19 +88,19 @@ pnpm upload:extension:draft -- --confirm-draft-upload
 
 ## 2.6.0 候选上传交接
 
-- 候选 ZIP：`artifacts/one-vegetable-v2.6.0-chrome-mv3.zip`，986,558 字节；SHA-256 `1c8a9541061b6a2999f13f06dda9039495a5b74001ba1e3b7bf2040571e64590`。已含 09-12 S3 缺少配置及本地 HTTP 提示补丁。正式发布标记变化后需重新打包，以新的 `.zip.sha256` 为准，不混用历史同名 ZIP。
+- 候选 ZIP：`artifacts/one-vegetable-v2.6.0-chrome-mv3.zip`，986,893 字节；SHA-256 `3acd177478d685578faef9fd8a44a43b38cf8ff808d3f8100f57d17d8e9cc72c`。已含 09-12 S3 缺少配置、本地 HTTP 提示和图库刷新补丁。正式发布标记变化后需重新打包，以新的 `.zip.sha256` 为准，不混用历史同名 ZIP。
 - 中英文完整说明：`store-listing/zh_CN.md`、`store-listing/en.md`；权限与数据用途：`store-listing/listing.json`。打包后的副本位于 `artifacts/store-listing/`。
 - 截图：`store-listing/assets/screenshots/zh-CN/`、`en-US/` 各 4 张，1280 × 800。全部来自 2.6.0 正式扩展构建的空白 Profile；没有开发凭据、测试账号或虚构商品。原 Small promo tile 与图标可继续使用。
 - 本版不新增 Manifest 权限。更新商店功能描述中的图库任务恢复、列表可选列和橱窗管理；权限用途继续按现有声明填写。Node 凭据管理属于 Web/BFF，不宣传为插件新增的后端必需条件。
-- 2.5.0 和早期 2.6.0 到候选包的 28 项升级检查通过；刷新/重启不会丢失加密配置和草稿，中断传输需手工核对。升级会重新锁定保险库，用户应保留原口令。
+- 09-12 已对当前候选重新执行完整 `pnpm check`（946 项单测及三端构建）、38 项 Web/MV3 E2E、3 项 Worker 单测、2 项 BFF replay、2 项 Node 凭据 E2E和 28 项旧包升级检查；刷新/重启不会丢失加密配置和草稿，中断传输需手工核对。升级会重新锁定保险库，用户应保留原口令。
 - 无账号审核步骤沿用上节。真实任务需要用户自有的 Alibaba 权限和可选 S3 配置；正式商店材料不得附带本项目的真实授权包。新任务能力及真实验收边界见 [2.6.0 候选包验收](release-2.6.0-readiness.md)。
 - 本轮没有执行 Alibaba 写操作、远端数据库迁移、Worker 部署、Store 上传或提交审核；正式 tag/Release 与商店动作后续分别确认。
 
 可用于版本更新摘要（不是替代完整商店描述）：
 
-> 2.6.0 新增图库 ZIP/S3 传输记录、暂停与安全恢复，支持商品、图库和订单列表自定义显示列，以及商品橱窗管理。优化商品链接和表格布局；升级保留本机配置与草稿。发生中断或结果不明时提示手工核对，避免重复上传。未新增扩展权限；实际接口可用性仍取决于账号权限。
+> 2.6.0 新增图库 ZIP/S3 传输记录、暂停与安全恢复，支持商品、图库和订单列表自定义显示列，以及商品橱窗管理。优化商品链接、表格布局及 S3 配置提示，图库可一键刷新并保留当前视图；升级保留本机配置与草稿。发生中断或结果不明时提示手工核对，避免重复上传。未新增扩展权限；实际接口可用性仍取决于账号权限。
 
-> Version 2.6.0 adds gallery ZIP/S3 transfer history, pause and safe recovery, customizable columns for product, gallery and order lists, and product showcase management. Product links and table layouts are improved. Local settings and drafts are retained during upgrades. Interrupted or uncertain transfers require manual verification to avoid duplicate uploads. No new extension permissions; API availability still depends on account permissions.
+> Version 2.6.0 adds gallery ZIP/S3 transfer history, pause and safe recovery, customizable columns for product, gallery and order lists, and product showcase management. Product links, table layouts and S3 configuration guidance are improved, with a gallery refresh that preserves the current view. Local settings and drafts are retained during upgrades. Interrupted or uncertain transfers require manual verification to avoid duplicate uploads. No new extension permissions; API availability still depends on account permissions.
 
 ## 2.5.0 上传交接（历史记录，已上架）
 
