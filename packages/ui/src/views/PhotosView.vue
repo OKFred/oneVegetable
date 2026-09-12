@@ -7,6 +7,7 @@ import {
   FileInput,
   LayoutGrid,
   List as ListIcon,
+  RefreshCw,
   Settings2,
   Share2,
   ShieldCheck,
@@ -92,6 +93,8 @@ const galleryTransferMode = ref<'import' | 'export'>('export');
 const galleryTransferOpen = ref(false);
 const groupNavigationRevision = ref(0);
 const groupSidebarCollapsed = ref(false);
+const groupNavigation = ref<{ refresh: () => Promise<void> } | null>(null);
+const refreshPending = ref(false);
 const selectedPhotoIds = ref<string[]>([]);
 const photoMutations = useOperationAvailability(['uploadPhoto', 'transferPhotoFromUrl']);
 const uploadDialogBlocked = computed(
@@ -111,6 +114,31 @@ const photos = useQuery({
   queryKey: ['photos', selectedGroup],
   queryFn: () => gateway.request('listPhotos', { page: 1, pageSize: 24, groupId: selectedGroup.value })
 });
+const refreshing = computed(() => refreshPending.value || photos.isFetching.value);
+
+async function refreshGallery(): Promise<void> {
+  if (refreshing.value) return;
+  refreshPending.value = true;
+  try {
+    await queryClient.invalidateQueries({ queryKey: ['photo-groups'], refetchType: 'none' });
+    await Promise.all([
+      photos.refetch({ cancelRefetch: false }),
+      groupNavigation.value
+        ? groupNavigation.value.refresh()
+        : queryClient
+            .fetchQuery({
+              queryKey: ['photo-groups', 'root'],
+              queryFn: () => gateway.request('listPhotoGroups', undefined),
+              staleTime: 0
+            })
+            .catch(() => {
+              toast.error(t('photos.groupNavigation.loadFailed'));
+            })
+    ]);
+  } finally {
+    refreshPending.value = false;
+  }
+}
 const filteredPhotos = computed(() => {
   const items = photos.data.value?.items ?? [];
   if (governanceFilter.value === 'unreferenced') {
@@ -377,6 +405,13 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
 <template>
   <PageHeader :title="t('photos.page.title')" :description="t('photos.page.description')">
     <div class="flex flex-wrap items-center justify-end gap-2">
+      <Button variant="outline" :disabled="refreshing" :aria-busy="refreshing" @click="refreshGallery">
+        <RefreshCw
+          class="size-4 motion-reduce:animate-none"
+          :class="{ 'animate-spin': refreshing }"
+          aria-hidden="true"
+        />{{ t('common.actions.refresh') }}
+      </Button>
       <Button variant="outline" @click="groupManagerOpen = true">
         <Settings2 class="size-4" />{{ t('photos.page.groupManagement') }}
       </Button>
@@ -432,6 +467,7 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
     <GroupSidebar v-model:collapsed="groupSidebarCollapsed" :title="t('photos.groups')">
       <PhotoGroupNavigation
         :key="groupNavigationRevision"
+        ref="groupNavigation"
         v-model="selectedGroup"
         @select="selectGroupDefinition"
       />

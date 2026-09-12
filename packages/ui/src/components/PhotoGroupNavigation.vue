@@ -59,15 +59,16 @@ async function toggleGroup(group: PhotoGroup): Promise<void> {
   await expandGroup(group);
 }
 
-async function expandGroup(group: PhotoGroup): Promise<void> {
+async function expandGroup(group: PhotoGroup, forceRefresh = false): Promise<void> {
   expandedRootIds.value = [...new Set([...expandedRootIds.value, group.id])];
-  if (hasLoaded(group.id)) return;
+  if (hasLoaded(group.id) && !forceRefresh) return;
   loadingRootIds.value = [...loadingRootIds.value, group.id];
   error.value = '';
   try {
     const groups = await queryClient.fetchQuery({
       queryKey: ['photo-groups', group.id],
-      queryFn: () => gateway.request('listPhotoGroups', { parentId: group.id })
+      queryFn: () => gateway.request('listPhotoGroups', { parentId: group.id }),
+      ...(forceRefresh ? { staleTime: 0 } : {})
     });
     descendants.value = {
       ...descendants.value,
@@ -81,6 +82,23 @@ async function expandGroup(group: PhotoGroup): Promise<void> {
     loadingRootIds.value = loadingRootIds.value.filter((id) => id !== group.id);
   }
 }
+
+async function refresh(): Promise<void> {
+  error.value = '';
+  descendants.value = Object.fromEntries(
+    Object.entries(descendants.value).filter(([id]) => expandedRootIds.value.includes(id))
+  );
+  await roots.refetch({ cancelRefetch: false });
+  await Promise.all(
+    rootGroups.value
+      .filter((group) => expandedRootIds.value.includes(group.id))
+      .map((group) => expandGroup(group, true))
+  );
+  const selected = visibleGroups.value.find((group) => group.id === props.modelValue);
+  if (selected) emit('select', selected);
+}
+
+defineExpose({ refresh });
 
 function hasLoaded(groupId: string): boolean {
   return Object.hasOwn(descendants.value, groupId);

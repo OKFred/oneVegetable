@@ -3,26 +3,28 @@
 import { defineComponent, h } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { OPERATION_IDS, StaticOperationAvailabilityClient, type OperationId } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import { provideServices } from '../src/lib/services';
 import PhotosView from '../src/views/PhotosView.vue';
+import { uiI18n } from '../src/i18n';
 
 vi.mock('vue-sonner', () => ({
-  toast: { success: vi.fn(), warning: vi.fn() }
+  toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn() }
 }));
 
 function mountView(
   mode: 'mock' | 'extension' = 'mock',
-  allowedOperations: ReadonlySet<OperationId> = new Set(OPERATION_IDS)
+  allowedOperations: ReadonlySet<OperationId> = new Set(OPERATION_IDS),
+  gateway = new MockGatewayClient(0)
 ) {
   const Host = defineComponent({
     setup() {
       provideServices({
-        gateway: new MockGatewayClient(0),
+        gateway,
         settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
         operationAvailability: new StaticOperationAvailabilityClient(allowedOperations),
         mode
@@ -44,6 +46,101 @@ function button(wrapper: ReturnType<typeof mountView>, text: string) {
 }
 
 describe('PhotosView', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    uiI18n.global.locale.value = 'zh-CN';
+  });
+
+  it('refreshes current photos and expanded groups without resetting selection, filters or layout', async () => {
+    const gateway = new MockGatewayClient(40);
+    const request = vi.spyOn(gateway, 'request');
+    const wrapper = mountView('mock', undefined, gateway);
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('详情素材');
+    });
+    await button(wrapper, '详情素材').trigger('click');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('户外场景');
+      expect(button(wrapper, '刷新').attributes('disabled')).toBeUndefined();
+    });
+    await button(wrapper, '低分辨率 1').trigger('click');
+    await wrapper.get('input[aria-label="选择 dehydrator-detail.jpg"]').setValue(true);
+    await button(wrapper, '列表').trigger('click');
+    request.mockClear();
+
+    await button(wrapper, '刷新').trigger('click');
+    expect(button(wrapper, '刷新').attributes('disabled')).toBeDefined();
+    expect(button(wrapper, '刷新').attributes('aria-busy')).toBe('true');
+    expect(button(wrapper, '刷新').find('svg.animate-spin').exists()).toBe(true);
+    await button(wrapper, '刷新').trigger('click');
+    await vi.waitFor(() => {
+      expect(button(wrapper, '刷新').attributes('disabled')).toBeUndefined();
+    });
+
+    expect(request.mock.calls).toEqual([
+      ['listPhotos', { page: 1, pageSize: 24, groupId: '2002' }],
+      ['listPhotoGroups', undefined],
+      ['listPhotoGroups', { parentId: '2002' }]
+    ]);
+    expect(wrapper.find('[data-testid="photo-list-table"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('已选 1 张');
+    expect(wrapper.find('button[aria-label="收起详情素材"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('户外场景');
+    await button(wrapper, '全部图片').trigger('click');
+    await vi.waitFor(() => {
+      expect(button(wrapper, '刷新').attributes('disabled')).toBeUndefined();
+    });
+    expect(wrapper.find('[data-testid="photo-list-table"]').text()).not.toContain('solar-station-front.jpg');
+    wrapper.unmount();
+  });
+
+  it('refreshes groups even with the sidebar collapsed and renders the control in English', async () => {
+    const gateway = new MockGatewayClient(0);
+    const request = vi.spyOn(gateway, 'request');
+    const wrapper = mountView('mock', undefined, gateway);
+    await vi.waitFor(() => {
+      expect(button(wrapper, '刷新').attributes('disabled')).toBeUndefined();
+    });
+    await wrapper.get('button[aria-label="收起图库分组"]').trigger('click');
+    request.mockClear();
+    uiI18n.global.locale.value = 'en-US';
+    await flushPromises();
+
+    await button(wrapper, 'Refresh').trigger('click');
+    await vi.waitFor(() => {
+      expect(button(wrapper, 'Refresh').attributes('disabled')).toBeUndefined();
+    });
+    expect(request.mock.calls).toEqual([
+      ['listPhotos', { page: 1, pageSize: 24, groupId: '-1' }],
+      ['listPhotoGroups', undefined]
+    ]);
+    expect(wrapper.find('[role="tree"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('shows refresh errors and allows another refresh to recover', async () => {
+    const gateway = new MockGatewayClient(0);
+    const request = vi.spyOn(gateway, 'request');
+    const wrapper = mountView('mock', undefined, gateway);
+    await vi.waitFor(() => {
+      expect(button(wrapper, '刷新').attributes('disabled')).toBeUndefined();
+    });
+    request.mockRejectedValueOnce(new Error('Photo refresh failed'));
+
+    await button(wrapper, '刷新').trigger('click');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Photo refresh failed');
+      expect(button(wrapper, '刷新').attributes('disabled')).toBeUndefined();
+    });
+    expect(wrapper.text()).toContain('商品主图');
+    await button(wrapper, '刷新').trigger('click');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).not.toContain('Photo refresh failed');
+      expect(wrapper.text()).toContain('solar-station-front.jpg');
+    });
+    wrapper.unmount();
+  });
+
   it('opens uploading as a dedicated workflow instead of a selection picker', async () => {
     const wrapper = mountView();
     await flushPromises();
