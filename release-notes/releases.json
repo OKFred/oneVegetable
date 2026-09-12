@@ -3,15 +3,56 @@
   "repositoryUrl": "https://github.com/OKFred/oneVegetable",
   "releases": [
     {
+      "version": "2.7.0",
+      "releasedAt": "2026-09-12",
+      "title": {
+        "zh-CN": "橱窗调整与插件稳定性（候选）",
+        "en-US": "Showcase editing and extension reliability (candidate)"
+      },
+      "summary": {
+        "zh-CN": "发布候选，尚未上架。新增橱窗排序、替换和类目发品类型引导，修复插件能力校验与后台重启恢复。",
+        "en-US": "Unpublished candidate. Reorder and replace showcase products, choose category-specific posting types, and reliably validate capabilities after worker restarts."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/blob/staging/docs/release-2.7.0-readiness.md",
+      "compareUrl": null,
+      "changes": [
+        {
+          "type": "feature",
+          "title": { "zh-CN": "橱窗排序与替换", "en-US": "Reorder and replace showcase products" },
+          "description": {
+            "zh-CN": "确认后调整顺序或替换商品，并回读核对。结果不明时不自动重试。插件和本地 Node 支持，云端写入策略不变。",
+            "en-US": "Confirm changes, then verify by read-back. Uncertain writes are never automatically retried. Available in the extension and local Node; cloud policy is unchanged."
+          }
+        },
+        {
+          "type": "feature",
+          "title": { "zh-CN": "类目发品类型引导", "en-US": "Category-specific posting types" },
+          "description": {
+            "zh-CN": "新建商品时查询类目支持的直接下单或询盘定制类型，再加载对应表单；不可用时明确提示。",
+            "en-US": "Check whether a category supports direct orders or inquiry/custom products before loading its form, with clear unavailable-state guidance."
+          }
+        },
+        {
+          "type": "fix",
+          "title": { "zh-CN": "插件能力校验", "en-US": "Extension capability validation" },
+          "description": {
+            "zh-CN": "七个领域使用 MV3 静态校验模块；后台重启后仍可读取能力和校验请求，缺失校验器时安全拒绝。",
+            "en-US": "Seven domains use static MV3 validators. Catalog reads and request validation survive worker restarts; missing validators fail safely."
+          }
+        }
+      ]
+    },
+    {
       "version": "2.6.0",
       "releasedAt": "2026-09-11",
       "title": {
-        "zh-CN": "图库任务、商品橱窗与凭据管理（候选）",
-        "en-US": "Gallery tasks, showcases and credentials (candidate)"
+        "zh-CN": "图库任务、商品橱窗与凭据管理",
+        "en-US": "Gallery tasks, showcases and credentials"
       },
       "summary": {
-        "zh-CN": "发布候选，尚未上架。新增图库任务恢复、商品橱窗、列表自定义列与 Node 后端凭据配置。",
-        "en-US": "Release candidate, not yet published. Gallery recovery, product showcases, configurable columns and Node credential settings."
+        "zh-CN": "GitHub 版本已发布，商店已提交审核。新增图库任务恢复、商品橱窗、列表自定义列与 Node 后端凭据配置。",
+        "en-US": "Released on GitHub and submitted for Store review. Gallery recovery, product showcases, configurable columns and Node credential settings."
       },
       "source": "release",
       "githubUrl": "https://github.com/OKFred/oneVegetable/blob/master/docs/release-2.6.0-readiness.md",

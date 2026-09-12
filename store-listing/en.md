@@ -6,9 +6,9 @@ oneVegetable is an independently developed third-party tool and is not affiliate
 
 Key features:
 
-- Visually edit Schema-based products and standard descriptions.
+- Visually edit Schema-based products and standard descriptions, choosing category-supported direct-order or inquiry/custom types when creating a product.
 - Customize product, gallery and order columns, load extra fields on demand, and open platform product links with dedicated buttons.
-- Inspect showcase quota and products, then confirm additions or removals and verify results by read-back. Removing a showcase entry does not delete the product.
+- Inspect showcase quota and products, then confirm additions, removals, reordering or replacement and verify by read-back. Uncertain writes are never automatically retried; removing a showcase entry does not delete the product.
 - Import and export products as JSON or ZIP archives with managed `assets` image resources.
 - Select gallery assets and receive non-blocking content guidance.
 - Import and export gallery ZIPs up to 50 MiB with originals and an integrity manifest; uploads require confirmation. Connect directly to S3-compatible storage and map prefixes to gallery groups without deploying a backend.

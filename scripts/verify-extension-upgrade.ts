@@ -15,7 +15,7 @@ declare const chrome: {
 };
 const root = resolve(import.meta.dirname, '..');
 const latest = resolve(root, 'apps/extension/.output/chrome-mv3');
-const output = resolve(root, 'artifacts/release-2.6-upgrade', randomUUID());
+const output = resolve(root, 'artifacts/extension-upgrade', randomUUID());
 const checks: string[] = [];
 await mkdir(output, { recursive: true });
 const baselinePaths = process.argv.slice(2).filter((value) => value !== '--');
