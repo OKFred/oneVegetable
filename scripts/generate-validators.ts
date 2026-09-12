@@ -6,6 +6,7 @@ import standaloneCode from 'ajv/dist/standalone/index.js';
 import addErrors from 'ajv-errors';
 import addFormats from 'ajv-formats';
 import { validationSchema } from './lib/validator-schema';
+import { compactStandaloneSchemaConstants } from './lib/standalone-schema-constants';
 
 type CapabilityDomain = 'product' | 'rfq' | 'trade' | 'logistics' | 'insights' | 'photo' | 'platform';
 
@@ -60,6 +61,16 @@ const coreValidators: Record<string, object | undefined> = {
 
 const domains: CapabilityDomain[] = ['product', 'rfq', 'trade', 'logistics', 'insights', 'photo', 'platform'];
 const targets = new Map<string, string>();
+targets.set(
+  'validators-product-posting.ts',
+  compileValidators(
+    {
+      validateProductPostingTypeRequest: schemas.AlibabaProductAlibabaIcbuProductTypeAvailableGetRequest,
+      validateProductPostingTypeResponse: schemas.AlibabaProductAlibabaIcbuProductTypeAvailableGetResponse
+    },
+    'fast'
+  )
+);
 targets.set(
   'validators-gateway-credentials.ts',
   compileValidators(
@@ -128,10 +139,10 @@ function compileValidators(
   const ajv = new Ajv2020({
     allErrors: true,
     allowUnionTypes: true,
-    code: { esm: true, source: true },
+    code: { esm: true, source: true, optimize: 2 },
     inlineRefs: false,
-    // Generate a loop for larger required sets rather than duplicating each error branch.
-    loopRequired: 4,
+    // Generate loops for larger required sets rather than duplicating error branches.
+    loopRequired: 2,
     strict: true
   });
   addFormats(ajv, { mode: formatMode });
@@ -159,7 +170,7 @@ function compileValidators(
       return [name, name];
     })
   );
-  const browserSafeCode = standaloneCode(ajv, validators).replace(
+  const browserSafeCode = compactStandaloneSchemaConstants(standaloneCode(ajv, validators)).replace(
     'require("ajv/dist/runtime/ucs2length").default',
     '((value) => [...value].length)'
   );

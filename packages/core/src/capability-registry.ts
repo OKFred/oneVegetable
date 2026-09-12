@@ -1,4 +1,8 @@
 import type { ErrorObject } from 'ajv';
+import {
+  validateProductPostingTypeRequest,
+  validateProductPostingTypeResponse
+} from './generated/validators-product-posting';
 
 import { API_CAPABILITIES } from './generated/capabilities';
 import { PRODUCT_CAPABILITY_DEFINITIONS } from './generated/product-capabilities';
@@ -61,6 +65,11 @@ async function validatorFor(
   method: string,
   kind: 'Request' | 'Response'
 ): Promise<StandaloneValidator | null> {
+  // This read is part of extension onboarding for a new product. MV3 cannot
+  // execute the page-oriented dynamic-import preload/error helper; keep these
+  // two tiny, generated validators static (without making every domain eager).
+  if (method === 'alibaba.icbu.product.type.available.get')
+    return kind === 'Request' ? validateProductPostingTypeRequest : validateProductPostingTypeResponse;
   const productIndex = productMethods.indexOf(method as ProductCapabilityMethod);
   const rfqIndex = rfqMethods.indexOf(method as RfqCapabilityMethod);
   const tradeIndex = tradeMethods.indexOf(method as TradeCapabilityMethod);
