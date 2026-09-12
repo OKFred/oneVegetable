@@ -108,6 +108,55 @@ export class MockGatewayClient implements GatewayClient {
   async request<K extends OperationId>(operation: K, _request: RequestOf<K>): Promise<ResponseOf<K>> {
     await new Promise<void>((resolve) => setTimeout(resolve, this.latency));
     if (operation === 'getProductShowcase') return structuredClone(this.showcase);
+    if (operation === 'sortShowcaseProduct' || operation === 'replaceShowcaseProduct') {
+      const request = _request as RequestOf<'sortShowcaseProduct'> | RequestOf<'replaceShowcaseProduct'>;
+      const baseline = this.showcase.entries.map(({ windowId, productId }) => ({ windowId, productId }));
+      if (JSON.stringify(baseline) !== JSON.stringify(request.expectedEntries))
+        throw new Error('SHOWCASE_BASELINE_CHANGED');
+      if ('targetOrder' in request) {
+        if (
+          !Number.isInteger(request.sourceOrder) ||
+          !Number.isInteger(request.targetOrder) ||
+          request.sourceOrder < 1 ||
+          request.targetOrder < 1 ||
+          request.sourceOrder === request.targetOrder ||
+          request.targetOrder > baseline.length ||
+          baseline[request.sourceOrder - 1]?.windowId !== request.windowId
+        )
+          throw new Error('SHOWCASE_BASELINE_CHANGED');
+        const [moved] = this.showcase.entries.splice(request.sourceOrder - 1, 1);
+        if (moved?.windowId !== request.windowId) throw new Error('SHOWCASE_BASELINE_CHANGED');
+        this.showcase.entries.splice(request.targetOrder - 1, 0, moved);
+      } else {
+        const target = PRODUCTS.find(
+          (product) => product.id === request.newProductId && product.status === 'online'
+        );
+        if (
+          !baseline.some((entry) => entry.windowId === request.windowId) ||
+          !target ||
+          this.showcase.entries.some((entry) => entry.productId === target.id)
+        )
+          throw new Error('SHOWCASE_PRODUCT_NOT_ONLINE');
+        this.showcase.entries = this.showcase.entries.map((entry) =>
+          entry.windowId === request.windowId
+            ? {
+                ...entry,
+                productId: target.id,
+                subject: target.subject,
+                imageUrl: target.imageUrl
+              }
+            : entry
+        );
+      }
+      return {
+        ...structuredClone(
+          PRODUCT_MOCK_DATA.responses[
+            operation === 'sortShowcaseProduct' ? 'sortShowcaseProduct' : 'replaceShowcaseProduct'
+          ]
+        ),
+        snapshot: structuredClone(this.showcase)
+      };
+    }
     if (operation === 'addShowcaseProducts' || operation === 'removeShowcaseProducts') {
       if (operation === 'addShowcaseProducts') {
         const { product_id_list: ids } = _request as RequestOf<'addShowcaseProducts'>;

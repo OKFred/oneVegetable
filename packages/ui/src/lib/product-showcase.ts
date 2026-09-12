@@ -1,18 +1,23 @@
 import { computed, ref, shallowRef } from 'vue';
 import { GatewayException } from '@one-vegetable/core/errors';
 import { toast } from 'vue-sonner';
-import type { Product, ProductShowcaseSnapshot } from '@one-vegetable/core';
+import type { Product, ProductShowcaseSnapshot, RequestOf } from '@one-vegetable/core';
 import type { GalleryTransferContext } from '@one-vegetable/core/gallery-transfer-task';
 import {
   validateProductShowcaseSnapshot,
   validateProductShowcaseMutationResult,
-  showcaseError
+  showcaseError,
+  showcaseBaseline
 } from '@one-vegetable/core/showcase';
 import { useServices } from './services';
 import { useShowcaseI18n } from '../i18n/showcase';
 import { SHOWCASE_LOCK, SHOWCASE_STORAGE_PREFIX } from './showcase-storage';
 
 export type ShowcaseTarget = Pick<Product, 'id' | 'subject' | 'status'>;
+export type ShowcaseEditIntent = (
+  | { action: 'sort'; request: RequestOf<'sortShowcaseProduct'> }
+  | { action: 'replace'; request: RequestOf<'replaceShowcaseProduct'> }
+) & { context: string };
 
 export function useProductShowcase() {
   const services = useServices();
@@ -24,9 +29,9 @@ export function useProductShowcase() {
   const unresolved = ref(false);
   const requestId = ref('');
   const pendingIds = ref<string[]>([]);
-  const pendingAction = ref<'add' | 'remove' | null>(null);
+  const pendingAction = ref<'add' | 'remove' | 'sort' | 'replace' | null>(null);
   const context = shallowRef<GalleryTransferContext | undefined>();
-  const allowed = ref({ add: false, remove: false });
+  const allowed = ref({ add: false, remove: false, sort: false, replace: false });
   let receiptKey = '';
   let receiptValue = '';
   let lastLoad = 0;
@@ -38,6 +43,7 @@ export function useProductShowcase() {
       SHOWCASE_INCOMPLETE: 'incomplete',
       SHOWCASE_FULL: 'full',
       SHOWCASE_ALREADY_PRESENT: 'online',
+      SHOWCASE_PRODUCT_NOT_ONLINE: 'replacementOnline',
       SHOWCASE_BASELINE_CHANGED: 'changed',
       SHOWCASE_REJECTED: 'rejected',
       SHOWCASE_UNCONFIRMED: 'uncertain',
@@ -65,7 +71,10 @@ export function useProductShowcase() {
       if (
         typeof value.requestId !== 'string' ||
         !/^[\da-f-]{36}$/.test(value.requestId) ||
-        (value.action !== 'add' && value.action !== 'remove') ||
+        (value.action !== 'add' &&
+          value.action !== 'remove' &&
+          value.action !== 'sort' &&
+          value.action !== 'replace') ||
         !Array.isArray(value.ids) ||
         value.ids.length > 20 ||
         !value.ids.every((id: unknown) => typeof id === 'string' && /^[1-9][0-9]*$/.test(id))
@@ -108,9 +117,19 @@ export function useProductShowcase() {
         readReceipt();
         const availability = await services.operationAvailability?.get([
           'addShowcaseProducts',
-          'removeShowcaseProducts'
+          'removeShowcaseProducts',
+          'sortShowcaseProduct',
+          'replaceShowcaseProduct'
         ]);
         allowed.value = {
+          sort:
+            services.mode === 'mock' ||
+            availability?.items.some((row) => row.operation === 'sortShowcaseProduct' && row.allowed) ===
+              true,
+          replace:
+            services.mode === 'mock' ||
+            availability?.items.some((row) => row.operation === 'replaceShowcaseProduct' && row.allowed) ===
+              true,
           add:
             services.mode === 'mock' ||
             availability?.items.some((row) => row.operation === 'addShowcaseProducts' && row.allowed) ===
@@ -132,7 +151,7 @@ export function useProductShowcase() {
       } catch (cause) {
         error.value = cause;
         snapshot.value = null;
-        allowed.value = { add: false, remove: false };
+        allowed.value = { add: false, remove: false, sort: false, replace: false };
       } finally {
         loading.value = false;
       }
@@ -242,6 +261,115 @@ export function useProductShowcase() {
     pendingIds.value = [];
     pendingAction.value = null;
   }
+  function editReason(action: 'sort' | 'replace', windowId: string, targetOrder?: number): string {
+    if (busy.value || unresolved.value) return s('uncertain');
+    if (loading.value || !snapshot.value) return s('incomplete');
+    if (!allowed.value[action]) return s('disabled');
+    const index = snapshot.value.entries.findIndex((entry) => entry.windowId === windowId);
+    if (index < 0) return s('changed');
+    if (
+      action === 'sort' &&
+      (targetOrder === undefined ||
+        targetOrder < 1 ||
+        targetOrder > snapshot.value.used ||
+        targetOrder === index + 1)
+    )
+      return s('boundary');
+    return '';
+  }
+  function prepareEdit(action: 'sort', windowId: string, target: number): ShowcaseEditIntent | null;
+  function prepareEdit(
+    action: 'replace',
+    windowId: string,
+    target: ShowcaseTarget
+  ): ShowcaseEditIntent | null;
+  function prepareEdit(
+    action: 'sort' | 'replace',
+    windowId: string,
+    target: number | ShowcaseTarget
+  ): ShowcaseEditIntent | null {
+    const refusal = editReason(action, windowId, typeof target === 'number' ? target : undefined);
+    if (refusal || !snapshot.value) {
+      toast.warning(refusal || s('incomplete'));
+      return null;
+    }
+    const expectedEntries = showcaseBaseline(snapshot.value);
+    const identityStamp = JSON.stringify(context.value ?? null);
+    if (action === 'sort' && typeof target === 'number')
+      return {
+        action,
+        context: identityStamp,
+        request: {
+          windowId,
+          sourceOrder: expectedEntries.findIndex((entry) => entry.windowId === windowId) + 1,
+          targetOrder: target,
+          expectedEntries
+        }
+      };
+    if (action === 'replace' && typeof target !== 'number') {
+      if (target.status !== 'online' || expectedEntries.some((entry) => entry.productId === target.id)) {
+        toast.warning(s('replacementOnline'));
+        return null;
+      }
+      return {
+        action,
+        context: identityStamp,
+        request: { windowId, newProductId: target.id, expectedEntries }
+      };
+    }
+    return null;
+  }
+  async function edit(intent: ShowcaseEditIntent): Promise<void> {
+    if (busy.value || unresolved.value) return;
+    busy.value = true;
+    error.value = null;
+    try {
+      if (!('locks' in navigator)) throw showcaseError('SHOWCASE_LOCKED');
+      await navigator.locks.request(SHOWCASE_LOCK, { ifAvailable: true }, async (lock) => {
+        if (!lock || !receiptKey || localStorage.getItem(receiptKey)) throw showcaseError('SHOWCASE_LOCKED');
+        const current = await identity();
+        if (intent.context !== JSON.stringify(current ?? null))
+          throw showcaseError('GALLERY_CONTEXT_CHANGED');
+        requestId.value = crypto.randomUUID();
+        const oldProductId = intent.request.expectedEntries.find(
+          (entry) => entry.windowId === intent.request.windowId
+        )?.productId;
+        localStorage.setItem(
+          receiptKey,
+          JSON.stringify({
+            requestId: requestId.value,
+            action: intent.action,
+            ids: [oldProductId, ...(intent.action === 'replace' ? [intent.request.newProductId] : [])].filter(
+              (value) => value !== undefined
+            ),
+            request: intent.request
+          })
+        );
+        readReceipt();
+        const options = { requestId: requestId.value, ...(current ? { galleryContext: current } : {}) };
+        const result =
+          intent.action === 'sort'
+            ? await services.gateway.request('sortShowcaseProduct', intent.request, options)
+            : await services.gateway.request('replaceShowcaseProduct', intent.request, options);
+        if (intent.context !== JSON.stringify((await identity()) ?? null)) {
+          snapshot.value = null;
+          throw showcaseError('GALLERY_CONTEXT_CHANGED');
+        }
+        if (!validateProductShowcaseMutationResult(result)) throw showcaseError('SHOWCASE_UNCONFIRMED');
+        snapshot.value = result.snapshot;
+        if (result.outcome === 'confirmed' && result.snapshot) {
+          clearReceipt();
+          toast.success(s('success'));
+        } else toast.warning(s('uncertain'));
+      });
+    } catch (cause) {
+      error.value = cause;
+      toast.warning(pendingAction.value ? s('uncertain') : s('changed'));
+    } finally {
+      busy.value = false;
+      lastLoad = 0;
+    }
+  }
   async function acknowledgeReceipt(): Promise<void> {
     if (busy.value || !('locks' in navigator)) throw showcaseError('SHOWCASE_LOCKED');
     await navigator.locks.request(SHOWCASE_LOCK, { ifAvailable: true }, async (lock) => {
@@ -251,7 +379,7 @@ export function useProductShowcase() {
   }
   function invalidate(): void {
     snapshot.value = null;
-    allowed.value = { add: false, remove: false };
+    allowed.value = { add: false, remove: false, sort: false, replace: false };
     lastLoad = 0;
   }
   return {
@@ -266,6 +394,9 @@ export function useProductShowcase() {
     load,
     reason,
     mutate,
+    editReason,
+    prepareEdit,
+    edit,
     acknowledgeReceipt,
     invalidate
   };

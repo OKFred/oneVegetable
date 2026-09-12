@@ -70,7 +70,7 @@
       }
     },
     "alibaba.icbu.product.type.available.get": {
-      "reason": "2026-09-10 TOP 参数表与 simplify=true 示例为来源；文档成功示例中的错误码不作为成功依据。示例 ID 仅供 Mock，真实核验使用实际商品。",
+      "reason": "2026-09-10 TOP 参数表与 simplify=true 示例为来源；文档成功示例中的错误码不作为成功依据。2026-09-12 实测省略 cat_id 返回 biz_success=false/-5，专用新增页选择类目后必传 cat_id；保留原文档选填契约，不将其他账号资格推断为已验证。示例 ID 仅供 Mock。",
       "requestExampleFile": "mock/data/product-type-available.json",
       "responseExampleFile": "mock/data/product-type-available.json"
     },

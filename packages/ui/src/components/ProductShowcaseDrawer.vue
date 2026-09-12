@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { ArrowUp, ArrowDown, Replace } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import type { useProductShowcase, ShowcaseTarget } from '../lib/product-showcase';
+import type { useProductShowcase, ShowcaseTarget, ShowcaseEditIntent } from '../lib/product-showcase';
 import { useShowcaseI18n } from '../i18n/showcase';
 import { useUiI18n } from '../i18n';
 import Sheet from './ui/Sheet.vue';
@@ -9,6 +10,8 @@ import Button from './ui/Button.vue';
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import ErrorNotice from './ErrorNotice.vue';
 import ActionTooltip from './ActionTooltip.vue';
+import ModalDialog from './ui/ModalDialog.vue';
+import ProductReplacementPicker from './ProductReplacementPicker.vue';
 
 const props = defineProps<{
   open: boolean;
@@ -21,6 +24,23 @@ const s = useShowcaseI18n();
 const { t } = useUiI18n();
 const pending = ref<{ action: 'add' | 'remove'; products: ShowcaseTarget[] } | null>(null);
 const acknowledge = ref(false);
+const editIntent = ref<ShowcaseEditIntent | null>(null);
+const replacementWindowId = ref('');
+const excludedIds = computed(
+  () => props.controller.snapshot.value?.entries.map((entry) => entry.productId) ?? []
+);
+function move(windowId: string, targetOrder: number): void {
+  editIntent.value = props.controller.prepareEdit('sort', windowId, targetOrder);
+}
+function replace(product: ShowcaseTarget): void {
+  editIntent.value = props.controller.prepareEdit('replace', replacementWindowId.value, product);
+  if (editIntent.value) replacementWindowId.value = '';
+}
+async function confirmEdit(): Promise<void> {
+  if (!editIntent.value) return;
+  await props.controller.edit(editIntent.value);
+  editIntent.value = null;
+}
 function request(action: 'add' | 'remove', products: readonly ShowcaseTarget[]): void {
   const refusal = props.controller.reason(action, products);
   if (refusal) {
@@ -32,7 +52,12 @@ function request(action: 'add' | 'remove', products: readonly ShowcaseTarget[]):
 watch(
   () => props.open,
   async (open) => {
-    if (!open) return;
+    if (!open) {
+      pending.value = null;
+      editIntent.value = null;
+      replacementWindowId.value = '';
+      return;
+    }
     await props.controller.load(true);
     if (props.open && props.action) request(props.action, props.selection);
   },
@@ -93,9 +118,9 @@ async function unlock(): Promise<void> {
       <p v-if="controller.snapshot.value?.entries.length === 0">{{ s('empty') }}</p>
       <ul class="space-y-2">
         <li
-          v-for="entry in controller.snapshot.value?.entries ?? []"
+          v-for="(entry, index) in controller.snapshot.value?.entries ?? []"
           :key="entry.windowId"
-          class="flex items-center gap-3 rounded-md border p-3"
+          class="flex flex-wrap items-center gap-3 rounded-md border p-3"
         >
           <img
             v-if="entry.imageUrl"
@@ -105,8 +130,42 @@ async function unlock(): Promise<void> {
             referrerpolicy="no-referrer"
           />
           <div class="min-w-0 flex-1">
+            <p class="text-xs text-muted-foreground">{{ s('position', { order: index + 1 }) }}</p>
             <p class="line-clamp-2 break-words">{{ entry.subject ?? '—' }}</p>
             <code class="text-xs text-muted-foreground">{{ entry.productId }}</code>
+          </div>
+          <div class="flex gap-1">
+            <ActionTooltip
+              v-for="direction in [-1, 1] as const"
+              :key="direction"
+              :reason="
+                controller.editReason('sort', entry.windowId, index + 1 + direction) ||
+                s(direction === -1 ? 'up' : 'down')
+              "
+              :disabled="Boolean(controller.editReason('sort', entry.windowId, index + 1 + direction))"
+            >
+              <Button
+                variant="outline"
+                size="icon"
+                :aria-label="s(direction === -1 ? 'up' : 'down')"
+                :disabled="Boolean(controller.editReason('sort', entry.windowId, index + 1 + direction))"
+                @click="move(entry.windowId, index + 1 + direction)"
+              >
+                <ArrowUp v-if="direction === -1" class="size-4" /><ArrowDown v-else class="size-4" />
+              </Button>
+            </ActionTooltip>
+            <ActionTooltip
+              :reason="controller.editReason('replace', entry.windowId)"
+              :disabled="Boolean(controller.editReason('replace', entry.windowId))"
+            >
+              <Button
+                variant="outline"
+                size="sm"
+                :disabled="Boolean(controller.editReason('replace', entry.windowId))"
+                @click="replacementWindowId = entry.windowId"
+                ><Replace class="size-4" />{{ s('replace') }}</Button
+              >
+            </ActionTooltip>
           </div>
           <ActionTooltip
             :reason="
@@ -142,6 +201,37 @@ async function unlock(): Promise<void> {
       </ul>
     </div>
   </Sheet>
+  <ModalDialog
+    :open="Boolean(replacementWindowId)"
+    :title="s('chooseReplacement')"
+    :description="s('replacementOnline')"
+    size="lg"
+    @update:open="replacementWindowId = ''"
+  >
+    <ProductReplacementPicker v-if="replacementWindowId" :excluded-ids="excludedIds" @select="replace" />
+  </ModalDialog>
+  <ConfirmActionDialog
+    :open="editIntent !== null"
+    :pending="controller.busy.value"
+    :description="s('editNote')"
+    :title="
+      editIntent?.action === 'sort'
+        ? s('move', { from: editIntent.request.sourceOrder, to: editIntent.request.targetOrder })
+        : s('replace')
+    "
+    @update:open="editIntent = null"
+    @confirm="confirmEdit"
+  >
+    <p>{{ s('editNote') }}</p>
+    <p v-if="editIntent">
+      {{ s('before') }}:
+      {{
+        editIntent.request.expectedEntries.find((entry) => entry.windowId === editIntent?.request.windowId)
+          ?.productId
+      }}
+    </p>
+    <p v-if="editIntent?.action === 'replace'">{{ s('after') }}: {{ editIntent.request.newProductId }}</p>
+  </ConfirmActionDialog>
   <ConfirmActionDialog
     :open="pending !== null"
     :title="

@@ -17781,7 +17781,7 @@
       "title": "商家发品类型查询",
       "description": "查询商家发品权限",
       "errorCodes": [],
-      "requestExample": { "type_request": { "language": "zh_cn" } },
+      "requestExample": { "type_request": { "cat_id": 201712702, "language": "zh_cn" } },
       "responseExample": {
         "biz_success": true,
         "data": { "support_post_whole_sale": true, "support_post_sourcing": true }

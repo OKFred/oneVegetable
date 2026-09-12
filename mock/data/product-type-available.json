@@ -2,6 +2,7 @@
   "method": "alibaba.icbu.product.type.available.get",
   "request": {
     "type_request": {
+      "cat_id": 201712702,
       "language": "zh_cn"
     }
   },

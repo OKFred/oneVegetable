@@ -2317,6 +2317,7 @@ export const PRODUCT_CAPABILITY_DEFINITIONS = {
     "errorCodes": [],
     "requestExample": {
       "type_request": {
+        "cat_id": 201712702,
         "language": "zh_cn"
       }
     },

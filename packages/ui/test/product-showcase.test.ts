@@ -53,6 +53,62 @@ function setup() {
 }
 const selected = [{ id: '10000001', subject: 'Power station', status: 'online' as const }];
 describe('showcase controller', () => {
+  it('freezes sort positions and confirms the exact new order', async () => {
+    const { controller, wrapper, gateway } = setup();
+    await gateway.request('addShowcaseProducts', { product_id_list: ['10000002'] });
+    await controller.load();
+    const intent = controller.prepareEdit('sort', '8001', 2);
+    expect(intent?.request.expectedEntries).toHaveLength(2);
+    if (!intent) throw new Error('Missing intent');
+    const spy = vi.spyOn(gateway, 'request');
+    expect(spy).not.toHaveBeenCalled();
+    await Promise.all([controller.edit(intent), controller.edit(intent)]);
+    expect(spy.mock.calls.filter(([operation]) => operation === 'sortShowcaseProduct')).toHaveLength(1);
+    expect(controller.snapshot.value?.entries.map((entry) => entry.windowId)).toEqual(['8002', '8001']);
+    expect(controller.unresolved.value).toBe(false);
+    expect(controller.editReason('sort', '8001', 3)).not.toBe('');
+    wrapper.unmount();
+  });
+  it('persists sort before sending and blocks another write after an unknown result', async () => {
+    const { controller, wrapper, gateway } = setup();
+    await gateway.request('addShowcaseProducts', { product_id_list: ['10000002'] });
+    await controller.load();
+    const intent = controller.prepareEdit('sort', '8001', 2);
+    if (!intent) throw new Error('Missing intent');
+    const original = gateway.request.bind(gateway);
+    const spy = vi.spyOn(gateway, 'request').mockImplementation(async (...args) => {
+      if (args[0] !== 'sortShowcaseProduct') return original(...args);
+      expect(
+        Object.keys(localStorage).some((key) => localStorage.getItem(key)?.includes('"sourceOrder":1'))
+      ).toBe(true);
+      throw new Error('timeout');
+    });
+    await controller.edit(intent);
+    await controller.edit(intent);
+    expect(spy.mock.calls.filter(([operation]) => operation === 'sortShowcaseProduct')).toHaveLength(1);
+    wrapper.unmount();
+    const again = setup();
+    await again.controller.load();
+    expect(again.controller.pendingAction.value).toBe('sort');
+    expect(again.controller.unresolved.value).toBe(true);
+    again.wrapper.unmount();
+  });
+  it('rejects identity changes and local persistence failure before edit sends', async () => {
+    const { controller, wrapper, gateway } = setup();
+    await gateway.request('addShowcaseProducts', { product_id_list: ['10000002'] });
+    await controller.load();
+    const intent = controller.prepareEdit('sort', '8001', 2);
+    if (!intent) throw new Error('Missing intent');
+    const spy = vi.spyOn(gateway, 'request');
+    await controller.edit({ ...intent, context: 'changed' });
+    expect(spy).not.toHaveBeenCalled();
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('quota');
+    });
+    await controller.edit(intent);
+    expect(spy).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
   it('does not fetch on mount; refreshes manually and removes by window ID', async () => {
     const { controller, wrapper, gateway } = setup();
     const spy = vi.spyOn(gateway, 'request');

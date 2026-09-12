@@ -89,6 +89,7 @@ import ImagePreview, { type ImagePreviewItem } from '../components/ImagePreview.
 import PageHeader from '../components/PageHeader.vue';
 import ProductBatchPublisher from '../components/ProductBatchPublisher.vue';
 import ProductCategoryPicker from '../components/ProductCategoryPicker.vue';
+import ProductPostingTypePicker from '../components/ProductPostingTypePicker.vue';
 import ProductEditorLoading from '../components/ProductEditorLoading.vue';
 import ProductGroupManagerDialog from '../components/ProductGroupManagerDialog.vue';
 import ProductGroupNavigation from '../components/ProductGroupNavigation.vue';
@@ -203,6 +204,7 @@ const editScoreProductId = ref('');
 const schemaError = ref('');
 const feedback = ref('');
 const draftCandidate = ref<ProductEditorDraftV3 | null>(null);
+const postingTypeBlocked = ref(false);
 const migratedDraftKey = ref<string | null>(null);
 const draftSaveStatus = ref<DraftSaveStatus>('idle');
 const selectedProductIds = ref<string[]>([]);
@@ -2618,6 +2620,14 @@ onBeforeUnmount(() => {
           t('products.view.page.restart')
         }}</Button>
       </div>
+      <ProductPostingTypePicker
+        v-if="!editProductId"
+        v-model="market"
+        :language="language"
+        :locked="Boolean(schemaModel || draftCandidate || platformDraftId)"
+        :category-id="categorySelectionReady ? Number(categoryId) : null"
+        @blocked="postingTypeBlocked = $event"
+      />
       <ProductCategoryPicker
         v-model="categoryId"
         v-model:search="categorySearch"
@@ -2632,7 +2642,12 @@ onBeforeUnmount(() => {
         @retry="retryCategories"
       />
       <div class="mt-4 flex flex-wrap gap-2">
-        <Button :disabled="!categorySelectionReady || categoryLoadingId !== null" @click="loadSchema">
+        <Button
+          :disabled="
+            !categorySelectionReady || categoryLoadingId !== null || (!editProductId && postingTypeBlocked)
+          "
+          @click="loadSchema"
+        >
           <Layers3 class="size-4" />{{
             editProductId ? t('products.view.page.reloadForm') : t('products.view.page.start')
           }}
@@ -2647,13 +2662,6 @@ onBeforeUnmount(() => {
       <details class="mt-4 rounded-lg border p-3">
         <summary class="cursor-pointer text-sm font-medium">{{ t('products.view.page.advanced') }}</summary>
         <div class="mt-3 grid gap-3 md:grid-cols-3">
-          <label class="text-sm font-medium">
-            {{ t('products.view.page.market') }}
-            <select v-model="market" class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm">
-              <option value="wholesale">wholesale</option>
-              <option value="sourcing">sourcing</option>
-            </select>
-          </label>
           <label class="text-sm font-medium">
             {{ t('products.view.page.language') }}
             <select
