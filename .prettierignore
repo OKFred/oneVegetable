@@ -3,6 +3,8 @@
 **/.output/**
 **/.wxt/**
 **/coverage/**
+**/test-results/**
+**/playwright-report/**
 store-listing/privacy/privacy*.html
 legacy/**
 packages/core/src/generated/**

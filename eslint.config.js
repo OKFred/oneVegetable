@@ -11,6 +11,8 @@ export default tseslint.config(
       '**/.wrangler/**',
       '**/artifacts/**',
       '**/coverage/**',
+      '**/test-results/**',
+      '**/playwright-report/**',
       '**/node_modules/**',
       'legacy/**',
       'packages/core/src/generated/**'
