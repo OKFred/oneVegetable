@@ -1,5 +1,6 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { inspectExtensionWorkerGraph } from './lib/extension-worker-graph';
 
 interface Manifest {
   background?: {
@@ -43,6 +44,10 @@ const productTransferWorker = sizes.find((entry) =>
 const i18nChunk = sizes.find((entry) => /^chunks\/i18n-[A-Za-z0-9_-]+\.js$/u.test(entry.file));
 
 const errors: string[] = [];
+const workerGraph = await inspectExtensionWorkerGraph('background.js', (file) =>
+  readFile(resolve(output, file), 'utf8')
+);
+errors.push(...workerGraph.errors);
 if (!background || background.size > 100_000) {
   errors.push(`background.js exceeds 100 KB: ${background?.size ?? 'missing'}`);
 }

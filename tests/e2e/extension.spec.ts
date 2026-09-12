@@ -7,8 +7,14 @@ import galleryFixture from '../../mock/data/gallery-extension-transfer.json' wit
 import showcaseFixture from '../../mock/data/showcase-management.json' with { type: 'json' };
 import showcaseProducts from '../../mock/data/showcase-enhancements.json' with { type: 'json' };
 import postingTypeFixture from '../../mock/data/product-type-available.json' with { type: 'json' };
+import capabilityWorkerFixture from '../../mock/data/capability-worker.json' with { type: 'json' };
 import { MockGatewayClient } from '../../packages/core/src/mock-client';
-import { listCapabilities } from '../../packages/core/src/capability-registry';
+import {
+  getCapabilityDefinition,
+  listCapabilities,
+  validateCapabilityRequest,
+  validateCapabilityResponse
+} from '../../packages/core/src/capability-registry';
 
 import { chromium, expect, test, type BrowserContext, type Page } from '@playwright/test';
 import {
@@ -17,6 +23,142 @@ import {
 } from '../../packages/core/src/extension-review-prompt';
 
 let context: BrowserContext | null = null;
+
+test('formal MV3 catalog validates domain reads before and after worker restart', async () => {
+  if (!context) throw new Error('Missing extension context');
+  const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+  const calls: string[] = [];
+  let drift = false;
+  const candidates = listCapabilities().filter(
+    (entry) =>
+      entry.enabled &&
+      !entry.restricted &&
+      entry.realCallEnabled &&
+      entry.lifecycle === 'active' &&
+      entry.risk === 'read'
+  );
+  await context.route('https://eco.taobao.com/**', async (route) => {
+    const method = new URLSearchParams(route.request().postData() ?? '').get('method') ?? '';
+    const definition = getCapabilityDefinition(method);
+    if (!definition || !candidates.some((entry) => entry.method === method)) return route.abort();
+    calls.push(method);
+    // Reuse contract examples generated from mock/data. Never contact Alibaba.
+    const data: unknown = drift ? capabilityWorkerFixture.driftResponse : definition.responseExample;
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        [method.replaceAll('.', '_') + '_response']: data,
+        request_id: capabilityWorkerFixture.traceId
+      })
+    });
+  });
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#/settings`);
+  const guide = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
+  await guide.getByRole('checkbox').check();
+  await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
+  await page.getByLabel('App Key').fill('e2e-app-key');
+  await page.getByLabel('App Secret').fill('e2e-secret');
+  await page.getByLabel('Access Token').fill('e2e-token');
+  await page.getByLabel('设置保护口令').fill('e2e-vault-password');
+  await page.getByLabel('确认保护口令').fill('e2e-vault-password');
+  await page.getByRole('button', { name: '保存设置', exact: true }).click();
+  await expect(
+    page.getByText('凭证与设置已加密保存，并将在当前 Chrome 会话内保持可用。').first()
+  ).toBeVisible();
+  const invoke = async (method: string, parameters: unknown) => {
+    const requestId = crypto.randomUUID();
+    const response: unknown = await page.evaluate(
+      async (payload) => {
+        const runtime = (
+          globalThis as unknown as {
+            chrome: { runtime: { sendMessage(message: unknown): Promise<unknown> } };
+          }
+        ).chrome.runtime;
+        return runtime.sendMessage({ kind: 'gateway-request', operation: 'callCapability', ...payload });
+      },
+      { requestId, payload: { method, parameters } }
+    );
+    expect(response).toHaveProperty('requestId', requestId);
+    return response;
+  };
+  for (const candidate of candidates) {
+    const definition = getCapabilityDefinition(candidate.method);
+    if (!definition) throw new Error(candidate.method);
+    const requestIssues = await validateCapabilityRequest(candidate.method, definition.requestExample);
+    const before = calls.length;
+    const response = await invoke(candidate.method, definition.requestExample);
+    if (requestIssues.length) {
+      expect(response, candidate.method).toMatchObject({
+        ok: false,
+        error: { code: 'REQUEST_CONTRACT_INVALID' }
+      });
+      expect(calls).toHaveLength(before);
+    } else {
+      const issues = await validateCapabilityResponse(candidate.method, definition.responseExample);
+      expect(response, candidate.method).toMatchObject({
+        ok: true,
+        data: {
+          data: definition.responseExample,
+          contractValid: issues.length === 0,
+          contractIssues: issues,
+          traceId: capabilityWorkerFixture.traceId
+        }
+      });
+      expect(calls.slice(before)).toEqual([candidate.method]);
+    }
+  }
+  expect(
+    new Set(calls.map((method) => candidates.find((item) => item.method === method)?.domain)).size
+  ).toBeGreaterThanOrEqual(6);
+  const before = calls.length;
+  expect(
+    await invoke('alibaba.icbu.category.id.mapping', capabilityWorkerFixture.invalidMappingRequest)
+  ).toMatchObject({
+    ok: false,
+    error: { code: 'REQUEST_CONTRACT_INVALID' }
+  });
+  expect(await invoke('alibaba.icbu.product.schema.add', {})).toMatchObject({
+    ok: false,
+    error: { code: 'REAL_MUTATION_DISABLED' }
+  });
+  expect(await invoke('alibaba.icbu.risk.send', {})).toMatchObject({
+    ok: false,
+    error: { code: 'CAPABILITY_RESTRICTED' }
+  });
+  expect(calls).toHaveLength(before);
+  const timeOrigin = await worker.evaluate(() => performance.timeOrigin);
+  const internals = await context.newPage();
+  await internals.goto('chrome://serviceworker-internals');
+  // Chromium's page-scoped stopAllWorkers does not stop an extension worker.
+  // This isolated profile contains only our unpacked extension registration.
+  await expect(internals.getByText(worker.url(), { exact: true })).toBeVisible();
+  await internals.getByText('Stop', { exact: true }).click();
+  await expect(internals.locator('body')).toContainText('STOPPED');
+  drift = true;
+  const parameters = getCapabilityDefinition('alibaba.icbu.category.id.mapping')?.requestExample;
+  expect(await invoke('alibaba.icbu.category.id.mapping', parameters)).toMatchObject({
+    ok: true,
+    data: {
+      data: capabilityWorkerFixture.driftResponse,
+      contractValid: false,
+      traceId: capabilityWorkerFixture.traceId
+    }
+  });
+  expect(calls.slice(before)).toEqual(['alibaba.icbu.category.id.mapping']);
+  const restarted = context.serviceWorkers().at(-1) ?? (await context.waitForEvent('serviceworker'));
+  expect(await restarted.evaluate(() => performance.timeOrigin)).toBeGreaterThan(timeOrigin);
+  await test.info().attach('catalog-worker-coverage', {
+    contentType: 'application/json',
+    body: JSON.stringify({
+      candidates: candidates.length,
+      callsBeforeRestart: before,
+      methods: [...new Set(calls)],
+      restartVerified: true
+    })
+  });
+  await internals.close();
+});
 
 test('formal MV3 showcase uses the actual worker with isolated TOP responses', async () => {
   if (!context) throw new Error('Missing extension context');

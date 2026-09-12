@@ -1,0 +1,5 @@
+{
+  "traceId": "catalog-e2e-trace",
+  "invalidMappingRequest": { "cat_id": "invalid" },
+  "driftResponse": { "cat_id": "invalid" }
+}
