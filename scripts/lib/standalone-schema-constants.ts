@@ -78,9 +78,9 @@ function shareErrorMessages(source: string): string {
     if (
       ts.isPropertyAssignment(node) &&
       (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name)) &&
-      node.name.text === 'message' &&
+      (node.name.text === 'message' || node.name.text === 'schemaPath') &&
       ts.isStringLiteral(node.initializer) &&
-      node.initializer.text.length >= 20
+      node.initializer.text.length >= 10
     ) {
       const uses = messages.get(node.initializer.text) ?? [];
       uses.push(node.initializer);

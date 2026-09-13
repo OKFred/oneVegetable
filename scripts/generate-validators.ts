@@ -159,6 +159,7 @@ function compileValidators(
     inlineRefs: false,
     // Generate loops for larger required sets rather than duplicating error branches.
     loopRequired: 2,
+    loopEnum: 2,
     strict: true
   });
   addFormats(ajv, { mode: formatMode });
@@ -186,10 +187,15 @@ function compileValidators(
       return [name, name];
     })
   );
-  const browserSafeCode = compactStandaloneSchemaConstants(standaloneCode(ajv, validators)).replace(
+  const generated = compactStandaloneSchemaConstants(standaloneCode(ajv, validators)).replace(
     'require("ajv/dist/runtime/ucs2length").default',
     '((value) => [...value].length)'
   );
+  const equalImport = generated.includes('require("ajv/dist/runtime/equal").default')
+    ? 'import { validationEqual } from "../validation-equal";\n'
+    : '';
+  const browserSafeCode =
+    equalImport + generated.replaceAll('require("ajv/dist/runtime/equal").default', 'validationEqual');
   if (browserSafeCode.includes('require(') || browserSafeCode.includes('eval(')) {
     throw new Error('AJV standalone output contains a browser-unsafe runtime dependency.');
   }

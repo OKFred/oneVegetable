@@ -2,6 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { compactStandaloneSchemaConstants as compact } from './standalone-schema-constants';
 
 describe('standalone schema constant compaction', () => {
+  it('shares schema paths and short repeated messages without removing errors', () => {
+    const input =
+      'const e=[{message:"must be object",schemaPath:"#/required"},{message:"must be object",schemaPath:"#/required"},{message:"must be object",schemaPath:"#/required"}];';
+    const output = compact(input);
+    expect(output.match(/must be object/g)).toHaveLength(1);
+    expect(output.match(/#\/required/g)).toHaveLength(1);
+    expect(output.match(/schemaPath:/g)).toHaveLength(3);
+    expect(compact(output)).toBe(output);
+  });
   it('shares repeated literal error text without touching paths, expressions or keys', () => {
     const message = 'must NOT have additional properties';
     const source = `const errors=[{message:"${message}",instancePath:'/a'},{message:"${message}",instancePath:'/b'},{message:"${message}",instancePath:'/c'}]; const dynamic={message:prefix+'x'};`;
