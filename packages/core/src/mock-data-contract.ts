@@ -55,6 +55,10 @@ export interface PhotoMockData {
   >;
 }
 
+export interface VideoMockData {
+  responses: OperationResponses<'listVideos' | 'listVideoRelatedProducts' | 'resolveVideoRelatedProduct'>;
+}
+
 export interface RfqMockData {
   primaryRfq: RfqSummary;
   rfqs: RfqSummary[];

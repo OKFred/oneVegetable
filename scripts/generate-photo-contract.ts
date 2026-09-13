@@ -7,6 +7,7 @@ import { withAlibabaResponseMetadata } from './lib/alibaba-response-contract';
 import { readAccountVerifiedMethods, readAccountVerifiedMutationMethods } from './lib/account-verification';
 import { normalizeHttpContract } from './lib/normalize-http-contract';
 import { writeTextFileWithRetry } from './lib/safe-write';
+import { addVideoContract } from './lib/video-contract';
 
 interface ParamNode {
   name: string;
@@ -24,7 +25,7 @@ interface PhotoDefinition {
   description: string;
   lifecycle: 'active' | 'deprecated' | 'unlisted';
   risk: 'read' | 'mutation';
-  featureArea: 'groups' | 'assets';
+  featureArea: 'groups' | 'assets' | 'videos';
   restricted: boolean;
   restrictionReason: string | null;
   checkedAt: string;
@@ -53,6 +54,10 @@ const sourceContract = JSON.parse(await readFile(contractPath, 'utf8')) as OpenA
 const snapshot = JSON.parse(await readFile(resolve(root, 'docs/alibaba-photo-api-docs.json'), 'utf8')) as {
   definitions: PhotoDefinition[];
 };
+const videoSnapshot = JSON.parse(
+  await readFile(resolve(root, 'docs/alibaba-video-api-docs.json'), 'utf8')
+) as { definitions: PhotoDefinition[] };
+snapshot.definitions.push(...videoSnapshot.definitions);
 
 function schemaName(method: string): string {
   return method
@@ -218,6 +223,7 @@ const extensions = [
   'x-photo-capabilities',
   'x-platform-capabilities'
 ];
+addVideoContract(document);
 const allDefinitions = extensions.flatMap((extension) =>
   Object.values(
     (document[extension] ?? {}) as Record<string, { requestSchema: string; responseSchema: string }>

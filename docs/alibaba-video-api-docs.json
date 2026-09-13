@@ -1,0 +1,300 @@
+{
+  "definitions": [
+    {
+      "method": "alibaba.icbu.video.query",
+      "source": "catalog",
+      "docId": 49930,
+      "title": "视频查询",
+      "description": "视频查询",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "videos",
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-09-10",
+      "updatedAt": "2025-06-13",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "requestParams": [
+        {
+          "name": "title",
+          "type": "String",
+          "required": false,
+          "description": "视频标题，支持模糊搜索"
+        },
+        {
+          "name": "id",
+          "type": "Number",
+          "required": false,
+          "description": "视频明文id"
+        },
+        {
+          "name": "current_page",
+          "type": "Number",
+          "required": true,
+          "description": "当前页"
+        },
+        {
+          "name": "page_size",
+          "type": "Number",
+          "required": true,
+          "description": "每页条目数"
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "MtopResultDto",
+          "required": false,
+          "description": "结果",
+          "subParams": [
+            {
+              "name": "model",
+              "type": "Page",
+              "required": false,
+              "description": "返回实体",
+              "subParams": [
+                {
+                  "name": "current_page",
+                  "type": "Number",
+                  "required": false,
+                  "description": "当前页"
+                },
+                {
+                  "name": "list",
+                  "type": "IsvVideoDto[]",
+                  "required": false,
+                  "description": "视频列表",
+                  "subParams": [
+                    {
+                      "name": "cover_url",
+                      "type": "String",
+                      "required": false,
+                      "description": "封面图"
+                    },
+                    {
+                      "name": "duration",
+                      "type": "Number",
+                      "required": false,
+                      "description": "视频时长"
+                    },
+                    {
+                      "name": "file_size",
+                      "type": "Number",
+                      "required": false,
+                      "description": "视频大小"
+                    },
+                    {
+                      "name": "publish_time",
+                      "type": "Number",
+                      "required": false,
+                      "description": "发布时间，时间戳毫秒"
+                    },
+                    {
+                      "name": "publish_user_name",
+                      "type": "String",
+                      "required": false,
+                      "description": "用户名，脱敏数据"
+                    },
+                    {
+                      "name": "quality",
+                      "type": "String",
+                      "required": false,
+                      "description": "质量"
+                    },
+                    {
+                      "name": "related_product_count",
+                      "type": "Number",
+                      "required": false,
+                      "description": "关联商品数量"
+                    },
+                    {
+                      "name": "status",
+                      "type": "String",
+                      "required": false,
+                      "description": "状态"
+                    },
+                    {
+                      "name": "title",
+                      "type": "String",
+                      "required": false,
+                      "description": "标题"
+                    },
+                    {
+                      "name": "video_height",
+                      "type": "Number",
+                      "required": false,
+                      "description": "高度"
+                    },
+                    {
+                      "name": "video_id",
+                      "type": "String",
+                      "required": false,
+                      "description": "视频加密id"
+                    },
+                    {
+                      "name": "video_url",
+                      "type": "String",
+                      "required": false,
+                      "description": "视频链接"
+                    },
+                    {
+                      "name": "video_width",
+                      "type": "Number",
+                      "required": false,
+                      "description": "视频宽度"
+                    },
+                    {
+                      "name": "id",
+                      "type": "Number",
+                      "required": false,
+                      "description": "id"
+                    }
+                  ]
+                },
+                {
+                  "name": "page_size",
+                  "type": "Number",
+                  "required": false,
+                  "description": "每页条目数"
+                },
+                {
+                  "name": "total_count",
+                  "type": "Number",
+                  "required": false,
+                  "description": "总条目数"
+                }
+              ]
+            },
+            {
+              "name": "msg_code",
+              "type": "String",
+              "required": false,
+              "description": "错误码"
+            },
+            {
+              "name": "msg_info",
+              "type": "String",
+              "required": false,
+              "description": "信息"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": {
+        "current_page": 1,
+        "page_size": 20
+      },
+      "responseExample": {
+        "result": {
+          "model": {
+            "current_page": 1,
+            "list": [
+              {
+                "cover_url": "1",
+                "duration": 1,
+                "file_size": 100,
+                "publish_time": 11111,
+                "publish_user_name": "username",
+                "quality": "1",
+                "related_product_count": 1,
+                "status": "approved",
+                "title": "1",
+                "video_height": 111,
+                "video_id": "111",
+                "video_url": "111",
+                "video_width": 111,
+                "id": 123456
+              }
+            ],
+            "page_size": 11,
+            "total_count": 11
+          },
+          "msg_code": "200",
+          "msg_info": "成功"
+        }
+      }
+    },
+    {
+      "method": "alibaba.icbu.video.relation.product.list",
+      "source": "catalog",
+      "docId": 50709,
+      "title": "视频关联商品id列表",
+      "description": "查询icbu视频关联商品id列表",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "videos",
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-09-10",
+      "updatedAt": "2025-06-13",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "requestParams": [
+        {
+          "name": "type",
+          "type": "String",
+          "required": true,
+          "description": "videoId-主图视频；detailVideoId-详情视频"
+        },
+        {
+          "name": "video_id",
+          "type": "String",
+          "required": true,
+          "description": "视频加密id"
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "result",
+          "type": "MtopResultDto",
+          "required": false,
+          "description": "结果",
+          "subParams": [
+            {
+              "name": "model",
+              "type": "IsvProductDto[]",
+              "required": false,
+              "description": "id列表",
+              "subParams": [
+                {
+                  "name": "product_id",
+                  "type": "String",
+                  "required": false,
+                  "description": "加密商品id"
+                }
+              ]
+            },
+            {
+              "name": "msg_code",
+              "type": "String",
+              "required": false,
+              "description": "返回码"
+            },
+            {
+              "name": "msg_info",
+              "type": "String",
+              "required": false,
+              "description": "错误信息"
+            }
+          ]
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": {
+        "type": "videoId",
+        "video_id": "example-encrypted-video"
+      },
+      "responseExample": {
+        "result": {
+          "model": [
+            {
+              "product_id": "商品id"
+            }
+          ],
+          "msg_code": "0",
+          "msg_info": "success"
+        }
+      }
+    }
+  ]
+}

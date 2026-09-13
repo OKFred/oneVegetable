@@ -1,4 +1,5 @@
 import { browser } from 'wxt/browser';
+import { VideoAdapter, VIDEO_OPERATIONS } from '@one-vegetable/core/video';
 
 import {
   galleryGatewayId,
@@ -101,6 +102,9 @@ const OPERATIONS = new Set<OperationId>([
   'listProductGroups',
   'getProductShowcase',
   'getProductInventory',
+  'listVideos',
+  'listVideoRelatedProducts',
+  'resolveVideoRelatedProduct',
   'addShowcaseProducts',
   'removeShowcaseProducts',
   'sortShowcaseProduct',
@@ -682,7 +686,8 @@ async function executeOperation(
   }
   const client = AlibabaClient.create(settings, {
     requestId,
-    maxAttempts: operation === 'getProductInventory' ? 1 : 3,
+    maxAttempts:
+      operation === 'getProductInventory' || VIDEO_OPERATIONS.some((value) => value === operation) ? 1 : 3,
     shouldRetry: (method, error) => error.retryable && findCapability(method)?.risk === 'read'
   });
   const mutationClient = AlibabaClient.create(
@@ -703,6 +708,18 @@ async function executeOperation(
   const request = asRecord(payload);
 
   switch (operation) {
+    case 'listVideos':
+      return new VideoAdapter(client, validateCapabilityRequest, validateCapabilityResponse).list(
+        payload as RequestOf<'listVideos'>
+      );
+    case 'listVideoRelatedProducts':
+      return new VideoAdapter(client, validateCapabilityRequest, validateCapabilityResponse).related(
+        payload as RequestOf<'listVideoRelatedProducts'>
+      );
+    case 'resolveVideoRelatedProduct':
+      return new VideoAdapter(client, validateCapabilityRequest, validateCapabilityResponse).resolve(
+        payload as RequestOf<'resolveVideoRelatedProduct'>
+      );
     case 'getProductInventory':
       return new ProductInventoryAdapter(client, validateCapabilityRequest, validateCapabilityResponse).get(
         payload as RequestOf<'getProductInventory'>
@@ -1027,6 +1044,9 @@ function diagnosticMethod(operation: OperationId, payload: unknown): string | nu
     renderProductSchema: 'alibaba.icbu.product.schema.render',
     listPhotoGroups: 'alibaba.icbu.photobank.group.list',
     listPhotos: 'alibaba.icbu.photobank.list',
+    listVideos: 'alibaba.icbu.video.query',
+    listVideoRelatedProducts: 'alibaba.icbu.video.relation.product.list',
+    resolveVideoRelatedProduct: 'alibaba.icbu.product.id.decrypt',
     listTradeOrders: 'alibaba.seller.order.list',
     listRfqs: 'alibaba.icbu.rfq.search'
   };

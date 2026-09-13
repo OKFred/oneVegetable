@@ -1,0 +1,37 @@
+{
+  "query": {
+    "result": {
+      "msg_code": "200",
+      "msg_info": "success",
+      "model": {
+        "current_page": 1,
+        "page_size": 20,
+        "total_count": 1,
+        "list": [
+          {
+            "id": 900001,
+            "video_id": "encrypted-example",
+            "title": "Example video",
+            "cover_url": "https://sc04.alicdn.com/example.jpg",
+            "video_url": "https://cloud.video.taobao.com/example.mp4",
+            "video_width": 720,
+            "video_height": 1280,
+            "duration": 14000,
+            "file_size": 1234567,
+            "publish_time": 1789257600000,
+            "status": "approved",
+            "quality": "normal",
+            "related_product_count": 1,
+            "publish_user_name": "e***e"
+          }
+        ]
+      }
+    },
+    "request_id": "mock-query"
+  },
+  "relations": {
+    "result": { "msg_code": "0", "msg_info": "success", "model": [{ "product_id": "encrypted-product" }] },
+    "request_id": "mock-relations"
+  },
+  "decrypt": { "id": 900003, "request_id": "mock-decrypt" }
+}

@@ -7850,6 +7850,105 @@
         },
         "title": "alibaba.icbu.photobank.upload response"
       },
+      "AlibabaPhotoAlibabaIcbuVideoQueryRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["current_page", "page_size"],
+        "properties": {
+          "title": { "type": "string", "description": "视频标题，支持模糊搜索" },
+          "id": { "type": "number", "description": "视频明文id" },
+          "current_page": { "type": "number", "description": "当前页" },
+          "page_size": { "type": "number", "description": "每页条目数" }
+        },
+        "title": "alibaba.icbu.video.query request"
+      },
+      "AlibabaPhotoAlibabaIcbuVideoQueryResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "current_page": { "type": "number", "description": "当前页" },
+                  "list": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "cover_url": { "type": "string", "description": "封面图" },
+                        "duration": { "type": "number", "description": "视频时长" },
+                        "file_size": { "type": "number", "description": "视频大小" },
+                        "publish_time": { "type": "number", "description": "发布时间，时间戳毫秒" },
+                        "publish_user_name": { "type": "string", "description": "用户名，脱敏数据" },
+                        "quality": { "type": "string", "description": "质量" },
+                        "related_product_count": { "type": "number", "description": "关联商品数量" },
+                        "status": { "type": "string", "description": "状态" },
+                        "title": { "type": "string", "description": "标题" },
+                        "video_height": { "type": "number", "description": "高度" },
+                        "video_id": { "type": "string", "description": "视频加密id" },
+                        "video_url": { "type": "string", "description": "视频链接" },
+                        "video_width": { "type": "number", "description": "视频宽度" },
+                        "id": { "type": "number", "description": "id" }
+                      }
+                    },
+                    "description": "视频列表"
+                  },
+                  "page_size": { "type": "number", "description": "每页条目数" },
+                  "total_count": { "type": "number", "description": "总条目数" }
+                },
+                "description": "返回实体"
+              },
+              "msg_code": { "type": "string", "description": "错误码" },
+              "msg_info": { "type": "string", "description": "信息" }
+            },
+            "description": "结果"
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
+        "title": "alibaba.icbu.video.query response"
+      },
+      "AlibabaPhotoAlibabaIcbuVideoRelationProductListRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "video_id"],
+        "properties": {
+          "type": { "type": "string", "description": "videoId-主图视频；detailVideoId-详情视频" },
+          "video_id": { "type": "string", "description": "视频加密id" }
+        },
+        "title": "alibaba.icbu.video.relation.product.list request"
+      },
+      "AlibabaPhotoAlibabaIcbuVideoRelationProductListResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": { "product_id": { "type": "string", "description": "加密商品id" } }
+                },
+                "description": "id列表"
+              },
+              "msg_code": { "type": "string", "description": "返回码" },
+              "msg_info": { "type": "string", "description": "错误信息" }
+            },
+            "description": "结果"
+          },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
+        "title": "alibaba.icbu.video.relation.product.list response"
+      },
       "AlibabaPlatformAlibabaIcbuFileUrlpostingUploadRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -13668,6 +13767,8 @@
               { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankGroupOperateResponse" },
               { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankListResponse" },
               { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankUploadResponse" },
+              { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuVideoQueryResponse" },
+              { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuVideoRelationProductListResponse" },
               { "$ref": "#/components/schemas/AlibabaPlatformAlibabaIcbuFileUrlpostingUploadResponse" },
               { "$ref": "#/components/schemas/AlibabaPlatformAlibabaIcbuRiskSendResponse" },
               { "$ref": "#/components/schemas/AlibabaPlatformAlibabaIcbuTaskStatusNotifyResponse" }
@@ -16072,7 +16173,135 @@
         }
       },
       "UserRole": { "type": "string", "enum": ["admin", "user"] },
-      "UserStatus": { "type": "string", "enum": ["active", "disabled"] }
+      "UserStatus": { "type": "string", "enum": ["active", "disabled"] },
+      "Video": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "encryptedId",
+          "title",
+          "coverUrl",
+          "videoUrl",
+          "width",
+          "height",
+          "fileSize",
+          "durationRaw",
+          "publishedAt",
+          "status",
+          "quality",
+          "relatedProductCount",
+          "publisher"
+        ],
+        "properties": {
+          "id": { "type": ["string", "null"] },
+          "encryptedId": { "type": ["string", "null"] },
+          "title": { "type": ["string", "null"] },
+          "coverUrl": { "type": ["string", "null"] },
+          "videoUrl": { "type": ["string", "null"] },
+          "width": { "type": ["number", "null"], "minimum": 0 },
+          "height": { "type": ["number", "null"], "minimum": 0 },
+          "fileSize": { "type": ["number", "null"], "minimum": 0 },
+          "durationRaw": { "type": ["number", "null"], "minimum": 0 },
+          "publishedAt": { "type": ["number", "null"], "minimum": 0 },
+          "status": { "type": ["string", "null"] },
+          "quality": { "type": ["string", "null"] },
+          "relatedProductCount": { "type": ["number", "null"], "minimum": 0 },
+          "publisher": { "type": ["string", "null"] }
+        }
+      },
+      "VideoListRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["page", "pageSize"],
+        "properties": {
+          "page": { "type": "integer", "minimum": 1 },
+          "pageSize": { "type": "integer", "enum": [20, 50] },
+          "title": { "type": "string", "maxLength": 200 },
+          "id": { "type": "string", "pattern": "^[1-9][0-9]*$" }
+        }
+      },
+      "VideoPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["traceId", "queriedAt", "issues", "items", "page", "pageSize", "total"],
+        "properties": {
+          "traceId": { "type": "string" },
+          "queriedAt": { "type": "integer", "minimum": 0 },
+          "issues": { "type": "array", "items": { "type": "string" } },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/Video" } },
+          "page": { "type": "integer", "minimum": 1 },
+          "pageSize": { "type": "integer", "minimum": 1 },
+          "total": { "type": ["integer", "null"], "minimum": 0 }
+        }
+      },
+      "VideoProductRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["encryptedProductId", "language"],
+        "properties": {
+          "encryptedProductId": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "language": { "type": "string", "enum": ["zh_CN", "en_US"] }
+        }
+      },
+      "VideoProductResolution": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "traceId",
+          "queriedAt",
+          "issues",
+          "encryptedProductId",
+          "productId",
+          "product",
+          "status"
+        ],
+        "properties": {
+          "traceId": { "type": "string" },
+          "queriedAt": { "type": "integer", "minimum": 0 },
+          "issues": { "type": "array", "items": { "type": "string" } },
+          "encryptedProductId": { "type": "string" },
+          "productId": { "type": ["string", "null"] },
+          "product": {
+            "oneOf": [{ "$ref": "#/components/schemas/VideoProductSummary" }, { "type": "null" }]
+          },
+          "status": { "type": "string", "enum": ["resolved", "not-found", "invalid-id"] }
+        }
+      },
+      "VideoProductSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "subject", "imageUrl", "detailUrl", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "subject": { "type": "string" },
+          "imageUrl": { "type": ["string", "null"] },
+          "detailUrl": { "type": ["string", "null"] },
+          "status": { "type": "string" }
+        }
+      },
+      "VideoRelationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["videoId", "type"],
+        "properties": {
+          "videoId": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "type": { "type": "string", "enum": ["main", "detail"] }
+        }
+      },
+      "VideoRelations": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["traceId", "queriedAt", "issues", "videoId", "type", "encryptedProductIds"],
+        "properties": {
+          "traceId": { "type": "string" },
+          "queriedAt": { "type": "integer", "minimum": 0 },
+          "issues": { "type": "array", "items": { "type": "string" } },
+          "videoId": { "type": "string" },
+          "type": { "type": "string", "enum": ["main", "detail"] },
+          "encryptedProductIds": { "type": "array", "items": { "type": "string" } }
+        }
+      }
     }
   },
   "x-product-capabilities": {
@@ -20412,6 +20641,76 @@
         }
       },
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=24463"
+    },
+    "alibaba.icbu.video.query": {
+      "requestSchema": "AlibabaPhotoAlibabaIcbuVideoQueryRequest",
+      "responseSchema": "AlibabaPhotoAlibabaIcbuVideoQueryResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "videos",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-09-10",
+      "updatedAt": "2025-06-13",
+      "title": "视频查询",
+      "description": "视频查询",
+      "errorCodes": [],
+      "requestExample": { "current_page": 1, "page_size": 20 },
+      "responseExample": {
+        "result": {
+          "model": {
+            "current_page": 1,
+            "list": [
+              {
+                "cover_url": "1",
+                "duration": 1,
+                "file_size": 100,
+                "publish_time": 11111,
+                "publish_user_name": "username",
+                "quality": "1",
+                "related_product_count": 1,
+                "status": "approved",
+                "title": "1",
+                "video_height": 111,
+                "video_id": "111",
+                "video_url": "111",
+                "video_width": 111,
+                "id": 123456
+              }
+            ],
+            "page_size": 11,
+            "total_count": 11
+          },
+          "msg_code": "200",
+          "msg_info": "成功"
+        }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=49930"
+    },
+    "alibaba.icbu.video.relation.product.list": {
+      "requestSchema": "AlibabaPhotoAlibabaIcbuVideoRelationProductListRequest",
+      "responseSchema": "AlibabaPhotoAlibabaIcbuVideoRelationProductListResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "videos",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-09-10",
+      "updatedAt": "2025-06-13",
+      "title": "视频关联商品id列表",
+      "description": "查询icbu视频关联商品id列表",
+      "errorCodes": [],
+      "requestExample": { "type": "videoId", "video_id": "example-encrypted-video" },
+      "responseExample": {
+        "result": { "model": [{ "product_id": "商品id" }], "msg_code": "0", "msg_info": "success" }
+      },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=50709"
     }
   },
   "x-platform-capabilities": {

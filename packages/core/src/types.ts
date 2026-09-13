@@ -41,6 +41,13 @@ export type ProductDisplayMutationResult = components['schemas']['ProductDisplay
 export type Photo = components['schemas']['Photo'];
 export type PhotoGroup = components['schemas']['PhotoGroup'];
 export type PhotoPage = components['schemas']['PhotoPage'];
+export type Video = components['schemas']['Video'];
+export type VideoListRequest = components['schemas']['VideoListRequest'];
+export type VideoRelationRequest = components['schemas']['VideoRelationRequest'];
+export type VideoProductRequest = components['schemas']['VideoProductRequest'];
+export type VideoPage = components['schemas']['VideoPage'];
+export type VideoRelations = components['schemas']['VideoRelations'];
+export type VideoProductResolution = components['schemas']['VideoProductResolution'];
 export type PhotoTransferRequest = components['schemas']['PhotoTransferRequest'];
 export type PhotoGroupOperationRequest = components['schemas']['PhotoGroupOperationRequest'];
 export type ProductDescriptionQualityIssue = components['schemas']['ProductDescriptionQualityIssue'];
@@ -213,6 +220,9 @@ export type ProductInventoryRequest = components['schemas']['ProductInventoryReq
 export type ProductInventorySnapshot = components['schemas']['ProductInventorySnapshot'];
 
 export interface OperationMap {
+  listVideos: { request: VideoListRequest; response: VideoPage };
+  listVideoRelatedProducts: { request: VideoRelationRequest; response: VideoRelations };
+  resolveVideoRelatedProduct: { request: VideoProductRequest; response: VideoProductResolution };
   getProductInventory: { request: ProductInventoryRequest; response: ProductInventorySnapshot };
   getDashboard: { request: undefined; response: DashboardSummary };
   getDiagnostics: { request: undefined; response: DiagnosticsSnapshot };

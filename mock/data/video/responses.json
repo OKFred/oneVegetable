@@ -1,0 +1,69 @@
+{
+  "responses": {
+    "listVideos": {
+      "page": 1,
+      "pageSize": 20,
+      "total": 2,
+      "traceId": "video-mock-query",
+      "queriedAt": 1789257600000,
+      "issues": [],
+      "items": [
+        {
+          "id": "900001",
+          "encryptedId": "video-example",
+          "title": "Example clothing video",
+          "coverUrl": null,
+          "videoUrl": "https://cloud.video.taobao.com/example-unavailable.mp4",
+          "width": 720,
+          "height": 1280,
+          "fileSize": 1234567,
+          "durationRaw": 14000,
+          "publishedAt": 1789257600000,
+          "status": "approved",
+          "quality": "normal",
+          "relatedProductCount": 1,
+          "publisher": "e***e"
+        },
+        {
+          "id": "900002",
+          "encryptedId": "video-empty",
+          "title": "Example unlinked video",
+          "coverUrl": null,
+          "videoUrl": null,
+          "width": null,
+          "height": null,
+          "fileSize": null,
+          "durationRaw": null,
+          "publishedAt": null,
+          "status": null,
+          "quality": null,
+          "relatedProductCount": 0,
+          "publisher": null
+        }
+      ]
+    },
+    "listVideoRelatedProducts": {
+      "videoId": "video-example",
+      "type": "main",
+      "encryptedProductIds": ["product-example"],
+      "traceId": "video-mock-relations",
+      "queriedAt": 1789257600000,
+      "issues": []
+    },
+    "resolveVideoRelatedProduct": {
+      "encryptedProductId": "product-example",
+      "productId": "900003",
+      "product": {
+        "id": "900003",
+        "subject": "Example clothing",
+        "imageUrl": null,
+        "detailUrl": null,
+        "status": "online"
+      },
+      "status": "resolved",
+      "traceId": "video-mock-product",
+      "queriedAt": 1789257600000,
+      "issues": []
+    }
+  }
+}

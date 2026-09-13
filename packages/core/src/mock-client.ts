@@ -7,6 +7,7 @@ import {
 import { listCapabilitiesWithAccountVerification } from './account-verification';
 import {
   INSIGHTS_MOCK_DATA,
+  VIDEO_MOCK_DATA,
   LOGISTICS_MOCK_DATA,
   PHOTO_MOCK_DATA,
   PRODUCT_MOCK_DATA,
@@ -40,6 +41,7 @@ const PRODUCTS = PRODUCT_MOCK_DATA.responses.listProducts.items;
 const PHOTOS = PHOTO_MOCK_DATA.responses.listPhotos.items;
 
 const MOCK_DATA: { [K in OperationId]: OperationMap[K]['response'] } = {
+  ...VIDEO_MOCK_DATA.responses,
   ...PRODUCT_MOCK_DATA.responses,
   ...PHOTO_MOCK_DATA.responses,
   ...RFQ_MOCK_DATA.responses,
@@ -107,6 +109,36 @@ export class MockGatewayClient implements GatewayClient {
 
   async request<K extends OperationId>(operation: K, _request: RequestOf<K>): Promise<ResponseOf<K>> {
     await new Promise<void>((resolve) => setTimeout(resolve, this.latency));
+    if (operation === 'listVideos') {
+      const input = _request as RequestOf<'listVideos'>;
+      const items = VIDEO_MOCK_DATA.responses.listVideos.items.filter(
+        (item) =>
+          (!input.id || item.id === input.id) &&
+          (!input.title || item.title?.toLowerCase().includes(input.title.toLowerCase()))
+      );
+      return {
+        ...structuredClone(VIDEO_MOCK_DATA.responses.listVideos),
+        ...input,
+        items: structuredClone(items.slice((input.page - 1) * input.pageSize, input.page * input.pageSize)),
+        total: items.length
+      };
+    }
+    if (operation === 'listVideoRelatedProducts') {
+      const input = _request as RequestOf<'listVideoRelatedProducts'>;
+      return {
+        ...structuredClone(VIDEO_MOCK_DATA.responses.listVideoRelatedProducts),
+        ...input,
+        encryptedProductIds:
+          input.videoId === 'video-empty' ? [] : input.type === 'main' ? ['product-example'] : []
+      };
+    }
+    if (operation === 'resolveVideoRelatedProduct') {
+      const input = _request as RequestOf<'resolveVideoRelatedProduct'>;
+      return {
+        ...structuredClone(VIDEO_MOCK_DATA.responses.resolveVideoRelatedProduct),
+        encryptedProductId: input.encryptedProductId
+      };
+    }
     if (operation === 'getProductShowcase') return structuredClone(this.showcase);
     if (operation === 'getProductInventory') {
       const input = _request as RequestOf<'getProductInventory'>;

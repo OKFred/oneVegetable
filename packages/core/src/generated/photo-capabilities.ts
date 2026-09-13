@@ -6,6 +6,8 @@ export interface PhotoCapabilityRequestMap {
   'alibaba.icbu.photobank.group.operate': components['schemas']['AlibabaPhotoAlibabaIcbuPhotobankGroupOperateRequest'];
   'alibaba.icbu.photobank.list': components['schemas']['AlibabaPhotoAlibabaIcbuPhotobankListRequest'];
   'alibaba.icbu.photobank.upload': components['schemas']['AlibabaPhotoAlibabaIcbuPhotobankUploadRequest'];
+  'alibaba.icbu.video.query': components['schemas']['AlibabaPhotoAlibabaIcbuVideoQueryRequest'];
+  'alibaba.icbu.video.relation.product.list': components['schemas']['AlibabaPhotoAlibabaIcbuVideoRelationProductListRequest'];
 }
 
 export interface PhotoCapabilityResponseMap {
@@ -13,6 +15,8 @@ export interface PhotoCapabilityResponseMap {
   'alibaba.icbu.photobank.group.operate': components['schemas']['AlibabaPhotoAlibabaIcbuPhotobankGroupOperateResponse'];
   'alibaba.icbu.photobank.list': components['schemas']['AlibabaPhotoAlibabaIcbuPhotobankListResponse'];
   'alibaba.icbu.photobank.upload': components['schemas']['AlibabaPhotoAlibabaIcbuPhotobankUploadResponse'];
+  'alibaba.icbu.video.query': components['schemas']['AlibabaPhotoAlibabaIcbuVideoQueryResponse'];
+  'alibaba.icbu.video.relation.product.list': components['schemas']['AlibabaPhotoAlibabaIcbuVideoRelationProductListResponse'];
 }
 
 export const PHOTO_CAPABILITY_DEFINITIONS = {
@@ -172,5 +176,89 @@ export const PHOTO_CAPABILITY_DEFINITIONS = {
       }
     },
     "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=24463"
+  },
+  "alibaba.icbu.video.query": {
+    "requestSchema": "AlibabaPhotoAlibabaIcbuVideoQueryRequest",
+    "responseSchema": "AlibabaPhotoAlibabaIcbuVideoQueryResponse",
+    "source": "catalog",
+    "lifecycle": "active",
+    "risk": "read",
+    "featureArea": "videos",
+    "verification": "documented",
+    "realCallEnabled": true,
+    "restricted": false,
+    "restrictionReason": null,
+    "checkedAt": "2026-09-10",
+    "updatedAt": "2025-06-13",
+    "title": "视频查询",
+    "description": "视频查询",
+    "errorCodes": [],
+    "requestExample": {
+      "current_page": 1,
+      "page_size": 20
+    },
+    "responseExample": {
+      "result": {
+        "model": {
+          "current_page": 1,
+          "list": [
+            {
+              "cover_url": "1",
+              "duration": 1,
+              "file_size": 100,
+              "publish_time": 11111,
+              "publish_user_name": "username",
+              "quality": "1",
+              "related_product_count": 1,
+              "status": "approved",
+              "title": "1",
+              "video_height": 111,
+              "video_id": "111",
+              "video_url": "111",
+              "video_width": 111,
+              "id": 123456
+            }
+          ],
+          "page_size": 11,
+          "total_count": 11
+        },
+        "msg_code": "200",
+        "msg_info": "成功"
+      }
+    },
+    "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=49930"
+  },
+  "alibaba.icbu.video.relation.product.list": {
+    "requestSchema": "AlibabaPhotoAlibabaIcbuVideoRelationProductListRequest",
+    "responseSchema": "AlibabaPhotoAlibabaIcbuVideoRelationProductListResponse",
+    "source": "catalog",
+    "lifecycle": "active",
+    "risk": "read",
+    "featureArea": "videos",
+    "verification": "documented",
+    "realCallEnabled": true,
+    "restricted": false,
+    "restrictionReason": null,
+    "checkedAt": "2026-09-10",
+    "updatedAt": "2025-06-13",
+    "title": "视频关联商品id列表",
+    "description": "查询icbu视频关联商品id列表",
+    "errorCodes": [],
+    "requestExample": {
+      "type": "videoId",
+      "video_id": "example-encrypted-video"
+    },
+    "responseExample": {
+      "result": {
+        "model": [
+          {
+            "product_id": "商品id"
+          }
+        ],
+        "msg_code": "0",
+        "msg_info": "success"
+      }
+    },
+    "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=50709"
   }
 } as const;

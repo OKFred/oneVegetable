@@ -220,6 +220,46 @@
       "realCallEnabled": true,
       "requestSchema": "AlibabaProductAlibabaIcbuTextTransRequest",
       "responseSchema": "AlibabaProductAlibabaIcbuTextTransResponse"
+    },
+    {
+      "method": "alibaba.icbu.video.query",
+      "domain": "photo",
+      "chargeLabel": "￥开放平台免费API",
+      "auth": "required",
+      "jushitaOnly": false,
+      "restricted": false,
+      "restrictionReason": null,
+      "enabled": true,
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=49930",
+      "checkedAt": "2026-09-10",
+      "updatedAt": "2025-06-13",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaPhotoAlibabaIcbuVideoQueryRequest",
+      "responseSchema": "AlibabaPhotoAlibabaIcbuVideoQueryResponse"
+    },
+    {
+      "method": "alibaba.icbu.video.relation.product.list",
+      "domain": "photo",
+      "chargeLabel": "￥开放平台免费API",
+      "auth": "required",
+      "jushitaOnly": false,
+      "restricted": false,
+      "restrictionReason": null,
+      "enabled": true,
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=50709",
+      "checkedAt": "2026-09-10",
+      "updatedAt": "2025-06-13",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "requestSchema": "AlibabaPhotoAlibabaIcbuVideoRelationProductListRequest",
+      "responseSchema": "AlibabaPhotoAlibabaIcbuVideoRelationProductListResponse"
     }
   ]
 }

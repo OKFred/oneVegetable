@@ -13,6 +13,7 @@
     "./errors": "./src/errors.ts",
     "./showcase": "./src/product-showcase.ts",
     "./inventory": "./src/product-inventory.ts",
+    "./video": "./src/video.ts",
     "./gallery-transfer-task": "./src/gallery-transfer-task.ts",
     "./gallery-transfer-context": "./src/gallery-transfer-context.ts",
     "./gallery-transfer-runner": "./src/gallery-transfer-runner.ts",

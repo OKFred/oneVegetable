@@ -22,6 +22,7 @@ import {
   validateCapabilityResponse
 } from '@one-vegetable/core';
 import { GatewayConfigurationError } from './credentials';
+import { VideoAdapter, VIDEO_OPERATIONS } from '@one-vegetable/core/video';
 import {
   galleryGatewayId,
   assertGalleryContextId,
@@ -127,7 +128,9 @@ export class AlibabaReadGatewayClient implements GatewayClient {
     const client = this.createClient(
       context,
       'top',
-      operation === 'getProductInventory' ? 1 : this.#maxAttempts
+      operation === 'getProductInventory' || VIDEO_OPERATIONS.some((value) => value === operation)
+        ? 1
+        : this.#maxAttempts
     );
     if (operation !== 'callCapability') {
       return this.requestDedicated(operation, request, client, this.createClient(context, 'sync'));
@@ -204,6 +207,18 @@ export class AlibabaReadGatewayClient implements GatewayClient {
     const photos = new PhotoAdapter(client);
     const record = readRecord(request);
     switch (operation) {
+      case 'listVideos':
+        return await new VideoAdapter(client, validateCapabilityRequest, validateCapabilityResponse).list(
+          request as RequestOf<'listVideos'>
+        );
+      case 'listVideoRelatedProducts':
+        return await new VideoAdapter(client, validateCapabilityRequest, validateCapabilityResponse).related(
+          request as RequestOf<'listVideoRelatedProducts'>
+        );
+      case 'resolveVideoRelatedProduct':
+        return await new VideoAdapter(client, validateCapabilityRequest, validateCapabilityResponse).resolve(
+          request as RequestOf<'resolveVideoRelatedProduct'>
+        );
       case 'getProductInventory':
         return await new ProductInventoryAdapter(
           client,
