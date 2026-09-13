@@ -91,16 +91,21 @@ test('interrupted writes remain unknown; a live tab lock prevents recovery and o
         };
       });
       // A test-owned lock simulates another still-active executor, without a fake network write.
-      void navigator.locks.request('one-vegetable.gallery-transfer.executor.v1', async () => {
-        await new Promise<void>((resolve) => {
-          window.addEventListener(
-            'release-gallery-test-lock',
-            () => {
-              resolve();
-            },
-            { once: true }
-          );
-        });
+      await new Promise<void>((acquired, reject) => {
+        void navigator.locks
+          .request('one-vegetable.gallery-transfer.executor.v1', async () => {
+            acquired();
+            await new Promise<void>((resolve) => {
+              window.addEventListener(
+                'release-gallery-test-lock',
+                () => {
+                  resolve();
+                },
+                { once: true }
+              );
+            });
+          })
+          .catch(reject);
       });
     },
     { name: databaseName, fixture: taskFixture, identity: photoFixture.transferContext }
@@ -111,6 +116,18 @@ test('interrupted writes remain unknown; a live tab lock prevents recovery and o
   const center = second.getByRole('dialog', { name: '传输记录', exact: true });
   await expect(center.getByRole('button', { name: /执行中/ })).toBeVisible();
   await page.close(); // releases the lock; the observer still does not auto-take over
+  // Page closure and browser-process lock cleanup are separate asynchronous events.
+  // Wait for the precondition, not for task recovery: only the explicit refresh may recover.
+  await expect
+    .poll(() =>
+      second.evaluate(async () =>
+        (await navigator.locks.query()).held?.some(
+          (lock) => lock.name === 'one-vegetable.gallery-transfer.executor.v1'
+        )
+      )
+    )
+    .toBe(false);
+  await expect(center.getByRole('button', { name: /执行中/ })).toBeVisible();
   await center.getByRole('button', { name: '刷新', exact: true }).click();
   await expect(center.getByRole('button', { name: /已暂停/ })).toBeVisible();
   await center.getByRole('button', { name: /task-tes/ }).click();
