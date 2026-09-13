@@ -12,6 +12,7 @@ Key features:
 - Inspect showcase quota and products, then confirm additions, removals, reordering or replacement and verify by read-back. Uncertain writes are never automatically retried; removing a showcase entry does not delete the product.
 - Import and export products as JSON or ZIP archives with managed `assets` image resources.
 - Select gallery assets and receive non-blocking content guidance.
+- Search, page through and preview existing videos in a read-only tab, including main-image and description product relations. No video uploads or relation changes; platform review and quality are shown separately, with an official-page link if playback fails.
 - Import and export gallery ZIPs up to 50 MiB with originals and an integrity manifest; uploads require confirmation. Connect directly to S3-compatible storage and map prefixes to gallery groups without deploying a backend.
 - Pause, verify and resume ZIP/S3 tasks from local transfer history. Transfers continue across dialogs and workbench navigation, but require manual confirmation after reload. Confirmed items are not resent and uncertain results are not presented as complete success.
 - Share one gallery asset through the operating system, export a sharing package, or publish it through the user's own backend to a connected Facebook Page or Instagram professional account.

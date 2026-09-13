@@ -98,6 +98,8 @@ async function verifyUpgrade(path: string): Promise<void> {
   if (!manifestBytes) throw new Error('MANIFEST_MISSING');
   const manifest = record(JSON.parse(new TextDecoder().decode(manifestBytes)));
   const version = String(manifest.version);
+  const [major = 0, minor = 0] = version.split('.').map(Number);
+  const hasTransferTasks = major > 2 || (major === 2 && minor >= 6);
   report.baselines.push({ version, sha256 });
   const candidate = record(JSON.parse(await readFile(resolve(latest, 'manifest.json'), 'utf8')));
   for (const key of ['permissions', 'host_permissions', 'optional_host_permissions']) {
@@ -135,9 +137,9 @@ async function verifyUpgrade(path: string): Promise<void> {
         localStorage.setItem('one-vegetable-product-editor-drafts-v3', JSON.stringify([draft]));
         if (hasTasks) localStorage.setItem('one-vegetable:columns:v1:products', JSON.stringify(columns));
       },
-      { ...fixture, draft, hasTasks: version === '2.6.0' }
+      { ...fixture, draft, hasTasks: hasTransferTasks }
     );
-    if (version === '2.6.0') {
+    if (hasTransferTasks) {
       const contextResponse = record(
         await previous.page.evaluate(() =>
           chrome.runtime.sendMessage({ kind: 'gallery-transfer-context', requestId: crypto.randomUUID() })
@@ -269,7 +271,7 @@ async function verifyUpgrade(path: string): Promise<void> {
       '128px'
     );
     await next.page.screenshot({ path: resolve(output, `upgrade-${version}.png`) });
-    if (version === '2.6.0') {
+    if (hasTransferTasks) {
       assert(stored.columns === JSON.stringify(fixture.columns), `${version}: column preference retained`);
       await expect(next.page.getByRole('columnheader', { name: '图片', exact: true })).toHaveCount(0);
       report.stage = 'open transfer history';

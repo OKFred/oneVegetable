@@ -4,6 +4,64 @@ export const RELEASE_NOTES_DOCUMENT = {
   repositoryUrl: 'https://github.com/OKFred/oneVegetable',
   releases: [
     {
+      version: '2.9.0',
+      releasedAt: '2026-09-13',
+      title: {
+        'zh-CN': '视频素材只读管理',
+        'en-US': 'Read-only video library'
+      },
+      summary: {
+        'zh-CN':
+          '图库新增视频工作区，支持搜索、分页、预览与关联商品查看。覆盖 Web 和独立插件，不增加视频上传、关联修改或永久权限。',
+        'en-US':
+          'Adds video search, pagination, preview and related products to the gallery in Web and standalone extensions. No video uploads, relation changes or new permanent permissions.'
+      },
+      source: 'release',
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.9.0',
+      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.8.0...v2.9.0',
+      changes: [
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '视频卡片、列表和预览',
+            'en-US': 'Video cards, list and preview'
+          },
+          description: {
+            'zh-CN':
+              '按标题或视频 ID 搜索，选择显示列，在侧边抽屉播放。审核状态与质量分开保留，关闭后释放播放器；播放失败可前往官方页面。',
+            'en-US':
+              'Search by title or video ID, choose columns and play in a drawer. Review status and quality stay separate; closing releases the player, and playback errors offer an official-page link.'
+          }
+        },
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '主图与详情关联商品',
+            'en-US': 'Main-image and description relations'
+          },
+          description: {
+            'zh-CN':
+              '按需读取两类关联，再精确查询商品摘要。支持停止、单项重试及隔离缓存，不扫描整店，也不把查询失败当作无关联。',
+            'en-US':
+              'Load either relation type on demand and resolve exact product summaries, with stop, item retry and scoped caching. No store-wide scan; failed queries are not empty relations.'
+          }
+        },
+        {
+          type: 'fix',
+          title: {
+            'zh-CN': '安全校验与异常提示',
+            'en-US': 'Validation and failure handling'
+          },
+          description: {
+            'zh-CN':
+              '新增两个类型化视频 API。权限失效停止后续解析，保留缺失字段和官网差异；共享静态校验常量，维持 MV3 CSP 与现有包体门槛。',
+            'en-US':
+              'Two typed video APIs stop further resolution after authorization failure and preserve missing fields and official-page differences. Shared static validation constants retain MV3 CSP and existing bundle limits.'
+          }
+        }
+      ]
+    },
+    {
       version: '2.8.0',
       releasedAt: '2026-09-13',
       title: {
