@@ -1,9 +1,30 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest';
 import { MockGatewayClient } from '../../core/src/mock-client';
-import { requestVideo, VideoReadScope } from '../src/lib/video-library';
+import { requestVideo, VideoReadScope, mustStopVideoQueries } from '../src/lib/video-library';
+import { GatewayException } from '../../core/src/errors';
 import { pageDetailIdentity } from '../src/lib/page-details';
 describe('video read cache and cancellation', () => {
+  it('stops on platform permission codes and credential subcodes without hiding per-item failures', () => {
+    for (const [code, subCode] of [
+      ['11', ''],
+      ['50', 'isv.insufficient-isv-permissions'],
+      ['50', 'isv.invalid-session']
+    ]) {
+      expect(
+        mustStopVideoQueries(
+          new GatewayException({
+            code: code ?? '',
+            subCode: subCode ?? '',
+            message: 'Platform response',
+            retryable: false
+          })
+        )
+      ).toBe(true);
+    }
+    expect(mustStopVideoQueries(new Error('GALLERY_CONTEXT_CHANGED'))).toBe(true);
+    expect(mustStopVideoQueries(new Error('VIDEO_RESPONSE_INVALID'))).toBe(false);
+  });
   it('scopes memory cache by context, operation and API language and supports refresh', async () => {
     const gateway = new MockGatewayClient(0),
       spy = vi.spyOn(gateway, 'request');

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
-import { GatewayException } from '@one-vegetable/core/errors';
 import {
   VIDEO_LIBRARY_URL,
   safeVideoUrl,
@@ -12,7 +11,7 @@ import {
 } from '@one-vegetable/core/video';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
-import { requestVideo, VideoReadScope } from '../lib/video-library';
+import { requestVideo, VideoReadScope, mustStopVideoQueries } from '../lib/video-library';
 import { useVideoI18n } from '../i18n/video';
 import { formatDateTime } from '../lib/date-time';
 import Sheet from './ui/Sheet.vue';
@@ -115,9 +114,7 @@ async function resolvePage(refresh = false, only?: string) {
       } catch (e: unknown) {
         if (current()) {
           failures.value = { ...failures.value, [id]: e };
-          const code =
-            e instanceof GatewayException ? e.gatewayError.code : e instanceof Error ? e.message : '';
-          if (/CONTEXT|SESSION|LOGIN|AUTH|PERMISSION|DENIED|FORBIDDEN|CREDENTIAL|VAULT/.test(code)) {
+          if (mustStopVideoQueries(e)) {
             error.value = e;
             break;
           }
@@ -125,7 +122,7 @@ async function resolvePage(refresh = false, only?: string) {
       }
       if (current()) done.value++;
     }
-    if (current() && frozen.length) toast.info(vt('finish'));
+    if (current() && frozen.length && done.value === frozen.length) toast.info(vt('finish'));
   } finally {
     if (current()) busy.value = false;
   }

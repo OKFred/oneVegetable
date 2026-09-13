@@ -49,6 +49,17 @@ export async function requestVideo<K extends Operation>(
 function fail(code: string): never {
   throw new GatewayException({ code, message: code, retryable: false });
 }
+export function mustStopVideoQueries(error: unknown): boolean {
+  const code =
+    error instanceof GatewayException ? error.gatewayError.code : error instanceof Error ? error.message : '';
+  const detail = error instanceof GatewayException ? (error.gatewayError.subCode ?? '') : '';
+  return (
+    code === '11' ||
+    /CONTEXT|SESSION|LOGIN|AUTH|PERMISSION|DENIED|FORBIDDEN|CREDENTIAL|VAULT|TOKEN|invalid-app|invalid-signature/iu.test(
+      `${code} ${detail}`
+    )
+  );
+}
 export class VideoReadScope {
   private revision = 0;
   stop() {
