@@ -10,6 +10,7 @@ import postingTypeFixture from '../../mock/data/product-type-available.json' wit
 import capabilityWorkerFixture from '../../mock/data/capability-worker.json' with { type: 'json' };
 import inventoryFixture from '../../mock/data/product-inventory.json' with { type: 'json' };
 import skuInventoryFixture from '../../mock/data/product-sku-inventory.json' with { type: 'json' };
+import videoFixture from '../../mock/data/video/top.json' with { type: 'json' };
 import { MockGatewayClient } from '../../packages/core/src/mock-client';
 import {
   getCapabilityDefinition,
@@ -500,6 +501,72 @@ test('formal MV3 dedicated inventory survives worker restart with no writes', as
   const restarted = context.serviceWorkers().at(-1) ?? (await context.waitForEvent('serviceworker'));
   expect(await restarted.evaluate(() => performance.timeOrigin)).toBeGreaterThan(before);
   expect(methods).toEqual([inventoryFixture.method, skuInventoryFixture.method, inventoryFixture.method]);
+});
+
+test('formal MV3 video workspace isolates public reads and survives worker restart', async () => {
+  if (!context) throw new Error('Missing extension context');
+  const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+  const calls: string[] = [];
+  await context.route('https://eco.taobao.com/**', async (route) => {
+    const params = new URLSearchParams(route.request().postData() ?? '');
+    const method = params.get('method') ?? '';
+    calls.push(method);
+    const responses: Record<string, unknown> = {
+      'alibaba.icbu.video.query': videoFixture.query,
+      'alibaba.icbu.video.relation.product.list':
+        params.get('type') === 'detailVideoId' ? videoFixture.emptyRelations : videoFixture.relations,
+      'alibaba.icbu.product.id.decrypt': videoFixture.decrypt,
+      'alibaba.icbu.product.list': videoFixture.products
+    };
+    if (!Object.hasOwn(responses, method)) {
+      await route.abort();
+      throw new Error('Unexpected non-video request');
+    }
+    await route.fulfill({ json: { [method.replaceAll('.', '_') + '_response']: responses[method] } });
+  });
+  await context.route('https://cloud.video.taobao.com/**', async (route) => {
+    await route.abort();
+  });
+  const page = await context.newPage();
+  const base = `chrome-extension://${new URL(worker.url()).host}/options.html`;
+  await page.goto(`${base}#/settings`);
+  const guide = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
+  await guide.getByRole('checkbox').check();
+  await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
+  await page.getByLabel('App Key').fill('e2e-app-key');
+  await page.getByLabel('App Secret').fill('e2e-secret');
+  await page.getByLabel('Access Token').fill('e2e-token');
+  await page.getByLabel('设置保护口令').fill('e2e-vault-password');
+  await page.getByLabel('确认保护口令').fill('e2e-vault-password');
+  await page.getByRole('button', { name: '保存设置', exact: true }).click();
+  await expect(
+    page.getByText('凭证与设置已加密保存，并将在当前 Chrome 会话内保持可用。').first()
+  ).toBeVisible();
+  await page.goto(`${base}#/photos/videos`);
+  const library = page.getByTestId('video-library');
+  await library.getByRole('button', { name: '查看: Example video' }).click();
+  const dialog = page.getByRole('dialog');
+  const media = dialog.locator('video');
+  await expect(media).toHaveAttribute('preload', 'none');
+  await media.dispatchEvent('error');
+  await expect(dialog.getByText('此视频暂时无法播放。可重试，或前往官方页面核对。')).toBeVisible();
+  expect(calls).toEqual(['alibaba.icbu.video.query']);
+  await dialog.getByRole('button', { name: '关联商品', exact: true }).click();
+  await expect(dialog.getByText('未查到商品摘要；不代表关联不存在')).toBeVisible();
+  await dialog.getByRole('button', { name: '详情关联', exact: true }).click();
+  await expect(dialog.getByText('当前类型未返回关联商品')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('video')).toHaveCount(0);
+  const before = await worker.evaluate(() => performance.timeOrigin);
+  const internals = await context.newPage();
+  await internals.goto('chrome://serviceworker-internals');
+  await internals.getByText('Stop', { exact: true }).click();
+  await expect(internals.locator('body')).toContainText('STOPPED');
+  await page.reload();
+  await expect(library.getByRole('button', { name: '查看: Example video' })).toBeVisible();
+  const restarted = context.serviceWorkers().at(-1) ?? (await context.waitForEvent('serviceworker'));
+  expect(await restarted.evaluate(() => performance.timeOrigin)).toBeGreaterThan(before);
+  expect(calls.filter((method) => method === 'alibaba.icbu.video.query')).toHaveLength(2);
 });
 
 test.setTimeout(90_000);

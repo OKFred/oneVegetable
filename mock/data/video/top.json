@@ -33,5 +33,7 @@
     "result": { "msg_code": "0", "msg_info": "success", "model": [{ "product_id": "encrypted-product" }] },
     "request_id": "mock-relations"
   },
-  "decrypt": { "id": 900003, "request_id": "mock-decrypt" }
+  "decrypt": { "id": 900003, "request_id": "mock-decrypt" },
+  "products": { "products": [], "total": 0, "request_id": "mock-product-query" },
+  "emptyRelations": { "result": { "msg_code": "0", "model": [] }, "request_id": "mock-empty" }
 }

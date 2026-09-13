@@ -22,7 +22,7 @@ import {
   validateCapabilityResponse
 } from '@one-vegetable/core';
 import { GatewayConfigurationError } from './credentials';
-import { VideoAdapter, VIDEO_OPERATIONS } from '@one-vegetable/core/video';
+import { VideoAdapter, VIDEO_OPERATIONS, VIDEO_METHODS } from '@one-vegetable/core/video';
 import {
   galleryGatewayId,
   assertGalleryContextId,
@@ -149,7 +149,10 @@ export class AlibabaReadGatewayClient implements GatewayClient {
         : this.#credentials;
     return new AlibabaClient(credentials, this.#network, {
       maxAttempts,
-      shouldRetry: (method, error) => error.retryable && getCapabilityDefinition(method)?.risk === 'read',
+      shouldRetry: (method, error) =>
+        error.retryable &&
+        !VIDEO_METHODS.some((value) => value === method) &&
+        getCapabilityDefinition(method)?.risk === 'read',
       protocol,
       ...(this.#wait ? { wait: this.#wait } : {}),
       ...(context ? { requestId: context.requestId } : {})

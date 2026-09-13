@@ -1,5 +1,5 @@
 import { browser } from 'wxt/browser';
-import { VideoAdapter, VIDEO_OPERATIONS } from '@one-vegetable/core/video';
+import { VideoAdapter, VIDEO_OPERATIONS, VIDEO_METHODS } from '@one-vegetable/core/video';
 
 import {
   galleryGatewayId,
@@ -688,7 +688,10 @@ async function executeOperation(
     requestId,
     maxAttempts:
       operation === 'getProductInventory' || VIDEO_OPERATIONS.some((value) => value === operation) ? 1 : 3,
-    shouldRetry: (method, error) => error.retryable && findCapability(method)?.risk === 'read'
+    shouldRetry: (method, error) =>
+      error.retryable &&
+      !VIDEO_METHODS.some((value) => value === method) &&
+      findCapability(method)?.risk === 'read'
   });
   const mutationClient = AlibabaClient.create(
     { ...settings, endpoint: ALIBABA_SYNC_GATEWAY, signMethod: 'hmac-sha256' },

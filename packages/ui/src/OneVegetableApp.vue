@@ -197,7 +197,7 @@ let unsubscribeAuthenticationEvents: (() => void) | null = null;
 const views: Record<PageId, Component> = {
   dashboard: defineAsyncComponent(() => import('./views/DashboardView.vue')),
   products: defineAsyncComponent(() => import('./views/ProductsView.vue')),
-  photos: defineAsyncComponent(() => import('./views/PhotosView.vue')),
+  photos: defineAsyncComponent(() => import('./views/GalleryView.vue')),
   rfqs: defineAsyncComponent(() => import('./views/RfqsView.vue')),
   orders: defineAsyncComponent(() => import('./views/OrdersView.vue')),
   logistics: defineAsyncComponent(() => import('./views/LogisticsView.vue')),

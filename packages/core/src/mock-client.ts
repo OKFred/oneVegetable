@@ -118,7 +118,8 @@ export class MockGatewayClient implements GatewayClient {
       );
       return {
         ...structuredClone(VIDEO_MOCK_DATA.responses.listVideos),
-        ...input,
+        page: input.page,
+        pageSize: input.pageSize,
         items: structuredClone(items.slice((input.page - 1) * input.pageSize, input.page * input.pageSize)),
         total: items.length
       };

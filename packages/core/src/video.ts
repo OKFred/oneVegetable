@@ -27,6 +27,10 @@ export type {
   VideoProductResolution
 } from './types';
 export const VIDEO_LIBRARY_URL = 'https://us-productposting.alibaba.com/product/videobank/home.htm';
+export const VIDEO_METHODS = [
+  'alibaba.icbu.video.query',
+  'alibaba.icbu.video.relation.product.list'
+] as const;
 export {
   validateVideoPage,
   validateVideoRelations,
@@ -67,6 +71,12 @@ export function safeVideoUrl(raw: unknown): string | null {
     return null;
   }
 }
+export function safePlaybackUrl(raw: unknown): string | null {
+  const value = safeVideoUrl(raw);
+  return value && ['cloud.video.taobao.com', 'play.video.alibaba.com'].includes(new URL(value).hostname)
+    ? value
+    : null;
+}
 function fail(code: string): never {
   throw new GatewayException({ code, message: code, retryable: false });
 }
@@ -88,6 +98,8 @@ export function adaptVideoPage(
   const root = rawRoot(data, 'alibaba.icbu.video.query'),
     result = rec(root.result),
     model = rec(result?.model);
+  if (root.success === false || root.biz_success === false || result?.success === false)
+    fail('VIDEO_PROVIDER_REJECTED');
   if (result?.msg_code !== undefined && result.msg_code !== '200') fail('VIDEO_PROVIDER_REJECTED');
   if (result?.msg_code === undefined) {
     if (
@@ -102,11 +114,12 @@ export function adaptVideoPage(
   const list = items(model?.list, 'isv_video_dto');
   if (!list) fail('VIDEO_RESPONSE_INVALID');
   const videos: Video[] = list.map((v, index) => {
-    const row = rec(v) ?? {};
+    const row = rec(v);
+    if (!row) fail('VIDEO_RESPONSE_INVALID');
     const id = safeVideoId(row.id),
       encryptedId = text(row.video_id);
     if (!id || !encryptedId) issues.push(`items/${index}:invalid-id`);
-    const videoUrl = safeVideoUrl(row.video_url),
+    const videoUrl = safePlaybackUrl(row.video_url),
       coverUrl = safeVideoUrl(row.cover_url);
     if (row.video_url && !videoUrl) issues.push(`items/${index}/videoUrl:unsafe-url`);
     return {
@@ -123,7 +136,7 @@ export function adaptVideoPage(
       status: text(row.status),
       quality: text(row.quality),
       relatedProductCount: num(row.related_product_count),
-      publisher: text(row.publish_user_name)
+      publisher: redactPublisher(row.publish_user_name)
     };
   });
   const total = num(model?.total_count);
@@ -146,6 +159,8 @@ export function adaptVideoRelations(
 ): VideoRelations {
   const root = rawRoot(data, 'alibaba.icbu.video.relation.product.list'),
     result = rec(root.result);
+  if (root.success === false || root.biz_success === false || result?.success === false)
+    fail('VIDEO_PROVIDER_REJECTED');
   if (result?.msg_code !== undefined && result.msg_code !== '0') fail('VIDEO_PROVIDER_REJECTED');
   const list = items(result?.model, 'isv_product_dto');
   if (!list) fail('VIDEO_RESPONSE_INVALID');
@@ -155,6 +170,7 @@ export function adaptVideoRelations(
     if (!id) issues.push(`items/${index}:missing-product-id`);
     return id ? [id] : [];
   });
+  if (list.length && !ids.length) fail('VIDEO_RESPONSE_INVALID');
   return {
     ...request,
     encryptedProductIds: [...new Set(ids)],
@@ -226,7 +242,13 @@ export class VideoAdapter {
     };
     if (!productId) return { ...base, product: null, status: 'invalid-id' };
     await this.wait(300);
-    const p = await new ProductAdapter(this.client).getSummary(productId, request.language);
+    const p = await new ProductAdapter({
+      call: async (method, parameters) => {
+        const summary = await this.call(method, { ...parameters });
+        result.issues.push(...summary.issues);
+        return { method, data: summary.root };
+      }
+    }).getSummary(productId, request.language);
     return {
       ...base,
       product: p
@@ -241,4 +263,9 @@ export class VideoAdapter {
       status: p ? 'resolved' : 'not-found'
     };
   }
+}
+function redactPublisher(value: unknown): string | null {
+  const name = text(value);
+  if (!name) return null;
+  return name.includes('*') ? name : `${name.charAt(0)}***`;
 }

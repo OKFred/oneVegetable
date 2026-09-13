@@ -1,6 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import fixture from '../../../mock/data/video/top.json';
-import { adaptVideoPage, adaptVideoRelations, safeVideoId, safeVideoUrl, VideoAdapter } from '../src/video';
+import {
+  adaptVideoPage,
+  adaptVideoRelations,
+  safeVideoId,
+  safeVideoUrl,
+  safePlaybackUrl,
+  VideoAdapter
+} from '../src/video';
 import { validateCapabilityRequest, validateCapabilityResponse } from '../src/capability-validation-worker';
 import { validateVideoPage, validateVideoRelations } from '../src/generated/validators-video';
 const request = { page: 1, pageSize: 20 as const };
@@ -28,6 +35,8 @@ describe('read-only videos', () => {
     ).toEqual([]);
   });
   it('rejects unsafe media and numeric precision loss', () => {
+    expect(safePlaybackUrl('https://play.video.alibaba.com/example.mp4')).not.toBeNull();
+    expect(safePlaybackUrl('https://unconfirmed.alibaba.com/example.mp4')).toBeNull();
     for (const url of [
       'http://cloud.video.taobao.com/a',
       'https://cloud.video.taobao.com.evil.test/a',
@@ -39,6 +48,22 @@ describe('read-only videos', () => {
     expect(safeVideoUrl('//cloud.video.taobao.com/a')).toBe('https://cloud.video.taobao.com/a');
     expect(safeVideoId(Number.MAX_SAFE_INTEGER + 1)).toBeNull();
     expect(safeVideoId('9007199254740993')).toBeNull();
+  });
+  it('records observed missing success codes but never ignores an explicit rejection', () => {
+    const query = structuredClone(fixture.query) as { result: Record<string, unknown> };
+    delete query.result.msg_code;
+    expect(adaptVideoPage(query, request).issues).toContain('result/msg_code:not-returned');
+    query.result.success = false;
+    expect(() => adaptVideoPage(query, request)).toThrow('VIDEO_PROVIDER_REJECTED');
+    const relation = structuredClone(fixture.relations) as { result: Record<string, unknown> };
+    delete relation.result.msg_code;
+    expect(adaptVideoRelations(relation, { videoId: 'encrypted-example', type: 'main' }).issues).toContain(
+      'result/msg_code:not-returned'
+    );
+    relation.result.success = false;
+    expect(() => adaptVideoRelations(relation, { videoId: 'encrypted-example', type: 'main' })).toThrow(
+      'VIDEO_PROVIDER_REJECTED'
+    );
   });
   it('validates both methods and refuses invalid requests before network', async () => {
     const call = vi.fn().mockResolvedValue({ data: fixture.query });
