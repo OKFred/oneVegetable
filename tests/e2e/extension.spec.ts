@@ -55,7 +55,7 @@ test('formal MV3 catalog validates domain reads before and after worker restart'
       })
     });
   });
-  const page = await context.newPage();
+  let page = await context.newPage();
   await page.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#/settings`);
   const guide = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
   await guide.getByRole('checkbox').check();
@@ -131,6 +131,8 @@ test('formal MV3 catalog validates domain reads before and after worker restart'
   });
   expect(calls).toHaveLength(before);
   const timeOrigin = await worker.evaluate(() => performance.timeOrigin);
+  const optionsUrl = page.url();
+  await page.close();
   const internals = await context.newPage();
   await internals.goto('chrome://serviceworker-internals');
   // Chromium's page-scoped stopAllWorkers does not stop an extension worker.
@@ -138,6 +140,9 @@ test('formal MV3 catalog validates domain reads before and after worker restart'
   await expect(internals.getByText(worker.url(), { exact: true })).toBeVisible();
   await internals.getByText('Stop', { exact: true }).click();
   await expect(internals.locator('body')).toContainText('STOPPED');
+  // Reopen only after confirmed shutdown so workbench initialization cannot race the stop.
+  page = await context.newPage();
+  await page.goto(optionsUrl);
   drift = true;
   const parameters = getCapabilityDefinition('alibaba.icbu.category.id.mapping')?.requestExample;
   expect(await invoke('alibaba.icbu.category.id.mapping', parameters)).toMatchObject({
