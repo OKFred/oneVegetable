@@ -5,6 +5,7 @@ import { AlibabaReadGatewayClient } from '../apps/api/src/gateway/alibaba-read-g
 import { createNodeAlibabaCredentialProvider } from '../apps/api/src/gateway/node-credential-bundle';
 import { GatewayException } from '../packages/core/src/errors';
 import { atomicWriteJson } from './openapi-auth/storage';
+import type { VideoListRequest } from '../packages/core/src/video';
 if (process.env.ONE_VEGETABLE_VIDEO_SMOKE !== '1') throw new Error('Explicit read-only opt-in required');
 const provider = createNodeAlibabaCredentialProvider({
   ONE_VEGETABLE_ALIBABA_CREDENTIAL_FILE: resolve(
@@ -37,6 +38,36 @@ try {
       playbackOrigin: v.videoUrl ? new URL(v.videoUrl).origin : null
     }))
   });
+  const first = page.items[0];
+  const probes: { kind: string; request: VideoListRequest }[] = [
+    { kind: 'page-two', request: { page: 2, pageSize: 20 } },
+    { kind: 'page-size-50', request: { page: 1, pageSize: 50 } },
+    ...(first?.id ? [{ kind: 'plain-id', request: { page: 1, pageSize: 20 as const, id: first.id } }] : []),
+    ...(first?.title
+      ? [{ kind: 'title', request: { page: 1, pageSize: 20 as const, title: first.title } }]
+      : [])
+  ];
+  for (const probe of probes) {
+    await setTimeout(350);
+    const requestId = randomUUID();
+    const result = await gateway.request('listVideos', probe.request, { requestId });
+    const matched =
+      probe.kind === 'plain-id'
+        ? result.items.length > 0 && result.items.every((v) => v.id === first?.id)
+        : probe.kind === 'title'
+          ? result.items.some((v) => v.id === first?.id)
+          : result.items.length > 0;
+    reports.push({
+      operation: 'listVideos',
+      probe: probe.kind,
+      requestId,
+      count: result.items.length,
+      matched,
+      issues: result.issues,
+      traceId: result.traceId
+    });
+    if (!matched) throw new Error('Search or pagination mismatch');
+  }
   for (const video of page.items.slice(0, 3)) {
     if (!video.encryptedId) continue;
     for (const type of ['main', 'detail'] as const) {
