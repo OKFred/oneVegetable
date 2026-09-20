@@ -11,6 +11,7 @@ import capabilityWorkerFixture from '../../mock/data/capability-worker.json' wit
 import inventoryFixture from '../../mock/data/product-inventory.json' with { type: 'json' };
 import skuInventoryFixture from '../../mock/data/product-sku-inventory.json' with { type: 'json' };
 import videoFixture from '../../mock/data/video/top.json' with { type: 'json' };
+import videoAssociationFixture from '../../mock/data/video/association-core.json' with { type: 'json' };
 import { MockGatewayClient } from '../../packages/core/src/mock-client';
 import {
   getCapabilityDefinition,
@@ -512,6 +513,7 @@ test('formal MV3 video workspace isolates public reads and survives worker resta
   if (!context) throw new Error('Missing extension context');
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
   const calls: string[] = [];
+  let checkingAssociation = false;
   await context.route('https://eco.taobao.com/**', async (route) => {
     const params = new URLSearchParams(route.request().postData() ?? '');
     const method = params.get('method') ?? '';
@@ -521,7 +523,9 @@ test('formal MV3 video workspace isolates public reads and survives worker resta
       'alibaba.icbu.video.relation.product.list':
         params.get('type') === 'detailVideoId' ? videoFixture.emptyRelations : videoFixture.relations,
       'alibaba.icbu.product.id.decrypt': videoFixture.decrypt,
-      'alibaba.icbu.product.list': videoFixture.products
+      'alibaba.icbu.product.list': checkingAssociation
+        ? videoAssociationFixture.products
+        : videoFixture.products
     };
     if (!Object.hasOwn(responses, method)) {
       await route.abort();
@@ -572,6 +576,42 @@ test('formal MV3 video workspace isolates public reads and survives worker resta
   const restarted = context.serviceWorkers().at(-1) ?? (await context.waitForEvent('serviceworker'));
   expect(await restarted.evaluate(() => performance.timeOrigin)).toBeGreaterThan(before);
   expect(calls.filter((method) => method === 'alibaba.icbu.video.query')).toHaveLength(2);
+  checkingAssociation = true;
+  const invokeAssociation = async (verify: boolean) => {
+    const requestId = crypto.randomUUID();
+    const { confirmed: _confirmed, ...target } = videoAssociationFixture.request;
+    const response: unknown = await page.evaluate(
+      async (message) => {
+        const runtime = (
+          globalThis as unknown as {
+            chrome: { runtime: { sendMessage(message: unknown): Promise<unknown> } };
+          }
+        ).chrome.runtime;
+        return runtime.sendMessage(message);
+      },
+      {
+        kind: 'gateway-request',
+        operation: verify ? 'verifyProductVideoAssociation' : 'associateProductVideo',
+        requestId,
+        payload: verify ? target : videoAssociationFixture.request
+      }
+    );
+    expect(response).toHaveProperty('requestId', requestId);
+    return response;
+  };
+  const beforeAssociation = calls.length;
+  expect(await invokeAssociation(false)).toMatchObject({
+    ok: false,
+    error: { code: 'REAL_MUTATION_DISABLED' }
+  });
+  expect(calls).toHaveLength(beforeAssociation);
+  expect(await invokeAssociation(true)).toMatchObject({ ok: true, data: { outcome: 'confirmed' } });
+  expect(calls.slice(beforeAssociation)).toEqual([
+    'alibaba.icbu.video.query',
+    'alibaba.icbu.product.list',
+    'alibaba.icbu.video.relation.product.list',
+    'alibaba.icbu.product.id.decrypt'
+  ]);
 });
 
 test.setTimeout(90_000);

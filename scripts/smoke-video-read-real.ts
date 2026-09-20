@@ -107,6 +107,30 @@ try {
           issues: result.issues,
           traceId: result.traceId
         });
+        if (video.id && result.productId) {
+          await setTimeout(350);
+          const verifyRequestId = randomUUID();
+          const verified = await gateway.request(
+            'verifyProductVideoAssociation',
+            {
+              videoId: video.id,
+              encryptedVideoId: video.encryptedId,
+              productId: result.productId,
+              type,
+              language: 'en_US'
+            },
+            { requestId: verifyRequestId }
+          );
+          reports.push({
+            operation: 'verifyProductVideoAssociation',
+            type,
+            requestId: verifyRequestId,
+            outcome: verified.outcome,
+            code: verified.code,
+            traceId: verified.traceId
+          });
+          if (verified.outcome !== 'confirmed') process.exitCode = 1;
+        }
       }
     }
   }

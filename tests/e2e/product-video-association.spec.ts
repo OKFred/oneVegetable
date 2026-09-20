@@ -1,5 +1,35 @@
 import { expect, test } from '@playwright/test';
 
+test('English dark mobile video selection keeps the editor and confirmation separate', async ({ page }) => {
+  await page.goto('/#/products/publisher/quick/basics/10000001/100009999');
+  await page
+    .getByRole('button', { name: /Switch.*English|切换.*英文|English/ })
+    .first()
+    .click();
+  await page.evaluate(() => {
+    document.documentElement.classList.add('dark');
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  const section = page.getByTestId('product-video-association');
+  await expect(section.getByRole('heading', { name: 'Product video association' })).toBeVisible();
+  await section.getByRole('button', { name: 'Choose video', exact: true }).click();
+  const picker = section.getByTestId('video-picker');
+  await picker.getByTestId('choose-video').first().click();
+  await section.getByRole('combobox', { name: 'Video use' }).selectOption('detail');
+  await section.getByTestId('associate-video').click();
+  const dialog = page.getByRole('dialog', { name: 'Associate video now', exact: true });
+  await expect(dialog).toContainText('It does not save or publish this editor');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(section.getByTestId('video-association-receipt')).toHaveCount(0);
+  expect(
+    await page.evaluate(() =>
+      Object.keys(localStorage).some((key) => key.startsWith('one-vegetable:video-association:v1:'))
+    )
+  ).toBe(false);
+  await expect(section.getByRole('combobox', { name: 'Video use' })).toHaveValue('detail');
+});
+
 test('existing-product picker previews, confirms a separate write and restores a durable unknown receipt', async ({
   page
 }) => {
