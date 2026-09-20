@@ -1,4 +1,29 @@
 export const video = {
+  associationTitle: 'Product video association',
+  associationNotice:
+    'Existing products only. This is separate from saving or publishing the product; schema fields remain unchanged.',
+  associationChoose: 'Choose video',
+  associationType: 'Video use',
+  associationApply: 'Associate video now',
+  associationConfirmNotice:
+    'Confirm a separate, immediate platform write for the IDs below. It may replace an existing association. It does not save or publish this editor. Unknown results will not be resent; check them manually. Automatic rollback is unavailable.',
+  associationUnavailable:
+    'Video association writes are disabled pending account validation. Availability must explicitly allow this operation.',
+  associationVerifyUnavailable: 'Read-only verification is unavailable for the current account.',
+  associationSelectFirst: 'Choose a video first.',
+  associationInvalidVideo: 'Both a valid plain video ID and encrypted video ID are required.',
+  associationBlocked:
+    'Not sent: the account, product, permission, lock or durable receipt could not be safely confirmed. Refresh and check.',
+  associationStorage:
+    'The local receipt cannot be read or saved. Writes remain blocked; check the official platform before proceeding.',
+  associationSending: 'Sending once. Do not repeat this operation.',
+  associationUnknown:
+    'Outcome unknown. Do not resend. Use manual read-only verification or check the official platform.',
+  associationUnconfirmed: 'Association not confirmed by readback. Do not resend; verify manually.',
+  associationConfirmed: 'The exact product, video and use were confirmed by readback.',
+  associationRejected: 'The association request was explicitly rejected.',
+  associationVerify: 'Verify association (read only)',
+  associationRefresh: 'Refresh local receipt and availability',
   pictures: 'Images',
   videos: 'Videos',
   title: 'Video library',

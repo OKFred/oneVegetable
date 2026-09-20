@@ -161,6 +161,9 @@ const ProductEditorWizard = defineAsyncComponent({
   delay: 100,
   timeout: 30_000
 });
+const ProductVideoAssociation = defineAsyncComponent(
+  () => import('../components/ProductVideoAssociation.vue')
+);
 
 type Workspace = 'list' | 'publisher' | 'batch-publisher' | 'tasks';
 type DraftSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
@@ -2971,6 +2974,13 @@ onBeforeUnmount(() => {
       </Button>
     </Card>
 
+    <ProductVideoAssociation
+      v-if="schemaModel && !platformDraftId && /^[1-9][0-9]*$/.test(editProductId)"
+      :key="`${editProductId}:${language}`"
+      :product-id="editProductId"
+      :language="language"
+      :blocked="publish.isPending.value || productMutationBlocksSubmit"
+    />
     <ProductEditorWizard
       v-if="schemaModel"
       :mode="editorMode"
