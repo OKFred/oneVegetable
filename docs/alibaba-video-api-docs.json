@@ -295,6 +295,128 @@
           "msg_info": "success"
         }
       }
+    },
+    {
+      "method": "alibaba.icbu.video.relation.product.main",
+      "source": "catalog",
+      "docId": 50089,
+      "title": "视频关联商品主图",
+      "description": "icbu视频关联商品",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "videos",
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-09-21",
+      "updatedAt": "2025-06-13",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "requestParams": [
+        {
+          "name": "video_id",
+          "type": "String",
+          "required": true,
+          "description": "视频id"
+        },
+        {
+          "name": "product_id",
+          "type": "String",
+          "required": true,
+          "description": "商品id"
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "model",
+          "type": "Boolean",
+          "required": false,
+          "description": "成功失败"
+        },
+        {
+          "name": "msg_code",
+          "type": "String",
+          "required": false,
+          "description": "错误码"
+        },
+        {
+          "name": "msg_info",
+          "type": "String",
+          "required": false,
+          "description": "错误信息"
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": {
+        "video_id": "1111",
+        "product_id": "11111"
+      },
+      "responseExample": {
+        "model": true,
+        "msg_code": "00000",
+        "msg_info": "success"
+      }
+    },
+    {
+      "method": "alibaba.icbu.video.relation.product.detail",
+      "source": "catalog",
+      "docId": 50088,
+      "title": "icbu视频关联商品详情",
+      "description": "icbu视频关联商品详情",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "videos",
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-09-21",
+      "updatedAt": "2025-06-13",
+      "labels": ["￥开放平台免费API", "必须用户授权"],
+      "requestParams": [
+        {
+          "name": "video_id",
+          "type": "String",
+          "required": true,
+          "description": "视频id"
+        },
+        {
+          "name": "product_id",
+          "type": "String",
+          "required": true,
+          "description": "商品id"
+        }
+      ],
+      "responseParams": [
+        {
+          "name": "model",
+          "type": "Boolean",
+          "required": false,
+          "description": "结果"
+        },
+        {
+          "name": "msg_code",
+          "type": "String",
+          "required": false,
+          "description": "错误码"
+        },
+        {
+          "name": "msg_info",
+          "type": "String",
+          "required": false,
+          "description": "错误信息"
+        }
+      ],
+      "errorCodes": [],
+      "requestExample": {
+        "video_id": "1111",
+        "product_id": "11111"
+      },
+      "responseExample": {
+        "model": false,
+        "msg_code": "code",
+        "msg_info": "info"
+      },
+      "responseExampleOverride": {
+        "reason": "Official sample is INVALID JSON: model contains unquoted 结果 despite its Boolean declaration. Replaced only that placeholder with false for schema/replay validation. msg_code code remains an undocumented placeholder, NOT a success code. Not account-verified.",
+        "originalSample": "{\n    \"alibaba_icbu_video_relation_product_detail_response\":{\n        \"model\":结果,\n        \"msg_code\":\"code\",\n        \"msg_info\":\"info\"\n    }\n}"
+      }
     }
   ]
 }

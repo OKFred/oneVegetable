@@ -62,6 +62,18 @@ const coreValidators: Record<string, object | undefined> = {
 const domains: CapabilityDomain[] = ['product', 'rfq', 'trade', 'logistics', 'insights', 'photo', 'platform'];
 const targets = new Map<string, string>();
 targets.set(
+  'validators-video-association.ts',
+  compileValidators(
+    Object.fromEntries(
+      ['VideoAssociationRequest', 'VideoAssociationVerifyRequest', 'VideoAssociationResult'].map((name) => [
+        `validate${name}`,
+        schemas[name]
+      ])
+    ),
+    'fast'
+  )
+);
+targets.set(
   'validators-video.ts',
   compileValidators(
     Object.fromEntries(

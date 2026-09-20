@@ -32,6 +32,20 @@ export function addVideoContract(document: {
     encryptedProductId: { ...str, minLength: 1, maxLength: 256 },
     language: { type: 'string', enum: ['zh_CN', 'en_US'] }
   });
+  const association = {
+    productId: id,
+    videoId: id,
+    encryptedVideoId: { ...str, minLength: 1, maxLength: 256, pattern: '\\S' },
+    type: { type: 'string', enum: ['main', 'detail'] },
+    language: { type: 'string', enum: ['zh_CN', 'en_US'] }
+  };
+  s.VideoAssociationRequest = object({ ...association, confirmed: { type: 'boolean', const: true } });
+  s.VideoAssociationVerifyRequest = object(association);
+  s.VideoAssociationResult = object({
+    outcome: { type: 'string', enum: ['confirmed', 'unconfirmed', 'rejected', 'unknown'] },
+    traceId: nullableText,
+    code: nullableText
+  });
   s.Video = object({
     id: nullableText,
     encryptedId: nullableText,
@@ -83,7 +97,14 @@ export function addVideoContract(document: {
   for (const [operation, request, response, path] of [
     ['listVideos', 'VideoListRequest', 'VideoPage', 'list'],
     ['listVideoRelatedProducts', 'VideoRelationRequest', 'VideoRelations', 'relations'],
-    ['resolveVideoRelatedProduct', 'VideoProductRequest', 'VideoProductResolution', 'resolve-product']
+    ['resolveVideoRelatedProduct', 'VideoProductRequest', 'VideoProductResolution', 'resolve-product'],
+    ['associateProductVideo', 'VideoAssociationRequest', 'VideoAssociationResult', 'associate'],
+    [
+      'verifyProductVideoAssociation',
+      'VideoAssociationVerifyRequest',
+      'VideoAssociationResult',
+      'verify-association'
+    ]
   ] as const) {
     document.paths[`/videos/${path}`] = {
       post: {
@@ -93,7 +114,10 @@ export function addVideoContract(document: {
         requestBody: { required: true, content: { 'application/json': { schema: ref(request) } } },
         responses: {
           '200': {
-            description: 'Read-only video result',
+            description:
+              operation === 'associateProductVideo'
+                ? 'Controlled video association result'
+                : 'Read-only video result',
             content: { 'application/json': { schema: ref(response) } }
           },
           '4XX': { $ref: '#/components/responses/GatewayFailure' },

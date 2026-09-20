@@ -8,9 +8,11 @@ import { API_CAPABILITIES } from '../src/generated/capabilities';
 describe('Alibaba API audit snapshot', () => {
   it('contains the 84 legacy catalog methods and the documented TOP translation supplement', () => {
     const methods = new Set<string>(API_CAPABILITIES.map((item) => item.method));
-    expect(API_CAPABILITIES).toHaveLength(97);
+    expect(API_CAPABILITIES).toHaveLength(99);
     expect(methods.has('alibaba.icbu.video.query')).toBe(true);
     expect(methods.has('alibaba.icbu.video.relation.product.list')).toBe(true);
+    expect(methods.has('alibaba.icbu.video.relation.product.main')).toBe(true);
+    expect(methods.has('alibaba.icbu.video.relation.product.detail')).toBe(true);
     expect(methods.has('alibaba.scbp.showcase.sort')).toBe(true);
     expect(methods.has('alibaba.scbp.showcase.updateproduct')).toBe(true);
     expect(new Set(API_CAPABILITIES.map((item) => item.jushitaOnly))).toEqual(new Set([false]));

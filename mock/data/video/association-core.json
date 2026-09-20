@@ -1,0 +1,32 @@
+{
+  "request": {
+    "productId": "900003",
+    "videoId": "900001",
+    "encryptedVideoId": "encrypted-example",
+    "type": "main",
+    "language": "en_US",
+    "confirmed": true
+  },
+  "products": {
+    "current_page": 1,
+    "page_size": 1,
+    "products": [{ "id": 900003, "subject": "Mock association target", "status": "approved" }],
+    "total_item": 1,
+    "request_id": "mock-product-exact"
+  },
+  "main": { "model": true, "msg_code": "00000", "msg_info": "success", "request_id": "mock-main-write" },
+  "detail": { "model": true, "msg_code": "code", "msg_info": "info", "request_id": "mock-detail-write" },
+  "rejected": {
+    "model": false,
+    "msg_code": "MOCK_REJECTED",
+    "msg_info": "Mock rejection",
+    "request_id": "mock-rejected"
+  },
+  "permission": {
+    "error_response": {
+      "code": 27,
+      "sub_code": "isv.permission-api-package-limit",
+      "request_id": "mock-permission"
+    }
+  }
+}

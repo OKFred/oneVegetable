@@ -7913,6 +7913,27 @@
         },
         "title": "alibaba.icbu.video.query response"
       },
+      "AlibabaPhotoAlibabaIcbuVideoRelationProductDetailRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["video_id", "product_id"],
+        "properties": {
+          "video_id": { "type": "string", "description": "视频id" },
+          "product_id": { "type": "string", "description": "商品id" }
+        },
+        "title": "alibaba.icbu.video.relation.product.detail request"
+      },
+      "AlibabaPhotoAlibabaIcbuVideoRelationProductDetailResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "model": { "type": "boolean", "description": "结果" },
+          "msg_code": { "type": "string", "description": "错误码" },
+          "msg_info": { "type": "string", "description": "错误信息" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
+        "title": "alibaba.icbu.video.relation.product.detail response"
+      },
       "AlibabaPhotoAlibabaIcbuVideoRelationProductListRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -7948,6 +7969,27 @@
           "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
         },
         "title": "alibaba.icbu.video.relation.product.list response"
+      },
+      "AlibabaPhotoAlibabaIcbuVideoRelationProductMainRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["video_id", "product_id"],
+        "properties": {
+          "video_id": { "type": "string", "description": "视频id" },
+          "product_id": { "type": "string", "description": "商品id" }
+        },
+        "title": "alibaba.icbu.video.relation.product.main request"
+      },
+      "AlibabaPhotoAlibabaIcbuVideoRelationProductMainResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "model": { "type": "boolean", "description": "成功失败" },
+          "msg_code": { "type": "string", "description": "错误码" },
+          "msg_info": { "type": "string", "description": "错误信息" },
+          "request_id": { "type": "string", "description": "Alibaba 网关返回的请求追踪 ID" }
+        },
+        "title": "alibaba.icbu.video.relation.product.main response"
       },
       "AlibabaPlatformAlibabaIcbuFileUrlpostingUploadRequest": {
         "type": "object",
@@ -13769,6 +13811,8 @@
               { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuPhotobankUploadResponse" },
               { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuVideoQueryResponse" },
               { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuVideoRelationProductListResponse" },
+              { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuVideoRelationProductMainResponse" },
+              { "$ref": "#/components/schemas/AlibabaPhotoAlibabaIcbuVideoRelationProductDetailResponse" },
               { "$ref": "#/components/schemas/AlibabaPlatformAlibabaIcbuFileUrlpostingUploadResponse" },
               { "$ref": "#/components/schemas/AlibabaPlatformAlibabaIcbuRiskSendResponse" },
               { "$ref": "#/components/schemas/AlibabaPlatformAlibabaIcbuTaskStatusNotifyResponse" }
@@ -16208,6 +16252,41 @@
           "quality": { "type": ["string", "null"] },
           "relatedProductCount": { "type": ["number", "null"], "minimum": 0 },
           "publisher": { "type": ["string", "null"] }
+        }
+      },
+      "VideoAssociationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["productId", "videoId", "encryptedVideoId", "type", "language", "confirmed"],
+        "properties": {
+          "productId": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+          "videoId": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+          "encryptedVideoId": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "\\S" },
+          "type": { "type": "string", "enum": ["main", "detail"] },
+          "language": { "type": "string", "enum": ["zh_CN", "en_US"] },
+          "confirmed": { "type": "boolean", "const": true }
+        }
+      },
+      "VideoAssociationResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["outcome", "traceId", "code"],
+        "properties": {
+          "outcome": { "type": "string", "enum": ["confirmed", "unconfirmed", "rejected", "unknown"] },
+          "traceId": { "type": ["string", "null"] },
+          "code": { "type": ["string", "null"] }
+        }
+      },
+      "VideoAssociationVerifyRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["productId", "videoId", "encryptedVideoId", "type", "language"],
+        "properties": {
+          "productId": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+          "videoId": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+          "encryptedVideoId": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "\\S" },
+          "type": { "type": "string", "enum": ["main", "detail"] },
+          "language": { "type": "string", "enum": ["zh_CN", "en_US"] }
         }
       },
       "VideoListRequest": {
@@ -20711,6 +20790,46 @@
         "result": { "model": [{ "product_id": "商品id" }], "msg_code": "0", "msg_info": "success" }
       },
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=50709"
+    },
+    "alibaba.icbu.video.relation.product.main": {
+      "requestSchema": "AlibabaPhotoAlibabaIcbuVideoRelationProductMainRequest",
+      "responseSchema": "AlibabaPhotoAlibabaIcbuVideoRelationProductMainResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "videos",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-09-21",
+      "updatedAt": "2025-06-13",
+      "title": "视频关联商品主图",
+      "description": "icbu视频关联商品",
+      "errorCodes": [],
+      "requestExample": { "video_id": "1111", "product_id": "11111" },
+      "responseExample": { "model": true, "msg_code": "00000", "msg_info": "success" },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=50089"
+    },
+    "alibaba.icbu.video.relation.product.detail": {
+      "requestSchema": "AlibabaPhotoAlibabaIcbuVideoRelationProductDetailRequest",
+      "responseSchema": "AlibabaPhotoAlibabaIcbuVideoRelationProductDetailResponse",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "videos",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "restricted": false,
+      "restrictionReason": null,
+      "checkedAt": "2026-09-21",
+      "updatedAt": "2025-06-13",
+      "title": "icbu视频关联商品详情",
+      "description": "icbu视频关联商品详情",
+      "errorCodes": [],
+      "requestExample": { "video_id": "1111", "product_id": "11111" },
+      "responseExample": { "model": false, "msg_code": "code", "msg_info": "info" },
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=50088"
     }
   },
   "x-platform-capabilities": {

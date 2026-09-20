@@ -1,6 +1,8 @@
 import type { OperationId } from './types';
 
 const OPERATION_ID_RECORD = {
+  associateProductVideo: true,
+  verifyProductVideoAssociation: true,
   listVideos: true,
   listVideoRelatedProducts: true,
   resolveVideoRelatedProduct: true,

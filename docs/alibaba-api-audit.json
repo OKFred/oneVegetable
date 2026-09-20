@@ -1,6 +1,6 @@
 {
   "checkedAt": "2026-08-13",
-  "count": 97,
+  "count": 99,
   "entries": [
     {
       "method": "alibaba.icbu.annex.upload",
@@ -1043,6 +1043,26 @@
       "responseSchema": "AlibabaPhotoAlibabaIcbuVideoQueryResponse"
     },
     {
+      "method": "alibaba.icbu.video.relation.product.detail",
+      "domain": "photo",
+      "chargeLabel": "￥开放平台免费API",
+      "auth": "required",
+      "jushitaOnly": false,
+      "restricted": false,
+      "restrictionReason": null,
+      "enabled": true,
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=50088",
+      "checkedAt": "2026-09-21",
+      "updatedAt": "2025-06-13",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": "AlibabaPhotoAlibabaIcbuVideoRelationProductDetailRequest",
+      "responseSchema": "AlibabaPhotoAlibabaIcbuVideoRelationProductDetailResponse"
+    },
+    {
       "method": "alibaba.icbu.video.relation.product.list",
       "domain": "photo",
       "chargeLabel": "￥开放平台免费API",
@@ -1061,6 +1081,26 @@
       "realCallEnabled": true,
       "requestSchema": "AlibabaPhotoAlibabaIcbuVideoRelationProductListRequest",
       "responseSchema": "AlibabaPhotoAlibabaIcbuVideoRelationProductListResponse"
+    },
+    {
+      "method": "alibaba.icbu.video.relation.product.main",
+      "domain": "photo",
+      "chargeLabel": "￥开放平台免费API",
+      "auth": "required",
+      "jushitaOnly": false,
+      "restricted": false,
+      "restrictionReason": null,
+      "enabled": true,
+      "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=50089",
+      "checkedAt": "2026-09-21",
+      "updatedAt": "2025-06-13",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "requestSchema": "AlibabaPhotoAlibabaIcbuVideoRelationProductMainRequest",
+      "responseSchema": "AlibabaPhotoAlibabaIcbuVideoRelationProductMainResponse"
     },
     {
       "method": "alibaba.icbu.xiaoman.va.list",

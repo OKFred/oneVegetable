@@ -48,6 +48,9 @@ export type VideoProductRequest = components['schemas']['VideoProductRequest'];
 export type VideoPage = components['schemas']['VideoPage'];
 export type VideoRelations = components['schemas']['VideoRelations'];
 export type VideoProductResolution = components['schemas']['VideoProductResolution'];
+export type VideoAssociationRequest = components['schemas']['VideoAssociationRequest'];
+export type VideoAssociationVerifyRequest = components['schemas']['VideoAssociationVerifyRequest'];
+export type VideoAssociationResult = components['schemas']['VideoAssociationResult'];
 export type PhotoTransferRequest = components['schemas']['PhotoTransferRequest'];
 export type PhotoGroupOperationRequest = components['schemas']['PhotoGroupOperationRequest'];
 export type ProductDescriptionQualityIssue = components['schemas']['ProductDescriptionQualityIssue'];
@@ -220,6 +223,11 @@ export type ProductInventoryRequest = components['schemas']['ProductInventoryReq
 export type ProductInventorySnapshot = components['schemas']['ProductInventorySnapshot'];
 
 export interface OperationMap {
+  associateProductVideo: { request: VideoAssociationRequest; response: VideoAssociationResult };
+  verifyProductVideoAssociation: {
+    request: VideoAssociationVerifyRequest;
+    response: VideoAssociationResult;
+  };
   listVideos: { request: VideoListRequest; response: VideoPage };
   listVideoRelatedProducts: { request: VideoRelationRequest; response: VideoRelations };
   resolveVideoRelatedProduct: { request: VideoProductRequest; response: VideoProductResolution };
