@@ -21,9 +21,27 @@ jobs:
       - run: xvfb-run --auto-servernum pnpm test:e2e
       - run: xvfb-run --auto-servernum pnpm test:e2e:bff-replay
       - run: pnpm test:e2e:node-credentials
+      # These CI suites use mock/replay data and Playwright's default test-results/ output.
+      # No HTML reporter is configured. Never add real-smoke outputs or artifacts/ here.
+      - name: Upload mock/replay Playwright failure diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-failure-diagnostics
+          path: |
+            test-results/**/trace.zip
+            test-results/**/test-failed-*.png
+            test-results/**/error-context.md
+          if-no-files-found: warn
+          retention-days: 7
       - run: pnpm release:extension
       - uses: actions/upload-artifact@v7
         with:
           name: one-vegetable-extension
-          path: artifacts/
+          # Only package-extension.ts deliverables, not E2E databases or local credentials/profiles.
+          path: |
+            artifacts/one-vegetable-*-chrome-mv3.zip
+            artifacts/one-vegetable-*-chrome-mv3.zip.sha256
+            artifacts/release.json
+            artifacts/store-listing/
           retention-days: 14
