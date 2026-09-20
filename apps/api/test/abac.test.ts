@@ -18,6 +18,18 @@ const user: AuthPrincipal = {
 const admin: AuthPrincipal = { ...user, actorId: 'admin-1', username: 'admin', role: 'admin' };
 
 describe('ABAC', () => {
+  it('treats video association as a write but its readback as a read', () => {
+    const flags = new StaticOperationFeatureFlags(new Set(['operation:associateProductVideo']));
+    expect(authorizeOperation(user, 'associateProductVideo', {}, flags).reasonCode).toBe(
+      'USER_MUTATION_DENIED'
+    );
+    expect(
+      authorizeOperation(admin, 'associateProductVideo', {}, new StaticOperationFeatureFlags()).allowed
+    ).toBe(false);
+    expect(
+      authorizeOperation(user, 'verifyProductVideoAssociation', {}, new StaticOperationFeatureFlags()).allowed
+    ).toBe(true);
+  });
   it.each([
     'addShowcaseProducts',
     'removeShowcaseProducts',

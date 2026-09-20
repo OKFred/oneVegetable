@@ -24,6 +24,21 @@ const method = 'alibaba.icbu.product.list';
 const parameters = getCapabilityDefinition(method)?.requestExample as Record<string, unknown>;
 
 describe('BFF Alibaba read gateway', () => {
+  it('refuses video association before any provider call', async () => {
+    const send = vi.fn<NetworkTransport['send']>();
+    const gateway = new AlibabaReadGatewayClient(credentials, { transport: { send } });
+    await expect(
+      gateway.request('associateProductVideo', {
+        productId: '10000001',
+        videoId: '900001',
+        encryptedVideoId: 'video-example',
+        type: 'main',
+        language: 'en_US',
+        confirmed: true
+      })
+    ).rejects.toThrow('REAL_MUTATION_DISABLED');
+    expect(send).not.toHaveBeenCalled();
+  });
   it('dedicated inventory validates before networking and never retries', async () => {
     const send = vi
       .fn<NetworkTransport['send']>()

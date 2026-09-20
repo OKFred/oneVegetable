@@ -56,7 +56,13 @@ export interface PhotoMockData {
 }
 
 export interface VideoMockData {
-  responses: OperationResponses<'listVideos' | 'listVideoRelatedProducts' | 'resolveVideoRelatedProduct'>;
+  responses: OperationResponses<
+    | 'listVideos'
+    | 'listVideoRelatedProducts'
+    | 'resolveVideoRelatedProduct'
+    | 'associateProductVideo'
+    | 'verifyProductVideoAssociation'
+  >;
 }
 
 export interface RfqMockData {

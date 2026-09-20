@@ -385,6 +385,9 @@ export function createApiApp(options: ApiAppOptions): Hono {
         if (options.gatewayMode === 'disabled') {
           return { operation, allowed: false, reasonCode: 'ALIBABA_GATEWAY_DISABLED' };
         }
+        if (options.gatewayMode !== 'mock' && operation === 'associateProductVideo') {
+          return { operation, allowed: false, reasonCode: 'REAL_MUTATION_DISABLED' };
+        }
         if (options.gatewayMode !== 'mock' && QUALIFICATION_GATED_OPERATION_IDS.has(operation)) {
           return { operation, allowed: false, reasonCode: 'LOGISTICS_QUALIFICATION_REQUIRED' };
         }

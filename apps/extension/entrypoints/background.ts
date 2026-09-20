@@ -1,5 +1,6 @@
 import { browser } from 'wxt/browser';
 import { VideoAdapter, VIDEO_OPERATIONS, VIDEO_METHODS } from '@one-vegetable/core/video';
+import { VideoAssociationAdapter } from '@one-vegetable/core/video-association';
 
 import {
   galleryGatewayId,
@@ -105,6 +106,8 @@ const OPERATIONS = new Set<OperationId>([
   'listVideos',
   'listVideoRelatedProducts',
   'resolveVideoRelatedProduct',
+  'associateProductVideo',
+  'verifyProductVideoAssociation',
   'addShowcaseProducts',
   'removeShowcaseProducts',
   'sortShowcaseProduct',
@@ -687,7 +690,12 @@ async function executeOperation(
   const client = AlibabaClient.create(settings, {
     requestId,
     maxAttempts:
-      operation === 'getProductInventory' || VIDEO_OPERATIONS.some((value) => value === operation) ? 1 : 3,
+      operation === 'getProductInventory' ||
+      operation === 'associateProductVideo' ||
+      operation === 'verifyProductVideoAssociation' ||
+      VIDEO_OPERATIONS.some((value) => value === operation)
+        ? 1
+        : 3,
     shouldRetry: (method, error) =>
       error.retryable &&
       !VIDEO_METHODS.some((value) => value === method) &&
@@ -711,6 +719,14 @@ async function executeOperation(
   const request = asRecord(payload);
 
   switch (operation) {
+    case 'associateProductVideo':
+      throw gatewayFailure('REAL_MUTATION_DISABLED', 'REAL_MUTATION_DISABLED');
+    case 'verifyProductVideoAssociation':
+      return new VideoAssociationAdapter(
+        client,
+        validateCapabilityRequest,
+        validateCapabilityResponse
+      ).verify(payload as RequestOf<'verifyProductVideoAssociation'>);
     case 'listVideos':
       return new VideoAdapter(client, validateCapabilityRequest, validateCapabilityResponse).list(
         payload as RequestOf<'listVideos'>

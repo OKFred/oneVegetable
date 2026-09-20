@@ -47,6 +47,7 @@ export class EmergencyPauseFeatureFlags implements OperationFeatureFlags {
 }
 
 const MUTATION_OPERATIONS: ReadonlySet<OperationId> = new Set([
+  'associateProductVideo',
   'clearDiagnostics',
   'publishProduct',
   'saveProductDraft',

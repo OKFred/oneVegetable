@@ -3,6 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { resolveExtensionOperationAvailability } from '../lib/operation-policy';
 
 describe('extension operation policy', () => {
+  it('keeps video writes closed while allowing readback', () => {
+    expect(resolveExtensionOperationAvailability('associateProductVideo')).toMatchObject({
+      allowed: false,
+      reasonCode: 'REAL_MUTATION_DISABLED'
+    });
+    expect(resolveExtensionOperationAvailability('verifyProductVideoAssociation').allowed).toBe(true);
+  });
   it.each([
     'getProductShowcase',
     'addShowcaseProducts',

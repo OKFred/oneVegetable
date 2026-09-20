@@ -4,7 +4,24 @@ import {
   validateVideoPage,
   validateVideoRelations
 } from '../../../packages/core/src/generated/validators-video';
+import { validateVideoAssociationResult } from '../../../packages/core/src/generated/validators-video-association';
 describe('workerd video read-only replay', () => {
+  it('keeps writes closed and validates a bounded readback failure without a write', async () => {
+    const gateway = createDocumentationReplayGateway({ wait: () => Promise.resolve() });
+    const request = {
+      productId: '900003',
+      videoId: '900001',
+      encryptedVideoId: 'example-encrypted-video',
+      type: 'main' as const,
+      language: 'en_US' as const
+    };
+    await expect(gateway.request('associateProductVideo', { ...request, confirmed: true })).rejects.toThrow(
+      'REAL_MUTATION_DISABLED'
+    );
+    const verification = await gateway.request('verifyProductVideoAssociation', request);
+    expect(validateVideoAssociationResult(verification)).toBe(true);
+    expect(verification.outcome).toBe('unconfirmed');
+  });
   it('runs standalone validation, signing and both public read methods without real network', async () => {
     const gateway = createDocumentationReplayGateway();
     const list = await gateway.request('listVideos', { page: 1, pageSize: 20 });

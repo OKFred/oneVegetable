@@ -31,6 +31,10 @@ import type {
 } from './types';
 import { validateLogisticsOrderInput, validateLogisticsQuoteInput } from './validation';
 import { APP_VERSION } from './version';
+import {
+  validateVideoAssociationRequest,
+  validateVideoAssociationVerifyRequest
+} from './generated/validators-video-association';
 
 const PRIMARY_RFQ = RFQ_MOCK_DATA.primaryRfq;
 const RFQS = RFQ_MOCK_DATA.rfqs;
@@ -102,6 +106,7 @@ export class MockGatewayClient implements GatewayClient {
   private productGroups: ProductGroup[] = structuredClone(MOCK_DATA.listProductGroups);
   private showcase = structuredClone(PRODUCT_MOCK_DATA.responses.getProductShowcase);
   private nextWindowId = 8002;
+  private videoAssociations = new Map<string, RequestOf<'verifyProductVideoAssociation'>>();
   private nextProductGroupId = maxProductGroupId(this.productGroups) + 1;
   private diagnostics: DiagnosticEntry[] = structuredClone(MOCK_DATA.getDiagnostics.entries);
 
@@ -109,6 +114,33 @@ export class MockGatewayClient implements GatewayClient {
 
   async request<K extends OperationId>(operation: K, _request: RequestOf<K>): Promise<ResponseOf<K>> {
     await new Promise<void>((resolve) => setTimeout(resolve, this.latency));
+    if (operation === 'associateProductVideo' || operation === 'verifyProductVideoAssociation') {
+      if (
+        !(operation === 'associateProductVideo'
+          ? validateVideoAssociationRequest(_request)
+          : validateVideoAssociationVerifyRequest(_request))
+      )
+        throw new Error('REQUEST_CONTRACT_INVALID');
+      const input = _request as RequestOf<'verifyProductVideoAssociation'>;
+      if (!PRODUCTS.some((product) => product.id === input.productId)) throw new Error('PRODUCT_NOT_FOUND');
+      if (
+        !VIDEO_MOCK_DATA.responses.listVideos.items.some(
+          (video) => video.id === input.videoId && video.encryptedId === input.encryptedVideoId
+        )
+      )
+        throw new Error('REQUEST_CONTRACT_INVALID');
+      const key = JSON.stringify([input.productId, input.type]);
+      if (operation === 'associateProductVideo') this.videoAssociations.set(key, structuredClone(input));
+      const matches = this.videoAssociations.get(key)?.encryptedVideoId === input.encryptedVideoId;
+      return {
+        ...structuredClone(
+          VIDEO_MOCK_DATA.responses[
+            operation === 'associateProductVideo' ? 'associateProductVideo' : 'verifyProductVideoAssociation'
+          ]
+        ),
+        outcome: matches ? 'confirmed' : 'unconfirmed'
+      };
+    }
     if (operation === 'listVideos') {
       const input = _request as RequestOf<'listVideos'>;
       const items = VIDEO_MOCK_DATA.responses.listVideos.items.filter(
@@ -129,15 +161,36 @@ export class MockGatewayClient implements GatewayClient {
       return {
         ...structuredClone(VIDEO_MOCK_DATA.responses.listVideoRelatedProducts),
         ...input,
-        encryptedProductIds:
-          input.videoId === 'video-empty' ? [] : input.type === 'main' ? ['product-example'] : []
+        encryptedProductIds: [
+          ...new Set([
+            ...(input.videoId === 'video-empty' ? [] : input.type === 'main' ? ['product-example'] : []),
+            ...[...this.videoAssociations.values()]
+              .filter((row) => row.encryptedVideoId === input.videoId && row.type === input.type)
+              .map((row) => `video-product:${row.productId}`)
+          ])
+        ]
       };
     }
     if (operation === 'resolveVideoRelatedProduct') {
       const input = _request as RequestOf<'resolveVideoRelatedProduct'>;
+      const linked = input.encryptedProductId.startsWith('video-product:')
+        ? PRODUCTS.find((row) => row.id === input.encryptedProductId.slice('video-product:'.length))
+        : null;
       return {
         ...structuredClone(VIDEO_MOCK_DATA.responses.resolveVideoRelatedProduct),
-        encryptedProductId: input.encryptedProductId
+        encryptedProductId: input.encryptedProductId,
+        ...(linked
+          ? {
+              productId: linked.id,
+              product: {
+                id: linked.id,
+                subject: linked.subject,
+                imageUrl: linked.imageUrl,
+                detailUrl: linked.detailUrl ?? null,
+                status: linked.status
+              }
+            }
+          : {})
       };
     }
     if (operation === 'getProductShowcase') return structuredClone(this.showcase);

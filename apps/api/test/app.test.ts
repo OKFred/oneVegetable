@@ -17,6 +17,33 @@ function createTestApp(apiPrefix?: string) {
 }
 
 describe('shared Hono API', () => {
+  it('reports the unopened video write accurately in real mode', async () => {
+    const app = createApiApp({
+      runtime: 'node',
+      database: 'sqlite',
+      environment: 'test',
+      gatewayMode: 'real',
+      gateway: { request: () => Promise.reject(new Error('Unexpected provider call')) }
+    });
+    const response = await app.request('/api/v1/operations/availability/get', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        requestId: createRequestId(),
+        operations: ['associateProductVideo', 'verifyProductVideoAssociation']
+      })
+    });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      data: {
+        items: [
+          { operation: 'associateProductVideo', allowed: false, reasonCode: 'REAL_MUTATION_DISABLED' },
+          { operation: 'verifyProductVideoAssociation', allowed: true }
+        ]
+      }
+    });
+  });
   it('mounts at the configured prefix and returns it from meta/get', async () => {
     const requestId = createRequestId();
     const response = await createTestApp('/internal/v2').request('/internal/v2/meta/get', {

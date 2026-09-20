@@ -3,6 +3,16 @@ import type { VideoMockData, InsightsMockData, LogisticsMockData, PhotoMockData,
 
 export const VIDEO_MOCK_DATA: VideoMockData = {
   "responses": {
+    "associateProductVideo": {
+      "outcome": "confirmed",
+      "traceId": "video-mock-association",
+      "code": null
+    },
+    "verifyProductVideoAssociation": {
+      "outcome": "unconfirmed",
+      "traceId": "video-mock-verification",
+      "code": null
+    },
     "listVideos": {
       "page": 1,
       "pageSize": 20,

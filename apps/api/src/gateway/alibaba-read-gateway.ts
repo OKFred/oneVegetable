@@ -23,6 +23,7 @@ import {
 } from '@one-vegetable/core';
 import { GatewayConfigurationError } from './credentials';
 import { VideoAdapter, VIDEO_OPERATIONS, VIDEO_METHODS } from '@one-vegetable/core/video';
+import { VideoAssociationAdapter } from '@one-vegetable/core/video-association';
 import {
   galleryGatewayId,
   assertGalleryContextId,
@@ -128,7 +129,10 @@ export class AlibabaReadGatewayClient implements GatewayClient {
     const client = this.createClient(
       context,
       'top',
-      operation === 'getProductInventory' || VIDEO_OPERATIONS.some((value) => value === operation)
+      operation === 'getProductInventory' ||
+        operation === 'associateProductVideo' ||
+        operation === 'verifyProductVideoAssociation' ||
+        VIDEO_OPERATIONS.some((value) => value === operation)
         ? 1
         : this.#maxAttempts
     );
@@ -210,6 +214,15 @@ export class AlibabaReadGatewayClient implements GatewayClient {
     const photos = new PhotoAdapter(client);
     const record = readRecord(request);
     switch (operation) {
+      case 'associateProductVideo':
+        // No runtime opt-in until ID, replacement and recovery semantics have been accepted.
+        throw gatewayError('REAL_MUTATION_DISABLED', 'REAL_MUTATION_DISABLED');
+      case 'verifyProductVideoAssociation':
+        return await new VideoAssociationAdapter(
+          client,
+          validateCapabilityRequest,
+          validateCapabilityResponse
+        ).verify(request as RequestOf<'verifyProductVideoAssociation'>);
       case 'listVideos':
         return await new VideoAdapter(client, validateCapabilityRequest, validateCapabilityResponse).list(
           request as RequestOf<'listVideos'>
