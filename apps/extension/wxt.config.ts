@@ -1,15 +1,18 @@
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'wxt';
 import rootPackage from '../../package.json' with { type: 'json' };
+import { extensionValidatorCompactionPlugin } from '../../scripts/lib/extension-validator-compaction';
 
 export default defineConfig({
   modules: ['@wxt-dev/module-vue'],
   vite: () => ({
     define: {
       __ONE_VEGETABLE_EXTENSION__: 'true',
+      // The app already uses composition mode; retain both locales and the message compiler.
+      __VUE_I18N_LEGACY_API__: 'false',
       'import.meta.env.VITE_APP_RUNTIME': JSON.stringify('extension')
     },
-    plugins: [tailwindcss()]
+    plugins: [tailwindcss(), extensionValidatorCompactionPlugin()]
   }),
   hooks: {
     'vite:build:extendConfig'(entrypoints, config) {
