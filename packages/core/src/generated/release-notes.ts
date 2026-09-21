@@ -4,6 +4,64 @@ export const RELEASE_NOTES_DOCUMENT = {
   repositoryUrl: 'https://github.com/OKFred/oneVegetable',
   releases: [
     {
+      version: '2.10.0',
+      releasedAt: '2026-09-22',
+      title: {
+        'zh-CN': '商品视频选择与安全核对',
+        'en-US': 'Product video selection and safe verification'
+      },
+      summary: {
+        'zh-CN':
+          '现存商品编辑新增视频选择与预览，支持只读核对已有关联。优化扩展校验包体；真实视频关联写入尚未开放，不修改平台商品或视频。',
+        'en-US':
+          'Adds video selection and preview to existing-product editing, with read-only checks of existing relations and a smaller extension validation bundle. Real relation writes remain disabled; platform products and videos are not changed.'
+      },
+      source: 'release',
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.10.0',
+      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.9.0...v2.10.0',
+      changes: [
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '可复用视频选择器',
+            'en-US': 'Reusable video picker'
+          },
+          description: {
+            'zh-CN':
+              '在快速、向导和高级商品编辑模式中搜索、分页和预览已有视频，区分主图与详情用途。选择与 Schema 保存分离，不自动提交。',
+            'en-US':
+              'Search, page through and preview existing videos in quick, wizard and advanced editing modes, distinguishing main-image and description use. Selection is separate from Schema saving and never submits automatically.'
+          }
+        },
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '关联只读核对与安全边界',
+            'en-US': 'Read-only relation checks and safeguards'
+          },
+          description: {
+            'zh-CN':
+              '新增类型化关联契约和只读核对入口。本地回执按账号隔离，未知结果不自动重发；Node、Worker 与插件均继续阻止未经真实验收的关联写入。',
+            'en-US':
+              'Adds typed relation contracts and read-only verification. Local receipts are account-scoped and uncertain results are never automatically resent. Node, Worker and extension continue blocking unverified real relation writes.'
+          }
+        },
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '更紧凑的扩展校验代码',
+            'en-US': 'More compact extension validation'
+          },
+          description: {
+            'zh-CN':
+              '构建期复用重复的校验错误构造逻辑，保留全部校验分支、双语及 MV3 CSP，不增加永久权限或放宽包体预算。',
+            'en-US':
+              'Shares repeated validator error construction at build time while retaining all checks, both languages and MV3 CSP. No new permanent permissions or relaxed bundle budgets.'
+          }
+        }
+      ]
+    },
+    {
       version: '2.9.0',
       releasedAt: '2026-09-13',
       title: {
