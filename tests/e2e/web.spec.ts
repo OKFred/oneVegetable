@@ -699,7 +699,7 @@ test('web mock exposes the final platform contracts with protocol safeguards', a
   await expect(page.getByText(/不返回图库 fileId/)).toBeVisible();
   await expect(page.getByLabel('调用参数 JSON')).toHaveValue(/ONE_VEGETABLE/);
   await page.getByRole('button', { name: '调用能力' }).click();
-  await expect(page.getByText(/"file_url"/)).toBeVisible();
+  await expect(page.getByTestId('capability-call-result')).toContainText('"file_url"');
 });
 
 test('web mock exports and clears the typed diagnostics snapshot', async ({ page }) => {

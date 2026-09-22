@@ -998,7 +998,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByText(`共 ${listCapabilities().length} 条，当前 1–10 条`)).toBeVisible();
   await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.product.schema.add');
   await page.getByRole('button', { name: 'alibaba.icbu.product.schema.add', exact: true }).click();
-  await expect(page.getByText(/该真实写能力未在当前扩展版本开放/)).toBeVisible();
+  await expect(page.getByText(/Web BFF 和扩展的通用调试器均仅允许只读调用/).first()).toBeVisible();
   await expect(page.getByRole('button', { name: '调用能力' })).toBeDisabled();
   await page.getByLabel('关闭详情').click();
 

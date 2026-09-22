@@ -71,7 +71,8 @@ describe('CapabilitiesView platform safeguards', () => {
       expect(bodyText()).toContain('isv.permission-api-package-limit');
     });
 
-    expect(bodyText()).toContain('CI 已覆盖');
+    expect(bodyText()).toContain('Replay 候选');
+    expect(bodyText()).toContain('已有文档');
     expect(bodyText()).toContain('Mock 数据');
     expect(bodyText()).toContain('只表示当时验证凭据');
     wrapper.unmount();
@@ -103,7 +104,8 @@ describe('CapabilitiesView platform safeguards', () => {
     });
 
     expect(document.body.querySelector('textarea[aria-label="调用参数 JSON"]')).not.toBeNull();
-    expect(bodyText()).toContain('出网前拒绝调用');
+    expect(bodyText()).toContain('通用调试器均仅允许只读调用');
+    expect(callButton().disabled).toBe(true);
     wrapper.unmount();
   });
 });

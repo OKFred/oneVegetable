@@ -4,6 +4,8 @@ export const capabilities = {
     'Free catalog totals come from the audit snapshot. Article-only Schema publishing APIs are listed separately and excluded from the free API count.',
   catalogCount: 'Catalog {count}',
   articleCount: 'Articles {count}',
+  sources: { catalog: 'API catalog', article: 'Documentation article' },
+  businessScopes: { general: 'General business', conditional: 'Requires business qualifications' },
   search: 'Search API methods',
   allDomains: 'All domains',
   accountSnapshot: 'Account verification snapshot',
@@ -29,7 +31,7 @@ export const capabilities = {
     'The account snapshot was checked on {date}. It represents the credentials used then, not the credentials currently configured.',
   snapshotMissing: 'No account snapshot has been generated.',
   runtimeNotice:
-    '{snapshot} The current-runtime column shows the app data source and call guard. Actual permission is determined by each live call.',
+    '{snapshot} Integration and documentation do not prove account permission. The current-environment column shows the data source and call guard, not a successful live verification. API errors remain errors; there is no automatic mock fallback.',
   noMatch: 'No matching APIs',
   clearFilters: 'Clear filters',
   viewApi: 'View API {method}',
@@ -39,18 +41,29 @@ export const capabilities = {
   unknown: 'Unknown',
   documentVerification: 'Docs: {verification}',
   matrixNames: {
-    contract: 'Contract',
+    contract: 'Integration / contract',
+    documentation: 'Documentation evidence',
     replay: 'Replay',
     account: 'Account snapshot',
-    current: 'Current runtime'
+    current: 'Current environment'
   },
   deprecatedNotice:
-    'This API is deprecated. Typed compatibility remains only in the generic debugger, and the dedicated product UI does not call it.',
-  realWriteBlocked:
-    'This real write capability is not enabled in the current extension. It will be rejected before any network call.',
+    'This API is deprecated. Retained read calls remain available when the other guards allow them; deprecation is a warning, not proof of current support or permission.',
+  unlistedNotice:
+    'This API is unlisted. Check its documentation and business scope; lifecycle status does not grant call permission.',
+  metadata: {
+    title: 'Permission and business metadata',
+    permissionGroups: 'Documented permission groups',
+    businessScope: 'Business scope',
+    notice:
+      'Catalog metadata only. These groups and scopes do not indicate permissions granted to the current account.'
+  },
   restrictedFallback: 'This capability requires a dedicated business context.',
   requestSchema: 'request: {schema}',
   responseSchema: 'response: {schema}',
+  responseExample: 'Documented response example',
+  documentedErrors: 'Documented error codes',
+  exampleNotice: 'Documentation only, not a call result or evidence of account authorization.',
   readonlyExample: 'Read-only documented parameter example',
   parameters: 'Call parameters JSON',
   driftTitle: 'Response contract drift · traceId {traceId}',
@@ -60,7 +73,7 @@ export const capabilities = {
     select: 'Select an API capability first',
     restricted: 'This capability requires dedicated business eligibility or context',
     unavailable: 'This capability is not enabled',
-    extensionWrite: 'This real write capability is not enabled in the current extension',
+    catalogFailed: 'The capability catalog failed to load; retry before calling',
     running: 'The capability call is running',
     definitionFailed: 'Capability definition failed to load: {error}',
     definitionLoading: 'Capability definition is loading'
@@ -70,7 +83,8 @@ export const capabilities = {
     validJson: 'Parameters must be valid JSON',
     jsonObject: 'Parameters must be a JSON object',
     invalidParameters: 'Invalid parameter format',
-    definitionFailed: 'Capability definition failed to load'
+    definitionFailed: 'Capability definition failed to load',
+    definitionMismatch: 'The returned capability definition does not match the selected API'
   },
   notices: {
     urlUpload:
@@ -85,10 +99,11 @@ export const capabilities = {
     domain: 'Domain',
     lifecycle: 'Lifecycle',
     risk: 'Risk',
-    contract: 'Contract',
+    contract: 'Integration',
+    documentation: 'Documentation',
     replay: 'Replay',
     account: 'Account snapshot',
-    current: 'Current runtime',
+    current: 'Current environment',
     docs: 'Docs'
   },
   lifecycle: { active: 'Active', deprecated: 'Deprecated', unlisted: 'Unlisted' },
@@ -99,10 +114,20 @@ export const capabilities = {
       incomplete: ['Incomplete contract', 'The request or response Schema is missing.'],
       typed: ['Typed', 'Request and response Schemas and generated types are registered.']
     },
+    documentation: {
+      documented: [
+        'Documented',
+        'Platform documentation is recorded. This does not prove integration, account authorization, or live-call success.'
+      ],
+      accountRecorded: [
+        'Verification recorded',
+        'The catalog records historical account verification. See the account snapshot for its result and date; this is not verification of the current environment.'
+      ]
+    },
     replay: {
       covered: [
-        'Covered by CI',
-        'Documented Replay examples pass the current request and response contracts.'
+        'Replay candidate',
+        'This active, integrated, read-only method is eligible for documentation replay. Eligibility is not evidence of a successful live call.'
       ],
       ineligible: [
         'Not applicable',
@@ -131,10 +156,20 @@ export const capabilities = {
       notTested: ['Not tested', 'This method is absent from the redacted account verification snapshot.']
     },
     current: {
-      unavailable: ['Not integrated', 'The current app has no callable contract for this method.'],
+      unavailable: [
+        'Calls disabled',
+        'Calls are not enabled for this method; registered contracts and examples remain viewable.'
+      ],
       restricted: ['Restricted', 'This method requires additional business eligibility or context.'],
-      mutationClosed: ['Writes disabled', 'The real-write feature flag is disabled.'],
-      realClosed: ['Real calls disabled', 'This method cannot use the real gateway.'],
+      mutationClosed: [
+        'Writes disabled',
+        'The generic debugger is read-only in Web BFF and the extension. Only explicit mock mode may run write examples.'
+      ],
+      realClosed: [
+        'Real calls disabled',
+        'Real calls for this capability are disabled in Web BFF and the extension. Only explicit mock mode may run its example.'
+      ],
+      replayReadOnly: ['Replay is read-only', 'Documentation replay does not allow write calls.'],
       mock: 'Mock data',
       replay: 'Replay data',
       real: [

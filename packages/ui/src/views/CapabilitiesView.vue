@@ -15,7 +15,7 @@ import Button from '../components/ui/Button.vue';
 import Input from '../components/ui/Input.vue';
 import Sheet from '../components/ui/Sheet.vue';
 import { useUiI18n } from '../i18n';
-import { capabilityMatrix, type CapabilityMatrixCell } from '../lib/capability-matrix';
+import { capabilityCallBlock, capabilityMatrix, type CapabilityMatrixCell } from '../lib/capability-matrix';
 import { resolveDataSource } from '../lib/data-source';
 import { formatDate } from '../lib/date-time';
 import { useServices } from '../lib/services';
@@ -30,7 +30,7 @@ const selected = ref<ApiCapability | null>(null);
 const capabilitySheetOpen = ref(false);
 const definition = ref<CapabilityDefinition | null>(null);
 const definitionMethod = ref('');
-const definitionError = ref('');
+const definitionError = ref<Error | null>(null);
 const parameters = ref('{}');
 const validationErrors = ref<string[]>([]);
 let selectionSequence = 0;
@@ -87,11 +87,42 @@ const accountSnapshotNotice = computed(() => {
     : t('capabilities.snapshotMissing');
 });
 const selectedMatrix = computed(() =>
-  selected.value ? capabilityMatrix(selected.value, dataSource.value) : null
+  selected.value ? capabilityMatrix(selected.value, dataSource.value, definition.value) : null
 );
-const realCallBlocked = computed(() => mode === 'extension' && selected.value?.realCallEnabled === false);
+const selectedCallBlock = computed(() =>
+  selected.value ? capabilityCallBlock(selected.value, dataSource.value, definition.value) : null
+);
+// Compatible with the forthcoming optional core fields without modifying generated types.
+interface CapabilityMetadata {
+  permissionGroups?: unknown;
+  businessScope?: unknown;
+}
+const selectedMetadata = computed(() => {
+  const catalogMetadata = selected.value as CapabilityMetadata | null;
+  const definitionMetadata = definition.value as CapabilityMetadata | null;
+  const metadata = {
+    permissionGroups: catalogMetadata?.permissionGroups ?? definitionMetadata?.permissionGroups,
+    businessScope: catalogMetadata?.businessScope ?? definitionMetadata?.businessScope
+  };
+  return {
+    permissionGroups: Array.isArray(metadata.permissionGroups)
+      ? [
+          ...new Set(
+            metadata.permissionGroups
+              .filter((group): group is string => typeof group === 'string' && Boolean(group.trim()))
+              .map((group) => group.trim())
+          )
+        ]
+      : [],
+    businessScope: typeof metadata.businessScope === 'string' ? metadata.businessScope.trim() : ''
+  };
+});
+const selectedBusinessScope = computed(() => {
+  const scope = selectedMetadata.value.businessScope;
+  return scope === 'general' || scope === 'conditional' ? t(`capabilities.businessScopes.${scope}`) : scope;
+});
 const platformProtocolRestricted = computed(
-  () => selected.value?.domain === 'platform' && selected.value.restricted
+  () => selected.value?.domain === 'platform' && (selected.value.restricted || definition.value?.restricted)
 );
 const platformNotice = computed(() => {
   if (selected.value?.method === 'alibaba.icbu.file.urlposting.upload') {
@@ -105,29 +136,26 @@ const platformNotice = computed(() => {
   }
   return '';
 });
-const callDisabledReason = computed(() => {
+const callReadinessReason = computed(() => {
   if (!selected.value) return t('capabilities.disabled.select');
-  if (selected.value.restricted) {
-    return selected.value.restrictionReason ?? t('capabilities.disabled.restricted');
-  }
-  if (!selected.value.enabled) return t('capabilities.disabled.unavailable');
-  if (realCallBlocked.value) return t('capabilities.disabled.extensionWrite');
-  if (call.isPending.value) return t('capabilities.disabled.running');
+  if (selectedCallBlock.value) return selectedCallBlock.value.detail;
+  if (capabilities.error.value) return t('capabilities.disabled.catalogFailed');
   if (definitionError.value) {
-    return t('capabilities.disabled.definitionFailed', { error: definitionError.value });
+    return t('capabilities.disabled.definitionFailed', { error: definitionError.value.message });
   }
   if (!definition.value || definitionMethod.value !== selected.value.method) {
     return t('capabilities.disabled.definitionLoading');
   }
   return '';
 });
+const callDisabledReason = computed(() =>
+  call.isPending.value ? t('capabilities.disabled.running') : callReadinessReason.value
+);
 
 const call = useMutation({
   mutationFn: async () => {
     if (!selected.value) throw new Error(t('capabilities.errors.select'));
-    if (definitionMethod.value !== selected.value.method) {
-      throw new Error(t('capabilities.disabled.definitionLoading'));
-    }
+    if (callReadinessReason.value) throw new Error(callReadinessReason.value);
     let parsed: unknown;
     try {
       parsed = JSON.parse(parameters.value) as unknown;
@@ -151,11 +179,14 @@ async function selectCapability(capability: ApiCapability): Promise<void> {
   capabilitySheetOpen.value = true;
   definition.value = null;
   definitionMethod.value = '';
-  definitionError.value = '';
+  definitionError.value = null;
+  parameters.value = '{}';
+  validationErrors.value = [];
   call.reset();
   try {
     const result = await gateway.request('getCapabilityDefinition', { method: capability.method });
     if (sequence !== selectionSequence) return;
+    if (result.method !== capability.method) throw new Error(t('capabilities.errors.definitionMismatch'));
     definition.value = result;
     definitionMethod.value = capability.method;
     parameters.value = JSON.stringify(result.requestExample, null, 2);
@@ -163,7 +194,7 @@ async function selectCapability(capability: ApiCapability): Promise<void> {
     if (sequence !== selectionSequence) return;
     parameters.value = '{}';
     definitionError.value =
-      error instanceof Error ? error.message : t('capabilities.errors.definitionFailed');
+      error instanceof Error ? error : new Error(t('capabilities.errors.definitionFailed'));
   }
 }
 
@@ -190,7 +221,7 @@ const columns = computed<DataColumn<ApiCapability>[]>(() => [
     accessorKey: 'lifecycle',
     header: t('capabilities.columns.lifecycle'),
     cell: ({ row }) =>
-      h(Badge, { variant: row.original.lifecycle === 'deprecated' ? 'warning' : 'success' }, () =>
+      h(Badge, { variant: row.original.lifecycle === 'active' ? 'success' : 'warning' }, () =>
         t(`capabilities.lifecycle.${row.original.lifecycle}`)
       )
   },
@@ -206,6 +237,11 @@ const columns = computed<DataColumn<ApiCapability>[]>(() => [
     id: 'contract',
     header: t('capabilities.columns.contract'),
     cell: ({ row }) => matrixBadge(capabilityMatrix(row.original, dataSource.value).contract)
+  },
+  {
+    id: 'documentation',
+    header: t('capabilities.columns.documentation'),
+    cell: ({ row }) => matrixBadge(capabilityMatrix(row.original, dataSource.value).documentation)
   },
   {
     id: 'replay',
@@ -261,7 +297,11 @@ function matrixBadge(cell: CapabilityMatrixCell) {
         :placeholder="t('capabilities.search')"
       />
     </div>
-    <select v-model="domain" class="h-9 rounded-md border bg-background px-3 text-sm">
+    <select
+      v-model="domain"
+      :aria-label="t('capabilities.allDomains')"
+      class="h-9 rounded-md border bg-background px-3 text-sm"
+    >
       <option value="all">{{ t('capabilities.allDomains') }}</option>
       <option
         v-for="item in ['product', 'photo', 'trade', 'rfq', 'buyer', 'logistics', 'data', 'platform']"
@@ -361,9 +401,9 @@ function matrixBadge(cell: CapabilityMatrixCell) {
           </p>
         </div>
         <div class="flex flex-wrap gap-2">
-          <Badge variant="outline">{{ selected.source }}</Badge>
-          <Badge variant="outline">{{
-            t('capabilities.documentVerification', { verification: selected.verification })
+          <Badge variant="outline">{{ t(`capabilities.sources.${selected.source}`) }}</Badge>
+          <Badge :variant="selected.lifecycle === 'active' ? 'success' : 'warning'">{{
+            t(`capabilities.lifecycle.${selected.lifecycle}`)
           }}</Badge>
           <Badge :variant="selected.risk === 'mutation' ? 'warning' : 'success'">{{
             t(`capabilities.risk.${selected.risk}`)
@@ -375,6 +415,7 @@ function matrixBadge(cell: CapabilityMatrixCell) {
         <div
           v-for="item in [
             { name: t('capabilities.matrixNames.contract'), cell: selectedMatrix.contract },
+            { name: t('capabilities.matrixNames.documentation'), cell: selectedMatrix.documentation },
             { name: t('capabilities.matrixNames.replay'), cell: selectedMatrix.replay },
             { name: t('capabilities.matrixNames.account'), cell: selectedMatrix.account },
             { name: t('capabilities.matrixNames.current'), cell: selectedMatrix.current }
@@ -390,27 +431,54 @@ function matrixBadge(cell: CapabilityMatrixCell) {
         </div>
       </div>
 
+      <section
+        v-if="selectedMetadata.permissionGroups.length || selectedMetadata.businessScope"
+        :aria-label="t('capabilities.metadata.title')"
+        class="mt-4 rounded-lg border p-3 text-sm"
+      >
+        <dl class="space-y-3">
+          <div v-if="selectedMetadata.permissionGroups.length">
+            <dt class="text-xs font-medium text-muted-foreground">
+              {{ t('capabilities.metadata.permissionGroups') }}
+            </dt>
+            <dd class="mt-1 flex flex-wrap gap-1">
+              <Badge v-for="group in selectedMetadata.permissionGroups" :key="group" variant="outline">{{
+                group
+              }}</Badge>
+            </dd>
+          </div>
+          <div v-if="selectedMetadata.businessScope">
+            <dt class="text-xs font-medium text-muted-foreground">
+              {{ t('capabilities.metadata.businessScope') }}
+            </dt>
+            <dd class="mt-1 break-words">{{ selectedBusinessScope }}</dd>
+          </div>
+        </dl>
+        <p class="mt-2 text-xs text-muted-foreground">{{ t('capabilities.metadata.notice') }}</p>
+      </section>
+
       <div
-        v-if="selected.lifecycle === 'deprecated'"
+        v-if="selected.lifecycle === 'deprecated' || definition?.lifecycle === 'deprecated'"
         class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800"
       >
         {{ t('capabilities.deprecatedNotice') }}
       </div>
-      <div v-if="realCallBlocked" class="mt-4 flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-        <ShieldAlert class="mt-0.5 size-4 shrink-0" />{{ t('capabilities.realWriteBlocked') }}
+      <div
+        v-if="selected.lifecycle === 'unlisted'"
+        class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800"
+      >
+        {{ t('capabilities.unlistedNotice') }}
       </div>
       <div
-        v-if="selected.restricted"
+        v-if="selectedCallBlock"
         class="mt-4 flex gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800"
       >
-        <ShieldAlert class="mt-0.5 size-4 shrink-0" />{{
-          selected.restrictionReason ?? t('capabilities.restrictedFallback')
-        }}
+        <ShieldAlert class="mt-0.5 size-4 shrink-0" />{{ selectedCallBlock.detail }}
       </div>
       <div v-if="platformNotice" class="mt-3 rounded-lg bg-slate-100 p-3 text-sm text-slate-700">
         {{ platformNotice }}
       </div>
-      <p v-if="definitionError" class="mt-3 text-sm text-destructive">{{ definitionError }}</p>
+      <ErrorNotice v-if="definitionError" class="mt-3" :error="definitionError" compact />
       <p v-if="definition" class="mt-4 text-sm text-muted-foreground">{{ definition.description }}</p>
       <div v-if="definition" class="mt-3 grid gap-2 text-xs sm:grid-cols-2">
         <code class="rounded bg-muted p-2">{{
@@ -435,6 +503,19 @@ function matrixBadge(cell: CapabilityMatrixCell) {
       <ul v-if="validationErrors.length" class="mt-2 text-sm text-destructive">
         <li v-for="error in validationErrors" :key="error">{{ error }}</li>
       </ul>
+      <details v-if="definition" class="mt-3 rounded-lg border p-3 text-sm">
+        <summary class="cursor-pointer font-medium">{{ t('capabilities.responseExample') }}</summary>
+        <p class="mt-2 text-xs text-muted-foreground">{{ t('capabilities.exampleNotice') }}</p>
+        <pre class="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs">{{
+          JSON.stringify(definition.responseExample, null, 2)
+        }}</pre>
+      </details>
+      <details v-if="definition?.errorCodes.length" class="mt-3 rounded-lg border p-3 text-sm">
+        <summary class="cursor-pointer font-medium">{{ t('capabilities.documentedErrors') }}</summary>
+        <pre class="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs">{{
+          JSON.stringify(definition.errorCodes, null, 2)
+        }}</pre>
+      </details>
 
       <div
         v-if="call.data.value && !call.data.value.contractValid"
@@ -448,9 +529,11 @@ function matrixBadge(cell: CapabilityMatrixCell) {
         </ul>
         <p class="mt-2 text-xs">{{ t('capabilities.driftRaw') }}</p>
       </div>
-      <pre v-if="call.data.value" class="mt-3 max-h-96 overflow-auto rounded-md bg-muted p-3 text-xs">{{
-        JSON.stringify(call.data.value, null, 2)
-      }}</pre>
+      <pre
+        v-if="call.data.value"
+        data-testid="capability-call-result"
+        class="mt-3 max-h-96 overflow-auto rounded-md bg-muted p-3 text-xs"
+        >{{ JSON.stringify(call.data.value, null, 2) }}</pre>
       <ErrorNotice v-if="call.error.value" class="mt-3" :error="call.error.value" compact />
       <ActionTooltip :disabled="Boolean(callDisabledReason)" :reason="callDisabledReason">
         <Button class="mt-3" :disabled="Boolean(callDisabledReason)" @click="call.mutate()">

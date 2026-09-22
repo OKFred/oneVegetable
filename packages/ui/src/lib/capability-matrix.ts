@@ -1,4 +1,4 @@
-import type { ApiCapability } from '@one-vegetable/core';
+import type { ApiCapability, CapabilityDefinition } from '@one-vegetable/core';
 
 import type { DataSourcePresentation } from './data-source';
 import { formatDateTime } from './date-time';
@@ -14,6 +14,7 @@ export interface CapabilityMatrixCell {
 
 export interface CapabilityMatrix {
   contract: CapabilityMatrixCell;
+  documentation: CapabilityMatrixCell;
   replay: CapabilityMatrixCell;
   account: CapabilityMatrixCell;
   current: CapabilityMatrixCell;
@@ -21,24 +22,29 @@ export interface CapabilityMatrix {
 
 export function capabilityMatrix(
   capability: ApiCapability,
-  dataSource: DataSourcePresentation
+  dataSource: DataSourcePresentation,
+  definition?: CapabilityDefinition | null
 ): CapabilityMatrix {
   return {
     contract: contractCell(capability),
+    documentation: localizedCell(
+      `capabilities.matrix.documentation.${capability.verification === 'account-verified' ? 'accountRecorded' : 'documented'}`,
+      'secondary'
+    ),
     replay: replayCell(capability),
     account: accountCell(capability),
-    current: currentCell(capability, dataSource)
+    current: currentCell(capability, dataSource, definition)
   };
 }
 
 function contractCell(capability: ApiCapability): CapabilityMatrixCell {
+  if (capability.requestSchema && capability.responseSchema) {
+    return localizedCell('capabilities.matrix.contract.typed', 'success');
+  }
   if (!capability.enabled) {
     return localizedCell('capabilities.matrix.contract.unavailable', 'outline');
   }
-  if (!capability.requestSchema || !capability.responseSchema) {
-    return localizedCell('capabilities.matrix.contract.incomplete', 'destructive');
-  }
-  return localizedCell('capabilities.matrix.contract.typed', 'success');
+  return localizedCell('capabilities.matrix.contract.incomplete', 'destructive');
 }
 
 function replayCell(capability: ApiCapability): CapabilityMatrixCell {
@@ -72,20 +78,66 @@ function accountCell(capability: ApiCapability): CapabilityMatrixCell {
   }
 }
 
-function currentCell(capability: ApiCapability, dataSource: DataSourcePresentation): CapabilityMatrixCell {
-  if (!capability.enabled) return localizedCell('capabilities.matrix.current.unavailable', 'outline');
-  if (capability.restricted) {
+// Shared by the status matrix and the call action. Only an explicitly resolved
+// mock source bypasses real-call gates; metadata never grants permission.
+export function capabilityCallBlock(
+  capability: ApiCapability,
+  dataSource: DataSourcePresentation,
+  definition?: CapabilityDefinition | null
+): CapabilityMatrixCell | null {
+  const restrictionReason = [capability.restrictionReason, definition?.restrictionReason]
+    .map((reason) => reason?.trim())
+    .find((reason) => Boolean(reason));
+  if (capability.restricted || capability.jushitaOnly || definition?.restricted) {
     return cell(
       translateUi('capabilities.matrix.current.restricted.0'),
-      capability.restrictionReason ?? translateUi('capabilities.matrix.current.restricted.1'),
+      restrictionReason ?? translateUi('capabilities.matrix.current.restricted.1'),
       'warning'
     );
   }
-  if (!capability.realCallEnabled) {
-    return capability.risk === 'mutation'
-      ? localizedCell('capabilities.matrix.current.mutationClosed', 'warning')
-      : localizedCell('capabilities.matrix.current.realClosed', 'warning');
+  if (!capability.enabled) {
+    return cell(
+      translateUi('capabilities.matrix.current.unavailable.0'),
+      restrictionReason ?? translateUi('capabilities.matrix.current.unavailable.1'),
+      'outline'
+    );
   }
+  if (!capability.requestSchema || !capability.responseSchema) {
+    return localizedCell('capabilities.matrix.contract.incomplete', 'destructive');
+  }
+  if (dataSource.id === 'unavailable') {
+    return cell(
+      translateUi('capabilities.matrix.current.unavailableGateway'),
+      dataSource.description,
+      'destructive'
+    );
+  }
+  if (dataSource.id === 'unknown') {
+    return cell(translateUi('capabilities.matrix.current.detecting'), dataSource.description, 'outline');
+  }
+  if (dataSource.id === 'mock') return null;
+  // Lifecycle is advisory for retained reads, matching the shared security policy.
+  // Real generic-debugger writes remain closed even if a dedicated workflow is enabled.
+  if (capability.risk !== 'read' || (definition && definition.risk !== 'read')) {
+    return localizedCell(
+      dataSource.id === 'replay'
+        ? 'capabilities.matrix.current.replayReadOnly'
+        : 'capabilities.matrix.current.mutationClosed',
+      'warning'
+    );
+  }
+  if (!capability.realCallEnabled || (definition && !definition.realCallEnabled))
+    return localizedCell('capabilities.matrix.current.realClosed', 'warning');
+  return null;
+}
+
+function currentCell(
+  capability: ApiCapability,
+  dataSource: DataSourcePresentation,
+  definition?: CapabilityDefinition | null
+): CapabilityMatrixCell {
+  const blocked = capabilityCallBlock(capability, dataSource, definition);
+  if (blocked) return blocked;
 
   switch (dataSource.id) {
     case 'mock':
