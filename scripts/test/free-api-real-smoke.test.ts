@@ -264,6 +264,22 @@ describe('free API real smoke independent safety boundary', () => {
       expect(await new WriteReceipts(dir).unresolved()).toHaveLength(1);
       await receipt.record('cycle-result', { status: 'result-unknown', reason: 'NO_BLIND_SUB' });
       expect(await new WriteReceipts(dir).unresolved()).toHaveLength(1);
+      await receipt.record('delayed-restoration-result', {
+        status: 'passed',
+        reason: 'DELAYED_PLUS_ONE_SUB_ONE_NEW_BASELINE_RESTORED'
+      });
+      expect(await new WriteReceipts(dir).unresolved()).toHaveLength(1);
+      await receipt.record('sub-result', { status: 'passed', reason: 'BUSINESS_ACKNOWLEDGED' });
+      await receipt.record(
+        'delayed-sub-readback',
+        { status: 'passed', reason: 'BASELINE_MATCHED' },
+        recovery.baseline
+      );
+      expect(await new WriteReceipts(dir).unresolved()).toHaveLength(0);
+      const original = (await readdir(dir)).find((f) => f.endsWith('.cycle-result.json')) ?? '';
+      expect(JSON.parse(await readFile(join(dir, original), 'utf8'))).toMatchObject({
+        status: 'result-unknown'
+      });
     } finally {
       await rm(dir, { recursive: true });
     }

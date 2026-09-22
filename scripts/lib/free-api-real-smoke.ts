@@ -462,9 +462,36 @@ export class WriteReceipts {
       const key = typeof intent.key === 'string' ? intent.key : '';
       const method = typeof intent.method === 'string' ? intent.method : '';
       if (!/^[a-f0-9]{64}$/.test(key) || !WRITE_METHODS.has(method)) throw new Error('INVALID_WRITE_RECEIPT');
-      const final = files.includes(`${key}.cycle-result.json`)
-        ? `${key}.cycle-result.json`
-        : `${key}.result.json`;
+      // Only proven restoration supersedes unknown status, never a skipped restoration attempt.
+      let restored = false;
+      const delayedFile = `${key}.delayed-restoration-result.json`;
+      const subFile = `${key}.sub-result.json`;
+      const readbackFile = `${key}.delayed-sub-readback.json`;
+      if (
+        method === 'alibaba.icbu.product.inventory.update' &&
+        [delayedFile, subFile, readbackFile].every((name) => files.includes(name))
+      ) {
+        const delayed = object(
+          JSON.parse(await readFile(resolve(this.directory, delayedFile), 'utf8')) as unknown
+        );
+        const sub = object(JSON.parse(await readFile(resolve(this.directory, subFile), 'utf8')) as unknown);
+        const readback = object(
+          JSON.parse(await readFile(resolve(this.directory, readbackFile), 'utf8')) as unknown
+        );
+        const baseline = object(intent.recovery).baseline;
+        restored =
+          delayed.status === 'passed' &&
+          delayed.reason === 'DELAYED_PLUS_ONE_SUB_ONE_NEW_BASELINE_RESTORED' &&
+          sub.status === 'passed' &&
+          Array.isArray(baseline) &&
+          baseline.length > 0 &&
+          JSON.stringify(readback.inventory) === JSON.stringify(baseline);
+      }
+      const final = restored
+        ? delayedFile
+        : files.includes(`${key}.cycle-result.json`)
+          ? `${key}.cycle-result.json`
+          : `${key}.result.json`;
       const result = files.includes(final)
         ? object(JSON.parse(await readFile(resolve(this.directory, final), 'utf8')) as unknown)
         : {};

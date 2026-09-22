@@ -129,7 +129,7 @@ The snapshot is written only after all 35 sources pass validation; partial captu
 The user authorized testing against this account, including writes. This is not presented as an
 official Alibaba sandbox. Missing business identifiers are not replaced with example IDs.
 
-The local report covers all 35 entries: **1 passed, 7 permission-denied, 26 missing prerequisites,
+The initial local report covers all 35 entries: **1 passed, 7 permission-denied, 26 missing prerequisites,
 1 result-unknown**. This is not full live acceptance.
 
 - `product.id.encrypt`: successful real-product request and valid response; marked account-verified.
@@ -154,7 +154,31 @@ Raw account data and receipts remain in ignored `artifacts/free-api-validation/`
 reconciliation file records the exact affected target for manual review; it contains no credentials.
 Older initial receipts lacked persisted request IDs/baselines: later instrumentation does not
 retroactively make those records complete. The current unresolved inventory receipt must be reviewed
-before another write acceptance run; this iteration does not open either new write method.
+before another write acceptance run; this iteration does not open either new write method by default.
+
+### Authorized fresh-baseline follow-up (2026-09-22)
+
+The user explicitly authorized a new test using freshly recorded current stock. The initial
+historical receipt remains unresolved; the new test does not infer or restore the missing old baseline.
+Two public inventory queries agreed on the complete SKU/warehouse snapshot before dispatch.
+Exactly one `plus 1` and one `sub 1` were sent. Both acknowledged success; eventual dual-query
+readbacks confirmed the increment and then the complete original **new-test** snapshot.
+
+The immediate reads were stale: the first 4 readback rounds did not yet show the increment.
+A later read did, permitting a separately guarded subtraction. The new runner now allows up to
+16 read-only observations, 10 seconds apart. No mutation retry occurs. Unexpected changes,
+ambiguous acknowledgements or persistence failure still stop the run.
+
+`scripts/smoke-inventory-rebaseline-real.ts` requires the exact previous receipt and its original
+account/product/SKU/warehouse fingerprint. A prior receipt permits only one new experiment;
+the immutable intent blocks repeating it. `--restore-delayed` resumes only subtraction against
+a durable acknowledged increment whose complete expected snapshot is visible. An exclusive
+subtraction intent prevents replay. Every call has a persisted UUID and minimal request parameters.
+
+The follow-up validates inventory update for this test account, bringing latest per-method outcomes
+to **2 passed, 7 permission-denied, 26 missing prerequisites**, with **one historical inventory event
+still unresolvable**. The local consolidated follow-up records exact targets, timings and receipts.
+This does not open production/debugger writes or assert a fixed platform synchronization delay.
 
 ## Controlled smoke commands
 
