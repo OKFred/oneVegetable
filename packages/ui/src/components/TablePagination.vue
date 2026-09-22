@@ -11,21 +11,31 @@ const props = withDefaults(
   defineProps<{
     page: number;
     pageSize: number;
-    total: number;
+    total: number | null;
+    hasNextPage?: boolean;
     pageSizeOptions?: readonly number[];
     disabled?: boolean;
   }>(),
-  { pageSizeOptions: () => [10, 20, 50], disabled: false }
+  { pageSizeOptions: () => [10, 20, 50], disabled: false, hasNextPage: false }
 );
 const emit = defineEmits<{
   'update:page': [page: number];
   'update:pageSize': [pageSize: number];
 }>();
 
-const normalizedTotal = computed(() => Math.max(0, Math.trunc(props.total)));
+const normalizedTotal = computed(() => (props.total === null ? null : Math.max(0, Math.trunc(props.total))));
 const normalizedPageSize = computed(() => Math.max(1, Math.trunc(props.pageSize)));
-const pageCount = computed(() => Math.max(1, Math.ceil(normalizedTotal.value / normalizedPageSize.value)));
-const currentPage = computed(() => Math.min(Math.max(1, Math.trunc(props.page)), pageCount.value));
+const pageCount = computed(() =>
+  normalizedTotal.value === null
+    ? null
+    : Math.max(1, Math.ceil(normalizedTotal.value / normalizedPageSize.value))
+);
+const currentPage = computed(() =>
+  Math.min(Math.max(1, Math.trunc(props.page)), pageCount.value ?? Infinity)
+);
+const canNext = computed(() =>
+  pageCount.value === null ? props.hasNextPage : currentPage.value < pageCount.value
+);
 const sizeOptions = computed(() =>
   [...new Set([...props.pageSizeOptions, normalizedPageSize.value])]
     .filter((size) => Number.isSafeInteger(size) && size > 0)
@@ -35,11 +45,11 @@ const firstVisibleRow = computed(() =>
   normalizedTotal.value === 0 ? 0 : (currentPage.value - 1) * normalizedPageSize.value + 1
 );
 const lastVisibleRow = computed(() =>
-  Math.min(currentPage.value * normalizedPageSize.value, normalizedTotal.value)
+  Math.min(currentPage.value * normalizedPageSize.value, normalizedTotal.value ?? Infinity)
 );
 
 function setPage(page: number): void {
-  const nextPage = Math.min(Math.max(1, Math.trunc(page)), pageCount.value);
+  const nextPage = Math.min(Math.max(1, Math.trunc(page)), pageCount.value ?? Infinity);
   if (nextPage !== currentPage.value) emit('update:page', nextPage);
 }
 
@@ -61,11 +71,13 @@ function setPageSize(event: Event): void {
     <div class="flex flex-wrap items-center gap-2">
       <p class="text-xs text-muted-foreground" aria-live="polite">
         {{
-          t('common.pagination.summary', {
-            total: normalizedTotal,
-            first: firstVisibleRow,
-            last: lastVisibleRow
-          })
+          normalizedTotal === null
+            ? t('common.pagination.unknown')
+            : t('common.pagination.summary', {
+                total: normalizedTotal,
+                first: firstVisibleRow,
+                last: lastVisibleRow
+              })
         }}
       </p>
       <slot name="summary-extra" />
@@ -86,7 +98,11 @@ function setPageSize(event: Event): void {
         </select>
       </label>
       <span class="min-w-20 text-center text-xs tabular-nums text-muted-foreground">
-        {{ t('common.pagination.page', { current: currentPage, total: pageCount }) }}
+        {{
+          pageCount === null
+            ? t('common.pagination.unknownPage', { current: currentPage })
+            : t('common.pagination.page', { current: currentPage, total: pageCount })
+        }}
       </span>
       <div class="flex items-center gap-1">
         <Button
@@ -113,17 +129,18 @@ function setPageSize(event: Event): void {
           size="icon"
           variant="outline"
           class="size-8"
-          :disabled="disabled || currentPage >= pageCount"
+          :disabled="disabled || !canNext"
           :aria-label="t('common.pagination.next')"
           @click="setPage(currentPage + 1)"
         >
           <ChevronRight class="size-4" />
         </Button>
         <Button
+          v-if="pageCount !== null"
           size="icon"
           variant="outline"
           class="size-8"
-          :disabled="disabled || currentPage >= pageCount"
+          :disabled="disabled || !canNext"
           :aria-label="t('common.pagination.last')"
           @click="setPage(pageCount)"
         >

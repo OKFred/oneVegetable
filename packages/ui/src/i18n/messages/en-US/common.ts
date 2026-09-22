@@ -37,6 +37,10 @@ export const common = {
     no: 'No'
   },
   columns: {
+    all: 'Select all optional columns',
+    moveUp: 'Move {name} up',
+    moveDown: 'Move {name} down',
+    persistenceFailed: 'Preferences could not be saved. Changes apply to this page only.',
     title: 'Columns',
     search: 'Search columns',
     reset: 'Reset defaults',
@@ -56,6 +60,9 @@ export const common = {
     missing: 'Not returned'
   },
   actions: {
+    title: 'Actions',
+    row: 'Actions for {name}',
+    copyId: 'Copy identifier',
     cancel: 'Cancel',
     close: 'Close',
     confirm: 'Confirm',
@@ -67,6 +74,9 @@ export const common = {
     refresh: 'Refresh'
   },
   data: {
+    selected: '{count} selected',
+    selectPage: 'Select this page',
+    selectRow: 'Select {name}',
     empty: 'No data'
   },
   sidebar: {
@@ -74,6 +84,8 @@ export const common = {
     collapse: 'Collapse {title}'
   },
   pagination: {
+    unknown: 'Total unknown',
+    unknownPage: 'Page {current}',
     label: 'Table pagination',
     summary: '{total} total, showing {first}–{last}',
     perPage: 'Per page',
@@ -88,6 +100,16 @@ export const common = {
   dialog: {
     closeNamed: 'Close {title}',
     closeDetails: 'Close details'
+  },
+  filters: {
+    title: 'Filters',
+    description: 'Changes apply only after you select Apply filters.',
+    apply: 'Apply filters',
+    reset: 'Reset',
+    server: 'Platform filters',
+    page: 'This page only',
+    pageHint: 'These filters apply only to the loaded page, not your entire catalog.',
+    invalidRange: 'The end must not be earlier than the start.'
   },
   imagePreview: {
     title: 'Image preview',

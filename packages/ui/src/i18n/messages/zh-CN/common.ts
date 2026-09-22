@@ -35,6 +35,10 @@ export const common = {
     no: '否'
   },
   columns: {
+    all: '全选可选列',
+    moveUp: '上移{name}',
+    moveDown: '下移{name}',
+    persistenceFailed: '偏好保存失败，本次更改仅对当前页面生效。',
     title: '显示列',
     search: '搜索列',
     reset: '恢复默认',
@@ -54,6 +58,9 @@ export const common = {
     missing: '未返回'
   },
   actions: {
+    title: '操作',
+    row: '{name}的操作',
+    copyId: '复制标识',
     cancel: '取消',
     close: '关闭',
     confirm: '确认',
@@ -65,6 +72,9 @@ export const common = {
     refresh: '刷新'
   },
   data: {
+    selected: '已选 {count} 个',
+    selectPage: '选择当前页',
+    selectRow: '选择{name}',
     empty: '暂无数据'
   },
   sidebar: {
@@ -72,6 +82,8 @@ export const common = {
     collapse: '收起{title}'
   },
   pagination: {
+    unknown: '总数未知',
+    unknownPage: '第 {current} 页',
     label: '表格分页',
     summary: '共 {total} 条，当前 {first}–{last} 条',
     perPage: '每页',
@@ -86,6 +98,16 @@ export const common = {
   dialog: {
     closeNamed: '关闭{title}',
     closeDetails: '关闭详情'
+  },
+  filters: {
+    title: '筛选',
+    description: '点击“应用筛选”后才生效，关闭不会应用修改。',
+    apply: '应用筛选',
+    reset: '重置',
+    server: '平台查询条件',
+    page: '仅筛选本页',
+    pageHint: '以下条件只筛选已加载的当前页，不代表全店结果。',
+    invalidRange: '结束时间不能早于开始时间。'
   },
   imagePreview: {
     title: '图片预览',

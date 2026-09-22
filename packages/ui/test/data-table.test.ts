@@ -27,7 +27,7 @@ describe('DataTable', () => {
     expect(wrapper.findAll('th[aria-hidden="true"]')).toHaveLength(1);
     expect(wrapper.get('th[aria-hidden="true"]').find('button').exists()).toBe(false);
     expect(wrapper.get('thead th:last-child').text()).toBe('Actions');
-    expect(wrapper.get('tbody td').attributes('colspan')).toBe('3');
+    expect(wrapper.get('tbody td').attributes('colspan')).toBe('4');
     wrapper.unmount();
   });
   it('keeps every column title on one line and constrains both table axes', () => {
@@ -69,7 +69,7 @@ describe('DataTable', () => {
     expect(wrapper.text()).toContain('第 1 / 3 页');
 
     await wrapper.get('button[aria-label="下一页"]').trigger('click');
-    expect(wrapper.findAll('tbody td').map((cell) => cell.text())).toEqual(
+    expect(wrapper.findAll('tbody td:nth-child(2)').map((cell) => cell.text())).toEqual(
       rows(20)
         .slice(10)
         .map((row) => row.name)
@@ -129,7 +129,7 @@ describe('DataTable', () => {
     expect(wrapper.get('tbody button').text()).toBe('清除筛选');
   });
 
-  it('pins configured columns with opaque inherited row backgrounds', () => {
+  it('pins only selection and actions with opaque inherited row backgrounds', () => {
     const columns: DataColumn<Row>[] = [
       {
         accessorKey: 'name',
@@ -157,13 +157,35 @@ describe('DataTable', () => {
 
     expect(headers[0]?.classes()).toContain('sticky');
     expect((headers[0]?.element as HTMLElement).style.left).toBe('0px');
-    expect((headers[0]?.element as HTMLElement).style.width).toBe('96px');
-    expect(headers[1]?.classes()).toContain('sticky');
-    expect((headers[1]?.element as HTMLElement).style.right).toBe('0px');
+    expect((headers[0]?.element as HTMLElement).style.width).toBe('56px');
+    expect(headers[1]?.classes()).not.toContain('sticky');
+    expect(headers[2]?.classes()).toContain('sticky');
+    expect((headers[2]?.element as HTMLElement).style.right).toBe('0px');
     expect(cells[0]?.classes()).toContain('bg-inherit');
-    expect(cells[1]?.classes()).toContain('bg-inherit');
+    expect(cells[2]?.classes()).toContain('bg-inherit');
     expect(row.classes()).toEqual(expect.arrayContaining(['bg-background', 'hover:bg-muted', 'bg-accent']));
     expect(row.classes()).not.toContain('hover:bg-muted/40');
     expect(row.classes()).not.toContain('bg-accent/70');
+  });
+  it('keeps unknown-total server pages unsliced and only navigates with explicit next evidence', async () => {
+    const wrapper = mount(DataTable<Row>, {
+      props: {
+        columns: [{ accessorKey: 'name', header: 'Name' }],
+        data: rows(4),
+        page: 3,
+        pageSize: 24,
+        totalRows: null,
+        serverPagination: true,
+        hasNextPage: true
+      }
+    });
+    expect(wrapper.text()).toContain('总数未知');
+    expect(wrapper.text()).toContain('第 3 页');
+    expect(wrapper.findAll('tbody tr')).toHaveLength(4);
+    expect(wrapper.find('button[aria-label="最后一页"]').exists()).toBe(false);
+    await wrapper.get('button[aria-label="下一页"]').trigger('click');
+    expect(wrapper.emitted('update:page')).toEqual([[4]]);
+    await wrapper.setProps({ hasNextPage: false });
+    expect(wrapper.get('button[aria-label="下一页"]').attributes('disabled')).toBeDefined();
   });
 });

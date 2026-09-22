@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="TData extends RowData">
-import { computed, ref, watch } from 'vue';
+import { computed, h, ref, watch } from 'vue';
 import { FlexRender, useTable, type PaginationState, type RowData, type Updater } from '@tanstack/vue-table';
 
 import { dataTableFeatures, type DataColumn, type DataTableColumnMeta } from '../lib/table';
@@ -7,6 +7,10 @@ import { useUiI18n } from '../i18n';
 import TablePagination from './TablePagination.vue';
 import ColumnSettings from './ColumnSettings.vue';
 import { useColumnPreferences } from '../lib/column-preferences';
+import TriStateCheckbox from './TriStateCheckbox.vue';
+import RowActionsMenu from './RowActionsMenu.vue';
+import Button from './ui/Button.vue';
+import { toast } from 'vue-sonner';
 
 const { t } = useUiI18n();
 
@@ -29,6 +33,9 @@ const props = withDefaults(
     columnSettingsKey?: string;
     hiddenColumns?: string[];
     lockedColumns?: string[];
+    serverPagination?: boolean;
+    hasNextPage?: boolean;
+    selectionScope?: string;
   }>(),
   {
     emptyText: '',
@@ -45,7 +52,10 @@ const props = withDefaults(
     paginationDisabled: false,
     columnSettingsKey: '',
     hiddenColumns: () => [],
-    lockedColumns: () => []
+    lockedColumns: () => [],
+    serverPagination: false,
+    hasNextPage: false,
+    selectionScope: ''
   }
 );
 const emit = defineEmits<{
@@ -53,34 +63,130 @@ const emit = defineEmits<{
   'update:page': [page: number];
   'update:pageSize': [pageSize: number];
   'visible-columns-change': [ids: string[]];
+  'selection-change': [rows: TData[]];
 }>();
 const data = computed(() => props.data);
+const selectedKeys = ref<string[]>([]);
+const ownsSelection = computed(() => !props.columns.some((column) => columnId(column) === 'select'));
+function identifier(row: TData): string | null {
+  if (props.getRowKey) return props.getRowKey(row);
+  if (typeof row !== 'object') return null;
+  for (const key of ['id', 'requestId', 'productId', 'fileId', 'method', 'skuId']) {
+    if (key in row) {
+      const value: unknown = Reflect.get(row, key);
+      if (typeof value === 'string' || typeof value === 'number') return String(value);
+    }
+  }
+  return null;
+}
+function selectionKey(row: TData, fallback: string): string {
+  return identifier(row) ?? fallback;
+}
+function selectRows(keys: string[]): void {
+  selectedKeys.value = keys;
+  emit(
+    'selection-change',
+    table
+      .getRowModel()
+      .rows.filter((row) => keys.includes(selectionKey(row.original, row.id)))
+      .map((row) => row.original)
+  );
+}
+async function copyIdentifier(row: TData): Promise<void> {
+  const id = identifier(row);
+  if (!id) return;
+  try {
+    await globalThis.navigator.clipboard.writeText(id);
+    toast.success(t('common.actions.copied'));
+  } catch {
+    toast.error(t('common.error.copyFailed'));
+  }
+}
+const allColumns = computed<DataColumn<TData>[]>(() => {
+  const columns = [...props.columns];
+  if (ownsSelection.value)
+    columns.unshift({
+      id: 'select',
+      header: () => {
+        const keys = table.getRowModel().rows.map((row) => selectionKey(row.original, row.id));
+        const count = keys.filter((key) => selectedKeys.value.includes(key)).length;
+        return h(TriStateCheckbox, {
+          checked: keys.length > 0 && count === keys.length,
+          indeterminate: count > 0 && count < keys.length,
+          disabled: keys.length === 0,
+          label: t('common.data.selectPage'),
+          'onUpdate:checked': (checked: boolean) => {
+            selectRows(checked ? keys : []);
+          }
+        });
+      },
+      cell: ({ row }) =>
+        h(TriStateCheckbox, {
+          checked: selectedKeys.value.includes(selectionKey(row.original, row.id)),
+          label: t('common.data.selectRow', { name: identifier(row.original) ?? String(row.index + 1) }),
+          'onUpdate:checked': (checked: boolean) => {
+            const key = selectionKey(row.original, row.id);
+            selectRows(
+              checked ? [...selectedKeys.value, key] : selectedKeys.value.filter((item) => item !== key)
+            );
+          }
+        })
+    });
+  if (!columns.some((column) => columnId(column) === 'actions'))
+    columns.push({
+      id: 'actions',
+      header: t('common.actions.title'),
+      cell: ({ row }) =>
+        h(
+          Button,
+          {
+            variant: 'ghost',
+            size: 'sm',
+            disabled: !identifier(row.original),
+            onClick: () => {
+              void copyIdentifier(row.original);
+            }
+          },
+          () => t('common.actions.copyId')
+        )
+    });
+  return columns;
+});
 function columnId(column: DataColumn<TData>): string {
   return column.id ?? ('accessorKey' in column ? String(column.accessorKey) : '');
 }
 const columnOptions = computed(() =>
-  props.columns.map((column) => ({
+  allColumns.value.map((column) => ({
     id: columnId(column),
     label: typeof column.header === 'string' ? column.header : t('common.columns.selection'),
-    locked: props.lockedColumns.includes(columnId(column)),
+    locked: ['select', 'actions'].includes(columnId(column)),
     defaultVisible: !props.hiddenColumns.includes(columnId(column))
   }))
 );
 const columnPreferences = useColumnPreferences(props.columnSettingsKey, columnOptions);
 const visibleColumns = computed(() => {
-  const columns = props.columnSettingsKey
-    ? props.columns.filter((column) => columnPreferences.visible.value.includes(columnId(column)))
-    : props.columns;
-  let left = 0;
+  const columns = columnPreferences.order.value.flatMap((id) =>
+    columnPreferences.visible.value.includes(id)
+      ? allColumns.value.filter((column) => columnId(column) === id)
+      : []
+  );
   const result: DataColumn<TData>[] = columns.map((column) => {
-    if (column.meta?.sticky !== 'left') return column;
-    const next = { ...column, meta: { ...column.meta, stickyOffset: `${left}px` } };
-    left += Number.parseFloat(column.meta.width ?? '0');
-    return next;
+    if (columnId(column) === 'select')
+      return {
+        ...column,
+        meta: { sticky: 'left', stickyOffset: '0px', width: '56px', stickyBoundary: true }
+      };
+    if (columnId(column) === 'actions')
+      return {
+        ...column,
+        meta: { sticky: 'right', stickyOffset: '0px', width: '112px', stickyBoundary: true }
+      };
+    const { sticky: _sticky, stickyOffset: _offset, stickyBoundary: _boundary, ...meta } = column.meta ?? {};
+    return { ...column, meta };
   });
   // A flexible presentation-only column absorbs spare width when every business
   // column is bounded. Otherwise the table algorithm stretches pinned/title cells.
-  if (columns.some((column) => column.meta?.maxWidth) && columns.every((column) => column.meta?.width)) {
+  if (result.some((column) => column.meta?.maxWidth) && result.every((column) => column.meta?.width)) {
     const right = result.findIndex((column) => column.meta?.sticky === 'right');
     result.splice(right < 0 ? result.length : right, 0, {
       id: '__layout_filler',
@@ -107,10 +213,11 @@ const tableMinimumWidth = computed(() => {
   }, 0);
   return `max(${props.minWidth}, ${pixels}px)`;
 });
-const manualPagination = computed(() => !props.pagination || props.totalRows !== null);
+const isServerPagination = computed(() => props.serverPagination || props.totalRows !== null);
+const manualPagination = computed(() => !props.pagination || isServerPagination.value);
 const internalPagination = ref<PaginationState>({ pageIndex: 0, pageSize: props.pageSize });
 const paginationState = computed<PaginationState>(() =>
-  props.totalRows === null
+  !isServerPagination.value
     ? internalPagination.value
     : { pageIndex: Math.max(0, props.page - 1), pageSize: props.pageSize }
 );
@@ -119,7 +226,7 @@ const rowCount = computed(() => Math.max(0, props.totalRows ?? data.value.length
 
 function updatePagination(updater: Updater<PaginationState>): void {
   const next = typeof updater === 'function' ? updater(paginationState.value) : updater;
-  if (props.totalRows !== null) {
+  if (isServerPagination.value) {
     if (next.pageSize !== props.pageSize) emit('update:pageSize', next.pageSize);
     if (next.pageIndex + 1 !== props.page) emit('update:page', next.pageIndex + 1);
     return;
@@ -141,7 +248,8 @@ const currentPage = computed(() => table.atoms.pagination.get().pageIndex + 1);
 const currentPageSize = computed(() => table.atoms.pagination.get().pageSize);
 
 watch(data, () => {
-  if (props.totalRows === null && internalPagination.value.pageIndex !== 0) {
+  if (ownsSelection.value) selectRows([]);
+  if (!isServerPagination.value && internalPagination.value.pageIndex !== 0) {
     internalPagination.value = { ...internalPagination.value, pageIndex: 0 };
   }
 });
@@ -149,9 +257,15 @@ watch(data, () => {
 watch(
   () => props.pageSize,
   (pageSize) => {
-    if (props.totalRows === null && pageSize !== internalPagination.value.pageSize) {
+    if (!isServerPagination.value && pageSize !== internalPagination.value.pageSize) {
       internalPagination.value = { pageIndex: 0, pageSize };
     }
+  }
+);
+watch(
+  () => [currentPage.value, currentPageSize.value, props.selectionScope],
+  () => {
+    if (ownsSelection.value) selectRows([]);
   }
 );
 
@@ -162,12 +276,13 @@ function rowKey(row: TData): string | undefined {
 function activateRow(row: TData, event: MouseEvent | KeyboardEvent): void {
   if (!props.rowAriaLabel) return;
   if (
-    event instanceof MouseEvent &&
     event.target instanceof Element &&
+    event.target !== event.currentTarget &&
     event.target.closest('button, a, input, select, textarea, [role="button"]')
   ) {
     return;
   }
+  if (event instanceof KeyboardEvent) event.preventDefault();
   emit('rowActivate', row);
 }
 
@@ -241,10 +356,14 @@ function stickyColumnStyle(value: unknown): Record<string, string> | undefined {
                       (!columnOptions.some((column) => column.id === 'actions') &&
                         header === headerGroup.headers.at(-1)))
                   "
-                  :options="columnOptions"
+                  :options="columnPreferences.orderedOptions.value"
                   :visible="columnPreferences.visible.value"
+                  :persistence-failed="columnPreferences.persistenceFailed.value"
                   @toggle="columnPreferences.toggle"
                   @reset="columnPreferences.reset"
+                  @set-all="columnPreferences.setAll"
+                  @move="columnPreferences.move"
+                  @move-by="columnPreferences.moveBy"
                 />
               </span>
             </th>
@@ -264,8 +383,8 @@ function stickyColumnStyle(value: unknown): Record<string, string> | undefined {
             :tabindex="rowAriaLabel ? 0 : undefined"
             :aria-label="rowAriaLabel?.(row.original)"
             @click="activateRow(row.original, $event)"
-            @keydown.enter.prevent="activateRow(row.original, $event)"
-            @keydown.space.prevent="activateRow(row.original, $event)"
+            @keydown.enter="activateRow(row.original, $event)"
+            @keydown.space="activateRow(row.original, $event)"
           >
             <td
               v-for="cell in row.getAllCells()"
@@ -275,7 +394,12 @@ function stickyColumnStyle(value: unknown): Record<string, string> | undefined {
               :class="stickyColumnClasses(cell.column.columnDef.meta, false)"
               :style="stickyColumnStyle(cell.column.columnDef.meta)"
             >
-              <FlexRender :cell="cell" />
+              <RowActionsMenu
+                v-if="cell.column.id === 'actions'"
+                :label="t('common.actions.row', { name: identifier(row.original) ?? String(row.index + 1) })"
+                ><FlexRender :cell="cell"
+              /></RowActionsMenu>
+              <FlexRender v-else :cell="cell" />
             </td>
           </tr>
           <tr v-if="table.getRowModel().rows.length === 0">
@@ -293,15 +417,22 @@ function stickyColumnStyle(value: unknown): Record<string, string> | undefined {
       v-if="pagination"
       :page="currentPage"
       :page-size="currentPageSize"
-      :total="rowCount"
+      :total="isServerPagination ? totalRows : rowCount"
+      :has-next-page="hasNextPage"
       :page-size-options="pageSizeOptions"
       :disabled="paginationDisabled"
       @update:page="setPage"
       @update:page-size="setPageSize"
     >
       <template #summary-extra>
+        <span v-if="ownsSelection" class="text-xs text-muted-foreground" aria-live="polite">{{
+          t('common.data.selected', { count: selectedKeys.length })
+        }}</span>
         <slot name="pagination-summary" />
       </template>
     </TablePagination>
+    <p v-else-if="ownsSelection" class="border-t px-3 py-2 text-xs text-muted-foreground" aria-live="polite">
+      {{ t('common.data.selected', { count: selectedKeys.length }) }}
+    </p>
   </div>
 </template>
