@@ -176,7 +176,16 @@ export class NetworkManager {
           status: response.status,
           ok: response.ok || (input.acceptStatuses?.includes(response.status) ?? false),
           headers: response.headers,
-          data: await readResponse(response, input.responseType ?? 'json', policy.maxResponseBytes),
+          // HEAD's Content-Length describes the object, not a response body. Do not treat it
+          // as bytes being buffered (e.g. inspecting a 50 MiB video with a 5 MiB body budget).
+          data:
+            input.method === 'HEAD'
+              ? input.responseType === 'bytes'
+                ? new Uint8Array()
+                : input.responseType === 'text'
+                  ? ''
+                  : null
+              : await readResponse(response, input.responseType ?? 'json', policy.maxResponseBytes),
           attempt,
           durationMilliseconds: Math.max(0, this.#clock() - startedAt)
         };

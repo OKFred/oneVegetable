@@ -20,6 +20,7 @@
   "devDependencies": {
     "@tailwindcss/vite": "4.3.3",
     "@wxt-dev/module-vue": "1.0.3",
+    "fake-indexeddb": "6.2.5",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
     "vue-tsc": "3.2.5",

@@ -26,6 +26,7 @@ export class TradeAdapter {
         page_size: pageSize,
         ...(request.status ? { status: request.status } : {}),
         ...(request.buyerLoginId ? { other_login_id: request.buyerLoginId } : {}),
+        ...(request.salesmanId ? { sales_man_login_id: request.salesmanId } : {}),
         ...(request.createDateStart ? { create_date_start: { date_str: request.createDateStart } } : {}),
         ...(request.createDateEnd ? { create_date_end: { date_str: request.createDateEnd } } : {}),
         ...(request.modifiedDateStart

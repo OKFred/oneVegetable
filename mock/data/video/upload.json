@@ -1,0 +1,27 @@
+{
+  "configuration": {
+    "endpoint": "https://s3.example.test",
+    "region": "us-east-1",
+    "bucket": "video-tests",
+    "accessKeyId": "fixture-access",
+    "secretAccessKey": "fixture-secret",
+    "sessionToken": null,
+    "pathStyle": true,
+    "rootPrefix": "tests"
+  },
+  "context": { "identity": "actor-context", "gateway": "gateway-context", "storage": "storage-context" },
+  "mp4Base64": "AAAAGGZ0eXBpc29tAAACAGlzb21tcDQy",
+  "sourceUrl": "https://media.example.test/sample.mp4",
+  "emptyControlResult": { "tasks": [], "uploadEnabled": false },
+  "multipartCreated": "<InitiateMultipartUploadResult><UploadId>fixture-upload-id</UploadId></InitiateMultipartUploadResult>",
+  "multipartCompleted": "<CompleteMultipartUploadResult><ETag>fixture-final</ETag></CompleteMultipartUploadResult>",
+  "multipartEmbeddedError": "<Error><Code>InvalidPart</Code><Message>fixture</Message></Error>",
+  "uploadAccepted": {
+    "alibaba_icbu_video_upload_response": {
+      "msg_code": "200",
+      "msg_info": "ok",
+      "request_id": "fixture-trace"
+    }
+  },
+  "uploadMalformed": { "alibaba_icbu_video_upload_response": { "msg_info": "ok" } }
+}

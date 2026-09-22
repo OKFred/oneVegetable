@@ -97,6 +97,43 @@ describe('PhotoAdapter', () => {
     });
   });
 
+  it('uses documented UNGROUP without forwarding a made-up group id', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve(response(method, { pagination_query_list: { list: [], total: 0 } }))
+    );
+    await new PhotoAdapter(client(call)).list({ page: 1, pageSize: 24, groupId: '2001', ungrouped: true });
+    expect(call).toHaveBeenCalledWith('alibaba.icbu.photobank.list', {
+      current_page: 1,
+      page_size: 24,
+      location_type: 'UNGROUP'
+    });
+  });
+
+  it('preserves unknown totals and allows checking a following page', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve(
+        response(method, { pagination_query_list: { list: [{ id: 'image-1' }, { id: 'image-2' }] } })
+      )
+    );
+    const result = await new PhotoAdapter(client(call)).list({ page: 3, pageSize: 2 });
+    expect(result).toMatchObject({ page: 3, pageSize: 2, total: null, hasNextPage: true });
+    const last = await new PhotoAdapter(client(call)).list({ page: 3, pageSize: 24 });
+    expect(last).toMatchObject({ total: null, hasNextPage: false });
+  });
+
+  it.each([-1, 'unknown', 9_007_199_254_740_992])(
+    'does not use invalid total %s as a real count',
+    async (total) => {
+      const call = vi.fn<AlibabaClient['call']>((method) =>
+        Promise.resolve(response(method, { pagination_query_list: { list: [], total } }))
+      );
+      expect(await new PhotoAdapter(client(call)).list({ page: 1, pageSize: 24 })).toMatchObject({
+        total: null,
+        hasNextPage: false
+      });
+    }
+  );
+
   it('keeps the returned gallery fileId and upgrades the URL to HTTPS', async () => {
     const call = vi.fn<AlibabaClient['call']>();
     const callWithFile = vi.fn<AlibabaClient['callWithFile']>((method) =>

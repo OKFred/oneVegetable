@@ -3,6 +3,7 @@ import type { GalleryRequestOptions } from '@one-vegetable/core/gallery-transfer
 import { decodeBase64, encodeBase64, GatewayException } from '@one-vegetable/core/runtime';
 import { s3PermissionOrigins, type S3StorageControl } from '@one-vegetable/core/s3-storage';
 import { validS3Output, type S3MessageMap, type S3Operation } from './s3-protocol';
+import { requestVideoUpload } from './video-upload-client';
 
 export async function requestS3<T extends S3Operation>(
   operation: T,
@@ -51,6 +52,7 @@ export async function requestS3<T extends S3Operation>(
 }
 
 export const extensionS3Storage: S3StorageControl = {
+  videoUpload: requestVideoUpload,
   s3StorageConfiguration: () => requestS3('summary', {}),
   async updateS3StorageConfiguration(configuration, revision, remark = null) {
     // Request immediately in the original Save gesture, before any runtime round trip.

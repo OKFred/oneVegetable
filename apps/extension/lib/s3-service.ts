@@ -49,12 +49,22 @@ export class ExtensionS3Service {
     private readonly store: S3LocalStore,
     private readonly contains: (origins: string[]) => Promise<boolean>,
     private readonly client = (configuration: S3StorageConfiguration) =>
-      new S3ObjectStorageClient(configuration)
+      new S3ObjectStorageClient(configuration),
+    private readonly beforeReset: () => Promise<void> = () => Promise.resolve()
   ) {}
 
   async contextId(): Promise<string | null> {
     const saved = await this.#read();
     return saved ? galleryStorageId(saved.value.configuration) : null;
+  }
+
+  async videoClient(expectedContext: string): Promise<S3ObjectStorageClient> {
+    const saved = await this.#read();
+    if (!saved) return fail('S3_NOT_CONFIGURED');
+    assertGalleryContextId(expectedContext, await galleryStorageId(saved.value.configuration));
+    if (!(await this.contains(s3PermissionOrigins(saved.value.configuration))))
+      fail('S3_PERMISSION_REQUIRED');
+    return this.client(saved.value.configuration);
   }
 
   handle(value: unknown, trusted: boolean): Promise<S3Response<unknown>> {
@@ -180,6 +190,7 @@ export class ExtensionS3Service {
     expectedStorage?: string | null
   ): Promise<unknown> {
     if (operation === 'reset') {
+      await this.beforeReset();
       await this.store.remove();
       await this.store.removeKey();
       return null;

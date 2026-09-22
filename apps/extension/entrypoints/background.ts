@@ -1,4 +1,5 @@
 import { browser } from 'wxt/browser';
+import { defineBackground } from 'wxt/utils/define-background';
 import { VideoAdapter, VIDEO_OPERATIONS, VIDEO_METHODS } from '@one-vegetable/core/video';
 import { VideoAssociationAdapter } from '@one-vegetable/core/video-association';
 
@@ -72,6 +73,8 @@ import { ExtensionProductDisplayMutationLifecycle } from '../lib/product-display
 import { isTrustedExtensionPageSender } from '../lib/trusted-runtime-sender';
 import { ExtensionS3Service } from '../lib/s3-service';
 import { s3LocalStore } from '../lib/s3-local-store';
+import { ExtensionVideoUploadRepository } from '../lib/video-upload-repository';
+import { handleVideoUpload } from '../lib/video-upload-service';
 
 const OPERATIONS = new Set<OperationId>([
   'getDashboard',
@@ -152,11 +155,21 @@ export default defineBackground({
   type: 'module',
   main() {
     const storageAccessReady = restrictStorageToTrustedContexts();
-    const s3 = new ExtensionS3Service(s3LocalStore, (origins) => browser.permissions.contains({ origins }));
+    const s3 = new ExtensionS3Service(
+      s3LocalStore,
+      (origins) => browser.permissions.contains({ origins }),
+      undefined,
+      async () => {
+        await new ExtensionVideoUploadRepository().clearAll();
+      }
+    );
     // WebExtension runtime listeners support returning a promise for the response.
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     browser.runtime.onMessage.addListener((value: unknown, sender) => {
       const trustedOptionsPage = isTrustedOptionsPageSender(sender);
+      if (value && typeof value === 'object' && 'kind' in value && value.kind === 'video-upload-request') {
+        return storageAccessReady.then(() => handleVideoUpload(value, trustedOptionsPage, s3, loadSettings));
+      }
       if (
         typeof value === 'object' &&
         value !== null &&

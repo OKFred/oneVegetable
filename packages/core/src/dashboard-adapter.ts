@@ -46,8 +46,8 @@ export class DashboardAdapter {
 
   private async countPhotos(): Promise<number | null> {
     const result = await this.photos.list({ page: 1, pageSize: PHOTO_PAGE_SIZE });
-    if (result.total > result.items.length) return result.total;
-    return result.items.length < PHOTO_PAGE_SIZE ? result.items.length : null;
+    if (result.total !== null) return result.total;
+    return result.hasNextPage === false ? result.items.length : null;
   }
 }
 

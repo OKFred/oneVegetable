@@ -36,6 +36,8 @@ import { ProductDescriptionTemplateService } from './product-description-templat
 import { registerProductMutationRoutes } from './product-mutations/routes';
 import { registerMetaSocialRoutes } from './social-meta/routes';
 import { registerS3StorageRoutes } from './storage/s3-routes';
+import { registerVideoUploadRoutes } from './video-uploads/routes';
+import type { VideoUploadRepository } from '@one-vegetable/core/video-upload-service';
 import {
   ProductDisplayNoChangeError,
   ProductDisplayTargetMismatchError,
@@ -114,6 +116,7 @@ export interface ApiAppOptions {
   socialPublishing?: SocialPublishingService;
   extensionSocialDevices?: ExtensionSocialDeviceService;
   s3Storage?: S3StorageConfigurationService;
+  videoUploads?: { repository: VideoUploadRepository; credentials: AsyncAlibabaCredentialProvider };
 }
 
 export interface RequestLogContext {
@@ -322,6 +325,16 @@ export function createApiApp(options: ApiAppOptions): Hono {
   }
 
   if (options.authService && options.s3Storage) {
+    if (options.videoUploads)
+      registerVideoUploadRoutes(api, {
+        ...options.videoUploads,
+        auth: options.authService,
+        storage: options.s3Storage,
+        flags: featureFlags,
+        runtime: options.runtime,
+        environment: options.environment,
+        ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
+      });
     registerS3StorageRoutes(api, {
       authService: options.authService,
       service: options.s3Storage,

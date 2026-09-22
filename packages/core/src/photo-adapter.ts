@@ -70,16 +70,20 @@ export class PhotoAdapter {
     const call = await this.client.call('alibaba.icbu.photobank.list', {
       current_page: page,
       page_size: pageSize,
-      location_type: groupId === '-1' ? 'ALL_GROUP' : 'SUB_GROUP',
-      ...(groupId !== '-1' ? { group_id: groupId } : {})
+      location_type: request.ungrouped ? 'UNGROUP' : groupId === '-1' ? 'ALL_GROUP' : 'SUB_GROUP',
+      ...(!request.ungrouped && groupId !== '-1' ? { group_id: groupId } : {})
     });
     const root = unwrap(call.data, call.method);
     const items = findRecords(root, ['list', 'photobank_image_do', 'images']).map(normalizePhoto);
+    const rawTotal = readInteger(findRecord(root, ['pagination_query_list']) ?? root, ['total']);
+    const total = rawTotal !== undefined && Number.isSafeInteger(rawTotal) && rawTotal >= 0 ? rawTotal : null;
     return {
       items,
       page,
       pageSize,
-      total: readInteger(findRecord(root, ['pagination_query_list']) ?? root, ['total']) ?? items.length
+      total,
+      // A full page without a total is not evidence that this is the last page.
+      hasNextPage: total === null ? items.length === pageSize : page * pageSize < total
     };
   }
 

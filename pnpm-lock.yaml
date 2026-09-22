@@ -154,6 +154,9 @@ importers:
       '@wxt-dev/module-vue':
         specifier: 1.0.3
         version: 1.0.3(vite@8.2.1(@types/node@24.10.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))(vue@3.5.41(typescript@5.9.3))(wxt@0.21.4(esbuild@0.28.2)(eslint@10.8.1(jiti@2.7.0)(supports-color@10.2.2))(rolldown@1.2.3)(typescript@5.9.3)(vite@8.2.1(@types/node@24.10.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)))
+      fake-indexeddb:
+        specifier: 6.2.5
+        version: 6.2.5
       tailwindcss:
         specifier: 4.3.3
         version: 4.3.3

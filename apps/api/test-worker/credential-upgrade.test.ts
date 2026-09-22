@@ -11,7 +11,7 @@ import {
 } from '../src/gateway/credential-vault';
 
 it('upgrades an existing D1 v12 encrypted credential without losing its original AAD or audit fields', async () => {
-  const legacy = env.TEST_MIGRATIONS.filter((migration) => !migration.name.startsWith('0013_'));
+  const legacy = env.TEST_MIGRATIONS.filter((migration) => Number(migration.name.slice(0, 4)) < 13);
   await applyD1Migrations(env.DB, legacy);
   const cipher = await GatewayCredentialCipher.create(btoa('k'.repeat(32)).replace(/=+$/u, ''));
   const bundle = parseAlibabaOpenApiCredentialBundle(fixture.oauthBundle);

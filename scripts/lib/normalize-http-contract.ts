@@ -1,3 +1,5 @@
+import { addListQueryContract } from './list-query-contract';
+
 type JsonSchema = boolean | Record<string, unknown>;
 
 interface OpenApiDocument {
@@ -19,6 +21,7 @@ const requestIdSchema = {
 export function normalizeHttpContract(document: OpenApiDocument): void {
   document.servers = [{ url: '/api/v1' }];
   const schemas = document.components.schemas;
+  addListQueryContract(schemas);
   schemas.RequestId = requestIdSchema;
   schemas.RequestEnvelope = {
     type: 'object',
@@ -487,6 +490,41 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
   });
 
   document.paths = {
+    '/video-uploads/call': {
+      post: {
+        operationId: 'videoUploadControl',
+        summary: 'Execute one context-bound video task command; accepted is not uploaded',
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/VideoUploadRequest' } } }
+        },
+        responses: {
+          '200': {
+            description: 'Durable task receipts',
+            headers: { 'X-Request-ID': { schema: { $ref: '#/components/schemas/RequestId' } } },
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['requestId', 'ok', 'data'],
+                  properties: {
+                    requestId: { $ref: '#/components/schemas/RequestId' },
+                    ok: { const: true },
+                    data: { $ref: '#/components/schemas/VideoUploadResult' }
+                  }
+                }
+              }
+            }
+          },
+          '400': envelopeResponse('Invalid request ID, command or input'),
+          '401': envelopeResponse('Authentication required'),
+          '403': envelopeResponse('Administrator, CSRF or upload policy denied'),
+          '409': envelopeResponse('Task revision or execution context changed'),
+          '413': envelopeResponse('One bounded part exceeds request budget')
+        }
+      }
+    },
     '/gallery-transfers/context/get': {
       post: {
         summary: 'Read opaque gallery transfer execution context',
@@ -920,6 +958,9 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     ...(document.components.responses ?? {}),
     GatewayFailure: envelopeResponse('Gateway failure')
   };
+  document.components.schemas = Object.fromEntries(
+    Object.entries(schemas).sort(([left], [right]) => left.localeCompare(right))
+  );
 }
 
 function objectRequest(required: string[], properties: Record<string, JsonSchema>): Record<string, unknown> {

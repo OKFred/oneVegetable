@@ -150,20 +150,8 @@ export interface CapabilityResponseMap
     FreeApiCapabilityResponseMap {}
 export type GatewayError = components['schemas']['GatewayError'];
 
-export interface ProductListQuery {
-  page?: number;
-  pageSize?: number;
-  subject?: string;
-  groupId?: number;
-  groupLevel?: 1 | 2 | 3;
-  language?: AlibabaLanguage;
-}
-
-export interface PhotoListQuery {
-  page?: number;
-  pageSize?: number;
-  groupId?: string;
-}
+export type ProductListQuery = components['schemas']['ProductListQuery'];
+export type PhotoListQuery = components['schemas']['PhotoListQuery'];
 
 export interface OrderListQuery {
   page?: number;
@@ -180,16 +168,7 @@ export interface RfqListQuery {
   unquotedOnly?: boolean;
 }
 
-export interface TradeOrderListQuery {
-  page?: number;
-  pageSize?: number;
-  status?: string;
-  buyerLoginId?: string;
-  createDateStart?: string;
-  createDateEnd?: string;
-  modifiedDateStart?: string;
-  modifiedDateEnd?: string;
-}
+export type TradeOrderListQuery = components['schemas']['TradeOrderListQuery'];
 
 export interface LogisticsAddressNodeQuery {
   level: 'province' | 'city' | 'division' | 'street';

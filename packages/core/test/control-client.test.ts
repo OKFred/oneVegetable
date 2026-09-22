@@ -4,10 +4,49 @@ import { BffControlClient } from '../src/control-client';
 import { GatewayException } from '../src/errors';
 
 import permalinkFixture from '../../../mock/data/social-meta/permalink.json';
+import videoFixture from '../../../mock/data/video/upload.json';
 
 import type { NetworkTransport } from '../src/network';
 
 describe('BffControlClient', () => {
+  it('isolates the bounded video deadline, preserves requestId/CSRF and does not retry', async () => {
+    const timer = vi.spyOn(globalThis, 'setTimeout');
+    try {
+      const send = vi.fn<NetworkTransport['send']>((input, init) => {
+        const url =
+          input instanceof URL ? input : typeof input === 'string' ? new URL(input) : new URL(input.url);
+        expect(url.href).toBe('https://workbench.example.test/api/v1/video-uploads/call');
+        expect(new Headers(init.headers).get('X-CSRF-Token')).toBe('fixture-csrf');
+        expect(init.cache).toBe('no-store');
+        if (typeof init.body !== 'string') throw new Error('expected JSON body');
+        const body = JSON.parse(init.body) as { requestId: string };
+        return Promise.resolve(
+          Response.json({
+            requestId: body.requestId,
+            ok: true,
+            data: videoFixture.emptyControlResult
+          })
+        );
+      });
+      const client = new BffControlClient({
+        baseUrl: 'https://workbench.example.test',
+        transport: { send },
+        csrfToken: () => 'fixture-csrf'
+      });
+      const requestId = crypto.randomUUID();
+      await expect(client.videoUpload({ action: 'list' }, videoFixture.context, requestId)).resolves.toEqual(
+        videoFixture.emptyControlResult
+      );
+      expect(timer).toHaveBeenCalledWith(expect.any(Function), 360_000);
+      expect(send).toHaveBeenCalledOnce();
+      expect(new Headers(send.mock.calls[0]?.[1].headers).get('X-Request-ID')).toBe(requestId);
+      send.mockRejectedValue(new Error('offline'));
+      await expect(client.videoUpload({ action: 'list' }, videoFixture.context)).rejects.toThrow();
+      expect(send).toHaveBeenCalledTimes(2);
+    } finally {
+      timer.mockRestore();
+    }
+  });
   it('reads the public backend mode without turning it into a mock fallback', async () => {
     const send = vi.fn<NetworkTransport['send']>((input, init) => {
       const url =

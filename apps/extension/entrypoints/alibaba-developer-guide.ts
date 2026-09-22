@@ -1,4 +1,5 @@
 import { browser } from 'wxt/browser';
+import { defineUnlistedScript } from 'wxt/utils/define-unlisted-script';
 
 import type {
   AlibabaCredentialAcquisitionState,

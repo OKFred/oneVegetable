@@ -40,6 +40,7 @@ describe('TradeAdapter', () => {
       pageSize: 50,
       status: 'paid',
       buyerLoginId: 'buyer-login',
+      salesmanId: 'sales-login',
       createDateStart: '2026-08-01 00:00:00'
     });
 
@@ -57,6 +58,7 @@ describe('TradeAdapter', () => {
         page_size: 50,
         status: 'paid',
         other_login_id: 'buyer-login',
+        sales_man_login_id: 'sales-login',
         create_date_start: { date_str: '2026-08-01 00:00:00' }
       }
     });

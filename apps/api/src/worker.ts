@@ -1,4 +1,5 @@
 import { createApiApp } from './app';
+import { SqlVideoUploadRepository } from './video-uploads/repository';
 import { EmergencyPauseFeatureFlags, StaticOperationFeatureFlags } from './abac';
 import { AdminService } from './auth/admin-service';
 import { SqlAuthRepository } from './auth/repository';
@@ -142,6 +143,14 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     featureFlags,
     realMutationControl,
     metaSocial,
+    ...(gatewayMode === 'real'
+      ? {
+          videoUploads: {
+            repository: new SqlVideoUploadRepository(database.executor),
+            credentials: credentialProvider
+          }
+        }
+      : {}),
     s3Storage: new S3StorageConfigurationService(
       new SqlS3StorageConfigurationRepository(database.executor),
       s3StorageCipher

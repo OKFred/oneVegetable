@@ -1,6 +1,8 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 
 import openapiTS, { astToString } from 'openapi-typescript';
+import { writeTextFileWithRetry } from './lib/safe-write';
 
 const contract = new URL('../openapi/one-vegetable.json', import.meta.url);
 const target = new URL('../packages/core/src/generated/api.ts', import.meta.url);
@@ -12,5 +14,5 @@ if (process.argv.includes('--check')) {
     throw new Error('Generated OpenAPI types are stale. Run pnpm generate:types.');
   }
 } else {
-  await writeFile(target, output, 'utf8');
+  await writeTextFileWithRetry(fileURLToPath(target), output);
 }

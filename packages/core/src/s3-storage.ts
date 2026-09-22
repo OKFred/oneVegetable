@@ -1,5 +1,8 @@
 import { AwsClient } from 'aws4fetch';
+import { assertMp4Header } from './video-upload';
+import { assertMultipartContainer, multipartScalar, parseMultipartXml } from './s3-multipart-xml';
 import type { GalleryRequestOptions } from './gallery-transfer-context';
+import type { VideoUploadControl } from './video-upload';
 
 import { NativeFetchTransport, NetworkManager, type NetworkTransport } from './network';
 
@@ -52,8 +55,16 @@ export interface S3ObjectContent {
   etag: string | null;
 }
 
+export interface S3MultipartPart {
+  partNumber: number;
+  size: number;
+  etag: string;
+  checksumSha256: string | null;
+}
+
 /** Shared by the BFF and the trusted extension service worker. */
 export interface S3StorageControl {
+  videoUpload?: VideoUploadControl['videoUpload'];
   s3StorageConfiguration(): Promise<S3StorageConfigurationSummary>;
   updateS3StorageConfiguration(
     configuration: S3StorageConfiguration,
@@ -185,9 +196,274 @@ export class S3ObjectStorageClient {
     return { etag: normalizeEtag(response.headers.get('etag')) };
   }
 
+  /** Video-only caller owns the task/key. The ordinary gallery object limit remains 5 MiB. */
+  async createMultipart(key: string, requestId: string): Promise<string> {
+    const url = this.#multipartUrl(key);
+    url.searchParams.set('uploads', '');
+    const response = await this.#signedRequest(
+      url,
+      'POST',
+      { 'Content-Type': 'video/mp4', 'x-amz-checksum-algorithm': 'SHA256' },
+      undefined,
+      requestId,
+      'text'
+    );
+    const xml = this.#multipartXml(response);
+    const uploadId = xmlText(xml, 'UploadId');
+    if (!uploadId || uploadId.length > 2048) throw new Error('S3_MULTIPART_RESPONSE_INVALID');
+    return uploadId;
+  }
+
+  async uploadPart(
+    key: string,
+    uploadId: string,
+    partNumber: number,
+    bytes: Uint8Array,
+    requestId: string
+  ): Promise<S3MultipartPart> {
+    if (
+      !Number.isSafeInteger(partNumber) ||
+      partNumber < 1 ||
+      partNumber > 10 ||
+      !bytes.byteLength ||
+      bytes.byteLength > MAX_GALLERY_OBJECT_BYTES
+    )
+      throw new Error('VIDEO_PART_INVALID');
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', Uint8Array.from(bytes)));
+    const checksumSha256 = btoa(String.fromCharCode(...digest));
+    const url = this.#multipartUrl(key, uploadId);
+    url.searchParams.set('partNumber', String(partNumber));
+    const response = await this.#signedRequest(
+      url,
+      'PUT',
+      { 'x-amz-checksum-sha256': checksumSha256 },
+      bytes,
+      requestId,
+      'text'
+    );
+    if (!response.ok) throw s3HttpError(response.status);
+    const etag = normalizeEtag(response.headers.get('etag'));
+    if (!etag) throw new Error('S3_MULTIPART_RESPONSE_INVALID');
+    return { partNumber, size: bytes.byteLength, etag, checksumSha256 };
+  }
+
+  /** null means a validated HTTP 404 + NoSuchUpload, never a generic 404 or an empty list. */
+  async listParts(key: string, uploadId: string, requestId: string): Promise<S3MultipartPart[] | null> {
+    const response = await this.#signedRequest(
+      this.#multipartUrl(key, uploadId),
+      'GET',
+      undefined,
+      undefined,
+      requestId,
+      'text'
+    );
+    if (this.#isNoSuchUpload(response, key, uploadId)) return null;
+    const root = parseMultipartXml(this.#multipartXml(response));
+    assertMultipartContainer(root, 'ListPartsResult');
+    if (
+      multipartScalar(root, 'Bucket') !== this.#configuration.bucket ||
+      multipartScalar(root, 'Key') !==
+        joinS3Key(this.#configuration.rootPrefix, normalizeS3Key(key, false)) ||
+      multipartScalar(root, 'UploadId') !== uploadId
+    )
+      throw new Error('S3_MULTIPART_RESPONSE_INVALID');
+    if (multipartScalar(root, 'IsTruncated') !== 'false' || multipartScalar(root, 'PartNumberMarker') !== '0')
+      throw new Error('S3_PAGINATION_INCOMPLETE');
+    const maximum = multipartScalar(root, 'MaxParts');
+    if (!maximum || !/^[1-9][0-9]*$/u.test(maximum) || Number(maximum) > 1000)
+      throw new Error('S3_MULTIPART_RESPONSE_INVALID');
+    const parts = root.children
+      .filter((node) => node.name === 'Part')
+      .map((block) => {
+        assertMultipartContainer(block, 'Part');
+        const rawPartNumber = multipartScalar(block, 'PartNumber');
+        const rawSize = multipartScalar(block, 'Size');
+        const partNumber = Number(rawPartNumber);
+        const size = Number(rawSize);
+        const etag = normalizeEtag(multipartScalar(block, 'ETag'));
+        const checksumSha256 = multipartScalar(block, 'ChecksumSHA256', false);
+        if (
+          !rawPartNumber ||
+          !/^[1-9][0-9]*$/u.test(rawPartNumber) ||
+          !rawSize ||
+          !/^[1-9][0-9]*$/u.test(rawSize) ||
+          !Number.isSafeInteger(partNumber) ||
+          partNumber < 1 ||
+          partNumber > 10 ||
+          !Number.isSafeInteger(size) ||
+          size < 1 ||
+          size > MAX_GALLERY_OBJECT_BYTES ||
+          !etag ||
+          (checksumSha256 !== null && !/^[A-Za-z0-9+/]{43}=$/u.test(checksumSha256))
+        )
+          throw new Error('S3_MULTIPART_RESPONSE_INVALID');
+        return { partNumber, size, etag, checksumSha256 };
+      });
+    const next = multipartScalar(root, 'NextPartNumberMarker', false);
+    if (
+      parts.length > 10 ||
+      parts.length > Number(maximum) ||
+      new Set(parts.map((part) => part.partNumber)).size !== parts.length ||
+      parts.some((part, index) => index > 0 && part.partNumber <= (parts[index - 1]?.partNumber ?? 0)) ||
+      (next !== null &&
+        (!/^(?:0|[1-9][0-9]*)$/u.test(next) || Number(next) > (parts.at(-1)?.partNumber ?? 0)))
+    )
+      throw new Error('S3_MULTIPART_RESPONSE_INVALID');
+    return parts;
+  }
+
+  async completeMultipart(
+    key: string,
+    uploadId: string,
+    parts: readonly S3MultipartPart[],
+    requestId: string
+  ): Promise<void> {
+    const xml = `<CompleteMultipartUpload>${parts.map((part) => `<Part><PartNumber>${part.partNumber}</PartNumber><ETag>${escapeXml(part.etag)}</ETag>${part.checksumSha256 ? `<ChecksumSHA256>${escapeXml(part.checksumSha256)}</ChecksumSHA256>` : ''}</Part>`).join('')}</CompleteMultipartUpload>`;
+    const response = await this.#signedRequest(
+      this.#multipartUrl(key, uploadId),
+      'POST',
+      { 'Content-Type': 'application/xml' },
+      new TextEncoder().encode(xml),
+      requestId,
+      'text'
+    );
+    const result = this.#multipartXml(response);
+    // S3 may return an embedded Error even with HTTP 200.
+    if (!result.includes('<CompleteMultipartUploadResult')) throw new Error('S3_MULTIPART_RESPONSE_INVALID');
+  }
+
+  async abortMultipart(key: string, uploadId: string, requestId: string): Promise<void> {
+    const response = await this.#signedRequest(
+      this.#multipartUrl(key, uploadId),
+      'DELETE',
+      undefined,
+      undefined,
+      requestId,
+      'text'
+    );
+    if (response.status !== 204 && !this.#isNoSuchUpload(response, key, uploadId))
+      throw s3HttpError(response.status);
+  }
+
+  async headVideoObject(
+    key: string,
+    requestId: string
+  ): Promise<{ size: number; etag: string | null } | null> {
+    const response = await this.#signedRequest(
+      this.#multipartUrl(key),
+      'HEAD',
+      undefined,
+      undefined,
+      requestId,
+      'text'
+    );
+    if (response.status === 404) return null;
+    if (!response.ok) throw s3HttpError(response.status);
+    const rawSize = response.headers.get('content-length');
+    const size = rawSize === null ? NaN : Number(rawSize);
+    if (!Number.isSafeInteger(size) || size < 1 || size > 50 * 1024 * 1024)
+      throw new Error('VIDEO_FILE_INVALID');
+    return { size, etag: normalizeEtag(response.headers.get('etag')) };
+  }
+
+  async getVideoRange(key: string, start: number, end: number, requestId: string): Promise<Uint8Array> {
+    if (
+      !Number.isSafeInteger(start) ||
+      !Number.isSafeInteger(end) ||
+      start < 0 ||
+      end < start ||
+      end - start + 1 > MAX_GALLERY_OBJECT_BYTES
+    )
+      throw new Error('VIDEO_PART_INVALID');
+    const response = await this.#signedRequest(
+      this.#multipartUrl(key),
+      'GET',
+      { Range: `bytes=${start}-${end}` },
+      undefined,
+      requestId,
+      'bytes'
+    );
+    if (
+      response.status !== 206 ||
+      !(response.data instanceof Uint8Array) ||
+      response.data.byteLength !== end - start + 1
+    )
+      throw new Error('S3_RANGE_RESPONSE_INVALID');
+    return response.data;
+  }
+
+  /** Never expose or persist this short-lived credential. Sign the configured public endpoint itself. */
+  async presignVideoGet(key: string): Promise<string> {
+    const url = this.#multipartUrl(key);
+    if (
+      url.protocol !== 'https:' ||
+      isPrivateS3Host(url.hostname) ||
+      /^(?:localhost|127\.|\[?::1\]?)/u.test(url.hostname)
+    )
+      throw new Error('VIDEO_PUBLIC_SOURCE_REQUIRED');
+    url.searchParams.set('X-Amz-Expires', '1800');
+    const signed = await this.#signer.sign(url, { method: 'GET', aws: { signQuery: true } });
+    return signed.url;
+  }
+
+  /** Anonymous, bounded range check before asking Alibaba to fetch a completed private object. */
+  async checkPresignedVideoGet(url: string, requestId: string): Promise<void> {
+    const parsed = new URL(url);
+    if (parsed.origin !== this.#bucketOrigin() || parsed.protocol !== 'https:')
+      throw new Error('VIDEO_PUBLIC_SOURCE_REQUIRED');
+    const response = await this.#network.request({
+      service: 's3',
+      url,
+      method: 'GET',
+      requestId,
+      responseType: 'bytes',
+      headers: { Range: 'bytes=0-4095' },
+      maxAttempts: 1
+    });
+    if (
+      response.status !== 206 ||
+      !(response.data instanceof Uint8Array) ||
+      response.data.length < 16 ||
+      response.data.length > 4096
+    )
+      throw new Error('VIDEO_PUBLIC_SOURCE_UNREADABLE');
+    assertMp4Header(response.data);
+  }
+
+  #multipartUrl(key: string, uploadId?: string): URL {
+    const url = this.#objectUrl(joinS3Key(this.#configuration.rootPrefix, normalizeS3Key(key, false)));
+    if (uploadId) url.searchParams.set('uploadId', uploadId);
+    return url;
+  }
+
+  #multipartXml(response: { ok: boolean; status: number; data: unknown }): string {
+    if (!response.ok) throw s3HttpError(response.status);
+    if (typeof response.data !== 'string' || /<!DOCTYPE|<!ENTITY|<Error[ >]/iu.test(response.data))
+      throw new Error('S3_MULTIPART_RESPONSE_INVALID');
+    return response.data;
+  }
+
+  #isNoSuchUpload(response: { status: number; data: unknown }, key: string, uploadId: string): boolean {
+    if (response.status !== 404 || typeof response.data !== 'string') return false;
+    const root = parseMultipartXml(response.data);
+    assertMultipartContainer(root, 'Error');
+    if (multipartScalar(root, 'Code') !== 'NoSuchUpload') return false;
+    // Error responses may omit target fields; present identifiers must agree with the signed request.
+    const expected = {
+      Bucket: this.#configuration.bucket,
+      Key: joinS3Key(this.#configuration.rootPrefix, normalizeS3Key(key, false)),
+      UploadId: uploadId
+    };
+    for (const [field, value] of Object.entries(expected)) {
+      const actual = multipartScalar(root, field, false);
+      if (actual !== null && actual !== value) throw new Error('S3_MULTIPART_RESPONSE_INVALID');
+    }
+    return true;
+  }
+
   async #signedRequest(
     url: URL,
-    method: 'GET' | 'PUT',
+    method: 'GET' | 'PUT' | 'POST' | 'DELETE' | 'HEAD',
     headers: Record<string, string> | undefined,
     body: Uint8Array | undefined,
     requestId: string | undefined,
@@ -229,6 +505,14 @@ export class S3ObjectStorageClient {
   #bucketOrigin(): string {
     return this.#bucketUrl().origin;
   }
+}
+
+function escapeXml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
 }
 
 export function validateS3StorageConfiguration(value: S3StorageConfiguration): S3StorageConfiguration {

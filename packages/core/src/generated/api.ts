@@ -1,4 +1,21 @@
 export interface paths {
+    "/video-uploads/call": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Execute one context-bound video task command; accepted is not uploaded */
+        post: operations["videoUploadControl"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/gallery-transfers/context/get": {
         parameters: {
             query?: never;
@@ -10031,8 +10048,18 @@ export interface components {
             groupId: string;
             group: components["schemas"]["PhotoGroup"] | null;
         };
-        PhotoPage: components["schemas"]["PageMeta"] & {
+        PhotoListQuery: {
+            page?: number;
+            pageSize?: number;
+            groupId?: string;
+            ungrouped?: boolean;
+        };
+        PhotoPage: {
             items: components["schemas"]["Photo"][];
+            page: number;
+            pageSize: number;
+            total: number | null;
+            hasNextPage?: boolean;
         };
         PhotoTransferRequest: {
             /** Format: uri */
@@ -10232,6 +10259,20 @@ export interface components {
                 inventoryCode: string | null;
                 inventory: number | null;
             }[];
+        };
+        ProductListQuery: {
+            page?: number;
+            pageSize?: number;
+            subject?: string;
+            productId?: string;
+            categoryId?: number;
+            groupId?: number;
+            /** @enum {integer} */
+            groupLevel?: 1 | 2 | 3;
+            /** @enum {string} */
+            language?: "zh_CN" | "en_US";
+            modifiedDateStart?: string;
+            modifiedDateEnd?: string;
         };
         ProductMutationFieldExpectation: {
             fieldId: string;
@@ -10695,6 +10736,17 @@ export interface components {
                 unitPrice: string;
             }[];
         };
+        TradeOrderListQuery: {
+            page?: number;
+            pageSize?: number;
+            status?: string;
+            buyerLoginId?: string;
+            salesmanId?: string;
+            createDateStart?: string;
+            createDateEnd?: string;
+            modifiedDateStart?: string;
+            modifiedDateEnd?: string;
+        };
         TradeOrderPage: {
             items: components["schemas"]["TradeOrderSummary"][];
             page: number;
@@ -10830,6 +10882,125 @@ export interface components {
             type: "main" | "detail";
             encryptedProductIds: string[];
         };
+        VideoUploadCommand: {
+            /** @constant */
+            action: "create";
+            title: string;
+            source: {
+                /** @constant */
+                kind: "file";
+                file: components["schemas"]["VideoUploadFile"];
+            } | {
+                /** @constant */
+                kind: "url";
+                /** Format: uri */
+                url: string;
+            };
+        } | {
+            /** @constant */
+            action: "list";
+        } | {
+            /** @constant */
+            action: "get";
+            /** Format: uuid */
+            taskId: string;
+        } | {
+            /** @constant */
+            action: "initiate";
+            /** Format: uuid */
+            taskId: string;
+            revision: number;
+        } | {
+            /** @constant */
+            action: "reconcile";
+            /** Format: uuid */
+            taskId: string;
+            revision: number;
+        } | {
+            /** @constant */
+            action: "complete";
+            /** Format: uuid */
+            taskId: string;
+            revision: number;
+        } | {
+            /** @constant */
+            action: "verify";
+            /** Format: uuid */
+            taskId: string;
+            revision: number;
+        } | {
+            /** @constant */
+            action: "cancel";
+            /** Format: uuid */
+            taskId: string;
+            revision: number;
+        } | {
+            /** @constant */
+            action: "part";
+            /** Format: uuid */
+            taskId: string;
+            revision: number;
+            partNumber: number;
+            contentBase64: string;
+            fileSha256: string;
+        } | {
+            /** @constant */
+            action: "submit";
+            /** Format: uuid */
+            taskId: string;
+            revision: number;
+            /** @constant */
+            confirmed: true;
+            /** Format: uri */
+            sourceUrl?: string;
+        };
+        VideoUploadFile: {
+            fileName: string;
+            byteLength: number;
+            sha256: string;
+        };
+        VideoUploadPart: {
+            partNumber: number;
+            byteLength: number;
+            sha256: string | null;
+            etag: string | null;
+            /** @enum {string} */
+            status: "pending" | "in-flight" | "confirmed" | "unknown";
+            requestId: string | null;
+        };
+        VideoUploadRequest: {
+            requestId: components["schemas"]["RequestId"];
+            context: components["schemas"]["GalleryTransferContext"];
+            command: components["schemas"]["VideoUploadCommand"];
+        };
+        VideoUploadResult: {
+            tasks: components["schemas"]["VideoUploadTask"][];
+            uploadEnabled: boolean;
+        };
+        VideoUploadTask: {
+            /** @constant */
+            schemaVersion: 1;
+            /** Format: uuid */
+            id: string;
+            context: components["schemas"]["GalleryTransferContext"];
+            revision: number;
+            title: string;
+            /** @enum {string} */
+            source: "file" | "url";
+            file: components["schemas"]["VideoUploadFile"] | null;
+            sourceFingerprint: string;
+            objectKey: string | null;
+            parts: components["schemas"]["VideoUploadPart"][];
+            /** @enum {string} */
+            status: "prepared" | "staging" | "staged" | "submitting" | "accepted" | "needs-review" | "confirmed" | "cancelled" | "failed";
+            createTimeUtc: number;
+            updateTimeUtc: number;
+            acceptedTimeUtc: number | null;
+            videoId: string | null;
+            traceId: string | null;
+            reasonCode: string | null;
+            requestId: string | null;
+        };
     };
     responses: {
         /** @description Typed control-plane result or structured failure */
@@ -10870,6 +11041,86 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    videoUploadControl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VideoUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Durable task receipts */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        requestId: components["schemas"]["RequestId"];
+                        /** @constant */
+                        ok: true;
+                        data: components["schemas"]["VideoUploadResult"];
+                    };
+                };
+            };
+            /** @description Invalid request ID, command or input */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Administrator, CSRF or upload policy denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Task revision or execution context changed */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description One bounded part exceeds request budget */
+            413: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
     getGalleryTransferContext: {
         parameters: {
             query?: never;

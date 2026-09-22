@@ -34,6 +34,7 @@ import { SqlSocialPublishingRepository } from './social-meta/publishing-reposito
 import { MetaPublisher } from './social-meta/meta-publisher';
 import { SocialPublishingService } from './social-meta/publishing-service';
 import { SqlExtensionSocialDeviceRepository } from './social-meta/extension-device-repository';
+import { SqlVideoUploadRepository } from './video-uploads/repository';
 import { ExtensionSocialDeviceService } from './social-meta/extension-device-service';
 import {
   S3StorageConfigurationCipher,
@@ -184,6 +185,17 @@ const app = createApiApp({
     : {}),
   ...(metaSocial ? { metaSocial } : {}),
   ...(s3Storage ? { s3Storage } : {}),
+  ...(s3Storage && gatewayMode === 'real'
+    ? {
+        videoUploads: {
+          repository: new SqlVideoUploadRepository(database.executor),
+          credentials: managedCredentialProvider ?? {
+            status: () => Promise.resolve(legacyCredentialProvider().status()),
+            requireCredentials: () => Promise.resolve(legacyCredentialProvider().requireCredentials())
+          }
+        }
+      }
+    : {}),
   socialMediaAssets,
   ...(socialPublishing ? { socialPublishing } : {}),
   extensionSocialDevices,

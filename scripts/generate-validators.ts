@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import Ajv2020 from 'ajv/dist/2020.js';
@@ -7,6 +7,7 @@ import addErrors from 'ajv-errors';
 import addFormats from 'ajv-formats';
 import { validationSchema } from './lib/validator-schema';
 import { compactStandaloneSchemaConstants } from './lib/standalone-schema-constants';
+import { writeTextFileWithRetry } from './lib/safe-write';
 
 type CapabilityDomain =
   'product' | 'rfq' | 'trade' | 'logistics' | 'insights' | 'photo' | 'platform' | 'free-api';
@@ -36,6 +37,9 @@ const schemas = document.components?.schemas;
 if (!schemas) throw new Error('OpenAPI components.schemas is missing');
 
 const coreValidators: Record<string, object | undefined> = {
+  validateProductListQuery: schemas.ProductListQuery,
+  validatePhotoListQuery: schemas.PhotoListQuery,
+  validateTradeOrderListQuery: schemas.TradeOrderListQuery,
   validateProductSchemaRequest: schemas.ProductSchemaRequest,
   validateProductSchemaRenderRequest: schemas.ProductSchemaRenderRequest,
   validateSchemaPublishRequest: schemas.SchemaPublishRequest,
@@ -72,6 +76,21 @@ const domains: CapabilityDomain[] = [
   'free-api'
 ];
 const targets = new Map<string, string>();
+targets.set(
+  'validators-video-upload.ts',
+  compileValidators(
+    Object.fromEntries(
+      [
+        'VideoUploadFile',
+        'VideoUploadTask',
+        'VideoUploadCommand',
+        'VideoUploadRequest',
+        'VideoUploadResult'
+      ].map((name) => [`validate${name}`, schemas[name]])
+    ),
+    'fast'
+  )
+);
 targets.set(
   'validators-video-association.ts',
   compileValidators(
@@ -167,7 +186,7 @@ for (const [fileName, output] of targets) {
       throw new Error(`Generated AJV validators are stale: ${fileName}. Run pnpm generate:validators.`);
     }
   } else {
-    await writeFile(target, output, 'utf8');
+    await writeTextFileWithRetry(target, output);
   }
 }
 

@@ -21,6 +21,33 @@ function response(method: string, body: Record<string, unknown>) {
 }
 
 describe('ProductAdapter', () => {
+  it('maps advanced list filters without scanning pages and caps the documented page size', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve(response(method, { products: [], total_item: 0 }))
+    );
+    const result = await new ProductAdapter({ call }).list({
+      productId: '123',
+      categoryId: 456,
+      page: 2,
+      pageSize: 50,
+      modifiedDateStart: '2026-09-01 01:02:03',
+      modifiedDateEnd: '2026-09-02 04:05:06'
+    });
+    expect(call).toHaveBeenCalledExactlyOnceWith('alibaba.icbu.product.list', {
+      id: 123,
+      category_id: 456,
+      current_page: 2,
+      page_size: 30,
+      language: 'ENGLISH',
+      gmt_modified_from: '2026-09-01 01:02:03',
+      gmt_modified_to: '2026-09-02 04:05:06'
+    });
+    expect(result.pageSize).toBe(30);
+    await expect(new ProductAdapter({ call }).list({ productId: '9007199254740993' })).rejects.toMatchObject({
+      gatewayError: { code: 'REQUEST_CONTRACT_INVALID' }
+    });
+    expect(call).toHaveBeenCalledTimes(1);
+  });
   it('keeps the documented category id on product summaries', async () => {
     const call = vi.fn<AlibabaClient['call']>((method) =>
       Promise.resolve({

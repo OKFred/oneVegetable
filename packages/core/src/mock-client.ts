@@ -304,8 +304,9 @@ export class MockGatewayClient implements GatewayClient {
     if (operation === 'listPhotos') {
       const payload = _request as OperationMap['listPhotos']['request'];
       const { page, pageSize, start, end } = paginationWindow(payload.page, payload.pageSize, 24);
-      const candidates =
-        !payload.groupId || payload.groupId === '-1'
+      const candidates = payload.ungrouped
+        ? this.photos.filter((photo) => photo.groupId === '-1')
+        : !payload.groupId || payload.groupId === '-1'
           ? this.photos
           : this.photos.filter((photo) => photo.groupId === payload.groupId);
       return {

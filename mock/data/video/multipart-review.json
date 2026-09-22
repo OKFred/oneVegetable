@@ -1,0 +1,12 @@
+{
+  "key": "onevegetable/video-staging/task/source.mp4",
+  "uploadId": "fixture-upload-id",
+  "empty": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><ListPartsResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Bucket>video-tests</Bucket><Key>tests/onevegetable/video-staging/task/source.mp4</Key><UploadId>fixture-upload-id</UploadId><PartNumberMarker>0</PartNumberMarker><NextPartNumberMarker>0</NextPartNumberMarker><MaxParts>1000</MaxParts><IsTruncated>false</IsTruncated></ListPartsResult>",
+  "part": "<Part><PartNumber>1</PartNumber><Size>24</Size><ETag>&quot;fixture-etag&quot;</ETag></Part>",
+  "noSuchUpload": "<Error><Code>NoSuchUpload</Code><Message>The specified upload does not exist.</Message><UploadId>fixture-upload-id</UploadId></Error>",
+  "noSuchBucket": "<Error><Code>NoSuchBucket</Code><Message>Not found.</Message></Error>",
+  "html": "<html><body>Upstream unavailable</body></html>",
+  "incomplete": "<ListPartsResult><Bucket>video-tests</Bucket></ListPartsResult>",
+  "duplicateRoot": "<ListPartsResult></ListPartsResult><ListPartsResult></ListPartsResult>",
+  "entity": "<!DOCTYPE x [<!ENTITY secret SYSTEM 'file:///fixture'>]><ListPartsResult>&secret;</ListPartsResult>"
+}

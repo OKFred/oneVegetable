@@ -28,10 +28,23 @@ export class ProductAdapter {
   ) {}
 
   async list(request: RequestOf<'listProducts'>): Promise<ProductPage> {
+    const pageSize = Math.min(request.pageSize ?? 20, 30);
+    const productId = request.productId ? Number(request.productId) : undefined;
+    if (request.productId && (!/^[1-9][0-9]*$/.test(request.productId) || !Number.isSafeInteger(productId))) {
+      throw new GatewayException({
+        code: 'REQUEST_CONTRACT_INVALID',
+        message: 'Invalid product ID',
+        retryable: false
+      });
+    }
     const call = await this.client.call('alibaba.icbu.product.list', {
       language: productListLanguage(request.language ?? 'en_US'),
       current_page: request.page ?? 1,
-      page_size: request.pageSize ?? 20,
+      page_size: pageSize,
+      ...(productId === undefined ? {} : { id: productId }),
+      ...(request.categoryId === undefined ? {} : { category_id: request.categoryId }),
+      ...(request.modifiedDateStart ? { gmt_modified_from: request.modifiedDateStart } : {}),
+      ...(request.modifiedDateEnd ? { gmt_modified_to: request.modifiedDateEnd } : {}),
       ...(request.subject ? { subject: request.subject } : {}),
       ...productGroupFilterParameters(request)
     });
@@ -40,7 +53,7 @@ export class ProductAdapter {
     return {
       items,
       page: request.page ?? 1,
-      pageSize: request.pageSize ?? 20,
+      pageSize,
       total: readNumber(root, ['total_item', 'total_count', 'total']) ?? items.length
     };
   }

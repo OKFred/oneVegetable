@@ -1,4 +1,5 @@
 import type { GalleryRequestOptions } from './gallery-transfer-context';
+import { validateVideoUploadResult, type VideoUploadControl, type VideoUploadResult } from './video-upload';
 import { DEFAULT_API_PREFIX, normalizeApiPrefix } from './api-contract';
 import { notifyBffAuthenticationRequired } from './bff-authentication';
 import { GatewayException } from './errors';
@@ -283,6 +284,7 @@ export interface ControlClient {
   ): Promise<ControlGatewayCredentialSummary>;
   testGatewayCredential?(): Promise<GatewayCredentialTestResult>;
   s3StorageConfiguration?(): Promise<S3StorageConfigurationSummary>;
+  videoUpload?: VideoUploadControl['videoUpload'];
   updateS3StorageConfiguration?(
     configuration: S3StorageConfiguration,
     revision: number | null,
@@ -366,6 +368,7 @@ export class BffControlClient implements ControlClient {
   readonly #baseUrl: URL;
   readonly #apiPrefix: string;
   readonly #network: NetworkManager;
+  readonly #videoNetwork: NetworkManager;
   readonly #externalCsrfToken: (() => string | null) | undefined;
   readonly #bearerToken: (() => string | null) | undefined;
   readonly #extensionId: string | undefined;
@@ -395,6 +398,22 @@ export class BffControlClient implements ControlClient {
           redirect: 'error'
         },
         'external-photo': { allowedOrigins: [] }
+      }
+    });
+    // A completed 50 MiB video is verified in bounded read-only ranges. Keep this
+    // longer deadline isolated from normal control requests and never retry writes.
+    this.#videoNetwork = new NetworkManager({
+      ...(options.transport ? { transport: options.transport } : {}),
+      policies: {
+        bff: {
+          allowedOrigins: [this.#baseUrl.origin],
+          timeoutMilliseconds: 360_000,
+          maxRequestBytes: 7 * 1024 * 1024,
+          maxResponseBytes: 2 * 1024 * 1024,
+          credentials: 'include',
+          redirect: 'error',
+          cache: 'no-store'
+        }
       }
     });
   }
@@ -660,6 +679,21 @@ export class BffControlClient implements ControlClient {
     return this.#call('/admin/storage/s3/get', {});
   }
 
+  videoUpload: VideoUploadControl['videoUpload'] = async (command, context, requestId) => {
+    const result = await this.#call<VideoUploadResult>(
+      '/video-uploads/call',
+      { command, context, ...(requestId ? { requestId } : {}) },
+      this.#videoNetwork
+    );
+    if (!validateVideoUploadResult(result))
+      throw new GatewayException({
+        code: 'VIDEO_UPLOAD_RESPONSE_INVALID',
+        message: 'VIDEO_UPLOAD_RESPONSE_INVALID',
+        retryable: false
+      });
+    return result;
+  };
+
   updateS3StorageConfiguration(
     configuration: S3StorageConfiguration,
     revision: number | null,
@@ -851,7 +885,11 @@ export class BffControlClient implements ControlClient {
     return { session: toControlSession(result), recoveryCodes: result.recoveryCodes ?? [] };
   }
 
-  async #call<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  async #call<T>(
+    path: string,
+    body: Record<string, unknown>,
+    network: NetworkManager = this.#network
+  ): Promise<T> {
     const requestId = typeof body.requestId === 'string' ? body.requestId : createRequestId();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     const csrfToken = this.csrfToken();
@@ -859,10 +897,11 @@ export class BffControlClient implements ControlClient {
     const bearerToken = this.#bearerToken?.();
     if (bearerToken) headers.Authorization = `Bearer ${bearerToken}`;
     if (this.#extensionId) headers['X-One-Vegetable-Extension-ID'] = this.#extensionId;
-    const response = await this.#network.request({
+    const response = await network.request({
       service: 'bff',
       url: new URL(`${this.#apiPrefix}${path}`, this.#baseUrl),
       method: 'POST',
+      maxAttempts: 1,
       headers,
       requestId,
       body: JSON.stringify({ requestId, ...body }),
