@@ -207,6 +207,8 @@ alone is not proof of processed/publicly queryable video; it must be read back b
 
 ## Release boundary
 
-This branch is an implementation and diagnostic iteration, not an automatic release. No mainline merge,
-Cloudflare deployment or Chrome Web Store submission is included. ZIP remains limited to 1,500,000 bytes;
-all existing unpacked, startup, background and permission gates remain unchanged.
+The implementation iteration did not automatically merge, deploy or submit to the Store. The user
+subsequently authorized 2.11.0 release preparation and deployment; track actual outcomes separately in
+[the release handoff](release-2.11.0-readiness.md). ZIP remains limited to 1,500,000 bytes; all existing
+unpacked, startup, background and permission gates remain unchanged. A release does not enable the
+new inventory/video writes or turn missing account prerequisites into verified support.

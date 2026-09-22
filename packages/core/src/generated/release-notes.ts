@@ -4,6 +4,64 @@ export const RELEASE_NOTES_DOCUMENT = {
   repositoryUrl: 'https://github.com/OKFred/oneVegetable',
   releases: [
     {
+      version: '2.11.0',
+      releasedAt: '2026-09-22',
+      title: {
+        'zh-CN': '免费 API 能力与平台同步提示',
+        'en-US': 'Free API coverage and readback guidance'
+      },
+      summary: {
+        'zh-CN':
+          '新增 35 项类型化能力与权限说明，优化平台延迟同步提示。接口接入不代表账号获权；不新增默认开放的写操作。',
+        'en-US':
+          'Adds 35 typed capabilities, permission details and delayed-readback guidance. Integration does not grant account access; no additional writes are enabled by default.'
+      },
+      source: 'release',
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.11.0',
+      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.10.0...v2.11.0',
+      changes: [
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '35 项类型化 API',
+            'en-US': '35 typed APIs'
+          },
+          description: {
+            'zh-CN':
+              '能力目录补充请求、响应、示例及业务限制。实际调用仍受应用权限、业务前置条件和读写策略约束。',
+            'en-US':
+              'The catalog includes contracts, examples and restrictions. Calls still require app permissions, prerequisites and operation authorization.'
+          }
+        },
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '同步延迟与防重复操作提醒',
+            'en-US': 'Readback delays and duplicate-write guidance'
+          },
+          description: {
+            'zh-CN':
+              '库存、商品任务、图库传输和视频核对提示平台数据可能延迟更新；区分已受理与结果不明，不承诺固定时间，不自动重发。',
+            'en-US':
+              'Inventory, product, gallery and video checks explain delayed updates, distinguish acknowledgements from uncertainty, and never promise a fixed delay or resend automatically.'
+          }
+        },
+        {
+          type: 'fix',
+          title: {
+            'zh-CN': '调用安全与包体优化',
+            'en-US': 'Call safety and bundle efficiency'
+          },
+          description: {
+            'zh-CN':
+              '按实际方法校验读写权限，保护签名参数并隐藏敏感响应；共享校验数据，不增加扩展权限。',
+            'en-US':
+              'Enforces method-specific authorization, protects signing parameters and redacts sensitive results. Shared validation data adds no extension permissions.'
+          }
+        }
+      ]
+    },
+    {
       version: '2.10.0',
       releasedAt: '2026-09-22',
       title: {

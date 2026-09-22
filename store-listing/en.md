@@ -19,7 +19,8 @@ Key features:
 - Share one gallery asset through the operating system, export a sharing package, or publish it through the user's own backend to a connected Facebook Page or Instagram professional account.
 - Search RFQs and keep quotation drafts locally.
 - Combine order funding, logistics and fulfillment information.
-- Search audited and typed Open Platform capabilities.
+- Search audited and typed Open Platform capabilities, including 35 additional request/response contracts, examples and permission/prerequisite details. Integration does not grant account access; restricted APIs and disabled writes remain unavailable.
+- Inventory, product, gallery and video checks explain delayed platform updates. An acknowledged request may still read back old values; uncertain results require verification, not automatic resubmission or a promised synchronization time.
 - Follow a four-step visual journey through developer registration, platform review, application setup, and OAuth, with in-page guidance that does not read submitted registration details.
 - Reuse the current Alibaba sign-in to obtain credentials from an existing application.
 - Inspect and clear local data, session diagnostics, guarded product-mutation tasks, social-backend device authorization and optional host grants.
