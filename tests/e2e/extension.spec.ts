@@ -1038,8 +1038,9 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   });
   expect(platformGateErrors).toHaveLength(3);
   expect(platformGateErrors.every((response) => JSON.stringify(response).includes('ok":false'))).toBe(true);
-  expect(JSON.stringify(platformGateErrors[0])).toContain('天鹿风控协议');
-  expect(JSON.stringify(platformGateErrors[1])).toContain('URL 爬取供应商');
+  for (const response of platformGateErrors.slice(0, 2)) {
+    expect(response).toMatchObject({ ok: false, error: { code: 'CAPABILITY_RESTRICTED' } });
+  }
   expect(platformGateErrors[2]).toMatchObject({
     ok: false,
     error: { code: 'REAL_MUTATION_DISABLED' }
