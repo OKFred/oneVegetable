@@ -1,14 +1,15 @@
 <script setup lang="ts">
+import '../i18n/insights';
 import { computed, h, ref, watch } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
-import { BarChart3, Building2, CalendarRange, RefreshCw, ShieldAlert } from '@lucide/vue';
+import { BarChart3, Building2, RefreshCw, ShieldAlert } from '@lucide/vue';
 
 import type { InsightsSupplierProduct } from '@one-vegetable/core';
 
 import DataTable from '../components/DataTable.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
-import TablePagination from '../components/TablePagination.vue';
+import ListFilterDialog from '../components/ListFilterDialog.vue';
 import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
@@ -26,6 +27,21 @@ const workspace = ref<Workspace>('performance');
 const selectedSupplierId = ref('');
 const dateStart = ref('');
 const dateEnd = ref('');
+const filterOpen = ref(false);
+const dateDraft = ref({ start: '', end: '' });
+const invalidDateRange = computed(() =>
+  Boolean(dateDraft.value.start && dateDraft.value.end && dateDraft.value.start > dateDraft.value.end)
+);
+watch(filterOpen, (open) => {
+  if (open) dateDraft.value = { start: dateStart.value, end: dateEnd.value };
+});
+function applyDates(): void {
+  if (invalidDateRange.value) return;
+  dateStart.value = dateDraft.value.start;
+  dateEnd.value = dateDraft.value.end;
+  supplierProductPage.value = 1;
+  filterOpen.value = false;
+}
 const supplierPage = ref(1);
 const supplierPageSize = ref(10);
 const supplierProductPage = ref(1);
@@ -68,6 +84,40 @@ const supplierProducts = useQuery({
 const maxRankPercent = computed(() =>
   Math.max(1, ...(rank.data.value?.items.map((item) => item.percent) ?? []))
 );
+const supplierRows = computed(() => (suppliers.data.value?.supplierIds ?? []).map((id) => ({ id })));
+const supplierColumns = computed<DataColumn<{ id: string }>[]>(() => [
+  {
+    accessorKey: 'id',
+    header: t('insights.historicalSuppliers'),
+    cell: ({ row }) =>
+      h(
+        'button',
+        {
+          class: 'break-all text-left font-mono text-xs text-primary hover:underline',
+          onClick: () => {
+            selectSupplier(row.original.id);
+          }
+        },
+        row.original.id
+      )
+  },
+  {
+    id: 'actions',
+    header: t('common.actions.title'),
+    cell: ({ row }) =>
+      h(
+        Button,
+        {
+          variant: 'ghost',
+          size: 'sm',
+          onClick: () => {
+            selectSupplier(row.original.id);
+          }
+        },
+        () => t('insights.workspaces.suppliers')
+      )
+  }
+]);
 
 function selectSupplier(id: string): void {
   selectedSupplierId.value = id;
@@ -217,50 +267,52 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
           retryable
           @retry="suppliers.refetch()"
         >
-          <div class="mt-4 overflow-hidden rounded-lg border">
-            <div class="space-y-2 p-2">
-              <button
-                v-for="supplierId in suppliers.data.value?.supplierIds ?? []"
-                :key="supplierId"
-                class="flex w-full items-center justify-between rounded-lg border p-3 text-left text-sm hover:bg-accent"
-                :class="selectedSupplierId === supplierId ? 'border-primary bg-accent' : ''"
-                @click="selectSupplier(supplierId)"
-              >
-                <code class="break-all text-xs">{{ supplierId }}</code
-                ><span aria-hidden="true">→</span>
-              </button>
-            </div>
-            <TablePagination
-              v-model:page="supplierPage"
-              v-model:page-size="supplierPageSize"
-              :total="suppliers.data.value?.total ?? 0"
-              :disabled="suppliers.isFetching.value"
-            />
-          </div>
+          <DataTable
+            class="mt-4"
+            :columns="supplierColumns"
+            :data="supplierRows"
+            :get-row-key="(supplier) => supplier.id"
+            :active-row-key="selectedSupplierId"
+            column-settings-key="insights-suppliers"
+            min-width="400px"
+            v-model:page="supplierPage"
+            v-model:page-size="supplierPageSize"
+            :total-rows="suppliers.data.value?.total ?? 0"
+            :pagination-disabled="suppliers.isFetching.value"
+          />
         </QueryState>
       </Card>
       <div>
-        <Card class="mb-4 p-4">
-          <div class="flex items-center gap-2">
-            <CalendarRange class="size-4 text-primary" />
-            <p class="text-sm font-medium">{{ t('insights.dateFilter') }}</p>
-          </div>
-          <div class="mt-3 grid gap-3 sm:grid-cols-2">
-            <label class="space-y-1 text-sm"
-              ><span>{{ t('insights.startDate') }}</span
-              ><Input v-model="dateStart" type="date"
-            /></label>
-            <label class="space-y-1 text-sm"
-              ><span>{{ t('insights.endDate') }}</span
-              ><Input v-model="dateEnd" type="date"
-            /></label>
-          </div>
-        </Card>
+        <div class="flex justify-end rounded-t-lg border border-b-0 p-3">
+          <ListFilterDialog
+            v-model:open="filterOpen"
+            :active-count="Number(Boolean(dateStart || dateEnd))"
+            :invalid="invalidDateRange"
+            :title="t('insights.dateFilter')"
+            @apply="applyDates"
+            @reset="dateDraft = { start: '', end: '' }"
+          >
+            <p class="text-sm text-muted-foreground">{{ t('common.filters.server') }}</p>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <label class="space-y-1 text-sm"
+                ><span>{{ t('insights.startDate') }}</span
+                ><Input v-model="dateDraft.start" type="date" :aria-label="t('insights.startDate')"
+              /></label>
+              <label class="space-y-1 text-sm"
+                ><span>{{ t('insights.endDate') }}</span
+                ><Input v-model="dateDraft.end" type="date" :aria-label="t('insights.endDate')"
+              /></label>
+            </div>
+            <p v-if="invalidDateRange" role="alert" class="text-sm text-destructive">
+              {{ t('common.filters.invalidRange') }}
+            </p>
+          </ListFilterDialog>
+        </div>
         <Card v-if="!selectedSupplierId" class="p-8 text-center text-sm text-muted-foreground">
           {{ t('insights.selectSupplier') }}
         </Card>
         <template v-else>
-          <p class="mb-3 text-xs text-muted-foreground">
+          <p class="border-x px-3 pb-2 text-xs text-muted-foreground">
             {{ t('insights.currentSupplier') }} <code>{{ selectedSupplierId }}</code>
           </p>
           <QueryState
@@ -271,6 +323,9 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
           >
             <DataTable
               :columns="productColumns"
+              column-settings-key="insights-supplier-products"
+              :get-row-key="(product) => product.id"
+              :selection-scope="JSON.stringify([selectedSupplierId, dateStart, dateEnd])"
               :data="supplierProducts.data.value?.items ?? []"
               v-model:page="supplierProductPage"
               v-model:page-size="supplierProductPageSize"

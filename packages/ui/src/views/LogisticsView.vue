@@ -1,13 +1,15 @@
 <script setup lang="ts">
+import '../i18n/logistics';
 import { computed, h, ref, watch } from 'vue';
 import { useMutation, useQuery } from '@tanstack/vue-query';
-import { Calculator, ClipboardList, MapPin, PackageCheck, RefreshCw, ShieldAlert, Truck } from '@lucide/vue';
+import { Calculator, ClipboardList, MapPin, PackageCheck, Search, Truck } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
 import type { LogisticsOrderSummary, LogisticsQuoteRequest } from '@one-vegetable/core';
 
 import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
+import ListFilterDialog from '../components/ListFilterDialog.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
@@ -24,6 +26,7 @@ import {
 import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
+import { useUnsavedEditing } from '../lib/unsaved-editing';
 
 type Workspace = 'quote' | 'orders' | 'addresses' | 'draft';
 
@@ -93,6 +96,23 @@ const cargoValue = ref('18.50');
 const cargoMaterial = ref('塑料和电子元件');
 const selectedProductType = ref('battery');
 const orderNumberFilter = ref('');
+const orderNumberSearch = ref('');
+const filtersOpen = ref(false);
+const pageStatus = ref('');
+const draftStatus = ref('');
+watch(filtersOpen, (open) => {
+  if (open) draftStatus.value = pageStatus.value;
+});
+function applySearch(): void {
+  if (ordersDisabledReason.value) return;
+  const nextOrder = orderNumberSearch.value.trim();
+  if (orderNumberFilter.value === nextOrder && logisticsOrderPage.value === 1) {
+    void orders.refetch();
+    return;
+  }
+  orderNumberFilter.value = nextOrder;
+  logisticsOrderPage.value = 1;
+}
 const logisticsOrderPage = ref(1);
 const logisticsOrderPageSize = ref(20);
 const selectedOrderNumber = ref('');
@@ -106,6 +126,45 @@ const consignorAddress = ref('阿里西溪园区');
 const consigneePerson = ref('演示收货人');
 const consigneeMobile = ref('12025550123');
 const consigneeAddress = ref('700 New Road');
+const editingFields = [
+  destinationCountryCode,
+  destinationZipCode,
+  originZipCode,
+  warehouseCode,
+  productCode,
+  packageLength,
+  packageWidth,
+  packageHeight,
+  packageWeight,
+  cargoNameCn,
+  cargoNameEn,
+  cargoHsCode,
+  cargoQuantity,
+  cargoValue,
+  cargoMaterial,
+  selectedProductType,
+  consignorPerson,
+  consignorMobile,
+  consignorAddress,
+  consigneePerson,
+  consigneeMobile,
+  consigneeAddress
+];
+const initialEditingValues = editingFields.map((field) => field.value);
+const editing = useUnsavedEditing(() => editingFields.map((field) => field.value));
+async function setWorkspace(value: Workspace): Promise<void> {
+  // Quote -> draft is the same order workflow, not a discarded form.
+  const leavesOrderForm = value !== workspace.value && value !== 'quote' && value !== 'draft';
+  const discarded = editing.dirty.value;
+  if (leavesOrderForm && !(await editing.confirmLeave())) return;
+  if (leavesOrderForm && discarded) {
+    editingFields.forEach((field, index) => {
+      field.value = initialEditingValues[index] ?? '';
+    });
+    editing.markClean();
+  }
+  workspace.value = value;
+}
 
 const logisticsProducts = useQuery({
   queryKey: ['logistics-products'],
@@ -154,6 +213,12 @@ const orderDetail = useQuery({
   ),
   queryFn: () => gateway.request('getLogisticsOrder', { orderNumber: selectedOrderNumber.value })
 });
+const statusOptions = computed(() => [
+  ...new Set((orders.data.value?.items ?? []).map((order) => order.status))
+]);
+const filteredOrders = computed(() =>
+  (orders.data.value?.items ?? []).filter((order) => !pageStatus.value || order.status === pageStatus.value)
+);
 const selectedLogisticsOrder = computed(() =>
   (orders.data.value?.items ?? []).find((order) => order.orderNumber === selectedOrderNumber.value)
 );
@@ -190,7 +255,10 @@ const createOrder = useMutation({
       confirmedProductCode: quote.productCode
     });
   },
-  onSuccess: () => toast.success(t('logistics.feedback.orderSubmitted'))
+  onSuccess: () => {
+    editing.markClean();
+    toast.success(t('logistics.feedback.orderSubmitted'));
+  }
 });
 
 function buildQuoteRequest(): LogisticsQuoteRequest {
@@ -333,15 +401,6 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
 
 <template>
   <PageHeader :title="t('logistics.title')" :description="t('logistics.description')" />
-  <Card class="mb-4 flex items-start gap-3 border-amber-200 bg-amber-50 p-4 text-amber-900">
-    <ShieldAlert class="mt-0.5 size-4 shrink-0" />
-    <div class="text-sm leading-5">
-      <p>{{ t('logistics.qualification') }}</p>
-      <p class="mt-1 text-xs">
-        {{ t('logistics.availability', { reason: logisticsRestrictionReason }) }}
-      </p>
-    </div>
-  </Card>
 
   <div class="mb-4 flex flex-wrap gap-2" :aria-label="t('logistics.workspaceLabel')">
     <Button
@@ -349,7 +408,7 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
       :key="item.id"
       size="sm"
       :variant="workspace === item.id ? 'default' : 'outline'"
-      @click="workspace = item.id"
+      @click="setWorkspace(item.id)"
     >
       {{ item.label }}
     </Button>
@@ -490,17 +549,41 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
   </template>
 
   <template v-else-if="workspace === 'orders'">
-    <Card class="mb-4 p-4">
-      <div class="grid gap-3 md:grid-cols-[1fr_auto]">
-        <Input v-model="orderNumberFilter" :placeholder="t('logistics.orders.filter')" />
+    <Card class="rounded-b-none border-b-0 p-3">
+      <form class="flex flex-wrap items-center gap-2" @submit.prevent="applySearch">
+        <Input
+          v-model="orderNumberSearch"
+          class="w-48 max-w-full sm:w-56"
+          :placeholder="t('logistics.orders.filter')"
+        />
         <ActionTooltip :disabled="Boolean(ordersDisabledReason)" :reason="ordersDisabledReason">
-          <Button variant="outline" :disabled="Boolean(ordersDisabledReason)" @click="orders.refetch()">
-            <RefreshCw :class="['size-4', orders.isFetching.value ? 'animate-spin' : '']" />{{
-              t('common.actions.refresh')
-            }}
+          <Button type="submit" variant="outline" :disabled="Boolean(ordersDisabledReason)">
+            <Search class="size-4" />{{ t('common.filters.search') }}
           </Button>
         </ActionTooltip>
-      </div>
+        <ListFilterDialog
+          v-model:open="filtersOpen"
+          :active-count="pageStatus ? 1 : 0"
+          @reset="draftStatus = ''"
+          @apply="
+            pageStatus = draftStatus;
+            filtersOpen = false;
+            logisticsOrderPage = 1;
+          "
+        >
+          <p class="text-xs text-muted-foreground">{{ t('common.filters.pageHint') }}</p>
+          <label class="block space-y-1 text-sm"
+            ><span>{{ t('logistics.columns.status') }}</span
+            ><select
+              v-model="draftStatus"
+              class="h-9 w-full rounded-md border bg-background px-3 text-foreground"
+            >
+              <option value="">{{ t('common.filters.all') }}</option>
+              <option v-for="value in statusOptions" :key="value" :value="value">{{ value }}</option>
+            </select></label
+          >
+        </ListFilterDialog>
+      </form>
     </Card>
     <QueryState
       :loading="orders.isPending.value && !ordersBlocked"
@@ -509,8 +592,10 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
       @retry="orders.refetch()"
     >
       <DataTable
+        column-settings-key="logistics"
         :columns="columns"
-        :data="orders.data.value?.items ?? []"
+        :data="filteredOrders"
+        :selection-scope="JSON.stringify([orderNumberFilter, pageStatus])"
         v-model:page="logisticsOrderPage"
         v-model:page-size="logisticsOrderPageSize"
         :total-rows="orders.data.value?.total ?? 0"
@@ -525,11 +610,25 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
         <template #empty>
           <div class="space-y-3 py-4">
             <p>
-              {{ orderNumberFilter ? t('logistics.orders.noMatch') : t('logistics.orders.noOrders') }}
+              {{
+                pageStatus
+                  ? t('common.filters.pageHint')
+                  : orderNumberFilter
+                    ? t('logistics.orders.noMatch')
+                    : t('logistics.orders.noOrders')
+              }}
             </p>
-            <Button v-if="orderNumberFilter" variant="outline" size="sm" @click="orderNumberFilter = ''">{{
-              t('logistics.orders.clear')
-            }}</Button>
+            <Button
+              v-if="orderNumberFilter || pageStatus"
+              variant="outline"
+              size="sm"
+              @click="
+                orderNumberFilter = '';
+                orderNumberSearch = '';
+                pageStatus = '';
+              "
+              >{{ t('logistics.orders.clear') }}</Button
+            >
             <Button v-else variant="outline" size="sm" @click="orders.refetch()">
               {{ t('common.actions.retry') }}
             </Button>

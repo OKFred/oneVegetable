@@ -41,7 +41,7 @@ describe('ProductsView batch publishing', () => {
       expect(wrapper.text()).toContain('First batch product');
       expect(wrapper.text()).toContain('Second batch product');
     });
-    await wrapper.get('input[aria-label="选择全部待发布商品"]').setValue(true);
+    await wrapper.get('input[aria-label="选择当前页"]').setValue(true);
     const run = wrapper.findAll('button').find((button) => button.text().includes('开始保存草稿'));
     if (!run) throw new Error('Missing batch draft action');
     await run.trigger('click');

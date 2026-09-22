@@ -1,21 +1,23 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, h, ref, watch } from 'vue';
 import { ExternalLink, RefreshCw } from '@lucide/vue';
-
+import { toast } from 'vue-sonner';
 import { productMutationJobIsBlocking, type ProductMutationJob } from '@one-vegetable/core';
-
 import type { ProductBatchPublishItem } from '../lib/product-batch-publish';
+import type { DataColumn } from '../lib/table';
 import { formatDateTime } from '../lib/date-time';
 import { useUiI18n } from '../i18n';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
+import DataTable from './DataTable.vue';
+import ListFilterDialog from './ListFilterDialog.vue';
 import ErrorNotice from './ErrorNotice.vue';
 import PlatformReadbackNotice from './PlatformReadbackNotice.vue';
 import { productReadbackNotice } from '../lib/platform-readback-notice';
+import { productMutationMessage } from '../lib/product-mutation-presentation';
 
 const ALIBABA_PRODUCT_MANAGEMENT_URL = 'https://i.alibaba.com/products/list-manage';
-
 const props = defineProps<{
   jobs: ProductMutationJob[];
   batchItems: ProductBatchPublishItem[];
@@ -24,14 +26,35 @@ const props = defineProps<{
   refreshingJobId: string;
   detailUrls: Record<string, string>;
 }>();
-
 const emit = defineEmits<{
   refresh: [];
   'refresh-job': [job: ProductMutationJob];
   recover: [job: ProductMutationJob];
 }>();
-
 const { t } = useUiI18n();
+const filterOpen = ref(false);
+const statuses = ref<ProductMutationJob['status'][]>([]);
+const draftStatuses = ref<ProductMutationJob['status'][]>([]);
+const availableStatuses: ProductMutationJob['status'][] = [
+  'submitted',
+  'auditing',
+  'verifying',
+  'verified',
+  'recovery-required',
+  'recovering',
+  'recovered',
+  'failed'
+];
+watch(filterOpen, (open) => {
+  if (open) draftStatuses.value = [...statuses.value];
+});
+function applyFilters(): void {
+  statuses.value = [...draftStatuses.value];
+  filterOpen.value = false;
+}
+const filteredJobs = computed(() =>
+  props.jobs.filter((job) => !statuses.value.length || statuses.value.includes(job.status))
+);
 const pendingCount = computed(
   () => props.jobs.filter((job) => productMutationJobIsBlocking(job.status)).length
 );
@@ -44,52 +67,159 @@ const verifiedCount = computed(
   () => props.jobs.filter((job) => job.status === 'verified' || job.status === 'recovered').length
 );
 
-function operationLabel(operation: ProductMutationJob['operation']): string {
-  return t(`products.tasks.operations.${operation}`);
-}
-
 function jobStatusLabel(status: ProductMutationJob['status']): string {
-  return t(`products.view.mutationStatus.${status === 'recovery-required' ? 'recoveryRequired' : status}`);
+  return t('products.view.mutationStatus.' + (status === 'recovery-required' ? 'recoveryRequired' : status));
 }
-
-function statusVariant(
-  status: ProductMutationJob['status']
-): 'success' | 'warning' | 'secondary' | 'destructive' {
+function statusVariant(status: ProductMutationJob['status']): 'success' | 'warning' | 'destructive' {
   if (status === 'verified' || status === 'recovered') return 'success';
   if (productMutationJobIsBlocking(status) && status !== 'recovery-required') return 'warning';
   return 'destructive';
 }
-
 function batchStatusLabel(status: ProductBatchPublishItem['status']): string {
   const key =
     status === 'draft-saved' ? 'draft' : status === 'attention-required' ? 'attentionRequired' : status;
-  return t(`products.batch.storedStatus.${key}`);
+  return t('products.batch.storedStatus.' + key);
 }
-
 function openAlibabaProductManagement(): void {
   globalThis.open(ALIBABA_PRODUCT_MANAGEMENT_URL, '_blank', 'noopener,noreferrer');
 }
+async function copyRequestId(job: ProductMutationJob): Promise<void> {
+  try {
+    await globalThis.navigator.clipboard.writeText(job.requestId);
+    toast.success(t('common.actions.copied'));
+  } catch {
+    toast.error(t('common.error.copyFailed'));
+  }
+}
+const columns = computed<DataColumn<ProductMutationJob>[]>(() => [
+  {
+    accessorKey: 'operation',
+    header: t('products.tasks.columns.operation'),
+    cell: ({ row }) => t('products.tasks.operations.' + row.original.operation)
+  },
+  {
+    accessorKey: 'productId',
+    header: t('products.tasks.columns.product'),
+    cell: ({ row }) =>
+      h('div', { class: 'flex items-center gap-2' }, [
+        h('span', { class: 'font-mono' }, row.original.productId),
+        props.detailUrls[row.original.productId]
+          ? h(
+              'a',
+              {
+                href: props.detailUrls[row.original.productId],
+                target: '_blank',
+                rel: 'noopener noreferrer',
+                class: 'text-muted-foreground hover:text-foreground',
+                'aria-label': t('products.links.viewOnAlibaba')
+              },
+              [h(ExternalLink, { class: 'size-3.5' })]
+            )
+          : null
+      ])
+  },
+  {
+    accessorKey: 'status',
+    header: t('products.tasks.columns.status'),
+    cell: ({ row }) =>
+      h('div', { class: 'max-w-80' }, [
+        h(Badge, { variant: statusVariant(row.original.status) }, () => jobStatusLabel(row.original.status)),
+        h(PlatformReadbackNotice, { kind: productReadbackNotice(row.original.status), class: 'mt-2' }),
+        row.original.message || row.original.reasonCode
+          ? h('p', { class: 'mt-1 text-xs text-muted-foreground' }, productMutationMessage(row.original))
+          : null
+      ])
+  },
+  {
+    accessorKey: 'requestId',
+    header: 'requestId',
+    cell: ({ row }) => h('code', { class: 'inline-block max-w-60 break-all text-xs' }, row.original.requestId)
+  },
+  {
+    accessorKey: 'updateTimeUtc',
+    header: t('products.tasks.columns.updatedAt'),
+    cell: ({ row }) =>
+      h('span', { class: 'whitespace-nowrap tabular-nums' }, formatDateTime(row.original.updateTimeUtc))
+  },
+  {
+    id: 'actions',
+    header: t('products.tasks.columns.actions'),
+    cell: ({ row }) =>
+      h('div', { class: 'flex gap-2' }, [
+        productMutationJobIsBlocking(row.original.status)
+          ? h(
+              Button,
+              {
+                size: 'sm',
+                variant: 'outline',
+                disabled: props.refreshingJobId === row.original.id,
+                onClick: () => {
+                  emit('refresh-job', row.original);
+                }
+              },
+              () => t('products.tasks.check')
+            )
+          : null,
+        row.original.operation === 'updateProductDisplay' && row.original.status === 'recovery-required'
+          ? h(
+              Button,
+              {
+                size: 'sm',
+                variant: 'destructive',
+                onClick: () => {
+                  emit('recover', row.original);
+                }
+              },
+              () => t('products.view.page.recover')
+            )
+          : null,
+        h(Button, { size: 'sm', variant: 'ghost', onClick: () => void copyRequestId(row.original) }, () =>
+          t('common.actions.copyId')
+        )
+      ])
+  }
+]);
+const batchColumns = computed<DataColumn<ProductBatchPublishItem>[]>(() => [
+  {
+    accessorKey: 'title',
+    header: t('products.batch.columns.product'),
+    cell: ({ row }) =>
+      h('p', { class: 'max-w-80 truncate font-medium', title: row.original.title }, row.original.title)
+  },
+  {
+    id: 'productId',
+    header: t('insights.columns.productId'),
+    cell: ({ row }) => h('code', { class: 'text-xs' }, row.original.platformProductId ?? row.original.id)
+  },
+  {
+    accessorKey: 'status',
+    header: t('products.batch.columns.status'),
+    cell: ({ row }) =>
+      h(Badge, { variant: row.original.status === 'attention-required' ? 'destructive' : 'secondary' }, () =>
+        batchStatusLabel(row.original.status)
+      )
+  }
+]);
 </script>
 
 <template>
   <div class="space-y-5">
     <div class="grid gap-3 sm:grid-cols-3">
-      <Card class="p-4">
-        <p class="text-sm text-muted-foreground">{{ t('products.tasks.pending') }}</p>
-        <p class="mt-2 text-2xl font-semibold tabular-nums">{{ pendingCount }}</p>
-      </Card>
-      <Card class="p-4">
-        <p class="text-sm text-muted-foreground">{{ t('products.tasks.attention') }}</p>
-        <p class="mt-2 text-2xl font-semibold tabular-nums text-destructive">{{ attentionCount }}</p>
-      </Card>
-      <Card class="p-4">
-        <p class="text-sm text-muted-foreground">{{ t('products.tasks.verified') }}</p>
+      <Card class="p-4"
+        ><p class="text-sm text-muted-foreground">{{ t('products.tasks.pending') }}</p>
+        <p class="mt-2 text-2xl font-semibold tabular-nums">{{ pendingCount }}</p></Card
+      >
+      <Card class="p-4"
+        ><p class="text-sm text-muted-foreground">{{ t('products.tasks.attention') }}</p>
+        <p class="mt-2 text-2xl font-semibold tabular-nums text-destructive">{{ attentionCount }}</p></Card
+      >
+      <Card class="p-4"
+        ><p class="text-sm text-muted-foreground">{{ t('products.tasks.verified') }}</p>
         <p class="mt-2 text-2xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
           {{ verifiedCount }}
-        </p>
-      </Card>
+        </p></Card
+      >
     </div>
-
     <Card class="overflow-hidden">
       <div class="flex flex-wrap items-start justify-between gap-3 border-b p-5">
         <div>
@@ -97,113 +227,55 @@ function openAlibabaProductManagement(): void {
           <p class="mt-1 text-sm text-muted-foreground">{{ t('products.tasks.platformDescription') }}</p>
         </div>
         <div class="flex flex-wrap gap-2">
-          <Button variant="outline" :disabled="loading" @click="emit('refresh')">
-            <RefreshCw class="size-4" :class="{ 'animate-spin': loading }" />
-            {{ t('common.actions.refresh') }}
-          </Button>
-          <Button variant="outline" @click="openAlibabaProductManagement">
-            {{ t('products.tasks.openManagement') }}<ExternalLink class="size-4" />
-          </Button>
+          <ListFilterDialog
+            v-model:open="filterOpen"
+            :active-count="Number(statuses.length > 0)"
+            @apply="applyFilters"
+            @reset="draftStatuses = []"
+          >
+            <fieldset class="space-y-2">
+              <legend class="mb-2 text-sm font-medium">{{ t('products.tasks.columns.status') }}</legend>
+              <label v-for="status in availableStatuses" :key="status" class="flex items-center gap-2 text-sm"
+                ><input v-model="draftStatuses" type="checkbox" :value="status" />{{
+                  jobStatusLabel(status)
+                }}</label
+              >
+            </fieldset>
+          </ListFilterDialog>
+          <Button variant="outline" :disabled="loading" @click="emit('refresh')"
+            ><RefreshCw class="size-4" :class="{ 'animate-spin': loading }" />{{
+              t('common.actions.refresh')
+            }}</Button
+          >
+          <Button variant="outline" @click="openAlibabaProductManagement"
+            >{{ t('products.tasks.openManagement') }}<ExternalLink class="size-4"
+          /></Button>
         </div>
       </div>
       <ErrorNotice v-if="error" class="m-4" :error="error" compact />
-      <div class="max-h-[62vh] overflow-auto">
-        <table class="w-full min-w-[980px] border-collapse text-sm">
-          <thead class="sticky top-0 z-10 bg-muted/95 backdrop-blur">
-            <tr class="border-b text-left">
-              <th class="whitespace-nowrap px-4 py-3">{{ t('products.tasks.columns.operation') }}</th>
-              <th class="whitespace-nowrap px-4 py-3">{{ t('products.tasks.columns.product') }}</th>
-              <th class="whitespace-nowrap px-4 py-3">{{ t('products.tasks.columns.status') }}</th>
-              <th class="whitespace-nowrap px-4 py-3">requestId</th>
-              <th class="whitespace-nowrap px-4 py-3">{{ t('products.tasks.columns.updatedAt') }}</th>
-              <th class="whitespace-nowrap px-4 py-3 text-right">
-                {{ t('products.tasks.columns.actions') }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="jobs.length === 0">
-              <td colspan="6" class="px-4 py-12 text-center text-muted-foreground">
-                {{ t('products.tasks.empty') }}
-              </td>
-            </tr>
-            <tr v-for="job in jobs" :key="job.id" class="border-b last:border-0">
-              <td class="whitespace-nowrap px-4 py-3">{{ operationLabel(job.operation) }}</td>
-              <td class="px-4 py-3">
-                <div class="flex items-center gap-2">
-                  <span class="font-mono">{{ job.productId }}</span>
-                  <a
-                    v-if="detailUrls[job.productId]"
-                    :href="detailUrls[job.productId]"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="cursor-pointer text-muted-foreground hover:text-foreground"
-                    :aria-label="t('products.links.viewOnAlibaba')"
-                  >
-                    <ExternalLink class="size-3.5" />
-                  </a>
-                </div>
-              </td>
-              <td class="whitespace-nowrap px-4 py-3">
-                <Badge :variant="statusVariant(job.status)">{{ jobStatusLabel(job.status) }}</Badge>
-                <PlatformReadbackNotice :kind="productReadbackNotice(job.status)" class="mt-2 max-w-80" />
-                <p v-if="job.message" class="mt-1 max-w-80 text-xs text-muted-foreground">
-                  {{ job.message }}
-                </p>
-              </td>
-              <td class="max-w-60 break-all px-4 py-3 font-mono text-xs">{{ job.requestId }}</td>
-              <td class="whitespace-nowrap px-4 py-3 tabular-nums">
-                {{ formatDateTime(job.updateTimeUtc) }}
-              </td>
-              <td class="px-4 py-3">
-                <div class="flex justify-end gap-2">
-                  <Button
-                    v-if="productMutationJobIsBlocking(job.status)"
-                    size="sm"
-                    variant="outline"
-                    :disabled="refreshingJobId === job.id"
-                    @click="emit('refresh-job', job)"
-                  >
-                    {{ t('products.tasks.check') }}
-                  </Button>
-                  <Button
-                    v-if="job.operation === 'updateProductDisplay' && job.status === 'recovery-required'"
-                    size="sm"
-                    variant="destructive"
-                    @click="emit('recover', job)"
-                  >
-                    {{ t('products.view.page.recover') }}
-                  </Button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        :columns="columns"
+        :data="filteredJobs"
+        :get-row-key="(job) => job.id"
+        column-settings-key="product-mutation-jobs"
+        :selection-scope="statuses.join(',')"
+        :empty-text="t('products.tasks.empty')"
+        min-width="980px"
+        max-height="62vh"
+      />
     </Card>
-
     <Card v-if="batchItems.length" class="overflow-hidden">
       <div class="border-b p-5">
         <h2 class="font-semibold">{{ t('products.tasks.localBatchTitle') }}</h2>
         <p class="mt-1 text-sm text-muted-foreground">{{ t('products.tasks.localBatchDescription') }}</p>
       </div>
-      <div class="max-h-80 overflow-auto">
-        <div
-          v-for="item in batchItems"
-          :key="item.id"
-          class="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 last:border-0"
-        >
-          <div class="min-w-0">
-            <p class="truncate font-medium">{{ item.title }}</p>
-            <p class="mt-1 font-mono text-xs text-muted-foreground">
-              {{ item.platformProductId ?? item.id }}
-            </p>
-          </div>
-          <Badge :variant="item.status === 'attention-required' ? 'destructive' : 'secondary'">
-            {{ batchStatusLabel(item.status) }}
-          </Badge>
-        </div>
-      </div>
+      <DataTable
+        :columns="batchColumns"
+        :data="batchItems"
+        :get-row-key="(item) => item.id"
+        column-settings-key="product-task-batch"
+        max-height="320px"
+      />
     </Card>
   </div>
 </template>

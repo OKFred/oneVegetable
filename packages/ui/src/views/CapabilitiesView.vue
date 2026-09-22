@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, ref } from 'vue';
+import { computed, h, ref, watch } from 'vue';
 import { useMutation, useQuery } from '@tanstack/vue-query';
 import { ExternalLink, Play, Search, ShieldAlert } from '@lucide/vue';
 
@@ -7,6 +7,7 @@ import { type ApiCapability, type CapabilityDefinition } from '@one-vegetable/co
 
 import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
+import ListFilterDialog from '../components/ListFilterDialog.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PlatformReadbackNotice from '../components/PlatformReadbackNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -27,6 +28,19 @@ const { t } = useUiI18n();
 const search = ref('');
 const domain = ref('all');
 const accountVerification = ref('all');
+const filterOpen = ref(false);
+const filterDraft = ref({ domain: 'all', accountVerification: 'all' });
+const filterCount = computed(
+  () => Number(domain.value !== 'all') + Number(accountVerification.value !== 'all')
+);
+watch(filterOpen, (open) => {
+  if (open) filterDraft.value = { domain: domain.value, accountVerification: accountVerification.value };
+});
+function applyFilters(): void {
+  domain.value = filterDraft.value.domain;
+  accountVerification.value = filterDraft.value.accountVerification;
+  filterOpen.value = false;
+}
 const selected = ref<ApiCapability | null>(null);
 const capabilitySheetOpen = ref(false);
 const definition = ref<CapabilityDefinition | null>(null);
@@ -260,19 +274,24 @@ const columns = computed<DataColumn<ApiCapability>[]>(() => [
     cell: ({ row }) => matrixBadge(capabilityMatrix(row.original, dataSource.value).current)
   },
   {
-    id: 'docs',
-    header: t('capabilities.columns.docs'),
+    id: 'actions',
+    header: t('common.actions.title'),
     cell: ({ row }) =>
-      h(
-        'a',
-        {
-          href: row.original.docUrl,
-          target: '_blank',
-          rel: 'noreferrer',
-          class: 'inline-flex text-muted-foreground hover:text-primary'
-        },
-        [h(ExternalLink, { class: 'size-4' })]
-      )
+      h('div', { class: 'flex gap-2' }, [
+        h(Button, { variant: 'ghost', size: 'sm', onClick: () => void selectCapability(row.original) }, () =>
+          t('capabilities.detailsTitle')
+        ),
+        h(
+          'a',
+          {
+            href: row.original.docUrl,
+            target: '_blank',
+            rel: 'noopener noreferrer',
+            class: 'inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent'
+          },
+          [h(ExternalLink, { class: 'size-4' }), t('capabilities.columns.docs')]
+        )
+      ])
   }
 ]);
 
@@ -288,7 +307,7 @@ function matrixBadge(cell: CapabilityMatrixCell) {
       ><Badge variant="outline">{{ t('capabilities.articleCount', { count: articleCount }) }}</Badge>
     </div>
   </PageHeader>
-  <div class="mb-4 flex flex-wrap gap-2">
+  <div class="mb-0 flex flex-wrap gap-2 rounded-t-lg border border-b-0 p-3">
     <div class="relative min-w-72 flex-1">
       <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
       <Input
@@ -298,38 +317,45 @@ function matrixBadge(cell: CapabilityMatrixCell) {
         :placeholder="t('capabilities.search')"
       />
     </div>
-    <select
-      v-model="domain"
-      :aria-label="t('capabilities.allDomains')"
-      class="h-9 rounded-md border bg-background px-3 text-sm"
+    <ListFilterDialog
+      v-model:open="filterOpen"
+      :active-count="filterCount"
+      @apply="applyFilters"
+      @reset="filterDraft = { domain: 'all', accountVerification: 'all' }"
     >
-      <option value="all">{{ t('capabilities.allDomains') }}</option>
-      <option
-        v-for="item in ['product', 'photo', 'trade', 'rfq', 'buyer', 'logistics', 'data', 'platform']"
-        :key="item"
-        :value="item"
+      <select
+        v-model="filterDraft.domain"
+        :aria-label="t('capabilities.allDomains')"
+        class="h-9 rounded-md border bg-background px-3 text-sm"
       >
-        {{ item }}
-      </option>
-    </select>
-    <select
-      v-model="accountVerification"
-      :aria-label="t('capabilities.accountSnapshot')"
-      class="h-9 rounded-md border bg-background px-3 text-sm"
-    >
-      <option value="all">{{ t('capabilities.allAccountResults') }}</option>
-      <option value="passed">{{ t('capabilities.accountStatuses.passed') }}</option>
-      <option value="no-data">{{ t('capabilities.accountStatuses.noData') }}</option>
-      <option value="permission-denied">{{ t('capabilities.accountStatuses.permissionDenied') }}</option>
-      <option value="contract-drift">{{ t('capabilities.accountStatuses.contractDrift') }}</option>
-      <option value="provider-error">{{ t('capabilities.accountStatuses.providerError') }}</option>
-      <option value="skipped-prerequisite">
-        {{ t('capabilities.accountStatuses.skippedPrerequisite') }}
-      </option>
-      <option value="not-tested">{{ t('capabilities.accountStatuses.notTested') }}</option>
-    </select>
+        <option value="all">{{ t('capabilities.allDomains') }}</option>
+        <option
+          v-for="item in ['product', 'photo', 'trade', 'rfq', 'buyer', 'logistics', 'data', 'platform']"
+          :key="item"
+          :value="item"
+        >
+          {{ item }}
+        </option>
+      </select>
+      <select
+        v-model="filterDraft.accountVerification"
+        :aria-label="t('capabilities.accountSnapshot')"
+        class="h-9 rounded-md border bg-background px-3 text-sm"
+      >
+        <option value="all">{{ t('capabilities.allAccountResults') }}</option>
+        <option value="passed">{{ t('capabilities.accountStatuses.passed') }}</option>
+        <option value="no-data">{{ t('capabilities.accountStatuses.noData') }}</option>
+        <option value="permission-denied">{{ t('capabilities.accountStatuses.permissionDenied') }}</option>
+        <option value="contract-drift">{{ t('capabilities.accountStatuses.contractDrift') }}</option>
+        <option value="provider-error">{{ t('capabilities.accountStatuses.providerError') }}</option>
+        <option value="skipped-prerequisite">
+          {{ t('capabilities.accountStatuses.skippedPrerequisite') }}
+        </option>
+        <option value="not-tested">{{ t('capabilities.accountStatuses.notTested') }}</option>
+      </select>
+    </ListFilterDialog>
   </div>
-  <div class="mb-4 rounded-lg border bg-card p-3 text-sm">
+  <div class="border-x bg-card px-3 pb-3 text-sm">
     <div class="flex flex-wrap items-center gap-2">
       <Badge variant="success">{{
         t('capabilities.accountSummary.passed', { count: accountPassedCount })
@@ -357,6 +383,8 @@ function matrixBadge(cell: CapabilityMatrixCell) {
     <DataTable
       :columns="columns"
       :data="filtered"
+      column-settings-key="capabilities"
+      :selection-scope="JSON.stringify([search, domain, accountVerification])"
       :empty-text="t('capabilities.noMatch')"
       min-width="1520px"
       :get-row-key="(capability) => capability.method"

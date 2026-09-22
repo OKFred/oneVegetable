@@ -7,12 +7,14 @@ import { useUiI18n } from '../i18n';
 import TablePagination from './TablePagination.vue';
 import ColumnSettings from './ColumnSettings.vue';
 import { useColumnPreferences } from '../lib/column-preferences';
+import { useListIdentityScope } from '../lib/list-identity-scope';
 import TriStateCheckbox from './TriStateCheckbox.vue';
 import RowActionsMenu from './RowActionsMenu.vue';
 import Button from './ui/Button.vue';
 import { toast } from 'vue-sonner';
 
 const { t } = useUiI18n();
+const identityScope = useListIdentityScope();
 
 const props = withDefaults(
   defineProps<{
@@ -263,7 +265,7 @@ watch(
   }
 );
 watch(
-  () => [currentPage.value, currentPageSize.value, props.selectionScope],
+  () => [currentPage.value, currentPageSize.value, props.selectionScope, identityScope.value],
   () => {
     if (ownsSelection.value) selectRows([]);
   }

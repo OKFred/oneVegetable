@@ -100,6 +100,8 @@ export const common = {
     closeDetails: '关闭详情'
   },
   filters: {
+    all: '全部',
+    search: '搜索',
     title: '筛选',
     description: '点击“应用筛选”后才生效，关闭不会应用修改。',
     apply: '应用筛选',
@@ -111,7 +113,7 @@ export const common = {
   },
   imagePreview: {
     title: '图片预览',
-    description: '查看图库原图，并支持切换、缩放和旋转。',
+    description: '查看原图，并支持切换、缩放和旋转。',
     empty: '无图片',
     noPreview: '没有可预览的图片。',
     openOriginal: '在新标签页打开原图',

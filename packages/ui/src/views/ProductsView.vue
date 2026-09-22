@@ -111,17 +111,6 @@ import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import { formatDateTime } from '../lib/date-time';
 import {
-  findProductEditorDraft,
-  migrateLegacyProductEditorDraft,
-  migrateProductEditorDraftsV2,
-  productEditorDraftKey,
-  removeProductEditorDraft,
-  saveProductEditorDraft,
-  shouldPersistProductEditorDraft,
-  type ProductEditorDraftV3,
-  type ProductEditorMode
-} from '../lib/product-editor-drafts';
-import {
   beginProductBatchPublishItem,
   importProductBatchPublishItems,
   inspectProductBatchPublishImport,
@@ -136,6 +125,17 @@ import {
   type ProductBatchPublishRunResult,
   type ProductBatchPublishTarget
 } from '../lib/product-batch-publish';
+import type { ProductEditorMode } from '../lib/product-editor-drafts';
+import ModalDialog from '../components/ui/ModalDialog.vue';
+import ProductVisibleRegion from '../components/ProductVisibleRegion.vue';
+import ProductListFilterDialog from '../components/ProductListFilterDialog.vue';
+import {
+  emptyProductListFilters,
+  filterCurrentPageProducts,
+  productFilterPayload,
+  type ProductListFilters
+} from '../composables/product-list-filters';
+import { useUnsavedEditing } from '../lib/unsaved-editing';
 import { useProductEditorSession } from '../composables/use-product-editor-session';
 import {
   operationAvailabilityMessage,
@@ -168,7 +168,6 @@ const ProductVideoAssociation = defineAsyncComponent(
 );
 
 type Workspace = 'list' | 'publisher' | 'batch-publisher' | 'tasks';
-type DraftSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type ProductActionConfirmation =
   | { kind: 'product'; draft: boolean; changedNames: string[] }
   | { kind: 'batch-publish'; target: ProductBatchPublishTarget; itemIds: string[] }
@@ -178,14 +177,40 @@ type ProductActionConfirmation =
 const workspaceIds = new Set<Workspace>(['list', 'publisher', 'batch-publisher', 'tasks']);
 const editorModes = new Set<ProductEditorMode>(['quick', 'guided', 'advanced']);
 const editorStepIds = new Set<ProductEditorStepId>(PRODUCT_EDITOR_STEP_IDS);
-const PRODUCT_SCORE_DISPLAY_MAX = 6;
 
 const { gateway, mode, productMutationJobs } = useServices();
+const accountContext = useGalleryTransfers()?.currentContext;
+const accountBoundary = computed(() =>
+  JSON.stringify([mode, accountContext?.value?.identity, accountContext?.value?.gateway])
+);
 const { locale, t } = useUiI18n();
 const { alibabaLanguage: preferredLanguage } = useAppPreferences();
 const queryClient = useQueryClient();
 const workspace = ref<Workspace>('list');
 const subject = ref('');
+const subjectDraft = ref('');
+const appliedFilters = ref(emptyProductListFilters());
+const productFilters = computed<ProductListFilters>(() => ({
+  ...appliedFilters.value,
+  groupId: selectedProductGroupId.value === null ? '' : String(selectedProductGroupId.value),
+  groupLevel: String(selectedProductGroupLevel.value ?? 1) as '1' | '2' | '3'
+}));
+function applyProductFilters(filters: ProductListFilters): void {
+  appliedFilters.value = { ...filters };
+  selectedProductGroupId.value = filters.groupId ? Number(filters.groupId) : null;
+  selectedProductGroupLevel.value = Number(filters.groupLevel) as 1 | 2 | 3;
+  productPage.value = 1;
+  clearProductSelection();
+}
+function searchProducts(): void {
+  const nextSubject = subjectDraft.value.trim();
+  if (subject.value === nextSubject && productPage.value === 1) {
+    void products.refetch();
+    return;
+  }
+  subject.value = nextSubject;
+  productPage.value = 1;
+}
 const productPage = ref(1);
 const productPageSize = ref(20);
 const {
@@ -204,20 +229,50 @@ const {
   descriptionType: productDescriptionType,
   descriptionHtml: productDescriptionHtml,
   updateRootField,
-  reset: resetEditorSession
-} = useProductEditorSession({
-  language: preferredLanguage.value,
-  onFieldChange: () => {
-    reconcileDraftAfterFieldChange();
-  }
-});
+  reset: resetSessionModel
+} = useProductEditorSession({ language: preferredLanguage.value });
+const editing = useUnsavedEditing(
+  () => ({
+    xml: schemaPreview.value,
+    categoryId: categoryId.value,
+    language: language.value,
+    market: market.value,
+    productId: editProductId.value
+  }),
+  { enabled: () => workspace.value === 'publisher' && schemaModel.value !== null }
+);
 const editScoreProductId = ref('');
 const schemaError = ref('');
 const feedback = ref('');
-const draftCandidate = ref<ProductEditorDraftV3 | null>(null);
+let editorEpoch = 0;
+const submissionError = ref<unknown>(null);
+const submissionErrorOpen = ref(false);
+const editorScoreRefreshNeeded = ref(false);
+const staleScoreIds = new Set<string>();
+function resetEditorSession(input: Parameters<typeof resetSessionModel>[0]): void {
+  editorEpoch++;
+  submissionError.value = null;
+  submissionErrorOpen.value = false;
+  publish.reset();
+  productScore.reset();
+  editScoreProductId.value = '';
+  editorScoreRefreshNeeded.value = false;
+  resetSessionModel(input);
+  editing.markClean();
+}
+function showSubmissionError(error: unknown): void {
+  submissionError.value = error;
+  submissionErrorOpen.value = true;
+}
+const isSmartDescriptionError = computed(() =>
+  errorMessage(submissionError.value).includes('PUB_BIZCHECK_MAGIC_EDIT_PAGE_RELATION_ERROR')
+);
+function locateDescription(): void {
+  submissionErrorOpen.value = false;
+  setEditorMode('guided');
+  setEditorStep('description');
+}
 const postingTypeBlocked = ref(false);
-const migratedDraftKey = ref<string | null>(null);
-const draftSaveStatus = ref<DraftSaveStatus>('idle');
 const selectedProductIds = ref<string[]>([]);
 const imageMetadata = ref<Record<string, ProductDescriptionImageMetadata>>({});
 const categorySearch = ref('');
@@ -229,9 +284,6 @@ const categoryLoadError = ref('');
 const productScores = ref<Record<string, ProductScore>>({});
 const productScoreErrors = ref<Record<string, string>>({});
 const queryingSelectedProductScores = ref(false);
-let scoreRefreshTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
-let draftSaveTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
-const sourceIsLocalDraft = ref(false);
 const acknowledgedMutationJobId = ref('');
 const batchItems = ref<ProductBatchPublishItem[]>([]);
 const selectedBatchItemIds = ref<string[]>([]);
@@ -260,12 +312,14 @@ const actionConfirmation = ref<ProductActionConfirmation | null>(null);
 const products = useQuery({
   queryKey: [
     'products',
+    accountBoundary,
     subject,
     language,
     productPage,
     productPageSize,
     selectedProductGroupId,
-    selectedProductGroupLevel
+    selectedProductGroupLevel,
+    appliedFilters
   ],
   queryFn: () =>
     gateway.request('listProducts', {
@@ -273,6 +327,7 @@ const products = useQuery({
       pageSize: productPageSize.value,
       subject: subject.value,
       language: language.value,
+      ...productFilterPayload(productFilters.value),
       ...(selectedProductGroupId.value !== null
         ? {
             groupId: selectedProductGroupId.value,
@@ -447,6 +502,15 @@ const productPublishDisabledReason = computed(() =>
 );
 
 const publish = useMutation({
+  onMutate: () => ({
+    epoch: editorEpoch,
+    productId: editProductId.value,
+    batchItemId: editingBatchItemId.value,
+    xml: schemaPreview.value
+  }),
+  onError: (error, _draft, context) => {
+    if (context?.epoch === editorEpoch) showSubmissionError(error);
+  },
   mutationFn: async (draft: boolean) => {
     if (!schemaModel.value) throw new Error(t('products.view.errors.schemaFirst'));
     if (editProductId.value) {
@@ -493,43 +557,11 @@ const publish = useMutation({
       throw new Error(t('products.view.errors.publishingMinimum'));
     return draft ? gateway.request('saveProductDraft', base) : gateway.request('publishProduct', base);
   },
-  onSuccess: async (result, draft) => {
-    if (editProductId.value && result.job) {
-      feedback.value = t('products.view.feedback.reviewSubmitted', { id: result.productId });
-      saveCurrentLocalDraft();
-      queryClient.setQueryData(['product-mutation-jobs', editProductId.value], {
-        items: [result.job],
-        page: 1,
-        pageSize: 20,
-        total: 1
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ['product-mutation-jobs', editProductId.value]
-      });
-      return;
-    }
-    const creationPending =
-      !editProductId.value && result.job !== undefined && result.job.status !== 'verified';
-    if (!editProductId.value && result.job) {
-      queryClient.setQueryData(['product-creation-mutation-jobs'], [result.job]);
-      await queryClient.invalidateQueries({ queryKey: ['product-creation-mutation-jobs'] });
-    }
-    feedback.value = editProductId.value
-      ? t('products.view.feedback.updated', { id: result.productId })
-      : creationPending
-        ? t('products.view.feedback.creationAccepted', {
-            action: t(draft ? 'products.view.feedback.draftCreation' : 'products.view.feedback.publishing'),
-            id: result.productId
-          })
-        : t('products.view.feedback.creationConfirmed', {
-            action: t(
-              draft ? 'products.view.feedback.draftConfirmed' : 'products.view.feedback.publishConfirmed'
-            ),
-            id: result.productId
-          });
-    if (!editProductId.value && editingBatchItemId.value && 'localStorage' in globalThis) {
+  onSuccess: async (result, draft, context) => {
+    // Persist the receipt against the originating queue item even after the editor has changed.
+    if (!context.productId && context.batchItemId && 'localStorage' in globalThis) {
       recordProductBatchPublishResult(globalThis.localStorage, {
-        itemId: editingBatchItemId.value,
+        itemId: context.batchItemId,
         title: '',
         target: draft ? 'draft' : 'publish',
         status:
@@ -543,19 +575,57 @@ const publish = useMutation({
         message: result.job?.status === 'recovery-required' ? result.job.message : null,
         job: result.job ?? null
       });
-      editingBatchItemId.value = '';
       reloadBatchItems();
     }
-    await queryClient.invalidateQueries({ queryKey: ['products'] });
-    if (draft && !editProductId.value) {
-      platformDraftId.value = result.productId;
-      saveCurrentLocalDraft();
-    } else if (!creationPending) {
-      clearCurrentLocalDraft();
-    } else {
-      saveCurrentLocalDraft();
+    if (context.productId && result.job) {
+      queryClient.setQueryData(['product-mutation-jobs', context.productId], {
+        items: [result.job],
+        page: 1,
+        pageSize: 20,
+        total: 1
+      });
     }
-    if (editScoreProductId.value) scheduleScoreRefresh(editScoreProductId.value);
+    if (!context.productId && result.job)
+      queryClient.setQueryData(['product-creation-mutation-jobs'], [result.job]);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['products'] }),
+      queryClient.invalidateQueries({ queryKey: ['product-mutation-jobs', context.productId] }),
+      queryClient.invalidateQueries({ queryKey: ['product-creation-mutation-jobs'] })
+    ]);
+    if (context.epoch !== editorEpoch) return;
+    editorScoreRefreshNeeded.value = true;
+    if (editScoreProductId.value) staleScoreIds.add(editScoreProductId.value);
+    productScore.reset();
+    if (editScoreProductId.value)
+      productScores.value = Object.fromEntries(
+        Object.entries(productScores.value).filter(([id]) => id !== editScoreProductId.value)
+      );
+    if (schemaPreview.value === context.xml) editing.markClean();
+    const creationPending =
+      !context.productId && result.job !== undefined && result.job.status !== 'verified';
+    feedback.value = context.productId
+      ? t(result.job ? 'products.view.feedback.reviewSubmitted' : 'products.view.feedback.updated', {
+          id: result.productId
+        })
+      : t(
+          creationPending
+            ? 'products.view.feedback.creationAccepted'
+            : 'products.view.feedback.creationConfirmed',
+          {
+            action: t(
+              draft
+                ? creationPending
+                  ? 'products.view.feedback.draftCreation'
+                  : 'products.view.feedback.draftConfirmed'
+                : creationPending
+                  ? 'products.view.feedback.publishing'
+                  : 'products.view.feedback.publishConfirmed'
+            ),
+            id: result.productId
+          }
+        );
+    if (draft && !context.productId) platformDraftId.value = result.productId;
+    if (context.batchItemId === editingBatchItemId.value) editingBatchItemId.value = '';
   }
 });
 
@@ -633,7 +703,16 @@ const batchPublish = useMutation({
 
 const productScore = useMutation({
   mutationFn: async (productId: string) => {
-    const result = await requestPageDetail(gateway, mode, language.value, { kind: 'score', id: productId });
+    const epoch = editorEpoch;
+    const result = await requestPageDetail(
+      gateway,
+      mode,
+      language.value,
+      { kind: 'score', id: productId },
+      undefined,
+      editorScoreRefreshNeeded.value
+    );
+    if (epoch === editorEpoch) editorScoreRefreshNeeded.value = false;
     if (!('score' in result)) throw new Error('INVALID_RESPONSE');
     return result;
   },
@@ -641,21 +720,23 @@ const productScore = useMutation({
     productScoreErrors.value = Object.fromEntries(
       Object.entries(productScoreErrors.value).filter(([key]) => key !== productId)
     );
-    return detailBoundary.value;
+    return { boundary: detailBoundary.value, epoch: editorEpoch };
   },
   onSuccess: (result, productId, boundary) => {
-    if (boundary !== detailBoundary.value) return;
+    if (boundary.boundary !== detailBoundary.value || boundary.epoch !== editorEpoch) return;
     productScores.value = { ...productScores.value, [productId]: result };
   },
   onError: (error, productId, boundary) => {
-    if (boundary !== detailBoundary.value) return;
+    if (boundary?.boundary !== detailBoundary.value || boundary.epoch !== editorEpoch) return;
     productScoreErrors.value = { ...productScoreErrors.value, [productId]: errorMessage(error) };
   }
 });
 
 const officialHints = computed<ProductSchemaOfficialHint[]>(() => [
   ...(schemaModel.value ? collectProductSchemaOfficialHints(schemaModel.value.fields) : []),
-  ...createProductScoreOfficialHints(productScore.data.value?.issues ?? [])
+  ...createProductScoreOfficialHints(
+    (editScoreProductId.value ? productScores.value[editScoreProductId.value]?.issues : undefined) ?? []
+  )
 ]);
 const qualityIssues = computed(() =>
   analyzeProductDescriptionQuality({
@@ -666,21 +747,23 @@ const qualityIssues = computed(() =>
     locale: locale.value
   })
 );
-const currentPageProducts = computed(() => products.data.value?.items ?? []);
-const accountContext = useGalleryTransfers()?.currentContext;
-watch(
-  () => JSON.stringify([accountContext?.value?.identity, accountContext?.value?.gateway]),
-  () => {
-    showcase.invalidate();
-    if (!showcase.busy.value) showcaseOpen.value = false;
-  }
+const currentPageProducts = computed(() =>
+  filterCurrentPageProducts(products.data.value?.items ?? [], appliedFilters.value)
 );
+watch(accountBoundary, () => {
+  clearProductSelection();
+  resetEditorSession({ categoryId: '', mode: 'quick' });
+  showcase.invalidate();
+  if (!showcase.busy.value) showcaseOpen.value = false;
+});
 const detailBoundary = computed(() =>
   JSON.stringify([
     subject.value,
+    appliedFilters.value,
     language.value,
     productPage.value,
     productPageSize.value,
+    products.dataUpdatedAt.value,
     selectedProductGroupId.value,
     accountContext?.value?.identity,
     accountContext?.value?.gateway,
@@ -693,7 +776,16 @@ const pageDetails = usePageDetails(
   (row) => row.id,
   async (row, identity) => {
     if (!row.encryptedId) throw new Error('PRODUCT_ENCRYPTED_ID_MISSING');
-    return requestPageDetail(gateway, mode, language.value, { kind: 'score', id: row.encryptedId }, identity);
+    const result = await requestPageDetail(
+      gateway,
+      mode,
+      language.value,
+      { kind: 'score', id: row.encryptedId },
+      identity,
+      staleScoreIds.has(row.encryptedId)
+    );
+    staleScoreIds.delete(row.encryptedId);
+    return result;
   },
   (row, data) => {
     if ('score' in data && row.encryptedId)
@@ -701,6 +793,60 @@ const pageDetails = usePageDetails(
   },
   () => pageDetailIdentity(gateway, mode)
 );
+const visibleScoreRegions = ref<Set<string>>(new Set());
+let scoreQueueTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
+function setScoreRegion(id: string, visible: boolean): void {
+  const regions = new Set(visibleScoreRegions.value);
+  if (visible) regions.add(id);
+  else regions.delete(id);
+  visibleScoreRegions.value = regions;
+}
+function scheduleVisibleScores(): void {
+  if (scoreQueueTimer !== undefined) globalThis.clearTimeout(scoreQueueTimer);
+  if (
+    queryingSelectedProductScores.value &&
+    workspace.value === 'list' &&
+    globalThis.document.visibilityState !== 'hidden'
+  )
+    return;
+  if (
+    workspace.value !== 'list' ||
+    globalThis.document.visibilityState === 'hidden' ||
+    visibleScoreRegions.value.size === 0
+  ) {
+    pageDetails.stop();
+    return;
+  }
+  if (pageDetails.busy.value || pageDetails.securityFailure.value) return;
+  scoreQueueTimer = globalThis.setTimeout(() => {
+    scoreQueueTimer = undefined;
+    const target = currentPageProducts.value.find(
+      (row) =>
+        (visibleScoreRegions.value.has(row.id + ':score') ||
+          visibleScoreRegions.value.has(row.id + ':issues')) &&
+        row.encryptedId &&
+        pageDetails.states.value[row.id] !== 'ready' &&
+        pageDetails.states.value[row.id] !== 'failed'
+    );
+    if (target && workspace.value === 'list' && globalThis.document.visibilityState !== 'hidden')
+      void pageDetails.load(false, [target]);
+  }, 300);
+}
+watch([visibleScoreRegions, pageDetails.busy, detailBoundary, currentPageProducts], scheduleVisibleScores, {
+  flush: 'post'
+});
+function checkEditorScore(visible: boolean): void {
+  if (
+    visible &&
+    workspace.value === 'publisher' &&
+    editScoreProductId.value &&
+    !productScore.isPending.value &&
+    !productScores.value[editScoreProductId.value] &&
+    !productScore.error.value
+  ) {
+    productScore.mutate(editScoreProductId.value);
+  }
+}
 const inventory = useProductInventory(gateway, mode, language, currentPageProducts, detailBoundary);
 async function querySelectedInventory(): Promise<void> {
   const result = await inventory.load(false, selectedProducts.value);
@@ -829,14 +975,6 @@ const selectedDisplayMutationBlocked = computed(() =>
     (job) => selectedProductIds.value.includes(job.productId) && productMutationJobIsBlocking(job.status)
   )
 );
-const latestDisplayMutationJobs = computed(() => (displayMutationHistory.data.value ?? []).slice(0, 5));
-const refreshDisplayMutation = useMutation({
-  mutationFn: (job: ProductMutationJob) => {
-    if (!productMutationJobs) throw new Error(t('products.view.errors.jobUnsupported'));
-    return productMutationJobs.refresh(job.id, job.revision);
-  },
-  onSuccess: () => queryClient.invalidateQueries({ queryKey: ['product-display-mutation-jobs'] })
-});
 const refreshTaskMutation = useMutation({
   mutationFn: (job: ProductMutationJob) => {
     if (!productMutationJobs) throw new Error(t('products.view.errors.jobUnsupported'));
@@ -932,6 +1070,7 @@ function queueCurrentProduct(): void {
     selectedBatchItemIds.value = [...new Set([...selectedBatchItemIds.value, queued.id])];
     feedback.value = '';
     toast.success(t('products.view.feedback.addedToBatch', { title: queued.title }));
+    editing.markClean();
     workspace.value = 'batch-publisher';
     updateProductHash('push');
   } catch (error: unknown) {
@@ -973,13 +1112,13 @@ function stopBatchPublish(): void {
   feedback.value = t('products.view.feedback.stopping');
 }
 
-function editBatchItem(item: ProductBatchPublishItem): void {
-  cancelDraftSave();
-  draftCandidate.value = null;
+async function editBatchItem(item: ProductBatchPublishItem): Promise<void> {
+  if (!(await editing.confirmLeave())) return;
   resetEditorSession({ categoryId: item.categoryId, mode: 'quick' });
   schemaModel.value = parseProductSchemaXml(item.xml, undefined, locale.value);
   language.value = item.language;
   market.value = item.market;
+  editing.markClean();
   editingBatchItemId.value = item.id;
   currentCategory.value =
     categoryOptions.value.find((category) => String(category.id) === item.categoryId) ?? null;
@@ -1418,7 +1557,8 @@ function setProductPage(page: number): void {
 
 function setProductPageSize(pageSize: number): void {
   if (pageSize === productPageSize.value) return;
-  productPageSize.value = pageSize;
+  productPageSize.value = Math.max(1, Math.min(30, pageSize));
+  productPage.value = 1;
   clearProductSelection();
 }
 
@@ -1572,27 +1712,37 @@ const columns = computed<DataColumn<Product>[]>(() => [
       const suggestions = score?.issues.length
         ? t('products.view.scoreSuggestions', { count: score.issues.length })
         : null;
-      return h('div', { class: 'min-w-0 space-y-0.5 whitespace-nowrap' }, [
-        h(
-          'span',
-          { class: 'font-medium tabular-nums' },
-          score
-            ? `${formatProductScore(score.score)}/${PRODUCT_SCORE_DISPLAY_MAX}`
-            : t(
-                `common.columns.${pageDetails.states.value[row.original.id] === 'loading' ? 'loading' : pageDetails.states.value[row.original.id] === 'failed' ? 'failed' : 'pending'}`
-              )
-        ),
-        suggestions
-          ? h(
-              'p',
-              { class: 'truncate text-xs text-amber-700 dark:text-amber-400', title: suggestions },
-              suggestions
-            )
-          : null,
-        error
-          ? h('p', { class: 'text-xs text-destructive', title: error }, t('products.view.scoreFailed'))
-          : null
-      ]);
+      return h(
+        ProductVisibleRegion,
+        {
+          active: workspace.value === 'list',
+          onVisible: (visible: boolean) => {
+            setScoreRegion(row.original.id + ':score', visible);
+          }
+        },
+        () =>
+          h('div', { class: 'min-w-0 space-y-0.5 whitespace-nowrap' }, [
+            h(
+              'span',
+              { class: 'font-medium tabular-nums' },
+              score
+                ? formatProductScore(score.score)
+                : t(
+                    `common.columns.${pageDetails.states.value[row.original.id] === 'loading' ? 'loading' : pageDetails.states.value[row.original.id] === 'failed' ? 'failed' : 'pending'}`
+                  )
+            ),
+            suggestions
+              ? h(
+                  'p',
+                  { class: 'truncate text-xs text-amber-700 dark:text-amber-400', title: suggestions },
+                  suggestions
+                )
+              : null,
+            error
+              ? h('p', { class: 'text-xs text-destructive', title: error }, t('products.view.scoreFailed'))
+              : null
+          ])
+      );
     },
     meta: { width: '128px' }
   },
@@ -1632,12 +1782,21 @@ const columns = computed<DataColumn<Product>[]>(() => [
             .join(' / '),
     [t('common.fields.yes'), t('common.fields.no')]
   ),
-  fieldColumn<Product>(
-    'scoreIssues',
-    t('common.fields.scoreIssues'),
-    (row) => scoreForProduct(row)?.issues.length ?? t('common.columns.pending'),
-    [t('common.fields.yes'), t('common.fields.no')]
-  ),
+  {
+    id: 'scoreIssues',
+    header: t('common.fields.scoreIssues'),
+    cell: ({ row }) =>
+      h(
+        ProductVisibleRegion,
+        {
+          active: workspace.value === 'list',
+          onVisible: (visible: boolean) => {
+            setScoreRegion(row.original.id + ':issues', visible);
+          }
+        },
+        () => String(scoreForProduct(row.original)?.issues.length ?? t('common.columns.pending'))
+      )
+  },
   {
     id: 'actions',
     header: t('products.view.columns.actions'),
@@ -1789,6 +1948,12 @@ async function loadCategoryBranch(categoryIdToLoad: number): Promise<ProductCate
 }
 
 async function selectCategory(categoryIdToSelect: number): Promise<void> {
+  if (!(await editing.confirmLeave())) return;
+  categoryId.value = String(categoryIdToSelect);
+  editorEpoch++;
+  submissionError.value = null;
+  submissionErrorOpen.value = false;
+  publish.reset();
   const category = findCategory(categoryTree.value, categoryIdToSelect);
   currentCategory.value = category;
   schemaModel.value = null;
@@ -1842,8 +2007,7 @@ async function retryCategories(): Promise<void> {
 }
 
 async function selectProductForSchema(product: Product): Promise<void> {
-  cancelDraftSave();
-  draftCandidate.value = null;
+  if (!(await editing.confirmLeave())) return;
   acknowledgedMutationJobId.value = '';
   resetEditorSession({
     productId: product.id,
@@ -1863,13 +2027,11 @@ async function selectProductForSchema(product: Product): Promise<void> {
   }
 }
 
-function startNewProduct(): void {
-  const migratedDraft = migratedDraftKey.value ? draftCandidate.value : null;
-  cancelDraftSave();
-  draftCandidate.value = migratedDraft;
+async function startNewProduct(): Promise<void> {
+  if (!(await editing.confirmLeave())) return;
   acknowledgedMutationJobId.value = '';
   editingBatchItemId.value = '';
-  resetEditorSession({ categoryId: migratedDraft?.categoryId ?? '', mode: 'quick' });
+  resetEditorSession({ categoryId: '', mode: 'quick' });
   editScoreProductId.value = '';
   currentCategory.value = null;
   categorySearch.value = '';
@@ -1878,10 +2040,12 @@ function startNewProduct(): void {
   feedback.value = t('products.view.feedback.chooseCategory');
   workspace.value = 'publisher';
   updateProductHash('push');
-  if (!migratedDraft) offerCurrentDraft();
 }
 
-function setWorkspace(nextWorkspace: Workspace): void {
+async function setWorkspace(nextWorkspace: Workspace): Promise<void> {
+  if (nextWorkspace === workspace.value) return;
+  if (!(await editing.confirmLeave())) return;
+  if (workspace.value === 'publisher') resetEditorSession({ categoryId: '', mode: 'quick' });
   if (nextWorkspace === 'batch-publisher' || nextWorkspace === 'tasks') reloadBatchItems();
   workspace.value = nextWorkspace;
   updateProductHash('push');
@@ -1895,6 +2059,27 @@ function setEditorMode(nextMode: ProductEditorMode): void {
 function setEditorStep(nextStep: ProductEditorStepId): void {
   editorStep.value = nextStep;
   updateProductHash('push');
+}
+
+async function changeEditorProductId(id: string): Promise<void> {
+  if (id === editProductId.value || !(await editing.confirmLeave())) return;
+  resetEditorSession({ productId: id.trim(), categoryId: categoryId.value, mode: editorMode.value });
+  editScoreProductId.value = '';
+}
+
+async function changeEditorLanguage(event: Event): Promise<void> {
+  const next = (event.target as HTMLSelectElement).value;
+  if (next !== 'zh_CN' && next !== 'en_US') return;
+  if (!(await editing.confirmLeave())) {
+    (event.target as HTMLSelectElement).value = language.value;
+    return;
+  }
+  language.value = next;
+  resetEditorSession({
+    productId: editProductId.value,
+    categoryId: categoryId.value,
+    mode: editorMode.value
+  });
 }
 
 function updateProductHash(historyMode: 'push' | 'replace'): void {
@@ -1942,8 +2127,6 @@ async function syncProductsFromHash(): Promise<boolean> {
         schemaModel.value === null);
 
     if (needsSchemaReload) {
-      cancelDraftSave();
-      draftCandidate.value = null;
       acknowledgedMutationJobId.value = '';
       resetEditorSession({ productId: nextProductId, categoryId: nextCategoryId, mode: nextMode });
       editScoreProductId.value = '';
@@ -1967,21 +2150,23 @@ function handleProductRouteChange(): void {
   void syncProductsFromHash();
 }
 
-function applySchema(xml: string, message: string, offerLocalDraft = true): void {
+function applySchema(xml: string, message: string, establishBaseline = true): void {
   try {
     schemaModel.value = parseProductSchemaXml(xml, undefined, locale.value);
-    sourceIsLocalDraft.value = false;
+    if (establishBaseline) editing.markClean();
     schemaError.value = '';
     feedback.value = message;
     editorStep.value = 'basics';
     updateProductHash('replace');
-    if (offerLocalDraft) offerCurrentDraft();
   } catch (error: unknown) {
     schemaError.value = error instanceof Error ? error.message : t('products.view.errors.schemaParse');
   }
 }
 
 async function loadSchema(): Promise<void> {
+  if (!(await editing.confirmLeave())) return;
+  const epoch = ++editorEpoch;
+  const requestedProductId = editProductId.value;
   schemaError.value = '';
   const parsedCategoryId = resolveCategoryId();
   if (parsedCategoryId === null) {
@@ -1990,12 +2175,13 @@ async function loadSchema(): Promise<void> {
   }
   try {
     const result = editProductId.value
-      ? await renderExistingProductSchema(parsedCategoryId)
+      ? await renderExistingProductSchema(parsedCategoryId, requestedProductId, epoch)
       : await gateway.request('getProductSchema', {
           categoryId: parsedCategoryId,
           language: language.value,
           market: market.value
         });
+    if (epoch !== editorEpoch || editProductId.value !== requestedProductId) return;
     applySchema(
       result.xml,
       t(
@@ -2004,8 +2190,8 @@ async function loadSchema(): Promise<void> {
           : 'products.view.feedback.categorySchema'
       )
     );
-    if (editScoreProductId.value) productScore.mutate(editScoreProductId.value);
   } catch (error: unknown) {
+    if (epoch !== editorEpoch || editProductId.value !== requestedProductId) return;
     schemaError.value = error instanceof Error ? error.message : t('products.view.errors.schemaFetch');
   }
 }
@@ -2020,25 +2206,28 @@ function resolveCategoryId(): number | null {
   return parsed;
 }
 
-async function renderExistingProductSchema(parsedCategoryId: number) {
+async function renderExistingProductSchema(parsedCategoryId: number, productId: string, epoch: number) {
   const request = {
     categoryId: parsedCategoryId,
     language: language.value,
-    productId: editProductId.value
+    productId
   };
   const validation = validateProductSchemaRenderInput(request);
   if (!validation.valid) throw new Error(validation.errors.join('；'));
   const result = await gateway.request('renderProductSchema', request);
-  if (productMutationJobs) {
-    const history = await productMutationJobs.list({ productId: editProductId.value, pageSize: 20 });
+  if (productMutationJobs && epoch === editorEpoch) {
+    const history = await productMutationJobs.list({ productId, pageSize: 20 });
+    if (epoch !== editorEpoch) return result;
     acknowledgedMutationJobId.value =
       history.items.find((job) => job.operation === 'updateProduct')?.id ?? '';
-    queryClient.setQueryData(['product-mutation-jobs', editProductId.value], history);
+    queryClient.setQueryData(['product-mutation-jobs', productId], history);
   }
   return result;
 }
 
 async function loadDraft(): Promise<void> {
+  if (!(await editing.confirmLeave())) return;
+  const epoch = ++editorEpoch;
   if (!editProductId.value) {
     schemaError.value = t('products.view.errors.draftId');
     return;
@@ -2048,25 +2237,30 @@ async function loadDraft(): Promise<void> {
       productId: editProductId.value,
       language: language.value
     });
+    if (epoch !== editorEpoch) return;
     categoryId.value = String(result.categoryId);
     applySchema(result.schemaXml, t('products.view.feedback.draftSchema', { id: result.id }));
     editScoreProductId.value = result.encryptedId ?? '';
-    if (editScoreProductId.value) productScore.mutate(editScoreProductId.value);
   } catch (error: unknown) {
+    if (epoch !== editorEpoch) return;
     schemaError.value = error instanceof Error ? error.message : t('products.view.errors.draftRender');
   }
 }
 
 async function refreshLevelSchema(): Promise<void> {
   if (!schemaModel.value) return;
+  const epoch = editorEpoch;
+  const sourceXml = schemaPreview.value;
   try {
     const result = await gateway.request('getProductLevelSchema', {
       categoryId: Number(categoryId.value),
       language: language.value,
       xml: guardedSchemaXml(schemaModel.value)
     });
+    if (epoch !== editorEpoch || schemaPreview.value !== sourceXml) return;
     applySchema(result.xml, t('products.view.feedback.levelRefreshed'), false);
   } catch (error: unknown) {
+    if (epoch !== editorEpoch || schemaPreview.value !== sourceXml) return;
     schemaError.value = error instanceof Error ? error.message : t('products.view.errors.levelRefresh');
   }
 }
@@ -2076,143 +2270,6 @@ function updateImageStatus(status: ProductDescriptionImageMetadata & { url: stri
     ...imageMetadata.value,
     [status.url]: { loaded: status.loaded, width: status.width, height: status.height }
   };
-}
-
-function offerCurrentDraft(): void {
-  if (!('localStorage' in globalThis) || !categoryId.value) return;
-  draftCandidate.value = findProductEditorDraft(
-    globalThis.localStorage,
-    editProductId.value,
-    categoryId.value
-  );
-}
-
-function resumeLocalDraft(): void {
-  const draft = draftCandidate.value;
-  if (!draft) return;
-  try {
-    schemaModel.value = parseProductSchemaXml(draft.xml, undefined, locale.value);
-    sourceIsLocalDraft.value = true;
-    categoryId.value = draft.categoryId;
-    language.value = draft.language;
-    market.value = draft.market;
-    editorMode.value = draft.mode;
-    editorStep.value = draft.step;
-    platformDraftId.value = draft.platformDraftId;
-    draftCandidate.value = null;
-    migratedDraftKey.value = null;
-    draftSaveStatus.value = 'saved';
-    feedback.value = t('products.view.feedback.localDraftResumed');
-    updateProductHash('replace');
-  } catch (error: unknown) {
-    schemaError.value = error instanceof Error ? error.message : t('products.view.errors.localDraftParse');
-  }
-}
-
-async function reloadPlatformData(): Promise<void> {
-  const draft = draftCandidate.value;
-  if (!draft || !('localStorage' in globalThis)) return;
-  removeProductEditorDraft(globalThis.localStorage, draft.draftKey);
-  draftCandidate.value = null;
-  migratedDraftKey.value = null;
-  draftSaveStatus.value = 'idle';
-  if (draft.platformDraftId) {
-    editProductId.value = draft.platformDraftId;
-    await loadDraft();
-    editProductId.value = '';
-    platformDraftId.value = draft.platformDraftId;
-    return;
-  }
-  await loadSchema();
-}
-
-function scheduleDraftSave(): void {
-  cancelDraftSave();
-  if (!schemaModel.value || !categoryId.value || draftCandidate.value) return;
-  draftSaveStatus.value = 'saving';
-  draftSaveTimer = globalThis.setTimeout(() => {
-    draftSaveTimer = undefined;
-    saveCurrentLocalDraft();
-  }, 750);
-}
-
-function reconcileDraftAfterFieldChange(): void {
-  const inspection = schemaInspection.value;
-  cancelDraftSave();
-  if (!inspection.safe) {
-    draftSaveStatus.value = 'idle';
-    return;
-  }
-  if (!shouldPersistProductEditorDraft(inspection)) {
-    if (sourceIsLocalDraft.value) {
-      draftSaveStatus.value = 'saved';
-      return;
-    }
-    removeCurrentLocalDraft();
-    draftSaveStatus.value = 'idle';
-    return;
-  }
-  scheduleDraftSave();
-}
-
-function saveCurrentLocalDraft(): void {
-  if (!schemaModel.value || !schemaPreview.value || !categoryId.value || !('localStorage' in globalThis))
-    return;
-  try {
-    saveProductEditorDraft(globalThis.localStorage, {
-      productId: editProductId.value || null,
-      categoryId: categoryId.value,
-      language: language.value,
-      market: market.value,
-      xml: schemaPreview.value,
-      mode: editorMode.value,
-      step: editorStep.value,
-      platformDraftId: platformDraftId.value
-    });
-    draftSaveStatus.value = 'saved';
-  } catch {
-    draftSaveStatus.value = 'error';
-  }
-}
-
-function clearCurrentLocalDraft(): void {
-  cancelDraftSave();
-  if (!('localStorage' in globalThis) || !categoryId.value) return;
-  removeProductEditorDraft(
-    globalThis.localStorage,
-    productEditorDraftKey(editProductId.value, categoryId.value)
-  );
-  draftCandidate.value = null;
-  draftSaveStatus.value = 'idle';
-}
-
-function removeCurrentLocalDraft(): void {
-  if (!('localStorage' in globalThis) || !categoryId.value) return;
-  removeProductEditorDraft(
-    globalThis.localStorage,
-    productEditorDraftKey(editProductId.value, categoryId.value)
-  );
-}
-
-function cancelDraftSave(): void {
-  if (draftSaveTimer === undefined) return;
-  globalThis.clearTimeout(draftSaveTimer);
-  draftSaveTimer = undefined;
-}
-
-function draftSaveLabel(status: DraftSaveStatus): string {
-  if (status === 'saving') return t('products.view.draftSave.saving');
-  if (status === 'saved') return t('products.view.draftSave.saved');
-  if (status === 'error') return t('products.view.draftSave.error');
-  return '';
-}
-
-function scheduleScoreRefresh(productId: string): void {
-  if (scoreRefreshTimer !== undefined) globalThis.clearTimeout(scoreRefreshTimer);
-  scoreRefreshTimer = globalThis.setTimeout(() => {
-    productScore.mutate(productId);
-    scoreRefreshTimer = undefined;
-  }, 5000);
 }
 
 function errorMessage(error: unknown): string {
@@ -2290,7 +2347,6 @@ function guardedSchemaXml(model: ProductSchemaModel): string {
 }
 
 watch([categoryId, editProductId], () => {
-  if (!schemaModel.value) offerCurrentDraft();
   if (workspace.value === 'publisher') updateProductHash('replace');
 });
 
@@ -2312,35 +2368,22 @@ watch(
 );
 
 onMounted(async () => {
+  globalThis.document.addEventListener('visibilitychange', scheduleVisibleScores);
   globalThis.addEventListener('hashchange', handleProductRouteChange);
   globalThis.addEventListener('popstate', handleProductRouteChange);
   if ('localStorage' in globalThis) {
     batchItems.value = recoverInterruptedProductBatchPublishItems(globalThis.localStorage);
   }
-  if (await syncProductsFromHash()) return;
-  if (!('localStorage' in globalThis)) return;
-  const migratedV2 = migrateProductEditorDraftsV2(globalThis.localStorage);
-  if (migratedV2[0]) {
-    migratedDraftKey.value = migratedV2[0].draftKey;
-    categoryId.value = migratedV2[0].categoryId;
-    draftCandidate.value = migratedV2[0];
-    return;
-  }
-  const migrated = migrateLegacyProductEditorDraft(globalThis.localStorage);
-  if (migrated) {
-    migratedDraftKey.value = migrated.draftKey;
-    categoryId.value = migrated.categoryId;
-    draftCandidate.value = migrated;
-  } else {
-    offerCurrentDraft();
-  }
+  await syncProductsFromHash();
 });
 
 onBeforeUnmount(() => {
+  globalThis.document.removeEventListener('visibilitychange', scheduleVisibleScores);
   globalThis.removeEventListener('hashchange', handleProductRouteChange);
   globalThis.removeEventListener('popstate', handleProductRouteChange);
-  cancelDraftSave();
-  if (scoreRefreshTimer !== undefined) globalThis.clearTimeout(scoreRefreshTimer);
+  if (scoreQueueTimer !== undefined) globalThis.clearTimeout(scoreQueueTimer);
+  pageDetails.stop();
+  editorEpoch++;
 });
 </script>
 
@@ -2389,10 +2432,21 @@ onBeforeUnmount(() => {
           role="toolbar"
           :aria-label="t('products.view.page.toolbar')"
         >
-          <div class="relative min-w-64 max-w-md flex-1">
-            <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-            <Input v-model="subject" class="pl-9" :placeholder="t('products.view.page.search')" />
-          </div>
+          <form class="flex min-w-0 flex-wrap items-center gap-2" @submit.prevent="searchProducts">
+            <Input
+              v-model="subjectDraft"
+              class="w-48 max-w-full sm:w-56"
+              :aria-label="t('products.view.page.search')"
+              :placeholder="t('products.view.page.search')"
+            />
+            <Button type="submit" variant="outline" :disabled="products.isFetching.value">
+              <Search class="size-4" />{{ t('products.filters.search') }}
+            </Button>
+            <ProductListFilterDialog
+              :model-value="productFilters"
+              @update:model-value="applyProductFilters"
+            />
+          </form>
           <div class="flex flex-wrap items-center justify-end gap-2">
             <span
               v-if="selectedProducts.length > MAX_PRODUCT_TRANSFER_ITEMS"
@@ -2401,17 +2455,6 @@ onBeforeUnmount(() => {
             >
               {{ t('products.view.page.exportLimit', { maximum: MAX_PRODUCT_TRANSFER_ITEMS }) }}
             </span>
-            <Button
-              variant="outline"
-              :disabled="products.isFetching.value"
-              :aria-label="t('products.view.page.refreshLabel')"
-              @click="products.refetch()"
-            >
-              <RefreshCw class="size-4" :class="{ 'animate-spin': products.isFetching.value }" />
-              {{
-                products.isFetching.value ? t('products.view.page.refreshing') : t('common.actions.refresh')
-              }}
-            </Button>
             <Button variant="outline" :disabled="productTransferBusy" @click="openProductImportDialog">
               <Upload class="size-4" />{{ t('products.view.page.import') }}
             </Button>
@@ -2533,7 +2576,7 @@ onBeforeUnmount(() => {
             :columns="columns"
             column-settings-key="products"
             class="rounded-t-none"
-            :locked-columns="['select', 'subject', 'actions']"
+            :locked-columns="['select', 'actions']"
             :hidden-columns="[
               ...productExtraFields,
               ...inventoryColumnIds,
@@ -2541,9 +2584,10 @@ onBeforeUnmount(() => {
               'scoreIssues',
               'showcase'
             ]"
-            :data="products.data.value?.items ?? []"
+            :data="currentPageProducts"
             :page="productPage"
             :page-size="productPageSize"
+            :page-size-options="[10, 20, 30]"
             :total-rows="products.data.value?.total ?? 0"
             :pagination-disabled="products.isFetching.value"
             :empty-text="t('products.view.page.noMatch')"
@@ -2557,7 +2601,9 @@ onBeforeUnmount(() => {
           >
             <template #empty>
               <div class="space-y-3 py-4">
-                <p>{{ t('products.view.page.noMatch') }}</p>
+                <p>
+                  {{ t(appliedFilters.status ? 'products.filters.pageEmpty' : 'products.view.page.noMatch') }}
+                </p>
                 <Button v-if="subject" variant="outline" size="sm" @click="subject = ''">
                   {{ t('products.view.page.clearSearch') }}
                 </Button>
@@ -2566,7 +2612,7 @@ onBeforeUnmount(() => {
                 }}</Button>
               </div>
             </template>
-            <template #column-actions="{ visible }">
+            <template #column-actions>
               <PageDetailActions
                 v-if="inventoryColumnsVisible"
                 :page-key="JSON.stringify([detailBoundary, inventory.source.value, currentPageProductIds])"
@@ -2577,17 +2623,6 @@ onBeforeUnmount(() => {
                 :failed="Object.keys(inventory.errors.value).length > 0"
                 :load="inventory.load"
                 @stop="inventory.stop"
-              />
-              <PageDetailActions
-                v-if="visible.includes('productScore') || visible.includes('scoreIssues')"
-                :page-key="JSON.stringify([detailBoundary, currentPageProducts.map((product) => product.id)])"
-                :busy="pageDetails.busy.value"
-                :done="pageDetails.done.value"
-                :total="pageDetails.total.value"
-                :count="currentPageProducts.length"
-                :failed="Object.keys(pageDetails.errors.value).length > 0"
-                :load="pageDetails.load"
-                @stop="pageDetails.stop"
               />
             </template>
             <template #pagination-summary>
@@ -2601,95 +2636,6 @@ onBeforeUnmount(() => {
             </template>
           </DataTable>
         </QueryState>
-        <Card v-if="latestDisplayMutationJobs.length" class="mt-5 p-5">
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 class="font-semibold">{{ t('products.view.page.recentDisplayJobs') }}</h2>
-              <p class="mt-1 text-sm text-muted-foreground">
-                {{ t('products.view.page.recentDisplayDescription') }}
-              </p>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              :disabled="displayMutationHistory.isFetching.value"
-              @click="displayMutationHistory.refetch()"
-            >
-              <RefreshCw class="size-4" />
-              {{
-                displayMutationHistory.isFetching.value
-                  ? t('products.view.page.checking')
-                  : t('products.view.page.refreshAll')
-              }}
-            </Button>
-          </div>
-          <div class="mt-4 space-y-3">
-            <div
-              v-for="job in latestDisplayMutationJobs"
-              :key="job.id"
-              class="rounded-lg border border-border p-3"
-            >
-              <div class="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div class="flex flex-wrap items-center gap-2">
-                    <span class="font-mono text-sm">{{ job.productId }}</span>
-                    <Badge :variant="productMutationStatusVariant(job.status)">
-                      {{ productMutationStatusLabel(job.status) }}
-                    </Badge>
-                  </div>
-                  <p class="mt-1 text-xs text-muted-foreground">
-                    {{
-                      t('products.view.page.statusTransition', {
-                        from: t(
-                          job.originalDisplay === 'online'
-                            ? 'products.view.feedback.online'
-                            : 'products.view.feedback.offline'
-                        ),
-                        to: t(
-                          job.targetDisplay === 'online'
-                            ? 'products.view.feedback.online'
-                            : 'products.view.feedback.offline'
-                        )
-                      })
-                    }}
-                    <span class="font-mono">{{ job.requestId }}</span>
-                  </p>
-                  <p class="mt-2 text-sm text-muted-foreground">{{ productMutationMessage(job) }}</p>
-                  <PlatformReadbackNotice :kind="productReadbackNotice(job.status)" class="mt-2" />
-                </div>
-                <div class="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    :disabled="refreshDisplayMutation.isPending.value"
-                    @click="refreshDisplayMutation.mutate(job)"
-                    >{{ t('products.view.page.queryStatus') }}</Button
-                  >
-                  <Button
-                    v-if="job.status === 'recovery-required'"
-                    size="sm"
-                    variant="destructive"
-                    :disabled="recoverDisplayMutation.isPending.value"
-                    @click="recoverDisplayJob(job)"
-                    >{{ t('products.view.page.recover') }}</Button
-                  >
-                </div>
-              </div>
-            </div>
-          </div>
-          <ErrorNotice
-            v-if="refreshDisplayMutation.error.value"
-            class="mt-3"
-            :error="refreshDisplayMutation.error.value"
-            compact
-          />
-          <ErrorNotice
-            v-if="recoverDisplayMutation.error.value"
-            class="mt-3"
-            :error="recoverDisplayMutation.error.value"
-            compact
-          />
-        </Card>
       </section>
     </div>
   </template>
@@ -2717,12 +2663,12 @@ onBeforeUnmount(() => {
         v-if="!editProductId"
         v-model="market"
         :language="language"
-        :locked="Boolean(schemaModel || draftCandidate || platformDraftId)"
+        :locked="Boolean(schemaModel || platformDraftId)"
         :category-id="categorySelectionReady ? Number(categoryId) : null"
         @blocked="postingTypeBlocked = $event"
       />
       <ProductCategoryPicker
-        v-model="categoryId"
+        :model-value="categoryId"
         v-model:search="categorySearch"
         class="mt-5"
         :categories="categoryTree"
@@ -2758,7 +2704,8 @@ onBeforeUnmount(() => {
           <label class="text-sm font-medium">
             {{ t('products.view.page.language') }}
             <select
-              v-model="language"
+              :value="language"
+              @change="changeEditorLanguage"
               class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
               :aria-label="t('products.view.page.formLanguage')"
             >
@@ -2769,44 +2716,14 @@ onBeforeUnmount(() => {
           <label class="text-sm font-medium">
             {{ t('products.view.page.clearProductId') }}
             <Input
-              v-model="editProductId"
+              :model-value="editProductId"
+              @update:model-value="changeEditorProductId"
               class="mt-2"
               :placeholder="t('products.view.page.newProductIdPlaceholder')"
             />
           </label>
         </div>
       </details>
-      <div v-if="draftCandidate" class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm">
-        <p class="font-medium text-amber-950">
-          {{
-            t(
-              migratedDraftKey === draftCandidate.draftKey
-                ? 'products.view.page.migratedDraft'
-                : 'products.view.page.localDraft'
-            )
-          }}
-        </p>
-        <p class="mt-1 text-xs text-amber-800">
-          {{
-            t('products.view.page.draftSavedAt', {
-              time: formatDateTime(draftCandidate.updatedAtUtc)
-            })
-          }}
-        </p>
-        <div class="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" @click="resumeLocalDraft">{{ t('products.view.page.resumeDraft') }}</Button>
-          <Button size="sm" variant="outline" @click="reloadPlatformData">
-            {{ t('products.view.page.reloadPlatform') }}
-          </Button>
-        </div>
-      </div>
-      <p
-        v-if="draftSaveStatus !== 'idle' && !draftCandidate"
-        class="mt-3 text-xs"
-        :class="draftSaveStatus === 'error' ? 'text-destructive' : 'text-muted-foreground'"
-      >
-        {{ t('products.view.page.draftStatus', { status: draftSaveLabel(draftSaveStatus) }) }}
-      </p>
       <p v-if="schemaError" class="mt-3 text-sm text-destructive">{{ schemaError }}</p>
     </Card>
 
@@ -3019,9 +2936,12 @@ onBeforeUnmount(() => {
       @update-field="updateRootField"
       @image-status="updateImageStatus"
       @refresh-score="productScore.mutate(editScoreProductId)"
+      @review-visible="checkEditorScore"
       @submit="submitProduct"
     />
-    <ErrorNotice v-if="publish.error.value" class="mt-3" :error="publish.error.value" compact />
+    <Button v-if="submissionError" class="mt-3" variant="outline" @click="submissionErrorOpen = true">{{
+      t('products.submission.viewError')
+    }}</Button>
   </template>
 
   <template v-else-if="workspace === 'batch-publisher'">
@@ -3063,6 +2983,21 @@ onBeforeUnmount(() => {
     />
   </template>
 
+  <ModalDialog
+    v-model:open="submissionErrorOpen"
+    :title="t('products.submission.failed')"
+    :description="t('products.submission.description')"
+    size="lg"
+  >
+    <template v-if="isSmartDescriptionError">
+      <p class="font-medium">{{ t('products.submission.smartTitle') }}</p>
+      <p class="mt-2 text-sm text-muted-foreground">{{ t('products.submission.smartGuidance') }}</p>
+      <Button class="mt-3" variant="outline" @click="locateDescription">{{
+        t('products.submission.locateDescription')
+      }}</Button>
+    </template>
+    <ErrorNotice v-if="submissionError" class="mt-3" :error="submissionError" />
+  </ModalDialog>
   <ProductTransferDialog
     v-model:open="productTransferDialogOpen"
     v-model:schema-format="productTransferSchemaFormat"

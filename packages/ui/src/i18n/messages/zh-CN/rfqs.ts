@@ -1,4 +1,5 @@
 export const rfqs = {
+  categoryInvalid: '类目 ID 应为正整数。',
   title: 'RFQ 工作台',
   description: 'RFQ 搜索、推荐、详情、已读状态与报价草稿均使用类型化契约。',
   status: {
@@ -27,7 +28,7 @@ export const rfqs = {
     fillFirst: '请先填写：{fields}',
     closedTitle: '真实报价写操作保持关闭',
     closedDescription: '{reason}；本地报价草稿不受影响。',
-    localAvailable: '可保存本地草稿；{reason}。'
+    localAvailable: '可在当前页面填写，离开后不自动恢复；{reason}。'
   },
   fields: {
     rfq: 'RFQ',
@@ -86,7 +87,7 @@ export const rfqs = {
   },
   draft: {
     title: '报价草稿',
-    description: '草稿仅保存在当前浏览器，不会提前出网。',
+    description: '填写内容仅保留在当前页面，离开前会提醒确认，不会自动恢复上次编辑。',
     saved: '已保存',
     save: '保存草稿',
     attachment: '报价附件',

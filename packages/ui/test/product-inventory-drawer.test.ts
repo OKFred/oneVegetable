@@ -20,13 +20,23 @@ describe('inventory partial response display', () => {
       },
       global: { stubs: { Sheet: { template: '<div><slot /></div>' } } }
     });
-    expect(wrapper.findAll('tbody td').map((cell) => cell.text())).toEqual(['—', '—', '—', '0']);
+    expect(
+      wrapper
+        .findAll('tbody td')
+        .slice(1, -1)
+        .map((cell) => cell.text())
+    ).toEqual(['—', '—', '—', '0']);
     expect(wrapper.get('[data-testid="platform-readback-notice"]').text()).toContain('同步可能有延迟');
     await wrapper.get('input').setValue(' RED ');
     expect(wrapper.findAll('tbody td')).toHaveLength(1);
-    expect(wrapper.get('tbody td').attributes('colspan')).toBe('4');
+    expect(wrapper.get('tbody td').attributes('colspan')).toBe('6');
     await wrapper.get('input').setValue('  ');
-    expect(wrapper.findAll('tbody td').map((cell) => cell.text())).toEqual(['—', '—', '—', '0']);
+    expect(
+      wrapper
+        .findAll('tbody td')
+        .slice(1, -1)
+        .map((cell) => cell.text())
+    ).toEqual(['—', '—', '—', '0']);
     wrapper.unmount();
   });
 });

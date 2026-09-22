@@ -30,9 +30,9 @@ const { t } = useUiI18n();
       ></DialogTrigger
     >
     <DialogPortal>
-      <DialogOverlay class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" />
+      <DialogOverlay class="ov-dialog-overlay fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm" />
       <DialogContent
-        class="fixed left-1/2 top-1/2 z-50 max-h-[90dvh] w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border bg-background p-6 shadow-xl"
+        class="ov-dialog-content fixed left-1/2 top-1/2 z-[81] max-h-[90dvh] w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border bg-background p-6 shadow-xl"
       >
         <DialogTitle class="pr-8 text-lg font-semibold">{{ title || t('common.filters.title') }}</DialogTitle>
         <DialogDescription class="mb-5 mt-1 text-sm text-muted-foreground">{{

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, h, ref, watch } from 'vue';
 import { useMutation, useQuery } from '@tanstack/vue-query';
-import { ExternalLink, FileText, Paperclip, Save, Search, Send, ShieldAlert, Sparkles } from '@lucide/vue';
+import { ExternalLink, FileText, Paperclip, Search, Send, ShieldAlert, Sparkles } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
 import {
@@ -14,6 +14,7 @@ import {
 
 import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
+import ListFilterDialog from '../components/ListFilterDialog.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
@@ -30,6 +31,7 @@ import {
 import { formatDate } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
+import { useUnsavedEditing } from '../lib/unsaved-editing';
 
 type RfqSource = 'search' | 'recommend';
 
@@ -54,14 +56,29 @@ const source = ref<RfqSource>('search');
 const keywords = ref('');
 const country = ref('');
 const unquotedOnly = ref(true);
-const appliedFilters = ref({ keywords: '', country: '', unquotedOnly: true });
+const categoryId = ref('');
+const filtersOpen = ref(false);
+const appliedFilters = ref({ keywords: '', categoryId: '', country: '', unquotedOnly: true });
+const filterCount = computed(
+  () =>
+    [appliedFilters.value.categoryId, appliedFilters.value.country, appliedFilters.value.unquotedOnly].filter(
+      Boolean
+    ).length
+);
+const invalidFilters = computed(() => !!categoryId.value && !/^[1-9][0-9]*$/.test(categoryId.value));
+watch(filtersOpen, (open) => {
+  if (!open) return;
+  categoryId.value = appliedFilters.value.categoryId;
+  country.value = appliedFilters.value.country;
+  unquotedOnly.value = appliedFilters.value.unquotedOnly;
+});
 const rfqPage = ref(1);
 const rfqPageSize = ref(20);
 const selectedRfqId = ref('');
 const rfqSheetOpen = ref(false);
-const draftSaved = ref(false);
 const attachmentError = ref('');
 const attachmentName = ref('');
+let editorGeneration = 0;
 
 function emptyDraft(rfq?: RfqSummary): QuotationDraft {
   const expiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -82,6 +99,7 @@ function emptyDraft(rfq?: RfqSummary): QuotationDraft {
 }
 
 const draft = ref<QuotationDraft>(emptyDraft());
+const editing = useUnsavedEditing(() => draft.value, { enabled: () => rfqSheetOpen.value });
 const equity = useQuery({
   queryKey: ['rfq-equity'],
   queryFn: () => gateway.request('getRfqEquity', undefined),
@@ -94,6 +112,7 @@ const listKey = computed(() => [
   source.value,
   appliedFilters.value.keywords,
   appliedFilters.value.country,
+  appliedFilters.value.categoryId,
   appliedFilters.value.unquotedOnly,
   rfqPage.value,
   rfqPageSize.value
@@ -109,6 +128,7 @@ const rfqs = useQuery({
           pageSize: rfqPageSize.value,
           ...(appliedFilters.value.keywords ? { keywords: appliedFilters.value.keywords } : {}),
           ...(appliedFilters.value.country ? { country: appliedFilters.value.country } : {}),
+          ...(appliedFilters.value.categoryId ? { categoryId: appliedFilters.value.categoryId } : {}),
           unquotedOnly: appliedFilters.value.unquotedOnly
         })
 });
@@ -183,14 +203,15 @@ const quotationDisabledReason = computed(() => {
 });
 
 const submitQuotation = useMutation({
-  mutationFn: () => gateway.request('submitRfqQuotation', quotationPayload()),
-  onSuccess: () => toast.success(t('rfqs.feedback.submitted'))
+  mutationFn: (payload: RfqQuotationRequest) => gateway.request('submitRfqQuotation', payload),
+  onSuccess: (_result, payload) => {
+    if (JSON.stringify(quotationPayload()) === JSON.stringify(payload)) editing.markClean();
+    toast.success(t('rfqs.feedback.submitted'));
+  }
 });
 const uploadAttachment = useMutation({
   mutationFn: (payload: RfqAttachmentUploadRequest) => gateway.request('uploadRfqAttachment', payload),
-  onSuccess: (result) => {
-    draft.value.attachmentFilesString = result.filesString;
-    saveDraft();
+  onSuccess: () => {
     toast.success(t('rfqs.feedback.attachmentUploaded'));
   }
 });
@@ -217,36 +238,19 @@ function quotationPayload(): RfqQuotationRequest {
   };
 }
 
-function selectRfq(rfq: RfqSummary): void {
+async function selectRfq(rfq: RfqSummary): Promise<void> {
+  if (rfq.id !== selectedRfqId.value && !(await editing.confirmLeave())) return;
   selectedRfqId.value = rfq.id;
   rfqSheetOpen.value = true;
 }
 
-function draftKey(rfqId: string): string {
-  return `one-vegetable:rfq-draft:${rfqId}`;
-}
-
-function saveDraft(): void {
-  if (!selectedRfqId.value) return;
-  globalThis.localStorage.setItem(draftKey(selectedRfqId.value), JSON.stringify(draft.value));
-  draftSaved.value = true;
-  globalThis.setTimeout(() => {
-    draftSaved.value = false;
-  }, 1800);
-}
-
-function restoreDraft(rfqId: string): void {
-  const summary = (rfqs.data.value?.items ?? []).find((rfq) => rfq.id === rfqId);
-  const stored = globalThis.localStorage.getItem(draftKey(rfqId));
-  if (!stored) {
-    draft.value = emptyDraft(summary);
-    return;
-  }
-  try {
-    const parsed: unknown = JSON.parse(stored);
-    draft.value = isQuotationDraft(parsed) ? parsed : emptyDraft(summary);
-  } catch {
-    draft.value = emptyDraft(summary);
+async function setRfqSheetOpen(open: boolean): Promise<void> {
+  if (!open && !(await editing.confirmLeave())) return;
+  rfqSheetOpen.value = open;
+  if (!open) {
+    selectedRfqId.value = '';
+    draft.value = emptyDraft();
+    editing.markClean();
   }
 }
 
@@ -263,14 +267,17 @@ async function selectAttachment(event: Event): Promise<void> {
     return;
   }
   const file = input.files[0];
+  const generation = editorGeneration;
   attachmentName.value = file.name;
   try {
-    uploadAttachment.mutate({
+    const result = await uploadAttachment.mutateAsync({
       fileName: file.name,
       contentBase64: await fileToBase64(file),
       contentType: file.type || 'application/octet-stream',
       byteLength: file.size
     });
+    if (generation === editorGeneration && rfqSheetOpen.value)
+      draft.value.attachmentFilesString = result.filesString;
   } catch (error: unknown) {
     attachmentError.value = error instanceof Error ? error.message : t('rfqs.errors.attachmentRead');
   } finally {
@@ -295,43 +302,43 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-function isQuotationDraft(value: unknown): value is QuotationDraft {
-  if (typeof value !== 'object' || value === null) return false;
-  const keys: (keyof QuotationDraft)[] = [
-    'message',
-    'paymentTerms',
-    'expiresAt',
-    'itemName',
-    'unitPrice',
-    'currency',
-    'quantity',
-    'quantityUnit',
-    'shippingTerms',
-    'port',
-    'remark',
-    'attachmentFilesString'
-  ];
-  return keys.every((key) => key in value && typeof (value as Record<string, unknown>)[key] === 'string');
-}
-
-watch(selectedRfqId, (rfqId) => {
-  submitQuotation.reset();
-  attachmentError.value = '';
-  attachmentName.value = '';
-  if (rfqId) restoreDraft(rfqId);
-});
+watch(
+  selectedRfqId,
+  (rfqId) => {
+    editorGeneration += 1;
+    submitQuotation.reset();
+    attachmentError.value = '';
+    attachmentName.value = '';
+    draft.value = emptyDraft((rfqs.data.value?.items ?? []).find((rfq) => rfq.id === rfqId));
+    editing.markClean();
+  },
+  { flush: 'sync' }
+);
 
 watch(source, () => {
   rfqPage.value = 1;
 });
 
 function applySearch(): void {
+  if (!rfqWorkspaceReady.value || rfqs.isFetching.value) return;
+  const nextKeywords = keywords.value.trim();
+  if (appliedFilters.value.keywords === nextKeywords && rfqPage.value === 1) {
+    void rfqs.refetch();
+    return;
+  }
+  appliedFilters.value = { ...appliedFilters.value, keywords: nextKeywords };
+  rfqPage.value = 1;
+}
+function applyRfqFilters(): void {
+  if (invalidFilters.value) return;
   appliedFilters.value = {
-    keywords: keywords.value.trim(),
+    keywords: appliedFilters.value.keywords,
+    categoryId: categoryId.value,
     country: country.value.trim().toUpperCase(),
     unquotedOnly: unquotedOnly.value
   };
   rfqPage.value = 1;
+  filtersOpen.value = false;
 }
 
 function isRfqPermissionDenied(error: unknown): boolean {
@@ -355,7 +362,7 @@ const columns = computed<DataColumn<RfqSummary>[]>(() => [
         {
           class: 'max-w-80 text-left font-medium text-primary hover:underline',
           onClick: () => {
-            selectRfq(row.original);
+            void selectRfq(row.original);
           }
         },
         row.original.subject
@@ -473,19 +480,6 @@ const columns = computed<DataColumn<RfqSummary>[]>(() => [
   </Card>
 
   <template v-if="rfqWorkspaceReady">
-    <Card
-      v-if="realMutationBlocked"
-      class="mb-4 flex items-start gap-3 border-amber-300 p-4 text-sm dark:border-amber-800"
-    >
-      <ShieldAlert class="mt-0.5 size-4 shrink-0 text-amber-600" />
-      <div>
-        <p class="font-medium">{{ t('rfqs.mutation.closedTitle') }}</p>
-        <p class="mt-1 text-xs leading-5 text-muted-foreground">
-          {{ t('rfqs.mutation.closedDescription', { reason: mutationAvailabilityReason }) }}
-        </p>
-      </div>
-    </Card>
-
     <div class="mb-4 grid gap-3 md:grid-cols-3">
       <Card class="p-4">
         <p class="text-xs text-muted-foreground">{{ t('rfqs.equity.quotes') }}</p>
@@ -501,7 +495,7 @@ const columns = computed<DataColumn<RfqSummary>[]>(() => [
       </Card>
     </div>
 
-    <div class="mb-4 flex flex-wrap items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2 rounded-t-lg border border-b-0 p-3">
       <Button :variant="source === 'search' ? 'default' : 'outline'" @click="source = 'search'">
         <Search class="size-4" />{{ t('rfqs.market') }}
       </Button>
@@ -517,16 +511,34 @@ const columns = computed<DataColumn<RfqSummary>[]>(() => [
           @keyup.enter="applySearch"
         />
       </div>
-      <Input
+      <ListFilterDialog
         v-if="source === 'search'"
-        v-model="country"
-        class="w-32"
-        :placeholder="t('rfqs.countryPlaceholder')"
-        @keyup.enter="applySearch"
-      />
-      <label v-if="source === 'search'" class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input v-model="unquotedOnly" type="checkbox" />{{ t('rfqs.unquotedOnly') }}
-      </label>
+        v-model:open="filtersOpen"
+        :active-count="filterCount"
+        :invalid="invalidFilters"
+        @apply="applyRfqFilters"
+        @reset="
+          categoryId = '';
+          country = '';
+          unquotedOnly = false;
+        "
+      >
+        <p class="text-xs font-medium text-muted-foreground">{{ t('common.filters.server') }}</p>
+        <label class="block space-y-1 text-sm"
+          ><span>{{ t('common.fields.categoryId') }}</span
+          ><Input v-model="categoryId" inputmode="numeric" :aria-label="t('common.fields.categoryId')"
+        /></label>
+        <label class="block space-y-1 text-sm"
+          ><span>{{ t('rfqs.countryPlaceholder') }}</span
+          ><Input v-model="country" maxlength="2" :aria-label="t('rfqs.countryPlaceholder')"
+        /></label>
+        <label class="flex items-center gap-2 text-sm"
+          ><input v-model="unquotedOnly" type="checkbox" />{{ t('rfqs.unquotedOnly') }}</label
+        >
+        <p v-if="invalidFilters" role="alert" class="text-sm text-destructive">
+          {{ t('rfqs.categoryInvalid') }}
+        </p>
+      </ListFilterDialog>
       <Button v-if="source === 'search'" variant="outline" @click="applySearch">
         <Search class="size-4" />{{ t('rfqs.search') }}
       </Button>
@@ -539,6 +551,7 @@ const columns = computed<DataColumn<RfqSummary>[]>(() => [
       @retry="rfqs.refetch()"
     >
       <DataTable
+        column-settings-key="rfqs"
         :columns="columns"
         :data="rfqs.data.value?.items ?? []"
         v-model:page="rfqPage"
@@ -546,6 +559,7 @@ const columns = computed<DataColumn<RfqSummary>[]>(() => [
         :total-rows="rfqs.data.value?.total ?? 0"
         :page-size-options="[10, 20]"
         :pagination-disabled="rfqs.isFetching.value"
+        :selection-scope="JSON.stringify([source, appliedFilters])"
         :empty-text="t('rfqs.noMatch')"
         min-width="840px"
         :get-row-key="(rfq) => rfq.id"
@@ -559,7 +573,7 @@ const columns = computed<DataColumn<RfqSummary>[]>(() => [
       :open="rfqSheetOpen"
       :title="detail.data.value?.subject ?? selectedSummary?.subject ?? t('rfqs.detailTitle')"
       :description="selectedRfqId ? `RFQ ${selectedRfqId}` : undefined"
-      @update:open="rfqSheetOpen = $event"
+      @update:open="setRfqSheetOpen"
     >
       <template #toolbar>
         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -631,7 +645,6 @@ const columns = computed<DataColumn<RfqSummary>[]>(() => [
               </p>
               <p class="mt-1 text-sm text-muted-foreground">{{ t('rfqs.draft.description') }}</p>
             </div>
-            <Badge v-if="draftSaved" variant="success">{{ t('rfqs.draft.saved') }}</Badge>
           </div>
 
           <div
@@ -685,9 +698,6 @@ const columns = computed<DataColumn<RfqSummary>[]>(() => [
           </div>
 
           <div class="mt-4 flex flex-wrap items-center gap-2">
-            <Button variant="outline" @click="saveDraft"
-              ><Save class="size-4" />{{ t('rfqs.draft.save') }}</Button
-            >
             <ActionTooltip :disabled="attachmentMutationBlocked" :reason="attachmentDisabledReason">
               <label
                 class="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border bg-background px-4 text-sm font-medium hover:bg-accent"
@@ -703,7 +713,10 @@ const columns = computed<DataColumn<RfqSummary>[]>(() => [
               </label>
             </ActionTooltip>
             <ActionTooltip :disabled="Boolean(quotationDisabledReason)" :reason="quotationDisabledReason">
-              <Button :disabled="Boolean(quotationDisabledReason)" @click="submitQuotation.mutate()">
+              <Button
+                :disabled="Boolean(quotationDisabledReason)"
+                @click="submitQuotation.mutate(quotationPayload())"
+              >
                 <Send class="size-4" />{{ t('rfqs.draft.submit') }}
               </Button>
             </ActionTooltip>

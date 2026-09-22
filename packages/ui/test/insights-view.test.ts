@@ -1,14 +1,22 @@
 // @vitest-environment jsdom
 
 import { defineComponent, h } from 'vue';
-import { flushPromises, mount } from '@vue/test-utils';
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import { provideServices } from '../src/lib/services';
 import InsightsView from '../src/views/InsightsView.vue';
+
+beforeEach(() => {
+  localStorage.clear();
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+  document.body.innerHTML = '';
+});
 
 function mountView(mode: 'mock' | 'extension' = 'mock') {
   const Host = defineComponent({
@@ -35,6 +43,62 @@ function button(wrapper: ReturnType<typeof mountView>, text: string) {
 }
 
 describe('InsightsView', () => {
+  it('applies date filters only after confirmation and rejects reversed ranges', async () => {
+    const requests = vi.spyOn(MockGatewayClient.prototype, 'request');
+    const wrapper = mountView();
+    await button(wrapper, '采购供应商').trigger('click');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('supplier-enc-001');
+    });
+    await button(wrapper, 'supplier-enc-001').trigger('click');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Portable solar power station 1000W');
+    });
+    const initialCalls = requests.mock.calls.filter(
+      ([operation]) => operation === 'listInsightsSupplierProducts'
+    ).length;
+    await button(wrapper, '筛选').trigger('click');
+    await flushPromises();
+    const from = document.querySelector<HTMLInputElement>('input[aria-label="开始日期"]');
+    const to = document.querySelector<HTMLInputElement>('input[aria-label="结束日期"]');
+    if (!from || !to) throw new Error('Missing date fields');
+    await new DOMWrapper(from).setValue('2026-08-20');
+    await new DOMWrapper(to).setValue('2026-08-01');
+    const apply = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')).find(
+      (item) => item.textContent.trim() === '应用筛选'
+    );
+    if (!apply) throw new Error('Missing apply');
+    expect(apply.disabled).toBe(true);
+    expect(document.body.textContent).toContain('结束时间不能早于开始时间');
+    expect(
+      requests.mock.calls.filter(([operation]) => operation === 'listInsightsSupplierProducts')
+    ).toHaveLength(initialCalls);
+    await new DOMWrapper(to).setValue('2026-08-25');
+    apply.click();
+    await vi.waitFor(() => {
+      expect(requests).toHaveBeenCalledWith(
+        'listInsightsSupplierProducts',
+        expect.objectContaining({
+          dateStart: '2026-08-20T00:00:00.000Z',
+          dateEnd: '2026-08-25T23:59:59.999Z',
+          page: 1
+        })
+      );
+    });
+    expect(wrapper.text()).toContain('筛选 · 1');
+    await button(wrapper, '筛选').trigger('click');
+    await flushPromises();
+    const controls = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button'));
+    controls.find((item) => item.textContent.trim() === '重置')?.click();
+    await flushPromises();
+    controls.find((item) => item.textContent.trim() === '取消')?.click();
+    await flushPromises();
+    expect(wrapper.text()).toContain('筛选 · 1');
+    expect(
+      requests.mock.calls.filter(([operation]) => operation === 'listInsightsSupplierProducts')
+    ).toHaveLength(initialCalls + 1);
+    wrapper.unmount();
+  });
   it('shows rank values without inventing a business interpretation', async () => {
     const wrapper = mountView();
     await flushPromises();

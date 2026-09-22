@@ -16,6 +16,7 @@ import {
 } from '@one-vegetable/core';
 
 import OfficialHintContent from './OfficialHintContent.vue';
+import ProductVisibleRegion from './ProductVisibleRegion.vue';
 import PlatformDraftHandoff from './PlatformDraftHandoff.vue';
 import ProductSchemaFieldComponent from './ProductSchemaField.vue';
 import ProductEditorLoading from './ProductEditorLoading.vue';
@@ -79,6 +80,7 @@ const emit = defineEmits<{
   updateField: [sourceIndex: number, field: ProductSchemaField];
   imageStatus: [status: ProductDescriptionImageMetadata & { url: string }];
   refreshScore: [];
+  reviewVisible: [visible: boolean];
   submit: [draft: boolean];
 }>();
 const { t } = useUiI18n();
@@ -412,7 +414,11 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
         </TransitionGroup>
       </section>
 
-      <section v-else aria-labelledby="product-review-title">
+      <ProductVisibleRegion
+        v-else
+        aria-labelledby="product-review-title"
+        @visible="emit('reviewVisible', $event)"
+      >
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 id="product-review-title" class="text-lg font-semibold">
@@ -518,7 +524,7 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
             {{ t('products.wizard.browserLimitations', { count: model.warnings.length }) }}
           </p>
         </div>
-      </section>
+      </ProductVisibleRegion>
 
       <div
         class="sticky bottom-0 mt-6 flex flex-wrap items-center justify-between gap-3 border-t bg-background/95 py-4 backdrop-blur"

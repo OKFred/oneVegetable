@@ -10,16 +10,21 @@ import {
   EyeOff,
   FileSignature,
   MapPin,
-  RefreshCw,
   ShieldAlert,
   Truck
 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
-import type { TradeOrderDraft, TradeOrderSummary, TradeOrderAggregate } from '@one-vegetable/core';
+import type {
+  TradeOrderDraft,
+  TradeOrderSummary,
+  TradeOrderAggregate,
+  TradeOrderListQuery
+} from '@one-vegetable/core';
 
 import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
+import OrderListFilters from '../components/OrderListFilters.vue';
 import { fieldColumn } from '../lib/field-columns';
 import { detailErrorState, pageDetailIdentity, requestPageDetail, usePageDetails } from '../lib/page-details';
 import { useGalleryTransfers } from '../lib/gallery-transfer-service';
@@ -42,6 +47,7 @@ import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import type { DataColumn } from '../lib/table';
+import { useUnsavedEditing } from '../lib/unsaved-editing';
 
 type Workspace = 'orders' | 'finance' | 'addresses' | 'assurance';
 type OrderDrawerTab = 'overview' | 'payment';
@@ -52,6 +58,22 @@ const { alibabaLanguage: preferredLanguage } = useAppPreferences();
 const workspace = ref<Workspace>('orders');
 const status = ref('');
 const buyerLoginId = ref('');
+const buyerSearch = ref('');
+const orderFilters = ref<Omit<TradeOrderListQuery, 'page' | 'pageSize' | 'buyerLoginId'>>({});
+function applyOrderFilters(value: typeof orderFilters.value): void {
+  orderFilters.value = value;
+  status.value = value.status ?? '';
+  orderPage.value = 1;
+}
+function applyBuyerSearch(): void {
+  const nextBuyer = buyerSearch.value.trim();
+  if (buyerLoginId.value === nextBuyer && orderPage.value === 1) {
+    void orders.refetch();
+    return;
+  }
+  buyerLoginId.value = nextBuyer;
+  orderPage.value = 1;
+}
 const orderPage = ref(1);
 const orderPageSize = ref(20);
 const selectedOrderId = ref('');
@@ -64,6 +86,14 @@ const draftProductId = ref('');
 const draftSubject = ref('');
 const draftQuantity = ref('1');
 const draftUnitPrice = ref('');
+const editing = useUnsavedEditing(() => ({
+  buyer: draftBuyer.value,
+  currency: draftCurrency.value,
+  productId: draftProductId.value,
+  subject: draftSubject.value,
+  quantity: draftQuantity.value,
+  unitPrice: draftUnitPrice.value
+}));
 const orderSheetOpen = ref(false);
 const orderDrawerTab = ref<OrderDrawerTab>('overview');
 const ttAccountRevealed = ref(false);
@@ -81,11 +111,13 @@ const orders = useQuery({
     'trade-orders',
     status.value,
     buyerLoginId.value,
+    orderFilters.value,
     orderPage.value,
     orderPageSize.value
   ]),
   queryFn: () =>
     gateway.request('listTradeOrders', {
+      ...orderFilters.value,
       page: orderPage.value,
       pageSize: orderPageSize.value,
       ...(status.value ? { status: status.value } : {}),
@@ -222,7 +254,10 @@ const createOrderDisabledReason = computed(() => {
 });
 const createOrder = useMutation({
   mutationFn: () => gateway.request('createTradeOrder', orderDraft()),
-  onSuccess: (result) => toast.success(t('orders.feedback.created', { id: result.id }))
+  onSuccess: (result) => {
+    editing.markClean();
+    toast.success(t('orders.feedback.created', { id: result.id }));
+  }
 });
 
 function orderDraft(): TradeOrderDraft {
@@ -258,7 +293,18 @@ function setOrderSheetOpen(open: boolean): void {
   updateOrdersHash();
 }
 
-function setWorkspace(nextWorkspace: Workspace): void {
+async function setWorkspace(nextWorkspace: Workspace): Promise<void> {
+  const discarded = editing.dirty.value;
+  if (workspace.value !== nextWorkspace && !(await editing.confirmLeave())) return;
+  if (workspace.value !== nextWorkspace && discarded) {
+    draftBuyer.value = '';
+    draftCurrency.value = 'USD';
+    draftProductId.value = '';
+    draftSubject.value = '';
+    draftQuantity.value = '1';
+    draftUnitPrice.value = '';
+    editing.markClean();
+  }
   workspace.value = nextWorkspace;
   orderSheetOpen.value = false;
   selectedOrderId.value = '';
@@ -440,25 +486,19 @@ onBeforeUnmount(() => {
   </div>
 
   <template v-if="workspace === 'orders'">
-    <Card class="mb-4 p-4">
-      <div class="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-        <Input v-model="buyerLoginId" data-feedback-redact :placeholder="t('orders.filters.buyer')" />
-        <select v-model="status" class="h-9 rounded-md border bg-background px-3 text-sm">
-          <option value="">{{ t('orders.filters.allStatuses') }}</option>
-          <option value="unpay">{{ t('orders.filters.unpay') }}</option>
-          <option value="paid">{{ t('orders.filters.paid') }}</option>
-          <option value="undeliver">{{ t('orders.filters.undeliver') }}</option>
-          <option value="delivering">{{ t('orders.filters.delivering') }}</option>
-          <option value="trade_success">{{ t('orders.filters.success') }}</option>
-          <option value="trade_close">{{ t('orders.filters.closed') }}</option>
-        </select>
-        <Button variant="outline" :disabled="orders.isFetching.value" @click="orders.refetch()">
-          <RefreshCw class="size-4" />{{ t('common.actions.refresh') }}
-        </Button>
-      </div>
-      <p v-if="orders.data.value?.documentTimeZoneUnverified" class="mt-3 text-xs text-amber-700">
-        {{ t('orders.filters.timeZoneWarning') }}
-      </p>
+    <Card class="rounded-b-none border-b-0 p-3">
+      <form class="flex flex-wrap items-center gap-2" @submit.prevent="applyBuyerSearch">
+        <Input
+          v-model="buyerSearch"
+          class="w-48 max-w-full sm:w-56"
+          data-feedback-redact
+          :placeholder="t('orders.filters.buyer')"
+        />
+        <Button type="submit" variant="outline" :disabled="orders.isFetching.value">{{
+          t('common.filters.search')
+        }}</Button>
+        <OrderListFilters :model-value="orderFilters" @update:model-value="applyOrderFilters" />
+      </form>
     </Card>
     <QueryState
       :loading="orders.isPending.value"
@@ -484,6 +524,7 @@ onBeforeUnmount(() => {
         v-model:page-size="orderPageSize"
         :total-rows="orders.data.value?.total ?? 0"
         :pagination-disabled="orders.isFetching.value"
+        :selection-scope="JSON.stringify([orderFilters, buyerLoginId])"
         :empty-text="t('orders.noMatch')"
         min-width="900px"
         :get-row-key="(order) => order.id"
@@ -493,14 +534,23 @@ onBeforeUnmount(() => {
       >
         <template #empty>
           <div class="space-y-3 py-4">
-            <p>{{ status || buyerLoginId ? t('orders.noMatchingOrder') : t('orders.noOrders') }}</p>
+            <p>
+              {{
+                Object.keys(orderFilters).length || buyerLoginId
+                  ? t('orders.noMatchingOrder')
+                  : t('orders.noOrders')
+              }}
+            </p>
             <Button
-              v-if="status || buyerLoginId"
+              v-if="Object.keys(orderFilters).length || buyerLoginId"
               variant="outline"
               size="sm"
               @click="
                 status = '';
                 buyerLoginId = '';
+                buyerSearch = '';
+                orderFilters = {};
+                orderPage = 1;
               "
               >{{ t('orders.clearFilters') }}</Button
             >

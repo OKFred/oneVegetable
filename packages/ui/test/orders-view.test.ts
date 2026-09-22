@@ -56,6 +56,24 @@ describe('OrdersView', () => {
     globalThis.history.replaceState(null, '', '#/orders');
   });
 
+  it('searches again with unchanged conditions without a duplicate list refresh button', async () => {
+    const request = vi.spyOn(MockGatewayClient.prototype, 'request');
+    const wrapper = mountView();
+    await vi.waitFor(() => {
+      expect(wrapper.find('tbody tr').exists()).toBe(true);
+    });
+    const before = request.mock.calls.filter(([operation]) => operation === 'listTradeOrders').length;
+    expect(wrapper.findAll('button').some((item) => item.text() === '刷新')).toBe(false);
+    await wrapper.get('form').trigger('submit');
+    await vi.waitFor(() => {
+      expect(request.mock.calls.filter(([operation]) => operation === 'listTradeOrders')).toHaveLength(
+        before + 1
+      );
+    });
+    wrapper.unmount();
+    request.mockRestore();
+  });
+
   it('uses the preferred language for fulfillment and address Schema requests', async () => {
     localStorage.setItem(
       APP_PREFERENCES_STORAGE_KEY,

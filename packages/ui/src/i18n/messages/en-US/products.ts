@@ -1,4 +1,28 @@
 export const products = {
+  filters: {
+    search: 'Search',
+    productId: 'Product ID',
+    categoryId: 'Category ID',
+    groupId: 'Group ID',
+    groupLevel: 'Group level',
+    modifiedFrom: 'Modified from',
+    modifiedTo: 'Modified to',
+    invalid: 'Use positive integer IDs and ensure the start time is not later than the end time.',
+    pageEmpty: 'No matching products on this page. Adjust filters or view another page.'
+  },
+  inventoryWorkspace: {
+    description: 'Read-only product, SKU and warehouse inventory. Different warehouses are never combined.',
+    open: 'View inventory'
+  },
+  submission: {
+    failed: 'Product submission failed',
+    description: 'Review the platform response and next steps. Do not resubmit while the outcome is unclear.',
+    viewError: 'View submission error',
+    smartTitle: 'Platform rejected: smart-description layout association is invalid',
+    smartGuidance:
+      'Open product details and inspect the smart description. Preview conversion changes and confirm manually before switching to ordinary details. We will not change details or resubmit automatically. Alternatively, switch to ordinary editing and save on Alibaba.com, then reload.',
+    locateDescription: 'Go to product details'
+  },
   common: {
     allProducts: 'All products',
     allGroups: 'All groups',
@@ -21,7 +45,7 @@ export const products = {
     changedFields: 'Changed fields: {names}',
     draftCreated: 'Platform draft {id} created',
     draftHandoff:
-      'This app will continue saving local changes automatically. Alibaba OpenAPI does not currently provide an API for overwriting an existing platform draft.',
+      'Unsaved changes stay on this page only. Continue editing the platform draft on Alibaba.com, or explicitly save to the batch queue.',
     continueOnAlibaba: 'Continue editing on Alibaba.com',
     warnings: 'Server rule notices',
     xmlPreview: 'Schema XML preview (read-only)',
@@ -145,20 +169,20 @@ export const products = {
   },
   submitBar: {
     processing: 'Another product operation is still running',
-    draftExists: 'The platform draft already exists; later changes will continue to be saved locally',
+    draftExists: 'The platform draft exists; continue editing on Alibaba.com',
     schemaSaveBlocked: 'The Schema XML structure is invalid. Fix it before saving.',
     draftUnavailable: 'A platform draft cannot be saved right now',
     schemaSubmitBlocked: 'The Schema XML structure is invalid. Fix it before submitting.',
     minimumMissing: '{count} minimum publishing requirements are still missing',
     submitUnavailable: 'The product cannot be submitted right now',
     localAfterDraft:
-      'Later changes are saved locally. Use the Alibaba.com editor link above to write them back to the platform.',
+      'Changes are not saved automatically. Explicitly save to the batch queue or continue on Alibaba.com.',
     quickBlocked:
       '{count} minimum publishing requirements are missing, but you can still save a platform draft and continue later.',
     advisories: '{count} preflight suggestions do not disable submission. Alibaba makes the final decision.'
   },
   schemaField: {
-    galleryAsset: 'Gallery asset',
+    galleryAsset: 'Image asset',
     required: 'Required',
     readOnly: 'Read-only',
     disabled: 'Disabled',
@@ -199,7 +223,7 @@ export const products = {
     emptyPreview: 'Nothing remains to display after safely filtering the original details.',
     preparingPreview: 'Preparing the detail preview…',
     previewNotice:
-      'The preview loads Alibaba.com gallery images. Scripts, iframes, events, and unsupported styles are never executed.',
+      'The preview loads Alibaba.com images. Scripts, iframes, events, and unsupported styles are never executed.',
     sanitizedChanges: '{count} content changes were handled safely.',
     sourceLabel: 'Original platform detail HTML source',
     reviewConversion: 'Review conversion changes',
@@ -218,9 +242,9 @@ export const products = {
       table: 'Insert table',
       linkAddress: 'Link URL',
       setLink: 'Set link',
-      insertGalleryImage: 'Insert gallery image'
+      insertGalleryImage: 'Insert image'
     },
-    safeOutput: 'Output is restricted to safe tags; detail images must come from the Alibaba.com gallery.'
+    safeOutput: 'Output is restricted to safe tags; detail images must come from Alibaba.com image assets.'
   },
   wizard: {
     editTitle: 'Edit product',
@@ -243,7 +267,7 @@ export const products = {
       },
       media: {
         title: 'Image assets',
-        description: 'Choose main, SKU, and other product images from the gallery.'
+        description: 'Choose main, SKU, and other product images.'
       },
       description: {
         title: 'Product description',
@@ -407,7 +431,7 @@ export const products = {
       'The queue is empty. Click Add in the product list, complete a product, and add it to the batch queue.',
     selectProduct: 'Select {title}',
     unknownCategory: 'Unknown category',
-    ready: 'Ready to submit',
+    ready: 'Local preflight passed',
     minimumMissing: '{count} minimum requirements missing',
     advisoryCount: '{count} preflight suggestions',
     completed: 'Completed',
@@ -443,7 +467,7 @@ export const products = {
     importDescription:
       'Supports JSON, or a ZIP containing products.json and images under assets/. Only local validation runs before confirmation.',
     exportDescription: 'Export the {count} products selected when this dialog opened.',
-    galleryRoot: 'Gallery root',
+    galleryRoot: 'Images root',
     errors: {
       zipTooLarge: 'The product ZIP exceeds the 50 MiB limit',
       jsonTooLarge: 'The product import file exceeds the 10 MiB limit',
@@ -489,12 +513,12 @@ export const products = {
     validating: 'Safely extracting and validating products and images…',
     remainingProducts: '{count} more products',
     unusedAssets: '{count} images in the ZIP are not referenced by a product and will not be uploaded.',
-    uploadGroupTitle: 'Upload to gallery group',
+    uploadGroupTitle: 'Upload to image group',
     uploadGroupDescription:
       'After confirmation, upload {count} images first. Products are added to the batch queue only after every upload succeeds.',
     currentTarget: 'Current target: {name}',
     uploadUnavailable:
-      'Real gallery upload is not enabled in this environment, so ZIP files containing local images cannot be imported.',
+      'Real image upload is not enabled in this environment, so ZIP files containing local images cannot be imported.',
     exportPreview: 'Product export preview',
     frozen: 'Export selection frozen',
     advanced: 'Advanced settings',
@@ -503,7 +527,7 @@ export const products = {
     jsonDescription: 'Export product data only.',
     zipFile: 'ZIP package',
     zipTitle: 'ZIP (with images)',
-    zipDescription: 'Download gallery images to assets/. If any image fails, no file is generated.',
+    zipDescription: 'Download referenced images to assets/. If any image fails, no file is generated.',
     downloadUnavailable:
       'Product image download is not enabled in this environment, so a ZIP cannot be generated.',
     schemaField: 'Schema field',
@@ -521,11 +545,11 @@ export const products = {
       'Upload {images} images, then add {products} products to the local queue after every upload succeeds?',
     confirmQueue:
       'Add {count} products to the local batch publishing queue? Nothing is written directly to the platform.',
-    confirmZip: 'Download referenced gallery images and generate a ZIP for {count} products?',
+    confirmZip: 'Download referenced images and generate a ZIP for {count} products?',
     confirmJson: 'Read the Schemas for {count} products and download a JSON file?',
     confirmCloseDescription: 'Current content will be cleared. Close this dialog?',
     uploadCaveat:
-      'If an image upload fails, products are not added to the local queue. Gallery images already uploaded are not deleted automatically.',
+      'If an image upload fails, products are not added to the local queue. Images already uploaded are not deleted automatically.',
     queueCaveat: 'Nothing is added to the local queue before confirmation.',
     exportCaveat:
       'Product Schema and image download APIs are not called, and no file is downloaded, before confirmation.',
@@ -543,7 +567,7 @@ export const products = {
       noChanges: 'No product field changes need to be submitted',
       changedMinimum: 'Complete the minimum publishing requirements affected by this update',
       publishingMinimum: 'Complete minimum requirements such as product name and main image',
-      uploadDisabled: 'Real gallery upload is not enabled in this environment',
+      uploadDisabled: 'Real image upload is not enabled in this environment',
       downloadDisabled: 'Product image download is not enabled in this environment',
       selectProduct: 'Select at least one product',
       jobUnsupported: 'Persistent product write jobs are not supported in this mode',
@@ -637,7 +661,7 @@ export const products = {
     },
     progress: {
       readingSchema: 'Reading product Schema ({current}/{total})…',
-      downloadingImages: 'Downloading gallery images ({current}/{total})…',
+      downloadingImages: 'Downloading images ({current}/{total})…',
       packing: 'Generating ZIP package…',
       queuing: 'Writing to the local batch publishing queue…',
       uploading: 'Uploading to “{group}” ({current}/{total})…'
@@ -671,7 +695,7 @@ export const products = {
     draftSave: { saving: 'Saving…', saved: 'Saved locally', error: 'Local draft save failed' },
     mutationBlocked: {
       loading: 'Product write status is not ready',
-      auditing: 'The product is under platform review. Do not submit again; the local draft is preserved.',
+      auditing: 'The product is under platform review. Do not resubmit; view the receipt in the task center.',
       verifying: 'The list/delist request was accepted and is awaiting product list readback',
       recovering: 'The previous-status recovery request was accepted and is awaiting product list readback',
       recoveryRequired:
@@ -788,7 +812,7 @@ export const products = {
       submittedAt: 'Submitted at',
       lastCheck: 'Last checked',
       recoveryWarning:
-        'Verify product content in Alibaba.com first. The local draft is not deleted automatically, and the app never resubmits or overwrites the platform product automatically.',
+        'Verify product content in Alibaba.com first. Task receipts are retained. The app never resubmits or overwrites the platform product automatically.',
       verifiedNotice:
         'Platform readback matches. Reload the product form before continuing incremental editing with current platform content.',
       recentDraftJob: 'Most recent platform draft job',

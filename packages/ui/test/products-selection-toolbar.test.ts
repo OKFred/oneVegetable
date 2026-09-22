@@ -3,7 +3,7 @@
 import { defineComponent, h } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { toast } from 'vue-sonner';
 
 import { MockGatewayClient } from '@one-vegetable/core/mock';
@@ -11,6 +11,7 @@ import { MockGatewayClient } from '@one-vegetable/core/mock';
 import { provideServices } from '../src/lib/services';
 import ProductsView from '../src/views/ProductsView.vue';
 import ColumnSettings from '../src/components/ColumnSettings.vue';
+import ProductVisibleRegion from '../src/components/ProductVisibleRegion.vue';
 
 vi.mock('vue-sonner', () => ({
   toast: {
@@ -20,6 +21,11 @@ vi.mock('vue-sonner', () => ({
 }));
 
 describe('ProductsView selection toolbar', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    document.body.innerHTML = '';
+  });
   it('does not query details on column changes and puts the returned product link before Edit', async () => {
     const gateway = new MockGatewayClient(0);
     const request = vi.spyOn(gateway, 'request');
@@ -39,13 +45,64 @@ describe('ProductsView selection toolbar', () => {
     expect(link.element.parentElement?.textContent).toBe('库存链接编辑');
     expect(request.mock.calls.some(([operation]) => operation === 'getProductInventory')).toBe(false);
     expect(wrapper.get('tbody tr td:nth-child(3)').text()).not.toContain('10000001');
-    expect(request.mock.calls.some(([operation]) => operation === 'getProductScore')).toBe(true);
+    expect(request.mock.calls.some(([operation]) => operation === 'getProductScore')).toBe(false);
     wrapper.unmount();
   });
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe = vi.fn();
+        unobserve = vi.fn();
+        disconnect = vi.fn();
+      }
+    );
     localStorage.clear();
     globalThis.history.replaceState(null, '', '#/products/list');
+  });
+
+  it('only schedules visible score cells, stops in background and reuses completed scores', async () => {
+    const gateway = new MockGatewayClient(0);
+    const request = vi.spyOn(gateway, 'request');
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    const wrapper = mountView(gateway);
+    await waitForProducts(wrapper);
+    const scoreCalls = () => request.mock.calls.filter(([operation]) => operation === 'getProductScore');
+    const regions = wrapper.findAllComponents(ProductVisibleRegion);
+    const setVisible = (index: number, visible: boolean) => {
+      const region = regions[index];
+      if (region) (region.vm as { $emit(event: 'visible', value: boolean): void }).$emit('visible', visible);
+    };
+    expect(regions).toHaveLength(3);
+    expect(scoreCalls()).toHaveLength(0);
+    setVisible(0, true);
+    await vi.waitFor(() => {
+      expect(scoreCalls()).toHaveLength(1);
+    });
+    setVisible(0, false);
+    setVisible(0, true);
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    expect(scoreCalls()).toHaveLength(1);
+
+    setVisible(1, true);
+    visibility.mockReturnValue('hidden');
+    document.dispatchEvent(new Event('visibilitychange'));
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    expect(scoreCalls()).toHaveLength(1);
+
+    visibility.mockReturnValue('visible');
+    setVisible(1, true);
+    await vi.waitFor(() => {
+      expect(scoreCalls()).toHaveLength(2);
+    });
+    const settings = wrapper.getComponent(ColumnSettings);
+    (settings.vm as { $emit(event: 'toggle', value: string): void }).$emit('toggle', 'productScore');
+    await flushPromises();
+    expect(wrapper.findAllComponents(ProductVisibleRegion)).toHaveLength(0);
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    expect(scoreCalls()).toHaveLength(2);
+    wrapper.unmount();
   });
 
   it('supports unchecked, mixed and current-page selected states with a visible count', async () => {
@@ -134,7 +191,7 @@ describe('ProductsView selection toolbar', () => {
     const toolbar = wrapper.get('[role="toolbar"][aria-label="商品列表操作"]');
     const initialRequests = request.mock.calls.filter(([operation]) => operation === 'listProducts').length;
 
-    button(toolbar.element, '刷新').click();
+    button(toolbar.element, '搜索').click();
 
     await vi.waitFor(() => {
       const refreshedRequests = request.mock.calls.filter(
@@ -200,9 +257,11 @@ describe('ProductsView selection toolbar', () => {
     await wrapper.get('input[aria-label="选择 Portable solar power station 1000W"]').setValue(true);
     expect(selectedCount()).toContain('已选 1 个');
     await wrapper.get('input[placeholder="按标题搜索"]').setValue('canvas');
+    await wrapper.get('[role="toolbar"] form').trigger('submit');
     await waitForSelectionCount(wrapper, '已选 0 个', 'search change');
 
     await wrapper.get('input[placeholder="按标题搜索"]').setValue('');
+    await wrapper.get('[role="toolbar"] form').trigger('submit');
     await waitForProducts(wrapper);
     await wrapper.get('input[aria-label="选择 Portable solar power station 1000W"]').setValue(true);
     const pageSizeSelect = wrapper.get('select[aria-label="每页条数"]');
@@ -213,13 +272,13 @@ describe('ProductsView selection toolbar', () => {
 
     await wrapper.get('input[aria-label="选择 Portable solar power station 1000W"]').setValue(true);
     button(wrapper.element as Node, '新增').click();
-    await wrapper.vm.$nextTick();
+    await flushPromises();
     await wrapper.get('summary').trigger('click');
     const languageSelect = wrapper.get('select[aria-label="商品表单语言"]');
     const currentLanguage = (languageSelect.element as HTMLSelectElement).value;
     await languageSelect.setValue(currentLanguage === 'zh_CN' ? 'en_US' : 'zh_CN');
     button(wrapper.element as Node, '商品列表').click();
-    await wrapper.vm.$nextTick();
+    await flushPromises();
     await waitForSelectionCount(wrapper, '已选 0 个', 'language change');
     wrapper.unmount();
   });
@@ -231,7 +290,7 @@ describe('ProductsView selection toolbar', () => {
     const table = wrapper.get('table');
     const headers = table.findAll('th');
     expect(headers[0]?.classes()).toContain('sticky');
-    expect(headers[1]?.classes()).toContain('sticky');
+    expect(headers[1]?.classes()).not.toContain('sticky');
     expect(headers.at(-1)?.classes()).toContain('sticky');
     expect(table.findAll('button').some((item) => item.text() === '查询产品分')).toBe(false);
 
@@ -252,7 +311,8 @@ describe('ProductsView selection toolbar', () => {
 
     await vi.waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith('产品分查询完成：成功 2 个，失败 0 个。');
-      expect(wrapper.text().match(/4\.6\/6/g)).toHaveLength(3);
+      expect(wrapper.text().match(/4\.6/g)).toHaveLength(2);
+      expect(wrapper.text()).not.toContain('4.6/6');
     });
     expect(wrapper.text()).not.toContain('质量与上下架');
     wrapper.unmount();
@@ -281,7 +341,13 @@ function mountView(gateway = new MockGatewayClient(0)) {
     }
   });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return mount(Host, { attachTo: document.body, global: { plugins: [[VueQueryPlugin, { queryClient }]] } });
+  return mount(Host, {
+    attachTo: document.body,
+    global: {
+      plugins: [[VueQueryPlugin, { queryClient }]],
+      stubs: { RowActionsMenu: { template: '<div><slot /></div>' } }
+    }
+  });
 }
 
 async function waitForProducts(wrapper: ReturnType<typeof mountView>): Promise<void> {

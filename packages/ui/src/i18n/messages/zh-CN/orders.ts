@@ -29,6 +29,11 @@ export const orders = {
   },
   view: '查看',
   filters: {
+    salesman: '业务员登录账号',
+    createDateStart: '创建时间开始',
+    createDateEnd: '创建时间结束',
+    modifiedDateStart: '修改时间开始',
+    modifiedDateEnd: '修改时间结束',
     buyer: '按买家登录名过滤',
     allStatuses: '全部订单状态',
     unpay: '待付款',

@@ -1,4 +1,15 @@
 export const admin = {
+  listFilters: {
+    actor: 'Actor ID',
+    operation: 'Operation / action',
+    outcome: 'Result',
+    from: 'From (local time)',
+    to: 'Until (local time)',
+    all: 'All results',
+    success: 'Success',
+    error: 'Error',
+    denied: 'Denied'
+  },
   operationPending: 'Reading operation availability for the current account…',
   alibabaPrerequisite: {
     steps: {
@@ -360,7 +371,7 @@ export const admin = {
       apiPrefix: 'API prefix',
       gateway: 'Alibaba gateway',
       gatewayCredentials: 'Credentials {credential} · Real read calls {read}',
-      galleryMutations: 'Gallery groups / upload / URL transfer {status}',
+      galleryMutations: 'Image groups / upload / URL transfer {status}',
       complete: 'complete',
       notConfigured: 'not configured',
       enabled: 'enabled',

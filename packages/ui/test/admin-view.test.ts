@@ -87,9 +87,13 @@ describe('AdminView', () => {
     const wrapper = mountView(control);
     await flushPromises();
 
-    const reset = wrapper.findAll('button').find((button) => button.text().includes('重置密码'));
+    await wrapper.get('tbody button[aria-haspopup="dialog"]').trigger('click');
+    await flushPromises();
+    const reset = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find((button) =>
+      button.textContent.includes('重置密码')
+    );
     if (!reset) throw new Error('Missing reset password action');
-    await reset.trigger('click');
+    reset.click();
     await vi.waitFor(() => {
       expect(document.body.textContent).toContain('确认重置密码');
     });

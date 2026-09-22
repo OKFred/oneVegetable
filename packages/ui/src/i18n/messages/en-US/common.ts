@@ -102,6 +102,8 @@ export const common = {
     closeDetails: 'Close details'
   },
   filters: {
+    all: 'All',
+    search: 'Search',
     title: 'Filters',
     description: 'Changes apply only after you select Apply filters.',
     apply: 'Apply filters',

@@ -93,10 +93,10 @@ describe('LogisticsView', () => {
     const wrapper = mountView('extension');
     await flushPromises();
 
-    expect(wrapper.text()).toContain('STATIC_DISABLED');
+    expect(wrapper.text()).not.toContain('STATIC_DISABLED');
     expect(button(wrapper, '业务资格待验收').attributes('disabled')).toBeDefined();
     await button(wrapper, '物流订单').trigger('click');
-    expect(button(wrapper, '刷新').attributes('disabled')).toBeDefined();
+    expect(button(wrapper, '搜索').attributes('disabled')).toBeDefined();
     await button(wrapper, '下单草稿').trigger('click');
     expect(button(wrapper, '真实下单保持禁用').attributes('disabled')).toBeDefined();
     wrapper.unmount();

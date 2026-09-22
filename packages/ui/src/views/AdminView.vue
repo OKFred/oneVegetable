@@ -18,6 +18,8 @@ import Input from '../components/ui/Input.vue';
 import ModalDialog from '../components/ui/ModalDialog.vue';
 import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import DataTable from '../components/DataTable.vue';
+import AuditListFilters from '../components/AuditListFilters.vue';
+import { emptyAuditFilters, auditFilterPayload, type AuditFilters } from '../lib/audit-filters';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
 import SelfHostedAdminPanel from '../components/SelfHostedAdminPanel.vue';
@@ -26,6 +28,7 @@ import { useUiI18n } from '../i18n';
 import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
+import { useUnsavedEditing } from '../lib/unsaved-editing';
 
 const { control, mode } = useServices();
 const { t } = useUiI18n();
@@ -51,7 +54,32 @@ const password = ref('');
 const role = ref<ControlUserRole>('user');
 const remark = ref('');
 const requestIdFilter = ref('');
+const appliedRequestId = ref('');
+const auditFilters = ref(emptyAuditFilters());
+const requestFilters = ref(emptyAuditFilters());
+async function applyEventFilters(kind: 'audit' | 'requests', value: AuditFilters): Promise<void> {
+  if (kind === 'audit') {
+    auditFilters.value = value;
+    auditEventsPage.value = 1;
+    await loadSection(loadAuditEvents, t('admin.view.errors.auditLoad'));
+  } else {
+    requestFilters.value = value;
+    requestEventsPage.value = 1;
+    await loadSection(loadRequestEvents, t('admin.view.errors.requestsLoad'));
+  }
+}
 const remarkDrafts = ref<Record<string, string>>({});
+const createEditing = useUnsavedEditing(() => ({
+  username: username.value,
+  password: password.value,
+  role: role.value,
+  remark: remark.value
+}));
+const remarkEditing = useUnsavedEditing(() =>
+  users.value
+    .filter((user) => (remarkDrafts.value[user.id] ?? '') !== (user.remark ?? ''))
+    .map((user) => ({ id: user.id, remark: remarkDrafts.value[user.id] }))
+);
 type AdminActionConfirmation =
   | { kind: 'status'; user: ControlUser }
   | { kind: 'role'; user: ControlUser }
@@ -127,6 +155,7 @@ onMounted(refresh);
 
 async function refresh(): Promise<void> {
   if (!control) return;
+  if (!(await remarkEditing.confirmLeave())) return;
   loading.value = true;
   error.value = null;
   try {
@@ -152,12 +181,15 @@ async function loadUsers(): Promise<void> {
   users.value = result.items;
   usersTotal.value = result.total;
   remarkDrafts.value = Object.fromEntries(result.items.map((user) => [user.id, user.remark ?? '']));
+  remarkEditing.markClean();
 }
 
 async function loadAuditEvents(): Promise<void> {
   if (!control) return;
-  const requestFilter = requestIdFilter.value.trim();
+  const requestFilter = appliedRequestId.value;
   const result = await control.listAudit({
+    ...auditFilterPayload(auditFilters.value),
+    ...(auditFilters.value.operation.trim() ? { action: auditFilters.value.operation.trim() } : {}),
     page: auditEventsPage.value,
     pageSize: auditEventsPageSize.value,
     ...(requestFilter ? { requestIdFilter: requestFilter } : {})
@@ -168,8 +200,10 @@ async function loadAuditEvents(): Promise<void> {
 
 async function loadRequestEvents(): Promise<void> {
   if (!control) return;
-  const requestFilter = requestIdFilter.value.trim();
+  const requestFilter = appliedRequestId.value;
   const result = await control.listRequestEvents({
+    ...auditFilterPayload(requestFilters.value),
+    ...(requestFilters.value.operation.trim() ? { operation: requestFilters.value.operation.trim() } : {}),
     page: requestEventsPage.value,
     pageSize: requestEventsPageSize.value,
     ...(requestFilter ? { requestIdFilter: requestFilter } : {})
@@ -191,11 +225,13 @@ async function loadSection(loader: () => Promise<void>, fallbackMessage: string)
 }
 
 async function setUsersPage(page: number): Promise<void> {
+  if (!(await remarkEditing.confirmLeave())) return;
   usersPage.value = page;
   await loadSection(loadUsers, t('admin.view.errors.usersLoad'));
 }
 
 async function setUsersPageSize(pageSize: number): Promise<void> {
+  if (!(await remarkEditing.confirmLeave())) return;
   usersPage.value = 1;
   usersPageSize.value = pageSize;
   await loadSection(loadUsers, t('admin.view.errors.usersLoad'));
@@ -224,6 +260,7 @@ async function setRequestEventsPageSize(pageSize: number): Promise<void> {
 }
 
 async function applyRequestIdFilter(): Promise<void> {
+  appliedRequestId.value = requestIdFilter.value.trim();
   auditEventsPage.value = 1;
   requestEventsPage.value = 1;
   await loadSection(async () => {
@@ -275,6 +312,7 @@ async function createUser(): Promise<void> {
     username.value = '';
     password.value = '';
     remark.value = '';
+    createEditing.markClean();
     toast.success(t('admin.view.feedback.userCreated', { username: createdUsername }));
     await refresh();
   } catch (cause: unknown) {
@@ -302,14 +340,22 @@ async function updateUser(
   if (!control) return;
   error.value = null;
   try {
-    await control.updateUser({
+    const updated = await control.updateUser({
       userId: user.id,
       role: patch.role ?? user.role,
       status: patch.status ?? user.status,
       revision: user.revision,
       remark: patch.remark === undefined ? user.remark : patch.remark
     });
-    await refresh();
+    // Preserve other unsaved row remarks when a single user is saved.
+    users.value = users.value.map((entry) => (entry.id === updated.id ? updated : entry));
+    if (patch.remark !== undefined) {
+      remarkDrafts.value[user.id] = updated.remark ?? '';
+      // Only mark the page clean when every remaining draft agrees with the platform.
+      if (users.value.every((entry) => (remarkDrafts.value[entry.id] ?? '') === (entry.remark ?? ''))) {
+        remarkEditing.markClean();
+      }
+    }
   } catch (cause: unknown) {
     error.value = userVisibleCause(cause, t('admin.view.errors.updateUser'));
   }
@@ -648,6 +694,7 @@ const auditEventColumns = computed<DataColumn<ControlAuditEvent>[]>(() => [
           <h2 class="font-semibold">{{ t('admin.view.users.title') }}</h2>
         </div>
         <DataTable
+          column-settings-key="admin-users"
           :columns="userColumns"
           :data="users"
           :page="usersPage"
@@ -762,6 +809,11 @@ const auditEventColumns = computed<DataColumn<ControlAuditEvent>[]>(() => [
             />
             <Button variant="outline" type="submit">{{ t('admin.view.requests.query') }}</Button>
           </form>
+          <AuditListFilters
+            kind="requests"
+            :model-value="requestFilters"
+            @update:model-value="applyEventFilters('requests', $event)"
+          />
           <Button
             data-testid="purge-request-events"
             variant="outline"
@@ -773,12 +825,14 @@ const auditEventColumns = computed<DataColumn<ControlAuditEvent>[]>(() => [
       </div>
       <div data-testid="request-events">
         <DataTable
+          column-settings-key="admin-diagnostics"
           :columns="requestEventColumns"
           :data="requestEvents"
           :page="requestEventsPage"
           :page-size="requestEventsPageSize"
           :total-rows="requestEventsTotal"
           :pagination-disabled="loading"
+          :selection-scope="JSON.stringify([appliedRequestId, requestFilters])"
           max-height="min(60vh, 36rem)"
           min-width="980px"
           :empty-text="t('admin.view.requests.empty')"
@@ -789,19 +843,28 @@ const auditEventColumns = computed<DataColumn<ControlAuditEvent>[]>(() => [
     </Card>
 
     <Card class="mt-5 overflow-hidden">
-      <div class="border-b p-5">
-        <h2 class="font-semibold">{{ t('admin.view.audit.title') }}</h2>
-        <p class="text-xs text-muted-foreground">
-          {{ t('admin.view.audit.description') }}
-        </p>
+      <div class="flex items-center justify-between gap-3 border-b p-5">
+        <div>
+          <h2 class="font-semibold">{{ t('admin.view.audit.title') }}</h2>
+          <p class="text-xs text-muted-foreground">
+            {{ t('admin.view.audit.description') }}
+          </p>
+        </div>
+        <AuditListFilters
+          kind="audit"
+          :model-value="auditFilters"
+          @update:model-value="applyEventFilters('audit', $event)"
+        />
       </div>
       <DataTable
+        column-settings-key="admin-audit"
         :columns="auditEventColumns"
         :data="auditEvents"
         :page="auditEventsPage"
         :page-size="auditEventsPageSize"
         :total-rows="auditEventsTotal"
         :pagination-disabled="loading"
+        :selection-scope="JSON.stringify([appliedRequestId, auditFilters])"
         max-height="min(60vh, 36rem)"
         min-width="900px"
         :empty-text="t('admin.view.audit.empty')"

@@ -4,6 +4,10 @@ import { relative, resolve } from 'node:path';
 import { enUS } from '../packages/ui/src/i18n/messages/en-US/index';
 import { video as videoZh } from '../packages/ui/src/i18n/messages/zh-CN/video';
 import { video as videoEn } from '../packages/ui/src/i18n/messages/en-US/video';
+import { logistics as logisticsZh } from '../packages/ui/src/i18n/messages/zh-CN/logistics';
+import { logistics as logisticsEn } from '../packages/ui/src/i18n/messages/en-US/logistics';
+import { insights as insightsZh } from '../packages/ui/src/i18n/messages/zh-CN/insights';
+import { insights as insightsEn } from '../packages/ui/src/i18n/messages/en-US/insights';
 import { inventory as inventoryZh } from '../packages/ui/src/i18n/messages/zh-CN/inventory';
 import { inventory as inventoryEn } from '../packages/ui/src/i18n/messages/en-US/inventory';
 import { zhCN } from '../packages/ui/src/i18n/messages/zh-CN/index';
@@ -37,6 +41,8 @@ const hardcodedHanAllowlist: Readonly<Record<string, readonly RegExp[]>> = {
 
 const errors = [
   ...compareCatalogs(videoZh, videoEn),
+  ...compareCatalogs(logisticsZh, logisticsEn),
+  ...compareCatalogs(insightsZh, insightsEn),
   ...compareCatalogs(zhCN, enUS),
   ...compareCatalogs(inventoryZh, inventoryEn),
   ...compareCatalogs(showcaseZh, showcaseEn),

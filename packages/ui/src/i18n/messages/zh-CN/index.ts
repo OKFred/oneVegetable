@@ -4,8 +4,6 @@ import { capabilities } from './capabilities';
 import { common } from './common';
 import { errors } from './errors';
 import { feedback } from './feedback';
-import { insights } from './insights';
-import { logistics } from './logistics';
 import { orders } from './orders';
 import { photos } from './photos';
 import { products } from './products';
@@ -26,8 +24,6 @@ export const zhCN = {
   photos,
   rfqs,
   orders,
-  insights,
-  logistics,
   capabilities,
   settings,
   releases,

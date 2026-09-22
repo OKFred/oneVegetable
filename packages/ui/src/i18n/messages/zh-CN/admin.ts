@@ -1,4 +1,15 @@
 export const admin = {
+  listFilters: {
+    actor: '操作者 ID',
+    operation: '操作 / 动作',
+    outcome: '结果',
+    from: '开始时间（本地）',
+    to: '结束时间（本地）',
+    all: '全部结果',
+    success: '成功',
+    error: '错误',
+    denied: '拒绝'
+  },
   operationPending: '正在读取当前账号的操作权限…',
   alibabaPrerequisite: {
     steps: {
@@ -326,7 +337,7 @@ export const admin = {
       apiPrefix: 'API 前缀',
       gateway: 'Alibaba 网关',
       gatewayCredentials: '凭据 {credential} · 只读真实调用 {read}',
-      galleryMutations: '图库分组 / 上传 / URL 转存 {status}',
+      galleryMutations: '图片分组 / 上传 / URL 转存 {status}',
       complete: '完整',
       notConfigured: '未配置',
       enabled: '已启用',

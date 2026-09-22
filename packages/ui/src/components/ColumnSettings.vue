@@ -47,14 +47,16 @@ const filtered = computed(() =>
       <PopoverContent
         align="end"
         :side-offset="6"
-        class="z-50 w-80 max-w-[calc(100vw-2rem)] rounded-md border bg-popover p-3 text-popover-foreground shadow-md"
+        :collision-padding="8"
+        class="z-[90] flex max-h-[min(calc(100dvh-1rem),var(--reka-popover-content-available-height))] w-80 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-md border bg-popover p-3 text-popover-foreground shadow-md"
       >
         <Input
           v-model="search"
+          class="shrink-0"
           :placeholder="t('common.columns.search')"
           :aria-label="t('common.columns.search')"
         />
-        <label class="my-3 flex cursor-pointer items-center gap-2 text-sm">
+        <label class="my-3 flex shrink-0 cursor-pointer items-center gap-2 text-sm">
           <TriStateCheckbox
             :checked="optional.length > 0 && selectedCount === optional.length"
             :indeterminate="selectedCount > 0 && selectedCount < optional.length"
@@ -63,7 +65,7 @@ const filtered = computed(() =>
             @update:checked="emit('set-all', $event)"
           />{{ t('common.columns.all') }}
         </label>
-        <div class="my-2 max-h-72 overflow-auto">
+        <div class="my-2 min-h-0 max-h-72 overflow-y-auto overscroll-contain">
           <div
             v-for="option in filtered"
             :key="option.id"
@@ -112,10 +114,12 @@ const filtered = computed(() =>
             </template>
           </div>
         </div>
-        <p v-if="persistenceFailed" role="status" class="mb-2 text-xs text-destructive">
+        <p v-if="persistenceFailed" role="status" class="mb-2 shrink-0 text-xs text-destructive">
           {{ t('common.columns.persistenceFailed') }}
         </p>
-        <Button variant="outline" @click="emit('reset')">{{ t('common.columns.reset') }}</Button>
+        <Button variant="outline" class="shrink-0 self-start" @click="emit('reset')">{{
+          t('common.columns.reset')
+        }}</Button>
       </PopoverContent>
     </PopoverPortal>
   </PopoverRoot>

@@ -43,7 +43,7 @@ function navigate(event: KeyboardEvent): void {
       <PopoverContent
         align="end"
         :side-offset="4"
-        class="z-50 min-w-40 max-w-[min(24rem,calc(100vw-2rem))] rounded-md border bg-popover p-1.5 text-popover-foreground shadow-lg"
+        class="z-[90] min-w-40 max-w-[min(24rem,calc(100vw-2rem))] rounded-md border bg-popover p-1.5 text-popover-foreground shadow-lg"
         @click="activate"
         @keydown="navigate"
       >

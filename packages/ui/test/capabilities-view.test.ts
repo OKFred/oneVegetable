@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { defineComponent, h } from 'vue';
-import { flushPromises, mount } from '@vue/test-utils';
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -55,6 +55,47 @@ function bodyText(): string {
 }
 
 describe('CapabilitiesView platform safeguards', () => {
+  it('keeps cancelled advanced filters unapplied and applies only the confirmed draft', async () => {
+    const wrapper = mountView();
+    await flushPromises();
+    await vi.waitFor(() => {
+      expect(wrapper.find('table').exists()).toBe(true);
+    });
+    const initial = wrapper.get('table').text();
+    const open = async () => {
+      const button = wrapper.findAll('button').find((item) => item.text().startsWith('筛选'));
+      if (!button) throw new Error('Missing filter trigger');
+      await button.trigger('click');
+      await flushPromises();
+    };
+    const choose = async () => {
+      const select = document.querySelector<HTMLSelectElement>('select[aria-label="全部业务域"]');
+      if (!select) throw new Error('Missing domain filter');
+      await new DOMWrapper(select).setValue('photo');
+    };
+    const click = (label: string) => {
+      const button = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')).find(
+        (item) => item.textContent.trim() === label
+      );
+      if (!button) throw new Error(`Missing ${label}`);
+      button.click();
+    };
+    await open();
+    await choose();
+    expect(wrapper.get('table').text()).toBe(initial);
+    click('取消');
+    await flushPromises();
+    expect(wrapper.get('table').text()).toBe(initial);
+    await open();
+    expect(document.querySelector<HTMLSelectElement>('select[aria-label="全部业务域"]')?.value).toBe('all');
+    await choose();
+    click('应用筛选');
+    await flushPromises();
+    expect(wrapper.get('table').text()).not.toBe(initial);
+    expect(wrapper.get('table').text()).toContain('photobank');
+    expect(wrapper.text()).toContain('筛选 · 1');
+    wrapper.unmount();
+  });
   it('explains delayed inventory readback without opening or dispatching a mutation', async () => {
     const wrapper = mountView('extension');
     await flushPromises();
@@ -73,7 +114,18 @@ describe('CapabilitiesView platform safeguards', () => {
     const wrapper = mountView();
     await flushPromises();
 
-    await wrapper.get('select[aria-label="账号验证快照"]').setValue('permission-denied');
+    const filter = wrapper.findAll('button').find((item) => item.text() === '筛选');
+    if (!filter) throw new Error('Missing filter');
+    await filter.trigger('click');
+    await flushPromises();
+    const select = document.querySelector<HTMLSelectElement>('select[aria-label="账号验证快照"]');
+    if (!select) throw new Error('Missing account filter');
+    await new DOMWrapper(select).setValue('permission-denied');
+    const apply = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')).find(
+      (item) => item.textContent.trim() === '应用筛选'
+    );
+    if (!apply) throw new Error('Missing apply filter');
+    apply.click();
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('alibaba.icbu.rfq.search');
       expect(wrapper.text()).toContain('账号无权限');
@@ -114,7 +166,7 @@ describe('CapabilitiesView platform safeguards', () => {
     await filterMethod(wrapper, 'alibaba.icbu.file.urlposting.upload');
     await methodButton(wrapper, 'alibaba.icbu.file.urlposting.upload').trigger('click');
     await vi.waitFor(() => {
-      expect(bodyText()).toContain('不返回图库 fileId');
+      expect(bodyText()).toContain('不返回图片银行 fileId');
     });
 
     expect(document.body.querySelector('textarea[aria-label="调用参数 JSON"]')).not.toBeNull();

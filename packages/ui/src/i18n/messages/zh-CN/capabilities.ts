@@ -82,7 +82,7 @@ export const capabilities = {
     definitionMismatch: '返回的能力定义与所选 API 不匹配'
   },
   notices: {
-    urlUpload: '该接口只返回普通文件 URL，不返回图库 fileId，因此不会用于商品主图、SKU 图或详情图入库。',
+    urlUpload: '该接口只返回普通文件 URL，不返回图片银行 fileId，因此不会用于商品主图、SKU 图或详情图入库。',
     riskSend:
       '这是天鹿风控协议能力。本项目不采集 WUA、UMID、IMEI、IMSI、MAC 等设备环境信息，也不提供发送入口。',
     taskNotify: '这是 URL 爬取供应商的状态回调，不是卖家操作。没有平台下发的真实任务上下文时禁止调用。'

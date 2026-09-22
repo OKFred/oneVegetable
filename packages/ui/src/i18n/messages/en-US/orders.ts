@@ -30,6 +30,11 @@ export const orders = {
   },
   view: 'View',
   filters: {
+    salesman: 'Salesperson login',
+    createDateStart: 'Created from',
+    createDateEnd: 'Created until',
+    modifiedDateStart: 'Modified from',
+    modifiedDateEnd: 'Modified until',
     buyer: 'Filter by buyer login',
     allStatuses: 'All order statuses',
     unpay: 'Awaiting payment',

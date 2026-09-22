@@ -1,4 +1,25 @@
 export const products = {
+  filters: {
+    search: '搜索',
+    productId: '商品 ID',
+    categoryId: '类目 ID',
+    groupId: '分组 ID',
+    groupLevel: '分组层级',
+    modifiedFrom: '修改时间起',
+    modifiedTo: '修改时间止',
+    invalid: '请填写有效的正整数 ID，并确保开始时间不晚于结束时间。',
+    pageEmpty: '本页没有符合筛选条件的商品；可修改筛选或查看其他页。'
+  },
+  inventoryWorkspace: { description: '按商品查询 SKU 与仓库库存，只读且不合计不同仓库。', open: '查看库存' },
+  submission: {
+    failed: '商品提交失败',
+    description: '请查看平台返回和处理建议。不要在结果不明时重复提交。',
+    viewError: '查看提交错误',
+    smartTitle: '平台拒绝：智能详情装修关联异常',
+    smartGuidance:
+      '请定位到商品详情，检查平台智能详情。需要转为普通详情时，请先预览转换差异并手工确认；本应用不会自动删改详情或重新提交。也可先到国际站切换普通编辑并保存，再重新载入。',
+    locateDescription: '定位商品详情'
+  },
   common: {
     allProducts: '全部商品',
     allGroups: '全部分组',
@@ -20,7 +41,7 @@ export const products = {
     serializationFailed: 'Schema XML 序列化失败',
     changedFields: '实际变化字段：{names}',
     draftCreated: '平台草稿 {id} 已创建',
-    draftHandoff: '本应用会继续自动保存本地修改；Alibaba OpenAPI 暂无覆盖保存既有平台草稿的接口。',
+    draftHandoff: '未提交的修改仅保留在当前页面；请使用国际站入口继续编辑平台草稿，或明确保存到批量队列。',
     continueOnAlibaba: '在国际站继续编辑',
     warnings: '服务端规则提示',
     xmlPreview: 'Schema XML 预览（只读）',
@@ -141,18 +162,18 @@ export const products = {
   },
   submitBar: {
     processing: '正在处理上一项商品操作',
-    draftExists: '平台草稿已创建，后续修改会继续保存在本机',
+    draftExists: '平台草稿已创建，请在国际站继续编辑',
     schemaSaveBlocked: 'Schema XML 结构异常，请先修复后再保存',
     draftUnavailable: '当前不能保存平台草稿',
     schemaSubmitBlocked: 'Schema XML 结构异常，请先修复后再提交',
     minimumMissing: '仍有 {count} 个最低发布条件需要补齐',
     submitUnavailable: '当前不能提交商品',
-    localAfterDraft: '后续修改自动保存在本机；写回平台请使用上方国际站编辑入口。',
+    localAfterDraft: '后续修改不会自动保存；请明确保存到批量队列，或使用国际站编辑入口。',
     quickBlocked: '当前有 {count} 个最低发布条件未满足，但仍可保存平台草稿继续完善。',
     advisories: '{count} 条预检提示不会禁用提交，最终以 Alibaba 返回为准。'
   },
   schemaField: {
-    galleryAsset: '图库素材',
+    galleryAsset: '图片素材',
     required: '必填',
     readOnly: '只读',
     disabled: '已禁用',
@@ -188,7 +209,7 @@ export const products = {
     previewLabel: '平台原始详情安全预览',
     emptyPreview: '原始详情经过安全过滤后没有可展示的内容。',
     preparingPreview: '正在准备详情预览…',
-    previewNotice: '预览会加载国际站图库图片；脚本、iframe、事件和不受支持的样式不会执行。',
+    previewNotice: '预览会加载国际站图片；脚本、iframe、事件和不受支持的样式不会执行。',
     sanitizedChanges: '已安全处理 {count} 项内容。',
     sourceLabel: '平台原始详情 HTML 源码',
     reviewConversion: '查看转换变化',
@@ -207,9 +228,9 @@ export const products = {
       table: '插入表格',
       linkAddress: '链接地址',
       setLink: '设置链接',
-      insertGalleryImage: '插入图库图片'
+      insertGalleryImage: '插入图片'
     },
-    safeOutput: '输出仅保留安全标签；详情图片必须来自国际站图库。'
+    safeOutput: '输出仅保留安全标签；详情图片必须来自国际站图片素材。'
   },
   wizard: {
     editTitle: '编辑商品',
@@ -223,7 +244,7 @@ export const products = {
     sections: {
       basics: { title: '基础信息与类目', description: '填写商品名称、关键词、类目和分组等基础信息。' },
       attributes: { title: '商品属性与规格', description: '补充类目要求的属性、规格和其他字段。' },
-      media: { title: '图片素材', description: '从图库选择主图、SKU 图和其他商品素材。' },
+      media: { title: '图片素材', description: '选择主图、SKU 图和其他商品图片。' },
       description: { title: '商品详情', description: '编辑普通详情，并检查内容和图片建议。' },
       trade: { title: '交易与物流', description: '设置价格、MOQ、包装、交期和物流信息。' },
       review: { title: '检查与提交', description: '汇总最低条件、平台提示和非阻断建议。' }
@@ -367,7 +388,7 @@ export const products = {
     empty: '队列为空。请先在商品列表点击“新增”，填写商品后加入批量队列。',
     selectProduct: '选择 {title}',
     unknownCategory: '未知类目',
-    ready: '可以提交',
+    ready: '本地预检通过',
     minimumMissing: '{count} 个最低条件未满足',
     advisoryCount: '预检提示 {count} 个',
     completed: '已完成',
@@ -399,7 +420,7 @@ export const products = {
     exportTitle: '导出商品',
     importDescription: '支持 JSON，或包含 products.json 与 assets/ 图片的 ZIP。确认前只做本地校验。',
     exportDescription: '本次将导出打开对话框时选中的 {count} 个商品。',
-    galleryRoot: '图库根目录',
+    galleryRoot: '图片根目录',
     errors: {
       zipTooLarge: '商品 ZIP 超过 50 MiB 上限',
       jsonTooLarge: '商品导入文件超过 10 MiB 上限',
@@ -422,7 +443,7 @@ export const products = {
       contentTypeMismatch: '图片 {path} 的文件头与 Content-Type 不一致',
       invalidSha256: '图片 SHA-256 无效',
       unsafeProductAsset: '商品 {productId} 包含不安全的图片路径',
-      unsupportedPhotoType: '国际站图库暂不支持上传 {contentType} 图片',
+      unsupportedPhotoType: '国际站暂不支持上传 {contentType} 图片',
       extensionMismatch: '图片 {path} 的扩展名与文件内容不一致',
       unsafePath: '商品 ZIP 包含不安全路径：{path}',
       emptyPath: '空路径',
@@ -445,10 +466,10 @@ export const products = {
     validating: '正在安全解压并校验商品与图片…',
     remainingProducts: '另有 {count} 个商品',
     unusedAssets: 'ZIP 中有 {count} 张未被商品引用的图片，将不会上传。',
-    uploadGroupTitle: '上传到图库分组',
+    uploadGroupTitle: '上传到图片分组',
     uploadGroupDescription: '确认导入后先上传 {count} 张图片；全部成功后才写入批量发品队列。',
     currentTarget: '当前目标：{name}',
-    uploadUnavailable: '当前环境未开放真实图库上传，不能导入含本地图片的 ZIP。',
+    uploadUnavailable: '当前环境未开放真实图片上传，不能导入含本地图片的 ZIP。',
     exportPreview: '导出商品预览',
     frozen: '已冻结本次导出范围',
     advanced: '高级设置',
@@ -457,7 +478,7 @@ export const products = {
     jsonDescription: '仅导出商品数据。',
     zipFile: 'ZIP 资源包',
     zipTitle: 'ZIP（含图片）',
-    zipDescription: '下载图库图片到 assets/，任一图片失败则不生成文件。',
+    zipDescription: '下载引用的图片到 assets/，任一图片失败则不生成文件。',
     downloadUnavailable: '当前环境未开放商品图片下载，不能生成 ZIP。',
     schemaField: 'Schema 字段',
     schemaJsonDescription: 'products.json 中仅包含 schemaJson，推荐使用。',
@@ -472,10 +493,10 @@ export const products = {
     confirmClose: '确认关闭',
     confirmUpload: '确认上传 {images} 张图片，并在全部成功后将 {products} 个商品写入本机队列吗？',
     confirmQueue: '确认将 {count} 个商品写入本机批量发品队列吗？不会直接写入平台。',
-    confirmZip: '确认下载商品引用的图库图片并生成 {count} 个商品的 ZIP 吗？',
+    confirmZip: '确认下载商品引用的图片并生成 {count} 个商品的 ZIP 吗？',
     confirmJson: '确认读取 {count} 个商品的 Schema 并下载 JSON 文件吗？',
     confirmCloseDescription: '当前内容将被清空，确定关闭吗？',
-    uploadCaveat: '图片上传失败时不会写入本机队列；已经上传成功的图库图片不会自动删除。',
+    uploadCaveat: '图片上传失败时不会写入本机队列；已经上传成功的图片不会自动删除。',
     queueCaveat: '确认前不会写入本机队列。',
     exportCaveat: '确认前不会调用商品 Schema 或图片下载接口，也不会触发文件下载。',
     closeCaveat: '返回可继续当前操作；确认关闭后需要重新选择。',
@@ -491,7 +512,7 @@ export const products = {
       noChanges: '没有需要提交的商品字段变更',
       changedMinimum: '请先补齐本次修改涉及的最低发布条件',
       publishingMinimum: '请先补齐商品名称、主图等最低发布条件',
-      uploadDisabled: '当前环境未开放真实图库上传',
+      uploadDisabled: '当前环境未开放真实图片上传',
       downloadDisabled: '当前环境未开放商品图片下载',
       selectProduct: '请先勾选至少一个商品',
       jobUnsupported: '当前模式不支持持久商品写入任务',
@@ -577,7 +598,7 @@ export const products = {
     },
     progress: {
       readingSchema: '正在读取商品 Schema（{current}/{total}）…',
-      downloadingImages: '正在下载图库图片（{current}/{total}）…',
+      downloadingImages: '正在下载图片（{current}/{total}）…',
       packing: '正在生成 ZIP 资源包…',
       queuing: '正在写入本机批量发品队列…',
       uploading: '正在上传到“{group}”（{current}/{total}）…'
@@ -611,7 +632,7 @@ export const products = {
     draftSave: { saving: '保存中…', saved: '已保存到本机', error: '本地草稿保存失败' },
     mutationBlocked: {
       loading: '商品写入状态尚未就绪',
-      auditing: '商品正在平台审核中，请勿重复提交；本地草稿会继续保留',
+      auditing: '商品正在平台审核中，请勿重复提交；可在任务中心查看回执。',
       verifying: '上下架请求已接受，正在等待商品列表回读',
       recovering: '原状态恢复请求已接受，正在等待商品列表回读',
       recoveryRequired: '平台回读与提交内容不一致，请先人工确认并恢复商品',
@@ -709,8 +730,7 @@ export const products = {
       queryPlatform: '查询平台状态',
       submittedAt: '提交时间',
       lastCheck: '最近检查',
-      recoveryWarning:
-        '请先在国际站后台核对商品内容。本地草稿不会自动删除，也不会自动重复提交或覆盖平台商品。',
+      recoveryWarning: '请先在国际站后台核对商品内容。任务回执会继续保留，不会自动重复提交或覆盖平台商品。',
       verifiedNotice: '平台回读已经匹配。重新加载商品表单后，才会以最新平台内容继续下一次增量编辑。',
       recentDraftJob: '最近的平台草稿任务',
       recentPublishJob: '最近的正式发布任务',

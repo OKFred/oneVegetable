@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { ProductMutationJob } from '@one-vegetable/core';
@@ -12,7 +12,46 @@ const NOW = Date.UTC(2026, 8, 8);
 
 describe('ProductTaskCenter', () => {
   beforeEach(() => {
+    localStorage.clear();
     uiI18n.global.locale.value = 'zh-CN';
+  });
+
+  it('retains recovery actions in the row menu and applies status filters only on confirmation', async () => {
+    const job = {
+      ...mutationJob(),
+      operation: 'updateProductDisplay' as const,
+      status: 'recovery-required' as const
+    };
+    const wrapper = mount(ProductTaskCenter, {
+      props: { jobs: [job], batchItems: [], loading: false, error: null, refreshingJobId: '', detailUrls: {} }
+    });
+    await wrapper.get('button[aria-label="job-1的操作"]').trigger('click');
+    await flushPromises();
+    const recover = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
+      (item) => item.textContent.trim() === '恢复原状态'
+    );
+    if (!recover) throw new Error('Missing recovery');
+    recover.click();
+    await flushPromises();
+    expect(wrapper.emitted('recover')?.[0]).toEqual([job]);
+    const filter = wrapper.findAll('button').find((item) => item.text() === '筛选');
+    if (!filter) throw new Error('Missing filter');
+    await filter.trigger('click');
+    await flushPromises();
+    const checkbox = document.querySelector<HTMLInputElement>('[role="dialog"] input[value="verified"]');
+    if (!checkbox) throw new Error('Missing status filter');
+    checkbox.click();
+    await flushPromises();
+    expect(wrapper.text()).toContain(job.productId);
+    const apply = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')).find(
+      (item) => item.textContent.trim() === '应用筛选'
+    );
+    if (!apply) throw new Error('Missing apply');
+    apply.click();
+    await flushPromises();
+    expect(wrapper.text()).not.toContain(job.productId);
+    expect(wrapper.text()).toContain('筛选 · 1');
+    wrapper.unmount();
   });
 
   it('shows durable platform tasks and exposes explicit readback actions', async () => {
@@ -31,13 +70,18 @@ describe('ProductTaskCenter', () => {
     });
 
     expect(wrapper.text()).toContain('平台写入任务');
-    expect(wrapper.text()).toContain('等待平台回读');
+    expect(wrapper.text()).toContain('平台已受理发布，商品列表尚未回读到该商品。');
     expect(wrapper.get('[data-testid="platform-readback-notice"]').text()).toContain('平台已受理');
     expect(wrapper.get('a').attributes('href')).toContain('alibaba.com/product-detail/');
 
-    const checkButton = wrapper.findAll('button').find((button) => button.text().includes('查询平台状态'));
+    await wrapper.get('button[aria-label="job-1的操作"]').trigger('click');
+    await flushPromises();
+    const checkButton = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find((button) =>
+      button.textContent.includes('查询平台状态')
+    );
     if (!checkButton) throw new Error('Missing task readback button');
-    await checkButton.trigger('click');
+    checkButton.click();
+    await flushPromises();
     expect(wrapper.emitted('refresh-job')?.[0]).toEqual([job]);
     await wrapper.setProps({ jobs: [{ ...job, status: 'recovery-required' }] });
     expect(wrapper.get('[data-testid="platform-readback-notice"]').text()).toContain('延迟或异常');

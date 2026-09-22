@@ -90,7 +90,17 @@ const columns = computed<DataColumn<ProductInventorySnapshot['records'][number]>
           </ul>
         </details>
         <Input v-model="search" :placeholder="it('search')" :aria-label="it('search')" />
-        <DataTable :columns="columns" :data="rows" :empty-text="it('no-data')" min-width="540px" />
+        <DataTable
+          :columns="columns"
+          :data="rows"
+          :get-row-key="
+            (row) =>
+              JSON.stringify([row.skuId, row.skuOuterId, row.inventoryCode, snapshot?.records.indexOf(row)])
+          "
+          column-settings-key="inventory-skus"
+          :empty-text="it('no-data')"
+          min-width="540px"
+        />
         <p class="text-xs text-muted-foreground">{{ it('zeroNote') }}</p>
       </template>
     </div>

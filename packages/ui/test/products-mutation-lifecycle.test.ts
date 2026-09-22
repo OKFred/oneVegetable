@@ -77,8 +77,11 @@ describe('ProductsView product mutation lifecycle', () => {
       recover
     };
     const wrapper = mountProductsView(productMutationJobs, 'updateProductDisplay', 'extension');
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('最近上下架任务');
+    const tasks = wrapper.findAll('button').find((button) => button.text().trim() === '任务中心');
+    await tasks?.trigger('click');
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('最近上下架任务');
       expect(wrapper.text()).toContain('需要人工恢复');
     });
     const recovery = wrapper.findAll('button').find((button) => button.text().includes('恢复原状态'));
@@ -113,7 +116,11 @@ describe('ProductsView product mutation lifecycle', () => {
       recover: vi.fn(() => Promise.resolve(job))
     };
     const wrapper = mountProductsView(productMutationJobs, 'updateProductDisplay', 'extension');
-
+    await flushPromises();
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text().trim() === 'Task center')
+      ?.trigger('click');
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('Platform-status readback timed out');
     });
@@ -187,7 +194,10 @@ function mountProductsView(
   });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return mount(Host, {
-    global: { plugins: [[VueQueryPlugin, { queryClient }]] }
+    global: {
+      plugins: [[VueQueryPlugin, { queryClient }]],
+      stubs: { RowActionsMenu: { template: '<div><slot /></div>' } }
+    }
   });
 }
 

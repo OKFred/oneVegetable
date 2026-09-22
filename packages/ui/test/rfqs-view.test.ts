@@ -18,13 +18,17 @@ import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import { provideServices } from '../src/lib/services';
 import RfqsView from '../src/views/RfqsView.vue';
+import UnsavedEditingDialog from '../src/components/UnsavedEditingDialog.vue';
+import { provideUnsavedEditing, UnsavedEditingService } from '../src/lib/unsaved-editing';
 
 function mountView(
   mode: 'mock' | 'extension' | 'bff' = 'mock',
-  gateway: GatewayClient = new MockGatewayClient(0)
+  gateway: GatewayClient = new MockGatewayClient(0),
+  editing?: UnsavedEditingService
 ) {
   const Host = defineComponent({
     setup() {
+      if (editing) provideUnsavedEditing(editing);
       provideServices({
         gateway,
         settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
@@ -33,7 +37,8 @@ function mountView(
         ),
         mode
       });
-      return () => h(RfqsView);
+      return () =>
+        h('div', [h(RfqsView), ...(editing ? [h(UnsavedEditingDialog, { service: editing })] : [])]);
     }
   });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -65,6 +70,40 @@ function inputValue(input: HTMLInputElement | HTMLTextAreaElement, value: string
 }
 
 describe('RfqsView', () => {
+  it('does not restore old drafts and confirms before discarding an edited quotation', async () => {
+    localStorage.setItem('one-vegetable:rfq-draft:old', JSON.stringify({ message: 'old private form' }));
+    const service = new UnsavedEditingService();
+    const wrapper = mountView('mock', new MockGatewayClient(0), service);
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Portable solar power stations');
+    });
+    const row = wrapper
+      .findAll('button')
+      .find((item) => item.text().includes('Portable solar power stations'));
+    if (!row) throw new Error('Missing RFQ');
+    await row.trigger('click');
+    await flushPromises();
+    const textarea = document.body.querySelector<HTMLTextAreaElement>('textarea');
+    if (!textarea) throw new Error('Missing quotation form');
+    expect(textarea.value).toBe('');
+    expect(service.dirty.value).toBe(false);
+    inputValue(textarea, 'Unsaved quotation');
+    await flushPromises();
+    document.body.querySelector<HTMLButtonElement>('.ov-sheet-content button[aria-label]')?.click();
+    await flushPromises();
+    expect(service.confirmationOpen.value).toBe(true);
+    bodyButton('继续编辑').click();
+    await flushPromises();
+    expect(textarea.value).toBe('Unsaved quotation');
+    document.body.querySelector<HTMLButtonElement>('.ov-sheet-content button[aria-label]')?.click();
+    await flushPromises();
+    bodyButton('放弃修改并离开').click();
+    await flushPromises();
+    expect(document.body.querySelector('.ov-sheet-content')).toBeNull();
+    expect(localStorage.getItem('one-vegetable:rfq-draft:old')).toContain('old private form');
+    localStorage.removeItem('one-vegetable:rfq-draft:old');
+    wrapper.unmount();
+  });
   it('searches RFQs, opens a detail and completes a Mock quotation', async () => {
     const wrapper = mountView();
     await flushPromises();
@@ -165,7 +204,7 @@ describe('RfqsView', () => {
     const wrapper = mountView('bff');
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('Portable solar power stations');
-      expect(wrapper.text()).toContain('真实附件上传或报价提交未开放（STATIC_DISABLED）');
+      expect(wrapper.text()).not.toContain('真实附件上传或报价提交未开放（STATIC_DISABLED）');
     });
     const rfqButton = wrapper
       .findAll('button')

@@ -1,4 +1,5 @@
 export const rfqs = {
+  categoryInvalid: 'Enter a positive numeric category ID.',
   title: 'RFQ workspace',
   description:
     'RFQ search, recommendations, details, read status, and quotation drafts all use typed contracts.',
@@ -28,7 +29,7 @@ export const rfqs = {
     fillFirst: 'Complete these fields first: {fields}',
     closedTitle: 'Real quotation writes remain disabled',
     closedDescription: '{reason}; local quotation drafts remain available.',
-    localAvailable: 'You can save a local draft; {reason}.'
+    localAvailable: 'You can edit on this page, but the form will not be restored after leaving; {reason}.'
   },
   fields: {
     rfq: 'RFQ',
@@ -87,7 +88,8 @@ export const rfqs = {
   },
   draft: {
     title: 'Quotation draft',
-    description: 'The draft is stored only in this browser and does not make an early network call.',
+    description:
+      'The form stays only on this page. Leaving with changes requires confirmation; previous edits are not restored.',
     saved: 'Saved',
     save: 'Save draft',
     attachment: 'Quotation attachment',

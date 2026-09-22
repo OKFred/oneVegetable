@@ -5,6 +5,7 @@ import { Boxes, Image, PlugZap, ShoppingCart } from '@lucide/vue';
 
 import { useServices } from '../lib/services';
 import DashboardMetricCard from '../components/DashboardMetricCard.vue';
+import DashboardShopLink from '../components/DashboardShopLink.vue';
 import LocalTodoList from '../components/LocalTodoList.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
@@ -30,7 +31,9 @@ const summary = useQuery({
           ? t('shell.dashboard.descriptions.extension')
           : t('shell.dashboard.descriptions.mock')
     "
-  />
+  >
+    <DashboardShopLink />
+  </PageHeader>
   <QueryState
     :loading="summary.isPending.value"
     :error="summary.error.value"
@@ -75,6 +78,6 @@ const summary = useQuery({
         <template #icon><PlugZap class="size-4 text-primary" /></template>
       </DashboardMetricCard>
     </div>
-    <LocalTodoList class="mt-5" />
+    <div class="mt-5"><LocalTodoList /></div>
   </QueryState>
 </template>
