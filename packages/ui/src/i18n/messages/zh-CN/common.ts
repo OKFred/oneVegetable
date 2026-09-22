@@ -1,4 +1,10 @@
 export const common = {
+  platformReadback: {
+    inventory: '平台库存同步可能有延迟，修改后查询可能暂时仍是旧值。请稍后刷新核对，不要因此重复增减库存。',
+    accepted: '平台已受理，处理或数据同步可能需要时间，尚未确认最终结果。请稍后查询状态，不要重复提交。',
+    unconfirmed:
+      '结果尚未确认，可能是同步延迟或异常。请先查询或核对结果，不要重复提交；持续不一致时，请保留 requestId 并到官方平台核对。'
+  },
   fields: {
     keywords: '关键词',
     categoryId: '类目 ID',

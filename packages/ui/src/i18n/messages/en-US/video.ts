@@ -6,7 +6,7 @@ export const video = {
   associationType: 'Video use',
   associationApply: 'Associate video now',
   associationConfirmNotice:
-    'Confirm a separate, immediate platform write for the IDs below. It may replace an existing association. It does not save or publish this editor. Unknown results will not be resent; check them manually. Automatic rollback is unavailable.',
+    'Submit a separate platform write now for the IDs below. It may replace an existing association; processing and query synchronization may be delayed. It does not save or publish this editor. Unknown results will not be resent; check them manually. Automatic rollback is unavailable.',
   associationUnavailable:
     'Video association writes are disabled pending account validation. Availability must explicitly allow this operation.',
   associationVerifyUnavailable: 'Read-only verification is unavailable for the current account.',

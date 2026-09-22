@@ -5,7 +5,7 @@ export const video = {
   associationType: '视频用途',
   associationApply: '立即关联视频',
   associationConfirmNotice:
-    '确认对下方固定 ID 执行独立、立即生效的平台写操作，可能替换已有关联。此操作不保存或发布编辑器。结果不明时不会重发，需手动只读核对；不提供自动恢复。',
+    '确认对下方固定 ID 立即提交独立的平台写操作，可能替换已有关联；平台处理与查询同步可能有延迟。此操作不保存或发布编辑器。结果不明时不会重发，需手动只读核对；不提供自动恢复。',
   associationUnavailable: '视频关联写入尚未开放，待账号验证后启用；还需当前操作权限明确允许。',
   associationVerifyUnavailable: '当前账号暂不可执行只读关联核验。',
   associationSelectFirst: '请先选择视频。',

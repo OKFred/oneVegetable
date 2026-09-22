@@ -68,6 +68,12 @@ describe('gallery task center', () => {
     const s = setup();
     await nextTick();
     expect(document.body.textContent).toContain('结果不明');
+    expect(document.body.querySelector('[data-testid="platform-readback-notice"]')?.textContent).toContain(
+      '同步延迟或异常'
+    );
+    expect(
+      document.body.querySelector('[data-testid="platform-readback-notice"]')?.textContent
+    ).not.toContain('平台已受理');
     button('核对结果').click();
     await flushPromises();
     expect(s.run).not.toHaveBeenCalled();

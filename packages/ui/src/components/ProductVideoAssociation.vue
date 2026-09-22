@@ -10,6 +10,7 @@ import VideoDrawer from './VideoDrawer.vue';
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import ActionTooltip from './ActionTooltip.vue';
 import Button from './ui/Button.vue';
+import PlatformReadbackNotice from './PlatformReadbackNotice.vue';
 
 const props = withDefaults(
   defineProps<{ productId: string; language: 'zh_CN' | 'en_US'; blocked?: boolean }>(),
@@ -145,6 +146,7 @@ const statusText = computed(() =>
       aria-live="polite"
     >
       <p>{{ statusText }}</p>
+      <PlatformReadbackNotice v-if="['unknown', 'unconfirmed'].includes(receipt.state)" kind="unconfirmed" />
       <p>{{ vt(receipt.request.type) }} · {{ receipt.request.productId }} → {{ receipt.request.videoId }}</p>
       <p class="break-all">requestId: {{ receipt.requestId }}</p>
       <p v-if="receipt.traceId" class="break-all">traceId: {{ receipt.traceId }}</p>

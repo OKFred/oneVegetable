@@ -8,6 +8,7 @@ import { type ApiCapability, type CapabilityDefinition } from '@one-vegetable/co
 import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
+import PlatformReadbackNotice from '../components/PlatformReadbackNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
 import Badge from '../components/ui/Badge.vue';
@@ -479,6 +480,17 @@ function matrixBadge(cell: CapabilityMatrixCell) {
         {{ platformNotice }}
       </div>
       <ErrorNotice v-if="definitionError" class="mt-3" :error="definitionError" compact />
+      <PlatformReadbackNotice
+        v-if="
+          [
+            'alibaba.icbu.product.inventory.update',
+            'alibaba.icbu.product.inventory.get',
+            'alibaba.icbu.product.sku.inventory.get'
+          ].includes(selected?.method ?? '')
+        "
+        kind="inventory"
+        class="mt-3"
+      />
       <p v-if="definition" class="mt-4 text-sm text-muted-foreground">{{ definition.description }}</p>
       <div v-if="definition" class="mt-3 grid gap-2 text-xs sm:grid-cols-2">
         <code class="rounded bg-muted p-2">{{

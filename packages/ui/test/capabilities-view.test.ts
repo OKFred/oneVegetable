@@ -55,6 +55,20 @@ function bodyText(): string {
 }
 
 describe('CapabilitiesView platform safeguards', () => {
+  it('explains delayed inventory readback without opening or dispatching a mutation', async () => {
+    const wrapper = mountView('extension');
+    await flushPromises();
+    await filterMethod(wrapper, 'alibaba.icbu.product.inventory.update');
+    await methodButton(wrapper, 'alibaba.icbu.product.inventory.update').trigger('click');
+    await vi.waitFor(() => {
+      expect(document.body.querySelector('[data-testid="platform-readback-notice"]')?.textContent).toContain(
+        '不要因此重复增减库存'
+      );
+      expect(callButton().disabled).toBe(true);
+    });
+    expect(document.body.querySelector('[data-testid="capability-result"]')).toBeNull();
+    wrapper.unmount();
+  });
   it('shows the four verification dimensions and filters historical account results', async () => {
     const wrapper = mountView();
     await flushPromises();

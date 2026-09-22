@@ -1,4 +1,12 @@
 export const common = {
+  platformReadback: {
+    inventory:
+      'Inventory synchronization may be delayed, so queries can temporarily show the old quantity. Refresh later to check; do not repeat a stock adjustment for this reason.',
+    accepted:
+      'The platform accepted the request. Processing or synchronization may take time; the final result is not confirmed yet. Check the status later. Do not submit again.',
+    unconfirmed:
+      'The result is unconfirmed. This may be a synchronization delay or an error. Check the result; do not submit again. If it remains inconsistent, keep the requestId and verify on the official platform.'
+  },
   fields: {
     keywords: 'Keywords',
     categoryId: 'Category ID',

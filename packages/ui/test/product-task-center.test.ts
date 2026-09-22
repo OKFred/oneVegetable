@@ -32,12 +32,22 @@ describe('ProductTaskCenter', () => {
 
     expect(wrapper.text()).toContain('平台写入任务');
     expect(wrapper.text()).toContain('等待平台回读');
+    expect(wrapper.get('[data-testid="platform-readback-notice"]').text()).toContain('平台已受理');
     expect(wrapper.get('a').attributes('href')).toContain('alibaba.com/product-detail/');
 
     const checkButton = wrapper.findAll('button').find((button) => button.text().includes('查询平台状态'));
     if (!checkButton) throw new Error('Missing task readback button');
     await checkButton.trigger('click');
     expect(wrapper.emitted('refresh-job')?.[0]).toEqual([job]);
+    await wrapper.setProps({ jobs: [{ ...job, status: 'recovery-required' }] });
+    expect(wrapper.get('[data-testid="platform-readback-notice"]').text()).toContain('延迟或异常');
+    expect(wrapper.get('[data-testid="platform-readback-notice"]').text()).not.toContain('平台已受理');
+    await wrapper.setProps({ jobs: [{ ...job, status: 'failed' }] });
+    expect(wrapper.find('[data-testid="platform-readback-notice"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain('失败');
+    await wrapper.setProps({ jobs: [{ ...job, status: 'verified' }] });
+    expect(wrapper.find('[data-testid="platform-readback-notice"]').exists()).toBe(false);
+    wrapper.unmount();
   });
 });
 

@@ -507,6 +507,12 @@ test('formal MV3 dedicated inventory survives worker restart with no writes', as
   const restarted = context.serviceWorkers().at(-1) ?? (await context.waitForEvent('serviceworker'));
   expect(await restarted.evaluate(() => performance.timeOrigin)).toBeGreaterThan(before);
   expect(methods).toEqual([inventoryFixture.method, skuInventoryFixture.method, inventoryFixture.method]);
+  await page.goto(`chrome-extension://${new URL(restarted.url()).host}/options.html#/capabilities`);
+  await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.product.inventory.update');
+  await page.getByRole('button', { name: 'alibaba.icbu.product.inventory.update', exact: true }).click();
+  await expect(page.getByTestId('platform-readback-notice')).toContainText('不要因此重复增减库存');
+  await expect(page.getByRole('button', { name: '调用能力', exact: true })).toBeDisabled();
+  expect(methods).toHaveLength(3);
 });
 
 test('formal MV3 video workspace isolates public reads and survives worker restart', async () => {

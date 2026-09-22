@@ -180,6 +180,15 @@ to **2 passed, 7 permission-denied, 26 missing prerequisites**, with **one histo
 still unresolvable**. The local consolidated follow-up records exact targets, timings and receipts.
 This does not open production/debugger writes or assert a fixed platform synchronization delay.
 
+### Operator guidance
+
+Web and MV3 display the same bilingual readback notice in the inventory drawer and inventory API
+definitions, plus pending product jobs, batch publishing, gallery transfers and video associations.
+Acknowledged requests explain that processing/synchronization can take time; unconfirmed outcomes
+remain explicitly uncertain and direct users to check results before any new submission. Completed
+jobs no longer show a pending notice, and actual errors remain visible. No fixed delay is promised,
+no failed response is relabelled as success, and this copy-only change opens no write capability.
+
 ## Controlled smoke commands
 
 ```powershell

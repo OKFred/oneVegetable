@@ -15,6 +15,8 @@ import { useProductShowcase, type ShowcaseTarget } from '../lib/product-showcase
 import { useShowcaseI18n } from '../i18n/showcase';
 import { useInventoryI18n } from '../i18n/inventory';
 import { useProductInventory } from '../lib/product-inventory';
+import PlatformReadbackNotice from '../components/PlatformReadbackNotice.vue';
+import { productReadbackNotice } from '../lib/platform-readback-notice';
 const ProductInventoryDrawer = defineAsyncComponent(() => import('../components/ProductInventoryDrawer.vue'));
 const it = useInventoryI18n();
 const inventoryColumnIds = ['inventoryRecordCount', 'inventoryState', 'inventoryQueriedAt'] as const;
@@ -2653,6 +2655,7 @@ onBeforeUnmount(() => {
                     <span class="font-mono">{{ job.requestId }}</span>
                   </p>
                   <p class="mt-2 text-sm text-muted-foreground">{{ productMutationMessage(job) }}</p>
+                  <PlatformReadbackNotice :kind="productReadbackNotice(job.status)" class="mt-2" />
                 </div>
                 <div class="flex flex-wrap gap-2">
                   <Button
@@ -2819,6 +2822,10 @@ onBeforeUnmount(() => {
           <p class="mt-2 text-sm text-muted-foreground">
             {{ productMutationMessage(currentProductMutationJob) }}
           </p>
+          <PlatformReadbackNotice
+            :kind="productReadbackNotice(currentProductMutationJob.status)"
+            class="mt-3"
+          />
         </div>
         <Button
           size="sm"
@@ -2897,6 +2904,10 @@ onBeforeUnmount(() => {
           <p class="mt-2 text-sm text-muted-foreground">
             {{ productMutationMessage(currentCreationMutationJob) }}
           </p>
+          <PlatformReadbackNotice
+            :kind="productReadbackNotice(currentCreationMutationJob.status)"
+            class="mt-3"
+          />
         </div>
         <Button
           variant="outline"

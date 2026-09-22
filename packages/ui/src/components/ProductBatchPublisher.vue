@@ -4,6 +4,7 @@ import { Pencil, Play, Square, Trash2 } from '@lucide/vue';
 
 import { inspectProductBatchPublishItem } from '../lib/product-batch-publish';
 import ActionTooltip from './ActionTooltip.vue';
+import PlatformReadbackNotice from './PlatformReadbackNotice.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
@@ -265,10 +266,24 @@ function statusVariant(
                 </Badge>
                 <p
                   v-if="results[item.id]?.message || item.lastError"
-                  class="mt-2 max-w-80 text-xs text-destructive"
+                  class="mt-2 max-w-80 text-xs"
+                  :class="
+                    results[item.id]?.status === 'accepted' ||
+                    (!results[item.id] && item.status === 'verifying')
+                      ? 'text-muted-foreground'
+                      : 'text-destructive'
+                  "
                 >
                   {{ results[item.id]?.message || item.lastError }}
                 </p>
+                <PlatformReadbackNotice
+                  v-if="
+                    results[item.id]?.status === 'accepted' ||
+                    (!results[item.id] && ['verifying', 'attention-required'].includes(item.status))
+                  "
+                  :kind="item.status === 'attention-required' ? 'unconfirmed' : 'accepted'"
+                  class="mt-2 max-w-80"
+                />
                 <p
                   v-if="results[item.id]?.traceId || item.traceId"
                   class="mt-1 font-mono text-xs text-muted-foreground"

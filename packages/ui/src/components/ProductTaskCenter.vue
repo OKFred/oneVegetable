@@ -11,6 +11,8 @@ import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
 import ErrorNotice from './ErrorNotice.vue';
+import PlatformReadbackNotice from './PlatformReadbackNotice.vue';
+import { productReadbackNotice } from '../lib/platform-readback-notice';
 
 const ALIBABA_PRODUCT_MANAGEMENT_URL = 'https://i.alibaba.com/products/list-manage';
 
@@ -144,6 +146,7 @@ function openAlibabaProductManagement(): void {
               </td>
               <td class="whitespace-nowrap px-4 py-3">
                 <Badge :variant="statusVariant(job.status)">{{ jobStatusLabel(job.status) }}</Badge>
+                <PlatformReadbackNotice :kind="productReadbackNotice(job.status)" class="mt-2 max-w-80" />
                 <p v-if="job.message" class="mt-1 max-w-80 text-xs text-muted-foreground">
                   {{ job.message }}
                 </p>

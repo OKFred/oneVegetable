@@ -7,6 +7,7 @@ test('inventory drawer preserves true zero, switches source and shares optional 
   await page.getByRole('button', { name: '库存', exact: true }).first().click();
   const drawer = page.getByRole('dialog', { name: '库存', exact: true });
   await expect(drawer.getByText('已返回库存', { exact: true })).toBeVisible();
+  await expect(drawer.getByTestId('platform-readback-notice')).toContainText('不要因此重复增减库存');
   await expect(drawer.getByRole('cell', { name: '0', exact: true })).toBeVisible();
   await drawer.getByRole('combobox').first().selectOption('sku');
   await expect(drawer.getByText('已返回库存', { exact: true })).toBeVisible();
@@ -33,6 +34,9 @@ test('English dark inventory drawer remains usable on narrow screens', async ({ 
   await page.getByRole('button', { name: 'Inventory', exact: true }).first().click();
   const drawer = page.getByRole('dialog', { name: 'Inventory', exact: true });
   await expect(drawer.getByText('Inventory returned', { exact: true })).toBeVisible();
+  await expect(drawer.getByTestId('platform-readback-notice')).toContainText(
+    'temporarily show the old quantity'
+  );
   await expect(drawer.getByRole('button', { name: 'Refresh inventory' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(drawer).toHaveCount(0);

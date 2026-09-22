@@ -9,6 +9,7 @@ import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
 import DataTable from './DataTable.vue';
 import ErrorNotice from './ErrorNotice.vue';
+import PlatformReadbackNotice from './PlatformReadbackNotice.vue';
 const props = defineProps<{
   product: Product | null;
   snapshot?: ProductInventorySnapshot | undefined;
@@ -71,6 +72,7 @@ const columns = computed<DataColumn<ProductInventorySnapshot['records'][number]>
     <div class="space-y-4">
       <p class="text-xs text-muted-foreground">{{ product?.id }}</p>
       <p class="text-sm text-muted-foreground">{{ it('note') }}</p>
+      <PlatformReadbackNotice kind="inventory" />
       <p aria-live="polite">{{ busy ? it('loading') : snapshot ? it(snapshot.status) : it('pending') }}</p>
       <ErrorNotice v-if="error && !snapshot" :error="error" compact />
       <template v-if="snapshot">

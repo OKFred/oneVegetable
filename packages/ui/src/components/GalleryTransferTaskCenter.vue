@@ -14,6 +14,7 @@ import { useUiI18n } from '../i18n';
 import Sheet from './ui/Sheet.vue';
 import Button from './ui/Button.vue';
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
+import PlatformReadbackNotice from './PlatformReadbackNotice.vue';
 
 const transfers = useGalleryTransfers();
 const { t } = useUiI18n();
@@ -154,6 +155,10 @@ async function pause(): Promise<void> {
       </div>
       <section v-if="task" class="mt-5 space-y-3 rounded-lg border p-3">
         <h3 class="font-semibold">{{ t('photos.tasks.detail') }} · {{ task.id.slice(0, 8) }}</h3>
+        <PlatformReadbackNotice
+          v-if="task.items.some((item) => ['unknown', 'unconfirmed'].includes(item.status))"
+          kind="unconfirmed"
+        />
         <p class="break-all text-xs">{{ task.batchPrefix }}</p>
         <p v-if="task.errorCode" role="alert" class="text-sm text-destructive">
           {{ t('photos.tasks.error', { code: task.errorCode }) }}

@@ -178,7 +178,8 @@ describe('product video association component', () => {
       await wrapper.get('select').setValue(type);
       await wrapper.get('[data-testid="associate-video"]').trigger('click');
       expect(request).not.toHaveBeenCalled();
-      expect(wrapper.get('[data-testid="confirmation"]').text()).toContain('独立、立即生效');
+      expect(wrapper.get('[data-testid="confirmation"]').text()).toContain('立即提交独立的平台写操作');
+      expect(wrapper.get('[data-testid="confirmation"]').text()).toContain('同步可能有延迟');
       expect(wrapper.getComponent(ConfirmActionDialog).props('open')).toBe(true);
       // Confirmation freezes the use even if a UI event changes the selector afterwards.
       await wrapper.get('select').setValue(type === 'main' ? 'detail' : 'main');
