@@ -15,6 +15,7 @@ import {
   type DashboardTodo
 } from '../lib/local-todos';
 import TriStateCheckbox from './TriStateCheckbox.vue';
+import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
 import Input from './ui/Input.vue';
@@ -23,6 +24,7 @@ const { t } = useUiI18n();
 const browserStore = browserStorage();
 const items = ref<DashboardTodo[]>(browserStore ? loadDashboardTodos(browserStore) : []);
 const draft = ref('');
+const clearConfirmationOpen = ref(false);
 const persistenceFailed = ref(!browserStore);
 const remainingCount = computed(() => items.value.filter((item) => !item.completed).length);
 const completedCount = computed(() => items.value.length - remainingCount.value);
@@ -46,6 +48,7 @@ function removeTodo(todo: DashboardTodo): void {
 
 function clearCompleted(): void {
   persist(clearCompletedDashboardTodos(items.value));
+  clearConfirmationOpen.value = false;
 }
 
 function persist(next: DashboardTodo[]): void {
@@ -88,7 +91,7 @@ function browserStorage(): Storage | undefined {
         variant="ghost"
         size="sm"
         data-testid="todo-clear-completed"
-        @click="clearCompleted"
+        @click="clearConfirmationOpen = true"
       >
         {{ t('shell.dashboard.todo.clearCompleted', { count: completedCount }) }}
       </Button>
@@ -160,4 +163,12 @@ function browserStorage(): Storage | undefined {
       </p>
     </div>
   </Card>
+  <ConfirmActionDialog
+    v-model:open="clearConfirmationOpen"
+    :title="t('shell.dashboard.todo.clearTitle')"
+    :description="t('shell.dashboard.todo.clearDescription', { count: completedCount })"
+    :confirm-label="t('shell.dashboard.todo.clearConfirm')"
+    destructive
+    @confirm="clearCompleted"
+  />
 </template>
