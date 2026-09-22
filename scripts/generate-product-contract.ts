@@ -264,6 +264,16 @@ apiProperties.verification = { type: 'string', enum: ['documented', 'account-ver
 apiProperties.realCallEnabled = { type: 'boolean' };
 apiProperties.requestSchema = { type: ['string', 'null'] };
 apiProperties.responseSchema = { type: ['string', 'null'] };
+apiProperties.permissionGroups = {
+  type: 'array',
+  items: { type: 'string' },
+  description: 'Official application permission groups; not proof of account access.'
+};
+apiProperties.businessScope = {
+  type: 'string',
+  description: 'Business qualification or prerequisite scope.'
+};
+apiProperties.featureArea = { type: 'string' };
 
 document.components.schemas.CapabilityContractIssue = {
   type: 'object',
@@ -325,6 +335,13 @@ document.components.schemas.CapabilityDefinition = {
     restricted: { type: 'boolean' },
     restrictionReason: { type: ['string', 'null'] },
     featureArea: { type: 'string' },
+    auth: { type: 'string', enum: ['required', 'optional', 'none', 'unknown'] },
+    permissionGroups: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Official application permission groups; not proof of account access.'
+    },
+    businessScope: { type: 'string', description: 'Business qualification or prerequisite scope.' },
     requestSchema: { type: 'string' },
     responseSchema: { type: 'string' },
     requestExample: { type: 'object', additionalProperties: true },
@@ -556,7 +573,8 @@ const additionalDefinitions = [
   'x-logistics-capabilities',
   'x-insights-capabilities',
   'x-photo-capabilities',
-  'x-platform-capabilities'
+  'x-platform-capabilities',
+  'x-free-api-capabilities'
 ].flatMap((extension) =>
   Object.entries(
     (document[extension] ?? {}) as Record<string, { requestSchema: string; responseSchema: string }>

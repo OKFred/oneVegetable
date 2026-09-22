@@ -6,9 +6,9 @@ import { describe, expect, it } from 'vitest';
 import { API_CAPABILITIES } from '../src/generated/capabilities';
 
 describe('Alibaba API audit snapshot', () => {
-  it('contains the 84 legacy catalog methods and the documented TOP translation supplement', () => {
+  it('contains the legacy catalog, previous supplements and 35 additional free APIs', () => {
     const methods = new Set<string>(API_CAPABILITIES.map((item) => item.method));
-    expect(API_CAPABILITIES).toHaveLength(99);
+    expect(API_CAPABILITIES).toHaveLength(134);
     expect(methods.has('alibaba.icbu.video.query')).toBe(true);
     expect(methods.has('alibaba.icbu.video.relation.product.list')).toBe(true);
     expect(methods.has('alibaba.icbu.video.relation.product.main')).toBe(true);

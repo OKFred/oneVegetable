@@ -8,7 +8,8 @@ import addFormats from 'ajv-formats';
 import { validationSchema } from './lib/validator-schema';
 import { compactStandaloneSchemaConstants } from './lib/standalone-schema-constants';
 
-type CapabilityDomain = 'product' | 'rfq' | 'trade' | 'logistics' | 'insights' | 'photo' | 'platform';
+type CapabilityDomain =
+  'product' | 'rfq' | 'trade' | 'logistics' | 'insights' | 'photo' | 'platform' | 'free-api';
 
 interface CapabilitySchemas {
   requestSchema: string;
@@ -23,6 +24,7 @@ interface OpenApiDocument {
   'x-insights-capabilities'?: Record<string, CapabilitySchemas>;
   'x-photo-capabilities'?: Record<string, CapabilitySchemas>;
   'x-platform-capabilities'?: Record<string, CapabilitySchemas>;
+  'x-free-api-capabilities'?: Record<string, CapabilitySchemas>;
   components?: { schemas?: Record<string, object> };
 }
 
@@ -59,7 +61,16 @@ const coreValidators: Record<string, object | undefined> = {
   validateAlibabaCredentialAcquisitionState: schemas.AlibabaCredentialAcquisitionState
 };
 
-const domains: CapabilityDomain[] = ['product', 'rfq', 'trade', 'logistics', 'insights', 'photo', 'platform'];
+const domains: CapabilityDomain[] = [
+  'product',
+  'rfq',
+  'trade',
+  'logistics',
+  'insights',
+  'photo',
+  'platform',
+  'free-api'
+];
 const targets = new Map<string, string>();
 targets.set(
   'validators-video-association.ts',
@@ -139,7 +150,7 @@ targets.set(
 
 for (const domain of domains) {
   const definitions = document[`x-${domain}-capabilities`] ?? {};
-  const prefix = `${domain[0]?.toUpperCase()}${domain.slice(1)}`;
+  const prefix = domain === 'free-api' ? 'FreeApi' : `${domain[0]?.toUpperCase()}${domain.slice(1)}`;
   const selected: Record<string, object | undefined> = {};
   for (const [index, definition] of Object.values(definitions).entries()) {
     selected[`validate${prefix}Capability${index}Request`] = schemas[definition.requestSchema];
@@ -178,12 +189,17 @@ function compileValidators(
   addErrors(ajv);
 
   const dependencies = new Map<string, object>();
+  const canonicalSchemas = new Map<string, string>();
+  const aliases = new Map<string, string>();
   for (const [name, schema] of Object.entries(selected)) {
     if (!schema) throw new Error(`OpenAPI schema ${name} is missing`);
-    ajv.addSchema(
-      { ...(withAjvExtensions(validationSchema(schema), dependencies) as object), $id: name },
-      name
-    );
+    const normalized = withAjvExtensions(validationSchema(schema), dependencies) as object;
+    const fingerprint = JSON.stringify(normalized);
+    const canonical = canonicalSchemas.get(fingerprint);
+    aliases.set(name, canonical ?? name);
+    if (canonical) continue;
+    canonicalSchemas.set(fingerprint, name);
+    ajv.addSchema({ ...normalized, $id: name }, name);
   }
   // Keep referenced schemas shared instead of expanding identical validators at every call site.
   for (const [name, schema] of dependencies) {
@@ -194,10 +210,13 @@ function compileValidators(
   }
 
   const validators = Object.fromEntries(
-    Object.keys(selected).map((name) => {
-      if (!ajv.getSchema(name)) throw new Error(`Could not compile ${name}`);
-      return [name, name];
-    })
+    Object.keys(selected)
+      .filter((name) => aliases.get(name) === name)
+      .map((name) => {
+        const canonical = aliases.get(name) ?? name;
+        if (!ajv.getSchema(canonical)) throw new Error(`Could not compile ${name}`);
+        return [name, canonical];
+      })
   );
   const generated = compactStandaloneSchemaConstants(standaloneCode(ajv, validators)).replace(
     'require("ajv/dist/runtime/ucs2length").default',
@@ -211,7 +230,11 @@ function compileValidators(
   if (browserSafeCode.includes('require(') || browserSafeCode.includes('eval(')) {
     throw new Error('AJV standalone output contains a browser-unsafe runtime dependency.');
   }
-  return `// @ts-nocheck\n// Generated from openapi/one-vegetable.json. Do not edit.\n${browserSafeCode}\n`;
+  const aliasExports = [...aliases]
+    .filter(([name, canonical]) => name !== canonical)
+    .map(([name, canonical]) => `export const ${name} = ${canonical};`)
+    .join('\n');
+  return `// @ts-nocheck\n// Generated from openapi/one-vegetable.json. Do not edit.\n${browserSafeCode}${aliasExports ? `\n${aliasExports}` : ''}\n`;
 }
 
 function withAjvExtensions(value: unknown, dependencies: Map<string, object>): unknown {

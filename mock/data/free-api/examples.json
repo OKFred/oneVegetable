@@ -1,0 +1,1044 @@
+{
+  "alibaba.buynow.order.create": {
+    "request": {
+      "param_order_create_request": {
+        "channel_refer_id": "124232",
+        "logistics_detail": {
+          "carrier_code": "EX_ASP_JYC_FEDEX",
+          "shipment_address": {
+            "address": "1000 Fifth Avenue at 82nd Street，New York, NY",
+            "alternate_address": "1000 Fifth Avenue at 82nd Street，New York, NY",
+            "city": "New York",
+            "city_code": "NYC",
+            "contact_person": "jack wu",
+            "country": "United States of America",
+            "country_code": "US",
+            "fax": { "area": "86", "country": "0571", "number": "67824793472" },
+            "port": "NewYork",
+            "port_code": "NYC",
+            "province": "California",
+            "province_code": "CA",
+            "telephone": { "area": "86", "country": "0751", "number": "35354244223" },
+            "zip": "314007"
+          },
+          "dispatch_location": "CN或US，默认CN"
+        },
+        "payment_detail": { "shipment_fee": "10", "total_amount": "130" },
+        "product_list": [
+          { "product_id": 2233333, "quantity": "10", "sku_id": "5678", "unit_price_str": "10" }
+        ],
+        "properties": "\"{\\\"platform\\\":\\\"Shopify\\\", \\\"orderId\\\": \\\"1111111111111\\\"}\"",
+        "remark": "xxx"
+      }
+    },
+    "response": {
+      "value": { "pay_url": "https://biz.alibaba.com/ta/detail.htm?orderId=1234", "trade_id": "1234" }
+    }
+  },
+  "alibaba.dropshipping.order.pay": {
+    "request": {
+      "param_order_pay_request": {
+        "accept_language": "zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7",
+        "is_pc": true,
+        "isv_drop_shipper_registration_time": 1616595118627,
+        "order_id_list": [1234, 2234],
+        "screen_resolution": "1024*1024",
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.30 Safari/537.36",
+        "user_ip": "10.11.102.11",
+        "payment_method": "CREDIT_CARD"
+      }
+    },
+    "response": {
+      "value": {
+        "pay_url": "https://xxxx.htm",
+        "reason_code": "NEVER_PAY_SUCCESS_IN_DROPSHIPER",
+        "reason_message": "The buyer has never paid for a successful dropshipping order and needs to visit payUrl to pay 10.",
+        "status": "PAY_FAILED",
+        "trade_id": 23432131
+      }
+    }
+  },
+  "alibaba.dropshipping.product.get": {
+    "request": { "param_distribution_sale_product_request": { "product_ids": [1234, 456] } },
+    "response": {
+      "value": [
+        {
+          "description": "xxxxx",
+          "detail_url": "https://xxxxxxxx.htm",
+          "is_can_place_order": true,
+          "keywords": ["[mp3,red]"],
+          "ladder_period_list": [{ "max_quantity": 10, "min_quantity": 1, "process_period": 5 }],
+          "main_image_url": "https://sc04.alicdn.com/kf/Hbaa543ef00774305882c18bbf8078596R.jpg",
+          "moq_and_price": {
+            "min_order_quantity": "1",
+            "moq_delivery_period": 10,
+            "moq_unit_price": { "amount": "10.2", "currency": "USD" },
+            "unit": "piece"
+          },
+          "name": "Hello Test Product Name",
+          "price_range": "3.6~100.9",
+          "product_id": 12342,
+          "product_sku_list": [
+            {
+              "image_url": "https://xxxx.jpg",
+              "inventory_list": [{ "dispatch_country": "CN", "inventory": 5, "store_code": "xxxx" }],
+              "sku_id": 2222,
+              "sku_name_value_list": [
+                {
+                  "attr_name_desc": "IX9 black",
+                  "attr_name_id": 0,
+                  "attr_value_desc": "Color",
+                  "attr_value_id": 191288010,
+                  "attr_value_image": "https://xxxx.jpg"
+                }
+              ],
+              "ladder_price_list": [
+                { "price": { "currency": "USD", "amount": "11.2" }, "max_quantity": 100, "min_quantity": 2 }
+              ]
+            }
+          ],
+          "e_company_id": "xxxxxxx",
+          "top_category_name": "Consumer Electronics",
+          "leaf_category_name": "Smart Watches",
+          "image_url_list": ["xxxx.jpg", "yyyy.jpg"]
+        }
+      ]
+    }
+  },
+  "alibaba.dropshipping.store.save": {
+    "request": { "store_type": "shopify", "store_url": "lihao.myshopify.com" },
+    "response": { "result_success": "无" }
+  },
+  "alibaba.dropshipping.token.create": { "request": {}, "response": { "ecology_token": "gfasdgfdsfgsa" } },
+  "alibaba.icbu.distribution.product.get": {
+    "request": { "product_get_request": { "secret_id": "1" } },
+    "response": {
+      "product": {
+        "keywords": ["book"],
+        "subject": "mp3 player",
+        "description": "Enjoy your sports and music at the same time,very convenient",
+        "secret_id": "13456",
+        "product_sku": {
+          "skus": [
+            {
+              "attr2_value": "{11:12,22:21}",
+              "bulk_discount_prices": [{ "start_quantity": 100, "price": "12.34" }],
+              "inventory_d_t_o_list": [{ "inventory": 1266, "store_code": "cn_inventory" }],
+              "sku_code": "12333223",
+              "sku_id": 1111
+            }
+          ],
+          "sku_attributes": [
+            {
+              "attribute_id": 12,
+              "values": [
+                {
+                  "mark_info": "#888888",
+                  "value_id": 12345,
+                  "system_value_name": "gray",
+                  "custom_value_name": "light grey",
+                  "image_url": "http://g03.s.alicdn.com/kf/HTB1PYE9IpXXXXbsXVXXq6xXFXXXg/200042360/HTB1PYE9IpXXXXbsXVXXq6xXFXXXg.jpg"
+                }
+              ],
+              "attribute_name": "color"
+            }
+          ]
+        },
+        "product_certs": [
+          {
+            "cert_logo": "http://g03.s.alicdn.com/kf/HTB1PYE9IpXXXXbsXVXXq6xXFXXXg/200042360/HTB1PYE9IpXXXXbsXVXXq6xXFXXXg.jpg",
+            "cert_image": "http://g03.s.alicdn.com/kf/HTB1PYE9IpXXXXbsXVXXq6xXFXXXg/200042360/HTB1PYE9IpXXXXbsXVXXq6xXFXXXg.jpg"
+          }
+        ],
+        "pc_detail_url": "https://www.alibaba.com/product-detail/Short-Umbrella-Girls-Black-Lace-Polka_1600107214049.html?spm=a2700.galleryofferlist.normalList.12.6c612db4ueHAW2",
+        "wholesale_trade": {
+          "unit_type": "Piece",
+          "handling_time": 3,
+          "volume": 1234,
+          "shipping_line_template_id": 123,
+          "price": "12.34",
+          "sale_type": "batch",
+          "weight": "123.456",
+          "min_order_quantity": 12,
+          "deliver_periods": [{ "quantity": 50, "process_period": 3 }],
+          "package_size": "2*3*4",
+          "batch_number": 12
+        },
+        "main_image": { "images": ["example"] },
+        "min_price": "1.2",
+        "attributes": [
+          {
+            "attribute_id": 123,
+            "sku_custom_image_url": "http://g03.s.alicdn.com/kf/HTB1PYE9IpXXXXbsXVXXq6xXFXXXg/200042360/HTB1PYE9IpXXXXbsXVXXq6xXFXXXg.jpg",
+            "value_id": 1,
+            "value_name": "gray",
+            "attribute_name": "color",
+            "sku_custom_value_name": "light grey"
+          }
+        ],
+        "category_id": 123,
+        "gmt_modified": "2000-01-01 00:00:00"
+      },
+      "error_msg": "no privilege",
+      "error_type": "0000001",
+      "e_company_id": "ds22dg"
+    }
+  },
+  "alibaba.icbu.distribution.product.query": {
+    "request": { "pool_product_page_query": { "page_size": 10, "current_page": 1 } },
+    "response": {
+      "curr_page": 1,
+      "total_item": 100,
+      "page_size": 10,
+      "error_type": "0000001",
+      "products": [
+        {
+          "gmt_modified": "2022-01-01 00:00:00",
+          "keywords": ["A", "B", "C"],
+          "subject": "product title",
+          "pc_detail_url": "https://xxx.com",
+          "secret_id": "11111",
+          "main_image": { "images": ["example"] },
+          "min_price": "12.00"
+        }
+      ],
+      "error_msg": "no privilege"
+    }
+  },
+  "alibaba.icbu.industry.topic.list": {
+    "request": { "page_size": 20, "current_page": 1 },
+    "response": {
+      "page_count": 1,
+      "page_no": 1,
+      "datas": [
+        {
+          "id": 43001,
+          "title": "伊斯兰女士大码连衣裙",
+          "reason": "随着大码人群的增加，特殊民族服饰，如伊斯兰服饰的大码需求也非常大，需要补充大码伊斯兰连衣裙，强烈建议发品。",
+          "show_image_urls": ["https://sc04.alicdn.com/kf/H9fac49c6e9094122a62e1bb16b53df0b7.jpg"],
+          "capacity_list": ["RTS"],
+          "country_preference_list": [{ "name": "美国", "field": "US" }],
+          "category_ids": "3,127726317,127734130,31205",
+          "rule_dto": {
+            "price_to": "0.3",
+            "price_from": "3",
+            "min_ord_qty_to": "1",
+            "min_ord_qty_from": "100",
+            "certificate_list": [{ "certificate": "KC" }],
+            "keywords": "Big,Tall",
+            "attr_dto_list": [
+              {
+                "attr_id": 213704110,
+                "attr_name": "Power Source",
+                "attr_value_dto_list": [{ "attr_value_id": 9390368, "attr_value_name": "Battery" }]
+              }
+            ]
+          },
+          "rule_type": "ATTR_ENROLL_PRODUCT"
+        }
+      ],
+      "record_count": 1,
+      "page_size": 20
+    }
+  },
+  "alibaba.icbu.product.id.encrypt": {
+    "request": { "language": "ENGLISH", "product_id": 60312345678 },
+    "response": { "secret_id": "AEIOWIJDLSOE" }
+  },
+  "alibaba.icbu.product.inventory.update": {
+    "request": {
+      "request_param": {
+        "product_id": 12121212,
+        "inventory_list": [
+          { "sku_id": 2323232, "inventory_code": "CN_LOCAL_01", "inventory": 44, "operate": "plus" }
+        ]
+      }
+    },
+    "response": {
+      "result": {
+        "success": true,
+        "data": "true",
+        "message": "System error",
+        "msg_code": "SYS_ERROR",
+        "trace_id": "239238jiweie9382"
+      }
+    }
+  },
+  "alibaba.icbu.product.logistics.country.getcoststatus": {
+    "request": {
+      "country_logistics_cost_status_request": {
+        "unit_weight": "1.5",
+        "shipping_template_id": 123456,
+        "sale_type": "normal",
+        "unit_size": "20X20X20",
+        "batch_num": 10,
+        "language": "zh_cn",
+        "product_type": 1,
+        "moq": 10
+      }
+    },
+    "response": {
+      "trace_id": "11111111",
+      "data": {
+        "core_country_logistics_cost_list": [
+          { "country_code": "US", "country_name": "美国", "is_freight_cost_certain": true }
+        ],
+        "non_core_country_logistics_cost_list": [
+          { "country_code": "US", "country_name": "美国", "is_freight_cost_certain": "true" }
+        ]
+      },
+      "biz_success": true,
+      "message": "系统异常，请稍后再试",
+      "msg_code": "SYS_ERROR"
+    }
+  },
+  "alibaba.icbu.shopclone.externalproductinfo.write": {
+    "request": {
+      "external_product_info_write_param": {
+        "vendor_company_name": "杭州赛群网络科技有限公司",
+        "service_code": "ISVXXA72807",
+        "products": [
+          {
+            "from_product_unique_id": "5A2E6C1F",
+            "icbu_product_id": 16542223456,
+            "from_product_detail_url": "https://www.example.com/products/1.htm",
+            "from_product_title": "示例商品标题",
+            "from_product_high_price_amount": "120.50",
+            "from_product_low_price_amount": "100.23",
+            "from_product_price_currency_code": "CNY",
+            "from_product_price_type": "SKU",
+            "from_product_category_level_ids": ["103", "2455", "374312"],
+            "from_product_category_level_names": ["服装", "女装", "夏季女装"],
+            "from_product_sales_volume_amount": 7301,
+            "from_product_sales_volume_period": "2|DAY",
+            "from_shop_product_attr_json": "{}",
+            "from_shop_platform_code": "1688",
+            "from_shop_unique_id": "1234567ABCDE"
+          }
+        ],
+        "company_id": 200012245,
+        "account_id": 2215693550141
+      }
+    },
+    "response": {
+      "result_dto": {
+        "is_success": false,
+        "result_code": "PARAM_INVALID",
+        "result_msg": "参数不合法",
+        "external_product_info_write_result_dto": {
+          "all_product_succeed": false,
+          "ignored_icbu_product_ids": [1],
+          "skipped_icbu_product_ids": [1],
+          "added_icbu_product_ids": [1],
+          "updated_icbu_product_ids": [1],
+          "add_failed_icbu_product_ids": [1],
+          "update_failed_icbu_product_ids": [1]
+        }
+      }
+    }
+  },
+  "alibaba.icbu.shopclone.externalshopinfo.write": {
+    "request": {
+      "external_shop_info_write_param": {
+        "vendor_company_name": "杭州赛群网络科技有限公司",
+        "service_code": "ISVXXA72807",
+        "from_shop_name": "服装有限公司",
+        "from_shop_page_url": "https//www.example.com/detail.htm",
+        "action": "BIND",
+        "confirm_time": "2023-10-10 00:00:00",
+        "from_shop_detail_attr_json": "{\"level\": \"1\"}",
+        "company_id": 200012245,
+        "account_id": 2215693550141,
+        "from_shop_platform_code": "1688",
+        "from_shop_unique_id": "1234567ABCDE"
+      }
+    },
+    "response": {
+      "result_dto": { "success": false, "result_code": "PARAM_INVALID", "result_msg": "参数不合法" }
+    }
+  },
+  "alibaba.icbu.shopclone.icbuproductrights.query": {
+    "request": {
+      "external_icbu_product_rights_query_param": {
+        "from_product_unique_ids": ["5A2E6C1F", "567ABCDE"],
+        "company_id": 200012245,
+        "account_id": 2215693550141,
+        "from_shop_platform_code": "1688",
+        "from_shop_unique_id": "1234567ABCDE",
+        "icbu_product_ids": [1005936231, 2345166496]
+      }
+    },
+    "response": {
+      "result_dto": {
+        "success": false,
+        "result_code": "PARAM_INVALID",
+        "result_msg": "参数不合法",
+        "external_icbu_product_rights_query_result_dto": {
+          "succeed_products": [
+            { "from_product_unique_id": "xxxxx", "icbu_product_id": 3, "good_product_right_enabled": false }
+          ],
+          "unknown_product_ids": [1],
+          "invalid_product_ids": [1],
+          "unknown_from_product_ids": ["example"]
+        }
+      }
+    }
+  },
+  "alibaba.icbu.shopclone.icbushopinfo.query": {
+    "request": {
+      "external_icbu_shop_info_query_param": {
+        "company_id": 200012245,
+        "account_id": 2215693550141,
+        "service_code": "ISV112W33N"
+      }
+    },
+    "response": {
+      "result_dto": {
+        "success": false,
+        "result_code": "PARAM_INVALID",
+        "result_msg": "参数不合法",
+        "external_icbu_shop_info_query_result_dto": { "shop_clone_join_status": "xxxxx" }
+      }
+    }
+  },
+  "alibaba.icbu.supplierfoster.isvtask.notify": {
+    "request": {
+      "isv_task_status_notify_request": {
+        "isv": "xxxxx",
+        "type": "xxxxx",
+        "task_key": "xxxxx",
+        "task_status": "xxxxx",
+        "deduction": "xxxxx",
+        "no_tax_deduction": "xxxxx",
+        "fail_reason": "xxxxx"
+      }
+    },
+    "response": { "isv_task_status_notify_response": { "result": "xxxxx", "fail_reason": "xxxxx" } }
+  },
+  "alibaba.icbu.text.recognize": {
+    "request": {
+      "icbu_language_recognize_task_dto": {
+        "country": "US",
+        "params_map": "{\"key\":\"value\"}",
+        "trans_engine": "ALI_TRANS",
+        "app_name": "xiaoman",
+        "text": "this is a text",
+        "locale": "en_US"
+      }
+    },
+    "response": {
+      "trace_id": "2150408616876936223598718e0779\t",
+      "recognized_language": "en_US",
+      "params_map": {},
+      "text": "this is a text",
+      "recognize_success": true,
+      "recognize_error_code": { "code": "1001", "display_text": "illegal params" }
+    }
+  },
+  "alibaba.icbu.text.recognize.trans": {
+    "request": {
+      "icbu_recognize_and_translate_task_dto": [
+        {
+          "suggest_source_language": "es",
+          "trans_engine": "ALI_TRANS",
+          "target_language": "es",
+          "app_name": "xiaoman",
+          "source_text": "this is a test",
+          "format": "text",
+          "locale": "en_US",
+          "field_type": "title",
+          "param_map": "{\"keyt\":\"value\"}"
+        }
+      ]
+    },
+    "response": {
+      "result": [
+        {
+          "trace_id": "\t2150408616876936223598718e0779",
+          "recognized_language": "en",
+          "trans_engine": "ALI_TRANS",
+          "success": true,
+          "app_name": "xiaoman",
+          "source_text": "this is a text",
+          "format": "text",
+          "error_code": { "display_text": "Params is illegal", "code": "1001" },
+          "translate_result_text": "これはテストです",
+          "field_type": "title",
+          "param_map": "{\"key\":\"value\"}"
+        }
+      ]
+    }
+  },
+  "alibaba.icbu.topic.products": {
+    "request": { "topic_id": 43001, "page_size": 20, "current_page": 1, "is_country_topic": false },
+    "response": {
+      "page_count": 1,
+      "page_no": 1,
+      "datas": [
+        {
+          "product_id": "1600321681407",
+          "main_image_file_name": "Hf10e3865721f4698afe73aca72f06139M.jpg",
+          "prod_name": "square 36w aluminum housing edgeless pc cover 12v 24v slim led work light for tractor off road heavy duty",
+          "cate_lv1_id": "34",
+          "cate_lv2_id": "127676028",
+          "cate_lv3_id": "127666031",
+          "cate_id": "127654030"
+        }
+      ],
+      "record_count": 1,
+      "page_size": 20
+    }
+  },
+  "alibaba.icbu.trade.assurance.account.get": {
+    "request": {},
+    "response": {
+      "assurance_account_result": {
+        "error_message": "ILLEGAL_PARAMETER",
+        "value": {
+          "pause_status": false,
+          "guide_u_r_l": "https://service.alibaba.com/hc/supplier/list/9208019.htm",
+          "flag_list": [
+            "<div style=\\\"border:1px solid #cdcdcd;width:500px;padding:16px 12px;margin:0 auto;font-family:Arial,Helvetica,sans-senif,Microsoft YaHei\\\">\\n\\t<table>\\n\\t\\t<tr>\\n\\t\\t\\t<td width=\\\"30\\\" height=\\\"20\\\">\\n\\t\\t\\t\\t<img src=\\\"https://img.alicdn.com/tps/TB1JK1lOpXXXXaTXFXXXXXXXXXX-20-21.png\\\" style=\\\"height:20px;width:20px\\\">\\n\\t\\t\\t</td>\\n\\t\\t\\t<td width=\\\"175\\\" height=\\\"20\\\">\\n\\t\\t\\t\\t<span style=\\\"font-weight:bolder;font-size:14px;\\\">Trade Assurance </span>\\n\\t\\t\\t\\t<span style=\\\"color:#999;font-size:14px;\\\">Supplier</span>\\n\\t\\t\\t</td>\\n\\t\\t\\t<td width=\\\"190\\\" height=\\\"20\\\">\\n\\t\\t\\t\\t<div style=\\\"border-left:1px solid #ddd;padding-left:10px;\\\">\\n\\t\\t\\t\\t\\t<span style=\\\"font-size:14px;color:#666\\\">Supplier limit:  </span>\\n\\t\\t\\t\\t\\t<span style=\\\"font-weight:bolder;color:#ff6300;font-size:14px;\\\">US $10000</span>\\n\\t\\t\\t\\t</div>\\n\\t\\t\\t</td>\\n\\t\\t\\t<td width=\\\"100\\\" height=\\\"20\\\">\\n\\t\\t\\t\\t<a href=\\\"https://cn1514584373mpdm.en.alibaba.com/credit.html\\\" style=\\\"font-size:14px;text-decoration:none;color:#4da8de\\\">More details></a>\\n\\t\\t\\t</td>\\n\\t\\t</tr>\\n\\t</table>\\n</div>"
+          ]
+        },
+        "error_code": "account000000",
+        "success": true
+      }
+    }
+  },
+  "alibaba.icbu.video.upload": {
+    "request": {
+      "video_path": "https://sss/123.mp4",
+      "video_name": "123444",
+      "cover_url": "https://sc01.alicdn.com/123.png"
+    },
+    "response": { "msg_code": "200", "msg_info": "ok" }
+  },
+  "alibaba.icbulive.product.push": {
+    "request": {
+      "live_product_request": {
+        "live_uuid": "c03d1909-5bbf-4cfa-aca5-03579c766f3e",
+        "ali_id": 17380523214,
+        "product_id": 1601016043826
+      }
+    },
+    "response": {
+      "call_success": false,
+      "inner_error_message": "param error",
+      "inner_error_code": 400,
+      "value": false
+    }
+  },
+  "alibaba.icbulive.productlist.pageget": {
+    "request": {
+      "live_product_request": {
+        "page_size": 10,
+        "live_uuid": "c03d1909-5bbf-4cfa-aca5-03579c766f3e",
+        "ali_id": 17380523214,
+        "current_page": 1
+      }
+    },
+    "response": {
+      "call_success": true,
+      "inner_error_message": "param error",
+      "inner_error_code": 400,
+      "value": {
+        "total_count": 100,
+        "live_products": [{ "product_id": 1601016043826, "title": "skirtshirt" }]
+      }
+    }
+  },
+  "alibaba.onetouch.logistics.express.logistics.solution.semi.list": {
+    "request": {
+      "param": {
+        "consignor_address": {
+          "address": {
+            "zip": "518000",
+            "country": { "code": "CN", "name": "中国" },
+            "address": "广东省东莞市xx镇xx村xxx工业园xxx路xxx号",
+            "province": { "code": "440000", "name": "广东省" },
+            "address2": "xx栋3楼1号",
+            "city": { "code": "441900", "name": "东莞市" },
+            "district": { "code": "441901111", "name": "寮步镇" }
+          },
+          "contact_person": "温先生",
+          "company_name_cn": "xx公司",
+          "contact": { "mobile_no": "13700001111", "email": "a@b.com" }
+        },
+        "trade_order_id": "1113311111111",
+        "package_list": [
+          { "quantity": 1, "length": "1", "type": "box", "width": "1", "height": "1", "weight": "1" }
+        ],
+        "supply_chain_biz_id": 6780367
+      }
+    },
+    "response": {
+      "result": {
+        "msg": "test",
+        "data": {
+          "trunk_line_name": "半托管_无忧UPS Expedited",
+          "trunk_line_sku_code": "UPS-Expedited-BTG",
+          "warehouse_code": "BF_SZ ",
+          "available_head_pickup_solution_list": [
+            {
+              "sku_id": 1,
+              "solution_id": 1,
+              "pick_up_time_dto_list": [{ "date_str": "2024-08-01", "time_str_list": ["example"] }],
+              "sp_code": "SP_CN_0002898",
+              "pickup_type": "provider_paid_pickup",
+              "sp_name": "顺丰揽收"
+            }
+          ]
+        },
+        "success": true,
+        "result_code": 0
+      }
+    }
+  },
+  "alibaba.order.freight.calculate": {
+    "request": {
+      "param_multi_freight_template_request": {
+        "e_company_id": "cVmhg7/xG8q3UQgcH/5Fag==",
+        "address": {
+          "address": "4595 Clubview Drive",
+          "city": { "code": "xx", "name": "Bessemer" },
+          "country": { "code": "US", "name": "United States" },
+          "province": { "code": "xx", "name": "Alabama" },
+          "zip": "35022"
+        },
+        "destination_country": "US",
+        "logistics_product_list": [{ "product_id": 1600191825486, "quantity": 1, "sku_id": 12321 }],
+        "dispatch_location": "CN"
+      }
+    },
+    "response": {
+      "value": [
+        {
+          "delivery_time": "3~10",
+          "destination_country": "US",
+          "dispatch_country": "CN",
+          "fee": { "amount": "10", "currency": "USD" },
+          "shipping_type": "EXPRESS/MULTIMODAL_TRANSPORT",
+          "trade_term": "DAP",
+          "vendor_code": "EX_ASP_Economy_Express_3C",
+          "vendor_name": "Alibaba.com Economy Express (3C)"
+        }
+      ]
+    }
+  },
+  "alibaba.order.logistics.tracking.get": {
+    "request": { "trade_id": 2345323432 },
+    "response": {
+      "tracking_list": [
+        {
+          "carrier": "DHL",
+          "current_event_code": "SC_INBOUND_SUCCESS",
+          "event_list": [
+            {
+              "event_code": "SC_INBOUND_SUCCESS",
+              "event_location": "SHANGHAI-CHN",
+              "event_name": "Picked up",
+              "event_time": "2020-07-21 14:49:06"
+            }
+          ],
+          "tracking_number": "11123432321",
+          "tracking_url": "xxxxxx"
+        }
+      ]
+    }
+  },
+  "alibaba.order.pay.result.query": {
+    "request": { "trade_id": 13423432134532 },
+    "response": {
+      "value": {
+        "pay_url": "https://xxxxx.htm",
+        "reason_code": "50006",
+        "reason_message": "test failed",
+        "status": "PAY_FAILED",
+        "trade_id": 23432131
+      }
+    }
+  },
+  "alibaba.seller.coupon.auth.verify": {
+    "request": { "service_code": "ISVXX9313", "coupon_seq_number": "402124" },
+    "response": {
+      "result": { "success": true, "dto": true, "return_code": 0, "exec_description": "系统错误" }
+    }
+  },
+  "alibaba.seller.vendor.order.detail": {
+    "request": { "order_no": "FW170313000059" },
+    "response": {
+      "result": {
+        "dto": {
+          "buyer_ali_id": 1,
+          "buyer_name": "购买人",
+          "company_name": "公司名称",
+          "contact_mobile": "联系电话",
+          "create_time": "2020-03-05 17:46:00",
+          "currency": "订单货币类型",
+          "current_status": "当前状态",
+          "fire_time": "2020-03-05 17:46:00",
+          "order_no": "FW170410000002",
+          "order_title": "订单标题",
+          "order_type": "订单类型",
+          "pay_channel": "支付通道",
+          "quantity": 1,
+          "refund_price": "0",
+          "service_code": "服务编码",
+          "service_name": "服务名称",
+          "service_score": 100,
+          "sku_code": "规格编码",
+          "sku_value": "规格",
+          "transaction_price": "100",
+          "transaction_unit_price": "100",
+          "buyer_login_id": "lxpaliyuntest06",
+          "service_category_id": 123,
+          "service_category": "机械电子",
+          "service_sku_label": "{\"skuValue\":\"2\",\"specItemIds\":[\"vas\"]}"
+        }
+      }
+    }
+  },
+  "alibaba.seller.vendor.order.list": {
+    "request": {
+      "query_trade_dto": {
+        "fire_time_start": "2020-03-09 14:04:34",
+        "service_code": ["ISVXX87F3AE"],
+        "off_set": 23,
+        "create_time_end": "2020-03-09 14:04:34",
+        "length": 30,
+        "create_time_start": "2020-03-09 14:04:34",
+        "is_display": true,
+        "fire_time_end": "2020-03-09 14:04:34",
+        "buyer_ali_id": 123123,
+        "trade_ids": [12],
+        "order_nos": ["W20030940706300"],
+        "status": ["approved"],
+        "page": 1,
+        "page_size": 20
+      }
+    },
+    "response": {
+      "result": {
+        "exec_description": "接口返回",
+        "return_code": 0,
+        "success": true,
+        "page_dto": { "total_item": 0, "total_page": 0, "page_size": 10, "current_page": 0 },
+        "dtos": [
+          {
+            "order_type": "online",
+            "order_no": "FW170410000002",
+            "quantity": 1,
+            "current_status": "delivered",
+            "service_code": "ISVXX95CF47",
+            "fire_time": "1583401560000",
+            "transaction_price": "1",
+            "create_time": "1491824798000",
+            "transaction_unit_price": "1",
+            "pay_channel": "Martini",
+            "currency": "CNY",
+            "refund_price": "demo",
+            "order_title": "123",
+            "sku_code": "ISVXX95CF47",
+            "buyer_ali_id": 3692130262,
+            "buyer_login_id": "lxpaliyuntest06",
+            "service_category_id": 123,
+            "service_category": "机械电子",
+            "service_sku_label": "{\"skuValue\":\"2\",\"specItemIds\":[\"vas\"]}"
+          }
+        ]
+      }
+    }
+  },
+  "alibaba.seller.vendor.service.process": {
+    "request": { "order_num": "1" },
+    "response": {
+      "result": {
+        "list": [
+          {
+            "nrts6060": "example",
+            "road": "example",
+            "is_video": "example",
+            "is_rfq": "example",
+            "win_prod_ratio_std001": "example",
+            "is_crd_scrty": "example",
+            "pc_online_hour_rate": "example",
+            "stay_hour_pc_m": "example",
+            "pc_online_day_rate": "example",
+            "active_day_pc_m": 1,
+            "active_mbr_rate": "example",
+            "active_mbr_m": 1,
+            "mc_rate": "example",
+            "kw_rate": "example",
+            "kw200_rate": "example",
+            "prod_video_cnt": 1,
+            "is_tort_brand": "example",
+            "have_price_prod": "example",
+            "have_repeat_prod": "example",
+            "rts_prod_cnt": 1,
+            "good_prod_rate": "example",
+            "good_prod_cnt": 1,
+            "potential_prod_rate": "example",
+            "potential_prod_cnt": 1,
+            "prod_blue": 1,
+            "prod45": 1,
+            "prod40": 1,
+            "p1504_rate": "example",
+            "p304_rate": "example",
+            "prod_cnt": 1,
+            "is_comp_dec": "example",
+            "agency_prod_cnt": 1,
+            "tradesuccess_time": "example",
+            "delivered_time": "example",
+            "pay_time": "example",
+            "current_status": "example",
+            "ord_num": "example",
+            "service_name": "example",
+            "service_code": "example",
+            "vendor_code": "example",
+            "vendor_comp_name": "example",
+            "main_cate_lv2_desc": "example",
+            "main_cate_lv2_std001": 1,
+            "main_cate_lv1_desc": "example",
+            "main_cate_lv1_std001": 1,
+            "admin_mbr_id": "example",
+            "dw_ins_time": "example",
+            "stat_date": "example",
+            "rts6060": "example",
+            "level_star_page": 1,
+            "level_star": 1,
+            "is_comp_exp_ok": "example",
+            "is_kw_exp_ok": "example",
+            "is_star_lower_risk": "example"
+          }
+        ],
+        "exec_description": "example",
+        "return_code": 1,
+        "success": false
+      }
+    }
+  },
+  "alibaba.seller.vendor.service.vendorprocess": {
+    "request": { "order_num": "1" },
+    "response": {
+      "result": {
+        "list": [
+          {
+            "nrts6060": "N/Y",
+            "road": "询盘/RTS",
+            "is_video": "N/Y",
+            "is_rfq": "is_rfq",
+            "win_prod_ratio_std001": "0.8",
+            "is_crd_scrty": "Y",
+            "pc_online_hour_rate": "0.01",
+            "stay_hour_pc_m": "7.09",
+            "pc_online_day_rate": "7.09",
+            "active_day_pc_m": 3,
+            "active_mbr_rate": "0.25",
+            "active_mbr_m": 1,
+            "mc_rate": "0.08",
+            "kw_rate": "0.08",
+            "kw200_rate": "0.67",
+            "prod_video_cnt": 758,
+            "is_tort_brand": "N",
+            "have_price_prod": "N",
+            "have_repeat_prod": "N",
+            "rts_prod_cnt": 854,
+            "good_prod_rate": "0.75",
+            "good_prod_cnt": 46,
+            "potential_prod_rate": "1.37",
+            "potential_prod_cnt": 856,
+            "prod_blue": 0,
+            "prod45": 0,
+            "prod40": 0,
+            "p1504_rate": "1.37",
+            "p304_rate": "1.37",
+            "prod_cnt": 34,
+            "is_comp_dec": "N",
+            "agency_prod_cnt": 54,
+            "tradesuccess_time": "2021-11-24",
+            "delivered_time": "2021-11-24",
+            "pay_time": "2021-11-24",
+            "current_status": "payment_success",
+            "ord_num": "FW21112405234",
+            "service_name": "生态营销顾问—杭州公司",
+            "service_code": "ISVXX2ECC012",
+            "vendor_code": "ISV62345",
+            "vendor_comp_name": "杭州xxx公司",
+            "main_cate_lv2_desc": "Garden Supplies",
+            "main_cate_lv2_std001": 5431,
+            "main_cate_lv1_desc": "test",
+            "main_cate_lv1_std001": 4,
+            "admin_mbr_id": "dilimachine",
+            "dw_ins_time": "2021-11-30",
+            "stat_date": "20211128",
+            "rts6060": "Y",
+            "level_star_page": 0,
+            "level_star": 1,
+            "is_comp_exp_ok": "Y",
+            "is_kw_exp_ok": "Y",
+            "is_star_lower_risk": "N",
+            "open_cycle": 21,
+            "fiscal_svrc6m_valid_ord_cnt": 1,
+            "is_p4p_cost_qualified1": "N",
+            "is_p4p_prod_geq80_cnt": "N",
+            "is_p4p_prod_geq30_cnt": "N",
+            "is_has_ab": "N",
+            "latest_actual_srvc_days": 982,
+            "is_has_mc_fst_mon": "N",
+            "is_mc15": "N",
+            "contact_time": "2021-11-26 16:05:50",
+            "is_blue_new_sign": "N",
+            "prod_score": 1,
+            "is_reach_new_cust_ab_catelv2": "N",
+            "mc_compliance_rate30d": 1,
+            "ab_compliance_rate30d": 3,
+            "catelv2_avg_ab_diff": 58,
+            "p4p_activity_months": "1",
+            "is_p30_potential_prod_rate15d": "N",
+            "p30_potential_prod_rate": "34",
+            "is_p150_potential_prod_rate30d": "N",
+            "is_p150_potential_prod_rate60d": "N",
+            "p150_potential_prod_rate": "9",
+            "is_p200_potential_prod_rate60d": "N",
+            "p200_potential_prod_rate": "6",
+            "is_p300_potential_prod_rate90d": "Y",
+            "p300_potential_prod_rate": "3",
+            "is_reach_ab_catelv2": "N",
+            "crnt_gs_actual_begin_time": "2021-07-29 00:00:00",
+            "p4p_cost_amt_currentmon": "343",
+            "p4p_catelv2_ctr1_befer30_percent": "1",
+            "p4p_catelv2_ctr1_currentmon_percent": "34",
+            "p4p_ispass_currentmon": "N",
+            "p4p_expect_fee_currentmon": "25",
+            "contact_date": "2021-11-26",
+            "p4p_hosting_service_begin_time": "2021-08-04",
+            "p4p_hosting_service_end_time": "2021-11-04",
+            "p4p_fuwu_days": "34",
+            "p4p_service_type": "托管型",
+            "p4p_is_srvc": "Y",
+            "p4p_total_balance": "2997575",
+            "p4p_level_before": "0",
+            "p4p_level_current": "0",
+            "p4p_opt_days_befer30": "23",
+            "p4p_agency_opt_days_currentmon": "12",
+            "p4p_on_days_befer30": "44",
+            "p4p_cost_days_befer30": "2",
+            "p4p_catelv2_avgdaily_impr_cnt_befer30_percent": "0",
+            "p4p_catelv2_avgdaily_click_cnt_befer30_percent": "0",
+            "p4p_avg_kword_befer30": "494",
+            "p4p_avgdaily_onprods_befer30": "1019",
+            "p4p_on_days_service2now": "23",
+            "p4p_on_days_currentmon": "2",
+            "p4p_cost_days_service2now": "2",
+            "p4p_cost_days_currentmon": "1",
+            "p4p_cost_amt_service2now": "2346",
+            "p4p_avg_kword_currentmon": "12",
+            "p4p_avgdaily_onprods_currentmon": "3",
+            "p4p_catelv2_cpc1_befer30_percent": "4",
+            "p4p_avgdaily_budget_befer30": "2345",
+            "p4p_avgdaily_cost_amt_befer30": "44",
+            "p4p_avgdaily_budget_currentmon": "45",
+            "p4p_avgdaily_cost_amt_currentmon": "5",
+            "p4p_catelv2_avgdaily_impr_cnt_currentmon_percent": "1",
+            "p4p_catelv2_avgdaily_click_cnt_currentmon": "1",
+            "avg_ab30": "0.02",
+            "newtast_stat": "\\N ,  完成 , 未完成",
+            "is_p4p_on_30d": "Y",
+            "on_excellent_prod_rate": "0.01",
+            "p4p_star_months_6m": 1,
+            "p4p_cost_months_6m": 1,
+            "p4p_star_ord": "1",
+            "p4p_is_on": "Y",
+            "p4p_had_opt_srvc": "Y",
+            "p4p_ctr_service2now_times": "23.1",
+            "p4p_is_exceed_avgdaily_cost_currentmon": "Y",
+            "p4p_cpf2_service2now_times": "23.1"
+          }
+        ],
+        "exec_description": "成功",
+        "return_code": 0,
+        "success": true
+      }
+    }
+  },
+  "alibaba.seller.vendor.trade.purchase": {
+    "request": { "buyer_login_id": "alin07", "service_code": "ISVXXC45A2F" },
+    "response": {
+      "result": {
+        "exec_description": "demo",
+        "return_code": 0,
+        "success": true,
+        "dtos": [
+          {
+            "service_code": "ISVXXC45A2F",
+            "service_begin": "1489085881000",
+            "service_end": "1489085881000",
+            "service_type": "p4pAgencyService",
+            "status": "signed",
+            "order_no": "W1512270011111",
+            "buyer_login_id": "lxpaliyuntest06",
+            "vendor_id": "30634",
+            "quantity": 1,
+            "transaction_price": 1,
+            "create_time": "1489085881000",
+            "transaction_unit_price": 1,
+            "sku_code": "GROUPXXBBD760"
+          }
+        ]
+      }
+    }
+  },
+  "alibaba.seller.vendor.write.client": {
+    "request": {
+      "app_id": "28572967",
+      "param_third_party_client_data_params": {
+        "client": {
+          "contact_person_list": [
+            { "contact_name": "张三", "contact_number": "18888888888", "contact_position": "运营总监" }
+          ],
+          "merchant_login_id": "fr1436366681xfbi"
+        },
+        "ext": "{\"orderNo\":\"FW201121055735\"}",
+        "generation_time": "2021-08-10 11:12:13",
+        "phone": "13888888888",
+        "record_contents": "进行了Q3的营销聚焦",
+        "record_id": "Test23536456767",
+        "recorder": "王小欧",
+        "service_code": "ISVXX2D0E34",
+        "service_type": "VISIT_ONLINE"
+      }
+    },
+    "response": {
+      "error_description": "必填参数为空",
+      "return_code": 0,
+      "return_data": false,
+      "successed": true
+    }
+  },
+  "alibaba.shipping.freight.calculate": {
+    "request": {
+      "param_freight_template_request": {
+        "destination_country": "US",
+        "product_id": 213421,
+        "quantity": 3,
+        "zip_code": "90001",
+        "dispatch_location": "CN"
+      }
+    },
+    "response": {
+      "values": [
+        {
+          "shipping_type": "EXPRESS",
+          "trade_term": "DAP",
+          "dispatch_country": "CN",
+          "destination_country": "US",
+          "vendor_code": "EX_ASP_Economy_Express_3C",
+          "vendor_name": "Alibaba.com Economy Express (3C)",
+          "fee": { "currency": "USD", "amount": "19.1" },
+          "delivery_time": "10~15"
+        }
+      ]
+    }
+  }
+}

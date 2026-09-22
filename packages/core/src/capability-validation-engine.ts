@@ -6,10 +6,11 @@ import { LOGISTICS_CAPABILITY_DEFINITIONS } from './generated/logistics-capabili
 import { INSIGHTS_CAPABILITY_DEFINITIONS } from './generated/insights-capabilities';
 import { PHOTO_CAPABILITY_DEFINITIONS } from './generated/photo-capabilities';
 import { PLATFORM_CAPABILITY_DEFINITIONS } from './generated/platform-capabilities';
+import { FREE_API_CAPABILITY_DEFINITIONS } from './generated/free-api-capabilities';
 import type { CapabilityContractIssue } from './types';
 
 export type CapabilityValidatorDomain =
-  'product' | 'rfq' | 'trade' | 'logistics' | 'insights' | 'photo' | 'platform';
+  'product' | 'rfq' | 'trade' | 'logistics' | 'insights' | 'photo' | 'platform' | 'free-api';
 export type CapabilityValidatorModule = Readonly<Record<string, unknown>>;
 interface StandaloneValidator {
   (value: unknown): boolean;
@@ -23,7 +24,8 @@ const domains = [
   ['logistics', 'Logistics', LOGISTICS_CAPABILITY_DEFINITIONS],
   ['insights', 'Insights', INSIGHTS_CAPABILITY_DEFINITIONS],
   ['photo', 'Photo', PHOTO_CAPABILITY_DEFINITIONS],
-  ['platform', 'Platform', PLATFORM_CAPABILITY_DEFINITIONS]
+  ['platform', 'Platform', PLATFORM_CAPABILITY_DEFINITIONS],
+  ['free-api', 'FreeApi', FREE_API_CAPABILITY_DEFINITIONS]
 ] as const;
 
 // Generation and lookup use the same definition insertion order for export IDs.

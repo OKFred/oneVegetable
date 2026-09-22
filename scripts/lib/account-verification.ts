@@ -16,6 +16,7 @@ export interface AccountVerificationResult {
   method: string;
   status: AccountVerificationStatus;
   reasonCode: string | null;
+  checkedAtUtc?: string;
 }
 
 export interface AccountVerificationSnapshot {
@@ -71,14 +72,17 @@ function parseResult(value: unknown): AccountVerificationResult {
     value.method.trim() === '' ||
     !ACCOUNT_VERIFICATION_STATUSES.includes(value.status as AccountVerificationStatus) ||
     (value.reasonCode !== null && typeof value.reasonCode !== 'string') ||
-    (typeof value.reasonCode === 'string' && value.reasonCode.length > 160)
+    (typeof value.reasonCode === 'string' && value.reasonCode.length > 160) ||
+    (value.checkedAtUtc !== undefined &&
+      (typeof value.checkedAtUtc !== 'string' || Number.isNaN(Date.parse(value.checkedAtUtc))))
   ) {
     throw new Error('Alibaba account verification result entry is invalid');
   }
   return {
     method: value.method,
     status: value.status as AccountVerificationStatus,
-    reasonCode: value.reasonCode
+    reasonCode: value.reasonCode,
+    ...(typeof value.checkedAtUtc === 'string' ? { checkedAtUtc: value.checkedAtUtc } : {})
   };
 }
 

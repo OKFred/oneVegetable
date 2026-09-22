@@ -21,6 +21,10 @@ import type {
   PlatformCapabilityResponseMap
 } from './generated/platform-capabilities';
 import type { AlibabaLanguage } from './preferences';
+import type {
+  FreeApiCapabilityRequestMap,
+  FreeApiCapabilityResponseMap
+} from './generated/free-api-capabilities';
 import type { ProductMutationFingerprintSet } from './product-mutation-fingerprint';
 
 export type DashboardSummary = components['schemas']['DashboardSummary'];
@@ -132,7 +136,8 @@ export interface CapabilityRequestMap
     LogisticsCapabilityRequestMap,
     InsightsCapabilityRequestMap,
     PhotoCapabilityRequestMap,
-    PlatformCapabilityRequestMap {}
+    PlatformCapabilityRequestMap,
+    FreeApiCapabilityRequestMap {}
 export interface CapabilityResponseMap
   extends
     ProductCapabilityResponseMap,
@@ -141,7 +146,8 @@ export interface CapabilityResponseMap
     LogisticsCapabilityResponseMap,
     InsightsCapabilityResponseMap,
     PhotoCapabilityResponseMap,
-    PlatformCapabilityResponseMap {}
+    PlatformCapabilityResponseMap,
+    FreeApiCapabilityResponseMap {}
 export type GatewayError = components['schemas']['GatewayError'];
 
 export interface ProductListQuery {

@@ -7,6 +7,7 @@ import { LOGISTICS_CAPABILITY_DEFINITIONS } from './generated/logistics-capabili
 import { INSIGHTS_CAPABILITY_DEFINITIONS } from './generated/insights-capabilities';
 import { PHOTO_CAPABILITY_DEFINITIONS } from './generated/photo-capabilities';
 import { PLATFORM_CAPABILITY_DEFINITIONS } from './generated/platform-capabilities';
+import { FREE_API_CAPABILITY_DEFINITIONS } from './generated/free-api-capabilities';
 import type {
   ApiCapability,
   CapabilityDefinition,
@@ -23,6 +24,7 @@ export type LogisticsCapabilityMethod = keyof typeof LOGISTICS_CAPABILITY_DEFINI
 export type InsightsCapabilityMethod = keyof typeof INSIGHTS_CAPABILITY_DEFINITIONS;
 export type PhotoCapabilityMethod = keyof typeof PHOTO_CAPABILITY_DEFINITIONS;
 export type PlatformCapabilityMethod = keyof typeof PLATFORM_CAPABILITY_DEFINITIONS;
+export type FreeApiCapabilityMethod = keyof typeof FREE_API_CAPABILITY_DEFINITIONS;
 export type CapabilityMethod =
   | ProductCapabilityMethod
   | RfqCapabilityMethod
@@ -30,7 +32,8 @@ export type CapabilityMethod =
   | LogisticsCapabilityMethod
   | InsightsCapabilityMethod
   | PhotoCapabilityMethod
-  | PlatformCapabilityMethod;
+  | PlatformCapabilityMethod
+  | FreeApiCapabilityMethod;
 
 const productMethods = Object.keys(PRODUCT_CAPABILITY_DEFINITIONS) as ProductCapabilityMethod[];
 const rfqMethods = Object.keys(RFQ_CAPABILITY_DEFINITIONS) as RfqCapabilityMethod[];
@@ -46,34 +49,35 @@ const methods: CapabilityMethod[] = [
   ...logisticsMethods,
   ...insightsMethods,
   ...photoMethods,
-  ...platformMethods
+  ...platformMethods,
+  ...(Object.keys(FREE_API_CAPABILITY_DEFINITIONS) as FreeApiCapabilityMethod[])
 ];
 export function isProductCapabilityMethod(method: string): method is ProductCapabilityMethod {
-  return method in PRODUCT_CAPABILITY_DEFINITIONS;
+  return Object.hasOwn(PRODUCT_CAPABILITY_DEFINITIONS, method);
 }
 
 export function isRfqCapabilityMethod(method: string): method is RfqCapabilityMethod {
-  return method in RFQ_CAPABILITY_DEFINITIONS;
+  return Object.hasOwn(RFQ_CAPABILITY_DEFINITIONS, method);
 }
 
 export function isTradeCapabilityMethod(method: string): method is TradeCapabilityMethod {
-  return method in TRADE_CAPABILITY_DEFINITIONS;
+  return Object.hasOwn(TRADE_CAPABILITY_DEFINITIONS, method);
 }
 
 export function isLogisticsCapabilityMethod(method: string): method is LogisticsCapabilityMethod {
-  return method in LOGISTICS_CAPABILITY_DEFINITIONS;
+  return Object.hasOwn(LOGISTICS_CAPABILITY_DEFINITIONS, method);
 }
 
 export function isInsightsCapabilityMethod(method: string): method is InsightsCapabilityMethod {
-  return method in INSIGHTS_CAPABILITY_DEFINITIONS;
+  return Object.hasOwn(INSIGHTS_CAPABILITY_DEFINITIONS, method);
 }
 
 export function isPhotoCapabilityMethod(method: string): method is PhotoCapabilityMethod {
-  return method in PHOTO_CAPABILITY_DEFINITIONS;
+  return Object.hasOwn(PHOTO_CAPABILITY_DEFINITIONS, method);
 }
 
 export function isPlatformCapabilityMethod(method: string): method is PlatformCapabilityMethod {
-  return method in PLATFORM_CAPABILITY_DEFINITIONS;
+  return Object.hasOwn(PLATFORM_CAPABILITY_DEFINITIONS, method);
 }
 
 export function isCapabilityMethod(method: string): method is CapabilityMethod {
@@ -84,8 +88,13 @@ export function isCapabilityMethod(method: string): method is CapabilityMethod {
     isLogisticsCapabilityMethod(method) ||
     isInsightsCapabilityMethod(method) ||
     isPhotoCapabilityMethod(method) ||
-    isPlatformCapabilityMethod(method)
+    isPlatformCapabilityMethod(method) ||
+    isFreeApiCapabilityMethod(method)
   );
+}
+
+export function isFreeApiCapabilityMethod(method: string): method is FreeApiCapabilityMethod {
+  return Object.hasOwn(FREE_API_CAPABILITY_DEFINITIONS, method);
 }
 
 export function getCapabilityDefinition(method: string): CapabilityDefinition | null {
@@ -102,7 +111,9 @@ export function getCapabilityDefinition(method: string): CapabilityDefinition | 
             ? INSIGHTS_CAPABILITY_DEFINITIONS[method]
             : isPhotoCapabilityMethod(method)
               ? PHOTO_CAPABILITY_DEFINITIONS[method]
-              : PLATFORM_CAPABILITY_DEFINITIONS[method];
+              : isPlatformCapabilityMethod(method)
+                ? PLATFORM_CAPABILITY_DEFINITIONS[method]
+                : FREE_API_CAPABILITY_DEFINITIONS[method];
   return {
     method,
     ...definition

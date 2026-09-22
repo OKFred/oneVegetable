@@ -17,7 +17,11 @@ export function listCapabilitiesWithAccountVerification(): ApiCapability[] {
       ...capability,
       accountVerificationStatus: result?.status ?? 'not-tested',
       accountVerificationReasonCode: result?.reasonCode ?? null,
-      accountVerificationCheckedAt: result ? ACCOUNT_VERIFICATION_SNAPSHOT.checkedAtUtc : null
+      accountVerificationCheckedAt: result
+        ? 'checkedAtUtc' in result
+          ? result.checkedAtUtc
+          : ACCOUNT_VERIFICATION_SNAPSHOT.checkedAtUtc
+        : null
     };
   }
 }

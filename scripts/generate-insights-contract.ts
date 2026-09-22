@@ -371,7 +371,8 @@ const capabilityExtensions = [
   'x-logistics-capabilities',
   'x-insights-capabilities',
   'x-photo-capabilities',
-  'x-platform-capabilities'
+  'x-platform-capabilities',
+  'x-free-api-capabilities'
 ];
 const combinedDefinitions = capabilityExtensions.flatMap((extension) =>
   Object.values(

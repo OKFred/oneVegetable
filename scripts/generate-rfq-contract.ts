@@ -567,7 +567,13 @@ const combinedDefinitions = [
   ...logisticsDefinitions,
   ...insightsDefinitions,
   ...photoDefinitions,
-  ...platformDefinitions
+  ...platformDefinitions,
+  ...Object.values(
+    (document['x-free-api-capabilities'] ?? {}) as Record<
+      string,
+      { requestSchema: string; responseSchema: string }
+    >
+  )
 ];
 const envelope = document.components.schemas.CapabilityResponseEnvelope;
 const envelopeProperties = envelope.properties as Record<string, JsonSchema>;

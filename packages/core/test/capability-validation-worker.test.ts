@@ -5,7 +5,7 @@ import * as worker from '../src/capability-validation-worker';
 import { createCapabilityValidation } from '../src/capability-validation-engine';
 
 describe('capability validators across page and MV3 runtimes', () => {
-  it('uses a real request and response validator for every generated definition in all seven domains', async () => {
+  it('uses a real request and response validator for every generated definition in every domain', async () => {
     for (const definition of listCapabilityDefinitions()) {
       for (const [kind, example] of [
         ['validateCapabilityRequest', definition.requestExample],

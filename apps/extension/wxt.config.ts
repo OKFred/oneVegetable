@@ -26,7 +26,7 @@ export default defineConfig({
         ...output,
         manualChunks(id) {
           const match =
-            /\/generated\/(validators-(?:product|rfq|trade|logistics|insights|photo|platform))\.ts$/.exec(
+            /\/generated\/(validators-(?:product|rfq|trade|logistics|insights|photo|platform|free-api))\.ts$/.exec(
               id.replaceAll('\\', '/')
             );
           return match?.[1];

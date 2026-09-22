@@ -1358,6 +1358,2305 @@ export interface components {
             ok: true;
             data: components["schemas"]["AlibabaCredentialAcquisitionState"];
         };
+        /** alibaba.buynow.order.create request */
+        AlibabaFreeApiAlibabaBuynowOrderCreateRequest: {
+            param_order_create_request: components["schemas"]["AlibabaFreeApiSharedb761b47ec639b655a14a"];
+        };
+        /** alibaba.buynow.order.create response */
+        AlibabaFreeApiAlibabaBuynowOrderCreateResponse: {
+            value?: components["schemas"]["AlibabaFreeApiShared68c62b94e6837a8c65bb"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.dropshipping.order.pay request */
+        AlibabaFreeApiAlibabaDropshippingOrderPayRequest: {
+            param_order_pay_request: components["schemas"]["AlibabaFreeApiShareded485d5d99d0fc10bd43"];
+        };
+        /** alibaba.dropshipping.order.pay response */
+        AlibabaFreeApiAlibabaDropshippingOrderPayResponse: {
+            value?: components["schemas"]["AlibabaFreeApiSharedd246c24e2a57371e6fbc"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.dropshipping.product.get request */
+        AlibabaFreeApiAlibabaDropshippingProductGetRequest: {
+            param_distribution_sale_product_request: components["schemas"]["AlibabaFreeApiSharededc3eb38e8b0921be101"];
+        };
+        /** alibaba.dropshipping.product.get response */
+        AlibabaFreeApiAlibabaDropshippingProductGetResponse: {
+            value?: components["schemas"]["AlibabaFreeApiShared4d903fa62f33a0e74aee"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.dropshipping.store.save request */
+        AlibabaFreeApiAlibabaDropshippingStoreSaveRequest: {
+            /** @description store type */
+            store_type: string;
+            /** @description store url */
+            store_url: string;
+        };
+        /** alibaba.dropshipping.store.save response */
+        AlibabaFreeApiAlibabaDropshippingStoreSaveResponse: {
+            /** @description is success */
+            result_success?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.dropshipping.token.create request */
+        AlibabaFreeApiAlibabaDropshippingTokenCreateRequest: Record<string, never>;
+        /** alibaba.dropshipping.token.create response */
+        AlibabaFreeApiAlibabaDropshippingTokenCreateResponse: {
+            /** @description ecology_token */
+            ecology_token?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.icbu.distribution.product.get request */
+        AlibabaFreeApiAlibabaIcbuDistributionProductGetRequest: {
+            product_get_request?: components["schemas"]["AlibabaFreeApiShared72ca946a5832cede81a4"];
+        };
+        /** alibaba.icbu.distribution.product.get response */
+        AlibabaFreeApiAlibabaIcbuDistributionProductGetResponse: {
+            product?: components["schemas"]["AlibabaFreeApiShared2dc18d554c6476c7f919"];
+            /** @description 错误信息 */
+            error_msg?: string;
+            /** @description 错误码 */
+            error_type?: string;
+            /** @description 加密公司ID */
+            e_company_id?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.icbu.distribution.product.query request */
+        AlibabaFreeApiAlibabaIcbuDistributionProductQueryRequest: {
+            pool_product_page_query: components["schemas"]["AlibabaFreeApiSharedcf1f15f28518f2bf5c00"];
+        };
+        /** alibaba.icbu.distribution.product.query response */
+        AlibabaFreeApiAlibabaIcbuDistributionProductQueryResponse: {
+            /** @description 当前页码 */
+            curr_page?: number;
+            /** @description 总数 */
+            total_item?: number;
+            /** @description 分页个数 */
+            page_size?: number;
+            /** @description 错误码 */
+            error_type?: string;
+            products?: components["schemas"]["AlibabaFreeApiShared3d161ca10accacfe771e"];
+            /** @description 错误信息 */
+            error_msg?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.icbu.industry.topic.list request */
+        AlibabaFreeApiAlibabaIcbuIndustryTopicListRequest: {
+            /** @description 分页参数，每页记录数 */
+            page_size?: number;
+            /** @description 分页参数，页码 */
+            current_page?: number;
+        };
+        /** alibaba.icbu.industry.topic.list response */
+        AlibabaFreeApiAlibabaIcbuIndustryTopicListResponse: {
+            /** @description 分页参数，总页数 */
+            page_count?: number;
+            /** @description 分页参数，页码 */
+            page_no?: number;
+            datas?: components["schemas"]["AlibabaFreeApiShared9a3c20d6fe2775fc4901"];
+            /** @description 分页参数，总记录数 */
+            record_count?: number;
+            /** @description 分页参数，每页记录数 */
+            page_size?: number;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.icbulive.productlist.pageget request */
+        AlibabaFreeApiAlibabaIcbuliveProductlistPagegetRequest: {
+            live_product_request: components["schemas"]["AlibabaFreeApiShared91621ca567e7a65383ec"];
+        };
+        /** alibaba.icbulive.productlist.pageget response */
+        AlibabaFreeApiAlibabaIcbuliveProductlistPagegetResponse: {
+            /** @description 本次接口调用是否成功，true为成功，false为失败；true的时候inner_error_code和message都是空的 */
+            call_success?: boolean;
+            /** @description 接口调用失败的提示文案 */
+            inner_error_message?: string;
+            /** @description 接口调用失败的错误码 */
+            inner_error_code?: number;
+            value?: components["schemas"]["AlibabaFreeApiSharedf3f7e10ac99b0237dc26"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.icbulive.product.push request */
+        AlibabaFreeApiAlibabaIcbuliveProductPushRequest: {
+            live_product_request: components["schemas"]["AlibabaFreeApiShared91692dfcdb3eb5167d65"];
+        };
+        /** alibaba.icbulive.product.push response */
+        AlibabaFreeApiAlibabaIcbuliveProductPushResponse: {
+            /** @description 本次接口调用是否成功，true为成功，false为失败；true的时候inner_error_code和message都是空的 */
+            call_success?: boolean;
+            /** @description 接口调用失败的提示文案 */
+            inner_error_message?: string;
+            /** @description 接口调用失败的错误码 */
+            inner_error_code?: number;
+            /** @description 内部接口的返回值：是否推品成功，成功为true，失败为false */
+            value?: boolean;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.icbu.product.id.encrypt request */
+        AlibabaFreeApiAlibabaIcbuProductIdEncryptRequest: {
+            /** @description 语种 */
+            language: string;
+            /** @description 明文id */
+            product_id: number;
+        };
+        /** alibaba.icbu.product.id.encrypt response */
+        AlibabaFreeApiAlibabaIcbuProductIdEncryptResponse: {
+            /** @description 加密id */
+            secret_id?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.icbu.product.inventory.update request */
+        AlibabaFreeApiAlibabaIcbuProductInventoryUpdateRequest: {
+            request_param: components["schemas"]["AlibabaFreeApiShared58c8b2251f9774fb3700"];
+        };
+        /** alibaba.icbu.product.inventory.update response */
+        AlibabaFreeApiAlibabaIcbuProductInventoryUpdateResponse: {
+            result?: components["schemas"]["AlibabaFreeApiShared0062deb9d8ac8c1fa9c7"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.icbu.product.logistics.country.getcoststatus request */
+        AlibabaFreeApiAlibabaIcbuProductLogisticsCountryGetcoststatusRequest: {
+            country_logistics_cost_status_request: components["schemas"]["AlibabaFreeApiSharede3912a011ca978c1f2cc"];
+        };
+        /** alibaba.icbu.product.logistics.country.getcoststatus response */
+        AlibabaFreeApiAlibabaIcbuProductLogisticsCountryGetcoststatusResponse: {
+            /** @description 错误追踪码，请务必打印在日志中，后续排查问题请提交此错误追踪码 */
+            trace_id?: string;
+            data?: components["schemas"]["AlibabaFreeApiShared57e78b15ac25be3c7c26"];
+            /** @description 调用是否成功 */
+            biz_success?: boolean;
+            /** @description 错误信息 */
+            message?: string;
+            /** @description 返回的错误码，数组形式的字符串，用;分割 */
+            msg_code?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.icbu.shopclone.externalproductinfo.write request */
+        AlibabaFreeApiAlibabaIcbuShopcloneExternalproductinfoWriteRequest: {
+            external_product_info_write_param: components["schemas"]["AlibabaFreeApiShared2c9ce635ca9515c106bf"];
+        };
+        /** alibaba.icbu.shopclone.externalproductinfo.write response */
+        AlibabaFreeApiAlibabaIcbuShopcloneExternalproductinfoWriteResponse: {
+            result_dto?: components["schemas"]["AlibabaFreeApiSharedd84230fe6fe2d17d9416"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.icbu.shopclone.externalshopinfo.write request */
+        AlibabaFreeApiAlibabaIcbuShopcloneExternalshopinfoWriteRequest: {
+            external_shop_info_write_param: components["schemas"]["AlibabaFreeApiSharedf35a9c3e3a4a2ea0769a"];
+        };
+        /** alibaba.icbu.shopclone.externalshopinfo.write response */
+        AlibabaFreeApiAlibabaIcbuShopcloneExternalshopinfoWriteResponse: {
+            result_dto?: components["schemas"]["AlibabaFreeApiSharedb1c8fd4ef0bd3a4d7986"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.icbu.shopclone.icbuproductrights.query request */
+        AlibabaFreeApiAlibabaIcbuShopcloneIcbuproductrightsQueryRequest: {
+            external_icbu_product_rights_query_param: components["schemas"]["AlibabaFreeApiSharede93c6bc2e5214ca8a5ed"];
+        };
+        /** alibaba.icbu.shopclone.icbuproductrights.query response */
+        AlibabaFreeApiAlibabaIcbuShopcloneIcbuproductrightsQueryResponse: {
+            result_dto?: components["schemas"]["AlibabaFreeApiShared33ae12d8518bdaff6502"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.icbu.shopclone.icbushopinfo.query request */
+        AlibabaFreeApiAlibabaIcbuShopcloneIcbushopinfoQueryRequest: {
+            external_icbu_shop_info_query_param?: components["schemas"]["AlibabaFreeApiSharedf6f4e09ddac687abcc7d"];
+        };
+        /** alibaba.icbu.shopclone.icbushopinfo.query response */
+        AlibabaFreeApiAlibabaIcbuShopcloneIcbushopinfoQueryResponse: {
+            result_dto?: components["schemas"]["AlibabaFreeApiSharede9f6cecb35feb8710e5b"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.icbu.supplierfoster.isvtask.notify request */
+        AlibabaFreeApiAlibabaIcbuSupplierfosterIsvtaskNotifyRequest: {
+            isv_task_status_notify_request?: components["schemas"]["AlibabaFreeApiShareda95767f64dd891595488"];
+        };
+        /** alibaba.icbu.supplierfoster.isvtask.notify response */
+        AlibabaFreeApiAlibabaIcbuSupplierfosterIsvtaskNotifyResponse: {
+            isv_task_status_notify_response?: components["schemas"]["AlibabaFreeApiShared71fdc13b1fd27fb6504e"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.icbu.text.recognize request */
+        AlibabaFreeApiAlibabaIcbuTextRecognizeRequest: {
+            icbu_language_recognize_task_dto?: components["schemas"]["AlibabaFreeApiShared1fd821bb78ed7fd1c5b2"];
+        };
+        /** alibaba.icbu.text.recognize response */
+        AlibabaFreeApiAlibabaIcbuTextRecognizeResponse: {
+            /** @description 本次调用的唯一id */
+            trace_id?: string;
+            /** @description 识别的语种 */
+            recognized_language?: string;
+            /** @description 业务透传参数 */
+            params_map?: {
+                [key: string]: unknown;
+            };
+            /** @description 需要识别的语种 */
+            text?: string;
+            /** @description 本次调用是否成功 */
+            recognize_success?: boolean;
+            recognize_error_code?: components["schemas"]["AlibabaFreeApiSharedce63b0330c987755bc6f"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.icbu.text.recognize.trans request */
+        AlibabaFreeApiAlibabaIcbuTextRecognizeTransRequest: {
+            icbu_recognize_and_translate_task_dto: components["schemas"]["AlibabaFreeApiSharede324038337add13a81fb"];
+        };
+        /** alibaba.icbu.text.recognize.trans response */
+        AlibabaFreeApiAlibabaIcbuTextRecognizeTransResponse: {
+            result?: components["schemas"]["AlibabaFreeApiShared2dab84733c856ba425ec"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.icbu.topic.products request */
+        AlibabaFreeApiAlibabaIcbuTopicProductsRequest: {
+            /** @description 主题id */
+            topic_id?: number;
+            /** @description 分页参数，每页记录数 */
+            page_size?: number;
+            /** @description 分页参数，页码 */
+            current_page?: number;
+            /** @description 是否国家化定招品 */
+            is_country_topic?: boolean;
+        };
+        /** alibaba.icbu.topic.products response */
+        AlibabaFreeApiAlibabaIcbuTopicProductsResponse: {
+            /** @description 分页参数，总页数 */
+            page_count?: number;
+            /** @description 分页参数，页码 */
+            page_no?: number;
+            datas?: components["schemas"]["AlibabaFreeApiShared0d22267a0696e37bc9a6"];
+            /** @description 分页参数，总记录数 */
+            record_count?: number;
+            /** @description 分页参数，每页记录数 */
+            page_size?: number;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.icbu.trade.assurance.account.get request */
+        AlibabaFreeApiAlibabaIcbuTradeAssuranceAccountGetRequest: Record<string, never>;
+        /** alibaba.icbu.trade.assurance.account.get response */
+        AlibabaFreeApiAlibabaIcbuTradeAssuranceAccountGetResponse: {
+            assurance_account_result?: components["schemas"]["AlibabaFreeApiShared2e47b996ad72aadd90a6"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.icbu.video.upload request */
+        AlibabaFreeApiAlibabaIcbuVideoUploadRequest: {
+            /** @description 视频文件地址 */
+            video_path: string;
+            /** @description 视频文件名 */
+            video_name: string;
+            /** @description 视频封面地址，必需是alicdn下的图片地址，否则会使用系统默认的封面 */
+            cover_url?: string;
+        };
+        /** alibaba.icbu.video.upload response */
+        AlibabaFreeApiAlibabaIcbuVideoUploadResponse: {
+            /** @description 成功.其他类型的为失败 */
+            msg_code?: string;
+            /** @description 成功反馈。如果失败会是对应的错误描述 */
+            msg_info?: string;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.onetouch.logistics.express.logistics.solution.semi.list request */
+        AlibabaFreeApiAlibabaOnetouchLogisticsExpressLogisticsSolutionSemiListRequest: {
+            param?: components["schemas"]["AlibabaFreeApiSharedf135f1d3ffbd83eb2a95"];
+        };
+        /** alibaba.onetouch.logistics.express.logistics.solution.semi.list response */
+        AlibabaFreeApiAlibabaOnetouchLogisticsExpressLogisticsSolutionSemiListResponse: {
+            result?: components["schemas"]["AlibabaFreeApiShared7e9566f6b942f048d611"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.order.freight.calculate request */
+        AlibabaFreeApiAlibabaOrderFreightCalculateRequest: {
+            param_multi_freight_template_request: components["schemas"]["AlibabaFreeApiShared8e1c5c21a99246158a19"];
+        };
+        /** alibaba.order.freight.calculate response */
+        AlibabaFreeApiAlibabaOrderFreightCalculateResponse: {
+            value?: components["schemas"]["AlibabaFreeApiSharedae1106d2952f16a1d61c"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.order.logistics.tracking.get request */
+        AlibabaFreeApiAlibabaOrderLogisticsTrackingGetRequest: {
+            trade_id: components["schemas"]["AlibabaFreeApiShared7527f22232bcf3d8a4a0"];
+        };
+        /** alibaba.order.logistics.tracking.get response */
+        AlibabaFreeApiAlibabaOrderLogisticsTrackingGetResponse: {
+            tracking_list?: components["schemas"]["AlibabaFreeApiShared824b37ceb9d38a2788ef"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.order.pay.result.query request */
+        AlibabaFreeApiAlibabaOrderPayResultQueryRequest: {
+            trade_id: components["schemas"]["AlibabaFreeApiShared7527f22232bcf3d8a4a0"];
+        };
+        /** alibaba.order.pay.result.query response */
+        AlibabaFreeApiAlibabaOrderPayResultQueryResponse: {
+            value?: components["schemas"]["AlibabaFreeApiSharedbd9bca94df3e05d936ea"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.seller.coupon.auth.verify request */
+        AlibabaFreeApiAlibabaSellerCouponAuthVerifyRequest: {
+            /** @description 服务代码 */
+            service_code: string;
+            /** @description 卡券验证码 */
+            coupon_seq_number: string;
+        };
+        /** alibaba.seller.coupon.auth.verify response */
+        AlibabaFreeApiAlibabaSellerCouponAuthVerifyResponse: {
+            result?: components["schemas"]["AlibabaFreeApiShared296f512df62970b1ad2b"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.seller.vendor.order.detail request */
+        AlibabaFreeApiAlibabaSellerVendorOrderDetailRequest: {
+            /** @description 订单编号 */
+            order_no: string;
+        };
+        /** alibaba.seller.vendor.order.detail response */
+        AlibabaFreeApiAlibabaSellerVendorOrderDetailResponse: {
+            result?: components["schemas"]["AlibabaFreeApiShared36a0db9fc7a17a959a06"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.seller.vendor.order.list request */
+        AlibabaFreeApiAlibabaSellerVendorOrderListRequest: {
+            query_trade_dto?: components["schemas"]["AlibabaFreeApiShared49c0fea44f073059ce37"];
+        };
+        /** alibaba.seller.vendor.order.list response */
+        AlibabaFreeApiAlibabaSellerVendorOrderListResponse: {
+            result?: components["schemas"]["AlibabaFreeApiShared9cec4a1505a5c806d90a"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.seller.vendor.service.process request */
+        AlibabaFreeApiAlibabaSellerVendorServiceProcessRequest: {
+            /** @description order_num */
+            order_num?: string;
+        };
+        /** alibaba.seller.vendor.service.process response */
+        AlibabaFreeApiAlibabaSellerVendorServiceProcessResponse: {
+            result?: components["schemas"]["AlibabaFreeApiShared0efb3138965234639ccf"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.seller.vendor.service.vendorprocess request */
+        AlibabaFreeApiAlibabaSellerVendorServiceVendorprocessRequest: {
+            /** @description order_num */
+            order_num?: string;
+        };
+        /** alibaba.seller.vendor.service.vendorprocess response */
+        AlibabaFreeApiAlibabaSellerVendorServiceVendorprocessResponse: {
+            result?: components["schemas"]["AlibabaFreeApiShared97ff0e2e6fd1107eac9c"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.seller.vendor.trade.purchase request */
+        AlibabaFreeApiAlibabaSellerVendorTradePurchaseRequest: {
+            /** @description 买家登录账号 */
+            buyer_login_id?: string;
+            /** @description 服务code */
+            service_code?: string;
+        };
+        /** alibaba.seller.vendor.trade.purchase response */
+        AlibabaFreeApiAlibabaSellerVendorTradePurchaseResponse: {
+            result?: components["schemas"]["AlibabaFreeApiShared1079f330ae9c009e47d0"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.seller.vendor.write.client request */
+        AlibabaFreeApiAlibabaSellerVendorWriteClientRequest: {
+            /** @description 开放平台appId */
+            app_id: string;
+            param_third_party_client_data_params: components["schemas"]["AlibabaFreeApiShared41c9381628c0030d342d"];
+        };
+        /** alibaba.seller.vendor.write.client response */
+        AlibabaFreeApiAlibabaSellerVendorWriteClientResponse: {
+            /** @description 错误信息 */
+            error_description?: string;
+            /** @description 错误代码 */
+            return_code?: number;
+            /** @description 数据写入结果 true为成功 */
+            return_data?: boolean;
+            /** @description 服务调用结果 */
+            successed?: boolean;
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** alibaba.shipping.freight.calculate request */
+        AlibabaFreeApiAlibabaShippingFreightCalculateRequest: {
+            param_freight_template_request: components["schemas"]["AlibabaFreeApiSharedbef34699299c826fe7ed"];
+        };
+        /** alibaba.shipping.freight.calculate response */
+        AlibabaFreeApiAlibabaShippingFreightCalculateResponse: {
+            values?: components["schemas"]["AlibabaFreeApiSharede6d53797b1e4b474e224"];
+            /** @description Alibaba 网关返回的请求追踪 ID */
+            request_id?: string;
+        };
+        /** @description Top返回对象 */
+        AlibabaFreeApiShared0062deb9d8ac8c1fa9c7: {
+            /** @description 调用是否成功 */
+            success?: boolean;
+            /** @description 库存更新是否成功 */
+            data?: string;
+            /** @description 接口更新失败时错误信息 */
+            message?: string;
+            /** @description 失败错误码 */
+            msg_code?: string;
+            /** @description 接口失败时的追踪id */
+            trace_id?: string;
+        };
+        /** @description 接口返回对象 */
+        AlibabaFreeApiShared0230c2a5421b17bf0e79: {
+            /** @description 阿里id */
+            buyer_ali_id: number;
+            /** @description 购买人 */
+            buyer_name: string;
+            /** @description 公司名称 */
+            company_name: string;
+            /** @description 联系电话 */
+            contact_mobile: string;
+            /** @description 创建时间 */
+            create_time: number | string;
+            /** @description 订单货币类型 */
+            currency: string;
+            /** @description 当前状态 */
+            current_status: string;
+            /** @description 状态更新时间 */
+            fire_time: number | string;
+            /** @description 订单编号 */
+            order_no: string;
+            /** @description 订单标题 */
+            order_title: string;
+            /** @description 订单类型 */
+            order_type: string;
+            /** @description 支付通道 */
+            pay_channel: string;
+            /** @description 购买数量 */
+            quantity: number;
+            /** @description 退款金额 */
+            refund_price: string;
+            /** @description 服务编码 */
+            service_code: string;
+            /** @description 服务名称 */
+            service_name: string;
+            /** @description 服务评分 */
+            service_score: number;
+            /** @description 规格编码 */
+            sku_code: string;
+            /** @description 规格 */
+            sku_value: string;
+            /** @description 成交价格 */
+            transaction_price: string;
+            /** @description 成交单价 */
+            transaction_unit_price: string;
+            /** @description 购买者登陆账号 */
+            buyer_login_id: string;
+            /** @description 服务分类id */
+            service_category_id: number;
+            /** @description 服务分类名称 */
+            service_category: string;
+            /** @description 用户购买sku */
+            service_sku_label: string;
+        };
+        /** @description 发货人地址 */
+        AlibabaFreeApiShared046d0c81f8b48e82c954: {
+            address?: components["schemas"]["AlibabaFreeApiSharede7fcbb09bbdc8b8e12b2"];
+            /** @description 联系人 */
+            contact_person?: string;
+            /** @description 公司名 */
+            company_name_cn?: string;
+            contact?: components["schemas"]["AlibabaFreeApiSharede705baf9cf84fd1be649"];
+        };
+        /** @description min order quantity and Price */
+        AlibabaFreeApiShared0791d0eefe013f507460: {
+            /** @description min order quantity */
+            min_order_quantity?: string;
+            /** @description min order quantity delivery period */
+            moq_delivery_period?: number;
+            moq_unit_price?: components["schemas"]["AlibabaFreeApiSharedfb7937909484cdad45dc"];
+            /** @description min order quantity unit */
+            unit?: string;
+        };
+        /** @description 时间 格式1：hh:mi - hh:mi 表示该区间内可以预约揽收 格式2：14:00 前 表示该时间点前准备好货物了，之后可以预约揽收 */
+        AlibabaFreeApiShared09cbd6ad597952d48e54: string[];
+        /** @description 返回集合 */
+        AlibabaFreeApiShared09e3957f6e451bc95bb8: components["schemas"]["AlibabaFreeApiShared5127e424244cc2eb4e4a"][];
+        /** @description 商品数据 */
+        AlibabaFreeApiShared0d22267a0696e37bc9a6: components["schemas"]["AlibabaFreeApiShared24d7f5f937bf1ce95d37"][];
+        /** @description 异步获取历史数据接口返回结果 */
+        AlibabaFreeApiShared0efb3138965234639ccf: {
+            list?: components["schemas"]["AlibabaFreeApiShared09e3957f6e451bc95bb8"];
+            /** @description 异常说明 */
+            exec_description?: string;
+            /** @description 状态码 */
+            return_code?: number;
+            /** @description 是否成功 */
+            success?: boolean;
+        };
+        AlibabaFreeApiShared0fd916ac92fb0443b2c2: {
+            /** @description 服务code */
+            service_code?: string;
+            /** @description 服务开始时间 */
+            service_begin?: number | string;
+            /** @description 服务结束时间 */
+            service_end?: number | string;
+            /** @description 服务类型 */
+            service_type?: string;
+            /** @description 服务状态 */
+            status?: string;
+            /** @description 订单编号 */
+            order_no?: string;
+            /** @description 购买人登录账号 */
+            buyer_login_id?: string;
+            /** @description 服务商id */
+            vendor_id?: string;
+            /** @description 购买数量 */
+            quantity?: number;
+            /** @description 成交价（无效字段） */
+            transaction_price?: number;
+            /** @description 创建时间 */
+            create_time?: number | string;
+            /** @description 成交单价（无效字段） */
+            transaction_unit_price?: number;
+            /** @description skucode */
+            sku_code?: string;
+        };
+        /** @description 异步获取历史数据接口返回结果 */
+        AlibabaFreeApiShared1079f330ae9c009e47d0: {
+            /** @description 描述 */
+            exec_description?: string;
+            /** @description 接口状态 */
+            return_code?: number;
+            /** @description 执行结果 */
+            success?: boolean;
+            dtos?: components["schemas"]["AlibabaFreeApiShared738b2ebceefcdf3f842a"];
+        };
+        AlibabaFreeApiShared10cb67aee0797d95175e: {
+            /** @description 属性值ID */
+            attr_value_id?: number;
+            /** @description 属性值名称 */
+            attr_value_name?: string;
+        };
+        /** @description 返回结果 */
+        AlibabaFreeApiShared17bd5db9ba06d2ba84cc: {
+            /** @description 店铺继承活动参与状态 */
+            shop_clone_join_status?: string;
+        };
+        /** @description 本次请求应当修改数据但写入失败的商品在ICBU中的ID */
+        AlibabaFreeApiShared19f167a4d37ffc61dc64: number[];
+        AlibabaFreeApiShared1a5da6083b87cdcaf97f: {
+            /** @description delivery time (days) */
+            delivery_time?: string;
+            /** @description destination country */
+            destination_country?: string;
+            /** @description dispatch country */
+            dispatch_country?: string;
+            fee?: components["schemas"]["AlibabaFreeApiShared320e714eb3304d3124ed"];
+            /** @description shipping type */
+            shipping_type?: string;
+            /** @description trade term */
+            trade_term?: string;
+            /** @description vendor code */
+            vendor_code?: string;
+            /** @description vendor name */
+            vendor_name?: string;
+        };
+        /** @description 在ICBU的状态为被删除/无效的商品的ID列表 */
+        AlibabaFreeApiShared1a7e7fc3a2d4f68847cf: number[];
+        /** @description 省份 */
+        AlibabaFreeApiShared1c2797d8e1fafd315e70: {
+            /** @description 菜鸟省份id */
+            code?: string;
+            /** @description 省份名 */
+            name?: string;
+        };
+        /** @description Product List */
+        AlibabaFreeApiShared1e86a130a822176e2799: components["schemas"]["AlibabaFreeApiSharede0f62dfc7d24811f244c"][];
+        /** @description 请求DTO */
+        AlibabaFreeApiShared1fd821bb78ed7fd1c5b2: {
+            /** @description 根据调用方ip确定的国家,语种识别用到,填了能增加语种识别准确率,选填 */
+            country?: string;
+            /** @description 业务透传参数 */
+            params_map?: string;
+            /** @description 使用的引擎 */
+            trans_engine: string;
+            /** @description appName */
+            app_name: string;
+            /** @description 需要识别的文本 */
+            text: string;
+            /** @description 所在地对于locale,填了能增加语种识别准确率,例如：en_US */
+            locale?: string;
+        };
+        /** @description 商品在来源平台中的类目ID层级，用数组表示依次对应对应一级/二级/N级，取不到id可不传 */
+        AlibabaFreeApiShared228d7cc76e10c1fea1e5: string[];
+        AlibabaFreeApiShared235d1ee16c945983dea5: {
+            /** @description 定制力是否双60 */
+            nrts6060?: string;
+            /** @description 赛道，RTS/询盘 */
+            road?: string;
+            /** @description 是否至少发布了1个良好的且非aliwood且非段灯片的视频 */
+            is_video?: string;
+            /** @description 是否至少发布了1个有效报价RFQ */
+            is_rfq?: string;
+            /** @description 历史截至当日橱窗商品使用率 */
+            win_prod_ratio_std001?: string;
+            /** @description 是否信保亮灯Y/N */
+            is_crd_scrty?: string;
+            /** @description 月PC在线时长达标率 */
+            pc_online_hour_rate?: string;
+            /** @description 近30天PC/MA在线时长(小时) */
+            stay_hour_pc_m?: string;
+            /** @description 月pc在线天数达标率 */
+            pc_online_day_rate?: string;
+            /** @description 近30天PC/MA活跃天数 */
+            active_day_pc_m?: number;
+            /** @description 月活跃子账号达标率 */
+            active_mbr_rate?: string;
+            /** @description 近30天活跃子账号数 */
+            active_mbr_m?: number;
+            /** @description 月mc达标率 */
+            mc_rate?: string;
+            /** @description 关键词达标率 */
+            kw_rate?: string;
+            /** @description k200比率，关键词除以200的比率 */
+            kw200_rate?: string;
+            /** @description 视频数量 */
+            prod_video_cnt?: number;
+            /** @description 是否有侵权品牌Y/N */
+            is_tort_brand?: string;
+            /** @description 是否有价格不合理产品Y/N */
+            have_price_prod?: string;
+            /** @description 是否有重复铺货产品Y/N */
+            have_repeat_prod?: string;
+            /** @description RTS商品数 */
+            rts_prod_cnt?: number;
+            /** @description 实力优品达标率 */
+            good_prod_rate?: string;
+            /** @description 实力优品数 */
+            good_prod_cnt?: number;
+            /** @description 潜力品达标率 */
+            potential_prod_rate?: string;
+            /** @description 潜力品数 */
+            potential_prod_cnt?: number;
+            /** @description 蓝海品数 */
+            prod_blue?: number;
+            /** @description 4.5分及以上商品数 */
+            prod45?: number;
+            /** @description 4.0分及以上商品数 */
+            prod40?: number;
+            /** @description p150且4分达标率 */
+            p1504_rate?: string;
+            /** @description p30且4分达标率 */
+            p304_rate?: string;
+            /** @description 有效商品数 */
+            prod_cnt?: number;
+            /** @description 店铺是否装修，页面最晚修改时间和旺铺创建时间差 */
+            is_comp_dec?: string;
+            /** @description 服务商发品数 */
+            agency_prod_cnt?: number;
+            /** @description 订单完成时间 */
+            tradesuccess_time?: number | string;
+            /** @description 进入交付时间 */
+            delivered_time?: number | string;
+            /** @description 下单时间 */
+            pay_time?: number | string;
+            /** @description 交易单当前状态 */
+            current_status?: string;
+            /** @description 订单号 */
+            ord_num?: string;
+            /** @description 服务名称 */
+            service_name?: string;
+            /** @description 服务编码 */
+            service_code?: string;
+            /** @description 服务商编码 */
+            vendor_code?: string;
+            /** @description 服务商公司名 */
+            vendor_comp_name?: string;
+            /** @description 主营二级类目描述 */
+            main_cate_lv2_desc?: string;
+            /** @description 主营二级类目ID */
+            main_cate_lv2_std001?: number;
+            /** @description 主营一级类目描述 */
+            main_cate_lv1_desc?: string;
+            /** @description 主营一级类目ID */
+            main_cate_lv1_std001?: number;
+            /** @description 会员主账号id */
+            admin_mbr_id?: string;
+            /** @description 系统入库时间 */
+            dw_ins_time?: number | string;
+            /** @description 统计日期 */
+            stat_date?: string;
+            /** @description RTS力是否双60 */
+            rts6060?: string;
+            /** @description 当月星等级 */
+            level_star_page?: number;
+            /** @description 预测下月星等级 */
+            level_star?: number;
+            /** @description 最近7天店铺日均搜索曝光是否正常Y/N */
+            is_comp_exp_ok?: string;
+            /** @description 关键词曝光是否正常Y/N */
+            is_kw_exp_ok?: string;
+            /** @description 是否有降星风险Y/N */
+            is_star_lower_risk?: string;
+            /** @description 开通周期（付款到开通） */
+            open_cycle?: number;
+            /** @description 首年0-6个月信保渗透月数 */
+            fiscal_svrc6m_valid_ord_cnt?: number;
+            /** @description 是否p4p月消耗达标【Y/N】 */
+            is_p4p_cost_qualified1?: string;
+            /** @description 是否p4p绑定推广商品数大于等于80【Y/N】 */
+            is_p4p_prod_geq80_cnt?: string;
+            /** @description 是否p4p绑定推广商品数大于等于30【Y/N】 */
+            is_p4p_prod_geq30_cnt?: string;
+            /** @description 是否商机破蛋【Y/N】 */
+            is_has_ab?: string;
+            /** @description 最近一次开通服务天数 */
+            latest_actual_srvc_days?: number;
+            /** @description 是否首月询盘破蛋【Y/N】 */
+            is_has_mc_fst_mon?: string;
+            /** @description 是否MC15达标（询盘达到15个） */
+            is_mc15?: string;
+            /** @description 服务商开始接洽时间 */
+            contact_time?: string;
+            /** @description 是否蓝海定招 */
+            is_blue_new_sign?: string;
+            /** @description 商家主动评价分数 */
+            prod_score?: number;
+            /** @description 商机是否达到首年客户二级行业均值【Y/N】（近30天） */
+            is_reach_new_cust_ab_catelv2?: string;
+            /** @description 近30天mc完成率 */
+            mc_compliance_rate30d?: number;
+            /** @description 近30天AB完成率 */
+            ab_compliance_rate30d?: number;
+            /** @description 商机数与二级行业均值的差距（即：未达标时距离目标值差值，达标则不显示值 */
+            catelv2_avg_ab_diff?: number;
+            /** @description 商家平台开通首半年P4P月活（月消耗200元现金以上）达标次数 */
+            p4p_activity_months?: string;
+            /** @description 近15天内P30潜力品是否曾达标【Y/N】 */
+            is_p30_potential_prod_rate15d?: string;
+            /** @description P30潜力品达标率(潜力品数量/30) */
+            p30_potential_prod_rate?: string;
+            /** @description 近30天内P150潜力品是否曾达标【Y/N】 */
+            is_p150_potential_prod_rate30d?: string;
+            /** @description 近60天内P150潜力品是否曾达标【Y/N】 */
+            is_p150_potential_prod_rate60d?: string;
+            /** @description P150潜力品达标率(潜力品数量/150) */
+            p150_potential_prod_rate?: string;
+            /** @description 近60天内P200潜力品是否曾达标【Y/N】 */
+            is_p200_potential_prod_rate60d?: string;
+            /** @description P200潜力品达标率(潜力品数量/200) */
+            p200_potential_prod_rate?: string;
+            /** @description 近90天内P300潜力品是否曾达标【Y/N】 */
+            is_p300_potential_prod_rate90d?: string;
+            /** @description P300潜力品达标率(潜力品数量/300) */
+            p300_potential_prod_rate?: string;
+            /** @description 商机是否达二级行业均值【Y/N】 */
+            is_reach_ab_catelv2?: string;
+            /** @description 当前cgs合同的服务开始时间 */
+            crnt_gs_actual_begin_time?: string;
+            /** @description 当前月份服务期间总财务消耗 */
+            p4p_cost_amt_currentmon?: string;
+            /** @description 授权前30天二级行业CTR是行业均值的X */
+            p4p_catelv2_ctr1_befer30_percent?: string;
+            /** @description 授权服务当月客户二级行业CTR是行业均值的X */
+            p4p_catelv2_ctr1_currentmon_percent?: string;
+            /** @description 当月托管服务是否二级行业CTR达标 */
+            p4p_ispass_currentmon?: string;
+            /** @description 当月代操服务佣金预估 */
+            p4p_expect_fee_currentmon?: string;
+            /** @description 订单接洽时间 */
+            contact_date?: number | string;
+            /** @description 托管开始日期 */
+            p4p_hosting_service_begin_time?: number | string;
+            /** @description 托管结束日期 */
+            p4p_hosting_service_end_time?: number | string;
+            /** @description 服务天数 */
+            p4p_fuwu_days?: string;
+            /** @description 服务类型 */
+            p4p_service_type?: string;
+            /** @description 是否服务中 */
+            p4p_is_srvc?: string;
+            /** @description 当前账户余额 */
+            p4p_total_balance?: string;
+            /** @description 服务前L层级 */
+            p4p_level_before?: string;
+            /** @description 当月L层级 */
+            p4p_level_current?: string;
+            /** @description 客户服务前30操作天数 */
+            p4p_opt_days_befer30?: string;
+            /** @description 当前月份服务期间代理商操作天数 */
+            p4p_agency_opt_days_currentmon?: string;
+            /** @description 服务前30天推广天数 */
+            p4p_on_days_befer30?: string;
+            /** @description 服务前30天消耗天数 */
+            p4p_cost_days_befer30?: string;
+            /** @description 服务前30天有推广的日均曝光是二级行业均值的X */
+            p4p_catelv2_avgdaily_impr_cnt_befer30_percent?: string;
+            /** @description 服务前30天有推广的日均点击是行业均值的X */
+            p4p_catelv2_avgdaily_click_cnt_befer30_percent?: string;
+            /** @description 服务前30天日均推广关键词数 */
+            p4p_avg_kword_befer30?: string;
+            /** @description 服务前30天日均推广品数 */
+            p4p_avgdaily_onprods_befer30?: string;
+            /** @description 服务至今推广天数 */
+            p4p_on_days_service2now?: string;
+            /** @description 当前月份服务期间推广天数 */
+            p4p_on_days_currentmon?: string;
+            /** @description 服务至今消耗天数 */
+            p4p_cost_days_service2now?: string;
+            /** @description 当前月份服务期间消耗天数 */
+            p4p_cost_days_currentmon?: string;
+            /** @description 服务至今总财务消耗 */
+            p4p_cost_amt_service2now?: string;
+            /** @description 当前月份服务期间日均推广关键词数 */
+            p4p_avg_kword_currentmon?: string;
+            /** @description 服务期间日均推广品数 */
+            p4p_avgdaily_onprods_currentmon?: string;
+            /** @description 服务前30天CPC是二级行业均值X% */
+            p4p_catelv2_cpc1_befer30_percent?: string;
+            /** @description 服务前30天日均P4P预算 */
+            p4p_avgdaily_budget_befer30?: string;
+            /** @description 服务前30天总财务消耗 */
+            p4p_avgdaily_cost_amt_befer30?: string;
+            /** @description 当前月份服务期间日均P4P预算 */
+            p4p_avgdaily_budget_currentmon?: string;
+            /** @description 当前月份服务期间日均P4P财务消耗 */
+            p4p_avgdaily_cost_amt_currentmon?: string;
+            /** @description 服务期间日均曝光是二级行业均值的X（当前月份服务期间日均P4P曝光/(当月服务状态近30天大盘二级客均曝光/30)） */
+            p4p_catelv2_avgdaily_impr_cnt_currentmon_percent?: string;
+            /** @description 服务期间日均点击是二级行业均值X */
+            p4p_catelv2_avgdaily_click_cnt_currentmon?: string;
+            /** @description AB30 */
+            avg_ab30?: string;
+            /** @description 平台开通15天内的新手任务是否完成 */
+            newtast_stat?: string;
+            /** @description 平台开通30天内的P4P是否开通 */
+            is_p4p_on_30d?: string;
+            /** @description 实力优品中参与P4P推广的比例 */
+            on_excellent_prod_rate?: string;
+            /** @description p4p层级1及以上连续月数 */
+            p4p_star_months_6m?: number;
+            /** @description P4P连续活跃月份数 */
+            p4p_cost_months_6m?: number;
+            /** @description 下单时时P4PL层级 */
+            p4p_star_ord?: string;
+            /** @description P4P当日是否推广中Y/N */
+            p4p_is_on?: string;
+            /** @description 是否曾经是优化师库内商家Y/N */
+            p4p_had_opt_srvc?: string;
+            /** @description 服务期间客户的CTR是服务前30天客户CTR的X */
+            p4p_ctr_service2now_times?: string;
+            /** @description 服务期间当月日均消耗是否超过优化师服务期间日均消耗Y/N */
+            p4p_is_exceed_avgdaily_cost_currentmon?: string;
+            /** @description 服务期间CPF(mc+atm+ord)是服务前30天CPF的X */
+            p4p_cpf2_service2now_times?: string;
+        };
+        AlibabaFreeApiShared242b2f8bb6fa108ef48e: {
+            /** @description 商品id */
+            product_id?: number;
+            /** @description 商品名称（默认英文） */
+            title?: string;
+        };
+        /** @description 本次请求修改数据的商品在ICBU中的ID */
+        AlibabaFreeApiShared2497e809ff465c9bc8fb: number[];
+        AlibabaFreeApiShared24d7f5f937bf1ce95d37: {
+            /** @description 商品id */
+            product_id?: string;
+            /** @description 商品主图文件名 */
+            main_image_file_name?: string;
+            /** @description 商品名称 */
+            prod_name?: string;
+            /** @description 商品一级类目 */
+            cate_lv1_id?: string;
+            /** @description 商品二级类目 */
+            cate_lv2_id?: string;
+            /** @description 商品三级类目 */
+            cate_lv3_id?: string;
+            /** @description 商品叶子类目 */
+            cate_id?: string;
+        };
+        /** @description province */
+        AlibabaFreeApiShared2877e35b99bd326a5de3: {
+            /** @description province code */
+            code?: string;
+            /** @description province name */
+            name?: string;
+        };
+        /** @description City */
+        AlibabaFreeApiShared28b4413bec10b1032908: {
+            /** @description City Code */
+            code?: string;
+            /** @description City Name */
+            name?: string;
+        };
+        /** @description 获取是否验证成功 */
+        AlibabaFreeApiShared296f512df62970b1ad2b: {
+            /** @description 是否正常返回 */
+            success: boolean;
+            /** @description 是否验证通过 */
+            dto: boolean;
+            /** @description 返回码 */
+            return_code: number;
+            /** @description 验证失败结果 */
+            exec_description: string;
+        };
+        /** @description 外部平台商品附加数据写入参数 */
+        AlibabaFreeApiShared2c9ce635ca9515c106bf: {
+            /** @description 三方服务商公司的中文名称，不可变，需要与营业执照一致 */
+            vendor_company_name: string;
+            /** @description 三方服务市场中对应此次搬品服务的服务编码，可变，调用接口会更新 */
+            service_code: string;
+            products: components["schemas"]["AlibabaFreeApiShared3fa04b93a9aa3e4833eb"];
+            /** @description ICBU账号体系中的公司id，通过授权接口获取，有aliId的情况下可不传 */
+            company_id?: number;
+            /** @description 阿里统一的havanaId，通过授权接口获取 */
+            account_id: number;
+        };
+        /** @description 返回结果的DTO */
+        AlibabaFreeApiShared2dab84733c856ba425ec: components["schemas"]["AlibabaFreeApiSharedf35d66c176cf7db92a7e"][];
+        /** @description 商品详情 */
+        AlibabaFreeApiShared2dc18d554c6476c7f919: {
+            keywords?: components["schemas"]["AlibabaFreeApiSharedfc0db6182ae3faa97247"];
+            /** @description 商品名称 */
+            subject?: string;
+            /** @description 商品详情描述 */
+            description?: string;
+            /** @description 商品加密后id */
+            secret_id?: string;
+            product_sku?: components["schemas"]["AlibabaFreeApiSharede81bbd21c93a814e3953"];
+            product_certs?: components["schemas"]["AlibabaFreeApiShared445a1a389b2df83657ad"];
+            /** @description 商品详情链接 */
+            pc_detail_url?: string;
+            wholesale_trade?: components["schemas"]["AlibabaFreeApiSharedc5e4d82f9ef517fe623b"];
+            main_image?: components["schemas"]["AlibabaFreeApiSharedaf909cbf2915218ca3f0"];
+            /** @description 商品最低价格 */
+            min_price?: string;
+            attributes?: components["schemas"]["AlibabaFreeApiShared8481585e2eabd8333be1"];
+            /** @description 叶子类目ID */
+            category_id?: number;
+            /** @description 产品更新时间 */
+            gmt_modified?: number | string;
+        };
+        /** @description 非核心国家运费确定性信息 */
+        AlibabaFreeApiShared2df7a4d66aaae43246cb: components["schemas"]["AlibabaFreeApiSharedb6b76aefe794a4e8cd72"][];
+        /** @description AssuranceAccountResult */
+        AlibabaFreeApiShared2e47b996ad72aadd90a6: {
+            /** @description errorMessage */
+            error_message?: string;
+            value?: components["schemas"]["AlibabaFreeApiShared349a4401a5dd034a5a40"];
+            /** @description errorCode */
+            error_code?: string;
+            /** @description success */
+            success?: boolean;
+        };
+        /** @description shipping fee */
+        AlibabaFreeApiShared320e714eb3304d3124ed: {
+            /** @description amount */
+            amount?: string;
+            /** @description currency */
+            currency?: string;
+        };
+        /** @description resultDto */
+        AlibabaFreeApiShared33ae12d8518bdaff6502: {
+            /** @description 是否成功 */
+            success?: boolean;
+            /** @description 错误码 */
+            result_code?: string;
+            /** @description 错误信息 */
+            result_msg?: string;
+            external_icbu_product_rights_query_result_dto?: components["schemas"]["AlibabaFreeApiSharedae3d158642a1dbc39d5b"];
+        };
+        /** @description 商品的库存列表 */
+        AlibabaFreeApiShared3489e7c9cb1b26195778: components["schemas"]["AlibabaFreeApiSharedab74a8bc90a9f1d4764c"][];
+        /** @description value */
+        AlibabaFreeApiShared349a4401a5dd034a5a40: {
+            /** @description pauseStatus */
+            pause_status?: boolean;
+            /** @description guideURL */
+            guide_u_r_l?: string;
+            flag_list?: components["schemas"]["AlibabaFreeApiShared6b6f64ecab63f686370b"];
+        };
+        AlibabaFreeApiShared36581a3c9dc0f9777ea5: {
+            /** @description 日期 yyyy-mm-dd */
+            date_str?: string;
+            time_str_list?: components["schemas"]["AlibabaFreeApiShared09cbd6ad597952d48e54"];
+        };
+        /** @description SKU使用的属性 */
+        AlibabaFreeApiShared36811d742d4fa8dac8ed: components["schemas"]["AlibabaFreeApiSharede18bee061ed8145b4d53"][];
+        /** @description 接口返回对象 */
+        AlibabaFreeApiShared36a0db9fc7a17a959a06: {
+            dto: components["schemas"]["AlibabaFreeApiShared0230c2a5421b17bf0e79"];
+        };
+        /** @description 价格 */
+        AlibabaFreeApiShared3b387856aba3ac88c7f2: components["schemas"]["AlibabaFreeApiShared6c263234183acdcf3b3d"][];
+        /** @description 主题服务能力项要求 */
+        AlibabaFreeApiShared3b43cf8177d174b992ab: string[];
+        /** @description 商品信息 */
+        AlibabaFreeApiShared3d161ca10accacfe771e: components["schemas"]["AlibabaFreeApiSharedb0a124059e986af1c5f4"][];
+        /** @description 商品数据列表 */
+        AlibabaFreeApiShared3fa04b93a9aa3e4833eb: components["schemas"]["AlibabaFreeApiSharedf818eb34766998f3d9be"][];
+        /** @description inventory list */
+        AlibabaFreeApiShared40839f39f7c13c705afd: components["schemas"]["AlibabaFreeApiShared8f155800ae475712ee9c"][];
+        AlibabaFreeApiShared418b9b9a57fbdaef82b5: {
+            /** @description 证书名称 */
+            certificate?: string;
+        };
+        /** @description 要回写的数据 */
+        AlibabaFreeApiShared41c9381628c0030d342d: {
+            client?: components["schemas"]["AlibabaFreeApiShared63476535b9c0430ee791"];
+            /** @description 扩展字段,这里可支持扩展，但是需要报备 */
+            ext?: string;
+            /** @description 数据生成时间 */
+            generation_time: number | string;
+            /** @description 电话 */
+            phone: string;
+            /** @description 录入信息 */
+            record_contents: string;
+            /** @description 外部数据记录唯一id */
+            record_id: string;
+            /** @description 录入人 */
+            recorder: string;
+            /** @description 服务代码 */
+            service_code: string;
+            /** @description 服务类型：电话 PHONE, 预约上门APPOINTMENT_TO_DOOR, 未预约上门 NO_APPOINTMENT_TO_DOOR, 培训服务 TRAIN, 在线拜访 VISIT_ONLINE, 其他 OTHER; */
+            service_type: string;
+        };
+        /** @description ladder price list */
+        AlibabaFreeApiShared4307d94d6dc73199ca09: components["schemas"]["AlibabaFreeApiShared6f762708ae9d2b28671e"][];
+        /** @description 证书 */
+        AlibabaFreeApiShared445a1a389b2df83657ad: components["schemas"]["AlibabaFreeApiSharedeb48db5929f8c056dd1a"][];
+        /** @description 未找到回写记录的商品在来源平台的ID列表，通过来源平台ID查询时，未找到的商品会通过此字段返回 */
+        AlibabaFreeApiShared480f4d5885b2a4988e35: string[];
+        AlibabaFreeApiShared4810f5d723aa96c78667: {
+            /** @description event code */
+            event_code?: string;
+            /** @description event location */
+            event_location?: string;
+            /** @description event name */
+            event_name?: string;
+            /** @description event time */
+            event_time?: string;
+        };
+        /** @description 查询参数 */
+        AlibabaFreeApiShared49c0fea44f073059ce37: {
+            /** @description 交易单状态变更起始时间 */
+            fire_time_start?: number | string;
+            service_code?: components["schemas"]["AlibabaFreeApiSharede10d88580e167a197564"];
+            /** @description 起始值 */
+            off_set?: number;
+            /** @description 交易单创建结束时间 */
+            create_time_end?: number | string;
+            /** @description 结束值 */
+            length?: number;
+            /** @description 交易单创建起始时间 */
+            create_time_start?: number | string;
+            /** @description 是否展示 */
+            is_display?: boolean;
+            /** @description 交易单状态变更结束时间 */
+            fire_time_end?: number | string;
+            /** @description 买家aliid */
+            buyer_ali_id?: number;
+            trade_ids?: components["schemas"]["AlibabaFreeApiSharedac84c4b7e679fe2a4018"];
+            order_nos?: components["schemas"]["AlibabaFreeApiShared680c4d722354b6e0a380"];
+            status?: components["schemas"]["AlibabaFreeApiSharedd7a19ad6de43b74d74ee"];
+            /** @description 页码 */
+            page?: number;
+            /** @description 每页显示数量 */
+            page_size?: number;
+        };
+        /** @description 错误码 */
+        AlibabaFreeApiShared4ab12324b26174885965: {
+            /** @description 错误文本 */
+            display_text?: string;
+            /** @description 错误码 */
+            code?: string;
+        };
+        /** @description product pojo */
+        AlibabaFreeApiShared4d903fa62f33a0e74aee: components["schemas"]["AlibabaFreeApiShared924fc8f44808f8376736"][];
+        AlibabaFreeApiShared4f53eb1f79fd0a2cfed9: {
+            /** @description carrier */
+            carrier?: string;
+            /** @description The latest logistics event code */
+            current_event_code?: string;
+            event_list?: components["schemas"]["AlibabaFreeApiShared7d541076f224d3fd808c"];
+            /** @description tracking number */
+            tracking_number?: string;
+            /** @description tracking url */
+            tracking_url?: string;
+        };
+        AlibabaFreeApiShared5127e424244cc2eb4e4a: {
+            /** @description 定制力是否双60 */
+            nrts6060?: string;
+            /** @description 赛道，RTS/询盘 */
+            road?: string;
+            /** @description 是否至少发布了1个良好的且非aliwood且非段灯片的视频 */
+            is_video?: string;
+            /** @description 是否至少发布了1个有效报价RFQ */
+            is_rfq?: string;
+            /** @description 历史截至当日橱窗商品使用率 */
+            win_prod_ratio_std001?: string;
+            /** @description 是否信保亮灯Y/N */
+            is_crd_scrty?: string;
+            /** @description 月PC在线时长达标率 */
+            pc_online_hour_rate?: string;
+            /** @description 近30天PC/MA在线时长(小时) */
+            stay_hour_pc_m?: string;
+            /** @description 月pc在线天数达标率 */
+            pc_online_day_rate?: string;
+            /** @description 近30天PC/MA活跃天数 */
+            active_day_pc_m?: number;
+            /** @description 月活跃子账号达标率 */
+            active_mbr_rate?: string;
+            /** @description 近30天活跃子账号数 */
+            active_mbr_m?: number;
+            /** @description 月mc达标率 */
+            mc_rate?: string;
+            /** @description 关键词达标率 */
+            kw_rate?: string;
+            /** @description k200比率，关键词除以200的比率 */
+            kw200_rate?: string;
+            /** @description 视频数量 */
+            prod_video_cnt?: number;
+            /** @description 是否有侵权品牌Y/N */
+            is_tort_brand?: string;
+            /** @description 是否有价格不合理产品Y/N */
+            have_price_prod?: string;
+            /** @description 是否有重复铺货产品Y/N */
+            have_repeat_prod?: string;
+            /** @description RTS商品数 */
+            rts_prod_cnt?: number;
+            /** @description 实力优品达标率 */
+            good_prod_rate?: string;
+            /** @description 实力优品数 */
+            good_prod_cnt?: number;
+            /** @description 潜力品达标率 */
+            potential_prod_rate?: string;
+            /** @description 潜力品数 */
+            potential_prod_cnt?: number;
+            /** @description 蓝海品数 */
+            prod_blue?: number;
+            /** @description 4.5分及以上商品数 */
+            prod45?: number;
+            /** @description 4.0分及以上商品数 */
+            prod40?: number;
+            /** @description p150且4分达标率 */
+            p1504_rate?: string;
+            /** @description p30且4分达标率 */
+            p304_rate?: string;
+            /** @description 有效商品数 */
+            prod_cnt?: number;
+            /** @description 店铺是否装修，页面最晚修改时间和旺铺创建时间差 */
+            is_comp_dec?: string;
+            /** @description 服务商发品数 */
+            agency_prod_cnt?: number;
+            /** @description 订单完成时间 */
+            tradesuccess_time?: number | string;
+            /** @description 进入交付时间 */
+            delivered_time?: number | string;
+            /** @description 下单时间 */
+            pay_time?: number | string;
+            /** @description 交易单当前状态 */
+            current_status?: string;
+            /** @description 订单号 */
+            ord_num?: string;
+            /** @description 服务名称 */
+            service_name?: string;
+            /** @description 服务编码 */
+            service_code?: string;
+            /** @description 服务商编码 */
+            vendor_code?: string;
+            /** @description 服务商公司名 */
+            vendor_comp_name?: string;
+            /** @description 主营二级类目描述 */
+            main_cate_lv2_desc?: string;
+            /** @description 主营二级类目ID */
+            main_cate_lv2_std001?: number;
+            /** @description 主营一级类目描述 */
+            main_cate_lv1_desc?: string;
+            /** @description 主营一级类目ID */
+            main_cate_lv1_std001?: number;
+            /** @description 会员主账号id */
+            admin_mbr_id?: string;
+            /** @description 系统入库时间 */
+            dw_ins_time?: number | string;
+            /** @description 统计日期 */
+            stat_date?: string;
+            /** @description RTS力是否双60 */
+            rts6060?: string;
+            /** @description 当月星等级 */
+            level_star_page?: number;
+            /** @description 预测下月星等级 */
+            level_star?: number;
+            /** @description 最近7天店铺日均搜索曝光是否正常Y/N */
+            is_comp_exp_ok?: string;
+            /** @description 关键词曝光是否正常Y/N */
+            is_kw_exp_ok?: string;
+            /** @description 是否有降星风险Y/N */
+            is_star_lower_risk?: string;
+        };
+        /** @description productId List，max size is 10 */
+        AlibabaFreeApiShared57a82f55df87f0d28d8a: number[];
+        /** @description 返回结果数据 */
+        AlibabaFreeApiShared57e78b15ac25be3c7c26: {
+            core_country_logistics_cost_list?: components["schemas"]["AlibabaFreeApiShared6c7115308d05d750e7bd"];
+            non_core_country_logistics_cost_list?: components["schemas"]["AlibabaFreeApiShared2df7a4d66aaae43246cb"];
+        };
+        /** @description 更新请求 */
+        AlibabaFreeApiShared58c8b2251f9774fb3700: {
+            /** @description 商品id */
+            product_id: number;
+            inventory_list: components["schemas"]["AlibabaFreeApiShared900cfb91c3c1ec231425"];
+        };
+        /** @description 未找到回写记录的商品在ICBU的ID列表，通过ICBU的商品ID查询时，未找到的商品会通过此字段返回 */
+        AlibabaFreeApiShared59b2e2d23437ec66c990: number[];
+        /** @description 证书列表 */
+        AlibabaFreeApiShared5d3d61ffb8e60f34be14: components["schemas"]["AlibabaFreeApiShared418b9b9a57fbdaef82b5"][];
+        /** @description 商品在来源平台中的类目名称层级，用数组表示依次对应对应一级/二级/N级，与ID层级有对应关系 */
+        AlibabaFreeApiShared5fbb5dc0cd112af29be6: string[];
+        /** @description 包裹信息 */
+        AlibabaFreeApiShared60708dcb0480c3aed9b6: components["schemas"]["AlibabaFreeApiSharedaecacbfb6658084aac15"][];
+        /** @description 返回对象集合 */
+        AlibabaFreeApiShared610824539439207ca91f: components["schemas"]["AlibabaFreeApiShared8c3047d068e703a6cd41"][];
+        /** @description 主题偏好国家列表 */
+        AlibabaFreeApiShared6125953d4e4017e61c94: components["schemas"]["AlibabaFreeApiShared9308eaa6372795f81de0"][];
+        /** @description 客户数据 */
+        AlibabaFreeApiShared63476535b9c0430ee791: {
+            contact_person_list?: components["schemas"]["AlibabaFreeApiShareda31085a8b8f62bb1d74c"];
+            /** @description 客户登陆账号 */
+            merchant_login_id?: string;
+        };
+        /** @description Country */
+        AlibabaFreeApiShared65cf9fe4a85ac509d67f: {
+            /** @description Country Code */
+            code?: string;
+            /** @description Country Name */
+            name?: string;
+        };
+        /** @description Fax */
+        AlibabaFreeApiShared663e838a39e8688011c4: {
+            /** @description fax area */
+            area?: string;
+            /** @description fax country */
+            country?: string;
+            /** @description fax number */
+            number?: string;
+        };
+        /** @description 本次请求新增数据的商品在ICBU中的ID */
+        AlibabaFreeApiShared6754b4bb47baa7666ff5: number[];
+        /** @description 订单号列表 */
+        AlibabaFreeApiShared680c4d722354b6e0a380: string[];
+        /** @description Response */
+        AlibabaFreeApiShared68c62b94e6837a8c65bb: {
+            /** @description pay url */
+            pay_url?: string;
+            /** @description order number */
+            trade_id?: string;
+        };
+        /** @description product keywords */
+        AlibabaFreeApiShared69b0b3b7344c04f4dfc4: string[];
+        /** @description flagList */
+        AlibabaFreeApiShared6b6f64ecab63f686370b: string[];
+        AlibabaFreeApiShared6c263234183acdcf3b3d: {
+            /** @description 价格，范围是0.01-9999999.00 */
+            start_quantity?: number;
+            /** @description 价格，范围是0.01-9999999.00 */
+            price?: string;
+        };
+        /** @description 核心国家运费确定性信息 */
+        AlibabaFreeApiShared6c7115308d05d750e7bd: components["schemas"]["AlibabaFreeApiSharedcba7a6e04aaaaf0da7a5"][];
+        AlibabaFreeApiShared6f762708ae9d2b28671e: {
+            price?: components["schemas"]["AlibabaFreeApiSharedd243acf162c2b7b493a1"];
+            /** @description If it is -1, it means the maximum */
+            max_quantity?: number;
+            /** @description min quantity */
+            min_quantity?: number;
+        };
+        /** @description SKU定义 */
+        AlibabaFreeApiShared7196d1947ee0fa3db193: components["schemas"]["AlibabaFreeApiShared71fc18350aa6acea03a8"][];
+        AlibabaFreeApiShared71fc18350aa6acea03a8: {
+            /** @description 属性名ID和属性值ID */
+            attr2_value?: string;
+            bulk_discount_prices?: components["schemas"]["AlibabaFreeApiShared3b387856aba3ac88c7f2"];
+            inventory_d_t_o_list?: components["schemas"]["AlibabaFreeApiShared3489e7c9cb1b26195778"];
+            /** @description 商品的SKU编码 */
+            sku_code?: string;
+            /** @description 商品的SKUid，唯一标识SKU */
+            sku_id?: number;
+        };
+        /** @description ISV任务执行结果通知返回 */
+        AlibabaFreeApiShared71fdc13b1fd27fb6504e: {
+            /** @description 结果码，0000 成功，1001 参数错误，9999 系统错误 */
+            result?: string;
+            /** @description 失败原因 */
+            fail_reason?: string;
+        };
+        /** @description 商品信息查询请求 */
+        AlibabaFreeApiShared72ca946a5832cede81a4: {
+            /** @description 加密后商品id */
+            secret_id: string;
+        };
+        /** @description Order numbers to be paid，max size is 10 */
+        AlibabaFreeApiShared7325bb21cc6385fe8caf: number[];
+        /** @description 授权订单集合 */
+        AlibabaFreeApiShared738b2ebceefcdf3f842a: components["schemas"]["AlibabaFreeApiShared0fd916ac92fb0443b2c2"][];
+        /** @description shipping fee */
+        AlibabaFreeApiShared7419f9d6fa4ea02be025: {
+            /** @description currency */
+            currency?: string;
+            /** @description amount */
+            amount?: string;
+        };
+        /** @description 属性下的值 */
+        AlibabaFreeApiShared75106a66a2a83cdee8b5: components["schemas"]["AlibabaFreeApiSharedafd31eb3e6848417b21d"][];
+        AlibabaFreeApiShared7527f22232bcf3d8a4a0: number | string;
+        /** @description Logistics details */
+        AlibabaFreeApiShared75499d5789c76e5b1428: {
+            /** @description For BuyNow orders, use the value shown in the vendorCode field from the shipping cost template API; non-BuyNow orders don’t need to provide this information. alibaba.shipping.freight.calculate 's vender_code */
+            carrier_code: string;
+            shipment_address: components["schemas"]["AlibabaFreeApiShared8d0e2fd03434bd1f757f"];
+            /** @description 发货地 */
+            dispatch_location?: string;
+        };
+        /** @description 查询成功的商品列表 */
+        AlibabaFreeApiShared782072a524046593ba97: components["schemas"]["AlibabaFreeApiSharedc64480a77e9ffd6a6816"][];
+        /** @description event list */
+        AlibabaFreeApiShared7d541076f224d3fd808c: components["schemas"]["AlibabaFreeApiShared4810f5d723aa96c78667"][];
+        /** @description 结果 */
+        AlibabaFreeApiShared7e9566f6b942f048d611: {
+            /** @description 消息 */
+            msg?: string;
+            data?: components["schemas"]["AlibabaFreeApiShared88bbadbd3ee021c9459e"];
+            /** @description 调用成功标志 */
+            success?: boolean;
+            /** @description 结果编码 */
+            result_code?: number;
+        };
+        /** @description logistics tracking List */
+        AlibabaFreeApiShared824b37ceb9d38a2788ef: components["schemas"]["AlibabaFreeApiShared4f53eb1f79fd0a2cfed9"][];
+        /** @description 展示图片 */
+        AlibabaFreeApiShared82f6c4214b0413c3227c: string[];
+        AlibabaFreeApiShared83ae5c4ea4c8ec4100cd: {
+            /** @description 主题id */
+            id?: number;
+            /** @description 主题标题 */
+            title?: string;
+            /** @description 推荐理由 */
+            reason?: string;
+            show_image_urls?: components["schemas"]["AlibabaFreeApiShared82f6c4214b0413c3227c"];
+            capacity_list?: components["schemas"]["AlibabaFreeApiShared3b43cf8177d174b992ab"];
+            country_preference_list?: components["schemas"]["AlibabaFreeApiShared6125953d4e4017e61c94"];
+            /** @description 主题类目要求 */
+            category_ids?: string;
+            rule_dto?: components["schemas"]["AlibabaFreeApiSharedff36803040869b853859"];
+            /** @description 主题类型。根据该字段判断主题规则：当类型为CATEGORY_ENROLL_PRODUCT表示类目招品；当类型为ATTR_ENROLL_PRODUCT表示属性招品（需要展示属性字段）；当类型为KEY_WORD_ENROLL_PRODUCT表示关键词招品（需要展示关键词字段） */
+            rule_type?: string;
+        };
+        /** @description 商品属性 */
+        AlibabaFreeApiShared8481585e2eabd8333be1: components["schemas"]["AlibabaFreeApiSharedb04e339fedd9a4dd6a64"][];
+        AlibabaFreeApiShared85fa74f82c5b30ed5372: {
+            /** @description 属性项ID */
+            attr_id?: number;
+            /** @description 属性项名称 */
+            attr_name?: string;
+            attr_value_dto_list?: components["schemas"]["AlibabaFreeApiSharedea689bb6fb0ecc6f2bc0"];
+        };
+        /** @description 结果数据 */
+        AlibabaFreeApiShared88bbadbd3ee021c9459e: {
+            /** @description 干线线路名称 */
+            trunk_line_name?: string;
+            /** @description 干线线路 skuCode */
+            trunk_line_sku_code?: string;
+            /** @description 仓库编码 */
+            warehouse_code?: string;
+            available_head_pickup_solution_list?: components["schemas"]["AlibabaFreeApiSharede8a0cbd62916cf2d07f3"];
+        };
+        AlibabaFreeApiShared8ab8dee64705e1a39405: {
+            /** @description 联系人姓名 */
+            contact_name?: string;
+            /** @description 联系电话 */
+            contact_number?: string;
+            /** @description 联系人岗位 */
+            contact_position?: string;
+        };
+        AlibabaFreeApiShared8bf8058dda594aa344e7: {
+            /** @description 头程skuId */
+            sku_id?: number;
+            /** @description 头程线路方案id */
+            solution_id?: number;
+            pick_up_time_dto_list?: components["schemas"]["AlibabaFreeApiSharedc389f76fc35a2d1dd283"];
+            /** @description 头程揽收服务商 */
+            sp_code?: string;
+            /** @description 揽收类型，仓库免费上门揽收/服务商付费上门揽收 */
+            pickup_type?: string;
+            /** @description 头程揽收服务商名称 */
+            sp_name?: string;
+        };
+        AlibabaFreeApiShared8c3047d068e703a6cd41: {
+            /** @description 订单类型 */
+            order_type: string;
+            /** @description 订单编号 */
+            order_no: string;
+            /** @description 购买数量 */
+            quantity: number;
+            /** @description 订单状态 */
+            current_status: string;
+            /** @description 服务编码 */
+            service_code: string;
+            /** @description 状态更新时间 */
+            fire_time: number | string;
+            /** @description 成交价格 */
+            transaction_price: string;
+            /** @description 创建时间 */
+            create_time: number | string;
+            /** @description 成交单价 */
+            transaction_unit_price: string;
+            /** @description 支付通道 */
+            pay_channel: string;
+            /** @description 订单货币类型 */
+            currency: string;
+            /** @description 退款金额 */
+            refund_price: string;
+            /** @description 订单标题 */
+            order_title: string;
+            /** @description 规格编码 */
+            sku_code: string;
+            /** @description 购买者阿里id */
+            buyer_ali_id: number;
+            /** @description 购买者登陆账号 */
+            buyer_login_id: string;
+            /** @description 服务分类id */
+            service_category_id: number;
+            /** @description 服务分类名称 */
+            service_category: string;
+            /** @description 用户购买sku */
+            service_sku_label: string;
+        };
+        /** @description shipment address */
+        AlibabaFreeApiShared8d0e2fd03434bd1f757f: {
+            /** @description Specific address */
+            address: string;
+            /** @description Secondary address */
+            alternate_address?: string;
+            /** @description Name of the city where the order is completed */
+            city?: string;
+            /** @description City abbreviation */
+            city_code?: string;
+            /** @description Name of contact person */
+            contact_person: string;
+            /** @description Country name */
+            country: string;
+            /** @description Country code，ISO3166 standard and has two letters. */
+            country_code: string;
+            fax?: components["schemas"]["AlibabaFreeApiShared663e838a39e8688011c4"];
+            /** @description Port name */
+            port?: string;
+            /** @description Port code */
+            port_code?: string;
+            /** @description Name of state/province */
+            province?: string;
+            /** @description Province/state abbreviation */
+            province_code?: string;
+            telephone?: components["schemas"]["AlibabaFreeApiShareda9019c6eaa70120d00d2"];
+            /** @description zip */
+            zip?: string;
+        };
+        /** @description {} */
+        AlibabaFreeApiShared8e1c5c21a99246158a19: {
+            /** @description Get from alibaba.dropshipping.product.get */
+            e_company_id: string;
+            address?: components["schemas"]["AlibabaFreeApiSharedf22d2193bf595f9abdb6"];
+            /** @description Destination Country */
+            destination_country: string;
+            logistics_product_list: components["schemas"]["AlibabaFreeApiShared1e86a130a822176e2799"];
+            /** @description 商品发货地，CN 或US，默认CN */
+            dispatch_location?: string;
+        };
+        AlibabaFreeApiShared8f155800ae475712ee9c: {
+            /** @description dispatch country */
+            dispatch_country?: string;
+            /** @description inventory count */
+            inventory?: number;
+            /** @description store code */
+            store_code?: string;
+        };
+        /** @description 待更新的库存列表 */
+        AlibabaFreeApiShared900cfb91c3c1ec231425: components["schemas"]["AlibabaFreeApiShareda3af27b5ca0b8b1305ad"][];
+        /** @description 接口入参对象 */
+        AlibabaFreeApiShared91621ca567e7a65383ec: {
+            /** @description 一页的大小，不超过20 */
+            page_size?: number;
+            /** @description 直播间uuid */
+            live_uuid: string;
+            /** @description 登录账号的aliId，从cookie中获取xman_i=aid=后面的部分 */
+            ali_id: number;
+            /** @description 当前页码，从0开始，如果超出总页数，接口报错 */
+            current_page?: number;
+        };
+        /** @description 请求入参对象 */
+        AlibabaFreeApiShared91692dfcdb3eb5167d65: {
+            /** @description 直播间uuid */
+            live_uuid: string;
+            /** @description 登录账号的aliId，从cookie中获取xman_i=aid=后面的部分 */
+            ali_id: number;
+            /** @description 推送品的id */
+            product_id: number;
+        };
+        AlibabaFreeApiShared924fc8f44808f8376736: {
+            /** @description product description html， It is the transferred string, the applicable party needs to reverse the string */
+            description?: string;
+            /** @description product detail Url */
+            detail_url?: string;
+            /** @description Determine whether this product can be ordered */
+            is_can_place_order?: boolean;
+            keywords?: components["schemas"]["AlibabaFreeApiShared69b0b3b7344c04f4dfc4"];
+            ladder_period_list?: components["schemas"]["AlibabaFreeApiSharedbfe455b34f669ba787e7"];
+            /** @description main image url */
+            main_image_url?: string;
+            moq_and_price?: components["schemas"]["AlibabaFreeApiShared0791d0eefe013f507460"];
+            /** @description product name */
+            name?: string;
+            /** @description price Range */
+            price_range?: string;
+            /** @description product id */
+            product_id?: number;
+            product_sku_list?: components["schemas"]["AlibabaFreeApiSharedd7511d5fa2e5bc9a587f"];
+            /** @description Store Id */
+            e_company_id?: string;
+            /** @description the top category name */
+            top_category_name?: string;
+            /** @description the leaf category name */
+            leaf_category_name?: string;
+            image_url_list?: components["schemas"]["AlibabaFreeApiSharedb541e143be16f1b5447e"];
+        };
+        AlibabaFreeApiShared9308eaa6372795f81de0: {
+            /** @description 国家名称 */
+            name?: string;
+            /** @description 国家编码 */
+            field?: string;
+        };
+        /** @description 阶梯交期 */
+        AlibabaFreeApiShared96245ac230d4ffffab92: components["schemas"]["AlibabaFreeApiSharedeffa79bc3ba2c3582389"][];
+        /** @description 异步获取历史数据接口返回结果 */
+        AlibabaFreeApiShared97ff0e2e6fd1107eac9c: {
+            list?: components["schemas"]["AlibabaFreeApiSharedbfc8190c8bf500f5cf09"];
+            /** @description 异常说明 */
+            exec_description?: string;
+            /** @description 状态码 */
+            return_code?: number;
+            /** @description 是否成功 */
+            success?: boolean;
+        };
+        /** @description 国家 */
+        AlibabaFreeApiShared999e8aef46b91e73a7b8: {
+            /** @description 国家二字码 */
+            code?: string;
+            /** @description 国家名 */
+            name?: string;
+        };
+        /** @description 定招主题数据 */
+        AlibabaFreeApiShared9a3c20d6fe2775fc4901: components["schemas"]["AlibabaFreeApiShared83ae5c4ea4c8ec4100cd"][];
+        /** @description 接口返回 */
+        AlibabaFreeApiShared9cec4a1505a5c806d90a: {
+            /** @description 接口返回 */
+            exec_description: string;
+            /** @description 返回码 */
+            return_code: number;
+            /** @description 是否成功 */
+            success: boolean;
+            page_dto: components["schemas"]["AlibabaFreeApiSharedc3d7c923e59441913aac"];
+            dtos: components["schemas"]["AlibabaFreeApiShared610824539439207ca91f"];
+        };
+        AlibabaFreeApiShared9d602eede87370ec71ed: {
+            /** @description 建议的语种 */
+            suggest_source_language?: string;
+            /** @description 翻译引擎 */
+            trans_engine: string;
+            /** @description 目标语种 */
+            target_language: string;
+            /** @description appName */
+            app_name: string;
+            /** @description 需要识别的文本 */
+            source_text: string;
+            /** @description 翻译文本的格式 */
+            format: string;
+            /** @description 所在地对于locale */
+            locale?: string;
+            /** @description 翻译业务类型(query、offer、title、message,feedback) */
+            field_type: string;
+            /** @description 业务方传递的参数 */
+            param_map?: string;
+        };
+        /** @description 联系人列表 */
+        AlibabaFreeApiShareda31085a8b8f62bb1d74c: components["schemas"]["AlibabaFreeApiShared8ab8dee64705e1a39405"][];
+        AlibabaFreeApiShareda3af27b5ca0b8b1305ad: {
+            /** @description 待更新库存的SKUid,如果没有skuId,设置成-1 */
+            sku_id: number;
+            /** @description 库存的仓编码,根据商品查询返回的仓编码进行设置,不同的客户类型,仓编码会不一样 */
+            inventory_code: string;
+            inventory: number;
+            /** @enum {string} */
+            operate: "plus" | "sub";
+        };
+        /** @description telephone */
+        AlibabaFreeApiShareda9019c6eaa70120d00d2: {
+            /** @description telephone area */
+            area?: string;
+            /** @description telephone country */
+            country?: string;
+            /** @description telephone number */
+            number?: string;
+        };
+        /** @description alibaba图片中心的图片URL列表，请使用alibaba.icbu.photobank.upload接口上传图片 */
+        AlibabaFreeApiShareda93feb4989b06b066bc0: string[];
+        /** @description ISV任务执行结果通知入参 */
+        AlibabaFreeApiShareda95767f64dd891595488: {
+            /** @description ISV 标识 */
+            isv?: string;
+            /** @description 任务类型 */
+            type?: string;
+            /** @description 任务 Key */
+            task_key?: string;
+            /** @description 任务状态 */
+            task_status?: string;
+            /** @description 扣费金额 */
+            deduction?: string;
+            /** @description 不含税扣费金额 */
+            no_tax_deduction?: string;
+            /** @description 失败原因 */
+            fail_reason?: string;
+        };
+        AlibabaFreeApiSharedab74a8bc90a9f1d4764c: {
+            /** @description 库存值 */
+            inventory?: number;
+            /** @description 库存编码，为空时表示默认国内仓 */
+            store_code?: string;
+        };
+        /** @description 希望查询的商品在来源店铺中的ID列表 */
+        AlibabaFreeApiSharedabec9e7cd5aad90f7fa6: string[];
+        /** @description 交易id号列表 */
+        AlibabaFreeApiSharedac84c4b7e679fe2a4018: number[];
+        /** @description Logistics Solution List */
+        AlibabaFreeApiSharedae1106d2952f16a1d61c: components["schemas"]["AlibabaFreeApiShared1a5da6083b87cdcaf97f"][];
+        /** @description 返回结果 */
+        AlibabaFreeApiSharedae3d158642a1dbc39d5b: {
+            succeed_products?: components["schemas"]["AlibabaFreeApiShared782072a524046593ba97"];
+            unknown_product_ids?: components["schemas"]["AlibabaFreeApiShared59b2e2d23437ec66c990"];
+            invalid_product_ids?: components["schemas"]["AlibabaFreeApiShared1a7e7fc3a2d4f68847cf"];
+            unknown_from_product_ids?: components["schemas"]["AlibabaFreeApiShared480f4d5885b2a4988e35"];
+        };
+        AlibabaFreeApiSharedaecacbfb6658084aac15: {
+            /** @description 包裹数量 */
+            quantity?: number;
+            /** @description 长cm */
+            length?: string;
+            /** @description 包裹类型 */
+            type?: string;
+            /** @description 宽cm */
+            width?: string;
+            /** @description 高cm */
+            height?: string;
+            /** @description 重量 */
+            weight?: string;
+        };
+        /** @description 商品主图 */
+        AlibabaFreeApiSharedaf909cbf2915218ca3f0: {
+            images?: components["schemas"]["AlibabaFreeApiShareda93feb4989b06b066bc0"];
+        };
+        AlibabaFreeApiSharedafd31eb3e6848417b21d: {
+            /** @description 默认的展示样式 */
+            mark_info?: string;
+            /** @description 属性值ID */
+            value_id?: number;
+            /** @description 属性值名称 */
+            system_value_name?: string;
+            /** @description 自定义的属性值名称 */
+            custom_value_name?: string;
+            /** @description 自定义的图片URL */
+            image_url?: string;
+        };
+        AlibabaFreeApiSharedb04e339fedd9a4dd6a64: {
+            /** @description 属性项ID */
+            attribute_id?: number;
+            /** @description 作为sku属性值时，用图形来显示；必须是alibaba图片中心的图片URL，请使用alibaba.icbu.photobank.upload上传图片 */
+            sku_custom_image_url?: string;
+            /** @description 属性值ID */
+            value_id?: number;
+            /** @description 属性值名称 */
+            value_name?: string;
+            /** @description 属性项名称 */
+            attribute_name?: string;
+            /** @description 作为sku属性值时，自定义属性值名称 */
+            sku_custom_value_name?: string;
+        };
+        AlibabaFreeApiSharedb0a124059e986af1c5f4: {
+            /** @description 修改时间 */
+            gmt_modified?: number | string;
+            keywords?: components["schemas"]["AlibabaFreeApiSharedfc0db6182ae3faa97247"];
+            /** @description 标题 */
+            subject?: string;
+            /** @description 产品链接 */
+            pc_detail_url?: string;
+            /** @description 产品加密ID */
+            secret_id?: string;
+            main_image?: components["schemas"]["AlibabaFreeApiSharede8a66b908fde514dfa74"];
+            /** @description 最低价格 */
+            min_price?: string;
+        };
+        /** @description resultDto */
+        AlibabaFreeApiSharedb1c8fd4ef0bd3a4d7986: {
+            /** @description 是否成功 */
+            success?: boolean;
+            /** @description 错误码 */
+            result_code?: string;
+            /** @description 错误信息 */
+            result_msg?: string;
+        };
+        /** @description sku name value list */
+        AlibabaFreeApiSharedb374f8cb5dbbea29f8c7: components["schemas"]["AlibabaFreeApiSharedc5054f6bb41a87665e2a"][];
+        /** @description product image list */
+        AlibabaFreeApiSharedb541e143be16f1b5447e: string[];
+        AlibabaFreeApiSharedb6b76aefe794a4e8cd72: {
+            /** @description 国家代码 */
+            country_code?: string;
+            /** @description 国家名称 */
+            country_name?: string;
+            /** @description 运费是否确定 */
+            is_freight_cost_certain?: string;
+        };
+        /** @description Order creation parameter */
+        AlibabaFreeApiSharedb761b47ec639b655a14a: {
+            /** @description Provide the order number corresponding to the 3rd party ISV */
+            channel_refer_id: string;
+            logistics_detail: components["schemas"]["AlibabaFreeApiShared75499d5789c76e5b1428"];
+            payment_detail: components["schemas"]["AlibabaFreeApiSharede5147160e3127831ef91"];
+            product_list: components["schemas"]["AlibabaFreeApiSharede111b4ec742af9212305"];
+            /** @description Put the order number provided by the 3rd party platform and the name of the 3rd party platform. For example, if the order number is for a transaction made on Shopify, put “Shopify” and the order number. Platform Names can be case ignored: Shopify,CommerceHQ,WooCommerce,GrooveKart,BigCommerce */
+            properties?: string;
+            /** @description order remark */
+            remark?: string;
+        };
+        /** @description 本次请求跳过的商品在ICBU中的ID */
+        AlibabaFreeApiSharedb93b58319f10bfd5cdf8: number[];
+        /** @description 直播间的商品列表 */
+        AlibabaFreeApiSharedbad36fe2138956991147: components["schemas"]["AlibabaFreeApiShared242b2f8bb6fa108ef48e"][];
+        /** @description pay response */
+        AlibabaFreeApiSharedbd9bca94df3e05d936ea: {
+            /** @description pay url */
+            pay_url?: string;
+            /** @description Payment failed reason code */
+            reason_code?: string;
+            /** @description Payment failed reason message */
+            reason_message?: string;
+            /** @description UNPAY Unpaid order PAYING The order is being paid and it needs to wait for about 1 minute, PAY_SUCCESS Order payment is successful, PAY_FAILED Order payment failed */
+            status?: string;
+            /** @description order id */
+            trade_id?: number;
+        };
+        /** @description {} */
+        AlibabaFreeApiSharedbef34699299c826fe7ed: {
+            /** @description destination country ISO 3166-2 */
+            destination_country: string;
+            /** @description product id */
+            product_id: number;
+            /** @description quantity */
+            quantity: number;
+            /** @description destination zip code */
+            zip_code?: string;
+            /** @description 商品发货地，默认CN，CN或US */
+            dispatch_location?: string;
+        };
+        /** @description 返回集合 */
+        AlibabaFreeApiSharedbfc8190c8bf500f5cf09: components["schemas"]["AlibabaFreeApiShared235d1ee16c945983dea5"][];
+        /** @description Ladder delivery List */
+        AlibabaFreeApiSharedbfe455b34f669ba787e7: components["schemas"]["AlibabaFreeApiSharede68aab017499b14cd0db"][];
+        /** @description 可预约揽收时间 */
+        AlibabaFreeApiSharedc389f76fc35a2d1dd283: components["schemas"]["AlibabaFreeApiShared36581a3c9dc0f9777ea5"][];
+        /** @description 分页对象 */
+        AlibabaFreeApiSharedc3d7c923e59441913aac: {
+            /** @description 总数据量 */
+            total_item: number;
+            /** @description 总页数 */
+            total_page: number;
+            /** @description 每页显示数量 */
+            page_size: number;
+            /** @description 当前页码 */
+            current_page: number;
+        };
+        AlibabaFreeApiSharedc5054f6bb41a87665e2a: {
+            /** @description Attributes name */
+            attr_name_desc?: string;
+            /** @description Attributes name id */
+            attr_name_id?: number;
+            /** @description Attributes value */
+            attr_value_desc?: string;
+            /** @description Attributes value id */
+            attr_value_id?: number;
+            /** @description Attributes url */
+            attr_value_image?: string;
+        };
+        /** @description 在线批发商品交易信息 */
+        AlibabaFreeApiSharedc5e4d82f9ef517fe623b: {
+            /** @description 最小计量单位，参见FAQ 计量单位枚举值 */
+            unit_type?: string;
+            /** @description 备货期，单位是天，范围是1-60 */
+            handling_time?: number;
+            /** @description 体积，单位是立方厘米，范围是1-9999999 */
+            volume?: number;
+            /** @description 运费模板ID */
+            shipping_line_template_id?: number;
+            /** @description 价格，单位是美元，精确到小数点后两位，范围是0.01-9999999.00 */
+            price?: string;
+            /** @description 销售方式，按件卖(normal)或者按批卖(batch) */
+            sale_type?: string;
+            /** @description 重量，单位是kg，精确到小数点后三位，范围是0.01-9999999.000 */
+            weight?: string;
+            /** @description 定制最小起订量 */
+            min_order_quantity?: number;
+            deliver_periods?: components["schemas"]["AlibabaFreeApiShared96245ac230d4ffffab92"];
+            /** @description 尺寸，单位是厘米，长宽高范围是1-9999999 */
+            package_size?: string;
+            /** @description 每批数量，当sale_type=batch时生效，范围是1-99999 */
+            batch_number?: number;
+        };
+        AlibabaFreeApiSharedc64480a77e9ffd6a6816: {
+            /** @description 商品在来源平台中的唯一不可变ID，与入参一致 */
+            from_product_unique_id?: string;
+            /** @description 商品在ICBU的ID */
+            icbu_product_id?: number;
+            /** @description 当前是否享受优品权益中 */
+            good_product_right_enabled?: boolean;
+        };
+        /** @description 希望查询的商品在来源店铺中的ID列表 */
+        AlibabaFreeApiSharedc7b1bc34703164331126: number[];
+        AlibabaFreeApiSharedcba7a6e04aaaaf0da7a5: {
+            /** @description 国家代码 */
+            country_code?: string;
+            /** @description 国家名称 */
+            country_name?: string;
+            /** @description 运费是否确定 */
+            is_freight_cost_certain?: boolean;
+        };
+        /** @description 错误信息 */
+        AlibabaFreeApiSharedce63b0330c987755bc6f: {
+            /** @description 错误码 */
+            code?: string;
+            /** @description 错误信息 */
+            display_text?: string;
+        };
+        /** @description 查询请求 */
+        AlibabaFreeApiSharedcf1f15f28518f2bf5c00: {
+            /** @description 分页大小，不超过20一页 */
+            page_size: number;
+            /** @description 当前页 */
+            current_page: number;
+        };
+        /** @description 属性列表 */
+        AlibabaFreeApiSharedd17917fbd945dc96f904: components["schemas"]["AlibabaFreeApiShared85fa74f82c5b30ed5372"][];
+        /** @description price */
+        AlibabaFreeApiSharedd243acf162c2b7b493a1: {
+            /** @description currency */
+            currency?: string;
+            /** @description amount */
+            amount?: string;
+        };
+        /** @description response model */
+        AlibabaFreeApiSharedd246c24e2a57371e6fbc: {
+            /** @description Payment url */
+            pay_url?: string;
+            /** @description Payment failed reason code */
+            reason_code?: string;
+            /** @description Payment failed reason message */
+            reason_message?: string;
+            /** @description UNPAY Unpaid order PAYING The order is being paid and it needs to wait for about 1 minute, PAY_SUCCESS Order payment is successful, PAY_FAILED Order payment failed */
+            status?: string;
+            /** @description order id */
+            trade_id?: number;
+        };
+        /** @description 市 */
+        AlibabaFreeApiSharedd2d9a66c4e10e56e54f1: {
+            /** @description 菜鸟区划id */
+            code?: string;
+            /** @description 市名 */
+            name?: string;
+        };
+        /** @description 本次请求忽略的商品在ICBU中的ID */
+        AlibabaFreeApiSharedd42a77374a2865810dfb: number[];
+        AlibabaFreeApiSharedd5af0412f0bd5f33c878: {
+            /** @description sku image url */
+            image_url?: string;
+            inventory_list?: components["schemas"]["AlibabaFreeApiShared40839f39f7c13c705afd"];
+            /** @description sku id */
+            sku_id?: number;
+            sku_name_value_list?: components["schemas"]["AlibabaFreeApiSharedb374f8cb5dbbea29f8c7"];
+            ladder_price_list?: components["schemas"]["AlibabaFreeApiShared4307d94d6dc73199ca09"];
+        };
+        /** @description product sku list */
+        AlibabaFreeApiSharedd7511d5fa2e5bc9a587f: components["schemas"]["AlibabaFreeApiSharedd5af0412f0bd5f33c878"][];
+        AlibabaFreeApiSharedd7a19ad6de43b74d74ee: string[];
+        /** @description resultDto */
+        AlibabaFreeApiSharedd84230fe6fe2d17d9416: {
+            /** @description 是否成功 */
+            is_success?: boolean;
+            /** @description 错误码 */
+            result_code?: string;
+            /** @description 错误信息 */
+            result_msg?: string;
+            external_product_info_write_result_dto?: components["schemas"]["AlibabaFreeApiSharedeed68921bbd0108bf7ee"];
+        };
+        AlibabaFreeApiShareddacf647a904ee3869e4a: {
+            /** @description shipping type */
+            shipping_type?: string;
+            /** @description trade term */
+            trade_term?: string;
+            /** @description dispatch country */
+            dispatch_country?: string;
+            /** @description destination country */
+            destination_country?: string;
+            /** @description vendor code */
+            vendor_code?: string;
+            /** @description vendor name */
+            vendor_name?: string;
+            fee?: components["schemas"]["AlibabaFreeApiShared7419f9d6fa4ea02be025"];
+            /** @description delivery time (days) */
+            delivery_time?: string;
+        };
+        /** @description 街道 */
+        AlibabaFreeApiShareddfcc1acc8929dd99a842: {
+            /** @description 菜鸟区划id */
+            code?: string;
+            /** @description 街道名 */
+            name?: string;
+        };
+        AlibabaFreeApiSharede0a9d0b1ad93a01cb572: {
+            /** @description product id */
+            product_id: number;
+            /** @description quantity */
+            quantity: string;
+            /** @description sku id */
+            sku_id?: string;
+            /** @description unit price */
+            unit_price_str: string;
+        };
+        AlibabaFreeApiSharede0f62dfc7d24811f244c: {
+            /** @description Product Id */
+            product_id: number;
+            /** @description quantity */
+            quantity: number;
+            /** @description Sku ID */
+            sku_id?: number;
+        };
+        /** @description 服务code列表 */
+        AlibabaFreeApiSharede10d88580e167a197564: string[];
+        /** @description Product list */
+        AlibabaFreeApiSharede111b4ec742af9212305: components["schemas"]["AlibabaFreeApiSharede0a9d0b1ad93a01cb572"][];
+        AlibabaFreeApiSharede18bee061ed8145b4d53: {
+            /** @description 属性项ID */
+            attribute_id?: number;
+            values?: components["schemas"]["AlibabaFreeApiShared75106a66a2a83cdee8b5"];
+            /** @description 属性项名称 */
+            attribute_name?: string;
+        };
+        /** @description 入参dto */
+        AlibabaFreeApiSharede324038337add13a81fb: components["schemas"]["AlibabaFreeApiShared9d602eede87370ec71ed"][];
+        /** @description - */
+        AlibabaFreeApiSharede3912a011ca978c1f2cc: {
+            /** @description 单件商品重量，单位KG */
+            unit_weight: string;
+            /** @description 运费模版ID */
+            shipping_template_id: number;
+            /** @description 售卖类型：normal-按件卖， batch-按批卖 */
+            sale_type: string;
+            /** @description 单件商品长宽高，用X分隔 */
+            unit_size: string;
+            /** @description 批量售卖，每批商品数量 */
+            batch_num?: number;
+            /** @description 返回结果语种 */
+            language?: string;
+            /** @description 产品类型：1-直接下单品，2-定制品 */
+            product_type: number;
+            /** @description 最小起订数量 */
+            moq: number;
+        };
+        /** @description Payment details */
+        AlibabaFreeApiSharede5147160e3127831ef91: {
+            /** @description shipment fee */
+            shipment_fee: string;
+            /** @description total amount */
+            total_amount: string;
+        };
+        AlibabaFreeApiSharede68aab017499b14cd0db: {
+            /** @description max quantity */
+            max_quantity?: number;
+            /** @description min quantity */
+            min_quantity?: number;
+            /** @description Delivery time */
+            process_period?: number;
+        };
+        /** @description pojo */
+        AlibabaFreeApiSharede6d53797b1e4b474e224: components["schemas"]["AlibabaFreeApiShareddacf647a904ee3869e4a"][];
+        /** @description 联系方式 */
+        AlibabaFreeApiSharede705baf9cf84fd1be649: {
+            /** @description 电话 */
+            mobile_no?: string;
+            /** @description 邮箱 */
+            email?: string;
+        };
+        /** @description 地址 */
+        AlibabaFreeApiSharede7fcbb09bbdc8b8e12b2: {
+            /** @description 邮编 */
+            zip?: string;
+            country?: components["schemas"]["AlibabaFreeApiShared999e8aef46b91e73a7b8"];
+            /** @description 详细地址 */
+            address?: string;
+            province?: components["schemas"]["AlibabaFreeApiShared1c2797d8e1fafd315e70"];
+            /** @description 详细地址2 */
+            address2?: string;
+            city?: components["schemas"]["AlibabaFreeApiSharedd2d9a66c4e10e56e54f1"];
+            district?: components["schemas"]["AlibabaFreeApiShareddfcc1acc8929dd99a842"];
+        };
+        /** @description 商品SKU */
+        AlibabaFreeApiSharede81bbd21c93a814e3953: {
+            skus?: components["schemas"]["AlibabaFreeApiShared7196d1947ee0fa3db193"];
+            sku_attributes?: components["schemas"]["AlibabaFreeApiShared36811d742d4fa8dac8ed"];
+        };
+        /** @description 头程可用方案列表 */
+        AlibabaFreeApiSharede8a0cbd62916cf2d07f3: components["schemas"]["AlibabaFreeApiShared8bf8058dda594aa344e7"][];
+        /** @description 主图 */
+        AlibabaFreeApiSharede8a66b908fde514dfa74: {
+            images?: components["schemas"]["AlibabaFreeApiSharededc3e60dd1241d55f5f3"];
+        };
+        /** @description ICBU商品获得权益查询参数 */
+        AlibabaFreeApiSharede93c6bc2e5214ca8a5ed: {
+            from_product_unique_ids?: components["schemas"]["AlibabaFreeApiSharedabec9e7cd5aad90f7fa6"];
+            /** @description ICBU账号体系中的公司id，通过授权接口获取，有accountId的情况下可不传 */
+            company_id?: number;
+            /** @description ICBU账号体系中的账号id，通过授权接口获取 */
+            account_id: number;
+            /** @description 绑定店铺来源平台的编码，区分大小写 */
+            from_shop_platform_code?: string;
+            /** @description 来源平台的店铺唯一不可变ID，区分大小写 */
+            from_shop_unique_id?: string;
+            icbu_product_ids?: components["schemas"]["AlibabaFreeApiSharedc7b1bc34703164331126"];
+        };
+        /** @description resultDto */
+        AlibabaFreeApiSharede9f6cecb35feb8710e5b: {
+            /** @description 是否成功 */
+            success?: boolean;
+            /** @description 错误码 */
+            result_code?: string;
+            /** @description 错误信息 */
+            result_msg?: string;
+            external_icbu_shop_info_query_result_dto?: components["schemas"]["AlibabaFreeApiShared17bd5db9ba06d2ba84cc"];
+        };
+        /** @description 属性值列表 */
+        AlibabaFreeApiSharedea689bb6fb0ecc6f2bc0: components["schemas"]["AlibabaFreeApiShared10cb67aee0797d95175e"][];
+        AlibabaFreeApiSharedeb48db5929f8c056dd1a: {
+            /** @description 证书logo链接 */
+            cert_logo?: string;
+            /** @description 证书图片链接 */
+            cert_image?: string;
+        };
+        /** @description request model */
+        AlibabaFreeApiShareded485d5d99d0fc10bd43: {
+            /** @description HTTP request Header "accept-language" */
+            accept_language?: string;
+            /** @description is PC ? true/false, current only support pc */
+            is_pc?: boolean;
+            /** @description The time stamp of the buyer's first registration as dropper */
+            isv_drop_shipper_registration_time?: number;
+            order_id_list: components["schemas"]["AlibabaFreeApiShared7325bb21cc6385fe8caf"];
+            /** @description Screen resolution of the device used by the buyer */
+            screen_resolution?: string;
+            /** @description HTTP request header "User-Agent" */
+            user_agent?: string;
+            /** @description Buyer's IP */
+            user_ip?: string;
+            /** @description CREDIT_CARD/PAYPAL */
+            payment_method: string;
+        };
+        /** @description alibaba图片中心的图片URL列表 */
+        AlibabaFreeApiSharededc3e60dd1241d55f5f3: string[];
+        /** @description {} */
+        AlibabaFreeApiSharededc3eb38e8b0921be101: {
+            product_ids: components["schemas"]["AlibabaFreeApiShared57a82f55df87f0d28d8a"];
+        };
+        /** @description 返回结果 */
+        AlibabaFreeApiSharedeed68921bbd0108bf7ee: {
+            /** @description 是否所有商品都写入成功了，新增和更新都视为成功，且没有被跳过的 */
+            all_product_succeed?: boolean;
+            ignored_icbu_product_ids?: components["schemas"]["AlibabaFreeApiSharedd42a77374a2865810dfb"];
+            skipped_icbu_product_ids?: components["schemas"]["AlibabaFreeApiSharedb93b58319f10bfd5cdf8"];
+            added_icbu_product_ids?: components["schemas"]["AlibabaFreeApiShared6754b4bb47baa7666ff5"];
+            updated_icbu_product_ids?: components["schemas"]["AlibabaFreeApiShared2497e809ff465c9bc8fb"];
+            add_failed_icbu_product_ids?: components["schemas"]["AlibabaFreeApiSharedf733632082ef220631c7"];
+            update_failed_icbu_product_ids?: components["schemas"]["AlibabaFreeApiShared19f167a4d37ffc61dc64"];
+        };
+        AlibabaFreeApiSharedeffa79bc3ba2c3582389: {
+            /** @description 《=最大订购量 */
+            quantity?: number;
+            /** @description 发货时间 */
+            process_period?: number;
+        };
+        /** @description 入参 */
+        AlibabaFreeApiSharedf135f1d3ffbd83eb2a95: {
+            consignor_address?: components["schemas"]["AlibabaFreeApiShared046d0c81f8b48e82c954"];
+            /** @description 信保订单号 */
+            trade_order_id: string;
+            package_list?: components["schemas"]["AlibabaFreeApiShared60708dcb0480c3aed9b6"];
+            /** @description 发货批次id */
+            supply_chain_biz_id: number;
+        };
+        /** @description Shipping address */
+        AlibabaFreeApiSharedf22d2193bf595f9abdb6: {
+            /** @description Shipping address */
+            address?: string;
+            city?: components["schemas"]["AlibabaFreeApiShared28b4413bec10b1032908"];
+            country?: components["schemas"]["AlibabaFreeApiShared65cf9fe4a85ac509d67f"];
+            province?: components["schemas"]["AlibabaFreeApiShared2877e35b99bd326a5de3"];
+            /** @description If any, please send it to us to make the freight more accurate. */
+            zip?: string;
+        };
+        /** @description 站外店铺数据回写参数 */
+        AlibabaFreeApiSharedf35a9c3e3a4a2ea0769a: {
+            /** @description 三方服务商公司的中文名称，不可变，需要与营业执照一致 */
+            vendor_company_name: string;
+            /** @description 三方服务市场中对应此次搬品服务的服务编码，可变，调用接口会更新 */
+            service_code?: string;
+            /** @description 来源平台的店铺名称，可变，如名称改变再次调用接口可更新 */
+            from_shop_name: string;
+            /** @description 来源平台的店铺详情页链接，可变，再次调用接口可更新 */
+            from_shop_page_url: string;
+            /** @description 数据回写的动作是店铺绑定还是解绑，区分大小写 */
+            action?: string;
+            /** @description 用户进行店铺验证，关联到三方工具平台的时间，解绑动作不需传此字段 */
+            confirm_time?: number | string;
+            /** @description JSON字符串，来源平台店铺的其他扩展信息，如评级、资质 */
+            from_shop_detail_attr_json?: string;
+            /** @description ICBU账号体系中的公司id，通过授权接口获取，有accountId的情况下可不传 */
+            company_id?: number;
+            /** @description ICBU账号体系中的账号id，通过授权接口获取 */
+            account_id: number;
+            /** @description 绑定店铺来源平台的编码，区分大小写 */
+            from_shop_platform_code: string;
+            /** @description 来源平台的店铺唯一不可变ID，区分大小写 */
+            from_shop_unique_id: string;
+        };
+        AlibabaFreeApiSharedf35d66c176cf7db92a7e: {
+            /** @description 本次调用的唯一标识 */
+            trace_id?: string;
+            /** @description 识别的语种 */
+            recognized_language?: string;
+            /** @description 翻译引擎 */
+            trans_engine?: string;
+            /** @description 本次调用是否成功 */
+            success?: boolean;
+            /** @description appName */
+            app_name?: string;
+            /** @description 原始文本 */
+            source_text?: string;
+            /** @description 翻译文本的格式(取值为：html和text) */
+            format?: string;
+            error_code?: components["schemas"]["AlibabaFreeApiShared4ab12324b26174885965"];
+            /** @description 翻译结果 */
+            translate_result_text?: string;
+            /** @description 翻译业务类型(query、offer、title) */
+            field_type?: string;
+            /** @description 业务方传递的参数，原样返回,不需要的业务不必关心 */
+            param_map?: string;
+        };
+        /** @description 内部接口的返回值：直播间品信息 */
+        AlibabaFreeApiSharedf3f7e10ac99b0237dc26: {
+            /** @description 直播间的品个数，用于分页，用此除以page_size就是总页数 */
+            total_count?: number;
+            live_products?: components["schemas"]["AlibabaFreeApiSharedbad36fe2138956991147"];
+        };
+        /** @description ICBU店铺信息查询参数 */
+        AlibabaFreeApiSharedf6f4e09ddac687abcc7d: {
+            /** @description ICBU账号体系中的公司id，通过授权接口获取，有accountId的情况下可不传 */
+            company_id?: number;
+            /** @description ICBU账号体系中的账号id，通过授权接口获取 */
+            account_id: number;
+            /** @description 三方服务市场中对应搬品服务的服务编码 */
+            service_code: string;
+        };
+        /** @description 本次请求应当新增数据但写入失败的商品在ICBU中的ID */
+        AlibabaFreeApiSharedf733632082ef220631c7: number[];
+        AlibabaFreeApiSharedf818eb34766998f3d9be: {
+            /** @description 商品在来源平台中的唯一不可变ID */
+            from_product_unique_id: string;
+            /** @description 同一个商品发布到ICBU后，在ICBU的ID。发品接口会返回 */
+            icbu_product_id: number;
+            /** @description 商品在来源平台的详情页链接 */
+            from_product_detail_url: string;
+            /** @description 商品在来源平台中的标题 */
+            from_product_title: string;
+            /** @description 商品在来源平台中的最高单价，数值部分 */
+            from_product_high_price_amount: string;
+            /** @description 商品在来源平台中的最低单价，数值部分 */
+            from_product_low_price_amount: string;
+            /** @description 商品在来源平台中的定价，币种部分的货币编码。使用国际标准货币编码如USD CNY，支持多币种的价格优先使用USD */
+            from_product_price_currency_code?: string;
+            /** @description 商品在来源平台中的定价方式，按SKU的价格范围或者阶梯价范围 */
+            from_product_price_type?: string;
+            from_product_category_level_ids?: components["schemas"]["AlibabaFreeApiShared228d7cc76e10c1fea1e5"];
+            from_product_category_level_names?: components["schemas"]["AlibabaFreeApiShared5fbb5dc0cd112af29be6"];
+            /** @description 商品在来源平台中的销量数值 */
+            from_product_sales_volume_amount: number;
+            /** @description 商品在来源平台中的销量统计时间单位，如日/周/月/季/半年/年 */
+            from_product_sales_volume_period: string;
+            /** @description JSON字符串，商品在来源平台中的其他扩展属性 */
+            from_shop_product_attr_json?: string;
+            /** @description 绑定店铺来源平台的编码，区分大小写 */
+            from_shop_platform_code: string;
+            /** @description 来源平台的店铺唯一不可变ID，区分大小写 */
+            from_shop_unique_id: string;
+        };
+        /** @description min order quantity unit price */
+        AlibabaFreeApiSharedfb7937909484cdad45dc: {
+            /** @description amount */
+            amount?: string;
+            /** @description currency */
+            currency?: string;
+        };
+        /** @description 关键词 */
+        AlibabaFreeApiSharedfc0db6182ae3faa97247: string[];
+        /** @description 主题规则要求 */
+        AlibabaFreeApiSharedff36803040869b853859: {
+            /** @description 价格区间，最小价格（美金） */
+            price_to?: string;
+            /** @description 价格区间，最大价格（美金） */
+            price_from?: string;
+            /** @description 最小起订量区间，最小起订量的最小数量 */
+            min_ord_qty_to?: string;
+            /** @description 最小起订量区间，最小起订量的最大数量 */
+            min_ord_qty_from?: string;
+            certificate_list?: components["schemas"]["AlibabaFreeApiShared5d3d61ffb8e60f34be14"];
+            /** @description 关键词。多个关键词以逗号连接 */
+            keywords?: string;
+            attr_dto_list?: components["schemas"]["AlibabaFreeApiSharedd17917fbd945dc96f904"];
+        };
         AlibabaGatewayStatus: {
             /** @enum {string} */
             source: "environment" | "credential-bundle" | "d1-vault" | "documentation-replay";
@@ -7079,6 +9378,11 @@ export interface components {
             accountVerificationCheckedAt?: string | null;
             requestSchema?: string | null;
             responseSchema?: string | null;
+            /** @description Official application permission groups; not proof of account access. */
+            permissionGroups?: string[];
+            /** @description Business qualification or prerequisite scope. */
+            businessScope?: string;
+            featureArea?: string;
         };
         ApiFailure: {
             requestId: components["schemas"]["RequestId"];
@@ -7161,6 +9465,12 @@ export interface components {
             restricted?: boolean;
             restrictionReason?: string | null;
             featureArea?: string;
+            /** @enum {string} */
+            auth?: "required" | "optional" | "none" | "unknown";
+            /** @description Official application permission groups; not proof of account access. */
+            permissionGroups?: string[];
+            /** @description Business qualification or prerequisite scope. */
+            businessScope?: string;
             requestSchema: string;
             responseSchema: string;
             requestExample: {
@@ -7180,7 +9490,7 @@ export interface components {
         CapabilityResponseEnvelope: {
             method: string;
             traceId: string;
-            data: components["schemas"]["AlibabaProductAlibabaScbpShowcaseSortResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseUpdateproductResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseAddproductResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseDeleteproductResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductCountryGetcountrylistResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuTextTransResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttributeGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrvalueGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetNewResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryIdMappingResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryLevelAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryPostcatGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategorySchemaLevelGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuOpenProductPostResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductBatchUpdateDisplayResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductIdDecryptResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductListResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductScoreGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateFieldResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductTypeAvailableGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductInventoryGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSkuInventoryGetResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseListResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseStatusResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuAnnexUploadResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuQuotationPostResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqMyequityResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqReadResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqRecommendResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqSearchResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqdetailGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderListResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderFundGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderLogisticsGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderCreateResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderModifyResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeFulfillmentChannelGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeServiceChargeGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAssuranceCreditCardResponse"] | components["schemas"]["AlibabaTradeAlibabaOrderTradeTtGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressGetResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuEcologyWriteResponse"] | components["schemas"]["AlibabaTradeAlibabaIntentionOrderSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAddressSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeDecodeResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeQueryDrafttypeResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftCustomerSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuXiaomanVaListResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAuthExtendResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressSchemaQueryResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressFormSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressListQueryResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressDeleteResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressSpecialProductTypeListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelReasonListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressChargeCalculateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsRuleValidateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsProductListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsOrderCreateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressCityListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressProvinceListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressDivisionListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressStreetListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderDetailGetResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderListQueryResponse"] | components["schemas"]["AlibabaLogisticsAlibabaWholesaleShippinglineTemplateListResponse"] | components["schemas"]["AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentResponse"] | components["schemas"]["AlibabaInsightsAlibabaMydataSelfQueryCgsokkResponse"] | components["schemas"]["AlibabaInsightsAlibabaProcurementMysupplierListResponse"] | components["schemas"]["AlibabaInsightsAlibabaProcurementSupplierItemsGetResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankGroupListResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankGroupOperateResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankListResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankUploadResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuVideoQueryResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuVideoRelationProductListResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuVideoRelationProductMainResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuVideoRelationProductDetailResponse"] | components["schemas"]["AlibabaPlatformAlibabaIcbuFileUrlpostingUploadResponse"] | components["schemas"]["AlibabaPlatformAlibabaIcbuRiskSendResponse"] | components["schemas"]["AlibabaPlatformAlibabaIcbuTaskStatusNotifyResponse"];
+            data: components["schemas"]["AlibabaProductAlibabaScbpShowcaseSortResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseUpdateproductResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseAddproductResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseDeleteproductResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductCountryGetcountrylistResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuTextTransResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttributeGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrvalueGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetNewResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryIdMappingResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryLevelAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryPostcatGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategorySchemaLevelGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuOpenProductPostResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductBatchUpdateDisplayResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductIdDecryptResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductListResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductScoreGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateFieldResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductTypeAvailableGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductInventoryGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSkuInventoryGetResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseListResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseStatusResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuAnnexUploadResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuQuotationPostResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqMyequityResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqReadResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqRecommendResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqSearchResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqdetailGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderListResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderFundGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderLogisticsGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderCreateResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderModifyResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeFulfillmentChannelGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeServiceChargeGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAssuranceCreditCardResponse"] | components["schemas"]["AlibabaTradeAlibabaOrderTradeTtGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressGetResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuEcologyWriteResponse"] | components["schemas"]["AlibabaTradeAlibabaIntentionOrderSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAddressSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeDecodeResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeQueryDrafttypeResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftCustomerSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuXiaomanVaListResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAuthExtendResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressSchemaQueryResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressFormSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressListQueryResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressDeleteResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressSpecialProductTypeListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelReasonListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressChargeCalculateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsRuleValidateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsProductListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsOrderCreateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressCityListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressProvinceListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressDivisionListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressStreetListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderDetailGetResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderListQueryResponse"] | components["schemas"]["AlibabaLogisticsAlibabaWholesaleShippinglineTemplateListResponse"] | components["schemas"]["AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentResponse"] | components["schemas"]["AlibabaInsightsAlibabaMydataSelfQueryCgsokkResponse"] | components["schemas"]["AlibabaInsightsAlibabaProcurementMysupplierListResponse"] | components["schemas"]["AlibabaInsightsAlibabaProcurementSupplierItemsGetResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankGroupListResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankGroupOperateResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankListResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankUploadResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuVideoQueryResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuVideoRelationProductListResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuVideoRelationProductMainResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuVideoRelationProductDetailResponse"] | components["schemas"]["AlibabaPlatformAlibabaIcbuFileUrlpostingUploadResponse"] | components["schemas"]["AlibabaPlatformAlibabaIcbuRiskSendResponse"] | components["schemas"]["AlibabaPlatformAlibabaIcbuTaskStatusNotifyResponse"] | components["schemas"]["AlibabaFreeApiAlibabaBuynowOrderCreateResponse"] | components["schemas"]["AlibabaFreeApiAlibabaDropshippingOrderPayResponse"] | components["schemas"]["AlibabaFreeApiAlibabaDropshippingProductGetResponse"] | components["schemas"]["AlibabaFreeApiAlibabaDropshippingStoreSaveResponse"] | components["schemas"]["AlibabaFreeApiAlibabaDropshippingTokenCreateResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuDistributionProductGetResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuDistributionProductQueryResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuIndustryTopicListResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuProductIdEncryptResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuProductInventoryUpdateResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuProductLogisticsCountryGetcoststatusResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuShopcloneExternalproductinfoWriteResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuShopcloneExternalshopinfoWriteResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuShopcloneIcbuproductrightsQueryResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuShopcloneIcbushopinfoQueryResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuSupplierfosterIsvtaskNotifyResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuTextRecognizeResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuTextRecognizeTransResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuTopicProductsResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuTradeAssuranceAccountGetResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuVideoUploadResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuliveProductPushResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuliveProductlistPagegetResponse"] | components["schemas"]["AlibabaFreeApiAlibabaOnetouchLogisticsExpressLogisticsSolutionSemiListResponse"] | components["schemas"]["AlibabaFreeApiAlibabaOrderFreightCalculateResponse"] | components["schemas"]["AlibabaFreeApiAlibabaOrderLogisticsTrackingGetResponse"] | components["schemas"]["AlibabaFreeApiAlibabaOrderPayResultQueryResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerCouponAuthVerifyResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerVendorOrderDetailResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerVendorOrderListResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerVendorServiceProcessResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerVendorServiceVendorprocessResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerVendorTradePurchaseResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerVendorWriteClientResponse"] | components["schemas"]["AlibabaFreeApiAlibabaShippingFreightCalculateResponse"];
             contractValid: boolean;
             contractIssues: components["schemas"]["CapabilityContractIssue"][];
         };

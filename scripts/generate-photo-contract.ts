@@ -221,7 +221,8 @@ const extensions = [
   'x-logistics-capabilities',
   'x-insights-capabilities',
   'x-photo-capabilities',
-  'x-platform-capabilities'
+  'x-platform-capabilities',
+  'x-free-api-capabilities'
 ];
 addVideoContract(document);
 const allDefinitions = extensions.flatMap((extension) =>

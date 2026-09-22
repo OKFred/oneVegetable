@@ -17,6 +17,8 @@ const validation = /* @__PURE__ */ createCapabilityValidation((domain) => {
       return import('./generated/validators-photo');
     case 'platform':
       return import('./generated/validators-platform');
+    case 'free-api':
+      return import('./generated/validators-free-api');
   }
 });
 

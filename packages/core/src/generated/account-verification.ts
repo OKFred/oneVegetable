@@ -4,6 +4,12 @@ export const ACCOUNT_VERIFICATION_SNAPSHOT = {
   checkedAtUtc: '2026-09-10T06:40:47.891Z',
   results: [
     {
+      method: 'alibaba.icbu.product.id.encrypt',
+      status: 'passed',
+      reasonCode: null,
+      checkedAtUtc: '2026-09-22T06:39:19.344Z'
+    },
+    {
       method: 'alibaba.icbu.product.type.available.get',
       status: 'passed',
       reasonCode: null

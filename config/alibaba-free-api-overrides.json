@@ -1,0 +1,43 @@
+{
+  "alibaba.order.logistics.tracking.get": {
+    "reason": "TOP declares a scalar Number trade_id. Real owned order IDs exceed JavaScript safe integers; decimal strings preserve the identical form-urlencoded wire value without rounding. Structured object numbers are not coerced.",
+    "requestSchemaPatches": {
+      "/properties/trade_id": {
+        "anyOf": [
+          { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+          { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" }
+        ]
+      }
+    }
+  },
+  "alibaba.order.pay.result.query": {
+    "reason": "TOP declares a scalar Number trade_id. Real owned order IDs exceed JavaScript safe integers; decimal strings preserve the identical form-urlencoded wire value without rounding. Structured object numbers are not coerced.",
+    "requestSchemaPatches": {
+      "/properties/trade_id": {
+        "anyOf": [
+          { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+          { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" }
+        ]
+      }
+    }
+  },
+  "alibaba.seller.vendor.order.list": {
+    "reason": "TOP declares query_trade_dto.status as null[] while its description is a status list and its documented element example is approved; model string elements rather than inventing a DTO.",
+    "requestSchemaPatches": {
+      "/properties/query_trade_dto/properties/status": { "type": "array", "items": { "type": "string" } }
+    }
+  },
+  "alibaba.icbu.product.inventory.update": {
+    "reason": "The official operation is a stock delta, with plus/sub explicitly documented. A zero or negative delta is not a meaningful controlled mutation.",
+    "requestSchemaPatches": {
+      "/properties/request_param/properties/inventory_list/items/properties/operate": {
+        "type": "string",
+        "enum": ["plus", "sub"]
+      },
+      "/properties/request_param/properties/inventory_list/items/properties/inventory": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      }
+    }
+  }
+}
