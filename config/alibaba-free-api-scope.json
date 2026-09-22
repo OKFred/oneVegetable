@@ -1,0 +1,289 @@
+{
+  "schemaVersion": 1,
+  "source": "publicdoc",
+  "seedDocId": 48967,
+  "expectedCount": 35,
+  "excludedVendorPatterns": ["xiaoman", "snsoft", "小满", "南北软件"],
+  "entries": [
+    {
+      "docId": 50558,
+      "method": "alibaba.icbu.product.id.encrypt",
+      "domain": "product",
+      "risk": "read",
+      "featureArea": "product-id",
+      "businessScope": "general"
+    },
+    {
+      "docId": 58733,
+      "method": "alibaba.icbu.product.logistics.country.getcoststatus",
+      "domain": "logistics",
+      "risk": "read",
+      "featureArea": "freight",
+      "businessScope": "general"
+    },
+    {
+      "docId": 58593,
+      "method": "alibaba.icbu.industry.topic.list",
+      "domain": "insights",
+      "risk": "read",
+      "featureArea": "industry-topic",
+      "businessScope": "general"
+    },
+    {
+      "docId": 58594,
+      "method": "alibaba.icbu.topic.products",
+      "domain": "insights",
+      "risk": "read",
+      "featureArea": "industry-topic",
+      "businessScope": "general"
+    },
+    {
+      "docId": 31686,
+      "method": "alibaba.icbu.trade.assurance.account.get",
+      "domain": "trade",
+      "risk": "read",
+      "featureArea": "assurance",
+      "businessScope": "general"
+    },
+    {
+      "docId": 70438,
+      "method": "alibaba.onetouch.logistics.express.logistics.solution.semi.list",
+      "domain": "logistics",
+      "risk": "read",
+      "featureArea": "semi-managed",
+      "businessScope": "general"
+    },
+    {
+      "docId": 53178,
+      "method": "alibaba.icbu.product.inventory.update",
+      "domain": "product",
+      "risk": "mutation",
+      "featureArea": "inventory",
+      "businessScope": "general"
+    },
+    {
+      "docId": 50133,
+      "method": "alibaba.icbu.video.upload",
+      "domain": "photo",
+      "risk": "mutation",
+      "featureArea": "videos",
+      "businessScope": "general"
+    },
+    {
+      "docId": 67168,
+      "method": "alibaba.icbu.text.recognize",
+      "domain": "product",
+      "risk": "read",
+      "featureArea": "translation",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 67167,
+      "method": "alibaba.icbu.text.recognize.trans",
+      "domain": "product",
+      "risk": "read",
+      "featureArea": "translation",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 69862,
+      "method": "alibaba.icbu.distribution.product.query",
+      "domain": "product",
+      "risk": "read",
+      "featureArea": "distribution",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 69877,
+      "method": "alibaba.icbu.distribution.product.get",
+      "domain": "product",
+      "risk": "read",
+      "featureArea": "distribution",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 54908,
+      "method": "alibaba.buynow.order.create",
+      "domain": "trade",
+      "risk": "mutation",
+      "featureArea": "dropshipping",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 55331,
+      "method": "alibaba.dropshipping.order.pay",
+      "domain": "trade",
+      "risk": "mutation",
+      "featureArea": "dropshipping",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 54717,
+      "method": "alibaba.dropshipping.product.get",
+      "domain": "product",
+      "risk": "read",
+      "featureArea": "dropshipping",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 61189,
+      "method": "alibaba.dropshipping.store.save",
+      "domain": "trade",
+      "risk": "mutation",
+      "featureArea": "dropshipping",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 54739,
+      "method": "alibaba.dropshipping.token.create",
+      "domain": "trade",
+      "risk": "mutation",
+      "featureArea": "dropshipping",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 54972,
+      "method": "alibaba.order.freight.calculate",
+      "domain": "logistics",
+      "risk": "read",
+      "featureArea": "dropshipping",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 55278,
+      "method": "alibaba.order.logistics.tracking.get",
+      "domain": "logistics",
+      "risk": "read",
+      "featureArea": "dropshipping",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 55329,
+      "method": "alibaba.order.pay.result.query",
+      "domain": "trade",
+      "risk": "read",
+      "featureArea": "dropshipping",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 54716,
+      "method": "alibaba.shipping.freight.calculate",
+      "domain": "logistics",
+      "risk": "read",
+      "featureArea": "dropshipping",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 69201,
+      "method": "alibaba.icbulive.productlist.pageget",
+      "domain": "product",
+      "risk": "read",
+      "featureArea": "live",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 69202,
+      "method": "alibaba.icbulive.product.push",
+      "domain": "product",
+      "risk": "mutation",
+      "featureArea": "live",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 68142,
+      "method": "alibaba.icbu.shopclone.icbuproductrights.query",
+      "domain": "product",
+      "risk": "read",
+      "featureArea": "shopclone",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 68143,
+      "method": "alibaba.icbu.shopclone.externalshopinfo.write",
+      "domain": "product",
+      "risk": "mutation",
+      "featureArea": "shopclone",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 68144,
+      "method": "alibaba.icbu.shopclone.externalproductinfo.write",
+      "domain": "product",
+      "risk": "mutation",
+      "featureArea": "shopclone",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 68145,
+      "method": "alibaba.icbu.shopclone.icbushopinfo.query",
+      "domain": "product",
+      "risk": "read",
+      "featureArea": "shopclone",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 75093,
+      "method": "alibaba.icbu.supplierfoster.isvtask.notify",
+      "domain": "platform",
+      "risk": "mutation",
+      "featureArea": "isv-task",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 51234,
+      "method": "alibaba.seller.coupon.auth.verify",
+      "domain": "trade",
+      "risk": "read",
+      "featureArea": "service-market",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 48967,
+      "method": "alibaba.seller.vendor.order.detail",
+      "domain": "trade",
+      "risk": "read",
+      "featureArea": "service-market",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 48971,
+      "method": "alibaba.seller.vendor.order.list",
+      "domain": "trade",
+      "risk": "read",
+      "featureArea": "service-market",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 54661,
+      "method": "alibaba.seller.vendor.service.process",
+      "domain": "trade",
+      "risk": "read",
+      "featureArea": "service-market",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 55311,
+      "method": "alibaba.seller.vendor.service.vendorprocess",
+      "domain": "trade",
+      "risk": "read",
+      "featureArea": "service-market",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 56479,
+      "method": "alibaba.seller.vendor.trade.purchase",
+      "domain": "trade",
+      "risk": "read",
+      "featureArea": "service-market",
+      "businessScope": "conditional"
+    },
+    {
+      "docId": 57592,
+      "method": "alibaba.seller.vendor.write.client",
+      "domain": "trade",
+      "risk": "mutation",
+      "featureArea": "service-market",
+      "businessScope": "conditional"
+    }
+  ]
+}
