@@ -12,14 +12,19 @@
 
 ## 发布前检查
 
-本节在本轮检查完成后填入实际结果，不能把历史通过记录当成本版验收。
+以下为本轮 Windows 实际检查结果；远端发布和部署单独记账。
 
-- [ ] Windows 全量 `pnpm check`、Worker 测试。
-- [ ] Web/正式 MV3、BFF replay、Node 凭据 E2E。
-- [ ] 正式 ZIP、SHA-256、包体及商店合规。
+- [x] Windows 全量 `pnpm check`：格式、Lint（0 error / 23 warning）、i18n、134 项离线审计、50/50 replay、OpenAPI 漂移、类型、237 文件 / 1,291 项单测、三端构建及合规。Worker/D1 4 文件 / 6 项测试通过。
+- [x] Web/正式 MV3 51 项、BFF replay 2 项、Node 凭据中英文 2 项 E2E；2.10.0 → 2.11.0 升级 15 项检查通过。首次并行生成文件触发 HMR，导致一项浏览器测试中断；构建结束后完整串行复验 51/51 通过，没有跳过或放宽断言。
+- [x] 正式 ZIP 1,069,846 字节 / 152 文件；SHA-256 `83d8edafbcd01c9d00ebaf54360b1b26c0a2fc108bb766af68a11290a25f0c96`。解包 4,097,218 字节，后台 95,074 字节，入口 eager JS 128,128 字节，i18n 308,214 字节，全部在原预算内。包内没有环境文件、授权包、Mock 文件、source map 或扫描到的本机凭据值。
 - [ ] `staging`、`master`、annotated Tag 和 GitHub Release；远端产物与本地校验一致。
 - [ ] 现有 Cloudflare 站点部署和只读验收；保留资源绑定、密钥及回退版本。
 - [ ] Chrome Web Store 上传、审核提交、上架分别确认，不由 GitHub/Worker 状态推断。
+
+本机日志在忽略目录 `artifacts/release-2.11.0-*.log`，正式安装包为
+`artifacts/one-vegetable-v2.11.0-chrome-mv3.zip`，校验文件在同路径追加 `.sha256`。
+
+部署前已核对现有网站为 2.6.0，Worker version `c1c4ff32-1985-4199-a35a-5beee6ebf43f`；6 项运行变量与配置一致，沿用 D1、R2、Browser 和两个 Secret。远端 schema v13，无待执行 migration；只读统计为用户 1、凭据 1、凭据 revision 1。D1 备份留在忽略目录，333,468 字节，SHA-256 `88e9192760823589b1edd26e8fd73588de495e12832abfa737711d1ed7877374`；已在临时内存 SQLite 恢复并通过 `integrity_check`，不上传数据库备份到 GitHub。Cloudflare 同源 BFF 构建和 Worker dry-run 已通过。
 
 ## 商店资料
 
