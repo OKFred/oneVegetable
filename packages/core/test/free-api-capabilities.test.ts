@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { FREE_API_CAPABILITY_DEFINITIONS } from '../src/generated/free-api-capabilities';
+import { TRADE_CAPABILITY_DEFINITIONS } from '../src/generated/trade-capabilities';
+import { PRODUCT_CAPABILITY_DEFINITIONS } from '../src/generated/product-capabilities';
 import { findCapabilityWithAccountVerification } from '../src/account-verification';
+import { API_CAPABILITIES } from '../src/generated/capabilities';
+import auditSnapshot from '../../../docs/alibaba-api-audit.json';
+import openapi from '../../../openapi/one-vegetable.json';
 import {
   findCapability,
   getCapabilityDefinition,
@@ -9,6 +14,12 @@ import {
 } from '../src/capability-registry';
 
 describe('free API catalog completion', () => {
+  it('shares registry metadata without losing or adding catalog response fields', () => {
+    expect(API_CAPABILITIES).toEqual(auditSnapshot.entries);
+    expect(FREE_API_CAPABILITY_DEFINITIONS).toEqual(openapi['x-free-api-capabilities']);
+    expect(TRADE_CAPABILITY_DEFINITIONS).toEqual(openapi['x-trade-capabilities']);
+    expect(PRODUCT_CAPABILITY_DEFINITIONS).toEqual(openapi['x-product-capabilities']);
+  });
   it('preserves long scalar order IDs without accepting rounded numbers or numeric syntax', async () => {
     for (const method of ['alibaba.order.logistics.tracking.get', 'alibaba.order.pay.result.query']) {
       expect(await validateCapabilityRequest(method, { trade_id: '9007199254740993' })).toEqual([]);

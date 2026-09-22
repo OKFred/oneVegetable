@@ -16,6 +16,40 @@ function evaluate(source: string): unknown {
   return runInNewContext(source, {}, { timeout: 1000 });
 }
 
+function errorBlock(value = error): string {
+  return `{const err=${value};if(vErrors === null){vErrors=[err];}else{vErrors.push(err);}errors++;}`;
+}
+
+function errorFunction(block = errorBlock(), setup = ''): string {
+  return `function validate(){let vErrors=null;let errors=0;${setup}
+    ${Array.from({ length: 5 }, () => block).join('')}
+    return {vErrors,errors};}`;
+}
+
+function exampleVariants(value: unknown): unknown[] {
+  const variants: unknown[] = [value];
+  if (!value || typeof value !== 'object') return variants;
+  const queue: { value: object; path: string[] }[] = [{ value, path: [] }];
+  // Corrupt one field at a time so valid envelopes still reach deep referenced schemas.
+  for (const current of queue) {
+    for (const [key, child] of Object.entries(current.value) as [string, unknown][]) {
+      for (const replacement of [undefined, null, false, -1.5, '', [], {}, { unexpected: true }]) {
+        const changed = structuredClone(value) as Record<string, unknown>;
+        let target = changed;
+        for (const part of current.path) target = target[part] as Record<string, unknown>;
+        if (replacement === undefined) Reflect.deleteProperty(target, key);
+        else target[key] = replacement;
+        variants.push(changed);
+      }
+      if (child && typeof child === 'object' && current.path.length < 6) {
+        queue.push({ value: child, path: [...current.path, key] });
+      }
+      if (variants.length >= 161) return variants;
+    }
+  }
+  return variants;
+}
+
 describe('extension-only standalone validator compaction', () => {
   it('preserves error contents, key order and independent mutable objects', () => {
     const source = `${repeated}
@@ -35,6 +69,102 @@ describe('extension-only standalone validator compaction', () => {
           '{instancePath:(value("first"),value("path")),schemaPath:value("schema"),keyword:value("keyword"),params:value("params"),message:value("message")}'
       ).join(',')}];JSON.stringify({seen,errors});`;
     expect(evaluate(compact(source))).toBe(evaluate(source));
+  });
+
+  it('compacts shorthand root paths without changing error keys or property order', () => {
+    const source = `const instancePath='';${repeated.replaceAll('instancePath:"/item"', 'instancePath')}
+      JSON.stringify(errors);`;
+    expect(compact(source)).toContain('__extensionAjvError((instancePath),');
+    expect(evaluate(compact(source))).toBe(evaluate(source));
+    expect(compact(compact(source))).toBe(compact(source));
+  });
+
+  it('shares append scaffolding while retaining array identity, fresh objects and counters', () => {
+    const source = `${errorFunction()}
+      const first=validate(),second=validate();
+      const independent=first.vErrors!==second.vErrors && first.vErrors[0]!==first.vErrors[1]
+        && first.vErrors[0].params!==first.vErrors[1].params
+        && first.vErrors[0]!==second.vErrors[0];
+      first.vErrors[0].params.type='changed';
+      JSON.stringify({first,second,independent});`;
+    const output = compact(source);
+    expect(output).toContain('vErrors=__extensionAjvAppendError(');
+    expect(output).not.toContain('function __extensionAjvError(');
+    expect(output).not.toMatch(/\beval\(|new Function|\brequire\(/u);
+    expect(evaluate(output)).toBe(evaluate(source));
+    expect(compact(output)).toBe(output);
+
+    const nonNull = `${errorFunction(errorBlock(), 'const initial=[];vErrors=initial;').replace(
+      'return {vErrors,errors}',
+      'return {vErrors,errors,same:initial===vErrors}'
+    )}
+      JSON.stringify(validate());`;
+    expect(evaluate(compact(nonNull))).toBe(evaluate(nonNull));
+    expect(evaluate(compact(nonNull))).toContain('"same":true');
+  });
+
+  it('evaluates fields before reading the error array and ignores the push return value', () => {
+    const value =
+      '{instancePath:(seen.push("path"),"/"),schemaPath:(seen.push("schema"),"#"),' +
+      'keyword:(seen.push("keyword"),"type"),params:(seen.push("params"),{type:"string"}),' +
+      'message:(seen.push("message"),vErrors=next,"must be string")}';
+    const source = `const seen=[];const next=[];
+      next.push=function(value){seen.push("push");this[this.length]=value;return -100;};
+      ${errorFunction(errorBlock(value))}JSON.stringify({result:validate(),seen});`;
+    expect(compact(source)).toContain('vErrors=__extensionAjvAppendError(');
+    expect(evaluate(compact(source))).toBe(evaluate(source));
+  });
+
+  it('retains counter rollback, array truncation, nested merges and custom error params', () => {
+    const block = errorBlock(
+      '{instancePath:"/items/0",schemaPath:"#/anyOf",keyword:"errorMessage",' +
+        'params:{errors:vErrors === null ? [] : vErrors.slice()},message:"custom message"}'
+    );
+    const source = `function validate(){let vErrors=null;let errors=0;
+      ${errorBlock()}const initial=vErrors;const previousErrors=errors;
+      ${Array.from({ length: 5 }, () => block).join('')}
+      const failed=vErrors.slice();errors=previousErrors;vErrors.length=previousErrors;
+      const same=initial===vErrors;vErrors=vErrors.concat(failed);errors=vErrors.length;
+      ${block}return {vErrors,errors,same};}JSON.stringify(validate());`;
+    expect(compact(source)).toContain('vErrors=__extensionAjvAppendError(');
+    expect(evaluate(compact(source))).toBe(evaluate(source));
+  });
+
+  it('only fuses canonical blocks with an unshadowed mutable local array', () => {
+    const original = errorFunction();
+    for (const source of [
+      original.replace('let vErrors=null', 'const vErrors=[]'),
+      original.replace('let vErrors=null;', ''),
+      original.replace('let vErrors=null;', 'let vErrors=null;{const vErrors=[];}'),
+      original.replace('let vErrors=null;', 'let vErrors=null;try{}catch(vErrors){}'),
+      original.replace('let vErrors=null;', 'let vErrors=null;for(const {vErrors} of []){}'),
+      original.replace('let vErrors=null;', 'let vErrors=null;function nested(vErrors){}'),
+      errorFunction(errorBlock().replace('vErrors === null', 'vErrors == null')),
+      errorFunction(errorBlock().replace('vErrors.push(err)', 'vErrors.unshift(err)')),
+      errorFunction(errorBlock().replace('vErrors.push(err)', 'vErrors?.push(err)')),
+      errorFunction(errorBlock().replace('vErrors.push(err)', 'vErrors.push(...err)')),
+      errorFunction(errorBlock().replace('errors++;', 'errors+=1;')),
+      errorFunction(errorBlock().replace('errors++;', 'errors++;observe(err);')),
+      errorFunction(errorBlock().replace('params:{type:"string"}', 'params:{get self(){return err;}}')),
+      errorFunction(errorBlock().replace('const err=', 'let err='))
+    ]) {
+      expect(compact(source), source).not.toContain('__extensionAjvAppendError');
+    }
+    const captured = `${errorFunction(
+      errorBlock().replace('params:{type:"string"}', 'params:{get self(){return err.instancePath;}}')
+    )}JSON.stringify(validate());`;
+    expect(evaluate(compact(captured))).toBe(evaluate(captured));
+  });
+
+  it('keeps append helper names collision-free and mixed helper output idempotent', () => {
+    const source = `"use strict";const __extensionAjvAppendError='occupied';
+      ${repeated}${errorFunction()}JSON.stringify(validate());`;
+    const output = compact(source);
+    expect(output.startsWith('"use strict";')).toBe(true);
+    expect(output).toContain('function __extensionAjvAppendError_(');
+    expect(output).toContain('function __extensionAjvError(');
+    expect(evaluate(output)).toBe(evaluate(source));
+    expect(compact(output)).toBe(output);
   });
 
   it('keeps directives, avoids name collisions and is idempotent', () => {
@@ -69,8 +199,8 @@ describe('extension-only standalone validator compaction', () => {
     }
   });
 
-  it('preserves all generated validators and their full error arrays on representative inputs', () => {
-    type Validator = ((value: unknown) => boolean) & { errors?: unknown };
+  it('preserves all generated validators, full errors, aliases and input/evaluated state', () => {
+    type Validator = ((value: unknown) => boolean) & { errors?: unknown; evaluated?: unknown };
     function load(source: string): Record<string, Validator> {
       const exports: Record<string, Validator> = {};
       const code = ts.transpileModule(source, {
@@ -85,20 +215,92 @@ describe('extension-only standalone validator compaction', () => {
       });
       return exports;
     }
+    const document = JSON.parse(
+      readFileSync(new URL('../../openapi/one-vegetable.json', import.meta.url), 'utf8')
+    ) as Record<string, unknown>;
+    const examples = new Map<string, unknown>([
+      ['validateSchemaPublishRequest', { categoryId: 1, language: 'en_US', schemaXml: '' }],
+      ['validateProductSchemaRequest', { categoryId: 1, language: 'en_US', market: 'icbu' }]
+    ]);
+    for (const domain of [
+      'product',
+      'rfq',
+      'trade',
+      'logistics',
+      'insights',
+      'photo',
+      'platform',
+      'free-api'
+    ]) {
+      const capabilities = document[`x-${domain}-capabilities`] as Record<
+        string,
+        { requestExample: unknown; responseExample: unknown }
+      >;
+      const prefix = domain === 'free-api' ? 'FreeApi' : `${domain[0]?.toUpperCase()}${domain.slice(1)}`;
+      for (const [index, definition] of Object.values(capabilities).entries()) {
+        examples.set(`validate${prefix}Capability${index}Request`, definition.requestExample);
+        examples.set(`validate${prefix}Capability${index}Response`, definition.responseExample);
+      }
+    }
+    const counts = { files: 0, validators: 0, cases: 0, valid: 0, invalid: 0, examples: 0 };
     const directory = new URL('../../packages/core/src/generated/', import.meta.url);
     for (const file of readdirSync(directory).filter((name) => /^validators-.*\.ts$/u.test(name))) {
+      counts.files++;
       const source = readFileSync(new URL(file, directory), 'utf8');
       const before = load(source);
-      const after = load(compact(source));
+      const code = compact(source);
+      const after = load(code);
+      expect(compact(code), file).toBe(code);
+      expect(code, file).not.toMatch(/\beval\(|new Function|\brequire\(/u);
       expect(Object.keys(after), file).toEqual(Object.keys(before));
+      const aliases = new Map<Validator, string>();
       for (const [name, original] of Object.entries(before)) {
+        counts.validators++;
         const optimized = after[name];
         if (!optimized) throw new Error(`Missing validator: ${name}`);
-        for (const value of [undefined, null, false, 0, 1, '', '1', [], [1], {}, { unexpected: true }]) {
-          expect(optimized(structuredClone(value)), `${file}:${name}`).toBe(original(structuredClone(value)));
-          expect(JSON.stringify(optimized.errors), `${file}:${name}`).toBe(JSON.stringify(original.errors));
+        const canonical = aliases.get(original);
+        if (canonical) expect(optimized, `${file}:${name} alias`).toBe(after[canonical]);
+        else aliases.set(original, name);
+        const inputs: unknown[] = [
+          undefined,
+          null,
+          false,
+          0,
+          -1,
+          1,
+          1.5,
+          NaN,
+          Infinity,
+          '',
+          '1',
+          '😀',
+          [],
+          [1],
+          {},
+          { unexpected: true }
+        ];
+        if (examples.has(name)) {
+          counts.examples++;
+          inputs.push(...exampleVariants(examples.get(name)));
+        }
+        for (const [index, value] of inputs.entries()) {
+          counts.cases++;
+          const inputBefore = structuredClone(value);
+          const inputAfter = structuredClone(value);
+          const expected = original(inputBefore);
+          if (expected) counts.valid++;
+          else counts.invalid++;
+          const label = `${file}:${name}:${index}`;
+          expect(optimized(inputAfter), label).toBe(expected);
+          expect(JSON.stringify(optimized.errors), label).toBe(JSON.stringify(original.errors));
+          expect(JSON.stringify(optimized.evaluated), label).toBe(JSON.stringify(original.evaluated));
+          expect(inputAfter, label).toEqual(inputBefore);
         }
       }
     }
+    expect(counts.examples).toBe(examples.size);
+    expect(counts.valid).toBeGreaterThan(100);
+    expect(counts.invalid).toBeGreaterThan(100);
+    console.info('Validator compaction parity:', counts);
   }, 30_000);
 });

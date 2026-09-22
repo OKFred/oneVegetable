@@ -9,7 +9,13 @@ describe('account verification snapshot', () => {
     const snapshot = await readAccountVerificationSnapshot(resolve(import.meta.dirname, '../..'));
 
     expect(snapshot.schemaVersion).toBe(1);
-    expect(snapshot.results).toHaveLength(42);
+    expect(snapshot.results).toHaveLength(43);
+    expect(snapshot.results).toContainEqual({
+      method: 'alibaba.icbu.product.id.encrypt',
+      status: 'passed',
+      reasonCode: null,
+      checkedAtUtc: '2026-09-22T06:39:19.344Z'
+    });
     expect(snapshot.results).toContainEqual({
       method: 'alibaba.icbu.product.country.getcountrylist',
       status: 'passed',
