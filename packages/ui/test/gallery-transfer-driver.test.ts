@@ -80,6 +80,46 @@ describe('gallery transfer readback', () => {
     expect((await s.driver.verify(task, item)).status).toBe('unknown');
     expect(send).not.toHaveBeenCalled();
   });
+
+  it('walks unknown totals to an explicit last page instead of stopping at page one', async () => {
+    const { gateway } = setup();
+    const original = gateway.request.bind(gateway);
+    const photo = fixture.responses.listPhotos.items[0];
+    if (!photo) throw new Error('fixture');
+    const photos = Array.from({ length: 101 }, (_, index) => ({ ...photo, id: `unknown-total-${index}` }));
+    const request = vi.spyOn(gateway, 'request').mockImplementation(async (operation, payload) => {
+      if (operation !== 'listPhotos') return original(operation, payload);
+      const page =
+        typeof payload === 'object' && 'page' in payload && typeof payload.page === 'number'
+          ? payload.page
+          : 1;
+      return {
+        ...(await original('listPhotos', { page: 1, pageSize: 100 })),
+        page,
+        pageSize: 100,
+        total: null,
+        hasNextPage: page === 1,
+        items: photos.slice((page - 1) * 100, page * 100)
+      };
+    });
+    expect(await allGalleryPhotos(gateway, '2001')).toHaveLength(101);
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+
+  it('refuses unknown totals with no completeness signal or repeated pages', async () => {
+    const { gateway } = setup();
+    const original = await gateway.request('listPhotos', { page: 1, pageSize: 100 });
+    const request = vi.spyOn(gateway, 'request').mockResolvedValue({ ...original, total: null });
+    await expect(allGalleryPhotos(gateway, '2001')).rejects.toThrow('GALLERY_TASK_PAGINATION');
+    request.mockImplementation((_operation, payload) => {
+      const page =
+        typeof payload === 'object' && 'page' in payload && typeof payload.page === 'number'
+          ? payload.page
+          : 1;
+      return Promise.resolve({ ...original, total: null, hasNextPage: true, page });
+    });
+    await expect(allGalleryPhotos(gateway, '2001')).rejects.toThrow('GALLERY_TASK_PAGINATION');
+  });
   it('does not accept a different ZIP as the source for resume', async () => {
     const s = setup();
     const task = validateGalleryTransferTask(structuredClone(taskFixture));

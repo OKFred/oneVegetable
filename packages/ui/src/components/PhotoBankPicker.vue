@@ -9,23 +9,26 @@ import QueryState from './QueryState.vue';
 import ImagePreview, { type ImagePreviewItem } from './ImagePreview.vue';
 import PhotoGroupNavigation from './PhotoGroupNavigation.vue';
 import PhotoUploadDialog from './PhotoUploadDialog.vue';
+import TablePagination from './TablePagination.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
 import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
+import { useListIdentityScope } from '../lib/list-identity-scope';
 
 const props = withDefaults(
   defineProps<{
     modelValue: Photo[];
     max?: number;
-    buttonLabel?: string;
+    buttonLabel?: string | undefined;
   }>(),
-  { max: 1 }
+  { max: 1, buttonLabel: undefined }
 );
 const emit = defineEmits<{ 'update:modelValue': [photos: Photo[]] }>();
 
 const { gateway } = useServices();
+const identityScope = useListIdentityScope();
 const { t } = useUiI18n();
 const queryClient = useQueryClient();
 const open = ref(false);
@@ -33,24 +36,26 @@ const uploadDialogOpen = ref(false);
 const selectedGroup = ref('-1');
 const selectedGroupName = ref(t('photos.allPhotos'));
 const page = ref(1);
-const pageSize = 12;
+const pageSize = ref(24);
 const uploadNotice = ref('');
 const observedDimensions = ref<Record<string, { width: number; height: number }>>({});
 const previewOpen = ref(false);
 const previewIndex = ref(0);
 const previewPhotos = ref<Photo[]>([]);
 const photos = useQuery({
-  queryKey: ['photos', selectedGroup, page],
+  queryKey: ['photos', identityScope, selectedGroup, page, pageSize],
   queryFn: () =>
     gateway.request('listPhotos', {
       page: page.value,
-      pageSize,
+      pageSize: pageSize.value,
       groupId: selectedGroup.value
     }),
   enabled: open
 });
 const selectedIds = computed(() => new Set(props.modelValue.map((photo) => photo.id)));
-const totalPages = computed(() => Math.max(1, Math.ceil((photos.data.value?.total ?? 0) / pageSize)));
+watch(pageSize, () => {
+  page.value = 1;
+});
 
 watch(open, (value) => {
   if (!value) uploadDialogOpen.value = false;
@@ -121,7 +126,15 @@ const previewImages = computed<ImagePreviewItem[]>(() =>
     id: photo.id,
     src: photoPreviewUrl(photo),
     alt: photo.name,
-    description: `${dimensionsLabel(photo)} · ${Math.ceil(photo.fileSize / 1024)} KiB`
+    description: `${dimensionsLabel(photo)} · ${Math.ceil(photo.fileSize / 1024)} KiB`,
+    originalUrl: photo.url,
+    information: [
+      { label: 'fileId', value: photo.id },
+      { label: t('photos.columns.name'), value: photo.name },
+      { label: t('photos.columns.dimensions'), value: dimensionsLabel(photo) },
+      { label: t('photos.columns.size'), value: `${Math.ceil(photo.fileSize / 1024)} KiB` },
+      { label: t('photos.columns.references'), value: photo.referenceCount }
+    ]
   }))
 );
 
@@ -273,16 +286,17 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
                 </QueryState>
               </main>
             </div>
-            <footer class="flex items-center justify-between border-t p-4">
-              <div class="flex items-center gap-2">
-                <Button variant="outline" size="sm" :disabled="page <= 1" @click="page--">
-                  {{ t('common.pagination.previous') }}
-                </Button>
-                <span class="text-xs text-muted-foreground">{{ page }}/{{ totalPages }}</span>
-                <Button variant="outline" size="sm" :disabled="page >= totalPages" @click="page++">{{
-                  t('common.pagination.next')
-                }}</Button>
-              </div>
+            <footer class="flex flex-wrap items-center justify-between gap-2 border-t p-4">
+              <TablePagination
+                v-model:page="page"
+                v-model:page-size="pageSize"
+                :total="photos.data.value?.total ?? null"
+                :has-next-page="
+                  photos.data.value?.hasNextPage ?? photos.data.value?.items.length === pageSize
+                "
+                :page-size-options="[24, 48, 96]"
+                :disabled="photos.isFetching.value"
+              />
               <Button @click="open = false">{{ t('photos.picker.finish') }}</Button>
             </footer>
           </Card>

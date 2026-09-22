@@ -2,13 +2,58 @@
 
 import { defineComponent, h, nextTick, ref } from 'vue';
 import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import ImagePreview from '../src/components/ImagePreview.vue';
 
 describe('ImagePreview', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe = vi.fn();
+        unobserve = vi.fn();
+        disconnect = vi.fn();
+      }
+    );
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.body.innerHTML = '';
+  });
+  it('shows metadata only on demand and never renders an unsafe external link', async () => {
+    const photos = await new MockGatewayClient(0).request('listPhotos', { page: 1, pageSize: 1 });
+    const photo = photos.items[0];
+    if (!photo) throw new Error('fixture');
+    const wrapper = mount(ImagePreview, {
+      attachTo: document.body,
+      props: {
+        open: true,
+        images: [
+          {
+            id: photo.id,
+            src: photo.url,
+            alt: photo.name,
+            originalUrl: 'javascript:alert(1)',
+            information: [
+              { label: 'fileId', value: photo.id },
+              { label: 'Missing', value: null }
+            ]
+          }
+        ]
+      }
+    });
+    await nextTick();
+    expect(document.querySelector('a[target="_blank"]')).toBeNull();
+    expect(document.querySelector('[data-testid="media-information"]')).toBeNull();
+    document.querySelector<HTMLButtonElement>('button[aria-label="素材信息"]')?.click();
+    await nextTick();
+    expect(document.querySelector('[data-testid="media-information"]')?.textContent).toContain(photo.id);
+    expect(document.querySelector('[data-testid="media-information"]')?.textContent).toContain('—');
+    wrapper.unmount();
+  });
   it('supports navigation, zoom, rotation, reset and close actions', async () => {
     const open = ref(true);
     const photos = await new MockGatewayClient(0).request('listPhotos', {

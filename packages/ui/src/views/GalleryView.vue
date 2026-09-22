@@ -18,7 +18,7 @@ onUnmounted(() => {
 </script>
 <template>
   <div class="space-y-3">
-    <nav class="flex gap-2 border-b pb-2" :aria-label="vt('title')">
+    <nav class="flex gap-2 border-b pb-2" :aria-label="vt('assets')">
       <a
         href="#/photos"
         class="rounded px-4 py-2 text-sm hover:bg-muted"

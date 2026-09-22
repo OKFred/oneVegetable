@@ -2,7 +2,6 @@
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
 import {
-  VIDEO_LIBRARY_URL,
   safeVideoUrl,
   safePlaybackUrl,
   type Video,
@@ -13,8 +12,9 @@ import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import { requestVideo, VideoReadScope, mustStopVideoQueries } from '../lib/video-library';
 import { useVideoI18n } from '../i18n/video';
+import { notifyVideoDifferences } from '../lib/video-issue-notice';
 import { formatDateTime } from '../lib/date-time';
-import Sheet from './ui/Sheet.vue';
+import MediaPreviewShell from './MediaPreviewShell.vue';
 import Button from './ui/Button.vue';
 import ErrorNotice from './ErrorNotice.vue';
 import TablePagination from './TablePagination.vue';
@@ -23,6 +23,7 @@ const emit = defineEmits<{ close: [] }>();
 const { gateway, mode } = useServices(),
   { alibabaLanguage } = useAppPreferences();
 const vt = useVideoI18n();
+const informationOpen = ref(false);
 const section = ref<'information' | 'relations'>('information'),
   type = ref<'main' | 'detail'>('main'),
   page = ref(1);
@@ -53,6 +54,15 @@ const fields = [
   'relatedProductCount',
   'publisher'
 ] as const;
+const information = computed(() =>
+  fields.map((field) => ({
+    label: vt(field === 'id' ? 'idSearch' : field),
+    value:
+      field === 'publishedAt' && props.video?.publishedAt !== null && props.video?.publishedAt !== undefined
+        ? formatDateTime(props.video.publishedAt)
+        : (props.video?.[field] ?? null)
+  }))
+);
 function release() {
   if (player.value) {
     player.value.pause();
@@ -149,6 +159,7 @@ async function loadRelations(refresh = false) {
     );
     if (!current()) return;
     relation.value = data;
+    notifyVideoDifferences(data.issues, vt('compatibleDifference'));
     // Separate the relation query from the first decrypt request as well.
     await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 350));
     if (current()) await resolvePage(refresh);
@@ -168,6 +179,7 @@ watch(
     stop();
     release();
     section.value = 'information';
+    informationOpen.value = false;
     type.value = 'main';
     page.value = 1;
     relation.value = null;
@@ -179,8 +191,8 @@ watch(
   },
   { flush: 'sync' }
 );
-watch([section, type, alibabaLanguage], () => {
-  if (section.value === 'relations' && props.video) {
+watch([informationOpen, section, type, alibabaLanguage], () => {
+  if (informationOpen.value && section.value === 'relations' && props.video) {
     player.value?.pause();
     void loadRelations();
   } else stop();
@@ -199,147 +211,118 @@ onBeforeUnmount(() => {
 });
 </script>
 <template>
-  <Sheet
+  <MediaPreviewShell
     :open="!!video"
     :title="video?.title ?? vt('title')"
     :description="video?.id ?? ''"
+    :original-url="mediaUrl"
+    :information="information"
+    @information-change="informationOpen = $event"
     @update:open="!$event && close()"
   >
-    <template #toolbar
-      ><div class="flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          :aria-pressed="section === 'information'"
-          @click="section = 'information'"
-          >{{ vt('information') }}</Button
-        ><Button
-          variant="outline"
-          :disabled="!video?.encryptedId"
-          :aria-pressed="section === 'relations'"
-          @click="section = 'relations'"
-          >{{ vt('relations') }}</Button
-        ><a
-          :href="VIDEO_LIBRARY_URL"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="self-center text-sm text-primary underline"
-          >{{ vt('official') }}</a
-        >
-      </div></template
-    >
-    <div v-if="video" class="space-y-4">
-      <section v-show="section === 'information'" class="space-y-3">
-        <video
-          v-if="mediaUrl"
-          ref="player"
-          :key="video.encryptedId ?? video.id ?? ''"
-          :src="mediaUrl"
-          :poster="safeVideoUrl(video.coverUrl) ?? undefined"
-          class="max-h-[45vh] w-full rounded bg-black"
-          controls
-          playsinline
-          preload="none"
-          @error="playError = true"
-          @loadedmetadata="metadata"
-        />
-        <p v-else>{{ vt('unavailable') }}</p>
-        <p v-if="playError" role="alert" class="text-destructive">{{ vt('playError') }}</p>
-        <div v-if="mediaUrl" class="flex items-center gap-3">
-          <Button v-if="playError" variant="outline" @click="retryMedia">{{ vt('retry') }}</Button
-          ><a
-            :href="mediaUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-sm text-primary underline"
-            >{{ vt('original') }}</a
-          >
-        </div>
+    <div v-if="video" class="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-4">
+      <video
+        v-if="mediaUrl"
+        ref="player"
+        :key="video.encryptedId ?? video.id ?? ''"
+        :src="mediaUrl"
+        :poster="safeVideoUrl(video.coverUrl) ?? undefined"
+        class="min-h-0 max-h-full w-full flex-1 bg-black object-contain"
+        controls
+        playsinline
+        preload="none"
+        @error="playError = true"
+        @loadedmetadata="metadata"
+      />
+      <p v-else>{{ vt('unavailable') }}</p>
+      <p v-if="playError" role="alert" class="text-destructive">{{ vt('playError') }}</p>
+      <div v-if="mediaUrl" class="flex items-center gap-3">
+        <Button v-if="playError" variant="outline" @click="retryMedia">{{ vt('retry') }}</Button>
+      </div>
+    </div>
+    <template #information>
+      <div v-if="video" class="mt-4 space-y-3">
         <p v-if="actualDuration !== null">{{ vt('durationActual') }}: {{ actualDuration }}</p>
         <p class="text-xs text-muted-foreground">{{ vt('rawNotice') }}</p>
-        <dl class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 text-sm">
-          <template v-for="field in fields" :key="field"
-            ><dt class="text-muted-foreground">{{ vt(field === 'id' ? 'idSearch' : field) }}</dt>
-            <dd class="break-all" :class="field === 'publishedAt' ? 'whitespace-nowrap' : ''">
-              {{
-                field === 'publishedAt'
-                  ? video.publishedAt === null
-                    ? '—'
-                    : formatDateTime(video.publishedAt)
-                  : (video[field] ?? '—')
-              }}
-            </dd></template
-          >
-        </dl>
-      </section>
-      <section v-if="section === 'relations'" class="space-y-3">
-        <div class="flex flex-wrap items-center gap-2">
-          <Button variant="outline" :aria-pressed="type === 'main'" @click="type = 'main'">{{
-            vt('main')
-          }}</Button
-          ><Button variant="outline" :aria-pressed="type === 'detail'" @click="type = 'detail'">{{
-            vt('detail')
-          }}</Button
-          ><Button variant="outline" :disabled="busy" @click="loadRelations(true)">{{ vt('refresh') }}</Button
-          ><Button v-if="busy" variant="outline" @click="stop(true)">{{ vt('stop') }}</Button
-          ><Button v-else-if="ids.some((id) => !results[id])" variant="outline" @click="resolvePage()">{{
-            vt('retry')
-          }}</Button>
-        </div>
-        <p aria-live="polite">
-          {{ busy ? vt('loading') : '' }} {{ vt('progress', { done, total: ids.length }) }}
-        </p>
-        <ErrorNotice v-if="error" :error="error" />
-        <details v-if="relation?.issues.length" class="text-xs">
-          <summary class="cursor-pointer">{{ vt('issues') }}</summary>
-          <p v-for="issue in relation.issues" :key="issue">{{ issue }}</p>
-        </details>
-        <p v-if="relation && !relation.encryptedProductIds.length">{{ vt('noRelations') }}</p>
-        <article v-for="id in ids" :key="id" class="space-y-2 rounded border p-3">
-          <p class="break-all text-xs text-muted-foreground">{{ vt('linkedId') }}: {{ id }}</p>
-          <template v-if="results[id]">
-            <div v-if="results[id]?.product" class="flex items-center gap-3">
-              <img
-                v-if="results[id]?.product?.imageUrl"
-                :src="results[id]?.product?.imageUrl ?? ''"
-                alt=""
-                class="h-16 w-20 rounded object-contain"
-                loading="lazy"
-                referrerpolicy="no-referrer"
-              />
-              <div>
-                <p>{{ results[id]?.product?.subject }}</p>
-                <p class="text-xs">{{ results[id]?.productId }} · {{ results[id]?.product?.status }}</p>
-                <a
-                  v-if="results[id]?.product?.detailUrl"
-                  :href="results[id]?.product?.detailUrl ?? ''"
-                  class="text-primary underline"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  >{{ vt('productLink') }}</a
-                >
+        <Button
+          variant="outline"
+          :disabled="!video.encryptedId"
+          :aria-expanded="section === 'relations'"
+          @click="section = section === 'relations' ? 'information' : 'relations'"
+          >{{ vt('relations') }}</Button
+        >
+        <section v-if="section === 'relations'" class="space-y-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <Button variant="outline" :aria-pressed="type === 'main'" @click="type = 'main'">{{
+              vt('main')
+            }}</Button
+            ><Button variant="outline" :aria-pressed="type === 'detail'" @click="type = 'detail'">{{
+              vt('detail')
+            }}</Button
+            ><Button variant="outline" :disabled="busy" @click="loadRelations(true)">{{
+              vt('refresh')
+            }}</Button
+            ><Button v-if="busy" variant="outline" @click="stop(true)">{{ vt('stop') }}</Button
+            ><Button v-else-if="ids.some((id) => !results[id])" variant="outline" @click="resolvePage()">{{
+              vt('retry')
+            }}</Button>
+          </div>
+          <p aria-live="polite">
+            {{ busy ? vt('loading') : '' }} {{ vt('progress', { done, total: ids.length }) }}
+          </p>
+          <ErrorNotice v-if="error" :error="error" />
+          <details v-if="relation?.issues.length" class="text-xs">
+            <summary class="cursor-pointer">{{ vt('issues') }}</summary>
+            <p v-for="issue in relation.issues" :key="issue">{{ issue }}</p>
+          </details>
+          <p v-if="relation && !relation.encryptedProductIds.length">{{ vt('noRelations') }}</p>
+          <article v-for="id in ids" :key="id" class="space-y-2 rounded border p-3">
+            <p class="break-all text-xs text-muted-foreground">{{ vt('linkedId') }}: {{ id }}</p>
+            <template v-if="results[id]">
+              <div v-if="results[id]?.product" class="flex items-center gap-3">
+                <img
+                  v-if="results[id]?.product?.imageUrl"
+                  :src="results[id]?.product?.imageUrl ?? ''"
+                  alt=""
+                  class="h-16 w-20 rounded object-contain"
+                  loading="lazy"
+                  referrerpolicy="no-referrer"
+                />
+                <div>
+                  <p>{{ results[id]?.product?.subject }}</p>
+                  <p class="text-xs">{{ results[id]?.productId }} · {{ results[id]?.product?.status }}</p>
+                  <a
+                    v-if="results[id]?.product?.detailUrl"
+                    :href="results[id]?.product?.detailUrl ?? ''"
+                    class="text-primary underline"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >{{ vt('productLink') }}</a
+                  >
+                </div>
               </div>
-            </div>
-            <p v-else>{{ vt(results[id]?.status === 'invalid-id' ? 'invalidId' : 'notFound') }}</p>
-            <details v-if="results[id]?.issues.length" class="text-xs">
-              <summary class="cursor-pointer">{{ vt('issues') }}</summary>
-              <p v-for="issue in results[id]?.issues" :key="issue">{{ issue }}</p>
-            </details>
-          </template>
-          <p v-else-if="!failures[id]">{{ vt('pending') }}</p>
-          <ErrorNotice v-if="failures[id]" :error="failures[id]" compact />
-          <Button v-if="failures[id]" variant="outline" :disabled="busy" @click="resolvePage(true, id)">{{
-            vt('retry')
-          }}</Button>
-        </article>
-        <TablePagination
-          v-if="relation"
-          :page="page"
-          :page-size="10"
-          :total="relation.encryptedProductIds.length"
-          :page-size-options="[10]"
-          @update:page="changePage"
-        />
-      </section>
-    </div>
-  </Sheet>
+              <p v-else>{{ vt(results[id]?.status === 'invalid-id' ? 'invalidId' : 'notFound') }}</p>
+              <details v-if="results[id]?.issues.length" class="text-xs">
+                <summary class="cursor-pointer">{{ vt('issues') }}</summary>
+                <p v-for="issue in results[id]?.issues" :key="issue">{{ issue }}</p>
+              </details>
+            </template>
+            <p v-else-if="!failures[id]">{{ vt('pending') }}</p>
+            <ErrorNotice v-if="failures[id]" :error="failures[id]" compact />
+            <Button v-if="failures[id]" variant="outline" :disabled="busy" @click="resolvePage(true, id)">{{
+              vt('retry')
+            }}</Button>
+          </article>
+          <TablePagination
+            v-if="relation"
+            :page="page"
+            :page-size="10"
+            :total="relation.encryptedProductIds.length"
+            :page-size-options="[10]"
+            @update:page="changePage"
+          />
+        </section>
+      </div>
+    </template>
+  </MediaPreviewShell>
 </template>

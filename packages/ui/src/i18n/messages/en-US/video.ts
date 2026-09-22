@@ -1,4 +1,70 @@
 export const video = {
+  upload: 'Upload',
+  uploadTitle: 'Video uploads and tasks',
+  uploadNotice:
+    'HTTPS URL or local MP4 (up to 50 MiB). Local files are staged in your configured S3 storage before a separate Alibaba confirmation. Product associations are unchanged.',
+  uploadResumeHint:
+    'Closing this dialog or leaving the page stops further scheduling. An already-sent request may still finish. Reopen to verify or resume manually; file bytes and URLs are not stored in tasks.',
+  uploadUnavailable: 'Video upload is unavailable in this mode. No simulated upload fallback is used.',
+  uploadNew: 'New task',
+  uploadRefresh: 'Refresh tasks',
+  uploadPause: 'Stop further requests',
+  uploadTasks: 'Existing tasks (manual recovery)',
+  uploadSource: 'Video source',
+  uploadFile: 'Local MP4 file',
+  uploadUrl: 'Public HTTPS video URL',
+  uploadUrlHint:
+    'Alibaba must be able to fetch the video directly. The URL stays in page memory only; re-enter the same URL when resuming.',
+  uploadReselect: 'Reselect the original file to verify its fingerprint',
+  uploadFingerprintReady: 'Fingerprint checked',
+  uploadHashing: 'Validating file and calculating fingerprint…',
+  uploadRunning: 'Processing; closing stops further scheduling…',
+  uploadTaskId: 'Task ID',
+  uploadState: 'Task status',
+  uploadUpdated: 'Updated',
+  uploadParts: 'Confirmed parts',
+  uploadPrepare: 'Prepare task',
+  uploadContinue: 'Continue S3 staging',
+  uploadSubmit: 'Submit to Alibaba',
+  uploadReconcile: 'Verify S3 result',
+  uploadVerify: 'Verify platform result',
+  uploadCancel: 'Cancel incomplete staging',
+  uploadConfirm: 'Confirm video operation',
+  uploadConfirmPrepare:
+    'Create a durable task. Local MP4 files are uploaded to a unique task directory in the current S3 storage and verified by readback. This step does not submit to Alibaba or overwrite same-name tasks.',
+  uploadConfirmSubmit:
+    'Send one video upload request to Alibaba. The new video may appear after a delay. Unknown results are verified, never resent. Videos and completed S3 objects are not automatically deleted.',
+  uploadConfirmCancel:
+    'Stop this task and abort its incomplete multipart upload. Completed objects and platform videos are not deleted. Already-submitted platform tasks cannot be cancelled.',
+  uploadAcceptedHint:
+    'Accepted does not mean ready. Processing and list synchronization can be delayed. Automatic verification lasts at most 5 minutes; verify manually if still unconfirmed, and do not upload again.',
+  uploadDisabled:
+    'S3 uploads and platform submission are disabled until this environment passes video upload validation. Existing tasks can still be verified with read-only requests.',
+  uploadContextChanged:
+    'The account, credentials or S3 configuration changed. This task is read-only; preview and create a new task.',
+  uploadFileChanged:
+    'The file fingerprint does not match this task. Reselect the original file; no further upload was sent.',
+  uploadFileInvalid: 'Select a valid MP4 file up to 50 MiB. Its contents must also be MP4.',
+  uploadError:
+    'The operation did not finish and scheduling stopped. Refresh the task and verify the result. Uploads are never automatically retried.',
+  uploadPrepared: 'Not started',
+  uploadStaging: 'S3 staging / manual resume available',
+  uploadStaged: 'S3 verified; awaiting submission confirmation',
+  uploadSubmitting: 'Submission result needs verification',
+  uploadAccepted: 'Accepted; awaiting readback',
+  uploadNeedsReview: 'Manual verification required',
+  uploadCancellationPending:
+    'Cancellation needs verification. Check the S3 result and do not resume uploading. Completed objects are preserved.',
+  uploadConfirmed: 'Confirmed by platform readback',
+  uploadCancelled: 'Cancelled',
+  uploadFailed: 'Failed',
+  assets: 'Assets',
+  all: 'All',
+  withRelations: 'With associations',
+  withoutRelations: 'No associations',
+  relationUnknown: 'Unknown association count',
+  compatibleDifference:
+    'The platform omitted a documented status field. The data passed compatibility checks and remains usable. Details are available in API diagnostics.',
   associationTitle: 'Product video association',
   associationNotice:
     'Existing products only. This is separate from saving or publishing the product; schema fields remain unchanged.',
@@ -51,13 +117,13 @@ export const video = {
   relations: 'Related products',
   main: 'Main-image association',
   detail: 'Description association',
-  empty: 'No videos returned',
+  empty: 'No matching videos on this page',
   noRelations: 'No products returned for this association type',
   loading: 'Loading…',
   retry: 'Retry',
   stop: 'Stop further requests',
   progress: 'Resolved {done} / {total}',
-  playError: 'This video could not be played. Retry or check the official page.',
+  playError: 'This video could not be played. Retry or use the external-link icon to check the original.',
   original: 'Open original link',
   official: 'Official video library',
   unavailable: 'No safe playback URL returned',

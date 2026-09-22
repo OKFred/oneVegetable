@@ -46,15 +46,22 @@ export async function allGalleryPhotos(
   let expectedTotal: number | null = null;
   for (let page = 1; page <= 10000; page++) {
     const result = await gateway.request('listPhotos', { groupId, page, pageSize: 100 }, options);
-    if (expectedTotal !== null && expectedTotal !== result.total)
+    if (result.page !== page || result.pageSize !== 100 || result.items.length > 100)
+      throw new GalleryTaskError('GALLERY_TASK_PAGINATION');
+    if (expectedTotal !== null && result.total !== expectedTotal)
       throw new GalleryTaskError('GALLERY_TASK_PAGINATION');
     expectedTotal = result.total;
     for (const photo of result.items) {
       if (found.has(photo.id)) throw new GalleryTaskError('GALLERY_TASK_PAGINATION');
       found.set(photo.id, photo);
     }
-    if (found.size === expectedTotal) return [...found.values()];
-    if (!result.items.length || found.size > expectedTotal)
+    if (expectedTotal !== null && found.size === expectedTotal) return [...found.values()];
+    if (expectedTotal === null && result.hasNextPage === false) return [...found.values()];
+    // A legacy unknown-total response has no reliable completeness signal. Never
+    // treat a short/empty response alone as proof that an uploaded file is absent.
+    if (expectedTotal === null && result.hasNextPage === undefined)
+      throw new GalleryTaskError('GALLERY_TASK_PAGINATION');
+    if (!result.items.length || (expectedTotal !== null && found.size > expectedTotal))
       throw new GalleryTaskError('GALLERY_TASK_PAGINATION');
   }
   throw new GalleryTaskError('GALLERY_TASK_PAGINATION');

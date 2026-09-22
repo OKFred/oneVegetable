@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { mount, flushPromises } from '@vue/test-utils';
+import { mount, flushPromises, DOMWrapper } from '@vue/test-utils';
 import { defineComponent, h } from 'vue';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import VideoDrawer from '../src/components/VideoDrawer.vue';
 import { provideServices } from '../src/lib/services';
 import { MockGatewayClient } from '../../core/src/mock-client';
@@ -9,6 +9,20 @@ import { VIDEO_MOCK_DATA } from '../../core/src/generated/mock-data';
 import { pageDetailIdentity } from '../src/lib/page-details';
 import type { Video } from '../../core/src/types';
 describe('video drawer resource lifetime', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe = vi.fn();
+        unobserve = vi.fn();
+        disconnect = vi.fn();
+      }
+    );
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.body.innerHTML = '';
+  });
   it('does not query relations before entry and releases media on close', async () => {
     const gateway = new MockGatewayClient(0),
       request = vi.spyOn(gateway, 'request');
@@ -26,15 +40,21 @@ describe('video drawer resource lifetime', () => {
     if (!video) throw new Error('Missing fixture');
     const wrapper = mount(parent, {
       props: { video },
-      global: { stubs: { Sheet: { template: '<div><slot name="toolbar"/><slot/></div>' } } }
+      attachTo: document.body
     });
     await flushPromises();
+    const body = new DOMWrapper(document.body);
     expect(request).not.toHaveBeenCalled();
-    expect(wrapper.get('video').attributes('preload')).toBe('none');
-    expect(wrapper.get('video').attributes('autoplay')).toBeUndefined();
-    await wrapper.get('video').trigger('error');
-    expect(wrapper.text()).toContain('此视频暂时无法播放');
-    await wrapper
+    expect(body.get('video').attributes('preload')).toBe('none');
+    expect(body.get('video').attributes('autoplay')).toBeUndefined();
+    await body.get('video').trigger('error');
+    expect(body.text()).toContain('此视频暂时无法播放');
+    expect(body.text()).not.toContain('官方视频库');
+    expect(body.text()).not.toContain('打开原链接');
+    await body.get('button[aria-label="素材信息"]').trigger('click');
+    await flushPromises();
+    expect(request).not.toHaveBeenCalled();
+    await body
       .findAll('button')
       .find((b) => b.text() === '关联商品')
       ?.trigger('click');

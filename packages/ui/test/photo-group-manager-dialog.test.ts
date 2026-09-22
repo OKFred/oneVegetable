@@ -62,7 +62,7 @@ describe('PhotoGroupManagerDialog', () => {
     buttonByText('保存').click();
 
     await vi.waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith('图库分组“新版详情素材”已创建');
+      expect(toast.success).toHaveBeenCalledWith('图片分组“新版详情素材”已创建');
       expect(document.body.textContent).toContain('新版详情素材');
       expect(buttonByLabel('收起商品主图')).toBeDefined();
     });
@@ -84,23 +84,23 @@ describe('PhotoGroupManagerDialog', () => {
     buttonByText('保存').click();
 
     await vi.waitFor(() => {
-      expect(document.body.textContent).toContain('确认修改图库分组');
+      expect(document.body.textContent).toContain('确认修改图片分组');
       expect(document.body.textContent).toContain('改名为“主图素材”');
     });
     buttonByText('确认改名').click();
     await vi.waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith('图库分组已改名为“主图素材”');
+      expect(toast.success).toHaveBeenCalledWith('图片分组已改名为“主图素材”');
       expect(document.body.textContent).toContain('主图素材');
     });
 
     buttonByLabel('删除分组 主图素材').click();
     await vi.waitFor(() => {
-      expect(document.body.textContent).toContain('确认删除图库分组');
+      expect(document.body.textContent).toContain('确认删除图片分组');
       expect(document.body.textContent).toContain('若分组仍含图片或子分组，平台可能拒绝');
     });
     buttonByText('确认删除').click();
     await vi.waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith('已删除所选图库分组');
+      expect(toast.success).toHaveBeenCalledWith('已删除所选图片分组');
       expect(document.body.textContent).not.toContain('主图素材');
     });
     wrapper.unmount();
@@ -115,7 +115,7 @@ describe('PhotoGroupManagerDialog', () => {
     expect(buttonByLabel('在全部图片下新增分组').disabled).toBe(true);
     expect(buttonByLabel('修改分组 商品主图').disabled).toBe(true);
     expect(buttonByLabel('删除分组 商品主图').disabled).toBe(true);
-    expect(document.body.textContent).toContain('当前环境未开放图库分组写入（STATIC_DISABLED）');
+    expect(document.body.textContent).toContain('当前环境未开放图片分组写入（STATIC_DISABLED）');
     wrapper.unmount();
   });
 });

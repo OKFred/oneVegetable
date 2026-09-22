@@ -117,6 +117,7 @@ const app = createApp(OneVegetableApp, {
   settings,
   mode: gatewayMode,
   ...(control ? { control } : {}),
+  ...(control ? { videoUploads: control } : {}),
   ...(authenticationEvents ? { authenticationEvents } : {}),
   ...(control ? { socialPublishing: control } : {}),
   ...(onboarding ? { onboarding } : {}),

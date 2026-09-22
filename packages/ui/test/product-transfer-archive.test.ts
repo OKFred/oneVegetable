@@ -82,6 +82,6 @@ describe('product transfer ZIP archive', () => {
           'assets/unused.avif': avif
         })
       )
-    ).rejects.toThrow('图库暂不支持上传 image/avif');
+    ).rejects.toThrow('暂不支持上传 image/avif');
   });
 });

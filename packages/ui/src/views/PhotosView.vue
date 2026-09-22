@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onScopeDispose, ref, watch } from 'vue';
+import { computed, h, nextTick, onScopeDispose, ref, watch } from 'vue';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import {
   Download,
@@ -7,10 +7,9 @@ import {
   FileInput,
   LayoutGrid,
   List as ListIcon,
-  RefreshCw,
   Settings2,
   Share2,
-  ShieldCheck,
+  Search,
   Upload
 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
@@ -25,6 +24,9 @@ import { SOCIAL_SHARE_MAX_PHOTOS } from '@one-vegetable/core';
 
 import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
+import TablePagination from '../components/TablePagination.vue';
+import ListFilterDialog from '../components/ListFilterDialog.vue';
+import Input from '../components/ui/Input.vue';
 import { fieldColumn, photoExtraFields } from '../lib/field-columns';
 import GroupSidebar from '../components/GroupSidebar.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -48,12 +50,27 @@ import {
 import { formatDate, formatDateTime } from '../lib/date-time';
 import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
+import { useListIdentityScope } from '../lib/list-identity-scope';
 import type { DataColumn } from '../lib/table';
 
-type GovernanceFilter = 'all' | 'unreferenced' | 'lowResolution';
 type PhotoViewMode = 'cards' | 'list';
+interface PhotoFilters {
+  group: 'all' | 'selected' | 'ungrouped';
+  reference: 'all' | 'referenced' | 'unreferenced';
+  dimensions: 'all' | 'lowResolution' | 'unknown';
+  minimumSize: string;
+  maximumSize: string;
+}
+const defaultFilters = (): PhotoFilters => ({
+  group: 'selected',
+  reference: 'all',
+  dimensions: 'all',
+  minimumSize: '',
+  maximumSize: ''
+});
 
 const { gateway } = useServices();
+const identityScope = useListIdentityScope();
 const queryClient = useQueryClient();
 const groupCacheRevision = ref(0);
 onScopeDispose(
@@ -63,6 +80,7 @@ onScopeDispose(
   })
 );
 function groupPath(id: string): string {
+  if (id === '-1') return t('photos.filters.ungrouped');
   void groupCacheRevision.value;
   const groups = queryClient
     .getQueriesData<PhotoGroup[]>({ queryKey: ['photo-groups'] })
@@ -80,7 +98,46 @@ function groupPath(id: string): string {
 }
 const { t } = useUiI18n();
 const selectedGroup = ref('-1');
-const governanceFilter = ref<GovernanceFilter>('all');
+const page = ref(1),
+  pageSize = ref(24);
+const searchText = ref(''),
+  submittedSearch = ref('');
+const filterOpen = ref(false),
+  filters = ref(defaultFilters()),
+  filterDraft = ref(defaultFilters());
+const filterCount = computed(
+  () =>
+    Number(filters.value.group !== 'selected') +
+    Number(filters.value.reference !== 'all') +
+    Number(filters.value.dimensions !== 'all') +
+    Number(!!filters.value.minimumSize || !!filters.value.maximumSize)
+);
+const invalidSize = computed(() => {
+  const { minimumSize, maximumSize } = filterDraft.value;
+  return (
+    [minimumSize, maximumSize].some((v) => !!v && (!Number.isFinite(Number(v)) || Number(v) < 0)) ||
+    (!!minimumSize && !!maximumSize && Number(minimumSize) > Number(maximumSize))
+  );
+});
+watch(filterOpen, (open) => {
+  if (open) filterDraft.value = { ...filters.value };
+});
+function applyFilters() {
+  if (invalidSize.value) return;
+  filters.value = { ...filterDraft.value };
+  page.value = 1;
+  selectedPhotoIds.value = [];
+  filterOpen.value = false;
+}
+async function search() {
+  if (refreshPending.value) return;
+  submittedSearch.value = searchText.value.trim();
+  page.value = 1;
+  selectedPhotoIds.value = [];
+  // Let the query key follow the submitted page/filter before forcing a fresh read.
+  await nextTick();
+  await refreshGallery();
+}
 const photoViewMode = ref<PhotoViewMode>('cards');
 const selectedGroupDefinition = ref<PhotoGroup | null>(null);
 const observedDimensions = ref<Record<string, { width: number; height: number }>>({});
@@ -111,13 +168,19 @@ const uploadDialogReason = computed(() => {
 });
 const selectedGroupName = computed(() => selectedGroupDefinition.value?.name ?? t('photos.allPhotos'));
 const photos = useQuery({
-  queryKey: ['photos', selectedGroup],
-  queryFn: () => gateway.request('listPhotos', { page: 1, pageSize: 24, groupId: selectedGroup.value })
+  queryKey: ['photos', identityScope, selectedGroup, page, pageSize, computed(() => filters.value.group)],
+  queryFn: () =>
+    gateway.request('listPhotos', {
+      page: page.value,
+      pageSize: pageSize.value,
+      groupId: filters.value.group === 'selected' ? selectedGroup.value : '-1',
+      ...(filters.value.group === 'ungrouped' ? { ungrouped: true } : {})
+    })
 });
 const refreshing = computed(() => refreshPending.value || photos.isFetching.value);
 
 async function refreshGallery(): Promise<void> {
-  if (refreshing.value) return;
+  if (refreshPending.value) return;
   refreshPending.value = true;
   try {
     await queryClient.invalidateQueries({ queryKey: ['photo-groups'], refetchType: 'none' });
@@ -140,14 +203,18 @@ async function refreshGallery(): Promise<void> {
   }
 }
 const filteredPhotos = computed(() => {
-  const items = photos.data.value?.items ?? [];
-  if (governanceFilter.value === 'unreferenced') {
-    return items.filter((photo) => photo.referenceCount === 0);
-  }
-  if (governanceFilter.value === 'lowResolution') {
-    return items.filter(isLowResolution);
-  }
-  return items;
+  const needle = submittedSearch.value.toLocaleLowerCase();
+  const { reference, dimensions: dimensionFilter, minimumSize, maximumSize } = filters.value;
+  return (photos.data.value?.items ?? []).filter(
+    (photo) =>
+      (!needle || `${photo.name} ${photo.id}`.toLocaleLowerCase().includes(needle)) &&
+      (reference === 'all' ||
+        (reference === 'unreferenced' ? photo.referenceCount === 0 : photo.referenceCount > 0)) &&
+      (dimensionFilter === 'all' ||
+        (dimensionFilter === 'unknown' ? !dimensions(photo) : isLowResolution(photo))) &&
+      (!minimumSize || photo.fileSize >= Number(minimumSize) * 1024) &&
+      (!maximumSize || photo.fileSize <= Number(maximumSize) * 1024)
+  );
 });
 const selectedPhotoIdSet = computed(() => new Set(selectedPhotoIds.value));
 const selectedPhotos = computed(() => {
@@ -166,13 +233,43 @@ const previewImages = computed<ImagePreviewItem[]>(() =>
     id: photo.id,
     src: photo.previewUrl ?? photo.url,
     alt: photo.name,
-    description: `${dimensionsLabel(photo)} · ${fileSize(photo.fileSize)}`
+    description: `${dimensionsLabel(photo)} · ${fileSize(photo.fileSize)}`,
+    originalUrl: photo.url,
+    information: [
+      { label: 'fileId', value: photo.id },
+      { label: t('photos.columns.name'), value: photo.name },
+      { label: t('photos.columns.dimensions'), value: dimensionsLabel(photo) },
+      { label: t('photos.columns.size'), value: fileSize(photo.fileSize) },
+      { label: t('photos.columns.references'), value: photo.referenceCount },
+      { label: t('photos.groups'), value: groupPath(photo.groupId) },
+      { label: t('photos.columns.updated'), value: formatDateTime(photo.modifiedAt) }
+    ]
   }))
 );
 
 watch(selectedGroup, () => {
+  page.value = 1;
+  filters.value = { ...filters.value, group: 'selected' };
   selectedPhotoIds.value = [];
 });
+watch([page, pageSize, identityScope], () => {
+  selectedPhotoIds.value = [];
+  previewOpen.value = false;
+});
+watch(pageSize, () => {
+  page.value = 1;
+});
+const allSelected = computed(
+  () =>
+    filteredPhotos.value.length > 0 &&
+    filteredPhotos.value.every((photo) => selectedPhotoIdSet.value.has(photo.id))
+);
+const someSelected = computed(() =>
+  filteredPhotos.value.some((photo) => selectedPhotoIdSet.value.has(photo.id))
+);
+function selectPage(checked: boolean) {
+  selectedPhotoIds.value = checked ? filteredPhotos.value.map((photo) => photo.id) : [];
+}
 watch(
   () => (photos.data.value?.items ?? []).map((photo) => photo.id).join('|'),
   () => {
@@ -187,10 +284,6 @@ function setPhotoSelected(photoId: string, checked: boolean): void {
     return;
   }
   if (selectedPhotoIdSet.value.has(photoId)) return;
-  if (selectedPhotoIds.value.length >= SOCIAL_SHARE_MAX_PHOTOS) {
-    toast.warning(t('photos.errors.maxSelection', { count: SOCIAL_SHARE_MAX_PHOTOS }));
-    return;
-  }
   selectedPhotoIds.value = [...selectedPhotoIds.value, photoId];
 }
 function selectGroupDefinition(group: PhotoGroup): void {
@@ -279,8 +372,15 @@ watch(
 
 const photoColumns = computed<DataColumn<Photo>[]>(() => [
   {
-    id: 'selection',
-    header: t('photos.select'),
+    id: 'select',
+    header: () =>
+      h(TriStateCheckbox, {
+        checked: allSelected.value,
+        indeterminate: someSelected.value && !allSelected.value,
+        disabled: !filteredPhotos.value.length,
+        label: t('photos.filters.selectPage'),
+        'onUpdate:checked': selectPage
+      }),
     cell: ({ row }) => {
       const photo = row.original;
       const selected = selectedPhotoIdSet.value.has(photo.id);
@@ -320,7 +420,7 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
         })
       );
     },
-    meta: { sticky: 'left', stickyOffset: '64px', stickyBoundary: true, width: '112px' }
+    meta: { width: '112px' }
   },
   {
     id: 'name',
@@ -389,13 +489,12 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
       h(
         Button,
         {
-          variant: 'outline',
-          size: 'sm',
+          variant: 'ghost',
           onClick: () => {
             openPreview(row.original);
           }
         },
-        () => [h(Eye, { class: 'size-4', 'aria-hidden': 'true' }), t('photos.preview')]
+        () => t('photos.preview')
       ),
     meta: { sticky: 'right', stickyOffset: '0px', stickyBoundary: true, width: '104px' }
   }
@@ -403,45 +502,7 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
 </script>
 
 <template>
-  <PageHeader :title="t('photos.page.title')" :description="t('photos.page.description')">
-    <div class="flex flex-wrap items-center justify-end gap-2">
-      <Button variant="outline" :disabled="refreshing" :aria-busy="refreshing" @click="refreshGallery">
-        <RefreshCw
-          class="size-4 motion-reduce:animate-none"
-          :class="{ 'animate-spin': refreshing }"
-          aria-hidden="true"
-        />{{ t('common.actions.refresh') }}
-      </Button>
-      <Button variant="outline" @click="groupManagerOpen = true">
-        <Settings2 class="size-4" />{{ t('photos.page.groupManagement') }}
-      </Button>
-      <Button variant="outline" @click="openGalleryTransfer('import')">
-        <FileInput class="size-4" />{{ t('photos.page.import') }}
-      </Button>
-      <Button v-if="galleryTransfers" variant="outline" @click="galleryTransfers.show()">{{
-        t('photos.tasks.title')
-      }}</Button>
-      <Button
-        variant="outline"
-        :disabled="selectedPhotos.length === 0"
-        @click="openGalleryTransfer('export')"
-      >
-        <Download class="size-4" />{{ t('photos.page.export') }}
-      </Button>
-      <Button variant="outline" :disabled="selectedPhotos.length === 0" @click="shareDialogOpen = true">
-        <Share2 class="size-4" />{{
-          selectedPhotos.length > 0
-            ? t('photos.page.shareCount', { count: selectedPhotos.length })
-            : t('photos.page.share')
-        }}
-      </Button>
-      <ActionTooltip :disabled="uploadDialogBlocked" :reason="uploadDialogReason">
-        <Button :disabled="uploadDialogBlocked" @click="uploadDialogOpen = true">
-          <Upload class="size-4" />{{ t('photos.page.upload') }}
-        </Button>
-      </ActionTooltip>
-    </div>
-  </PageHeader>
+  <PageHeader :title="t('photos.page.title')" :description="t('photos.page.description')" />
 
   <div class="mb-5 grid gap-3 md:grid-cols-3">
     <Card class="p-4">
@@ -473,42 +534,123 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
       />
     </GroupSidebar>
 
-    <section class="space-y-3">
-      <Card class="flex flex-wrap items-center justify-between gap-3 p-3">
-        <div class="flex flex-wrap items-center gap-2 text-sm font-medium">
-          <span class="inline-flex items-center gap-2"
-            ><ShieldCheck class="size-4" />{{ t('photos.governance.title') }}</span
+    <section class="min-w-0">
+      <div
+        data-testid="photo-toolbar"
+        class="flex flex-wrap items-center gap-3 rounded-t-lg border border-b-0 p-2"
+      >
+        <form class="flex min-w-0 flex-wrap items-center gap-2" @submit.prevent="search">
+          <Input
+            v-model="searchText"
+            class="w-48 max-w-full sm:w-56"
+            :placeholder="t('photos.filters.search')"
+            :aria-label="t('photos.filters.search')"
+          />
+          <Button type="submit" variant="outline" :disabled="refreshing" :aria-busy="refreshing"
+            ><Search class="size-4" />{{ t('common.filters.search') }}</Button
           >
-          <Badge variant="secondary">{{ t('photos.governance.nonBlocking') }}</Badge>
-          <Badge v-if="selectedPhotos.length > 0" variant="outline">{{
-            t('photos.governance.selected', { count: selectedPhotos.length })
-          }}</Badge>
-          <Button v-if="selectedPhotos.length > 0" variant="ghost" size="sm" @click="selectedPhotoIds = []">
-            {{ t('photos.governance.clearSelection') }}
+          <ListFilterDialog
+            v-model:open="filterOpen"
+            :active-count="filterCount"
+            :invalid="invalidSize"
+            @apply="applyFilters"
+            @reset="filterDraft = defaultFilters()"
+          >
+            <fieldset class="space-y-3">
+              <legend class="font-medium">{{ t('common.filters.server') }}</legend>
+              <label class="grid gap-1 text-sm"
+                >{{ t('photos.groups')
+                }}<select v-model="filterDraft.group" class="rounded-md border bg-background p-2">
+                  <option value="selected">{{ selectedGroupName }}</option>
+                  <option value="all">{{ t('photos.allPhotos') }}</option>
+                  <option value="ungrouped">{{ t('photos.filters.ungrouped') }}</option>
+                </select></label
+              >
+            </fieldset>
+            <fieldset class="mt-5 space-y-3">
+              <legend class="font-medium">{{ t('common.filters.page') }}</legend>
+              <p class="text-xs text-muted-foreground">{{ t('common.filters.pageHint') }}</p>
+              <label class="grid gap-1 text-sm"
+                >{{ t('photos.columns.references')
+                }}<select v-model="filterDraft.reference" class="rounded-md border bg-background p-2">
+                  <option value="all">{{ t('photos.governance.all') }}</option>
+                  <option value="unreferenced">{{ t('photos.stats.unreferenced') }}</option>
+                  <option value="referenced">{{ t('photos.filters.referenced') }}</option>
+                </select></label
+              >
+              <label class="grid gap-1 text-sm"
+                >{{ t('photos.columns.dimensions')
+                }}<select
+                  v-model="filterDraft.dimensions"
+                  data-testid="photo-dimension-filter"
+                  class="rounded-md border bg-background p-2"
+                >
+                  <option value="all">{{ t('photos.governance.all') }}</option>
+                  <option value="lowResolution">{{ t('photos.stats.lowResolution') }}</option>
+                  <option value="unknown">{{ t('photos.filters.unknownDimensions') }}</option>
+                </select></label
+              >
+              <div class="grid grid-cols-2 gap-3">
+                <label class="grid gap-1 text-sm"
+                  >{{ t('photos.filters.minimumSize')
+                  }}<Input v-model="filterDraft.minimumSize" type="number" min="0" /></label
+                ><label class="grid gap-1 text-sm"
+                  >{{ t('photos.filters.maximumSize')
+                  }}<Input v-model="filterDraft.maximumSize" type="number" min="0"
+                /></label>
+              </div>
+              <p v-if="invalidSize" class="text-sm text-destructive" role="alert">
+                {{ t('common.filters.invalidRange') }}
+              </p>
+            </fieldset>
+          </ListFilterDialog>
+        </form>
+        <div class="flex flex-wrap items-center gap-2 sm:ml-auto">
+          <Button variant="outline" @click="groupManagerOpen = true">
+            <Settings2 class="size-4" />{{ t('photos.page.groupManagement') }}
           </Button>
-        </div>
-        <div class="flex flex-wrap items-center justify-end gap-2">
+          <Button variant="outline" @click="openGalleryTransfer('import')">
+            <FileInput class="size-4" />{{ t('photos.page.import') }}
+          </Button>
+          <Button v-if="galleryTransfers" variant="outline" @click="galleryTransfers.show()">{{
+            t('photos.tasks.title')
+          }}</Button>
           <Button
-            size="sm"
-            :variant="governanceFilter === 'all' ? 'secondary' : 'outline'"
-            @click="governanceFilter = 'all'"
+            variant="outline"
+            :disabled="selectedPhotos.length === 0"
+            @click="openGalleryTransfer('export')"
           >
-            {{ t('photos.governance.all') }}
+            <Download class="size-4" />{{ t('photos.page.export') }}
           </Button>
           <Button
-            size="sm"
-            :variant="governanceFilter === 'unreferenced' ? 'secondary' : 'outline'"
-            @click="governanceFilter = 'unreferenced'"
+            variant="outline"
+            :disabled="selectedPhotos.length === 0 || selectedPhotos.length > SOCIAL_SHARE_MAX_PHOTOS"
+            :title="
+              selectedPhotos.length > SOCIAL_SHARE_MAX_PHOTOS
+                ? t('photos.errors.maxSelection', { count: SOCIAL_SHARE_MAX_PHOTOS })
+                : undefined
+            "
+            @click="shareDialogOpen = true"
           >
-            {{ t('photos.governance.unreferenced', { count: governanceCounts.unreferenced }) }}
+            <Share2 class="size-4" />{{
+              selectedPhotos.length > 0
+                ? t('photos.page.shareCount', { count: selectedPhotos.length })
+                : t('photos.page.share')
+            }}
           </Button>
-          <Button
-            size="sm"
-            :variant="governanceFilter === 'lowResolution' ? 'secondary' : 'outline'"
-            @click="governanceFilter = 'lowResolution'"
-          >
-            {{ t('photos.governance.lowResolution', { count: governanceCounts.lowResolution }) }}
-          </Button>
+          <ActionTooltip :disabled="uploadDialogBlocked" :reason="uploadDialogReason">
+            <Button :disabled="uploadDialogBlocked" @click="uploadDialogOpen = true">
+              <Upload class="size-4" />{{ t('photos.page.upload') }}
+            </Button>
+          </ActionTooltip>
+          <TriStateCheckbox
+            v-if="photoViewMode === 'cards'"
+            :checked="allSelected"
+            :indeterminate="someSelected && !allSelected"
+            :disabled="!filteredPhotos.length"
+            :label="t('photos.filters.selectPage')"
+            @update:checked="selectPage"
+          />
           <div
             class="inline-flex items-center rounded-md border bg-background p-0.5"
             role="group"
@@ -534,7 +676,7 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
             </Button>
           </div>
         </div>
-      </Card>
+      </div>
 
       <QueryState
         :loading="photos.isPending.value"
@@ -608,29 +750,36 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
             </div>
           </Card>
         </div>
-        <div v-else-if="filteredPhotos.length > 0" data-testid="photo-list-table">
+        <div v-else-if="photoViewMode === 'list'" data-testid="photo-list-table">
           <DataTable
             :columns="photoColumns"
             column-settings-key="photos"
-            :locked-columns="['selection', 'name', 'actions']"
+            :locked-columns="['select', 'actions']"
             :hidden-columns="[...photoExtraFields, 'groupPath']"
             :data="filteredPhotos"
+            :empty-text="t('photos.emptyFilter')"
             :pagination="false"
             min-width="980px"
             max-height="min(64vh, 680px)"
             :get-row-key="(photo) => photo.id"
-            :row-aria-label="(photo) => t('photos.previewPhoto', { name: photo.name })"
-            @row-activate="openPreview"
           />
         </div>
-        <Card v-if="filteredPhotos.length === 0" class="p-8 text-center text-sm text-muted-foreground">
+        <Card
+          v-if="filteredPhotos.length === 0 && photoViewMode === 'cards'"
+          class="p-8 text-center text-sm text-muted-foreground"
+        >
           <p>{{ t('photos.emptyFilter') }}</p>
           <div class="mt-3 flex justify-center gap-2">
             <Button
-              v-if="governanceFilter !== 'all'"
+              v-if="filterCount || submittedSearch"
               variant="outline"
               size="sm"
-              @click="governanceFilter = 'all'"
+              @click="
+                filters = defaultFilters();
+                searchText = '';
+                submittedSearch = '';
+                page = 1;
+              "
               >{{ t('photos.clearFilter') }}</Button
             >
             <Button v-else size="sm" :disabled="uploadDialogBlocked" @click="uploadDialogOpen = true">
@@ -639,6 +788,17 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
           </div>
         </Card>
       </QueryState>
+      <div class="border-t px-3 py-2 text-sm text-muted-foreground" aria-live="polite">
+        {{ t('photos.governance.selected', { count: selectedPhotos.length }) }}
+      </div>
+      <TablePagination
+        v-model:page="page"
+        v-model:page-size="pageSize"
+        :total="photos.data.value?.total ?? null"
+        :has-next-page="photos.data.value?.hasNextPage ?? photos.data.value?.items.length === pageSize"
+        :page-size-options="[24, 48, 96]"
+        :disabled="refreshing"
+      />
     </section>
   </div>
 

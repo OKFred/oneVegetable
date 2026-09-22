@@ -27,7 +27,7 @@ describe('PhotoBankPicker', () => {
 
     await wrapper.get('button').trigger('click');
     await flushPromises();
-    clickBodyButton('上传新素材');
+    clickBodyButton('上传');
     await flushPromises();
 
     const urlInput = globalThis.document.body.querySelector<HTMLInputElement>(
@@ -37,10 +37,10 @@ describe('PhotoBankPicker', () => {
     urlInput.value = 'https://example.com/photo.jpg';
     urlInput.dispatchEvent(new Event('input', { bubbles: true }));
     await flushPromises();
-    clickBodyButton('下载并存入图库');
+    clickBodyButton('下载并存入图片库');
 
     await vi.waitFor(() => {
-      expect(globalThis.document.body.textContent).toContain('已转存到图库');
+      expect(globalThis.document.body.textContent).toContain('已转存到图片库');
       expect(globalThis.document.body.textContent).toContain('请在素材列表中选择');
       expect(globalThis.document.body.textContent).toContain('photo.jpg');
     });

@@ -108,7 +108,7 @@ describe('ProductDescriptionEditor', () => {
   it('inserts a selected PhotoBank image with its internal file ID', async () => {
     const { model, wrapper } = mountEditor('<p>Product overview</p>');
     await flushPromises();
-    const picker = wrapper.findAll('button').find((button) => button.text().includes('插入图库图片'));
+    const picker = wrapper.findAll('button').find((button) => button.text().includes('插入图片'));
     if (!picker) throw new Error('Missing PhotoBank picker');
     await picker.trigger('click');
     await flushPromises();

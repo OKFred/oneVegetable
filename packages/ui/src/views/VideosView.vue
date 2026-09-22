@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed, h, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
-import { Film, RefreshCw, Search } from '@lucide/vue';
+import { computed, defineAsyncComponent, h, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
+import { Film, Search, Info, Upload } from '@lucide/vue';
 import { safeVideoId, type Video, type VideoPage } from '@one-vegetable/core/video';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import { pageDetailIdentity } from '../lib/page-details';
 import { requestVideo, VideoReadScope } from '../lib/video-library';
 import { useVideoI18n } from '../i18n/video';
+import { useUiI18n } from '../i18n';
+import { notifyVideoDifferences } from '../lib/video-issue-notice';
 import { formatDateTime } from '../lib/date-time';
 import type { DataColumn } from '../lib/table';
 import Button from '../components/ui/Button.vue';
@@ -15,9 +17,43 @@ import DataTable from '../components/DataTable.vue';
 import TablePagination from '../components/TablePagination.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import VideoDrawer from '../components/VideoDrawer.vue';
+import ListFilterDialog from '../components/ListFilterDialog.vue';
+import ModalDialog from '../components/ui/ModalDialog.vue';
+const VideoUploadDialog = defineAsyncComponent(() => import('../components/VideoUploadDialog.vue'));
+const uploadOpen = ref(false);
 const { gateway, mode } = useServices();
 const { alibabaLanguage } = useAppPreferences();
 const vt = useVideoI18n();
+const { t } = useUiI18n();
+const filterOpen = ref(false),
+  diagnosticsOpen = ref(false);
+interface Filters {
+  id: string;
+  status: string;
+  quality: string;
+  related: 'all' | 'yes' | 'no' | 'unknown';
+}
+const defaults = (): Filters => ({ id: '', status: '', quality: '', related: 'all' });
+const filters = ref(defaults()),
+  draft = ref(defaults());
+const filterCount = computed(
+  () =>
+    Number(!!filters.value.id) +
+    Number(!!filters.value.status) +
+    Number(!!filters.value.quality) +
+    Number(filters.value.related !== 'all')
+);
+const invalidId = computed(() => !!draft.value.id.trim() && !safeVideoId(draft.value.id.trim()));
+watch(filterOpen, (open) => {
+  if (open) draft.value = { ...filters.value };
+});
+function applyFilters() {
+  if (invalidId.value) return;
+  filters.value = { ...draft.value, id: draft.value.id.trim() };
+  id.value = filters.value.id;
+  filterOpen.value = false;
+  search();
+}
 const title = ref(''),
   id = ref(''),
   page = ref(1),
@@ -30,7 +66,25 @@ const result = shallowRef<VideoPage | null>(null),
   busy = ref(false),
   identity = ref('');
 const scope = new VideoReadScope();
-const rows = computed(() => result.value?.items ?? []);
+const rows = computed(() =>
+  (result.value?.items ?? []).filter(
+    (video) =>
+      (!filters.value.status || video.status === filters.value.status) &&
+      (!filters.value.quality || video.quality === filters.value.quality) &&
+      (filters.value.related === 'all' ||
+        (filters.value.related === 'unknown'
+          ? video.relatedProductCount === null
+          : filters.value.related === 'yes'
+            ? video.relatedProductCount !== null && video.relatedProductCount > 0
+            : video.relatedProductCount === 0))
+  )
+);
+const statuses = computed(() => [
+  ...new Set((result.value?.items ?? []).flatMap((v) => (v.status ? [v.status] : [])))
+]);
+const qualities = computed(() => [
+  ...new Set((result.value?.items ?? []).flatMap((v) => (v.quality ? [v.quality] : [])))
+]);
 async function load(refresh = false) {
   scope.stop();
   const current = scope.capture();
@@ -57,7 +111,10 @@ async function load(refresh = false) {
       account,
       refresh
     );
-    if (current()) result.value = data;
+    if (current()) {
+      result.value = data;
+      notifyVideoDifferences(data.issues, vt('compatibleDifference'));
+    }
   } catch (e: unknown) {
     if (current()) error.value = e;
   } finally {
@@ -71,7 +128,7 @@ function search() {
   }
   submitted.value = { title: title.value.trim(), id: id.value.trim() };
   page.value = 1;
-  void load();
+  void load(true);
 }
 function setPage(value: number) {
   if (page.value === value) return;
@@ -101,13 +158,25 @@ const columns = computed<DataColumn<Video>[]>(() => [
     header: vt('coverUrl'),
     cell: ({ row }) =>
       row.original.coverUrl
-        ? h('img', {
-            src: row.original.coverUrl,
-            alt: '',
-            loading: 'lazy',
-            referrerpolicy: 'no-referrer',
-            class: 'h-16 w-24 rounded object-contain'
-          })
+        ? h(
+            'button',
+            {
+              type: 'button',
+              'aria-label': `${vt('view')}: ${row.original.title ?? row.original.id ?? '—'}`,
+              onClick: () => {
+                selected.value = row.original;
+              }
+            },
+            [
+              h('img', {
+                src: row.original.coverUrl,
+                alt: '',
+                loading: 'lazy',
+                referrerpolicy: 'no-referrer',
+                class: 'h-16 w-24 rounded object-contain'
+              })
+            ]
+          )
         : '—',
     meta: { width: '112px' }
   },
@@ -148,7 +217,8 @@ const columns = computed<DataColumn<Video>[]>(() => [
           }
         },
         () => vt('view')
-      )
+      ),
+    meta: { sticky: 'right', stickyOffset: '0px', stickyBoundary: true, width: '96px' }
   }
 ]);
 async function checkIdentity() {
@@ -184,44 +254,99 @@ onUnmounted(() => {
 });
 </script>
 <template>
-  <section class="space-y-3" data-testid="video-library">
-    <h2 class="text-xl font-semibold">{{ vt('title') }}</h2>
-    <form class="flex flex-wrap items-center gap-2" @submit.prevent="search">
-      <Input
-        v-model="title"
-        :aria-label="vt('titleSearch')"
-        :placeholder="vt('titleSearch')"
-        class="max-w-xs"
-        maxlength="200"
-        @keydown.enter.prevent="search"
-      />
-      <Input
-        v-model="id"
-        :aria-label="vt('idSearch')"
-        :placeholder="vt('idSearch')"
-        class="max-w-52"
-        inputmode="numeric"
-        @keydown.enter.prevent="search"
-      />
-      <Button type="submit" :disabled="busy"><Search class="size-4" />{{ vt('search') }}</Button>
-      <Button variant="outline" :disabled="busy" @click="load(true)"
-        ><RefreshCw class="size-4" />{{ vt('refresh') }}</Button
-      >
-      <div class="ml-auto flex gap-1">
-        <Button variant="outline" :aria-pressed="view === 'cards'" @click="view = 'cards'">{{
-          vt('cards')
-        }}</Button
-        ><Button variant="outline" :aria-pressed="view === 'list'" @click="view = 'list'">{{
-          vt('list')
-        }}</Button>
+  <section data-testid="video-library">
+    <h2 class="mb-3 text-xl font-semibold">{{ vt('title') }}</h2>
+    <div
+      data-testid="video-toolbar"
+      class="flex flex-wrap items-center gap-3 rounded-t-lg border border-b-0 p-2"
+    >
+      <form class="flex min-w-0 flex-wrap items-center gap-2" @submit.prevent="search">
+        <Input
+          v-model="title"
+          :aria-label="vt('titleSearch')"
+          :placeholder="vt('titleSearch')"
+          class="w-48 max-w-full sm:w-56"
+          maxlength="200"
+          @keydown.enter.prevent="search"
+        />
+        <Button type="submit" variant="outline" :disabled="busy"
+          ><Search class="size-4" />{{ vt('search') }}</Button
+        >
+        <ListFilterDialog
+          v-model:open="filterOpen"
+          :active-count="filterCount"
+          :invalid="invalidId"
+          @apply="applyFilters"
+          @reset="draft = defaults()"
+        >
+          <fieldset class="space-y-3">
+            <legend class="font-medium">{{ t('common.filters.server') }}</legend>
+            <label class="grid gap-1 text-sm"
+              >{{ vt('idSearch') }}<Input v-model="draft.id" inputmode="numeric"
+            /></label>
+            <p v-if="invalidId" class="text-sm text-destructive">{{ vt('idInvalid') }}</p>
+          </fieldset>
+          <fieldset class="space-y-3">
+            <legend class="font-medium">{{ t('common.filters.page') }}</legend>
+            <p class="text-xs text-muted-foreground">{{ t('common.filters.pageHint') }}</p>
+            <label class="grid gap-1 text-sm"
+              >{{ vt('status')
+              }}<select v-model="draft.status" class="rounded-md border bg-background p-2">
+                <option value="">{{ vt('all') }}</option>
+                <option v-for="value in statuses" :key="value" :value="value">{{ value }}</option>
+              </select></label
+            >
+            <label class="grid gap-1 text-sm"
+              >{{ vt('quality')
+              }}<select v-model="draft.quality" class="rounded-md border bg-background p-2">
+                <option value="">{{ vt('all') }}</option>
+                <option v-for="value in qualities" :key="value" :value="value">{{ value }}</option>
+              </select></label
+            >
+            <label class="grid gap-1 text-sm"
+              >{{ vt('relations')
+              }}<select v-model="draft.related" class="rounded-md border bg-background p-2">
+                <option value="all">{{ vt('all') }}</option>
+                <option value="yes">{{ vt('withRelations') }}</option>
+                <option value="no">{{ vt('withoutRelations') }}</option>
+                <option value="unknown">{{ vt('relationUnknown') }}</option>
+              </select></label
+            >
+          </fieldset>
+        </ListFilterDialog>
+      </form>
+      <div class="flex flex-wrap items-center gap-2 sm:ml-auto">
+        <Button variant="outline" @click="uploadOpen = true"
+          ><Upload class="size-4" />{{ vt('upload') }}</Button
+        >
+        <Button
+          v-if="result?.issues.length"
+          variant="ghost"
+          size="icon"
+          :aria-label="vt('issues')"
+          @click="diagnosticsOpen = true"
+          ><Info class="size-4"
+        /></Button>
+        <div class="flex gap-1">
+          <Button variant="outline" :aria-pressed="view === 'cards'" @click="view = 'cards'">{{
+            vt('cards')
+          }}</Button
+          ><Button variant="outline" :aria-pressed="view === 'list'" @click="view = 'list'">{{
+            vt('list')
+          }}</Button>
+        </div>
       </div>
-    </form>
+    </div>
     <ErrorNotice v-if="error" :error="error" />
     <p v-if="busy" role="status">{{ vt('loading') }}</p>
-    <details v-if="result?.issues.length" class="text-sm text-muted-foreground">
-      <summary class="cursor-pointer">{{ vt('issues') }} ({{ result.issues.length }})</summary>
-      <p v-for="issue in result.issues" :key="issue">{{ issue }}</p>
-    </details>
+    <ModalDialog
+      v-model:open="diagnosticsOpen"
+      :title="vt('issues')"
+      :description="vt('compatibleDifference')"
+      ><ul class="space-y-2 break-all font-mono text-xs">
+        <li v-for="issue in result?.issues ?? []" :key="issue">{{ issue }}</li>
+      </ul></ModalDialog
+    >
     <template v-if="view === 'cards'">
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <button
@@ -259,26 +384,28 @@ onUnmounted(() => {
       :columns="columns"
       :data="rows"
       :pagination="false"
+      :selection-scope="JSON.stringify([page, pageSize, submitted, filters, alibabaLanguage, identity])"
       :empty-text="vt('empty')"
       column-settings-key="videos"
-      :locked-columns="['name', 'actions']"
+      :locked-columns="['actions']"
       :hidden-columns="['durationRaw', 'width', 'height', 'publisher', 'encryptedId']"
       :get-row-key="(video) => video.encryptedId ?? video.id ?? ''"
       :active-row-key="selected?.encryptedId"
-      :row-aria-label="(video) => `${vt('view')}: ${video.title ?? video.id ?? '—'}`"
-      @row-activate="selected = $event"
     />
     <TablePagination
-      v-if="result?.total !== null && result"
+      v-if="result"
       :page="page"
       :page-size="pageSize"
       :total="result.total"
+      :has-next-page="
+        result.total === null ? result.items.length === pageSize : page * pageSize < result.total
+      "
       :page-size-options="[20, 50]"
       :disabled="busy"
       @update:page="setPage"
       @update:page-size="setSize"
     />
-    <p v-else-if="result" class="text-muted-foreground">{{ vt('totalUnknown') }}</p>
     <VideoDrawer :video="selected" :identity="identity" @close="selected = null" />
+    <VideoUploadDialog v-if="uploadOpen" v-model:open="uploadOpen" @confirmed="load(true)" />
   </section>
 </template>

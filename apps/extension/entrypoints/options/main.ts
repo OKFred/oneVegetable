@@ -60,6 +60,7 @@ import { resolveExtensionStaticOperationAvailability } from '../../lib/operation
 import { EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY } from '../../lib/product-display-mutation-storage';
 import { extensionS3Storage, requestS3 } from '../../lib/s3-client';
 import { EXTENSION_S3_STORAGE_KEY } from '../../lib/s3-protocol';
+import { requestVideoUpload } from '../../lib/video-upload-client';
 
 const operationAvailability = new StaticOperationAvailabilityClient((operation) =>
   resolveExtensionStaticOperationAvailability(operation)
@@ -775,6 +776,7 @@ async function mountOptionsApp(): Promise<void> {
     gateway,
     settings,
     s3Storage: extensionS3Storage,
+    videoUploads: { videoUpload: requestVideoUpload },
     permissions,
     localData,
     onboarding,
