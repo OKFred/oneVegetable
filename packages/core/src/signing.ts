@@ -2,6 +2,7 @@ import { hmac } from '@noble/hashes/hmac.js';
 import { md5 } from '@noble/hashes/legacy.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex } from '@noble/hashes/utils.js';
+import { assertAlibabaBusinessParameters, capabilityRequiresSession } from './transport-security';
 
 import type { GatewayCredentials, SignMethod } from './types';
 
@@ -56,6 +57,7 @@ export function createAlibabaRequest(
   businessParameters: Readonly<Record<string, unknown>>,
   now = new Date()
 ): Record<string, string> {
+  assertAlibabaBusinessParameters(businessParameters);
   const showcaseField =
     method === 'alibaba.scbp.showcase.addproduct'
       ? 'product_id_list'
@@ -78,7 +80,7 @@ export function createAlibabaRequest(
     app_key: credentials.appKey,
     format: 'json',
     method,
-    session: method === 'alibaba.icbu.text.trans' ? undefined : credentials.accessToken,
+    session: capabilityRequiresSession(method) ? credentials.accessToken : undefined,
     sign_method: credentials.signMethod,
     simplify: true,
     timestamp: formatAlibabaTimestamp(now),
@@ -98,11 +100,12 @@ export function createAlibabaSyncRequest(
   businessParameters: Readonly<Record<string, unknown>>,
   now = new Date()
 ): Record<string, string> {
+  assertAlibabaBusinessParameters(businessParameters);
   const parameters = serializeAlibabaParameters({
     app_key: credentials.appKey,
     format: 'json',
     method,
-    session: credentials.accessToken,
+    session: capabilityRequiresSession(method) ? credentials.accessToken : undefined,
     sign_method: 'sha256',
     simplify: 'true',
     timestamp: String(now.getTime()),

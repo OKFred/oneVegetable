@@ -1,4 +1,4 @@
-import { getCapabilityDefinition } from '@one-vegetable/core';
+import { authorizeCapabilityCall, capabilityCallRisk } from '@one-vegetable/core';
 
 import type { OperationId } from '@one-vegetable/core';
 import type { AuthPrincipal } from './auth/types';
@@ -84,11 +84,13 @@ export function authorizeOperation(
   payload: Record<string, unknown>,
   flags: OperationFeatureFlags
 ): AbacDecision {
-  const capabilityDecision = capabilityPolicy(operation, payload, flags);
-  if (!capabilityDecision.allowed) return capabilityDecision;
   const risk = operationRisk(operation, payload);
+  if (risk === 'mutation' && principal.role !== 'admin') return denied('USER_MUTATION_DENIED');
+  if (operation === 'callCapability') {
+    const decision = authorizeCapabilityCall(payload);
+    if (!decision.allowed) return decision;
+  }
   if (risk === 'read') return { allowed: true, reasonCode: 'READ_ALLOWED' };
-  if (principal.role !== 'admin') return denied('USER_MUTATION_DENIED');
   const operationFlag = `operation:${operation}`;
   if (!flags.isEnabled(operationFlag)) {
     return denied(flags.disabledReason?.(operationFlag) ?? 'MUTATION_FLAG_DISABLED');
@@ -104,7 +106,7 @@ export function policySummary(): Record<string, unknown> {
   return {
     evaluationOrder: ['identity', 'abac', 'capability', 'emergencyPause', 'mutationFlag', 'contract'],
     roles: {
-      user: ['active read operations'],
+      user: ['enabled read operations'],
       admin: ['read operations', 'admin management', 'flag-enabled mutations']
     },
     invariants: [
@@ -127,31 +129,9 @@ export function extensionAdminPrincipal(): AuthPrincipal {
 
 function operationRisk(operation: OperationId, payload: Record<string, unknown>): 'read' | 'mutation' {
   if (operation === 'callCapability') {
-    const method = typeof payload.method === 'string' ? payload.method : '';
-    return getCapabilityDefinition(method)?.risk ?? 'mutation';
+    return capabilityCallRisk(payload.method);
   }
   return MUTATION_OPERATIONS.has(operation) ? 'mutation' : 'read';
-}
-
-function capabilityPolicy(
-  operation: OperationId,
-  payload: Record<string, unknown>,
-  flags: OperationFeatureFlags
-): AbacDecision {
-  if (operation !== 'callCapability') return { allowed: true, reasonCode: 'CAPABILITY_NOT_APPLICABLE' };
-  const method = typeof payload.method === 'string' ? payload.method : '';
-  const definition = getCapabilityDefinition(method);
-  if (!definition) return denied('CAPABILITY_UNKNOWN');
-  if (definition.lifecycle !== 'active') return denied('CAPABILITY_NOT_ACTIVE');
-  if (definition.restricted === true) return denied('CAPABILITY_RESTRICTED');
-  if (definition.risk === 'mutation' && !definition.realCallEnabled) {
-    return denied('CAPABILITY_REAL_CALL_DISABLED');
-  }
-  const capabilityFlag = `capability:${method}`;
-  if (definition.risk === 'mutation' && !flags.isEnabled(capabilityFlag)) {
-    return denied(flags.disabledReason?.(capabilityFlag) ?? 'CAPABILITY_MUTATION_FLAG_DISABLED');
-  }
-  return { allowed: true, reasonCode: 'CAPABILITY_ALLOWED' };
 }
 
 function denied(reasonCode: string): AbacDecision {

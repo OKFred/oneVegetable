@@ -41,7 +41,6 @@ import {
   validateProductGroupCreateInput,
   validateProductSchemaUpdateInput,
   validateSchemaPublishInput,
-  type ApiCapability,
   type AlibabaLanguage,
   type CredentialVaultRequest,
   type CredentialVaultResponse,
@@ -67,6 +66,7 @@ import {
 } from '@one-vegetable/core/capability-validation-worker';
 import { ExtensionAlibabaCredentialAcquisitionController } from '../lib/alibaba-credential-acquisition';
 import { ExtensionCredentialVaultSession } from '../lib/credential-vault-session';
+import { executeExtensionCapabilityCall } from '../lib/capability-call';
 import { resolveExtensionOperationAvailability } from '../lib/operation-policy';
 import { ExtensionProductDisplayMutationLifecycle } from '../lib/product-display-mutation-lifecycle';
 import { isTrustedExtensionPageSender } from '../lib/trusted-runtime-sender';
@@ -667,6 +667,14 @@ async function executeOperation(
     return definition;
   }
 
+  const availability = resolveExtensionOperationAvailability(operation, asRecord(payload));
+  if (!availability.allowed) {
+    throw new GatewayException({
+      code: availability.reasonCode,
+      message: availability.message,
+      retryable: false
+    });
+  }
   const settings = await loadSettings();
   if (galleryContext) {
     if (!trustedOptionsPage) throw gatewayFailure('GALLERY_CONTEXT_UNTRUSTED', 'GALLERY_CONTEXT_UNTRUSTED');
@@ -679,14 +687,6 @@ async function executeOperation(
     assertGalleryContextId(galleryContext.storage, await currentS3.contextId());
   }
   assertCredentials(settings);
-  const availability = resolveExtensionOperationAvailability(operation);
-  if (!availability.allowed) {
-    throw new GatewayException({
-      code: availability.reasonCode,
-      message: availability.message,
-      retryable: false
-    });
-  }
   const client = AlibabaClient.create(settings, {
     requestId,
     maxAttempts:
@@ -966,28 +966,7 @@ async function executeOperation(
       };
     }
     case 'callCapability': {
-      const method = requiredString(request, 'method');
-      const capability = findCapability(method);
-      assertCallable(capability);
-      const parameters = asRecord(request.parameters);
-      const requestIssues = await validateCapabilityRequest(method, parameters);
-      if (requestIssues.length > 0) {
-        throw new GatewayException({
-          code: 'REQUEST_CONTRACT_INVALID',
-          message: requestIssues.map((issue) => `${issue.instancePath} ${issue.message}`).join('；'),
-          retryable: false
-        });
-      }
-      const call = await client.call(method, parameters);
-      const data = unwrap(call.data, method);
-      const contractIssues = await validateCapabilityResponse(method, data);
-      return {
-        method,
-        traceId: readTraceId(call.data) ?? crypto.randomUUID(),
-        data,
-        contractValid: contractIssues.length === 0,
-        contractIssues
-      };
+      return executeExtensionCapabilityCall(client, request, requestId);
     }
   }
 }
@@ -1402,11 +1381,6 @@ function requiredStringArray(record: Record<string, unknown>, key: string): stri
   return value;
 }
 
-function readTraceId(value: unknown): string | undefined {
-  const record = asRecord(value);
-  return readString(record, ['trace_id', 'request_id']);
-}
-
 function assertCredentials(settings: GatewaySettings): void {
   if (!settings.appKey || !settings.appSecret || !settings.accessToken) {
     throw new GatewayException({
@@ -1414,24 +1388,6 @@ function assertCredentials(settings: GatewaySettings): void {
       message: 'Configure the App Key, App Secret, and Access Token in Settings first.',
       retryable: false
     });
-  }
-}
-
-function assertCallable(capability: ApiCapability | undefined): asserts capability is ApiCapability {
-  if (!capability) {
-    throw gatewayFailure('CAPABILITY_NOT_AUDITED', 'The API is not in the audited callable catalog.');
-  }
-  if (capability.restricted) {
-    throw gatewayFailure(
-      'CAPABILITY_RESTRICTED',
-      capability.restrictionReason ?? 'The API requires additional business permissions.'
-    );
-  }
-  if (!capability.enabled) {
-    throw gatewayFailure('CAPABILITY_NOT_INTEGRATED', 'The API contract, adapter, and tests are incomplete.');
-  }
-  if (!capability.realCallEnabled) {
-    throw gatewayFailure('REAL_MUTATION_DISABLED', 'This real write operation is disabled.');
   }
 }
 

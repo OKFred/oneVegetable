@@ -5,7 +5,7 @@ import {
   DashboardAdapter,
   downloadProductAsset,
   downloadPhotoForUpload,
-  findCapability,
+  executeCapabilityCall,
   GatewayException,
   getCapabilityDefinition,
   InsightsAdapter,
@@ -168,35 +168,12 @@ export class AlibabaReadGatewayClient implements GatewayClient {
     client: AlibabaClient,
     context?: GatewayRequestContext
   ): Promise<unknown> {
-    const capability = findCapability(payload.method);
-    if (!capability) throw gatewayError('CAPABILITY_UNKNOWN', '该能力不在审计目录中');
-    if (!capability.enabled || capability.lifecycle !== 'active') {
-      throw gatewayError('CAPABILITY_NOT_ACTIVE', '该能力未处于可调用状态');
-    }
-    if (capability.restricted) {
-      throw gatewayError('CAPABILITY_RESTRICTED', capability.restrictionReason ?? '该能力需要额外资格');
-    }
-    if (capability.risk !== 'read' || !capability.realCallEnabled) {
-      throw gatewayError('REAL_MUTATION_DISABLED', 'BFF 真实写能力保持关闭');
-    }
-
-    const requestIssues = await validateCapabilityRequest(payload.method, payload.parameters);
-    if (requestIssues.length > 0) {
-      throw gatewayError(
-        'REQUEST_CONTRACT_INVALID',
-        requestIssues.map((issue) => `${issue.instancePath} ${issue.message}`).join('；')
-      );
-    }
-    const call = await client.call(payload.method, payload.parameters);
-    const data = unwrapAlibabaResponse(call.data, payload.method);
-    const contractIssues = await validateCapabilityResponse(payload.method, data);
-    return {
-      method: payload.method,
-      traceId: readTraceId(call.data) ?? context?.requestId ?? crypto.randomUUID(),
-      data,
-      contractValid: contractIssues.length === 0,
-      contractIssues
-    };
+    return executeCapabilityCall(
+      client,
+      payload,
+      { validateCapabilityRequest, validateCapabilityResponse },
+      context?.requestId
+    );
   }
 
   private async requestDedicated<K extends OperationId>(
@@ -436,20 +413,6 @@ function unwrapAlibabaResponse(value: unknown, method: string): unknown {
   const record = readRecord(value);
   const key = `${method.replaceAll('.', '_')}_response`;
   return key in record ? record[key] : value;
-}
-
-function readTraceId(value: unknown): string | null {
-  const record = readRecord(value);
-  for (const key of ['request_id', 'trace_id']) {
-    if (typeof record[key] === 'string') return record[key];
-  }
-  for (const nested of Object.values(record)) {
-    const child = readRecord(nested);
-    for (const key of ['request_id', 'trace_id']) {
-      if (typeof child[key] === 'string') return child[key];
-    }
-  }
-  return null;
 }
 
 function readString(record: Record<string, unknown>, key: string): string {

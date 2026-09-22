@@ -56,13 +56,13 @@ import {
 } from '@one-vegetable/core/runtime';
 import '@one-vegetable/ui/styles.css';
 import { ALIBABA_CREDENTIAL_ACQUISITION_ORIGINS } from '../../lib/alibaba-credential-page-driver';
-import { resolveExtensionOperationAvailability } from '../../lib/operation-policy';
+import { resolveExtensionStaticOperationAvailability } from '../../lib/operation-availability';
 import { EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY } from '../../lib/product-display-mutation-storage';
 import { extensionS3Storage, requestS3 } from '../../lib/s3-client';
 import { EXTENSION_S3_STORAGE_KEY } from '../../lib/s3-protocol';
 
 const operationAvailability = new StaticOperationAvailabilityClient((operation) =>
-  resolveExtensionOperationAvailability(operation)
+  resolveExtensionStaticOperationAvailability(operation)
 );
 type RuntimeTranslator = (key: string, values?: Record<string, unknown>) => string;
 let activeRuntimeTranslator: RuntimeTranslator | null = null;
