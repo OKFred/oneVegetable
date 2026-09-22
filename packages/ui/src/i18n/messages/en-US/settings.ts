@@ -194,7 +194,7 @@ export const settings = {
       extensionDescription:
         'Connect directly from the extension without a backend. Credentials are encrypted locally and signed in the background. There is no extra password; this does not protect a compromised browser profile. Saving requests only the storage host permission. Keep the workbench open during transfers; check interrupted results before retrying. Transfers never resume automatically.',
       description:
-        'Connect S3-compatible object storage for gallery imports, exports, and backups. Secrets are encrypted by the backend.',
+        'Connect S3-compatible object storage for asset imports, exports, and backups. Secrets are encrypted by the backend.',
       configured: 'Configured',
       notConfigured: 'Not configured',
       unsupported: 'Server-side S3 configuration is unavailable in this runtime.',
@@ -225,7 +225,7 @@ export const settings = {
       rules: {
         title: 'Automatic import rules',
         description:
-          'S3 object paths are matched in order. The first match selects the target gallery group. Missing groups can be created automatically during import. Rules stay in this browser.',
+          'S3 object paths are matched in order. The first match selects the target image group. Missing groups can be created automatically during import. Rules stay in this browser.',
         add: 'Add rule',
         newRule: 'New rule',
         enabled: 'Enabled',
@@ -237,11 +237,11 @@ export const settings = {
         sourcePrefix: 'Source prefix',
         include: 'Include glob',
         exclude: 'Exclude globs (comma-separated)',
-        targetGroup: 'Target gallery group path',
+        targetGroup: 'Target image group path',
         empty: 'No rules. S3 assets will not enter the import queue until a rule is added.',
         save: 'Save import rules',
-        saved: 'Gallery S3 import rules saved locally.',
-        invalid: 'Gallery import rules are invalid'
+        saved: 'Image S3 import rules saved locally.',
+        invalid: 'Image import rules are invalid'
       }
     }
   },

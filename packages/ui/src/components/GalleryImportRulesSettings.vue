@@ -9,9 +9,11 @@ import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
 import { useUiI18n } from '../i18n';
 import { loadGalleryImportRuleSet, saveGalleryImportRuleSet } from '../lib/gallery-import-rules-storage';
+import { useUnsavedEditing } from '../lib/unsaved-editing';
 
 const { t } = useUiI18n();
 const ruleSet = ref<GalleryImportRuleSet>(loadGalleryImportRuleSet());
+const editing = useUnsavedEditing(() => ruleSet.value);
 const error = ref('');
 
 function addRule(): void {
@@ -41,6 +43,7 @@ function save(): void {
   error.value = '';
   try {
     ruleSet.value = saveGalleryImportRuleSet(ruleSet.value);
+    editing.markClean();
     toast.success(t('settings.s3.rules.saved'));
   } catch (cause: unknown) {
     error.value = cause instanceof Error ? cause.message : t('settings.s3.rules.invalid');

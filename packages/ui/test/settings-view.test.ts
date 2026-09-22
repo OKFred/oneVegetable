@@ -158,9 +158,14 @@ describe('SettingsView diagnostics', () => {
   it('shows the Node credential panel instead of environment-variable-only instructions', async () => {
     const wrapper = mountView('bff');
     await flushPromises();
-    await vi.waitFor(() => {
-      expect(wrapper.find('[data-testid="gateway-credential-panel"]').exists()).toBe(true);
-    });
+    // This is a lazy module: full-suite Windows transforms can exceed Vitest's
+    // default 1s polling window even though the import and component succeed.
+    await vi.waitFor(
+      () => {
+        expect(wrapper.find('[data-testid="gateway-credential-panel"]').exists()).toBe(true);
+      },
+      { timeout: 5_000 }
+    );
     const guide = wrapper.get('[data-testid="gateway-credential-panel"]');
     expect(guide.text()).toContain('Alibaba 凭据配置');
     expect(guide.text()).not.toContain('ONE_VEGETABLE_ALIBABA_APP_KEY');

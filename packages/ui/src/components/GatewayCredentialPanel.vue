@@ -9,6 +9,7 @@ import type {
   GatewayCredentialTestResult
 } from '@one-vegetable/core';
 import { useServices } from '../lib/services';
+import { useUnsavedEditing } from '../lib/unsaved-editing';
 import { useGatewayCredentialsI18n } from '../i18n/gateway-credentials';
 import { formatDateTime } from '../lib/date-time';
 import { notifyGatewayConfigurationChanged } from '../lib/gateway-configuration-events';
@@ -44,6 +45,7 @@ const fields = reactive({
   remark: ''
 });
 const real = computed(() => runtime?.backendMeta?.gatewayMode === 'real');
+const editing = useUnsavedEditing(() => fields, { enabled: () => dialog.value });
 const managed = computed(() => summary.value?.revision !== null && summary.value?.revision !== undefined);
 const valid = computed(() =>
   Boolean(fields.appKey.trim() && fields.appSecret.trim() && fields.accessToken.trim())
@@ -77,9 +79,11 @@ function resetForm(): void {
   });
   pendingBundle.value = null;
   fileName.value = '';
+  editing.markClean();
 }
-function closeDialog(open: boolean): void {
+async function closeDialog(open: boolean): Promise<void> {
   if (busy.value) return;
+  if (!open && !(await editing.confirmLeave())) return;
   dialog.value = open;
   if (!open) resetForm();
 }

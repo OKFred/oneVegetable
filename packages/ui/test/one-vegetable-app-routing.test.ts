@@ -19,6 +19,7 @@ import { appHash, PAGE_IDS, pageHash, parseAppHash } from '../src/lib/hash-route
 
 vi.mock('../src/views/DashboardView.vue', () => ({ default: { template: '<div />' } }));
 vi.mock('../src/views/ProductsView.vue', () => ({ default: { template: '<div />' } }));
+vi.mock('../src/views/InventoryView.vue', () => ({ default: { template: '<div />' } }));
 vi.mock('../src/views/PhotosView.vue', () => ({ default: { template: '<div />' } }));
 vi.mock('../src/views/RfqsView.vue', () => ({ default: { template: '<div />' } }));
 vi.mock('../src/views/OrdersView.vue', () => ({ default: { template: '<div />' } }));
@@ -85,6 +86,10 @@ describe('OneVegetableApp hash navigation', () => {
         return () => h('div', { 'data-testid': 'review-prompt' });
       }
     });
+    const StartupStub = defineComponent({
+      emits: ['ready'],
+      template: '<button data-testid="finish-startup" @click="$emit(\'ready\')">Ready</button>'
+    });
     const wrapper = shallowMount(OneVegetableApp, {
       props: {
         gateway: new MockGatewayClient(0),
@@ -104,6 +109,7 @@ describe('OneVegetableApp hash navigation', () => {
         stubs: {
           AlibabaCredentialAcquisitionDialog: AcquisitionStub,
           ExtensionReviewPrompt: ReviewPromptStub,
+          WorkbenchStartupDialogs: StartupStub,
           OnboardingDialog: OnboardingStub
         }
       }
@@ -119,6 +125,12 @@ describe('OneVegetableApp hash navigation', () => {
     expect(wrapper.get('[data-testid="extension-credential-acquisition"]').attributes('data-testid')).toBe(
       'extension-credential-acquisition'
     );
+    expect(wrapper.find('[data-testid="review-prompt"]').exists()).toBe(false);
+    wrapper.getComponent(AcquisitionStub).vm.$emit('update:open', false);
+    await flushPromises();
+    expect(wrapper.find('[data-testid="review-prompt"]').exists()).toBe(false);
+    await wrapper.get('[data-testid="finish-startup"]').trigger('click');
+    await flushPromises();
     expect(wrapper.find('[data-testid="review-prompt"]').exists()).toBe(true);
     wrapper.unmount();
   });

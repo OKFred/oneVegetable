@@ -13,6 +13,7 @@ import Card from './ui/Card.vue';
 import Input from './ui/Input.vue';
 import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
+import { useUnsavedEditing } from '../lib/unsaved-editing';
 
 const { control: bffControl, s3Storage, mode } = useServices();
 const control = s3Storage ?? bffControl;
@@ -33,6 +34,7 @@ const model = reactive<S3StorageConfiguration>({
   rootPrefix: 'one-vegetable/gallery'
 });
 const remark = ref<string | null>(null);
+const editing = useUnsavedEditing(() => ({ model, remark: remark.value }));
 const supported = computed(
   () =>
     control?.s3StorageConfiguration !== undefined &&
@@ -53,6 +55,7 @@ onMounted(load);
 
 async function load(): Promise<void> {
   if (!control?.s3StorageConfiguration) return;
+  if (editing.dirty.value && !(await editing.confirmLeave())) return;
   busy.value = 'load';
   error.value = null;
   try {
@@ -66,6 +69,7 @@ async function load(): Promise<void> {
       model.rootPrefix = summary.value.rootPrefix ?? '';
       remark.value = summary.value.remark;
     }
+    editing.markClean();
   } catch (cause: unknown) {
     error.value = cause;
   } finally {
@@ -89,6 +93,7 @@ async function save(): Promise<void> {
     model.accessKeyId = '';
     model.secretAccessKey = '';
     model.sessionToken = null;
+    editing.markClean();
     toast.success(t('settings.s3.saved'));
   } catch (cause: unknown) {
     error.value = cause;
@@ -133,6 +138,7 @@ async function clearConfiguration(): Promise<void> {
       rootPrefix: 'one-vegetable/gallery'
     });
     remark.value = null;
+    editing.markClean();
     toast.success(t('settings.s3.cleared'));
   } catch (cause: unknown) {
     error.value = cause;

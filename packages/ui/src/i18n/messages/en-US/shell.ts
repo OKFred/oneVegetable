@@ -26,13 +26,7 @@ export const shell = {
     unlock: 'Unlock',
     unlocking: 'Unlocking…',
     unlocked: 'Credentials unlocked. Resuming queries for the current page.',
-    unlockFailed: 'Unable to unlock. Check your vault passphrase, or inspect credential status in Settings.',
-    cleanupTitle: 'Clear legacy local editing drafts?',
-    cleanupDescription:
-      'Product and RFQ editing sessions are no longer restored automatically. Confirm to remove only these old local drafts, or keep them without restoring them. Batch queues, platform drafts, tasks and column preferences will remain.',
-    keep: 'Keep old data',
-    clear: 'Confirm cleanup',
-    cleanupFailed: 'Cleanup did not finish. Try again in Settings under local data management.'
+    unlockFailed: 'Unable to unlock. Check your vault passphrase, or inspect credential status in Settings.'
   },
   identity: {
     extensionAdmin: 'Local administrator',

@@ -4,17 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CredentialVaultRepository, CredentialVaultStatus } from '@one-vegetable/core';
 import WorkbenchStartupDialogs from '../src/components/WorkbenchStartupDialogs.vue';
 import { uiI18n } from '../src/i18n';
-import {
-  claimLegacyEditorNotice,
-  clearLegacyEditorDrafts,
-  legacyEditorDraftKeys
-} from '../src/lib/legacy-editor-cleanup';
 
 vi.mock('vue-sonner', () => ({ toast: { success: vi.fn() } }));
 beforeEach(() => {
   localStorage.clear();
 });
 afterEach(() => {
+  vi.restoreAllMocks();
   document.body.replaceChildren();
   uiI18n.global.locale.value = 'zh-CN';
   document.documentElement.classList.remove('dark');
@@ -104,7 +100,7 @@ describe('workbench startup dialogs', () => {
     expect(wrapper.emitted('ready')).toHaveLength(1);
     wrapper.unmount();
   });
-  it('allows later and only then offers exact legacy cleanup before declaring ready', async () => {
+  it('allows later immediately without offering legacy cleanup or modifying old drafts', async () => {
     localStorage.setItem('one-vegetable-product-editor-drafts-v3', 'private draft');
     localStorage.setItem('one-vegetable:rfq-draft:1', 'private draft');
     localStorage.setItem('one-vegetable:batch-queue', 'keep');
@@ -118,16 +114,16 @@ describe('workbench startup dialogs', () => {
     expect(document.body.textContent).not.toContain('清理旧版本地编辑草稿');
     button('稍后解锁').click();
     await flushPromises();
-    expect(wrapper.emitted('ready')).toBeUndefined();
-    button('保留旧数据').click();
-    await flushPromises();
     expect(wrapper.emitted('ready')).toHaveLength(1);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
     expect(repository.unlock).not.toHaveBeenCalled();
     expect(localStorage.getItem('one-vegetable-product-editor-drafts-v3')).toBe('private draft');
-    expect(claimLegacyEditorNotice(localStorage)).toEqual([]);
+    expect(localStorage.getItem('one-vegetable:rfq-draft:1')).toBe('private draft');
+    expect(localStorage.getItem('one-vegetable:batch-queue')).toBe('keep');
+    expect(localStorage.getItem('one-vegetable:legacy-editor-drafts:notice:v1')).toBeNull();
     wrapper.unmount();
   });
-  it('cleans only consented legacy keys and preserves queue, task and column records', () => {
+  it('never inspects or changes local drafts, queues, tasks or preferences at startup', async () => {
     const old = [
       'one-vegetable-product-schema-draft',
       'one-vegetable-product-editor-drafts-v2',
@@ -138,14 +134,23 @@ describe('workbench startup dialogs', () => {
     [...old, ...keep].forEach((key) => {
       localStorage.setItem(key, '{}');
     });
-    expect(legacyEditorDraftKeys(localStorage)).toEqual(expect.arrayContaining(old));
-    clearLegacyEditorDrafts(localStorage, [...claimLegacyEditorNotice(localStorage), ...keep]);
-    old.forEach((key) => {
-      expect(localStorage.getItem(key)).toBeNull();
+    const storageMethods = ['getItem', 'key', 'setItem', 'removeItem', 'clear'] as const;
+    const spies = storageMethods.map((method) => vi.spyOn(Storage.prototype, method));
+    const wrapper = mount(WorkbenchStartupDialogs, {
+      props: { vault: vault('unlocked'), extension: true },
+      attachTo: document.body
     });
-    keep.forEach((key) => {
+    await flushPromises();
+    expect(wrapper.emitted('ready')).toHaveLength(1);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    for (const spy of spies) {
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
+    }
+    [...old, ...keep].forEach((key) => {
       expect(localStorage.getItem(key)).toBe('{}');
     });
+    wrapper.unmount();
   });
   it('keeps unlock failure local and removes the password after each attempt', async () => {
     const repository = vault('locked');

@@ -14,6 +14,7 @@ import ErrorNotice from './ErrorNotice.vue';
 import { useUiI18n } from '../i18n';
 import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
+import { useUnsavedEditing } from '../lib/unsaved-editing';
 
 const { extensionSocialBackend, socialPublishing } = useServices();
 const { t } = useUiI18n();
@@ -23,6 +24,7 @@ const deviceName = ref(t('settings.socialBackend.defaultDeviceName'));
 const busy = ref(false);
 const error = ref<unknown>(null);
 const disconnectConfirmation = ref(false);
+const editing = useUnsavedEditing(() => ({ baseUrl: baseUrl.value, deviceName: deviceName.value }));
 
 const stateLabel = computed(() => {
   if (status.value === null) return t('settings.socialBackend.states.loading');
@@ -40,6 +42,7 @@ onMounted(refreshStatus);
 
 async function refreshStatus(): Promise<void> {
   if (!extensionSocialBackend) return;
+  if (editing.dirty.value && !(await editing.confirmLeave())) return;
   busy.value = true;
   error.value = null;
   try {
@@ -47,6 +50,7 @@ async function refreshStatus(): Promise<void> {
     status.value = current;
     if (current.baseUrl) baseUrl.value = current.baseUrl;
     if (current.deviceName) deviceName.value = current.deviceName;
+    editing.markClean();
   } catch (cause: unknown) {
     error.value = cause;
   } finally {
@@ -60,6 +64,7 @@ async function startPairing(): Promise<void> {
   error.value = null;
   try {
     status.value = await extensionSocialBackend.start(baseUrl.value, deviceName.value);
+    editing.markClean();
     toast.success(t('settings.socialBackend.pairCreated'));
   } catch (cause: unknown) {
     error.value = cause;
@@ -90,6 +95,7 @@ async function disconnect(): Promise<void> {
   try {
     status.value = await extensionSocialBackend.disconnect();
     baseUrl.value = '';
+    editing.markClean();
     disconnectConfirmation.value = false;
     toast.success(t('settings.socialBackend.disconnected'));
   } catch (cause: unknown) {

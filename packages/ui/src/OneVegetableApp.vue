@@ -19,6 +19,7 @@ import {
   Image,
   Menu,
   PlugZap,
+  PackageSearch,
   ShieldCheck,
   Settings,
   ShoppingCart,
@@ -65,6 +66,14 @@ import ExtensionReviewPrompt from './components/ExtensionReviewPrompt.vue';
 import LanguageToggle from './components/LanguageToggle.vue';
 import OnboardingDialog from './components/OnboardingDialog.vue';
 import SessionExpiredDialog from './components/SessionExpiredDialog.vue';
+import UnsavedEditingDialog from './components/UnsavedEditingDialog.vue';
+import WorkbenchStartupDialogs from './components/WorkbenchStartupDialogs.vue';
+import {
+  UnsavedEditingService,
+  installEditingNavigationGuard,
+  provideUnsavedEditing,
+  VAULT_UNLOCKED_EVENT
+} from './lib/unsaved-editing';
 import ThemeToggle from './components/ThemeToggle.vue';
 import { useUiI18n } from './i18n';
 import { pageHash, parsePageHash, type PageId } from './lib/hash-router';
@@ -72,6 +81,8 @@ import type { RuntimeState } from './lib/data-source';
 import { applyAppTheme, useAppPreferences } from './lib/preferences';
 import { provideServices } from './lib/services';
 import type { S3StorageControl } from '@one-vegetable/core/s3-storage';
+import type { VideoUploadControl } from '@one-vegetable/core/video-upload';
+import { provideListIdentityScope } from './lib/list-identity-scope';
 
 const props = defineProps<{
   gateway: GatewayClient;
@@ -83,6 +94,7 @@ const props = defineProps<{
   onboarding?: OnboardingRepository;
   control?: ControlClient;
   s3Storage?: S3StorageControl;
+  videoUploads?: VideoUploadControl;
   socialPublishing?: SocialPublishingClient;
   extensionSocialBackend?: ExtensionSocialBackendRepository;
   productDescriptionTemplates?: ProductDescriptionTemplateClient;
@@ -97,6 +109,41 @@ const runtime = reactive<RuntimeState>({
   metaStatus: props.mode === 'bff' ? 'loading' : 'ready'
 });
 const queryClient = useQueryClient();
+const editing = new UnsavedEditingService();
+provideUnsavedEditing(editing);
+const uninstallEditingNavigation = installEditingNavigationGuard(editing);
+const startupReady = ref(false);
+let workbenchAlive = true;
+const vaultKnownLocked = ref(false);
+let checkingUnlockedSession = false;
+function resumeReadQueries(): void {
+  if (!workbenchAlive) return;
+  vaultKnownLocked.value = false;
+  // Invalidating Query entries cannot re-execute mutations or resume transfer tasks.
+  void queryClient.invalidateQueries({ refetchType: 'active' });
+}
+async function checkUnlockedSession(): Promise<void> {
+  if (
+    !startupReady.value ||
+    !vaultKnownLocked.value ||
+    checkingUnlockedSession ||
+    props.mode !== 'extension' ||
+    !props.vault
+  )
+    return;
+  checkingUnlockedSession = true;
+  try {
+    if ((await props.vault.status()).state === 'unlocked') resumeReadQueries();
+  } catch {
+    // Do not turn a transient status failure into another password dialog.
+  } finally {
+    checkingUnlockedSession = false;
+  }
+}
+function handleWorkbenchFocus(): void {
+  void checkUnlockedSession();
+}
+watch(startupReady, handleWorkbenchFocus);
 const credentialEpoch = ref(0);
 const credentialScope = createGatewayConfigurationScope(props.gateway);
 const scopedGateway = credentialScope.gateway;
@@ -122,6 +169,7 @@ provideServices({
     : {}),
   ...(props.control ? { control: props.control } : {}),
   ...(props.s3Storage ? { s3Storage: props.s3Storage } : {}),
+  ...(props.videoUploads ? { videoUploads: props.videoUploads } : {}),
   ...(props.socialPublishing ? { socialPublishing: props.socialPublishing } : {}),
   ...(props.extensionSocialBackend ? { extensionSocialBackend: props.extensionSocialBackend } : {}),
   ...(props.productDescriptionTemplates
@@ -140,6 +188,9 @@ const galleryTransfers = new GalleryTransferService({
 });
 provideGalleryTransfers(galleryTransfers);
 onBeforeUnmount(() => {
+  workbenchAlive = false;
+  uninstallEditingNavigation();
+  editing.dispose();
   galleryTransfers.dispose();
 });
 
@@ -157,6 +208,7 @@ const baseItems: NavigationItem[] = [
   { id: 'photos', labelKey: 'shell.navigation.photos', icon: Image },
   { id: 'rfqs', labelKey: 'shell.navigation.rfqs', icon: Handshake },
   { id: 'orders', labelKey: 'shell.navigation.orders', icon: ShoppingCart },
+  { id: 'inventory', labelKey: 'shell.navigation.inventory', icon: PackageSearch },
   { id: 'logistics', labelKey: 'shell.navigation.logistics', icon: Truck },
   { id: 'insights', labelKey: 'shell.navigation.insights', icon: BarChart3 },
   { id: 'capabilities', labelKey: 'shell.navigation.capabilities', icon: PlugZap },
@@ -166,6 +218,18 @@ const baseItems: NavigationItem[] = [
 ];
 const { locale, t } = useUiI18n();
 const session = ref<ControlSession | null>(null);
+provideListIdentityScope(
+  computed(() =>
+    JSON.stringify([
+      props.mode,
+      session.value?.principal.actorId ?? null,
+      credentialEpoch.value,
+      galleryTransfers.currentContext.value?.identity ?? null,
+      galleryTransfers.currentContext.value?.gateway ?? null,
+      galleryTransfers.currentContext.value?.storage ?? null
+    ])
+  )
+);
 const { theme: themePreference } = useAppPreferences();
 const darkTheme = ref(applyAppTheme(themePreference.value) === 'dark');
 const authLoading = ref(props.mode === 'bff' && props.control !== undefined);
@@ -197,6 +261,7 @@ let unsubscribeAuthenticationEvents: (() => void) | null = null;
 const views: Record<PageId, Component> = {
   dashboard: defineAsyncComponent(() => import('./views/DashboardView.vue')),
   products: defineAsyncComponent(() => import('./views/ProductsView.vue')),
+  inventory: defineAsyncComponent(() => import('./views/InventoryView.vue')),
   photos: defineAsyncComponent(() => import('./views/GalleryView.vue')),
   rfqs: defineAsyncComponent(() => import('./views/RfqsView.vue')),
   orders: defineAsyncComponent(() => import('./views/OrdersView.vue')),
@@ -297,17 +362,18 @@ function handleAuthenticated(nextSession: ControlSession): void {
   syncPageFromHash();
 }
 
-async function handleOnboardingReady(destination?: 'credential-acquisition'): Promise<void> {
-  workspaceReady.value = true;
+function handleOnboardingReady(destination?: 'credential-acquisition'): void {
   if (destination === 'credential-acquisition') {
-    await nextTick();
     credentialAcquisitionOpen.value = true;
   }
+  workspaceReady.value = true;
 }
 
 watch(themePreference, syncTheme);
 
 onMounted(async () => {
+  globalThis.addEventListener('focus', handleWorkbenchFocus);
+  globalThis.addEventListener(VAULT_UNLOCKED_EVENT, resumeReadQueries);
   if (props.mode === 'bff') {
     globalThis.addEventListener(GATEWAY_CONFIGURATION_EVENT, handleCredentialConfigurationChange);
     if (typeof BroadcastChannel !== 'undefined') {
@@ -349,6 +415,8 @@ async function loadBackendMeta(control: ControlClient): Promise<void> {
 }
 
 onBeforeUnmount(() => {
+  globalThis.removeEventListener('focus', handleWorkbenchFocus);
+  globalThis.removeEventListener(VAULT_UNLOCKED_EVENT, resumeReadQueries);
   globalThis.removeEventListener(GATEWAY_CONFIGURATION_EVENT, handleCredentialConfigurationChange);
   credentialChannel?.close();
   colorScheme.removeEventListener('change', syncTheme);
@@ -365,7 +433,11 @@ function handleAuthenticationRequired(event: BffAuthenticationRequiredEvent): vo
   authenticationRequired.value = event;
 }
 
-function beginReauthentication(): void {
+async function beginReauthentication(): Promise<void> {
+  if (!(await editing.confirmLeave())) {
+    authenticationRequired.value = null;
+    return;
+  }
   authenticationRequired.value = null;
   session.value = null;
   workspaceReady.value = true;
@@ -373,6 +445,7 @@ function beginReauthentication(): void {
 
 async function logout(): Promise<void> {
   if (!props.control) return;
+  if (!(await editing.confirmLeave())) return;
   await props.control.logout();
   authenticationRequired.value = null;
   session.value = null;
@@ -413,6 +486,7 @@ function avatarInitials(name: string): string {
       @authenticated="handleAuthenticated"
     />
     <SessionExpiredDialog :open="authenticationRequired !== null" @reauthenticate="beginReauthentication" />
+    <UnsavedEditingDialog :service="editing" />
     <OnboardingDialog v-if="onboardingActive" @ready="handleOnboardingReady" />
     <AlibabaCredentialAcquisitionDialog
       v-if="mode === 'extension' && alibabaCredentialAcquisition"
@@ -425,8 +499,24 @@ function avatarInitials(name: string): string {
       data-testid="cloud-credential-acquisition"
     />
     <ExtensionReviewPrompt
-      v-if="mode === 'extension' && workspaceReady && reviewPrompt"
+      v-if="
+        mode === 'extension' && workspaceReady && startupReady && !credentialAcquisitionOpen && reviewPrompt
+      "
       :repository="reviewPrompt"
+    />
+    <WorkbenchStartupDialogs
+      v-if="
+        workspaceReady &&
+        !startupReady &&
+        !credentialAcquisitionOpen &&
+        !authLoading &&
+        (mode !== 'bff' || session)
+      "
+      :extension="mode === 'extension'"
+      v-bind="vault ? { vault } : {}"
+      @ready="startupReady = true"
+      @unlocked="resumeReadQueries"
+      @locked="vaultKnownLocked = true"
     />
     <FeedbackLauncher :mode="mode" />
     <template v-if="!authLoading && (mode !== 'bff' || session) && workspaceReady">

@@ -177,7 +177,7 @@ export const settings = {
       title: 'S3 素材存储',
       extensionDescription:
         '插件独立连接 S3，无需部署后端。密钥在本机加密保存，由后台签名；不另设口令，不能防止浏览器配置文件被入侵。保存时仅申请对应存储域名权限。传输时请保持工作台打开；中断后先核对结果，不会自动重传。',
-      description: '连接兼容 S3 的对象存储，用于图库素材导入、导出和备份。密钥由后端加密保存。',
+      description: '连接兼容 S3 的对象存储，用于素材导入、导出和备份。密钥由后端加密保存。',
       configured: '已配置',
       notConfigured: '未配置',
       unsupported: '当前运行模式未提供服务端 S3 配置。',
@@ -206,7 +206,7 @@ export const settings = {
       rules: {
         title: '自动导入规则',
         description:
-          '按顺序匹配 S3 对象路径；第一条命中的规则决定目标图库分组。导入时可选择自动创建缺失分组。规则仅保存在当前浏览器。',
+          '按顺序匹配 S3 对象路径；第一条命中的规则决定目标图片分组。导入时可选择自动创建缺失分组。规则仅保存在当前浏览器。',
         add: '新增规则',
         newRule: '新规则',
         enabled: '启用',
@@ -218,11 +218,11 @@ export const settings = {
         sourcePrefix: '来源前缀',
         include: '包含 Glob',
         exclude: '排除 Glob（逗号分隔）',
-        targetGroup: '目标图库分组路径',
+        targetGroup: '目标图片分组路径',
         empty: '尚无规则；没有规则时 S3 素材不会进入导入队列。',
         save: '保存导入规则',
-        saved: '图库 S3 导入规则已保存在本机。',
-        invalid: '图库导入规则无效'
+        saved: '图片 S3 导入规则已保存在本机。',
+        invalid: '图片导入规则无效'
       }
     }
   },

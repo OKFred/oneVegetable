@@ -51,6 +51,7 @@ import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import type { DataColumn } from '../lib/table';
+import { useUnsavedEditing, VAULT_UNLOCKED_EVENT } from '../lib/unsaved-editing';
 
 const {
   gateway,
@@ -99,6 +100,16 @@ const vaultError = ref<unknown>(null);
 const credentialImportError = ref<unknown>(null);
 const credentialAcquisitionOpen = ref(false);
 const idleTimeoutMinutes = ref(CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES);
+const settingsLoaded = ref(false);
+const credentialEditing = useUnsavedEditing(() => model.value, { enabled: () => settingsLoaded.value });
+const policyEditing = useUnsavedEditing(
+  () => ({
+    idleTimeoutMinutes: idleTimeoutMinutes.value,
+    newPassphrase: newVaultPassphrase.value,
+    confirmation: newVaultPassphraseConfirmation.value
+  }),
+  { enabled: () => settingsLoaded.value }
+);
 let settingsInitialization: Promise<void> = Promise.resolve();
 const settingsConfirmation = ref<
   { kind: 'revoke-permission'; origin: string } | { kind: 'clear-diagnostics' } | null
@@ -184,6 +195,9 @@ async function initializeView(): Promise<void> {
     initializeSettings()
   ]);
   if (storedSettings) model.value = storedSettings;
+  credentialEditing.markClean();
+  policyEditing.markClean();
+  settingsLoaded.value = true;
 }
 
 async function initializeSettings(): Promise<GatewaySettings | undefined> {
@@ -217,6 +231,7 @@ async function save(): Promise<void> {
         mode === 'mock' ? t('settings.credentials.mockSavedToast') : t('settings.credentials.savedToast')
       );
     }
+    credentialEditing.markClean();
   } catch (error: unknown) {
     const visibleError = userVisibleCause(error, t('settings.credentials.saveError'));
     vaultError.value = visibleError;
@@ -234,6 +249,7 @@ async function importCredentialBundle(event: Event): Promise<void> {
   credentialImportError.value = null;
   try {
     await settingsInitialization;
+    if (!(await credentialEditing.confirmLeave())) return;
     if (file.size > 256 * 1024) throw new Error(t('settings.credentials.bundleTooLarge'));
     const imported = readImportedCredentials(JSON.parse(await file.text()) as unknown);
     model.value = { ...model.value, ...imported };
@@ -248,6 +264,7 @@ async function importCredentialBundle(event: Event): Promise<void> {
 async function handleAcquiredCredentialsSaved(status: CredentialVaultStatus): Promise<void> {
   applyVaultStatus(status);
   model.value = await settings.load();
+  credentialEditing.markClean();
   feedback.value = t('settings.credentials.acquired');
   await refreshLocalData();
 }
@@ -295,7 +312,11 @@ async function unlockVault(): Promise<void> {
     applyVaultStatus(await vault.unlock(vaultPassphrase.value));
     model.value = await settings.load();
     clearVaultPassphrases();
+    credentialEditing.markClean();
+    policyEditing.markClean();
     feedback.value = t('settings.vault.unlockedFeedback');
+    toast.success(t('settings.vault.unlockedFeedback'));
+    globalThis.dispatchEvent(new Event(VAULT_UNLOCKED_EVENT));
   } catch (error: unknown) {
     vaultError.value = userVisibleCause(error, t('settings.vault.unlockError'));
   } finally {
@@ -312,6 +333,8 @@ async function migrateVault(): Promise<void> {
     applyVaultStatus(await vault.migrate(vaultPassphrase.value));
     model.value = await settings.load();
     clearVaultPassphrases();
+    credentialEditing.markClean();
+    policyEditing.markClean();
     feedback.value = t('settings.vault.migratedFeedback');
     await refreshLocalData();
   } catch (error: unknown) {
@@ -323,6 +346,7 @@ async function migrateVault(): Promise<void> {
 
 async function lockVault(): Promise<void> {
   if (!vault) return;
+  if (!(await credentialEditing.confirmLeave())) return;
   vaultBusy.value = true;
   try {
     applyVaultStatus(await vault.lock());
@@ -333,6 +357,7 @@ async function lockVault(): Promise<void> {
       endpoint: ALIBABA_GATEWAY,
       signMethod: 'hmac'
     };
+    credentialEditing.markClean();
     feedback.value = t('settings.vault.lockedFeedback');
   } catch (error: unknown) {
     vaultError.value = userVisibleCause(error, t('settings.vault.lockError'));
@@ -349,6 +374,7 @@ async function rotateVaultPassphrase(): Promise<void> {
     assertMatchingPassphrases(newVaultPassphrase.value, newVaultPassphraseConfirmation.value);
     applyVaultStatus(await vault.rotate(newVaultPassphrase.value));
     clearVaultPassphrases();
+    policyEditing.markClean();
     feedback.value = t('settings.vault.rotatedFeedback');
   } catch (error: unknown) {
     vaultError.value = userVisibleCause(error, t('settings.vault.rotateError'));
@@ -363,6 +389,7 @@ async function updateVaultPolicy(): Promise<void> {
   vaultError.value = null;
   try {
     applyVaultStatus(await vault.updatePolicy(idleTimeoutMinutes.value));
+    policyEditing.markClean();
     feedback.value =
       idleTimeoutMinutes.value === 0
         ? t('settings.vault.idleDisabledFeedback')
@@ -520,6 +547,8 @@ async function clearAllLocalData(): Promise<void> {
     await clearVideoAssociationLocalData(() => clearShowcaseLocalData(() => localData.clearAll()));
     const { clearColumnPreferences } = await import('../lib/column-preferences');
     clearColumnPreferences();
+    const { clearAllDashboardShopUrls } = await import('../lib/dashboard-shop-url');
+    clearAllDashboardShopUrls(globalThis.localStorage);
     clearConfirmation.value = '';
     model.value = {
       appKey: '',
@@ -529,6 +558,8 @@ async function clearAllLocalData(): Promise<void> {
       signMethod: 'hmac'
     };
     await Promise.all([refreshLocalData(), refreshDiagnostics(), refreshPermissions()]);
+    credentialEditing.markClean();
+    policyEditing.markClean();
     feedback.value = t('settings.localData.cleared');
   } catch (error: unknown) {
     dataError.value = userVisibleCause(error, t('settings.localData.clearError'));
@@ -1004,6 +1035,7 @@ function confirmLanguagePreference(): void {
       </div>
       <ErrorNotice v-if="dataError" class="mt-3" :error="dataError" compact />
       <DataTable
+        column-settings-key="settings-local-data"
         class="mt-4"
         :columns="localDataColumns"
         :data="dataInventory?.categories ?? []"

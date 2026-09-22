@@ -31,6 +31,7 @@ import ErrorNotice from './ErrorNotice.vue';
 import { useUiI18n } from '../i18n';
 import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
+import { useUnsavedEditing } from '../lib/unsaved-editing';
 
 const { control } = useServices();
 const { t } = useUiI18n();
@@ -43,6 +44,12 @@ const appId = ref('');
 const appSecret = ref('');
 const publicOrigin = ref(globalThis.location.origin);
 const remark = ref('');
+const editing = useUnsavedEditing(() => ({
+  appId: appId.value,
+  appSecret: appSecret.value,
+  publicOrigin: publicOrigin.value,
+  remark: remark.value
+}));
 const loading = ref(false);
 const error = ref<unknown>(null);
 const pairingRefreshState = ref<'idle' | 'waiting' | 'timeout'>('idle');
@@ -142,6 +149,7 @@ onBeforeUnmount(() => {
 
 async function refresh(): Promise<void> {
   if (!supported.value || !control?.metaAppConfiguration || !control.listMetaConnections) return;
+  if (editing.dirty.value && !(await editing.confirmLeave())) return;
   loading.value = true;
   error.value = null;
   try {
@@ -157,6 +165,7 @@ async function refresh(): Promise<void> {
     applyDevices(nextDevices);
     publicOrigin.value = nextConfiguration.publicOrigin ?? globalThis.location.origin;
     remark.value = nextConfiguration.remark ?? '';
+    editing.markClean();
   } catch (cause: unknown) {
     error.value = cause;
   } finally {
@@ -249,6 +258,7 @@ async function executeConfirmation(): Promise<void> {
         remark: remark.value.trim() || null
       });
       appSecret.value = '';
+      editing.markClean();
       toast.success(t('admin.meta.feedback.configurationSaved'));
     } else if (action.kind === 'clear') {
       const revision = configuration.value?.revision;
@@ -258,6 +268,7 @@ async function executeConfirmation(): Promise<void> {
       await control.clearMetaAppConfiguration(revision);
       appId.value = '';
       appSecret.value = '';
+      editing.markClean();
       await refresh();
       toast.success(t('admin.meta.feedback.configurationCleared'));
     } else if (action.kind === 'disconnect') {
@@ -294,6 +305,7 @@ async function executeConfirmation(): Promise<void> {
 
 async function startOAuth(includeInstagram: boolean): Promise<void> {
   if (!control?.startMetaOAuth) return;
+  if (!(await editing.confirmLeave())) return;
   loading.value = true;
   error.value = null;
   try {

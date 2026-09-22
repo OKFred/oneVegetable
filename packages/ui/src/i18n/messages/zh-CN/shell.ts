@@ -23,13 +23,7 @@ export const shell = {
     unlock: '解锁',
     unlocking: '正在解锁…',
     unlocked: '凭据已解锁，正在恢复当前页面的查询。',
-    unlockFailed: '解锁失败，请检查保险库口令，或前往设置检查凭据状态。',
-    cleanupTitle: '清理旧版本地编辑草稿？',
-    cleanupDescription:
-      '新版不再自动恢复上次商品或 RFQ 编辑。确认后仅清理这些旧本地草稿；取消会保留但不再自动读取。批量队列、平台草稿、任务和列表偏好不会被删除。',
-    keep: '保留旧数据',
-    clear: '确认清理',
-    cleanupFailed: '清理未完成，请稍后在设置的本地数据管理中重试。'
+    unlockFailed: '解锁失败，请检查保险库口令，或前往设置检查凭据状态。'
   },
   identity: {
     extensionAdmin: '本机管理员',

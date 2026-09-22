@@ -2,7 +2,6 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
 import type { CredentialVaultRepository } from '@one-vegetable/core';
-import { claimLegacyEditorNotice, clearLegacyEditorDrafts } from '../lib/legacy-editor-cleanup';
 import { useUiI18n } from '../i18n';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
@@ -11,11 +10,10 @@ import ModalDialog from './ui/ModalDialog.vue';
 const props = defineProps<{ vault?: CredentialVaultRepository; extension: boolean }>();
 const emit = defineEmits<{ ready: []; unlocked: []; locked: [] }>();
 const { t } = useUiI18n();
-const stage = ref<'checking' | 'unlock' | 'cleanup' | 'done'>('checking');
+const stage = ref<'checking' | 'unlock' | 'done'>('checking');
 const passphrase = ref('');
 const busy = ref(false);
 const error = ref('');
-let oldKeys: string[] = [];
 let alive = true;
 
 onMounted(async () => {
@@ -30,25 +28,16 @@ onMounted(async () => {
   } catch {
     // Legacy/invalid/unavailable repositories retain their existing Settings repair entry.
   }
-  if (alive) next();
+  if (alive) finish();
 });
 onBeforeUnmount(() => {
   alive = false;
   passphrase.value = '';
 });
 
-function next(): void {
+function finish(): void {
   passphrase.value = '';
   error.value = '';
-  try {
-    oldKeys = claimLegacyEditorNotice(globalThis.localStorage);
-  } catch {
-    oldKeys = [];
-  }
-  if (oldKeys.length) stage.value = 'cleanup';
-  else finish();
-}
-function finish(): void {
   stage.value = 'done';
   emit('ready');
 }
@@ -65,7 +54,7 @@ async function unlock(): Promise<void> {
     }
     toast.success(t('shell.startup.unlocked'));
     emit('unlocked');
-    next();
+    finish();
   } catch {
     if (alive) error.value = t('shell.startup.unlockFailed');
   } finally {
@@ -78,7 +67,7 @@ async function recheckSession(): Promise<void> {
   try {
     if ((await props.vault.status()).state === 'unlocked' && alive && unlockVisible()) {
       emit('unlocked');
-      next();
+      finish();
     }
   } catch {
     /* Settings remains available; focus checks never open another prompt. */
@@ -97,18 +86,7 @@ onBeforeUnmount(() => {
   globalThis.removeEventListener('focus', handleFocus);
 });
 function closeUnlock(open: boolean): void {
-  if (!open && !busy.value) next();
-}
-function cleanup(remove: boolean): void {
-  if (remove) {
-    try {
-      clearLegacyEditorDrafts(globalThis.localStorage, oldKeys);
-    } catch {
-      error.value = t('shell.startup.cleanupFailed');
-      return;
-    }
-  }
-  finish();
+  if (!open && !busy.value) finish();
 }
 </script>
 
@@ -138,29 +116,10 @@ function cleanup(remove: boolean): void {
     </form>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <Button variant="outline" :disabled="busy" @click="next">{{ t('shell.startup.later') }}</Button>
+        <Button variant="outline" :disabled="busy" @click="finish">{{ t('shell.startup.later') }}</Button>
         <Button type="submit" form="startup-vault-unlock" :disabled="busy || !passphrase">{{
           t(busy ? 'shell.startup.unlocking' : 'shell.startup.unlock')
         }}</Button>
-      </div>
-    </template>
-  </ModalDialog>
-  <ModalDialog
-    :open="stage === 'cleanup'"
-    :title="t('shell.startup.cleanupTitle')"
-    :description="t('shell.startup.cleanupDescription')"
-    size="sm"
-    @update:open="
-      (open) => {
-        if (!open) cleanup(false);
-      }
-    "
-  >
-    <p v-if="error" class="text-sm text-destructive" role="alert">{{ error }}</p>
-    <template #footer>
-      <div class="flex justify-end gap-2">
-        <Button variant="outline" @click="cleanup(false)">{{ t('shell.startup.keep') }}</Button>
-        <Button @click="cleanup(true)">{{ t('shell.startup.clear') }}</Button>
       </div>
     </template>
   </ModalDialog>
