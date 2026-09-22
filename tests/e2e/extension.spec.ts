@@ -1177,8 +1177,10 @@ test('MV3 options page persists settings and exposes the audited catalog', async
       }
     });
   });
-  expect(partnerCapabilityError).toMatchObject({ ok: false });
-  expect(JSON.stringify(partnerCapabilityError)).toContain('CGS 小满签约客户');
+  expect(partnerCapabilityError).toMatchObject({
+    ok: false,
+    error: { code: 'CAPABILITY_RESTRICTED' }
+  });
 
   await page.getByRole('link', { name: '设置', exact: true }).click();
   await expect(page.getByRole('heading', { name: '脱敏诊断' })).toBeVisible();
