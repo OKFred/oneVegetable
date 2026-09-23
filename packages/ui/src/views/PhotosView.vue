@@ -541,6 +541,15 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
           }}</ListActionButton>
         </template>
         <template #actions>
+          <TriStateCheckbox
+            v-if="photoViewMode === 'cards'"
+            class="mr-auto self-center"
+            :checked="allSelected"
+            :indeterminate="someSelected && !allSelected"
+            :disabled="!filteredPhotos.length"
+            :label="t('photos.filters.selectPage')"
+            @update:checked="selectPage"
+          />
           <ListFilterDialog
             v-model:open="filterOpen"
             :active-count="filterCount"
@@ -633,14 +642,6 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
               {{ t('photos.page.upload') }}
             </ListActionButton>
           </ActionTooltip>
-          <TriStateCheckbox
-            v-if="photoViewMode === 'cards'"
-            :checked="allSelected"
-            :indeterminate="someSelected && !allSelected"
-            :disabled="!filteredPhotos.length"
-            :label="t('photos.filters.selectPage')"
-            @update:checked="selectPage"
-          />
           <ListViewToggle
             v-model="photoViewMode"
             :label="t('photos.governance.displayMode')"
