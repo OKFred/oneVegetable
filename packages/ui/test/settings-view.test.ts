@@ -17,6 +17,7 @@ import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import SettingsView from '../src/views/SettingsView.vue';
 import { provideServices } from '../src/lib/services';
+import { provideUnsavedEditing, UnsavedEditingService } from '../src/lib/unsaved-editing';
 
 vi.mock('vue-sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() }
@@ -45,12 +46,14 @@ function mountView(
   mode: 'mock' | 'extension' | 'bff' = 'mock',
   initialVaultState?: CredentialVaultState,
   initialLockReason: CredentialVaultLockReason = 'manual',
-  backendRuntime: 'node' | 'cloudflare' = 'node'
+  backendRuntime: 'node' | 'cloudflare' = 'node',
+  options: { editing?: UnsavedEditingService; beforeInspect?: () => Promise<void> } = {}
 ) {
   let grantedHosts = ['https://images.example.com/*'];
   let currentVaultState = initialVaultState;
   const Host = defineComponent({
     setup() {
+      if (options.editing) provideUnsavedEditing(options.editing);
       provideServices({
         gateway: new MockGatewayClient(0),
         settings: {
@@ -73,8 +76,9 @@ function mountView(
           }
         },
         localData: {
-          inspect: () =>
-            Promise.resolve({
+          inspect: async () => {
+            await options.beforeInspect?.();
+            return {
               generatedAt: '2026-08-13T08:00:00.000Z',
               totalApproximateBytes: 512,
               categories: [
@@ -88,7 +92,8 @@ function mountView(
                   retention: '保留到用户清除'
                 }
               ]
-            }),
+            };
+          },
           clearAll: clearAllLocalData
         },
         ...(initialVaultState
@@ -223,6 +228,43 @@ describe('SettingsView diagnostics', () => {
     expect(toast.success).toHaveBeenCalledWith('凭证与设置已保存');
     expect(wrapper.text()).not.toContain('加密保存凭证');
     wrapper.unmount();
+  });
+
+  it('clears saved edits before success feedback without clearing later changes during metadata refresh', async () => {
+    const editing = new UnsavedEditingService();
+    let finishInspect: (() => void) | undefined;
+    let inspections = 0;
+    const wrapper = mountView('extension', 'empty', 'manual', 'node', {
+      editing,
+      beforeInspect: () => {
+        inspections += 1;
+        if (inspections === 1) return Promise.resolve();
+        return new Promise<void>((resolve) => {
+          finishInspect = resolve;
+        });
+      }
+    });
+    await flushPromises();
+    await wrapper.get('input[aria-label="App Key"]').setValue('new-key');
+    await wrapper.get('input[aria-label="设置保护口令"]').setValue('123456');
+    await wrapper.get('input[aria-label="确认保护口令"]').setValue('123456');
+    expect(editing.dirty.value).toBe(true);
+    const save = wrapper.findAll('button').find((button) => button.text().includes('保存设置'));
+    if (!save) throw new Error('Missing settings save button');
+    await save.trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('凭证与设置已加密保存');
+    expect(finishInspect).toBeDefined();
+    expect(editing.dirty.value).toBe(false);
+    expect(await editing.confirmLeave()).toBe(true);
+    expect(editing.confirmationOpen.value).toBe(false);
+    await wrapper.get('input[aria-label="App Key"]').setValue('another-key');
+    expect(editing.dirty.value).toBe(true);
+    finishInspect?.();
+    await flushPromises();
+    expect(editing.dirty.value).toBe(true);
+    wrapper.unmount();
+    editing.dispose();
   });
 
   it('shows a busy state while the combined settings save is running', async () => {

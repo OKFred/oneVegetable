@@ -219,21 +219,22 @@ async function save(): Promise<void> {
       applyVaultStatus(await vault.create(vaultPassphrase.value, model.value));
       clearVaultPassphrases();
       model.value = await settings.load();
+      credentialEditing.markClean();
       feedback.value = t('settings.vault.saveEncrypted');
       toast.success(t('settings.vault.savedToast'));
       await refreshLocalData();
     } else {
       await settings.save(model.value);
+      model.value = await settings.load();
+      credentialEditing.markClean();
       feedback.value =
         mode === 'mock'
           ? t('settings.credentials.mockSavedFeedback')
           : t('settings.credentials.encryptedSavedFeedback');
-      model.value = await settings.load();
       toast.success(
         mode === 'mock' ? t('settings.credentials.mockSavedToast') : t('settings.credentials.savedToast')
       );
     }
-    credentialEditing.markClean();
   } catch (error: unknown) {
     const visibleError = userVisibleCause(error, t('settings.credentials.saveError'));
     vaultError.value = visibleError;
