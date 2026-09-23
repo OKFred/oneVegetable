@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": [
+    "../smoke-video-upload-url-real.ts",
+    "../lib/video-upload-url-real.ts",
+    "./video-upload-url-real.test.ts",
+    "./openapi-auth-storage.test.ts"
+  ]
+}
