@@ -73,8 +73,10 @@ const columns = computed<DataColumn<ProductInventorySnapshot['records'][number]>
       <p class="text-xs text-muted-foreground">{{ product?.id }}</p>
       <p class="text-sm text-muted-foreground">{{ it('note') }}</p>
       <PlatformReadbackNotice kind="inventory" />
-      <p aria-live="polite">{{ busy ? it('loading') : snapshot ? it(snapshot.status) : it('pending') }}</p>
-      <ErrorNotice v-if="error && !snapshot" :error="error" compact />
+      <p aria-live="polite">
+        {{ it(busy ? 'loading' : error ? 'failed' : (snapshot?.status ?? 'pending')) }}
+      </p>
+      <ErrorNotice v-if="error" :error="error" compact />
       <template v-if="snapshot">
         <p class="text-xs tabular-nums">
           {{ it('queried') }}: {{ formatDateTime(snapshot.queriedAt) }} · {{ it('trace') }}:

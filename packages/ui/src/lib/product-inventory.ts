@@ -19,14 +19,14 @@ export function useProductInventory(
     rows,
     boundary,
     (row) => row.id,
-    (row, identity) =>
+    (row, identity): ReturnType<typeof requestPageDetail> =>
       requestPageDetail(
         gateway,
         mode,
         language.value,
         { kind: 'inventory', id: row.id, source: source.value },
         identity,
-        refresh
+        refresh || row.id in runner.errors.value
       ),
     (row, result) => {
       if (!('records' in result)) return;

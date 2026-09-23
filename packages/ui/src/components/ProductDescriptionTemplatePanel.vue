@@ -16,6 +16,7 @@ import Input from './ui/Input.vue';
 import ModalDialog from './ui/ModalDialog.vue';
 import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
+import { useUnsavedEditing } from '../lib/unsaved-editing';
 
 type ApplyMode = 'insert' | 'append' | 'replace';
 type PanelView = 'browse' | 'edit' | 'replace';
@@ -43,6 +44,10 @@ const formName = ref('');
 const formCategory = ref<ProductDescriptionTemplateCategory>('custom');
 const formHtml = ref('');
 const formRemark = ref('');
+const editing = useUnsavedEditing(
+  () => [formName.value, formCategory.value, formHtml.value, formRemark.value],
+  { enabled: () => open.value && view.value === 'edit' }
+);
 let loadSequence = 0;
 
 const canManage = computed(() => mode !== 'extension' && productDescriptionTemplates !== undefined);
@@ -123,6 +128,7 @@ function startCreate(): void {
   formRemark.value = '';
   error.value = '';
   view.value = 'edit';
+  editing.markClean();
 }
 
 function startEdit(template: ProductDescriptionTemplate): void {
@@ -134,6 +140,7 @@ function startEdit(template: ProductDescriptionTemplate): void {
   formRemark.value = template.remark ?? '';
   error.value = '';
   view.value = 'edit';
+  editing.markClean();
 }
 
 async function saveTemplate(): Promise<void> {
@@ -160,6 +167,7 @@ async function saveTemplate(): Promise<void> {
         remark: formRemark.value.trim() || null
       });
     }
+    editing.markClean();
     view.value = 'browse';
     await loadTemplates();
   } catch (reason: unknown) {
@@ -211,7 +219,17 @@ function messageOf(reason: unknown): string {
     <LayoutTemplate class="size-4" />{{ t('products.templates.title') }}
   </Button>
 
-  <ModalDialog v-model:open="open" :title="title" :description="description" size="lg">
+  <ModalDialog
+    :open="open"
+    :title="title"
+    :description="description"
+    size="lg"
+    @update:open="
+      editing.guard(() => {
+        open = $event;
+      })
+    "
+  >
     <template v-if="view === 'browse'">
       <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
         <label class="flex cursor-pointer items-center gap-2 text-sm">
@@ -331,7 +349,7 @@ function messageOf(reason: unknown): string {
           {{ t('products.templates.remark') }}<Input v-model="formRemark" class="mt-2" />
         </label>
         <div class="flex justify-end gap-2">
-          <Button variant="ghost" @click="view = 'browse'">{{ t('common.actions.cancel') }}</Button>
+          <Button variant="ghost" @click="editing.guard(resetView)">{{ t('common.actions.cancel') }}</Button>
           <Button :disabled="saving || !formName.trim() || !formHtml.trim()" @click="saveTemplate">
             {{ t('products.templates.save') }}
           </Button>

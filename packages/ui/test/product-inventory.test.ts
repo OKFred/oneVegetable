@@ -60,4 +60,35 @@ describe('inventory workspace scheduling', () => {
     expect(service?.securityFailure.value).toBe(true);
     scope.stop();
   });
+  it('keeps a failed refresh distinct from its last snapshot and retries without the old cache', async () => {
+    const gateway = new MockGatewayClient(0);
+    const rows = ref((await gateway.request('listProducts', { page: 1, pageSize: 1 })).items);
+    const scope = effectScope();
+    try {
+      const service = scope.run(() => useProductInventory(gateway, 'mock', ref('en_US'), rows, ref('one')));
+      const product = rows.value[0];
+      if (!service || !product) throw new Error('Missing inventory fixture');
+      service.selected.value = product;
+      await nextTick();
+      await vi.waitFor(() => {
+        expect(service.busy.value).toBe(false);
+      });
+      const snapshot = service.snapshots.value[product.id];
+      expect(snapshot?.status).toBe('ready');
+      const failure = new Error('Inventory refresh timed out');
+      const request = vi.spyOn(gateway, 'request').mockRejectedValueOnce(failure);
+      await service.refreshSelected();
+      expect(service.states.value[product.id]).toBe('failed');
+      expect(service.errors.value[product.id]).toBe(failure);
+      expect(service.snapshots.value[product.id]).toBe(snapshot);
+      await service.load(true);
+      expect(request).toHaveBeenCalledTimes(2);
+      expect(service.states.value[product.id]).toBe('ready');
+      expect(service.errors.value[product.id]).toBeUndefined();
+      expect(service.snapshots.value[product.id]).not.toBe(snapshot);
+    } finally {
+      scope.stop();
+      vi.restoreAllMocks();
+    }
+  });
 });
