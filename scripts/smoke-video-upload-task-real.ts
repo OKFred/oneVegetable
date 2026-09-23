@@ -69,8 +69,10 @@ const report: {
   action: string;
   status: string;
   task: VideoUploadTask | null;
-  requests: { requestId: string; phase: string; status: string }[];
+  requests: { requestId: string; phase: string; status: string; storageError?: string }[];
   reason: string | null;
+  failureType?: string;
+  failureSites?: string[];
 } = { runId, action, status: 'preflight', task: null, requests: [], reason: null };
 const persist = () => atomicWriteJson(output, report);
 const authPath = resolve(
@@ -101,7 +103,7 @@ let cookie = '';
 let csrf = '';
 async function call(path: string, payload: Record<string, unknown>, phase = path): Promise<unknown> {
   const requestId = crypto.randomUUID();
-  const entry = { requestId, phase, status: 'intent' };
+  const entry: (typeof report.requests)[number] = { requestId, phase, status: 'intent' };
   report.requests.push(entry);
   await persist();
   const response = await network.request({
@@ -127,6 +129,13 @@ async function call(path: string, payload: Record<string, unknown>, phase = path
   const value = response.data;
   if (!record(value) || value.requestId !== requestId) throw new Error('RESPONSE_CORRELATION_INVALID');
   entry.status = value.ok === true ? 'response-success' : 'response-error';
+  if (
+    record(value.error) &&
+    value.error.code === 'S3_REQUEST_FAILED' &&
+    typeof value.error.subCode === 'string' &&
+    /^HTTP_\d{3}:[A-Za-z]{1,50}$/u.test(value.error.subCode)
+  )
+    entry.storageError = value.error.subCode;
   await persist();
   if (value.ok !== true || !('data' in value)) {
     const code =
@@ -284,6 +293,13 @@ try {
   process.stdout.write(`Video smoke: ${report.status}; redacted report: ${relative(root, output)}\n`);
 } catch (error) {
   report.status = 'stopped-no-automatic-retry';
+  if (error instanceof Error) {
+    report.failureType = /^[A-Za-z]{1,50}$/u.test(error.name) ? error.name : 'Error';
+    report.failureSites =
+      error.stack?.match(
+        /(?:smoke-video-upload-task-real|encoded-file|video-upload|storage)\.ts:\d+:\d+/gu
+      ) ?? [];
+  }
   report.reason =
     error instanceof Error && /^[A-Z0-9_]{1,100}$/u.test(error.message)
       ? error.message

@@ -1,7 +1,8 @@
 /** Windows-only, opt-in local preparation. Never stages files or submits Alibaba uploads.
  * $env:ONE_VEGETABLE_PREPARE_VIDEO_REAL_SMOKE='1'; pnpm exec tsx scripts/prepare-video-upload-real-smoke.ts
  * Keep this process running; use its ignored local-auth.json with the separate smoke tool.
- * No existing DB/account/configuration is modified. Each invocation creates a fresh isolated DB.
+ * No existing workbench DB/account/configuration is modified. By default creates a fresh isolated DB.
+ * VIDEO_SMOKE_RESUME_DIR may restart one exact ignored acceptance directory without replacing its configuration.
  */
 import { spawn, execFileSync } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -70,6 +71,9 @@ try {
   const stored = await cipher.decrypt(record);
   if (stored.endpoint !== 'https://oss-s3.this-time.com' || stored.bucket !== 'dev')
     throw new Error('SOURCE_TARGET_MISMATCH');
+  const endpoint = process.env.VIDEO_SMOKE_STORAGE_ENDPOINT ?? stored.endpoint;
+  if (!['https://oss-s3.this-time.com', 'https://oss-s3.app.fred.wiki'].includes(endpoint))
+    throw new Error('TEST_ENDPOINT_NOT_APPROVED');
 
   stage = 'credential-bundle';
   const credentialFile = resolve(
@@ -105,8 +109,12 @@ try {
   const directory = resolve(
     root,
     'artifacts/video-upload-validation/isolated',
-    `${new Date().toISOString().replaceAll(/[:.]/gu, '-')}-${randomUUID().slice(0, 8)}`
+    process.env.VIDEO_SMOKE_RESUME_DIR ??
+      `${new Date().toISOString().replaceAll(/[:.]/gu, '-')}-${randomUUID().slice(0, 8)}`
   );
+  const resume = process.env.VIDEO_SMOKE_RESUME_DIR !== undefined;
+  const relativeDirectory = relative(resolve(root, 'artifacts/video-upload-validation/isolated'), directory);
+  if (!/^[0-9TZ-]+-[0-9a-f]{8}$/u.test(relativeDirectory)) throw new Error('INVALID_ACCEPTANCE_DIRECTORY');
   execFileSync('git', ['check-ignore', '--quiet', '--', relative(root, directory)], {
     cwd: root,
     stdio: 'ignore',
@@ -114,6 +122,8 @@ try {
   });
   await mkdir(directory, { recursive: true });
   const databasePath = resolve(directory, 'isolated.sqlite');
+  const authPath = resolve(directory, 'local-auth.json');
+  if (resume && (!existsSync(databasePath) || !existsSync(authPath))) throw new Error('RESUME_FILES_MISSING');
   database = openNodeDatabase(databasePath);
   applyNodeMigrations(database);
   const authRepository = new SqlAuthRepository(database.executor);
@@ -123,20 +133,25 @@ try {
     username: `video-smoke-${randomUUID().slice(0, 8)}`,
     password: randomBytes(32).toString('base64url')
   };
-  const initialized = await auth.bootstrap({ requestId: randomUUID(), bootstrapToken, ...login });
   const storage = new S3StorageConfigurationService(
     new SqlS3StorageConfigurationRepository(database.executor),
     cipher
   );
-  await storage.save({
-    // VideoUploadService itself fixes keys to onevegetable/video-staging/<taskId>/source.mp4.
-    configuration: { ...stored, rootPrefix: '' },
-    actorId: initialized.user.id,
-    expectedRevision: null,
-    remark: 'Isolated video upload acceptance; no files staged during preparation.'
-  });
-  const authPath = resolve(directory, 'local-auth.json');
-  await atomicWriteJson(authPath, login);
+  if (!resume) {
+    const initialized = await auth.bootstrap({ requestId: randomUUID(), bootstrapToken, ...login });
+    await storage.save({
+      // VideoUploadService itself fixes keys to onevegetable/video-staging/<taskId>/source.mp4.
+      configuration: { ...stored, endpoint, rootPrefix: '' },
+      actorId: initialized.user.id,
+      expectedRevision: null,
+      remark: 'Isolated video upload acceptance; no files staged during preparation.'
+    });
+    await atomicWriteJson(authPath, login);
+  } else {
+    const summary = await storage.summary();
+    if (summary.endpoint !== endpoint || summary.bucket !== 'dev' || summary.rootPrefix !== '')
+      throw new Error('RESUME_TARGET_MISMATCH');
+  }
   const app = createApiApp({
     runtime: 'node',
     database: 'sqlite',
@@ -194,7 +209,7 @@ try {
     apiPrefix,
     databasePath: relative(root, databasePath),
     authPath: relative(root, authPath),
-    endpoint: stored.endpoint,
+    endpoint,
     bucket: stored.bucket,
     taskPrefix: 'onevegetable/video-staging/<taskId>/',
     enabledFlags: [videoFlag],
@@ -202,7 +217,10 @@ try {
     s3Writes: 0,
     alibabaRequests: 0
   };
-  await atomicWriteJson(resolve(directory, 'preparation.json'), receipt);
+  await atomicWriteJson(
+    resolve(directory, resume ? `restart-${randomUUID()}.json` : 'preparation.json'),
+    receipt
+  );
   console.log(JSON.stringify(receipt));
   console.log(
     'Keep this process running. No staging/submission performed; Ctrl+C stops only this isolated BFF.'
