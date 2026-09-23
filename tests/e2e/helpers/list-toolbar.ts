@@ -9,15 +9,20 @@ export async function expectTwoRowToolbar(toolbar: Locator): Promise<void> {
   await expect(input).toBeVisible();
   await expect(search).toBeVisible();
   await expect(actions).toBeVisible();
-  const [rowBox, inputBox, buttonBox, actionsBox] = await Promise.all(
-    [form, input, search, actions].map((locator) => locator.boundingBox())
-  );
-  if (!rowBox || !inputBox || !buttonBox || !actionsBox) throw new Error('Missing toolbar bounds');
-  expect(inputBox.x).toBeCloseTo(rowBox.x, 0);
-  expect(buttonBox.x + buttonBox.width).toBeCloseTo(rowBox.x + rowBox.width, 0);
-  expect(buttonBox.x - (inputBox.x + inputBox.width)).toBeGreaterThanOrEqual(0);
-  expect(buttonBox.x - (inputBox.x + inputBox.width)).toBeLessThanOrEqual(9);
-  expect(actionsBox.y).toBeGreaterThanOrEqual(rowBox.y + rowBox.height);
-  expect(actionsBox.x + actionsBox.width).toBeCloseTo(rowBox.x + rowBox.width, 0);
-  expect(await actions.evaluate((element) => getComputedStyle(element).justifyContent)).toBe('flex-end');
+  // Loading a workspace can replace visible controls between the visibility
+  // checks and geometry reads. Re-resolve the locators and assert the actual
+  // settled layout; do not make a detached frame a permanent layout failure.
+  await expect(async () => {
+    const [rowBox, inputBox, buttonBox, actionsBox] = await Promise.all(
+      [form, input, search, actions].map((locator) => locator.boundingBox())
+    );
+    if (!rowBox || !inputBox || !buttonBox || !actionsBox) throw new Error('Missing toolbar bounds');
+    expect(inputBox.x).toBeCloseTo(rowBox.x, 0);
+    expect(buttonBox.x + buttonBox.width).toBeCloseTo(rowBox.x + rowBox.width, 0);
+    expect(buttonBox.x - (inputBox.x + inputBox.width)).toBeGreaterThanOrEqual(0);
+    expect(buttonBox.x - (inputBox.x + inputBox.width)).toBeLessThanOrEqual(9);
+    expect(actionsBox.y).toBeGreaterThanOrEqual(rowBox.y + rowBox.height);
+    expect(actionsBox.x + actionsBox.width).toBeCloseTo(rowBox.x + rowBox.width, 0);
+    expect(await actions.evaluate((element) => getComputedStyle(element).justifyContent)).toBe('flex-end');
+  }).toPass({ timeout: 5_000 });
 }
