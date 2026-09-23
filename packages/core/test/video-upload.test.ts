@@ -370,6 +370,54 @@ describe('video upload durable service', () => {
     );
     expect(env.storage.createMultipart).not.toHaveBeenCalled();
   });
+  it('never re-completes after metadata 403; read-only reconciliation still requires the full SHA', async () => {
+    const env = setup();
+    let task = await env.create();
+    task = await env.call({ action: 'initiate', ...env.target(task) });
+    task = await env.call({
+      action: 'part',
+      ...env.target(task),
+      partNumber: 1,
+      fileSha256: hashVideoBytes(env.bytes),
+      contentBase64: fixture.mp4Base64
+    });
+    const send = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 403 }))
+      .mockImplementation(() =>
+        Promise.resolve(
+          new Response(new Uint8Array([0]), {
+            status: 206,
+            headers: { 'Content-Range': `bytes 0-0/${env.bytes.byteLength}` }
+          })
+        )
+      );
+    const client = new S3ObjectStorageClient(fixture.configuration, { send });
+    vi.mocked(env.storage.headVideoObject).mockImplementation((...args) => client.headVideoObject(...args));
+    await expect(env.call({ action: 'complete', ...env.target(task) })).rejects.toMatchObject({
+      gatewayError: { subCode: 'HTTP_403:UnknownProviderError' }
+    });
+    let record = required(env.repository.records.get(task.id));
+    expect(record.completeAttempted).toBe(true);
+    expect(record.task.status).toBe('needs-review');
+    expect(env.storage.getVideoRange).not.toHaveBeenCalled();
+    await expect(env.call({ action: 'complete', ...env.target(record.task) })).rejects.toThrow(
+      'VIDEO_RECONCILIATION_REQUIRED'
+    );
+    record = required(env.repository.records.get(task.id));
+    vi.mocked(env.storage.getVideoRange).mockResolvedValueOnce(new Uint8Array(env.bytes.length));
+    await expect(env.call({ action: 'reconcile', ...env.target(record.task) })).rejects.toThrow(
+      'VIDEO_FILE_CHANGED'
+    );
+    record = required(env.repository.records.get(task.id));
+    task = await env.call({ action: 'reconcile', ...env.target(record.task) });
+    expect(task.status).toBe('staged');
+    expect(env.storage.getVideoRange).toHaveBeenCalledTimes(2);
+    expect(env.storage.completeMultipart).toHaveBeenCalledTimes(1);
+    expect(env.storage.abortMultipart).not.toHaveBeenCalled();
+    expect(env.upload).not.toHaveBeenCalled();
+    expect(send.mock.calls.every((call) => (call[1] as RequestInit).method === 'GET')).toBe(true);
+  });
   it('retains completed private S3 objects when cancelling before platform submission', async () => {
     const env = setup();
     let task = await env.create();
@@ -387,28 +435,34 @@ describe('video upload durable service', () => {
     expect(env.storage.abortMultipart).not.toHaveBeenCalled();
     expect(env.upload).not.toHaveBeenCalled();
   });
-  it('never enables staging/production and the acceptance flag is local Node only', () => {
+  it.each([
+    { runtime: 'node', environment: 'local-node' },
+    { runtime: 'extension', environment: 'extension' }
+  ] as const)(
+    'enables verified $runtime defaults without an acceptance override but respects pause',
+    (input) => {
+      expect(isVideoUploadRuntimeEnabled(input)).toBe(true);
+      for (const localAcceptance of [false, true]) {
+        expect(isVideoUploadRuntimeEnabled({ ...input, localAcceptance })).toBe(true);
+        expect(isVideoUploadRuntimeEnabled({ ...input, localAcceptance, paused: true })).toBe(false);
+      }
+      expect(isVideoUploadRuntimeEnabled({ ...input, paused: true })).toBe(false);
+    }
+  );
+  it('keeps staging/production, cloud self-hosted and mismatched runtimes closed despite local overrides', () => {
     for (const runtime of ['node', 'cloudflare', 'extension'] as const)
-      for (const environment of ['staging', 'production'])
-        expect(isVideoUploadRuntimeEnabled({ runtime, environment, localAcceptance: true })).toBe(false);
-    expect(
-      isVideoUploadRuntimeEnabled({ runtime: 'node', environment: 'local-node', localAcceptance: true })
-    ).toBe(true);
-    expect(
-      isVideoUploadRuntimeEnabled({
-        runtime: 'node',
-        environment: 'local-node',
-        localAcceptance: true,
-        paused: true
-      })
-    ).toBe(false);
-    expect(
-      isVideoUploadRuntimeEnabled({
-        runtime: 'cloudflare',
-        environment: 'self-hosted',
-        localAcceptance: true
-      })
-    ).toBe(false);
+      for (const environment of ['staging', 'production', 'self-hosted', 'unknown']) {
+        expect(isVideoUploadRuntimeEnabled({ runtime, environment })).toBe(false);
+        for (const localAcceptance of [false, true])
+          expect(isVideoUploadRuntimeEnabled({ runtime, environment, localAcceptance })).toBe(false);
+      }
+    for (const input of [
+      { runtime: 'node', environment: 'extension' },
+      { runtime: 'extension', environment: 'local-node' },
+      { runtime: 'cloudflare', environment: 'local-node' },
+      { runtime: 'cloudflare', environment: 'extension' }
+    ] as const)
+      expect(isVideoUploadRuntimeEnabled({ ...input, localAcceptance: true })).toBe(false);
   });
   it('keeps an accepted upload pending for at most five minutes without resubmission', async () => {
     const env = setup();
@@ -560,9 +614,15 @@ describe('video bounds and S3 multipart transport', () => {
     expect(presigned.pathname).toBe(`/video-tests/tests/${key}`);
     expect(presigned.searchParams.get('X-Amz-Expires')).toBe('1800');
   });
-  it('HEAD inspects a large object without relaxing the normal 5 MiB download/upload budget', async () => {
+  it('video metadata inspects a large object without relaxing the normal 5 MiB photo budget', async () => {
     const send = vi
       .fn()
+      .mockResolvedValueOnce(
+        new Response(new Uint8Array([0]), {
+          status: 206,
+          headers: { 'Content-Range': `bytes 0-0/${50 * 1024 * 1024}`, 'Content-Length': '1' }
+        })
+      )
       .mockResolvedValue(new Response(null, { headers: { 'Content-Length': String(50 * 1024 * 1024) } }));
     const client = new S3ObjectStorageClient(fixture.configuration, { send });
     await expect(client.headVideoObject('video.mp4', crypto.randomUUID())).resolves.toMatchObject({

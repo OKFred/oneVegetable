@@ -9,6 +9,7 @@ import { NativeFetchTransport, NetworkManager, type NetworkTransport } from './n
 
 const MAX_GALLERY_OBJECT_BYTES = 5 * 1024 * 1024;
 const MAX_LIST_RESPONSE_BYTES = 2 * 1024 * 1024;
+const MAX_VIDEO_METADATA_RESPONSE_BYTES = 65_536;
 
 export interface S3StorageConfiguration {
   allowInsecureLocal?: boolean;
@@ -104,6 +105,7 @@ export class S3ObjectStorageClient {
   readonly #configuration: S3StorageConfiguration;
   readonly #signer: AwsClient;
   readonly #network: NetworkManager;
+  readonly #videoMetadataNetwork: NetworkManager;
 
   constructor(configuration: S3StorageConfiguration, transport?: NetworkTransport) {
     this.#configuration = validateS3StorageConfiguration(configuration);
@@ -116,20 +118,25 @@ export class S3ObjectStorageClient {
       retries: 0
     });
     const endpointOrigin = new URL(this.#configuration.endpoint).origin;
-    this.#network = new NetworkManager({
-      transport: transport ?? new NativeFetchTransport(),
-      policies: {
-        s3: {
-          allowedOrigins: [endpointOrigin, this.#bucketOrigin()],
-          timeoutMilliseconds: 30_000,
-          maxRequestBytes: MAX_GALLERY_OBJECT_BYTES,
-          maxResponseBytes: Math.max(MAX_GALLERY_OBJECT_BYTES, MAX_LIST_RESPONSE_BYTES),
-          credentials: 'omit',
-          redirect: 'error',
-          cache: 'no-store'
+    const actualTransport = transport ?? new NativeFetchTransport();
+    const createNetwork = (maxResponseBytes: number) =>
+      new NetworkManager({
+        transport: actualTransport,
+        policies: {
+          s3: {
+            allowedOrigins: [endpointOrigin, this.#bucketOrigin()],
+            timeoutMilliseconds: 30_000,
+            maxRequestBytes: MAX_GALLERY_OBJECT_BYTES,
+            maxResponseBytes,
+            credentials: 'omit',
+            redirect: 'error',
+            cache: 'no-store'
+          }
         }
-      }
-    });
+      });
+    this.#network = createNetwork(Math.max(MAX_GALLERY_OBJECT_BYTES, MAX_LIST_RESPONSE_BYTES));
+    // Small bounded error XML is still needed for safe HTTP diagnostics; success must be one byte.
+    this.#videoMetadataNetwork = createNetwork(MAX_VIDEO_METADATA_RESPONSE_BYTES);
   }
 
   async listObjects(input: {
@@ -346,24 +353,33 @@ export class S3ObjectStorageClient {
       throw s3HttpError(response);
   }
 
+  /** Compatibility name: use signed GET, since a proxy may convert HEAD to GET and invalidate SigV4. */
   async headVideoObject(
     key: string,
     requestId: string
   ): Promise<{ size: number; etag: string | null } | null> {
     const response = await this.#signedRequest(
       this.#multipartUrl(key),
-      'HEAD',
-      undefined,
+      'GET',
+      { Range: 'bytes=0-0' },
       undefined,
       requestId,
-      'text'
+      'bytes',
+      this.#videoMetadataNetwork
     );
     if (response.status === 404) return null;
     if (!response.ok) throw s3HttpError(response);
-    const rawSize = response.headers.get('content-length');
-    const size = rawSize === null ? NaN : Number(rawSize);
-    if (!Number.isSafeInteger(size) || size < 1 || size > 50 * 1024 * 1024)
-      throw new Error('VIDEO_FILE_INVALID');
+    const range = /^bytes 0-0\/([1-9][0-9]*)$/u.exec(response.headers.get('content-range') ?? '');
+    const size = range?.[1] === undefined ? NaN : Number(range[1]);
+    if (
+      response.status !== 206 ||
+      !(response.data instanceof Uint8Array) ||
+      response.data.byteLength !== 1 ||
+      !Number.isSafeInteger(size) ||
+      size < 1 ||
+      size > 50 * 1024 * 1024
+    )
+      throw new Error('S3_RANGE_RESPONSE_INVALID');
     return { size, etag: normalizeEtag(response.headers.get('etag')) };
   }
 
@@ -469,14 +485,15 @@ export class S3ObjectStorageClient {
     headers: Record<string, string> | undefined,
     body: Uint8Array | undefined,
     requestId: string | undefined,
-    responseType: 'text' | 'bytes'
+    responseType: 'text' | 'bytes',
+    network: NetworkManager = this.#network
   ) {
     const signed = await this.#signer.sign(url, {
       method,
       ...(headers ? { headers } : {}),
       ...(body ? { body: Uint8Array.from(body) } : {})
     });
-    return this.#network.request({
+    return network.request({
       service: 's3',
       url: signed.url,
       method,

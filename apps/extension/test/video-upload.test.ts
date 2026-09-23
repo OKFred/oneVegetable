@@ -8,12 +8,40 @@ vi.mock('wxt/browser', () => ({ browser: { runtime: { sendMessage: mocks.send } 
 import { requestVideoUpload } from '../lib/video-upload-client';
 import { handleVideoUpload } from '../lib/video-upload-service';
 import type { GatewaySettings } from '@one-vegetable/core';
+import { galleryGatewayId, opaqueGalleryId } from '@one-vegetable/core/gallery-transfer-context';
 
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.clearAllMocks();
 });
 describe('extension video upload durable protocol', () => {
+  it('reports the candidate default upload gate for a trusted local context without making requests', async () => {
+    vi.stubGlobal('indexedDB', new IDBFactory());
+    const send = vi.fn().mockRejectedValue(new Error('unexpected network request'));
+    vi.stubGlobal('fetch', send);
+    const settings: GatewaySettings = {
+      appKey: 'fixture-app',
+      appSecret: 'fixture-secret',
+      accessToken: 'fixture-token',
+      endpoint: 'https://example.invalid/router',
+      signMethod: 'hmac'
+    };
+    const context = {
+      identity: await opaqueGalleryId('extension:local-admin'),
+      gateway: await galleryGatewayId(settings),
+      storage: null
+    };
+    const requestId = crypto.randomUUID();
+    const loadSettings = vi.fn<() => Promise<GatewaySettings>>().mockResolvedValue(settings);
+    const s3 = { contextId: vi.fn().mockResolvedValue(null), videoClient: vi.fn() };
+    await expect(
+      handleVideoUpload({ requestId, command: { action: 'list' }, context }, true, s3, loadSettings)
+    ).resolves.toEqual({ requestId, ok: true, data: { tasks: [], uploadEnabled: true } });
+    expect(loadSettings).toHaveBeenCalledOnce();
+    expect(s3.contextId).toHaveBeenCalledOnce();
+    expect(s3.videoClient).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
   it('persists across background repository restarts and atomically rejects stale updates', async () => {
     vi.stubGlobal('indexedDB', new IDBFactory());
     const repository = new ExtensionVideoUploadRepository();

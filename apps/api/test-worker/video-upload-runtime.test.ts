@@ -380,7 +380,14 @@ describe('workerd-local video service with D1 and real S3 signing', () => {
         expect(await request.text()).toContain('<PartNumber>2</PartNumber>');
         return new Response(fixture.multipartCompleted);
       },
-      () => new Response(null, { headers: { 'Content-Length': String(file.byteLength) } }),
+      (request) => {
+        expect(request.method).toBe('GET');
+        expect(request.headers.get('range')).toBe('bytes=0-0');
+        return new Response(new Uint8Array([0]), {
+          status: 206,
+          headers: { 'Content-Range': `bytes 0-0/${file.byteLength}`, 'Content-Length': '1' }
+        });
+      },
       (request) => {
         expect(request.headers.get('range')).toBe(`bytes=0-${VIDEO_UPLOAD_PART_BYTES - 1}`);
         return streamed(first);
@@ -418,7 +425,7 @@ describe('workerd-local video service with D1 and real S3 signing', () => {
       'PUT',
       'PUT',
       'POST',
-      'HEAD',
+      'GET',
       'GET',
       'GET',
       'GET'
@@ -437,8 +444,9 @@ describe('workerd-local video service with D1 and real S3 signing', () => {
     );
     h.transport.replies.push(
       () =>
-        new Response(null, {
-          headers: { 'Content-Length': String(VIDEO_UPLOAD_MAX_BYTES) }
+        new Response(new Uint8Array([0]), {
+          status: 206,
+          headers: { 'Content-Range': `bytes 0-0/${VIDEO_UPLOAD_MAX_BYTES}`, 'Content-Length': '1' }
         })
     );
     await expect(
@@ -448,14 +456,15 @@ describe('workerd-local video service with D1 and real S3 signing', () => {
     });
     h.transport.replies.push(
       () =>
-        new Response(null, {
-          headers: { 'Content-Length': String(VIDEO_UPLOAD_MAX_BYTES + 1) }
+        new Response(new Uint8Array([0]), {
+          status: 206,
+          headers: { 'Content-Range': `bytes 0-0/${VIDEO_UPLOAD_MAX_BYTES + 1}`, 'Content-Length': '1' }
         })
     );
     await expect(h.storage.headVideoObject(required(task.objectKey), crypto.randomUUID())).rejects.toThrow(
-      'VIDEO_FILE_INVALID'
+      'S3_RANGE_RESPONSE_INVALID'
     );
-    expect(h.transport.calls.map((call) => call.method)).toEqual(['HEAD', 'HEAD']);
+    expect(h.transport.calls.map((call) => call.method)).toEqual(['GET', 'GET']);
   });
 
   it('rejects oversized decoded parts and normal gallery bodies without expanding the transport budget', async () => {
@@ -554,7 +563,7 @@ describe('workerd-local video service with D1 and real S3 signing', () => {
     expectPrivateReceipt(await h.raw(task));
   });
 
-  it('does not repeat uncertain completion; recovery only verifies HEAD and bounded ranges', async () => {
+  it('does not repeat uncertain completion; recovery only verifies GET metadata and bounded ranges', async () => {
     const h = setup();
     let task = await h.initiate(await h.create());
     h.transport.replies.push(() => new Response(null, { headers: { ETag: '"fixture-etag"' } }));
@@ -570,12 +579,16 @@ describe('workerd-local video service with D1 and real S3 signing', () => {
     );
     task = (await h.read(task)).task;
     h.transport.replies.push(
-      () => new Response(null, { headers: { 'Content-Length': String(h.bytes.byteLength) } }),
+      () =>
+        new Response(new Uint8Array([0]), {
+          status: 206,
+          headers: { 'Content-Range': `bytes 0-0/${h.bytes.byteLength}`, 'Content-Length': '1' }
+        }),
       () => streamed(h.bytes)
     );
     task = await h.call({ action: 'reconcile', ...target(task) });
     expect(task.status).toBe('staged');
-    expect(h.transport.calls.map((call) => call.method)).toEqual(['POST', 'PUT', 'POST', 'HEAD', 'GET']);
+    expect(h.transport.calls.map((call) => call.method)).toEqual(['POST', 'PUT', 'POST', 'GET', 'GET']);
   });
 
   it('persists uncertain platform intent before upload and permits readback but not resubmission', async () => {

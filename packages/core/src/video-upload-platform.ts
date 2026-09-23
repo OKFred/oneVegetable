@@ -9,8 +9,8 @@ type Validator = (
 ) => Promise<readonly { instancePath: string; keyword: string }[]>;
 const METHOD = 'alibaba.icbu.video.upload';
 
-/** No runtime is marked accepted until the separate real upload/readback smoke passes. */
-const VIDEO_UPLOAD_VERIFIED_RUNTIMES: readonly string[] = Object.freeze([]);
+/** Node and formal MV3 upload/readback accepted on 2026-09-23; Worker remains gated. */
+const VIDEO_UPLOAD_VERIFIED_RUNTIMES: readonly string[] = Object.freeze(['node', 'extension']);
 
 export function isVideoUploadRuntimeEnabled(input: {
   runtime: 'node' | 'cloudflare' | 'extension';
