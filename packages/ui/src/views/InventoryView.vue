@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, h, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, h, ref, shallowRef, watch } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
 import { Search } from '@lucide/vue';
 import type { Product } from '@one-vegetable/core';
@@ -7,6 +7,7 @@ import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import { useGalleryTransfers } from '../lib/gallery-transfer-service';
 import { useProductInventory } from '../lib/product-inventory';
+import { detailErrorState } from '../lib/page-details';
 import { useInventoryI18n } from '../i18n/inventory';
 import { useUiI18n } from '../i18n';
 import { productStatusLabel } from '../lib/product-status';
@@ -18,6 +19,7 @@ import {
   productFilterPayload
 } from '../composables/product-list-filters';
 import ProductListFilterDialog from '../components/ProductListFilterDialog.vue';
+import ListToolbar from '../components/ListToolbar.vue';
 import DataTable from '../components/DataTable.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
@@ -51,6 +53,12 @@ const boundary = computed(() =>
   JSON.stringify([subject.value, filters.value, page.value, pageSize.value, language.value, identity.value])
 );
 const inventory = useProductInventory(gateway, mode, language, rows, boundary);
+const selectedRows = shallowRef<Product[]>([]);
+const queryDisabled = computed(() => inventory.busy.value || query.isFetching.value);
+const hasFailed = computed(() => Object.values(inventory.states.value).includes('failed'));
+watch([boundary, rows], () => {
+  selectedRows.value = [];
+});
 watch([subject, filters, language, identity], () => {
   page.value = 1;
 });
@@ -62,6 +70,27 @@ function search(): void {
   }
   subject.value = nextSubject;
   page.value = 1;
+}
+function inventoryState(id: string) {
+  const state = inventory.states.value[id];
+  if (state === 'loading') return 'loading';
+  const snapshot = inventory.snapshots.value[id];
+  if (state === 'failed') {
+    if (snapshot?.status === 'drift') return 'drift';
+    return detailErrorState(inventory.errors.value[id]);
+  }
+  return snapshot?.status ?? 'pending';
+}
+function openInventory(product: Product): void {
+  if (queryDisabled.value) return;
+  inventory.selected.value = product;
+}
+function queryInventory(onlySelected = false, onlyFailed = false): void {
+  if (queryDisabled.value) return;
+  const targets = onlySelected
+    ? rows.value.filter((row) => selectedRows.value.some((selected) => selected.id === row.id))
+    : rows.value;
+  if (targets.length) void inventory.load(onlyFailed, targets);
 }
 const columns = computed<DataColumn<Product>[]>(() => [
   {
@@ -82,10 +111,24 @@ const columns = computed<DataColumn<Product>[]>(() => [
   {
     id: 'inventoryState',
     header: it('inventoryState'),
-    cell: ({ row }) =>
-      inventory.states.value[row.original.id] === 'loading'
-        ? it('loading')
-        : it(inventory.snapshots.value[row.original.id]?.status ?? 'pending')
+    cell: ({ row }) => {
+      const state = inventoryState(row.original.id);
+      const label = state === 'pending' ? it('pendingQuery') : it(state);
+      return h(
+        Button,
+        {
+          variant: 'ghost',
+          size: 'sm',
+          class: 'text-primary underline underline-offset-4',
+          disabled: queryDisabled.value,
+          'aria-label': it('rowQuery', { product: row.original.id, status: label }),
+          onClick: () => {
+            openInventory(row.original);
+          }
+        },
+        () => label
+      );
+    }
   },
   {
     id: 'inventoryRecordCount',
@@ -109,8 +152,9 @@ const columns = computed<DataColumn<Product>[]>(() => [
         {
           variant: 'outline',
           size: 'sm',
+          disabled: queryDisabled.value,
           onClick: () => {
-            inventory.selected.value = row.original;
+            openInventory(row.original);
           }
         },
         () => t('products.inventoryWorkspace.open')
@@ -121,18 +165,58 @@ const columns = computed<DataColumn<Product>[]>(() => [
 </script>
 <template>
   <PageHeader :title="it('title')" :description="t('products.inventoryWorkspace.description')" />
-  <form class="flex flex-wrap items-center gap-2 rounded-t-lg border border-b-0 p-2" @submit.prevent="search">
-    <Input
-      v-model="searchDraft"
-      class="w-48 max-w-full sm:w-56"
-      :aria-label="t('products.view.page.search')"
-      :placeholder="t('products.view.page.search')"
-    />
-    <Button type="submit" variant="outline" :disabled="query.isFetching.value"
-      ><Search class="size-4" />{{ t('products.filters.search') }}</Button
-    >
-    <ProductListFilterDialog v-model="filters" />
-  </form>
+  <p class="mb-2 text-xs text-muted-foreground">{{ it('note') }}</p>
+  <ListToolbar data-testid="inventory-toolbar" @search="search">
+    <template #search>
+      <Input
+        v-model="searchDraft"
+        class="min-w-0 flex-1"
+        :aria-label="t('products.view.page.search')"
+        :placeholder="t('products.view.page.search')"
+      />
+      <Button type="submit" variant="outline" class="shrink-0" :disabled="query.isFetching.value"
+        ><Search class="size-4" />{{ t('products.filters.search') }}</Button
+      >
+    </template>
+    <template #actions>
+      <Button :disabled="queryDisabled || !rows.length" @click="queryInventory()">{{
+        it('pageQuery')
+      }}</Button>
+      <Button
+        variant="outline"
+        :disabled="queryDisabled || !selectedRows.length"
+        @click="queryInventory(true)"
+      >
+        {{ it('batch') }} ({{ selectedRows.length }})
+      </Button>
+      <label class="flex items-center gap-2 text-sm">
+        {{ it('source') }}
+        <select
+          v-model="inventory.source.value"
+          :disabled="queryDisabled"
+          class="h-9 rounded border bg-background px-2 text-foreground"
+        >
+          <option value="product">{{ it('product') }}</option>
+          <option value="sku">{{ it('sku') }}</option>
+        </select>
+      </label>
+      <Button
+        v-if="hasFailed"
+        variant="outline"
+        :disabled="queryDisabled"
+        @click="queryInventory(false, true)"
+      >
+        {{ it('retry') }}
+      </Button>
+      <Button v-if="inventory.busy.value" variant="outline" @click="inventory.stop()">{{
+        it('stop')
+      }}</Button>
+      <span v-if="inventory.busy.value" role="status" class="text-sm tabular-nums">
+        {{ it('progress', { done: inventory.done.value, total: inventory.total.value }) }}
+      </span>
+      <ProductListFilterDialog v-model="filters" />
+    </template>
+  </ListToolbar>
   <QueryState :loading="query.isPending.value" :error="query.error.value" retryable @retry="query.refetch()">
     <DataTable
       :columns="columns"
@@ -146,6 +230,7 @@ const columns = computed<DataColumn<Product>[]>(() => [
       :total-rows="query.data.value?.total ?? 0"
       :empty-text="t(filters.status ? 'products.filters.pageEmpty' : 'products.view.page.noMatch')"
       :pagination-disabled="query.isFetching.value"
+      @selection-change="selectedRows = $event"
       @update:page="page = $event"
       @update:page-size="
         pageSize = Math.min(30, $event);

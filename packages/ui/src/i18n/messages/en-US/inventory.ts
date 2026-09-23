@@ -1,6 +1,9 @@
 export const inventory = {
   title: 'Inventory',
   batch: 'Query selected inventory',
+  pageQuery: 'Query page inventory',
+  pendingQuery: 'Not queried · Query inventory',
+  rowQuery: '{status}: product {product}',
   source: 'API source',
   product: 'Product inventory',
   sku: 'SKU inventory',

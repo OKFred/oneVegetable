@@ -153,16 +153,19 @@ describe('PhotosView', () => {
     wrapper.unmount();
   });
 
-  it('keeps search and filters together with one toolbar and no duplicate refresh button', async () => {
+  it('uses full-width search above right-aligned filters and actions without duplicate refresh', async () => {
     const wrapper = mountView();
     await flushPromises();
     const toolbar = wrapper.get('[data-testid="photo-toolbar"]');
     const form = toolbar.get('form');
-    expect(form.classes()).toContain('flex-wrap');
-    expect(form.get('input').classes()).toContain('sm:w-56');
+    expect(form.get('input').classes()).toContain('flex-1');
     expect(form.find('input[aria-label="本页名称 / fileId"]').exists()).toBe(true);
     expect(form.get('button[type="submit"]').text()).toBe('搜索');
-    expect(form.text()).toContain('筛选');
+    expect(form.text()).not.toContain('筛选');
+    const actions = toolbar.get('[data-slot="list-toolbar-actions"]');
+    expect(actions.classes()).toContain('justify-end');
+    expect(actions.text()).toContain('筛选');
+    expect(actions.text()).toContain('导入');
     expect(form.text()).not.toContain('导入');
     expect(toolbar.text()).toContain('导入');
     expect(toolbar.text()).toContain('卡片');

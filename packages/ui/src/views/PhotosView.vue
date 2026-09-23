@@ -26,6 +26,7 @@ import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
 import TablePagination from '../components/TablePagination.vue';
 import ListFilterDialog from '../components/ListFilterDialog.vue';
+import ListToolbar from '../components/ListToolbar.vue';
 import Input from '../components/ui/Input.vue';
 import { fieldColumn, photoExtraFields } from '../lib/field-columns';
 import GroupSidebar from '../components/GroupSidebar.vue';
@@ -535,20 +536,19 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
     </GroupSidebar>
 
     <section class="min-w-0">
-      <div
-        data-testid="photo-toolbar"
-        class="flex flex-wrap items-center gap-3 rounded-t-lg border border-b-0 p-2"
-      >
-        <form class="flex min-w-0 flex-wrap items-center gap-2" @submit.prevent="search">
+      <ListToolbar data-testid="photo-toolbar" @search="search">
+        <template #search>
           <Input
             v-model="searchText"
-            class="w-48 max-w-full sm:w-56"
+            class="min-w-0 flex-1"
             :placeholder="t('photos.filters.search')"
             :aria-label="t('photos.filters.search')"
           />
           <Button type="submit" variant="outline" :disabled="refreshing" :aria-busy="refreshing"
             ><Search class="size-4" />{{ t('common.filters.search') }}</Button
           >
+        </template>
+        <template #actions>
           <ListFilterDialog
             v-model:open="filterOpen"
             :active-count="filterCount"
@@ -604,8 +604,6 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
               </p>
             </fieldset>
           </ListFilterDialog>
-        </form>
-        <div class="flex flex-wrap items-center gap-2 sm:ml-auto">
           <Button variant="outline" @click="groupManagerOpen = true">
             <Settings2 class="size-4" />{{ t('photos.page.groupManagement') }}
           </Button>
@@ -675,8 +673,8 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
               <ListIcon class="size-4" aria-hidden="true" />{{ t('photos.governance.list') }}
             </Button>
           </div>
-        </div>
-      </div>
+        </template>
+      </ListToolbar>
 
       <QueryState
         :loading="photos.isPending.value"

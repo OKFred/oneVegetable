@@ -10,6 +10,7 @@ import type { LogisticsOrderSummary, LogisticsQuoteRequest } from '@one-vegetabl
 import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
 import ListFilterDialog from '../components/ListFilterDialog.vue';
+import ListToolbar from '../components/ListToolbar.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
@@ -549,11 +550,11 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
   </template>
 
   <template v-else-if="workspace === 'orders'">
-    <Card class="rounded-b-none border-b-0 p-3">
-      <form class="flex flex-wrap items-center gap-2" @submit.prevent="applySearch">
+    <ListToolbar data-testid="logistics-toolbar" @search="applySearch">
+      <template #search>
         <Input
           v-model="orderNumberSearch"
-          class="w-48 max-w-full sm:w-56"
+          class="min-w-0 flex-1"
           :placeholder="t('logistics.orders.filter')"
         />
         <ActionTooltip :disabled="Boolean(ordersDisabledReason)" :reason="ordersDisabledReason">
@@ -561,6 +562,8 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
             <Search class="size-4" />{{ t('common.filters.search') }}
           </Button>
         </ActionTooltip>
+      </template>
+      <template #actions>
         <ListFilterDialog
           v-model:open="filtersOpen"
           :active-count="pageStatus ? 1 : 0"
@@ -583,8 +586,8 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
             </select></label
           >
         </ListFilterDialog>
-      </form>
-    </Card>
+      </template>
+    </ListToolbar>
     <QueryState
       :loading="orders.isPending.value && !ordersBlocked"
       :error="orders.error.value"

@@ -1,6 +1,9 @@
 export const inventory = {
   title: '库存',
   batch: '查询所选库存',
+  pageQuery: '查询本页库存',
+  pendingQuery: '待查询 · 查询库存',
+  rowQuery: '{status}：商品 {product}',
   source: '接口来源',
   product: '商品库存',
   sku: 'SKU 库存',

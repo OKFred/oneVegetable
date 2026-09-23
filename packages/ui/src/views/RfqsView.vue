@@ -15,6 +15,7 @@ import {
 import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
 import ListFilterDialog from '../components/ListFilterDialog.vue';
+import ListToolbar from '../components/ListToolbar.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
@@ -495,54 +496,48 @@ const columns = computed<DataColumn<RfqSummary>[]>(() => [
       </Card>
     </div>
 
-    <div class="flex flex-wrap items-center gap-2 rounded-t-lg border border-b-0 p-3">
-      <Button :variant="source === 'search' ? 'default' : 'outline'" @click="source = 'search'">
-        <Search class="size-4" />{{ t('rfqs.market') }}
-      </Button>
-      <Button :variant="source === 'recommend' ? 'default' : 'outline'" @click="source = 'recommend'">
-        <Sparkles class="size-4" />{{ t('rfqs.recommended') }}
-      </Button>
-      <div v-if="source === 'search'" class="relative min-w-64 flex-1">
-        <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-        <Input
-          v-model="keywords"
-          class="pl-9"
-          :placeholder="t('rfqs.searchPlaceholder')"
-          @keyup.enter="applySearch"
-        />
-      </div>
-      <ListFilterDialog
-        v-if="source === 'search'"
-        v-model:open="filtersOpen"
-        :active-count="filterCount"
-        :invalid="invalidFilters"
-        @apply="applyRfqFilters"
-        @reset="
-          categoryId = '';
-          country = '';
-          unquotedOnly = false;
-        "
-      >
-        <p class="text-xs font-medium text-muted-foreground">{{ t('common.filters.server') }}</p>
-        <label class="block space-y-1 text-sm"
-          ><span>{{ t('common.fields.categoryId') }}</span
-          ><Input v-model="categoryId" inputmode="numeric" :aria-label="t('common.fields.categoryId')"
-        /></label>
-        <label class="block space-y-1 text-sm"
-          ><span>{{ t('rfqs.countryPlaceholder') }}</span
-          ><Input v-model="country" maxlength="2" :aria-label="t('rfqs.countryPlaceholder')"
-        /></label>
-        <label class="flex items-center gap-2 text-sm"
-          ><input v-model="unquotedOnly" type="checkbox" />{{ t('rfqs.unquotedOnly') }}</label
+    <ListToolbar data-testid="rfq-toolbar" @search="applySearch">
+      <template v-if="source === 'search'" #search>
+        <Input v-model="keywords" class="min-w-0 flex-1" :placeholder="t('rfqs.searchPlaceholder')" />
+        <Button type="submit" variant="outline"> <Search class="size-4" />{{ t('rfqs.search') }} </Button>
+      </template>
+      <template #actions>
+        <Button :variant="source === 'search' ? 'default' : 'outline'" @click="source = 'search'">
+          <Search class="size-4" />{{ t('rfqs.market') }}
+        </Button>
+        <Button :variant="source === 'recommend' ? 'default' : 'outline'" @click="source = 'recommend'">
+          <Sparkles class="size-4" />{{ t('rfqs.recommended') }}
+        </Button>
+        <ListFilterDialog
+          v-if="source === 'search'"
+          v-model:open="filtersOpen"
+          :active-count="filterCount"
+          :invalid="invalidFilters"
+          @apply="applyRfqFilters"
+          @reset="
+            categoryId = '';
+            country = '';
+            unquotedOnly = false;
+          "
         >
-        <p v-if="invalidFilters" role="alert" class="text-sm text-destructive">
-          {{ t('rfqs.categoryInvalid') }}
-        </p>
-      </ListFilterDialog>
-      <Button v-if="source === 'search'" variant="outline" @click="applySearch">
-        <Search class="size-4" />{{ t('rfqs.search') }}
-      </Button>
-    </div>
+          <p class="text-xs font-medium text-muted-foreground">{{ t('common.filters.server') }}</p>
+          <label class="block space-y-1 text-sm"
+            ><span>{{ t('common.fields.categoryId') }}</span
+            ><Input v-model="categoryId" inputmode="numeric" :aria-label="t('common.fields.categoryId')"
+          /></label>
+          <label class="block space-y-1 text-sm"
+            ><span>{{ t('rfqs.countryPlaceholder') }}</span
+            ><Input v-model="country" maxlength="2" :aria-label="t('rfqs.countryPlaceholder')"
+          /></label>
+          <label class="flex items-center gap-2 text-sm"
+            ><input v-model="unquotedOnly" type="checkbox" />{{ t('rfqs.unquotedOnly') }}</label
+          >
+          <p v-if="invalidFilters" role="alert" class="text-sm text-destructive">
+            {{ t('rfqs.categoryInvalid') }}
+          </p>
+        </ListFilterDialog>
+      </template>
+    </ListToolbar>
 
     <QueryState
       :loading="rfqListLoading"

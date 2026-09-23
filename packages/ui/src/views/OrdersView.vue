@@ -25,6 +25,7 @@ import type {
 import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
 import OrderListFilters from '../components/OrderListFilters.vue';
+import ListToolbar from '../components/ListToolbar.vue';
 import { fieldColumn } from '../lib/field-columns';
 import { detailErrorState, pageDetailIdentity, requestPageDetail, usePageDetails } from '../lib/page-details';
 import { useGalleryTransfers } from '../lib/gallery-transfer-service';
@@ -486,20 +487,22 @@ onBeforeUnmount(() => {
   </div>
 
   <template v-if="workspace === 'orders'">
-    <Card class="rounded-b-none border-b-0 p-3">
-      <form class="flex flex-wrap items-center gap-2" @submit.prevent="applyBuyerSearch">
+    <ListToolbar data-testid="order-toolbar" @search="applyBuyerSearch">
+      <template #search>
         <Input
           v-model="buyerSearch"
-          class="w-48 max-w-full sm:w-56"
+          class="min-w-0 flex-1"
           data-feedback-redact
           :placeholder="t('orders.filters.buyer')"
         />
         <Button type="submit" variant="outline" :disabled="orders.isFetching.value">{{
           t('common.filters.search')
         }}</Button>
+      </template>
+      <template #actions>
         <OrderListFilters :model-value="orderFilters" @update:model-value="applyOrderFilters" />
-      </form>
-    </Card>
+      </template>
+    </ListToolbar>
     <QueryState
       :loading="orders.isPending.value"
       :error="orders.error.value"

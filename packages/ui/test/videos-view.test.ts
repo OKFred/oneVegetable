@@ -54,10 +54,13 @@ describe('VideosView search toolbar', () => {
     });
     const toolbar = wrapper.get('[data-testid="video-toolbar"]');
     const form = toolbar.get('form');
-    expect(form.classes()).toContain('flex-wrap');
-    expect(form.get('input').classes()).toContain('sm:w-56');
+    expect(form.get('input').classes()).toContain('flex-1');
     expect(form.text()).toContain('搜索');
-    expect(form.text()).toContain('筛选');
+    expect(form.text()).not.toContain('筛选');
+    const actions = toolbar.get('[data-slot="list-toolbar-actions"]');
+    expect(actions.classes()).toContain('justify-end');
+    expect(actions.text()).toContain('筛选');
+    expect(actions.text()).toContain('上传');
     expect(form.text()).not.toContain('上传');
     expect(toolbar.text()).not.toContain('刷新');
     expect(toolbar.classes()).not.toContain('justify-between');

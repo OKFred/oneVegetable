@@ -8,6 +8,7 @@ import { type ApiCapability, type CapabilityDefinition } from '@one-vegetable/co
 import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
 import ListFilterDialog from '../components/ListFilterDialog.vue';
+import ListToolbar from '../components/ListToolbar.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PlatformReadbackNotice from '../components/PlatformReadbackNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -307,54 +308,58 @@ function matrixBadge(cell: CapabilityMatrixCell) {
       ><Badge variant="outline">{{ t('capabilities.articleCount', { count: articleCount }) }}</Badge>
     </div>
   </PageHeader>
-  <div class="mb-0 flex flex-wrap gap-2 rounded-t-lg border border-b-0 p-3">
-    <div class="relative min-w-72 flex-1">
-      <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-      <Input
-        v-model="search"
-        class="pl-9"
-        :aria-label="t('capabilities.search')"
-        :placeholder="t('capabilities.search')"
-      />
-    </div>
-    <ListFilterDialog
-      v-model:open="filterOpen"
-      :active-count="filterCount"
-      @apply="applyFilters"
-      @reset="filterDraft = { domain: 'all', accountVerification: 'all' }"
-    >
-      <select
-        v-model="filterDraft.domain"
-        :aria-label="t('capabilities.allDomains')"
-        class="h-9 rounded-md border bg-background px-3 text-sm"
+  <ListToolbar data-testid="capability-toolbar">
+    <template #search>
+      <div class="relative min-w-0 flex-1">
+        <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+        <Input
+          v-model="search"
+          class="pl-9"
+          :aria-label="t('capabilities.search')"
+          :placeholder="t('capabilities.search')"
+        />
+      </div>
+    </template>
+    <template #actions>
+      <ListFilterDialog
+        v-model:open="filterOpen"
+        :active-count="filterCount"
+        @apply="applyFilters"
+        @reset="filterDraft = { domain: 'all', accountVerification: 'all' }"
       >
-        <option value="all">{{ t('capabilities.allDomains') }}</option>
-        <option
-          v-for="item in ['product', 'photo', 'trade', 'rfq', 'buyer', 'logistics', 'data', 'platform']"
-          :key="item"
-          :value="item"
+        <select
+          v-model="filterDraft.domain"
+          :aria-label="t('capabilities.allDomains')"
+          class="h-9 rounded-md border bg-background px-3 text-sm"
         >
-          {{ item }}
-        </option>
-      </select>
-      <select
-        v-model="filterDraft.accountVerification"
-        :aria-label="t('capabilities.accountSnapshot')"
-        class="h-9 rounded-md border bg-background px-3 text-sm"
-      >
-        <option value="all">{{ t('capabilities.allAccountResults') }}</option>
-        <option value="passed">{{ t('capabilities.accountStatuses.passed') }}</option>
-        <option value="no-data">{{ t('capabilities.accountStatuses.noData') }}</option>
-        <option value="permission-denied">{{ t('capabilities.accountStatuses.permissionDenied') }}</option>
-        <option value="contract-drift">{{ t('capabilities.accountStatuses.contractDrift') }}</option>
-        <option value="provider-error">{{ t('capabilities.accountStatuses.providerError') }}</option>
-        <option value="skipped-prerequisite">
-          {{ t('capabilities.accountStatuses.skippedPrerequisite') }}
-        </option>
-        <option value="not-tested">{{ t('capabilities.accountStatuses.notTested') }}</option>
-      </select>
-    </ListFilterDialog>
-  </div>
+          <option value="all">{{ t('capabilities.allDomains') }}</option>
+          <option
+            v-for="item in ['product', 'photo', 'trade', 'rfq', 'buyer', 'logistics', 'data', 'platform']"
+            :key="item"
+            :value="item"
+          >
+            {{ item }}
+          </option>
+        </select>
+        <select
+          v-model="filterDraft.accountVerification"
+          :aria-label="t('capabilities.accountSnapshot')"
+          class="h-9 rounded-md border bg-background px-3 text-sm"
+        >
+          <option value="all">{{ t('capabilities.allAccountResults') }}</option>
+          <option value="passed">{{ t('capabilities.accountStatuses.passed') }}</option>
+          <option value="no-data">{{ t('capabilities.accountStatuses.noData') }}</option>
+          <option value="permission-denied">{{ t('capabilities.accountStatuses.permissionDenied') }}</option>
+          <option value="contract-drift">{{ t('capabilities.accountStatuses.contractDrift') }}</option>
+          <option value="provider-error">{{ t('capabilities.accountStatuses.providerError') }}</option>
+          <option value="skipped-prerequisite">
+            {{ t('capabilities.accountStatuses.skippedPrerequisite') }}
+          </option>
+          <option value="not-tested">{{ t('capabilities.accountStatuses.notTested') }}</option>
+        </select>
+      </ListFilterDialog>
+    </template>
+  </ListToolbar>
   <div class="border-x bg-card px-3 pb-3 text-sm">
     <div class="flex flex-wrap items-center gap-2">
       <Badge variant="success">{{

@@ -18,6 +18,7 @@ import TablePagination from '../components/TablePagination.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import VideoDrawer from '../components/VideoDrawer.vue';
 import ListFilterDialog from '../components/ListFilterDialog.vue';
+import ListToolbar from '../components/ListToolbar.vue';
 import ModalDialog from '../components/ui/ModalDialog.vue';
 const VideoUploadDialog = defineAsyncComponent(() => import('../components/VideoUploadDialog.vue'));
 const uploadOpen = ref(false);
@@ -256,22 +257,21 @@ onUnmounted(() => {
 <template>
   <section data-testid="video-library">
     <h2 class="mb-3 text-xl font-semibold">{{ vt('title') }}</h2>
-    <div
-      data-testid="video-toolbar"
-      class="flex flex-wrap items-center gap-3 rounded-t-lg border border-b-0 p-2"
-    >
-      <form class="flex min-w-0 flex-wrap items-center gap-2" @submit.prevent="search">
+    <ListToolbar data-testid="video-toolbar" @search="search">
+      <template #search>
         <Input
           v-model="title"
           :aria-label="vt('titleSearch')"
           :placeholder="vt('titleSearch')"
-          class="w-48 max-w-full sm:w-56"
+          class="min-w-0 flex-1"
           maxlength="200"
           @keydown.enter.prevent="search"
         />
         <Button type="submit" variant="outline" :disabled="busy"
           ><Search class="size-4" />{{ vt('search') }}</Button
         >
+      </template>
+      <template #actions>
         <ListFilterDialog
           v-model:open="filterOpen"
           :active-count="filterCount"
@@ -314,8 +314,6 @@ onUnmounted(() => {
             >
           </fieldset>
         </ListFilterDialog>
-      </form>
-      <div class="flex flex-wrap items-center gap-2 sm:ml-auto">
         <Button variant="outline" @click="uploadOpen = true"
           ><Upload class="size-4" />{{ vt('upload') }}</Button
         >
@@ -335,8 +333,8 @@ onUnmounted(() => {
             vt('list')
           }}</Button>
         </div>
-      </div>
-    </div>
+      </template>
+    </ListToolbar>
     <ErrorNotice v-if="error" :error="error" />
     <p v-if="busy" role="status">{{ vt('loading') }}</p>
     <ModalDialog

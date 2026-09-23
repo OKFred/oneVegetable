@@ -87,6 +87,7 @@ import {
 import ActionTooltip from '../components/ActionTooltip.vue';
 import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import DataTable from '../components/DataTable.vue';
+import ListToolbar from '../components/ListToolbar.vue';
 import { fieldColumn, productExtraFields } from '../lib/field-columns';
 import { detailErrorState, pageDetailIdentity, requestPageDetail, usePageDetails } from '../lib/page-details';
 import { useGalleryTransfers } from '../lib/gallery-transfer-service';
@@ -2427,27 +2428,23 @@ onBeforeUnmount(() => {
       </GroupSidebar>
 
       <section class="min-w-0">
-        <div
-          class="flex flex-wrap items-center justify-between gap-3 rounded-t-lg border border-b-0 p-2"
-          role="toolbar"
-          :aria-label="t('products.view.page.toolbar')"
-        >
-          <form class="flex min-w-0 flex-wrap items-center gap-2" @submit.prevent="searchProducts">
+        <ListToolbar role="toolbar" :aria-label="t('products.view.page.toolbar')" @search="searchProducts">
+          <template #search>
             <Input
               v-model="subjectDraft"
-              class="w-48 max-w-full sm:w-56"
+              class="min-w-0 flex-1"
               :aria-label="t('products.view.page.search')"
               :placeholder="t('products.view.page.search')"
             />
             <Button type="submit" variant="outline" :disabled="products.isFetching.value">
               <Search class="size-4" />{{ t('products.filters.search') }}
             </Button>
+          </template>
+          <template #actions>
             <ProductListFilterDialog
               :model-value="productFilters"
               @update:model-value="applyProductFilters"
             />
-          </form>
-          <div class="flex flex-wrap items-center justify-end gap-2">
             <span
               v-if="selectedProducts.length > MAX_PRODUCT_TRANSFER_ITEMS"
               class="text-xs text-amber-700 dark:text-amber-400"
@@ -2548,8 +2545,8 @@ onBeforeUnmount(() => {
             <Button @click="startNewProduct"
               ><ListPlus class="size-4" aria-hidden="true" />{{ t('products.view.page.add') }}</Button
             >
-          </div>
-        </div>
+          </template>
+        </ListToolbar>
         <div
           v-if="
             !inventoryColumnsVisible &&
