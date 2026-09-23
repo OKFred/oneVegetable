@@ -1,10 +1,11 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { validationEqual } from '../../packages/core/src/validation-equal';
 import {
   compactExtensionValidatorErrors as compact,
+  compactExtensionValidatorStrings as poolStrings,
   extensionValidatorCompactionPlugin
 } from './extension-validator-compaction';
 
@@ -199,7 +200,75 @@ describe('extension-only standalone validator compaction', () => {
     }
   });
 
-  it('preserves all generated validators, full errors, aliases and input/evaluated state', () => {
+  it('pools profitable strings while preserving directives, evaluation and fresh objects', () => {
+    const value = '#/properties/a-long-property-name/additionalProperties';
+    const literal = JSON.stringify(value);
+    const source = `// @ts-nocheck\n"use strict";const __extensionAjvStrings0="occupied";
+      const calls=[];const read=(value)=>(calls.push(value),value);
+      function result(){return [${Array.from({ length: 4 }, () => `{value:read(${literal})}`).join(',')}]}
+      const first=result(),second=result();first[0].value="changed";
+      JSON.stringify({calls,first,second,same:first[0]===second[0]});`;
+    const output = poolStrings(source);
+    expect(output.startsWith('// @ts-nocheck\n"use strict";')).toBe(true);
+    expect(output).toContain('const __extensionAjvStrings_0=');
+    expect(output.split(literal)).toHaveLength(2);
+    expect(evaluate(output)).toBe(evaluate(source));
+    expect(poolStrings(output)).toBe(output);
+  });
+
+  it('uses a net saving threshold instead of pooling every duplicate', () => {
+    for (const source of [
+      'const values=["short","short","short","short"];',
+      'const values=["string","string"];',
+      'const values=["this long value is unique and must stay inline"];'
+    ])
+      expect(poolStrings(source)).toBe(source);
+    const value = 'A sufficiently long repeated string may profit even with only two uses';
+    const source = `const values=[${JSON.stringify(value)},${JSON.stringify(value)}];JSON.stringify(values);`;
+    expect(poolStrings(source)).toContain('const __extensionAjvStrings0=');
+    expect(evaluate(poolStrings(source))).toBe(evaluate(source));
+    const frequent = `const values=[${Array.from({ length: 20 }, () => '"string"').join(',')}];JSON.stringify(values);`;
+    expect(poolStrings(frequent)).toContain('const __extensionAjvStrings0=');
+    expect(evaluate(poolStrings(frequent))).toBe(evaluate(frequent));
+  });
+
+  it('keeps exact unicode, escaped characters and plain template values', () => {
+    for (const value of [
+      '字段/请求/校验路径/字段/请求/校验路径',
+      '#/properties/escaped-"quote"-\\-line\n\r\t-😀-\ud800',
+      '#/properties/literal-${notAnExpression}/type'
+    ]) {
+      const source = `const values=[${Array.from({ length: 4 }, () => JSON.stringify(value)).join(',')}];JSON.stringify(values);`;
+      expect(poolStrings(source)).toContain('__extensionAjvStrings');
+      expect(evaluate(poolStrings(source))).toBe(evaluate(source));
+    }
+    const source =
+      'const values=[`long ordinary template string`,`long ordinary template string`,`long ordinary template string`,`long ordinary template string`];JSON.stringify(values);';
+    expect(evaluate(poolStrings(source))).toBe(evaluate(source));
+  });
+
+  it('never rewrites module syntax, property names, directives, types or tagged templates', () => {
+    const literal = JSON.stringify('a-very-long-literal-that-is-shared-by-many-syntax-kinds');
+    const prefix = `// @ts-nocheck\n"use strict";import value from ${literal};`;
+    const excluded = [
+      `export {value} from ${literal};`,
+      `type Value=${literal};`,
+      `const load=()=>import(${literal});`,
+      `const legacy=()=>require(${literal});`,
+      `const object={${literal}:1,${literal}(){},get ${literal}(){return 1},set ${literal}(value){}};`,
+      `class Example{${literal}=1;}`,
+      `const {${literal}: bound}=object;`,
+      `tag\`a-very-long-literal-that-is-shared-by-many-syntax-kinds\`;`
+    ];
+    const source = `${prefix}\n${excluded.join('\n')}\nexport const values=[${Array.from({ length: 4 }, () => literal).join(',')}];`;
+    const output = poolStrings(source);
+    expect(output.startsWith(prefix)).toBe(true);
+    for (const original of excluded) expect(output).toContain(original);
+    expect(output).toContain('const __extensionAjvStrings0=');
+    expect(poolStrings(output)).toBe(output);
+  });
+
+  describe('generated validator parity', () => {
     type Validator = ((value: unknown) => boolean) & { errors?: unknown; evaluated?: unknown };
     function load(source: string): Record<string, Validator> {
       const exports: Record<string, Validator> = {};
@@ -244,63 +313,75 @@ describe('extension-only standalone validator compaction', () => {
     }
     const counts = { files: 0, validators: 0, cases: 0, valid: 0, invalid: 0, examples: 0 };
     const directory = new URL('../../packages/core/src/generated/', import.meta.url);
-    for (const file of readdirSync(directory).filter((name) => /^validators-.*\.ts$/u.test(name))) {
-      counts.files++;
-      const source = readFileSync(new URL(file, directory), 'utf8');
-      const before = load(source);
-      const code = compact(source);
-      const after = load(code);
-      expect(compact(code), file).toBe(code);
-      expect(code, file).not.toMatch(/\beval\(|new Function|\brequire\(/u);
-      expect(Object.keys(after), file).toEqual(Object.keys(before));
-      const aliases = new Map<Validator, string>();
-      for (const [name, original] of Object.entries(before)) {
-        counts.validators++;
-        const optimized = after[name];
-        if (!optimized) throw new Error(`Missing validator: ${name}`);
-        const canonical = aliases.get(original);
-        if (canonical) expect(optimized, `${file}:${name} alias`).toBe(after[canonical]);
-        else aliases.set(original, name);
-        const inputs: unknown[] = [
-          undefined,
-          null,
-          false,
-          0,
-          -1,
-          1,
-          1.5,
-          NaN,
-          Infinity,
-          '',
-          '1',
-          '😀',
-          [],
-          [1],
-          {},
-          { unexpected: true }
-        ];
-        if (examples.has(name)) {
-          counts.examples++;
-          inputs.push(...exampleVariants(examples.get(name)));
+    const files = readdirSync(directory).filter((name) => /^validators-.*\.ts$/u.test(name));
+
+    afterAll(() => {
+      expect(counts.files).toBe(files.length);
+      expect(counts.examples).toBe(examples.size);
+      expect(counts.valid).toBeGreaterThan(100);
+      expect(counts.invalid).toBeGreaterThan(100);
+      console.info('Validator compaction parity:', counts);
+    });
+
+    // Keep the full comparison for every module, but give each domain its own timeout.
+    // A monolithic synchronous test can exceed 30 seconds under whole-suite CPU contention.
+    it.each(files)(
+      'preserves full errors, aliases and input/evaluated state: %s',
+      (file) => {
+        counts.files++;
+        const source = readFileSync(new URL(file, directory), 'utf8');
+        const before = load(source);
+        const code = compact(source);
+        const after = load(code);
+        expect(compact(code), file).toBe(code);
+        expect(code, file).not.toMatch(/\beval\(|new Function|\brequire\(/u);
+        expect(Object.keys(after), file).toEqual(Object.keys(before));
+        const aliases = new Map<Validator, string>();
+        for (const [name, original] of Object.entries(before)) {
+          counts.validators++;
+          const optimized = after[name];
+          if (!optimized) throw new Error(`Missing validator: ${name}`);
+          const canonical = aliases.get(original);
+          if (canonical) expect(optimized, `${file}:${name} alias`).toBe(after[canonical]);
+          else aliases.set(original, name);
+          const inputs: unknown[] = [
+            undefined,
+            null,
+            false,
+            0,
+            -1,
+            1,
+            1.5,
+            NaN,
+            Infinity,
+            '',
+            '1',
+            '😀',
+            [],
+            [1],
+            {},
+            { unexpected: true }
+          ];
+          if (examples.has(name)) {
+            counts.examples++;
+            inputs.push(...exampleVariants(examples.get(name)));
+          }
+          for (const [index, value] of inputs.entries()) {
+            counts.cases++;
+            const inputBefore = structuredClone(value);
+            const inputAfter = structuredClone(value);
+            const expected = original(inputBefore);
+            if (expected) counts.valid++;
+            else counts.invalid++;
+            const label = `${file}:${name}:${index}`;
+            expect(optimized(inputAfter), label).toBe(expected);
+            expect(JSON.stringify(optimized.errors), label).toBe(JSON.stringify(original.errors));
+            expect(JSON.stringify(optimized.evaluated), label).toBe(JSON.stringify(original.evaluated));
+            expect(inputAfter, label).toEqual(inputBefore);
+          }
         }
-        for (const [index, value] of inputs.entries()) {
-          counts.cases++;
-          const inputBefore = structuredClone(value);
-          const inputAfter = structuredClone(value);
-          const expected = original(inputBefore);
-          if (expected) counts.valid++;
-          else counts.invalid++;
-          const label = `${file}:${name}:${index}`;
-          expect(optimized(inputAfter), label).toBe(expected);
-          expect(JSON.stringify(optimized.errors), label).toBe(JSON.stringify(original.errors));
-          expect(JSON.stringify(optimized.evaluated), label).toBe(JSON.stringify(original.evaluated));
-          expect(inputAfter, label).toEqual(inputBefore);
-        }
-      }
-    }
-    expect(counts.examples).toBe(examples.size);
-    expect(counts.valid).toBeGreaterThan(100);
-    expect(counts.invalid).toBeGreaterThan(100);
-    console.info('Validator compaction parity:', counts);
-  }, 30_000);
+      },
+      30_000
+    );
+  });
 });

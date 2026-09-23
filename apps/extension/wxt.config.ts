@@ -4,6 +4,9 @@ import rootPackage from '../../package.json' with { type: 'json' };
 import { extensionValidatorCompactionPlugin } from '../../scripts/lib/extension-validator-compaction';
 
 export default defineConfig({
+  // Shared workspace modules use explicit imports. WXT's lexical auto-importer can
+  // mistake a local Storage parameter for its extension-only `storage` helper.
+  imports: false,
   modules: ['@wxt-dev/module-vue'],
   vite: () => ({
     define: {
@@ -15,6 +18,11 @@ export default defineConfig({
     plugins: [tailwindcss(), extensionValidatorCompactionPlugin()]
   }),
   hooks: {
+    'config:resolved'(wxt) {
+      // WXT 0.21.4 still installs unimport for #imports when disabled.
+      // Also disable source injection using unimport's own option.
+      Object.assign(wxt.config.imports, { autoImport: false });
+    },
     'vite:build:extendConfig'(entrypoints, config) {
       // Only the ESM group can split modules. Content scripts stay single-file.
       if (!entrypoints.some((entry) => entry.type === 'background')) return;
@@ -25,9 +33,11 @@ export default defineConfig({
       config.build.rollupOptions.output = {
         ...output,
         manualChunks(id) {
+          const path = id.replaceAll('\\', '/');
+          if (path.endsWith('/packages/core/src/validation-equal.ts')) return 'validation-equal';
           const match =
-            /\/generated\/(validators-(?:product|rfq|trade|logistics|insights|photo|platform|free-api))\.ts$/.exec(
-              id.replaceAll('\\', '/')
+            /\/generated\/(validators-(?:product|rfq|trade|logistics|insights|photo|platform|free-api|video-upload))\.ts$/.exec(
+              path
             );
           return match?.[1];
         }

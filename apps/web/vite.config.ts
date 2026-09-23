@@ -16,6 +16,11 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             {
+              // Keep the translation runtime separate from the growing bilingual catalogs.
+              name: 'i18n-runtime',
+              test: /node_modules[\\/](?:vue-i18n|@intlify)[\\/]/u
+            },
+            {
               name: 'core-validation',
               test: /(?:validators-core|node_modules[\\/]ajv-i18n)/u
             },

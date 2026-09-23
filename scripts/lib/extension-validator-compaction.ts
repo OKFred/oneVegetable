@@ -37,6 +37,10 @@ function onlyExpression(node: ts.Statement | undefined): ts.Expression | undefin
 
 /** Build-time only: share error bookkeeping, never validation branches or mutable error objects. */
 export function compactExtensionValidatorErrors(source: string): string {
+  return compactExtensionValidatorStrings(compactErrorScaffolding(source));
+}
+
+function compactErrorScaffolding(source: string): string {
   const file = ts.createSourceFile('validator.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   let helper = '__extensionAjvError';
   while (source.includes(helper)) helper += '_';
@@ -185,6 +189,81 @@ export function compactExtensionValidatorErrors(source: string): string {
   if (helpers.has(appendHelper))
     source += `\nfunction ${appendHelper}(instancePath,schemaPath,keyword,params,message,vErrors){const error={instancePath,schemaPath,keyword,params,message};if(vErrors===null)return [error];vErrors.push(error);return vErrors;}\n`;
   return source;
+}
+
+/** Intern only repeated primitive values, never object identities or validation branches. */
+export function compactExtensionValidatorStrings(source: string): string {
+  const file = ts.createSourceFile('validator.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const strings = new Map<string, (ts.StringLiteral | ts.NoSubstitutionTemplateLiteral)[]>();
+  let poolName = '__extensionAjvStrings';
+  while (source.includes(poolName)) poolName += '_';
+
+  function visit(node: ts.Node): void {
+    // Module specifiers, import attributes and type-only literals are not runtime values.
+    if (
+      ts.isImportDeclaration(node) ||
+      ts.isExportDeclaration(node) ||
+      ts.isImportEqualsDeclaration(node) ||
+      ts.isTypeNode(node) ||
+      ts.isTaggedTemplateExpression(node) ||
+      (ts.isCallExpression(node) &&
+        (node.expression.kind === ts.SyntaxKind.ImportKeyword || identifier(node.expression, 'require')))
+    )
+      return;
+    if ((ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) && node.text.length >= 6) {
+      const parent = node.parent;
+      if (
+        (ts.isPropertyAssignment(parent) && parent.name === node) ||
+        (ts.isMethodDeclaration(parent) && parent.name === node) ||
+        (ts.isPropertyDeclaration(parent) && parent.name === node) ||
+        (ts.isGetAccessorDeclaration(parent) && parent.name === node) ||
+        (ts.isSetAccessorDeclaration(parent) && parent.name === node) ||
+        (ts.isBindingElement(parent) && parent.propertyName === node) ||
+        ts.isExpressionStatement(parent)
+      )
+        return;
+      const matches = strings.get(node.text) ?? [];
+      matches.push(node);
+      strings.set(node.text, matches);
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(file);
+
+  const declarations: string[] = [];
+  const edits: { start: number; end: number; text: string }[] = [];
+  for (const [value, nodes] of strings) {
+    if (nodes.length < 2) continue;
+    const literal = JSON.stringify(value);
+    // Estimate a conservative four-byte minified binding and its declaration overhead.
+    // The final minifier may inline marginal bindings; never pool merely for coverage.
+    const referenceBytes = 4;
+    const replacedBytes = nodes.reduce(
+      (total, node) => total + Buffer.byteLength(node.getText(file), 'utf8'),
+      0
+    );
+    const pooledBytes = Buffer.byteLength(literal, 'utf8') + 7 + referenceBytes * (nodes.length + 1);
+    if (replacedBytes - pooledBytes < 16) continue;
+    const name = `${poolName}${declarations.length}`;
+    declarations.push(`const ${name}=${literal};`);
+    for (const node of nodes) edits.push({ start: node.getStart(file), end: node.getEnd(), text: name });
+  }
+  if (!declarations.length) return source;
+
+  // Retain leading annotations, directives and imports. Initialise before any value reads.
+  let insertion = file.statements[0]?.getStart(file) ?? source.length;
+  for (const statement of file.statements) {
+    if (
+      ts.isImportDeclaration(statement) ||
+      ts.isImportEqualsDeclaration(statement) ||
+      (ts.isExpressionStatement(statement) && ts.isStringLiteral(statement.expression))
+    )
+      insertion = statement.getEnd();
+    else break;
+  }
+  for (const edit of edits.toSorted((left, right) => right.start - left.start))
+    source = source.slice(0, edit.start) + edit.text + source.slice(edit.end);
+  return `${source.slice(0, insertion)}\n${declarations.join('\n')}\n${source.slice(insertion)}`;
 }
 
 /** Extension builds only; the generator, its checked-in outputs and other runtimes stay untouched. */
