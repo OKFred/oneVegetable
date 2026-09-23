@@ -12,7 +12,7 @@ import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import { requestVideo, VideoReadScope, mustStopVideoQueries } from '../lib/video-library';
 import { useVideoI18n } from '../i18n/video';
-import { notifyVideoDifferences } from '../lib/video-issue-notice';
+import { visibleVideoIssues } from '../lib/video-diagnostics';
 import { formatDateTime } from '../lib/date-time';
 import MediaPreviewShell from './MediaPreviewShell.vue';
 import Button from './ui/Button.vue';
@@ -37,6 +37,7 @@ const relation = shallowRef<VideoRelations | null>(null),
   busy = ref(false),
   done = ref(0);
 const scope = new VideoReadScope();
+const relationIssues = computed(() => visibleVideoIssues(relation.value?.issues ?? []));
 const mediaUrl = computed(() => safePlaybackUrl(props.video?.videoUrl));
 const ids = computed(
   () => relation.value?.encryptedProductIds.slice((page.value - 1) * 10, page.value * 10) ?? []
@@ -159,7 +160,6 @@ async function loadRelations(refresh = false) {
     );
     if (!current()) return;
     relation.value = data;
-    notifyVideoDifferences(data.issues, vt('compatibleDifference'));
     // Separate the relation query from the first decrypt request as well.
     await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 350));
     if (current()) await resolvePage(refresh);
@@ -271,9 +271,9 @@ onBeforeUnmount(() => {
             {{ busy ? vt('loading') : '' }} {{ vt('progress', { done, total: ids.length }) }}
           </p>
           <ErrorNotice v-if="error" :error="error" />
-          <details v-if="relation?.issues.length" class="text-xs">
+          <details v-if="relationIssues.length" class="text-xs">
             <summary class="cursor-pointer">{{ vt('issues') }}</summary>
-            <p v-for="issue in relation.issues" :key="issue">{{ issue }}</p>
+            <p v-for="issue in relationIssues" :key="issue">{{ issue }}</p>
           </details>
           <p v-if="relation && !relation.encryptedProductIds.length">{{ vt('noRelations') }}</p>
           <article v-for="id in ids" :key="id" class="space-y-2 rounded border p-3">
@@ -302,9 +302,9 @@ onBeforeUnmount(() => {
                 </div>
               </div>
               <p v-else>{{ vt(results[id]?.status === 'invalid-id' ? 'invalidId' : 'notFound') }}</p>
-              <details v-if="results[id]?.issues.length" class="text-xs">
+              <details v-if="visibleVideoIssues(results[id]?.issues ?? []).length" class="text-xs">
                 <summary class="cursor-pointer">{{ vt('issues') }}</summary>
-                <p v-for="issue in results[id]?.issues" :key="issue">{{ issue }}</p>
+                <p v-for="issue in visibleVideoIssues(results[id]?.issues ?? [])" :key="issue">{{ issue }}</p>
               </details>
             </template>
             <p v-else-if="!failures[id]">{{ vt('pending') }}</p>

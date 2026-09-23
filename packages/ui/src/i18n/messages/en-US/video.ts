@@ -63,8 +63,6 @@ export const video = {
   withRelations: 'With associations',
   withoutRelations: 'No associations',
   relationUnknown: 'Unknown association count',
-  compatibleDifference:
-    'The platform omitted a documented status field. The data passed compatibility checks and remains usable. Details are available in API diagnostics.',
   associationTitle: 'Product video association',
   associationNotice:
     'Existing products only. This is separate from saving or publishing the product; schema fields remain unchanged.',

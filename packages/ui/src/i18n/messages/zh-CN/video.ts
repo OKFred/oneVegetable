@@ -57,8 +57,6 @@ export const video = {
   withRelations: '有关联',
   withoutRelations: '无关联',
   relationUnknown: '关联数量未知',
-  compatibleDifference:
-    '平台未返回文档中的状态字段，当前数据已通过兼容校验，不影响使用。详情可在接口差异诊断中查看。',
   associationTitle: '商品视频关联',
   associationNotice: '仅适用于已有商品。关联独立于商品保存或发布，不修改编辑器中的 Schema 字段。',
   associationChoose: '选择视频',

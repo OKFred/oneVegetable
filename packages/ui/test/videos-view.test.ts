@@ -3,11 +3,16 @@ import { defineComponent, h } from 'vue';
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
+import { VIDEO_MOCK_DATA } from '../../core/src/generated/mock-data';
+import compatibilityIssues from '../../../mock/data/video/compatibility-issues.json';
+import { toast } from 'vue-sonner';
 import { provideServices } from '../src/lib/services';
 import { uiI18n } from '../src/i18n';
 import VideosView from '../src/views/VideosView.vue';
 
-vi.mock('vue-sonner', () => ({ toast: { warning: vi.fn(), error: vi.fn(), success: vi.fn() } }));
+vi.mock('vue-sonner', () => ({
+  toast: { info: vi.fn(), warning: vi.fn(), error: vi.fn(), success: vi.fn() }
+}));
 const mounted: VueWrapper[] = [];
 function mountView(gateway = new MockGatewayClient(0)) {
   const wrapper = mount(
@@ -44,6 +49,27 @@ describe('VideosView search toolbar', () => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
+
+  it.each(['zh-CN', 'en-US'] as const)(
+    'does not show an icon, content or toast for accepted omissions (%s)',
+    async (locale) => {
+      uiI18n.global.locale.value = locale;
+      const gateway = new MockGatewayClient(0);
+      vi.spyOn(gateway, 'request').mockResolvedValueOnce({
+        ...VIDEO_MOCK_DATA.responses.listVideos,
+        issues: compatibilityIssues.accepted
+      });
+      const wrapper = mountView(gateway);
+      await vi.waitFor(() => {
+        expect(wrapper.text()).toContain('Example clothing video');
+      });
+      expect(wrapper.find('button[aria-label="接口差异提示"]').exists()).toBe(false);
+      expect(wrapper.find('button[aria-label="API differences"]').exists()).toBe(false);
+      expect(wrapper.find('[data-testid="video-toolbar"] svg.lucide-info').exists()).toBe(false);
+      expect(document.body.textContent).not.toContain('result/msg_code:not-returned');
+      expect(toast.info).not.toHaveBeenCalled();
+    }
+  );
 
   it('bypasses read cache on every explicit search, including unchanged conditions', async () => {
     const gateway = new MockGatewayClient(0);

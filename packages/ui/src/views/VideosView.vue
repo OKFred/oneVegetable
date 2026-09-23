@@ -8,7 +8,7 @@ import { pageDetailIdentity } from '../lib/page-details';
 import { requestVideo, VideoReadScope } from '../lib/video-library';
 import { useVideoI18n } from '../i18n/video';
 import { useUiI18n } from '../i18n';
-import { notifyVideoDifferences } from '../lib/video-issue-notice';
+import { visibleVideoIssues } from '../lib/video-diagnostics';
 import { formatDateTime } from '../lib/date-time';
 import type { DataColumn } from '../lib/table';
 import Button from '../components/ui/Button.vue';
@@ -67,6 +67,7 @@ const result = shallowRef<VideoPage | null>(null),
   busy = ref(false),
   identity = ref('');
 const scope = new VideoReadScope();
+const diagnosticIssues = computed(() => visibleVideoIssues(result.value?.issues ?? []));
 const rows = computed(() =>
   (result.value?.items ?? []).filter(
     (video) =>
@@ -114,7 +115,6 @@ async function load(refresh = false) {
     );
     if (current()) {
       result.value = data;
-      notifyVideoDifferences(data.issues, vt('compatibleDifference'));
     }
   } catch (e: unknown) {
     if (current()) error.value = e;
@@ -318,7 +318,7 @@ onUnmounted(() => {
           ><Upload class="size-4" />{{ vt('upload') }}</Button
         >
         <Button
-          v-if="result?.issues.length"
+          v-if="diagnosticIssues.length"
           variant="ghost"
           size="icon"
           :aria-label="vt('issues')"
@@ -337,12 +337,9 @@ onUnmounted(() => {
     </ListToolbar>
     <ErrorNotice v-if="error" :error="error" />
     <p v-if="busy" role="status">{{ vt('loading') }}</p>
-    <ModalDialog
-      v-model:open="diagnosticsOpen"
-      :title="vt('issues')"
-      :description="vt('compatibleDifference')"
+    <ModalDialog v-model:open="diagnosticsOpen" :title="vt('issues')"
       ><ul class="space-y-2 break-all font-mono text-xs">
-        <li v-for="issue in result?.issues ?? []" :key="issue">{{ issue }}</li>
+        <li v-for="issue in diagnosticIssues" :key="issue">{{ issue }}</li>
       </ul></ModalDialog
     >
     <template v-if="view === 'cards'">
