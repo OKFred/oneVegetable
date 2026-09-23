@@ -17,7 +17,7 @@ withDefaults(
     <span
       tabindex="0"
       :class="[
-        'inline-flex outline-none focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-ring',
+        'inline-flex cursor-not-allowed outline-none focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-ring [&_button:disabled]:pointer-events-none',
         wrapperClass
       ]"
       :aria-label="reason"

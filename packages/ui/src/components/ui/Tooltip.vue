@@ -25,13 +25,7 @@ const open = ref(false);
   <TooltipProvider :delay-duration="delayDuration" :skip-delay-duration="100">
     <TooltipRoot v-model:open="open">
       <TooltipTrigger as-child>
-        <span
-          class="inline-flex"
-          @mouseenter="open = true"
-          @mouseleave="open = false"
-          @focusin="open = true"
-          @focusout="open = false"
-        >
+        <span class="inline-flex" @focusin="open = true" @focusout="open = false">
           <slot />
         </span>
       </TooltipTrigger>
