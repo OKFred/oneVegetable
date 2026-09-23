@@ -243,7 +243,7 @@ export function compactExtensionValidatorStrings(source: string): string {
       0
     );
     const pooledBytes = Buffer.byteLength(literal, 'utf8') + 7 + referenceBytes * (nodes.length + 1);
-    if (replacedBytes - pooledBytes < 16) continue;
+    if (replacedBytes - pooledBytes < 8) continue;
     const name = `${poolName}${declarations.length}`;
     declarations.push(`const ${name}=${literal};`);
     for (const node of nodes) edits.push({ start: node.getStart(file), end: node.getEnd(), text: name });

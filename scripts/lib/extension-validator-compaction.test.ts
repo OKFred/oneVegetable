@@ -232,6 +232,14 @@ describe('extension-only standalone validator compaction', () => {
     expect(evaluate(poolStrings(frequent))).toBe(evaluate(frequent));
   });
 
+  it('pools small but profitable constants without changing values or idempotence', () => {
+    const source = 'JSON.stringify(["abcdefgh","abcdefgh","abcdefgh","abcdefgh","abcdefgh"]);';
+    const result = poolStrings(source);
+    expect(result).toContain('const __extensionAjvStrings0=');
+    expect(evaluate(result)).toBe(evaluate(source));
+    expect(poolStrings(result)).toBe(result);
+  });
+
   it('keeps exact unicode, escaped characters and plain template values', () => {
     for (const value of [
       '字段/请求/校验路径/字段/请求/校验路径',
