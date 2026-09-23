@@ -43,6 +43,7 @@ const selectedId = ref(''),
 const file = shallowRef<File | null>(null),
   fingerprint = shallowRef<VideoUploadFile | null>(null);
 const errorCode = ref(''),
+  storageCode = ref(''),
   requestId = ref('');
 const confirmation = ref<'create' | 'stage' | 'submit' | 'cancel' | null>(null);
 const selected = computed(() => tasks.value.find((task) => task.id === selectedId.value) ?? null);
@@ -104,6 +105,13 @@ function fail(error: unknown): void {
         : undefined;
   errorCode.value =
     typeof value === 'string' && /^[A-Z][A-Z_0-9]{0,99}$/u.test(value) ? value : 'VIDEO_UPLOAD_FAILED';
+  const detail = error instanceof GatewayException ? error.gatewayError.subCode : undefined;
+  storageCode.value =
+    errorCode.value === 'S3_REQUEST_FAILED' &&
+    typeof detail === 'string' &&
+    /^HTTP_\d{3}:[A-Za-z]{1,50}$/u.test(detail)
+      ? detail
+      : '';
   const id = error && typeof error === 'object' && 'requestId' in error ? error.requestId : undefined;
   requestId.value = typeof id === 'string' && /^[\da-f-]{36}$/iu.test(id) ? id : '';
 }
@@ -450,7 +458,16 @@ onBeforeUnmount(() => {
       </fieldset>
       <p v-if="!enabled && context" class="text-sm text-muted-foreground">{{ vt('uploadDisabled') }}</p>
       <div v-if="errorCode" role="alert" class="rounded-md border border-destructive p-3 text-sm">
-        <p>
+        <p v-if="errorCode === 'S3_REQUEST_FAILED'">
+          {{
+            t(
+              storageCode === 'HTTP_411:MissingContentLength'
+                ? 'errors.codes.S3_CONTENT_LENGTH_REQUIRED'
+                : 'errors.codes.S3_REQUEST_FAILED'
+            )
+          }}
+        </p>
+        <p v-else>
           {{
             vt(
               errorCode === 'VIDEO_FILE_CHANGED'
@@ -464,6 +481,7 @@ onBeforeUnmount(() => {
         <details class="mt-2 break-all text-xs">
           <summary>{{ vt('issues') }}</summary>
           <p>{{ errorCode }}</p>
+          <p v-if="storageCode">{{ storageCode }}</p>
           <p v-if="requestId">requestId: {{ requestId }}</p>
         </details>
       </div>

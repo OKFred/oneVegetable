@@ -3,6 +3,7 @@ import { defineComponent, h } from 'vue';
 import { DOMWrapper, flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
+import { GatewayException } from '@one-vegetable/core/errors';
 import type { VideoUploadControl, VideoUploadTask } from '@one-vegetable/core/video-upload';
 import fixture from '../../../mock/data/video/upload.json';
 import taskFixture from '../../../mock/data/video/upload-task.json';
@@ -140,5 +141,26 @@ describe('video upload dialog', () => {
     await flushPromises();
     expect(s.body.text()).not.toContain('X-Amz-Signature');
     expect(s.body.text()).toContain('操作未完成');
+  });
+  it('explains safe storage failures without exposing raw provider text or replaying writes', async () => {
+    const s = setup();
+    await flushPromises();
+    s.call.mockRejectedValueOnce(
+      new GatewayException({
+        code: 'S3_REQUEST_FAILED',
+        subCode: 'HTTP_411:MissingContentLength',
+        message: 'secret-provider-url',
+        retryable: false
+      })
+    );
+    await findButton(s.body, '刷新任务记录').trigger('click');
+    await flushPromises();
+    expect(s.body.text()).toContain('反向代理');
+    expect(s.body.text()).toContain('HTTP_411:MissingContentLength');
+    expect(s.body.text()).not.toContain('secret-provider-url');
+    uiI18n.global.locale.value = 'en-US';
+    await flushPromises();
+    expect(s.body.text()).toContain('proxy chunked transfer');
+    expect(s.call.mock.calls.map(([command]) => command.action)).toEqual(['list', 'list']);
   });
 });

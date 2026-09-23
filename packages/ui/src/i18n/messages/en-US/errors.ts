@@ -1,5 +1,7 @@
 export const errors = {
   codes: {
+    S3_CONTENT_LENGTH_REQUIRED:
+      'Storage did not receive Content-Length. Ask your administrator to check proxy chunked transfer settings; do not retry the upload.',
     S3_REQUEST_FAILED:
       'S3 could not complete the request. Check the storage error code and task result before retrying any upload.',
     S3_PERMISSION_REQUIRED: 'Save your S3 settings again and allow access to the storage host.',
