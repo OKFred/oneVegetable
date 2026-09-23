@@ -1,4 +1,5 @@
 {
+  "lengthRequired": "<Error><Code>MissingContentLength</Code><Message>missing header: content-length</Message></Error>",
   "denied": "<Error><Code>AccessDenied</Code><Message>secret-fixture https://s3.example.test/file?X-Amz-Signature=secret-fixture</Message><RequestId>private-value</RequestId></Error>",
   "unsupported": "<Error><Code>NotImplemented</Code><Message>secret-fixture</Message></Error>",
   "unknown": "<Error><Code>secret-fixture</Code><Message>secret-fixture</Message></Error>",

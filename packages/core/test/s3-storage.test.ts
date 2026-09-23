@@ -18,6 +18,7 @@ const configuration: S3StorageConfiguration = {
 describe('S3ObjectStorageClient', () => {
   it.each([
     [403, errors.denied, 'AccessDenied'],
+    [411, errors.lengthRequired, 'MissingContentLength'],
     [501, errors.unsupported, 'NotImplemented'],
     [400, errors.unknown, 'UnknownProviderError'],
     [403, errors.malformed, 'UnknownProviderError'],

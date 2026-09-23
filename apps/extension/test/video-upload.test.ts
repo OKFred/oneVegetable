@@ -114,7 +114,11 @@ describe('extension video upload durable protocol', () => {
           ...(subCode.startsWith('HTTP_') ? { subCode } : {})
         }
       });
+      const failure: unknown = await requestVideoUpload({ action: 'list' }, fixture.context, requestId).catch(
+        (error: unknown) => error
+      );
+      expect(JSON.stringify(failure)).not.toMatch(/secret\.invalid|untrusted provider/u);
     }
-    expect(mocks.send).toHaveBeenCalledTimes(2);
+    expect(mocks.send).toHaveBeenCalledTimes(4);
   });
 });
