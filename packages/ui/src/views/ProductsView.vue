@@ -1,7 +1,18 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, h, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import { ChevronDown, Download, Ellipsis, Layers3, ListPlus, RefreshCw, Search, Upload } from '@lucide/vue';
+import {
+  ChevronDown,
+  Download,
+  Ellipsis,
+  FileInput,
+  Layers3,
+  ListPlus,
+  Plus,
+  RefreshCw,
+  Search,
+  Square
+} from '@lucide/vue';
 import {
   DropdownMenuContent,
   DropdownMenuItem,
@@ -88,6 +99,7 @@ import ActionTooltip from '../components/ActionTooltip.vue';
 import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import DataTable from '../components/DataTable.vue';
 import ListToolbar from '../components/ListToolbar.vue';
+import ListActionButton from '../components/ListActionButton.vue';
 import { fieldColumn, productExtraFields } from '../lib/field-columns';
 import { detailErrorState, pageDetailIdentity, requestPageDetail, usePageDetails } from '../lib/page-details';
 import { useGalleryTransfers } from '../lib/gallery-transfer-service';
@@ -2399,7 +2411,7 @@ onBeforeUnmount(() => {
         ['tasks', t('products.view.page.tasks')]
       ] as const"
       :key="item[0]"
-      :variant="workspace === item[0] ? 'default' : 'outline'"
+      :variant="workspace === item[0] ? 'secondary' : 'ghost'"
       role="tab"
       :aria-selected="workspace === item[0]"
       @click="setWorkspace(item[0])"
@@ -2436,9 +2448,9 @@ onBeforeUnmount(() => {
               :aria-label="t('products.view.page.search')"
               :placeholder="t('products.view.page.search')"
             />
-            <Button type="submit" variant="outline" :disabled="products.isFetching.value">
-              <Search class="size-4" />{{ t('products.filters.search') }}
-            </Button>
+            <ListActionButton :icon="Search" type="submit" :disabled="products.isFetching.value">
+              {{ t('products.filters.search') }}
+            </ListActionButton>
           </template>
           <template #actions>
             <ProductListFilterDialog
@@ -2452,31 +2464,34 @@ onBeforeUnmount(() => {
             >
               {{ t('products.view.page.exportLimit', { maximum: MAX_PRODUCT_TRANSFER_ITEMS }) }}
             </span>
-            <Button variant="outline" :disabled="productTransferBusy" @click="openProductImportDialog">
-              <Upload class="size-4" />{{ t('products.view.page.import') }}
-            </Button>
+            <ListActionButton
+              :icon="FileInput"
+              :disabled="productTransferBusy"
+              @click="openProductImportDialog"
+            >
+              {{ t('products.view.page.import') }}
+            </ListActionButton>
             <ActionTooltip
               :disabled="Boolean(productExportDisabledReason)"
               :reason="productExportDisabledReason"
             >
-              <Button
-                variant="outline"
+              <ListActionButton
+                :icon="Download"
                 :disabled="Boolean(productExportDisabledReason)"
                 @click="openProductExportDialog"
               >
-                <Download class="size-4" />{{ t('products.view.page.export') }}
-              </Button>
+                {{ t('products.view.page.export') }}
+              </ListActionButton>
             </ActionTooltip>
-            <Button variant="outline" @click="productGroupDialogOpen = true">
-              <Layers3 class="size-4" aria-hidden="true" />{{ t('products.view.page.group') }}
-            </Button>
+            <ListActionButton :icon="Layers3" @click="productGroupDialogOpen = true">
+              {{ t('products.view.page.group') }}
+            </ListActionButton>
             <span class="inline-flex">
               <DropdownMenuRoot :modal="false">
                 <DropdownMenuTrigger as-child>
-                  <Button variant="outline">
-                    <Ellipsis class="size-4" />{{ t('products.view.page.more')
-                    }}<ChevronDown class="size-3.5" />
-                  </Button>
+                  <ListActionButton :icon="Ellipsis">
+                    {{ t('products.view.page.more') }}<ChevronDown class="size-4" aria-hidden="true" />
+                  </ListActionButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuPortal>
                   <DropdownMenuContent
@@ -2542,9 +2557,9 @@ onBeforeUnmount(() => {
                 </DropdownMenuPortal>
               </DropdownMenuRoot>
             </span>
-            <Button @click="startNewProduct"
-              ><ListPlus class="size-4" aria-hidden="true" />{{ t('products.view.page.add') }}</Button
-            >
+            <ListActionButton :icon="Plus" @click="startNewProduct">{{
+              t('products.view.page.add')
+            }}</ListActionButton>
           </template>
         </ListToolbar>
         <div
@@ -2557,10 +2572,12 @@ onBeforeUnmount(() => {
           <span aria-live="polite">{{
             it('progress', { done: inventory.done.value, total: inventory.total.value })
           }}</span>
-          <Button v-if="inventory.busy.value" variant="outline" size="sm" @click="inventory.stop">{{
+          <ListActionButton v-if="inventory.busy.value" :icon="Square" @click="inventory.stop">{{
             it('stop')
-          }}</Button>
-          <Button v-else variant="outline" size="sm" @click="retryInventory">{{ it('retry') }}</Button>
+          }}</ListActionButton>
+          <ListActionButton v-else :icon="RefreshCw" @click="retryInventory">{{
+            it('retry')
+          }}</ListActionButton>
         </div>
         <ErrorNotice v-if="batchDisplay.error.value" class="mb-3" :error="batchDisplay.error.value" compact />
         <QueryState

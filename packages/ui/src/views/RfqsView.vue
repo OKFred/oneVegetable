@@ -1,7 +1,16 @@
 <script setup lang="ts">
 import { computed, h, ref, watch } from 'vue';
 import { useMutation, useQuery } from '@tanstack/vue-query';
-import { ExternalLink, FileText, Paperclip, Search, Send, ShieldAlert, Sparkles } from '@lucide/vue';
+import {
+  ExternalLink,
+  FileText,
+  Paperclip,
+  RefreshCw,
+  Search,
+  Send,
+  ShieldAlert,
+  Sparkles
+} from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
 import {
@@ -14,6 +23,7 @@ import {
 
 import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
+import ListActionButton from '../components/ListActionButton.vue';
 import ListFilterDialog from '../components/ListFilterDialog.vue';
 import ListToolbar from '../components/ListToolbar.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
@@ -449,9 +459,9 @@ const columns = computed<DataColumn<RfqSummary>[]>(() => [
           >
             {{ t('rfqs.permissions.marketplace') }}<ExternalLink class="size-3.5" />
           </a>
-          <Button variant="outline" size="sm" :disabled="equity.isFetching.value" @click="equity.refetch()">
+          <ListActionButton :icon="RefreshCw" :disabled="equity.isFetching.value" @click="equity.refetch()">
             {{ equity.isFetching.value ? t('rfqs.permissions.checking') : t('rfqs.permissions.retry') }}
-          </Button>
+          </ListActionButton>
           <a
             href="https://developer.alibaba.com/docs/api.htm?apiId=32084"
             class="inline-flex h-8 items-center rounded-md px-3 text-xs font-medium text-primary hover:underline"
@@ -473,9 +483,9 @@ const columns = computed<DataColumn<RfqSummary>[]>(() => [
         <p class="mt-2 text-sm text-muted-foreground">
           {{ rfqAccessError?.message ?? t('rfqs.permissions.retryLater') }}
         </p>
-        <Button class="mt-4" variant="outline" size="sm" @click="equity.refetch()">
+        <ListActionButton :icon="RefreshCw" class="mt-4" @click="equity.refetch()">
           {{ t('rfqs.permissions.retryShort') }}
-        </Button>
+        </ListActionButton>
       </div>
     </div>
   </Card>
@@ -499,13 +509,21 @@ const columns = computed<DataColumn<RfqSummary>[]>(() => [
     <ListToolbar data-testid="rfq-toolbar" @search="applySearch">
       <template v-if="source === 'search'" #search>
         <Input v-model="keywords" class="min-w-0 flex-1" :placeholder="t('rfqs.searchPlaceholder')" />
-        <Button type="submit" variant="outline"> <Search class="size-4" />{{ t('rfqs.search') }} </Button>
+        <ListActionButton :icon="Search" type="submit">{{ t('rfqs.search') }}</ListActionButton>
       </template>
       <template #actions>
-        <Button :variant="source === 'search' ? 'default' : 'outline'" @click="source = 'search'">
+        <Button
+          :variant="source === 'search' ? 'secondary' : 'ghost'"
+          :aria-pressed="source === 'search'"
+          @click="source = 'search'"
+        >
           <Search class="size-4" />{{ t('rfqs.market') }}
         </Button>
-        <Button :variant="source === 'recommend' ? 'default' : 'outline'" @click="source = 'recommend'">
+        <Button
+          :variant="source === 'recommend' ? 'secondary' : 'ghost'"
+          :aria-pressed="source === 'recommend'"
+          @click="source = 'recommend'"
+        >
           <Sparkles class="size-4" />{{ t('rfqs.recommended') }}
         </Button>
         <ListFilterDialog

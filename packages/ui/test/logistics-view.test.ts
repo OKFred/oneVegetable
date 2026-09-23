@@ -51,6 +51,7 @@ describe('LogisticsView', () => {
       expect(wrapper.text()).toContain('电池 · battery');
     });
 
+    expect(button(wrapper, '开始试算').classes()).toContain('bg-primary');
     await button(wrapper, '开始试算').trigger('click');
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('CNY 109.20');
@@ -60,6 +61,7 @@ describe('LogisticsView', () => {
     await button(wrapper, '下单草稿').trigger('click');
     const create = button(wrapper, '提交物流订单');
     expect(create.attributes('disabled')).toBeUndefined();
+    expect(create.classes()).toContain('bg-primary');
     await create.trigger('click');
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('演示下单成功');
@@ -70,7 +72,17 @@ describe('LogisticsView', () => {
 
   it('shows typed orders, Base64 labels, address nodes and shipping templates', async () => {
     const wrapper = mountView();
+    const previousWorkspace = wrapper.get('button[aria-pressed="true"]');
+    expect(previousWorkspace.classes()).toContain('bg-secondary');
     await button(wrapper, '物流订单').trigger('click');
+    expect(previousWorkspace.attributes('aria-pressed')).toBe('false');
+    expect(previousWorkspace.classes()).not.toContain('bg-secondary');
+    expect(button(wrapper, '物流订单').attributes('aria-pressed')).toBe('true');
+    expect(button(wrapper, '物流订单').classes()).toContain('bg-secondary');
+    const search = wrapper.get('[data-testid="logistics-toolbar"] button[type="submit"]');
+    expect(search.attributes('data-list-action')).toBeDefined();
+    expect(search.classes()).toEqual(expect.arrayContaining(['h-9', 'border-input']));
+    expect(search.find('svg[aria-hidden="true"]').exists()).toBe(true);
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('ALS00201756002');
     });

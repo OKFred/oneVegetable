@@ -12,6 +12,7 @@ import {
   KeyRound,
   LoaderCircle,
   LockKeyhole,
+  RefreshCw,
   RotateCcw,
   Save,
   ShieldCheck,
@@ -40,6 +41,7 @@ import AlibabaCredentialAcquisitionDialog from '../components/AlibabaCredentialA
 import AlibabaIndependentNotice from '../components/AlibabaIndependentNotice.vue';
 import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import DataTable from '../components/DataTable.vue';
+import ListActionButton from '../components/ListActionButton.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import ExtensionSocialBackendPanel from '../components/ExtensionSocialBackendPanel.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -966,9 +968,14 @@ function confirmLanguagePreference(): void {
           </Button>
         </li>
       </ul>
-      <Button class="mt-3" variant="outline" :disabled="permissionsBusy" @click="refreshPermissions">
-        <RotateCcw class="size-4" />{{ t('settings.permissions.refresh') }}
-      </Button>
+      <ListActionButton
+        class="mt-3"
+        :icon="RefreshCw"
+        :disabled="permissionsBusy"
+        @click="refreshPermissions"
+      >
+        {{ t('settings.permissions.refresh') }}
+      </ListActionButton>
     </Card>
     <Card class="p-5">
       <div class="flex flex-wrap items-start justify-between gap-3">
@@ -998,23 +1005,23 @@ function confirmLanguagePreference(): void {
       </div>
       <ErrorNotice v-if="diagnosticsError" class="mt-3" :error="diagnosticsError" compact />
       <div class="mt-4 flex flex-wrap gap-2">
-        <Button variant="outline" :disabled="diagnosticsBusy" @click="refreshDiagnostics">
-          <RotateCcw class="size-4" />{{ t('settings.diagnostics.refresh') }}
-        </Button>
-        <Button variant="outline" :disabled="diagnosticsBusy" @click="exportDiagnostics">
-          <Download class="size-4" />{{ t('settings.diagnostics.export') }}
-        </Button>
+        <ListActionButton :icon="RefreshCw" :disabled="diagnosticsBusy" @click="refreshDiagnostics">
+          {{ t('settings.diagnostics.refresh') }}
+        </ListActionButton>
+        <ListActionButton :icon="Download" :disabled="diagnosticsBusy" @click="exportDiagnostics">
+          {{ t('settings.diagnostics.export') }}
+        </ListActionButton>
         <ActionTooltip
           :disabled="Boolean(clearDiagnosticsDisabledReason)"
           :reason="clearDiagnosticsDisabledReason"
         >
-          <Button
-            variant="outline"
+          <ListActionButton
+            :icon="Trash2"
             :disabled="Boolean(clearDiagnosticsDisabledReason)"
             @click="settingsConfirmation = { kind: 'clear-diagnostics' }"
           >
-            <Trash2 class="size-4" />{{ t('settings.diagnostics.clear') }}
-          </Button>
+            {{ t('settings.diagnostics.clear') }}
+          </ListActionButton>
         </ActionTooltip>
       </div>
     </Card>
@@ -1044,12 +1051,12 @@ function confirmLanguagePreference(): void {
         :empty-text="t('settings.localData.empty')"
       />
       <div class="mt-4 flex flex-wrap gap-2">
-        <Button variant="outline" :disabled="dataBusy" @click="refreshLocalData">
-          <RotateCcw class="size-4" />{{ t('settings.localData.refresh') }}
-        </Button>
-        <Button variant="outline" :disabled="dataBusy" @click="exportLocalDataInventory">
-          <Download class="size-4" />{{ t('settings.localData.export') }}
-        </Button>
+        <ListActionButton :icon="RefreshCw" :disabled="dataBusy" @click="refreshLocalData">
+          {{ t('settings.localData.refresh') }}
+        </ListActionButton>
+        <ListActionButton :icon="Download" :disabled="dataBusy" @click="exportLocalDataInventory">
+          {{ t('settings.localData.export') }}
+        </ListActionButton>
       </div>
       <div class="mt-5 rounded-lg border border-red-200 bg-red-50 p-4">
         <div class="flex items-start gap-2 text-red-900">

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { History, Pause, Play, RefreshCw } from '@lucide/vue';
+import { Download, FileInput, History, Pause, RefreshCw, Search, Trash2, X } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import {
   galleryTaskReport,
@@ -13,6 +13,7 @@ import { formatDateTime } from '../lib/date-time';
 import { useUiI18n } from '../i18n';
 import Sheet from './ui/Sheet.vue';
 import Button from './ui/Button.vue';
+import ListActionButton from './ListActionButton.vue';
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import PlatformReadbackNotice from './PlatformReadbackNotice.vue';
 
@@ -128,9 +129,9 @@ async function pause(): Promise<void> {
               {{ t('photos.tasks.status.' + status) }}
             </option>
           </select>
-          <Button variant="outline" size="sm" @click="transfers.refresh()"
-            ><RefreshCw class="size-4" />{{ t('photos.tasks.refresh') }}</Button
-          >
+          <ListActionButton :icon="RefreshCw" @click="transfers.refresh()">{{
+            t('photos.tasks.refresh')
+          }}</ListActionButton>
         </div>
       </template>
       <p v-if="transfers.error.value" role="alert" class="mb-3 text-sm text-destructive">
@@ -176,53 +177,50 @@ async function pause(): Promise<void> {
           }}</a>
         </div>
         <div class="flex flex-wrap gap-2">
-          <Button
+          <ListActionButton
             v-if="task.status === 'running'"
-            variant="outline"
-            size="sm"
+            :icon="Pause"
             :disabled="busy"
             @click="safely(pause)"
-            ><Pause class="size-4" />{{ t('photos.tasks.pause') }}</Button
+            >{{ t('photos.tasks.pause') }}</ListActionButton
           >
-          <Button
+          <ListActionButton
             v-else-if="!['completed', 'cancelled'].includes(task.status)"
-            size="sm"
+            :icon="RefreshCw"
             :disabled="busy || contextChanged"
             @click="pending = { task, action: 'resume' }"
-            ><Play class="size-4" />{{ t('photos.tasks.resume') }}</Button
+            >{{ t('photos.tasks.resume') }}</ListActionButton
           >
-          <Button
+          <ListActionButton
             v-if="
               task.status !== 'running' &&
               task.items.some((i) => ['unknown', 'unconfirmed'].includes(i.status))
             "
-            variant="outline"
-            size="sm"
+            :icon="Search"
             :disabled="busy || contextChanged"
             @click="pending = { task, action: 'verify' }"
-            >{{ t('photos.tasks.verify') }}</Button
+            >{{ t('photos.tasks.verify') }}</ListActionButton
           >
-          <Button
+          <ListActionButton
             v-if="!['completed', 'cancelled'].includes(task.status)"
-            variant="outline"
-            size="sm"
+            :icon="X"
             @click="pending = { task, action: 'cancel' }"
-            >{{ t('photos.tasks.cancel') }}</Button
+            >{{ t('photos.tasks.cancel') }}</ListActionButton
           >
-          <Button
+          <ListActionButton
             v-if="task.status !== 'running'"
-            variant="outline"
-            size="sm"
+            :icon="Trash2"
             @click="pending = { task, action: 'remove' }"
-            >{{ t('photos.tasks.remove') }}</Button
+            >{{ t('photos.tasks.remove') }}</ListActionButton
           >
-          <Button variant="outline" size="sm" @click="report(task)">{{ t('photos.tasks.report') }}</Button>
-          <Button
+          <ListActionButton :icon="Download" @click="report(task)">{{
+            t('photos.tasks.report')
+          }}</ListActionButton>
+          <ListActionButton
             v-if="task.direction === 'import' && task.storage === 'zip' && task.status !== 'running'"
-            variant="outline"
-            size="sm"
+            :icon="FileInput"
             @click="reselect?.click()"
-            >{{ t('photos.tasks.reselect') }}</Button
+            >{{ t('photos.tasks.reselect') }}</ListActionButton
           >
           <input
             ref="reselect"

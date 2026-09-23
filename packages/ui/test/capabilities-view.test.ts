@@ -55,6 +55,23 @@ function bodyText(): string {
 }
 
 describe('CapabilitiesView platform safeguards', () => {
+  it('clears an empty list through a labelled neutral action', async () => {
+    const wrapper = mountView();
+    await vi.waitFor(() => {
+      expect(wrapper.find('table').exists()).toBe(true);
+    });
+    const search = wrapper.get('input[placeholder="搜索 API 方法"]');
+    await search.setValue('no-such-capability');
+    const clear = wrapper.get('tbody button[data-list-action]');
+    expect(clear.text()).toBe('清除筛选');
+    expect(clear.classes()).toEqual(expect.arrayContaining(['h-9', 'border-input']));
+    expect(clear.find('svg[aria-hidden="true"]').exists()).toBe(true);
+    await clear.trigger('click');
+    expect((search.element as HTMLInputElement).value).toBe('');
+    expect(wrapper.find('tbody tr').exists()).toBe(true);
+    wrapper.unmount();
+  });
+
   it('keeps cancelled advanced filters unapplied and applies only the confirmed draft', async () => {
     const wrapper = mountView();
     await flushPromises();

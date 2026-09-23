@@ -10,6 +10,7 @@ import type { DataColumn } from '../lib/table';
 import PlatformReadbackNotice from './PlatformReadbackNotice.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
+import ListActionButton from './ListActionButton.vue';
 import Card from './ui/Card.vue';
 import { useUiI18n } from '../i18n';
 
@@ -321,14 +322,17 @@ const columns = computed<DataColumn<ProductBatchPublishItem>[]>(() => [
           :disabled="selectedQueuedItems.length === 0 || !currentTargetAllowed"
           :reason="runDisabledReason"
         >
-          <Button :disabled="selectedQueuedItems.length === 0 || !currentTargetAllowed" @click="emit('run')">
-            <Play class="size-4" />
+          <ListActionButton
+            :icon="Play"
+            :disabled="selectedQueuedItems.length === 0 || !currentTargetAllowed"
+            @click="emit('run')"
+          >
             {{ t(target === 'draft' ? 'products.batch.startDraft' : 'products.batch.startPublish') }}
-          </Button>
+          </ListActionButton>
         </ActionTooltip>
-        <Button v-else variant="destructive" @click="emit('stop')">
-          <Square class="size-4" />{{ t('products.batch.stop') }}
-        </Button>
+        <ListActionButton v-else :icon="Square" @click="emit('stop')">
+          {{ t('products.batch.stop') }}
+        </ListActionButton>
       </div>
 
       <p

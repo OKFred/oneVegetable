@@ -10,8 +10,11 @@ import {
   EyeOff,
   FileSignature,
   MapPin,
+  RefreshCw,
+  Search,
   ShieldAlert,
-  Truck
+  Truck,
+  X
 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
@@ -25,6 +28,7 @@ import type {
 import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
 import OrderListFilters from '../components/OrderListFilters.vue';
+import ListActionButton from '../components/ListActionButton.vue';
 import ListToolbar from '../components/ListToolbar.vue';
 import { fieldColumn } from '../lib/field-columns';
 import { detailErrorState, pageDetailIdentity, requestPageDetail, usePageDetails } from '../lib/page-details';
@@ -479,7 +483,8 @@ onBeforeUnmount(() => {
       v-for="item in workspaces"
       :key="item.id"
       size="sm"
-      :variant="workspace === item.id ? 'default' : 'outline'"
+      :variant="workspace === item.id ? 'secondary' : 'ghost'"
+      :aria-pressed="workspace === item.id"
       @click="setWorkspace(item.id)"
     >
       {{ item.label }}
@@ -495,9 +500,9 @@ onBeforeUnmount(() => {
           data-feedback-redact
           :placeholder="t('orders.filters.buyer')"
         />
-        <Button type="submit" variant="outline" :disabled="orders.isFetching.value">{{
+        <ListActionButton :icon="Search" type="submit" :disabled="orders.isFetching.value">{{
           t('common.filters.search')
-        }}</Button>
+        }}</ListActionButton>
       </template>
       <template #actions>
         <OrderListFilters :model-value="orderFilters" @update:model-value="applyOrderFilters" />
@@ -544,10 +549,9 @@ onBeforeUnmount(() => {
                   : t('orders.noOrders')
               }}
             </p>
-            <Button
+            <ListActionButton
               v-if="Object.keys(orderFilters).length || buyerLoginId"
-              variant="outline"
-              size="sm"
+              :icon="X"
               @click="
                 status = '';
                 buyerLoginId = '';
@@ -555,11 +559,11 @@ onBeforeUnmount(() => {
                 orderFilters = {};
                 orderPage = 1;
               "
-              >{{ t('orders.clearFilters') }}</Button
+              >{{ t('orders.clearFilters') }}</ListActionButton
             >
-            <Button v-else variant="outline" size="sm" @click="orders.refetch()">
+            <ListActionButton v-else :icon="RefreshCw" @click="orders.refetch()">
               {{ t('common.actions.retry') }}
-            </Button>
+            </ListActionButton>
           </div>
         </template>
         <template #column-actions="{ visible }"

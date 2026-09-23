@@ -10,6 +10,7 @@ import type { ControlPasskeyCredential, ControlRealMutationStatus } from '@one-v
 import { useServices } from '../lib/services';
 import { notifyGatewayConfigurationChanged } from '../lib/gateway-configuration-events';
 import Button from './ui/Button.vue';
+import ListActionButton from './ListActionButton.vue';
 import Card from './ui/Card.vue';
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import ErrorNotice from './ErrorNotice.vue';
@@ -159,9 +160,9 @@ function userError(cause: unknown, fallback: string): Error {
         </h2>
         <p class="text-sm text-muted-foreground">{{ t('admin.selfHosted.description') }}</p>
       </div>
-      <Button variant="outline" size="sm" :disabled="loading" @click="refresh">
-        <RefreshCw class="size-4" />{{ t('common.actions.refresh') }}
-      </Button>
+      <ListActionButton :icon="RefreshCw" :disabled="loading" @click="refresh">
+        {{ t('common.actions.refresh') }}
+      </ListActionButton>
     </div>
 
     <ErrorNotice v-if="error" :error="error" :fallback="t('admin.selfHosted.errors.panel')" />

@@ -7,6 +7,7 @@ import { BarChart3, Building2, RefreshCw, ShieldAlert } from '@lucide/vue';
 import type { InsightsSupplierProduct } from '@one-vegetable/core';
 
 import DataTable from '../components/DataTable.vue';
+import ListActionButton from '../components/ListActionButton.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
 import ListFilterDialog from '../components/ListFilterDialog.vue';
@@ -188,7 +189,8 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
       v-for="item in workspaces"
       :key="item.id"
       size="sm"
-      :variant="workspace === item.id ? 'default' : 'outline'"
+      :variant="workspace === item.id ? 'secondary' : 'ghost'"
+      :aria-pressed="workspace === item.id"
       @click="workspace = item.id"
     >
       {{ item.label }}
@@ -210,9 +212,14 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
         <p class="mt-4 text-xs leading-5 text-muted-foreground">
           {{ t('insights.rankExplanation') }}
         </p>
-        <Button variant="outline" class="mt-4" :disabled="rank.isFetching.value" @click="rank.refetch()">
-          <RefreshCw class="size-4" />{{ t('common.actions.refresh') }}
-        </Button>
+        <ListActionButton
+          :icon="RefreshCw"
+          class="mt-4"
+          :disabled="rank.isFetching.value"
+          @click="rank.refetch()"
+        >
+          {{ t('common.actions.refresh') }}
+        </ListActionButton>
       </Card>
       <Card class="p-5">
         <h2 class="font-semibold">{{ t('insights.timeline') }}</h2>

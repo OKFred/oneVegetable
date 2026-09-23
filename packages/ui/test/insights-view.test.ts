@@ -108,12 +108,22 @@ describe('InsightsView', () => {
       expect(wrapper.text()).not.toContain('2026/08/12');
       expect(wrapper.text()).toContain('不生成“提升”“下降”或评级结论');
     });
+    const refresh = button(wrapper, '刷新');
+    expect(refresh.attributes('data-list-action')).toBeDefined();
+    expect(refresh.classes()).toEqual(expect.arrayContaining(['h-9', 'border-input']));
+    expect(refresh.find('svg[aria-hidden="true"]').exists()).toBe(true);
     wrapper.unmount();
   });
 
   it('opens an encrypted supplier id and lists typed historical products', async () => {
     const wrapper = mountView();
+    const previousWorkspace = wrapper.get('button[aria-pressed="true"]');
+    expect(previousWorkspace.classes()).toContain('bg-secondary');
     await button(wrapper, '采购供应商').trigger('click');
+    expect(previousWorkspace.attributes('aria-pressed')).toBe('false');
+    expect(previousWorkspace.classes()).not.toContain('bg-secondary');
+    expect(button(wrapper, '采购供应商').attributes('aria-pressed')).toBe('true');
+    expect(button(wrapper, '采购供应商').classes()).toContain('bg-secondary');
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('supplier-enc-001');
       expect(wrapper.text()).toContain('不补造公司名称');

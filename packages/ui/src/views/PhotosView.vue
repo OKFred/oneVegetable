@@ -1,17 +1,7 @@
 <script setup lang="ts">
 import { computed, h, nextTick, onScopeDispose, ref, watch } from 'vue';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
-import {
-  Download,
-  Eye,
-  FileInput,
-  LayoutGrid,
-  List as ListIcon,
-  Settings2,
-  Share2,
-  Search,
-  Upload
-} from '@lucide/vue';
+import { Download, Eye, FileInput, Layers3, ClipboardList, Share2, Search, Upload } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
 import type {
@@ -27,6 +17,8 @@ import DataTable from '../components/DataTable.vue';
 import TablePagination from '../components/TablePagination.vue';
 import ListFilterDialog from '../components/ListFilterDialog.vue';
 import ListToolbar from '../components/ListToolbar.vue';
+import ListActionButton from '../components/ListActionButton.vue';
+import ListViewToggle from '../components/ListViewToggle.vue';
 import Input from '../components/ui/Input.vue';
 import { fieldColumn, photoExtraFields } from '../lib/field-columns';
 import GroupSidebar from '../components/GroupSidebar.vue';
@@ -544,9 +536,9 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
             :placeholder="t('photos.filters.search')"
             :aria-label="t('photos.filters.search')"
           />
-          <Button type="submit" variant="outline" :disabled="refreshing" :aria-busy="refreshing"
-            ><Search class="size-4" />{{ t('common.filters.search') }}</Button
-          >
+          <ListActionButton :icon="Search" type="submit" :disabled="refreshing" :aria-busy="refreshing">{{
+            t('common.filters.search')
+          }}</ListActionButton>
         </template>
         <template #actions>
           <ListFilterDialog
@@ -604,24 +596,24 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
               </p>
             </fieldset>
           </ListFilterDialog>
-          <Button variant="outline" @click="groupManagerOpen = true">
-            <Settings2 class="size-4" />{{ t('photos.page.groupManagement') }}
-          </Button>
-          <Button variant="outline" @click="openGalleryTransfer('import')">
-            <FileInput class="size-4" />{{ t('photos.page.import') }}
-          </Button>
-          <Button v-if="galleryTransfers" variant="outline" @click="galleryTransfers.show()">{{
+          <ListActionButton :icon="Layers3" @click="groupManagerOpen = true">
+            {{ t('photos.page.groupManagement') }}
+          </ListActionButton>
+          <ListActionButton :icon="FileInput" @click="openGalleryTransfer('import')">
+            {{ t('photos.page.import') }}
+          </ListActionButton>
+          <ListActionButton v-if="galleryTransfers" :icon="ClipboardList" @click="galleryTransfers.show()">{{
             t('photos.tasks.title')
-          }}</Button>
-          <Button
-            variant="outline"
+          }}</ListActionButton>
+          <ListActionButton
+            :icon="Download"
             :disabled="selectedPhotos.length === 0"
             @click="openGalleryTransfer('export')"
           >
-            <Download class="size-4" />{{ t('photos.page.export') }}
-          </Button>
-          <Button
-            variant="outline"
+            {{ t('photos.page.export') }}
+          </ListActionButton>
+          <ListActionButton
+            :icon="Share2"
             :disabled="selectedPhotos.length === 0 || selectedPhotos.length > SOCIAL_SHARE_MAX_PHOTOS"
             :title="
               selectedPhotos.length > SOCIAL_SHARE_MAX_PHOTOS
@@ -630,16 +622,16 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
             "
             @click="shareDialogOpen = true"
           >
-            <Share2 class="size-4" />{{
+            {{
               selectedPhotos.length > 0
                 ? t('photos.page.shareCount', { count: selectedPhotos.length })
                 : t('photos.page.share')
             }}
-          </Button>
+          </ListActionButton>
           <ActionTooltip :disabled="uploadDialogBlocked" :reason="uploadDialogReason">
-            <Button :disabled="uploadDialogBlocked" @click="uploadDialogOpen = true">
-              <Upload class="size-4" />{{ t('photos.page.upload') }}
-            </Button>
+            <ListActionButton :icon="Upload" :disabled="uploadDialogBlocked" @click="uploadDialogOpen = true">
+              {{ t('photos.page.upload') }}
+            </ListActionButton>
           </ActionTooltip>
           <TriStateCheckbox
             v-if="photoViewMode === 'cards'"
@@ -649,30 +641,12 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
             :label="t('photos.filters.selectPage')"
             @update:checked="selectPage"
           />
-          <div
-            class="inline-flex items-center rounded-md border bg-background p-0.5"
-            role="group"
-            :aria-label="t('photos.governance.displayMode')"
-          >
-            <Button
-              size="sm"
-              :variant="photoViewMode === 'cards' ? 'secondary' : 'ghost'"
-              class="h-8 gap-1.5 px-2.5"
-              :aria-pressed="photoViewMode === 'cards'"
-              @click="photoViewMode = 'cards'"
-            >
-              <LayoutGrid class="size-4" aria-hidden="true" />{{ t('photos.governance.cards') }}
-            </Button>
-            <Button
-              size="sm"
-              :variant="photoViewMode === 'list' ? 'secondary' : 'ghost'"
-              class="h-8 gap-1.5 px-2.5"
-              :aria-pressed="photoViewMode === 'list'"
-              @click="photoViewMode = 'list'"
-            >
-              <ListIcon class="size-4" aria-hidden="true" />{{ t('photos.governance.list') }}
-            </Button>
-          </div>
+          <ListViewToggle
+            v-model="photoViewMode"
+            :label="t('photos.governance.displayMode')"
+            :cards-label="t('photos.governance.cards')"
+            :list-label="t('photos.governance.list')"
+          />
         </template>
       </ListToolbar>
 

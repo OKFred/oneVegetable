@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, h, ref, watch } from 'vue';
 import { useMutation, useQuery } from '@tanstack/vue-query';
-import { ExternalLink, Play, Search, ShieldAlert } from '@lucide/vue';
+import { ExternalLink, Play, Search, ShieldAlert, X } from '@lucide/vue';
 
 import { type ApiCapability, type CapabilityDefinition } from '@one-vegetable/core';
 
 import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
+import ListActionButton from '../components/ListActionButton.vue';
 import ListFilterDialog from '../components/ListFilterDialog.vue';
 import ListToolbar from '../components/ListToolbar.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
@@ -400,15 +401,14 @@ function matrixBadge(cell: CapabilityMatrixCell) {
       <template #empty>
         <div class="space-y-3 py-4">
           <p>{{ t('capabilities.noMatch') }}</p>
-          <Button
-            variant="outline"
-            size="sm"
+          <ListActionButton
+            :icon="X"
             @click="
               search = '';
               domain = 'all';
               accountVerification = 'all';
             "
-            >{{ t('capabilities.clearFilters') }}</Button
+            >{{ t('capabilities.clearFilters') }}</ListActionButton
           >
         </div>
       </template>

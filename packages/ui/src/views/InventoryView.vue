@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, h, ref, shallowRef, watch } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
-import { Search } from '@lucide/vue';
+import { RefreshCw, Search, Square } from '@lucide/vue';
 import type { Product } from '@one-vegetable/core';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
@@ -19,6 +19,7 @@ import {
   productFilterPayload
 } from '../composables/product-list-filters';
 import ProductListFilterDialog from '../components/ProductListFilterDialog.vue';
+import ListActionButton from '../components/ListActionButton.vue';
 import ListToolbar from '../components/ListToolbar.vue';
 import DataTable from '../components/DataTable.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -174,21 +175,21 @@ const columns = computed<DataColumn<Product>[]>(() => [
         :aria-label="t('products.view.page.search')"
         :placeholder="t('products.view.page.search')"
       />
-      <Button type="submit" variant="outline" class="shrink-0" :disabled="query.isFetching.value"
-        ><Search class="size-4" />{{ t('products.filters.search') }}</Button
-      >
+      <ListActionButton :icon="Search" type="submit" class="shrink-0" :disabled="query.isFetching.value">{{
+        t('products.filters.search')
+      }}</ListActionButton>
     </template>
     <template #actions>
-      <Button :disabled="queryDisabled || !rows.length" @click="queryInventory()">{{
+      <ListActionButton :icon="Search" :disabled="queryDisabled || !rows.length" @click="queryInventory()">{{
         it('pageQuery')
-      }}</Button>
-      <Button
-        variant="outline"
+      }}</ListActionButton>
+      <ListActionButton
+        :icon="Search"
         :disabled="queryDisabled || !selectedRows.length"
         @click="queryInventory(true)"
       >
         {{ it('batch') }} ({{ selectedRows.length }})
-      </Button>
+      </ListActionButton>
       <label class="flex items-center gap-2 text-sm">
         {{ it('source') }}
         <select
@@ -200,17 +201,17 @@ const columns = computed<DataColumn<Product>[]>(() => [
           <option value="sku">{{ it('sku') }}</option>
         </select>
       </label>
-      <Button
+      <ListActionButton
         v-if="hasFailed"
-        variant="outline"
+        :icon="RefreshCw"
         :disabled="queryDisabled"
         @click="queryInventory(false, true)"
       >
         {{ it('retry') }}
-      </Button>
-      <Button v-if="inventory.busy.value" variant="outline" @click="inventory.stop()">{{
+      </ListActionButton>
+      <ListActionButton v-if="inventory.busy.value" :icon="Square" @click="inventory.stop()">{{
         it('stop')
-      }}</Button>
+      }}</ListActionButton>
       <span v-if="inventory.busy.value" role="status" class="text-sm tabular-nums">
         {{ it('progress', { done: inventory.done.value, total: inventory.total.value }) }}
       </span>

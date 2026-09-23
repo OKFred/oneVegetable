@@ -111,6 +111,24 @@ describe('RfqsView', () => {
       expect(wrapper.text()).toContain('Portable solar power stations');
     });
 
+    const search = wrapper.get('[data-testid="rfq-toolbar"] button[type="submit"]');
+    expect(search.attributes('data-list-action')).toBeDefined();
+    expect(search.classes()).toEqual(expect.arrayContaining(['h-9', 'border-input']));
+    expect(search.find('svg[aria-hidden="true"]').exists()).toBe(true);
+    const selectedSource = wrapper.get('button[aria-pressed="true"]');
+    const alternateSource = wrapper.get('button[aria-pressed="false"]');
+    expect(selectedSource.classes()).toContain('bg-secondary');
+    expect(alternateSource.classes()).not.toContain('bg-primary');
+    await alternateSource.trigger('click');
+    expect(alternateSource.attributes('aria-pressed')).toBe('true');
+    expect(alternateSource.classes()).toContain('bg-secondary');
+    expect(selectedSource.attributes('aria-pressed')).toBe('false');
+    expect(selectedSource.classes()).not.toContain('bg-secondary');
+    await selectedSource.trigger('click');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Portable solar power stations');
+    });
+
     const rfqButton = wrapper
       .findAll('button')
       .find((button) => button.text().includes('Portable solar power stations'));
@@ -138,6 +156,7 @@ describe('RfqsView', () => {
 
     const submit = bodyButton('提交报价');
     expect(submit.disabled).toBe(false);
+    expect(submit.classList.contains('bg-primary')).toBe(true);
     submit.click();
     await flushPromises();
     await vi.waitFor(() => {

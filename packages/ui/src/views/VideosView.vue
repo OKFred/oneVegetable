@@ -19,6 +19,8 @@ import ErrorNotice from '../components/ErrorNotice.vue';
 import VideoDrawer from '../components/VideoDrawer.vue';
 import ListFilterDialog from '../components/ListFilterDialog.vue';
 import ListToolbar from '../components/ListToolbar.vue';
+import ListActionButton from '../components/ListActionButton.vue';
+import ListViewToggle from '../components/ListViewToggle.vue';
 import ModalDialog from '../components/ui/ModalDialog.vue';
 const VideoUploadDialog = defineAsyncComponent(() => import('../components/VideoUploadDialog.vue'));
 const uploadOpen = ref(false);
@@ -267,9 +269,7 @@ onUnmounted(() => {
           maxlength="200"
           @keydown.enter.prevent="search"
         />
-        <Button type="submit" variant="outline" :disabled="busy"
-          ><Search class="size-4" />{{ vt('search') }}</Button
-        >
+        <ListActionButton :icon="Search" type="submit" :disabled="busy">{{ vt('search') }}</ListActionButton>
       </template>
       <template #actions>
         <ListFilterDialog
@@ -314,9 +314,7 @@ onUnmounted(() => {
             >
           </fieldset>
         </ListFilterDialog>
-        <Button variant="outline" @click="uploadOpen = true"
-          ><Upload class="size-4" />{{ vt('upload') }}</Button
-        >
+        <ListActionButton :icon="Upload" @click="uploadOpen = true">{{ vt('upload') }}</ListActionButton>
         <Button
           v-if="diagnosticIssues.length"
           variant="ghost"
@@ -325,14 +323,12 @@ onUnmounted(() => {
           @click="diagnosticsOpen = true"
           ><Info class="size-4"
         /></Button>
-        <div class="flex gap-1">
-          <Button variant="outline" :aria-pressed="view === 'cards'" @click="view = 'cards'">{{
-            vt('cards')
-          }}</Button
-          ><Button variant="outline" :aria-pressed="view === 'list'" @click="view = 'list'">{{
-            vt('list')
-          }}</Button>
-        </div>
+        <ListViewToggle
+          v-model="view"
+          :label="t('photos.governance.displayMode')"
+          :cards-label="vt('cards')"
+          :list-label="vt('list')"
+        />
       </template>
     </ListToolbar>
     <ErrorNotice v-if="error" :error="error" />

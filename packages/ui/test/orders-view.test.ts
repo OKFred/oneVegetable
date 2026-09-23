@@ -63,6 +63,10 @@ describe('OrdersView', () => {
       expect(wrapper.find('tbody tr').exists()).toBe(true);
     });
     const before = request.mock.calls.filter(([operation]) => operation === 'listTradeOrders').length;
+    const search = wrapper.get('[data-testid="order-toolbar"] button[type="submit"]');
+    expect(search.attributes('data-list-action')).toBeDefined();
+    expect(search.classes()).toEqual(expect.arrayContaining(['h-9', 'border-input']));
+    expect(search.find('svg[aria-hidden="true"]').exists()).toBe(true);
     expect(wrapper.findAll('button').some((item) => item.text() === '刷新')).toBe(false);
     await wrapper.get('form').trigger('submit');
     await vi.waitFor(() => {
@@ -72,6 +76,23 @@ describe('OrdersView', () => {
     });
     wrapper.unmount();
     request.mockRestore();
+  });
+
+  it('uses neutral pressed workspace toggles', async () => {
+    const wrapper = mountView();
+    await flushPromises();
+    const selected = wrapper.get('button[aria-pressed="true"]');
+    expect(selected.classes()).toContain('bg-secondary');
+    expect(wrapper.findAll('button[aria-pressed="false"]')).toHaveLength(3);
+    await button(wrapper, '地址 Schema').trigger('click');
+    expect(selected.attributes('aria-pressed')).toBe('false');
+    expect(selected.classes()).not.toContain('bg-secondary');
+    expect(button(wrapper, '地址 Schema').attributes('aria-pressed')).toBe('true');
+    expect(button(wrapper, '地址 Schema').classes()).toContain('bg-secondary');
+    expect(
+      wrapper.findAll('button[aria-pressed]').every((item) => !item.classes().includes('bg-primary'))
+    ).toBe(true);
+    wrapper.unmount();
   });
 
   it('uses the preferred language for fulfillment and address Schema requests', async () => {

@@ -17,6 +17,7 @@ import {
 import TriStateCheckbox from './TriStateCheckbox.vue';
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import Button from './ui/Button.vue';
+import ListActionButton from './ListActionButton.vue';
 import Card from './ui/Card.vue';
 import Input from './ui/Input.vue';
 
@@ -86,15 +87,14 @@ function browserStorage(): Storage | undefined {
           {{ t('shell.dashboard.todo.description') }}
         </p>
       </div>
-      <Button
+      <ListActionButton
         v-if="completedCount > 0"
-        variant="ghost"
-        size="sm"
+        :icon="Trash2"
         data-testid="todo-clear-completed"
         @click="clearConfirmationOpen = true"
       >
         {{ t('shell.dashboard.todo.clearCompleted', { count: completedCount }) }}
-      </Button>
+      </ListActionButton>
     </div>
 
     <div class="p-5">

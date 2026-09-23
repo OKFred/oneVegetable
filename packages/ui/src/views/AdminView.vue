@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, h, onMounted, ref } from 'vue';
-import { Copy, RefreshCw, ShieldCheck, Trash2, UserPlus } from '@lucide/vue';
+import { Copy, RefreshCw, Search, ShieldCheck, Trash2, UserPlus } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
 import { API_CAPABILITIES } from '@one-vegetable/core';
@@ -18,6 +18,7 @@ import Input from '../components/ui/Input.vue';
 import ModalDialog from '../components/ui/ModalDialog.vue';
 import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import DataTable from '../components/DataTable.vue';
+import ListActionButton from '../components/ListActionButton.vue';
 import AuditListFilters from '../components/AuditListFilters.vue';
 import { emptyAuditFilters, auditFilterPayload, type AuditFilters } from '../lib/audit-filters';
 import ErrorNotice from '../components/ErrorNotice.vue';
@@ -604,9 +605,9 @@ const auditEventColumns = computed<DataColumn<ControlAuditEvent>[]>(() => [
     :title="t('admin.view.title')"
     :description="t('admin.view.description')"
   >
-    <Button v-if="control" variant="outline" size="sm" :disabled="loading" @click="refresh">
-      <RefreshCw class="size-4" />{{ t('admin.view.refresh') }}
-    </Button>
+    <ListActionButton v-if="control" :icon="RefreshCw" :disabled="loading" @click="refresh">
+      {{ t('admin.view.refresh') }}
+    </ListActionButton>
   </PageHeader>
 
   <Card v-if="mode === 'extension'" class="border-emerald-200 bg-emerald-50 p-5">
@@ -807,20 +808,22 @@ const auditEventColumns = computed<DataColumn<ControlAuditEvent>[]>(() => [
               :aria-label="t('admin.view.requests.filterAria')"
               placeholder="requestId（UUID v4）"
             />
-            <Button variant="outline" type="submit">{{ t('admin.view.requests.query') }}</Button>
+            <ListActionButton :icon="Search" type="submit">{{
+              t('admin.view.requests.query')
+            }}</ListActionButton>
           </form>
           <AuditListFilters
             kind="requests"
             :model-value="requestFilters"
             @update:model-value="applyEventFilters('requests', $event)"
           />
-          <Button
+          <ListActionButton
             data-testid="purge-request-events"
-            variant="outline"
+            :icon="Trash2"
             @click="requestAdminAction({ kind: 'purge' })"
           >
-            <Trash2 class="size-4" />{{ t('admin.view.requests.purge') }}
-          </Button>
+            {{ t('admin.view.requests.purge') }}
+          </ListActionButton>
         </div>
       </div>
       <div data-testid="request-events">

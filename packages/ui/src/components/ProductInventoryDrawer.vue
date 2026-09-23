@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { RefreshCw } from '@lucide/vue';
 import type { Product, ProductInventorySnapshot } from '@one-vegetable/core';
 import type { DataColumn } from '../lib/table';
 import { useInventoryI18n } from '../i18n/inventory';
 import { formatDateTime } from '../lib/date-time';
 import Sheet from './ui/Sheet.vue';
-import Button from './ui/Button.vue';
+import ListActionButton from './ListActionButton.vue';
 import Input from './ui/Input.vue';
 import DataTable from './DataTable.vue';
 import ErrorNotice from './ErrorNotice.vue';
@@ -58,7 +59,9 @@ const columns = computed<DataColumn<ProductInventorySnapshot['records'][number]>
             <option value="sku">{{ it('sku') }}</option>
           </select>
         </label>
-        <Button variant="outline" :disabled="busy" @click="emit('refresh')">{{ it('refresh') }}</Button>
+        <ListActionButton :icon="RefreshCw" :disabled="busy" @click="emit('refresh')">{{
+          it('refresh')
+        }}</ListActionButton>
         <a
           v-if="product?.detailUrl"
           :href="product.detailUrl"

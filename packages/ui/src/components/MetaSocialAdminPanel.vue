@@ -24,6 +24,7 @@ import type {
 
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
+import ListActionButton from './ListActionButton.vue';
 import Card from './ui/Card.vue';
 import Input from './ui/Input.vue';
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
@@ -353,9 +354,9 @@ function destinationCount(connectionId: string): number {
           {{ t('admin.meta.description') }}
         </p>
       </div>
-      <Button variant="outline" size="sm" :disabled="loading" @click="refresh">
-        <RefreshCw class="size-4" />{{ t('admin.meta.refresh') }}
-      </Button>
+      <ListActionButton :icon="RefreshCw" :disabled="loading" @click="refresh">
+        {{ t('admin.meta.refresh') }}
+      </ListActionButton>
     </div>
 
     <div class="grid gap-5 p-5 xl:grid-cols-[0.9fr_1.1fr]">

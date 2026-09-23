@@ -11,6 +11,7 @@ import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
 import DataTable from './DataTable.vue';
+import ListActionButton from './ListActionButton.vue';
 import ListFilterDialog from './ListFilterDialog.vue';
 import ErrorNotice from './ErrorNotice.vue';
 import PlatformReadbackNotice from './PlatformReadbackNotice.vue';
@@ -242,14 +243,17 @@ const batchColumns = computed<DataColumn<ProductBatchPublishItem>[]>(() => [
               >
             </fieldset>
           </ListFilterDialog>
-          <Button variant="outline" :disabled="loading" @click="emit('refresh')"
-            ><RefreshCw class="size-4" :class="{ 'animate-spin': loading }" />{{
-              t('common.actions.refresh')
-            }}</Button
+          <ListActionButton
+            :icon="RefreshCw"
+            :icon-class="loading ? 'animate-spin' : ''"
+            :disabled="loading"
+            @click="emit('refresh')"
           >
-          <Button variant="outline" @click="openAlibabaProductManagement"
-            >{{ t('products.tasks.openManagement') }}<ExternalLink class="size-4"
-          /></Button>
+            {{ t('common.actions.refresh') }}
+          </ListActionButton>
+          <ListActionButton :icon="ExternalLink" @click="openAlibabaProductManagement">
+            {{ t('products.tasks.openManagement') }}
+          </ListActionButton>
         </div>
       </div>
       <ErrorNotice v-if="error" class="m-4" :error="error" compact />

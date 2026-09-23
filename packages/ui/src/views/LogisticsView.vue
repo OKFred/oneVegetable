@@ -2,13 +2,14 @@
 import '../i18n/logistics';
 import { computed, h, ref, watch } from 'vue';
 import { useMutation, useQuery } from '@tanstack/vue-query';
-import { Calculator, ClipboardList, MapPin, PackageCheck, Search, Truck } from '@lucide/vue';
+import { Calculator, ClipboardList, MapPin, PackageCheck, RefreshCw, Search, Truck, X } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
 import type { LogisticsOrderSummary, LogisticsQuoteRequest } from '@one-vegetable/core';
 
 import ActionTooltip from '../components/ActionTooltip.vue';
 import DataTable from '../components/DataTable.vue';
+import ListActionButton from '../components/ListActionButton.vue';
 import ListFilterDialog from '../components/ListFilterDialog.vue';
 import ListToolbar from '../components/ListToolbar.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
@@ -408,7 +409,8 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
       v-for="item in workspaces"
       :key="item.id"
       size="sm"
-      :variant="workspace === item.id ? 'default' : 'outline'"
+      :variant="workspace === item.id ? 'secondary' : 'ghost'"
+      :aria-pressed="workspace === item.id"
       @click="setWorkspace(item.id)"
     >
       {{ item.label }}
@@ -558,9 +560,9 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
           :placeholder="t('logistics.orders.filter')"
         />
         <ActionTooltip :disabled="Boolean(ordersDisabledReason)" :reason="ordersDisabledReason">
-          <Button type="submit" variant="outline" :disabled="Boolean(ordersDisabledReason)">
-            <Search class="size-4" />{{ t('common.filters.search') }}
-          </Button>
+          <ListActionButton :icon="Search" type="submit" :disabled="Boolean(ordersDisabledReason)">
+            {{ t('common.filters.search') }}
+          </ListActionButton>
         </ActionTooltip>
       </template>
       <template #actions>
@@ -621,20 +623,19 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
                     : t('logistics.orders.noOrders')
               }}
             </p>
-            <Button
+            <ListActionButton
               v-if="orderNumberFilter || pageStatus"
-              variant="outline"
-              size="sm"
+              :icon="X"
               @click="
                 orderNumberFilter = '';
                 orderNumberSearch = '';
                 pageStatus = '';
               "
-              >{{ t('logistics.orders.clear') }}</Button
+              >{{ t('logistics.orders.clear') }}</ListActionButton
             >
-            <Button v-else variant="outline" size="sm" @click="orders.refetch()">
+            <ListActionButton v-else :icon="RefreshCw" @click="orders.refetch()">
               {{ t('common.actions.retry') }}
-            </Button>
+            </ListActionButton>
           </div>
         </template>
       </DataTable>

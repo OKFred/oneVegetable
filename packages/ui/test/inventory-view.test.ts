@@ -90,6 +90,13 @@ describe('inventory workspace', () => {
     expect(searchRow.findAll('input')).toHaveLength(1);
     expect(searchRow.get('input').classes()).toEqual(expect.arrayContaining(['min-w-0', 'flex-1']));
     expect(searchRow.findAll('button').map((button) => button.text())).toEqual(['搜索']);
+    expect(searchRow.get('button').attributes('type')).toBe('submit');
+    for (const action of [searchRow.get('button'), button('查询本页库存'), button('查询所选库存 (0)')]) {
+      expect(action.attributes('data-list-action')).toBeDefined();
+      expect(action.classes()).toEqual(expect.arrayContaining(['h-9', 'border-input']));
+      expect(action.classes()).not.toContain('bg-primary');
+      expect(action.find('svg[aria-hidden="true"]').exists()).toBe(true);
+    }
     const actions = wrapper.get('[data-slot="list-toolbar-actions"]');
     expect(actions.classes()).toContain('justify-end');
     expect(actions.text()).toContain('查询本页库存');
