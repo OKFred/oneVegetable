@@ -194,9 +194,16 @@ async function verifyUpgrade(path: string): Promise<void> {
     assert(next.origin === previous.origin, `${version}: same extension identity`);
     const status = record(await request(next.page, 'credential-vault-request', 'status'));
     assert(status.state === 'locked', `${version}: restart requires unlock without losing credentials`);
-    const unlocked = record(
-      await request(next.page, 'credential-vault-request', 'unlock', { passphrase: fixture.passphrase })
-    );
+    report.stage = 'unlock upgraded workbench';
+    const unlockDialog = next.page.getByRole('dialog').filter({
+      has: next.page.locator('#startup-vault-passphrase')
+    });
+    await expect(unlockDialog).toBeVisible();
+    await unlockDialog.locator('#startup-vault-passphrase').fill(fixture.passphrase);
+    await unlockDialog.getByRole('button', { name: '解锁', exact: true }).click();
+    await expect(unlockDialog).toBeHidden();
+    const unlocked = record(await request(next.page, 'credential-vault-request', 'status'));
+    assert(unlocked.state === 'unlocked', `${version}: dismissible startup prompt unlocks the vault`);
     const settings = record(await request(next.page, 'credential-vault-request', 'get-settings'));
     assert(
       settings.appKey === fixture.settings.appKey &&
@@ -222,7 +229,7 @@ async function verifyUpgrade(path: string): Promise<void> {
       preferences: localStorage.getItem('one-vegetable:preferences:v2'),
       columns: localStorage.getItem('one-vegetable:columns:v1:products')
     }));
-    assert(stored.draft === JSON.stringify([draft]), `${version}: draft XML and editor state retained`);
+    assert(stored.draft === JSON.stringify([draft]), `${version}: obsolete editor draft left untouched`);
     assert(
       stored.preferences === JSON.stringify(fixture.preferences),
       `${version}: interface, API language and theme retained`
@@ -272,7 +279,27 @@ async function verifyUpgrade(path: string): Promise<void> {
     );
     await next.page.screenshot({ path: resolve(output, `upgrade-${version}.png`) });
     if (hasTransferTasks) {
-      assert(stored.columns === JSON.stringify(fixture.columns), `${version}: column preference retained`);
+      assert(
+        stored.columns === JSON.stringify(fixture.columns),
+        `${version}: legacy column preference retained before list mount`
+      );
+      const migrated = await next.page.evaluate(() => ({
+        legacy: localStorage.getItem('one-vegetable:columns:v1:products'),
+        current: localStorage.getItem('one-vegetable:columns:v2:products')
+      }));
+      const columns = record(JSON.parse(migrated.current ?? 'null'));
+      const visibleColumns = columns.visible;
+      assert(
+        migrated.legacy === null &&
+          columns.version === 2 &&
+          Array.isArray(visibleColumns) &&
+          fixture.columns.visible.every((id) => visibleColumns.includes(id)) &&
+          visibleColumns.length === fixture.columns.visible.length &&
+          Array.isArray(columns.order) &&
+          columns.order[0] === 'select' &&
+          columns.order.at(-1) === 'actions',
+        `${version}: column visibility migrates to V2 with fixed edge columns`
+      );
       await expect(next.page.getByRole('columnheader', { name: '图片', exact: true })).toHaveCount(0);
       report.stage = 'open transfer history';
       await next.page.goto(`${next.origin}/options.html#/photos`);

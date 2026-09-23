@@ -1,7 +1,7 @@
 # oneVegetable Privacy Policy
 
-Effective date: September 10, 2026
-Applicable version: 2.6.0
+Effective date: 2026-09-23
+Applicable version: 2.12.0
 
 ## Independent third-party notice
 
@@ -9,7 +9,7 @@ oneVegetable is an independently developed third-party tool and is not affiliate
 
 ## Single purpose
 
-oneVegetable is a user-operated local Alibaba.com operations workspace for managing products, the gallery (Photo Bank), RFQs, trades, international logistics, related Open Platform capabilities, and user-selected gallery media published to business social accounts connected by the user. The extension does not provide advertising, tracking, or data services unrelated to this purpose.
+oneVegetable is a user-operated local Alibaba.com operations workspace for managing products, assets (Photo Bank and videos), RFQs, trades, international logistics, related Open Platform capabilities, and user-selected gallery media published to business social accounts connected by the user. The extension does not provide advertising, tracking, or data services unrelated to this purpose.
 
 ### Optional S3 asset transfers
 
@@ -23,12 +23,16 @@ Gallery ZIP/S3 tasks store paths, target groups, file fingerprints, request IDs,
 
 HTTP S3 access on a trusted LAN requires explicit opt-in, a private IPv4 address and Path-style addressing. HTTP does not encrypt network traffic; do not use it on public or untrusted networks. HTTPS remains the default.
 
+### Video uploads and staging
+
+After confirmation, local MP4 parts go to your S3 storage; the title and public HTTPS source URL or temporary signed read URL go to Alibaba for retrieval. Anyone holding a signed URL can read the video until expiry. Tasks retain titles, filenames/sizes/fingerprints, identity/configuration identifiers, object paths, multipart/upload IDs, ETags, request/platform IDs, timestamps and states, not file bytes, Base64, source/signed URLs, credentials or full responses. Storage is separate extension IndexedDB or backend SQLite/D1 for Node/Worker implementations. Up to 100 tasks are retained without automatic expiry. After reload, resume manually with the original file or same URL; unknown writes are not automatically resent. Cancellation only aborts this task's unfinished multipart upload. Clearing local records does not delete completed S3 objects or platform videos; you manage remote retention. Real uploads are enabled only for Node `local-node` and the formal extension, not Worker.
+
 ## Data processed
 
 - App Key, App Secret, Access Token, signature algorithm, and gateway address entered by the user or obtained through the user-initiated authorization assistant;
-- product Schema drafts and RFQ quotation drafts created by the user;
+- product Schema and RFQ quotation edits in current-page memory, and legacy edit drafts still stored locally;
 - local product mutation jobs created by a user action, including product IDs, applicable category/language, field fingerprints or display-state snapshots, requestIds, available traceIds, job status, and redacted error summaries;
-- product, gallery, RFQ, trade, logistics, and data insight responses requested from the user's Alibaba.com Open Platform account;
+- product, image, video, inventory, RFQ, trade, logistics, and data insight responses requested from the user's Alibaba.com Open Platform account;
 - one gallery image, caption, destination Page or professional account, publishing status, and platform post identifier selected for a user-confirmed social publication;
 - the BFF origin, device name, 30-day device token, expiry time, and redacted device metadata created when the user pairs a self-hosted backend;
 - a PNG of the currently visible application area generated temporarily in page memory after the user explicitly clicks the feedback screenshot action;
@@ -36,7 +40,7 @@ HTTP S3 access on a trusted LAN requires explicit opt-in, a private IPv4 address
 - the prerequisite stage and last-check time stored after the user starts the Open Platform assistant; this record contains no registration field value or file information;
 - up to 100 recent session-scoped redacted diagnostics containing operation names, requestIds, durations, error codes, and available traceIds.
 
-Credentials and settings are encrypted in `chrome.storage.local` with an AES-256-GCM key derived from the user's passphrase using PBKDF2-HMAC-SHA256 with 600,000 iterations. The passphrase is not stored. To avoid repeated unlock prompts after an MV3 service worker becomes dormant, derived key material is held in the in-memory `chrome.storage.session` after unlock and bound to the current ciphertext version and last activity time. It contains no credential plaintext and is cleared when the browser restarts, the extension is disabled, updated, or reloaded, the user locks it, or the selected idle timeout expires. Product mutation jobs are also stored in `chrome.storage.local`, but do not contain App Secrets, tokens, complete requests, or complete responses; Schema update jobs retain only field fingerprints. Incomplete jobs remain until verification or recovery; terminal jobs are retained for at most 30 days and 100 entries. Drafts are stored in the extension's own `localStorage`. Redacted diagnostics are also stored in `chrome.storage.session` and are not retained as long-term logs after the browser session ends. The extension runs no first-party analytics or advertising service and does not send this data to a developer-operated server.
+Credentials and settings are encrypted in `chrome.storage.local` with an AES-256-GCM key derived from the user's passphrase using PBKDF2-HMAC-SHA256 with 600,000 iterations. The passphrase is not stored. To avoid repeated unlock prompts after an MV3 service worker becomes dormant, derived key material is held in the in-memory `chrome.storage.session` after unlock and bound to the current ciphertext version and last activity time. It contains no credential plaintext and is cleared when the browser restarts, the extension is disabled, updated, or reloaded, the user locks it, or the selected idle timeout expires. Product mutation jobs are also stored in `chrome.storage.local`, but do not contain App Secrets, tokens, complete requests, or complete responses; Schema update jobs retain only field fingerprints. Incomplete jobs remain until verification or recovery; terminal jobs are retained for at most 30 days and 100 entries. New product/RFQ edits stay in page memory without automatic saving or restoration. Legacy `localStorage` edit drafts are not read, restored, migrated or automatically deleted; you may explicitly clear them. Platform drafts, batch queues and durable tasks are unaffected. Redacted diagnostics are also stored in `chrome.storage.session` and are not retained as long-term logs after the browser session ends. The extension runs no first-party analytics or advertising service and does not send this data to a developer-operated server.
 
 Both `chrome.storage.local` and `chrome.storage.session` use Chrome `TRUSTED_CONTEXTS`; web pages and extension content scripts cannot read them through the Storage API. A new vault does not enable idle auto-lock by default. The user may opt in to a 5, 15, 30, or 60 minute timeout. When enabled, status checks do not extend the timer; only an actual credential read or update does. Normal service worker dormancy does not end the current Chrome session's unlocked state.
 
@@ -65,13 +69,13 @@ Use of user data follows the Chrome Web Store User Data Policy, including the Li
 - `storage`: stores local encrypted credentials, settings, onboarding state, review-reminder times, product mutation jobs, a user-paired social-backend device token, and derived unlock material plus redacted diagnostics held only in the current Chrome session memory;
 - `scripting`: injects fixed packaged code only into the known Alibaba developer-registration, Application Center, and OAuth tabs after the user explicitly starts the authorization assistant;
 - `https://eco.taobao.com/*`: calls the official Alibaba.com HTTPS Open Platform gateway;
-- optional `http://*/*` and `https://*/*`: Chrome access is requested for a specific host only when the user starts the authorization assistant, confirms the actual OAuth callback, configures a custom gateway, pairs a user-controlled social publishing BFF, or explicitly transfers an external image. The user can revoke each grant in Settings.
+- optional `http://*/*` and `https://*/*`: Chrome access is requested for a specific host only when the user starts the authorization assistant, confirms the actual OAuth callback, configures a custom gateway or S3 storage, pairs a user-controlled social publishing BFF, or explicitly transfers an external image. Video staging reuses the S3 grant, adding no Manifest permission. The user can revoke each grant in Settings.
 
-The extension does not request cookies, browsing history, `tabs`, `webNavigation`, or a required `<all_urls>` permission. The authorization assistant does not create applications, accept platform agreements for the user, or bypass human verification. Platform drafts, new-product publishing, Product Schema updates, product display changes, product-group creation, gallery group management, image upload, and external image transfer occur only after an explicit user action and confirmation. Other write operations not validated through the extension remain blocked before any network request leaves the extension background.
+The extension does not request cookies, browsing history, `tabs`, `webNavigation`, or a required `<all_urls>` permission. The authorization assistant does not create applications, accept platform agreements for the user, or bypass human verification. Platform drafts, new-product publishing, Product Schema updates, product display changes, product-group creation, gallery group management, image upload, external image transfer, and guarded video upload occur only after an explicit user action and confirmation. Other write operations not validated through the extension remain blocked before any network request leaves the extension background.
 
 ## Data control and retention
 
-Settings lets the user lock the vault, change the passphrase, inspect and export an inventory that contains no secret values, clear session diagnostics, disconnect the social publishing backend, revoke extra host permissions, and permanently erase credentials, device tokens, settings, review-reminder times, product mutation jobs, drafts, and diagnostics. A server-side device should be revoked in the user's own BFF administration page. Uninstalling the extension also removes extension-local storage managed by Chrome.
+Settings lets the user lock the vault, change the passphrase, inspect and export an inventory that contains no secret values, clear session diagnostics, disconnect the social publishing backend, revoke extra host permissions, and permanently erase credentials, device tokens, settings, review-reminder times, product mutation jobs, video tasks, legacy edit drafts, and diagnostics. A server-side device should be revoked in the user's own BFF administration page. Uninstalling the extension also removes extension-local storage managed by Chrome.
 
 ## Security and limitations
 

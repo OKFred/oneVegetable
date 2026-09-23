@@ -31,7 +31,7 @@ export const capabilities = {
     'The account snapshot was checked on {date}. It represents the credentials used then, not the credentials currently configured.',
   snapshotMissing: 'No account snapshot has been generated.',
   runtimeNotice:
-    '{snapshot} Integration and documentation do not prove account permission. The current-environment column shows the data source and call guard, not a successful live verification. API errors remain errors; there is no automatic mock fallback.',
+    '{snapshot} Integration and documentation do not prove account permission. The current-environment column shows the data source and call guard, not a successful live verification. API failures are reported; successful results are never fabricated.',
   noMatch: 'No matching APIs',
   clearFilters: 'Clear filters',
   viewApi: 'View API {method}',

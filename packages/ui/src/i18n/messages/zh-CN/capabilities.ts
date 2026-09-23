@@ -28,7 +28,7 @@ export const capabilities = {
   snapshotChecked: '账号快照检查于 {date}，只表示当时验证凭据的结果，不代表当前配置凭据。',
   snapshotMissing: '账号快照尚未生成。',
   runtimeNotice:
-    '{snapshot} 已接入和有文档不代表账号有权限；当前环境列只展示数据源和调用门禁，不代表实时验证成功。API 错误会直接展示，不会自动回退到 Mock。',
+    '{snapshot} 已接入和有文档不代表账号有权限；当前环境列只展示数据源和调用门禁，不代表实时验证成功。接口失败会明确报错，不会展示虚假的成功结果。',
   noMatch: '没有匹配的 API',
   clearFilters: '清除筛选',
   viewApi: '查看 API {method}',

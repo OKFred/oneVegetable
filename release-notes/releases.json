@@ -3,6 +3,47 @@
   "repositoryUrl": "https://github.com/OKFred/oneVegetable",
   "releases": [
     {
+      "version": "2.12.0",
+      "releasedAt": "2026-09-23",
+      "title": {
+        "zh-CN": "统一列表、素材上传与编辑保护",
+        "en-US": "Consistent lists, media uploads and editing safeguards"
+      },
+      "summary": {
+        "zh-CN": "统一列表筛选、列设置和操作，新增库存工作区、全屏素材预览及视频上传。编辑不再自动恢复，离开前提醒未保存修改。",
+        "en-US": "Unifies list filters, columns and actions, adds an inventory workspace, fullscreen media preview and video uploads. Unsaved edits prompt before leaving instead of being restored automatically."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/releases/tag/v2.12.0",
+      "compareUrl": "https://github.com/OKFred/oneVegetable/compare/v2.11.0...v2.12.0",
+      "changes": [
+        {
+          "type": "improvement",
+          "title": { "zh-CN": "统一列表与库存入口", "en-US": "Consistent lists and inventory access" },
+          "description": {
+            "zh-CN": "列显隐及排序保存在本机，统一筛选弹窗、选择和操作菜单。库存可独立查询，产品分按可见区域加载。",
+            "en-US": "Column visibility and order are saved locally, with consistent filters, selection and action menus. Inventory has its own workspace; product scores load when visible."
+          }
+        },
+        {
+          "type": "feature",
+          "title": { "zh-CN": "素材预览与视频上传", "en-US": "Media preview and video uploads" },
+          "description": {
+            "zh-CN": "图片与视频共用全屏预览及信息面板。Node 和插件支持 HTTPS 地址或最大 50 MiB MP4 上传、S3 分片及回读核对；Worker 真实上传仍关闭，结果不明不自动重发。",
+            "en-US": "Images and videos share fullscreen previews and metadata. Node and extension support HTTPS URLs or MP4 files up to 50 MiB, S3 multipart upload and readback. Worker real uploads remain disabled; uncertain writes are not resent."
+          }
+        },
+        {
+          "type": "fix",
+          "title": { "zh-CN": "编辑、解锁与反馈", "en-US": "Editing, unlocking and feedback" },
+          "description": {
+            "zh-CN": "未保存修改离开前确认；批量提交错误改用弹窗。插件锁定时提供可关闭的解锁提示，统一按钮与反馈，不增加永久权限。",
+            "en-US": "Confirms before discarding edits and shows batch submission errors in a dialog. Locked extensions offer a dismissible unlock prompt. Buttons and feedback are consistent, without new permanent permissions."
+          }
+        }
+      ]
+    },
+    {
       "version": "2.11.0",
       "releasedAt": "2026-09-22",
       "title": { "zh-CN": "免费 API 能力与平台同步提示", "en-US": "Free API coverage and readback guidance" },
