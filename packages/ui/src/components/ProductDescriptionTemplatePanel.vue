@@ -72,8 +72,11 @@ const selectedSafeHtml = computed(() =>
 );
 
 watch(open, (value) => {
-  if (value && loadedLanguage.value !== props.language) void loadTemplates();
-  else resetView();
+  if (!value) return;
+  // Presence retains closing content for its exit animation. Keep its title and
+  // view intact until the next open so a closing editor cannot become a browser.
+  resetView();
+  if (loadedLanguage.value !== props.language) void loadTemplates();
 });
 watch(
   () => props.language,

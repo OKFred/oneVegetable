@@ -639,39 +639,36 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
   await page.getByRole('button', { name: /4\. 商品详情/ }).click();
 
   await expect(page.locator('.ProseMirror')).toBeVisible();
-  await page.getByRole('button', { name: '详情模板' }).click();
-  let templateDialog = page.getByRole('dialog', { name: '商品详情模板' });
+  let templateDialog = await openDescriptionTemplates(page);
   const companyTemplate = templateDialog.locator('article').filter({ hasText: 'Company profile' });
   await companyTemplate.getByRole('button', { name: '追加末尾' }).click();
   await expect(page.locator('.ProseMirror')).toContainText('About Us');
-  await expect(templateDialog).toBeHidden();
+  await expect(templateDialog).toHaveCount(0);
 
-  await page.getByRole('button', { name: '详情模板' }).click();
-  templateDialog = page.getByRole('dialog', { name: '商品详情模板' });
-  await expect(templateDialog).toBeVisible();
+  templateDialog = await openDescriptionTemplates(page);
   const shippingTemplate = templateDialog.locator('article').filter({ hasText: 'Shipping and delivery' });
   await expect(templateDialog.locator('[aria-busy]')).toHaveAttribute('aria-busy', 'false');
   const replaceDescriptionButton = shippingTemplate.getByRole('button', { name: '覆盖全文' });
-  await activateReplacingDialogControl(replaceDescriptionButton);
-  const replaceDialog = page.getByRole('dialog', { name: '确认覆盖商品详情' });
+  await replaceDescriptionButton.click();
+  const replaceDialog = page.getByRole('dialog', { name: '确认覆盖商品详情', exact: true });
+  await expect(replaceDialog).toHaveAttribute('data-state', 'open');
   await expect(replaceDialog.getByRole('heading', { name: '当前详情' })).toBeVisible();
   await expect(replaceDialog.getByText('覆盖后：Shipping and delivery')).toBeVisible();
-  await activateReplacingDialogControl(replaceDialog.getByRole('button', { name: '确认覆盖全文' }));
+  await replaceDialog.getByRole('button', { name: '确认覆盖全文', exact: true }).click();
   await expect(page.locator('.ProseMirror')).toContainText('Shipping and Delivery');
-  await expect(replaceDialog).toBeHidden();
+  await expect(replaceDialog).toHaveCount(0);
 
-  await page.getByRole('button', { name: '详情模板' }).click();
-  templateDialog = page.getByRole('dialog', { name: '商品详情模板' });
-  await expect(templateDialog).toBeVisible();
-  await activateReplacingDialogControl(templateDialog.getByRole('button', { name: '新建共享模板' }));
-  const editorDialog = page.getByRole('dialog', { name: '新建共享详情模板' });
+  templateDialog = await openDescriptionTemplates(page);
+  await templateDialog.getByRole('button', { name: '新建共享模板', exact: true }).click();
+  const editorDialog = page.getByRole('dialog', { name: '新建共享详情模板', exact: true });
+  await expect(editorDialog).toHaveAttribute('data-state', 'open');
   await editorDialog.getByLabel('模板名称').fill('E2E custom details');
   await editorDialog.getByLabel('安全 HTML').fill('<h2>E2E custom section</h2><p>Shared content</p>');
-  await activateReplacingDialogControl(editorDialog.getByRole('button', { name: '保存共享模板' }));
-  await expect(
-    page.getByRole('dialog', { name: '商品详情模板' }).getByText('E2E custom details')
-  ).toBeVisible();
-  await page.getByRole('button', { name: '关闭商品详情模板' }).click();
+  await editorDialog.getByRole('button', { name: '保存共享模板', exact: true }).click();
+  await expect(templateDialog).toHaveAttribute('data-state', 'open');
+  await expect(templateDialog.getByText('E2E custom details', { exact: true })).toBeVisible();
+  await templateDialog.getByRole('button', { name: '关闭商品详情模板', exact: true }).click();
+  await expect(templateDialog).toHaveCount(0);
 
   await page.getByRole('button', { name: /6\. 检查与提交/ }).click();
   await expect(page.getByRole('heading', { name: '内容优化建议' })).toBeVisible();
@@ -824,8 +821,11 @@ async function openNewProductEditor(page: Page): Promise<void> {
   await page.getByRole('button', { name: '新增', exact: true }).click();
 }
 
-async function activateReplacingDialogControl(control: Locator): Promise<void> {
-  await expect(control).toBeVisible();
-  await expect(control).toBeEnabled();
-  await control.dispatchEvent('click');
+async function openDescriptionTemplates(page: Page): Promise<Locator> {
+  // A closing dialog still exposes its close button, whose label includes the
+  // opener's name. Match exactly and assert logical open state, not visibility alone.
+  await page.getByRole('button', { name: '商品详情模板', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '商品详情模板', exact: true });
+  await expect(dialog).toHaveAttribute('data-state', 'open');
+  return dialog;
 }

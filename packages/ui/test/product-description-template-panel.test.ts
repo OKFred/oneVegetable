@@ -94,10 +94,53 @@ async function mountPanel() {
   await vi.waitFor(() => {
     expect(wrapper.text()).toContain('Create shared template');
   });
-  return { wrapper, button, repository, editing };
+  return { wrapper, button, repository, editing, panel: host.getComponent(ProductDescriptionTemplatePanel) };
 }
 
 describe('description template unsaved editing', () => {
+  it.each([
+    ['Create shared template', 'Create shared description template'],
+    ['Edit', 'Edit shared description template'],
+    ['Replace all', 'Confirm description replacement']
+  ])('retains the %s view during exit and resets only when reopened', async (action, title) => {
+    // Model Presence's exit window deterministically: jsdom does not finish CSS animations.
+    const style = document.createElement('style');
+    style.textContent = `
+      .ov-dialog-content[data-state='open'] { animation-name: template-dialog-in; }
+      .ov-dialog-content[data-state='closed'] { animation-name: template-dialog-out; }
+    `;
+    document.head.append(style);
+    cleanups.push(() => {
+      style.remove();
+    });
+    const { wrapper, button, repository, editing, panel } = await mountPanel();
+    await button(action).trigger('click');
+    const dialog = wrapper.get('[role="dialog"]');
+    expect(dialog.get('h2').text()).toBe(title);
+    if (action === 'Replace all') {
+      await button('Confirm full replacement').trigger('click');
+      expect(panel.emitted('apply')).toEqual([[{ mode: 'replace', html: template.html }]]);
+    } else {
+      await wrapper.get(`button[aria-label="Close ${title}"]`).trigger('click');
+    }
+    await flushPromises();
+
+    expect(dialog.attributes('data-state')).toBe('closed');
+    expect(dialog.get('h2').text()).toBe(title);
+    expect(editing.dirty.value).toBe(false);
+
+    await button('Product description templates').trigger('click');
+    await flushPromises();
+    expect(wrapper.get('[role="dialog"]').element).toBe(dialog.element);
+    expect(dialog.attributes('data-state')).toBe('open');
+    expect(dialog.get('h2').text()).toBe('Product description templates');
+    expect(dialog.find('textarea').exists()).toBe(false);
+    expect(dialog.findAll('article')).toHaveLength(1);
+    expect(repository.list).toHaveBeenCalledOnce();
+    expect(repository.create).not.toHaveBeenCalled();
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+
   it.each(['Create shared template', 'Edit'])(
     'sets a clean %s baseline and tracks only business fields',
     async (action) => {

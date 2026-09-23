@@ -95,7 +95,7 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     await page.goto('/#/photos');
     await page.getByRole('button', { name: en ? 'Import' : '导入', exact: true }).click();
     const galleryImport = page.getByRole('dialog', {
-      name: en ? 'Import gallery assets' : '导入图库素材',
+      name: en ? 'Import image assets' : '导入图片素材',
       exact: true
     });
     await galleryImport.getByRole('button', { name: 'S3', exact: true }).click();
