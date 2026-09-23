@@ -29,6 +29,10 @@
     },
     "request_id": "mock-query"
   },
+  "emptyQuery": {
+    "result": { "model": { "current_page": 1, "page_size": 20, "total_count": 0 } },
+    "request_id": "mock-empty-query"
+  },
   "relations": {
     "result": { "msg_code": "0", "msg_info": "success", "model": [{ "product_id": "encrypted-product" }] },
     "request_id": "mock-relations"

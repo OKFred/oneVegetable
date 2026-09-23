@@ -49,6 +49,28 @@ describe('read-only videos', () => {
     expect(safeVideoId(Number.MAX_SAFE_INTEGER + 1)).toBeNull();
     expect(safeVideoId('9007199254740993')).toBeNull();
   });
+  it('accepts a confirmed zero-result search without list, but rejects ambiguous missing lists', () => {
+    const page = adaptVideoPage(fixture.emptyQuery, request);
+    expect(page.items).toEqual([]);
+    expect(page.total).toBe(0);
+    expect(validateVideoPage(page)).toBe(true);
+    expect(page.issues).toEqual(['result/msg_code:not-returned']);
+    for (const patch of [
+      { total_count: 1 },
+      { total_count: null },
+      { current_page: 2 },
+      { page_size: 50 },
+      { list: null },
+      { list: {} }
+    ]) {
+      expect(() =>
+        adaptVideoPage({ result: { model: { ...fixture.emptyQuery.result.model, ...patch } } }, request)
+      ).toThrow('VIDEO_RESPONSE_INVALID');
+    }
+    expect(() =>
+      adaptVideoPage({ result: { ...fixture.emptyQuery.result, success: false } }, request)
+    ).toThrow('VIDEO_PROVIDER_REJECTED');
+  });
   it('records observed missing success codes but never ignores an explicit rejection', () => {
     const query = structuredClone(fixture.query) as { result: Record<string, unknown> };
     delete query.result.msg_code;

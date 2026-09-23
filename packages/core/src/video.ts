@@ -111,7 +111,15 @@ export function adaptVideoPage(
       fail('VIDEO_RESPONSE_INVALID');
     issues.push('result/msg_code:not-returned');
   }
-  const list = items(model?.list, 'isv_video_dto');
+  // TOP omits list for a confirmed zero-result search. Missing/invalid pagination
+  // or a nonzero total must still fail, never become an invented empty baseline.
+  const list =
+    model?.list === undefined &&
+    model?.total_count === 0 &&
+    model.current_page === request.page &&
+    model.page_size === request.pageSize
+      ? []
+      : items(model?.list, 'isv_video_dto');
   if (!list) fail('VIDEO_RESPONSE_INVALID');
   const videos: Video[] = list.map((v, index) => {
     const row = rec(v);
