@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner';
 import { watch, onScopeDispose } from 'vue';
+import { Play, RefreshCw, Square } from '@lucide/vue';
 import { useUiI18n } from '../i18n';
-import Button from './ui/Button.vue';
+import ListActionButton from './ListActionButton.vue';
 const props = defineProps<{
   busy: boolean;
   done: number;
@@ -49,15 +50,17 @@ onScopeDispose(() => {
   >
     <template v-if="busy"
       ><span aria-live="polite">{{ t('common.columns.progress', { done, total }) }}</span
-      ><Button variant="outline" @click="emit('stop')">{{ t('common.columns.stop') }}</Button></template
+      ><ListActionButton :icon="Square" @click="emit('stop')">{{
+        t('common.columns.stop')
+      }}</ListActionButton></template
     >
     <template v-else
-      ><Button v-if="!failed && done < total" variant="outline" @click="start(false)">{{
+      ><ListActionButton v-if="!failed && done < total" :icon="Play" @click="start(false)">{{
         t('common.columns.resume')
-      }}</Button
-      ><Button v-if="failed" variant="outline" @click="start(true)">{{
+      }}</ListActionButton
+      ><ListActionButton v-if="failed" :icon="RefreshCw" @click="start(true)">{{
         t('common.columns.retry')
-      }}</Button></template
+      }}</ListActionButton></template
     >
   </div>
 </template>

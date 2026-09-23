@@ -155,11 +155,13 @@ body {
 :root.dark .text-slate-700 {
   color: hsl(215 20% 75%);
 }
-button,
-input,
-textarea,
-select {
-  font: inherit;
+@layer base {
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
 }
 
 button:not(:disabled),

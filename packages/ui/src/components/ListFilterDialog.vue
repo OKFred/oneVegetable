@@ -12,6 +12,7 @@ import {
 } from 'reka-ui';
 import { useUiI18n } from '../i18n';
 import Button from './ui/Button.vue';
+import ListActionButton from './ListActionButton.vue';
 
 withDefaults(defineProps<{ open: boolean; activeCount?: number; invalid?: boolean; title?: string }>(), {
   activeCount: 0,
@@ -24,9 +25,8 @@ const { t } = useUiI18n();
 <template>
   <DialogRoot :open="open" @update:open="emit('update:open', $event)">
     <DialogTrigger as-child
-      ><Button variant="outline"
-        ><Funnel class="mr-1.5 size-4" />{{ t('common.filters.title')
-        }}<span v-if="activeCount"> · {{ activeCount }}</span></Button
+      ><ListActionButton :icon="Funnel"
+        >{{ t('common.filters.title') }}<span v-if="activeCount"> · {{ activeCount }}</span></ListActionButton
       ></DialogTrigger
     >
     <DialogPortal>

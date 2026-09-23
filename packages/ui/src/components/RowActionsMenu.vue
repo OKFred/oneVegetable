@@ -4,6 +4,7 @@ import { Ellipsis } from '@lucide/vue';
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui';
 import { useUiI18n } from '../i18n';
 import Button from './ui/Button.vue';
+import RowActionItems from './RowActionItems.vue';
 defineProps<{ label?: string }>();
 const { t } = useUiI18n();
 const open = ref(false);
@@ -47,7 +48,7 @@ function navigate(event: KeyboardEvent): void {
         @click="activate"
         @keydown="navigate"
       >
-        <div class="row-actions flex flex-col gap-1"><slot /></div>
+        <RowActionItems><slot /></RowActionItems>
       </PopoverContent>
     </PopoverPortal>
   </PopoverRoot>
@@ -61,5 +62,23 @@ function navigate(event: KeyboardEvent): void {
 .row-actions :deep(a) {
   width: 100%;
   justify-content: flex-start;
+}
+.row-actions :deep(a) {
+  display: inline-flex;
+  height: 2rem;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border: 0;
+  border-radius: 0.125rem;
+  background: transparent;
+  color: hsl(var(--popover-foreground));
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  box-shadow: none;
+}
+.row-actions :deep(a:hover) {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
 }
 </style>

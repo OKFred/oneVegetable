@@ -3,7 +3,7 @@ defineEmits<{ search: [] }>();
 </script>
 
 <template>
-  <div class="grid min-w-0 gap-2 rounded-t-lg border border-b-0 p-2">
+  <div data-list-toolbar class="grid min-w-0 gap-2 rounded-t-lg border border-b-0 p-2">
     <form
       v-if="$slots.search"
       data-slot="list-toolbar-search"

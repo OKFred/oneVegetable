@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, inject, ref } from 'vue';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '../../lib/utils';
+import { rowActionButtonContext } from '../../lib/button-context';
 
 const buttonVariants = cva(
   'inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,background-color,border-color,box-shadow,opacity] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
@@ -36,7 +37,19 @@ const props = withDefaults(
   }>(),
   { variant: 'default', size: 'default', class: '', type: 'button' }
 );
-const classes = computed(() => cn(buttonVariants({ variant: props.variant, size: props.size }), props.class));
+const inRowActions = inject(rowActionButtonContext, false);
+const classes = computed(() =>
+  cn(
+    buttonVariants({ variant: inRowActions ? 'ghost' : props.variant, size: props.size }),
+    props.class,
+    inRowActions &&
+      'h-8 w-full justify-start rounded-sm border-0 bg-transparent px-2 py-1 text-sm shadow-none',
+    inRowActions &&
+      (props.variant === 'destructive'
+        ? 'text-destructive hover:bg-destructive/10 hover:text-destructive'
+        : 'text-popover-foreground hover:bg-accent hover:text-accent-foreground')
+  )
+);
 const element = ref<HTMLButtonElement | null>(null);
 
 function focus(): void {
