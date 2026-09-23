@@ -44,6 +44,8 @@ test('existing-product picker previews, confirms a separate write and restores a
   await picker.getByRole('button', { name: '查看', exact: true }).click();
   const preview = page.getByRole('dialog', { name: 'Example clothing video', exact: true });
   await expect(preview.locator('video')).toHaveAttribute('preload', 'none');
+  // Test Escape from the media itself, not the auto-focused toolbar link's tooltip.
+  await preview.locator('video').focus();
   await page.keyboard.press('Escape');
   await expect(preview).toHaveCount(0);
   await picker.getByTestId('choose-video').click();

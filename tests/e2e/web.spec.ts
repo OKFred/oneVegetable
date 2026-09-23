@@ -160,7 +160,7 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await expect(page.getByText('当前分组：Packaging / Reusable bags')).toBeVisible();
   await expect(page.getByText('group_id')).toHaveCount(0);
   await page.getByLabel('商品标题').fill('Portable solar generator for camping');
-  await expect(page.getByText('本地草稿：已保存到本机')).toBeVisible();
+  await expect(page.getByText('本地草稿：已保存到本机')).toHaveCount(0);
 
   await page.getByRole('button', { name: /保存平台草稿/ }).click();
   await expect(page.getByText(/草稿已保存/)).toBeVisible();
@@ -211,8 +211,9 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
     .not.toBe('rgba(0, 0, 0, 0)');
   await page.getByRole('menuitem', { name: '批量查询产品分' }).click();
   await expect(page.getByText(/产品分查询完成：成功 2 个/)).toBeVisible();
-  await expect(scoredProductRow).toContainText('4.6/6');
-  await expect(secondProductRow).toContainText('4.6/6');
+  await expect(scoredProductRow).toContainText('4.6');
+  await expect(secondProductRow).toContainText('4.6');
+  await expect(scoredProductRow).not.toContainText('4.6/6');
   await page.getByLabel('选择 Custom recycled cotton canvas tote bag').uncheck();
   await page.getByRole('button', { name: '更多' }).click();
   await page.getByRole('menuitem', { name: '批量下架' }).click();
@@ -226,7 +227,7 @@ test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await expect(page.getByText(`第 2 / ${Math.ceil(listCapabilities().length / 10)} 页`)).toBeVisible();
   await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.category.attr.get');
   await expect(page.getByText('第 1 / 1 页')).toBeVisible();
-  await page.getByRole('button', { name: 'alibaba.icbu.category.attr.get' }).click();
+  await openRowAction(page, 'alibaba.icbu.category.attr.get', 'API 能力详情');
   await expect(page.getByText(/已 deprecated/)).toBeVisible();
   await page.getByRole('button', { name: '调用能力' }).click();
   await expect(page.getByText(/响应契约漂移/)).toBeVisible();
@@ -247,7 +248,7 @@ test('web mock queues multiple products and saves platform drafts sequentially',
   await queueMockProduct(page, 'Batch solar generator B');
   await expect(page.getByText('Batch solar generator B', { exact: true })).toBeVisible();
 
-  await page.getByLabel('选择全部待发布商品').check();
+  await page.getByLabel('选择当前页', { exact: true }).check();
   await page.getByRole('button', { name: /开始保存草稿/ }).click();
   await expect(page.getByText('批量任务完成：已验证 2，待回读 0，失败 0，阻断 0，停止 0')).toBeVisible();
   await expect(page.getByText('本轮已验证', { exact: true })).toHaveCount(2);
@@ -422,7 +423,7 @@ test('web mock exports and imports a product ZIP with gallery assets', async ({ 
     buffer: await readFile(downloadPath)
   });
   await expect(importDialog).toContainText('1 张引用图片');
-  await expect(importDialog).toContainText('上传到图库分组');
+  await expect(importDialog).toContainText('上传到图片分组');
   await importDialog.getByRole('button', { name: '导入', exact: true }).click();
   await page
     .getByRole('dialog', { name: '确认导入' })
@@ -447,8 +448,7 @@ test('web mock completes the typed RFQ quotation workflow', async ({ page }) => 
   await page.getByText('给买家留言').locator('textarea').fill('We can supply this order.');
   await page.getByPlaceholder('599.00').fill('599');
   await page.getByText('装运港').locator('input').fill('Shenzhen');
-  await page.getByRole('button', { name: '保存草稿' }).click();
-  await expect(page.getByText('已保存')).toBeVisible();
+  await expect(page.getByRole('button', { name: '保存草稿' })).toHaveCount(0);
   await page.getByRole('button', { name: '提交报价' }).click();
   await expect(page.getByText(/演示报价提交成功/)).toBeVisible();
 });
@@ -457,7 +457,7 @@ test('web mock combines typed trade order capabilities without a Jushita detail 
   await page.goto('/');
   await page.getByRole('link', { name: '订单' }).click();
   await expect(page.getByRole('heading', { name: '交易 / 订单工作台' })).toBeVisible();
-  await page.getByRole('button', { name: '24668306501026709' }).click();
+  await openRowAction(page, '24668306501026709', '查看');
   await expect(page.getByRole('dialog', { name: '订单 24668306501026709' })).toBeVisible();
   await expect(page.getByText('fullDetail: jushita-only')).toBeVisible();
   await expect(page.getByText('USD 2450.50').first()).toBeVisible();
@@ -508,7 +508,7 @@ test('web mock completes the qualified international logistics workflow', async 
   await page.goto('/');
   await page.getByRole('link', { name: '国际物流' }).click();
   await expect(page.getByRole('heading', { name: '国际物流工作台' })).toBeVisible();
-  await expect(page.getByText(/OneTouch 国际物流接口需要业务资格/)).toBeVisible();
+  await expect(page.getByText(/OneTouch 国际物流接口需要业务资格/)).toHaveCount(0);
 
   await page.getByRole('button', { name: '开始试算' }).click();
   await expect(page.getByText('CNY 109.20')).toBeVisible();
@@ -517,7 +517,7 @@ test('web mock completes the qualified international logistics workflow', async 
   await expect(page.getByText('ALS00201756999')).toBeVisible();
 
   await page.getByRole('button', { name: '物流订单', exact: true }).click();
-  await page.getByRole('button', { name: 'ALS00201756002' }).click();
+  await page.getByRole('button', { name: 'ALS00201756002', exact: true }).click();
   await expect(page.getByText(/Base64 数据已返回/)).toBeVisible();
   await page.getByRole('button', { name: '关闭详情' }).click();
 
@@ -534,9 +534,23 @@ test('web mock exposes typed data and supplier insights without inferred conclus
   await expect(page.getByText(/不生成“提升”“下降”或评级结论/)).toBeVisible();
 
   await page.getByRole('button', { name: '采购供应商' }).click();
-  await page.getByRole('button', { name: /supplier-enc-001/ }).click();
+  await openRowAction(page, 'supplier-enc-001', '采购供应商');
   await expect(page.getByText('Portable solar power station 1000W')).toBeVisible();
   await expect(page.getByText('100003109')).toBeVisible();
+
+  await page.getByRole('button', { name: '筛选', exact: true }).click();
+  const filters = page.getByRole('dialog', { name: '历史下单时间筛选' });
+  await filters.getByLabel('开始日期').fill('2026-08-01');
+  await filters.getByRole('button', { name: '取消', exact: true }).click();
+  await page.getByRole('button', { name: '筛选', exact: true }).click();
+  await expect(filters.getByLabel('开始日期')).toHaveValue('');
+  await filters.getByLabel('开始日期').fill('2026-08-31');
+  await filters.getByLabel('结束日期').fill('2026-08-01');
+  await expect(filters.getByRole('button', { name: '应用筛选' })).toBeDisabled();
+  await filters.getByLabel('结束日期').fill('2026-09-01');
+  await filters.getByRole('button', { name: '应用筛选' }).click();
+  await expect(page.getByRole('button', { name: '筛选 · 1', exact: true })).toBeVisible();
+  await expect(page.getByText('Portable solar power station 1000W')).toBeVisible();
 
   await page.getByRole('button', { name: '合作方能力' }).click();
   await expect(page.getByText(/CGS 小满签约客户数据查询/)).toBeVisible();
@@ -546,10 +560,18 @@ test('web mock exposes typed data and supplier insights without inferred conclus
 
 test('web mock manages gallery groups and exposes non-blocking asset governance', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: '图库', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '图库' })).toBeVisible();
-  await expect(page.getByText('图库 fileId：ph_001')).toBeVisible();
-  await expect(page.getByRole('button', { name: /低分辨率 1/ })).toBeVisible();
+  await page.getByRole('link', { name: '素材', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '图片', exact: true })).toBeVisible();
+  await expect(page.getByText('fileId：ph_001')).toBeVisible();
+  await expect(page.getByText('低于 750 × 750', { exact: true }).locator('..')).toContainText('1');
+  await page.getByRole('button', { name: '筛选', exact: true }).click();
+  const filters = page.getByRole('dialog', { name: '筛选', exact: true });
+  await filters.getByTestId('photo-dimension-filter').selectOption('lowResolution');
+  await filters.getByRole('button', { name: '应用筛选' }).click();
+  await expect(page.getByRole('button', { name: /^预览 .*\.jpg$/u })).toHaveCount(1);
+  await page.getByRole('button', { name: '筛选 · 1', exact: true }).click();
+  await filters.getByRole('button', { name: '重置', exact: true }).click();
+  await filters.getByRole('button', { name: '应用筛选' }).click();
   const galleryImage = page.getByRole('img', { name: 'solar-station-front.jpg' }).first();
   await expect(galleryImage).toBeVisible();
   await expect
@@ -561,7 +583,15 @@ test('web mock manages gallery groups and exposes non-blocking asset governance'
     )
     .toEqual({ width: 1200, height: 1200 });
   await page.getByRole('button', { name: '预览 solar-station-front.jpg' }).click();
-  await expect(page.getByRole('dialog', { name: '图片预览' })).toBeVisible();
+  const preview = page.getByRole('dialog', { name: 'solar-station-front.jpg', exact: true });
+  await expect(preview).toBeVisible();
+  await preview.getByRole('button', { name: '素材信息', exact: true }).click();
+  await expect(preview.getByTestId('media-information')).toContainText('ph_001');
+  await expect(preview.getByRole('link', { name: '在新标签页打开原始素材' })).toHaveAttribute(
+    'target',
+    '_blank'
+  );
+  await preview.getByRole('button', { name: '素材信息', exact: true }).click();
   await expect(page.getByRole('img', { name: 'solar-station-front.jpg' })).toBeVisible();
   await page.getByRole('button', { name: '放大图片' }).click();
   await expect(page.getByText('125%')).toBeVisible();
@@ -569,7 +599,7 @@ test('web mock manages gallery groups and exposes non-blocking asset governance'
   await page.getByLabel('选择 solar-station-front.jpg').check();
   await expect(page.getByRole('button', { name: '分享 1 张' })).toBeEnabled();
   await page.getByRole('button', { name: '分享 1 张' }).click();
-  const shareDialog = page.getByRole('dialog', { name: '分享图库素材' });
+  const shareDialog = page.getByRole('dialog', { name: '分享图片素材' });
   await expect(shareDialog.getByText('发布到：Facebook Page', { exact: true })).toBeVisible();
   await expect(shareDialog.getByText('发布到：Instagram 专业账号', { exact: true })).toBeVisible();
   await expect(shareDialog.getByText('需要配置')).toHaveCount(4);
@@ -581,11 +611,11 @@ test('web mock manages gallery groups and exposes non-blocking asset governance'
   expect(download.suggestedFilename()).toMatch(/^one-vegetable-social-share-\d{4}-\d{2}-\d{2}\.zip$/u);
   await shareDialog.getByRole('button', { name: '关闭', exact: true }).click();
   await page.getByRole('button', { name: '分组管理' }).click();
-  const groupManager = page.getByRole('dialog', { name: '图库分组管理' });
+  const groupManager = page.getByRole('dialog', { name: '图片分组管理' });
   await groupManager.getByRole('button', { name: '修改分组 商品主图' }).click();
   await groupManager.getByLabel('商品主图 的新名称').fill('E2E 主图');
   await groupManager.getByRole('button', { name: '保存', exact: true }).click();
-  await expect(page.getByText('图库分组已改名为“E2E 主图”')).toBeVisible();
+  await expect(page.getByText('图片分组已改名为“E2E 主图”')).toBeVisible();
   await groupManager.getByRole('button', { name: '关闭', exact: true }).click();
   await page.getByRole('button', { name: '详情素材', exact: true }).click();
   await expect(page.getByText('dehydrator-detail.jpg')).toBeVisible();
@@ -649,31 +679,34 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
   await expect(page.getByRole('button', { name: /保存平台草稿/ })).toBeEnabled();
 
   await page.getByRole('button', { name: /4\. 商品详情/ }).click();
-  await page.getByRole('button', { name: /插入图库图片/ }).click();
-  await expect(page.getByRole('heading', { name: '选择图库素材' })).toBeVisible();
+  await page.getByRole('button', { name: /^插入图片\s/u }).click();
+  await expect(page.getByRole('heading', { name: '选择图片' })).toBeVisible();
   await page
     .getByRole('button', { name: /预览 .*\.jpg/ })
     .first()
     .click();
-  await expect(page.getByRole('dialog', { name: '图片预览' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'solar-station-front.jpg', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '关闭图片预览' }).click();
-  await page.getByRole('button', { name: '上传新素材' }).click();
-  const uploadDialog = page.getByRole('dialog', { name: '上传图片到图库' });
+  await expect(page.getByRole('heading', { name: '选择图片', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '上传', exact: true }).click();
+  const uploadDialog = page.getByRole('dialog', { name: '上传图片到图片库' });
   await expect(uploadDialog).toBeVisible();
   await expect(uploadDialog.getByText(/上传到“全部图片”/)).toBeVisible();
   await uploadDialog
     .getByRole('textbox', { name: '外部图片 URL' })
     .fill('https://images.example.com/detail.jpg');
-  await uploadDialog.getByRole('button', { name: '下载并存入图库' }).click();
-  await expect(uploadDialog.getByText(/已转存到图库/)).toBeVisible();
+  await uploadDialog.getByRole('button', { name: '下载并存入图片库' }).click();
+  await expect(uploadDialog.getByText(/已转存到图片库/)).toBeVisible();
   await expect(uploadDialog.getByRole('textbox', { name: '外部图片 URL' })).toHaveValue('');
-  await uploadDialog.getByRole('button', { name: '关闭上传图片到图库' }).click();
+  await uploadDialog.getByRole('button', { name: '关闭上传图片到图片库' }).click();
   await page.getByRole('button', { name: '选择 detail.jpg' }).click();
   await page.getByRole('button', { name: '完成选择' }).click();
   await expect(page.locator('.ProseMirror img[src*="mock-transferred-image"]')).toBeVisible();
 
   await page.getByText('高级设置', { exact: true }).click();
   await page.getByLabel('商品明文 ID').fill('10000002');
+  await page.getByRole('button', { name: '放弃修改并离开' }).click();
+  await expect(page.getByLabel('商品明文 ID')).toHaveValue('10000002');
   await page.getByRole('button', { name: '重新加载商品表单' }).click();
   await expect(page.getByLabel('商品标题')).toHaveValue(/.+/);
   await page.getByRole('button', { name: /4\. 商品详情/ }).click();
@@ -688,15 +721,15 @@ test('web mock exposes the final platform contracts with protocol safeguards', a
   await page.goto('/');
   await page.getByRole('link', { name: 'API 能力' }).click();
   await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.risk.send');
-  await page.getByRole('button', { name: 'alibaba.icbu.risk.send' }).click();
+  await openRowAction(page, 'alibaba.icbu.risk.send', 'API 能力详情');
   await expect(page.getByText(/WUA、UMID、IMEI、IMSI、MAC/)).toBeVisible();
   await expect(page.getByLabel('只读文档参数示例')).toBeVisible();
   await expect(page.getByRole('button', { name: '调用能力' })).toBeDisabled();
 
   await page.getByLabel('关闭详情').click();
   await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.file.urlposting.upload');
-  await page.getByRole('button', { name: 'alibaba.icbu.file.urlposting.upload' }).click();
-  await expect(page.getByText(/不返回图库 fileId/)).toBeVisible();
+  await openRowAction(page, 'alibaba.icbu.file.urlposting.upload', 'API 能力详情');
+  await expect(page.getByText(/不返回图片银行 fileId/)).toBeVisible();
   await expect(page.getByLabel('调用参数 JSON')).toHaveValue(/ONE_VEGETABLE/);
   await page.getByRole('button', { name: '调用能力' }).click();
   await expect(page.getByTestId('capability-call-result')).toContainText('"file_url"');
@@ -770,6 +803,11 @@ async function chooseMockProductCategory(page: Page): Promise<void> {
   const dialog = page.getByRole('dialog', { name: '选择商品类目' });
   await dialog.getByRole('button', { name: /Consumer Electronics/ }).click();
   await dialog.getByRole('button', { name: /Portable Power Stations/ }).click();
+}
+
+async function openRowAction(page: Page, identifier: string, action: string): Promise<void> {
+  await page.getByRole('button', { name: `${identifier}的操作`, exact: true }).click();
+  await page.locator('.row-actions').getByRole('button', { name: action, exact: true }).click();
 }
 
 async function queueMockProduct(page: Page, title: string): Promise<void> {

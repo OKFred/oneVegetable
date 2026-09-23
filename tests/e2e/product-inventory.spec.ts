@@ -4,6 +4,7 @@ test('inventory drawer preserves true zero, switches source and shares optional 
   page
 }) => {
   await page.goto('/#/products');
+  await page.locator('table tbody tr').first().locator('td').last().getByRole('button').click();
   await page.getByRole('button', { name: '库存', exact: true }).first().click();
   const drawer = page.getByRole('dialog', { name: '库存', exact: true });
   await expect(drawer.getByText('已返回库存', { exact: true })).toBeVisible();
@@ -31,6 +32,7 @@ test('English dark inventory drawer remains usable on narrow screens', async ({ 
     document.documentElement.classList.add('dark');
   });
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('table tbody tr').first().locator('td').last().getByRole('button').click();
   await page.getByRole('button', { name: 'Inventory', exact: true }).first().click();
   const drawer = page.getByRole('dialog', { name: 'Inventory', exact: true });
   await expect(drawer.getByText('Inventory returned', { exact: true })).toBeVisible();
@@ -40,4 +42,24 @@ test('English dark inventory drawer remains usable on narrow screens', async ({ 
   await expect(drawer.getByRole('button', { name: 'Refresh inventory' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(drawer).toHaveCount(0);
+});
+
+test('standalone inventory uses the same readonly drawer and restricts product pages to thirty', async ({
+  page
+}) => {
+  await page.goto('/#/inventory');
+  await expect(page.getByRole('heading', { name: '库存', exact: true })).toBeVisible();
+  const pageSize = page.getByRole('combobox', { name: '每页条数', exact: true });
+  await expect(pageSize.locator('option')).toHaveText(['10 条', '20 条', '30 条']);
+  const row = page.locator('table tbody tr').first();
+  await expect(row).toContainText('待查询');
+  await row.locator('td').last().getByRole('button').click();
+  await page.getByRole('button', { name: '查看库存', exact: true }).click();
+  const drawer = page.getByRole('dialog', { name: '库存', exact: true });
+  await expect(drawer.getByText('已返回库存', { exact: true })).toBeVisible();
+  await expect(drawer.getByRole('cell', { name: '0', exact: true })).toBeVisible();
+  await expect(drawer.getByText(/不同库存编码不合计/)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(drawer).toHaveCount(0);
+  await expect(row).toContainText('已返回库存');
 });

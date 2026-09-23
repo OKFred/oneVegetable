@@ -431,12 +431,14 @@ test('formal MV3 workbench supports persistent columns and automatic detail load
   await page.reload();
   await expect(page.getByRole('columnheader', { name: '关键词', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '加载本页扩展信息', exact: true })).toHaveCount(0);
-  await expect(
-    page
-      .locator('table')
-      .getByText(/\d(?:\.\d)?\/6/)
-      .first()
-  ).toBeVisible();
+  const table = page.locator('table').first();
+  const scoreIndex = await table
+    .getByRole('columnheader', { name: '产品分', exact: true })
+    .evaluate((element) => (element as HTMLTableCellElement).cellIndex);
+  const score = table.locator('tbody tr').first().locator('td').nth(scoreIndex);
+  await score.scrollIntoViewIfNeeded();
+  await expect(score.locator('span.font-medium')).toHaveText(String(fixtureData.getProductScore.score));
+  await expect(score).not.toContainText('/6');
   // This suite owns a fresh temporary profile; restore it for the existing first-use tests.
   await page.evaluate(async () => {
     localStorage.clear();
@@ -564,8 +566,11 @@ test('formal MV3 video workspace isolates public reads and survives worker resta
   const media = dialog.locator('video');
   await expect(media).toHaveAttribute('preload', 'none');
   await media.dispatchEvent('error');
-  await expect(dialog.getByText('此视频暂时无法播放。可重试，或前往官方页面核对。')).toBeVisible();
+  await expect(
+    dialog.getByText('此视频暂时无法播放。可重试，或使用右上角外链按钮核对原视频。')
+  ).toBeVisible();
   expect(calls).toEqual(['alibaba.icbu.video.query']);
+  await dialog.getByRole('button', { name: '素材信息', exact: true }).click();
   await dialog.getByRole('button', { name: '关联商品', exact: true }).click();
   await expect(dialog.getByText('未查到商品摘要；不代表关联不存在')).toBeVisible();
   await dialog.getByRole('button', { name: '详情关联', exact: true }).click();
@@ -642,8 +647,12 @@ test.beforeEach(async () => {
   context = await chromium.launchPersistentContext(userDataDir, {
     headless: false,
     locale: 'zh-CN',
+    reducedMotion: 'reduce',
     args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`]
   });
+  // Specific fixture routes are registered later and take precedence. Never let
+  // an unhandled request reach Alibaba or another live service from this suite.
+  await context.route(/^https?:\/\//u, (route) => route.abort());
 });
 
 test.afterEach(async () => {
@@ -1009,7 +1018,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByLabel('关闭详情').click();
 
   await page.getByPlaceholder('搜索 API 方法').fill('alibaba.icbu.risk.send');
-  await page.getByRole('button', { name: 'alibaba.icbu.risk.send' }).click();
+  await page.getByRole('button', { name: 'alibaba.icbu.risk.send', exact: true }).click();
   await expect(page.getByText(/WUA、UMID、IMEI、IMSI、MAC/)).toBeVisible();
   await expect(page.getByLabel('只读文档参数示例')).toBeVisible();
   await expect(page.getByRole('button', { name: '调用能力' })).toBeDisabled();
@@ -1052,6 +1061,48 @@ test('MV3 options page persists settings and exposes the audited catalog', async
     error: { code: 'REAL_MUTATION_DISABLED' }
   });
 
+  // Old editor storage is deliberately ignored. Load a fresh read-only Schema
+  // through the current editor flow instead of restoring a legacy draft.
+  const editorFixtures = new MockGatewayClient(0);
+  const editorReads = {
+    listProducts: await editorFixtures.request('listProducts', { page: 1, pageSize: 20 }),
+    listProductGroups: await editorFixtures.request('listProductGroups', undefined),
+    listProductCategories: await editorFixtures.request('listProductCategories', {}),
+    getProductSchema: await editorFixtures.request('getProductSchema', {
+      categoryId: 100009999,
+      language: 'en_US',
+      market: 'wholesale'
+    }),
+    listPhotos: await editorFixtures.request('listPhotos', { page: 1, pageSize: 24 }),
+    listPhotoGroups: await editorFixtures.request('listPhotoGroups', undefined)
+  };
+  await page.evaluate((data) => {
+    const runtime = (
+      globalThis as unknown as {
+        chrome: { runtime: { sendMessage(message: unknown): Promise<unknown> } };
+      }
+    ).chrome.runtime;
+    const original = runtime.sendMessage.bind(runtime);
+    runtime.sendMessage = (message) => {
+      if (
+        message &&
+        typeof message === 'object' &&
+        'kind' in message &&
+        message.kind === 'gateway-request' &&
+        'operation' in message &&
+        typeof message.operation === 'string' &&
+        'requestId' in message &&
+        Object.hasOwn(data, message.operation)
+      ) {
+        return Promise.resolve({
+          requestId: message.requestId,
+          ok: true,
+          data: (data as Record<string, unknown>)[message.operation]
+        });
+      }
+      return original(message);
+    };
+  }, editorReads);
   await page.evaluate(() => {
     localStorage.setItem(
       'one-vegetable-product-schema-draft',
@@ -1065,34 +1116,46 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   });
   await page.getByRole('link', { name: '商品' }).click();
   await page.getByRole('button', { name: '新增', exact: true }).click();
-  await expect(page.getByText('发现从旧版本迁移的本地草稿')).toBeVisible();
-  await page.getByRole('button', { name: '继续本地草稿' }).click();
+  await expect(page.getByText('发现从旧版本迁移的本地草稿')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '继续本地草稿' })).toHaveCount(0);
+  await page.getByRole('combobox').click();
+  const categoryDialog = page.getByRole('dialog', { name: '选择商品类目' });
+  await categoryDialog.getByRole('button', { name: /Consumer Electronics/ }).click();
+  await categoryDialog.getByRole('button', { name: /Portable Power Stations/ }).click();
+  await page.getByRole('button', { name: '开始填写', exact: true }).click();
+  await expect(page.getByLabel('商品标题', { exact: true })).toHaveValue(
+    'Portable solar power station 1000W'
+  );
+  await page.getByRole('button', { name: '新手向导', exact: true }).click();
+  expect(await page.evaluate(() => localStorage.getItem('one-vegetable-product-schema-draft'))).toContain(
+    'Extension draft detail'
+  );
   await page.getByRole('button', { name: /6\. 检查与提交/ }).click();
   await expect(page.getByRole('button', { name: /保存平台草稿/ })).toBeEnabled();
   await expect(page.getByRole('button', { name: /发布商品/ })).toBeEnabled();
   await page.getByRole('button', { name: /4\. 商品详情/ }).click();
-  await page.getByRole('button', { name: /更多选填信息/ }).click();
   await page.getByRole('button', { name: '详情模板' }).click();
   const templateDialog = page.getByRole('dialog', { name: '商品详情模板' });
-  await expect(templateDialog.getByText('Company profile')).toBeVisible();
+  // This scenario persisted zh_CN as the Alibaba/editor language above.
+  await expect(templateDialog.getByRole('paragraph').filter({ hasText: /^公司介绍$/ })).toBeVisible();
   await expect(templateDialog.getByRole('button', { name: '新建共享模板' })).toHaveCount(0);
   await page.getByRole('button', { name: '关闭商品详情模板' }).click();
-  await page.getByRole('button', { name: /插入图库图片/ }).click();
-  await expect(page.getByRole('heading', { name: '选择图库素材' })).toBeVisible();
-  await page.getByRole('button', { name: '上传新素材' }).click();
-  const uploadDialog = page.getByRole('dialog', { name: '上传图片到图库' });
+  await page.getByRole('button', { name: /插入图片/ }).click();
+  await expect(page.getByRole('heading', { name: '选择图片' })).toBeVisible();
+  await page.getByRole('button', { name: '上传', exact: true }).click();
+  const uploadDialog = page.getByRole('dialog', { name: '上传图片到图片库' });
   await expect(uploadDialog).toBeVisible();
   await expect(uploadDialog.locator('input[type="file"]')).toBeEnabled();
   await expect(uploadDialog.getByRole('textbox', { name: '外部图片 URL' })).toBeEnabled();
   await expect(uploadDialog.getByText(/单张最大 5 MiB/)).toBeVisible();
-  await uploadDialog.getByRole('button', { name: '关闭上传图片到图库' }).click();
+  await uploadDialog.getByRole('button', { name: '关闭上传图片到图片库' }).click();
   await page.getByRole('button', { name: '完成选择' }).click();
 
-  await page.getByRole('link', { name: '图库', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '图库' })).toBeVisible();
+  await page.getByRole('link', { name: '素材', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '图片', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '分组管理' })).toBeEnabled();
   await page.getByRole('button', { name: '分组管理' }).click();
-  const photoGroupDialog = page.getByRole('dialog', { name: '图库分组管理' });
+  const photoGroupDialog = page.getByRole('dialog', { name: '图片分组管理' });
   await expect(photoGroupDialog.getByText(/新增、改名和删除会直接写入当前国际站账号/)).toBeVisible();
   await photoGroupDialog.getByRole('button', { name: '关闭', exact: true }).click();
 
@@ -1125,7 +1188,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
     [galleryFixture.path]: png
   });
   await page.getByRole('button', { name: '导入', exact: true }).click();
-  const galleryImport = page.getByRole('dialog', { name: '导入图库素材' });
+  const galleryImport = page.getByRole('dialog', { name: '导入图片素材' });
   await expect(galleryImport.getByRole('button', { name: 'S3', exact: true })).toBeVisible();
   await galleryImport.locator('input[type="file"]').setInputFiles({
     name: 'gallery-csp.zip',
@@ -1133,7 +1196,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
     buffer: Buffer.from(galleryZip)
   });
   await expect(galleryImport.getByRole('button', { name: '导入', exact: true })).toBeEnabled();
-  await galleryImport.getByRole('button', { name: '关闭导入图库素材' }).click();
+  await galleryImport.getByRole('button', { name: '关闭导入图片素材' }).click();
 
   await page.getByRole('link', { name: 'RFQ' }).click();
   await expect(page.getByRole('heading', { name: 'RFQ 工作台' })).toBeVisible();
@@ -1148,10 +1211,11 @@ test('MV3 options page persists settings and exposes the audited catalog', async
 
   await page.getByRole('link', { name: '国际物流' }).click();
   await expect(page.getByRole('heading', { name: '国际物流工作台' })).toBeVisible();
-  await expect(page.getByText(/LOGISTICS_QUALIFICATION_REQUIRED/)).toBeVisible();
   await expect(page.getByRole('button', { name: '业务资格待验收' })).toBeDisabled();
+  await page.getByRole('button', { name: '业务资格待验收' }).locator('..').hover();
+  await expect(page.getByRole('tooltip').first()).toContainText('LOGISTICS_QUALIFICATION_REQUIRED');
   await page.getByRole('button', { name: '物流订单', exact: true }).click();
-  await expect(page.getByRole('button', { name: '刷新' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '搜索', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: '下单草稿' }).click();
   await expect(page.getByRole('button', { name: '真实下单保持禁用' })).toBeDisabled();
 

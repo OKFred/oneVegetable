@@ -39,7 +39,7 @@ test('authenticated Web uses Worker, D1 and documentation replay across every do
   await expectOperation(successfulOperations, 'getDashboard');
 
   await openDomain(page, successfulOperations, '商品', '商品管理', ['listProducts']);
-  await openDomain(page, successfulOperations, '图库', '图库', ['listPhotoGroups', 'listPhotos']);
+  await openDomain(page, successfulOperations, '素材', '图片', ['listPhotoGroups', 'listPhotos']);
   await openDomain(page, successfulOperations, 'RFQ', 'RFQ 工作台', ['listRfqs', 'getRfqEquity']);
   await openDomain(page, successfulOperations, '订单', '交易 / 订单工作台', ['listTradeOrders']);
   await openDomain(page, successfulOperations, '国际物流', '国际物流工作台', []);

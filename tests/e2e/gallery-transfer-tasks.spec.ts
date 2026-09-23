@@ -37,12 +37,12 @@ test('ZIP import stays in the task center across navigation; reload requires man
   });
   await page.goto('/#/photos');
   await page.getByRole('button', { name: '导入', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: '导入图库素材', exact: true });
+  const dialog = page.getByRole('dialog', { name: '导入图片素材', exact: true });
   await dialog
     .locator('input[type="file"]')
     .setInputFiles({ name: 'task.zip', mimeType: 'application/zip', buffer: Buffer.from(buffer) });
   await dialog.getByRole('button', { name: '导入', exact: true }).click();
-  const confirm = page.getByRole('dialog', { name: '确认导入图库', exact: true });
+  const confirm = page.getByRole('dialog', { name: '确认导入图片库', exact: true });
   await expect(confirm).toBeVisible();
   expect(await countTasks(page)).toBe(0);
   await confirm.getByRole('button', { name: '导入', exact: true }).click();
@@ -51,7 +51,7 @@ test('ZIP import stays in the task center across navigation; reload requires man
   await center.getByRole('button', { name: '关闭详情' }).click();
   await page.getByRole('link', { name: '商品', exact: true }).click();
   expect(await countTasks(page)).toBe(1);
-  await page.getByRole('link', { name: '图库', exact: true }).click();
+  await page.getByRole('link', { name: '素材', exact: true }).click();
   await page.reload();
   await page.getByRole('button', { name: '传输记录', exact: true }).click();
   await expect(center.getByRole('button', { name: /已完成/ })).toBeVisible();

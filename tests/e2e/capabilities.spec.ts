@@ -50,6 +50,39 @@ test('explicit mock can run a deprecated example without implying a live call', 
   expect(bffRequests).toEqual([]);
 });
 
+test('advanced capability filters apply together and discard cancelled draft changes', async ({ page }) => {
+  await page.goto('/#/capabilities');
+  const method = 'alibaba.icbu.product.list';
+  await page.getByPlaceholder('搜索 API 方法').fill(method);
+  await expect(page.getByRole('button', { name: method, exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '筛选', exact: true }).click();
+  const filters = page.getByRole('dialog', { name: '筛选', exact: true });
+  await filters.getByLabel('全部业务域').selectOption('photo');
+  await filters.getByLabel('账号验证快照').selectOption('permission-denied');
+  await expect(page.locator('tbody')).toContainText(method);
+  await filters.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(page.getByRole('button', { name: method, exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: '筛选', exact: true }).click();
+  await expect(filters.getByLabel('全部业务域')).toHaveValue('all');
+  await expect(filters.getByLabel('账号验证快照')).toHaveValue('all');
+  await filters.getByLabel('全部业务域').selectOption('photo');
+  await filters.getByLabel('账号验证快照').selectOption('permission-denied');
+  await filters.getByRole('button', { name: '应用筛选' }).click();
+  await expect(page.getByRole('button', { name: '筛选 · 2', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: method, exact: true })).toHaveCount(0);
+
+  await page.getByRole('button', { name: '筛选 · 2', exact: true }).click();
+  await filters.getByRole('button', { name: '重置', exact: true }).click();
+  await filters.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(page.getByRole('button', { name: '筛选 · 2', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '筛选 · 2', exact: true }).click();
+  await filters.getByRole('button', { name: '重置', exact: true }).click();
+  await filters.getByRole('button', { name: '应用筛选' }).click();
+  await expect(page.getByRole('button', { name: '筛选', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: method, exact: true })).toBeVisible();
+});
+
 test('restricted protocol examples remain read-only and cannot be sent', async ({ page }) => {
   const dialog = await openCapability(page, 'alibaba.icbu.risk.send');
   await expect(dialog.getByLabel('只读文档参数示例')).toBeVisible();
@@ -80,6 +113,7 @@ test('disabled restricted catalog entries still show typed contracts, metadata a
 async function openCapability(page: Page, method: string) {
   await page.goto('/#/capabilities');
   await page.getByPlaceholder('搜索 API 方法').fill(method);
-  await page.getByRole('button', { name: method, exact: true }).click();
+  await page.getByRole('button', { name: `${method}的操作`, exact: true }).click();
+  await page.locator('.row-actions').getByRole('button', { name: 'API 能力详情' }).click();
   return page.getByRole('dialog');
 }
