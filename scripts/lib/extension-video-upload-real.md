@@ -4,6 +4,8 @@ Run from `D:/workspace/okfred/oneVegetable`. This harness never builds or change
 
 The commands below are separate operator steps, **not an automatically executed acceptance sequence**.
 
+**After every extension rebuild, allocate a new `--run` UUID and fresh isolated profile before preparation.** Reuse a run/profile only with the exact same formal build for pause, restart and resume. Existing profiles can retain an older unpacked worker; this harness does not call `runtime.reload()` to refresh them. Keep the previous profile, journal and task intact. A fresh run does not authorize repeating any earlier S3 or Alibaba write; confirm the old run has no writes before starting replacement preparation, otherwise reconcile its existing task separately.
+
 ## Read-only UI independently
 
 ```powershell
