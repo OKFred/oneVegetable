@@ -96,6 +96,8 @@ try {
   await library.getByRole('button', { name: /查看:/ }).nth(1).click();
   const dialog = page.getByRole('dialog'),
     media = dialog.locator('video');
+  await expect(media).toHaveAttribute('preload', 'none');
+  await expect(media).not.toHaveAttribute('autoplay');
   stage = 'playback';
   reports.push(
     await media.evaluate(async (element) => {
@@ -124,6 +126,9 @@ try {
   await page.keyboard.press('Escape');
   await library.getByRole('button', { name: /查看:/ }).first().click();
   stage = 'relations';
+  await expect(dialog.getByRole('button', { name: '关联商品', exact: true })).toHaveCount(0);
+  await dialog.getByRole('button', { name: '素材信息', exact: true }).click();
+  await expect(dialog.getByTestId('media-information')).toBeVisible();
   await dialog.getByRole('button', { name: '关联商品', exact: true }).click();
   await expect(dialog.getByText('当前类型未返回关联商品')).toBeVisible();
   await dialog.getByRole('button', { name: '详情关联', exact: true }).click();

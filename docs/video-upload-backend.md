@@ -35,7 +35,7 @@
 
 ## Windows 本地受控脚本
 
-脚本：`scripts/smoke-video-upload-task-real.ts`。以下为待执行步骤，本次开发没有执行真实上传。
+脚本：`scripts/smoke-video-upload-task-real.ts`。以下为受控验收步骤，不能把本地自动测试当成真实上传通过。
 
 1. 在本机工作台配置已有 Alibaba 凭据和测试 S3；不要使用生产配置。
 2. 启动本机 BFF 时只启用单个方法（显式值会替换本机默认写白名单）：
@@ -72,6 +72,8 @@
 报告位于已忽略的 `artifacts/video-upload-validation/`，记录 requestId、阶段、任务回执和稳定错误码，不记录签名 URL、密码、Token 或完整平台响应。结束后移除本机单方法验收配置并重启 BFF，不据此开放其他运行时。
 
 ## 待真实验收
+
+2026-09-23 现场记录：隔离 Node BFF 已执行一次公网 S3 multipart 初始化，返回通用 `VIDEO_UPLOAD_FAILED`，任务保持“需处理”。未发送分片、未完成对象，也未提交 Alibaba。随后只读查询该任务精确 key：HTTP 200、未截断、没有 multipart；原始 S3 错误已被通用错误映射覆盖，无法据此断言底层原因。没有自动重试或清理远端对象。脱敏记录位于 `artifacts/video-upload-validation/33a00d65-s3-readonly-diagnosis-20260923.md`，仍需补充安全错误分类后完成受控验收；相关运行时白名单保持关闭。
 
 - 公网/内网 S3 的 multipart、匿名预签名 GET、分片核对与恢复。
 - Alibaba 实际拉取、返回已受理、唯一标记视频回读。

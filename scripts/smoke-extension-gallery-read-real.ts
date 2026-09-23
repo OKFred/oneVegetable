@@ -64,7 +64,8 @@ try {
   );
   if (!result) throw new Error('Credential setup failed');
   await page.goto(`${base}#/photos`);
-  await expect(page.getByRole('heading', { name: '图库', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '图片', exact: true })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: '素材', exact: true })).toBeVisible();
   const groups = await call(page, 'listPhotoGroups');
   const photos = await call(page, 'listPhotos', { page: 1, pageSize: 24 });
   if (!Array.isArray(groups) || !isRecord(photos) || !Array.isArray(photos.items)) {
@@ -84,10 +85,10 @@ try {
     if (!nestedGroupConfirmed) throw new Error('Expected live nested group missing');
   }
   await page.getByRole('button', { name: '导入', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: '导入图库素材' });
+  const dialog = page.getByRole('dialog', { name: '导入图片素材', exact: true });
   await expect(dialog.getByRole('button', { name: 'S3', exact: true })).toBeVisible();
   await expect(dialog.locator('input[type="file"]')).toBeEnabled();
-  await dialog.getByRole('button', { name: '关闭导入图库素材' }).click();
+  await dialog.getByRole('button', { name: '关闭导入图片素材', exact: true }).click();
   await atomicWriteJson(resolve(directory, 'read-report.json'), {
     capturedAtUtc: new Date().toISOString(),
     status: 'passed',
