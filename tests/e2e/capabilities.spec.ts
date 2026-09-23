@@ -21,11 +21,14 @@ test('catalog separates integration, documentation, history and current environm
   await expect(page.getByRole('columnheader', { name: '文档证据', exact: true })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: '账号快照', exact: true })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: '当前环境', exact: true })).toBeVisible();
-  await expect(page.getByText(/不会自动回退到 Mock/)).toBeVisible();
+  await expect(page.getByText(/接口失败会明确报错，不会展示虚假的成功结果/)).toBeVisible();
   await page.getByTestId('language-toggle').click();
   await expect(page.getByRole('columnheader', { name: 'Integration', exact: true })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Documentation', exact: true })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Current environment', exact: true })).toBeVisible();
+  await expect(
+    page.getByText(/API failures are reported; successful results are never fabricated/)
+  ).toBeVisible();
   await page.getByPlaceholder('Search API methods').fill('alibaba.icbu.product.list');
   await page.getByRole('button', { name: 'alibaba.icbu.product.list', exact: true }).click();
   const dialog = page.getByRole('dialog');
