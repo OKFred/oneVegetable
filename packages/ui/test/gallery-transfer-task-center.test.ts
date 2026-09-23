@@ -60,7 +60,7 @@ describe('gallery task center', () => {
     await nextTick();
     expect(button('继续 / 重试明确失败项').disabled).toBe(true);
     expect(button('核对结果').disabled).toBe(true);
-    expect(document.body.querySelector('a[href="#/settings"]')?.textContent.trim()).toBe('连接设置');
+    expect(document.body.querySelector('a[href="#/settings"]')?.textContent.trim()).toBe('设置');
     expect(document.body.querySelector('a[href="#/photos"]')?.textContent).toBe('重新预览');
     expect(s.run).not.toHaveBeenCalled();
   });

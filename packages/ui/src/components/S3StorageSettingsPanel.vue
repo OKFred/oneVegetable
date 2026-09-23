@@ -179,17 +179,17 @@ async function clearConfiguration(): Promise<void> {
         {{ t('settings.s3.region') }}
         <Input v-model="model.region" class="mt-2" placeholder="auto" />
       </label>
-      <label
-        v-if="model.endpoint.startsWith('http:')"
-        class="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-300 sm:col-span-2"
-      >
-        <input v-model="model.allowInsecureLocal" type="checkbox" class="mt-1 size-4" />{{
-          t('settings.s3.localHttp')
-        }}
-      </label>
       <label class="text-sm font-medium">
         {{ t('settings.s3.bucket') }}
         <Input v-model="model.bucket" class="mt-2" />
+      </label>
+      <label
+        v-if="model.endpoint.startsWith('http:')"
+        class="flex items-start gap-2 rounded-md bg-muted p-3 text-sm text-amber-700 dark:text-amber-300 sm:col-span-2"
+      >
+        <input v-model="model.allowInsecureLocal" type="checkbox" class="mt-1 size-4 shrink-0" />{{
+          t('settings.s3.localHttp')
+        }}
       </label>
       <label class="text-sm font-medium">
         {{ t('settings.s3.accessKey') }}
@@ -205,7 +205,7 @@ async function clearConfiguration(): Promise<void> {
           data-feedback-redact
         />
       </label>
-      <label class="text-sm font-medium sm:col-span-2">
+      <label class="text-sm font-medium">
         {{ t('settings.s3.sessionToken') }}
         <Input
           :model-value="model.sessionToken ?? ''"
@@ -216,7 +216,7 @@ async function clearConfiguration(): Promise<void> {
           @update:model-value="model.sessionToken = String($event)"
         />
       </label>
-      <label class="text-sm font-medium sm:col-span-2">
+      <label class="text-sm font-medium">
         {{ t('settings.s3.rootPrefix') }}
         <Input v-model="model.rootPrefix" class="mt-2" />
       </label>

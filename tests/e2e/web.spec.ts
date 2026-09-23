@@ -37,6 +37,7 @@ test('interface language switches in place without changing the Alibaba request 
   expect(page.url()).toContain('#/products');
 
   await page.getByRole('link', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Connections & language', exact: true }).click();
   await expect(page.getByLabel('Platform request language')).toHaveValue('en_US');
   expect(bffRequests).toEqual([]);
 });
@@ -735,6 +736,7 @@ test('web mock exposes the final platform contracts with protocol safeguards', a
 test('web mock exports and clears the typed diagnostics snapshot', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('link', { name: '设置' }).click();
+  await page.getByRole('button', { name: '诊断与数据', exact: true }).click();
   await expect(page.getByRole('heading', { name: '脱敏诊断' })).toBeVisible();
   await expect(page.getByText('1 条', { exact: true })).toBeVisible();
 
@@ -786,6 +788,7 @@ test('web mock groups official product hints and locates their fields from revie
 test('web mock persists the API language preference for product editing', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('link', { name: '设置' }).click();
+  await page.getByRole('button', { name: '连接与语言', exact: true }).click();
   await page.getByLabel('平台请求语言').selectOption('zh_CN');
   await expect(page.getByText('Alibaba 接口语言已保存为 zh_CN。')).toBeVisible();
 

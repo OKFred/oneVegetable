@@ -69,6 +69,13 @@ const {
   mode
 } = useServices();
 const { t } = useUiI18n();
+const activeSection = ref('credentials');
+const sections = computed(() => [
+  { id: 'credentials', icon: KeyRound },
+  ...((mode === 'bff' && control) || s3Storage ? [{ id: 'storage', icon: Database }] : []),
+  { id: 'preferences', icon: Globe2 },
+  { id: 'maintenance', icon: ShieldCheck }
+]);
 const S3StorageSettingsPanel = defineAsyncComponent(() => import('../components/S3StorageSettingsPanel.vue'));
 const GatewayCredentialPanel = defineAsyncComponent(() => import('../components/GatewayCredentialPanel.vue'));
 const { alibabaLanguage: preferredLanguage } = useAppPreferences();
@@ -136,7 +143,9 @@ const clearDiagnosticsDisabledReason = computed(() => {
   return '';
 });
 const settingsEditable = computed(
-  () => mode === 'mock' || vaultStatus.value?.state === 'empty' || vaultStatus.value?.state === 'unlocked'
+  () =>
+    settingsLoaded.value &&
+    (mode === 'mock' || vaultStatus.value?.state === 'empty' || vaultStatus.value?.state === 'unlocked')
 );
 const lastDiagnosticError = computed(() =>
   diagnostics.value?.entries.findLast((entry) => entry.outcome === 'error')
@@ -190,16 +199,12 @@ onMounted(async () => {
 });
 
 async function initializeView(): Promise<void> {
-  const [, , , storedSettings] = await Promise.all([
-    refreshDiagnostics(),
-    refreshPermissions(),
-    refreshLocalData(),
-    initializeSettings()
-  ]);
+  const storedSettings = await initializeSettings();
   if (storedSettings) model.value = storedSettings;
   credentialEditing.markClean();
   policyEditing.markClean();
   settingsLoaded.value = true;
+  await Promise.all([refreshDiagnostics(), refreshPermissions(), refreshLocalData()]);
 }
 
 async function initializeSettings(): Promise<GatewaySettings | undefined> {
@@ -597,146 +602,210 @@ function confirmLanguagePreference(): void {
 
 <template>
   <PageHeader :title="t('settings.page.title')" :description="t('settings.page.description')" />
-  <div class="grid max-w-3xl gap-4">
-    <p
-      v-if="feedback"
-      class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
+  <div class="grid min-w-0 max-w-7xl items-start gap-5 lg:grid-cols-[11rem_minmax(0,1fr)]">
+    <nav
+      :aria-label="t('settings.page.title')"
+      class="grid grid-cols-2 gap-1 rounded-xl border bg-card p-2 lg:sticky lg:top-5 lg:grid-cols-1"
     >
-      {{ feedback }}
-    </p>
-    <GatewayCredentialPanel v-if="mode === 'bff' && runtime?.backendMeta?.runtime === 'node'" />
-    <Card v-else-if="mode === 'bff'" class="space-y-3 p-5" data-testid="bff-credential-guide">
-      <h2 class="flex items-center gap-2 font-semibold">
-        <KeyRound class="size-4 text-primary" />{{ t('settings.credentials.title') }}
-      </h2>
-      <p class="text-sm text-muted-foreground">{{ t('settings.bffCredentials.boundary') }}</p>
-      <template v-if="runtime?.backendMeta?.runtime === 'cloudflare'">
-        <p class="text-sm">{{ t('settings.bffCredentials.cloud') }}</p>
-        <a href="#/admin" class="inline-block text-sm text-primary hover:underline">{{
-          t('settings.bffCredentials.admin')
-        }}</a>
-      </template>
-      <a
-        href="https://i.alibaba.com/explore/open-api"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="inline-flex items-center gap-2 text-sm text-primary hover:underline"
-        ><ExternalLink class="size-4" />{{ t('settings.credentials.openCenter') }}</a
+      <button
+        v-for="section in sections"
+        :key="section.id"
+        type="button"
+        :aria-pressed="activeSection === section.id"
+        :aria-controls="`settings-${section.id}`"
+        class="flex min-w-0 items-center gap-2 rounded-lg px-3 py-3 text-left text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        :class="activeSection === section.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground'"
+        @click="activeSection = section.id"
       >
-    </Card>
-    <Card v-if="mode === 'extension' && vault" class="p-5">
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div class="flex items-center gap-2">
-            <LockKeyhole class="size-4 text-primary" />
-            <h2 class="font-semibold">{{ t('settings.vault.title') }}</h2>
+        <component :is="section.icon" class="size-4 shrink-0" />
+        {{ t(`settings.sections.${section.id}`) }}
+      </button>
+    </nav>
+    <div class="min-w-0 space-y-4">
+      <p
+        v-if="feedback"
+        class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
+      >
+        {{ feedback }}
+      </p>
+      <section
+        id="settings-credentials"
+        v-show="activeSection === 'credentials'"
+        class="min-w-0 space-y-4"
+        :aria-label="t('settings.sections.credentials')"
+      >
+        <GatewayCredentialPanel v-if="mode === 'bff' && runtime?.backendMeta?.runtime === 'node'" />
+        <Card v-else-if="mode === 'bff'" class="space-y-3 p-5" data-testid="bff-credential-guide">
+          <h2 class="flex items-center gap-2 font-semibold">
+            <KeyRound class="size-4 text-primary" />{{ t('settings.credentials.title') }}
+          </h2>
+          <p class="text-sm text-muted-foreground">{{ t('settings.bffCredentials.boundary') }}</p>
+          <template v-if="runtime?.backendMeta?.runtime === 'cloudflare'">
+            <p class="text-sm">{{ t('settings.bffCredentials.cloud') }}</p>
+            <a href="#/admin" class="inline-block text-sm text-primary hover:underline">{{
+              t('settings.bffCredentials.admin')
+            }}</a>
+          </template>
+          <a
+            href="https://i.alibaba.com/explore/open-api"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+            ><ExternalLink class="size-4" />{{ t('settings.credentials.openCenter') }}</a
+          >
+        </Card>
+        <Card v-if="mode === 'extension' && vault" class="p-5">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <LockKeyhole class="size-4 text-primary" />
+                <h2 class="font-semibold">{{ t('settings.vault.title') }}</h2>
+              </div>
+              <p class="mt-2 text-sm text-muted-foreground">
+                {{ t('settings.vault.description') }}
+              </p>
+            </div>
+            <span class="rounded-full bg-muted px-3 py-1 text-xs">
+              {{
+                vaultStatus === null
+                  ? t('settings.vault.status.loading')
+                  : vaultStatus.state === 'unlocked'
+                    ? t('settings.vault.status.unlocked')
+                    : vaultStatus.state === 'legacy'
+                      ? t('settings.vault.status.legacy')
+                      : vaultStatus.state === 'empty'
+                        ? t('settings.vault.status.empty')
+                        : vaultStatus.state === 'invalid'
+                          ? t('settings.vault.status.invalid')
+                          : t('settings.vault.status.locked')
+              }}
+            </span>
           </div>
-          <p class="mt-2 text-sm text-muted-foreground">
-            {{ t('settings.vault.description') }}
-          </p>
-        </div>
-        <span class="rounded-full bg-muted px-3 py-1 text-xs">
-          {{
-            vaultStatus === null
-              ? t('settings.vault.status.loading')
-              : vaultStatus.state === 'unlocked'
-                ? t('settings.vault.status.unlocked')
-                : vaultStatus.state === 'legacy'
-                  ? t('settings.vault.status.legacy')
-                  : vaultStatus.state === 'empty'
-                    ? t('settings.vault.status.empty')
-                    : vaultStatus.state === 'invalid'
-                      ? t('settings.vault.status.invalid')
-                      : t('settings.vault.status.locked')
-          }}
-        </span>
-      </div>
 
-      <div v-if="vaultStatus?.state === 'legacy'" class="mt-4 rounded-lg bg-amber-50 p-4 text-amber-900">
-        <p class="text-sm font-medium">{{ t('settings.vault.legacyTitle') }}</p>
-        <p class="mt-1 text-xs leading-5">
-          {{ t('settings.vault.legacyDescription') }}
-        </p>
-      </div>
-      <div v-else-if="vaultStatus?.state === 'locked'" class="mt-4 rounded-lg border p-4">
-        <p class="text-sm font-medium">
-          {{
-            vaultStatus.lockReason === 'idle'
-              ? t('settings.vault.lockReason.idle')
-              : vaultStatus.lockReason === 'session-ended'
-                ? t('settings.vault.lockReason.sessionEnded')
-                : t('settings.vault.lockReason.manual')
-          }}
-        </p>
-        <p class="mt-1 text-xs text-muted-foreground">
-          {{
-            vaultStatus.lockReason === 'session-ended'
-              ? t('settings.vault.lockDescription.sessionEnded')
-              : t('settings.vault.lockDescription.other')
-          }}
-        </p>
-        <div class="mt-3 flex flex-wrap gap-2">
-          <Input
-            v-model="vaultPassphrase"
-            class="max-w-sm"
-            type="password"
-            :aria-label="t('settings.vault.passphrase')"
-            autocomplete="current-password"
-          />
-          <Button :disabled="vaultBusy || !vaultPassphrase" @click="unlockVault">
-            <UnlockKeyhole class="size-4" />{{ t('settings.vault.unlock') }}
-          </Button>
-        </div>
-      </div>
-      <div v-else-if="vaultStatus?.state === 'invalid'" class="mt-4 rounded-lg bg-red-50 p-4 text-red-900">
-        <p class="text-sm font-medium">{{ t('settings.vault.invalidTitle') }}</p>
-        <p class="mt-1 text-xs leading-5">
-          {{ t('settings.vault.invalidDescription') }}
-        </p>
-      </div>
-      <div v-else-if="vaultStatus?.state === 'unlocked'" class="mt-4 grid gap-4">
-        <div class="flex flex-wrap gap-2">
-          <Button variant="outline" :disabled="vaultBusy" @click="lockVault">
-            <LockKeyhole class="size-4" />{{ t('settings.vault.lockNow') }}
-          </Button>
-        </div>
-        <div class="rounded-lg border p-4">
-          <p class="text-sm font-medium">{{ t('settings.vault.idleTitle') }}</p>
-          <p class="mt-1 text-xs leading-5 text-muted-foreground">
-            {{ t('settings.vault.idleDescription') }}
-          </p>
-          <p v-if="vaultActivitySummary" class="mt-2 text-xs text-muted-foreground">
-            {{ vaultActivitySummary }}
-          </p>
-          <div class="mt-3 flex flex-wrap items-center gap-2">
-            <select
-              v-model.number="idleTimeoutMinutes"
-              class="h-9 rounded-md border bg-background px-3 text-sm"
-              :aria-label="t('settings.vault.idleLabel')"
-            >
-              <option
-                v-for="minutes in CREDENTIAL_VAULT_IDLE_TIMEOUT_OPTIONS"
-                :key="minutes"
-                :value="minutes"
-              >
-                {{ minutes === 0 ? t('settings.vault.neverLock') : t('settings.vault.minutes', { minutes }) }}
-              </option>
-            </select>
-            <Button variant="outline" :disabled="vaultBusy" @click="updateVaultPolicy">{{
-              t('settings.vault.savePolicy')
-            }}</Button>
+          <div v-if="vaultStatus?.state === 'legacy'" class="mt-4 rounded-lg bg-amber-50 p-4 text-amber-900">
+            <p class="text-sm font-medium">{{ t('settings.vault.legacyTitle') }}</p>
+            <p class="mt-1 text-xs leading-5">
+              {{ t('settings.vault.legacyDescription') }}
+            </p>
           </div>
-        </div>
-        <div class="rounded-lg border p-4">
-          <p class="text-sm font-medium">{{ t('settings.vault.rotateTitle') }}</p>
-          <p class="mt-1 text-xs text-muted-foreground">
-            {{ t('settings.vault.rotateDescription') }}
-          </p>
-          <div class="mt-3 grid gap-2 sm:grid-cols-2">
+          <div v-else-if="vaultStatus?.state === 'locked'" class="mt-4 rounded-lg border p-4">
+            <p class="text-sm font-medium">
+              {{
+                vaultStatus.lockReason === 'idle'
+                  ? t('settings.vault.lockReason.idle')
+                  : vaultStatus.lockReason === 'session-ended'
+                    ? t('settings.vault.lockReason.sessionEnded')
+                    : t('settings.vault.lockReason.manual')
+              }}
+            </p>
+            <p class="mt-1 text-xs text-muted-foreground">
+              {{
+                vaultStatus.lockReason === 'session-ended'
+                  ? t('settings.vault.lockDescription.sessionEnded')
+                  : t('settings.vault.lockDescription.other')
+              }}
+            </p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <Input
+                v-model="vaultPassphrase"
+                class="max-w-sm"
+                type="password"
+                :aria-label="t('settings.vault.passphrase')"
+                autocomplete="current-password"
+              />
+              <Button :disabled="vaultBusy || !vaultPassphrase" @click="unlockVault">
+                <UnlockKeyhole class="size-4" />{{ t('settings.vault.unlock') }}
+              </Button>
+            </div>
+          </div>
+          <div
+            v-else-if="vaultStatus?.state === 'invalid'"
+            class="mt-4 rounded-lg bg-red-50 p-4 text-red-900"
+          >
+            <p class="text-sm font-medium">{{ t('settings.vault.invalidTitle') }}</p>
+            <p class="mt-1 text-xs leading-5">
+              {{ t('settings.vault.invalidDescription') }}
+            </p>
+          </div>
+          <div v-else-if="vaultStatus?.state === 'unlocked'" class="mt-4 grid gap-4">
+            <div class="flex flex-wrap gap-2">
+              <Button variant="outline" :disabled="vaultBusy" @click="lockVault">
+                <LockKeyhole class="size-4" />{{ t('settings.vault.lockNow') }}
+              </Button>
+            </div>
+            <div class="rounded-lg border p-4">
+              <p class="text-sm font-medium">{{ t('settings.vault.idleTitle') }}</p>
+              <p class="mt-1 text-xs leading-5 text-muted-foreground">
+                {{ t('settings.vault.idleDescription') }}
+              </p>
+              <p v-if="vaultActivitySummary" class="mt-2 text-xs text-muted-foreground">
+                {{ vaultActivitySummary }}
+              </p>
+              <div class="mt-3 flex flex-wrap items-center gap-2">
+                <select
+                  v-model.number="idleTimeoutMinutes"
+                  class="h-9 rounded-md border bg-background px-3 text-sm"
+                  :aria-label="t('settings.vault.idleLabel')"
+                >
+                  <option
+                    v-for="minutes in CREDENTIAL_VAULT_IDLE_TIMEOUT_OPTIONS"
+                    :key="minutes"
+                    :value="minutes"
+                  >
+                    {{
+                      minutes === 0 ? t('settings.vault.neverLock') : t('settings.vault.minutes', { minutes })
+                    }}
+                  </option>
+                </select>
+                <Button variant="outline" :disabled="vaultBusy" @click="updateVaultPolicy">{{
+                  t('settings.vault.savePolicy')
+                }}</Button>
+              </div>
+            </div>
+            <div class="rounded-lg border p-4">
+              <p class="text-sm font-medium">{{ t('settings.vault.rotateTitle') }}</p>
+              <p class="mt-1 text-xs text-muted-foreground">
+                {{ t('settings.vault.rotateDescription') }}
+              </p>
+              <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                <Input
+                  v-model="newVaultPassphrase"
+                  type="password"
+                  :aria-label="t('settings.vault.newPassphrase')"
+                  autocomplete="new-password"
+                  :placeholder="
+                    t('settings.vault.minimumCharacters', {
+                      count: CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS
+                    })
+                  "
+                />
+                <Input
+                  v-model="newVaultPassphraseConfirmation"
+                  type="password"
+                  :aria-label="t('settings.vault.confirmNewPassphrase')"
+                  autocomplete="new-password"
+                  :placeholder="t('settings.vault.enterAgain')"
+                />
+              </div>
+              <Button
+                class="mt-3"
+                variant="outline"
+                :disabled="vaultBusy || !newVaultPassphrase || !newVaultPassphraseConfirmation"
+                @click="rotateVaultPassphrase"
+              >
+                <RotateCcw class="size-4" />{{ t('settings.vault.rotate') }}
+              </Button>
+            </div>
+          </div>
+
+          <div
+            v-if="vaultStatus?.state === 'empty' || vaultStatus?.state === 'legacy'"
+            class="mt-4 grid gap-2 sm:grid-cols-2"
+          >
             <Input
-              v-model="newVaultPassphrase"
+              v-model="vaultPassphrase"
               type="password"
-              :aria-label="t('settings.vault.newPassphrase')"
+              :aria-label="t('settings.vault.setPassphrase')"
               autocomplete="new-password"
               :placeholder="
                 t('settings.vault.minimumCharacters', {
@@ -745,349 +814,343 @@ function confirmLanguagePreference(): void {
               "
             />
             <Input
-              v-model="newVaultPassphraseConfirmation"
+              v-model="vaultPassphraseConfirmation"
               type="password"
-              :aria-label="t('settings.vault.confirmNewPassphrase')"
+              :aria-label="t('settings.vault.confirmPassphrase')"
               autocomplete="new-password"
               :placeholder="t('settings.vault.enterAgain')"
             />
-          </div>
-          <Button
-            class="mt-3"
-            variant="outline"
-            :disabled="vaultBusy || !newVaultPassphrase || !newVaultPassphraseConfirmation"
-            @click="rotateVaultPassphrase"
-          >
-            <RotateCcw class="size-4" />{{ t('settings.vault.rotate') }}
-          </Button>
-        </div>
-      </div>
-
-      <div
-        v-if="vaultStatus?.state === 'empty' || vaultStatus?.state === 'legacy'"
-        class="mt-4 grid gap-2 sm:grid-cols-2"
-      >
-        <Input
-          v-model="vaultPassphrase"
-          type="password"
-          :aria-label="t('settings.vault.setPassphrase')"
-          autocomplete="new-password"
-          :placeholder="
-            t('settings.vault.minimumCharacters', {
-              count: CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS
-            })
-          "
-        />
-        <Input
-          v-model="vaultPassphraseConfirmation"
-          type="password"
-          :aria-label="t('settings.vault.confirmPassphrase')"
-          autocomplete="new-password"
-          :placeholder="t('settings.vault.enterAgain')"
-        />
-        <Button
-          v-if="vaultStatus?.state === 'legacy'"
-          class="sm:col-span-2"
-          :disabled="vaultBusy || !vaultPassphrase || !vaultPassphraseConfirmation"
-          @click="migrateVault"
-        >
-          <ShieldCheck class="size-4" />{{ t('settings.vault.migrate') }}
-        </Button>
-      </div>
-      <ErrorNotice v-if="vaultError" class="mt-3" :error="vaultError" compact />
-    </Card>
-
-    <Card v-if="settingsEditable" class="p-5">
-      <div class="mb-4 flex items-center gap-2">
-        <KeyRound class="size-4 text-primary" />
-        <h2 class="font-semibold">{{ t('settings.credentials.title') }}</h2>
-      </div>
-      <AlibabaIndependentNotice class="mb-4" />
-      <div class="mb-4 rounded-lg border bg-muted/40 p-4 text-sm leading-6">
-        <p class="font-medium">{{ t('settings.credentials.guideTitle') }}</p>
-        <p class="mt-1 text-muted-foreground">
-          {{ t('settings.credentials.guideDescription') }}
-        </p>
-        <div class="mt-3 flex flex-wrap gap-2">
-          <Button
-            v-if="alibabaCredentialAcquisition"
-            size="sm"
-            type="button"
-            @click="credentialAcquisitionOpen = true"
-          >
-            <WandSparkles class="size-3.5" />{{ t('settings.credentials.acquire') }}
-          </Button>
-          <a
-            href="https://i.alibaba.com/explore/open-api"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent"
-          >
-            <ExternalLink class="size-3.5" />{{ t('settings.credentials.openCenter') }}
-          </a>
-          <label
-            class="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent"
-          >
-            <FileUp class="size-3.5" />{{ t('settings.credentials.importBundle') }}
-            <input
-              class="sr-only"
-              type="file"
-              accept="application/json,.json"
-              :aria-label="t('settings.credentials.importLabel')"
-              @change="importCredentialBundle"
-            />
-          </label>
-        </div>
-        <ErrorNotice v-if="credentialImportError" class="mt-3" :error="credentialImportError" compact />
-      </div>
-      <div class="grid gap-4 sm:grid-cols-2">
-        <label class="text-sm font-medium"
-          >App Key<Input
-            v-model="model.appKey"
-            class="mt-2"
-            autocomplete="off"
-            aria-label="App Key"
-            data-feedback-redact
-        /></label>
-        <label class="text-sm font-medium"
-          >App Secret<Input
-            v-model="model.appSecret"
-            class="mt-2"
-            type="password"
-            aria-label="App Secret"
-            autocomplete="new-password"
-            :placeholder="vaultStatus?.hasAppSecret ? t('settings.credentials.encryptedPlaceholder') : ''"
-        /></label>
-        <label class="text-sm font-medium sm:col-span-2"
-          >Access Token<Input
-            v-model="model.accessToken"
-            class="mt-2"
-            type="password"
-            aria-label="Access Token"
-            autocomplete="new-password"
-            :placeholder="vaultStatus?.hasAccessToken ? t('settings.credentials.encryptedPlaceholder') : ''"
-        /></label>
-        <label class="text-sm font-medium sm:col-span-2"
-          >{{ t('settings.credentials.gateway')
-          }}<Input v-model="model.endpoint" class="mt-2" :aria-label="t('settings.credentials.gateway')"
-        /></label>
-        <label class="text-sm font-medium"
-          >{{ t('settings.credentials.signMethod')
-          }}<select
-            v-model="model.signMethod"
-            class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
-          >
-            <option v-for="item in signMethods" :key="item" :value="item">{{ item }}</option>
-          </select></label
-        >
-      </div>
-      <Button
-        class="mt-4"
-        :disabled="
-          saving ||
-          vaultBusy ||
-          (mode === 'extension' &&
-            vaultStatus?.state === 'empty' &&
-            (!vaultPassphrase || !vaultPassphraseConfirmation))
-        "
-        @click="save"
-      >
-        <LoaderCircle v-if="saving" class="size-4 animate-spin" />
-        <Save v-else class="size-4" />
-        {{ saving ? t('settings.credentials.saving') : t('settings.credentials.save') }}
-      </Button>
-    </Card>
-    <AlibabaCredentialAcquisitionDialog
-      v-if="alibabaCredentialAcquisition"
-      v-model:open="credentialAcquisitionOpen"
-      @saved="handleAcquiredCredentialsSaved"
-    />
-    <Card class="flex items-start gap-3 border-emerald-200 bg-emerald-50 p-5 text-emerald-900"
-      ><ShieldCheck class="mt-0.5 size-5 shrink-0" />
-      <div>
-        <p class="font-medium">{{ t('settings.security.title') }}</p>
-        <p class="mt-1 text-sm leading-6">
-          {{ t('settings.security.description') }}
-        </p>
-      </div></Card
-    >
-    <ExtensionSocialBackendPanel v-if="mode === 'extension' && extensionSocialBackend" />
-    <S3StorageSettingsPanel v-if="(mode === 'bff' && control) || s3Storage" />
-    <Card class="p-5">
-      <div class="flex items-start gap-3">
-        <Globe2 class="mt-0.5 size-5 shrink-0 text-primary" />
-        <div class="min-w-0 flex-1">
-          <h2 class="font-semibold">{{ t('settings.alibabaLanguage.title') }}</h2>
-          <p class="mt-1 text-sm leading-6 text-muted-foreground">
-            {{ t('settings.alibabaLanguage.description') }}
-          </p>
-          <p class="mt-1 text-xs leading-5 text-muted-foreground">
-            {{ t('settings.alibabaLanguage.interfaceHint') }}
-          </p>
-          <label class="mt-3 block max-w-xs text-sm font-medium">
-            {{ t('settings.alibabaLanguage.label') }}
-            <select
-              v-model="preferredLanguage"
-              class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
-              :aria-label="t('settings.alibabaLanguage.label')"
-              @change="confirmLanguagePreference"
+            <Button
+              v-if="vaultStatus?.state === 'legacy'"
+              class="sm:col-span-2"
+              :disabled="vaultBusy || !vaultPassphrase || !vaultPassphraseConfirmation"
+              @click="migrateVault"
             >
-              <option value="zh_CN">{{ t('settings.alibabaLanguage.chinese') }}</option>
-              <option value="en_US">{{ t('settings.alibabaLanguage.english') }}</option>
-            </select>
-          </label>
-        </div>
-      </div>
-    </Card>
-    <Card v-if="mode === 'extension' && permissions" class="p-5">
-      <div class="flex items-center gap-2">
-        <Globe2 class="size-4 text-primary" />
-        <h2 class="font-semibold">{{ t('settings.permissions.title') }}</h2>
-      </div>
-      <p class="mt-2 text-sm text-muted-foreground">
-        {{ t('settings.permissions.description') }}
-      </p>
-      <ErrorNotice v-if="permissionsError" class="mt-3" :error="permissionsError" compact />
-      <p v-else-if="grantedHosts.length === 0" class="mt-3 text-sm text-muted-foreground">
-        {{ t('settings.permissions.empty') }}
-      </p>
-      <ul v-else class="mt-3 grid gap-2">
-        <li
-          v-for="origin in grantedHosts"
-          :key="origin"
-          class="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
-        >
-          <code class="break-all text-xs">{{ origin }}</code>
-          <Button
-            size="sm"
-            variant="outline"
-            :aria-label="t('settings.permissions.revokeLabel', { origin })"
-            :disabled="permissionsBusy"
-            @click="settingsConfirmation = { kind: 'revoke-permission', origin }"
-          >
-            <Trash2 class="size-3.5" />{{ t('settings.permissions.revoke') }}
-          </Button>
-        </li>
-      </ul>
-      <ListActionButton
-        class="mt-3"
-        :icon="RefreshCw"
-        :disabled="permissionsBusy"
-        @click="refreshPermissions"
-      >
-        {{ t('settings.permissions.refresh') }}
-      </ListActionButton>
-    </Card>
-    <Card class="p-5">
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div class="flex items-center gap-2">
-            <ShieldCheck class="size-4 text-primary" />
-            <h2 class="font-semibold">{{ t('settings.diagnostics.title') }}</h2>
+              <ShieldCheck class="size-4" />{{ t('settings.vault.migrate') }}
+            </Button>
           </div>
-          <p class="mt-2 text-sm text-muted-foreground">
-            {{ t('settings.diagnostics.description') }}
-          </p>
-        </div>
-        <span
-          :aria-label="t('settings.diagnostics.countLabel')"
-          class="rounded-full bg-muted px-3 py-1 text-xs"
-        >
-          {{ t('settings.diagnostics.count', { count: diagnostics?.entries.length ?? 0 }) }}
-        </span>
-      </div>
-      <div v-if="lastDiagnosticError" class="mt-3 rounded-md bg-amber-50 p-3 text-xs text-amber-800">
-        {{ t('settings.diagnostics.latestError') }} {{ lastDiagnosticError.errorCode }} ·
-        {{ lastDiagnosticError.operation }} ·
-        {{ lastDiagnosticError.errorMessage }}
-        <span class="mt-1 block break-all font-mono text-[11px]">
-          requestId：{{ lastDiagnosticError.requestId }}
-        </span>
-      </div>
-      <ErrorNotice v-if="diagnosticsError" class="mt-3" :error="diagnosticsError" compact />
-      <div class="mt-4 flex flex-wrap gap-2">
-        <ListActionButton :icon="RefreshCw" :disabled="diagnosticsBusy" @click="refreshDiagnostics">
-          {{ t('settings.diagnostics.refresh') }}
-        </ListActionButton>
-        <ListActionButton :icon="Download" :disabled="diagnosticsBusy" @click="exportDiagnostics">
-          {{ t('settings.diagnostics.export') }}
-        </ListActionButton>
-        <ActionTooltip
-          :disabled="Boolean(clearDiagnosticsDisabledReason)"
-          :reason="clearDiagnosticsDisabledReason"
-        >
-          <ListActionButton
-            :icon="Trash2"
-            :disabled="Boolean(clearDiagnosticsDisabledReason)"
-            @click="settingsConfirmation = { kind: 'clear-diagnostics' }"
-          >
-            {{ t('settings.diagnostics.clear') }}
-          </ListActionButton>
-        </ActionTooltip>
-      </div>
-    </Card>
-    <Card v-if="mode === 'extension' && localData" class="p-5">
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div class="flex items-center gap-2">
-            <Database class="size-4 text-primary" />
-            <h2 class="font-semibold">{{ t('settings.localData.title') }}</h2>
+          <ErrorNotice v-if="vaultError" class="mt-3" :error="vaultError" compact />
+        </Card>
+
+        <Card v-if="settingsEditable" class="p-5">
+          <div class="mb-4 flex items-center gap-2">
+            <KeyRound class="size-4 text-primary" />
+            <h2 class="font-semibold">{{ t('settings.credentials.title') }}</h2>
           </div>
-          <p class="mt-2 text-sm text-muted-foreground">
-            {{ t('settings.localData.description') }}
-          </p>
-        </div>
-        <span class="rounded-full bg-muted px-3 py-1 text-xs">
-          {{ formatBytes(dataInventory?.totalApproximateBytes ?? 0) }}
-        </span>
-      </div>
-      <ErrorNotice v-if="dataError" class="mt-3" :error="dataError" compact />
-      <DataTable
-        column-settings-key="settings-local-data"
-        class="mt-4"
-        :columns="localDataColumns"
-        :data="dataInventory?.categories ?? []"
-        max-height="min(60vh, 36rem)"
-        min-width="620px"
-        :empty-text="t('settings.localData.empty')"
-      />
-      <div class="mt-4 flex flex-wrap gap-2">
-        <ListActionButton :icon="RefreshCw" :disabled="dataBusy" @click="refreshLocalData">
-          {{ t('settings.localData.refresh') }}
-        </ListActionButton>
-        <ListActionButton :icon="Download" :disabled="dataBusy" @click="exportLocalDataInventory">
-          {{ t('settings.localData.export') }}
-        </ListActionButton>
-      </div>
-      <div class="mt-5 rounded-lg border border-red-200 bg-red-50 p-4">
-        <div class="flex items-start gap-2 text-red-900">
-          <AlertTriangle class="mt-0.5 size-4 shrink-0" />
-          <div>
-            <p class="text-sm font-medium">{{ t('settings.localData.dangerTitle') }}</p>
-            <p class="mt-1 text-xs leading-5">
-              {{ t('settings.localData.dangerDescription', { phrase: clearPhrase }) }}
+          <AlibabaIndependentNotice class="mb-4" />
+          <div class="mb-4 rounded-lg border bg-muted/40 p-4 text-sm leading-6">
+            <p class="font-medium">{{ t('settings.credentials.guideTitle') }}</p>
+            <p class="mt-1 text-muted-foreground">
+              {{ t('settings.credentials.guideDescription') }}
             </p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <Button
+                v-if="alibabaCredentialAcquisition"
+                size="sm"
+                type="button"
+                @click="credentialAcquisitionOpen = true"
+              >
+                <WandSparkles class="size-3.5" />{{ t('settings.credentials.acquire') }}
+              </Button>
+              <a
+                href="https://i.alibaba.com/explore/open-api"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent"
+              >
+                <ExternalLink class="size-3.5" />{{ t('settings.credentials.openCenter') }}
+              </a>
+              <label
+                class="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent"
+              >
+                <FileUp class="size-3.5" />{{ t('settings.credentials.importBundle') }}
+                <input
+                  class="sr-only"
+                  type="file"
+                  accept="application/json,.json"
+                  :aria-label="t('settings.credentials.importLabel')"
+                  @change="importCredentialBundle"
+                />
+              </label>
+            </div>
+            <ErrorNotice v-if="credentialImportError" class="mt-3" :error="credentialImportError" compact />
           </div>
-        </div>
-        <div class="mt-3 flex flex-wrap gap-2">
-          <Input
-            v-model="clearConfirmation"
-            class="max-w-xs bg-white"
-            :aria-label="t('settings.localData.clearLabel')"
-            autocomplete="off"
-            :placeholder="clearPhrase"
-          />
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="text-sm font-medium"
+              >App Key<Input
+                v-model="model.appKey"
+                class="mt-2"
+                autocomplete="off"
+                aria-label="App Key"
+                data-feedback-redact
+            /></label>
+            <label class="text-sm font-medium"
+              >App Secret<Input
+                v-model="model.appSecret"
+                class="mt-2"
+                type="password"
+                aria-label="App Secret"
+                autocomplete="new-password"
+                :placeholder="
+                  vaultStatus?.hasAppSecret ? t('settings.credentials.encryptedPlaceholder') : ''
+                "
+            /></label>
+            <label class="text-sm font-medium sm:col-span-2"
+              >Access Token<Input
+                v-model="model.accessToken"
+                class="mt-2"
+                type="password"
+                aria-label="Access Token"
+                autocomplete="new-password"
+                :placeholder="
+                  vaultStatus?.hasAccessToken ? t('settings.credentials.encryptedPlaceholder') : ''
+                "
+            /></label>
+            <label class="text-sm font-medium sm:col-span-2"
+              >{{ t('settings.credentials.gateway')
+              }}<Input v-model="model.endpoint" class="mt-2" :aria-label="t('settings.credentials.gateway')"
+            /></label>
+            <label class="text-sm font-medium"
+              >{{ t('settings.credentials.signMethod')
+              }}<select
+                v-model="model.signMethod"
+                class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                <option v-for="item in signMethods" :key="item" :value="item">{{ item }}</option>
+              </select></label
+            >
+          </div>
           <Button
-            variant="outline"
-            class="border-red-300 text-red-800 hover:bg-red-100"
-            :disabled="dataBusy || clearConfirmation !== clearPhrase"
-            @click="clearAllLocalData"
+            class="mt-4"
+            :disabled="
+              saving ||
+              vaultBusy ||
+              (mode === 'extension' &&
+                vaultStatus?.state === 'empty' &&
+                (!vaultPassphrase || !vaultPassphraseConfirmation))
+            "
+            @click="save"
           >
-            <Trash2 class="size-4" />{{ t('settings.localData.clear') }}
+            <LoaderCircle v-if="saving" class="size-4 animate-spin" />
+            <Save v-else class="size-4" />
+            {{ saving ? t('settings.credentials.saving') : t('settings.credentials.save') }}
           </Button>
-        </div>
-      </div>
-    </Card>
+        </Card>
+        <AlibabaCredentialAcquisitionDialog
+          v-if="alibabaCredentialAcquisition"
+          v-model:open="credentialAcquisitionOpen"
+          @saved="handleAcquiredCredentialsSaved"
+        />
+        <Card class="flex items-start gap-3 p-5 text-muted-foreground"
+          ><ShieldCheck class="mt-0.5 size-5 shrink-0" />
+          <div>
+            <p class="font-medium">{{ t('settings.security.title') }}</p>
+            <p class="mt-1 text-sm leading-6">
+              {{ t('settings.security.description') }}
+            </p>
+          </div></Card
+        >
+      </section>
+      <section
+        v-if="(mode === 'bff' && control) || s3Storage"
+        id="settings-storage"
+        v-show="activeSection === 'storage'"
+        class="min-w-0"
+        :aria-label="t('settings.sections.storage')"
+      >
+        <S3StorageSettingsPanel />
+      </section>
+      <section
+        id="settings-preferences"
+        v-show="activeSection === 'preferences'"
+        class="min-w-0 space-y-4"
+        :aria-label="t('settings.sections.preferences')"
+      >
+        <ExtensionSocialBackendPanel v-if="mode === 'extension' && extensionSocialBackend" />
+        <Card class="p-5">
+          <div class="flex items-start gap-3">
+            <Globe2 class="mt-0.5 size-5 shrink-0 text-primary" />
+            <div class="min-w-0 flex-1">
+              <h2 class="font-semibold">{{ t('settings.alibabaLanguage.title') }}</h2>
+              <p class="mt-1 text-sm leading-6 text-muted-foreground">
+                {{ t('settings.alibabaLanguage.description') }}
+              </p>
+              <p class="mt-1 text-xs leading-5 text-muted-foreground">
+                {{ t('settings.alibabaLanguage.interfaceHint') }}
+              </p>
+              <label class="mt-3 block max-w-xs text-sm font-medium">
+                {{ t('settings.alibabaLanguage.label') }}
+                <select
+                  v-model="preferredLanguage"
+                  class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
+                  :aria-label="t('settings.alibabaLanguage.label')"
+                  @change="confirmLanguagePreference"
+                >
+                  <option value="zh_CN">{{ t('settings.alibabaLanguage.chinese') }}</option>
+                  <option value="en_US">{{ t('settings.alibabaLanguage.english') }}</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </Card>
+      </section>
+      <section
+        id="settings-maintenance"
+        v-show="activeSection === 'maintenance'"
+        class="min-w-0 space-y-4"
+        :aria-label="t('settings.sections.maintenance')"
+      >
+        <Card v-if="mode === 'extension' && permissions" class="p-5">
+          <div class="flex items-center gap-2">
+            <Globe2 class="size-4 text-primary" />
+            <h2 class="font-semibold">{{ t('settings.permissions.title') }}</h2>
+          </div>
+          <p class="mt-2 text-sm text-muted-foreground">
+            {{ t('settings.permissions.description') }}
+          </p>
+          <ErrorNotice v-if="permissionsError" class="mt-3" :error="permissionsError" compact />
+          <p v-else-if="grantedHosts.length === 0" class="mt-3 text-sm text-muted-foreground">
+            {{ t('settings.permissions.empty') }}
+          </p>
+          <ul v-else class="mt-3 grid gap-2">
+            <li
+              v-for="origin in grantedHosts"
+              :key="origin"
+              class="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
+            >
+              <code class="break-all text-xs">{{ origin }}</code>
+              <Button
+                size="sm"
+                variant="outline"
+                :aria-label="t('settings.permissions.revokeLabel', { origin })"
+                :disabled="permissionsBusy"
+                @click="settingsConfirmation = { kind: 'revoke-permission', origin }"
+              >
+                <Trash2 class="size-3.5" />{{ t('settings.permissions.revoke') }}
+              </Button>
+            </li>
+          </ul>
+          <ListActionButton
+            class="mt-3"
+            :icon="RefreshCw"
+            :disabled="permissionsBusy"
+            @click="refreshPermissions"
+          >
+            {{ t('settings.permissions.refresh') }}
+          </ListActionButton>
+        </Card>
+        <Card class="p-5">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <ShieldCheck class="size-4 text-primary" />
+                <h2 class="font-semibold">{{ t('settings.diagnostics.title') }}</h2>
+              </div>
+              <p class="mt-2 text-sm text-muted-foreground">
+                {{ t('settings.diagnostics.description') }}
+              </p>
+            </div>
+            <span
+              :aria-label="t('settings.diagnostics.countLabel')"
+              class="rounded-full bg-muted px-3 py-1 text-xs"
+            >
+              {{ t('settings.diagnostics.count', { count: diagnostics?.entries.length ?? 0 }) }}
+            </span>
+          </div>
+          <div v-if="lastDiagnosticError" class="mt-3 rounded-md bg-amber-50 p-3 text-xs text-amber-800">
+            {{ t('settings.diagnostics.latestError') }} {{ lastDiagnosticError.errorCode }} ·
+            {{ lastDiagnosticError.operation }} ·
+            {{ lastDiagnosticError.errorMessage }}
+            <span class="mt-1 block break-all font-mono text-[11px]">
+              requestId：{{ lastDiagnosticError.requestId }}
+            </span>
+          </div>
+          <ErrorNotice v-if="diagnosticsError" class="mt-3" :error="diagnosticsError" compact />
+          <div class="mt-4 flex flex-wrap gap-2">
+            <ListActionButton :icon="RefreshCw" :disabled="diagnosticsBusy" @click="refreshDiagnostics">
+              {{ t('settings.diagnostics.refresh') }}
+            </ListActionButton>
+            <ListActionButton :icon="Download" :disabled="diagnosticsBusy" @click="exportDiagnostics">
+              {{ t('settings.diagnostics.export') }}
+            </ListActionButton>
+            <ActionTooltip
+              :disabled="Boolean(clearDiagnosticsDisabledReason)"
+              :reason="clearDiagnosticsDisabledReason"
+            >
+              <ListActionButton
+                :icon="Trash2"
+                :disabled="Boolean(clearDiagnosticsDisabledReason)"
+                @click="settingsConfirmation = { kind: 'clear-diagnostics' }"
+              >
+                {{ t('settings.diagnostics.clear') }}
+              </ListActionButton>
+            </ActionTooltip>
+          </div>
+        </Card>
+        <Card v-if="mode === 'extension' && localData" class="p-5">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <Database class="size-4 text-primary" />
+                <h2 class="font-semibold">{{ t('settings.localData.title') }}</h2>
+              </div>
+              <p class="mt-2 text-sm text-muted-foreground">
+                {{ t('settings.localData.description') }}
+              </p>
+            </div>
+            <span class="rounded-full bg-muted px-3 py-1 text-xs">
+              {{ formatBytes(dataInventory?.totalApproximateBytes ?? 0) }}
+            </span>
+          </div>
+          <ErrorNotice v-if="dataError" class="mt-3" :error="dataError" compact />
+          <DataTable
+            column-settings-key="settings-local-data"
+            class="mt-4"
+            :columns="localDataColumns"
+            :data="dataInventory?.categories ?? []"
+            max-height="min(60vh, 36rem)"
+            min-width="620px"
+            :empty-text="t('settings.localData.empty')"
+          />
+          <div class="mt-4 flex flex-wrap gap-2">
+            <ListActionButton :icon="RefreshCw" :disabled="dataBusy" @click="refreshLocalData">
+              {{ t('settings.localData.refresh') }}
+            </ListActionButton>
+            <ListActionButton :icon="Download" :disabled="dataBusy" @click="exportLocalDataInventory">
+              {{ t('settings.localData.export') }}
+            </ListActionButton>
+          </div>
+          <div class="mt-5 rounded-lg border border-red-200 bg-red-50 p-4">
+            <div class="flex items-start gap-2 text-red-900">
+              <AlertTriangle class="mt-0.5 size-4 shrink-0" />
+              <div>
+                <p class="text-sm font-medium">{{ t('settings.localData.dangerTitle') }}</p>
+                <p class="mt-1 text-xs leading-5">
+                  {{ t('settings.localData.dangerDescription', { phrase: clearPhrase }) }}
+                </p>
+              </div>
+            </div>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <Input
+                v-model="clearConfirmation"
+                class="max-w-xs bg-white"
+                :aria-label="t('settings.localData.clearLabel')"
+                autocomplete="off"
+                :placeholder="clearPhrase"
+              />
+              <Button
+                variant="outline"
+                class="border-red-300 text-red-800 hover:bg-red-100"
+                :disabled="dataBusy || clearConfirmation !== clearPhrase"
+                @click="clearAllLocalData"
+              >
+                <Trash2 class="size-4" />{{ t('settings.localData.clear') }}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </section>
+    </div>
   </div>
 
   <ConfirmActionDialog

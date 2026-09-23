@@ -25,6 +25,7 @@ test('MV3 stores S3 encrypted, restores after worker shutdown and rejects non-op
     await onboarding.getByRole('checkbox').check();
     await onboarding.getByRole('button', { name: '稍后，仅浏览' }).click();
     await page.goto(`chrome-extension://${id}/options.html#/settings`);
+    await page.getByRole('button', { name: 'S3 素材存储', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'S3 素材存储', exact: true })).toBeVisible();
     // Uses an already-granted origin but performs NO network request. Permission UI is covered separately.
     const configuration = { ...fixture.configuration, endpoint: 'https://eco.taobao.com' };
@@ -45,6 +46,7 @@ test('MV3 stores S3 encrypted, restores after worker shutdown and rejects non-op
     await cdp.send('ServiceWorker.enable');
     await cdp.send('ServiceWorker.stopAllWorkers');
     await page.reload();
+    await page.getByRole('button', { name: 'S3 素材存储', exact: true }).click();
     await expect(page.getByLabel('Endpoint', { exact: true })).toHaveValue(configuration.endpoint);
     await expect(page.getByLabel('Secret Access Key', { exact: true })).toHaveValue('');
     const popup = await context.newPage();

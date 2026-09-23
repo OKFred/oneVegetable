@@ -855,6 +855,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
   await expect(page.getByLabel('App Secret')).toHaveValue('');
   await expect(page.getByLabel('Access Token')).toHaveValue('');
+  await page.getByRole('button', { name: '诊断与数据', exact: true }).click();
   await expect(page.getByRole('heading', { name: '主机权限' })).toBeVisible();
   await expect(page.getByText('当前没有额外主机权限。')).toBeVisible();
   await expect(page.getByText('https://*.alibaba.com/*')).toHaveCount(0);
@@ -1253,6 +1254,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   });
 
   await page.getByRole('link', { name: '设置', exact: true }).click();
+  await page.getByRole('button', { name: '诊断与数据', exact: true }).click();
   await expect(page.getByRole('heading', { name: '脱敏诊断' })).toBeVisible();
   await expect(page.getByLabel('诊断记录数量')).toContainText(/\d+ 条/u);
   const downloadPromise = page.waitForEvent('download');

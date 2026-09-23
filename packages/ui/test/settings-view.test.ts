@@ -160,6 +160,57 @@ afterEach(() => {
 });
 
 describe('SettingsView diagnostics', () => {
+  it('does not overwrite input when unrelated settings metadata finishes loading', async () => {
+    let finishInspect: (() => void) | undefined;
+    const editing = new UnsavedEditingService();
+    const wrapper = mountView('extension', 'empty', 'manual', 'node', {
+      editing,
+      beforeInspect: () =>
+        new Promise<void>((resolve) => {
+          finishInspect = resolve;
+        })
+    });
+    await flushPromises();
+    await wrapper.get('input[aria-label="App Key"]').setValue('entered-during-metadata-load');
+    expect(finishInspect).toBeDefined();
+    finishInspect?.();
+    await flushPromises();
+    expect((wrapper.get('input[aria-label="App Key"]').element as HTMLInputElement).value).toBe(
+      'entered-during-metadata-load'
+    );
+    expect(editing.dirty.value).toBe(true);
+    wrapper.unmount();
+    editing.dispose();
+  });
+  it('switches sections without dropping unsaved values or changing Alibaba language', async () => {
+    const editing = new UnsavedEditingService();
+    const wrapper = mountView('mock', undefined, 'manual', 'node', { editing });
+    await flushPromises();
+    await vi.waitFor(() => {
+      expect(wrapper.get('#settings-maintenance button').attributes('disabled')).toBeUndefined();
+    });
+    expect(wrapper.get('#settings-credentials').isVisible()).toBe(true);
+    expect(wrapper.get('#settings-maintenance').isVisible()).toBe(false);
+    expect(wrapper.find('button[aria-controls="settings-storage"]').exists()).toBe(false);
+    await wrapper.get('input[aria-label="App Key"]').setValue('unsaved-key');
+    const language = wrapper.get('select[aria-label="平台请求语言"]').element as HTMLSelectElement;
+    const originalLanguage = language.value;
+    await wrapper.get('button[aria-controls="settings-preferences"]').trigger('click');
+    expect(wrapper.get('#settings-credentials').isVisible()).toBe(false);
+    expect(wrapper.get('#settings-preferences').isVisible()).toBe(true);
+    expect(wrapper.get('button[aria-controls="settings-preferences"]').attributes('aria-pressed')).toBe(
+      'true'
+    );
+    expect(language.value).toBe(originalLanguage);
+    await wrapper.get('button[aria-controls="settings-credentials"]').trigger('click');
+    expect((wrapper.get('input[aria-label="App Key"]').element as HTMLInputElement).value).toBe(
+      'unsaved-key'
+    );
+    expect(editing.dirty.value).toBe(true);
+    expect(editing.confirmationOpen.value).toBe(false);
+    wrapper.unmount();
+    editing.dispose();
+  });
   it('shows the Node credential panel instead of environment-variable-only instructions', async () => {
     const wrapper = mountView('bff');
     await flushPromises();
@@ -453,7 +504,7 @@ describe('SettingsView diagnostics', () => {
     expect(wrapper.text()).not.toContain('国际站开放平台凭证');
 
     await wrapper.get('input[aria-label="保护口令"]').setValue('correct-vault-password');
-    await wrapper.get('button').trigger('click');
+    await wrapper.get('#settings-credentials button').trigger('click');
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('凭证已解锁');
     });
@@ -493,14 +544,14 @@ describe('SettingsView diagnostics', () => {
     });
     await wrapper.get('input[aria-label="设置保护口令"]').setValue('migrated-vault-password');
     await wrapper.get('input[aria-label="确认保护口令"]').setValue('different-vault-password');
-    await wrapper.get('button').trigger('click');
+    await wrapper.get('#settings-credentials button').trigger('click');
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('两次输入的本机保护口令不一致');
     });
     expect(migrateVault).not.toHaveBeenCalled();
 
     await wrapper.get('input[aria-label="确认保护口令"]').setValue('migrated-vault-password');
-    await wrapper.get('button').trigger('click');
+    await wrapper.get('#settings-credentials button').trigger('click');
     await vi.waitFor(() => {
       expect(migrateVault).toHaveBeenCalledWith('migrated-vault-password');
       expect(wrapper.text()).toContain('旧版明文凭证已原位加密，并在当前 Chrome 会话内保持可用');

@@ -1,17 +1,18 @@
 export const settings = {
   bffCredentials: {
     boundary: 'Credentials stay on the backend and are not displayed here.',
-    node: 'Configure Node on the backend computer; no browser editor yet.',
-    bundle: 'pnpm openapi:auth creates a bundle; pnpm dev:api:real reads:',
-    environment: 'Or set these backend process variables and run pnpm dev:api:',
-    restart: 'Restart after changes. Website passwords are not API credentials. Keep secrets out of VITE_.',
     cloud: 'Cloudflare admins can import a bundle or start authorization.',
     admin: 'Open admin configuration'
   },
   page: {
-    title: 'Connection settings',
-    description:
-      'Credentials never enter page requests. In extension mode, only the MV3 service worker reads them and signs requests.'
+    title: 'Settings',
+    description: 'Manage platform connections, asset storage and local preferences.'
+  },
+  sections: {
+    credentials: 'API credentials',
+    storage: 'S3 asset storage',
+    preferences: 'Connections & language',
+    maintenance: 'Diagnostics & data'
   },
   confirmation: {
     revokeTitle: 'Revoke host access?',

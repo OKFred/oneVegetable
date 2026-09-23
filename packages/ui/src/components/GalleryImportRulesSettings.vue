@@ -52,12 +52,10 @@ function save(): void {
 </script>
 
 <template>
-  <div class="mt-5 border-t pt-5">
-    <div class="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h3 class="text-sm font-semibold">{{ t('settings.s3.rules.title') }}</h3>
-        <p class="mt-1 text-xs leading-5 text-muted-foreground">{{ t('settings.s3.rules.description') }}</p>
-      </div>
+  <details class="mt-5 border-t pt-4">
+    <summary class="cursor-pointer text-sm font-semibold">{{ t('settings.s3.rules.title') }}</summary>
+    <div class="mt-3 flex flex-wrap items-start justify-between gap-3">
+      <p class="text-xs leading-5 text-muted-foreground">{{ t('settings.s3.rules.description') }}</p>
       <Button size="sm" variant="outline" @click="addRule">
         <Plus class="size-3.5" />{{ t('settings.s3.rules.add') }}
       </Button>
@@ -124,5 +122,5 @@ function save(): void {
     <Button class="mt-3" size="sm" variant="outline" @click="save">
       <Save class="size-3.5" />{{ t('settings.s3.rules.save') }}
     </Button>
-  </div>
+  </details>
 </template>

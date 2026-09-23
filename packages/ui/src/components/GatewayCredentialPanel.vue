@@ -196,7 +196,7 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
       <p v-if="unavailable" class="text-sm">{{ t('unavailable') }}</p>
       <template v-else>
         <p class="text-sm font-medium">{{ summary?.configured ? t('configured') : t('empty') }}</p>
-        <dl class="grid gap-2 text-sm sm:grid-cols-2">
+        <dl class="grid gap-4 rounded-lg bg-muted/40 p-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <dt class="text-muted-foreground">{{ t('source') }}</dt>
             <dd>{{ summary?.source ? t(summary.source) : '—' }}</dd>
