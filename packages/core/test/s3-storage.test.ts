@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { S3ObjectStorageClient, type S3StorageConfiguration } from '../src/s3-storage';
 import type { NetworkTransport } from '../src/network';
+import errors from '../../../mock/data/video/s3-errors.json';
 
 const configuration: S3StorageConfiguration = {
   endpoint: 'https://account.r2.cloudflarestorage.com',
@@ -15,6 +16,29 @@ const configuration: S3StorageConfiguration = {
 };
 
 describe('S3ObjectStorageClient', () => {
+  it.each([
+    [403, errors.denied, 'AccessDenied'],
+    [501, errors.unsupported, 'NotImplemented'],
+    [400, errors.unknown, 'UnknownProviderError'],
+    [403, errors.malformed, 'UnknownProviderError'],
+    [502, errors.html, 'UnknownProviderError'],
+    [200, errors.denied, 'AccessDenied']
+  ])('keeps only safe provider diagnostics for HTTP %i', async (status, xml, providerCode) => {
+    const send = vi.fn<NetworkTransport['send']>().mockResolvedValue(new Response(xml, { status }));
+    const client = new S3ObjectStorageClient(configuration, { send });
+    const failure: unknown = await client
+      .createMultipart('video.mp4', crypto.randomUUID())
+      .catch((error: unknown) => error);
+    expect(failure).toMatchObject({
+      gatewayError: {
+        code: 'S3_REQUEST_FAILED',
+        subCode: `HTTP_${status}:${providerCode}`,
+        retryable: false
+      }
+    });
+    expect(JSON.stringify(failure)).not.toMatch(/secret-fixture|X-Amz|private-value|https:/u);
+    expect(send).toHaveBeenCalledTimes(1);
+  });
   it('requires explicit private HTTP opt-in and rejects public or metadata destinations', () => {
     const local = { ...configuration, allowInsecureLocal: true, endpoint: 'http://192.168.1.4:9000' };
     expect(() => new S3ObjectStorageClient(local)).not.toThrow();

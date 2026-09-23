@@ -21,7 +21,7 @@ import {
   createVideoUploadPlatform,
   isVideoUploadRuntimeEnabled
 } from '@one-vegetable/core/video-upload-platform';
-import { S3ObjectStorageClient } from '@one-vegetable/core/s3-storage';
+import { S3StorageError } from '@one-vegetable/core/s3-storage';
 import { bodyLimit } from 'hono/body-limit';
 import type { Hono } from 'hono';
 import { authenticateMutation } from '../auth/routes';
@@ -90,7 +90,7 @@ export function registerVideoUploadRoutes(
         const service = new VideoUploadService(options.repository, async (expected, id) => {
           const credentials = await options.credentials.requireCredentials(id);
           // Read the real configuration even for an expected null context. Never let the caller
-          // opt out of detecting an account/storage change. Execute with this captured snapshot.
+          // opt out of detecting an account/storage change. Client creation revalidates this context.
           const configuration = await options.storage.requireConfiguration().catch((error: unknown) => {
             if (error instanceof GatewayConfigurationError && error.code === 'S3_STORAGE_NOT_CONFIGURED')
               return null;
@@ -105,7 +105,7 @@ export function registerVideoUploadRoutes(
             assertGalleryContextId(expected[field], actual[field]);
           return {
             context: actual,
-            storage: configuration ? new S3ObjectStorageClient(configuration) : null,
+            storage: configuration ? await options.storage.createClient(undefined, actual.storage) : null,
             platform: createVideoUploadPlatform(
               AlibabaClient.create(credentials, { maxAttempts: 1, requestId: id }),
               validateCapabilityRequest,
@@ -155,7 +155,12 @@ export function registerVideoUploadRoutes(
         context.header('X-Request-ID', requestId);
         context.header('Cache-Control', 'no-store');
         return context.json(
-          { requestId, ok: false, error: { code, message: code, retryable: false } },
+          {
+            requestId,
+            ok: false,
+            error:
+              error instanceof S3StorageError ? error.gatewayError : { code, message: code, retryable: false }
+          },
           status as 400
         );
       }

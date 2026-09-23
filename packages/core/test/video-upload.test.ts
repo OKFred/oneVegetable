@@ -544,10 +544,13 @@ describe('video bounds and S3 multipart transport', () => {
     const id = crypto.randomUUID();
     const key = 'onevegetable/video-staging/task/source.mp4';
     expect(await client.createMultipart(key, id)).toBe('fixture-upload-id');
+    const initiation = send.mock.calls[0]?.[1] as RequestInit | undefined;
+    expect(initiation?.body).toBeInstanceOf(Uint8Array);
+    expect(initiation?.body).toHaveProperty('byteLength', 0);
     const part = await client.uploadPart(key, 'fixture-upload-id', 1, decodeBase64(fixture.mp4Base64), id);
-    await expect(client.completeMultipart(key, 'fixture-upload-id', [part], id)).rejects.toThrow(
-      'S3_MULTIPART_RESPONSE_INVALID'
-    );
+    await expect(client.completeMultipart(key, 'fixture-upload-id', [part], id)).rejects.toMatchObject({
+      gatewayError: { code: 'S3_REQUEST_FAILED', retryable: false }
+    });
     await expect(
       client.uploadPart(key, 'fixture-upload-id', 1, new Uint8Array(VIDEO_UPLOAD_PART_BYTES + 1), id)
     ).rejects.toThrow('VIDEO_PART_INVALID');

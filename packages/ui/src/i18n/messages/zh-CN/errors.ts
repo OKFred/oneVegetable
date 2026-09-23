@@ -1,5 +1,6 @@
 export const errors = {
   codes: {
+    S3_REQUEST_FAILED: 'S3 未能完成请求。请查看存储错误码并核对任务结果，不要直接重复上传。',
     S3_PERMISSION_REQUIRED: '请在设置中重新保存 S3 配置，并允许访问对应存储域名。',
     S3_NOT_CONFIGURED: '请先在设置中配置 S3 素材存储。',
     S3_CONFIGURATION_INVALID: 'S3 配置无效，请检查 HTTPS 地址、Bucket 和密钥。',

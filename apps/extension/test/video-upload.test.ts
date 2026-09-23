@@ -94,4 +94,27 @@ describe('extension video upload durable protocol', () => {
     expect(loadSettings).not.toHaveBeenCalled();
     expect(s3.contextId).not.toHaveBeenCalled();
   });
+  it('preserves only sanitized storage diagnostics from the trusted response', async () => {
+    const requestId = crypto.randomUUID();
+    for (const subCode of ['HTTP_411:UnknownProviderError', 'https://secret.invalid?token=secret']) {
+      mocks.send.mockResolvedValue({
+        requestId,
+        ok: false,
+        error: {
+          code: 'S3_REQUEST_FAILED',
+          subCode,
+          message: 'untrusted provider body'
+        }
+      });
+      await expect(requestVideoUpload({ action: 'list' }, fixture.context, requestId)).rejects.toMatchObject({
+        gatewayError: {
+          code: 'S3_REQUEST_FAILED',
+          message: 'S3_REQUEST_FAILED',
+          retryable: false,
+          ...(subCode.startsWith('HTTP_') ? { subCode } : {})
+        }
+      });
+    }
+    expect(mocks.send).toHaveBeenCalledTimes(2);
+  });
 });

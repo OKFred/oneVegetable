@@ -31,7 +31,19 @@ export const requestVideoUpload: VideoUploadControl['videoUpload'] = async (comm
       error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
         ? error.code
         : 'VIDEO_UPLOAD_FAILED';
-    throw new GatewayException({ code, message: code, retryable: false }, requestId);
+    const subCode =
+      code === 'S3_REQUEST_FAILED' &&
+      error &&
+      typeof error === 'object' &&
+      'subCode' in error &&
+      typeof error.subCode === 'string' &&
+      /^HTTP_\d{3}:[A-Za-z]{1,50}$/u.test(error.subCode)
+        ? error.subCode
+        : undefined;
+    throw new GatewayException(
+      { code, message: code, retryable: false, ...(subCode ? { subCode } : {}) },
+      requestId
+    );
   }
   if (!('data' in response) || !validateVideoUploadResult(response.data))
     throw new GatewayException(

@@ -1,0 +1,7 @@
+{
+  "denied": "<Error><Code>AccessDenied</Code><Message>secret-fixture https://s3.example.test/file?X-Amz-Signature=secret-fixture</Message><RequestId>private-value</RequestId></Error>",
+  "unsupported": "<Error><Code>NotImplemented</Code><Message>secret-fixture</Message></Error>",
+  "unknown": "<Error><Code>secret-fixture</Code><Message>secret-fixture</Message></Error>",
+  "malformed": "<!DOCTYPE Error [<!ENTITY payload 'secret-fixture'>]><Error><Code>AccessDenied</Code></Error>",
+  "html": "<html><body>secret-fixture</body></html>"
+}

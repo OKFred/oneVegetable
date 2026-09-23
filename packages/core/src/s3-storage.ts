@@ -1,4 +1,5 @@
 import { AwsClient } from 'aws4fetch';
+import { GatewayException } from './errors';
 import { assertMp4Header } from './video-upload';
 import { assertMultipartContainer, multipartScalar, parseMultipartXml } from './s3-multipart-xml';
 import type { GalleryRequestOptions } from './gallery-transfer-context';
@@ -144,7 +145,7 @@ export class S3ObjectStorageClient {
     if (prefix) url.searchParams.set('prefix', prefix);
     if (input.continuationToken) url.searchParams.set('continuation-token', input.continuationToken);
     const response = await this.#signedRequest(url, 'GET', undefined, undefined, input.requestId, 'text');
-    if (!response.ok || typeof response.data !== 'string') throw s3HttpError(response.status);
+    if (!response.ok || typeof response.data !== 'string') throw s3HttpError(response);
     const page = parseListObjectsV2(response.data);
     const rootPrefix = this.#configuration.rootPrefix;
     return {
@@ -166,7 +167,7 @@ export class S3ObjectStorageClient {
       requestId,
       'bytes'
     );
-    if (!response.ok || !(response.data instanceof Uint8Array)) throw s3HttpError(response.status);
+    if (!response.ok || !(response.data instanceof Uint8Array)) throw s3HttpError(response);
     return {
       key,
       bytes: response.data,
@@ -192,7 +193,7 @@ export class S3ObjectStorageClient {
       input.requestId,
       'text'
     );
-    if (!response.ok) throw s3HttpError(response.status);
+    if (!response.ok) throw s3HttpError(response);
     return { etag: normalizeEtag(response.headers.get('etag')) };
   }
 
@@ -204,7 +205,7 @@ export class S3ObjectStorageClient {
       url,
       'POST',
       { 'Content-Type': 'video/mp4', 'x-amz-checksum-algorithm': 'SHA256' },
-      undefined,
+      new Uint8Array(),
       requestId,
       'text'
     );
@@ -241,7 +242,7 @@ export class S3ObjectStorageClient {
       requestId,
       'text'
     );
-    if (!response.ok) throw s3HttpError(response.status);
+    if (!response.ok) throw s3HttpError(response);
     const etag = normalizeEtag(response.headers.get('etag'));
     if (!etag) throw new Error('S3_MULTIPART_RESPONSE_INVALID');
     return { partNumber, size: bytes.byteLength, etag, checksumSha256 };
@@ -342,7 +343,7 @@ export class S3ObjectStorageClient {
       'text'
     );
     if (response.status !== 204 && !this.#isNoSuchUpload(response, key, uploadId))
-      throw s3HttpError(response.status);
+      throw s3HttpError(response);
   }
 
   async headVideoObject(
@@ -358,7 +359,7 @@ export class S3ObjectStorageClient {
       'text'
     );
     if (response.status === 404) return null;
-    if (!response.ok) throw s3HttpError(response.status);
+    if (!response.ok) throw s3HttpError(response);
     const rawSize = response.headers.get('content-length');
     const size = rawSize === null ? NaN : Number(rawSize);
     if (!Number.isSafeInteger(size) || size < 1 || size > 50 * 1024 * 1024)
@@ -437,7 +438,8 @@ export class S3ObjectStorageClient {
   }
 
   #multipartXml(response: { ok: boolean; status: number; data: unknown }): string {
-    if (!response.ok) throw s3HttpError(response.status);
+    if (!response.ok) throw s3HttpError(response);
+    if (typeof response.data === 'string' && /<Error[ >]/u.test(response.data)) throw s3HttpError(response);
     if (typeof response.data !== 'string' || /<!DOCTYPE|<!ENTITY|<Error[ >]/iu.test(response.data))
       throw new Error('S3_MULTIPART_RESPONSE_INVALID');
     return response.data;
@@ -661,8 +663,56 @@ function normalizeEtag(value: string | null): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
-function s3HttpError(status: number): Error {
-  return new Error(`S3 请求失败（HTTP ${status}）`);
+/** Never retain provider messages, URLs, XML, headers or credentials in an exception. */
+export class S3StorageError extends GatewayException {
+  constructor(status: number, providerCode: string) {
+    super({
+      code: 'S3_REQUEST_FAILED',
+      message: 'S3_REQUEST_FAILED',
+      subCode: `HTTP_${status}:${providerCode}`,
+      retryable: false
+    });
+  }
+}
+
+function s3HttpError(response: { status: number; data: unknown }): S3StorageError {
+  let code: string | null = null;
+  try {
+    const xml =
+      typeof response.data === 'string'
+        ? response.data
+        : response.data instanceof Uint8Array && response.data.byteLength <= 65_536
+          ? new TextDecoder().decode(response.data)
+          : '';
+    const root = parseMultipartXml(xml);
+    assertMultipartContainer(root, 'Error');
+    code = multipartScalar(root, 'Code');
+  } catch {
+    // Non-S3/malformed responses are not safe diagnostics; preserve only HTTP status.
+  }
+  const allowed = [
+    'AccessDenied',
+    'InvalidAccessKeyId',
+    'SignatureDoesNotMatch',
+    'AuthorizationHeaderMalformed',
+    'InvalidRequest',
+    'InvalidArgument',
+    'NotImplemented',
+    'NoSuchBucket',
+    'NoSuchKey',
+    'NoSuchUpload',
+    'BadDigest',
+    'InvalidPart',
+    'InvalidPartOrder',
+    'EntityTooSmall',
+    'MissingContentLength',
+    'RequestTimeTooSkewed',
+    'ExpiredToken',
+    'InternalError',
+    'SlowDown',
+    'MethodNotAllowed'
+  ];
+  return new S3StorageError(response.status, code && allowed.includes(code) ? code : 'UnknownProviderError');
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

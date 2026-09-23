@@ -16,6 +16,7 @@ import {
 } from '@one-vegetable/core/video-upload-platform';
 import { ExtensionVideoUploadRepository } from './video-upload-repository';
 import type { ExtensionS3Service } from './s3-service';
+import { S3StorageError } from '@one-vegetable/core/s3-storage';
 
 export async function handleVideoUpload(
   value: unknown,
@@ -70,6 +71,10 @@ export async function handleVideoUpload(
         : error instanceof GatewayException
           ? error.gatewayError.code
           : 'VIDEO_UPLOAD_FAILED';
-    return { requestId, ok: false, error: { code, message: code, retryable: false } };
+    return {
+      requestId,
+      ok: false,
+      error: error instanceof S3StorageError ? error.gatewayError : { code, message: code, retryable: false }
+    };
   }
 }

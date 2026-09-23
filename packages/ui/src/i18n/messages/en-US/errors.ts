@@ -1,5 +1,7 @@
 export const errors = {
   codes: {
+    S3_REQUEST_FAILED:
+      'S3 could not complete the request. Check the storage error code and task result before retrying any upload.',
     S3_PERMISSION_REQUIRED: 'Save your S3 settings again and allow access to the storage host.',
     S3_NOT_CONFIGURED: 'Configure S3 asset storage in Settings first.',
     S3_CONFIGURATION_INVALID: 'Invalid S3 configuration. Check the HTTPS endpoint, bucket and credentials.',
