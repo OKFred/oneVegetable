@@ -623,6 +623,17 @@ test('formal MV3 video workspace isolates public reads and survives worker resta
     'alibaba.icbu.video.relation.product.list',
     'alibaba.icbu.product.id.decrypt'
   ]);
+  // The formal extension exposes the shared selection flow, never an unverified write.
+  const beforeSelection = calls.length;
+  await library.getByRole('button', { name: '用于商品', exact: true }).first().click();
+  const selection = page.getByRole('dialog', { name: '用于商品', exact: true });
+  await selection.getByRole('button', { name: '选择', exact: true }).first().click();
+  await expect(selection.getByTestId('video-target-product')).toBeVisible();
+  await expect(selection.getByTestId('associate-video')).toBeDisabled();
+  await expect(selection.getByLabel(/视频关联写入尚未开放/)).toBeVisible();
+  expect(calls.slice(beforeSelection)).toEqual(['alibaba.icbu.video.query', 'alibaba.icbu.product.list']);
+  await selection.getByRole('button', { name: '关闭用于商品', exact: true }).click();
+  await expect(selection).toHaveCount(0);
 });
 
 test.setTimeout(90_000);

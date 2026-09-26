@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 // Independent server lifecycle so concurrent extension E2E cannot stop this suite's Vite process.
 export default defineConfig({
   testDir: '.',
-  testMatch: ['video-library.spec.ts', 'video-upload.spec.ts'],
+  testMatch: ['video-library.spec.ts', 'video-upload.spec.ts', 'product-video-association.spec.ts'],
   fullyParallel: false,
   workers: 1,
   retries: 0,

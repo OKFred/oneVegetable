@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Page } from '@playwright/test';
 import fixture from '../../../mock/data/video/upload.json' with { type: 'json' };
+import videos from '../../../mock/data/video/responses.json' with { type: 'json' };
 import {
   VideoUploadService,
   type VideoUploadRecord,
@@ -80,7 +81,9 @@ export function createVideoUploadHarness(enabled = true) {
       platform: {
         find: (title) => Promise.resolve(uploaded.filter((video) => video.title === title)),
         upload(_url, title) {
-          uploaded.push({ id: `fixture-video-${uploaded.length + 1}`, title });
+          const id = videos.responses.listVideos.items[uploaded.length]?.id;
+          if (!id) throw new Error('Missing uploaded video fixture');
+          uploaded.push({ id, title });
           return Promise.resolve({ accepted: true, traceId: 'fixture-upload-trace' });
         }
       }

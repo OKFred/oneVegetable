@@ -68,6 +68,15 @@ test('offline URL upload requires two confirmations and never resumes platform s
   await expect(dialog.getByText('平台回读已确认', { exact: true })).toBeVisible();
   expect(harness.uploaded).toHaveLength(1);
   expect(JSON.stringify([...harness.records.values()])).not.toContain(fixture.sourceUrl);
+  await dialog.getByRole('button', { name: '用于商品', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  const productDialog = page.getByRole('dialog', { name: '用于商品', exact: true });
+  await productDialog.getByRole('button', { name: '选择', exact: true }).first().click();
+  await expect(productDialog.getByTestId('product-video-association')).toContainText('900001');
+  await expect(productDialog.getByTestId('associate-video')).toBeEnabled();
+  await expect(productDialog.getByTestId('video-association-receipt')).toHaveCount(0);
+  await productDialog.getByRole('button', { name: '关闭用于商品', exact: true }).click();
+  expect(harness.uploaded).toHaveLength(1);
 });
 
 test('offline MP4 multipart stops on close, verifies original fingerprint and resumes only missing parts', async ({
