@@ -50,4 +50,17 @@ describe('standalone OpenAPI validators', () => {
   it('requires capability parameters to be an object', () => {
     expect(validateCapabilityCallInput({ method: 'example', parameters: [] }).valid).toBe(false);
   });
+
+  it('keeps Chinese and English errors independent when switching locales', () => {
+    const payload = { categoryId: 1, language: 'en_US', market: 'unsupported' };
+    const chinese = validateProductSchemaInput(payload, 'zh');
+    const english = validateProductSchemaInput(payload, 'en');
+    expect(chinese.valid).toBe(false);
+    expect(english.valid).toBe(false);
+    expect(chinese.errors.join(' ')).toMatch(/枚举/);
+    expect(english.errors.join(' ')).toContain('allowed values');
+    expect(english.errors.join(' ')).not.toMatch(/[\u4e00-\u9fff]/);
+    expect(validateProductSchemaInput(payload).errors).toEqual(chinese.errors);
+    expect(payload).toEqual({ categoryId: 1, language: 'en_US', market: 'unsupported' });
+  });
 });

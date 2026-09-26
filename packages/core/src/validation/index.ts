@@ -1,5 +1,7 @@
 import type { ErrorObject } from 'ajv';
-import localize from 'ajv-i18n';
+// Import only the two supported locales: the CommonJS barrel eagerly includes every language.
+import localizeEn from 'ajv-i18n/localize/en/index.js';
+import localizeZh from 'ajv-i18n/localize/zh/index.js';
 
 import {
   validateAlibabaCredentialAcquisitionState,
@@ -79,8 +81,8 @@ function runValidator<T>(
   if (valid) return { valid: true, data: value as T, errors: [] };
 
   const errors = validator.errors ?? [];
-  if (locale === 'zh') localize.zh(errors);
-  else localize.en(errors);
+  if (locale === 'zh') localizeZh(errors);
+  else localizeEn(errors);
   return {
     valid: false,
     errors: errors.map((error) => `${error.instancePath || '/'} ${error.message ?? '校验失败'}`)

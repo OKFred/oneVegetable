@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'wxt';
 import rootPackage from '../../package.json' with { type: 'json' };
 import { extensionValidatorCompactionPlugin } from '../../scripts/lib/extension-validator-compaction';
+import { extensionValidationLocalesPlugin } from '../../scripts/lib/extension-validation-locales';
 
 export default defineConfig({
   // Shared workspace modules use explicit imports. WXT's lexical auto-importer can
@@ -15,7 +16,7 @@ export default defineConfig({
       __VUE_I18N_LEGACY_API__: 'false',
       'import.meta.env.VITE_APP_RUNTIME': JSON.stringify('extension')
     },
-    plugins: [tailwindcss(), extensionValidatorCompactionPlugin()]
+    plugins: [tailwindcss(), extensionValidatorCompactionPlugin(), extensionValidationLocalesPlugin()]
   }),
   hooks: {
     'config:resolved'(wxt) {
