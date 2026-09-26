@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const workerOrigin = 'http://127.0.0.1:8796';
+const workerOrigin = `http://127.0.0.1:${process.env.ONE_VEGETABLE_REPLAY_E2E_PORT ?? '8796'}`;
 
 test('authenticated Web uses Worker, D1 and documentation replay across every domain', async ({ page }) => {
   const successfulOperations = new Set<string>();
@@ -95,7 +95,7 @@ test('authenticated Web uses Worker, D1 and documentation replay across every do
 
 test('BFF replay rejects a write operation while preserving its requestId', async ({ request }) => {
   const bootstrapRequestId = crypto.randomUUID();
-  const bootstrap = await request.post('http://127.0.0.1:8796/api/v1/auth/bootstrap', {
+  const bootstrap = await request.post(`${workerOrigin}/api/v1/auth/bootstrap`, {
     data: {
       requestId: bootstrapRequestId,
       bootstrapToken: 'bff-replay-e2e-bootstrap-token-32-bytes',
@@ -108,7 +108,7 @@ test('BFF replay rejects a write operation while preserving its requestId', asyn
   // The serial UI test may already have consumed the bootstrap token. Log in with that administrator then.
   const authentication = bootstrap.ok()
     ? bootstrap
-    : await request.post('http://127.0.0.1:8796/api/v1/auth/login', {
+    : await request.post(`${workerOrigin}/api/v1/auth/login`, {
         data: {
           requestId: crypto.randomUUID(),
           username: 'replay-admin',
@@ -122,7 +122,7 @@ test('BFF replay rejects a write operation while preserving its requestId', asyn
   const csrfToken = authenticationBody.data?.session?.csrfToken;
   if (!csrfToken) throw new Error('Authentication response is missing its CSRF token');
   const requestId = crypto.randomUUID();
-  const response = await request.post('http://127.0.0.1:8796/api/v1/operations/call', {
+  const response = await request.post(`${workerOrigin}/api/v1/operations/call`, {
     headers: {
       Origin: 'http://127.0.0.1:4174',
       'X-CSRF-Token': csrfToken

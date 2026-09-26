@@ -1,6 +1,11 @@
 import { defineConfig } from '@playwright/test';
 
-const workerOrigin = 'http://127.0.0.1:8796';
+const workerPort = Number(process.env.ONE_VEGETABLE_REPLAY_E2E_PORT ?? '8796');
+if (!Number.isInteger(workerPort) || workerPort < 1024 || workerPort > 65535) {
+  throw new Error('ONE_VEGETABLE_REPLAY_E2E_PORT must be an integer between 1024 and 65535');
+}
+const workerOrigin = `http://127.0.0.1:${workerPort}`;
+const persistDirectory = `apps/api/.wrangler/bff-replay-e2e-${workerPort}`;
 const webOrigin = 'http://127.0.0.1:4174';
 
 export default defineConfig({
@@ -17,8 +22,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command:
-        'pnpm exec wrangler dev --config wrangler.jsonc --port 8796 --persist-to apps/api/.wrangler/bff-replay-e2e --var ONE_VEGETABLE_ENVIRONMENT:test --var ONE_VEGETABLE_GATEWAY_MODE:replay --var ONE_VEGETABLE_CORS_ORIGINS:http://127.0.0.1:4174 --var ONE_VEGETABLE_AUTH_MODE:password',
+      command: `pnpm exec wrangler dev --config wrangler.jsonc --port ${workerPort} --persist-to ${persistDirectory} --var ONE_VEGETABLE_ENVIRONMENT:test --var ONE_VEGETABLE_GATEWAY_MODE:replay --var ONE_VEGETABLE_CORS_ORIGINS:http://127.0.0.1:4174 --var ONE_VEGETABLE_AUTH_MODE:password`,
       url: `${workerOrigin}/api/v1/readyz`,
       reuseExistingServer: false,
       timeout: 120_000,
