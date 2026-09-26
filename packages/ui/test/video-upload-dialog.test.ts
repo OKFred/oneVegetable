@@ -36,7 +36,7 @@ function setup(initial: VideoUploadTask[] = [], enabled = true) {
   });
   const wrapper = mount(Host, { attachTo: document.body });
   mounted.push(wrapper);
-  return { wrapper, call, body: new DOMWrapper(document.body) };
+  return { wrapper, call, gateway, body: new DOMWrapper(document.body) };
 }
 function findButton(body: DOMWrapper<Element>, label: string) {
   const target = body.findAll('button').find((button) => button.text() === label);
@@ -44,6 +44,66 @@ function findButton(body: DOMWrapper<Element>, label: string) {
   return target;
 }
 describe('video upload dialog', () => {
+  it('only offers a verified upload for a separate product association and rechecks its context', async () => {
+    const task: VideoUploadTask = {
+      ...taskFixture,
+      schemaVersion: 1,
+      source: 'url',
+      status: 'confirmed',
+      videoId: '10001'
+    };
+    const s = setup([task]);
+    await flushPromises();
+    await s.body.get('select').setValue(task.id);
+    await s.body.get('[data-testid="upload-use-in-product"]').trigger('click');
+    await flushPromises();
+    expect(s.wrapper.getComponent(VideoUploadDialog).emitted('associate')).toEqual([
+      [
+        {
+          videoId: task.videoId,
+          identity: JSON.stringify([fixture.context.identity, fixture.context.gateway])
+        }
+      ]
+    ]);
+    expect(s.call.mock.calls.map(([command]) => command.action)).toEqual(['list']);
+  });
+  it.each(['accepted', 'needs-review', 'submitting'] as const)(
+    'does not offer an unconfirmed %s upload for use',
+    async (status) => {
+      const task: VideoUploadTask = {
+        ...taskFixture,
+        schemaVersion: 1,
+        source: 'url',
+        status,
+        videoId: '10001'
+      };
+      const s = setup([task]);
+      await flushPromises();
+      await s.body.get('select').setValue(task.id);
+      expect(s.body.find('[data-testid="upload-use-in-product"]').exists()).toBe(false);
+    }
+  );
+  it('does not reuse a confirmed upload after configuration changes', async () => {
+    const task: VideoUploadTask = {
+      ...taskFixture,
+      schemaVersion: 1,
+      source: 'url',
+      status: 'confirmed',
+      videoId: '10001'
+    };
+    const s = setup([task]);
+    await flushPromises();
+    await s.body.get('select').setValue(task.id);
+    vi.spyOn(s.gateway, 'galleryTransferContext').mockResolvedValue({
+      ...fixture.context,
+      gateway: 'changed'
+    });
+    await s.body.get('[data-testid="upload-use-in-product"]').trigger('click');
+    await flushPromises();
+    expect(s.wrapper.getComponent(VideoUploadDialog).emitted('associate')).toBeUndefined();
+    expect(s.body.text()).toContain('旧任务只读');
+    expect(s.call.mock.calls.map(([command]) => command.action)).toEqual(['list']);
+  });
   beforeEach(() => {
     uiI18n.global.locale.value = 'zh-CN';
     vi.stubGlobal(

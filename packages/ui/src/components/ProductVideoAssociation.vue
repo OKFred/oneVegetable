@@ -13,9 +13,15 @@ import Button from './ui/Button.vue';
 import PlatformReadbackNotice from './PlatformReadbackNotice.vue';
 
 const props = withDefaults(
-  defineProps<{ productId: string; language: 'zh_CN' | 'en_US'; blocked?: boolean }>(),
-  { blocked: false }
+  defineProps<{
+    productId: string;
+    language: 'zh_CN' | 'en_US';
+    blocked?: boolean;
+    preset?: { video: Video; identity: string } | null;
+  }>(),
+  { blocked: false, preset: null }
 );
+const emit = defineEmits<{ busy: [value: boolean] }>();
 const vt = useVideoI18n();
 const association = useProductVideoAssociation(() => props);
 const { receipt, identity, allowed, verifyAllowed, busy, loading, error, unresolved } = association;
@@ -26,6 +32,7 @@ const selected = shallowRef<Video | null>(null),
 const pending = shallowRef<VideoAssociationIntent | null>(null);
 const existing = computed(() => /^[1-9][0-9]*$/.test(props.productId));
 const disabledReason = computed(() => {
+  if (props.preset && identity.value !== props.preset.identity) return vt('associationBlocked');
   if (!allowed.value) return vt('associationUnavailable');
   if (busy.value || loading.value || props.blocked) return vt('associationBlocked');
   if (unresolved.value) return vt('associationUnknown');
@@ -59,12 +66,26 @@ function visibilityChanged() {
 }
 watch([() => props.productId, () => props.language], reset, { immediate: true });
 watch(
+  busy,
+  (value) => {
+    emit('busy', value);
+  },
+  { flush: 'sync', immediate: true }
+);
+watch(
   identity,
   () => {
     selected.value = preview.value = pending.value = null;
     open.value = false;
   },
   { flush: 'sync' }
+);
+watch(
+  [identity, loading, () => props.preset],
+  () => {
+    if (!loading.value && identity.value === props.preset?.identity) selected.value = props.preset.video;
+  },
+  { immediate: true }
 );
 onMounted(() => {
   globalThis.addEventListener('focus', reset);
@@ -102,7 +123,7 @@ const statusText = computed(() =>
   >
     <h3 class="font-semibold">{{ vt('associationTitle') }}</h3>
     <p class="text-sm text-muted-foreground">{{ vt('associationNotice') }}</p>
-    <Button variant="outline" :disabled="busy || loading || !identity" @click="open = !open">{{
+    <Button v-if="!preset" variant="outline" :disabled="busy || loading || !identity" @click="open = !open">{{
       vt('associationChoose')
     }}</Button>
     <VideoPicker

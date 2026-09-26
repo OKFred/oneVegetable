@@ -16,12 +16,17 @@ import { VideoUploadRunner, sameVideoContext } from '../lib/video-upload-runner'
 import { formatDateTime } from '../lib/date-time';
 import { useVideoI18n } from '../i18n/video';
 import { useUiI18n } from '../i18n';
+import type { VideoProductTarget } from '../lib/video-library';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
 import ModalDialog from './ui/ModalDialog.vue';
 
 const props = defineProps<{ open: boolean }>();
-const emit = defineEmits<{ 'update:open': [value: boolean]; confirmed: [] }>();
+const emit = defineEmits<{
+  'update:open': [value: boolean];
+  confirmed: [];
+  associate: [target: VideoProductTarget];
+}>();
 const services = useServices();
 const uploadCall =
   services.videoUploads?.videoUpload.bind(services.videoUploads) ??
@@ -250,6 +255,29 @@ async function inspect(action: 'reconcile' | 'verify'): Promise<void> {
     }
   });
 }
+async function useInProduct(): Promise<void> {
+  const task = selected.value,
+    ticket = generation;
+  if (busy.value || !matching.value || task?.status !== 'confirmed' || !task.videoId) return;
+  busy.value = true;
+  try {
+    const current = await currentContext();
+    if (ticket !== generation || !props.open || selectedId.value !== task.id) return;
+    if (!sameVideoContext(current, task.context)) {
+      context.value = current;
+      throw new VideoUploadError('GALLERY_TASK_CONTEXT_CHANGED');
+    }
+    emit('associate', {
+      videoId: task.videoId,
+      identity: JSON.stringify([current.identity, current.gateway])
+    });
+    close();
+  } catch (error) {
+    if (ticket === generation) fail(error);
+  } finally {
+    busy.value = false;
+  }
+}
 async function checkIdentity(): Promise<void> {
   if (!props.open || !context.value) return;
   try {
@@ -418,6 +446,13 @@ onBeforeUnmount(() => {
             vt('uploadPrepare')
           }}</Button>
           <template v-else>
+            <Button
+              v-if="selected.status === 'confirmed' && selected.videoId"
+              data-testid="upload-use-in-product"
+              variant="outline"
+              @click="useInProduct"
+              >{{ vt('useInProduct') }}</Button
+            >
             <Button
               v-if="selected.source === 'file' && ['prepared', 'staging'].includes(selected.status)"
               :disabled="!file || !enabled"

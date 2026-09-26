@@ -1,4 +1,8 @@
 export const video = {
+  useInProduct: 'Use in product',
+  productSelectionNotice:
+    'Choose an existing product, then separately confirm a main or detail video association. Selecting a product does not save, publish or change it.',
+  changeProduct: 'Change product',
   upload: 'Upload',
   uploadTitle: 'Video uploads and tasks',
   uploadNotice:

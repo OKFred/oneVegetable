@@ -1,4 +1,8 @@
 export const video = {
+  useInProduct: '用于商品',
+  productSelectionNotice:
+    '先选择已有商品，再单独确认关联为主图或详情视频。选择商品不会保存、发布或修改商品。',
+  changeProduct: '更换商品',
   upload: '上传',
   uploadTitle: '上传视频与任务记录',
   uploadNotice:

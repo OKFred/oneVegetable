@@ -1,10 +1,38 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest';
 import { MockGatewayClient } from '../../core/src/mock-client';
-import { requestVideo, VideoReadScope, mustStopVideoQueries } from '../src/lib/video-library';
+import {
+  requestVideo,
+  VideoReadScope,
+  mustStopVideoQueries,
+  resolveVideoProductTarget
+} from '../src/lib/video-library';
 import { GatewayException } from '../../core/src/errors';
 import { pageDetailIdentity } from '../src/lib/page-details';
 describe('video read cache and cancellation', () => {
+  it('only resolves a unique exact video with its encrypted ID; never invents an upload result', async () => {
+    const gateway = new MockGatewayClient(0);
+    const identity = await pageDetailIdentity(gateway, 'mock');
+    const page = await gateway.request('listVideos', { page: 1, pageSize: 20 });
+    const video = page.items[0];
+    if (!video?.id) throw new Error('Missing fixture');
+    const spy = vi.spyOn(gateway, 'request');
+    const target = { videoId: video.id, identity };
+    expect(await resolveVideoProductTarget(gateway, 'mock', 'en_US', target)).toEqual(video);
+    await resolveVideoProductTarget(gateway, 'mock', 'en_US', target);
+    expect(spy).toHaveBeenCalledTimes(2);
+    for (const items of [[], [video, video], [{ ...video, encryptedId: null }]]) {
+      spy.mockResolvedValueOnce({ ...page, items });
+      await expect(resolveVideoProductTarget(gateway, 'mock', 'en_US', target)).rejects.toThrow(
+        'VIDEO_RESPONSE_INVALID'
+      );
+    }
+    const calls = spy.mock.calls.length;
+    await expect(
+      resolveVideoProductTarget(gateway, 'mock', 'en_US', { ...target, videoId: 'invalid' })
+    ).rejects.toThrow('VIDEO_RESPONSE_INVALID');
+    expect(spy).toHaveBeenCalledTimes(calls);
+  });
   it('stops on platform permission codes and credential subcodes without hiding per-item failures', () => {
     for (const [code, subCode] of [
       ['11', ''],

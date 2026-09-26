@@ -1,5 +1,6 @@
 import type { GatewayClient, RequestOf, ResponseOf } from '@one-vegetable/core';
 import {
+  safeVideoId,
   validateVideoPage,
   validateVideoRelations,
   validateVideoProductResolution
@@ -14,6 +15,33 @@ const validators = {
   listVideoRelatedProducts: validateVideoRelations,
   resolveVideoRelatedProduct: validateVideoProductResolution
 };
+export interface VideoProductTarget {
+  videoId: string;
+  identity: string;
+}
+
+/** Re-read an exact, confirmed video. A title or an accepted upload is not an identity. */
+export async function resolveVideoProductTarget(
+  gateway: GatewayClient,
+  mode: string,
+  language: string,
+  target: VideoProductTarget
+) {
+  if (!safeVideoId(target.videoId)) fail('VIDEO_RESPONSE_INVALID');
+  const page = await requestVideo(
+    gateway,
+    mode,
+    language,
+    'listVideos',
+    { page: 1, pageSize: 20, id: target.videoId },
+    target.identity,
+    true
+  );
+  const matches = page.items.filter((video) => video.id === target.videoId);
+  const video = matches[0];
+  if (matches.length !== 1 || !video?.encryptedId) fail('VIDEO_RESPONSE_INVALID');
+  return video;
+}
 /** Short-lived, account-scoped and bounded. Every request also carries the checked opaque context. */
 export async function requestVideo<K extends Operation>(
   gateway: GatewayClient,

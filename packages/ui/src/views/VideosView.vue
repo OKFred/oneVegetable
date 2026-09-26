@@ -5,7 +5,7 @@ import { safeVideoId, type Video, type VideoPage } from '@one-vegetable/core/vid
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import { pageDetailIdentity } from '../lib/page-details';
-import { requestVideo, VideoReadScope } from '../lib/video-library';
+import { requestVideo, VideoReadScope, type VideoProductTarget } from '../lib/video-library';
 import { useVideoI18n } from '../i18n/video';
 import { useUiI18n } from '../i18n';
 import { visibleVideoIssues } from '../lib/video-diagnostics';
@@ -23,6 +23,13 @@ import ListActionButton from '../components/ListActionButton.vue';
 import ListViewToggle from '../components/ListViewToggle.vue';
 import ModalDialog from '../components/ui/ModalDialog.vue';
 const VideoUploadDialog = defineAsyncComponent(() => import('../components/VideoUploadDialog.vue'));
+const VideoProductAssociationDialog = defineAsyncComponent(
+  () => import('../components/VideoProductAssociationDialog.vue')
+);
+const associationTarget = shallowRef<VideoProductTarget | null>(null);
+function associate(video: Video): void {
+  if (video.id && identity.value) associationTarget.value = { videoId: video.id, identity: identity.value };
+}
 const uploadOpen = ref(false);
 const { gateway, mode } = useServices();
 const { alibabaLanguage } = useAppPreferences();
@@ -210,17 +217,30 @@ const columns = computed<DataColumn<Video>[]>(() => [
     id: 'actions',
     header: vt('actions'),
     cell: ({ row }) =>
-      h(
-        Button,
-        {
-          variant: 'outline',
-          onClick: (e: Event) => {
-            e.stopPropagation();
-            selected.value = row.original;
-          }
-        },
-        () => vt('view')
-      ),
+      h('div', { class: 'flex gap-2' }, [
+        h(
+          Button,
+          {
+            variant: 'outline',
+            onClick: (e: Event) => {
+              e.stopPropagation();
+              selected.value = row.original;
+            }
+          },
+          () => vt('view')
+        ),
+        h(
+          Button,
+          {
+            variant: 'outline',
+            disabled: !row.original.id,
+            onClick: () => {
+              associate(row.original);
+            }
+          },
+          () => vt('useInProduct')
+        )
+      ]),
     meta: { sticky: 'right', stickyOffset: '0px', stickyBoundary: true, width: '96px' }
   }
 ]);
@@ -340,31 +360,40 @@ onUnmounted(() => {
     >
     <template v-if="view === 'cards'">
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <button
+        <article
           v-for="(video, index) in rows"
           :key="video.encryptedId ?? index"
-          type="button"
           class="overflow-hidden rounded-lg border bg-card text-left transition hover:border-primary focus-visible:ring-2 focus-visible:ring-ring"
-          :aria-label="`${vt('view')}: ${video.title ?? video.id ?? '—'}`"
-          @click="selected = video"
         >
-          <div class="flex aspect-video items-center justify-center bg-muted">
-            <img
-              v-if="video.coverUrl"
-              :src="video.coverUrl"
-              alt=""
-              class="size-full object-contain"
-              loading="lazy"
-              referrerpolicy="no-referrer"
-            /><Film v-else class="size-10 text-muted-foreground" />
+          <button
+            type="button"
+            class="block w-full text-left focus-visible:ring-2 focus-visible:ring-ring"
+            :aria-label="`${vt('view')}: ${video.title ?? video.id ?? '—'}`"
+            @click="selected = video"
+          >
+            <div class="flex aspect-video items-center justify-center bg-muted">
+              <img
+                v-if="video.coverUrl"
+                :src="video.coverUrl"
+                alt=""
+                class="size-full object-contain"
+                loading="lazy"
+                referrerpolicy="no-referrer"
+              /><Film v-else class="size-10 text-muted-foreground" />
+            </div>
+            <div class="space-y-1 p-3">
+              <p class="line-clamp-2 font-medium">{{ video.title ?? '—' }}</p>
+              <p class="text-xs text-muted-foreground">{{ video.id ?? '—' }}</p>
+              <p class="text-xs">{{ vt('status') }}: {{ video.status ?? '—' }}</p>
+              <p class="text-xs">{{ vt('quality') }}: {{ video.quality ?? '—' }}</p>
+            </div>
+          </button>
+          <div class="px-3 pb-3">
+            <Button variant="outline" size="sm" :disabled="!video.id" @click="associate(video)">{{
+              vt('useInProduct')
+            }}</Button>
           </div>
-          <div class="space-y-1 p-3">
-            <p class="line-clamp-2 font-medium">{{ video.title ?? '—' }}</p>
-            <p class="text-xs text-muted-foreground">{{ video.id ?? '—' }}</p>
-            <p class="text-xs">{{ vt('status') }}: {{ video.status ?? '—' }}</p>
-            <p class="text-xs">{{ vt('quality') }}: {{ video.quality ?? '—' }}</p>
-          </div>
-        </button>
+        </article>
       </div>
       <p v-if="!busy && !error && !rows.length" class="p-8 text-center text-muted-foreground">
         {{ vt('empty') }}
@@ -397,6 +426,16 @@ onUnmounted(() => {
       @update:page-size="setSize"
     />
     <VideoDrawer :video="selected" :identity="identity" @close="selected = null" />
-    <VideoUploadDialog v-if="uploadOpen" v-model:open="uploadOpen" @confirmed="load(true)" />
+    <VideoUploadDialog
+      v-if="uploadOpen"
+      v-model:open="uploadOpen"
+      @confirmed="load(true)"
+      @associate="associationTarget = $event"
+    />
+    <VideoProductAssociationDialog
+      v-if="associationTarget"
+      :target="associationTarget"
+      @close="associationTarget = null"
+    />
   </section>
 </template>
