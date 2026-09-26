@@ -60,7 +60,26 @@ const fail = (code: string, traceId?: string): never => {
 
 function responseRoot(response: AlibabaCallResult, method: string): Record<string, unknown> {
   const envelope = record(response.data);
-  const error = record(envelope?.error_response);
+  if (!envelope) return fail('VIDEO_RESPONSE_INVALID', text(response.traceId) ?? undefined);
+  const key = `${method.replaceAll('.', '_')}_response`;
+  const wrapped = record(envelope[key]);
+  const error = record(envelope.error_response);
+  const traceId =
+    text(response.traceId) ??
+    text(wrapped?.request_id) ??
+    text(envelope.request_id) ??
+    text(error?.request_id);
+  if (
+    (Object.hasOwn(envelope, key) && !wrapped) ||
+    (Object.hasOwn(envelope, 'error_response') &&
+      (!error ||
+        wrapped ||
+        envelope.model !== undefined ||
+        envelope.result !== undefined ||
+        envelope.success === true ||
+        envelope.biz_success === true))
+  )
+    fail('VIDEO_RESPONSE_INVALID', traceId ?? undefined);
   if (error) {
     throw new GatewayException({
       code:
@@ -70,10 +89,18 @@ function responseRoot(response: AlibabaCallResult, method: string): Record<strin
       message: 'Alibaba rejected the request',
       retryable: false,
       ...(text(error.sub_code) ? { subCode: String(error.sub_code) } : {}),
-      ...(text(error.request_id) ? { traceId: String(error.request_id) } : {})
+      ...(traceId ? { traceId } : {})
     });
   }
-  return record(envelope?.[`${method.replaceAll('.', '_')}_response`]) ?? envelope ?? {};
+  // Do not discard a contradictory outer status while unwrapping a plausible payload.
+  if (
+    wrapped &&
+    ['success', 'biz_success'].some(
+      (flag) => Object.hasOwn(envelope, flag) && (envelope[flag] !== true || wrapped.model === false)
+    )
+  )
+    fail('VIDEO_RESPONSE_INVALID', traceId ?? undefined);
+  return wrapped ?? envelope;
 }
 
 function errorReceipt(error: unknown): Receipt {
@@ -123,7 +150,13 @@ export class VideoAssociationAdapter {
   ) {
     this.enabled = options.realCallEnabled === true;
     this.wait = options.wait ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
-    this.video = new VideoAdapter(client, validateRequest, validateResponse, this.wait);
+    // The library tolerates partial metadata for browsing; a write preflight/readback must not.
+    this.video = new VideoAdapter(
+      { call: (method, payload) => this.read(method, payload) },
+      validateRequest,
+      validateResponse,
+      this.wait
+    );
   }
 
   async associate(request: VideoAssociationRequest): Promise<VideoAssociationResult> {
@@ -152,22 +185,32 @@ export class VideoAssociationAdapter {
     }
 
     let receipt: Receipt = { traceId: null, code: null };
+    let validatingReceipt = false;
     try {
       // Exactly one invocation. No retries, no fallback write, no schema mutation.
       const response = await this.client.call(method, payload);
       const root = responseRoot(response, method);
       receipt = { traceId: text(response.traceId) ?? text(root.request_id), code: text(root.msg_code) };
-      if (root.model === false) return { outcome: 'rejected', ...receipt };
+      // A malformed or contradictory rejection must not unlock a caller's unresolved receipt.
+      validatingReceipt = true;
+      if ((await this.validateResponse(method, root)).length) return { outcome: 'unknown', ...receipt };
+      if (root.model === false) {
+        const contradictory =
+          root.success === true ||
+          root.biz_success === true ||
+          (target.type === 'main' && root.msg_code === '00000');
+        return { outcome: contradictory ? 'unknown' : 'rejected', ...receipt };
+      }
       if (root.success === false || root.biz_success === false || isRejectionCode(receipt.code ?? undefined))
         return { outcome: 'unknown', ...receipt };
-      if ((await this.validateResponse(method, root)).length || root.model !== true)
-        return { outcome: 'unknown', ...receipt };
+      if (root.model !== true) return { outcome: 'unknown', ...receipt };
       if (target.type === 'main' && root.msg_code !== '00000') return { outcome: 'unknown', ...receipt };
       // Detail has NO documented success code: model=true is only provisional.
     } catch (error) {
       const failure = errorReceipt(error);
       return {
-        outcome: isDefiniteRejection(error) ? 'rejected' : 'unknown',
+        // A local validator can throw too; its error is not a provider rejection.
+        outcome: !validatingReceipt && isDefiniteRejection(error) ? 'rejected' : 'unknown',
         traceId: receipt.traceId ?? failure.traceId,
         code: receipt.code ?? failure.code
       };
@@ -191,6 +234,8 @@ export class VideoAssociationAdapter {
 
   private async preflight(target: VideoAssociationVerifyRequest): Promise<void> {
     const page = await this.video.list({ page: 1, pageSize: 20, id: target.videoId });
+    if (page.issues.some((issue) => issue.endsWith(':invalid-id')))
+      fail('VIDEO_RESPONSE_INVALID', page.traceId);
     const matches = page.items.filter((item) => item.id === target.videoId);
     if (matches.length !== 1 || matches[0]?.encryptedId !== target.encryptedVideoId)
       fail('VIDEO_ID_PAIR_MISMATCH', page.traceId);
@@ -214,8 +259,26 @@ export class VideoAssociationAdapter {
     if ((await this.validateRequest(method, payload)).length) fail('REQUEST_CONTRACT_INVALID');
     const response = await this.client.call(method, payload);
     const root = responseRoot(response, method);
-    if (root.success === false || root.biz_success === false) fail('VIDEO_PROVIDER_REJECTED');
-    if ((await this.validateResponse(method, root)).length) fail('VIDEO_RESPONSE_INVALID');
+    const traceId = text(response.traceId) ?? text(root.request_id) ?? undefined;
+    const nested = record(root.result);
+    if (
+      [root, nested].some(
+        (value) =>
+          value &&
+          ['success', 'biz_success'].some((flag) => Object.hasOwn(value, flag) && value[flag] !== true)
+      )
+    )
+      fail('VIDEO_PROVIDER_REJECTED', traceId);
+    // These two methods have different success codes. Product list/decrypt have none;
+    // their validated data and exact identifiers below remain the evidence instead.
+    const expectedCode =
+      method === 'alibaba.icbu.video.query'
+        ? '200'
+        : method === 'alibaba.icbu.video.relation.product.list'
+          ? '0'
+          : null;
+    if (expectedCode !== null && nested?.msg_code !== expectedCode) fail('VIDEO_PROVIDER_REJECTED', traceId);
+    if ((await this.validateResponse(method, root)).length) fail('VIDEO_RESPONSE_INVALID', traceId);
     return { ...response, method, data: root };
   }
 
@@ -228,6 +291,7 @@ export class VideoAssociationAdapter {
       await this.wait(VIDEO_ASSOCIATION_CALL_DELAY_MS);
       const relations = await this.video.related({ videoId: target.encryptedVideoId, type: target.type });
       traceId ??= text(relations.traceId);
+      if (relations.issues.length) fail('VIDEO_RESPONSE_INVALID', traceId ?? undefined);
       // Too many candidates is an incomplete verification, not proof of absence or success.
       if (relations.encryptedProductIds.length > VIDEO_ASSOCIATION_READBACK_LIMIT)
         return result('unconfirmed', receipt.code ?? 'VIDEO_READBACK_LIMIT', traceId);

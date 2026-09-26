@@ -300,7 +300,7 @@ describe('mutation receipts and readback', () => {
   });
 
   it.each([
-    [{ model: false, msg_code: '00000' }, 'rejected'],
+    [{ model: false, msg_code: '00000' }, 'unknown'],
     [{ model: true, msg_code: '0' }, 'unknown'],
     [{ model: true, msg_code: '200' }, 'unknown'],
     [{ model: true, msg_code: 0 }, 'unknown'],
@@ -313,6 +313,97 @@ describe('mutation receipts and readback', () => {
     test.responses[main] = response;
     expect((await test.adapter.associate(request())).outcome).toBe(outcome);
     expect(test.call.mock.calls.map(([method]) => method)).toEqual([query, productList, main]);
+  });
+
+  it.each(['main', 'detail'] as const)(
+    'keeps contradictory or malformed %s rejections unknown',
+    async (type) => {
+      const method = type === 'main' ? main : detail;
+      for (const response of [
+        { model: false, success: true },
+        { model: false, biz_success: true },
+        { model: false, msg_code: 0 },
+        { model: false, msg_info: {} },
+        { model: false, success: 'false' },
+        { model: true, success: false },
+        { model: true, biz_success: false }
+      ]) {
+        const test = setup();
+        test.responses[method] = { ...response, request_id: 'conflicting-write' };
+        expect(await test.adapter.associate({ ...request(), type })).toMatchObject({
+          outcome: 'unknown',
+          traceId: 'conflicting-write'
+        });
+        expect(test.call.mock.calls.map(([called]) => called)).toEqual([query, productList, method]);
+      }
+    }
+  );
+
+  it.each(['main', 'detail'] as const)(
+    'retains a valid explicit %s rejection without readback',
+    async (type) => {
+      const test = setup();
+      const method = type === 'main' ? main : detail;
+      test.responses[method] = fixture.rejected;
+      expect(await test.adapter.associate({ ...request(), type })).toEqual({
+        outcome: 'rejected',
+        traceId: 'mock-rejected',
+        code: 'MOCK_REJECTED'
+      });
+      expect(test.call.mock.calls.map(([called]) => called)).toEqual([query, productList, method]);
+    }
+  );
+
+  it('does not let a simultaneous error envelope prove rejection of a success payload', async () => {
+    const test = setup();
+    test.responses[main] = {
+      ...fixture.permission,
+      alibaba_icbu_video_relation_product_main_response: fixture.main
+    };
+    expect((await test.adapter.associate(request())).outcome).toBe('unknown');
+    expect(test.call.mock.calls.map(([method]) => method)).toEqual([query, productList, main]);
+  });
+
+  it('does not classify a local response-validator exception as an upstream write rejection', async () => {
+    const test = setup();
+    const adapter = new VideoAssociationAdapter(
+      { call: test.call },
+      validateCapabilityRequest,
+      (method, value) => {
+        if (method === main) return Promise.reject(permission());
+        return validateCapabilityResponse(method, value);
+      },
+      { realCallEnabled: true, wait: test.wait }
+    );
+    expect(await adapter.associate(request())).toEqual({
+      outcome: 'unknown',
+      traceId: 'mock-main-write',
+      code: '00000'
+    });
+    expect(test.call.mock.calls.map(([method]) => method)).toEqual([query, productList, main]);
+  });
+
+  it.each([
+    { success: false, alibaba_icbu_video_relation_product_main_response: fixture.main },
+    { biz_success: false, alibaba_icbu_video_relation_product_main_response: fixture.main },
+    { success: true, alibaba_icbu_video_relation_product_main_response: fixture.rejected }
+  ])('does not discard conflicting outer write flags: %j', async (response) => {
+    const test = setup();
+    test.responses[main] = response;
+    expect((await test.adapter.associate(request())).outcome).toBe('unknown');
+    expect(test.call.mock.calls.map(([method]) => method)).toEqual([query, productList, main]);
+  });
+
+  it('never resends an ambiguous write during repeated unsuccessful manual verification', async () => {
+    const test = setup();
+    test.responses[main] = { model: false, msg_code: '00000' };
+    expect((await test.adapter.associate(request())).outcome).toBe('unknown');
+    test.responses[query] = permission();
+    for (let attempt = 0; attempt < 2; attempt++) {
+      expect((await test.adapter.verify(verification())).outcome).toBe('unconfirmed');
+    }
+    expect(test.call.mock.calls.filter(([method]) => method === main)).toHaveLength(1);
+    expect(test.call.mock.calls.some(([method]) => method === detail)).toBe(false);
   });
 
   it.each(['TIMEOUT', 'NETWORK_ERROR', 'UPSTREAM_UNAVAILABLE', 'INVALID_JSON_RESPONSE', 'ABORTED'])(
@@ -423,6 +514,87 @@ describe('mutation receipts and readback', () => {
 });
 
 describe('bounded read-only verification', () => {
+  it.each([productList, decrypt])(
+    'does not accept a matching %s ID alongside a failed outer status',
+    async (method) => {
+      const test = setup();
+      test.responses[method] = {
+        success: false,
+        [`${method.replaceAll('.', '_')}_response`]: test.responses[method]
+      };
+      expect((await test.adapter.verify(verification())).outcome).toBe('unconfirmed');
+      expect(test.call.mock.calls.at(-1)?.[0]).toBe(method);
+      expect(test.call.mock.calls.some(([called]) => called === main || called === detail)).toBe(false);
+    }
+  );
+
+  it('accepts valid method envelopes without inventing success flags for product reads', async () => {
+    const test = setup();
+    for (const method of [query, productList, related, decrypt]) {
+      test.responses[method] = { [`${method.replaceAll('.', '_')}_response`]: test.responses[method] };
+    }
+    expect((await test.adapter.verify(verification())).outcome).toBe('confirmed');
+    expect(test.call.mock.calls.map(([method]) => method)).toEqual([query, productList, related, decrypt]);
+  });
+
+  it.each([
+    ['missing code', { result: { model: videoFixture.query.result.model } }],
+    ['wrong method code', { result: { ...videoFixture.query.result, msg_code: '0' } }],
+    ['malformed metadata', { result: { ...videoFixture.query.result, msg_info: 123 } }],
+    ['nested failure', { result: { ...videoFixture.query.result, biz_success: false } }],
+    ['outer failure', { success: false, alibaba_icbu_video_query_response: videoFixture.query }],
+    [
+      'partial IDs',
+      {
+        result: {
+          ...videoFixture.query.result,
+          model: {
+            ...videoFixture.query.result.model,
+            list: [...videoFixture.query.result.model.list, { id: 900002 }]
+          }
+        }
+      }
+    ]
+  ])('fails closed on video preflight %s before any write', async (_name, response) => {
+    for (const verifying of [false, true]) {
+      const test = setup();
+      test.responses[query] = response;
+      const value = verifying
+        ? await test.adapter.verify(verification())
+        : await test.adapter.associate(request());
+      expect(value.outcome).toBe(verifying ? 'unconfirmed' : 'rejected');
+      expect(test.call.mock.calls.map(([method]) => method)).toEqual([query]);
+    }
+  });
+
+  it.each([
+    ['missing code', { result: { model: videoFixture.relations.result.model } }],
+    ['wrong method code', { result: { ...videoFixture.relations.result, msg_code: '200' } }],
+    ['nested failure', { result: { ...videoFixture.relations.result, biz_success: false } }],
+    ['malformed metadata', { result: { ...videoFixture.relations.result, msg_info: 123 } }],
+    ['partial IDs', { result: { msg_code: '0', model: [{ product_id: 'encrypted-product' }, {}] } }],
+    [
+      'blank ID',
+      { result: { msg_code: '0', model: [{ product_id: 'encrypted-product' }, { product_id: ' ' }] } }
+    ],
+    [
+      'outer failure',
+      { success: false, alibaba_icbu_video_relation_product_list_response: videoFixture.relations }
+    ]
+  ])('never confirms an incomplete or failed relation read: %s', async (_name, response) => {
+    for (const verifying of [false, true]) {
+      const test = setup();
+      test.responses[related] = response;
+      const value = verifying
+        ? await test.adapter.verify(verification())
+        : await test.adapter.associate(request());
+      expect(value).toMatchObject({ outcome: 'unconfirmed' });
+      if (!verifying) expect(value).toMatchObject({ traceId: 'mock-main-write', code: '00000' });
+      expect(test.call.mock.calls.at(-1)?.[0]).toBe(related);
+      expect(test.call.mock.calls.some(([method]) => method === decrypt)).toBe(false);
+    }
+  });
+
   it('works while mutation is disabled and never invokes any write/schema/full-shop query', async () => {
     const test = setup({ realCallEnabled: false });
     expect(await test.adapter.verify(verification())).toEqual({
