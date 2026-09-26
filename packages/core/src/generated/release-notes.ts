@@ -4,6 +4,65 @@ export const RELEASE_NOTES_DOCUMENT = {
   repositoryUrl: 'https://github.com/OKFred/oneVegetable',
   releases: [
     {
+      version: '2.12.1',
+      releasedAt: '2026-09-26',
+      title: {
+        'zh-CN': '视频选用与安全核对优化',
+        'en-US': 'Video selection and safer verification'
+      },
+      summary: {
+        'zh-CN':
+          '视频列表和已确认上传任务支持选择商品、预览及只读核对，优化异常回执处理并缩小安装包。真实视频关联写入仍未开放。',
+        'en-US':
+          'Select products from videos and confirmed uploads for preview and read-only checks, with safer receipt handling and a smaller package. Real video-relation writes remain disabled.'
+      },
+      source: 'release',
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.12.1',
+      compareUrl:
+        'https://github.com/OKFred/oneVegetable/compare/0d18fcda335b10d31db9b31f25ecea8326ebe15a...v2.12.1',
+      changes: [
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '复用商品选择入口',
+            'en-US': 'Shared product selection'
+          },
+          description: {
+            'zh-CN':
+              '视频卡片、列表与已确认上传任务可打开商品选择器；支持搜索、分页和预览，账号变化时停止旧流程。选择和取消均不修改商品。',
+            'en-US':
+              'Video cards, rows and confirmed uploads share searchable, paginated product selection and preview. Account changes stop the old flow; selecting or cancelling never modifies products.'
+          }
+        },
+        {
+          type: 'fix',
+          title: {
+            'zh-CN': '矛盾回执不再视为成功',
+            'en-US': 'Conflicting receipts stay unresolved'
+          },
+          description: {
+            'zh-CN':
+              '成功与失败标记冲突、回执结构异常及写后校验失败均保留为结果不明，要求核对而不是自动重试。尚未真实验收的视频关联在所有真实环境继续关闭。',
+            'en-US':
+              'Conflicting flags, malformed receipts and post-write validation failures remain unknown and require verification instead of retries. Unverified video-relation writes remain disabled in all real environments.'
+          }
+        },
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '精简校验语言包',
+            'en-US': 'Smaller validation locale bundle'
+          },
+          description: {
+            'zh-CN':
+              '仅打包界面使用的中文和英文校验文案，并增加构建检查，保持原包体限制及扩展权限不变。',
+            'en-US':
+              'Packages only the Chinese and English validation messages used by the interface, with a build guard. Package limits and extension permissions are unchanged.'
+          }
+        }
+      ]
+    },
+    {
       version: '2.12.0',
       releasedAt: '2026-09-23',
       title: {

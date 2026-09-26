@@ -1,12 +1,14 @@
 # Chrome Web Store 提交清单
 
-检查日期：2026-09-23。当前发布候选为 **2.12.0**；商店上传、提交审核和实际上架是三个独立状态，不能根据本地版本或 GitHub Release 推断。本轮准备发布包与材料，未查询或改变商店状态，未部署 Worker，不覆盖或复用旧版本包。
+检查日期：2026-09-26。当前发布候选为 **2.12.1**；商店上传、提交审核和实际上架是三个独立状态，不能根据本地版本或 GitHub Release 推断。本轮准备发布包与材料，未查询或改变商店状态，未部署 Worker，不覆盖或复用旧版本包。
+
+2.12.1 优化视频列表及已确认上传任务的商品选择入口、异常回执处理和校验语言包。**真实商品视频关联写入继续关闭**，不可宣传为已能关联或取消关联；选择商品、预览和只读核对不修改商品。该限制不阻断其余优化交付。完整发布检查见 [2.12.1 发布准备](release-2.12.1-readiness.md)。
 
 本版统一列表工具栏、筛选和列设置，新增独立只读库存页，整合图片/视频素材预览，并调整未保存编辑与启动解锁体验。受控视频上传已在 Node `local-node` 和正式 MV3 完成真实上传及回读；Worker 真实上传仍关闭，`staging` / `production` 也不开放。没有新增 Manifest 权限；视频任务数据库新增 `0014_video_upload_tasks.sql`，存在 migration 不代表已部署或验收 Worker。准确功能和验收边界见 [列表、素材与库存体验](list-materials-inventory-ux.md) 与 [视频上传后端](video-upload-backend.md)；下方旧版交接仅为历史记录。
 
 ## 自动化检查覆盖与发布前复核
 
-两份隐私政策及对应静态 HTML 已更新至 2026-09-23 / 2.12.0，八张双语截图已重新生成并逐张查看，版本、包体与商店合规检查通过；完整验收状态见 [2.12.0 发布准备](release-2.12.0-readiness.md)。解包预算余量不足 2 KiB，不放宽解包 4,100,000 字节及最终 ZIP 1,500,000 字节上限。
+两份隐私政策及对应静态 HTML 同步至 2026-09-26 / 2.12.1，数据处理范围不变。中英文截图、版本、包体、合规及升级检查以 [2.12.1 发布准备](release-2.12.1-readiness.md) 的最终记录为准；[2.12.0 发布准备](release-2.12.0-readiness.md) 保留历史记录。不放宽解包 4,100,000 字节及最终 ZIP 1,500,000 字节上限。
 
 - MV3 manifest 的版本、名称和描述本地化、主页地址、权限最小集；
 - 必选扩展权限仅为 `storage`、用户主动凭证向导所需的 `scripting`，必选主机仅为正式 HTTPS 网关；`scripting` 只在用户主动启动后向 Alibaba 开发者注册、应用中心及 OAuth 页面注入包内固定检测/引导代码，不读取注册资料值或代替提交；未出现 cookies、`tabs`、`webNavigation` 或必选 `<all_urls>`；
@@ -55,7 +57,13 @@ pnpm release:extension
 
 商品/RFQ 新编辑仅驻当前页面内存，不自动保存或恢复。旧本地编辑草稿不读取、不恢复、不迁移、不主动删除；显式清除本地数据入口保留。平台草稿、批量队列及持久任务不受影响。升级会重新锁定保险库，应保留原口令；旧版“恢复编辑草稿”的描述不适用于 2.12.0。
 
-可用于本版更新摘要：
+可用于 2.12.1 更新摘要：
+
+> 2.12.1 优化视频素材到商品的选择和预览，已回读确认的上传任务也可进入商品选择；加强异常回执核对，避免将矛盾结果当作成功或自动重试，并精简安装包。真实视频关联写入仍未开放，未增加扩展权限。
+
+> Version 2.12.1 improves product selection and preview from videos and confirmed upload tasks, handles conflicting receipts as unresolved rather than successful or automatically retryable, and reduces package size. Real video-relation writes remain disabled. No new extension permissions.
+
+以下为 2.12.0 历史更新摘要：
 
 > 2.12.0 统一列表搜索、筛选、列设置与行操作，新增独立只读库存页，优化图片/视频素材预览。正式插件支持受控视频上传、手工恢复与平台回读；Worker 真实上传仍关闭。商品/RFQ 编辑改为当前页面内存与离开确认，旧编辑草稿不自动恢复或删除。未新增扩展权限。
 
