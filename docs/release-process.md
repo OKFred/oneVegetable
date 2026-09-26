@@ -23,6 +23,10 @@
    pnpm release:extension
    ```
 
+   扩展构建、截图、升级验证和 E2E 按构建依赖顺序执行。浏览器正在加载 `apps/extension/.output/chrome-mv3` 时，不要并行运行 `build:extension` / `release:extension`；WXT 会清理输出目录，导致测试页临时缺失脚本。先构建，固定产物完成测试，再打包同一构建。
+
+   如果本机 `8796` 已有服务占用，回放测试可设置 `$env:ONE_VEGETABLE_REPLAY_E2E_PORT='18796'`；预备迁移与 Playwright 必须使用同一环境变量。测试数据库按端口隔离在 `apps/api/.wrangler/bff-replay-e2e-<port>`，不会要求停止现有服务。端口须为 1024–65535 的整数；默认仍为 8796。
+
 4. 确认待发布提交已经推送且属于远端 `master`，再创建 annotated tag：
 
    ```powershell
