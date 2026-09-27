@@ -1,14 +1,14 @@
 # Chrome Web Store 提交清单
 
-检查日期：2026-09-26。当前发布候选为 **2.12.1**；商店上传、提交审核和实际上架是三个独立状态，不能根据本地版本或 GitHub Release 推断。本轮准备发布包与材料，未查询或改变商店状态，未部署 Worker，不覆盖或复用旧版本包。
+检查日期：2026-09-27。当前发布候选为 **2.13.0**；商店上传、提交审核和实际上架是三个独立状态，不能根据本地版本或 GitHub Release 推断。本轮准备发布包与材料，未查询或改变商店状态，未部署 Worker，不覆盖或复用旧版本包。
 
-2.12.1 优化视频列表及已确认上传任务的商品选择入口、异常回执处理和校验语言包。**真实商品视频关联写入继续关闭**，不可宣传为已能关联或取消关联；选择商品、预览和只读核对不修改商品。该限制不阻断其余优化交付。完整发布检查见 [2.12.1 发布准备](release-2.12.1-readiness.md)。
+2.13.0 新增统一任务中心和独立日志页，集中查看回执及安全后续入口，将请求诊断、操作审计和本地数据管理从管理/设置页迁入日志。**真实商品视频关联写入继续关闭**，不可宣传为已能关联或取消关联；查看记录、选择商品和只读核对不修改商品。完整发布检查见 [2.13.0 发布准备](release-2.13.0-readiness.md)。
 
 本版统一列表工具栏、筛选和列设置，新增独立只读库存页，整合图片/视频素材预览，并调整未保存编辑与启动解锁体验。受控视频上传已在 Node `local-node` 和正式 MV3 完成真实上传及回读；Worker 真实上传仍关闭，`staging` / `production` 也不开放。没有新增 Manifest 权限；视频任务数据库新增 `0014_video_upload_tasks.sql`，存在 migration 不代表已部署或验收 Worker。准确功能和验收边界见 [列表、素材与库存体验](list-materials-inventory-ux.md) 与 [视频上传后端](video-upload-backend.md)；下方旧版交接仅为历史记录。
 
 ## 自动化检查覆盖与发布前复核
 
-两份隐私政策及对应静态 HTML 同步至 2026-09-26 / 2.12.1，数据处理范围不变。中英文截图、版本、包体、合规及升级检查以 [2.12.1 发布准备](release-2.12.1-readiness.md) 的最终记录为准；[2.12.0 发布准备](release-2.12.0-readiness.md) 保留历史记录。不放宽解包 4,100,000 字节及最终 ZIP 1,500,000 字节上限。
+两份隐私政策及对应静态 HTML 同步至 2026-09-27 / 2.13.0，更新日志页的清理和撤权入口，数据处理范围不变。中英文截图、版本、包体、合规及升级检查以 [2.13.0 发布准备](release-2.13.0-readiness.md) 的最终记录为准；[2.12.1 发布准备](release-2.12.1-readiness.md) 保留历史记录。不放宽解包 4,100,000 字节及最终 ZIP 1,500,000 字节上限。
 
 - MV3 manifest 的版本、名称和描述本地化、主页地址、权限最小集；
 - 必选扩展权限仅为 `storage`、用户主动凭证向导所需的 `scripting`，必选主机仅为正式 HTTPS 网关；`scripting` 只在用户主动启动后向 Alibaba 开发者注册、应用中心及 OAuth 页面注入包内固定检测/引导代码，不读取注册资料值或代替提交；未出现 cookies、`tabs`、`webNavigation` 或必选 `<all_urls>`；
@@ -57,7 +57,13 @@ pnpm release:extension
 
 商品/RFQ 新编辑仅驻当前页面内存，不自动保存或恢复。旧本地编辑草稿不读取、不恢复、不迁移、不主动删除；显式清除本地数据入口保留。平台草稿、批量队列及持久任务不受影响。升级会重新锁定保险库，应保留原口令；旧版“恢复编辑草稿”的描述不适用于 2.12.0。
 
-可用于 2.12.1 更新摘要：
+可用于 2.13.0 更新摘要：
+
+> 2.13.0 新增统一任务中心，集中查看商品、批量发品、素材传输及视频任务回执，结果不明时引导核对，不自动重发。独立日志页整合请求诊断、操作审计、本地数据和主机权限管理，并优化图片 ID 和视频关联文案。未增加扩展权限或真实写能力；视频关联写入仍关闭。
+
+> Version 2.13.0 adds a unified task center for product, batch, asset-transfer and video receipts, guiding verification without automatic resubmission. A dedicated Logs page brings together request diagnostics, audit, local data and host permissions. Image ID and video-link labels are clearer. No new extension permissions or real write capabilities; video-relation writes remain disabled.
+
+以下为 2.12.1 历史更新摘要：
 
 > 2.12.1 优化视频素材到商品的选择和预览，已回读确认的上传任务也可进入商品选择；加强异常回执核对，避免将矛盾结果当作成功或自动重试，并精简安装包。真实视频关联写入仍未开放，未增加扩展权限。
 

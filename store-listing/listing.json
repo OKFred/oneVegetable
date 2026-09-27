@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "extensionVersion": "2.12.1",
+  "extensionVersion": "2.13.0",
   "singlePurpose": "An independent, user-operated workspace for managing Alibaba.com international products, image and video assets, RFQs, trade and logistics through documented APIs, including publishing a selected gallery image to the user's connected business social account.",
   "category": "productivity",
   "defaultLocale": "zh_CN",
@@ -26,7 +26,7 @@
     {
       "permission": "http://*/*, https://*/*",
       "required": false,
-      "justification": "Chrome grants only the specific host requested when a user starts credential acquisition, confirms the actual OAuth callback, configures a custom gateway or S3-compatible asset storage, pairs a user-controlled social publishing BFF, or explicitly transfers an external image. S3 requests, including video multipart staging, use the existing grant for the configured storage host and are signed in the extension background. Grants are revocable in settings; video upload adds no Manifest permission or permanent host grant."
+      "justification": "Chrome grants only the specific host requested when a user starts credential acquisition, confirms the actual OAuth callback, configures a custom gateway or S3-compatible asset storage, pairs a user-controlled social publishing BFF, or explicitly transfers an external image. S3 requests, including video multipart staging, use the existing grant for the configured storage host and are signed in the extension background. Grants are revocable under Logs > Diagnostics and data; video upload adds no Manifest permission or permanent host grant."
     }
   ],
   "dataUse": {

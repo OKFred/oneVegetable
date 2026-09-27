@@ -3,6 +3,44 @@
   "repositoryUrl": "https://github.com/OKFred/oneVegetable",
   "releases": [
     {
+      "version": "2.13.0",
+      "releasedAt": "2026-09-27",
+      "title": { "zh-CN": "统一任务中心与日志", "en-US": "Unified task center and logs" },
+      "summary": {
+        "zh-CN": "集中查看商品、素材传输及视频任务；日志独立整合请求诊断、操作审计和本地数据管理。不自动恢复或重发写操作。",
+        "en-US": "Review product, asset-transfer and video tasks in one place. Logs brings together request diagnostics, audit and local data controls. Writes are never resumed or resent automatically."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/releases/tag/v2.13.0",
+      "compareUrl": "https://github.com/OKFred/oneVegetable/compare/cde6b68...v2.13.0",
+      "changes": [
+        {
+          "type": "feature",
+          "title": { "zh-CN": "统一任务记录", "en-US": "Unified task history" },
+          "description": {
+            "zh-CN": "汇总持久任务与批量队列回执，按账号上下文提供核对和来源入口。历史记录保持只读，结果不明不自动重试，切换账号不沿用旧操作。",
+            "en-US": "Combines durable tasks and batch receipts with account-scoped verification and source links. History stays read-only; unknown results are not retried and account changes invalidate old actions."
+          }
+        },
+        {
+          "type": "feature",
+          "title": { "zh-CN": "独立日志页", "en-US": "Dedicated Logs page" },
+          "description": {
+            "zh-CN": "日志入口位于版本更新下方，集中脱敏诊断、数据清理及主机权限管理；服务端请求与审计仅管理员可见，支持按 requestId 筛选。",
+            "en-US": "Logs appears below Release notes and centralizes redacted diagnostics, local cleanup and host permissions. Server requests and audit remain admin-only, with requestId filtering."
+          }
+        },
+        {
+          "type": "improvement",
+          "title": { "zh-CN": "更清晰的素材提示", "en-US": "Clearer asset labels" },
+          "description": {
+            "zh-CN": "图片检索明确标注本页名称和图片 ID，视频入口改称关联商品。清除本地数据后保留成功提示。未增加权限或真实写能力，视频关联写入继续关闭。",
+            "en-US": "Image search explicitly identifies current-page names and image IDs; videos use Link to product. Cleanup confirmation survives reset. No new permissions or real write capabilities; video-relation writes remain disabled."
+          }
+        }
+      ]
+    },
+    {
       "version": "2.12.1",
       "releasedAt": "2026-09-26",
       "title": {

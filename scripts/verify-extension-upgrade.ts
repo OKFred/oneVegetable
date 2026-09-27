@@ -313,6 +313,25 @@ async function verifyUpgrade(path: string): Promise<void> {
       await expect(center.getByRole('button', { name: '核对结果', exact: true })).toBeVisible();
       checks.push(`${version}: interrupted task kept for manual verification, not automatically resent`);
     }
+    report.stage = 'verify upgraded task and log navigation';
+    await next.page.goto(`${next.origin}/options.html#/tasks`);
+    await expect(next.page.getByRole('heading', { name: '任务中心', exact: true })).toBeVisible();
+    checks.push(`${version}: unified task center opens after upgrade`);
+    await next.page.goto(`${next.origin}/options.html#/logs/local`);
+    await expect(next.page.getByRole('heading', { name: '脱敏诊断', exact: true })).toBeVisible();
+    await expect(next.page.getByRole('button', { name: '导出数据清单', exact: true })).toBeVisible();
+    const navigation = await next.page
+      .getByRole('navigation', { name: '主导航' })
+      .getByRole('link')
+      .allTextContents();
+    const titles = navigation.map((value) => value.trim());
+    assert(
+      titles.includes('版本更新') && titles.indexOf('日志') === titles.indexOf('版本更新') + 1,
+      `${version}: Logs follows Release notes`
+    );
+    await expect(next.page.getByRole('link', { name: '请求诊断', exact: true })).toHaveCount(0);
+    checks.push(`${version}: extension local diagnostics available without server admin queries`);
+    await next.page.screenshot({ path: resolve(output, `logs-${version}.png`) });
     checks.push(`${version}: current runtime layout and persisted UI state verified`);
   } catch (error) {
     const visible = context.pages().at(-1);

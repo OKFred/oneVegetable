@@ -1,7 +1,7 @@
 # oneVegetable Privacy Policy
 
-Effective date: 2026-09-26
-Applicable version: 2.12.1
+Effective date: 2026-09-27
+Applicable version: 2.13.0
 
 ## Independent third-party notice
 
@@ -69,13 +69,13 @@ Use of user data follows the Chrome Web Store User Data Policy, including the Li
 - `storage`: stores local encrypted credentials, settings, onboarding state, review-reminder times, product mutation jobs, a user-paired social-backend device token, and derived unlock material plus redacted diagnostics held only in the current Chrome session memory;
 - `scripting`: injects fixed packaged code only into the known Alibaba developer-registration, Application Center, and OAuth tabs after the user explicitly starts the authorization assistant;
 - `https://eco.taobao.com/*`: calls the official Alibaba.com HTTPS Open Platform gateway;
-- optional `http://*/*` and `https://*/*`: Chrome access is requested for a specific host only when the user starts the authorization assistant, confirms the actual OAuth callback, configures a custom gateway or S3 storage, pairs a user-controlled social publishing BFF, or explicitly transfers an external image. Video staging reuses the S3 grant, adding no Manifest permission. The user can revoke each grant in Settings.
+- optional `http://*/*` and `https://*/*`: Chrome access is requested for a specific host only when the user starts the authorization assistant, confirms the actual OAuth callback, configures a custom gateway or S3 storage, pairs a user-controlled social publishing BFF, or explicitly transfers an external image. Video staging reuses the S3 grant, adding no Manifest permission. The user can revoke each grant under Logs > Diagnostics and data.
 
 The extension does not request cookies, browsing history, `tabs`, `webNavigation`, or a required `<all_urls>` permission. The authorization assistant does not create applications, accept platform agreements for the user, or bypass human verification. Platform drafts, new-product publishing, Product Schema updates, product display changes, product-group creation, gallery group management, image upload, external image transfer, and guarded video upload occur only after an explicit user action and confirmation. Other write operations not validated through the extension remain blocked before any network request leaves the extension background.
 
 ## Data control and retention
 
-Settings lets the user lock the vault, change the passphrase, inspect and export an inventory that contains no secret values, clear session diagnostics, disconnect the social publishing backend, revoke extra host permissions, and permanently erase credentials, device tokens, settings, review-reminder times, product mutation jobs, video tasks, legacy edit drafts, and diagnostics. A server-side device should be revoked in the user's own BFF administration page. Uninstalling the extension also removes extension-local storage managed by Chrome.
+Settings lets the user lock the vault, change the passphrase and disconnect the social publishing backend. Logs > Diagnostics and data provides a non-secret inventory to inspect or export, session diagnostic cleanup, extra host permission revocation, and permanent erasure of credentials, device tokens, settings, review-reminder times, product mutation jobs, video tasks, legacy edit drafts and diagnostics. A server-side device should be revoked in the user's own BFF administration page. Uninstalling the extension also removes extension-local storage managed by Chrome.
 
 ## Security and limitations
 
