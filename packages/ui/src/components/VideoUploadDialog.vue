@@ -12,6 +12,7 @@ import {
   type VideoUploadTask
 } from '@one-vegetable/core/video-upload';
 import { useServices } from '../lib/services';
+import { useGalleryTransfers } from '../lib/gallery-transfer-service';
 import { VideoUploadRunner, sameVideoContext } from '../lib/video-upload-runner';
 import { formatDateTime } from '../lib/date-time';
 import { useVideoI18n } from '../i18n/video';
@@ -21,13 +22,14 @@ import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
 import ModalDialog from './ui/ModalDialog.vue';
 
-const props = defineProps<{ open: boolean }>();
+const props = defineProps<{ open: boolean; initialTaskId?: string }>();
 const emit = defineEmits<{
   'update:open': [value: boolean];
   confirmed: [];
   associate: [target: VideoProductTarget];
 }>();
 const services = useServices();
+const accountContext = useGalleryTransfers()?.currentContext;
 const uploadCall =
   services.videoUploads?.videoUpload.bind(services.videoUploads) ??
   services.s3Storage?.videoUpload?.bind(services.s3Storage) ??
@@ -81,6 +83,7 @@ const canSubmit = computed(
 );
 let runner: VideoUploadRunner | null = null;
 let generation = 0;
+const isCurrent = (ticket: number): boolean => ticket === generation && props.open;
 
 const statuses = {
   prepared: 'uploadPrepared',
@@ -125,19 +128,46 @@ async function currentContext(): Promise<GalleryTransferContext> {
   return services.gateway.galleryTransferContext();
 }
 async function load(): Promise<void> {
-  if (!control || busy.value) return;
-  const ticket = generation;
+  if (!control) return;
+  const ticket = ++generation;
+  const taskId =
+    props.initialTaskId === '' || props.initialTaskId === undefined ? selectedId.value : props.initialTaskId;
+  const previousContext = context.value;
+  tasks.value = [];
+  selectedId.value = '';
+  context.value = null;
+  enabled.value = false;
+  confirmation.value = null;
   loading.value = true;
   errorCode.value = '';
   try {
     const next = await currentContext();
-    const result = await control.videoUpload({ action: 'list' }, next);
-    if (ticket !== generation || !props.open) return;
+    if (!isCurrent(ticket)) return;
+    if (previousContext && !sameVideoContext(previousContext, next))
+      throw new VideoUploadError('GALLERY_TASK_CONTEXT_CHANGED');
     context.value = next;
-    tasks.value = [];
+    const result = await control.videoUpload({ action: 'list' }, next);
+    if (!isCurrent(ticket)) return;
+    if (taskId && !result.tasks.some((task) => task.id === taskId)) {
+      const exact = await control.videoUpload({ action: 'get', taskId }, next);
+      if (!isCurrent(ticket)) return;
+      const task = exact.tasks.find((item) => item.id === taskId);
+      if (!task) throw new VideoUploadError('VIDEO_UPLOAD_TASK_NOT_FOUND');
+      result.tasks = [...result.tasks, task];
+    }
+    const latest = await currentContext();
+    if (!isCurrent(ticket)) return;
+    if (!sameVideoContext(next, latest)) throw new VideoUploadError('GALLERY_TASK_CONTEXT_CHANGED');
+    const target = result.tasks.find((task) => task.id === taskId);
+    if (props.initialTaskId && target && !sameVideoContext(target.context, next))
+      throw new VideoUploadError('GALLERY_TASK_CONTEXT_CHANGED');
     accept(result);
+    selectedId.value = target?.id ?? '';
   } catch (error) {
-    if (ticket === generation) fail(error);
+    if (isCurrent(ticket)) {
+      context.value = null;
+      fail(error);
+    }
   } finally {
     if (ticket === generation) loading.value = false;
   }
@@ -187,7 +217,10 @@ async function chooseFile(event: Event): Promise<void> {
 }
 async function run(action: (active: VideoUploadRunner) => Promise<void>): Promise<void> {
   if (busy.value || !control || !context.value) return;
-  const active = new VideoUploadRunner(control, context.value, currentContext, accept);
+  const ticket = generation;
+  const active = new VideoUploadRunner(control, context.value, currentContext, (result) => {
+    if (isCurrent(ticket)) accept(result);
+  });
   runner = active;
   busy.value = true;
   errorCode.value = '';
@@ -195,11 +228,13 @@ async function run(action: (active: VideoUploadRunner) => Promise<void>): Promis
   try {
     await action(active);
   } catch (error) {
+    if (!isCurrent(ticket)) return;
     if (!(error instanceof VideoUploadError && error.code === 'VIDEO_UPLOAD_PAUSED')) fail(error);
     // Read a durable receipt after any error; never repeat the failed write.
     if (selectedId.value && props.open) {
       try {
-        accept(await control.videoUpload({ action: 'get', taskId: selectedId.value }, context.value));
+        const result = await control.videoUpload({ action: 'get', taskId: selectedId.value }, context.value);
+        if (isCurrent(ticket)) accept(result);
       } catch {
         /* Keep the last known receipt, not an invented success. */
       }
@@ -280,26 +315,50 @@ async function useInProduct(): Promise<void> {
 }
 async function checkIdentity(): Promise<void> {
   if (!props.open || !context.value) return;
+  const ticket = generation;
   try {
-    if (sameVideoContext(context.value, await currentContext())) return;
-    stop();
-    generation++;
-    context.value = null;
-    clearSource();
-    errorCode.value = 'GALLERY_TASK_CONTEXT_CHANGED';
+    const latest = await currentContext();
+    if (!isCurrent(ticket)) return;
+    if (sameVideoContext(context.value, latest)) return;
+    invalidateContext();
   } catch (error) {
-    stop();
+    if (!isCurrent(ticket)) return;
+    invalidateContext();
     fail(error);
   }
 }
+function invalidateContext(): void {
+  stop();
+  generation++;
+  context.value = null;
+  tasks.value = [];
+  selectedId.value = '';
+  enabled.value = false;
+  loading.value = false;
+  confirmation.value = null;
+  clearSource();
+  errorCode.value = 'GALLERY_TASK_CONTEXT_CHANGED';
+}
+watch(
+  () => accountContext?.value,
+  (next) => {
+    if (props.open && context.value && (!next || !sameVideoContext(context.value, next))) invalidateContext();
+  }
+);
 const focus = () => {
   void checkIdentity();
 };
 watch(
-  () => props.open,
-  (open) => {
+  () => [props.open, props.initialTaskId] as const,
+  ([open]) => {
+    stop();
     generation++;
     confirmation.value = null;
+    selectedId.value = '';
+    tasks.value = [];
+    context.value = null;
+    enabled.value = false;
+    clearSource();
     if (open) {
       void load();
       globalThis.addEventListener('focus', focus);
@@ -344,8 +403,9 @@ onBeforeUnmount(() => {
       <label v-if="tasks.length" class="grid gap-1 text-sm"
         >{{ vt('uploadTasks') }}
         <select
+          data-testid="video-upload-task-select"
           :value="selectedId"
-          :disabled="busy"
+          :disabled="busy || loading"
           class="rounded-md border bg-background p-2"
           @change="chooseTask(($event.target as HTMLSelectElement).value)"
         >

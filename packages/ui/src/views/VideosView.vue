@@ -5,6 +5,7 @@ import { safeVideoId, type Video, type VideoPage } from '@one-vegetable/core/vid
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import { pageDetailIdentity } from '../lib/page-details';
+import { appHash, parseAppHash } from '../lib/hash-router';
 import { requestVideo, VideoReadScope, type VideoProductTarget } from '../lib/video-library';
 import { useVideoI18n } from '../i18n/video';
 import { useUiI18n } from '../i18n';
@@ -31,6 +32,34 @@ function associate(video: Video): void {
   if (video.id && identity.value) associationTarget.value = { videoId: video.id, identity: identity.value };
 }
 const uploadOpen = ref(false);
+const uploadTaskId = ref('');
+function syncUploadRoute(): void {
+  const route = parseAppHash(globalThis.location.hash);
+  const taskId =
+    route?.page === 'photos' &&
+    route.segments.length === 3 &&
+    route.segments[0] === 'videos' &&
+    route.segments[1] === 'uploads'
+      ? (route.segments[2] ?? '')
+      : '';
+  if (taskId || uploadTaskId.value) uploadOpen.value = !!taskId;
+  uploadTaskId.value = taskId;
+}
+function setUploadOpen(open: boolean): void {
+  uploadOpen.value = open;
+  if (open || !uploadTaskId.value) return;
+  const route = parseAppHash(globalThis.location.hash);
+  if (
+    route?.page === 'photos' &&
+    route.segments[0] === 'videos' &&
+    route.segments[1] === 'uploads' &&
+    route.segments[2] === uploadTaskId.value
+  ) {
+    globalThis.history.replaceState(null, '', appHash('photos', 'videos'));
+  }
+  uploadTaskId.value = '';
+}
+syncUploadRoute();
 const { gateway, mode } = useServices();
 const { alibabaLanguage } = useAppPreferences();
 const vt = useVideoI18n();
@@ -270,10 +299,14 @@ watch(alibabaLanguage, () => {
 onMounted(() => {
   void load();
   globalThis.addEventListener('focus', focus);
+  globalThis.addEventListener('hashchange', syncUploadRoute);
+  globalThis.addEventListener('popstate', syncUploadRoute);
 });
 onUnmounted(() => {
   scope.stop();
   globalThis.removeEventListener('focus', focus);
+  globalThis.removeEventListener('hashchange', syncUploadRoute);
+  globalThis.removeEventListener('popstate', syncUploadRoute);
 });
 </script>
 <template>
@@ -428,7 +461,9 @@ onUnmounted(() => {
     <VideoDrawer :video="selected" :identity="identity" @close="selected = null" />
     <VideoUploadDialog
       v-if="uploadOpen"
-      v-model:open="uploadOpen"
+      :open="uploadOpen"
+      :initial-task-id="uploadTaskId"
+      @update:open="setUploadOpen"
       @confirmed="load(true)"
       @associate="associationTarget = $event"
     />

@@ -7,6 +7,7 @@ import type { ProductBatchPublishItem } from '../lib/product-batch-publish';
 import type { DataColumn } from '../lib/table';
 import { formatDateTime } from '../lib/date-time';
 import { useUiI18n } from '../i18n';
+import { useTaskI18n } from '../i18n/tasks';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
@@ -21,6 +22,8 @@ import { productMutationMessage } from '../lib/product-mutation-presentation';
 const ALIBABA_PRODUCT_MANAGEMENT_URL = 'https://i.alibaba.com/products/list-manage';
 const props = defineProps<{
   jobs: ProductMutationJob[];
+  jobId?: string;
+  readOnly?: boolean;
   batchItems: ProductBatchPublishItem[];
   loading: boolean;
   error: unknown;
@@ -31,9 +34,23 @@ const emit = defineEmits<{
   refresh: [];
   'refresh-job': [job: ProductMutationJob];
   recover: [job: ProductMutationJob];
+  'close-job': [];
 }>();
 const { t } = useUiI18n();
+const tt = useTaskI18n();
 const filterOpen = ref(false);
+const targetNotice = ref<HTMLElement | null>(null);
+const targetJob = computed(() => props.jobs.find((job) => job.id === props.jobId));
+watch(
+  [() => props.jobId, targetJob],
+  () => {
+    if (!targetJob.value) return;
+    targetNotice.value?.focus();
+    if (typeof targetNotice.value?.scrollIntoView === 'function')
+      targetNotice.value.scrollIntoView({ block: 'nearest' });
+  },
+  { flush: 'post' }
+);
 const statuses = ref<ProductMutationJob['status'][]>([]);
 const draftStatuses = ref<ProductMutationJob['status'][]>([]);
 const availableStatuses: ProductMutationJob['status'][] = [
@@ -54,7 +71,9 @@ function applyFilters(): void {
   filterOpen.value = false;
 }
 const filteredJobs = computed(() =>
-  props.jobs.filter((job) => !statuses.value.length || statuses.value.includes(job.status))
+  props.jobs.filter((job) =>
+    props.jobId ? job.id === props.jobId : !statuses.value.length || statuses.value.includes(job.status)
+  )
 );
 const pendingCount = computed(
   () => props.jobs.filter((job) => productMutationJobIsBlocking(job.status)).length
@@ -147,7 +166,7 @@ const columns = computed<DataColumn<ProductMutationJob>[]>(() => [
     header: t('products.tasks.columns.actions'),
     cell: ({ row }) =>
       h('div', { class: 'flex gap-2' }, [
-        productMutationJobIsBlocking(row.original.status)
+        !props.readOnly && productMutationJobIsBlocking(row.original.status)
           ? h(
               Button,
               {
@@ -161,7 +180,9 @@ const columns = computed<DataColumn<ProductMutationJob>[]>(() => [
               () => t('products.tasks.check')
             )
           : null,
-        row.original.operation === 'updateProductDisplay' && row.original.status === 'recovery-required'
+        !props.readOnly &&
+        row.original.operation === 'updateProductDisplay' &&
+        row.original.status === 'recovery-required'
           ? h(
               Button,
               {
@@ -251,16 +272,36 @@ const batchColumns = computed<DataColumn<ProductBatchPublishItem>[]>(() => [
           >
             {{ t('common.actions.refresh') }}
           </ListActionButton>
-          <ListActionButton :icon="ExternalLink" @click="openAlibabaProductManagement">
+          <ListActionButton v-if="!readOnly" :icon="ExternalLink" @click="openAlibabaProductManagement">
             {{ t('products.tasks.openManagement') }}
           </ListActionButton>
         </div>
       </div>
       <ErrorNotice v-if="error" class="m-4" :error="error" compact />
+      <p
+        v-if="readOnly"
+        data-testid="product-task-history-notice"
+        class="m-4 rounded-md bg-muted p-3 text-sm"
+      >
+        {{ tt('accountUnknownHelp') }}
+      </p>
+      <div
+        v-if="jobId"
+        ref="targetNotice"
+        data-testid="product-task-target"
+        tabindex="-1"
+        role="status"
+        class="m-4 flex items-center justify-between gap-3 rounded-md border border-primary bg-accent p-3"
+      >
+        <code class="break-all">{{ jobId }}</code>
+        <Button variant="outline" @click="emit('close-job')">{{ t('common.actions.close') }}</Button>
+      </div>
       <DataTable
+        :key="jobId || 'all'"
         :columns="columns"
         :data="filteredJobs"
         :get-row-key="(job) => job.id"
+        :active-row-key="targetJob?.id"
         column-settings-key="product-mutation-jobs"
         :selection-scope="statuses.join(',')"
         :empty-text="t('products.tasks.empty')"

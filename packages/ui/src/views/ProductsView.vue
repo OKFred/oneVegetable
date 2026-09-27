@@ -199,7 +199,41 @@ const accountBoundary = computed(() =>
 const { locale, t } = useUiI18n();
 const { alibabaLanguage: preferredLanguage } = useAppPreferences();
 const queryClient = useQueryClient();
-const workspace = ref<Workspace>('list');
+const initialRoute = parseAppHash(globalThis.location.hash);
+const initialTaskRoute = initialRoute?.page === 'products' && initialRoute.segments[0] === 'tasks';
+const workspace = ref<Workspace>(initialTaskRoute ? 'tasks' : 'list');
+const taskHistoryReadOnly = ref(
+  initialTaskRoute && initialRoute.segments.length === 3 && initialRoute.segments[2] === 'history'
+);
+const taskJobId = ref(
+  initialTaskRoute && (initialRoute.segments.length === 2 || taskHistoryReadOnly.value)
+    ? (initialRoute.segments[1] ?? '')
+    : ''
+);
+const taskNavigationOnly = computed(
+  () => workspace.value === 'tasks' && (!!taskJobId.value || taskHistoryReadOnly.value)
+);
+let viewAlive = true;
+let businessReadEpoch = 0;
+function captureBusinessRead() {
+  const ticket = businessReadEpoch;
+  const boundary = accountBoundary.value;
+  const hash = globalThis.location.hash;
+  let identity: string | undefined;
+  const current = () =>
+    viewAlive &&
+    ticket === businessReadEpoch &&
+    boundary === accountBoundary.value &&
+    hash === globalThis.location.hash &&
+    !taskNavigationOnly.value;
+  return async (): Promise<boolean> => {
+    if (!current()) return false;
+    const latest = await pageDetailIdentity(gateway, mode);
+    if (!current()) return false;
+    identity ??= latest;
+    return latest === identity;
+  };
+}
 const subject = ref('');
 const subjectDraft = ref('');
 const appliedFilters = ref(emptyProductListFilters());
@@ -347,38 +381,47 @@ const products = useQuery({
             groupLevel: selectedProductGroupLevel.value ?? 1
           }
         : {})
-    })
+    }),
+  enabled: computed(() => !taskHistoryReadOnly.value)
 });
 const categories = useQuery({
   queryKey: ['product-categories', 'tree-v2'],
   queryFn: () => gateway.request('listProductCategories', {}),
+  enabled: computed(() => !taskHistoryReadOnly.value),
   staleTime: 10 * 60 * 1000
 });
-const productOperations = useOperationAvailability([
-  'saveProductDraft',
-  'publishProduct',
-  'updateProduct',
-  'updateProductDisplay'
-]);
-const productTransferOperations = useOperationAvailability(['uploadPhoto', 'downloadProductAsset']);
+const availabilityOptions = { enabled: computed(() => !taskHistoryReadOnly.value) };
+const productOperations = useOperationAvailability(
+  ['saveProductDraft', 'publishProduct', 'updateProduct', 'updateProductDisplay'],
+  availabilityOptions
+);
+const productTransferOperations = useOperationAvailability(
+  ['uploadPhoto', 'downloadProductAsset'],
+  availabilityOptions
+);
 const productMutationHistory = useQuery({
   queryKey: ['product-mutation-jobs', editProductId],
   queryFn: async () => {
-    if (!productMutationJobs || !editProductId.value) {
+    const current = captureBusinessRead();
+    if (!productMutationJobs || !editProductId.value || !(await current())) {
       return { items: [], page: 1, pageSize: 20, total: 0 };
     }
     const page = await productMutationJobs.list({ productId: editProductId.value, pageSize: 20 });
+    if (!(await current())) return { ...page, items: [] };
     const pending = page.items.find(
       (job) => job.operation === 'updateProduct' && (job.status === 'submitted' || job.status === 'auditing')
     );
-    if (!pending) return page;
+    if (!pending || taskNavigationOnly.value) return page;
     const refreshed = await productMutationJobs.refresh(pending.id, pending.revision);
+    if (!(await current())) return { ...page, items: [] };
     return {
       ...page,
       items: page.items.map((job) => (job.id === refreshed.id ? refreshed : job))
     };
   },
-  enabled: computed(() => productMutationJobs !== undefined && editProductId.value !== ''),
+  enabled: computed(
+    () => productMutationJobs !== undefined && editProductId.value !== '' && !taskNavigationOnly.value
+  ),
   refetchInterval: (query) =>
     query.state.data?.items.some((job) => job.status === 'submitted' || job.status === 'auditing')
       ? 15_000
@@ -388,24 +431,30 @@ const productMutationHistory = useQuery({
 const displayMutationHistory = useQuery({
   queryKey: ['product-display-mutation-jobs'],
   queryFn: async () => {
-    if (!productMutationJobs) return [];
+    const current = captureBusinessRead();
+    if (!productMutationJobs || !(await current())) return [];
     const page = await productMutationJobs.list({ pageSize: 100 });
+    if (!(await current())) return [];
     const displayJobs = page.items.filter((job) => job.operation === 'updateProductDisplay');
     const refreshed: ProductMutationJob[] = [];
     for (const job of displayJobs) {
-      if (!productMutationJobIsBlocking(job.status)) {
+      if (!(await current())) return [];
+      if (!productMutationJobIsBlocking(job.status) || taskNavigationOnly.value) {
         refreshed.push(job);
         continue;
       }
       try {
-        refreshed.push(await productMutationJobs.refresh(job.id, job.revision));
+        const result = await productMutationJobs.refresh(job.id, job.revision);
+        if (!(await current())) return [];
+        refreshed.push(result);
       } catch {
+        if (!(await current())) return [];
         refreshed.push(job);
       }
     }
     return refreshed;
   },
-  enabled: computed(() => productMutationJobs !== undefined),
+  enabled: computed(() => productMutationJobs !== undefined && !taskNavigationOnly.value),
   refetchInterval: (query) =>
     query.state.data?.some((job) => productMutationJobIsBlocking(job.status)) ? 15_000 : false,
   staleTime: 0
@@ -413,20 +462,26 @@ const displayMutationHistory = useQuery({
 const creationMutationHistory = useQuery({
   queryKey: ['product-creation-mutation-jobs'],
   queryFn: async () => {
-    if (!productMutationJobs) return [];
+    const current = captureBusinessRead();
+    if (!productMutationJobs || !(await current())) return [];
     const page = await productMutationJobs.list({ pageSize: 100 });
+    if (!(await current())) return [];
     const creationJobs = page.items.filter(
       (job) => job.operation === 'publishProduct' || job.operation === 'saveProductDraft'
     );
     const refreshed: ProductMutationJob[] = [];
     for (const job of creationJobs) {
-      if (!productMutationJobIsBlocking(job.status)) {
+      if (!(await current())) return [];
+      if (!productMutationJobIsBlocking(job.status) || taskNavigationOnly.value) {
         refreshed.push(job);
         continue;
       }
       try {
-        refreshed.push(await productMutationJobs.refresh(job.id, job.revision));
+        const result = await productMutationJobs.refresh(job.id, job.revision);
+        if (!(await current())) return [];
+        refreshed.push(result);
       } catch {
+        if (!(await current())) return [];
         refreshed.push(job);
       }
     }
@@ -434,25 +489,114 @@ const creationMutationHistory = useQuery({
       (left, right) => right.submittedTimeUtc - left.submittedTimeUtc || right.id.localeCompare(left.id)
     );
   },
-  enabled: computed(() => productMutationJobs !== undefined),
+  enabled: computed(() => productMutationJobs !== undefined && !taskNavigationOnly.value),
   refetchInterval: (query) =>
     query.state.data?.some((job) => productMutationJobIsBlocking(job.status)) ? 15_000 : false,
   staleTime: 0
 });
-const allProductMutationHistory = useQuery({
-  queryKey: ['product-mutation-jobs', 'all'],
-  queryFn: () =>
-    productMutationJobs
-      ? productMutationJobs.list({ pageSize: 100 })
-      : Promise.resolve({ items: [], page: 1, pageSize: 100, total: 0 }),
-  enabled: computed(() => productMutationJobs !== undefined && workspace.value === 'tasks'),
-  staleTime: 0
-});
+// Task navigation is read-only: never reuse the editor's auto-refresh queries or cached account data.
+const allProductMutationHistory = {
+  data: ref<{ items: ProductMutationJob[] }>({ items: [] }),
+  error: ref<unknown>(null),
+  isFetching: ref(false),
+  refetch: loadTaskHistory
+};
+let taskReadEpoch = 0;
+let taskIdentity = '';
+let taskContextBlocked = false;
+function invalidateTaskContext(error: unknown = new Error('GALLERY_CONTEXT_CHANGED')): void {
+  taskReadEpoch++;
+  taskContextBlocked = true;
+  allProductMutationHistory.data.value = { items: [] };
+  allProductMutationHistory.error.value = error;
+  allProductMutationHistory.isFetching.value = false;
+}
+async function loadTaskHistory(): Promise<void> {
+  const ticket = ++taskReadEpoch;
+  const id = taskJobId.value;
+  allProductMutationHistory.data.value = { items: [] };
+  if (taskContextBlocked || workspace.value !== 'tasks') return;
+  allProductMutationHistory.error.value = null;
+  allProductMutationHistory.isFetching.value = true;
+  try {
+    if (!productMutationJobs) throw new Error('PRODUCT_MUTATION_JOB_UNAVAILABLE');
+    const identity = await pageDetailIdentity(gateway, mode);
+    if (ticket !== taskReadEpoch) return;
+    if (taskIdentity && taskIdentity !== identity) {
+      invalidateTaskContext();
+      return;
+    }
+    taskIdentity = identity;
+    const page = await productMutationJobs.list({ pageSize: 100 });
+    if (ticket !== taskReadEpoch) return;
+    // get also verifies access to this exact job, including records outside the latest 100.
+    const target = id ? await productMutationJobs.get(id) : null;
+    if (ticket !== taskReadEpoch) return;
+    if (id && target?.id !== id) throw new Error('PRODUCT_MUTATION_JOB_NOT_FOUND');
+    const latest = await pageDetailIdentity(gateway, mode);
+    if (ticket !== taskReadEpoch) return;
+    if (latest !== identity) {
+      invalidateTaskContext();
+      return;
+    }
+    allProductMutationHistory.data.value = {
+      items: target ? [target, ...page.items.filter((job) => job.id !== target.id)] : page.items
+    };
+  } catch (error: unknown) {
+    if (ticket === taskReadEpoch) allProductMutationHistory.error.value = error;
+  } finally {
+    if (ticket === taskReadEpoch) allProductMutationHistory.isFetching.value = false;
+  }
+}
+async function checkTaskIdentity(): Promise<void> {
+  if (workspace.value !== 'tasks' || !taskIdentity || taskContextBlocked) return;
+  const ticket = taskReadEpoch;
+  try {
+    const identity = await pageDetailIdentity(gateway, mode);
+    if (ticket === taskReadEpoch && identity !== taskIdentity) invalidateTaskContext();
+  } catch (error: unknown) {
+    if (ticket === taskReadEpoch) invalidateTaskContext(error);
+  }
+}
+const taskFocus = () => {
+  void checkTaskIdentity();
+};
+watch(
+  [workspace, taskJobId, taskHistoryReadOnly],
+  () => {
+    taskReadEpoch++;
+    allProductMutationHistory.data.value = { items: [] };
+    allProductMutationHistory.isFetching.value = false;
+    if (workspace.value === 'tasks') void loadTaskHistory();
+  },
+  { immediate: true }
+);
+watch(
+  () => accountContext?.value,
+  (next, previous) => {
+    businessReadEpoch++;
+    if (workspace.value !== 'tasks') return;
+    // Bootstrap from null is not an account switch. Compare with the identity captured by the read.
+    const expected = taskIdentity || (previous ? JSON.stringify([previous.identity, previous.gateway]) : '');
+    if (expected && (!next || JSON.stringify([next.identity, next.gateway]) !== expected))
+      invalidateTaskContext();
+  },
+  { flush: 'sync' }
+);
+
+function closeTaskJob(): void {
+  if (taskHistoryReadOnly.value) {
+    globalThis.location.hash = '#/tasks';
+    return;
+  }
+  taskJobId.value = '';
+  updateProductHash('replace');
+}
 
 watch(
   () => creationMutationHistory.data.value,
   (jobs) => {
-    if (!jobs || !('localStorage' in globalThis)) return;
+    if (!jobs || taskHistoryReadOnly.value || !('localStorage' in globalThis)) return;
     batchItems.value = reconcileProductBatchPublishJobs(globalThis.localStorage, jobs);
   }
 );
@@ -990,6 +1134,7 @@ const selectedDisplayMutationBlocked = computed(() =>
 );
 const refreshTaskMutation = useMutation({
   mutationFn: (job: ProductMutationJob) => {
+    if (taskHistoryReadOnly.value) throw new Error('PRODUCT_MUTATION_HISTORY_READ_ONLY');
     if (!productMutationJobs) throw new Error(t('products.view.errors.jobUnsupported'));
     return productMutationJobs.refresh(job.id, job.revision);
   },
@@ -1000,10 +1145,12 @@ const refreshTaskMutation = useMutation({
       queryClient.invalidateQueries({ queryKey: ['product-creation-mutation-jobs'] }),
       queryClient.invalidateQueries({ queryKey: ['products'] })
     ]);
+    if (workspace.value === 'tasks') await loadTaskHistory();
   }
 });
 const recoverDisplayMutation = useMutation({
   mutationFn: (job: ProductMutationJob) => {
+    if (taskHistoryReadOnly.value) throw new Error('PRODUCT_MUTATION_HISTORY_READ_ONLY');
     if (!productMutationJobs) throw new Error(t('products.view.errors.jobUnsupported'));
     return productMutationJobs.recover(job.id, job.revision);
   },
@@ -1504,6 +1651,7 @@ function submitBatchDisplay(display: 'online' | 'offline'): void {
 }
 
 function recoverDisplayJob(job: ProductMutationJob): void {
+  if (taskHistoryReadOnly.value) return;
   if (mode !== 'mock') {
     actionConfirmation.value = { kind: 'recover-display', job };
     return;
@@ -1514,7 +1662,7 @@ function recoverDisplayJob(job: ProductMutationJob): void {
 function confirmProductAction(): void {
   const action = actionConfirmation.value;
   actionConfirmation.value = null;
-  if (!action) return;
+  if (!action || taskHistoryReadOnly.value) return;
   if (action.kind === 'product') {
     publish.mutate(action.draft);
     return;
@@ -2056,10 +2204,12 @@ async function startNewProduct(): Promise<void> {
 }
 
 async function setWorkspace(nextWorkspace: Workspace): Promise<void> {
-  if (nextWorkspace === workspace.value) return;
+  if (nextWorkspace === workspace.value && !taskHistoryReadOnly.value) return;
   if (!(await editing.confirmLeave())) return;
   if (workspace.value === 'publisher') resetEditorSession({ categoryId: '', mode: 'quick' });
   if (nextWorkspace === 'batch-publisher' || nextWorkspace === 'tasks') reloadBatchItems();
+  taskJobId.value = '';
+  taskHistoryReadOnly.value = false;
   workspace.value = nextWorkspace;
   updateProductHash('push');
 }
@@ -2098,6 +2248,8 @@ async function changeEditorLanguage(event: Event): Promise<void> {
 function updateProductHash(historyMode: 'push' | 'replace'): void {
   if (applyingProductRoute) return;
   const segments: string[] = [workspace.value];
+  if (workspace.value === 'tasks' && taskJobId.value) segments.push(taskJobId.value);
+  if (workspace.value === 'tasks' && taskHistoryReadOnly.value) segments.push('history');
   if (workspace.value === 'publisher') {
     segments.push(editorMode.value, editorStep.value, editProductId.value || 'new');
     if (categoryId.value) segments.push(categoryId.value);
@@ -2119,6 +2271,12 @@ async function syncProductsFromHash(): Promise<boolean> {
   applyingProductRoute = true;
   try {
     workspace.value = nextWorkspace;
+    taskHistoryReadOnly.value =
+      nextWorkspace === 'tasks' && route.segments.length === 3 && route.segments[2] === 'history';
+    taskJobId.value =
+      nextWorkspace === 'tasks' && (route.segments.length === 2 || taskHistoryReadOnly.value)
+        ? (route.segments[1] ?? '')
+        : '';
     if (nextWorkspace !== 'publisher') return true;
 
     const requestedMode = route.segments[1];
@@ -2160,6 +2318,7 @@ async function syncProductsFromHash(): Promise<boolean> {
 }
 
 function handleProductRouteChange(): void {
+  businessReadEpoch++;
   void syncProductsFromHash();
 }
 
@@ -2384,16 +2543,23 @@ onMounted(async () => {
   globalThis.document.addEventListener('visibilitychange', scheduleVisibleScores);
   globalThis.addEventListener('hashchange', handleProductRouteChange);
   globalThis.addEventListener('popstate', handleProductRouteChange);
-  if ('localStorage' in globalThis) {
-    batchItems.value = recoverInterruptedProductBatchPublishItems(globalThis.localStorage);
+  globalThis.addEventListener('focus', taskFocus);
+  if (!taskHistoryReadOnly.value && 'localStorage' in globalThis) {
+    batchItems.value = initialTaskRoute
+      ? loadProductBatchPublishItems(globalThis.localStorage)
+      : recoverInterruptedProductBatchPublishItems(globalThis.localStorage);
   }
   await syncProductsFromHash();
 });
 
 onBeforeUnmount(() => {
+  viewAlive = false;
+  businessReadEpoch++;
   globalThis.document.removeEventListener('visibilitychange', scheduleVisibleScores);
   globalThis.removeEventListener('hashchange', handleProductRouteChange);
   globalThis.removeEventListener('popstate', handleProductRouteChange);
+  globalThis.removeEventListener('focus', taskFocus);
+  taskReadEpoch++;
   if (scoreQueueTimer !== undefined) globalThis.clearTimeout(scoreQueueTimer);
   pageDetails.stop();
   editorEpoch++;
@@ -2986,12 +3152,15 @@ onBeforeUnmount(() => {
   <template v-else-if="workspace === 'tasks'">
     <ProductTaskCenter
       :jobs="allProductMutationHistory.data.value?.items ?? []"
-      :batch-items="batchItems"
+      :job-id="taskJobId"
+      :read-only="taskHistoryReadOnly"
+      :batch-items="taskHistoryReadOnly ? [] : batchItems"
       :loading="allProductMutationHistory.isFetching.value"
       :error="allProductMutationHistory.error.value"
       :refreshing-job-id="refreshTaskMutation.variables.value?.id ?? ''"
       :detail-urls="productDetailUrls"
       @refresh="allProductMutationHistory.refetch()"
+      @close-job="closeTaskJob"
       @refresh-job="refreshTaskMutation.mutate($event)"
       @recover="recoverDisplayJob"
     />
@@ -3013,6 +3182,7 @@ onBeforeUnmount(() => {
     <ErrorNotice v-if="submissionError" class="mt-3" :error="submissionError" />
   </ModalDialog>
   <ProductTransferDialog
+    v-if="!taskHistoryReadOnly"
     v-model:open="productTransferDialogOpen"
     v-model:schema-format="productTransferSchemaFormat"
     v-model:file-format="productTransferFileFormat"
@@ -3028,16 +3198,20 @@ onBeforeUnmount(() => {
     @confirm-import="importProducts"
     @confirm-export="exportSelectedProducts"
   />
-  <ProductGroupManagerDialog v-model:open="productGroupDialogOpen" @changed="handleProductGroupChanged" />
+  <ProductGroupManagerDialog
+    v-if="!taskHistoryReadOnly"
+    v-model:open="productGroupDialogOpen"
+    @changed="handleProductGroupChanged"
+  />
   <ProductShowcaseDrawer
-    v-if="showcaseOpen"
+    v-if="showcaseOpen && !taskHistoryReadOnly"
     v-model:open="showcaseOpen"
     :controller="showcase"
     :selection="showcaseSelection"
     :action="showcaseAction"
   />
   <ProductInventoryDrawer
-    v-if="inventory.selected.value"
+    v-if="inventory.selected.value && !taskHistoryReadOnly"
     :product="inventory.selected.value"
     :snapshot="inventory.snapshots.value[inventory.selected.value.id]"
     :error="inventory.errors.value[inventory.selected.value.id]"
@@ -3049,6 +3223,7 @@ onBeforeUnmount(() => {
   />
 
   <ConfirmActionDialog
+    v-if="!taskHistoryReadOnly"
     :open="actionConfirmation !== null"
     :title="actionConfirmationTitle"
     :description="actionConfirmationDescription"

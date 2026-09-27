@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /* eslint-disable vue/one-component-per-file */
 
-import { defineComponent, h } from 'vue';
-import { mount } from '@vue/test-utils';
+import { defineComponent, h, ref } from 'vue';
+import { flushPromises, mount } from '@vue/test-utils';
 import { onlineManager, QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,6 +17,41 @@ afterEach(() => {
 });
 
 describe('useOperationAvailability', () => {
+  it('supports reactive opt-out while preserving the pending and unavailable fallback contracts', async () => {
+    const enabled = ref(false);
+    const Consumer = defineComponent({
+      setup() {
+        const availability = useOperationAvailability(['publishProduct'], { enabled });
+        return () =>
+          h('div', [
+            h('span', { 'data-testid': 'reason' }, availability.reasonCode('publishProduct') ?? ''),
+            h('span', { 'data-testid': 'allowed' }, String(availability.isAllowed('publishProduct')))
+          ]);
+      }
+    });
+    const Host = defineComponent({
+      setup() {
+        provideServices({
+          gateway: new MockGatewayClient(0),
+          settings: { load: vi.fn(), save: vi.fn() },
+          mode: 'extension'
+        });
+        return () => h(Consumer);
+      }
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const wrapper = mount(Host, { global: { plugins: [[VueQueryPlugin, { queryClient }]] } });
+    await flushPromises();
+    expect(wrapper.get('[data-testid="reason"]').text()).toBe('OPERATION_AVAILABILITY_PENDING');
+    expect(queryClient.getQueryState(['operation-availability', 'publishProduct'])?.fetchStatus).toBe('idle');
+    enabled.value = true;
+    await flushPromises();
+    expect(wrapper.get('[data-testid="reason"]').text()).toBe('OPERATION_AVAILABILITY_UNAVAILABLE');
+    expect(wrapper.get('[data-testid="allowed"]').text()).toBe('false');
+    wrapper.unmount();
+    queryClient.clear();
+  });
+
   it('resolves extension-local policy even when the browser reports offline', async () => {
     onlineManager.setOnline(false);
     const get = vi.fn((operations: readonly ['publishProduct']) =>

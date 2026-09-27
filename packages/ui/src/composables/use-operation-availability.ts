@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
 
 import type { OperationAvailability, OperationId } from '@one-vegetable/core';
@@ -6,7 +6,10 @@ import type { OperationAvailability, OperationId } from '@one-vegetable/core';
 import { useServices } from '../lib/services';
 import { translateUi } from '../i18n';
 
-export function useOperationAvailability(operations: readonly OperationId[]) {
+export function useOperationAvailability(
+  operations: readonly OperationId[],
+  options: { enabled?: MaybeRefOrGetter<boolean> } = {}
+) {
   const { operationAvailability } = useServices();
   const requested = [...new Set(operations)];
   const availability = useQuery({
@@ -21,6 +24,7 @@ export function useOperationAvailability(operations: readonly OperationId[]) {
         }))
       }),
     networkMode: 'always',
+    enabled: computed(() => toValue(options.enabled ?? true)),
     staleTime: 10_000
   });
   const byOperation = computed(
