@@ -5,6 +5,7 @@ export const PAGE_IDS = [
   'rfqs',
   'orders',
   'inventory',
+  'tasks',
   'logistics',
   'insights',
   'capabilities',

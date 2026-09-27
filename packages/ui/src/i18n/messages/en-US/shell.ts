@@ -37,6 +37,7 @@ export const shell = {
     dashboard: 'Dashboard',
     products: 'Products',
     inventory: 'Inventory',
+    tasks: 'Task center',
     photos: 'Assets',
     rfqs: 'RFQs',
     orders: 'Orders',

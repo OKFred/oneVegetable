@@ -11,6 +11,8 @@ import { insights as insightsEn } from '../packages/ui/src/i18n/messages/en-US/i
 import { inventory as inventoryZh } from '../packages/ui/src/i18n/messages/zh-CN/inventory';
 import { inventory as inventoryEn } from '../packages/ui/src/i18n/messages/en-US/inventory';
 import { zhCN } from '../packages/ui/src/i18n/messages/zh-CN/index';
+import { tasks as tasksZh } from '../packages/ui/src/i18n/messages/zh-CN/tasks';
+import { tasks as tasksEn } from '../packages/ui/src/i18n/messages/en-US/tasks';
 import { showcase as showcaseZh } from '../packages/ui/src/i18n/messages/zh-CN/showcase';
 import { showcase as showcaseEn } from '../packages/ui/src/i18n/messages/en-US/showcase';
 import { productPosting as postingZh } from '../packages/ui/src/i18n/messages/zh-CN/productPosting';
@@ -40,6 +42,7 @@ const hardcodedHanAllowlist: Readonly<Record<string, readonly RegExp[]>> = {
 };
 
 const errors = [
+  ...compareCatalogs(tasksZh, tasksEn),
   ...compareCatalogs(videoZh, videoEn),
   ...compareCatalogs(logisticsZh, logisticsEn),
   ...compareCatalogs(insightsZh, insightsEn),
