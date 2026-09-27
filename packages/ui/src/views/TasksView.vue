@@ -127,16 +127,19 @@ let epoch = 0,
   productPage = 1,
   alive = true,
   mounted = false;
+let handoffEpoch = 0;
 function isCurrent(ticket: number, scope: string) {
   return alive && ticket === epoch && scope === identityScope.value;
 }
 function clear() {
   epoch += 1;
+  handoffEpoch += 1;
   items.value = [];
   errors.value = [];
   context.value = null;
   selectedId.value = '';
   associationOpen.value = false;
+  associationBusy.value = false;
   busy.value = false;
   productHasMore.value = false;
   unscopedQueueCount.value = 0;
@@ -207,11 +210,13 @@ onBeforeUnmount(() => {
   globalThis.removeEventListener(VAULT_UNLOCKED_EVENT, invalidate);
 });
 function detail(item: TaskSummary) {
+  handoffEpoch += 1;
   selectedId.value = item.id;
   associationOpen.value = false;
 }
 function closeDetails(open: boolean) {
   if (open || associationBusy.value) return;
+  handoffEpoch += 1;
   selectedId.value = '';
   associationOpen.value = false;
 }
@@ -224,10 +229,14 @@ function queue() {
 async function openSource(item: TaskSummary) {
   if (!context.value || item.contextChanged) return;
   const stamp = taskContextStamp(context.value),
-    ticket = epoch;
+    ticket = epoch,
+    handoff = ++handoffEpoch;
+  const currentIntent = () =>
+    alive && ticket === epoch && handoff === handoffEpoch && selectedId.value === item.id;
   try {
     const current = await services.gateway.galleryTransferContext?.();
-    if (!current || ticket !== epoch || taskContextStamp(current) !== stamp) throw new Error('context');
+    if (!currentIntent()) return;
+    if (!current || taskContextStamp(current) !== stamp) throw new Error('context');
     if (item.source === 'video-association') {
       associationOpen.value = true;
       return;
@@ -238,6 +247,7 @@ async function openSource(item: TaskSummary) {
       globalThis.location.hash = appHash('photos', 'videos', 'uploads', item.sourceId);
     else globalThis.location.hash = appHash('products', 'tasks', item.sourceId, 'history');
   } catch {
+    if (!currentIntent()) return;
     clear();
     failed.value = true;
     toast.error(tt('changed'));
@@ -368,7 +378,7 @@ const columns = computed<DataColumn<TaskSummary>[]>(() => [
             :placeholder="tt('search')"
             :aria-label="tt('search')"
           /><ListActionButton :icon="Search" type="submit" :disabled="busy">{{
-            t('common.actions.search')
+            t('common.filters.search')
           }}</ListActionButton></template
         >
         <template #actions>
@@ -384,7 +394,11 @@ const columns = computed<DataColumn<TaskSummary>[]>(() => [
           >
             <label class="grid gap-1 text-sm"
               >{{ tt('source')
-              }}<select v-model="draft.source" class="rounded-md border bg-background p-2">
+              }}<select
+                v-model="draft.source"
+                :aria-label="tt('source')"
+                class="rounded-md border bg-background p-2"
+              >
                 <option value="">{{ tt('all') }}</option>
                 <option v-for="source in sources" :key="source" :value="source">
                   {{ tt(`sources.${source}`) }}
@@ -393,7 +407,11 @@ const columns = computed<DataColumn<TaskSummary>[]>(() => [
             >
             <label class="grid gap-1 text-sm"
               >{{ tt('status')
-              }}<select v-model="draft.status" class="rounded-md border bg-background p-2">
+              }}<select
+                v-model="draft.status"
+                :aria-label="tt('status')"
+                class="rounded-md border bg-background p-2"
+              >
                 <option value="">{{ tt('all') }}</option>
                 <option v-for="status in states" :key="status" :value="status">
                   {{ tt(`states.${status}`) }}

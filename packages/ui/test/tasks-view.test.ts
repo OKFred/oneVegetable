@@ -37,7 +37,28 @@ function setup() {
       return () => h(TasksView);
     }
   });
-  const wrapper = mount(Host, { attachTo: document.body });
+  const wrapper = mount(Host, {
+    attachTo: document.body,
+    global: {
+      stubs: {
+        ProductVideoAssociation: defineComponent({
+          emits: ['busy'],
+          setup(_, { emit }) {
+            return () =>
+              h(
+                'button',
+                {
+                  onClick: () => {
+                    emit('busy', true);
+                  }
+                },
+                'Hold verification'
+              );
+          }
+        })
+      }
+    }
+  });
   wrappers.push(wrapper);
   return { wrapper, scope, request, current, body: new DOMWrapper(document.body) };
 }
@@ -69,6 +90,7 @@ describe('unified task center', () => {
     const s = setup();
     await flushPromises();
     expect(s.request).not.toHaveBeenCalled();
+    expect(button(s.wrapper, '搜索').exists()).toBe(true);
     expect(s.wrapper.text()).toContain('需要处理 2');
     expect(s.wrapper.findAll('tbody tr')[0]?.text()).toContain('10000002');
     await button(s.wrapper, '筛选').trigger('click');
@@ -105,6 +127,7 @@ describe('unified task center', () => {
     uiI18n.global.locale.value = 'en-US';
     await flushPromises();
     expect(s.wrapper.text()).toContain('Task center');
+    expect(button(s.wrapper, 'Search').exists()).toBe(true);
     expect(load).toHaveBeenCalledTimes(1);
     expect(s.request).not.toHaveBeenCalled();
   });
@@ -137,6 +160,28 @@ describe('unified task center', () => {
     expect(s.wrapper.text()).not.toContain('Fixture video');
     expect(s.request).not.toHaveBeenCalled();
   });
+  it('discards a source handoff after closing details without clearing a newer snapshot', async () => {
+    const s = setup();
+    await flushPromises();
+    await openDetails(s, 'product:product-task');
+    let finish: ((value: typeof fixture.context) => void) | undefined;
+    s.current.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    await button(s.body, '打开原任务').trigger('click');
+    await s.body.get('button[aria-label="关闭详情"]').trigger('click');
+    await flushPromises();
+    await s.wrapper.get('form').trigger('submit');
+    await flushPromises();
+    finish?.({ ...fixture.context, gateway: 'changed-after-close' });
+    await flushPromises();
+    expect(location.hash).toBe('#/tasks');
+    expect(s.wrapper.text()).toContain('Fixture video');
+    expect(s.body.find('[role="dialog"]').exists()).toBe(false);
+  });
   it('marks partial results, keeps errors visible and explicitly loads older product records', async () => {
     load.mockResolvedValue({
       ...snapshot(),
@@ -154,5 +199,21 @@ describe('unified task center', () => {
     expect(load.mock.calls[1]?.[4]).toBe(2);
     expect(s.wrapper.text()).toContain('product-task');
     expect(s.request).not.toHaveBeenCalled();
+  });
+  it('clears association busy state when an account invalidates the mounted detail', async () => {
+    const s = setup();
+    await flushPromises();
+    const association = fixture.items.find((item) => item.source === 'video-association');
+    if (!association) throw new Error('Missing association fixture');
+    await openDetails(s, association.id);
+    await button(s.body, '查看关联回执与核对').trigger('click');
+    await flushPromises();
+    await button(s.body, 'Hold verification').trigger('click');
+    s.scope.value = 'changed-during-verification';
+    await flushPromises();
+    await openDetails(s, 'product:product-task');
+    await s.body.get('button[aria-label="关闭详情"]').trigger('click');
+    await flushPromises();
+    expect(s.body.find('[role="dialog"]').exists()).toBe(false);
   });
 });
