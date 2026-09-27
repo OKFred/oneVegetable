@@ -16,6 +16,7 @@ import {
   loadTaskCenterSnapshot,
   bindTaskBatchItems,
   taskContextStamp,
+  taskGuidance,
   type TaskSource,
   type TaskSummary,
   type TaskState
@@ -278,6 +279,11 @@ function stepStatus(value: string) {
   const key = `photos.tasks.item.${value}`;
   return hasUiTranslation(key) ? t(key) : value;
 }
+function sourceError(code: string) {
+  if (code === 'TASK_SOURCE_UNAVAILABLE') return tt('sourceUnavailable');
+  if (/^TASK_.*INVALID$/.test(code)) return tt('invalidRecord');
+  return tt(`guidance.${taskGuidance(code, 'failed')}`);
+}
 function stepLabel(value: string, id: string) {
   const key = `photos.tasks.kind.${value}`;
   if (hasUiTranslation(key)) return t(key);
@@ -360,7 +366,7 @@ const columns = computed<DataColumn<TaskSummary>[]>(() => [
       <p>{{ tt('partial') }}</p>
       <ul class="mt-1 list-inside list-disc text-muted-foreground">
         <li v-for="error in errors" :key="`${error.source}:${error.code}`">
-          {{ tt(`sources.${error.source}`) }} · <code>{{ error.code }}</code>
+          {{ tt(`sources.${error.source}`) }}：{{ sourceError(error.code) }} <code>({{ error.code }})</code>
         </li>
       </ul>
       <Button size="sm" variant="ghost" @click="goSettings">{{ tt('settings') }}</Button>

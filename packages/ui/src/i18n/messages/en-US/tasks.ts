@@ -8,10 +8,13 @@ export const tasks = {
   loaded: '{count} records loaded. Filters apply only to these records.',
   more: 'Load more product tasks',
   partial: 'Some records could not be loaded. Other tasks remain available.',
+  sourceUnavailable: 'This mode does not provide this type of task record.',
+  invalidRecord:
+    'Some records are incomplete and are not displayed. This page has not deleted the source records.',
   unavailable:
     'Cannot read tasks for this account. Check your session, credentials and connection, then search again.',
   unscoped:
-    '{count} legacy queue records could not be matched to loaded receipts for this account. Their product data is hidden. Confirm the target account in the local batch queue; nothing is rebound or submitted here.',
+    '{count} legacy queue records could not be matched to loaded receipts in this workbench. Their product data is hidden. Confirm the target account in the local batch queue; nothing is rebound or submitted here.',
   queue: 'Open local batch queue',
   all: 'All',
   source: 'Business area',
