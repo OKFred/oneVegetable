@@ -254,6 +254,8 @@ async function verifyUpgrade(path: string): Promise<void> {
           typeof message.operation === 'string' &&
           'requestId' in message
         ) {
+          // Diagnostics are extension-local; keep the actual worker implementation in this check.
+          if (message.operation === 'getDiagnostics') return original(message);
           const data: unknown = (reads as Record<string, unknown>)[message.operation];
           return Promise.resolve(
             data === undefined
@@ -312,6 +314,8 @@ async function verifyUpgrade(path: string): Promise<void> {
       await expect(center.getByText('结果不明', { exact: true })).toBeVisible();
       await expect(center.getByRole('button', { name: '核对结果', exact: true })).toBeVisible();
       checks.push(`${version}: interrupted task kept for manual verification, not automatically resent`);
+      await center.getByRole('button', { name: '关闭详情', exact: true }).click();
+      await expect(center).toBeHidden();
     }
     report.stage = 'verify upgraded task and log navigation';
     await next.page.goto(`${next.origin}/options.html#/tasks`);
