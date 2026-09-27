@@ -73,7 +73,7 @@ export const settings = {
     unlock: 'Unlock',
     invalidTitle: 'The local credential record is invalid',
     invalidDescription:
-      'Automatic repair is disabled to avoid overwriting unrecoverable data. Back up your browser profile, then use the full clear action below to start over.',
+      'Automatic repair is disabled to avoid overwriting unrecoverable data. Back up your browser profile, then go to Logs → Diagnostics & data and use the full clear action to start over.',
     lockNow: 'Lock now',
     idleTitle: 'Automatic idle lock',
     idleDescription:

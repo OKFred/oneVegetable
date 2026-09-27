@@ -30,10 +30,10 @@ test('settings sections keep edits, support keyboard navigation and fit both lan
 
   for (const width of [390, 768]) {
     await page.setViewportSize({ width, height: 844 });
-    await expect(page.getByRole('button', { name: 'Diagnostics & data', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Diagnostics & data', exact: true })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.getByRole('button', { name: 'Diagnostics & data', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Redacted diagnostics', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Connections & language', exact: true }).click();
+    await expect(preferences).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({
       path: testInfo.outputPath(`settings-en-dark-${width}.png`),
@@ -42,7 +42,7 @@ test('settings sections keep edits, support keyboard navigation and fit both lan
   }
   await page.getByTestId('language-toggle').click();
   await page.emulateMedia({ colorScheme: 'light' });
-  await expect(page.getByRole('heading', { name: '脱敏诊断', exact: true })).toBeVisible();
+  await expect(preferences).toBeVisible();
   await expect(page.locator('html')).not.toHaveClass(/dark/);
   await page.screenshot({
     path: testInfo.outputPath('settings-zh-light-mobile.png'),

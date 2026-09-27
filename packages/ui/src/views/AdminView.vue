@@ -1,16 +1,10 @@
 <script setup lang="ts">
 import { computed, h, onMounted, ref } from 'vue';
-import { Copy, RefreshCw, Search, ShieldCheck, Trash2, UserPlus } from '@lucide/vue';
+import { Copy, RefreshCw, ShieldCheck, UserPlus } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
 import { API_CAPABILITIES } from '@one-vegetable/core';
-import type {
-  ControlAuditEvent,
-  ControlRequestEvent,
-  ControlSystemInfo,
-  ControlUser,
-  ControlUserRole
-} from '@one-vegetable/core';
+import type { ControlSystemInfo, ControlUser, ControlUserRole } from '@one-vegetable/core';
 
 import Card from '../components/ui/Card.vue';
 import Button from '../components/ui/Button.vue';
@@ -19,8 +13,6 @@ import ModalDialog from '../components/ui/ModalDialog.vue';
 import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import DataTable from '../components/DataTable.vue';
 import ListActionButton from '../components/ListActionButton.vue';
-import AuditListFilters from '../components/AuditListFilters.vue';
-import { emptyAuditFilters, auditFilterPayload, type AuditFilters } from '../lib/audit-filters';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
 import SelfHostedAdminPanel from '../components/SelfHostedAdminPanel.vue';
@@ -37,14 +29,6 @@ const users = ref<ControlUser[]>([]);
 const usersPage = ref(1);
 const usersPageSize = ref(10);
 const usersTotal = ref(0);
-const auditEvents = ref<ControlAuditEvent[]>([]);
-const auditEventsPage = ref(1);
-const auditEventsPageSize = ref(20);
-const auditEventsTotal = ref(0);
-const requestEvents = ref<ControlRequestEvent[]>([]);
-const requestEventsPage = ref(1);
-const requestEventsPageSize = ref(20);
-const requestEventsTotal = ref(0);
 const system = ref<ControlSystemInfo | null>(null);
 const policy = ref<Record<string, unknown> | null>(null);
 const error = ref<unknown>(null);
@@ -54,21 +38,6 @@ const username = ref('');
 const password = ref('');
 const role = ref<ControlUserRole>('user');
 const remark = ref('');
-const requestIdFilter = ref('');
-const appliedRequestId = ref('');
-const auditFilters = ref(emptyAuditFilters());
-const requestFilters = ref(emptyAuditFilters());
-async function applyEventFilters(kind: 'audit' | 'requests', value: AuditFilters): Promise<void> {
-  if (kind === 'audit') {
-    auditFilters.value = value;
-    auditEventsPage.value = 1;
-    await loadSection(loadAuditEvents, t('admin.view.errors.auditLoad'));
-  } else {
-    requestFilters.value = value;
-    requestEventsPage.value = 1;
-    await loadSection(loadRequestEvents, t('admin.view.errors.requestsLoad'));
-  }
-}
 const remarkDrafts = ref<Record<string, string>>({});
 const createEditing = useUnsavedEditing(() => ({
   username: username.value,
@@ -85,8 +54,7 @@ type AdminActionConfirmation =
   | { kind: 'status'; user: ControlUser }
   | { kind: 'role'; user: ControlUser }
   | { kind: 'password'; user: ControlUser }
-  | { kind: 'sessions'; user: ControlUser }
-  | { kind: 'purge' };
+  | { kind: 'sessions'; user: ControlUser };
 const actionConfirmation = ref<AdminActionConfirmation | null>(null);
 const temporaryPassword = ref<{ username: string; value: string } | null>(null);
 const enrollment = ref<{
@@ -99,7 +67,6 @@ const selfHosted = computed(() => system.value?.environment === 'self-hosted');
 const actionTitle = computed(() => {
   const action = actionConfirmation.value;
   if (!action) return t('admin.view.confirmation.defaultTitle');
-  if (action.kind === 'purge') return t('admin.view.confirmation.purgeTitle');
   if (action.kind === 'status') {
     return action.user.status === 'active'
       ? t('admin.view.confirmation.disableTitle')
@@ -116,11 +83,6 @@ const actionTitle = computed(() => {
 const actionDescription = computed(() => {
   const action = actionConfirmation.value;
   if (!action) return '';
-  if (action.kind === 'purge') {
-    return t('admin.view.confirmation.purgeDescription', {
-      days: system.value?.requestEventRetentionDays ?? t('admin.view.confirmation.configured')
-    });
-  }
   if (action.kind === 'status') {
     return action.user.status === 'active'
       ? t('admin.view.confirmation.disableDescription', { username: action.user.username })
@@ -160,10 +122,8 @@ async function refresh(): Promise<void> {
   loading.value = true;
   error.value = null;
   try {
-    const [, , , systemInfo, policyInfo] = await Promise.all([
+    const [, systemInfo, policyInfo] = await Promise.all([
       loadUsers(),
-      loadAuditEvents(),
-      loadRequestEvents(),
       control.system(),
       control.policySummary()
     ]);
@@ -183,34 +143,6 @@ async function loadUsers(): Promise<void> {
   usersTotal.value = result.total;
   remarkDrafts.value = Object.fromEntries(result.items.map((user) => [user.id, user.remark ?? '']));
   remarkEditing.markClean();
-}
-
-async function loadAuditEvents(): Promise<void> {
-  if (!control) return;
-  const requestFilter = appliedRequestId.value;
-  const result = await control.listAudit({
-    ...auditFilterPayload(auditFilters.value),
-    ...(auditFilters.value.operation.trim() ? { action: auditFilters.value.operation.trim() } : {}),
-    page: auditEventsPage.value,
-    pageSize: auditEventsPageSize.value,
-    ...(requestFilter ? { requestIdFilter: requestFilter } : {})
-  });
-  auditEvents.value = result.items;
-  auditEventsTotal.value = result.total;
-}
-
-async function loadRequestEvents(): Promise<void> {
-  if (!control) return;
-  const requestFilter = appliedRequestId.value;
-  const result = await control.listRequestEvents({
-    ...auditFilterPayload(requestFilters.value),
-    ...(requestFilters.value.operation.trim() ? { operation: requestFilters.value.operation.trim() } : {}),
-    page: requestEventsPage.value,
-    pageSize: requestEventsPageSize.value,
-    ...(requestFilter ? { requestIdFilter: requestFilter } : {})
-  });
-  requestEvents.value = result.items;
-  requestEventsTotal.value = result.total;
 }
 
 async function loadSection(loader: () => Promise<void>, fallbackMessage: string): Promise<void> {
@@ -236,53 +168,6 @@ async function setUsersPageSize(pageSize: number): Promise<void> {
   usersPage.value = 1;
   usersPageSize.value = pageSize;
   await loadSection(loadUsers, t('admin.view.errors.usersLoad'));
-}
-
-async function setAuditEventsPage(page: number): Promise<void> {
-  auditEventsPage.value = page;
-  await loadSection(loadAuditEvents, t('admin.view.errors.auditLoad'));
-}
-
-async function setAuditEventsPageSize(pageSize: number): Promise<void> {
-  auditEventsPage.value = 1;
-  auditEventsPageSize.value = pageSize;
-  await loadSection(loadAuditEvents, t('admin.view.errors.auditLoad'));
-}
-
-async function setRequestEventsPage(page: number): Promise<void> {
-  requestEventsPage.value = page;
-  await loadSection(loadRequestEvents, t('admin.view.errors.requestsLoad'));
-}
-
-async function setRequestEventsPageSize(pageSize: number): Promise<void> {
-  requestEventsPage.value = 1;
-  requestEventsPageSize.value = pageSize;
-  await loadSection(loadRequestEvents, t('admin.view.errors.requestsLoad'));
-}
-
-async function applyRequestIdFilter(): Promise<void> {
-  appliedRequestId.value = requestIdFilter.value.trim();
-  auditEventsPage.value = 1;
-  requestEventsPage.value = 1;
-  await loadSection(async () => {
-    await Promise.all([loadAuditEvents(), loadRequestEvents()]);
-  }, t('admin.view.errors.filter'));
-}
-
-async function purgeRequestEvents(): Promise<void> {
-  if (!control) return;
-  error.value = null;
-  try {
-    const result = await control.purgeRequestEvents();
-    notice.value = t('admin.view.feedback.purgedNotice', {
-      count: result.deletedCount,
-      days: result.retentionDays
-    });
-    toast.success(t('admin.view.feedback.purgedToast', { count: result.deletedCount }));
-    await refresh();
-  } catch (cause: unknown) {
-    error.value = userVisibleCause(cause, t('admin.view.errors.purge'));
-  }
 }
 
 async function createUser(): Promise<void> {
@@ -399,10 +284,6 @@ function confirmAdminAction(): void {
   const action = actionConfirmation.value;
   actionConfirmation.value = null;
   if (!action) return;
-  if (action.kind === 'purge') {
-    void purgeRequestEvents();
-    return;
-  }
   if (action.kind === 'status') {
     void toggleStatus(action.user);
     return;
@@ -546,57 +427,6 @@ const userColumns = computed<DataColumn<ControlUser>[]>(() => [
       ])
   }
 ]);
-
-const requestEventColumns = computed<DataColumn<ControlRequestEvent>[]>(() => [
-  {
-    accessorKey: 'eventTimeUtc',
-    header: t('admin.view.columns.time'),
-    cell: ({ row }) => h('span', { class: 'whitespace-nowrap' }, formatDateTime(row.original.eventTimeUtc))
-  },
-  {
-    accessorKey: 'requestId',
-    header: 'requestId',
-    cell: ({ row }) => h('code', { class: 'text-xs' }, row.original.requestId)
-  },
-  {
-    accessorKey: 'actorId',
-    header: t('admin.view.columns.actor'),
-    cell: ({ row }) => row.original.actorId ?? 'anonymous'
-  },
-  {
-    id: 'runtimeRoute',
-    header: t('admin.view.columns.runtimeRoute'),
-    cell: ({ row }) => `${row.original.runtime} / ${row.original.route}`
-  },
-  { accessorKey: 'operation', header: 'Operation' },
-  { accessorKey: 'outcome', header: t('admin.view.columns.result') },
-  {
-    id: 'statusDuration',
-    header: t('admin.view.columns.statusDuration'),
-    cell: ({ row }) => `${row.original.statusCode} / ${row.original.durationMilliseconds} ms`
-  }
-]);
-
-const auditEventColumns = computed<DataColumn<ControlAuditEvent>[]>(() => [
-  {
-    accessorKey: 'eventTimeUtc',
-    header: t('admin.view.columns.time'),
-    cell: ({ row }) => h('span', { class: 'whitespace-nowrap' }, formatDateTime(row.original.eventTimeUtc))
-  },
-  {
-    accessorKey: 'requestId',
-    header: 'requestId',
-    cell: ({ row }) => h('code', { class: 'text-xs' }, row.original.requestId)
-  },
-  {
-    accessorKey: 'actorId',
-    header: t('admin.view.columns.actor'),
-    cell: ({ row }) => row.original.actorId ?? 'anonymous'
-  },
-  { accessorKey: 'action', header: t('admin.view.columns.action') },
-  { accessorKey: 'outcome', header: t('admin.view.columns.result') },
-  { accessorKey: 'reasonCode', header: t('admin.view.columns.reason') }
-]);
 </script>
 
 <template>
@@ -673,9 +503,6 @@ const auditEventColumns = computed<DataColumn<ControlAuditEvent>[]>(() => [
           class="mt-1 truncate font-mono text-xs text-muted-foreground"
         >
           {{ system.gatewayStatus.endpointOrigin }} · {{ system.gatewayStatus.signMethod }}
-        </p>
-        <p class="mt-1 text-xs text-muted-foreground">
-          {{ t('admin.view.system.retention', { days: system?.requestEventRetentionDays ?? '—' }) }}
         </p>
       </Card>
     </div>
@@ -790,91 +617,6 @@ const auditEventColumns = computed<DataColumn<ControlAuditEvent>[]>(() => [
         </p>
       </Card>
     </div>
-
-    <Card class="mt-5 overflow-hidden">
-      <div class="flex flex-wrap items-center justify-between gap-3 border-b p-5">
-        <div>
-          <h2 class="font-semibold">{{ t('admin.view.requests.title') }}</h2>
-          <p class="text-xs text-muted-foreground">
-            {{ t('admin.view.requests.description') }}
-          </p>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <form class="flex gap-2" @submit.prevent="applyRequestIdFilter">
-            <Input
-              v-model="requestIdFilter"
-              name="requestId"
-              class="w-72"
-              :aria-label="t('admin.view.requests.filterAria')"
-              placeholder="requestId（UUID v4）"
-            />
-            <ListActionButton :icon="Search" type="submit">{{
-              t('admin.view.requests.query')
-            }}</ListActionButton>
-          </form>
-          <AuditListFilters
-            kind="requests"
-            :model-value="requestFilters"
-            @update:model-value="applyEventFilters('requests', $event)"
-          />
-          <ListActionButton
-            data-testid="purge-request-events"
-            :icon="Trash2"
-            @click="requestAdminAction({ kind: 'purge' })"
-          >
-            {{ t('admin.view.requests.purge') }}
-          </ListActionButton>
-        </div>
-      </div>
-      <div data-testid="request-events">
-        <DataTable
-          column-settings-key="admin-diagnostics"
-          :columns="requestEventColumns"
-          :data="requestEvents"
-          :page="requestEventsPage"
-          :page-size="requestEventsPageSize"
-          :total-rows="requestEventsTotal"
-          :pagination-disabled="loading"
-          :selection-scope="JSON.stringify([appliedRequestId, requestFilters])"
-          max-height="min(60vh, 36rem)"
-          min-width="980px"
-          :empty-text="t('admin.view.requests.empty')"
-          @update:page="setRequestEventsPage"
-          @update:page-size="setRequestEventsPageSize"
-        />
-      </div>
-    </Card>
-
-    <Card class="mt-5 overflow-hidden">
-      <div class="flex items-center justify-between gap-3 border-b p-5">
-        <div>
-          <h2 class="font-semibold">{{ t('admin.view.audit.title') }}</h2>
-          <p class="text-xs text-muted-foreground">
-            {{ t('admin.view.audit.description') }}
-          </p>
-        </div>
-        <AuditListFilters
-          kind="audit"
-          :model-value="auditFilters"
-          @update:model-value="applyEventFilters('audit', $event)"
-        />
-      </div>
-      <DataTable
-        column-settings-key="admin-audit"
-        :columns="auditEventColumns"
-        :data="auditEvents"
-        :page="auditEventsPage"
-        :page-size="auditEventsPageSize"
-        :total-rows="auditEventsTotal"
-        :pagination-disabled="loading"
-        :selection-scope="JSON.stringify([appliedRequestId, auditFilters])"
-        max-height="min(60vh, 36rem)"
-        min-width="900px"
-        :empty-text="t('admin.view.audit.empty')"
-        @update:page="setAuditEventsPage"
-        @update:page-size="setAuditEventsPageSize"
-      />
-    </Card>
   </template>
 
   <ConfirmActionDialog

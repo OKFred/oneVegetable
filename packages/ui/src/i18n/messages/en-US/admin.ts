@@ -306,7 +306,7 @@ export const admin = {
     eyebrow: 'Access control',
     title: 'Administration',
     description:
-      'Manage local accounts, the read-only policy matrix, requestId diagnostics, and append-only audit records. Hiding a page is not an authorization boundary; the BFF authorizes every request again.',
+      'Manage local accounts, system configuration, and the read-only policy matrix. Request diagnostics and audit events are available on the Logs page.',
     refresh: 'Refresh',
     confirmation: {
       defaultTitle: 'Confirm admin operation',

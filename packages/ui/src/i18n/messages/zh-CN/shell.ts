@@ -42,6 +42,7 @@ export const shell = {
     insights: '数据洞察',
     capabilities: 'API 能力',
     admin: '管理后台',
+    logs: '日志',
     releases: '版本更新',
     settings: '设置'
   },

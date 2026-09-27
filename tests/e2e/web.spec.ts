@@ -735,8 +735,7 @@ test('web mock exposes the final platform contracts with protocol safeguards', a
 
 test('web mock exports and clears the typed diagnostics snapshot', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: '设置' }).click();
-  await page.getByRole('button', { name: '诊断与数据', exact: true }).click();
+  await page.getByRole('link', { name: '日志', exact: true }).click();
   await expect(page.getByRole('heading', { name: '脱敏诊断' })).toBeVisible();
   await expect(page.getByText('1 条', { exact: true })).toBeVisible();
 

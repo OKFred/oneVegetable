@@ -10,10 +10,74 @@ import type { ControlClient, ControlSession } from '@one-vegetable/core';
 
 import { provideServices } from '../src/lib/services';
 import AdminView from '../src/views/AdminView.vue';
+import LogsView from '../src/views/LogsView.vue';
 
 const requestId = '3d7c8523-93cc-48b7-a615-a23d2976c516';
 
-describe('AdminView', () => {
+describe('AdminView and LogsView', () => {
+  it('does not load or render diagnostic and audit sections in administration', async () => {
+    const control = controlFixture(
+      vi.fn(() => Promise.resolve({ items: [], total: 0 })),
+      vi.fn(() => Promise.resolve({ deletedCount: 0, retentionDays: 30, cutoffTimeUtc: 1 }))
+    );
+    const requests = vi.spyOn(control, 'listRequestEvents');
+    const audit = vi.spyOn(control, 'listAudit');
+    const wrapper = mountView(control);
+    await flushPromises();
+    expect(requests).not.toHaveBeenCalled();
+    expect(audit).not.toHaveBeenCalled();
+    expect(wrapper.find('[data-testid="request-events"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="audit-events"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('loads audit only when opened and preserves the requestId filter between tabs', async () => {
+    const control = controlFixture(
+      vi.fn(() => Promise.resolve({ items: [], total: 0 })),
+      vi.fn(() => Promise.resolve({ deletedCount: 0, retentionDays: 30, cutoffTimeUtc: 1 }))
+    );
+    const requests = vi.spyOn(control, 'listRequestEvents');
+    const audit = vi.spyOn(control, 'listAudit');
+    const wrapper = mountView(control, true);
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="request-events"]').exists()).toBe(true);
+    });
+    expect(audit).not.toHaveBeenCalled();
+    expect(requests).toHaveBeenCalledOnce();
+    const input = wrapper.get('input[placeholder="requestId (UUID v4)"]');
+    await input.setValue(requestId);
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+    globalThis.location.hash = '#/logs/audit';
+    globalThis.dispatchEvent(new Event('hashchange'));
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="audit-events"]').exists()).toBe(true);
+    });
+    expect(audit).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, requestIdFilter: requestId });
+    wrapper.unmount();
+    globalThis.history.replaceState(null, '', '#/logs');
+  });
+
+  it('does not query server logs for ordinary users, including a direct audit URL', async () => {
+    const control = controlFixture(
+      vi.fn(() => Promise.resolve({ items: [], total: 0 })),
+      vi.fn(() => Promise.resolve({ deletedCount: 0, retentionDays: 30, cutoffTimeUtc: 1 }))
+    );
+    control.session = () =>
+      Promise.resolve({ ...sessionFixture(), principal: { ...sessionFixture().principal, role: 'user' } });
+    const requests = vi.spyOn(control, 'listRequestEvents');
+    const audit = vi.spyOn(control, 'listAudit');
+    globalThis.location.hash = '#/logs/audit';
+    const wrapper = mountView(control, true);
+    await flushPromises();
+    expect(requests).not.toHaveBeenCalled();
+    expect(audit).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain('仅管理员可查看');
+    expect(wrapper.find('a[href="#/logs/audit"]').exists()).toBe(false);
+    wrapper.unmount();
+    globalThis.history.replaceState(null, '', '#/logs');
+  });
+
   it('correlates request diagnostics and confirms retention cleanup in a dialog', async () => {
     const listRequestEvents = vi.fn<ControlClient['listRequestEvents']>(() =>
       Promise.resolve({
@@ -38,7 +102,10 @@ describe('AdminView', () => {
     const purgeRequestEvents = vi.fn<ControlClient['purgeRequestEvents']>(() =>
       Promise.resolve({ deletedCount: 4, retentionDays: 30, cutoffTimeUtc: 1 })
     );
-    const wrapper = mountView(controlFixture(listRequestEvents, purgeRequestEvents));
+    const wrapper = mountView(controlFixture(listRequestEvents, purgeRequestEvents), true);
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="request-events"]').exists()).toBe(true);
+    });
     await flushPromises();
 
     expect(wrapper.get('[data-testid="request-events"]').text()).toContain('admin/system/get');
@@ -50,7 +117,7 @@ describe('AdminView', () => {
     await flushPromises();
     expect(listRequestEvents).toHaveBeenLastCalledWith({ page: 2, pageSize: 20 });
 
-    const filter = wrapper.get('input[placeholder="requestId（UUID v4）"]');
+    const filter = wrapper.get('input[placeholder="requestId (UUID v4)"]');
     await filter.setValue(requestId);
     filter.element.closest('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await flushPromises();
@@ -117,7 +184,7 @@ describe('AdminView', () => {
   });
 });
 
-function mountView(control: ControlClient) {
+function mountView(control: ControlClient, logs = false) {
   const Host = defineComponent({
     setup() {
       provideServices({
@@ -136,7 +203,7 @@ function mountView(control: ControlClient) {
         control,
         mode: 'bff'
       });
-      return () => h(AdminView);
+      return () => h(logs ? LogsView : AdminView);
     }
   });
   return mount(Host, { attachTo: document.body });

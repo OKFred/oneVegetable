@@ -106,10 +106,10 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 - 图库素材支持多选后交给系统原图分享，或下载包含 `assets/`、文案和清单的 ZIP 分享包。自托管 BFF 已支持管理员连接多个 Meta 身份，并向 Facebook Page 或其关联的 Instagram 专业账号单图直发；插件通过 30 天可撤销设备授权使用同一后端，不保存 Meta 密钥。未配置时明确提示前置条件，不回退页面自动化或 Mock；X、TikTok、轮播和定时发布仍未接入。详见 [图库社交分享](docs/social-gallery-sharing.md)。
 - Web、扩展和自托管页面右下角提供统一反馈入口。截图仅在用户点击后于当前页面内存生成，自动排除反馈弹窗并遮罩已知敏感字段；确认后只把 PNG 复制到剪贴板（失败时下载）并打开预填的公开 GitHub Issue，用户仍需自行粘贴、检查和提交。应用不配置 GitHub Token，也不会直接创建 Issue。
 - 普通文件转存、天鹿风控和 URL 爬取任务通知归为平台协作能力。文件转存不会冒充图库入库；风控和任务回调不提供页面采集或发送入口，并由 service worker 二次门禁。详见 [平台协作能力说明](docs/platform-domain.md)。
-- MV3 默认只申请 `storage`、用于用户主动授权向导的 `scripting` 和正式网关主机权限；应用中心、OAuth Callback、自定义网关与外部图片来源均在用户执行对应操作时按具体站点申请权限。设置页可导出或清空最多 100 条会话级脱敏诊断，且构建会执行权限与体积预算检查。详见 [MV3 发布加固说明](docs/mv3-release-hardening.md)。
+- MV3 默认只申请 `storage`、用于用户主动授权向导的 `scripting` 和正式网关主机权限；应用中心、OAuth Callback、自定义网关与外部图片来源均在用户执行对应操作时按具体站点申请权限。日志页可导出或清空最多 100 条会话级脱敏诊断，且构建会执行权限与体积预算检查。详见 [MV3 发布加固说明](docs/mv3-release-hardening.md)。
 - 开放平台凭证使用用户口令派生的 AES-256-GCM 密钥加密保存；local/session 存储对内容脚本不可见，口令不落盘。解锁后只把派生密钥材料保留在当前 Chrome 会话的内存型 `chrome.storage.session`，因此页面刷新和 MV3 service worker 休眠无需重复输入；浏览器重启、扩展更新/重载、主动锁定或所选空闲时限到期后重新锁定。旧版明文设置必须显式迁移，遗忘口令只能清除后重新配置，威胁模型与恢复边界见 [凭证保险库说明](docs/credential-vault.md)。
 - RC 构建会迁移旧设置、允许查看/撤销额外主机权限、只对只读请求执行有限重试，并生成可复现 ZIP 与 SHA-256。CI 只保存产物，不自动上架。详见 [RC 发布准备说明](docs/rc-release-readiness.md)。
-- 扩展和自托管管理员首次使用时会看到“开发者注册 → 平台审核 → 创建应用 → OAuth 授权”的双语图文引导，并可直接进入对应凭证助手；扩展设置页还可导出不含具体值的数据清单并彻底清除本地数据。商店文案、隐私政策、真实扩展截图和仍待人工完成的阻断项见 [Chrome Web Store 提交清单](docs/store-submission.md)。
+- 扩展和自托管管理员首次使用时会看到“开发者注册 → 平台审核 → 创建应用 → OAuth 授权”的双语图文引导，并可直接进入对应凭证助手；扩展日志页还可导出不含具体值的数据清单并彻底清除本地数据。商店文案、隐私政策、真实扩展截图和仍待人工完成的阻断项见 [Chrome Web Store 提交清单](docs/store-submission.md)。
 - `docs/alibaba-api-audit.json` 是 2026-08-13 的文档审计快照，共 84 个免费且非聚石塔候选 API。特定 ISV/业务资格接口默认关闭。
 - 已提供本地 OpenAPI 授权包获取工具，但真实 API 验收结果仍以显式的 real smoke 报告为准；契约 Mock、签名、Replay 和 MV3 行为不等于真实账号验收。2026-08-20 最新一轮真实只读 Smoke 为 35 项候选中 22 项通过、5 项权限不足、1 项上游错误、7 项缺少前置数据，契约漂移为 0；真实 Web 页面 Smoke 同时确认核心查询没有回退到 Mock，并已跑通真实商品列表到 Schema 可视化解析及评分的只读链路。
 

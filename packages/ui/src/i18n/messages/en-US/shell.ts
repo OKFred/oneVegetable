@@ -45,6 +45,7 @@ export const shell = {
     insights: 'Insights',
     capabilities: 'API capabilities',
     admin: 'Administration',
+    logs: 'Logs',
     releases: 'What’s new',
     settings: 'Settings'
   },

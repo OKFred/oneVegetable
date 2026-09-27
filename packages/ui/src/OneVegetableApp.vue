@@ -16,6 +16,7 @@ import {
   Handshake,
   History,
   ListChecks,
+  ScrollText,
   Home,
   Image,
   Menu,
@@ -216,6 +217,7 @@ const baseItems: NavigationItem[] = [
   { id: 'capabilities', labelKey: 'shell.navigation.capabilities', icon: PlugZap },
   { id: 'admin', labelKey: 'shell.navigation.admin', icon: ShieldCheck },
   { id: 'releases', labelKey: 'shell.navigation.releases', icon: History },
+  { id: 'logs', labelKey: 'shell.navigation.logs', icon: ScrollText },
   { id: 'settings', labelKey: 'shell.navigation.settings', icon: Settings }
 ];
 const { locale, t } = useUiI18n();
@@ -272,6 +274,7 @@ const views: Record<PageId, Component> = {
   insights: defineAsyncComponent(() => import('./views/InsightsView.vue')),
   capabilities: defineAsyncComponent(() => import('./views/CapabilitiesView.vue')),
   admin: defineAsyncComponent(() => import('./views/AdminView.vue')),
+  logs: defineAsyncComponent(() => import('./views/LogsView.vue')),
   releases: defineAsyncComponent(() => import('./views/ReleaseNotesView.vue')),
   settings: defineAsyncComponent(() => import('./views/SettingsView.vue'))
 };

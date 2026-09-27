@@ -11,6 +11,7 @@ export const PAGE_IDS = [
   'capabilities',
   'admin',
   'releases',
+  'logs',
   'settings'
 ] as const;
 

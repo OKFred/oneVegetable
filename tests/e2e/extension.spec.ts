@@ -625,14 +625,14 @@ test('formal MV3 video workspace isolates public reads and survives worker resta
   ]);
   // The formal extension exposes the shared selection flow, never an unverified write.
   const beforeSelection = calls.length;
-  await library.getByRole('button', { name: '用于商品', exact: true }).first().click();
-  const selection = page.getByRole('dialog', { name: '用于商品', exact: true });
+  await library.getByRole('button', { name: '关联商品', exact: true }).first().click();
+  const selection = page.getByRole('dialog', { name: '关联商品', exact: true });
   await selection.getByRole('button', { name: '选择', exact: true }).first().click();
   await expect(selection.getByTestId('video-target-product')).toBeVisible();
   await expect(selection.getByTestId('associate-video')).toBeDisabled();
   await expect(selection.getByLabel(/视频关联写入尚未开放/)).toBeVisible();
   expect(calls.slice(beforeSelection)).toEqual(['alibaba.icbu.video.query', 'alibaba.icbu.product.list']);
-  await selection.getByRole('button', { name: '关闭用于商品', exact: true }).click();
+  await selection.getByRole('button', { name: '关闭关联商品', exact: true }).click();
   await expect(selection).toHaveCount(0);
 });
 
@@ -866,7 +866,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
   await expect(page.getByLabel('App Secret')).toHaveValue('');
   await expect(page.getByLabel('Access Token')).toHaveValue('');
-  await page.getByRole('button', { name: '诊断与数据', exact: true }).click();
+  await page.getByRole('link', { name: '日志', exact: true }).click();
   await expect(page.getByRole('heading', { name: '主机权限' })).toBeVisible();
   await expect(page.getByText('当前没有额外主机权限。')).toBeVisible();
   await expect(page.getByText('https://*.alibaba.com/*')).toHaveCount(0);
@@ -1264,8 +1264,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
     error: { code: 'CAPABILITY_RESTRICTED' }
   });
 
-  await page.getByRole('link', { name: '设置', exact: true }).click();
-  await page.getByRole('button', { name: '诊断与数据', exact: true }).click();
+  await page.getByRole('link', { name: '日志', exact: true }).click();
   await expect(page.getByRole('heading', { name: '脱敏诊断' })).toBeVisible();
   await expect(page.getByLabel('诊断记录数量')).toContainText(/\d+ 条/u);
   const downloadPromise = page.waitForEvent('download');

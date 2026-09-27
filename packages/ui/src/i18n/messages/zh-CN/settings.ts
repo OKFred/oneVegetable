@@ -69,7 +69,7 @@ export const settings = {
     unlock: '解锁',
     invalidTitle: '本机凭证记录无效',
     invalidDescription:
-      '为避免覆盖无法恢复的数据，当前不提供自动修复。请先备份浏览器配置，再使用下方彻底清除功能重新开始。',
+      '为避免覆盖无法恢复的数据，当前不提供自动修复。请先备份浏览器配置，再前往日志 → 诊断与数据，使用彻底清除功能重新开始。',
     lockNow: '立即锁定',
     idleTitle: '空闲自动锁定',
     idleDescription:

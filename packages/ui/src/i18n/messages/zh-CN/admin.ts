@@ -277,8 +277,7 @@ export const admin = {
   view: {
     eyebrow: '访问控制',
     title: '管理后台',
-    description:
-      '管理本地账号、只读策略矩阵、requestId 诊断与 append-only 审计。页面隐藏不是权限边界，BFF 会重新授权。',
+    description: '管理本地账号、系统配置和只读策略矩阵。请求诊断和操作审计请前往日志页面查看。',
     refresh: '刷新',
     confirmation: {
       defaultTitle: '确认管理操作',

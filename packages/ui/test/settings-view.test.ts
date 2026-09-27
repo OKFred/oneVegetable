@@ -16,6 +16,7 @@ import {
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import SettingsView from '../src/views/SettingsView.vue';
+import LocalDiagnosticsPanel from '../src/components/LocalDiagnosticsPanel.vue';
 import { provideServices } from '../src/lib/services';
 import { provideUnsavedEditing, UnsavedEditingService } from '../src/lib/unsaved-editing';
 
@@ -47,7 +48,7 @@ function mountView(
   initialVaultState?: CredentialVaultState,
   initialLockReason: CredentialVaultLockReason = 'manual',
   backendRuntime: 'node' | 'cloudflare' = 'node',
-  options: { editing?: UnsavedEditingService; beforeInspect?: () => Promise<void> } = {}
+  options: { editing?: UnsavedEditingService; beforeInspect?: () => Promise<void>; logs?: boolean } = {}
 ) {
   let grantedHosts = ['https://images.example.com/*'];
   let currentVaultState = initialVaultState;
@@ -129,7 +130,7 @@ function mountView(
         },
         mode
       });
-      return () => h(SettingsView);
+      return () => h(options.logs ? LocalDiagnosticsPanel : SettingsView);
     }
   });
   return mount(Host, { attachTo: globalThis.document.body });
@@ -160,7 +161,7 @@ afterEach(() => {
 });
 
 describe('SettingsView diagnostics', () => {
-  it('does not overwrite input when unrelated settings metadata finishes loading', async () => {
+  it('does not load diagnostic data or inventory from settings', async () => {
     let finishInspect: (() => void) | undefined;
     const editing = new UnsavedEditingService();
     const wrapper = mountView('extension', 'empty', 'manual', 'node', {
@@ -172,7 +173,7 @@ describe('SettingsView diagnostics', () => {
     });
     await flushPromises();
     await wrapper.get('input[aria-label="App Key"]').setValue('entered-during-metadata-load');
-    expect(finishInspect).toBeDefined();
+    expect(finishInspect).toBeUndefined();
     finishInspect?.();
     await flushPromises();
     expect((wrapper.get('input[aria-label="App Key"]').element as HTMLInputElement).value).toBe(
@@ -186,11 +187,8 @@ describe('SettingsView diagnostics', () => {
     const editing = new UnsavedEditingService();
     const wrapper = mountView('mock', undefined, 'manual', 'node', { editing });
     await flushPromises();
-    await vi.waitFor(() => {
-      expect(wrapper.get('#settings-maintenance button').attributes('disabled')).toBeUndefined();
-    });
     expect(wrapper.get('#settings-credentials').isVisible()).toBe(true);
-    expect(wrapper.get('#settings-maintenance').isVisible()).toBe(false);
+    expect(wrapper.find('#settings-maintenance').exists()).toBe(false);
     expect(wrapper.find('button[aria-controls="settings-storage"]').exists()).toBe(false);
     await wrapper.get('input[aria-label="App Key"]').setValue('unsaved-key');
     const language = wrapper.get('select[aria-label="平台请求语言"]').element as HTMLSelectElement;
@@ -281,7 +279,7 @@ describe('SettingsView diagnostics', () => {
     wrapper.unmount();
   });
 
-  it('clears saved edits before success feedback without clearing later changes during metadata refresh', async () => {
+  it('marks saved edits clean without loading inventory or clearing later edits', async () => {
     const editing = new UnsavedEditingService();
     let finishInspect: (() => void) | undefined;
     let inspections = 0;
@@ -305,7 +303,8 @@ describe('SettingsView diagnostics', () => {
     await save.trigger('click');
     await flushPromises();
     expect(wrapper.text()).toContain('凭证与设置已加密保存');
-    expect(finishInspect).toBeDefined();
+    expect(finishInspect).toBeUndefined();
+    expect(inspections).toBe(0);
     expect(editing.dirty.value).toBe(false);
     expect(await editing.confirmLeave()).toBe(true);
     expect(editing.confirmationOpen.value).toBe(false);
@@ -422,7 +421,7 @@ describe('SettingsView diagnostics', () => {
     Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectUrl });
     Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectUrl });
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(anchorClick);
-    const wrapper = mountView();
+    const wrapper = mountView('mock', undefined, 'manual', 'node', { logs: true });
 
     await flushPromises();
     await vi.waitFor(() => {
@@ -455,7 +454,7 @@ describe('SettingsView diagnostics', () => {
   });
 
   it('lists and revokes optional host permissions in extension mode', async () => {
-    const wrapper = mountView('extension');
+    const wrapper = mountView('extension', undefined, 'manual', 'node', { logs: true });
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('https://images.example.com/*');
     });
@@ -471,7 +470,7 @@ describe('SettingsView diagnostics', () => {
   });
 
   it('requires an exact phrase before clearing all extension data', async () => {
-    const wrapper = mountView('extension');
+    const wrapper = mountView('extension', undefined, 'manual', 'node', { logs: true });
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('本地数据与隐私');
       expect(wrapper.text()).toContain('加密开放平台凭证与网关设置');
@@ -489,6 +488,9 @@ describe('SettingsView diagnostics', () => {
 
     await vi.waitFor(() => {
       expect(clearAllLocalData).toHaveBeenCalledOnce();
+      expect(toast.success).toHaveBeenCalledWith(
+        '扩展本地数据和额外主机权限已清除；重新加载后会再次显示首次使用说明。'
+      );
     });
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('扩展本地数据和额外主机权限已清除');
