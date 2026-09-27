@@ -1,0 +1,149 @@
+{
+  "context": { "identity": "task-actor", "gateway": "task-gateway", "storage": "task-storage" },
+  "productPage": {
+    "page": 1,
+    "pageSize": 100,
+    "total": 1,
+    "items": [
+      {
+        "id": "product-job-1",
+        "requestId": "11111111-1111-4111-8111-111111111111",
+        "productId": "1600000000001",
+        "operation": "publishProduct",
+        "status": "verifying",
+        "categoryId": 201712702,
+        "language": "en_US",
+        "payloadFingerprint": "private-payload-fingerprint",
+        "fieldExpectations": [{ "fieldId": "subject", "fingerprint": "private-field-fingerprint" }],
+        "encryptedProductId": "private-encrypted-product",
+        "targetDisplay": null,
+        "originalDisplay": null,
+        "traceId": "product-trace-1",
+        "reasonCode": "PRODUCT_PUBLISH_READBACK_PENDING",
+        "message": "private-provider-message",
+        "submittedTimeUtc": 1790000000000,
+        "lastCheckedTimeUtc": 1790000000100,
+        "completedTimeUtc": null,
+        "createTimeUtc": 1790000000000,
+        "updateTimeUtc": 1790000000200,
+        "creatorId": "private-creator",
+        "updaterId": "private-updater",
+        "revision": 1,
+        "remark": "private-remark"
+      }
+    ]
+  },
+  "gallery": [
+    {
+      "schemaVersion": 1,
+      "id": "gallery-task-1",
+      "direction": "import",
+      "storage": "s3",
+      "status": "attention",
+      "command": null,
+      "context": { "identity": "task-actor", "gateway": "task-gateway", "storage": "task-storage" },
+      "createTimeUtc": 1790000000000,
+      "updateTimeUtc": 1790000000300,
+      "revision": 1,
+      "archiveSha256": null,
+      "archiveName": "private-archive.zip",
+      "batchPrefix": "private-s3-prefix",
+      "conflictPolicy": "skip",
+      "createMissingGroups": true,
+      "errorCode": null,
+      "items": [
+        {
+          "id": "asset-1",
+          "kind": "asset",
+          "status": "unknown",
+          "mutation": true,
+          "sourcePath": "private-source-path",
+          "sourcePhotoId": "private-source-photo",
+          "sourceUrl": "https://example.invalid/private-source.png",
+          "sourceSize": 12,
+          "sourceEtag": "private-etag",
+          "sha256": null,
+          "contentType": "image/png",
+          "targetPath": "private-target-path",
+          "targetGroupId": "4001",
+          "parentItemId": null,
+          "fileName": "private-file.png",
+          "requestId": "gallery-request-1",
+          "fileId": null,
+          "errorCode": null,
+          "skipReason": null
+        }
+      ]
+    }
+  ],
+  "videoUploads": {
+    "uploadEnabled": false,
+    "tasks": [
+      {
+        "schemaVersion": 1,
+        "id": "22222222-2222-4222-8222-222222222222",
+        "context": { "identity": "task-actor", "gateway": "task-gateway", "storage": "task-storage" },
+        "revision": 1,
+        "title": "Example upload",
+        "source": "file",
+        "file": {
+          "fileName": "private-video.mp4",
+          "byteLength": 16,
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "sourceFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "objectKey": "private-s3-key",
+        "parts": [
+          {
+            "partNumber": 1,
+            "byteLength": 16,
+            "sha256": null,
+            "etag": "private-part-etag",
+            "status": "confirmed",
+            "requestId": "part-request-1"
+          }
+        ],
+        "status": "accepted",
+        "createTimeUtc": 1790000000000,
+        "updateTimeUtc": 1790000000400,
+        "acceptedTimeUtc": 1790000000400,
+        "videoId": null,
+        "traceId": "upload-trace-1",
+        "reasonCode": "VIDEO_PENDING_READBACK",
+        "requestId": "33333333-3333-4333-8333-333333333333"
+      }
+    ]
+  },
+  "associationReceipt": {
+    "version": 1,
+    "requestId": "association-request-1",
+    "request": {
+      "productId": "1600000000001",
+      "videoId": "7001",
+      "encryptedVideoId": "private-encrypted-video",
+      "type": "main",
+      "language": "en_US"
+    },
+    "state": "sending",
+    "outcome": "unknown",
+    "traceId": null,
+    "code": null,
+    "updatedAt": 1790000000500
+  },
+  "queue": [
+    {
+      "schemaVersion": 2,
+      "id": "bound-batch-item",
+      "title": "private-bound-title",
+      "xml": "<private>bound-product</private>",
+      "mutationJobId": "product-job-1"
+    },
+    {
+      "schemaVersion": 2,
+      "id": "private-unscoped-id",
+      "title": "private-unscoped-title",
+      "xml": "<private>other-account</private>",
+      "mutationJobId": null
+    }
+  ]
+}
