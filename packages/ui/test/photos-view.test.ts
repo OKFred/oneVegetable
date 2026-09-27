@@ -159,7 +159,7 @@ describe('PhotosView', () => {
     const toolbar = wrapper.get('[data-testid="photo-toolbar"]');
     const form = toolbar.get('form');
     expect(form.get('input').classes()).toContain('flex-1');
-    expect(form.find('input[aria-label="本页名称 / fileId"]').exists()).toBe(true);
+    expect(form.find('input[aria-label="本页名称 / 图片ID"]').exists()).toBe(true);
     expect(form.get('button[type="submit"]').text()).toBe('搜索');
     expect(form.text()).not.toContain('筛选');
     const actions = toolbar.get('[data-slot="list-toolbar-actions"]');
@@ -191,7 +191,7 @@ describe('PhotosView', () => {
       expect(request).toHaveBeenCalledWith('listPhotos', { page: 2, pageSize: 24, groupId: '-1' });
       expect(button(wrapper, '搜索').attributes('disabled')).toBeUndefined();
     });
-    await wrapper.get('input[aria-label="本页名称 / fileId"]').setValue('dehydrator');
+    await wrapper.get('input[aria-label="本页名称 / 图片ID"]').setValue('dehydrator');
     expect(wrapper.text()).toContain('solar-station-front.jpg');
     request.mockClear();
     await button(wrapper, '搜索').trigger('click');

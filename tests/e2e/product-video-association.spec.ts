@@ -7,10 +7,10 @@ test('video library selects a product without the editor and requires a separate
   await page.goto('/#/photos/videos');
   await page
     .getByTestId('video-library')
-    .getByRole('button', { name: '用于商品', exact: true })
+    .getByRole('button', { name: '关联商品', exact: true })
     .first()
     .click();
-  const dialog = page.getByRole('dialog', { name: '用于商品', exact: true });
+  const dialog = page.getByRole('dialog', { name: '关联商品', exact: true });
   await expect(dialog).toContainText('Example clothing video');
   await dialog.getByRole('button', { name: '选择', exact: true }).first().click();
   const section = dialog.getByTestId('product-video-association');
@@ -45,10 +45,10 @@ test('English dark mobile video-to-product selection fits the dialog and can be 
   await page.setViewportSize({ width: 390, height: 844 });
   await page
     .getByTestId('video-library')
-    .getByRole('button', { name: 'Use in product', exact: true })
+    .getByRole('button', { name: 'Link to product', exact: true })
     .first()
     .click();
-  const dialog = page.getByRole('dialog', { name: 'Use in product', exact: true });
+  const dialog = page.getByRole('dialog', { name: 'Link to product', exact: true });
   await dialog.getByRole('button', { name: 'Select', exact: true }).first().click();
   await expect(dialog.getByTestId('video-target-product')).toBeVisible();
   const bounds = await dialog.boundingBox();
@@ -56,7 +56,7 @@ test('English dark mobile video-to-product selection fits the dialog and can be 
   expect((bounds?.x ?? -1) >= 0 && (bounds?.width ?? 1000) <= 390).toBe(true);
   const overflow = await dialog.evaluate((node) => node.scrollWidth > node.clientWidth);
   expect(overflow).toBe(false);
-  await dialog.getByRole('button', { name: 'Close Use in product', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Close Link to product', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   expect(
     await page.evaluate(() =>

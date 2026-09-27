@@ -1,7 +1,7 @@
 export const photos = {
   previewInfo: { title: '素材信息', original: '在新标签页打开原始素材' },
   filters: {
-    search: '本页名称 / fileId',
+    search: '本页名称 / 图片ID',
     selectPage: '选择本页全部图片',
     ungrouped: '未分组',
     referenced: '已被商品引用',

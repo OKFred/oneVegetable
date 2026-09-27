@@ -135,7 +135,7 @@ describe('video to existing product dialog', () => {
     const before = s.request.mock.calls.length;
     uiI18n.global.locale.value = 'en-US';
     await flushPromises();
-    expect(s.body.text()).toContain('Use in product');
+    expect(s.body.text()).toContain('Link to product');
     expect(s.body.text()).toContain('Change product');
     expect(s.body.text()).toContain(videoId);
     expect(s.request).toHaveBeenCalledTimes(before);

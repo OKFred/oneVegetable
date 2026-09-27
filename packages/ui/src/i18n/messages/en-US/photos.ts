@@ -1,7 +1,7 @@
 export const photos = {
   previewInfo: { title: 'Asset information', original: 'Open original asset in a new tab' },
   filters: {
-    search: 'Name / fileId on this page',
+    search: 'Name / image ID on this page',
     selectPage: 'Select all images on this page',
     ungrouped: 'Ungrouped',
     referenced: 'Referenced by products',
