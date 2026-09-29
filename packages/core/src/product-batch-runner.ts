@@ -219,8 +219,9 @@ export class ProductBatchMaintenanceRunner {
         } catch (error) {
           item.error = error;
           if (error instanceof GatewayException && error.gatewayError.code === 'PRODUCT_BATCH_STOPPED') {
-            item.state = 'ready';
-            item.requestId = null;
+            // A stop during readback must not erase the already accepted write receipt.
+            item.state = item.job ? 'pending' : 'ready';
+            if (!item.job) item.requestId = null;
             this.stop();
             this.change();
             break;

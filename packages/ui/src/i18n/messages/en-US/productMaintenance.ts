@@ -46,7 +46,7 @@ export const productMaintenance = {
   slots: 'Keywords exceed existing fixed slots. Values will not be truncated and slots will not be invented.',
   unsafeXml: 'A safe incremental XML patch could not be generated.',
   batch: 'Batch {id}',
-  batchSummary: '{total} products · {verified} verified · {pending} unresolved',
+  batchSummary: '{total} loaded · {verified} verified · {pending} unresolved',
   onlyBatch: 'Show this batch',
   allBatches: 'All batches',
   stopped: 'Scheduling stopped. Preview and confirm unsent products again.'

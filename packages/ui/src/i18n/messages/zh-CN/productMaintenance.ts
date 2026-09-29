@@ -44,7 +44,7 @@ export const productMaintenance = {
   slots: '关键词超过现有固定槽位；不会截断或新建槽位。',
   unsafeXml: '无法生成安全的增量 XML。',
   batch: '批次 {id}',
-  batchSummary: '{total} 件 · 已确认 {verified} · 待处理 {pending}',
+  batchSummary: '已加载 {total} 件 · 已确认 {verified} · 待处理 {pending}',
   onlyBatch: '仅看此批次',
   allBatches: '全部批次',
   stopped: '已停止调度；未提交的商品需重新预览和确认。'

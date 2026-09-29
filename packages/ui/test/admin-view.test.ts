@@ -39,6 +39,9 @@ describe('AdminView and LogsView', () => {
     const requests = vi.spyOn(control, 'listRequestEvents');
     const audit = vi.spyOn(control, 'listAudit');
     const wrapper = mountView(control, true);
+    // Logs mounts its lazy panel only after the asynchronous session has resolved.
+    await flushPromises();
+    await vi.dynamicImportSettled();
     await vi.waitFor(() => {
       expect(wrapper.find('[data-testid="request-events"]').exists()).toBe(true);
     });

@@ -19,9 +19,13 @@ function setup() {
   let schema = xml;
   let mutationError: 'business' | 'unknown' | null = null;
   let updated: (() => void) | undefined;
+  let scoped: (() => void) | undefined;
   const product: Product = { ...fixture.product, status: 'online' };
   const gateway: GatewayClient = {
-    productOperationContext: () => Promise.resolve({ ...context }),
+    productOperationContext: () => {
+      scoped?.();
+      return Promise.resolve({ ...context });
+    },
     request<K extends OperationId>(
       operation: K,
       payload: RequestOf<K>,
@@ -106,6 +110,9 @@ function setup() {
     },
     afterWrite: (callback: () => void) => {
       updated = callback;
+    },
+    onScope: (callback: () => void) => {
+      scoped = callback;
     }
   };
 }
@@ -159,6 +166,22 @@ describe('batch maintenance scheduling', () => {
     await test.runner.execute();
     expect(test.jobs).toHaveLength(1);
     expect(test.runner.items[0]?.state).toBe('unknown');
+  });
+  it('retains the receipt when leaving between readback context validation and dispatch', async () => {
+    const test = setup();
+    await preview(test.runner);
+    test.afterWrite(() => {
+      test.onScope(() => {
+        test.runner.stop();
+      });
+    });
+    await test.runner.execute();
+    expect(test.jobs).toHaveLength(1);
+    expect(test.runner.items[0]?.state).toBe('pending');
+    expect(test.runner.items[0]?.requestId).toBe(test.jobs[0]?.requestId);
+    expect(test.runner.items[0]?.job?.id).toBe(test.jobs[0]?.id);
+    expect(test.runner.items[1]?.requestId).toBeNull();
+    expect(test.calls.filter((call) => call.operation === 'readback')).toHaveLength(0);
   });
   it('continues after a recorded explicit business rejection', async () => {
     const test = setup();

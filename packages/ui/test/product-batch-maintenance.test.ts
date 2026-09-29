@@ -151,4 +151,36 @@ describe('batch maintenance editor', () => {
     expect(vi.mocked(ProductBatchMaintenanceRunner.prototype).preview.mock.calls).toHaveLength(0);
     wrapper.unmount();
   });
+  it('does not submit or queue a takeover when another window owns the lock', async () => {
+    const request = vi.fn((_name: string, options: unknown, callback: (lock: null) => Promise<void>) => {
+      expect(options).toEqual({ ifAvailable: true });
+      return callback(null);
+    });
+    Object.defineProperty(globalThis.navigator, 'locks', { configurable: true, value: { request } });
+    const execute = vi.spyOn(ProductBatchMaintenanceRunner.prototype, 'execute').mockResolvedValue();
+    const wrapper = editor();
+    await wrapper.get('select').setValue('append');
+    await wrapper.get('input[aria-label="关键词 1"]').setValue('Linen');
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === '预览差异')
+      ?.trigger('click');
+    await flushPromises();
+    await vi.waitFor(() => {
+      expect(wrapper.findAll('input[type="checkbox"][value]')).toHaveLength(2);
+    });
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === '确认执行')
+      ?.trigger('click');
+    await flushPromises();
+    Array.from(document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button'))
+      .find((b) => b.textContent.trim() === '确认')
+      ?.click();
+    await flushPromises();
+    expect(request).toHaveBeenCalledOnce();
+    expect(execute).not.toHaveBeenCalled();
+    expect(wrapper.find('select').exists()).toBe(true);
+    wrapper.unmount();
+  });
 });

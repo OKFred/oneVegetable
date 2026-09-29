@@ -748,6 +748,7 @@ async function executeOperation(
   const mutationClient = AlibabaClient.create(
     { ...settings, endpoint: ALIBABA_SYNC_GATEWAY, signMethod: 'hmac-sha256' },
     {
+      requestId,
       maxAttempts: 1,
       protocol: 'sync',
       shouldRetry: () => false
