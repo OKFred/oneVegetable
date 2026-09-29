@@ -684,6 +684,7 @@ export const products = {
       export: '导出',
       group: '分组',
       more: '更多',
+      batchMaintenance: '批量维护',
       batchScorePending: '批量查询中…',
       batchScore: '批量查询产品分',
       batchOnline: '批量上架',

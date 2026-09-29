@@ -29,6 +29,11 @@ import { useProductInventory } from '../lib/product-inventory';
 import PlatformReadbackNotice from '../components/PlatformReadbackNotice.vue';
 import { productReadbackNotice } from '../lib/platform-readback-notice';
 const ProductInventoryDrawer = defineAsyncComponent(() => import('../components/ProductInventoryDrawer.vue'));
+const ProductBatchMaintenance = defineAsyncComponent(
+  () => import('../components/ProductBatchMaintenance.vue')
+);
+const maintenanceProducts = ref<Product[]>([]);
+const maintenanceEditor = ref<{ confirmLeave(): Promise<boolean>; stop(): void } | null>(null);
 const it = useInventoryI18n();
 const inventoryColumnIds = ['inventoryRecordCount', 'inventoryState', 'inventoryQueriedAt'] as const;
 const inventoryColumnsVisible = ref(false);
@@ -180,14 +185,20 @@ const ProductVideoAssociation = defineAsyncComponent(
   () => import('../components/ProductVideoAssociation.vue')
 );
 
-type Workspace = 'list' | 'publisher' | 'batch-publisher' | 'tasks';
+type Workspace = 'list' | 'publisher' | 'batch-publisher' | 'batch-maintenance' | 'tasks';
 type ProductActionConfirmation =
   | { kind: 'product'; draft: boolean; changedNames: string[] }
   | { kind: 'batch-publish'; target: ProductBatchPublishTarget; itemIds: string[] }
   | { kind: 'batch-display'; display: 'online' | 'offline'; productIds: string[] }
   | { kind: 'recover-display'; job: ProductMutationJob };
 
-const workspaceIds = new Set<Workspace>(['list', 'publisher', 'batch-publisher', 'tasks']);
+const workspaceIds = new Set<Workspace>([
+  'list',
+  'publisher',
+  'batch-publisher',
+  'batch-maintenance',
+  'tasks'
+]);
 const editorModes = new Set<ProductEditorMode>(['quick', 'guided', 'advanced']);
 const editorStepIds = new Set<ProductEditorStepId>(PRODUCT_EDITOR_STEP_IDS);
 
@@ -908,6 +919,9 @@ const currentPageProducts = computed(() =>
   filterCurrentPageProducts(products.data.value?.items ?? [], appliedFilters.value)
 );
 watch(accountBoundary, () => {
+  maintenanceEditor.value?.stop();
+  maintenanceProducts.value = [];
+  if (workspace.value === 'batch-maintenance') workspace.value = 'list';
   clearProductSelection();
   resetEditorSession({ categoryId: '', mode: 'quick' });
   showcase.invalidate();
@@ -2206,12 +2220,20 @@ async function startNewProduct(): Promise<void> {
 async function setWorkspace(nextWorkspace: Workspace): Promise<void> {
   if (nextWorkspace === workspace.value && !taskHistoryReadOnly.value) return;
   if (!(await editing.confirmLeave())) return;
+  if (maintenanceEditor.value && !(await maintenanceEditor.value.confirmLeave())) return;
+  maintenanceEditor.value?.stop();
   if (workspace.value === 'publisher') resetEditorSession({ categoryId: '', mode: 'quick' });
   if (nextWorkspace === 'batch-publisher' || nextWorkspace === 'tasks') reloadBatchItems();
   taskJobId.value = '';
   taskHistoryReadOnly.value = false;
   workspace.value = nextWorkspace;
   updateProductHash('push');
+}
+
+async function openBatchMaintenance(): Promise<void> {
+  if (!selectedProducts.value.length || selectedProducts.value.length > 30) return;
+  maintenanceProducts.value = selectedProducts.value.map((product) => ({ ...product }));
+  await setWorkspace('batch-maintenance');
 }
 
 function setEditorMode(nextMode: ProductEditorMode): void {
@@ -2264,7 +2286,9 @@ async function syncProductsFromHash(): Promise<boolean> {
   if (route?.page !== 'products' || route.segments.length === 0) return false;
   const requestedWorkspace = route.segments[0];
   const nextWorkspace =
-    requestedWorkspace && workspaceIds.has(requestedWorkspace as Workspace)
+    requestedWorkspace &&
+    workspaceIds.has(requestedWorkspace as Workspace) &&
+    (requestedWorkspace !== 'batch-maintenance' || maintenanceProducts.value.length > 0)
       ? (requestedWorkspace as Workspace)
       : 'list';
   const shouldCanonicalizeWorkspace = requestedWorkspace !== nextWorkspace;
@@ -2665,6 +2689,12 @@ onBeforeUnmount(() => {
                     :side-offset="6"
                     align="end"
                   >
+                    <DropdownMenuItem
+                      class="flex cursor-pointer items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent data-[disabled]:opacity-50"
+                      :disabled="selectedProducts.length === 0 || selectedProducts.length > 30"
+                      @select="openBatchMaintenance"
+                      >{{ t('products.view.page.batchMaintenance') }}</DropdownMenuItem
+                    >
                     <DropdownMenuItem
                       class="flex cursor-pointer items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent"
                       @select="openShowcase()"
@@ -3124,6 +3154,14 @@ onBeforeUnmount(() => {
     }}</Button>
   </template>
 
+  <ProductBatchMaintenance
+    v-else-if="workspace === 'batch-maintenance'"
+    ref="maintenanceEditor"
+    :products="maintenanceProducts"
+    :language="language"
+    @close="setWorkspace('list')"
+    @tasks="setWorkspace('tasks')"
+  />
   <template v-else-if="workspace === 'batch-publisher'">
     <ProductBatchPublisher
       :items="batchItems"

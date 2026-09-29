@@ -16,6 +16,8 @@
     "./product-operation-context": "./src/product-operation-context.ts",
     "./product-update-outcome": "./src/product-update-outcome.ts",
     "./product-batch-maintenance": "./src/product-batch-maintenance.ts",
+    "./product-batch-runner": "./src/product-batch-runner.ts",
+    "./mock-product-maintenance": "./src/mock-product-maintenance.ts",
     "./video": "./src/video.ts",
     "./video-upload": "./src/video-upload.ts",
     "./video-upload-service": "./src/video-upload-service.ts",

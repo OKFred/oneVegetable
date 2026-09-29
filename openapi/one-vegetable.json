@@ -329,17 +329,15 @@
     },
     "/product-mutation-jobs/context/get": {
       "post": {
-        "summary": "Read opaque product operation account context",
+        "summary": "Read opaque product operation context",
         "operationId": "getProductOperationContext",
         "requestBody": {
           "required": true,
-          "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/GalleryTransferContextRequest" } }
-          }
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RequestEnvelope" } } }
         },
         "responses": {
           "200": {
-            "description": "Current workbench and Alibaba configuration identities",
+            "description": "Opaque actor and credential configuration, never secrets",
             "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
             "content": {
               "application/json": {
@@ -350,17 +348,44 @@
           "400": {
             "description": "Invalid request",
             "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiFailure" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
           },
           "401": {
             "description": "Authentication required",
             "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiFailure" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
           },
           "503": {
             "description": "Credential context unavailable",
             "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiFailure" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -17216,25 +17241,6 @@
           "extensionId": { "type": "string", "pattern": "^[a-p]{32}$" }
         }
       },
-      "ProductOperationContext": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["identity", "gateway"],
-        "properties": {
-          "identity": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-          "gateway": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
-        }
-      },
-      "ProductOperationContextResponse": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["requestId", "ok", "data"],
-        "properties": {
-          "requestId": { "$ref": "#/components/schemas/RequestId" },
-          "ok": { "const": true },
-          "data": { "$ref": "#/components/schemas/ProductOperationContext" }
-        }
-      },
       "GalleryTransferContext": {
         "type": "object",
         "additionalProperties": false,
@@ -18654,6 +18660,25 @@
           "traceId": { "type": "string" },
           "success": { "type": "boolean" },
           "job": { "$ref": "#/components/schemas/ProductMutationJob" }
+        }
+      },
+      "ProductOperationContext": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["identity", "gateway"],
+        "properties": {
+          "identity": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "gateway": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        }
+      },
+      "ProductOperationContextResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "ok", "data"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "ok": { "const": true },
+          "data": { "$ref": "#/components/schemas/ProductOperationContext" }
         }
       },
       "ProductPage": {

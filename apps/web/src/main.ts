@@ -17,7 +17,7 @@ import {
   type OnboardingRepository,
   type SettingsRepository
 } from '@one-vegetable/core';
-import { MockGatewayClient } from '@one-vegetable/core/mock';
+import { MockProductMaintenanceGateway } from '@one-vegetable/core/mock-product-maintenance';
 import {
   BffProductDescriptionTemplateClient,
   CompositeProductDescriptionTemplateClient,
@@ -73,7 +73,7 @@ const gateway =
         csrfToken: () => control?.csrfToken() ?? readCookie('ov_csrf'),
         ...(authenticationEvents ? { onAuthenticationRequired: authenticationEvents.notify } : {})
       })
-    : new MockGatewayClient();
+    : new MockProductMaintenanceGateway();
 const bffTemplates =
   gatewayMode === 'bff'
     ? new BffProductDescriptionTemplateClient({
@@ -91,7 +91,9 @@ const productMutationJobs =
         csrfToken: () => control?.csrfToken() ?? readCookie('ov_csrf'),
         ...(authenticationEvents ? { onAuthenticationRequired: authenticationEvents.notify } : {})
       })
-    : undefined;
+    : gateway instanceof MockProductMaintenanceGateway
+      ? gateway.productMutationJobs
+      : undefined;
 const bundledTemplates = new MemoryProductDescriptionTemplateClient(
   BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates,
   { writable: false, actorId: 'system:bundled' }

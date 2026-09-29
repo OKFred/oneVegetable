@@ -36,6 +36,8 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     properties: {
       requestId: { $ref: '#/components/schemas/RequestId' },
       operation: { type: 'string', minLength: 1 },
+      productContext: { $ref: '#/components/schemas/ProductOperationContext' },
+      productBatchId: { $ref: '#/components/schemas/RequestId' },
       galleryContext: { $ref: '#/components/schemas/GalleryTransferContext' },
       payload: { type: 'object', additionalProperties: true }
     }
@@ -315,6 +317,25 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       fingerprint: { type: 'string', pattern: '^[0-9a-f]{64}$' }
     }
   };
+  schemas.ProductOperationContext = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['identity', 'gateway'],
+    properties: {
+      identity: { type: 'string', pattern: '^[a-f0-9]{64}$' },
+      gateway: { type: 'string', pattern: '^[a-f0-9]{64}$' }
+    }
+  };
+  schemas.ProductOperationContextResponse = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['requestId', 'ok', 'data'],
+    properties: {
+      requestId: { $ref: '#/components/schemas/RequestId' },
+      ok: { const: true },
+      data: { $ref: '#/components/schemas/ProductOperationContext' }
+    }
+  };
   schemas.ProductMutationJob = {
     type: 'object',
     additionalProperties: false,
@@ -345,6 +366,8 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       'remark'
     ],
     properties: {
+      batchId: { type: ['string', 'null'], format: 'uuid' },
+      productContext: { oneOf: [{ $ref: '#/components/schemas/ProductOperationContext' }, { type: 'null' }] },
       id: { type: 'string', format: 'uuid' },
       requestId: { $ref: '#/components/schemas/RequestId' },
       productId: { type: 'string', pattern: '^(?:[1-9][0-9]*|pending:[0-9a-f]{64})$' },
@@ -600,6 +623,25 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
           '400': envelopeResponse('Invalid request'),
           '403': envelopeResponse('Operation denied'),
           '503': envelopeResponse('Backend unavailable')
+        }
+      }
+    },
+    '/product-mutation-jobs/context/get': {
+      post: {
+        summary: 'Read opaque product operation context',
+        operationId: 'getProductOperationContext',
+        requestBody: requestBody('RequestEnvelope'),
+        responses: {
+          '200': {
+            description: 'Opaque actor and credential configuration, never secrets',
+            headers: { 'X-Request-ID': { schema: { $ref: '#/components/schemas/RequestId' } } },
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ProductOperationContextResponse' } }
+            }
+          },
+          '400': envelopeResponse('Invalid request'),
+          '401': envelopeResponse('Authentication required'),
+          '503': envelopeResponse('Credential context unavailable')
         }
       }
     },

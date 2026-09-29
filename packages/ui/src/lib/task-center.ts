@@ -52,6 +52,7 @@ export interface TaskSummary {
     resourceId: string | null;
   }[];
   batchItemId?: string;
+  maintenanceBatchId?: string;
 }
 
 export interface TaskCenterSnapshot {
@@ -156,7 +157,7 @@ function summary(
 }
 
 /** A recovered write was rolled back, not successfully applied. Only verified means confirmed. */
-export function mapProductTask(job: ProductMutationJob): TaskSummary {
+export function mapProductTask(job: ProductMutationJob, context?: GalleryTransferContext): TaskSummary {
   const states: Record<ProductMutationJob['status'], TaskState> = {
     submitted: 'submitted',
     auditing: 'submitted',
@@ -176,14 +177,20 @@ export function mapProductTask(job: ProductMutationJob): TaskSummary {
     job.updateTimeUtc
   );
   item.operation = job.operation;
-  // The source is actor/workbench-visible history; no Alibaba gateway fingerprint is stored.
+  // Old receipts never infer ownership. New maintenance receipts ignore unrelated S3 changes.
   item.accountMatch = 'unknown';
+  if (job.productContext && context) {
+    item.contextChanged =
+      job.productContext.identity !== context.identity || job.productContext.gateway !== context.gateway;
+    item.accountMatch = item.contextChanged ? 'changed' : 'matched';
+  }
+  if (job.batchId) item.maintenanceBatchId = job.batchId;
   item.lastCheckedAt = timestamp(job.lastCheckedTimeUtc) ? job.lastCheckedTimeUtc : null;
   item.requestId = identifier(job.requestId);
   item.traceId = identifier(job.traceId);
   item.resourceId = identifier(job.productId);
   item.reasonCode = taskReasonCode(job.reasonCode);
-  item.guidance = taskGuidance(item.reasonCode, item.status);
+  item.guidance = taskGuidance(item.reasonCode, item.status, item.contextChanged);
   return item;
 }
 
@@ -500,7 +507,7 @@ export async function loadTaskCenterSnapshot(
         errors: Warning[] = [];
       for (const job of page.items.slice(0, TASK_PRODUCT_PAGE_SIZE)) {
         try {
-          items.push(mapProductTask(job));
+          items.push(mapProductTask(job, context));
         } catch {
           errors.push(warning('product', 'TASK_PRODUCT_INVALID'));
         }

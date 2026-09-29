@@ -761,6 +761,7 @@ export const products = {
       export: 'Export',
       group: 'Groups',
       more: 'More',
+      batchMaintenance: 'Batch maintenance',
       batchScorePending: 'Querying scores…',
       batchScore: 'Query product scores',
       batchOnline: 'List selected',

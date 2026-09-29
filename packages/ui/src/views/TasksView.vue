@@ -23,6 +23,7 @@ import {
 } from '../lib/task-center';
 import type { DataColumn } from '../lib/table';
 import { useTaskI18n } from '../i18n/tasks';
+import { useProductMaintenanceI18n } from '../i18n/productMaintenance';
 import { hasUiTranslation, useUiI18n } from '../i18n';
 import DataTable from '../components/DataTable.vue';
 import ListToolbar from '../components/ListToolbar.vue';
@@ -44,6 +45,20 @@ const { alibabaLanguage } = useAppPreferences();
 const tt = useTaskI18n();
 const { t } = useUiI18n();
 const items = shallowRef<TaskSummary[]>([]);
+const mt = useProductMaintenanceI18n();
+const batchFilter = ref('');
+const maintenanceBatches = computed(() => {
+  const groups = new Map<string, TaskSummary[]>();
+  for (const item of items.value)
+    if (item.maintenanceBatchId)
+      groups.set(item.maintenanceBatchId, [...(groups.get(item.maintenanceBatchId) ?? []), item]);
+  return [...groups].map(([id, items]) => ({
+    id,
+    total: items.length,
+    verified: items.filter((i) => i.status === 'confirmed').length,
+    pending: items.filter((i) => ['submitted', 'attention', 'running'].includes(i.status)).length
+  }));
+});
 const context = shallowRef<GalleryTransferContext | null>(null);
 const errors = ref<{ source: TaskSource; code: string }[]>([]);
 const unscopedQueueCount = ref(0),
@@ -99,13 +114,14 @@ const filtered = computed(() => {
   return items.value
     .filter(
       (item) =>
+        (!batchFilter.value || item.maintenanceBatchId === batchFilter.value) &&
         (!f.source || item.source === f.source) &&
         (!f.status || item.status === f.status) &&
         item.updatedAt >= from &&
         item.updatedAt <= to &&
         (!query ||
-          [item.title, item.sourceId, item.resourceId, item.requestId].some((value) =>
-            value?.toLocaleLowerCase().includes(query)
+          [item.title, item.sourceId, item.resourceId, item.requestId, item.maintenanceBatchId].some(
+            (value) => value?.toLocaleLowerCase().includes(query)
           ))
     )
     .toSorted(
@@ -358,6 +374,30 @@ const columns = computed<DataColumn<TaskSummary>[]>(() => [
       <h2 class="text-2xl font-semibold">{{ tt('title') }}</h2>
       <p class="mt-1 text-sm text-muted-foreground">{{ tt('description') }}</p>
     </header>
+    <div v-if="maintenanceBatches.length" class="flex flex-wrap gap-2" aria-live="polite">
+      <Button
+        variant="outline"
+        size="sm"
+        @click="
+          batchFilter = '';
+          page = 1;
+        "
+        >{{ mt('allBatches') }}</Button
+      >
+      <Button
+        v-for="batch in maintenanceBatches"
+        :key="batch.id"
+        variant="outline"
+        size="sm"
+        :aria-pressed="batchFilter === batch.id"
+        @click="
+          batchFilter = batch.id;
+          page = 1;
+        "
+      >
+        {{ mt('batch', { id: batch.id.slice(0, 8) }) }} · {{ mt('batchSummary', batch) }}
+      </Button>
+    </div>
     <p v-if="failed" role="alert" class="rounded-md border border-destructive/40 p-3 text-sm">
       {{ tt('unavailable') }}
       <Button size="sm" variant="ghost" @click="goSettings">{{ tt('settings') }}</Button>

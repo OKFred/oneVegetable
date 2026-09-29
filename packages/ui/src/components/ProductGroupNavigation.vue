@@ -19,6 +19,7 @@ const props = defineProps<{ modelValue: number | null }>();
 const emit = defineEmits<{
   'update:modelValue': [groupId: number | null];
   select: [group: ProductGroup | null, depth: 0 | 1 | 2 | 3];
+  'select-path': [path: ProductGroup[]];
 }>();
 
 const { gateway } = useServices();
@@ -68,6 +69,18 @@ function canToggle(row: ProductGroupRow): boolean {
 function selectGroup(group: ProductGroup | null, depth: 0 | 1 | 2 | 3): void {
   emit('update:modelValue', group?.id ?? null);
   emit('select', group, depth);
+  function findPath(groups: ProductGroup[], parents: ProductGroup[] = []): ProductGroup[] | null {
+    for (const item of groups) {
+      const path = [...parents, item];
+      if (item.id === group?.id) return path;
+      if (path.length < 3) {
+        const found = findPath(childrenFor(item), path);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+  emit('select-path', group ? (findPath(roots.data.value ?? []) ?? []) : []);
 }
 
 async function toggleGroup(row: ProductGroupRow): Promise<void> {

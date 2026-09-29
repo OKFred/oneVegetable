@@ -1,0 +1,49 @@
+{
+  "settings": {
+    "appKey": "batch-e2e",
+    "appSecret": "batch-fixture-secret",
+    "accessToken": "batch-fixture-token",
+    "endpoint": "https://eco.taobao.com/router/rest",
+    "signMethod": "hmac"
+  },
+  "accepted": { "biz_success": true, "product_id": "301", "trace_id": "batch-fixture" },
+  "xml": "<itemSchema><field id=\"subject\" type=\"input\"><value>Cotton shirt</value></field><field id=\"productGroup\" type=\"input\"><value>10</value></field><field id=\"productKeywords\" type=\"multiInput\"><values><value>Cotton shirt</value><value>Soft</value></values></field></itemSchema>",
+  "product": {
+    "id": "301",
+    "encryptedId": null,
+    "subject": "Cotton shirt",
+    "groupName": "Shirts",
+    "status": "online",
+    "score": 0,
+    "imageUrl": null,
+    "detailUrl": null,
+    "updatedAt": "2026-09-30T00:00:00Z",
+    "categoryId": 123
+  },
+  "job": {
+    "id": "f381a8a4-16ae-46ce-82b2-9104356996a9",
+    "requestId": "f381a8a4-16ae-46ce-82b2-9104356996a9",
+    "productId": "301",
+    "operation": "updateProduct",
+    "status": "auditing",
+    "categoryId": 123,
+    "language": "en_US",
+    "payloadFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "fieldExpectations": [],
+    "encryptedProductId": null,
+    "targetDisplay": null,
+    "originalDisplay": null,
+    "traceId": "batch-test",
+    "reasonCode": null,
+    "message": null,
+    "submittedTimeUtc": 1,
+    "lastCheckedTimeUtc": null,
+    "completedTimeUtc": null,
+    "createTimeUtc": 1,
+    "updateTimeUtc": 1,
+    "creatorId": "admin",
+    "updaterId": "admin",
+    "revision": 1,
+    "remark": null
+  }
+}

@@ -1,5 +1,13 @@
 export const errors = {
   codes: {
+    PRODUCT_CONTEXT_CHANGED: '账号或 Alibaba 凭据配置已变化。请重新选择商品并预览，不要重发旧任务。',
+    PRODUCT_CONTEXT_UNAVAILABLE: '无法读取当前账号上下文。请检查登录和 Alibaba 凭据配置。',
+    PRODUCT_CONTEXT_INVALID: '商品操作上下文无效，请重新打开批量维护。',
+    PRODUCT_BATCH_STATE_CHANGED: '商品类目或状态不再满足维护条件。请刷新列表并重新预览。',
+    PRODUCT_BATCH_RECEIPT_MISSING: '未获得可靠的任务回执，结果不明。请在任务中心核对，不要重复提交。',
+    PRODUCT_BATCH_ALREADY_STARTED: '本次执行已开始或正在运行。未提交商品请重新预览。',
+    PRODUCT_BATCH_RANGE_INVALID: '请从当前页选择 1–30 件不同商品。',
+    PRODUCT_BATCH_STOPPED: '后续提交已停止。',
     S3_REQUEST_FAILED: 'S3 未能完成请求。请查看存储错误码并核对任务结果，不要直接重复上传。',
     S3_CONTENT_LENGTH_REQUIRED: '存储未收到请求长度。请管理员检查反向代理的分块传输设置；不要重复上传。',
     S3_PERMISSION_REQUIRED: '请在设置中重新保存 S3 配置，并允许访问对应存储域名。',

@@ -8,6 +8,7 @@ import type { DataColumn } from '../lib/table';
 import { formatDateTime } from '../lib/date-time';
 import { useUiI18n } from '../i18n';
 import { useTaskI18n } from '../i18n/tasks';
+import { useProductMaintenanceI18n } from '../i18n/productMaintenance';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
@@ -38,6 +39,19 @@ const emit = defineEmits<{
 }>();
 const { t } = useUiI18n();
 const tt = useTaskI18n();
+const mt = useProductMaintenanceI18n();
+const batchFilter = ref<string | null>(null);
+const batches = computed(() => {
+  const groups = new Map<string, ProductMutationJob[]>();
+  for (const job of props.jobs)
+    if (job.batchId) groups.set(job.batchId, [...(groups.get(job.batchId) ?? []), job]);
+  return [...groups].map(([id, jobs]) => ({
+    id,
+    total: jobs.length,
+    verified: jobs.filter((job) => job.status === 'verified').length,
+    pending: jobs.filter((job) => productMutationJobIsBlocking(job.status)).length
+  }));
+});
 const filterOpen = ref(false);
 const targetNotice = ref<HTMLElement | null>(null);
 const targetJob = computed(() => props.jobs.find((job) => job.id === props.jobId));
@@ -72,7 +86,10 @@ function applyFilters(): void {
 }
 const filteredJobs = computed(() =>
   props.jobs.filter((job) =>
-    props.jobId ? job.id === props.jobId : !statuses.value.length || statuses.value.includes(job.status)
+    props.jobId
+      ? job.id === props.jobId
+      : (!batchFilter.value || job.batchId === batchFilter.value) &&
+        (!statuses.value.length || statuses.value.includes(job.status))
   )
 );
 const pendingCount = computed(
@@ -226,6 +243,18 @@ const batchColumns = computed<DataColumn<ProductBatchPublishItem>[]>(() => [
 
 <template>
   <div class="space-y-5">
+    <div v-if="batches.length" class="flex flex-wrap gap-2">
+      <Button variant="outline" @click="batchFilter = null">{{ mt('allBatches') }}</Button>
+      <Button
+        v-for="batch in batches"
+        :key="batch.id"
+        :variant="batchFilter === batch.id ? 'secondary' : 'outline'"
+        :title="batch.id"
+        @click="batchFilter = batch.id"
+      >
+        {{ mt('batch', { id: batch.id.slice(0, 8) }) }} · {{ mt('batchSummary', batch) }}
+      </Button>
+    </div>
     <div class="grid gap-3 sm:grid-cols-3">
       <Card class="p-4"
         ><p class="text-sm text-muted-foreground">{{ t('products.tasks.pending') }}</p>

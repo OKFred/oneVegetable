@@ -110,7 +110,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Read opaque product operation account context */
+        /** Read opaque product operation context */
         post: operations["getProductOperationContext"];
         delete?: never;
         options?: never;
@@ -9633,16 +9633,6 @@ export interface components {
             pairingCode: string;
             extensionId: string;
         };
-        ProductOperationContext: {
-            identity: string;
-            gateway: string;
-        };
-        ProductOperationContextResponse: {
-            requestId: components["schemas"]["RequestId"];
-            /** @constant */
-            ok: true;
-            data: components["schemas"]["ProductOperationContext"];
-        };
         GalleryTransferContext: {
             identity: string;
             gateway: string;
@@ -10374,6 +10364,16 @@ export interface components {
             traceId: string;
             success: boolean;
             job?: components["schemas"]["ProductMutationJob"];
+        };
+        ProductOperationContext: {
+            identity: string;
+            gateway: string;
+        };
+        ProductOperationContextResponse: {
+            requestId: components["schemas"]["RequestId"];
+            /** @constant */
+            ok: true;
+            data: components["schemas"]["ProductOperationContext"];
         };
         ProductPage: components["schemas"]["PageMeta"] & {
             items: components["schemas"]["Product"][];
@@ -11359,11 +11359,11 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["GalleryTransferContextRequest"];
+                "application/json": components["schemas"]["RequestEnvelope"];
             };
         };
         responses: {
-            /** @description Current workbench and Alibaba configuration identities */
+            /** @description Opaque actor and credential configuration, never secrets */
             200: {
                 headers: {
                     "X-Request-ID"?: components["schemas"]["RequestId"];
@@ -11380,7 +11380,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApiFailure"];
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
                 };
             };
             /** @description Authentication required */
@@ -11390,7 +11390,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApiFailure"];
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
                 };
             };
             /** @description Credential context unavailable */
@@ -11400,7 +11400,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApiFailure"];
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
                 };
             };
         };

@@ -77,7 +77,10 @@ import type { AlibabaCredentialStatus, AsyncAlibabaCredentialProvider } from './
 import type { GatewayCredentialService, GatewayCredentialSummary } from './gateway/credential-vault';
 import type { GatewayMode } from './runtime-config';
 import type { ProductDescriptionTemplateRepository } from './product-description-templates/repository';
-import type { ProductMutationJobRepository } from './product-mutations/repository';
+import {
+  ProductMutationJobConflictError,
+  type ProductMutationJobRepository
+} from './product-mutations/repository';
 import type { RealMutationControlService } from './safety/real-mutation-control';
 import type { AlibabaCredentialAcquisitionService } from './alibaba-credential-acquisition/service';
 import type { MetaSocialService } from './social-meta/service';
@@ -675,7 +678,8 @@ export function createApiApp(options: ApiAppOptions): Hono {
       const status =
         error instanceof AuthError
           ? error.status
-          : error instanceof ProductMutationAlreadyInProgressError
+          : error instanceof ProductMutationAlreadyInProgressError ||
+              error instanceof ProductMutationJobConflictError
             ? 409
             : error instanceof ProductDisplayNoChangeError ||
                 error instanceof ProductDisplayTargetMismatchError
@@ -686,7 +690,8 @@ export function createApiApp(options: ApiAppOptions): Hono {
       const code =
         error instanceof AuthError
           ? error.code
-          : error instanceof ProductMutationAlreadyInProgressError
+          : error instanceof ProductMutationAlreadyInProgressError ||
+              error instanceof ProductMutationJobConflictError
             ? 'PRODUCT_MUTATION_IN_PROGRESS'
             : error instanceof ProductDisplayNoChangeError
               ? 'PRODUCT_DISPLAY_NO_CHANGE'
@@ -742,7 +747,9 @@ export function createApiApp(options: ApiAppOptions): Hono {
   return app;
 }
 
-function gatewayStatus(code: string): 400 | 403 | 429 | 502 | 503 | 504 {
+function gatewayStatus(code: string): 400 | 403 | 409 | 429 | 502 | 503 | 504 {
+  if (code === 'PRODUCT_CONTEXT_CHANGED') return 409;
+  if (code === 'PRODUCT_CONTEXT_INVALID') return 400;
   if (code === 'REQUEST_CONTRACT_INVALID' || code === 'INVALID_OPERATION_REQUEST') return 400;
   if (
     code === 'CAPABILITY_UNKNOWN' ||

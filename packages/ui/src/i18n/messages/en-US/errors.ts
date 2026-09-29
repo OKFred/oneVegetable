@@ -1,5 +1,17 @@
 export const errors = {
   codes: {
+    PRODUCT_CONTEXT_CHANGED:
+      'Your account or Alibaba credentials changed. Select products and preview again; do not resubmit old tasks.',
+    PRODUCT_CONTEXT_UNAVAILABLE:
+      'The account context is unavailable. Check your login and Alibaba credentials.',
+    PRODUCT_CONTEXT_INVALID: 'Invalid product operation context. Reopen batch maintenance.',
+    PRODUCT_BATCH_STATE_CHANGED:
+      'The product category or status no longer allows maintenance. Refresh the list and preview again.',
+    PRODUCT_BATCH_RECEIPT_MISSING:
+      'No reliable task receipt was received. Check Product tasks; do not submit again.',
+    PRODUCT_BATCH_ALREADY_STARTED: 'This run has already started. Preview unsent products again.',
+    PRODUCT_BATCH_RANGE_INVALID: 'Select 1–30 distinct products from the current page.',
+    PRODUCT_BATCH_STOPPED: 'Subsequent submissions have stopped.',
     S3_CONTENT_LENGTH_REQUIRED:
       'Storage did not receive Content-Length. Ask your administrator to check proxy chunked transfer settings; do not retry the upload.',
     S3_REQUEST_FAILED:
