@@ -119,6 +119,12 @@ export class AlibabaReadGatewayClient implements GatewayClient {
     context?: GatewayRequestContext
   ): Promise<ResponseOf<K>> {
     assertGalleryContextId(context?.galleryContext?.gateway, await this.galleryGatewayContextId());
+    if (context?.productContext && context.productContext.gateway !== (await this.galleryGatewayContextId()))
+      throw new GatewayException({
+        code: 'PRODUCT_CONTEXT_CHANGED',
+        message: 'PRODUCT_CONTEXT_CHANGED',
+        retryable: false
+      });
     if (operation === 'listCapabilities') return listCapabilitiesWithAccountVerification();
     if (operation === 'getCapabilityDefinition') {
       const method = readString(readRecord(request), 'method');
@@ -129,7 +135,8 @@ export class AlibabaReadGatewayClient implements GatewayClient {
     const client = this.createClient(
       context,
       'top',
-      operation === 'getProductInventory' ||
+      context?.productContext !== undefined ||
+        operation === 'getProductInventory' ||
         operation === 'associateProductVideo' ||
         operation === 'verifyProductVideoAssociation' ||
         VIDEO_OPERATIONS.some((value) => value === operation)
@@ -152,7 +159,7 @@ export class AlibabaReadGatewayClient implements GatewayClient {
         ? { ...this.#credentials, endpoint: ALIBABA_SYNC_GATEWAY, signMethod: 'hmac-sha256' as const }
         : this.#credentials;
     return new AlibabaClient(credentials, this.#network, {
-      maxAttempts,
+      maxAttempts: context?.productContext ? 1 : maxAttempts,
       shouldRetry: (method, error) =>
         error.retryable &&
         !VIDEO_METHODS.some((value) => value === method) &&

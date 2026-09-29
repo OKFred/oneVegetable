@@ -4,6 +4,9 @@ import {
   GatewayException
 } from '@one-vegetable/core';
 import { DOMParser as ServerDomParser } from 'linkedom';
+import { productUpdateFailureStatus } from '@one-vegetable/core/product-update-outcome';
+import type { ProductOperationOptions } from '@one-vegetable/core/product-operation-context';
+import { opaqueGalleryId } from '@one-vegetable/core/gallery-transfer-context';
 
 import type {
   ProductMutationJob,
@@ -35,14 +38,22 @@ const SERVER_XML_PARSER: ProductSchemaXmlParser = {
 export interface ProductMutationGateway {
   publish(request: SchemaPublishRequest, requestId: string): Promise<ProductMutationResult>;
   saveDraft(request: SchemaPublishRequest, requestId: string): Promise<ProductMutationResult>;
-  update(request: ProductSchemaUpdateRequest, requestId: string): Promise<ProductMutationResult>;
+  update(
+    request: ProductSchemaUpdateRequest,
+    requestId: string,
+    options?: ProductOperationOptions
+  ): Promise<ProductMutationResult>;
   get(
     productId: string,
     draft: boolean,
     language: 'zh_CN' | 'en_US',
     requestId: string
   ): Promise<ProductDetail>;
-  render(request: ProductSchemaRenderRequest, requestId: string): Promise<ProductSchema>;
+  render(
+    request: ProductSchemaRenderRequest,
+    requestId: string,
+    options?: ProductOperationOptions
+  ): Promise<ProductSchema>;
   updateDisplay(request: ProductDisplayRequest, requestId: string): Promise<ProductDisplayMutationResult>;
   list(request: ProductListQuery, requestId: string): Promise<ProductPage>;
 }
@@ -211,6 +222,7 @@ export class ProductMutationLifecycleService {
     requestId: string;
     actor: AuthPrincipal;
     request: ProductSchemaUpdateRequest;
+    options?: ProductOperationOptions;
   }): Promise<ProductMutationSubmissionResult> {
     const blocking = await this.#repository.findBlocking(input.request.productId);
     if (blocking) throw new ProductMutationAlreadyInProgressError(blocking);
@@ -219,6 +231,8 @@ export class ProductMutationLifecycleService {
       SERVER_XML_PARSER
     );
     let job = await this.#repository.create({
+      ...(input.options?.productContext ? { productContext: input.options.productContext } : {}),
+      ...(input.options?.productBatchId ? { batchId: input.options.productBatchId } : {}),
       requestId: input.requestId,
       productId: input.request.productId,
       categoryId: input.request.categoryId,
@@ -229,7 +243,7 @@ export class ProductMutationLifecycleService {
     });
     await this.#audit(job, input.requestId, input.actor.actorId, 'submitted', null);
     try {
-      const result = await this.#gateway.update(input.request, input.requestId);
+      const result = await this.#gateway.update(input.request, input.requestId, input.options);
       job = await this.#repository.transition({
         id: job.id,
         expectedRevision: job.revision,
@@ -246,13 +260,13 @@ export class ProductMutationLifecycleService {
       const failed = await this.#repository.transition({
         id: job.id,
         expectedRevision: job.revision,
-        status: 'failed',
+        status: productUpdateFailureStatus(error),
         actorId: input.actor.actorId,
         traceId: details.traceId,
         reasonCode: details.code,
         message: details.message
       });
-      await this.#audit(failed, input.requestId, input.actor.actorId, 'failed', job.revision);
+      await this.#audit(failed, input.requestId, input.actor.actorId, failed.status, job.revision);
       throw error;
     }
   }
@@ -264,6 +278,15 @@ export class ProductMutationLifecycleService {
     expectedRevision: number;
   }): Promise<ProductMutationJob> {
     const current = await this.#requireVisible(input.id, input.actor);
+    if (
+      current.productContext &&
+      current.productContext.identity !== (await opaqueGalleryId(input.actor.actorId))
+    )
+      throw new GatewayException({
+        code: 'PRODUCT_CONTEXT_CHANGED',
+        message: 'PRODUCT_CONTEXT_CHANGED',
+        retryable: false
+      });
     if (current.revision !== input.expectedRevision) throw new ProductMutationRevisionConflictError();
     if (current.status === 'verified' || current.status === 'recovered' || current.status === 'failed') {
       return current;
@@ -282,7 +305,8 @@ export class ProductMutationLifecycleService {
           categoryId: current.categoryId,
           language: current.language
         },
-        input.requestId
+        input.requestId,
+        current.productContext ? { productContext: current.productContext } : undefined
       );
       const comparison = await compareProductMutationFingerprints(
         rendered.xml,
@@ -309,6 +333,7 @@ export class ProductMutationLifecycleService {
       return updated;
     } catch (error: unknown) {
       const details = errorDetails(error);
+      if (details.code === 'PRODUCT_CONTEXT_CHANGED') throw error;
       const underAudit = details.code === 'PUB_BIZCHECK_PRODUCT_IN_AUDITING';
       const status = statusAfterRefreshError(current.status, underAudit || details.retryable);
       const updated = await this.#repository.transition({

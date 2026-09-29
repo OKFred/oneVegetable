@@ -1,0 +1,6 @@
+{
+  "multiInput": "<itemSchema><field id=\"keywords\" type=\"multiInput\"><values><value>Cotton</value><value>cotton</value><value> Soft </value></values></field></itemSchema>",
+  "repeated": "<itemSchema><field id=\"productKeywords\" type=\"multiComplex\"><fields><field id=\"keyword\" type=\"input\"/></fields><complex-values><complex-value><field id=\"keyword\" type=\"input\"><value>Cotton</value></field></complex-value></complex-values></field></itemSchema>",
+  "scalar": "<itemSchema><field id=\"group_id\" type=\"input\"><value>10</value></field></itemSchema>",
+  "readonly": "<itemSchema><field id=\"keywords\" type=\"multiInput\"><rules><rule name=\"readOnlyRule\" value=\"true\"/></rules><values><value>Cotton</value></values></field></itemSchema>"
+}

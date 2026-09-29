@@ -1,0 +1,8 @@
+<itemSchema>
+  <field id="subject" name="Title" type="input"><value>Do not change &amp; escape</value></field>
+  <field id="productGroup" type="complex"><fields>
+    <field id="firstGroupId" type="input"/><field id="secondGroupId" type="input"/><field id="thirdGroupId" type="input"/>
+  </fields><complex-value><field id="firstGroupId" type="input"><value>10</value></field><field id="secondGroupId" type="input"><value>11</value></field><field id="thirdGroupId" type="input"><value></value></field></complex-value></field>
+  <field id="productKeywords" type="complex"><fields><field id="productKeywords_0" type="input"/><field id="productKeywords_1" type="input"/><field id="productKeywords_2" type="input"/></fields><complex-value><field id="productKeywords_0" type="input"><value>Cotton shirt</value></field><field id="productKeywords_1" type="input"><value>Soft</value></field><field id="productKeywords_2" type="input"><value></value></field></complex-value></field>
+  <field id="superText" type="input"><value>&lt;p&gt;Keep details&lt;/p&gt;</value></field>
+</itemSchema>

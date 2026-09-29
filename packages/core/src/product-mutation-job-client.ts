@@ -1,7 +1,8 @@
 import { DEFAULT_API_PREFIX, normalizeApiPrefix } from './api-contract';
 import { notifyBffAuthenticationRequired } from './bff-authentication';
 import { GatewayException } from './errors';
-import { createRequestId, NetworkManager } from './network';
+import { createRequestId, isRequestId, NetworkManager } from './network';
+import { isProductOperationContext } from './product-operation-context';
 
 import type { ApiResponse } from './api-contract';
 import type { BffAuthenticationRequiredHandler } from './bff-authentication';
@@ -131,6 +132,8 @@ export function isProductMutationJobPage(value: unknown): value is ProductMutati
 export function isProductMutationJob(value: unknown): value is ProductMutationJob {
   return (
     isRecord(value) &&
+    (value.batchId == null || isRequestId(value.batchId)) &&
+    (value.productContext == null || isProductOperationContext(value.productContext)) &&
     typeof value.id === 'string' &&
     typeof value.requestId === 'string' &&
     typeof value.productId === 'string' &&

@@ -1,6 +1,10 @@
 import { createEntityAuditFields, updateEntityAuditFields } from '@one-vegetable/core';
 
 import { EntityVersionConflictError } from '../db/repository';
+import {
+  requireProductOperationContext,
+  type ProductOperationContext
+} from '@one-vegetable/core/product-operation-context';
 
 import type {
   ProductMutationFieldExpectation,
@@ -21,6 +25,8 @@ const BLOCKING_STATUSES: readonly ProductMutationJobStatus[] = [
 ];
 
 export interface ProductMutationJobCreateInput {
+  batchId?: string;
+  productContext?: ProductOperationContext;
   requestId: string;
   productId: string;
   categoryId: number;
@@ -176,6 +182,7 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
   }
 
   async create(input: ProductMutationJobCreateInput): Promise<ProductMutationJob> {
+    if (input.productContext) requireProductOperationContext(input.productContext);
     const now = this.#clock();
     const audit = createEntityAuditFields(input.actorId, now, input.remark);
     const id = crypto.randomUUID();
@@ -190,9 +197,10 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
           encrypted_product_id, target_display, original_display,
           trace_id, reason_code, message,
           submitted_time_utc, last_checked_time_utc, completed_time_utc,
-          create_time_utc, update_time_utc, creator_id, updater_id, revision, remark
+          create_time_utc, update_time_utc, creator_id, updater_id, revision, remark,
+          batch_id, product_identity, product_gateway
         ) VALUES (?, ?, ?, 'updateProduct', 'submitted', ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL,
-          ?, NULL, NULL, ?, ?, ?, ?, ?, ?)`,
+          ?, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           input.requestId,
@@ -207,7 +215,10 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
           audit.creatorId,
           audit.updaterId,
           audit.revision,
-          audit.remark
+          audit.remark,
+          input.batchId ?? null,
+          input.productContext?.identity ?? null,
+          input.productContext?.gateway ?? null
         ]
       );
     } catch (error: unknown) {
@@ -422,6 +433,11 @@ function normalizeNullable(value: string | null, maxLength: number): string | nu
 
 function toEntity(row: Record<string, unknown>): ProductMutationJob {
   return {
+    batchId: readNullableString(row, 'batch_id'),
+    productContext:
+      row.product_identity === null || row.product_identity === undefined
+        ? null
+        : requireProductOperationContext({ identity: row.product_identity, gateway: row.product_gateway }),
     id: readString(row, 'id'),
     requestId: readString(row, 'request_id'),
     productId: readString(row, 'product_id'),

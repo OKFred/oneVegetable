@@ -1,5 +1,6 @@
 import {
   createRequestId,
+  GatewayException,
   isRequestId,
   validateProductMutationJobGetInput,
   validateProductMutationJobListInput,
@@ -95,6 +96,8 @@ async function handle(context: Context, action: (body: unknown) => Promise<Respo
     if (error instanceof AuthError) {
       return failure(context, requestId, error.status, error.code, error.message);
     }
+    if (error instanceof GatewayException)
+      return failure(context, requestId, 409, error.gatewayError.code, error.gatewayError.message);
     if (
       error instanceof EntityVersionConflictError ||
       error instanceof ProductMutationRevisionConflictError

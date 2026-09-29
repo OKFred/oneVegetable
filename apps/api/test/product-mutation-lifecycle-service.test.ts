@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { GatewayException } from '@one-vegetable/core';
+import { opaqueGalleryId } from '@one-vegetable/core/gallery-transfer-context';
 import { applyNodeMigrations, openNodeDatabase } from '../src/db/node-database';
 import { SqlProductMutationJobRepository } from '../src/product-mutations/repository';
 import {
@@ -37,6 +38,47 @@ afterEach(() => {
 });
 
 describe('product mutation lifecycle service', () => {
+  it('retains batch ownership and pins readback to the submitted credential context', async () => {
+    const { service, gateway } = createService();
+    const productContext = { identity: await opaqueGalleryId(ACTOR.actorId), gateway: 'b'.repeat(64) };
+    const productBatchId = crypto.randomUUID();
+    const result = await service.submitUpdate({
+      requestId: crypto.randomUUID(),
+      actor: ACTOR,
+      request: REQUEST,
+      options: { productContext, productBatchId }
+    });
+    expect(result.job).toMatchObject({ batchId: productBatchId, productContext });
+    expect(gateway.update).toHaveBeenCalledWith(REQUEST, expect.any(String), {
+      productContext,
+      productBatchId
+    });
+    await service.refresh({
+      requestId: crypto.randomUUID(),
+      actor: ACTOR,
+      id: result.job.id,
+      expectedRevision: result.job.revision
+    });
+    expect(gateway.render).toHaveBeenCalledWith(expect.any(Object), expect.any(String), { productContext });
+  });
+  it('blocks another write after a non-retryable but ambiguous update response', async () => {
+    const { service, gateway } = createService();
+    gateway.update.mockRejectedValueOnce(
+      new GatewayException({
+        code: 'ALIBABA_PRODUCT_MUTATION_UNCONFIRMED',
+        message: 'unknown',
+        retryable: false
+      })
+    );
+    await expect(
+      service.submitUpdate({ requestId: crypto.randomUUID(), actor: ACTOR, request: REQUEST })
+    ).rejects.toThrow();
+    expect((await service.list({ page: 1, pageSize: 20 }, ACTOR)).items[0]?.status).toBe('recovery-required');
+    await expect(
+      service.submitUpdate({ requestId: crypto.randomUUID(), actor: ACTOR, request: REQUEST })
+    ).rejects.toBeInstanceOf(ProductMutationAlreadyInProgressError);
+    expect(gateway.update).toHaveBeenCalledOnce();
+  });
   it('persists and verifies a platform draft through draft Schema readback', async () => {
     const { service, gateway } = createService();
     gateway.saveDraft.mockResolvedValueOnce({

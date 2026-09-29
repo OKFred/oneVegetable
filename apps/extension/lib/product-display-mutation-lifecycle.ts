@@ -26,6 +26,8 @@ import {
   type RequestOf
 } from '@one-vegetable/core';
 import { EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY } from './product-display-mutation-storage';
+import { productUpdateFailureStatus } from '@one-vegetable/core/product-update-outcome';
+import type { ProductOperationOptions } from '@one-vegetable/core/product-operation-context';
 
 const STORAGE_SCHEMA_VERSION = 1;
 const ACTOR_ID = 'extension:local-admin';
@@ -251,7 +253,8 @@ export class ExtensionProductDisplayMutationLifecycle {
     gateway: ExtensionProductUpdateGateway,
     requestId: string,
     request: ProductSchemaUpdateRequest,
-    fingerprints: ProductMutationFingerprintSet
+    fingerprints: ProductMutationFingerprintSet,
+    options?: ProductOperationOptions
   ): Promise<ExtensionProductUpdateSubmissionResult> {
     return this.#exclusive(async () => {
       assertProductMutationFingerprints(fingerprints);
@@ -269,6 +272,7 @@ export class ExtensionProductDisplayMutationLifecycle {
       if (blocking) throw mutationInProgress(blocking);
 
       const job = createUpdateJob({
+        ...options,
         requestId,
         productId: request.productId,
         categoryId: request.categoryId,
@@ -286,7 +290,7 @@ export class ExtensionProductDisplayMutationLifecycle {
         const details = errorDetails(error);
         await this.#transitionOne(
           job,
-          details.retryable ? 'recovery-required' : 'failed',
+          productUpdateFailureStatus(error),
           {
             traceId: details.traceId,
             reasonCode: details.code,
@@ -799,16 +803,20 @@ function createCreationJob(input: {
   };
 }
 
-function createUpdateJob(input: {
-  requestId: string;
-  productId: string;
-  categoryId: number;
-  language: 'zh_CN' | 'en_US';
-  payloadFingerprint: string;
-  fieldExpectations: ProductMutationJob['fieldExpectations'];
-  now: number;
-}): ProductMutationJob {
+function createUpdateJob(
+  input: ProductOperationOptions & {
+    requestId: string;
+    productId: string;
+    categoryId: number;
+    language: 'zh_CN' | 'en_US';
+    payloadFingerprint: string;
+    fieldExpectations: ProductMutationJob['fieldExpectations'];
+    now: number;
+  }
+): ProductMutationJob {
   return {
+    ...(input.productBatchId ? { batchId: input.productBatchId } : {}),
+    ...(input.productContext ? { productContext: input.productContext } : {}),
     id: crypto.randomUUID(),
     requestId: input.requestId,
     productId: input.productId,

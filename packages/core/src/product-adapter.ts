@@ -1,5 +1,6 @@
 import type { AlibabaClient } from './alibaba-client';
 import { GatewayException } from './errors';
+import { ProductMutationRejectedError } from './product-update-outcome';
 import { productListLanguage, type AlibabaLanguage } from './preferences';
 import { resolveProductSchemaXml } from './product-schema-json';
 import type {
@@ -385,7 +386,9 @@ function requireProductMutationResult(root: Record<string, unknown>): ProductMut
   const productId = readString(root, ['product_id'])?.trim() ?? '';
   const traceId = readString(root, ['trace_id', 'request_id']) ?? crypto.randomUUID();
   if (readExplicitBoolean(root, 'biz_success') !== true || productId === '') {
-    throw new GatewayException({
+    const Rejection =
+      readExplicitBoolean(root, 'biz_success') === false ? ProductMutationRejectedError : GatewayException;
+    throw new Rejection({
       code:
         readString(root, ['msg_code', 'error_code', 'sub_error_code', 'sub_code']) ??
         (productId === '' ? 'ALIBABA_PRODUCT_ID_MISSING' : 'ALIBABA_PRODUCT_MUTATION_UNCONFIRMED'),

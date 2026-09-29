@@ -4,6 +4,12 @@ import { VideoAdapter, VIDEO_OPERATIONS, VIDEO_METHODS } from '@one-vegetable/co
 import { VideoAssociationAdapter } from '@one-vegetable/core/video-association';
 
 import {
+  requireProductOperationContext,
+  assertProductOperationContext,
+  createProductOperationContext,
+  type ProductOperationOptions
+} from '@one-vegetable/core/product-operation-context';
+import {
   galleryGatewayId,
   opaqueGalleryId,
   requireGalleryContext,
@@ -174,7 +180,7 @@ export default defineBackground({
         typeof value === 'object' &&
         value !== null &&
         'kind' in value &&
-        value.kind === 'gallery-transfer-context'
+        (value.kind === 'gallery-transfer-context' || value.kind === 'product-operation-context')
       ) {
         return (async () => {
           const requestId =
@@ -191,7 +197,7 @@ export default defineBackground({
               data: {
                 identity: await opaqueGalleryId('extension:local-admin'),
                 gateway: await galleryGatewayId(await loadSettings()),
-                storage: await s3.contextId()
+                ...(value.kind === 'gallery-transfer-context' ? { storage: await s3.contextId() } : {})
               }
             };
           } catch (error) {
@@ -289,6 +295,14 @@ async function handleProductMutationJobRequest(
         break;
       case 'complete-update-readback':
         assertTrustedOptionsPage(trustedOptionsPage);
+        {
+          const job = await productMutations.get(requiredString(payload, 'id'));
+          if (job.productContext)
+            assertProductOperationContext(
+              job.productContext,
+              await createProductOperationContext('extension:local-admin', await loadSettings())
+            );
+        }
         data = await productMutations.completeUpdateReadback(
           requiredString(payload, 'id'),
           requiredNumber(payload, 'revision'),
@@ -606,7 +620,8 @@ async function handleRequest(message: RuntimeRequest, trustedOptionsPage: boolea
       message.requestId,
       message.productMutationFingerprint,
       trustedOptionsPage,
-      message.galleryContext
+      message.galleryContext,
+      message
     );
     await safelyRecordDiagnostic({
       requestId: message.requestId,
@@ -654,7 +669,8 @@ async function executeOperation(
   requestId: string,
   productMutationFingerprint: ProductMutationFingerprintSet | undefined,
   trustedOptionsPage: boolean,
-  galleryContext?: GalleryTransferContext
+  galleryContext?: GalleryTransferContext,
+  productOptions?: ProductOperationOptions
 ): Promise<unknown> {
   if (operation === 'getDiagnostics') return getDiagnostics();
   if (
@@ -689,6 +705,20 @@ async function executeOperation(
     });
   }
   const settings = await loadSettings();
+  if (
+    productOptions?.productBatchId &&
+    (!isRequestId(productOptions.productBatchId) ||
+      !productOptions.productContext ||
+      operation !== 'updateProduct')
+  )
+    throw gatewayFailure('PRODUCT_CONTEXT_INVALID', 'PRODUCT_CONTEXT_INVALID');
+  if (productOptions?.productContext) {
+    assertTrustedOptionsPage(trustedOptionsPage);
+    assertProductOperationContext(
+      requireProductOperationContext(productOptions.productContext),
+      await createProductOperationContext('extension:local-admin', settings)
+    );
+  }
   if (galleryContext) {
     if (!trustedOptionsPage) throw gatewayFailure('GALLERY_CONTEXT_UNTRUSTED', 'GALLERY_CONTEXT_UNTRUSTED');
     requireGalleryContext(galleryContext);
@@ -703,6 +733,7 @@ async function executeOperation(
   const client = AlibabaClient.create(settings, {
     requestId,
     maxAttempts:
+      productOptions?.productContext !== undefined ||
       operation === 'getProductInventory' ||
       operation === 'associateProductVideo' ||
       operation === 'verifyProductVideoAssociation' ||
@@ -806,7 +837,8 @@ async function executeOperation(
         products,
         requestId,
         validation.data,
-        requiredProductMutationFingerprint(productMutationFingerprint)
+        requiredProductMutationFingerprint(productMutationFingerprint),
+        productOptions
       );
     }
     case 'updateProductDisplay': {

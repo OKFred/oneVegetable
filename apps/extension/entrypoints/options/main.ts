@@ -501,6 +501,25 @@ function productMutationJobCount(value: unknown): number {
 }
 
 class ExtensionGatewayClient implements GatewayClient {
+  async productOperationContext() {
+    const { requireProductOperationContext } = await import('@one-vegetable/core/product-operation-context');
+    const requestId = crypto.randomUUID();
+    const response: unknown = await browser.runtime.sendMessage({
+      kind: 'product-operation-context',
+      requestId
+    });
+    if (
+      !response ||
+      typeof response !== 'object' ||
+      !('ok' in response) ||
+      response.ok !== true ||
+      !('requestId' in response) ||
+      response.requestId !== requestId ||
+      !('data' in response)
+    )
+      throw new Error('PRODUCT_CONTEXT_UNAVAILABLE');
+    return requireProductOperationContext(response.data);
+  }
   async galleryTransferContext() {
     const { requireGalleryContext } = await import('@one-vegetable/core/gallery-transfer-context');
     const requestId = crypto.randomUUID();
@@ -544,6 +563,8 @@ class ExtensionGatewayClient implements GatewayClient {
       requestId: options?.requestId ?? crypto.randomUUID(),
       kind: 'gateway-request',
       ...(options?.galleryContext ? { galleryContext: options.galleryContext } : {}),
+      ...(options?.productContext ? { productContext: options.productContext } : {}),
+      ...(options?.productBatchId ? { productBatchId: options.productBatchId } : {}),
       operation,
       payload,
       ...(productMutationFingerprint === undefined ? {} : { productMutationFingerprint })
@@ -763,11 +784,15 @@ async function mountOptionsApp(): Promise<void> {
             retryable: false
           });
         }
-        const rendered = await gateway.request('renderProductSchema', {
-          productId: job.productId,
-          categoryId: job.categoryId,
-          language: job.language
-        });
+        const rendered = await gateway.request(
+          'renderProductSchema',
+          {
+            productId: job.productId,
+            categoryId: job.categoryId,
+            language: job.language
+          },
+          job.productContext ? { productContext: job.productContext } : undefined
+        );
         return compareProductMutationFingerprints(rendered.xml, job.fieldExpectations);
       }
     }

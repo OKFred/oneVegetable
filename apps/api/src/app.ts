@@ -6,6 +6,10 @@ import {
   type GalleryRequestOptions
 } from '@one-vegetable/core/gallery-transfer-context';
 import { cors } from 'hono/cors';
+import {
+  requireProductOperationContext,
+  type ProductOperationOptions
+} from '@one-vegetable/core/product-operation-context';
 
 import {
   APP_VERSION,
@@ -172,14 +176,24 @@ export function createApiApp(options: ApiAppOptions): Hono {
               requestId
             })) as ProductMutationResult;
           },
-          async update(request: ProductSchemaUpdateRequest, requestId: string) {
+          async update(
+            request: ProductSchemaUpdateRequest,
+            requestId: string,
+            operationOptions?: ProductOperationOptions
+          ) {
             return (await dynamicGateway.request('updateProduct', request, {
-              requestId
+              requestId,
+              ...operationOptions
             })) as ProductMutationResult;
           },
-          async render(request: ProductSchemaRenderRequest, requestId: string) {
+          async render(
+            request: ProductSchemaRenderRequest,
+            requestId: string,
+            operationOptions?: ProductOperationOptions
+          ) {
             return (await dynamicGateway.request('renderProductSchema', request, {
-              requestId
+              requestId,
+              ...operationOptions
             })) as ProductSchema;
           },
           async get(productId: string, draft: boolean, language: 'zh_CN' | 'en_US', requestId: string) {
@@ -461,9 +475,38 @@ export function createApiApp(options: ApiAppOptions): Hono {
       });
     }
   });
+  api.post('/product-mutation-jobs/context/get', async (context) => {
+    const parsed = await parseEnvelope(context, ['requestId']);
+    if (!parsed.ok) return parsed.response;
+    try {
+      const session = options.authService ? await authenticateRequest(context, options.authService) : null;
+      if (!session) throw new AuthError('AUTH_REQUIRED', 'AUTH_REQUIRED', 401);
+      if (!dynamicGateway.galleryGatewayContextId && options.gatewayMode === 'real')
+        throw new AuthError('PRODUCT_CONTEXT_UNAVAILABLE', 'PRODUCT_CONTEXT_UNAVAILABLE', 503);
+      return success(context, parsed.requestId, {
+        identity: await opaqueGalleryId(session.principal.actorId),
+        gateway: dynamicGateway.galleryGatewayContextId
+          ? await dynamicGateway.galleryGatewayContextId()
+          : await opaqueGalleryId(`local:${options.gatewayMode}`)
+      });
+    } catch (error) {
+      return failure(context, parsed.requestId, error instanceof AuthError ? error.status : 503, {
+        code: error instanceof AuthError ? error.code : 'PRODUCT_CONTEXT_UNAVAILABLE',
+        message: error instanceof AuthError ? error.message : 'PRODUCT_CONTEXT_UNAVAILABLE',
+        retryable: false
+      });
+    }
+  });
   api.post('/operations/call', async (context) => {
     const startedAt = (options.clock ?? Date.now)();
-    const parsed = await parseEnvelope(context, ['requestId', 'operation', 'payload', 'galleryContext']);
+    const parsed = await parseEnvelope(context, [
+      'requestId',
+      'operation',
+      'payload',
+      'galleryContext',
+      'productContext',
+      'productBatchId'
+    ]);
     if (!parsed.ok) return parsed.response;
     if (options.gatewayMode === 'disabled') {
       logRequest(options, parsed.requestId, 'operations/call', 'denied', 503, startedAt);
@@ -549,7 +592,37 @@ export function createApiApp(options: ApiAppOptions): Hono {
           (await options.s3Storage?.galleryStorageContextId()) ?? null
         );
       }
-      const transferOptions = { requestId: parsed.requestId, ...(galleryContext ? { galleryContext } : {}) };
+      const productContext =
+        parsed.body.productContext === undefined
+          ? undefined
+          : requireProductOperationContext(parsed.body.productContext);
+      const productBatchId = parsed.body.productBatchId;
+      if (
+        productBatchId !== undefined &&
+        (!isRequestId(productBatchId) || !productContext || parsed.body.operation !== 'updateProduct')
+      )
+        throw new GatewayException({
+          code: 'PRODUCT_CONTEXT_INVALID',
+          message: 'PRODUCT_CONTEXT_INVALID',
+          retryable: false
+        });
+      if (productContext) {
+        if (!authenticated) throw new AuthError('AUTH_REQUIRED', 'AUTH_REQUIRED', 401);
+        if (productContext.identity !== (await opaqueGalleryId(authenticated.principal.actorId)))
+          throw new GatewayException({
+            code: 'PRODUCT_CONTEXT_CHANGED',
+            message: 'PRODUCT_CONTEXT_CHANGED',
+            retryable: false
+          });
+        if (!dynamicGateway.galleryGatewayContextId && options.gatewayMode === 'real')
+          throw new AuthError('PRODUCT_CONTEXT_UNAVAILABLE', 'PRODUCT_CONTEXT_UNAVAILABLE', 503);
+      }
+      const transferOptions = {
+        requestId: parsed.requestId,
+        ...(galleryContext ? { galleryContext } : {}),
+        ...(productContext ? { productContext } : {}),
+        ...(typeof productBatchId === 'string' ? { productBatchId } : {})
+      };
       const data = productMutations
         ? parsed.body.operation === 'publishProduct' || parsed.body.operation === 'saveProductDraft'
           ? await productMutations.submitCreation({
@@ -562,7 +635,8 @@ export function createApiApp(options: ApiAppOptions): Hono {
             ? await productMutations.submitUpdate({
                 requestId: parsed.requestId,
                 actor: authenticated?.principal ?? extensionAdminPrincipal(),
-                request: parsed.body.payload as unknown as ProductSchemaUpdateRequest
+                request: parsed.body.payload as unknown as ProductSchemaUpdateRequest,
+                options: transferOptions
               })
             : parsed.body.operation === 'updateProductDisplay'
               ? await productMutations.submitDisplay({

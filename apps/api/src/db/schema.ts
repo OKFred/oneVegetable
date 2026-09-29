@@ -130,6 +130,9 @@ export const productDescriptionTemplates = sqliteTable(
 export const productMutationJobs = sqliteTable(
   'product_mutation_jobs',
   {
+    batchId: text('batch_id'),
+    productIdentity: text('product_identity'),
+    productGateway: text('product_gateway'),
     id: text('id').primaryKey(),
     requestId: text('request_id').notNull(),
     productId: text('product_id').notNull(),
@@ -570,4 +573,4 @@ export const s3StorageConfigurations = sqliteTable('s3_storage_configurations', 
   remark: text('remark')
 });
 
-export const CURRENT_SCHEMA_VERSION = 14;
+export const CURRENT_SCHEMA_VERSION = 15;
