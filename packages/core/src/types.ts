@@ -1,5 +1,6 @@
 import type { GalleryRequestOptions } from './gallery-transfer-context';
 import type { GalleryTransferContext } from './gallery-transfer-task';
+import type { ProductOperationContext, ProductOperationOptions } from './product-operation-context';
 import type { components } from './generated/api';
 import type {
   ProductCapabilityRequestMap,
@@ -347,6 +348,7 @@ export type RequestOf<K extends OperationId> = OperationMap[K]['request'];
 export type ResponseOf<K extends OperationId> = OperationMap[K]['response'];
 
 export interface GatewayClient {
+  productOperationContext?(): Promise<ProductOperationContext>;
   galleryTransferContext?(): Promise<GalleryTransferContext>;
   request<K extends OperationId>(
     operation: K,
@@ -355,7 +357,7 @@ export interface GatewayClient {
   ): Promise<ResponseOf<K>>;
 }
 
-export interface RuntimeRequest<K extends OperationId = OperationId> {
+export interface RuntimeRequest<K extends OperationId = OperationId> extends ProductOperationOptions {
   requestId: string;
   kind: 'gateway-request';
   operation: K;

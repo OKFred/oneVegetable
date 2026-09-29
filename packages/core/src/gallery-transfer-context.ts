@@ -3,8 +3,9 @@ import type { GatewayCredentials } from './types';
 import type { S3StorageConfiguration } from './s3-storage';
 import { validGalleryTransferContext, type GalleryTransferContext } from './gallery-transfer-task';
 import { validateGalleryTransferContext } from './generated/validators-gallery';
+import type { ProductOperationOptions } from './product-operation-context';
 
-export interface GalleryRequestOptions {
+export interface GalleryRequestOptions extends ProductOperationOptions {
   requestId?: string;
   galleryContext?: GalleryTransferContext;
 }

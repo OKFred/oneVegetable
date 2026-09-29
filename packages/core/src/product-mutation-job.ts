@@ -1,4 +1,5 @@
 import type { EntityAuditFields } from './audit';
+import type { ProductOperationContext } from './product-operation-context';
 
 export type ProductMutationJobOperation =
   'publishProduct' | 'saveProductDraft' | 'updateProduct' | 'updateProductDisplay';
@@ -21,6 +22,9 @@ export interface ProductMutationFieldExpectation {
 }
 
 export interface ProductMutationJob extends EntityAuditFields {
+  /** Absent on legacy receipts. Never infer ownership from a later login. */
+  batchId?: string | null;
+  productContext?: ProductOperationContext | null;
   id: string;
   requestId: string;
   productId: string;

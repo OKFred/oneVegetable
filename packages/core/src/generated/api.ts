@@ -101,6 +101,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/product-mutation-jobs/context/get": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read opaque product operation account context */
+        post: operations["getProductOperationContext"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/product-mutation-jobs/list": {
         parameters: {
             query?: never;
@@ -9616,6 +9633,16 @@ export interface components {
             pairingCode: string;
             extensionId: string;
         };
+        ProductOperationContext: {
+            identity: string;
+            gateway: string;
+        };
+        ProductOperationContextResponse: {
+            requestId: components["schemas"]["RequestId"];
+            /** @constant */
+            ok: true;
+            data: components["schemas"]["ProductOperationContext"];
+        };
         GalleryTransferContext: {
             identity: string;
             gateway: string;
@@ -9932,6 +9959,8 @@ export interface components {
         OperationCallRequest: {
             requestId: components["schemas"]["RequestId"];
             operation: string;
+            productContext?: components["schemas"]["ProductOperationContext"];
+            productBatchId?: components["schemas"]["RequestId"];
             galleryContext?: components["schemas"]["GalleryTransferContext"];
             payload: {
                 [key: string]: unknown;
@@ -10279,6 +10308,9 @@ export interface components {
             fingerprint: string;
         };
         ProductMutationJob: {
+            /** Format: uuid */
+            batchId?: string | null;
+            productContext?: components["schemas"]["ProductOperationContext"] | null;
             /** Format: uuid */
             id: string;
             requestId: components["schemas"]["RequestId"];
@@ -11314,6 +11346,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    getProductOperationContext: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GalleryTransferContextRequest"];
+            };
+        };
+        responses: {
+            /** @description Current workbench and Alibaba configuration identities */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductOperationContextResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Credential context unavailable */
+            503: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiFailure"];
                 };
             };
         };

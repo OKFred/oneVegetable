@@ -13,6 +13,7 @@
     "./errors": "./src/errors.ts",
     "./showcase": "./src/product-showcase.ts",
     "./inventory": "./src/product-inventory.ts",
+    "./product-operation-context": "./src/product-operation-context.ts",
     "./video": "./src/video.ts",
     "./video-upload": "./src/video-upload.ts",
     "./video-upload-service": "./src/video-upload-service.ts",

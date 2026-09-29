@@ -12,6 +12,9 @@ export function createGatewayConfigurationScope(source: GatewayClient): {
       generation += 1;
     },
     gateway: {
+      ...(source.productOperationContext
+        ? { productOperationContext: source.productOperationContext.bind(source) }
+        : {}),
       ...(source.galleryTransferContext
         ? { galleryTransferContext: source.galleryTransferContext.bind(source) }
         : {}),

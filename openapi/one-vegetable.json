@@ -327,6 +327,44 @@
         }
       }
     },
+    "/product-mutation-jobs/context/get": {
+      "post": {
+        "summary": "Read opaque product operation account context",
+        "operationId": "getProductOperationContext",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/GalleryTransferContextRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Current workbench and Alibaba configuration identities",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProductOperationContextResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiFailure" } } }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiFailure" } } }
+          },
+          "503": {
+            "description": "Credential context unavailable",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiFailure" } } }
+          }
+        }
+      }
+    },
     "/product-mutation-jobs/list": {
       "post": {
         "summary": "List durable product mutation jobs",
@@ -17178,6 +17216,25 @@
           "extensionId": { "type": "string", "pattern": "^[a-p]{32}$" }
         }
       },
+      "ProductOperationContext": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["identity", "gateway"],
+        "properties": {
+          "identity": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "gateway": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        }
+      },
+      "ProductOperationContextResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "ok", "data"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "ok": { "const": true },
+          "data": { "$ref": "#/components/schemas/ProductOperationContext" }
+        }
+      },
       "GalleryTransferContext": {
         "type": "object",
         "additionalProperties": false,
@@ -17850,6 +17907,8 @@
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
           "operation": { "type": "string", "minLength": 1 },
+          "productContext": { "$ref": "#/components/schemas/ProductOperationContext" },
+          "productBatchId": { "$ref": "#/components/schemas/RequestId" },
           "galleryContext": { "$ref": "#/components/schemas/GalleryTransferContext" },
           "payload": { "type": "object", "additionalProperties": true }
         }
@@ -18483,6 +18542,10 @@
           "remark"
         ],
         "properties": {
+          "batchId": { "type": ["string", "null"], "format": "uuid" },
+          "productContext": {
+            "oneOf": [{ "$ref": "#/components/schemas/ProductOperationContext" }, { "type": "null" }]
+          },
           "id": { "type": "string", "format": "uuid" },
           "requestId": { "$ref": "#/components/schemas/RequestId" },
           "productId": { "type": "string", "pattern": "^(?:[1-9][0-9]*|pending:[0-9a-f]{64})$" },

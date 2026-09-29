@@ -3,6 +3,7 @@ import { notifyBffAuthenticationRequired } from './bff-authentication';
 import { createRequestId, NetworkManager } from './network';
 import { DEFAULT_API_PREFIX, normalizeApiPrefix } from './api-contract';
 import { requireGalleryContext, type GalleryRequestOptions } from './gallery-transfer-context';
+import { requireProductOperationContext } from './product-operation-context';
 
 import type { ApiResponse } from './api-contract';
 import type { BffAuthenticationRequiredHandler } from './bff-authentication';
@@ -51,10 +52,18 @@ export class BffGatewayClient implements GatewayClient {
   }
 
   async galleryTransferContext() {
+    return requireGalleryContext(await this.#context('gallery-transfers'));
+  }
+
+  async productOperationContext() {
+    return requireProductOperationContext(await this.#context('product-mutation-jobs'));
+  }
+
+  async #context(resource: 'gallery-transfers' | 'product-mutation-jobs'): Promise<unknown> {
     const requestId = createRequestId();
     const response = await this.#network.request({
       service: 'bff',
-      url: new URL('./gallery-transfers/context/get', new URL('../', this.#endpoint)),
+      url: new URL(`./${resource}/context/get`, new URL('../', this.#endpoint)),
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       requestId,
@@ -70,7 +79,7 @@ export class BffGatewayClient implements GatewayClient {
       notifyBffAuthenticationRequired(this.#onAuthenticationRequired, response.data.error, requestId);
       throw new GatewayException(response.data.error, requestId);
     }
-    return requireGalleryContext(response.data.data);
+    return response.data.data;
   }
   async request<K extends OperationId>(
     operation: K,
@@ -92,6 +101,8 @@ export class BffGatewayClient implements GatewayClient {
         requestId,
         operation,
         payload,
+        ...(options?.productContext ? { productContext: options.productContext } : {}),
+        ...(options?.productBatchId ? { productBatchId: options.productBatchId } : {}),
         ...(options?.galleryContext ? { galleryContext: options.galleryContext } : {})
       }),
       responseType: 'json'
