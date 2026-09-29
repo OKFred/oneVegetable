@@ -37,7 +37,60 @@ function onlyExpression(node: ts.Statement | undefined): ts.Expression | undefin
 
 /** Build-time only: share error bookkeeping, never validation branches or mutable error objects. */
 export function compactExtensionValidatorErrors(source: string): string {
-  return compactExtensionValidatorStrings(compactErrorScaffolding(source));
+  return compactExtensionValidatorStrings(compactValidatorPathPrefixes(compactErrorScaffolding(source)));
+}
+
+/** Factor repeated diagnostic path prefixes; values and validation branches remain byte-for-byte equivalent. */
+export function compactValidatorPathPrefixes(source: string): string {
+  const marker = '// extension-schema-path-prefixes';
+  if (source.includes(marker)) return source;
+  const file = ts.createSourceFile('validator.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const literals: ts.StringLiteral[] = [];
+  function visit(node: ts.Node): void {
+    if (ts.isTypeNode(node) || ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) return;
+    if (
+      ts.isStringLiteral(node) &&
+      node.text.startsWith('#/') &&
+      node.text.length >= 28 &&
+      !(ts.isPropertyAssignment(node.parent) && node.parent.name === node)
+    )
+      literals.push(node);
+    ts.forEachChild(node, visit);
+  }
+  visit(file);
+  const counts = new Map<string, number>();
+  for (const node of literals) {
+    for (let index = node.text.indexOf('/', 16); index >= 0; index = node.text.indexOf('/', index + 1)) {
+      const prefix = node.text.slice(0, index + 1);
+      counts.set(prefix, (counts.get(prefix) ?? 0) + 1);
+    }
+  }
+  const candidates = [...counts]
+    .filter(([prefix, count]) => count >= 4 && (prefix.length - 10) * count > prefix.length + 20)
+    .sort(([a, countA], [b, countB]) => (b.length - 10) * countB - (a.length - 10) * countA);
+  const used = new Set<ts.StringLiteral>();
+  const prefixes: string[] = [];
+  const edits: { node: ts.StringLiteral; index: number; suffix: string }[] = [];
+  for (const [prefix] of candidates) {
+    const matches = literals.filter((node) => !used.has(node) && node.text.startsWith(prefix));
+    if (matches.length < 4 || (prefix.length - 10) * matches.length < prefix.length + 20) continue;
+    const index = prefixes.length;
+    prefixes.push(prefix);
+    for (const node of matches) {
+      used.add(node);
+      edits.push({ node, index, suffix: node.text.slice(prefix.length) });
+    }
+  }
+  if (!edits.length) return source;
+  let name = '__extensionSchemaPath';
+  while (source.includes(name)) name += '_';
+  for (const { node, index, suffix } of edits.sort((a, b) => b.node.getStart(file) - a.node.getStart(file)))
+    source =
+      source.slice(0, node.getStart(file)) +
+      `${name}(${index},${JSON.stringify(suffix)})` +
+      source.slice(node.getEnd());
+  // Use a hoisted function with an internal static array: safe even for top-level constants.
+  return `${source}\n${marker}\nfunction ${name}(index,suffix){return ${JSON.stringify(prefixes)}[index]+suffix;}\n`;
 }
 
 function compactErrorScaffolding(source: string): string {
