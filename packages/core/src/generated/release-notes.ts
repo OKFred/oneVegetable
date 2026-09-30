@@ -4,6 +4,64 @@ export const RELEASE_NOTES_DOCUMENT = {
   repositoryUrl: 'https://github.com/OKFred/oneVegetable',
   releases: [
     {
+      version: '2.14.0',
+      releasedAt: '2026-10-01',
+      title: {
+        'zh-CN': '现有商品批量维护',
+        'en-US': 'Batch maintenance for existing products'
+      },
+      summary: {
+        'zh-CN':
+          '预览并确认最多 30 件现有商品的分组和关键词调整，串行提交并保存批次回执。平台受理、字段回读与审核通过分别判断；本候选版真实修改及恢复验收尚未完成。',
+        'en-US':
+          'Preview and confirm group and keyword changes for up to 30 existing products, with serial updates and batch receipts. Acceptance, field readback and platform approval are separate; live update-and-restoration acceptance is still pending for this candidate.'
+      },
+      source: 'release',
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.14.0',
+      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.13.0...v2.14.0',
+      changes: [
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '分组与关键词差异预览',
+            'en-US': 'Preview group and keyword changes'
+          },
+          description: {
+            'zh-CN':
+              '从商品列表更多菜单进入批量维护，可更换分组或逐条追加、移除、替换关键词。仅更新变化的根字段；结构不兼容时跳过整件商品，不截断或覆盖其他内容。',
+            'en-US':
+              'Open Batch maintenance from the product list More menu to change groups or append, remove and replace individual keywords. Only changed root fields are sent; incompatible structures skip the entire product without truncating or overwriting other content.'
+          }
+        },
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '账号隔离与批次回执',
+            'en-US': 'Account isolation and batch receipts'
+          },
+          description: {
+            'zh-CN':
+              '提交前重新核对商品状态及目标字段，按账号与凭据上下文隔离任务，落盘后才出网。离开停止后续调度；结果不明不自动重发，任务中心可按批次核对已发送记录。',
+            'en-US':
+              'Rechecks product status and target fields before sending, scopes tasks to account and credential context, and persists receipts before dispatch. Leaving stops later updates; unknown results are never automatically resent. Review dispatched records by batch in the task center.'
+          }
+        },
+        {
+          type: 'fix',
+          title: {
+            'zh-CN': '保留中断回执并精简校验包',
+            'en-US': 'Retain interrupted receipts and compact validators'
+          },
+          description: {
+            'zh-CN':
+              '停止回读时保留已受理任务及 requestId，统一更新失败与结果不明的分类。复用校验路径前缀减小包体，不改变校验结果、扩展权限或写接口白名单。',
+            'en-US':
+              'Retains accepted tasks and requestIds when readback stops, with consistent failure and unknown-result classification. Reuses validator path prefixes to reduce size without changing validation results, extension permissions or the write allowlist.'
+          }
+        }
+      ]
+    },
+    {
       version: '2.13.0',
       releasedAt: '2026-09-27',
       title: {
