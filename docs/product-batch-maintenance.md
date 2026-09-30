@@ -1,4 +1,4 @@
-# Existing-product batch maintenance (2.14.0 development)
+# Existing-product batch maintenance (2.14.0 candidate)
 
 ## Scope and use
 
@@ -35,7 +35,7 @@ pnpm test:e2e:node-credentials
 
 Fixtures live under `mock/data`. Web E2E uses a dedicated in-memory maintenance gateway; it is never used by production gateways. Formal MV3 E2E intercepts the gateway and blocks other HTTP traffic, proving context rejection, durable accepted/unknown receipts and duplicate prevention without real product changes. D1 tests verify nullable legacy metadata and concurrent duplicate rejection.
 
-Validator prefix compaction reuses generated JSON-pointer prefixes without changing contracts; parity tests compare all generated validators, complete errors and evaluation state. Package budgets remain ZIP 1,500,000 bytes, unpacked 4,100,000 bytes and the existing per-chunk limits. This development branch does not publish a version or overwrite the previously released 2.13.0 artifact.
+Validator prefix compaction reuses generated JSON-pointer prefixes without changing contracts; parity tests compare all generated validators, complete errors and evaluation state. Package budgets remain ZIP 1,500,000 bytes, unpacked 4,100,000 bytes and the existing per-chunk limits. Candidate preparation uses version 2.14.0 without overwriting the released 2.13.0 artifact; a version bump is not a formal release or Store submission.
 
 ### Local regression evidence (2026-09-30)
 
@@ -51,6 +51,8 @@ Validator prefix compaction reuses generated JSON-pointer prefixes without chang
 
 On 2026-09-30 (local time), one Node BFF test update was accepted. Subsequent readback returned `PUB_BIZCHECK_PRODUCT_IN_AUDITING`. Testing stopped with the durable receipt and restoration baseline preserved under the ignored `artifacts/product-batch-maintenance/2026-09-29T19-16-59-415Z/` directory. **No restoration has been sent or verified; the temporary group/keyword change must be treated as potentially applied.** No further product or MV3 real write was attempted. Do not treat offline tests as real-platform acceptance.
 
-Next authorized step is a read-only check of that exact product and receipt. Do not replay the write script, blindly compensate during review, alter unrelated fields or start the second real sample. After platform review clears, restoration requires checking the exact temporary values and re-confirming the recovery action. The ignored `HANDOFF.md` contains the product/request/job IDs; those account-specific values are not copied into public docs.
+Read-only checks on September 30 and October 1 confirmed that the changed group and keywords match the temporary values, while the platform reports `tbd` (review rejected). The receipt's `verified` status confirms only the field fingerprints, **not platform approval or restored values**. The original baseline still does not match. No further Alibaba writes were sent.
+
+Next step is to inspect the platform review reason and establish a separately confirmed restoration route. Do not replay the write script, bypass the formal-product status guard, blindly compensate, alter unrelated fields or start the second real sample. The ignored `HANDOFF.md` contains the product/request/job IDs; those account-specific values are not copied into public docs.
 
 Remaining real acceptance: verify and restore the first sample, then independently validate the formal MV3 sample. Worker remains isolated replay only; no production deployment, mainline merge or Store submission is included.
