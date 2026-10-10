@@ -183,6 +183,8 @@ describe('video upload deep links', () => {
       hash: '#/photos/videos/uploads/upload-target',
       tasks: [uploadTask('other'), uploadTask()]
     });
+    await vi.dynamicImportSettled();
+    await flushPromises();
     await vi.waitFor(() => {
       expect(s.body.find('[data-testid="video-upload-task-select"]').exists()).toBe(true);
     });
