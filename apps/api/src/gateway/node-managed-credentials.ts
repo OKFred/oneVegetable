@@ -45,7 +45,13 @@ export class NodeManagedCredentialProvider {
     if (await this.repository.managed()) return summary;
     try {
       const legacy = this.legacy().status();
-      return { ...summary, source: legacy.source, configured: legacy.configured, canRefresh: false };
+      return {
+        ...summary,
+        source: legacy.source,
+        configured: legacy.configured,
+        canRefresh: false,
+        accessTokenExpiresTimeUtc: legacy.accessTokenExpiresTimeUtc ?? null
+      };
     } catch (error: unknown) {
       return {
         ...summary,

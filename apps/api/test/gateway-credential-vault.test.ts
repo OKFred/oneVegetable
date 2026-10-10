@@ -18,6 +18,15 @@ afterEach(() => {
 });
 
 describe('D1-compatible Alibaba credential vault', () => {
+  it('offers refresh only while its known refresh window remains valid', async () => {
+    let now = Date.parse('2026-08-30T00:00:00.000Z');
+    const { service } = await harness(() => now);
+    await service.import({ bundle: bundle(), actorId: 'admin-1', expectedRevision: null, remark: null });
+    expect((await service.status()).canRefresh).toBe(true);
+    now = Date.parse('2026-09-30T00:00:00.000Z');
+    expect((await service.status()).canRefresh).toBe(false);
+  });
+
   it('stores only AES-GCM ciphertext and enforces revision updates', async () => {
     const { repository, service } = await harness();
     const imported = await service.import({

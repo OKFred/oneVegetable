@@ -13,6 +13,7 @@ import {
   validateVaultPassphrase
 } from '../src/credential-vault';
 import { ALIBABA_GATEWAY } from '../src/signing';
+import credentialFixtures from '../../../mock/data/node-gateway-credentials.json';
 
 const settings = {
   appKey: 'vault-key',
@@ -36,6 +37,19 @@ describe('credential vault', () => {
       settings,
       policy: { idleTimeoutMinutes: 0 }
     });
+  });
+
+  it('preserves imported token expiry through encryption and session restoration', async () => {
+    const settingsWithExpiry = {
+      ...settings,
+      accessTokenExpiresTimeUtc: Date.parse(credentialFixtures.knownExpiry)
+    };
+    const created = await createCredentialVault(settingsWithExpiry, '123456');
+    expect(JSON.stringify(created.record)).not.toContain(
+      String(settingsWithExpiry.accessTokenExpiresTimeUtc)
+    );
+    const restored = await restoreCredentialVaultSession(created.record, created.sessionKeyMaterial);
+    expect(restored.settings).toEqual(settingsWithExpiry);
   });
 
   it('rejects a wrong passphrase and tampered ciphertext without exposing details', async () => {

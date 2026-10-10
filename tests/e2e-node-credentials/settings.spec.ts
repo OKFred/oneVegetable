@@ -38,8 +38,8 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     await page.goto('/#/settings');
     const panel = page.getByTestId('gateway-credential-panel');
     await expect(panel).toBeVisible();
-    await panel.locator('summary').click();
     const en = locale === 'en-US';
+    await panel.getByText(en ? 'Advanced options' : '高级选项', { exact: true }).click();
     await panel.getByRole('button', { name: en ? 'Enter manually' : '手动填写', exact: true }).click();
     const form = page.getByRole('dialog').filter({ has: page.locator('form') });
     const passwords = form.locator('input[type="password"]');
@@ -63,6 +63,7 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     expect(writes.filter((path) => path.endsWith('/save'))).toHaveLength(1);
     expect(writes.some((path) => path.endsWith('/test'))).toBe(false);
     await expect(panel).not.toContainText(fixture.manual.appSecret);
+    await expect(panel.getByTestId('credential-expiry')).toContainText(en ? 'Expiry unknown' : '有效期未知');
     await panel.getByRole('button', { name: en ? 'Clear configuration' : '清除配置', exact: true }).click();
     const clear = page.getByRole('dialog', {
       name: en ? 'Clear server credentials?' : '确认清除服务端凭据？',
@@ -79,13 +80,21 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     await panel.locator('input[type="file"]').setInputFiles({
       name: 'credentialInfo.json',
       mimeType: 'application/json',
-      buffer: Buffer.from(JSON.stringify(fixture.oauthBundle))
+      buffer: Buffer.from(
+        JSON.stringify({
+          ...fixture.oauthBundle,
+          oauth: { ...fixture.oauthBundle.oauth, expiresAtUtc: fixture.knownExpiry }
+        })
+      )
     });
     await expect(confirm).toBeVisible();
     expect(writes.some((path) => path.endsWith('/import'))).toBe(false);
     await confirm.getByRole('button', { name: en ? 'Confirm' : '确认', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(panel).toContainText(fixture.oauthBundle.application.appName);
+    await expect(panel.getByTestId('credential-expiry')).toContainText('2030-01-02');
+    await page.reload();
+    await expect(panel.getByTestId('credential-expiry')).toContainText('2030-01-02');
     await expect(panel).not.toContainText(fixture.manual.accessToken);
     await panel.getByRole('button', { name: en ? 'Clear configuration' : '清除配置', exact: true }).click();
     await clear.getByRole('button', { name: en ? 'Confirm' : '确认', exact: true }).click();

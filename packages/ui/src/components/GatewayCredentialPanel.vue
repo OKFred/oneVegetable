@@ -20,6 +20,7 @@ import ModalDialog from './ui/ModalDialog.vue';
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import ErrorNotice from './ErrorNotice.vue';
 import AlibabaIndependentNotice from './AlibabaIndependentNotice.vue';
+import CredentialExpiryNotice from './CredentialExpiryNotice.vue';
 
 const { control, runtime } = useServices();
 const t = useGatewayCredentialsI18n();
@@ -175,6 +176,7 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
       else toast.error(message);
     } else if (kind === 'refresh') {
       await control.refreshGatewayCredential();
+      latestTest.value = null;
       toast.success(t('refreshed'));
     }
     await reload();
@@ -196,6 +198,12 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
       <p v-if="unavailable" class="text-sm">{{ t('unavailable') }}</p>
       <template v-else>
         <p class="text-sm font-medium">{{ summary?.configured ? t('configured') : t('empty') }}</p>
+        <CredentialExpiryNotice
+          v-if="summary && (summary.configured || summary.accessTokenExpiresTimeUtc != null)"
+          :expires="summary.accessTokenExpiresTimeUtc"
+          :refresh-expires="summary.refreshTokenExpiresTimeUtc"
+          :invalid="Boolean(summary.lastRefreshErrorCode || latestTest?.status === 'credentials-invalid')"
+        />
         <details class="rounded-lg border p-3 text-sm">
           <summary class="cursor-pointer font-medium">{{ t('renewTitle') }}</summary>
           <p class="mt-2 leading-6 text-muted-foreground">{{ t('renewGuide') }}</p>
@@ -209,26 +217,6 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
             <dt class="text-muted-foreground">{{ t('application') }}</dt>
             <dd>
               {{ summary?.appName || t('unknown') }} · {{ t('key') }} {{ summary?.appKeySuffix || '—' }}
-            </dd>
-          </div>
-          <div>
-            <dt class="text-muted-foreground">{{ t('expires') }}</dt>
-            <dd>
-              {{
-                summary?.accessTokenExpiresTimeUtc
-                  ? formatDateTime(summary.accessTokenExpiresTimeUtc)
-                  : t('unknown')
-              }}
-            </dd>
-          </div>
-          <div>
-            <dt class="text-muted-foreground">{{ t('refreshExpires') }}</dt>
-            <dd>
-              {{
-                summary?.refreshTokenExpiresTimeUtc
-                  ? formatDateTime(summary.refreshTokenExpiresTimeUtc)
-                  : t('unknown')
-              }}
             </dd>
           </div>
           <div>

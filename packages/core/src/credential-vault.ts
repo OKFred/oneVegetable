@@ -1,4 +1,4 @@
-import { migrateGatewaySettings } from './settings-storage';
+import { gatewayCredentialExpiryMetadata, migrateGatewaySettings } from './settings-storage';
 import type { CredentialVaultPolicy, GatewaySettings } from './types';
 
 export const CREDENTIAL_VAULT_VERSION = 2;
@@ -388,7 +388,7 @@ function strictGatewaySettings(value: unknown): GatewaySettings {
   ) {
     throw new CredentialVaultError('VAULT_INVALID', '保险库设置字段不完整');
   }
-  return { appKey, appSecret, accessToken, endpoint, signMethod };
+  return { appKey, appSecret, accessToken, endpoint, signMethod, ...gatewayCredentialExpiryMetadata(value) };
 }
 
 function isLegacySettings(value: unknown): boolean {

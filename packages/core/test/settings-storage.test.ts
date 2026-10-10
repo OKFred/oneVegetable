@@ -8,6 +8,17 @@ import {
 } from '../src/settings-storage';
 
 describe('versioned gateway settings', () => {
+  it('preserves token expiry metadata and discards malformed timestamps', () => {
+    const settings = migrateGatewaySettings({ accessTokenExpiresTimeUtc: 1_800_000_000_000 }).settings;
+    expect(migrateGatewaySettings(persistGatewaySettings(settings)).settings.accessTokenExpiresTimeUtc).toBe(
+      1_800_000_000_000
+    );
+    for (const value of ['tomorrow', -1, Infinity]) {
+      expect(
+        migrateGatewaySettings({ accessTokenExpiresTimeUtc: value }).settings.accessTokenExpiresTimeUtc
+      ).toBeNull();
+    }
+  });
   it('migrates the legacy flat value without losing credentials', () => {
     const result = migrateGatewaySettings({
       appKey: 'legacy-key',

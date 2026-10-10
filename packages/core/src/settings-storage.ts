@@ -25,6 +25,7 @@ export function migrateGatewaySettings(value: unknown): SettingsMigrationResult 
     appKey: stringValue(current.appKey),
     appSecret: stringValue(current.appSecret),
     accessToken: stringValue(current.accessToken),
+    ...gatewayCredentialExpiryMetadata(current),
     endpoint: stringValue(current.endpoint) || ALIBABA_GATEWAY,
     signMethod: signMethodValue(current.signMethod)
   };
@@ -42,9 +43,23 @@ export function persistGatewaySettings(settings: GatewaySettings): SettingsMigra
       appKey: settings.appKey,
       appSecret: settings.appSecret,
       accessToken: settings.accessToken,
+      ...gatewayCredentialExpiryMetadata(settings),
       endpoint: settings.endpoint,
       signMethod: settings.signMethod
     }
+  };
+}
+
+export function gatewayCredentialExpiryMetadata(value: {
+  accessTokenExpiresTimeUtc?: unknown;
+}): Pick<GatewaySettings, 'accessTokenExpiresTimeUtc'> {
+  const time = value.accessTokenExpiresTimeUtc;
+  if (time === undefined) return {};
+  return {
+    accessTokenExpiresTimeUtc:
+      typeof time === 'number' && Number.isSafeInteger(time) && time >= 0 && time <= 8_640_000_000_000_000
+        ? time
+        : null
   };
 }
 

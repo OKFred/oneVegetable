@@ -67,6 +67,8 @@ export class NodeCredentialBundleProvider implements AlibabaCredentialProvider {
       hasAppKey: true,
       hasAppSecret: true,
       hasAccessToken: true,
+      accessTokenExpiresTimeUtc:
+        this.#data.expiresAtUtc === null ? null : Date.parse(this.#data.expiresAtUtc),
       endpointOrigin: this.#endpoint.origin,
       signMethod: this.#signMethod
     };

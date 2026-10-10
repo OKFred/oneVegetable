@@ -26,6 +26,7 @@ describe('Node Alibaba credential bundle provider', () => {
       hasAppKey: true,
       hasAppSecret: true,
       hasAccessToken: true,
+      accessTokenExpiresTimeUtc: Date.parse('2026-09-01T00:00:00.000Z'),
       endpointOrigin: 'https://eco.taobao.com',
       signMethod: 'hmac'
     });

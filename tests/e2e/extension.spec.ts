@@ -11,6 +11,7 @@ import capabilityWorkerFixture from '../../mock/data/capability-worker.json' wit
 import inventoryFixture from '../../mock/data/product-inventory.json' with { type: 'json' };
 import skuInventoryFixture from '../../mock/data/product-sku-inventory.json' with { type: 'json' };
 import videoFixture from '../../mock/data/video/top.json' with { type: 'json' };
+import credentialFixture from '../../mock/data/node-gateway-credentials.json' with { type: 'json' };
 import videoAssociationFixture from '../../mock/data/video/association-core.json' with { type: 'json' };
 import { MockGatewayClient } from '../../packages/core/src/mock-client';
 import {
@@ -27,6 +28,39 @@ import {
 } from '../../packages/core/src/extension-review-prompt';
 
 let context: BrowserContext | null = null;
+
+test('formal MV3 preserves imported token expiry through vault save and page reload', async () => {
+  if (!context) throw new Error('Missing extension context');
+  await context.route('https://eco.taobao.com/**', (route) => route.abort());
+  const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#/settings`);
+  const guide = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
+  await guide.getByRole('checkbox').check();
+  await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
+  await page.getByLabel('导入授权包 JSON', { exact: true }).setInputFiles({
+    name: 'credentials.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({
+        ...credentialFixture.oauthBundle,
+        oauth: { ...credentialFixture.oauthBundle.oauth, expiresAtUtc: credentialFixture.knownExpiry }
+      })
+    )
+  });
+  await expect(page.getByTestId('credential-expiry')).toContainText('2030-01-02');
+  await page.getByLabel('设置保护口令').fill('123456');
+  await page.getByLabel('确认保护口令').fill('123456');
+  await page.getByRole('button', { name: '保存设置', exact: true }).click();
+  await expect(
+    page.getByText('凭证与设置已加密保存，并将在当前 Chrome 会话内保持可用。').first()
+  ).toBeVisible();
+  await page.reload();
+  await expect(page.getByTestId('credential-expiry')).toContainText('2030-01-02');
+  await expect(page.getByLabel('Access Token')).toHaveValue('');
+  await page.getByLabel('Access Token').fill(credentialFixture.manual.accessToken);
+  await expect(page.getByTestId('credential-expiry')).toContainText('未知，不代表永久有效');
+});
 
 test('formal MV3 catalog validates domain reads before and after worker restart', async () => {
   if (!context) throw new Error('Missing extension context');

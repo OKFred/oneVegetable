@@ -1,5 +1,18 @@
 export const gatewayCredentials = {
   title: 'Alibaba credentials',
+  expiryunknown: 'Expiry unknown; this does not mean permanent access',
+  expiryvalid: 'Within the recorded authorization period',
+  expiryexpiring: 'Authorization expires within 7 days; prepare to renew',
+  expiryexpired: 'Authorization expired; renew or reconnect',
+  expiryinvalid: 'Authorization invalid or refresh failed; reconnect',
+  remainingdays: 'About {count} days left',
+  remaininghours: 'About {count} hours left',
+  remainingminutes: 'About {count} minutes left',
+  refreshWindow: 'Refresh may be attempted; the platform can still refuse',
+  expiryHelp:
+    'The platform controls expiry and may revoke access earlier. Try refreshing when available, or reauthorize and import. No workbench sign-out is needed.',
+  extensionRenew:
+    'The extension does not auto-renew. Use “Get Open Platform credentials” and save again when expiry approaches or access fails. Keep your existing vault.',
   description:
     'All users of this server share these credentials. Use OpenAPI credentials, not your Alibaba website login.',
   adminOnly: 'Only administrators can manage Alibaba credentials.',
@@ -18,7 +31,7 @@ export const gatewayCredentials = {
   refresh: 'Refresh Token',
   clear: 'Clear configuration',
   reload: 'Refresh status',
-  noRefresh: 'No Refresh Token: automatic renewal is unavailable. Replace credentials when they expire.',
+  noRefresh: 'Token refresh is unavailable for this configuration. Reauthorize and import.',
   renewTitle: 'How do I reconnect after authorization fails?',
   renewGuide:
     'Try Refresh Token first. If it fails, get credentials in extension Settings, authorize and export JSON, then import and test here. Do not clear the old configuration or sign out. Local developers can also run pnpm openapi:auth.',

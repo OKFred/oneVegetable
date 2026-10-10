@@ -379,7 +379,9 @@ export class GatewayCredentialService {
         appName: document.credentials.appName,
         appKeySuffix: document.credentials.appKey.slice(-4),
         inputSource: document.source,
-        canRefresh: document.credentials.refreshToken !== null
+        canRefresh:
+          document.credentials.refreshToken !== null &&
+          (record.refreshTokenExpiresTimeUtc === null || record.refreshTokenExpiresTimeUtc > this.clock())
       };
     } catch {
       return { ...summary, errorCode: 'ALIBABA_CREDENTIAL_VAULT_UNREADABLE' };

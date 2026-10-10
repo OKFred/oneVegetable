@@ -16,7 +16,10 @@ afterEach(() => {
   vi.restoreAllMocks();
   uiI18n.global.locale.value = 'zh-CN';
 });
-async function harness(role: 'admin' | 'user' = 'admin') {
+async function harness(
+  role: 'admin' | 'user' = 'admin',
+  overrides: Partial<ControlGatewayCredentialSummary> = {}
+) {
   const client = new BffControlClient({ baseUrl: 'http://localhost:8787' });
   const user: ControlSession['user'] = {
     id: 'admin',
@@ -50,7 +53,8 @@ async function harness(role: 'admin' | 'user' = 'admin') {
     lastRefreshErrorCode: null,
     updateTimeUtc: 1,
     updaterId: 'admin',
-    remark: null
+    remark: null,
+    ...overrides
   };
   const status = vi.spyOn(client, 'gatewayCredentialStatus').mockResolvedValue(summary);
   const save = vi.spyOn(client, 'saveGatewayCredential').mockResolvedValue({ ...summary, revision: 2 });
@@ -112,6 +116,16 @@ async function harness(role: 'admin' | 'user' = 'admin') {
   return { wrapper, status, save, clear, test, button };
 }
 describe('Node credential configuration UI', () => {
+  it('shows expired startup-file authorization even when configured is false', async () => {
+    const h = await harness('admin', {
+      source: 'credential-bundle',
+      configured: false,
+      accessTokenExpiresTimeUtc: 1
+    });
+    expect(h.wrapper.get('[data-testid="credential-expiry"]').text()).toContain('授权已到期');
+    expect(h.test).not.toHaveBeenCalled();
+    h.wrapper.unmount();
+  });
   it('requires confirmation before manual save and never exposes saved secrets or auto-tests', async () => {
     const h = await harness();
     expect(h.wrapper.text()).not.toContain(fixture.manual.appSecret);

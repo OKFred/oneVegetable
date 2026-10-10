@@ -29,6 +29,7 @@ import {
 
 import AlibabaCredentialAcquisitionDialog from '../components/AlibabaCredentialAcquisitionDialog.vue';
 import AlibabaIndependentNotice from '../components/AlibabaIndependentNotice.vue';
+import CredentialExpiryNotice from '../components/CredentialExpiryNotice.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import ExtensionSocialBackendPanel from '../components/ExtensionSocialBackendPanel.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -187,7 +188,7 @@ async function handleAcquiredCredentialsSaved(status: CredentialVaultStatus): Pr
 
 function readImportedCredentials(
   value: unknown
-): Pick<GatewaySettings, 'appKey' | 'appSecret' | 'accessToken'> {
+): Pick<GatewaySettings, 'appKey' | 'appSecret' | 'accessToken' | 'accessTokenExpiresTimeUtc'> {
   const root = objectValue(value);
   const application = objectValue(root.application);
   const oauth = objectValue(root.oauth);
@@ -197,7 +198,20 @@ function readImportedCredentials(
   if (!appKey || !appSecret || !accessToken) {
     throw new Error(t('settings.credentials.bundleMissing'));
   }
-  return { appKey, appSecret, accessToken };
+  const expires =
+    typeof oauth.expiresAtUtc === 'string' ? Date.parse(oauth.expiresAtUtc) : root.accessTokenExpiresTimeUtc;
+  return {
+    appKey,
+    appSecret,
+    accessToken,
+    accessTokenExpiresTimeUtc:
+      typeof expires === 'number' &&
+      Number.isSafeInteger(expires) &&
+      expires >= 0 &&
+      expires <= 8_640_000_000_000_000
+        ? expires
+        : null
+  };
 }
 
 function objectValue(value: unknown): Record<string, unknown> {
@@ -617,10 +631,16 @@ function confirmLanguagePreference(): void {
             </div>
             <ErrorNotice v-if="credentialImportError" class="mt-3" :error="credentialImportError" compact />
           </div>
+          <CredentialExpiryNotice
+            v-if="mode === 'extension' && (vaultStatus?.hasAccessToken || model.accessToken)"
+            :expires="model.accessTokenExpiresTimeUtc"
+            extension
+          />
           <div class="grid gap-4 sm:grid-cols-2">
             <label class="text-sm font-medium"
               >App Key<Input
                 v-model="model.appKey"
+                @update:model-value="model.accessTokenExpiresTimeUtc = null"
                 class="mt-2"
                 autocomplete="off"
                 aria-label="App Key"
@@ -629,6 +649,7 @@ function confirmLanguagePreference(): void {
             <label class="text-sm font-medium"
               >App Secret<Input
                 v-model="model.appSecret"
+                @update:model-value="model.accessTokenExpiresTimeUtc = null"
                 class="mt-2"
                 type="password"
                 aria-label="App Secret"
@@ -640,6 +661,7 @@ function confirmLanguagePreference(): void {
             <label class="text-sm font-medium sm:col-span-2"
               >Access Token<Input
                 v-model="model.accessToken"
+                @update:model-value="model.accessTokenExpiresTimeUtc = null"
                 class="mt-2"
                 type="password"
                 aria-label="Access Token"

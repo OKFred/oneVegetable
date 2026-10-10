@@ -17,7 +17,20 @@ export const gatewayCredentials = {
   refresh: '刷新 Token',
   clear: '清除配置',
   reload: '刷新状态',
-  noRefresh: '未提供 Refresh Token，无法自动续期。到期后请更换凭据。',
+  noRefresh: '当前配置不支持刷新 Token，请重新授权后导入。',
+  expiryunknown: '授权有效期未知，不代表永久有效',
+  expiryvalid: '授权尚在有效期内',
+  expiryexpiring: '授权将在 7 天内到期，请准备续期',
+  expiryexpired: '授权已到期，请续期或重新授权',
+  expiryinvalid: '授权已失效或刷新失败，请重新连接',
+  remainingdays: '剩余约 {count} 天',
+  remaininghours: '剩余约 {count} 小时',
+  remainingminutes: '剩余约 {count} 分钟',
+  refreshWindow: '仅表示可尝试续期，平台仍可能拒绝',
+  expiryHelp:
+    '有效期由平台决定；未到期也可能被撤销。可用时先刷新 Token，失败则重新授权并导入，不必退出工作台。',
+  extensionRenew:
+    '插件不会自动续期。临近到期或接口提示失效时，点击“获取开放平台凭证”重新授权并保存；无需重建保险库。',
   renewTitle: '授权失效了，怎么重新连接？',
   renewGuide:
     '先尝试刷新 Token。失败时在插件设置中获取开放平台凭证，完成授权后导出 JSON，在这里导入并测试连接；无需清除旧配置或重新登录工作台。本机开发也可运行 pnpm openapi:auth 获取授权包。',

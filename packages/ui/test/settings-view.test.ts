@@ -14,6 +14,7 @@ import {
   type GatewaySettings
 } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
+import credentialFixtures from '../../../mock/data/node-gateway-credentials.json';
 
 import SettingsView from '../src/views/SettingsView.vue';
 import LocalDiagnosticsPanel from '../src/components/LocalDiagnosticsPanel.vue';
@@ -388,6 +389,40 @@ describe('SettingsView diagnostics', () => {
     expect(wrapper.get('input[aria-label="Access Token"]').attributes('type')).toBe('password');
     expect(wrapper.text()).toContain('尚未保存');
     expect(createVault).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('retains imported expiry when saving but clears stale expiry after a manual credential change', async () => {
+    const wrapper = mountView('extension', 'empty');
+    await flushPromises();
+    const input = wrapper.get('input[aria-label="导入授权包 JSON"]');
+    const content = JSON.stringify({
+      ...credentialFixtures.oauthBundle,
+      oauth: { ...credentialFixtures.oauthBundle.oauth, expiresAtUtc: credentialFixtures.knownExpiry }
+    });
+    const file = new File([content], 'credentials.json', { type: 'application/json' });
+    Object.defineProperty(file, 'text', { value: () => Promise.resolve(content) });
+    Object.defineProperty(input.element, 'files', { configurable: true, value: [file] });
+    await input.trigger('change');
+    await flushPromises();
+    expect(wrapper.text()).toContain('2030-01-02');
+    await wrapper.get('input[aria-label="Access Token"]').setValue('replacement-token');
+    expect(wrapper.text()).toContain('未知，不代表永久有效');
+    expect(wrapper.text()).not.toContain('2030-01-02');
+    await input.trigger('change');
+    await flushPromises();
+    await wrapper.get('input[aria-label="设置保护口令"]').setValue('123456');
+    await wrapper.get('input[aria-label="确认保护口令"]').setValue('123456');
+    const save = wrapper.findAll('button').find((button) => button.text().includes('保存设置'));
+    if (!save) throw new Error('Missing save button');
+    await save.trigger('click');
+    await flushPromises();
+    expect(createVault).toHaveBeenCalledWith(
+      '123456',
+      expect.objectContaining({
+        accessTokenExpiresTimeUtc: Date.parse(credentialFixtures.knownExpiry)
+      })
+    );
     wrapper.unmount();
   });
 

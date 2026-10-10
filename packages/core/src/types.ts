@@ -388,6 +388,8 @@ export interface GatewaySettings {
   accessToken: string;
   endpoint: string;
   signMethod: SignMethod;
+  /** Optional expiry metadata, encrypted with the token; never a claim of platform validity. */
+  accessTokenExpiresTimeUtc?: number | null;
 }
 
 export interface SettingsRepository {

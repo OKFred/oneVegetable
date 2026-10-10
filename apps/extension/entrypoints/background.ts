@@ -38,6 +38,7 @@ import {
   resealCredentialVault,
   sanitizeDiagnosticMessage,
   SETTINGS_STORAGE_KEY,
+  gatewayCredentialExpiryMetadata,
   unlockCredentialVault,
   PhotoAdapter,
   ProductAdapter,
@@ -401,6 +402,8 @@ async function saveAcquiredCredentialsToVault(
     appKey: bundle.application.appKey,
     appSecret: bundle.application.appSecret,
     accessToken: bundle.oauth.accessToken,
+    accessTokenExpiresTimeUtc:
+      bundle.oauth.expiresAtUtc === null ? null : Date.parse(bundle.oauth.expiresAtUtc),
     endpoint: ALIBABA_GATEWAY,
     signMethod: 'hmac'
   };
@@ -409,10 +412,7 @@ async function saveAcquiredCredentialsToVault(
   const state = inspectCredentialStorage(stored[SETTINGS_STORAGE_KEY], present);
   if (state.kind === 'empty') {
     if (!passphrase) {
-      throw gatewayFailure(
-        'CREDENTIAL_VAULT_PASSPHRASE_REQUIRED',
-        'A local passphrase is required before saving credentials for the first time.'
-      );
+      throw gatewayFailure('CREDENTIAL_VAULT_PASSPHRASE_REQUIRED', 'Set a vault passphrase first.');
     }
     return (await executeCredentialVaultOperation('create', {
       passphrase,
@@ -470,7 +470,7 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
       if (state.kind !== 'legacy') {
         throw gatewayFailure(
           'CREDENTIAL_VAULT_MIGRATION_NOT_AVAILABLE',
-          'No legacy plaintext credentials are available to migrate.'
+          'No plaintext credentials to migrate.'
         );
       }
       const created = await createCredentialVault(state.settings, requiredVaultString(payload, 'passphrase'));
@@ -485,6 +485,7 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
         appKey: optionalVaultString(patch.appKey) ?? current.settings.appKey,
         appSecret: optionalVaultString(patch.appSecret) ?? current.settings.appSecret,
         accessToken: optionalVaultString(patch.accessToken) ?? current.settings.accessToken,
+        ...gatewayCredentialExpiryMetadata(patch),
         endpoint: requiredString(patch, 'endpoint'),
         signMethod: requiredSignMethod(patch.signMethod)
       };
@@ -555,6 +556,7 @@ async function editableSettings(
     appKey: settings?.appKey ?? '',
     appSecret: '',
     accessToken: '',
+    accessTokenExpiresTimeUtc: settings?.accessTokenExpiresTimeUtc ?? null,
     endpoint: settings?.endpoint ?? ALIBABA_GATEWAY,
     signMethod: settings?.signMethod ?? 'hmac'
   };
@@ -570,22 +572,16 @@ async function getUnlockedVault(state: ReturnType<typeof inspectCredentialStorag
 function vaultStateError(kind: ReturnType<typeof inspectCredentialStorage>['kind']): GatewayException {
   const details =
     kind === 'legacy'
-      ? [
-          'CREDENTIAL_VAULT_MIGRATION_REQUIRED',
-          'Legacy plaintext credentials must be encrypted locally first.'
-        ]
+      ? ['CREDENTIAL_VAULT_MIGRATION_REQUIRED', 'Encrypt credentials in Settings.']
       : kind === 'invalid'
-        ? [
-            'CREDENTIAL_VAULT_INVALID',
-            'Credential storage is invalid. Clear local data and configure it again.'
-          ]
+        ? ['CREDENTIAL_VAULT_INVALID', 'Invalid credentials. Reconfigure in Settings.']
         : kind === 'empty'
-          ? ['CREDENTIAL_VAULT_EMPTY', 'Configure Open Platform credentials in Settings first.']
+          ? ['CREDENTIAL_VAULT_EMPTY', 'Configure credentials in Settings.']
           : vaultSession.lockReason === 'idle'
-            ? ['CREDENTIAL_VAULT_IDLE_TIMEOUT', 'Open Platform credentials were locked after being idle.']
+            ? ['CREDENTIAL_VAULT_IDLE_TIMEOUT', 'Idle lock. Unlock in Settings.']
             : vaultSession.lockReason === 'manual'
-              ? ['CREDENTIAL_VAULT_LOCKED', 'Open Platform credentials were manually locked.']
-              : ['CREDENTIAL_VAULT_SESSION_ENDED', 'The Chrome session ended or the extension was updated.'];
+              ? ['CREDENTIAL_VAULT_LOCKED', 'Locked. Unlock in Settings.']
+              : ['CREDENTIAL_VAULT_SESSION_ENDED', 'Session ended. Unlock in Settings.'];
   const [code, message] = details as [string, string];
   return new GatewayException({ code, message, retryable: false });
 }
@@ -1347,6 +1343,7 @@ function requiredGatewaySettings(value: unknown): GatewaySettings {
     appKey: requiredString(record, 'appKey'),
     appSecret: requiredString(record, 'appSecret'),
     accessToken: requiredString(record, 'accessToken'),
+    ...gatewayCredentialExpiryMetadata(record),
     endpoint: requiredString(record, 'endpoint'),
     signMethod: requiredSignMethod(record.signMethod)
   };
