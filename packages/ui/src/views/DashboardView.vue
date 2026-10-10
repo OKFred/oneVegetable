@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
-import { Boxes, PlugZap, ShoppingCart } from '@lucide/vue';
+import { Boxes, Image, PlugZap, ShoppingCart } from '@lucide/vue';
 
 import { useServices } from '../lib/services';
 import DashboardMetricCard from '../components/DashboardMetricCard.vue';
-import DashboardAuthorizationCard from '../components/DashboardAuthorizationCard.vue';
 import DashboardShopLink from '../components/DashboardShopLink.vue';
 import LocalTodoList from '../components/LocalTodoList.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -45,7 +44,15 @@ const summary = useQuery({
     >
       <template #icon><Boxes class="size-4 text-primary" /></template>
     </DashboardMetricCard>
-    <DashboardAuthorizationCard />
+    <DashboardMetricCard
+      :title="t('shell.dashboard.metrics.photos')"
+      :value="summary.data.value?.photoCount"
+      :status="summary.data.value?.metricStatuses.photoCount"
+      :description="t('shell.dashboard.metrics.photosDescription')"
+      :gateway-source-label="dataSource.label"
+    >
+      <template #icon><Image class="size-4 text-primary" /></template>
+    </DashboardMetricCard>
     <DashboardMetricCard
       :title="t('shell.dashboard.metrics.orders')"
       :value="summary.data.value?.orderCount"
