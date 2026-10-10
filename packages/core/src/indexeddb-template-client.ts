@@ -1,10 +1,10 @@
 import { createEntityAuditFields, updateEntityAuditFields } from './audit';
 import { sanitizeProductDescriptionHtml } from './product-description';
+import { validateProductDescriptionTemplate } from './generated/validators-templates';
 import {
-  validateProductDescriptionTemplate,
   validateProductDescriptionTemplateCreateRequest,
   validateProductDescriptionTemplateUpdateRequest
-} from './generated/validators-templates';
+} from './generated/validators-core';
 import { templateError, TEMPLATE_HTML_MAX_BYTES } from './template-library';
 import type {
   ProductDescriptionTemplateClient,
@@ -64,12 +64,13 @@ export class IndexedDbProductDescriptionTemplateClient implements ProductDescrip
       const current = required(values, input.id, input.revision);
       this.#unique(values, input.name, input.language, input.id);
       return {
-        ...current,
+        ...updateEntityAuditFields(current, 'local:templates', Date.now(), input.remark),
+        id: current.id,
+        status: current.status,
         name: input.name.trim(),
         category: input.category,
         language: input.language,
-        html: safeHtml(input.html),
-        ...updateEntityAuditFields(current, 'local:templates', Date.now(), input.remark)
+        html: safeHtml(input.html)
       };
     });
   }
@@ -86,8 +87,8 @@ export class IndexedDbProductDescriptionTemplateClient implements ProductDescrip
       const current = required(values, id, revision);
       return {
         ...current,
-        status,
-        ...updateEntityAuditFields(current, 'local:templates', Date.now(), current.remark)
+        ...updateEntityAuditFields(current, 'local:templates', Date.now(), current.remark),
+        status
       };
     });
   }
@@ -106,14 +107,20 @@ export class IndexedDbProductDescriptionTemplateClient implements ProductDescrip
   async #open(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
       const request = this.factory.open(LOCAL_TEMPLATE_DATABASE, 1);
+      let blocked = false;
       request.onupgradeneeded = () => request.result.createObjectStore(STORE, { keyPath: 'id' });
       request.onsuccess = () => {
+        if (blocked) {
+          request.result.close();
+          return;
+        }
         resolve(request.result);
       };
       request.onerror = () => {
         reject(templateError('TEMPLATE_STORAGE_UNAVAILABLE'));
       };
       request.onblocked = () => {
+        blocked = true;
         reject(templateError('TEMPLATE_STORAGE_UNAVAILABLE'));
       };
     });
@@ -212,5 +219,7 @@ function required(
 function safeHtml(html: string): string {
   if (new TextEncoder().encode(html).byteLength > TEMPLATE_HTML_MAX_BYTES)
     throw templateError('TEMPLATE_PACKAGE_INVALID');
-  return sanitizeProductDescriptionHtml(html).html;
+  const sanitized = sanitizeProductDescriptionHtml(html).html;
+  if (!sanitized.trim()) throw templateError('TEMPLATE_PACKAGE_INVALID');
+  return sanitized;
 }

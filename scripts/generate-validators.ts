@@ -80,14 +80,13 @@ targets.set(
   'validators-templates.ts',
   compileValidators(
     Object.fromEntries(
-      [
-        'ProductDescriptionTemplate',
-        'ProductDescriptionTemplateCreateRequest',
-        'ProductDescriptionTemplateUpdateRequest',
-        'ProductDescriptionTemplateBundle'
-      ].map((name) => [`validate${name}`, schemas[name]])
+      ['ProductDescriptionTemplate', 'ProductDescriptionTemplateBundle'].map((name) => [
+        `validate${name}`,
+        schemas[name]
+      ])
     ),
-    'fast'
+    'fast',
+    false
   )
 );
 targets.set(
@@ -206,10 +205,13 @@ for (const [fileName, output] of targets) {
 
 function compileValidators(
   selected: Record<string, object | undefined>,
-  formatMode: 'fast' | 'full' = 'full'
+  formatMode: 'fast' | 'full' = 'full',
+  allErrors = true
 ): string {
   const ajv = new Ajv2020({
-    allErrors: true,
+    allErrors,
+    // Template callers expose a localized package/storage error, not AJV prose.
+    messages: allErrors,
     allowUnionTypes: true,
     code: { esm: true, source: true, optimize: 2 },
     inlineRefs: false,
@@ -219,7 +221,7 @@ function compileValidators(
     strict: true
   });
   addFormats(ajv, { mode: formatMode });
-  addErrors(ajv);
+  if (allErrors) addErrors(ajv);
 
   const dependencies = new Map<string, object>();
   const canonicalSchemas = new Map<string, string>();

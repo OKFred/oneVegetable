@@ -18304,37 +18304,6 @@
           "remark": { "type": ["string", "null"], "maxLength": 500 }
         }
       },
-      "ProductDescriptionTemplateCreateRequest": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["requestId", "name", "category", "language", "html"],
-        "properties": {
-          "requestId": { "$ref": "#/components/schemas/RequestId" },
-          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
-          "category": {
-            "type": "string",
-            "enum": ["company", "logistics", "packaging", "service", "custom"]
-          },
-          "language": { "type": "string", "enum": ["zh_CN", "en_US"] },
-          "html": { "type": "string", "maxLength": 262144 },
-          "remark": { "type": ["string", "null"], "maxLength": 500 }
-        }
-      },
-      "ProductDescriptionTemplatePortable": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["name", "category", "language", "html", "remark"],
-        "properties": {
-          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
-          "category": {
-            "type": "string",
-            "enum": ["company", "logistics", "packaging", "service", "custom"]
-          },
-          "language": { "type": "string", "enum": ["zh_CN", "en_US"] },
-          "html": { "type": "string", "minLength": 1, "maxLength": 262144 },
-          "remark": { "type": ["string", "null"], "maxLength": 500 }
-        }
-      },
       "ProductDescriptionTemplateBundle": {
         "type": "object",
         "additionalProperties": false,
@@ -18349,6 +18318,22 @@
             "maxItems": 100,
             "items": { "$ref": "#/components/schemas/ProductDescriptionTemplatePortable" }
           }
+        }
+      },
+      "ProductDescriptionTemplateCreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "name", "category", "language", "html"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "category": {
+            "type": "string",
+            "enum": ["company", "logistics", "packaging", "service", "custom"]
+          },
+          "language": { "type": "string", "enum": ["zh_CN", "en_US"] },
+          "html": { "type": "string", "maxLength": 262144 },
+          "remark": { "type": ["string", "null"], "maxLength": 500 }
         }
       },
       "ProductDescriptionTemplateListRequest": {
@@ -18379,6 +18364,21 @@
           "page": { "type": "integer", "minimum": 1 },
           "pageSize": { "type": "integer", "minimum": 1, "maximum": 100 },
           "total": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "ProductDescriptionTemplatePortable": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "category", "language", "html", "remark"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "category": {
+            "type": "string",
+            "enum": ["company", "logistics", "packaging", "service", "custom"]
+          },
+          "language": { "type": "string", "enum": ["zh_CN", "en_US"] },
+          "html": { "type": "string", "minLength": 1, "maxLength": 262144 },
+          "remark": { "type": ["string", "null"], "maxLength": 500 }
         }
       },
       "ProductDescriptionTemplateStatusRequest": {

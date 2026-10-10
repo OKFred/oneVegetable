@@ -225,11 +225,11 @@ export class MemoryProductDescriptionTemplateClient implements ProductDescriptio
       this.#assertUniqueName(input.name, input.language, input.id);
       const entity: ProductDescriptionTemplate = {
         ...current,
+        ...updateEntityAuditFields(current, this.#actorId, this.#clock(), input.remark),
         name: input.name.trim(),
         category: input.category,
         language: input.language,
-        html: sanitizeProductDescriptionHtml(input.html).html,
-        ...updateEntityAuditFields(current, this.#actorId, this.#clock(), input.remark)
+        html: sanitizeProductDescriptionHtml(input.html).html
       };
       this.#values.set(entity.id, entity);
       return structuredClone(entity);
@@ -255,8 +255,8 @@ export class MemoryProductDescriptionTemplateClient implements ProductDescriptio
       this.#assertRevision(current, revision);
       const entity: ProductDescriptionTemplate = {
         ...current,
-        status,
-        ...updateEntityAuditFields(current, this.#actorId, this.#clock(), current.remark)
+        ...updateEntityAuditFields(current, this.#actorId, this.#clock(), current.remark),
+        status
       };
       this.#values.set(entity.id, entity);
       return structuredClone(entity);
@@ -314,76 +314,7 @@ export class MemoryProductDescriptionTemplateClient implements ProductDescriptio
   }
 }
 
-/** Combines immutable bundled templates with a writable shared-template provider. */
-export class CompositeProductDescriptionTemplateClient implements ProductDescriptionTemplateClient {
-  constructor(
-    private readonly bundled: ProductDescriptionTemplateClient,
-    private readonly shared: ProductDescriptionTemplateClient
-  ) {}
-
-  async list(input: ProductDescriptionTemplateListInput = {}): Promise<ProductDescriptionTemplatePage> {
-    const [bundled, shared] = await Promise.all([
-      readAllTemplatePages(this.bundled, input),
-      readAllTemplatePages(this.shared, input)
-    ]);
-    const merged = new Map<string, ProductDescriptionTemplate>();
-    for (const template of bundled) merged.set(template.id, template);
-    for (const template of shared) merged.set(template.id, template);
-    const values = [...merged.values()].toSorted(
-      (left, right) =>
-        Number(right.creatorId === 'system:bundled') - Number(left.creatorId === 'system:bundled') ||
-        right.updateTimeUtc - left.updateTimeUtc ||
-        left.name.localeCompare(right.name)
-    );
-    const page = input.page ?? 1;
-    const pageSize = input.pageSize ?? 20;
-    const offset = (page - 1) * pageSize;
-    return {
-      items: values.slice(offset, offset + pageSize),
-      page,
-      pageSize,
-      total: values.length
-    };
-  }
-
-  create(
-    input: Parameters<ProductDescriptionTemplateClient['create']>[0]
-  ): Promise<ProductDescriptionTemplate> {
-    return this.shared.create(input);
-  }
-
-  update(
-    input: Parameters<ProductDescriptionTemplateClient['update']>[0]
-  ): Promise<ProductDescriptionTemplate> {
-    return this.shared.update(input);
-  }
-
-  archive(id: string, revision: number): Promise<ProductDescriptionTemplate> {
-    return this.shared.archive(id, revision);
-  }
-
-  restore(id: string, revision: number): Promise<ProductDescriptionTemplate> {
-    return this.shared.restore(id, revision);
-  }
-}
-
-async function readAllTemplatePages(
-  client: ProductDescriptionTemplateClient,
-  input: ProductDescriptionTemplateListInput
-): Promise<ProductDescriptionTemplate[]> {
-  const values: ProductDescriptionTemplate[] = [];
-  const pageSize = 100;
-  for (let page = 1; page <= 100; page += 1) {
-    const result = await client.list({ ...input, page, pageSize });
-    values.push(...result.items);
-    if (values.length >= result.total || result.items.length === 0) return values;
-  }
-  throw new GatewayException({
-    code: 'TEMPLATE_PAGE_LIMIT_EXCEEDED',
-    message: '共享详情模板数量超过当前客户端读取上限',
-    retryable: false
-  });
-}
+export { CompositeProductDescriptionTemplateClient } from './composite-template-client';
 
 function isApiResponse(value: unknown): value is ApiResponse<unknown> {
   if (!isRecord(value) || typeof value.requestId !== 'string' || typeof value.ok !== 'boolean') return false;

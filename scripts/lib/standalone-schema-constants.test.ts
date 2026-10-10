@@ -2,6 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { compactStandaloneSchemaConstants as compact } from './standalone-schema-constants';
 
 describe('standalone schema constant compaction', () => {
+  it('shares immutable keyword names without changing error objects or params', () => {
+    const source =
+      'const errors=[{keyword:"type",params:{type:"string"}},{keyword:"type",params:{type:"string"}},{keyword:"type",params:{type:"string"}}];';
+    const output = compact(source);
+    expect(output.match(/keyword:/g)).toHaveLength(3);
+    expect(output.match(/params:\{type:"string"\}/g)).toHaveLength(3);
+    expect(output.match(/"type"/g)).toHaveLength(1);
+    expect(compact(output)).toBe(output);
+  });
   it('shares schema paths and short repeated messages without removing errors', () => {
     const input =
       'const e=[{message:"must be object",schemaPath:"#/required"},{message:"must be object",schemaPath:"#/required"},{message:"must be object",schemaPath:"#/required"}];';
