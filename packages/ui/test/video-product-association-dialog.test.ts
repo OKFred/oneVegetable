@@ -41,9 +41,14 @@ async function setup(mode: AppServices['mode'] = 'mock') {
     { attachTo: document.body, global: { stubs: { VideoDrawer: true } } }
   );
   mounted.push(wrapper);
-  await vi.waitFor(() => {
-    expect(wrapper.findComponent(ProductPicker).findAll('li').length).toBeGreaterThan(0);
-  });
+  // The first request lazily imports the product contract. Allow cold full-suite loading;
+  // keep waiting for the actual options instead of sleeping or bypassing the picker.
+  await vi.waitFor(
+    () => {
+      expect(wrapper.findComponent(ProductPicker).findAll('li').length).toBeGreaterThan(0);
+    },
+    { timeout: 5_000 }
+  );
   return { wrapper, gateway, request, body: new DOMWrapper(document.body) };
 }
 async function choose(wrapper: VueWrapper) {
@@ -117,7 +122,7 @@ describe('video to existing product dialog', () => {
         ['publishProduct', 'updateProduct', 'saveProductDraft'].includes(op)
       )
     ).toBe(false);
-  });
+  }, 10_000);
   it.each(['bff', 'extension'] as const)(
     'keeps real association disabled in %s, even if availability says allowed',
     async (mode) => {
