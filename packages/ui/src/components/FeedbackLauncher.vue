@@ -1,12 +1,20 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
-import { Camera, ExternalLink, ImageOff, MessageCircleQuestion, RefreshCw, Trash2 } from '@lucide/vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
+import {
+  Camera,
+  Clipboard,
+  ExternalLink,
+  ImageOff,
+  MessageCircleQuestion,
+  RefreshCw,
+  Trash2
+} from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
 import { APP_VERSION } from '@one-vegetable/core/version';
 
 import { useUiI18n } from '../i18n';
-import { buildGitHubFeedbackUrl, type FeedbackEnvironmentInput, type FeedbackKind } from '../lib/feedback';
+import { buildGitHubFeedbackUrl, GITHUB_FEEDBACK_URL, type FeedbackEnvironmentInput } from '../lib/feedback';
 import { captureFeedbackScreenshot, type FeedbackScreenshot } from '../lib/feedback-screenshot';
 import Button from './ui/Button.vue';
 import ModalDialog from './ui/ModalDialog.vue';
@@ -15,29 +23,14 @@ import Tooltip from './ui/Tooltip.vue';
 const props = defineProps<{ mode: 'mock' | 'extension' | 'bff' }>();
 const { locale, t } = useUiI18n();
 const open = ref(false);
-const kind = ref<FeedbackKind>('bug');
-const title = ref('');
-const details = ref('');
-const reproduction = ref('');
-const acknowledged = ref(false);
 const screenshot = ref<FeedbackScreenshot | null>(null);
 const screenshotUrl = ref<string | null>(null);
 const capturing = ref(false);
-const openingGitHub = ref(false);
+const copying = ref(false);
 const error = ref<string | null>(null);
-const titleInput = ref<HTMLInputElement | null>(null);
-const detailsInput = ref<HTMLTextAreaElement | null>(null);
-const acknowledgementInput = ref<HTMLInputElement | null>(null);
-
-type FeedbackRequirement = 'title' | 'details' | 'acknowledgement';
-
-const unmetRequirement = computed<FeedbackRequirement | null>(() => {
-  if (title.value.trim().length < 3) return 'title';
-  if (details.value.trim().length < 10) return 'details';
-  if (screenshot.value && !acknowledged.value) return 'acknowledgement';
-  return null;
-});
-const readinessMessage = computed(() => t(`feedback.readiness.${unmetRequirement.value ?? 'ready'}`));
+const issueUrl = computed(() =>
+  open.value ? buildGitHubFeedbackUrl(currentEnvironment()) : GITHUB_FEEDBACK_URL
+);
 
 function openDialog(): void {
   error.value = null;
@@ -45,14 +38,18 @@ function openDialog(): void {
 }
 
 function updateOpen(nextOpen: boolean): void {
-  if (capturing.value || openingGitHub.value) return;
+  if (capturing.value || copying.value) return;
   open.value = nextOpen;
   if (!nextOpen) resetDraft();
 }
 
 async function captureCurrentPage(): Promise<void> {
+  if (capturing.value || copying.value) return;
   const root = globalThis.document.querySelector<HTMLElement>('[data-feedback-capture-root]');
-  if (!root) return;
+  if (!root) {
+    error.value = t('feedback.screenshot.failed');
+    return;
+  }
   capturing.value = true;
   error.value = null;
   try {
@@ -68,63 +65,24 @@ async function captureCurrentPage(): Promise<void> {
   }
 }
 
-async function openGitHubIssue(): Promise<void> {
-  if (capturing.value || openingGitHub.value) return;
-  const requirement = unmetRequirement.value;
-  if (requirement) {
-    error.value = readinessMessage.value;
-    await nextTick();
-    focusRequirement(requirement);
-    return;
-  }
+async function copyCurrentScreenshot(): Promise<void> {
+  if (capturing.value || copying.value) return;
   const currentScreenshot = screenshot.value;
-
-  let issueUrl: string;
-  try {
-    issueUrl = buildGitHubFeedbackUrl({
-      kind: kind.value,
-      kindFormValue: t(`feedback.kind.formValue.${kind.value}`),
-      title: title.value,
-      details: details.value,
-      reproduction: reproduction.value,
-      environment: currentEnvironment()
-    });
-  } catch {
-    error.value = t('feedback.errors.urlTooLong');
-    return;
-  }
-
-  openingGitHub.value = true;
+  if (!currentScreenshot) return;
+  copying.value = true;
   error.value = null;
-  const popup = globalThis.open('about:blank', '_blank');
-  if (popup) popup.opener = null;
-
   try {
-    if (currentScreenshot) {
-      const copied = await copyScreenshot(currentScreenshot.blob);
-      if (copied) toast.success(t('feedback.status.clipboardReady'));
-      else {
-        downloadScreenshot(currentScreenshot);
-        toast.warning(t('feedback.status.downloaded'));
-      }
-    }
-
-    if (popup) popup.location.replace(issueUrl);
+    const copied = await copyScreenshot(currentScreenshot.blob);
+    if (copied) toast.success(t('feedback.status.clipboardReady'));
     else {
-      openIssueWithAnchor(issueUrl);
-      toast.warning(t('feedback.status.popupBlocked'));
+      downloadScreenshot(currentScreenshot);
+      toast.warning(t('feedback.status.downloaded'));
     }
-    open.value = false;
-    resetDraft();
+  } catch {
+    error.value = t('feedback.screenshot.copyFailed');
   } finally {
-    openingGitHub.value = false;
+    copying.value = false;
   }
-}
-
-function focusRequirement(requirement: FeedbackRequirement): void {
-  if (requirement === 'title') titleInput.value?.focus();
-  else if (requirement === 'details') detailsInput.value?.focus();
-  else acknowledgementInput.value?.focus();
 }
 
 function currentEnvironment(): FeedbackEnvironmentInput {
@@ -160,24 +118,15 @@ function downloadScreenshot(value: FeedbackScreenshot): void {
   URL.revokeObjectURL(url);
 }
 
-function openIssueWithAnchor(issueUrl: string): void {
-  const link = globalThis.document.createElement('a');
-  link.href = issueUrl;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  link.click();
-}
-
 function replaceScreenshot(value: FeedbackScreenshot): void {
   releaseScreenshot();
-  acknowledged.value = false;
   screenshot.value = value;
   screenshotUrl.value = URL.createObjectURL(value.blob);
 }
 
 function removeScreenshot(): void {
+  if (capturing.value || copying.value) return;
   releaseScreenshot();
-  acknowledged.value = false;
 }
 
 function releaseScreenshot(): void {
@@ -188,11 +137,6 @@ function releaseScreenshot(): void {
 
 function resetDraft(): void {
   releaseScreenshot();
-  kind.value = 'bug';
-  title.value = '';
-  details.value = '';
-  reproduction.value = '';
-  acknowledged.value = false;
   error.value = null;
 }
 
@@ -226,62 +170,7 @@ onBeforeUnmount(releaseScreenshot);
       size="lg"
       @update:open="updateOpen"
     >
-      <form class="space-y-5" @submit.prevent="openGitHubIssue">
-        <div class="grid gap-4 sm:grid-cols-2">
-          <label class="text-sm font-medium">
-            {{ t('feedback.kind.label') }}
-            <select
-              v-model="kind"
-              class="mt-2 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="bug">{{ t('feedback.kind.bug') }}</option>
-              <option value="experience">{{ t('feedback.kind.experience') }}</option>
-              <option value="feature">{{ t('feedback.kind.feature') }}</option>
-            </select>
-          </label>
-          <label class="text-sm font-medium">
-            {{ t('feedback.fields.title') }}
-            <input
-              ref="titleInput"
-              v-model="title"
-              required
-              minlength="3"
-              maxlength="100"
-              class="mt-2 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-              :placeholder="t('feedback.fields.titlePlaceholder')"
-            />
-          </label>
-        </div>
-
-        <label class="block text-sm font-medium">
-          {{ t('feedback.fields.details') }}
-          <textarea
-            ref="detailsInput"
-            v-model="details"
-            required
-            minlength="10"
-            maxlength="1200"
-            rows="5"
-            class="mt-2 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-            :placeholder="t('feedback.fields.detailsPlaceholder')"
-          />
-        </label>
-
-        <details>
-          <summary class="cursor-pointer text-sm font-medium">
-            {{ t('feedback.fields.reproduction') }}
-          </summary>
-          <label class="sr-only" for="feedback-reproduction">{{ t('feedback.fields.reproduction') }}</label>
-          <textarea
-            id="feedback-reproduction"
-            v-model="reproduction"
-            maxlength="800"
-            rows="4"
-            class="mt-2 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-            :placeholder="t('feedback.fields.reproductionPlaceholder')"
-          />
-        </details>
-
+      <div class="space-y-5">
         <section class="rounded-lg border bg-muted/30 p-4">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -290,7 +179,12 @@ onBeforeUnmount(releaseScreenshot);
                 {{ t('feedback.screenshot.description') }}
               </p>
             </div>
-            <Button type="button" variant="outline" :disabled="capturing" @click="captureCurrentPage">
+            <Button
+              type="button"
+              variant="outline"
+              :disabled="capturing || copying"
+              @click="captureCurrentPage"
+            >
               <RefreshCw v-if="screenshot" class="size-4" />
               <Camera v-else class="size-4" />
               {{
@@ -322,7 +216,13 @@ onBeforeUnmount(releaseScreenshot);
                   size: fileSize(screenshot.blob.size)
                 })
               }}</span>
-              <Button type="button" variant="ghost" size="sm" @click="removeScreenshot">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                :disabled="capturing || copying"
+                @click="removeScreenshot"
+              >
                 <Trash2 class="size-3.5" />{{ t('feedback.screenshot.remove') }}
               </Button>
             </div>
@@ -342,45 +242,28 @@ onBeforeUnmount(releaseScreenshot);
           <p class="mt-1 text-xs leading-5 text-amber-900 dark:text-amber-200">
             {{ t('feedback.privacy.description') }}
           </p>
-          <label
-            v-if="screenshot"
-            class="mt-3 flex items-start gap-2 text-xs text-amber-950 dark:text-amber-100"
-          >
-            <input
-              ref="acknowledgementInput"
-              v-model="acknowledged"
-              type="checkbox"
-              class="mt-0.5 size-4 rounded border-input"
-            />
-            <span>{{ t('feedback.privacy.acknowledge') }}</span>
-          </label>
         </section>
 
         <p v-if="error" class="text-sm text-destructive" role="alert">{{ error }}</p>
-      </form>
+      </div>
 
       <template #footer>
-        <div class="flex w-full flex-wrap items-center justify-between gap-3">
-          <p id="feedback-readiness" class="text-xs text-muted-foreground" aria-live="polite">
-            {{ readinessMessage }}
-          </p>
-          <div class="flex flex-wrap justify-end gap-2">
-            <Button variant="outline" :disabled="capturing || openingGitHub" @click="updateOpen(false)">
-              {{ t('common.actions.cancel') }}
-            </Button>
-            <Button
-              :disabled="capturing || openingGitHub"
-              aria-describedby="feedback-readiness"
-              @click="openGitHubIssue"
-            >
-              <ExternalLink class="size-4" />
-              {{
-                openingGitHub
-                  ? t('feedback.actions.opening')
-                  : t(screenshot ? 'feedback.actions.openGitHub' : 'feedback.actions.openTextIssue')
-              }}
-            </Button>
-          </div>
+        <div class="flex w-full flex-wrap justify-end gap-2">
+          <Button variant="outline" :disabled="capturing || copying" @click="updateOpen(false)">
+            {{ t('common.actions.close') }}
+          </Button>
+          <Button :disabled="!screenshot || capturing || copying" @click="copyCurrentScreenshot">
+            <Clipboard class="size-4" />
+            {{ t(copying ? 'feedback.actions.copying' : 'feedback.actions.copy') }}
+          </Button>
+          <a
+            :href="issueUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex h-9 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <ExternalLink class="size-4" />{{ t('feedback.actions.openGitHub') }}
+          </a>
         </div>
       </template>
     </ModalDialog>

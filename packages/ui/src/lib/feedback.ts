@@ -5,8 +5,6 @@ import { pageHash, parsePageHash } from './hash-router';
 export const GITHUB_FEEDBACK_URL = 'https://github.com/OKFred/oneVegetable/issues/new';
 export const FEEDBACK_URL_MAX_LENGTH = 16_000;
 
-export type FeedbackKind = 'bug' | 'experience' | 'feature';
-
 export interface FeedbackEnvironmentInput {
   appVersion: string;
   capturedAtUtc: string;
@@ -20,23 +18,10 @@ export interface FeedbackEnvironmentInput {
   viewportWidth: number;
 }
 
-export interface GitHubFeedbackInput {
-  details: string;
-  environment: FeedbackEnvironmentInput;
-  kind: FeedbackKind;
-  kindFormValue: string;
-  reproduction: string;
-  title: string;
-}
-
-export function buildGitHubFeedbackUrl(input: GitHubFeedbackInput): string {
+export function buildGitHubFeedbackUrl(environment: FeedbackEnvironmentInput): string {
   const url = new URL(GITHUB_FEEDBACK_URL);
   url.searchParams.set('template', 'feedback.yml');
-  url.searchParams.set('title', `${feedbackTitlePrefix(input.kind)} ${normalizeLine(input.title)}`);
-  url.searchParams.set('kind', normalizeLine(input.kindFormValue));
-  url.searchParams.set('details', normalizeMultiline(input.details));
-  url.searchParams.set('reproduction', normalizeMultiline(input.reproduction));
-  url.searchParams.set('environment', formatFeedbackEnvironment(input.environment));
+  url.searchParams.set('environment', formatFeedbackEnvironment(environment));
   if (url.href.length > FEEDBACK_URL_MAX_LENGTH) throw new Error('FEEDBACK_URL_TOO_LONG');
   return url.href;
 }
@@ -83,21 +68,11 @@ export function operatingSystemSummary(userAgent: string): string {
   return 'Unknown';
 }
 
-function feedbackTitlePrefix(kind: FeedbackKind): string {
-  if (kind === 'bug') return '[Bug]';
-  if (kind === 'experience') return '[UX]';
-  return '[Feature]';
-}
-
 function normalizeLine(value: string): string {
   return value
     .replace(/[\r\n\t]+/gu, ' ')
     .replace(/\s{2,}/gu, ' ')
     .trim();
-}
-
-function normalizeMultiline(value: string): string {
-  return value.replace(/\r\n?/gu, '\n').trim();
 }
 
 function positiveInteger(value: number): number {

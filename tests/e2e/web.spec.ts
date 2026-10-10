@@ -55,7 +55,7 @@ test('feedback captures only on demand and opens a safe prefilled GitHub issue',
     requestedIssueUrl = route.request().url();
     await route.fulfill({
       contentType: 'text/html',
-      body: '<!doctype html><title>GitHub issue preview</title>'
+      path: 'mock/data/feedback/github-issue-preview.html'
     });
   });
 
@@ -68,34 +68,35 @@ test('feedback captures only on demand and opens a safe prefilled GitHub issue',
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('img', { name: '待提交的页面截图' })).toHaveCount(0);
 
-  await dialog.getByLabel('标题').fill('设置页反馈流程检查');
-  await dialog.getByLabel('详细说明').fill('验证截图由用户触发，并安全预填公开的 GitHub Issue。');
-  await dialog.locator('summary').filter({ hasText: '复现步骤（选填）' }).click();
-  await dialog.getByLabel('复现步骤（选填）').fill('1. 打开设置页\n2. 点击反馈按钮');
+  await expect(dialog.locator('input,textarea,select')).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: '复制截图', exact: true })).toBeDisabled();
   await dialog.getByRole('button', { name: '截取当前页面' }).click();
   await expect(dialog.getByRole('img', { name: '待提交的页面截图' })).toBeVisible({ timeout: 20_000 });
   await expect(dialog.getByText(/\d+ × \d+ · \d+(?:\.\d+)? (?:KiB|MiB)/u)).toBeVisible();
-  await dialog.getByRole('checkbox').check();
-
-  const popupPromise = page.waitForEvent('popup');
-  await dialog.getByRole('button', { name: '复制截图并前往 GitHub粘贴', exact: true }).click();
-  const popup = await popupPromise;
-  await popup.waitForURL('https://github.com/OKFred/oneVegetable/issues/new**');
-  const issueUrl = new URL(requestedIssueUrl || popup.url());
-  expect(issueUrl.searchParams.get('template')).toBe('feedback.yml');
-  expect(issueUrl.searchParams.get('title')).toBe('[Bug] 设置页反馈流程检查');
-  expect(issueUrl.searchParams.get('details')).toContain('截图由用户触发');
-  expect(issueUrl.searchParams.get('environment')).toContain('Route: #/settings');
-  expect(issueUrl.href).not.toContain('must-not-enter-feedback-url');
+  const initialPages = context.pages().length;
+  await dialog.getByRole('button', { name: '复制截图', exact: true }).click();
+  await expect(page.getByText('截图已复制。请到 GitHub 手工填写反馈，并按 Ctrl+V 粘贴截图。')).toBeVisible();
+  expect(context.pages()).toHaveLength(initialPages);
+  await expect(dialog).toBeVisible();
   const clipboardTypes = await page.evaluate(async () =>
     (await navigator.clipboard.read()).flatMap((item) => item.types)
   );
   expect(clipboardTypes).toContain('image/png');
+
+  const popupPromise = page.waitForEvent('popup');
+  await dialog.getByRole('link', { name: '前往 GitHub 反馈', exact: true }).click();
+  const popup = await popupPromise;
+  await popup.waitForURL('https://github.com/OKFred/oneVegetable/issues/new**');
+  const issueUrl = new URL(requestedIssueUrl || popup.url());
+  expect(issueUrl.searchParams.get('template')).toBe('feedback.yml');
+  expect([...issueUrl.searchParams.keys()]).toEqual(['template', 'environment']);
+  expect(issueUrl.searchParams.get('environment')).toContain('Route: #/settings');
+  expect(issueUrl.href).not.toContain('must-not-enter-feedback-url');
   await popup.close();
 });
 
 for (const locale of ['zh-CN', 'en-US'] as const) {
-  test(`text-only feedback opens GitHub without a screenshot or clipboard in ${locale}`, async ({
+  test(`manual feedback opens GitHub without a form or screenshot in ${locale}`, async ({
     context,
     page
   }) => {
@@ -117,11 +118,7 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     await page.goto('/#/dashboard');
     await page.getByTestId('feedback-launcher').click();
     const dialog = page.getByRole('dialog');
-    await dialog.getByLabel(locale === 'zh-CN' ? '标题' : 'Title', { exact: true }).fill('Text feedback');
-    await dialog
-      .getByLabel(locale === 'zh-CN' ? '详细说明' : 'Details', { exact: true })
-      .fill('A text-only feedback report without an image.');
-    await expect(dialog.getByRole('checkbox')).toHaveCount(0);
+    await expect(dialog.locator('input,textarea,select')).toHaveCount(0);
     await expect(
       dialog.getByRole('img', {
         name: locale === 'zh-CN' ? '待提交的页面截图' : 'Screenshot ready to submit',
@@ -130,17 +127,17 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     ).toHaveCount(0);
     const popupPromise = page.waitForEvent('popup');
     await dialog
-      .getByRole('button', {
-        name: locale === 'zh-CN' ? '前往 GitHub 提交' : 'Continue on GitHub',
+      .getByRole('link', {
+        name: locale === 'zh-CN' ? '前往 GitHub 反馈' : 'Leave feedback on GitHub',
         exact: true
       })
       .click();
     const popup = await popupPromise;
     await popup.waitForURL('https://github.com/OKFred/oneVegetable/issues/new**');
     const url = new URL(popup.url());
-    expect(url.searchParams.get('details')).toContain('text-only feedback');
+    expect(url.searchParams.has('details')).toBe(false);
     expect(url.searchParams.get('environment')).toContain(`UI locale: ${locale}`);
-    await expect(dialog).toHaveCount(0);
+    await expect(dialog).toBeVisible();
     await popup.close();
   });
 }

@@ -838,7 +838,12 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(feedbackDialog.getByRole('img', { name: '待提交的页面截图' })).toBeVisible({
     timeout: 20_000
   });
-  await feedbackDialog.getByRole('button', { name: '取消', exact: true }).click();
+  const pagesBeforeCopy = browserContext.pages().length;
+  await feedbackDialog.getByRole('button', { name: '复制截图', exact: true }).click();
+  await expect(page.getByText(/截图已复制。|浏览器未允许复制图片，截图已下载/u)).toBeVisible();
+  expect(browserContext.pages()).toHaveLength(pagesBeforeCopy);
+  await expect(feedbackDialog).toBeVisible();
+  await feedbackDialog.getByRole('button', { name: '关闭', exact: true }).click();
   await expect(feedbackDialog).toHaveCount(0);
   await page.getByLabel('设置保护口令').fill('e2e-vault-password');
   await page.getByLabel('确认保护口令').fill('e2e-vault-password');

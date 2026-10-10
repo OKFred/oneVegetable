@@ -22,23 +22,12 @@ const environment = {
 };
 
 describe('GitHub feedback', () => {
-  it('builds the fixed repository issue URL with structured prefilled fields', () => {
-    const result = new URL(
-      buildGitHubFeedbackUrl({
-        details: '保存后没有提示。',
-        environment,
-        kind: 'bug',
-        kindFormValue: '问题 / Bug',
-        reproduction: '1. 打开设置\n2. 点击保存',
-        title: '保存设置无反馈'
-      })
-    );
+  it('prefills only safe environment metadata and leaves feedback for the user', () => {
+    const result = new URL(buildGitHubFeedbackUrl(environment));
 
     expect(result.origin + result.pathname).toBe('https://github.com/OKFred/oneVegetable/issues/new');
     expect(result.searchParams.get('template')).toBe('feedback.yml');
-    expect(result.searchParams.get('title')).toBe('[Bug] 保存设置无反馈');
-    expect(result.searchParams.get('kind')).toBe('问题 / Bug');
-    expect(result.searchParams.get('details')).toBe('保存后没有提示。');
+    expect([...result.searchParams.keys()]).toEqual(['template', 'environment']);
     expect(result.searchParams.get('environment')).toContain('Route: #/products');
     expect(result.href).not.toContain('secret-product');
   });
@@ -63,15 +52,8 @@ describe('GitHub feedback', () => {
   });
 
   it('refuses oversized prefill URLs instead of silently dropping feedback', () => {
-    expect(() =>
-      buildGitHubFeedbackUrl({
-        details: '很'.repeat(2_000),
-        environment,
-        kind: 'feature',
-        kindFormValue: '功能建议 / Feature request',
-        reproduction: '',
-        title: '较长反馈'
-      })
-    ).toThrow('FEEDBACK_URL_TOO_LONG');
+    expect(() => buildGitHubFeedbackUrl({ ...environment, appVersion: 'a'.repeat(16_000) })).toThrow(
+      'FEEDBACK_URL_TOO_LONG'
+    );
   });
 });
