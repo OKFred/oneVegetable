@@ -346,13 +346,13 @@ function categoryLabel(category: ProductDescriptionTemplateCategory): string {
         </p>
         <div class="grid gap-3 md:grid-cols-2" :aria-busy="loading">
           <article v-for="template in visibleTemplates" :key="template.id" class="rounded-lg border p-4">
-            <div class="flex items-start justify-between gap-3">
+            <div class="flex items-start gap-3">
               <TriStateCheckbox
                 :checked="selectedIds.includes(template.id)"
                 :label="t('common.data.selectRow', { name: template.name })"
                 @update:checked="toggleSelection(template.id)"
               />
-              <div class="min-w-0">
+              <div class="min-w-0 flex-1">
                 <p class="truncate font-medium">{{ template.name }}</p>
                 <div class="mt-2 flex flex-wrap gap-1">
                   <Badge variant="outline">{{ categoryLabel(template.category) }}</Badge>

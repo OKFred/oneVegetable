@@ -93,6 +93,7 @@ Chrome DevTools 适合检查 options 页面、service worker、Network 与 `chro
 - 设置页提供 `zh_CN` / `en_US` 接口语言偏好；商品列表、Schema、平台草稿、履约通道和地址 Schema 等支持语言参数的请求使用该偏好，商品草稿仍保留创建时的语言上下文。
 - 本地商品草稿使用 V3 结构，按商品 ID 或新建类目隔离，约 750 ms 防抖保存，并记录编辑模式与已创建的平台草稿 ID。最多保留 10 份且自动清理 30 天前记录；平台草稿创建后不会重复调用 `schema.add.draft`。
 - Schema 中 `valueTypeRule=html` 或 `superText` 会使用受限 Tiptap 编辑器；仅维护 `productDescType=2` 的普通详情。编辑器提供中英文公司、物流、包装与服务内置模板，以及 BFF 审计共享模板，支持插入、追加和预览后覆盖；智能详情和不受支持的旧 HTML 必须先确认转换。
+- `#/templates` 可独立管理详情模板：Node 存于 SQLite、Cloudflare 存于 D1，当前站点用户共享；独立插件存于本机 IndexedDB。支持可视化编辑、归档恢复和 JSON/S3 模板包导入导出。S3 仅作备份交换，保存模板不修改 Alibaba 商品。详见 [模板库说明](docs/shared-template-library.md)。
 - 主图、SKU 图和详情图复用国际站图库选择器。真实图库查询、本地上传和外部 URL 转存已接通；Web/BFF 仍使用 JSON Base64 契约，后台校验后按官方要求转换为 multipart，单张上限 5 MiB。图库页面只保留分组浏览，新增、改名和删除集中到独立树形管理弹窗，并在真实写入前逐项确认。
 - 详情整改面板区分 `Alibaba Schema`、`官方提示` 和 `项目建议`。只有 Schema/契约硬错误阻止提交；内容长度、结构、SEO、图片质量和官方评分提示均不阻止提交。
 - 商品编辑以 `schema.render` XML 为权威源文档：无编辑时原样返回，编辑时只应用安全字段补丁，结构异常会在出网前阻断。详见 [商品 Schema XML 安全边界](docs/product-schema-xml-safety.md)。
