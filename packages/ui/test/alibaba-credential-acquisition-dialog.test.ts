@@ -96,6 +96,8 @@ describe('AlibabaCredentialAcquisitionDialog', () => {
 
     expect(document.body.textContent).toContain('插件不会读取或保存网站密码');
     expect(document.body.querySelector('input[autocomplete="current-password"]')).toBeNull();
+    expect(document.body.querySelector('input[type="url"]')?.closest('details')?.open).toBe(false);
+    expect(document.body.querySelector('ol[aria-label]')).toBeNull();
     clickButton('打开 Alibaba 并开始');
     await flushPromises();
     expect(start).toHaveBeenCalledWith(null);

@@ -63,9 +63,10 @@ export const admin = {
   credentialAcquisition: {
     title: '获取开放平台凭证',
     description: '复用当前 Chrome 的 Alibaba 登录态；插件不会读取或保存网站密码。',
-    existingApplicationTitle: '向导会先检查开放平台准备状态',
+    existingApplicationTitle: '登录 → 授权 → 保存',
     existingApplicationDescription:
-      '启动后会依次检查开发者注册、审核、应用和 OAuth。注册资料、协议、验证码及安全确认均由你在 Alibaba 页面完成；插件不会读取资料值、绕过验证或代替提交。',
+      '首次连接或授权失效时都用此入口。复用已有应用和 Callback；登录、协议及验证码由你完成，缺少应用时再展示注册指引。',
+    advanced: '高级设置（通常无需修改）',
     callbackLabel: 'Callback URL（可选）',
     callbackPlaceholder: '留空则保留应用现有 Callback',
     callbackNotice: '只有显式填写并确认后才会修改应用配置；不会默认写入 example.com。',

@@ -196,7 +196,7 @@ onBeforeUnmount(clearPoll);
     @update:open="$event ? emit('update:open', true) : void close()"
   >
     <div class="space-y-5">
-      <AlibabaCredentialAcquisitionSteps :state="state" />
+      <AlibabaCredentialAcquisitionSteps v-if="state?.status === 'prerequisite-required'" :state="state" />
 
       <AlibabaIndependentNotice />
 
@@ -231,15 +231,22 @@ onBeforeUnmount(clearPoll);
             required
           />
         </label>
-        <label class="grid gap-1.5 text-sm">
-          <span class="font-medium">{{ t('admin.cloudAcquisition.callback') }}</span>
-          <Input
-            v-model="callbackUrl"
-            type="url"
-            :placeholder="t('admin.cloudAcquisition.callbackPlaceholder')"
-          />
-          <span class="text-xs text-muted-foreground">{{ t('admin.cloudAcquisition.callbackNotice') }}</span>
-        </label>
+        <details>
+          <summary class="cursor-pointer text-sm font-medium">
+            {{ t('admin.credentialAcquisition.advanced') }}
+          </summary>
+          <label class="mt-2 grid gap-1.5 text-sm">
+            <span class="font-medium">{{ t('admin.cloudAcquisition.callback') }}</span>
+            <Input
+              v-model="callbackUrl"
+              type="url"
+              :placeholder="t('admin.cloudAcquisition.callbackPlaceholder')"
+            />
+            <span class="text-xs text-muted-foreground">{{
+              t('admin.cloudAcquisition.callbackNotice')
+            }}</span>
+          </label>
+        </details>
 
         <div class="flex flex-wrap justify-between gap-3 border-t pt-4">
           <Button type="button" variant="outline" @click="close">{{

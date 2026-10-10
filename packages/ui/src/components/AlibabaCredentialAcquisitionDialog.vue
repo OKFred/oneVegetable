@@ -259,7 +259,7 @@ function downloadJson(value: unknown, filename: string): void {
     @update:open="requestClose"
   >
     <div class="grid gap-4">
-      <AlibabaCredentialAcquisitionSteps :state="state" />
+      <AlibabaCredentialAcquisitionSteps v-if="state?.status === 'prerequisite-required'" :state="state" />
 
       <AlibabaIndependentNotice />
 
@@ -271,19 +271,24 @@ function downloadJson(value: unknown, filename: string): void {
       </div>
 
       <template v-if="state === null">
-        <label class="text-sm font-medium">
-          {{ t('admin.credentialAcquisition.callbackLabel') }}
-          <Input
-            v-model="callbackUrl"
-            class="mt-2"
-            type="url"
-            :placeholder="t('admin.credentialAcquisition.callbackPlaceholder')"
-            autocomplete="off"
-          />
-        </label>
-        <p class="text-xs leading-5 text-muted-foreground">
-          {{ t('admin.credentialAcquisition.callbackNotice') }}
-        </p>
+        <details>
+          <summary class="cursor-pointer text-sm font-medium">
+            {{ t('admin.credentialAcquisition.advanced') }}
+          </summary>
+          <label class="text-sm font-medium">
+            {{ t('admin.credentialAcquisition.callbackLabel') }}
+            <Input
+              v-model="callbackUrl"
+              class="mt-2"
+              type="url"
+              :placeholder="t('admin.credentialAcquisition.callbackPlaceholder')"
+              autocomplete="off"
+            />
+          </label>
+          <p class="text-xs leading-5 text-muted-foreground">
+            {{ t('admin.credentialAcquisition.callbackNotice') }}
+          </p>
+        </details>
         <Button :disabled="busy || !alibabaCredentialAcquisition" @click="start">
           <ExternalLink class="size-4" />{{ t('admin.credentialAcquisition.start') }}
         </Button>

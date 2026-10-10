@@ -18,6 +18,9 @@ export const gatewayCredentials = {
   clear: '清除配置',
   reload: '刷新状态',
   noRefresh: '未提供 Refresh Token，无法自动续期。到期后请更换凭据。',
+  renewTitle: '授权失效了，怎么重新连接？',
+  renewGuide:
+    '先尝试刷新 Token。失败时在插件设置中获取开放平台凭证，完成授权后导出 JSON，在这里导入并测试连接；无需清除旧配置或重新登录工作台。本机开发也可运行 pnpm openapi:auth 获取授权包。',
   legacy: '当前使用启动文件或环境变量。导入或保存后立即改用加密配置；清除后不会回退旧账号。',
   save: '保存并立即生效',
   cancel: '取消',

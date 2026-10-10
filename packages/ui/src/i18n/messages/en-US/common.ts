@@ -180,6 +180,12 @@ export const common = {
     code: 'Error code: {code}',
     copyRequestId: 'Copy requestId',
     configureCredentials: 'Configure credentials',
+    reconnectAlibaba: 'Reconnect Alibaba',
+    alibabaAuthorizationRequired: 'Alibaba API authorization is invalid. Authorize again.',
+    reconnectExtensionGuide:
+      'Website sign-in is not API authorization. Get Open Platform credentials in Settings, authorize, then save. Do not resubmit previous writes.',
+    reconnectServerGuide:
+      'Ask an admin to refresh the token. If it fails, authorize with the extension, export JSON, then import and test it in credential settings. Workbench sign-in is separate.',
     preparingDiagnostics: 'Preparing…',
     exportDiagnostics: 'Export redacted diagnostics',
     platformResponse: 'Platform response',

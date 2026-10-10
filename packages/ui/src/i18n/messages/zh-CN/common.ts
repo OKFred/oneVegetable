@@ -178,6 +178,12 @@ export const common = {
     code: '错误码：{code}',
     copyRequestId: '复制 requestId',
     configureCredentials: '前往设置凭证',
+    reconnectAlibaba: '重新连接 Alibaba',
+    alibabaAuthorizationRequired: 'Alibaba API 授权已失效，请重新授权。',
+    reconnectExtensionGuide:
+      '网页登录不等于 API 授权。在设置中获取开放平台凭证，完成授权后保存即可；不要重新提交之前的写操作。',
+    reconnectServerGuide:
+      '请管理员尝试刷新 Token；仍失败时，通过插件重新授权并导出 JSON，再到凭据配置导入、测试连接。无需退出工作台。',
     preparingDiagnostics: '正在整理…',
     exportDiagnostics: '导出脱敏诊断',
     platformResponse: '平台返回',

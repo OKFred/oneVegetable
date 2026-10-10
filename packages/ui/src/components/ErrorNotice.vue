@@ -26,13 +26,27 @@ const props = withDefaults(
   }
 );
 
-const { gateway, mode } = useServices();
+const { gateway, mode, runtime } = useServices();
 const details = computed(() =>
   describeUserVisibleError(props.error, props.fallback || t('common.error.fallback'))
+);
+// Alibaba authorization is independent from both workbench sign-in and vault unlocking.
+const alibabaAuthorizationRequired = computed(() =>
+  [
+    '27',
+    'invalid-sessionkey',
+    'isv.invalid-session',
+    'ALIBABA_ACCESS_TOKEN_EXPIRED',
+    'ALIBABA_REFRESH_TOKEN_EXPIRED',
+    'ALIBABA_REFRESH_TOKEN_MISSING',
+    'ALIBABA_TOKEN_REFRESH_FAILED'
+  ].includes(details.value.code ?? '')
 );
 const localizedMessage = computed(() => {
   const code = details.value.code;
   if (!code) return details.value.message;
+  if (['27', 'invalid-sessionkey', 'isv.invalid-session'].includes(code))
+    return t('common.error.alibabaAuthorizationRequired');
   if (code === 'S3_LOCAL_HTTP_DISABLED') return t('settings.s3.localHttp');
   // The BFF and extension historically use different codes for the same missing configuration.
   const key = `errors.codes.${code === 'S3_STORAGE_NOT_CONFIGURED' ? 'S3_NOT_CONFIGURED' : code}`;
@@ -42,6 +56,7 @@ const localizedMessage = computed(() => {
 const platformError = computed(() => {
   const code = details.value.code ?? '';
   return (
+    alibabaAuthorizationRequired.value ||
     code.startsWith('ALIBABA_') ||
     [
       'ALIBABA_ERROR',
@@ -209,6 +224,26 @@ function downloadJson(value: unknown, fileName: string): void {
           </Button>
         </div>
         <div class="mt-2 flex flex-wrap items-center gap-2">
+          <template v-if="alibabaAuthorizationRequired">
+            <p class="w-full text-xs leading-5">
+              {{
+                t(
+                  mode === 'extension'
+                    ? 'common.error.reconnectExtensionGuide'
+                    : 'common.error.reconnectServerGuide'
+                )
+              }}
+            </p>
+            <a
+              :href="
+                mode === 'bff' && runtime?.backendMeta?.runtime === 'cloudflare' ? '#/admin' : '#/settings'
+              "
+              class="inline-flex h-8 cursor-pointer items-center gap-1 rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+              data-testid="alibaba-reconnect"
+            >
+              <Settings class="size-3.5" aria-hidden="true" />{{ t('common.error.reconnectAlibaba') }}
+            </a>
+          </template>
           <a
             v-if="s3SettingsRequired"
             href="#/settings"

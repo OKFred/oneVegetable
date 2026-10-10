@@ -69,9 +69,10 @@ export const admin = {
     title: 'Get Open Platform credentials',
     description:
       "Reuse Alibaba's current Chrome session. The extension never reads or stores the website password.",
-    existingApplicationTitle: 'The assistant checks Open Platform readiness first',
+    existingApplicationTitle: 'Sign in → Authorize → Save',
     existingApplicationDescription:
-      'After starting, the assistant checks developer registration, review, application readiness, and OAuth in order. Complete registration data, agreements, CAPTCHAs, and security confirmations on Alibaba; the extension never reads those values, bypasses checks, or submits them for you.',
+      'Use this for first connection or renewal. Keep your existing app and Callback. Complete sign-in, terms and CAPTCHA yourself; registration help appears only when needed.',
+    advanced: 'Advanced (usually unchanged)',
     callbackLabel: 'Callback URL (optional)',
     callbackPlaceholder: "Leave empty to keep the application's current Callback",
     callbackNotice:

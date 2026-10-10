@@ -17,7 +17,7 @@ const clipboardWrite = vi.fn(() => Promise.resolve());
 const anchorClick = vi.fn();
 let exportedBlob: Blob | null = null;
 
-function mountErrorNotice(error: unknown, mode: 'mock' | 'extension') {
+function mountErrorNotice(error: unknown, mode: 'mock' | 'extension' | 'bff') {
   const Host = defineComponent({
     setup() {
       provideServices({
@@ -69,6 +69,53 @@ afterEach(() => {
 });
 
 describe('ErrorNotice', () => {
+  it.each([
+    '27',
+    'invalid-sessionkey',
+    'isv.invalid-session',
+    'ALIBABA_ACCESS_TOKEN_EXPIRED',
+    'ALIBABA_REFRESH_TOKEN_EXPIRED',
+    'ALIBABA_TOKEN_REFRESH_FAILED'
+  ])('offers Alibaba renewal for %s without retrying a request', async (code) => {
+    const wrapper = mountErrorNotice(
+      new GatewayException({ code, message: 'provider authorization response', retryable: false }, requestId),
+      'extension'
+    );
+    expect(wrapper.get('[data-testid="alibaba-reconnect"]').attributes('href')).toBe('#/settings');
+    expect(wrapper.text()).toContain('网页登录不等于 API 授权');
+    expect(wrapper.text()).toContain(requestId);
+    expect(wrapper.get('details').text()).toContain('provider authorization response');
+    uiI18n.global.locale.value = 'en-US';
+    await flushPromises();
+    expect(wrapper.get('[data-testid="alibaba-reconnect"]').text()).toBe('Reconnect Alibaba');
+    expect(wrapper.text()).toContain('Do not resubmit previous writes');
+    wrapper.unmount();
+  });
+
+  it.each([
+    'SESSION_EXPIRED',
+    'SESSION_INVALID',
+    'CREDENTIAL_VAULT_LOCKED',
+    'PERMISSION_DENIED',
+    'GATEWAY_ERROR'
+  ])('does not confuse %s with expired Alibaba authorization', (code) => {
+    const wrapper = mountErrorNotice(
+      new GatewayException({ code, message: 'unrelated failure', retryable: false }),
+      'extension'
+    );
+    expect(wrapper.find('[data-testid="alibaba-reconnect"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('guides BFF users to admin-managed credential renewal, not workbench sign-out', () => {
+    const wrapper = mountErrorNotice(
+      new GatewayException({ code: '27', message: 'Invalid session', retryable: false }),
+      'bff'
+    );
+    expect(wrapper.text()).toContain('请管理员尝试刷新 Token');
+    expect(wrapper.text()).toContain('无需退出工作台');
+    wrapper.unmount();
+  });
   it('explains the local HTTP server opt-in without implying that cloud runtimes can enable it', async () => {
     const wrapper = mountErrorNotice(new GatewayException(s3Errors.localHttpDisabled), 'mock');
     expect(wrapper.text()).toContain('本地 Node 需显式开启');

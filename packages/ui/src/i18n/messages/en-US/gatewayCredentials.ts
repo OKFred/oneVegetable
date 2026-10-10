@@ -19,6 +19,9 @@ export const gatewayCredentials = {
   clear: 'Clear configuration',
   reload: 'Refresh status',
   noRefresh: 'No Refresh Token: automatic renewal is unavailable. Replace credentials when they expire.',
+  renewTitle: 'How do I reconnect after authorization fails?',
+  renewGuide:
+    'Try Refresh Token first. If it fails, get credentials in extension Settings, authorize and export JSON, then import and test here. Do not clear the old configuration or sign out. Local developers can also run pnpm openapi:auth.',
   legacy:
     'Using a startup file or environment variables. Saving switches immediately to encrypted configuration; clearing will not restore the old account.',
   save: 'Save and activate',

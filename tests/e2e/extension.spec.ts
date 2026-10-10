@@ -741,8 +741,11 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('button', { name: '开始授权向导' }).click();
   const acquisitionDialog = page.getByRole('dialog', { name: '获取开放平台凭证' });
   await expect(acquisitionDialog).toBeVisible();
-  await expect(acquisitionDialog.getByText('1. 开发者注册', { exact: true })).toBeVisible();
-  await expect(acquisitionDialog.getByText('2. 平台审核', { exact: true })).toBeVisible();
+  await expect(acquisitionDialog.getByText('登录 → 授权 → 保存', { exact: true })).toBeVisible();
+  await expect(acquisitionDialog.getByText('1. 开发者注册', { exact: true })).toHaveCount(0);
+  await expect(acquisitionDialog.getByLabel('Callback URL（可选）')).not.toBeVisible();
+  await acquisitionDialog.getByText('高级设置（通常无需修改）', { exact: true }).click();
+  await expect(acquisitionDialog.getByLabel('Callback URL（可选）')).toBeVisible();
   await acquisitionDialog.getByRole('button', { name: '关闭', exact: true }).click();
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
   await expect(page.getByText('用得不错？赏个评价。')).toHaveCount(0);
