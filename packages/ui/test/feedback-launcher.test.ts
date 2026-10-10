@@ -62,8 +62,8 @@ describe('FeedbackLauncher', () => {
 
     await wrapper.get('[data-testid="feedback-launcher"]').trigger('click');
     expect(captureMock).not.toHaveBeenCalled();
-    expect(findButton('复制截图并前往 GitHub粘贴').disabled).toBe(false);
-    findButton('复制截图并前往 GitHub粘贴').click();
+    expect(findButton('前往 GitHub 提交').disabled).toBe(false);
+    findButton('前往 GitHub 提交').click();
     await flushPromises();
     expect(document.body.querySelector('[role="alert"]')?.textContent).toContain('至少 3 个字的标题');
     expect(document.activeElement).toBe(document.body.querySelector('input[required]'));
@@ -85,7 +85,14 @@ describe('FeedbackLauncher', () => {
     expect(document.activeElement).toBe(acknowledgement);
     acknowledgement.click();
     await flushPromises();
-    expect(document.body.textContent).toContain('已准备好，可以复制截图并前往 GitHub粘贴');
+    expect(document.body.textContent).toContain('已准备好，请在 GitHub 检查并最终提交');
+
+    findButton('重新截取').click();
+    await flushPromises();
+    const newAcknowledgement = document.body.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    expect(newAcknowledgement?.checked).toBe(false);
+    newAcknowledgement?.click();
+    await flushPromises();
 
     findButton('复制截图并前往 GitHub粘贴').click();
     await flushPromises();
@@ -97,6 +104,57 @@ describe('FeedbackLauncher', () => {
     expect(issueUrl.searchParams.get('environment')).toContain('Route: #/products');
     expect(issueUrl.href).not.toContain('private-product-id');
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:feedback-preview');
+    wrapper.unmount();
+  });
+
+  it.each(['extension', 'bff'] as const)(
+    'allows text-only feedback in %s without capture or clipboard',
+    async (mode) => {
+      const wrapper = mount(FeedbackLauncher, { attachTo: document.body, props: { mode } });
+      await wrapper.get('[data-testid="feedback-launcher"]').trigger('click');
+      await setNativeValue(
+        document.body.querySelector<HTMLInputElement>('input[required]') ?? undefined,
+        '文字反馈测试'
+      );
+      await setNativeValue(
+        document.body.querySelector<HTMLTextAreaElement>('textarea[required]') ?? undefined,
+        '不需要截图也能提供完整的问题说明。'
+      );
+      expect(document.body.querySelector('input[type="checkbox"]')).toBeNull();
+      findButton('前往 GitHub 提交').click();
+      await flushPromises();
+      expect(captureMock).not.toHaveBeenCalled();
+      expect(clipboardWrite).not.toHaveBeenCalled();
+      expect(replace).toHaveBeenCalledOnce();
+      const issue = new URL(String(replace.mock.calls[0]?.[0]));
+      expect(issue.searchParams.get('details')).toContain('不需要截图');
+      expect(issue.origin + issue.pathname).toBe('https://github.com/OKFred/oneVegetable/issues/new');
+      wrapper.unmount();
+    }
+  );
+
+  it('keeps text-only submission available after a screenshot failure', async () => {
+    captureMock.mockRejectedValueOnce(new Error('capture failed'));
+    const host = document.createElement('div');
+    host.dataset.feedbackCaptureRoot = '';
+    document.body.append(host);
+    const wrapper = mount(FeedbackLauncher, { attachTo: host, props: { mode: 'extension' } });
+    await wrapper.get('[data-testid="feedback-launcher"]').trigger('click');
+    await setNativeValue(
+      document.body.querySelector<HTMLInputElement>('input[required]') ?? undefined,
+      '截图失败测试'
+    );
+    await setNativeValue(
+      document.body.querySelector<HTMLTextAreaElement>('textarea[required]') ?? undefined,
+      '截图失败不应阻塞文字反馈提交。'
+    );
+    findButton('截取当前页面').click();
+    await flushPromises();
+    expect(document.body.textContent).toContain('可重试或直接提交文字反馈');
+    findButton('前往 GitHub 提交').click();
+    await flushPromises();
+    expect(replace).toHaveBeenCalledOnce();
+    expect(clipboardWrite).not.toHaveBeenCalled();
     wrapper.unmount();
   });
 

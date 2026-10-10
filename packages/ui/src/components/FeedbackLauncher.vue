@@ -27,16 +27,14 @@ const openingGitHub = ref(false);
 const error = ref<string | null>(null);
 const titleInput = ref<HTMLInputElement | null>(null);
 const detailsInput = ref<HTMLTextAreaElement | null>(null);
-const screenshotSection = ref<HTMLElement | null>(null);
 const acknowledgementInput = ref<HTMLInputElement | null>(null);
 
-type FeedbackRequirement = 'title' | 'details' | 'screenshot' | 'acknowledgement';
+type FeedbackRequirement = 'title' | 'details' | 'acknowledgement';
 
 const unmetRequirement = computed<FeedbackRequirement | null>(() => {
   if (title.value.trim().length < 3) return 'title';
   if (details.value.trim().length < 10) return 'details';
-  if (!screenshot.value) return 'screenshot';
-  if (!acknowledged.value) return 'acknowledgement';
+  if (screenshot.value && !acknowledged.value) return 'acknowledgement';
   return null;
 });
 const readinessMessage = computed(() => t(`feedback.readiness.${unmetRequirement.value ?? 'ready'}`));
@@ -71,6 +69,7 @@ async function captureCurrentPage(): Promise<void> {
 }
 
 async function openGitHubIssue(): Promise<void> {
+  if (capturing.value || openingGitHub.value) return;
   const requirement = unmetRequirement.value;
   if (requirement) {
     error.value = readinessMessage.value;
@@ -79,7 +78,6 @@ async function openGitHubIssue(): Promise<void> {
     return;
   }
   const currentScreenshot = screenshot.value;
-  if (!currentScreenshot) return;
 
   let issueUrl: string;
   try {
@@ -102,11 +100,13 @@ async function openGitHubIssue(): Promise<void> {
   if (popup) popup.opener = null;
 
   try {
-    const copied = await copyScreenshot(currentScreenshot.blob);
-    if (copied) toast.success(t('feedback.status.clipboardReady'));
-    else {
-      downloadScreenshot(currentScreenshot);
-      toast.warning(t('feedback.status.downloaded'));
+    if (currentScreenshot) {
+      const copied = await copyScreenshot(currentScreenshot.blob);
+      if (copied) toast.success(t('feedback.status.clipboardReady'));
+      else {
+        downloadScreenshot(currentScreenshot);
+        toast.warning(t('feedback.status.downloaded'));
+      }
     }
 
     if (popup) popup.location.replace(issueUrl);
@@ -124,7 +124,6 @@ async function openGitHubIssue(): Promise<void> {
 function focusRequirement(requirement: FeedbackRequirement): void {
   if (requirement === 'title') titleInput.value?.focus();
   else if (requirement === 'details') detailsInput.value?.focus();
-  else if (requirement === 'screenshot') screenshotSection.value?.querySelector('button')?.focus();
   else acknowledgementInput.value?.focus();
 }
 
@@ -171,6 +170,7 @@ function openIssueWithAnchor(issueUrl: string): void {
 
 function replaceScreenshot(value: FeedbackScreenshot): void {
   releaseScreenshot();
+  acknowledged.value = false;
   screenshot.value = value;
   screenshotUrl.value = URL.createObjectURL(value.blob);
 }
@@ -267,18 +267,22 @@ onBeforeUnmount(releaseScreenshot);
           />
         </label>
 
-        <label class="block text-sm font-medium">
-          {{ t('feedback.fields.reproduction') }}
+        <details>
+          <summary class="cursor-pointer text-sm font-medium">
+            {{ t('feedback.fields.reproduction') }}
+          </summary>
+          <label class="sr-only" for="feedback-reproduction">{{ t('feedback.fields.reproduction') }}</label>
           <textarea
+            id="feedback-reproduction"
             v-model="reproduction"
             maxlength="800"
             rows="4"
             class="mt-2 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
             :placeholder="t('feedback.fields.reproductionPlaceholder')"
           />
-        </label>
+        </details>
 
-        <section ref="screenshotSection" class="rounded-lg border bg-muted/30 p-4">
+        <section class="rounded-lg border bg-muted/30 p-4">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h3 class="font-medium">{{ t('feedback.screenshot.title') }}</h3>
@@ -338,7 +342,10 @@ onBeforeUnmount(releaseScreenshot);
           <p class="mt-1 text-xs leading-5 text-amber-900 dark:text-amber-200">
             {{ t('feedback.privacy.description') }}
           </p>
-          <label class="mt-3 flex items-start gap-2 text-xs text-amber-950 dark:text-amber-100">
+          <label
+            v-if="screenshot"
+            class="mt-3 flex items-start gap-2 text-xs text-amber-950 dark:text-amber-100"
+          >
             <input
               ref="acknowledgementInput"
               v-model="acknowledged"
@@ -367,7 +374,11 @@ onBeforeUnmount(releaseScreenshot);
               @click="openGitHubIssue"
             >
               <ExternalLink class="size-4" />
-              {{ openingGitHub ? t('feedback.actions.opening') : t('feedback.actions.openGitHub') }}
+              {{
+                openingGitHub
+                  ? t('feedback.actions.opening')
+                  : t(screenshot ? 'feedback.actions.openGitHub' : 'feedback.actions.openTextIssue')
+              }}
             </Button>
           </div>
         </div>

@@ -1,8 +1,7 @@
 export const feedback = {
   launcher: 'Send feedback',
   title: 'Send product feedback',
-  description:
-    'Describe your feedback, capture this page, then review and submit it as a public GitHub issue.',
+  description: 'Enter a title and details to open GitHub. Screenshots are optional; review and submit there.',
   kind: {
     label: 'Feedback type',
     bug: 'Problem',
@@ -23,7 +22,7 @@ export const feedback = {
     reproductionPlaceholder: '1. Open…\n2. Select…\n3. Observe…'
   },
   screenshot: {
-    title: 'Current page screenshot',
+    title: 'Current page screenshot (optional)',
     description:
       'The current app viewport is captured only when you click. The feedback UI and marked sensitive content are excluded.',
     capture: 'Capture current page',
@@ -32,8 +31,7 @@ export const feedback = {
     remove: 'Remove screenshot',
     previewAlt: 'Screenshot ready to submit',
     metadata: '{width} × {height} · {size}',
-    required: 'Capture and review a screenshot first.',
-    failed: 'The screenshot could not be captured. Please try again.',
+    failed: 'Screenshot failed. Retry or continue with text only.',
     tooLarge: 'The screenshot is too large. Reduce the browser window size and try again.'
   },
   privacy: {
@@ -44,14 +42,14 @@ export const feedback = {
   },
   actions: {
     openGitHub: 'Copy screenshot, open GitHub, and paste',
+    openTextIssue: 'Continue on GitHub',
     opening: 'Preparing GitHub…'
   },
   readiness: {
     title: 'Enter a title with at least 3 characters.',
     details: 'Enter at least 10 characters in Details.',
-    screenshot: 'Capture and review the current page.',
     acknowledgement: 'Confirm that the feedback is safe to publish.',
-    ready: 'Ready to copy the screenshot, open GitHub, and paste it.'
+    ready: 'Ready. Review and submit on GitHub.'
   },
   status: {
     clipboardReady: 'Screenshot copied. Paste it into the GitHub screenshot field with Ctrl+V.',

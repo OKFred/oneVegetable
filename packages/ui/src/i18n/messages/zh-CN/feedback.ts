@@ -1,7 +1,7 @@
 export const feedback = {
   launcher: '提交反馈',
   title: '提交产品反馈',
-  description: '填写反馈并截取当前页面，然后前往公开的 GitHub Issue 检查并提交。',
+  description: '填写标题和说明即可前往 GitHub。截图选填，最后由你检查并提交。',
   kind: {
     label: '反馈类型',
     bug: '问题',
@@ -22,7 +22,7 @@ export const feedback = {
     reproductionPlaceholder: '1. 打开…\n2. 点击…\n3. 出现…'
   },
   screenshot: {
-    title: '当前页面截图',
+    title: '当前页面截图（选填）',
     description: '仅在你点击后截取当前应用视口；反馈窗口和已标记的敏感内容不会进入截图。',
     capture: '截取当前页面',
     capturing: '正在截图…',
@@ -30,8 +30,7 @@ export const feedback = {
     remove: '移除截图',
     previewAlt: '待提交的页面截图',
     metadata: '{width} × {height} · {size}',
-    required: '请先截取并检查截图。',
-    failed: '截图失败，请重试。',
+    failed: '截图失败，可重试或直接提交文字反馈。',
     tooLarge: '截图超过大小限制，请缩小浏览器窗口后重试。'
   },
   privacy: {
@@ -42,14 +41,14 @@ export const feedback = {
   },
   actions: {
     openGitHub: '复制截图并前往 GitHub粘贴',
+    openTextIssue: '前往 GitHub 提交',
     opening: '正在准备 GitHub…'
   },
   readiness: {
     title: '还需填写至少 3 个字的标题。',
     details: '还需填写至少 10 个字的详细说明。',
-    screenshot: '还需截取并检查当前页面。',
     acknowledgement: '还需勾选“可以公开提交”。',
-    ready: '已准备好，可以复制截图并前往 GitHub粘贴。'
+    ready: '已准备好，请在 GitHub 检查并最终提交。'
   },
   status: {
     clipboardReady: '截图已复制。请在 GitHub 的截图区域按 Ctrl+V 粘贴。',

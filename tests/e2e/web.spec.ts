@@ -70,6 +70,7 @@ test('feedback captures only on demand and opens a safe prefilled GitHub issue',
 
   await dialog.getByLabel('标题').fill('设置页反馈流程检查');
   await dialog.getByLabel('详细说明').fill('验证截图由用户触发，并安全预填公开的 GitHub Issue。');
+  await dialog.locator('summary').filter({ hasText: '复现步骤（选填）' }).click();
   await dialog.getByLabel('复现步骤（选填）').fill('1. 打开设置页\n2. 点击反馈按钮');
   await dialog.getByRole('button', { name: '截取当前页面' }).click();
   await expect(dialog.getByRole('img', { name: '待提交的页面截图' })).toBeVisible({ timeout: 20_000 });
@@ -92,6 +93,57 @@ test('feedback captures only on demand and opens a safe prefilled GitHub issue',
   expect(clipboardTypes).toContain('image/png');
   await popup.close();
 });
+
+for (const locale of ['zh-CN', 'en-US'] as const) {
+  test(`text-only feedback opens GitHub without a screenshot or clipboard in ${locale}`, async ({
+    context,
+    page
+  }) => {
+    await page.addInitScript(
+      ({ key, value }) => {
+        localStorage.setItem(
+          key,
+          JSON.stringify({ uiLocale: value, alibabaLanguage: 'en_US', theme: 'dark' })
+        );
+      },
+      { key: APP_PREFERENCES_STORAGE_KEY, value: locale }
+    );
+    await context.route('https://github.com/OKFred/oneVegetable/issues/new**', (route) =>
+      route.fulfill({
+        contentType: 'text/html',
+        path: 'mock/data/feedback/github-issue-preview.html'
+      })
+    );
+    await page.goto('/#/dashboard');
+    await page.getByTestId('feedback-launcher').click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByLabel(locale === 'zh-CN' ? '标题' : 'Title', { exact: true }).fill('Text feedback');
+    await dialog
+      .getByLabel(locale === 'zh-CN' ? '详细说明' : 'Details', { exact: true })
+      .fill('A text-only feedback report without an image.');
+    await expect(dialog.getByRole('checkbox')).toHaveCount(0);
+    await expect(
+      dialog.getByRole('img', {
+        name: locale === 'zh-CN' ? '待提交的页面截图' : 'Screenshot ready to submit',
+        exact: true
+      })
+    ).toHaveCount(0);
+    const popupPromise = page.waitForEvent('popup');
+    await dialog
+      .getByRole('button', {
+        name: locale === 'zh-CN' ? '前往 GitHub 提交' : 'Continue on GitHub',
+        exact: true
+      })
+      .click();
+    const popup = await popupPromise;
+    await popup.waitForURL('https://github.com/OKFred/oneVegetable/issues/new**');
+    const url = new URL(popup.url());
+    expect(url.searchParams.get('details')).toContain('text-only feedback');
+    expect(url.searchParams.get('environment')).toContain(`UI locale: ${locale}`);
+    await expect(dialog).toHaveCount(0);
+    await popup.close();
+  });
+}
 
 test('web mock labels its in-process source and never calls the BFF', async ({ page }) => {
   const bffRequests: string[] = [];
