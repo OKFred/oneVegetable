@@ -1,0 +1,14 @@
+{
+  "configured": true,
+  "endpoint": "https://storage.example.test",
+  "region": "us-east-1",
+  "bucket": "template-test",
+  "accessKeyIdSuffix": "test",
+  "hasSessionToken": false,
+  "pathStyle": true,
+  "rootPrefix": "",
+  "revision": 1,
+  "updateTimeUtc": 1,
+  "updaterId": "test",
+  "remark": null
+}

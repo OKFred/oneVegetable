@@ -77,7 +77,7 @@ async function mountPanel() {
           });
       }
     }),
-    { attachTo: document.body }
+    { attachTo: document.body, global: { stubs: { ProductDescriptionEditor: true } } }
   );
   const wrapper = new DOMWrapper(document.body);
   cleanups.push(() => {
@@ -92,15 +92,15 @@ async function mountPanel() {
   await button('Product description templates').trigger('click');
   await flushPromises();
   await vi.waitFor(() => {
-    expect(wrapper.text()).toContain('Create shared template');
+    expect(wrapper.text()).toContain('Create template');
   });
   return { wrapper, button, repository, editing, panel: host.getComponent(ProductDescriptionTemplatePanel) };
 }
 
 describe('description template unsaved editing', () => {
   it.each([
-    ['Create shared template', 'Create shared description template'],
-    ['Edit', 'Edit shared description template'],
+    ['Create template', 'Create description template'],
+    ['Edit', 'Edit description template'],
     ['Replace all', 'Confirm description replacement']
   ])('retains the %s view during exit and resets only when reopened', async (action, title) => {
     // Model Presence's exit window deterministically: jsdom does not finish CSS animations.
@@ -141,7 +141,7 @@ describe('description template unsaved editing', () => {
     expect(repository.update).not.toHaveBeenCalled();
   });
 
-  it.each(['Create shared template', 'Edit'])(
+  it.each(['Create template', 'Edit'])(
     'sets a clean %s baseline and tracks only business fields',
     async (action) => {
       const { wrapper, button, editing } = await mountPanel();
@@ -178,8 +178,7 @@ describe('description template unsaved editing', () => {
         else if (dismissal === 'overlay') await wrapper.get('.ov-dialog-overlay').trigger('click');
         else if (dismissal === 'escape')
           await wrapper.get('[role="dialog"]').trigger('keydown', { key: 'Escape' });
-        else
-          await wrapper.get('button[aria-label="Close Edit shared description template"]').trigger('click');
+        else await wrapper.get('button[aria-label="Close Edit description template"]').trigger('click');
         await flushPromises();
       }
       await dismiss();
@@ -201,7 +200,7 @@ describe('description template unsaved editing', () => {
     }
   );
 
-  it.each(['Create shared template', 'Edit'])(
+  it.each(['Create template', 'Edit'])(
     'cleans %s only after a successful save, retaining failed edits',
     async (action) => {
       const { wrapper, button, editing, repository } = await mountPanel();
@@ -210,7 +209,7 @@ describe('description template unsaved editing', () => {
       await button(action).trigger('click');
       await wrapper.get('input').setValue('Changed name');
       await wrapper.get('textarea').setValue('<p>Changed HTML</p>');
-      await button('Save shared template').trigger('click');
+      await button('Save template').trigger('click');
       await flushPromises();
       expect(wrapper.text()).toContain('Template save failed');
       expect(wrapper.get('textarea').element.value).toBe('<p>Changed HTML</p>');
@@ -219,7 +218,7 @@ describe('description template unsaved editing', () => {
       expect(editing.confirmationOpen.value).toBe(true);
       editing.answer(false);
       await flushPromises();
-      await button('Save shared template').trigger('click');
+      await button('Save template').trigger('click');
       await flushPromises();
       expect(save).toHaveBeenLastCalledWith(
         expect.objectContaining({ name: 'Changed name', html: '<p>Changed HTML</p>' })

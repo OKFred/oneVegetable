@@ -1,6 +1,7 @@
 export const PAGE_IDS = [
   'dashboard',
   'products',
+  'templates',
   'photos',
   'rfqs',
   'orders',

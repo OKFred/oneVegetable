@@ -16,6 +16,7 @@ import {
   Handshake,
   History,
   ListChecks,
+  LayoutTemplate,
   ScrollText,
   Home,
   Image,
@@ -207,6 +208,7 @@ interface FocusableButton {
 const baseItems: NavigationItem[] = [
   { id: 'dashboard', labelKey: 'shell.navigation.dashboard', icon: Home },
   { id: 'products', labelKey: 'shell.navigation.products', icon: Boxes },
+  { id: 'templates', labelKey: 'shell.navigation.templates', icon: LayoutTemplate },
   { id: 'photos', labelKey: 'shell.navigation.photos', icon: Image },
   { id: 'rfqs', labelKey: 'shell.navigation.rfqs', icon: Handshake },
   { id: 'orders', labelKey: 'shell.navigation.orders', icon: ShoppingCart },
@@ -265,6 +267,7 @@ let unsubscribeAuthenticationEvents: (() => void) | null = null;
 const views: Record<PageId, Component> = {
   dashboard: defineAsyncComponent(() => import('./views/DashboardView.vue')),
   products: defineAsyncComponent(() => import('./views/ProductsView.vue')),
+  templates: defineAsyncComponent(() => import('./views/TemplatesView.vue')),
   inventory: defineAsyncComponent(() => import('./views/InventoryView.vue')),
   tasks: defineAsyncComponent(() => import('./views/TasksView.vue')),
   photos: defineAsyncComponent(() => import('./views/GalleryView.vue')),

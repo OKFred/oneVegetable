@@ -163,6 +163,16 @@ export const errors = {
     TEMPLATE_NAME_CONFLICT: 'A template with this name already exists for the selected language.',
     TEMPLATE_NOT_FOUND: 'The product-description template does not exist.',
     TEMPLATE_PAGE_LIMIT_EXCEEDED: 'The product-description template pagination exceeds the limit.',
-    TEMPLATE_WRITE_UNAVAILABLE: 'Shared product-description templates cannot be written in this environment.'
+    TEMPLATE_WRITE_UNAVAILABLE: 'Shared product-description templates cannot be written in this environment.',
+    TEMPLATE_PACKAGE_INVALID: 'Invalid template package. Use a JSON file exported from Templates.',
+    TEMPLATE_PACKAGE_TOO_LARGE: 'Template packages must not exceed 5 MiB.',
+    TEMPLATE_STORAGE_UNAVAILABLE:
+      'Local template storage is unavailable. Check storage access and free space.',
+    TEMPLATE_STORAGE_INVALID:
+      'Local template records are damaged. Back up and inspect them before continuing.',
+    TEMPLATE_STORAGE_LIMIT: 'Local storage holds up to 1000 templates. Export a backup and clean up first.',
+    TEMPLATE_PREFIX_INVALID: 'Enter a relative S3 prefix without parent-path segments.',
+    TEMPLATE_CONTEXT_CHANGED: 'The identity or S3 configuration changed. Reopen and preview again.',
+    TEMPLATE_BACKUP_UNCONFIRMED: 'The S3 readback does not match. Check the file; do not upload it again.'
   }
 } as const;

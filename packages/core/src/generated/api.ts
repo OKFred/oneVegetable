@@ -10179,6 +10179,14 @@ export interface components {
             revision: number;
             remark: string | null;
         };
+        ProductDescriptionTemplateBundle: {
+            /** @constant */
+            kind: "oneVegetable.product-description-templates";
+            /** @constant */
+            schemaVersion: 1;
+            exportedAtUtc: number;
+            templates: components["schemas"]["ProductDescriptionTemplatePortable"][];
+        };
         ProductDescriptionTemplateCreateRequest: {
             requestId: components["schemas"]["RequestId"];
             name: string;
@@ -10188,23 +10196,6 @@ export interface components {
             language: "zh_CN" | "en_US";
             html: string;
             remark?: string | null;
-        };
-        ProductDescriptionTemplatePortable: {
-            name: string;
-            /** @enum {string} */
-            category: "company" | "logistics" | "packaging" | "service" | "custom";
-            /** @enum {string} */
-            language: "zh_CN" | "en_US";
-            html: string;
-            remark: string | null;
-        };
-        ProductDescriptionTemplateBundle: {
-            /** @constant */
-            kind: "oneVegetable.product-description-templates";
-            /** @constant */
-            schemaVersion: 1;
-            exportedAtUtc: number;
-            templates: components["schemas"]["ProductDescriptionTemplatePortable"][];
         };
         ProductDescriptionTemplateListRequest: {
             requestId: components["schemas"]["RequestId"];
@@ -10224,6 +10215,15 @@ export interface components {
             page: number;
             pageSize: number;
             total: number;
+        };
+        ProductDescriptionTemplatePortable: {
+            name: string;
+            /** @enum {string} */
+            category: "company" | "logistics" | "packaging" | "service" | "custom";
+            /** @enum {string} */
+            language: "zh_CN" | "en_US";
+            html: string;
+            remark: string | null;
         };
         ProductDescriptionTemplateStatusRequest: {
             requestId: components["schemas"]["RequestId"];

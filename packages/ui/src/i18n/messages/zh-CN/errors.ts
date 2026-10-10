@@ -148,6 +148,14 @@ export const errors = {
     TEMPLATE_NAME_CONFLICT: '同语言下已存在同名详情模板。',
     TEMPLATE_NOT_FOUND: '详情模板不存在。',
     TEMPLATE_PAGE_LIMIT_EXCEEDED: '详情模板分页参数超过限制。',
-    TEMPLATE_WRITE_UNAVAILABLE: '当前环境不支持写入共享详情模板。'
+    TEMPLATE_WRITE_UNAVAILABLE: '当前环境不支持写入共享详情模板。',
+    TEMPLATE_PACKAGE_INVALID: '模板包格式或内容不合法，请使用模板导出的 JSON 文件。',
+    TEMPLATE_PACKAGE_TOO_LARGE: '模板包不能超过 5 MiB。',
+    TEMPLATE_STORAGE_UNAVAILABLE: '本机模板存储不可用，请检查浏览器存储权限和空间。',
+    TEMPLATE_STORAGE_INVALID: '本机模板记录损坏，已停止操作，请先备份并检查。',
+    TEMPLATE_STORAGE_LIMIT: '本机最多保存 1000 个模板，请先导出备份并清理。',
+    TEMPLATE_PREFIX_INVALID: '请填写有效的相对 S3 前缀，不能包含上级路径。',
+    TEMPLATE_CONTEXT_CHANGED: '身份或 S3 配置已改变，请重新打开并预览。',
+    TEMPLATE_BACKUP_UNCONFIRMED: 'S3 模板包回读内容不一致，请核对文件，不要重复上传。'
   }
 } as const;

@@ -1,6 +1,18 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import { Archive, ArchiveRestore, FilePlus2, LayoutTemplate, Pencil, RefreshCw } from '@lucide/vue';
+import { computed, defineAsyncComponent, onMounted, ref, shallowRef, watch } from 'vue';
+import {
+  Archive,
+  ArchiveRestore,
+  Download,
+  Eye,
+  FilePlus2,
+  LayoutTemplate,
+  Pencil,
+  RefreshCw,
+  Upload
+} from '@lucide/vue';
+import { toast } from 'vue-sonner';
+import { listAllTemplates } from '@one-vegetable/core/template-library';
 
 import { sanitizeProductDescriptionHtml } from '@one-vegetable/core/browser';
 import {
@@ -14,6 +26,8 @@ import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
 import ModalDialog from './ui/ModalDialog.vue';
+import ErrorNotice from './ErrorNotice.vue';
+import TriStateCheckbox from './TriStateCheckbox.vue';
 import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 import { useUnsavedEditing } from '../lib/unsaved-editing';
@@ -24,6 +38,7 @@ type PanelView = 'browse' | 'edit' | 'replace';
 const props = defineProps<{
   language: ProductDescriptionTemplateLanguage;
   currentHtml: string;
+  standalone?: boolean;
 }>();
 const emit = defineEmits<{ apply: [payload: { mode: ApplyMode; html: string }] }>();
 
@@ -35,8 +50,14 @@ const templates = ref<ProductDescriptionTemplate[]>([]);
 const loadedLanguage = ref<ProductDescriptionTemplateLanguage | null>(null);
 const loading = ref(false);
 const saving = ref(false);
-const error = ref('');
+const operationError = shallowRef<unknown>(null);
 const showArchived = ref(false);
+const search = ref('');
+const selectedIds = ref<string[]>([]);
+const transferMode = ref<'import' | 'export' | null>(null);
+const previewTemplate = ref<ProductDescriptionTemplate | null>(null);
+const ProductDescriptionEditor = defineAsyncComponent(() => import('./ProductDescriptionEditor.vue'));
+const TemplateTransferDialog = defineAsyncComponent(() => import('./TemplateTransferDialog.vue'));
 const selected = ref<ProductDescriptionTemplate | null>(null);
 const formId = ref<string | null>(null);
 const formRevision = ref(0);
@@ -50,10 +71,34 @@ const editing = useUnsavedEditing(
 );
 let loadSequence = 0;
 
-const canManage = computed(() => mode !== 'extension' && productDescriptionTemplates !== undefined);
+const canManage = computed(() => productDescriptionTemplates !== undefined);
 const visibleTemplates = computed(() =>
-  templates.value.filter((template) => showArchived.value || template.status === 'active')
+  templates.value.filter(
+    (template) =>
+      (showArchived.value || template.status === 'active') &&
+      template.name.toLowerCase().includes(search.value.trim().toLowerCase())
+  )
 );
+const exportTemplates = computed(() => templates.value.filter((item) => selectedIds.value.includes(item.id)));
+const allSelected = computed(
+  () =>
+    visibleTemplates.value.length > 0 &&
+    visibleTemplates.value.every((item) => selectedIds.value.includes(item.id))
+);
+const partlySelected = computed(
+  () => !allSelected.value && visibleTemplates.value.some((item) => selectedIds.value.includes(item.id))
+);
+function toggleSelection(id: string): void {
+  selectedIds.value = selectedIds.value.includes(id)
+    ? selectedIds.value.filter((value) => value !== id)
+    : [...selectedIds.value, id];
+}
+function selectVisible(): void {
+  const ids = new Set(visibleTemplates.value.map((item) => item.id));
+  selectedIds.value = allSelected.value
+    ? selectedIds.value.filter((id) => !ids.has(id))
+    : [...new Set([...selectedIds.value, ...ids])];
+}
 const title = computed(() => {
   if (view.value === 'edit') {
     return t(formId.value ? 'products.templates.editTitle' : 'products.templates.createTitle');
@@ -63,7 +108,10 @@ const title = computed(() => {
 });
 const description = computed(() => {
   if (view.value === 'replace') return t('products.templates.replaceDescription');
-  if (view.value === 'edit') return t('products.templates.editDescription');
+  if (view.value === 'edit')
+    return t(
+      mode === 'extension' ? 'products.templates.localDescription' : 'products.templates.editDescription'
+    );
   return t('products.templates.browseDescription');
 });
 const currentSafeHtml = computed(() => sanitizeProductDescriptionHtml(props.currentHtml, locale.value).html);
@@ -78,11 +126,16 @@ watch(open, (value) => {
   resetView();
   if (loadedLanguage.value !== props.language) void loadTemplates();
 });
+onMounted(() => {
+  if (props.standalone) open.value = true;
+});
 watch(
   () => props.language,
   () => {
     loadedLanguage.value = null;
     templates.value = [];
+    selectedIds.value = [];
+    resetView();
     if (open.value) void loadTemplates();
   }
 );
@@ -92,15 +145,16 @@ async function loadTemplates(): Promise<void> {
   const sequence = ++loadSequence;
   const requestedLanguage = props.language;
   loading.value = true;
-  error.value = '';
+  operationError.value = null;
   try {
-    const result = await productDescriptionTemplates.list({ language: requestedLanguage, pageSize: 100 });
+    const result = await listAllTemplates(productDescriptionTemplates, requestedLanguage);
     if (sequence !== loadSequence || requestedLanguage !== props.language) return;
-    templates.value = result.items;
+    templates.value = result;
+    selectedIds.value = selectedIds.value.filter((id) => result.some((item) => item.id === id));
     loadedLanguage.value = requestedLanguage;
   } catch (reason: unknown) {
     if (sequence !== loadSequence) return;
-    error.value = messageOf(reason);
+    operationError.value = reason;
   } finally {
     if (sequence === loadSequence) loading.value = false;
   }
@@ -129,8 +183,8 @@ function startCreate(): void {
   formCategory.value = 'custom';
   formHtml.value = currentSafeHtml.value;
   formRemark.value = '';
-  error.value = '';
   view.value = 'edit';
+  operationError.value = null;
   editing.markClean();
 }
 
@@ -141,15 +195,15 @@ function startEdit(template: ProductDescriptionTemplate): void {
   formCategory.value = template.category;
   formHtml.value = template.html;
   formRemark.value = template.remark ?? '';
-  error.value = '';
   view.value = 'edit';
+  operationError.value = null;
   editing.markClean();
 }
 
 async function saveTemplate(): Promise<void> {
   if (!productDescriptionTemplates || !formName.value.trim() || !formHtml.value.trim()) return;
   saving.value = true;
-  error.value = '';
+  operationError.value = null;
   try {
     if (formId.value) {
       await productDescriptionTemplates.update({
@@ -171,10 +225,11 @@ async function saveTemplate(): Promise<void> {
       });
     }
     editing.markClean();
+    toast.success(t('products.templates.saved'));
     view.value = 'browse';
     await loadTemplates();
   } catch (reason: unknown) {
-    error.value = messageOf(reason);
+    operationError.value = reason;
   } finally {
     saving.value = false;
   }
@@ -183,7 +238,7 @@ async function saveTemplate(): Promise<void> {
 async function changeStatus(template: ProductDescriptionTemplate): Promise<void> {
   if (!productDescriptionTemplates) return;
   saving.value = true;
-  error.value = '';
+  operationError.value = null;
   try {
     if (template.status === 'active') {
       await productDescriptionTemplates.archive(template.id, template.revision);
@@ -192,7 +247,7 @@ async function changeStatus(template: ProductDescriptionTemplate): Promise<void>
     }
     await loadTemplates();
   } catch (reason: unknown) {
-    error.value = messageOf(reason);
+    operationError.value = reason;
   } finally {
     saving.value = false;
   }
@@ -201,7 +256,7 @@ async function changeStatus(template: ProductDescriptionTemplate): Promise<void>
 function resetView(): void {
   view.value = 'browse';
   selected.value = null;
-  error.value = '';
+  operationError.value = null;
 }
 
 function isBundled(template: ProductDescriptionTemplate): boolean {
@@ -211,36 +266,54 @@ function isBundled(template: ProductDescriptionTemplate): boolean {
 function categoryLabel(category: ProductDescriptionTemplateCategory): string {
   return t(`products.templates.categories.${category}`);
 }
-
-function messageOf(reason: unknown): string {
-  return reason instanceof Error ? reason.message : t('products.templates.operationFailed');
-}
 </script>
 
 <template>
-  <Button variant="outline" size="sm" :disabled="!productDescriptionTemplates" @click="open = true">
+  <Button
+    v-if="!standalone"
+    variant="outline"
+    size="sm"
+    :disabled="!productDescriptionTemplates"
+    @click="open = true"
+  >
     <LayoutTemplate class="size-4" />{{ t('products.templates.title') }}
   </Button>
 
-  <ModalDialog
-    :open="open"
-    :title="title"
-    :description="description"
-    size="lg"
+  <component
+    :is="standalone ? 'section' : ModalDialog"
+    v-bind="standalone ? {} : { open, title, description, size: 'lg', dismissible: !saving }"
     @update:open="
       editing.guard(() => {
-        open = $event;
+        if (!saving) open = $event;
       })
     "
   >
+    <h2 v-if="standalone && view !== 'browse'" class="mb-2 font-medium">{{ title }}</h2>
+    <p v-if="standalone" class="mb-4 text-sm text-muted-foreground">{{ description }}</p>
     <template v-if="view === 'browse'">
       <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <Input
+          v-model="search"
+          class="max-w-sm"
+          :placeholder="t('products.templates.search')"
+          :aria-label="t('products.templates.search')"
+        />
         <label class="flex cursor-pointer items-center gap-2 text-sm">
           <input v-model="showArchived" type="checkbox" :disabled="loading" />{{
             t('products.templates.showArchived')
           }}
         </label>
         <div class="flex flex-wrap justify-end gap-2">
+          <Button v-if="canManage" variant="outline" size="sm" @click="transferMode = 'import'"
+            ><Upload class="size-4" />{{ t('products.transfer.import') }}</Button
+          >
+          <Button
+            variant="outline"
+            size="sm"
+            :disabled="exportTemplates.length === 0 || exportTemplates.length > 100"
+            @click="transferMode = 'export'"
+            ><Download class="size-4" />{{ t('products.transfer.export') }}</Button
+          >
           <Button variant="outline" size="sm" :disabled="loading" @click="loadTemplates">
             <RefreshCw class="size-4" :class="loading ? 'animate-spin' : ''" />{{
               t('common.actions.refresh')
@@ -250,6 +323,16 @@ function messageOf(reason: unknown): string {
             <FilePlus2 class="size-4" />{{ t('products.templates.create') }}
           </Button>
         </div>
+      </div>
+      <div class="mb-3 flex items-center gap-2 text-sm">
+        <TriStateCheckbox
+          :checked="allSelected"
+          :indeterminate="partlySelected"
+          :disabled="visibleTemplates.length === 0"
+          :label="t('common.data.selectPage')"
+          @update:checked="selectVisible"
+        />
+        {{ t('common.data.selected', { count: selectedIds.length }) }}
       </div>
       <p v-if="loading && templates.length === 0" class="py-8 text-center text-sm text-muted-foreground">
         {{ t('products.templates.loading') }}
@@ -264,6 +347,11 @@ function messageOf(reason: unknown): string {
         <div class="grid gap-3 md:grid-cols-2" :aria-busy="loading">
           <article v-for="template in visibleTemplates" :key="template.id" class="rounded-lg border p-4">
             <div class="flex items-start justify-between gap-3">
+              <TriStateCheckbox
+                :checked="selectedIds.includes(template.id)"
+                :label="t('common.data.selectRow', { name: template.name })"
+                @update:checked="toggleSelection(template.id)"
+              />
               <div class="min-w-0">
                 <p class="truncate font-medium">{{ template.name }}</p>
                 <div class="mt-2 flex flex-wrap gap-1">
@@ -280,7 +368,15 @@ function messageOf(reason: unknown): string {
             <p v-if="template.remark" class="mt-3 line-clamp-2 text-xs text-muted-foreground">
               {{ template.remark }}
             </p>
-            <div v-if="template.status === 'active'" class="mt-4 flex flex-wrap gap-2">
+            <Button
+              v-if="standalone"
+              size="sm"
+              variant="ghost"
+              class="mt-3"
+              @click="previewTemplate = template"
+              ><Eye class="size-4" />{{ t('products.templates.preview') }}</Button
+            >
+            <div v-if="!standalone && template.status === 'active'" class="mt-4 flex flex-wrap gap-2">
               <Button size="sm" :disabled="loading" @click="applyTemplate(template, 'insert')">{{
                 t('products.templates.insert')
               }}</Button>
@@ -327,10 +423,11 @@ function messageOf(reason: unknown): string {
     </template>
 
     <template v-else-if="view === 'edit'">
-      <div class="space-y-4">
+      <div class="space-y-4" :inert="saving">
         <label class="block text-sm font-medium">
           {{ t('products.templates.name') }}<Input v-model="formName" class="mt-2" />
         </label>
+        <ProductDescriptionEditor v-model="formHtml" :language="language" :show-templates="false" />
         <label class="block text-sm font-medium">
           {{ t('products.templates.category') }}
           <select v-model="formCategory" class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm">
@@ -341,13 +438,14 @@ function messageOf(reason: unknown): string {
             <option value="custom">{{ t('products.templates.categories.custom') }}</option>
           </select>
         </label>
-        <label class="block text-sm font-medium">
-          {{ t('products.templates.safeHtml') }}
+        <details class="rounded-md border p-3">
+          <summary class="cursor-pointer text-sm font-medium">{{ t('products.templates.safeHtml') }}</summary>
           <textarea
             v-model="formHtml"
+            :aria-label="t('products.templates.safeHtml')"
             class="mt-2 min-h-56 w-full rounded-md border bg-background p-3 font-mono text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
-        </label>
+        </details>
         <label class="block text-sm font-medium">
           {{ t('products.templates.remark') }}<Input v-model="formRemark" class="mt-2" />
         </label>
@@ -379,6 +477,22 @@ function messageOf(reason: unknown): string {
       </div>
     </template>
 
-    <p v-if="error" class="mt-4 text-sm text-destructive">{{ error }}</p>
+    <ErrorNotice v-if="operationError" :error="operationError" compact />
+  </component>
+  <ModalDialog
+    :open="previewTemplate !== null"
+    :title="previewTemplate?.name ?? ''"
+    :description="t('products.templates.browseDescription')"
+    @update:open="previewTemplate = null"
+  >
+    <SafeHtmlContent :html="previewTemplate?.html ?? ''" />
   </ModalDialog>
+  <TemplateTransferDialog
+    v-if="transferMode"
+    :open="true"
+    :mode="transferMode"
+    :templates="exportTemplates"
+    @update:open="transferMode = null"
+    @imported="loadTemplates"
+  />
 </template>

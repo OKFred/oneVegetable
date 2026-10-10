@@ -312,16 +312,41 @@ export const products = {
     mutationUnavailable: 'Real write operations are not enabled in this environment.'
   },
   templates: {
+    localDescription: 'Local templates. JSON/S3 is for backup and exchange.',
+    localRetention: 'Deleted when local data is cleared. Export backups.',
+    language: 'Template language',
+    search: 'Search template names',
+    preview: 'Preview',
+    saved: 'Template saved',
+    transfer: {
+      storage: 'Location',
+      file: 'JSON file',
+      s3: 'S3 package',
+      prefix: 'S3 prefix',
+      list: 'Find packages',
+      choose: 'Choose package',
+      prepare: 'Preview package',
+      preview: '{count} templates. Check the content and source.',
+      content: 'Text and PhotoBank links only. No image files, credentials or audit identities.',
+      conflicts: 'Same-language name conflict',
+      skip: 'Skip',
+      copy: 'Save a copy',
+      confirm: '{action} {count} templates? No existing templates or products are overwritten.',
+      done: 'Import: {created} created, {skipped} skipped, {failed} failed.',
+      download: 'Download initiated',
+      backedUp: 'S3 readback verified: {key}',
+      unknown: 'Unconfirmed S3 write. Check the file; do not resubmit.',
+      limit: 'Up to 100 templates per package, no more than 5 MiB.'
+    },
     title: 'Product description templates',
-    editTitle: 'Edit shared description template',
-    createTitle: 'Create shared description template',
+    editTitle: 'Edit description template',
+    createTitle: 'Create description template',
     replaceTitle: 'Confirm description replacement',
     replaceDescription:
       'Replacement overwrites the complete current description. Compare both previews before confirming.',
-    editDescription: 'Shared templates are visible to every active user of the current BFF.',
+    editDescription: 'Shared templates are visible to active users of this site.',
     browseDescription:
       'Inserted templates become ordinary rich text. Replace all placeholders with accurate information.',
-    operationFailed: 'Description template operation failed',
     categories: {
       company: 'Company profile',
       logistics: 'Logistics',
@@ -329,8 +354,8 @@ export const products = {
       service: 'Service assurance',
       custom: 'Custom'
     },
-    showArchived: 'Show archived shared templates',
-    create: 'Create shared template',
+    showArchived: 'Show archived templates',
+    create: 'Create template',
     loading: 'Loading templates…',
     empty: 'No templates are available for the current language.',
     refreshing: 'Refreshing templates…',
@@ -346,7 +371,7 @@ export const products = {
     category: 'Template category',
     safeHtml: 'Safe HTML',
     remark: 'Remark',
-    save: 'Save shared template',
+    save: 'Save template',
     current: 'Current description',
     afterReplace: 'After replacement: {name}',
     back: 'Back',
@@ -592,7 +617,6 @@ export const products = {
       draftId: 'Enter the draft product ID first',
       draftRender: 'Could not render the draft',
       levelRefresh: 'Could not refresh hierarchical attributes',
-      localDraftParse: 'The local draft could not be parsed',
       generic: 'Operation failed'
     },
     feedback: {
@@ -632,8 +656,7 @@ export const products = {
       existingSchema: 'Existing product Schema rendered',
       categorySchema: 'Official Schema loaded for the current category',
       draftSchema: 'Draft {id} rendered',
-      levelRefreshed: 'Hierarchical attributes refreshed for the current selection',
-      localDraftResumed: 'Local draft resumed; platform data has not been changed.'
+      levelRefreshed: 'Hierarchical attributes refreshed for the current selection'
     },
     confirmation: {
       genericTitle: 'Confirm product operation',
@@ -692,7 +715,6 @@ export const products = {
     scoreFailed: 'Query failed',
     edit: 'Edit',
     previewDescription: 'Product {id}',
-    draftSave: { saving: 'Saving…', saved: 'Saved locally', error: 'Local draft save failed' },
     mutationBlocked: {
       loading: 'Product write status is not ready',
       auditing: 'The product is under platform review. Do not resubmit; view the receipt in the task center.',
@@ -775,9 +797,6 @@ export const products = {
       noMatch: 'No matching products',
       clearSearch: 'Clear search',
       addProduct: 'Add product',
-      recentDisplayJobs: 'Recent listing and delisting jobs',
-      recentDisplayDescription:
-        'A job is complete only after Alibaba explicitly accepts it and product list readback confirms it.',
       checking: 'Checking…',
       refreshAll: 'Refresh all',
       statusTransition: '{from} → {to} · requestId',
@@ -800,13 +819,6 @@ export const products = {
       english: 'English (en_US)',
       clearProductId: 'Plain product ID',
       newProductIdPlaceholder: 'Leave blank for a new product',
-      migratedDraft: 'A local draft migrated from an earlier version was found',
-      localDraft: 'A local draft was found',
-      draftSavedAt:
-        'Saved at {time}. Choose how to continue; the platform form will not be overwritten silently.',
-      resumeDraft: 'Continue local draft',
-      reloadPlatform: 'Reload platform data',
-      draftStatus: 'Local draft: {status}',
       updateStatus: 'Product update status',
       awaitingCheck: 'Waiting for the next platform status check.',
       queryPlatform: 'Query platform status',

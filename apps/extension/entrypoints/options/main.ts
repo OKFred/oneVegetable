@@ -4,8 +4,6 @@ import type { GalleryRequestOptions } from '@one-vegetable/core/gallery-transfer
 import {
   BffControlClient,
   GatewayException,
-  BundledProductDescriptionTemplateClient,
-  BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA,
   CHROME_WEB_STORE_REVIEW_URL,
   ExtensionProductMutationJobClient,
   EXTENSION_SOCIAL_BACKEND_STORAGE_KEY,
@@ -61,6 +59,7 @@ import { EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY } from '../../lib/product-d
 import { extensionS3Storage, requestS3 } from '../../lib/s3-client';
 import { EXTENSION_S3_STORAGE_KEY } from '../../lib/s3-protocol';
 import { requestVideoUpload } from '../../lib/video-upload-client';
+import { extensionTemplates, inspectLocalTemplates, resetLocalTemplates } from '../../lib/template-client';
 
 const operationAvailability = new StaticOperationAvailabilityClient((operation) =>
   resolveExtensionStaticOperationAvailability(operation)
@@ -389,6 +388,7 @@ const localData: LocalDataRepository = {
       browser.storage.session.get('diagnosticEntries')
     ]);
     const localEntries = localStorageEntries();
+    const descriptionTemplates = await inspectLocalTemplates();
     const drafts = localEntries.filter(([key]) => isDraftKey(key));
     const preferences = Object.fromEntries([
       ...Object.entries(local).filter(
@@ -403,6 +403,15 @@ const localData: LocalDataRepository = {
       )
     ]);
     const categories: LocalDataCategory[] = [
+      {
+        id: 'description-templates',
+        label: translateUi('products.templates.title'),
+        storage: 'IndexedDB',
+        itemCount: descriptionTemplates.length,
+        approximateBytes: approximateStorageBytes(descriptionTemplates),
+        sensitive: false,
+        retention: translateUi('products.templates.localRetention')
+      },
       {
         id: 's3-credentials',
         label: translateUi('settings.s3.title'),
@@ -470,6 +479,7 @@ const localData: LocalDataRepository = {
     return createLocalDataInventory(categories);
   },
   async clearAll() {
+    await resetLocalTemplates();
     await requestS3('reset', {});
     const granted = await permissions.list();
     await Promise.all([
@@ -810,9 +820,7 @@ async function mountOptionsApp(): Promise<void> {
     alibabaCredentialAcquisition,
     extensionSocialBackend,
     socialPublishing,
-    productDescriptionTemplates: new BundledProductDescriptionTemplateClient(
-      BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates
-    ),
+    productDescriptionTemplates: extensionTemplates,
     productMutationJobs,
     operationAvailability,
     mode: 'extension'

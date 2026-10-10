@@ -62,6 +62,9 @@ export const VAULT_UNLOCKED_EVENT = 'one-vegetable:vault-unlocked';
 export function provideUnsavedEditing(service: UnsavedEditingService): void {
   provide(editingKey, service);
 }
+export function useUnsavedEditingService(): UnsavedEditingService | null {
+  return inject(editingKey, null);
+}
 
 /** Register business values only: exclude filters, steps, theme and UI language. */
 export function useUnsavedEditing(source: () => unknown, options: { enabled?: () => boolean } = {}) {

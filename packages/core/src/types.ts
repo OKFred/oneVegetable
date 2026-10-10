@@ -463,6 +463,7 @@ export interface LocalDataCategory {
     | 'social-backend-device'
     | 's3-credentials'
     | 'gallery-transfer-tasks'
+    | 'description-templates'
     | 'drafts'
     | 'diagnostics'
     | 'preferences';

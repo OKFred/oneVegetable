@@ -7,7 +7,17 @@ import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import TableRow from '@tiptap/extension-table-row';
 import Underline from '@tiptap/extension-underline';
-import StarterKit from '@tiptap/starter-kit';
+import { Blockquote } from '@tiptap/extension-blockquote';
+import { Bold as BoldMark } from '@tiptap/extension-bold';
+import { Document } from '@tiptap/extension-document';
+import { HardBreak } from '@tiptap/extension-hard-break';
+import { Heading } from '@tiptap/extension-heading';
+import { HorizontalRule } from '@tiptap/extension-horizontal-rule';
+import { Italic as ItalicMark } from '@tiptap/extension-italic';
+import { BulletList, ListItem, ListKeymap, OrderedList } from '@tiptap/extension-list';
+import { Paragraph } from '@tiptap/extension-paragraph';
+import { Text } from '@tiptap/extension-text';
+import { Dropcursor, Gapcursor, TrailingNode, UndoRedo } from '@tiptap/extensions';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
 import {
   Bold,
@@ -43,8 +53,9 @@ const props = withDefaults(
     modelValue: string;
     smartDetail?: boolean;
     language?: 'zh_CN' | 'en_US';
+    showTemplates?: boolean;
   }>(),
-  { smartDetail: false, language: 'en_US' }
+  { smartDetail: false, language: 'en_US', showTemplates: true }
 );
 const emit = defineEmits<{
   'update:modelValue': [html: string];
@@ -97,14 +108,24 @@ const editor = useEditor({
   content: inspection.value.html,
   editable: editable.value,
   extensions: [
-    StarterKit.configure({
-      code: false,
-      codeBlock: false,
-      strike: false,
-      heading: { levels: [2, 3, 4] },
-      link: false,
-      underline: false
-    }),
+    // Explicit whitelist retains existing editing features without shipping disabled nodes.
+    Document,
+    Paragraph,
+    Text,
+    Blockquote,
+    BoldMark,
+    ItalicMark,
+    HardBreak,
+    HorizontalRule,
+    Heading.configure({ levels: [2, 3, 4] }),
+    BulletList,
+    ListItem,
+    ListKeymap,
+    OrderedList,
+    Dropcursor,
+    Gapcursor,
+    TrailingNode,
+    UndoRedo,
     Underline,
     Link.configure({
       autolink: false,
@@ -391,6 +412,7 @@ function reportImageStatus(event: Event, loaded: boolean): void {
           @update:model-value="insertPhoto"
         />
         <ProductDescriptionTemplatePanel
+          v-if="showTemplates"
           :language="language"
           :current-html="modelValue"
           @apply="applyTemplate"

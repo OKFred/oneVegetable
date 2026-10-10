@@ -33,6 +33,7 @@ export const shell = {
   navigation: {
     dashboard: '总览',
     products: '商品',
+    templates: '模板',
     inventory: '库存',
     tasks: '任务中心',
     photos: '素材',
