@@ -66,7 +66,9 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     await expect(panel.getByTestId('credential-expiry')).toContainText(en ? 'Expiry unknown' : '有效期未知');
     await page.getByRole('link', { name: en ? 'Dashboard' : '总览', exact: true }).click();
     const authorizationCard = page.getByTestId('dashboard-authorization');
-    await expect(authorizationCard).toContainText(en ? 'Expiry unknown' : '有效期未知');
+    await expect(authorizationCard.getByRole('button')).toHaveAccessibleName(
+      en ? /Expiry unknown/u : /有效期未知/u
+    );
     await expect(authorizationCard).not.toContainText(fixture.manual.accessToken);
     await authorizationCard.getByRole('link').click();
     await expect(panel).toBeVisible();
@@ -103,7 +105,7 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     await expect(panel.getByTestId('credential-expiry')).toContainText('2030-01-02');
     await expect(panel).not.toContainText(fixture.manual.accessToken);
     await page.getByRole('link', { name: en ? 'Dashboard' : '总览', exact: true }).click();
-    await expect(authorizationCard).toContainText('2030-01-02');
+    await expect(authorizationCard.getByRole('button')).toHaveAccessibleName(/2030-01-02/u);
     await expect(authorizationCard).toContainText(en ? 'days left' : '剩余约');
     await authorizationCard.getByRole('link').click();
     await expect(panel).toBeVisible();

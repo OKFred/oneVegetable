@@ -9,6 +9,7 @@ import { GATEWAY_CONFIGURATION_EVENT } from '../lib/gateway-configuration-events
 import { useServices } from '../lib/services';
 import { VAULT_UNLOCKED_EVENT } from '../lib/unsaved-editing';
 import Card from './ui/Card.vue';
+import Tooltip from './ui/Tooltip.vue';
 
 const { mode, control, settings, vault } = useServices();
 const t = useGatewayCredentialsI18n();
@@ -26,7 +27,7 @@ const warning = computed(
 );
 const value = computed(() => {
   if (state.value === 'loading') return ui('common.actions.loading');
-  if (state.value !== 'ready') return state.value === 'empty' ? t('empty') : '—';
+  if (state.value !== 'ready') return t(state.value === 'empty' ? 'empty' : `${state.value}Short`);
   if (status.value === 'valid' || status.value === 'expiring')
     return t(`remaining${expiry.value.unit}`, { count: expiry.value.count });
   return t(
@@ -35,6 +36,11 @@ const value = computed(() => {
 });
 const description = computed(() =>
   state.value === 'loading' ? '' : state.value === 'ready' ? t(`expiry${status.value}`) : t(state.value)
+);
+const details = computed(() =>
+  state.value === 'ready' && expiry.value.status !== 'unknown'
+    ? `${description.value} · ${t('expires')}: ${formatDateTime(expires.value)}`
+    : description.value
 );
 
 let generation = 0;
@@ -110,15 +116,19 @@ onBeforeUnmount(() => {
   >
     <div class="flex items-center justify-between gap-2">
       <p class="text-sm text-muted-foreground">{{ t('remainingTitle') }}</p>
-      <Clock3 class="size-4 shrink-0 text-primary" aria-hidden="true" />
+      <Tooltip :text="details">
+        <button
+          type="button"
+          :aria-label="`${t('remainingTitle')}: ${details}`"
+          class="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Clock3 class="size-4 shrink-0 text-primary" aria-hidden="true" />
+        </button>
+      </Tooltip>
     </div>
     <div role="status" :aria-busy="state === 'loading'">
       <p class="mt-3 text-2xl font-semibold" :class="warning ? 'text-amber-700 dark:text-amber-400' : ''">
         {{ value }}
-      </p>
-      <p class="mt-1 text-xs leading-5 text-muted-foreground">{{ description }}</p>
-      <p v-if="state === 'ready' && expiry.status !== 'unknown'" class="mt-1 text-xs text-muted-foreground">
-        {{ t('expires') }}: {{ formatDateTime(expires) }}
       </p>
     </div>
     <a

@@ -5,6 +5,7 @@ import type { DashboardMetricStatus } from '@one-vegetable/core';
 
 import { useUiI18n } from '../i18n';
 import Card from './ui/Card.vue';
+import Tooltip from './ui/Tooltip.vue';
 
 const props = defineProps<{
   title: string;
@@ -41,16 +42,35 @@ const statusClass = computed(() => {
   }
   return 'text-muted-foreground';
 });
+const details = computed(() => `${props.description} · ${statusText.value}`);
+const shortStatus = computed(() =>
+  t(
+    !props.status
+      ? 'common.actions.loading'
+      : props.status.state === 'permission-denied'
+        ? 'common.columns.denied'
+        : props.status.state === 'unknown'
+          ? 'common.columns.missing'
+          : 'common.columns.failed'
+  )
+);
 </script>
 
 <template>
   <Card class="p-5">
     <div class="flex items-center justify-between gap-3">
       <span class="text-sm text-muted-foreground">{{ title }}</span>
-      <slot name="icon" />
+      <Tooltip :text="details">
+        <button
+          type="button"
+          :aria-label="`${title}: ${details}`"
+          class="rounded text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <slot name="icon" />
+        </button>
+      </Tooltip>
     </div>
     <p class="mt-3 text-3xl font-semibold">{{ formattedValue }}</p>
-    <p class="mt-1 text-xs text-muted-foreground">{{ description }}</p>
-    <p class="mt-3 text-xs" :class="statusClass">{{ statusText }}</p>
+    <p v-if="status?.state !== 'available'" class="mt-2 text-xs" :class="statusClass">{{ shortStatus }}</p>
   </Card>
 </template>

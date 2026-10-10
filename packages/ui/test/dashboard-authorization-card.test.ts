@@ -131,14 +131,14 @@ describe('dashboard authorization card', () => {
 
   it('does not invent an expiry for the current unknown-lifetime authorization', async () => {
     const view = await harness();
-    expect(view.wrapper.text()).toContain('授权有效期未知，不代表永久有效');
+    expect(view.wrapper.get('button').attributes('aria-label')).toContain('授权有效期未知，不代表永久有效');
     expect(view.wrapper.text()).not.toContain('剩余约');
     expect(view.wrapper.text()).not.toContain('fixture-key');
   });
 
   it('keeps expired startup credentials visible even when configured is false', async () => {
     const view = await harness({ expiry: 1, summary: { configured: false } });
-    expect(view.wrapper.text()).toContain('授权已到期');
+    expect(view.wrapper.text()).toContain('已到期');
   });
 
   it('distinguishes absent credentials, invalid authorization and unreadable status', async () => {
@@ -151,16 +151,16 @@ describe('dashboard authorization card', () => {
     expect(invalid.wrapper.text()).toContain('需重新连接');
     expect(invalid.wrapper.text()).not.toContain('剩余约');
     const error = await harness({ failed: true });
-    expect(error.wrapper.text()).toContain('暂时无法读取授权状态');
+    expect(error.wrapper.text()).toContain('读取失败');
     expect(error.wrapper.text()).not.toContain('有效期未知');
   });
 
   it('does not invoke the admin endpoint for ordinary users or use mock credentials', async () => {
     const user = await harness({ role: 'user' });
-    expect(user.wrapper.text()).toContain('只有管理员');
+    expect(user.wrapper.text()).toContain('仅管理员可查看');
     expect(user.status).not.toHaveBeenCalled();
     const demo = await harness({ mode: 'mock' });
-    expect(demo.wrapper.text()).toContain('演示模式不使用真实 Alibaba 授权');
+    expect(demo.wrapper.text()).toContain('演示模式');
     expect(demo.session).not.toHaveBeenCalled();
   });
 
@@ -170,7 +170,7 @@ describe('dashboard authorization card', () => {
       vaultState: 'locked',
       expiry: Date.now() + 2 * 86_400_000
     });
-    expect(view.wrapper.text()).toContain('请先到设置解锁');
+    expect(view.wrapper.text()).toContain('待解锁');
     expect(view.loadSettings).not.toHaveBeenCalled();
     view.vaultStatus.state = 'unlocked';
     globalThis.dispatchEvent(new Event(VAULT_UNLOCKED_EVENT));
@@ -209,7 +209,7 @@ describe('dashboard authorization card', () => {
     await vi.waitFor(() => {
       expect(view.wrapper.find('error-notice-stub').exists()).toBe(true);
     });
-    expect(view.wrapper.get('[data-testid="dashboard-authorization"]').text()).toContain('授权已到期');
+    expect(view.wrapper.get('[data-testid="dashboard-authorization"]').text()).toContain('已到期');
     expect(view.wrapper.findAllComponents({ name: 'DashboardMetricCard' })).toHaveLength(3);
     expect(view.wrapper.text()).not.toContain('图片');
     expect(view.wrapper.find('local-todo-list-stub').exists()).toBe(true);

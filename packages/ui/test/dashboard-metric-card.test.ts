@@ -18,7 +18,7 @@ describe('DashboardMetricCard', () => {
     });
 
     expect(wrapper.text()).toContain('0');
-    expect(wrapper.text()).toContain('已确认为 0');
+    expect(wrapper.get('button').attributes('aria-label')).toContain('已确认为 0');
     expect(wrapper.text()).not.toContain('接口请求失败');
   });
 
@@ -38,8 +38,8 @@ describe('DashboardMetricCard', () => {
     });
 
     expect(wrapper.text()).toContain('—');
-    expect(wrapper.text()).toContain('当前账号无权限');
-    expect(wrapper.text()).toContain('isv.permission-api-package-limit');
+    expect(wrapper.text()).toContain('无权限');
+    expect(wrapper.get('button').attributes('aria-label')).toContain('isv.permission-api-package-limit');
   });
 
   it('explains a total that the provider did not return', () => {
@@ -53,6 +53,6 @@ describe('DashboardMetricCard', () => {
       }
     });
 
-    expect(wrapper.text()).toContain('上游未提供可确认总数');
+    expect(wrapper.get('button').attributes('aria-label')).toContain('上游未提供可确认总数');
   });
 });
