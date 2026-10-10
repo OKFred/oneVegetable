@@ -10189,6 +10189,23 @@ export interface components {
             html: string;
             remark?: string | null;
         };
+        ProductDescriptionTemplatePortable: {
+            name: string;
+            /** @enum {string} */
+            category: "company" | "logistics" | "packaging" | "service" | "custom";
+            /** @enum {string} */
+            language: "zh_CN" | "en_US";
+            html: string;
+            remark: string | null;
+        };
+        ProductDescriptionTemplateBundle: {
+            /** @constant */
+            kind: "oneVegetable.product-description-templates";
+            /** @constant */
+            schemaVersion: 1;
+            exportedAtUtc: number;
+            templates: components["schemas"]["ProductDescriptionTemplatePortable"][];
+        };
         ProductDescriptionTemplateListRequest: {
             requestId: components["schemas"]["RequestId"];
             /** @default 1 */

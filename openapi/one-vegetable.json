@@ -18320,6 +18320,37 @@
           "remark": { "type": ["string", "null"], "maxLength": 500 }
         }
       },
+      "ProductDescriptionTemplatePortable": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "category", "language", "html", "remark"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "category": {
+            "type": "string",
+            "enum": ["company", "logistics", "packaging", "service", "custom"]
+          },
+          "language": { "type": "string", "enum": ["zh_CN", "en_US"] },
+          "html": { "type": "string", "minLength": 1, "maxLength": 262144 },
+          "remark": { "type": ["string", "null"], "maxLength": 500 }
+        }
+      },
+      "ProductDescriptionTemplateBundle": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "schemaVersion", "exportedAtUtc", "templates"],
+        "properties": {
+          "kind": { "type": "string", "const": "oneVegetable.product-description-templates" },
+          "schemaVersion": { "type": "integer", "const": 1 },
+          "exportedAtUtc": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "templates": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": { "$ref": "#/components/schemas/ProductDescriptionTemplatePortable" }
+          }
+        }
+      },
       "ProductDescriptionTemplateListRequest": {
         "type": "object",
         "additionalProperties": false,

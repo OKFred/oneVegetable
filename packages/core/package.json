@@ -30,6 +30,8 @@
     "./runtime": "./src/runtime.ts",
     "./s3-storage": "./src/s3-storage.ts",
     "./templates": "./src/product-description-template-client.ts",
+    "./template-library": "./src/template-library.ts",
+    "./local-templates": "./src/indexeddb-template-client.ts",
     "./version": "./src/version.ts"
   },
   "scripts": {

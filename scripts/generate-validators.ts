@@ -77,6 +77,20 @@ const domains: CapabilityDomain[] = [
 ];
 const targets = new Map<string, string>();
 targets.set(
+  'validators-templates.ts',
+  compileValidators(
+    Object.fromEntries(
+      [
+        'ProductDescriptionTemplate',
+        'ProductDescriptionTemplateCreateRequest',
+        'ProductDescriptionTemplateUpdateRequest',
+        'ProductDescriptionTemplateBundle'
+      ].map((name) => [`validate${name}`, schemas[name]])
+    ),
+    'fast'
+  )
+);
+targets.set(
   'validators-video-upload.ts',
   compileValidators(
     Object.fromEntries(

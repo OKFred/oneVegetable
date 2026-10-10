@@ -1,0 +1,21 @@
+{
+  "kind": "oneVegetable.product-description-templates",
+  "schemaVersion": 1,
+  "exportedAtUtc": 1791676800000,
+  "templates": [
+    {
+      "name": "Company introduction",
+      "category": "company",
+      "language": "en_US",
+      "html": "<h2>About our company</h2><p>Replace this paragraph with verified company information.</p>",
+      "remark": null
+    },
+    {
+      "name": "Logistics introduction",
+      "category": "logistics",
+      "language": "en_US",
+      "html": "<h2>Shipping</h2><p>Confirm delivery options and lead times before ordering.</p>",
+      "remark": "Example only"
+    }
+  ]
+}
