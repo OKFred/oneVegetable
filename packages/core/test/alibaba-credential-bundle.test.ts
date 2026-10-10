@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  credentialExpiryFromSeconds,
   createAlibabaOpenApiCredentialBundle,
   isAlibabaOpenApiCredentialBundle,
   parseAlibabaOpenApiCredentialBundle,
@@ -8,6 +9,23 @@ import {
 } from '../src/alibaba-credential-bundle';
 
 describe('Alibaba credential bundle contract', () => {
+  it('reads documented ICBU refresh duration and preserves zero without guessing a lifetime', () => {
+    expect(
+      parseAlibabaTokenResponse({ access_token: 'test', re_expires_in: '86400', expires_in: 0 })
+    ).toMatchObject({ expiresInSeconds: 0, refreshExpiresInSeconds: 86400 });
+    expect(
+      parseAlibabaTokenResponse({ access_token: 'test', re_expires_in: 0, refresh_token_timeout: 7200 })
+        .refreshExpiresInSeconds
+    ).toBe(0);
+    for (const duration of [null, '', ' ', -1, 'invalid', 0.5, Infinity, Number.MAX_VALUE]) {
+      expect(
+        parseAlibabaTokenResponse({ access_token: 'test', expires_in: duration }).expiresInSeconds
+      ).toBeNull();
+    }
+    expect(credentialExpiryFromSeconds(1_000, 0)).toBe('1970-01-01T00:00:01.000Z');
+    expect(credentialExpiryFromSeconds(Date.now(), Number.MAX_SAFE_INTEGER)).toBeNull();
+    expect(credentialExpiryFromSeconds(Date.now(), null)).toBeNull();
+  });
   it('accepts the versioned browser authorization bundle', () => {
     const bundle = fixture();
     expect(parseAlibabaOpenApiCredentialBundle(bundle)).toEqual(bundle);

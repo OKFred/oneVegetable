@@ -41,6 +41,11 @@ describe('Alibaba OAuth callback', () => {
 });
 
 describe('Alibaba token response', () => {
+  it('uses the same documented refresh expiry parser as the extension and BFF', () => {
+    expect(
+      parseTokenResponse({ access_token: 'test', expires_in: '60', re_expires_in: '3600' })
+    ).toMatchObject({ expiresInSeconds: 60, refreshExpiresInSeconds: 3600 });
+  });
   it('normalizes snake case and string durations', () => {
     expect(
       parseTokenResponse({

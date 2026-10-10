@@ -1,4 +1,8 @@
 import type { APIRequestContext } from '@playwright/test';
+import {
+  credentialExpiryFromSeconds,
+  parseAlibabaTokenResponse
+} from '../../packages/core/src/alibaba-credential-bundle';
 
 import { OpenApiAuthError } from './storage';
 import type { AlibabaTokenResponse } from './types';
@@ -69,51 +73,13 @@ export async function refreshAccessToken(
 }
 
 export function parseTokenResponse(value: unknown): AlibabaTokenResponse {
-  const record = asRecord(value);
-  const accessToken = requiredString(record, ['access_token', 'accessToken']);
-  return {
-    accessToken,
-    refreshToken: optionalString(record, ['refresh_token', 'refreshToken']),
-    expiresInSeconds: optionalNumber(record, ['expires_in', 'expiresIn']),
-    refreshExpiresInSeconds: optionalNumber(record, [
-      'refresh_token_timeout',
-      'refresh_token_expires_in',
-      'refreshExpiresIn'
-    ])
-  };
+  try {
+    return parseAlibabaTokenResponse(value);
+  } catch {
+    throw new OpenApiAuthError('TOKEN_RESPONSE_INVALID', 'Token 响应无效或缺少 access token，请重新授权');
+  }
 }
 
 export function expiryFromSeconds(now: Date, seconds: number | null): string | null {
-  if (seconds === null) return null;
-  return new Date(now.getTime() + seconds * 1_000).toISOString();
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new OpenApiAuthError('TOKEN_RESPONSE_INVALID', 'Token 响应不是对象');
-  }
-  return value as Record<string, unknown>;
-}
-
-function requiredString(record: Record<string, unknown>, keys: readonly string[]): string {
-  const value = optionalString(record, keys);
-  if (!value) throw new OpenApiAuthError('TOKEN_RESPONSE_INVALID', 'Token 响应缺少 access token');
-  return value;
-}
-
-function optionalString(record: Record<string, unknown>, keys: readonly string[]): string | null {
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === 'string' && value.trim() !== '') return value.trim();
-  }
-  return null;
-}
-
-function optionalNumber(record: Record<string, unknown>, keys: readonly string[]): number | null {
-  for (const key of keys) {
-    const value = record[key];
-    const parsed = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
-    if (Number.isFinite(parsed) && parsed >= 0) return parsed;
-  }
-  return null;
+  return credentialExpiryFromSeconds(now.getTime(), seconds);
 }

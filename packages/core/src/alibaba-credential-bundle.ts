@@ -143,6 +143,7 @@ export function parseAlibabaTokenResponse(value: unknown): AlibabaTokenResponse 
     refreshToken: firstOptionalString(record, ['refresh_token', 'refreshToken']),
     expiresInSeconds: firstOptionalNumber(record, ['expires_in', 'expiresIn']),
     refreshExpiresInSeconds: firstOptionalNumber(record, [
+      're_expires_in',
       'refresh_token_timeout',
       'refresh_token_expires_in',
       'refreshExpiresIn'
@@ -151,7 +152,9 @@ export function parseAlibabaTokenResponse(value: unknown): AlibabaTokenResponse 
 }
 
 export function credentialExpiryFromSeconds(now: number, seconds: number | null): string | null {
-  return seconds === null ? null : new Date(now + seconds * 1_000).toISOString();
+  if (seconds === null || !Number.isSafeInteger(seconds) || seconds < 0) return null;
+  const date = new Date(now + seconds * 1_000);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
 function requiredRecord(value: unknown, label: string): Record<string, unknown> {
@@ -230,8 +233,13 @@ function firstOptionalString(record: Record<string, unknown>, keys: readonly str
 function firstOptionalNumber(record: Record<string, unknown>, keys: readonly string[]): number | null {
   for (const key of keys) {
     const value = record[key];
-    const parsed = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
-    if (Number.isFinite(parsed) && parsed >= 0) return parsed;
+    const parsed =
+      typeof value === 'number'
+        ? value
+        : typeof value === 'string' && /^\d+$/.test(value)
+          ? Number(value)
+          : NaN;
+    if (Number.isSafeInteger(parsed) && parsed >= 0 && parsed <= 8_640_000_000_000) return parsed;
   }
   return null;
 }
