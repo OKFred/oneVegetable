@@ -64,6 +64,12 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     expect(writes.some((path) => path.endsWith('/test'))).toBe(false);
     await expect(panel).not.toContainText(fixture.manual.appSecret);
     await expect(panel.getByTestId('credential-expiry')).toContainText(en ? 'Expiry unknown' : '有效期未知');
+    await page.getByRole('link', { name: en ? 'Dashboard' : '总览', exact: true }).click();
+    const authorizationCard = page.getByTestId('dashboard-authorization');
+    await expect(authorizationCard).toContainText(en ? 'Expiry unknown' : '有效期未知');
+    await expect(authorizationCard).not.toContainText(fixture.manual.accessToken);
+    await authorizationCard.getByRole('link').click();
+    await expect(panel).toBeVisible();
     await panel.getByRole('button', { name: en ? 'Clear configuration' : '清除配置', exact: true }).click();
     const clear = page.getByRole('dialog', {
       name: en ? 'Clear server credentials?' : '确认清除服务端凭据？',
@@ -96,6 +102,11 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     await page.reload();
     await expect(panel.getByTestId('credential-expiry')).toContainText('2030-01-02');
     await expect(panel).not.toContainText(fixture.manual.accessToken);
+    await page.getByRole('link', { name: en ? 'Dashboard' : '总览', exact: true }).click();
+    await expect(authorizationCard).toContainText('2030-01-02');
+    await expect(authorizationCard).toContainText(en ? 'days left' : '剩余约');
+    await authorizationCard.getByRole('link').click();
+    await expect(panel).toBeVisible();
     await panel.getByRole('button', { name: en ? 'Clear configuration' : '清除配置', exact: true }).click();
     await clear.getByRole('button', { name: en ? 'Confirm' : '确认', exact: true }).click();
     await expect(panel.getByText(en ? 'Not configured' : '尚未配置', { exact: true })).toBeVisible();

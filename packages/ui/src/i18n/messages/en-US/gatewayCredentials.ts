@@ -1,5 +1,12 @@
 export const gatewayCredentials = {
   title: 'Alibaba credentials',
+  remainingTitle: 'Alibaba authorization remaining',
+  manageAuthorization: 'View / renew authorization',
+  shortExpired: 'Expired',
+  shortInvalid: 'Reconnect required',
+  locked: 'Unlock or repair credentials in Settings to view their expiry.',
+  loadFailed: 'Authorization status is unavailable. Check Settings or try again.',
+  demo: 'Demo mode does not use real Alibaba authorization.',
   expiryunknown: 'Expiry unknown; this does not mean permanent access',
   expiryvalid: 'Within the recorded authorization period',
   expiryexpiring: 'Authorization expires within 7 days; prepare to renew',

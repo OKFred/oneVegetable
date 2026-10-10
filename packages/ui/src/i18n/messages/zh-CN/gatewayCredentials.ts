@@ -1,5 +1,12 @@
 export const gatewayCredentials = {
   title: 'Alibaba 凭据配置',
+  remainingTitle: 'Alibaba 授权剩余时间',
+  manageAuthorization: '查看授权 / 续期',
+  shortExpired: '已到期',
+  shortInvalid: '需重新连接',
+  locked: '请先到设置解锁或修复凭据，再查看授权有效期。',
+  loadFailed: '暂时无法读取授权状态，请到设置检查或重试。',
+  demo: '演示模式不使用真实 Alibaba 授权。',
   description: '当前服务的所有用户共用此配置。这里填写开放平台凭据，不是 Alibaba 网站登录账密。',
   adminOnly: '只有管理员可以管理 Alibaba 凭据。',
   unavailable: '当前后端尚未启用凭据管理。请配置服务端加密密钥并重启一次。',
