@@ -24,6 +24,7 @@ import { AlibabaCredentialAcquisitionServiceError } from '../alibaba-credential-
 import { AlibabaCredentialAcquisitionContractError } from '@one-vegetable/core';
 import { toPublicUser } from './types';
 import { testGatewayCredential } from '../gateway/credential-test';
+import { GatewayConfigurationError } from '../gateway/credentials';
 import { validateGatewayCredentialSaveRequest } from '@one-vegetable/core/gateway-credential-validators';
 
 export const SESSION_COOKIE = 'ov_session';
@@ -1122,6 +1123,14 @@ async function handle(context: Context, action: () => Promise<Response>): Promis
       return failure(context, requestId, error.status, {
         code: error.code,
         message: error.message,
+        retryable: false
+      });
+    }
+    if (error instanceof GatewayConfigurationError) {
+      return failure(context, requestId, error.code === 'ALIBABA_TOKEN_REFRESH_FAILED' ? 502 : 503, {
+        code: error.code,
+        message: error.message,
+        ...error.diagnostics,
         retryable: false
       });
     }

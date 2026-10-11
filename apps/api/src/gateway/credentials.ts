@@ -56,7 +56,8 @@ export class GatewayConfigurationError extends Error {
       | 'S3_CREDENTIAL_VAULT_UNREADABLE'
       | 'S3_STORAGE_NOT_CONFIGURED'
       | 'S3_LOCAL_HTTP_DISABLED',
-    message: string
+    message: string,
+    readonly diagnostics: { subCode?: string; traceId?: string } = {}
   ) {
     super(message);
     this.name = 'GatewayConfigurationError';

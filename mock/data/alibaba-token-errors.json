@@ -1,0 +1,29 @@
+{
+  "oauth": {
+    "error": "invalid_grant",
+    "error_description": "Refresh token rejected; access_token=fixture-access; client_secret=fixture-secret",
+    "request_id": "fixture-request-123"
+  },
+  "top": {
+    "error_response": {
+      "code": 27,
+      "sub_code": "isv.invalid-refresh-token",
+      "msg": "Invalid refresh token",
+      "request_id": "fixture-top-request"
+    }
+  },
+  "bffError": {
+    "code": "ALIBABA_TOKEN_REFRESH_FAILED",
+    "message": "Alibaba Token refresh failed (HTTP 400): invalid_grant — Refresh token rejected",
+    "subCode": "invalid_grant",
+    "traceId": "fixture-request-123",
+    "retryable": false
+  },
+  "malicious": {
+    "error": "invalid_grant\nunsafe-log",
+    "error_description": "<script>ignored</script> fixture-secret fixture-access fixture-refresh https://example.com/?code=private user@example.com",
+    "request_id": "fixture-secret",
+    "access_token": "never-return-this",
+    "refresh_token": "never-return-this-either"
+  }
+}

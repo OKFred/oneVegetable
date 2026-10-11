@@ -1,7 +1,9 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createRequestId } from '@one-vegetable/core';
 import credentialFixture from '../../../mock/data/node-gateway-credentials.json';
+import tokenErrorFixture from '../../../mock/data/alibaba-token-errors.json';
+import type { NetworkTransport } from '@one-vegetable/core';
 
 import { createApiApp } from '../src/app';
 import { AdminService } from '../src/auth/admin-service';
@@ -25,6 +27,53 @@ afterEach(() => {
 });
 
 describe('gateway credential admin routes', () => {
+  it('returns redacted refresh diagnostics with the same requestId, retains credentials and requires CSRF', async () => {
+    const send = vi.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(tokenErrorFixture.oauth), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      )
+    );
+    const { app, authService, credentialService } = await fixture({ send });
+    const session = await bootstrap(authService);
+    const before = await credentialService.import({
+      bundle: bundle(),
+      actorId: session.user.id,
+      expectedRevision: null,
+      remark: null
+    });
+    const requestId = createRequestId();
+    const request = (csrf: boolean) =>
+      app.request('/api/v1/admin/gateway-credentials/refresh', {
+        method: 'POST',
+        headers: authHeaders(session.sessionToken, csrf ? session.session.csrfToken : undefined),
+        body: JSON.stringify({ requestId })
+      });
+    expect((await request(false)).status).toBe(403);
+    expect(send).not.toHaveBeenCalled();
+    const response = await request(true);
+    expect(response.status).toBe(502);
+    expect(response.headers.get('X-Request-ID')).toBe(requestId);
+    const text = await response.text();
+    expect(JSON.parse(text)).toMatchObject({
+      requestId,
+      ok: false,
+      error: {
+        code: 'ALIBABA_TOKEN_REFRESH_FAILED',
+        subCode: 'invalid_grant',
+        traceId: 'fixture-request-123',
+        retryable: false
+      }
+    });
+    expect(text).not.toMatch(/fixture-secret|fixture-access|refresh-token/);
+    expect(send).toHaveBeenCalledOnce();
+    expect(await credentialService.status()).toMatchObject({
+      revision: before.revision,
+      lastRefreshErrorCode: 'ALIBABA_TOKEN_REFRESH_FAILED'
+    });
+  });
   it('supports manual save, CSRF and conflict checks without persisting OAuth evidence', async () => {
     const { app, authService, credentialRepository } = await fixture();
     const session = await bootstrap(authService);
@@ -144,7 +193,7 @@ describe('gateway credential admin routes', () => {
   });
 });
 
-async function fixture() {
+async function fixture(transport?: NetworkTransport) {
   database = openNodeDatabase(':memory:');
   applyNodeMigrations(database);
   const authRepository = new SqlAuthRepository(database.executor);
@@ -155,7 +204,9 @@ async function fixture() {
   const credentialRepository = new SqlGatewayCredentialRepository(database.executor);
   const cipher = await GatewayCredentialCipher.create(encodedKey());
   const credentialService = new GatewayCredentialService(credentialRepository, cipher);
-  const credentialProvider = new StoredAlibabaCredentialProvider(credentialRepository, cipher);
+  const credentialProvider = new StoredAlibabaCredentialProvider(credentialRepository, cipher, {
+    ...(transport ? { transport, clock: () => Date.parse('2026-08-30T00:00:00.000Z') } : {})
+  });
   const app = createApiApp({
     runtime: 'node',
     database: 'sqlite',

@@ -11,6 +11,7 @@ import {
 import type { AlibabaOpenApiCredentialBundle, NetworkTransport } from '@one-vegetable/core';
 import type { NodeDatabaseHandle } from '../src/db/node-database';
 import permissionFixture from '../../../mock/data/system-api-authorization.json';
+import tokenErrorFixture from '../../../mock/data/alibaba-token-errors.json';
 
 const databases: NodeDatabaseHandle[] = [];
 
@@ -132,6 +133,36 @@ describe('D1-compatible Alibaba credential vault', () => {
       code: 'ALIBABA_CREDENTIALS_NOT_CONFIGURED'
     });
   });
+
+  it.each([200, 400])(
+    'rejects an OAuth error even on HTTP %s without changing the stored token',
+    async (status) => {
+      const now = Date.parse('2026-08-30T00:00:00.000Z');
+      const send = vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify(tokenErrorFixture.oauth), {
+            status,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        )
+      );
+      const { repository, service, cipher } = await harness(() => now);
+      await service.import({ bundle: bundle(), actorId: 'admin-1', expectedRevision: null, remark: null });
+      const before = await repository.find();
+      const provider = new StoredAlibabaCredentialProvider(repository, cipher, {
+        transport: { send },
+        clock: () => now
+      });
+      await expect(provider.requireCredentials(crypto.randomUUID(), true)).rejects.toMatchObject({
+        code: 'ALIBABA_TOKEN_REFRESH_FAILED',
+        diagnostics: { subCode: 'invalid_grant' }
+      });
+      const after = await repository.find();
+      expect(after?.encryptedBundle).toBe(before?.encryptedBundle);
+      expect(after?.revision).toBe(before?.revision);
+      expect(send).toHaveBeenCalledOnce();
+    }
+  );
 
   it.each([null, 3_600_000, 60_000, -1])(
     'retains the same access token after a failed explicit refresh (%s expiry), without automatic refresh retries',

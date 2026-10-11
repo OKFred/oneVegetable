@@ -10,6 +10,7 @@ import {
 
 import { EntityVersionConflictError } from '../db/repository';
 import { GatewayConfigurationError, readEndpoint, readSignMethod } from './credentials';
+import { hasTokenError, parseTokenBody, tokenRefreshFailure } from './token-refresh-error';
 
 import type {
   AlibabaOpenApiCredentialBundle,
@@ -584,16 +585,25 @@ export class StoredAlibabaCredentialProvider {
         requestId,
         method: 'POST',
         body: form,
-        responseType: 'json',
+        responseType: 'text',
         maxAttempts: 1
       });
-      if (!response.ok) {
-        throw new GatewayConfigurationError(
-          'ALIBABA_TOKEN_REFRESH_FAILED',
-          `Alibaba Token 刷新失败（HTTP ${response.status}）`
-        );
+      const value = parseTokenBody(response.data);
+      const secrets = [
+        bundle.credentials.appKey,
+        bundle.credentials.appSecret,
+        bundle.credentials.accessToken,
+        bundle.credentials.refreshToken
+      ];
+      if (!response.ok || hasTokenError(value)) {
+        throw tokenRefreshFailure(response.status, value, secrets);
       }
-      const token = parseAlibabaTokenResponse(response.data);
+      let token: ReturnType<typeof parseAlibabaTokenResponse>;
+      try {
+        token = parseAlibabaTokenResponse(value);
+      } catch {
+        throw tokenRefreshFailure(response.status, value, secrets);
+      }
       const refreshedAt = this.clock();
       const refreshedBundle: GatewayCredentialDocument = {
         ...bundle,
