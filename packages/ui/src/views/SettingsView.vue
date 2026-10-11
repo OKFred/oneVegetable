@@ -18,6 +18,7 @@ import { toast } from 'vue-sonner';
 
 import {
   ALIBABA_GATEWAY,
+  alibabaAuthorizationMetadata,
   CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES,
   CREDENTIAL_VAULT_IDLE_TIMEOUT_OPTIONS,
   CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS,
@@ -188,7 +189,15 @@ async function handleAcquiredCredentialsSaved(status: CredentialVaultStatus): Pr
 
 function readImportedCredentials(
   value: unknown
-): Pick<GatewaySettings, 'appKey' | 'appSecret' | 'accessToken' | 'accessTokenExpiresTimeUtc'> {
+): Pick<
+  GatewaySettings,
+  | 'appKey'
+  | 'appSecret'
+  | 'accessToken'
+  | 'accessTokenExpiresTimeUtc'
+  | 'systemApiPermission'
+  | 'permissionCapturedTimeUtc'
+> {
   const root = objectValue(value);
   const application = objectValue(root.application);
   const oauth = objectValue(root.oauth);
@@ -204,6 +213,7 @@ function readImportedCredentials(
     appKey,
     appSecret,
     accessToken,
+    ...alibabaAuthorizationMetadata(value),
     accessTokenExpiresTimeUtc:
       typeof expires === 'number' &&
       Number.isSafeInteger(expires) &&
@@ -212,6 +222,12 @@ function readImportedCredentials(
         ? expires
         : null
   };
+}
+
+function clearAuthorizationMetadata(): void {
+  model.value.accessTokenExpiresTimeUtc = null;
+  model.value.systemApiPermission = 'unknown';
+  model.value.permissionCapturedTimeUtc = null;
 }
 
 function objectValue(value: unknown): Record<string, unknown> {
@@ -640,7 +656,7 @@ function confirmLanguagePreference(): void {
             <label class="text-sm font-medium"
               >App Key<Input
                 v-model="model.appKey"
-                @update:model-value="model.accessTokenExpiresTimeUtc = null"
+                @update:model-value="clearAuthorizationMetadata"
                 class="mt-2"
                 autocomplete="off"
                 aria-label="App Key"
@@ -649,7 +665,7 @@ function confirmLanguagePreference(): void {
             <label class="text-sm font-medium"
               >App Secret<Input
                 v-model="model.appSecret"
-                @update:model-value="model.accessTokenExpiresTimeUtc = null"
+                @update:model-value="clearAuthorizationMetadata"
                 class="mt-2"
                 type="password"
                 aria-label="App Secret"
@@ -661,7 +677,7 @@ function confirmLanguagePreference(): void {
             <label class="text-sm font-medium sm:col-span-2"
               >Access Token<Input
                 v-model="model.accessToken"
-                @update:model-value="model.accessTokenExpiresTimeUtc = null"
+                @update:model-value="clearAuthorizationMetadata"
                 class="mt-2"
                 type="password"
                 aria-label="Access Token"

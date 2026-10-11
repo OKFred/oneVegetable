@@ -10,7 +10,7 @@ export const gatewayCredentials = {
   remainingminutes: 'About {count} minutes left',
   refreshWindow: 'Refresh may be attempted; the platform can still refuse',
   expiryHelp:
-    'The platform controls expiry and may revoke access earlier. Try refreshing when available, or reauthorize and import. No workbench sign-out is needed.',
+    'Access may be revoked early. Try refreshing, or reauthorize and import. No workbench sign-out is needed.',
   extensionRenew:
     'The extension does not auto-renew. Use “Get Open Platform credentials” and save again when expiry approaches or access fails. Keep your existing vault.',
   description:
@@ -30,14 +30,21 @@ export const gatewayCredentials = {
   test: 'Test connection',
   refresh: 'Refresh Token',
   renew: 'Renew authorization',
-  renewDescription:
-    'Renew Alibaba API authorization without changing workbench sign-in or replaying product operations.',
-  refreshAvailable:
-    'This configuration supports token refresh. If Alibaba rejects it, reconnect through credential settings.',
+  authorizationRemaining: 'Authorization remaining',
+  permissionactive: 'No expiry returned; check renewal',
+  permissioninactive: 'System API inactive; check renewal',
+  'permissionnot-recorded': 'System API not recorded; check renewal',
+  permissionunknown: 'Permissions unconfirmed; check renewal',
+  permissionSnapshot: 'Permission snapshot: {time}; not live',
+  systemApiHelp: 'System API ≠ SystemAPI. Permissions cannot reveal old expiry; verify IOP separately.',
+  unlockForExpiry: 'Unlock to view expiry',
+  expiryReadFailed: 'Cannot read authorization; check settings',
+  renewDescription: 'Renew API access without signing out or replaying product operations.',
+  refreshAvailable: 'Try Refresh Token; if rejected, reconnect in settings.',
   renewSettings: 'Credential settings',
   clear: 'Clear configuration',
   reload: 'Refresh status',
-  noRefresh: 'Token refresh is unavailable for this configuration. Reauthorize and import.',
+  noRefresh: 'Refresh unavailable. Reauthorize and import.',
   renewTitle: 'How do I reconnect after authorization fails?',
   renewGuide:
     'Try Refresh Token first. If it fails, get credentials in extension Settings, authorize and export JSON, then import and test here. Do not clear the old configuration or sign out. Local developers can also run pnpm openapi:auth.',

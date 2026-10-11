@@ -12,7 +12,16 @@
 - 插件仅保留加密的 Access Token 到期元数据，不自动刷新。重新授权后保存到现有保险库即可；手工换 Token 清除旧到期记录。
 - Node/Cloudflare 管理配置可尝试刷新；失败时重新授权并导入。环境变量/启动文件不支持页面直接刷新，先导入为加密配置。
 
-## 本机重新授权
+## 总览与新版 System API（2026-10-11 核对）
+
+- 总览在真实 BFF/插件模式用“剩余授权时间”替换图片卡片；倒计时只依据当前凭据实际记录的到期时间，每分钟本地更新，不轮询平台、不自动授权或刷新。
+- `System API`（含空格）与旧 `SystemAPI` 是两个不同权限组。新版 [Token 创建](https://openapi.alibaba.com/doc/api.htm#/api?cid=4&path=/auth/token/create&methodType=GET/POST) 文档返回 `expires_in` 和 `refresh_expires_in`；[Token 刷新](https://openapi.alibaba.com/doc/api.htm#/api?cid=4&path=/auth/token/refresh&methodType=GET/POST) 要求有有效 Refresh Token，不能反查旧 Token 的有效期。
+- 授权包有精确 `System API / Active` 记录但缺少有效期：提示有效期未返回；快照未启用或未记录该组时提示关注续期；空权限清单、手工凭据、旧授权包均显示“权限未确认”，不冒充平台实际拒绝授权。
+- 权限仅是导入时的快照，Tooltip 显示快照时间，不能代表当前后台权限。更换 AppKey/Secret/Token 后清除旧快照与有效期；重新导入或重新授权保存时再记录。
+- 普通用户不调用管理员凭据接口；插件锁定时提示解锁，读取失败不判为权限缺失。已有 TOP 凭据记录有效期时也可以倒计时，不强制要求新版权限。
+- 新版刷新说明仍引用 Lazada endpoint。本轮只核对文档和兼容有效期字段，**未切换 OAuth endpoint、签名、网关或执行真实刷新**。IOP 授权、换 Token、刷新及真实商品只读调用须单独验收，不能因权限 Active 混用 TOP。
+
+### 本机重新授权步骤
 
 已有 `artifacts/openapi-auth/credentials.json` 时运行 `pnpm openapi:auth:reconnect`：
 
@@ -25,6 +34,8 @@
 接收器仅监听 loopback，校验 Host、同源 Origin 和随机 state；10 分钟后关闭，不保存 Callback/code，不回显密钥。授权文件含明文密钥，位于 Git 忽略目录。
 
 ## English
+
+The Overview countdown uses only the current credential's recorded expiry. System API and SystemAPI are distinct. Permission evidence is an import-time snapshot, not a live entitlement check; missing or empty metadata is not proof of missing permission. No expiry means no fabricated countdown. Enabling a new permission cannot reveal an old token's expiry. The IOP flow still needs separate live acceptance and never replaces the existing TOP flow automatically.
 
 Website login, workbench login, vault unlock and API authorization are independent. Token lifetime comes from the actual OAuth response, not a universal duration. Unknown expiry never means permanent authorization. The seven-day notice is a local reminder only; access can be revoked earlier.
 

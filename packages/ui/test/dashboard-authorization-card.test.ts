@@ -1,0 +1,134 @@
+// @vitest-environment jsdom
+import { defineComponent, h } from 'vue';
+import { flushPromises, mount } from '@vue/test-utils';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  BffControlClient,
+  type ControlGatewayCredentialSummary,
+  type ControlSession
+} from '@one-vegetable/core';
+import { MockGatewayClient } from '@one-vegetable/core/mock';
+import fixture from '../../../mock/data/dashboard-authorization.json';
+import DashboardAuthorizationCard from '../src/components/DashboardAuthorizationCard.vue';
+import { provideServices } from '../src/lib/services';
+import { uiI18n } from '../src/i18n';
+import { GATEWAY_CONFIGURATION_EVENT } from '../src/lib/gateway-configuration-events';
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  uiI18n.global.locale.value = 'zh-CN';
+});
+
+async function harness(
+  options: {
+    status?: Partial<ControlGatewayCredentialSummary>;
+    role?: 'admin' | 'user';
+    extension?: boolean;
+    locked?: boolean;
+  } = {}
+) {
+  const client = new BffControlClient({ baseUrl: 'http://localhost:8787' });
+  const session = fixture.session as ControlSession;
+  const readSession = vi
+    .spyOn(client, 'session')
+    .mockResolvedValue({ ...session, principal: { ...session.principal, role: options.role ?? 'admin' } });
+  const read = vi.spyOn(client, 'gatewayCredentialStatus').mockResolvedValue({
+    ...(fixture.credential as ControlGatewayCredentialSummary),
+    systemApiPermission: 'unknown',
+    ...options.status
+  });
+  const refresh = vi.spyOn(client, 'refreshGatewayCredential');
+  const load = vi.fn().mockResolvedValue({
+    accessTokenExpiresTimeUtc: null,
+    systemApiPermission: 'active',
+    ...options.status
+  });
+  const Host = defineComponent({
+    setup() {
+      provideServices({
+        gateway: new MockGatewayClient(0),
+        control: client,
+        mode: options.extension ? 'extension' : 'bff',
+        settings: { load, save: vi.fn() },
+        ...(options.extension
+          ? {
+              vault: {
+                status: vi
+                  .fn()
+                  .mockResolvedValue({ state: options.locked ? 'locked' : 'unlocked', hasAccessToken: true }),
+                create: vi.fn(),
+                migrate: vi.fn(),
+                unlock: vi.fn(),
+                lock: vi.fn(),
+                rotate: vi.fn(),
+                updatePolicy: vi.fn()
+              }
+            }
+          : {})
+      });
+      return () => h(DashboardAuthorizationCard);
+    }
+  });
+  const wrapper = mount(Host);
+  await flushPromises();
+  return { wrapper, readSession, read, refresh, load };
+}
+
+describe('overview authorization card', () => {
+  it('counts down recorded expiry even with legacy/unknown permissions, without renewing or refetching on locale change', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_800_000_000_000);
+    const view = await harness({ status: { accessTokenExpiresTimeUtc: Date.now() + 120_000 } });
+    expect(view.wrapper.text()).toContain('剩余约 2 分钟');
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(view.wrapper.text()).toContain('剩余约 1 分钟');
+    uiI18n.global.locale.value = 'en-US';
+    await flushPromises();
+    expect(view.wrapper.text()).toContain('About 1 minutes left');
+    expect(view.read).toHaveBeenCalledOnce();
+    expect(view.refresh).not.toHaveBeenCalled();
+    view.wrapper.unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it.each([
+    ['active', '有效期未返回'],
+    ['inactive', 'System API 未启用'],
+    ['not-recorded', '未记录 System API'],
+    ['unknown', '权限未确认']
+  ] as const)('keeps unknown expiry honest for %s permission evidence', async (permission, expected) => {
+    const view = await harness({
+      status: { accessTokenExpiresTimeUtc: null, systemApiPermission: permission }
+    });
+    expect(view.wrapper.text()).toContain(expected);
+    expect(view.wrapper.text()).not.toContain('剩余约');
+    expect(view.wrapper.get('button').attributes('aria-label')).toContain('非实时查询');
+    expect(view.refresh).not.toHaveBeenCalled();
+    view.wrapper.unmount();
+  });
+  it('does not request administrator metadata for regular users', async () => {
+    const view = await harness({ role: 'user' });
+    expect(view.wrapper.text()).toContain('只有管理员');
+    expect(view.read).not.toHaveBeenCalled();
+    view.wrapper.unmount();
+  });
+  it('reads only safe extension settings; a locked vault is not a missing permission', async () => {
+    const view = await harness({ extension: true, locked: true });
+    expect(view.wrapper.text()).toContain('解锁凭据');
+    expect(view.load).not.toHaveBeenCalled();
+    expect(view.read).not.toHaveBeenCalled();
+    view.wrapper.unmount();
+  });
+  it('reads unlocked extension metadata and reloads when credentials change, never replaying refresh', async () => {
+    const view = await harness({ extension: true });
+    expect(view.wrapper.text()).toContain('有效期未返回');
+    view.load.mockResolvedValueOnce({ accessTokenExpiresTimeUtc: Date.now() + 2 * 86_400_000 });
+    globalThis.dispatchEvent(new Event(GATEWAY_CONFIGURATION_EVENT));
+    await flushPromises();
+    expect(view.wrapper.text()).toContain('剩余约');
+    expect(view.load).toHaveBeenCalledTimes(2);
+    expect(view.readSession).not.toHaveBeenCalled();
+    expect(view.refresh).not.toHaveBeenCalled();
+    view.wrapper.unmount();
+  });
+});

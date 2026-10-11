@@ -12,6 +12,7 @@ import inventoryFixture from '../../mock/data/product-inventory.json' with { typ
 import skuInventoryFixture from '../../mock/data/product-sku-inventory.json' with { type: 'json' };
 import videoFixture from '../../mock/data/video/top.json' with { type: 'json' };
 import credentialFixture from '../../mock/data/node-gateway-credentials.json' with { type: 'json' };
+import permissionFixture from '../../mock/data/system-api-authorization.json' with { type: 'json' };
 import videoAssociationFixture from '../../mock/data/video/association-core.json' with { type: 'json' };
 import { MockGatewayClient } from '../../packages/core/src/mock-client';
 import {
@@ -65,6 +66,7 @@ test('formal MV3 preserves imported token expiry through vault save and page rel
     buffer: Buffer.from(
       JSON.stringify({
         ...credentialFixture.oauthBundle,
+        application: { ...credentialFixture.oauthBundle.application, permissions: permissionFixture.active },
         oauth: { ...credentialFixture.oauthBundle.oauth, expiresAtUtc: credentialFixture.knownExpiry }
       })
     )
@@ -79,8 +81,20 @@ test('formal MV3 preserves imported token expiry through vault save and page rel
   await page.reload();
   await expect(page.getByTestId('credential-expiry')).toContainText('2030-01-02');
   await expect(page.getByLabel('Access Token')).toHaveValue('');
+  await page.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#/dashboard`);
+  await expect(page.getByTestId('dashboard-authorization-card')).toContainText('剩余约');
+  await expect(page.getByTestId('dashboard-authorization-card').getByRole('button')).toHaveAttribute(
+    'aria-label',
+    /2030-01-02/
+  );
+  await page.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#/settings`);
   await page.getByLabel('Access Token').fill(credentialFixture.manual.accessToken);
   await expect(page.getByTestId('credential-expiry')).toContainText('未知，不代表永久有效');
+  await page.getByRole('button', { name: '保存设置', exact: true }).click();
+  await expect(page.getByText('设置已重新加密写入 chrome.storage.local。').first()).toBeVisible();
+  await page.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#/dashboard`);
+  await expect(page.getByTestId('dashboard-authorization-card')).toContainText('权限未确认');
+  await expect(page.getByTestId('dashboard-authorization-card')).not.toContainText('剩余约');
 });
 
 test('formal MV3 catalog validates domain reads before and after worker restart', async () => {

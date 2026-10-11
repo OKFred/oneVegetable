@@ -7,6 +7,7 @@ import { useServices } from '../lib/services';
 import DashboardMetricCard from '../components/DashboardMetricCard.vue';
 import DashboardShopLink from '../components/DashboardShopLink.vue';
 import DashboardAuthorizationAction from '../components/DashboardAuthorizationAction.vue';
+import DashboardAuthorizationCard from '../components/DashboardAuthorizationCard.vue';
 import LocalTodoList from '../components/LocalTodoList.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
@@ -45,7 +46,9 @@ const summary = useQuery({
     >
       <template #icon><Boxes class="size-4 text-primary" /></template>
     </DashboardMetricCard>
+    <DashboardAuthorizationCard v-if="mode !== 'mock'" />
     <DashboardMetricCard
+      v-else
       :title="t('shell.dashboard.metrics.photos')"
       :value="summary.data.value?.photoCount"
       :status="summary.data.value?.metricStatuses.photoCount"
