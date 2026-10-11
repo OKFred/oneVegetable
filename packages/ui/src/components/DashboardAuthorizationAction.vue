@@ -56,6 +56,7 @@ async function refresh(): Promise<void> {
     notifyGatewayConfigurationChanged();
   } catch (cause) {
     error.value = cause;
+    summary.value = await control.gatewayCredentialStatus().catch(() => summary.value);
   } finally {
     refreshing.value = false;
   }

@@ -12,6 +12,10 @@
       "request_id": "fixture-top-request"
     }
   },
+  "legacyExpired": {
+    "error_code": "param-refresh.token.expired",
+    "error_msg": "refresh token expired"
+  },
   "bffError": {
     "code": "ALIBABA_TOKEN_REFRESH_FAILED",
     "message": "Alibaba Token refresh failed (HTTP 400): invalid_grant — Refresh token rejected",

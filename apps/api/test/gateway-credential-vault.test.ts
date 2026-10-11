@@ -20,6 +20,44 @@ afterEach(() => {
 });
 
 describe('D1-compatible Alibaba credential vault', () => {
+  it('blocks a confirmed expired refresh token without invalidating the retained access token; reimport resets it', async () => {
+    const now = Date.parse('2026-08-30T00:00:00.000Z');
+    const send = vi.fn(() => Promise.resolve(new Response(JSON.stringify(tokenErrorFixture.legacyExpired))));
+    const { repository, service, cipher } = await harness(() => now);
+    const input = bundle();
+    input.oauth.expiresAtUtc = null;
+    input.oauth.refreshExpiresAtUtc = null;
+    const before = await service.import({
+      bundle: input,
+      actorId: 'admin-1',
+      expectedRevision: null,
+      remark: null
+    });
+    const provider = new StoredAlibabaCredentialProvider(repository, cipher, {
+      transport: { send },
+      clock: () => now
+    });
+    await expect(provider.requireCredentials(crypto.randomUUID(), true)).rejects.toMatchObject({
+      code: 'ALIBABA_REFRESH_TOKEN_EXPIRED'
+    });
+    expect(await service.status()).toMatchObject({
+      canRefresh: false,
+      lastRefreshErrorCode: 'ALIBABA_REFRESH_TOKEN_EXPIRED',
+      revision: before.revision
+    });
+    await expect(provider.requireCredentials(crypto.randomUUID(), true)).rejects.toMatchObject({
+      code: 'ALIBABA_REFRESH_TOKEN_EXPIRED'
+    });
+    expect((await provider.requireCredentials()).accessToken).toBe(input.oauth.accessToken);
+    expect(send).toHaveBeenCalledOnce();
+    await service.import({
+      bundle: input,
+      actorId: 'admin-1',
+      expectedRevision: before.revision,
+      remark: null
+    });
+    expect(await service.status()).toMatchObject({ canRefresh: true, lastRefreshErrorCode: null });
+  });
   it('returns only permission snapshot evidence and expiry, never secrets; manual replacement clears evidence', async () => {
     const { service } = await harness();
     const input = bundle();

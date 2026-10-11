@@ -9,15 +9,23 @@ export function tokenRefreshFailure(
 ): GatewayConfigurationError {
   const root = record(value);
   const source = record(root?.error_response) ?? root;
-  const code = safeIdentifier(source?.sub_code ?? source?.error ?? source?.code, secrets, 128);
-  const traceId = safeIdentifier(source?.trace_id ?? source?.request_id ?? root?.request_id, secrets, 128);
-  const description = [source?.error_description, source?.sub_msg, source?.msg, source?.message].find(
-    (candidate) => typeof candidate === 'string' && candidate.trim()
+  const code = safeIdentifier(
+    source?.sub_code ?? source?.error_code ?? source?.error ?? source?.code,
+    secrets,
+    128
   );
+  const traceId = safeIdentifier(source?.trace_id ?? source?.request_id ?? root?.request_id, secrets, 128);
+  const description = [
+    source?.error_description,
+    source?.error_msg,
+    source?.sub_msg,
+    source?.msg,
+    source?.message
+  ].find((candidate) => typeof candidate === 'string' && candidate.trim());
   const message = typeof description === 'string' ? redact(description, secrets) : '';
   const detail = [code, message].filter(Boolean).join(' — ');
   return new GatewayConfigurationError(
-    'ALIBABA_TOKEN_REFRESH_FAILED',
+    code === 'param-refresh.token.expired' ? 'ALIBABA_REFRESH_TOKEN_EXPIRED' : 'ALIBABA_TOKEN_REFRESH_FAILED',
     `Alibaba Token 刷新失败（HTTP ${status}）${detail ? `：${detail}` : '；平台未返回可用的错误说明'}`,
     { ...(code ? { subCode: code } : {}), ...(traceId ? { traceId } : {}) }
   );
@@ -35,7 +43,10 @@ export function parseTokenBody(text: unknown): unknown {
 export function hasTokenError(value: unknown): boolean {
   const root = record(value);
   return (
-    record(root?.error_response) !== null || Boolean(typeof root?.error === 'string' && root.error.trim())
+    record(root?.error_response) !== null ||
+    Boolean(typeof root?.error === 'string' && root.error.trim()) ||
+    (typeof root?.error_code === 'string' && Boolean(root.error_code.trim()) && root.error_code !== '0') ||
+    (typeof root?.error_code === 'number' && root.error_code !== 0)
   );
 }
 

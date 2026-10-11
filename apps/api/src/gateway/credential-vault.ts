@@ -385,6 +385,7 @@ export class GatewayCredentialService {
         inputSource: document.source,
         ...alibabaAuthorizationMetadata(document.authorization),
         canRefresh:
+          record.lastRefreshErrorCode !== 'ALIBABA_REFRESH_TOKEN_EXPIRED' &&
           document.credentials.refreshToken !== null &&
           (record.refreshTokenExpiresTimeUtc === null || record.refreshTokenExpiresTimeUtc > this.clock())
       };
@@ -554,7 +555,10 @@ export class StoredAlibabaCredentialProvider {
       );
     }
     const now = this.clock();
-    if (record.refreshTokenExpiresTimeUtc !== null && record.refreshTokenExpiresTimeUtc <= now) {
+    if (
+      record.lastRefreshErrorCode === 'ALIBABA_REFRESH_TOKEN_EXPIRED' ||
+      (record.refreshTokenExpiresTimeUtc !== null && record.refreshTokenExpiresTimeUtc <= now)
+    ) {
       throw new GatewayConfigurationError(
         'ALIBABA_REFRESH_TOKEN_EXPIRED',
         'Refresh Token 已过期，请重新完成浏览器授权'

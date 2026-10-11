@@ -190,6 +190,8 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
     }
     await reload();
   } catch (cause) {
+    // Refresh safe status after a failed control action, retaining its original error.
+    await reload();
     error.value = cause;
   } finally {
     busy.value = false;

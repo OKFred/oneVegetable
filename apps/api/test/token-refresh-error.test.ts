@@ -5,6 +5,18 @@ import { hasTokenError, parseTokenBody, tokenRefreshFailure } from '../src/gatew
 const secrets = ['fixture-secret', 'fixture-access', 'fixture-refresh'];
 
 describe('token refresh diagnostics', () => {
+  it('recognizes legacy HTTP-200 error aliases and a confirmed expired refresh token', () => {
+    const error = tokenRefreshFailure(200, fixture.legacyExpired, secrets);
+    expect(error.code).toBe('ALIBABA_REFRESH_TOKEN_EXPIRED');
+    expect(error.diagnostics).toEqual({ subCode: 'param-refresh.token.expired' });
+    expect(error.message).toContain('refresh token expired');
+    expect(hasTokenError(fixture.legacyExpired)).toBe(true);
+    expect(hasTokenError({ error_code: 0 })).toBe(false);
+    expect(hasTokenError({ error_code: '0' })).toBe(false);
+    expect(hasTokenError({ error_code: '' })).toBe(false);
+    expect(hasTokenError({ error_code: {} })).toBe(false);
+    expect(hasTokenError({ error_code: 27 })).toBe(true);
+  });
   it('keeps OAuth error identifiers and trace but never echoed credentials', () => {
     const error = tokenRefreshFailure(400, fixture.oauth, secrets);
     expect(error.code).toBe('ALIBABA_TOKEN_REFRESH_FAILED');

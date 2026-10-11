@@ -186,10 +186,34 @@ describe('dashboard authorization renewal', () => {
     await flushPromises();
     expect(h.refresh).toHaveBeenCalledOnce();
     expect(changed).not.toHaveBeenCalled();
-    expect(h.status).toHaveBeenCalledOnce();
+    expect(h.status).toHaveBeenCalledTimes(2);
     expect(h.body.get('[role="dialog"]').text()).toContain('Authorization denied');
     expect(h.body.get('[role="dialog"] a').attributes('href')).toBe('#/settings');
     globalThis.removeEventListener(GATEWAY_CONFIGURATION_EVENT, changed);
+    h.wrapper.unmount();
+  });
+
+  it('removes the refresh action after a confirmed expiry, while keeping reauthorization and the error visible', async () => {
+    const h = await harness();
+    h.refresh.mockRejectedValue(new Error('Refresh Token 已过期，请重新授权'));
+    h.status
+      .mockResolvedValueOnce({ ...(fixture.credential as ControlGatewayCredentialSummary), canRefresh: true })
+      .mockResolvedValueOnce({
+        ...(fixture.credential as ControlGatewayCredentialSummary),
+        canRefresh: false,
+        lastRefreshErrorCode: 'ALIBABA_REFRESH_TOKEN_EXPIRED'
+      });
+    await h.wrapper.get('button').trigger('click');
+    await flushPromises();
+    await h.body
+      .findAll('button')
+      .find((button) => button.text() === '刷新 Token')
+      ?.trigger('click');
+    await flushPromises();
+    expect(h.body.get('[role="dialog"]').text()).toContain('重新授权');
+    expect(h.body.get('[role="dialog"] a').attributes('href')).toBe('#/settings');
+    expect(h.body.findAll('button').some((button) => button.text() === '刷新 Token')).toBe(false);
+    expect(h.refresh).toHaveBeenCalledOnce();
     h.wrapper.unmount();
   });
 
