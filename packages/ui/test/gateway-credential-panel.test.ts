@@ -127,6 +127,12 @@ async function harness(
   return { wrapper, status, save, clear, test, button, editing };
 }
 describe('Node credential configuration UI', () => {
+  it('renders an icon on all six credential actions', async () => {
+    const h = await harness();
+    for (const label of ['导入授权 JSON', '手动填写', '测试连接', '刷新 Token', '刷新状态', '清除配置'])
+      expect(h.button(label).find('svg').exists()).toBe(true);
+    h.wrapper.unmount();
+  });
   it('exposes manual entry beside import and closes an unchanged real dialog immediately', async () => {
     const h = await harness('admin', {}, true);
     const manual = h.button('手动填写');

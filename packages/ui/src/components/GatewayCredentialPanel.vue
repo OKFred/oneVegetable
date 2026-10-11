@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
-import { KeyRound, RefreshCw, Upload } from '@lucide/vue';
+import { KeyRound, PlugZap, RefreshCw, RotateCw, Trash2, Upload } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { parseAlibabaOpenApiCredentialBundle, parseManualGatewayCredential } from '@one-vegetable/core';
 import type {
@@ -267,19 +267,16 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
             :disabled="busy || !summary?.configured || !real"
             :title="!real ? t('notReal') : t('testNotice')"
             @click="run('test')"
-            >{{ t('test') }}</Button
+            ><PlugZap class="size-4" />{{ t('test') }}</Button
           >
-          <Button variant="outline" :disabled="busy || !summary?.canRefresh" @click="run('refresh')">{{
-            t('refresh')
-          }}</Button>
+          <Button variant="outline" :disabled="busy || !summary?.canRefresh" @click="run('refresh')"
+            ><RotateCw class="size-4" />{{ t('refresh') }}</Button
+          >
           <Button variant="outline" :disabled="busy" @click="run('reload')"
             ><RefreshCw class="size-4" />{{ t('reload') }}</Button
           >
-          <Button
-            variant="outline"
-            :disabled="busy || !summary?.configured"
-            @click="confirmation = 'clear'"
-            >{{ t('clear') }}</Button
+          <Button variant="outline" :disabled="busy || !summary?.configured" @click="confirmation = 'clear'"
+            ><Trash2 class="size-4" />{{ t('clear') }}</Button
           >
         </div>
         <p class="text-xs text-muted-foreground">{{ t('testNotice') }}</p>
