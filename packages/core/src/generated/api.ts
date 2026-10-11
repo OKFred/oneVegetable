@@ -5167,6 +5167,11 @@ export interface components {
         AlibabaOpenApiCredentialBundle: {
             /** @constant */
             schemaVersion: 1;
+            /**
+             * @description Absent on historical documents means TOP. IOP credentials must never be sent to a TOP gateway.
+             * @enum {string}
+             */
+            protocol?: "top" | "iop";
             /** Format: date-time */
             capturedAtUtc: string;
             application: {

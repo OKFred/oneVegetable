@@ -199,6 +199,7 @@ function readImportedCredentials(
   | 'permissionCapturedTimeUtc'
 > {
   const root = objectValue(value);
+  if (root.protocol === 'iop') throw new Error(t('settings.credentials.iopSeparate'));
   const application = objectValue(root.application);
   const oauth = objectValue(root.oauth);
   const appKey = importedString(root.appKey) ?? importedString(application.appKey);

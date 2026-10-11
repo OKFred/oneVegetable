@@ -139,7 +139,9 @@ export const settings = {
     bundleImportError: 'Unable to import credential bundle',
     acquired:
       'Alibaba Open Platform credentials were acquired, encrypted, and can be used in the current Chrome session.',
-    bundleMissing: 'The credential bundle is missing an App Key, App Secret, or Access Token'
+    bundleMissing: 'The credential bundle is missing an App Key, App Secret, or Access Token',
+    iopSeparate: 'This is an IOP bundle. Use the IOP authorization tool, not the legacy TOP workbench.',
+    iopTool: 'IOP authorization and renewal'
   },
   security: {
     title: 'Security boundary',

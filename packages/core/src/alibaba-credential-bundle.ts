@@ -5,6 +5,8 @@ export interface AlibabaOpenApiPermission {
 
 export interface AlibabaOpenApiCredentialBundle {
   schemaVersion: 1;
+  /** Missing on historical bundles means TOP; never infer a protocol from the AppKey. */
+  protocol?: 'top' | 'iop';
   capturedAtUtc: string;
   application: {
     appName: string;
@@ -81,6 +83,8 @@ export function createAlibabaOpenApiCredentialBundle(
 
 export function parseAlibabaOpenApiCredentialBundle(value: unknown): AlibabaOpenApiCredentialBundle {
   if (!isRecord(value) || value.schemaVersion !== 1) throw new Error('Alibaba 授权包版本不受支持');
+  if (value.protocol !== undefined && value.protocol !== 'top' && value.protocol !== 'iop')
+    throw new Error('Alibaba 授权协议不受支持');
   const application = requiredRecord(value.application, 'application');
   const oauth = requiredRecord(value.oauth, 'oauth');
   const callback = requiredRecord(value.callback, 'callback');
@@ -96,6 +100,7 @@ export function parseAlibabaOpenApiCredentialBundle(value: unknown): AlibabaOpen
   }
   const bundle: AlibabaOpenApiCredentialBundle = {
     schemaVersion: 1,
+    ...(value.protocol === undefined ? {} : { protocol: value.protocol }),
     capturedAtUtc: requiredDate(value.capturedAtUtc, 'capturedAtUtc'),
     application: {
       appName: requiredString(application.appName, 'application.appName'),

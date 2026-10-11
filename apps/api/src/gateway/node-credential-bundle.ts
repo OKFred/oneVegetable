@@ -110,6 +110,10 @@ function readCredentialBundle(path: string): CredentialBundleData {
     throw invalidBundle('Alibaba 授权包不存在、不可读或不是有效 JSON');
   }
   const root = record(value);
+  if (root.protocol !== undefined && root.protocol !== 'top')
+    throw invalidBundle(
+      'IOP credentials cannot be used with the TOP gateway. Use the IOP authorization tool.'
+    );
   const application = record(root.application);
   const oauth = record(root.oauth);
   if (root.schemaVersion !== 1) throw invalidBundle('Alibaba 授权包版本不受支持');

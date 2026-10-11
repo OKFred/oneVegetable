@@ -401,6 +401,11 @@ export class GatewayCredentialService {
     remark: string | null;
   }): Promise<GatewayCredentialSummary> {
     const bundle = parseAlibabaOpenApiCredentialBundle(input.bundle);
+    if (bundle.protocol === 'iop')
+      throw new GatewayConfigurationError(
+        'ALIBABA_IOP_RUNTIME_NOT_SUPPORTED',
+        'IOP credentials cannot be used with the TOP gateway. Use the IOP authorization tool.'
+      );
     return this.saveDocument(credentialDocumentFromBundle(bundle), input);
   }
 

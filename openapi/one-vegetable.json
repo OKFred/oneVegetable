@@ -10778,6 +10778,11 @@
         "required": ["schemaVersion", "capturedAtUtc", "application", "oauth", "callback"],
         "properties": {
           "schemaVersion": { "const": 1 },
+          "protocol": {
+            "type": "string",
+            "enum": ["top", "iop"],
+            "description": "Absent on historical documents means TOP. IOP credentials must never be sent to a TOP gateway."
+          },
           "capturedAtUtc": { "type": "string", "format": "date-time" },
           "application": {
             "type": "object",
