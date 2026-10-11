@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import fixture from '../../mock/data/node-gateway-credentials.json' with { type: 'json' };
+import tokenError from '../../mock/data/alibaba-token-errors.json' with { type: 'json' };
 import { completeOnboarding, ONBOARDING_STORAGE_KEY } from '../../packages/core/src/privacy';
 
 for (const locale of ['zh-CN', 'en-US'] as const) {
@@ -162,7 +163,11 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
       buffer: Buffer.from(
         JSON.stringify({
           ...fixture.oauthBundle,
-          oauth: { ...fixture.oauthBundle.oauth, expiresAtUtc: fixture.knownExpiry }
+          oauth: {
+            ...fixture.oauthBundle.oauth,
+            refreshToken: 'fixture-refresh',
+            expiresAtUtc: fixture.knownExpiry
+          }
         })
       )
     });
@@ -175,6 +180,34 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     await page.reload();
     await expect(panel.getByTestId('credential-expiry')).toContainText('2030-01-02');
     await expect(panel).not.toContainText(fixture.manual.accessToken);
+
+    // Simulate a sanitized provider rejection; never refresh a real Alibaba credential in CI.
+    await page.route('**/admin/gateway-credentials/refresh', async (route) => {
+      const body = route.request().postDataJSON() as { requestId: string };
+      await route.fulfill({
+        status: 502,
+        contentType: 'application/json',
+        body: JSON.stringify({ requestId: body.requestId, ok: false, error: tokenError.bffError })
+      });
+    });
+    await page.goto('/#/dashboard');
+    await page.getByTestId('dashboard-renew-authorization').click();
+    await renewal.getByRole('button', { name: en ? 'Refresh Token' : '刷新 Token', exact: true }).click();
+    await expect(renewal).toBeVisible();
+    await expect(renewal).toContainText('ALIBABA_TOKEN_REFRESH_FAILED');
+    await renewal.locator('summary').click();
+    await expect(renewal).toContainText('invalid_grant');
+    await expect(renewal).toContainText(tokenError.bffError.traceId);
+    await expect(renewal).not.toContainText(fixture.manual.appSecret);
+    expect(renewalRequests).toBe(1);
+    await page.screenshot({ path: `artifacts/token-refresh-rejection-${locale}.png` });
+    await renewal
+      .getByRole('link', { name: en ? 'Credential settings' : '前往凭据配置', exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/#\/settings$/u);
+    await expect(panel.getByTestId('credential-expiry')).toContainText('2030-01-02');
+    expect(renewalRequests).toBe(1);
+
     await panel.getByRole('button', { name: en ? 'Clear configuration' : '清除配置', exact: true }).click();
     await clear.getByRole('button', { name: en ? 'Confirm' : '确认', exact: true }).click();
     await expect(panel.getByText(en ? 'Not configured' : '尚未配置', { exact: true })).toBeVisible();

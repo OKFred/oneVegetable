@@ -12,6 +12,8 @@
 - 插件仅保留加密的 Access Token 到期元数据，不自动刷新。重新授权后保存到现有保险库即可；手工换 Token 清除旧到期记录。
 - Node/Cloudflare 管理配置可尝试刷新；失败时重新授权并导入。环境变量/启动文件不支持页面直接刷新，先导入为加密配置。
 - 刷新失败不等于当前 Access Token 失效：保留原凭据和失败记录，停止自动刷新重试。实际到期或业务 API 拒绝时仍停止调用；未知有效期不能当成永久有效，也不能因一次刷新失败封锁全部页面。可先测试连接，再决定重新授权。
+- 续期失败会保留弹窗，展开“平台返回”可查看脱敏的 HTTP 状态、平台错误码、说明及 traceId。凭据确实更换成功后才重载业务工作区；失败不会清空当前页面。诊断不保存完整 Token 响应，也不回显密钥、Token 或授权码。
+- 判断是否权限不足须依据实际平台错误，不能只根据 `ALIBABA_TOKEN_REFRESH_FAILED` 推断。当前旧授权包仍使用 TOP OAuth `oauth.alibaba.com/token`；新版 `System API` 为 Active 不代表该旧 Refresh Token 可以续期，也不自动切换到 IOP。
 
 ## 总览与新版 System API（2026-10-11 核对）
 
@@ -20,7 +22,7 @@
 - 授权包有精确 `System API / Active` 记录但缺少有效期：提示有效期未返回；快照未启用或未记录该组时提示关注续期；空权限清单、手工凭据、旧授权包均显示“权限未确认”，不冒充平台实际拒绝授权。
 - 权限仅是导入时的快照，Tooltip 显示快照时间，不能代表当前后台权限。更换 AppKey/Secret/Token 后清除旧快照与有效期；重新导入或重新授权保存时再记录。
 - 普通用户不调用管理员凭据接口；插件锁定时提示解锁，读取失败不判为权限缺失。已有 TOP 凭据记录有效期时也可以倒计时，不强制要求新版权限。
-- 新版刷新说明仍引用 Lazada endpoint。本轮只核对文档和兼容有效期字段，**未切换 OAuth endpoint、签名、网关或执行真实刷新**。IOP 授权、换 Token、刷新及真实商品只读调用须单独验收，不能因权限 Active 混用 TOP。
+- 新版刷新说明仍引用 Lazada endpoint。IOP 当前仍只有文档和有效期字段核对，**未切换 OAuth endpoint、签名或网关**。旧 TOP 链路的受控刷新未取得有效 Token，失败后原凭据仍可完成商品只读查询；脱敏回执仅存本机忽略目录。IOP 授权、换 Token、刷新及真实商品只读调用须单独验收，不能因权限 Active 混用 TOP。
 
 ### 本机重新授权步骤
 
@@ -41,5 +43,7 @@ The Overview countdown uses only the current credential's recorded expiry. Syste
 Website login, workbench login, vault unlock and API authorization are independent. Token lifetime comes from the actual OAuth response, not a universal duration. Unknown expiry never means permanent authorization. The seven-day notice is a local reminder only; access can be revoked earlier.
 
 A failed refresh retains the same credentials and failure record, disables automatic refresh retries, and does not prove that the current access token is invalid. Recorded expiry and business API rejection still apply. Test the connection before reauthorizing; never switch accounts or fall back to Mock.
+
+The renewal dialog stays open after failure. Expand “Platform response” for the sanitized HTTP status, provider error code, description and trace ID. Only a successful credential change reloads the workbench. Diagnostics never expose the full token response or credentials. A generic refresh failure is not proof of insufficient permissions; the legacy TOP OAuth flow is not automatically replaced by IOP when System API becomes active.
 
 Use `pnpm openapi:auth:reconnect` with an existing bundle to authorize in your signed-in browser. Paste the callback into the loopback form, never into a chat or issue. The receiver validates the registered callback and state, exchanges the code once, and atomically saves the local bundle. Import it into the server's encrypted configuration and run a read-only connection test. No product operations are replayed, and no credentials are synced to other installations automatically.

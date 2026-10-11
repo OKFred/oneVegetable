@@ -177,14 +177,19 @@ describe('dashboard authorization renewal', () => {
   it('keeps refresh failure visible without retrying or changing credentials', async () => {
     const h = await harness();
     h.refresh.mockRejectedValue(new Error('Authorization denied'));
+    const changed = vi.fn();
+    globalThis.addEventListener(GATEWAY_CONFIGURATION_EVENT, changed);
     await h.wrapper.get('button').trigger('click');
     await flushPromises();
     const refreshButton = h.body.findAll('button').find((button) => button.text() === '刷新 Token');
     await refreshButton?.trigger('click');
     await flushPromises();
     expect(h.refresh).toHaveBeenCalledOnce();
+    expect(changed).not.toHaveBeenCalled();
+    expect(h.status).toHaveBeenCalledOnce();
     expect(h.body.get('[role="dialog"]').text()).toContain('Authorization denied');
     expect(h.body.get('[role="dialog"] a').attributes('href')).toBe('#/settings');
+    globalThis.removeEventListener(GATEWAY_CONFIGURATION_EVENT, changed);
     h.wrapper.unmount();
   });
 

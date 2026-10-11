@@ -53,11 +53,11 @@ async function refresh(): Promise<void> {
     await control.refreshGatewayCredential();
     open.value = false;
     toast.success(credentialText('refreshed'));
+    notifyGatewayConfigurationChanged();
   } catch (cause) {
     error.value = cause;
   } finally {
     refreshing.value = false;
-    notifyGatewayConfigurationChanged();
   }
 }
 </script>
