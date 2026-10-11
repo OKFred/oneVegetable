@@ -1,6 +1,11 @@
 export const errors = {
   codes: {
-    ALIBABA_IOP_RUNTIME_NOT_SUPPORTED: '这是新版 IOP 授权包，不能用于旧 TOP 网关。请使用 IOP 授权工具。',
+    ALIBABA_PROTOCOL_INVALID: '网关协议无效，请明确选择 TOP 或 IOP。',
+    ALIBABA_IOP_METHOD_UNSUPPORTED: '此接口不支持 IOP，请使用兼容的只读接口；不会自动回退 TOP。',
+    ALIBABA_IOP_PHOTO_GROUP_REQUIRED: 'IOP 图片查询需要具体分组，请选择分组；不支持全部图片或未分组。',
+    ALIBABA_PROTOCOL_ENDPOINT_MISMATCH: '协议与网关地址不匹配，请核对 TOP 或 IOP 配置。',
+    ALIBABA_IOP_RESPONSE_INVALID: 'IOP 响应格式不符合预期，请核对配置和接口；不会回退 TOP。',
+    ALIBABA_IOP_API_REJECTED: 'Alibaba IOP 拒绝了请求，请核对授权和接口权限。',
     PRODUCT_CONTEXT_CHANGED: '账号或 Alibaba 凭据配置已变化。请重新选择商品并预览，不要重发旧任务。',
     PRODUCT_CONTEXT_UNAVAILABLE: '无法读取当前账号上下文。请检查登录和 Alibaba 凭据配置。',
     PRODUCT_CONTEXT_INVALID: '商品操作上下文无效，请重新打开批量维护。',

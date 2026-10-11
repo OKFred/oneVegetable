@@ -7,6 +7,7 @@ import {
 import { defineBackground } from 'wxt/utils/define-background';
 import { VideoAdapter, VIDEO_OPERATIONS, VIDEO_METHODS } from '@one-vegetable/core/video';
 import { VideoAssociationAdapter } from '@one-vegetable/core/video-association';
+import { IOP_BUSINESS_ENDPOINT } from '@one-vegetable/core/alibaba-iop';
 
 import {
   requireProductOperationContext,
@@ -82,6 +83,7 @@ import { ExtensionAlibabaCredentialAcquisitionController } from '../lib/alibaba-
 import { ExtensionCredentialVaultSession } from '../lib/credential-vault-session';
 import { executeExtensionCapabilityCall } from '../lib/capability-call';
 import { resolveExtensionOperationAvailability } from '../lib/operation-policy';
+import { applyExtensionCapabilityProtocol } from '../lib/operation-availability';
 import { ExtensionProductDisplayMutationLifecycle } from '../lib/product-display-mutation-lifecycle';
 import { isTrustedExtensionPageSender } from '../lib/trusted-runtime-sender';
 import { ExtensionS3Service } from '../lib/s3-service';
@@ -425,17 +427,16 @@ async function saveAcquiredCredentialsToVault(
   bundle: Awaited<ReturnType<ExtensionAlibabaCredentialAcquisitionController['completedBundle']>>,
   passphrase: string | undefined
 ): Promise<CredentialVaultStatus> {
-  if (bundle.protocol === 'iop')
-    throw gatewayFailure('ALIBABA_IOP_RUNTIME_NOT_SUPPORTED', 'Use the independent IOP authorization tool.');
   const settings: GatewaySettings = {
+    protocol: bundle.protocol ?? 'top',
     appKey: bundle.application.appKey,
     ...alibabaAuthorizationMetadata(bundle),
     appSecret: bundle.application.appSecret,
     accessToken: bundle.oauth.accessToken,
     accessTokenExpiresTimeUtc:
       bundle.oauth.expiresAtUtc === null ? null : Date.parse(bundle.oauth.expiresAtUtc),
-    endpoint: ALIBABA_GATEWAY,
-    signMethod: 'hmac'
+    endpoint: bundle.protocol === 'iop' ? IOP_BUSINESS_ENDPOINT : ALIBABA_GATEWAY,
+    signMethod: bundle.protocol === 'iop' ? 'hmac-sha256' : 'hmac'
   };
   const stored = await browser.storage.local.get(SETTINGS_STORAGE_KEY);
   const present = Object.prototype.hasOwnProperty.call(stored, SETTINGS_STORAGE_KEY);
@@ -512,6 +513,7 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
       const current = await getUnlockedVault(state);
       const patch = asRecord(payload);
       const settings: GatewaySettings = {
+        ...gatewayProtocolMetadata(patch, current.settings.protocol),
         appKey: optionalVaultString(patch.appKey) ?? current.settings.appKey,
         appSecret: optionalVaultString(patch.appSecret) ?? current.settings.appSecret,
         accessToken: optionalVaultString(patch.accessToken) ?? current.settings.accessToken,
@@ -560,6 +562,7 @@ async function credentialVaultStatus(
   const effectiveState = state.kind === 'vault' ? (activeSession ? 'unlocked' : 'locked') : state.kind;
   return {
     state: effectiveState,
+    ...(settings?.protocol === undefined ? {} : { protocol: settings.protocol }),
     hasAppKey: Boolean(settings?.appKey),
     hasAppSecret: Boolean(settings?.appSecret),
     hasAccessToken: Boolean(settings?.accessToken),
@@ -583,6 +586,7 @@ async function editableSettings(
         ? (await getUnlockedVault(state)).settings
         : undefined;
   return {
+    ...(settings?.protocol === undefined ? {} : { protocol: settings.protocol }),
     appKey: settings?.appKey ?? '',
     appSecret: '',
     accessToken: '',
@@ -715,16 +719,23 @@ async function executeOperation(
     await clearDiagnostics();
     return undefined;
   }
-  if (operation === 'listCapabilities') return listCapabilities();
+  if (operation === 'listCapabilities') {
+    const status = (await executeCredentialVaultOperation('status', undefined)) as CredentialVaultStatus;
+    return listCapabilities().map((capability) => applyExtensionCapabilityProtocol(capability, status));
+  }
   if (operation === 'getCapabilityDefinition') {
     const definition = getCapabilityDefinition(requiredString(asRecord(payload), 'method'));
     if (!definition) {
       throw gatewayFailure('CAPABILITY_DEFINITION_MISSING', 'This capability has no typed definition.');
     }
-    return definition;
+    return applyExtensionCapabilityProtocol(
+      definition,
+      (await executeCredentialVaultOperation('status', undefined)) as CredentialVaultStatus
+    );
   }
 
-  const availability = resolveExtensionOperationAvailability(operation, asRecord(payload));
+  const settings = await loadSettings();
+  const availability = resolveExtensionOperationAvailability(operation, asRecord(payload), settings.protocol);
   if (!availability.allowed) {
     throw new GatewayException({
       code: availability.reasonCode,
@@ -732,7 +743,6 @@ async function executeOperation(
       retryable: false
     });
   }
-  const settings = await loadSettings();
   if (
     productOptions?.productBatchId &&
     (!isRequestId(productOptions.productBatchId) ||
@@ -773,15 +783,18 @@ async function executeOperation(
       !VIDEO_METHODS.some((value) => value === method) &&
       findCapability(method)?.risk === 'read'
   });
-  const mutationClient = AlibabaClient.create(
-    { ...settings, endpoint: ALIBABA_SYNC_GATEWAY, signMethod: 'hmac-sha256' },
-    {
-      requestId,
-      maxAttempts: 1,
-      protocol: 'sync',
-      shouldRetry: () => false
-    }
-  );
+  const mutationClient =
+    settings.protocol === 'iop'
+      ? client
+      : AlibabaClient.create(
+          { ...settings, endpoint: ALIBABA_SYNC_GATEWAY, signMethod: 'hmac-sha256' },
+          {
+            requestId,
+            maxAttempts: 1,
+            protocol: 'sync',
+            shouldRetry: () => false
+          }
+        );
   const products = new ProductAdapter(client, mutationClient);
   const dashboard = new DashboardAdapter(client);
   const rfqs = new RfqAdapter(client);
@@ -1158,10 +1171,13 @@ async function loadProductAdapter(): Promise<ProductAdapter> {
     maxAttempts: 3,
     shouldRetry: (_method, error) => error.retryable
   });
-  const mutationClient = AlibabaClient.create(
-    { ...settings, endpoint: ALIBABA_SYNC_GATEWAY, signMethod: 'hmac-sha256' },
-    { maxAttempts: 1, protocol: 'sync', shouldRetry: () => false }
-  );
+  const mutationClient =
+    settings.protocol === 'iop'
+      ? client
+      : AlibabaClient.create(
+          { ...settings, endpoint: ALIBABA_SYNC_GATEWAY, signMethod: 'hmac-sha256' },
+          { maxAttempts: 1, protocol: 'sync', shouldRetry: () => false }
+        );
   return new ProductAdapter(client, mutationClient);
 }
 
@@ -1373,6 +1389,7 @@ function optionalVaultString(value: unknown): string | undefined {
 function requiredGatewaySettings(value: unknown): GatewaySettings {
   const record = asRecord(value);
   return {
+    ...gatewayProtocolMetadata(record),
     appKey: requiredString(record, 'appKey'),
     appSecret: requiredString(record, 'appSecret'),
     accessToken: requiredString(record, 'accessToken'),
@@ -1380,6 +1397,17 @@ function requiredGatewaySettings(value: unknown): GatewaySettings {
     endpoint: requiredString(record, 'endpoint'),
     signMethod: requiredSignMethod(record.signMethod)
   };
+}
+
+function gatewayProtocolMetadata(
+  value: Record<string, unknown>,
+  existing?: GatewaySettings['protocol']
+): Pick<GatewaySettings, 'protocol'> {
+  const protocol = value.protocol === undefined ? existing : value.protocol;
+  if (protocol === undefined) return {};
+  if (protocol !== 'top' && protocol !== 'iop')
+    throw gatewayFailure('ALIBABA_PROTOCOL_INVALID', 'ALIBABA_PROTOCOL_INVALID');
+  return { protocol };
 }
 
 function requiredSignMethod(value: unknown): GatewaySettings['signMethod'] {

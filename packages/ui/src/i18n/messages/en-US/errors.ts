@@ -1,7 +1,16 @@
 export const errors = {
   codes: {
-    ALIBABA_IOP_RUNTIME_NOT_SUPPORTED:
-      'IOP credentials cannot be used with the legacy TOP gateway. Use the IOP authorization tool.',
+    ALIBABA_PROTOCOL_INVALID: 'Invalid gateway protocol. Explicitly choose TOP or IOP.',
+    ALIBABA_IOP_METHOD_UNSUPPORTED:
+      'This endpoint does not support IOP. Use a compatible read; no automatic TOP fallback.',
+    ALIBABA_IOP_PHOTO_GROUP_REQUIRED:
+      'Choose a specific group for IOP photos; all photos and ungrouped photos are unsupported.',
+    ALIBABA_PROTOCOL_ENDPOINT_MISMATCH:
+      'The protocol and gateway endpoint do not match. Check the TOP or IOP configuration.',
+    ALIBABA_IOP_RESPONSE_INVALID:
+      'Unexpected IOP response format. Check the configuration and endpoint; no TOP fallback.',
+    ALIBABA_IOP_API_REJECTED:
+      'Alibaba IOP rejected the request. Check authorization and endpoint permissions.',
     PRODUCT_CONTEXT_CHANGED:
       'Your account or Alibaba credentials changed. Select products and preview again; do not resubmit old tasks.',
     PRODUCT_CONTEXT_UNAVAILABLE:

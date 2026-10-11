@@ -13,27 +13,25 @@ const READ_PATHS: Readonly<Record<string, `/alibaba/${string}` | `/icbu/${string
   'alibaba.icbu.photobank.group.list': '/icbu/product/photobank/group/list',
   'alibaba.icbu.photobank.list': '/icbu/product/photobank/list'
 };
+const READ_OPERATIONS: readonly OperationId[] = [
+  'getDashboard',
+  'listCapabilities',
+  'getCapabilityDefinition',
+  'listProducts',
+  'getProduct',
+  'listProductGroups',
+  'renderProductSchema',
+  'getProductDraft',
+  'listPhotoGroups',
+  'listPhotos'
+];
 
 export function iopOperationReason(operation: OperationId, method?: unknown): string | null {
   if (operation === 'callCapability')
     return typeof method === 'string' && Object.hasOwn(READ_PATHS, method)
       ? null
       : 'ALIBABA_IOP_METHOD_UNSUPPORTED';
-  return [
-    'getDashboard',
-    'listCapabilities',
-    'getCapabilityDefinition',
-    'listProducts',
-    'getProduct',
-    'getProductSummary',
-    'getProductGroups',
-    'renderProductSchema',
-    'getProductDraft',
-    'getPhotoGroups',
-    'listPhotos'
-  ].includes(operation)
-    ? null
-    : 'ALIBABA_IOP_METHOD_UNSUPPORTED';
+  return READ_OPERATIONS.includes(operation) ? null : 'ALIBABA_IOP_METHOD_UNSUPPORTED';
 }
 
 export async function createIopBusinessRequest(
@@ -46,7 +44,7 @@ export async function createIopBusinessRequest(
     throw failure('ALIBABA_PROTOCOL_ENDPOINT_MISMATCH');
   assertAlibabaBusinessParameters(input);
   if (Object.hasOwn(input, 'access_token')) throw failure('CAPABILITY_TRANSPORT_PARAMETER_FORBIDDEN');
-  const path = READ_PATHS[method];
+  const path = Object.hasOwn(READ_PATHS, method) ? READ_PATHS[method] : undefined;
   if (!path) throw failure('ALIBABA_IOP_METHOD_UNSUPPORTED');
   let business: Readonly<Record<string, unknown>> = input;
   if (method.startsWith('alibaba.icbu.product.schema.render')) {

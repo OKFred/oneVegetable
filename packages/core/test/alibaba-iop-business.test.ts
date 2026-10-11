@@ -153,6 +153,8 @@ describe('explicit IOP business compatibility', () => {
     expect(send).not.toHaveBeenCalled();
     expect(iopOperationReason('updateProduct')).toBe('ALIBABA_IOP_METHOD_UNSUPPORTED');
     expect(iopOperationReason('getProductDraft')).toBeNull();
+    expect(iopOperationReason('listProductGroups')).toBeNull();
+    expect(iopOperationReason('listPhotoGroups')).toBeNull();
     expect(iopOperationReason('callCapability', 'alibaba.icbu.product.list')).toBeNull();
     expect(iopOperationReason('callCapability', 'alibaba.icbu.product.schema.update')).not.toBeNull();
   });

@@ -1,9 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 
 import { resolveExtensionOperationAvailability } from '../lib/operation-policy';
-import { resolveExtensionStaticOperationAvailability } from '../lib/operation-availability';
+import {
+  createExtensionOperationAvailabilityClient,
+  resolveExtensionStaticOperationAvailability
+} from '../lib/operation-availability';
+import { iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
 import { OPERATION_IDS } from '../../../packages/core/src/operation-id';
 
 describe('extension operation policy', () => {
@@ -22,7 +26,95 @@ describe('extension operation policy', () => {
     expect(optionsImports).toContain('../../lib/operation-availability');
     expect(optionsImports).not.toContain('../../lib/operation-policy');
     expect(optionsImports).not.toContain('@one-vegetable/core');
-    expect(runtimeImports('../lib/operation-availability.ts')).toEqual(['@one-vegetable/core/runtime']);
+    expect(runtimeImports('../lib/operation-availability.ts')).toEqual([
+      '@one-vegetable/core/runtime',
+      '@one-vegetable/core/alibaba-iop-business'
+    ]);
+  });
+  it('keeps legacy and explicit TOP decisions identical for every operation', () => {
+    for (const operation of OPERATION_IDS) {
+      expect(resolveExtensionStaticOperationAvailability(operation, 'top')).toEqual(
+        resolveExtensionStaticOperationAvailability(operation)
+      );
+      expect(resolveExtensionOperationAvailability(operation, {}, 'top')).toEqual(
+        resolveExtensionOperationAvailability(operation)
+      );
+    }
+  });
+  it('limits IOP to the core read allowlist, including known TOP writes', () => {
+    for (const operation of OPERATION_IDS) {
+      const staticDecision = resolveExtensionStaticOperationAvailability(operation, 'iop');
+      expect(staticDecision.allowed, operation).toBe(iopOperationReason(operation) === null);
+      expect(resolveExtensionOperationAvailability(operation, {}, 'iop')).toEqual(staticDecision);
+    }
+    for (const operation of ['publishProduct', 'updateProduct', 'uploadPhoto', 'createProductGroup'] as const)
+      expect(resolveExtensionOperationAvailability(operation, {}, 'iop').reasonCode).toBe(
+        'ALIBABA_IOP_METHOD_UNSUPPORTED'
+      );
+  });
+  it.each(['listProductGroups', 'listPhotoGroups'] as const)(
+    'allows the real IOP group operation ID %s',
+    (operation) => {
+      expect(resolveExtensionStaticOperationAvailability(operation, 'iop').allowed).toBe(true);
+    }
+  );
+  it.each([
+    'alibaba.icbu.product.list',
+    'alibaba.icbu.product.group.get',
+    'alibaba.icbu.product.schema.render',
+    'alibaba.icbu.product.schema.render.draft',
+    'alibaba.icbu.photobank.group.list',
+    'alibaba.icbu.photobank.list'
+  ])('checks the targeted IOP read %s without bypassing generic authorization', (method) => {
+    expect(
+      resolveExtensionOperationAvailability('callCapability', { method, parameters: {} }, 'iop').allowed
+    ).toBe(true);
+    expect(resolveExtensionOperationAvailability('callCapability', { method }, 'iop').allowed).toBe(false);
+    expect(
+      resolveExtensionOperationAvailability(
+        'callCapability',
+        {
+          method,
+          parameters: { sign: 'forbidden' }
+        },
+        'iop'
+      ).allowed
+    ).toBe(false);
+  });
+  it.each(['alibaba.icbu.product.get', 'alibaba.icbu.product.schema.update', 'unknown', undefined])(
+    'rejects unmapped IOP capability %s before a TOP policy could allow it',
+    (method) => {
+      expect(
+        resolveExtensionOperationAvailability('callCapability', { method, parameters: {} }, 'iop')
+      ).toMatchObject({ allowed: false, reasonCode: 'ALIBABA_IOP_METHOD_UNSUPPORTED' });
+    }
+  );
+  it('reads current safe vault status asynchronously on each options request', async () => {
+    const readStatus = vi
+      .fn()
+      .mockResolvedValueOnce({ state: 'unlocked' })
+      .mockResolvedValueOnce({ state: 'unlocked', protocol: 'iop' })
+      .mockResolvedValueOnce({ state: 'unlocked', protocol: 'top' });
+    const client = createExtensionOperationAvailabilityClient(readStatus);
+    const operations = ['listProducts', 'publishProduct', 'callCapability'] as const;
+    expect((await client.get(operations)).items.map((item) => item.allowed)).toEqual([true, true, false]);
+    expect((await client.get(operations)).items.map((item) => item.allowed)).toEqual([true, false, false]);
+    expect((await client.get(operations)).items.map((item) => item.allowed)).toEqual([true, true, false]);
+    expect(readStatus).toHaveBeenCalledTimes(3);
+  });
+  it.each(['locked', 'invalid', 'unknown'])('fails closed for %s safe status', async (state) => {
+    const client = createExtensionOperationAvailabilityClient(vi.fn().mockResolvedValue({ state }));
+    expect((await client.get(['publishProduct'])).items[0]).toMatchObject({ allowed: false });
+  });
+  it('fails closed when safe status is unavailable or malformed', async () => {
+    for (const read of [
+      vi.fn().mockRejectedValue(new Error('offline')),
+      vi.fn().mockResolvedValue({ state: 'unlocked', protocol: 'invalid' })
+    ]) {
+      expect(
+        (await createExtensionOperationAvailabilityClient(read).get(['publishProduct'])).items[0]
+      ).toMatchObject({ allowed: false, reasonCode: 'OPERATION_AVAILABILITY_UNAVAILABLE' });
+    }
   });
   it('keeps options availability identical for every operation ID without importing target authorization', () => {
     for (const operation of OPERATION_IDS) {

@@ -61,6 +61,9 @@ async function harness(
   };
   const status = vi.spyOn(client, 'gatewayCredentialStatus').mockResolvedValue(summary);
   const save = vi.spyOn(client, 'saveGatewayCredential').mockResolvedValue({ ...summary, revision: 2 });
+  const importCredential = vi
+    .spyOn(client, 'importGatewayCredential')
+    .mockResolvedValue({ ...summary, revision: 2 });
   const clear = vi.spyOn(client, 'clearGatewayCredential').mockResolvedValue();
   const test = vi.spyOn(client, 'testGatewayCredential').mockResolvedValue({
     status: 'passed',
@@ -124,9 +127,78 @@ async function harness(
     if (!result) throw new Error(`Missing ${text}`);
     return result;
   };
-  return { wrapper, status, save, clear, test, button, editing };
+  return { wrapper, status, save, importCredential, clear, test, button, editing };
 }
 describe('Node credential configuration UI', () => {
+  it.each([undefined, 'top', 'iop'] as const)(
+    'shows %s protocol without changing the current configuration',
+    async (protocol) => {
+      const h = await harness('admin', protocol === undefined ? {} : { protocol });
+      expect(h.wrapper.get('[data-testid="gateway-protocol-summary"]').text()).toContain(
+        protocol === 'iop' ? 'IOP' : 'TOP'
+      );
+      await h.button('手动填写').trigger('click');
+      expect((h.wrapper.get('select[aria-label="网关协议"]').element as HTMLSelectElement).value).toBe(
+        protocol ?? 'top'
+      );
+      expect(h.save).not.toHaveBeenCalled();
+      expect(h.test).not.toHaveBeenCalled();
+      h.wrapper.unmount();
+    }
+  );
+  it('includes an explicitly selected IOP marker in confirmed manual saves', async () => {
+    const h = await harness();
+    await h.button('手动填写').trigger('click');
+    await h.wrapper.get('select[aria-label="网关协议"]').setValue('iop');
+    expect(h.wrapper.text()).toContain('不支持订单、RFQ 或写操作');
+    const inputs = h.wrapper.findAll('input[type="password"]');
+    await inputs[0]?.setValue(fixture.manual.appKey);
+    await inputs[1]?.setValue(fixture.manual.appSecret);
+    await inputs[2]?.setValue(fixture.manual.accessToken);
+    await h.wrapper.get('form').trigger('submit');
+    expect(h.save).not.toHaveBeenCalled();
+    h.wrapper
+      .findAll('button')
+      .find((button) => button.text() === '确认')
+      ?.element.click();
+    await flushPromises();
+    expect(h.save).toHaveBeenCalledWith(expect.objectContaining({ protocol: 'iop' }), 1, null);
+    expect(h.test).not.toHaveBeenCalled();
+    h.wrapper.unmount();
+  });
+  it('shows protocol-specific IOP renewal guidance in both languages, without TOP commands', async () => {
+    const h = await harness('admin', { protocol: 'iop' });
+    expect(h.wrapper.text()).toContain('独立 IOP 授权工具');
+    expect(h.wrapper.text()).not.toContain('pnpm openapi:auth');
+    uiI18n.global.locale.value = 'en-US';
+    await flushPromises();
+    expect(h.wrapper.text()).toContain('independent IOP tool');
+    expect(h.wrapper.text()).not.toContain('pnpm openapi:auth');
+    expect(h.test).not.toHaveBeenCalled();
+    expect(h.save).not.toHaveBeenCalled();
+    h.wrapper.unmount();
+  });
+  it('previews and imports the IOP marker only after confirmation', async () => {
+    const h = await harness();
+    const bundle = { ...fixture.oauthBundle, protocol: 'iop' };
+    const content = JSON.stringify(bundle);
+    const file = new File([content], 'credentials.json', { type: 'application/json' });
+    Object.defineProperty(file, 'text', { value: () => Promise.resolve(content) });
+    const input = h.wrapper.get('input[type="file"]');
+    Object.defineProperty(input.element, 'files', { configurable: true, value: [file] });
+    await input.trigger('change');
+    await flushPromises();
+    expect(h.wrapper.text()).toContain('IOP（兼容只读）');
+    expect(h.importCredential).not.toHaveBeenCalled();
+    h.wrapper
+      .findAll('button')
+      .find((button) => button.text() === '确认')
+      ?.element.click();
+    await flushPromises();
+    expect(h.importCredential).toHaveBeenCalledWith(expect.objectContaining({ protocol: 'iop' }), 1);
+    expect(h.test).not.toHaveBeenCalled();
+    h.wrapper.unmount();
+  });
   it('renders an icon on all six credential actions', async () => {
     const h = await harness();
     for (const label of ['导入授权 JSON', '手动填写', '测试连接', '刷新 Token', '刷新状态', '清除配置'])

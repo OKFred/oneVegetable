@@ -1,4 +1,11 @@
-import { QUALIFICATION_GATED_OPERATION_IDS, type OperationId } from '@one-vegetable/core/runtime';
+import {
+  QUALIFICATION_GATED_OPERATION_IDS,
+  type CredentialVaultStatus,
+  type GatewaySettings,
+  type OperationAvailabilityClient,
+  type OperationId
+} from '@one-vegetable/core/runtime';
+import { iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
 
 export interface ExtensionOperationPolicyDecision {
   allowed: boolean;
@@ -17,10 +24,31 @@ const DISABLED_MUTATION_OPERATIONS: ReadonlySet<OperationId> = new Set([
   'createLogisticsOrder'
 ]);
 
+/** Reuse existing capability metadata so the debugger can gate its known target, not all generic reads. */
+export function applyExtensionCapabilityProtocol<T extends { method: string; realCallEnabled: boolean }>(
+  capability: T,
+  status: { state: CredentialVaultStatus['state']; protocol?: unknown }
+): T {
+  return {
+    ...capability,
+    realCallEnabled:
+      capability.realCallEnabled &&
+      ['empty', 'legacy', 'unlocked'].includes(status.state) &&
+      (status.protocol === undefined ||
+        status.protocol === 'top' ||
+        (status.protocol === 'iop' && iopOperationReason('callCapability', capability.method) === null))
+  };
+}
+
 /** Options startup only asks about operation IDs, never target capability methods. */
 export function resolveExtensionStaticOperationAvailability(
-  operation: OperationId
+  operation: OperationId,
+  protocol?: GatewaySettings['protocol']
 ): ExtensionOperationPolicyDecision {
+  if (protocol === 'iop') {
+    const reason = iopOperationReason(operation);
+    if (reason) return { allowed: false, reasonCode: reason, message: reason };
+  }
   // A generic call without a target is not authorized. Full authorization stays in the background.
   if (operation === 'callCapability') {
     return { allowed: false, reasonCode: 'CAPABILITY_UNKNOWN', message: 'CAPABILITY_UNKNOWN' };
@@ -29,19 +57,52 @@ export function resolveExtensionStaticOperationAvailability(
     return {
       allowed: false,
       reasonCode: 'REAL_MUTATION_DISABLED',
-      message: '该真实写操作未开放，后台已在出网前拒绝'
+      message: 'REAL_MUTATION_DISABLED'
     };
   }
   if (QUALIFICATION_GATED_OPERATION_IDS.has(operation)) {
     return {
       allowed: false,
       reasonCode: 'LOGISTICS_QUALIFICATION_REQUIRED',
-      message: 'OneTouch 国际物流能力需要业务资格，当前账号尚未完成资格与真实接口验收'
+      message: 'LOGISTICS_QUALIFICATION_REQUIRED'
     };
   }
   return {
     allowed: true,
     reasonCode: 'EXTENSION_OPERATION_ALLOWED',
-    message: '扩展本地策略允许该操作'
+    message: 'EXTENSION_OPERATION_ALLOWED'
+  };
+}
+
+/** Read only safe status, never settings/secrets or a stale startup protocol snapshot. */
+export function createExtensionOperationAvailabilityClient(
+  readStatus: () => Promise<{ state: CredentialVaultStatus['state']; protocol?: unknown }>
+): OperationAvailabilityClient {
+  return {
+    async get(operations) {
+      try {
+        const status = await readStatus();
+        const protocol = status.protocol;
+        if (
+          !['empty', 'legacy', 'unlocked'].includes(status.state) ||
+          (protocol !== undefined && protocol !== 'top' && protocol !== 'iop')
+        )
+          throw new Error('OPERATION_AVAILABILITY_UNAVAILABLE');
+        return {
+          items: operations.map((operation) => ({
+            operation,
+            ...resolveExtensionStaticOperationAvailability(operation, protocol)
+          }))
+        };
+      } catch {
+        return {
+          items: operations.map((operation) => ({
+            operation,
+            allowed: false,
+            reasonCode: 'OPERATION_AVAILABILITY_UNAVAILABLE'
+          }))
+        };
+      }
+    }
   };
 }

@@ -1,5 +1,18 @@
 export const gatewayCredentials = {
   title: 'Alibaba credentials',
+  protocol: 'Gateway protocol',
+  protocolTop: 'TOP (default)',
+  protocolIop: 'IOP (compatible reads)',
+  iopCompatibility:
+    'IOP supports product, group, schema render and selected photo reads; not orders, RFQ or writes. No TOP fallback.',
+  iopPhotoGroupRequired:
+    'Choose a specific group for IOP photos; all photos and ungrouped photos are unavailable.',
+  acquireTop: 'Get TOP Open Platform credentials',
+  acquireIop: 'Open independent IOP authorization tool',
+  extensionGuideIop:
+    'Authorize in the independent IOP tool, then export, import and save JSON. TOP acquisition is not for IOP.',
+  renewGuideIop:
+    'Renew in the independent IOP tool; export, import, save and test JSON. Do not use TOP tools. Keep the vault and session; do not replay writes.',
   expiryunknown: 'Expiry unknown; this does not mean permanent access',
   expiryvalid: 'Within the recorded authorization period',
   expiryexpiring: 'Authorization expires within 7 days; prepare to renew',
@@ -36,7 +49,8 @@ export const gatewayCredentials = {
   'permissionnot-recorded': 'System API not recorded; check renewal',
   permissionunknown: 'Permissions unconfirmed; check renewal',
   permissionSnapshot: 'Permission snapshot: {time}; not live',
-  systemApiHelp: 'System API ≠ SystemAPI. Permissions cannot reveal old expiry; verify IOP separately.',
+  systemApiHelp:
+    'System API ≠ SystemAPI. Permissions cannot reveal old expiry; TOP and IOP credentials, authorization tools and compatible endpoints are not interchangeable.',
   unlockForExpiry: 'Unlock to view expiry',
   expiryReadFailed: 'Cannot read authorization; check settings',
   renewDescription: 'Renew API access without signing out or replaying product operations.',

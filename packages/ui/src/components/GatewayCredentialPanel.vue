@@ -38,7 +38,18 @@ const confirmation = ref<'save' | 'import' | 'clear' | null>(null);
 const pendingBundle = ref<AlibabaOpenApiCredentialBundle | null>(null);
 const fileName = ref('');
 const fileInput = ref<HTMLInputElement | null>(null);
-const fields = reactive({
+const fields = reactive<{
+  protocol: 'top' | 'iop';
+  appName: string;
+  appKey: string;
+  appSecret: string;
+  accessToken: string;
+  refreshToken: string;
+  expires: string;
+  refreshExpires: string;
+  remark: string;
+}>({
+  protocol: 'top',
   appName: '',
   appKey: '',
   appSecret: '',
@@ -72,6 +83,7 @@ onMounted(async () => {
 onBeforeUnmount(resetForm);
 function resetForm(): void {
   Object.assign(fields, {
+    protocol: summary.value?.protocol ?? 'top',
     appName: '',
     appKey: '',
     appSecret: '',
@@ -143,6 +155,7 @@ async function confirm(): Promise<void> {
     else if (action === 'save') {
       if (!control.saveGatewayCredential) throw new Error(t('unavailable'));
       const credentials = parseManualGatewayCredential({
+        protocol: fields.protocol,
         appName: fields.appName || null,
         appKey: fields.appKey,
         appSecret: fields.appSecret,
@@ -209,6 +222,12 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
       <p v-if="unavailable" class="text-sm">{{ t('unavailable') }}</p>
       <template v-else>
         <p class="text-sm font-medium">{{ summary?.configured ? t('configured') : t('empty') }}</p>
+        <p class="text-sm" data-testid="gateway-protocol-summary">
+          {{ t('protocol') }}: {{ t(summary?.protocol === 'iop' ? 'protocolIop' : 'protocolTop') }}
+        </p>
+        <p v-if="summary?.protocol === 'iop'" class="text-sm text-muted-foreground">
+          {{ t('iopCompatibility') }} {{ t('iopPhotoGroupRequired') }}
+        </p>
         <CredentialExpiryNotice
           v-if="summary && (summary.configured || summary.accessTokenExpiresTimeUtc != null)"
           :expires="summary.accessTokenExpiresTimeUtc"
@@ -217,7 +236,9 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
         />
         <details class="rounded-lg border p-3 text-sm">
           <summary class="cursor-pointer font-medium">{{ t('renewTitle') }}</summary>
-          <p class="mt-2 leading-6 text-muted-foreground">{{ t('renewGuide') }}</p>
+          <p class="mt-2 leading-6 text-muted-foreground">
+            {{ t(summary?.protocol === 'iop' ? 'renewGuideIop' : 'renewGuide') }}
+          </p>
         </details>
         <dl class="grid gap-4 rounded-lg bg-muted/40 p-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
           <div>
@@ -304,6 +325,20 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
     <form class="space-y-3" data-feedback-redact @submit.prevent="confirmation = 'save'">
       <ErrorNotice v-if="error" :error="error" :fallback="t('error')" />
       <p class="text-sm text-muted-foreground">{{ t('required') }}</p>
+      <label class="block space-y-1 text-sm">
+        {{ t('protocol') }}
+        <select
+          v-model="fields.protocol"
+          :aria-label="t('protocol')"
+          class="h-9 w-full rounded-md border bg-background px-3 text-sm"
+        >
+          <option value="top">{{ t('protocolTop') }}</option>
+          <option value="iop">{{ t('protocolIop') }}</option>
+        </select>
+      </label>
+      <p v-if="fields.protocol === 'iop'" class="text-sm text-muted-foreground">
+        {{ t('iopCompatibility') }} {{ t('iopPhotoGroupRequired') }}
+      </p>
       <label class="block space-y-1 text-sm"
         >AppName ({{ t('optional') }})<Input v-model="fields.appName" maxlength="256"
       /></label>
@@ -357,5 +392,11 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
     @confirm="confirm"
   >
     <p v-if="fileName">{{ t('filePreview', { name: fileName }) }}</p>
+    <p v-if="pendingBundle">
+      {{ t('protocol') }}: {{ t(pendingBundle.protocol === 'iop' ? 'protocolIop' : 'protocolTop') }}
+    </p>
+    <p v-if="pendingBundle?.protocol === 'iop'">
+      {{ t('iopCompatibility') }} {{ t('iopPhotoGroupRequired') }}
+    </p>
   </ConfirmActionDialog>
 </template>

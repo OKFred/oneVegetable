@@ -15,6 +15,7 @@ import {
   WandSparkles
 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
+import { IOP_BUSINESS_ENDPOINT } from '@one-vegetable/core/alibaba-iop';
 
 import {
   ALIBABA_GATEWAY,
@@ -38,6 +39,7 @@ import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import { useUiI18n } from '../i18n';
+import { useGatewayCredentialsI18n } from '../i18n/gateway-credentials';
 import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
@@ -54,6 +56,7 @@ const {
   mode
 } = useServices();
 const { t } = useUiI18n();
+const credentialText = useGatewayCredentialsI18n();
 const activeSection = ref('credentials');
 const sections = computed(() => [
   { id: 'credentials', icon: KeyRound },
@@ -73,6 +76,14 @@ const model = ref<GatewaySettings>({
   accessToken: '',
   endpoint: ALIBABA_GATEWAY,
   signMethod: 'hmac'
+});
+const selectedProtocol = computed({
+  get: () => model.value.protocol ?? 'top',
+  set: (protocol: 'top' | 'iop') => {
+    model.value.protocol = protocol;
+    model.value.endpoint = protocol === 'iop' ? IOP_BUSINESS_ENDPOINT : ALIBABA_GATEWAY;
+    model.value.signMethod = protocol === 'iop' ? 'hmac-sha256' : 'hmac';
+  }
 });
 const saving = ref(false);
 const feedback = ref('');
@@ -200,9 +211,14 @@ function readImportedCredentials(
   | 'accessTokenExpiresTimeUtc'
   | 'systemApiPermission'
   | 'permissionCapturedTimeUtc'
+  | 'protocol'
+  | 'endpoint'
+  | 'signMethod'
 > {
   const root = objectValue(value);
-  if (root.protocol === 'iop') throw new Error(t('settings.credentials.iopSeparate'));
+  if (root.protocol !== undefined && root.protocol !== 'top' && root.protocol !== 'iop')
+    throw new Error(credentialText('invalid'));
+  const protocol = root.protocol ?? 'top';
   const application = objectValue(root.application);
   const oauth = objectValue(root.oauth);
   const appKey = importedString(root.appKey) ?? importedString(application.appKey);
@@ -214,6 +230,10 @@ function readImportedCredentials(
   const expires =
     typeof oauth.expiresAtUtc === 'string' ? Date.parse(oauth.expiresAtUtc) : root.accessTokenExpiresTimeUtc;
   return {
+    protocol,
+    endpoint: protocol === 'iop' ? IOP_BUSINESS_ENDPOINT : ALIBABA_GATEWAY,
+    signMethod:
+      protocol === 'iop' ? 'hmac-sha256' : model.value.protocol === 'iop' ? 'hmac' : model.value.signMethod,
     appKey,
     appSecret,
     accessToken,
@@ -411,11 +431,11 @@ function confirmLanguagePreference(): void {
         :aria-label="t('settings.sections.credentials')"
       >
         <Button
-          v-if="mode === 'extension' && alibabaCredentialAcquisition?.openIopTool"
+          v-if="mode === 'extension' && !settingsEditable && alibabaCredentialAcquisition?.openIopTool"
           size="sm"
           type="button"
           @click="alibabaCredentialAcquisition.openIopTool()"
-          ><WandSparkles class="size-3.5" />{{ t('settings.credentials.iopTool') }}</Button
+          ><WandSparkles class="size-3.5" />{{ credentialText('acquireIop') }}</Button
         >
         <GatewayCredentialPanel v-if="mode === 'bff' && runtime?.backendMeta?.runtime === 'node'" />
         <Card v-else-if="mode === 'bff'" class="space-y-3 p-5" data-testid="bff-credential-guide">
@@ -624,16 +644,31 @@ function confirmLanguagePreference(): void {
           <div class="mb-4 rounded-lg border bg-muted/40 p-4 text-sm leading-6">
             <p class="font-medium">{{ t('settings.credentials.guideTitle') }}</p>
             <p class="mt-1 text-muted-foreground">
-              {{ t('settings.credentials.guideDescription') }}
+              {{
+                selectedProtocol === 'iop'
+                  ? credentialText('extensionGuideIop')
+                  : t('settings.credentials.guideDescription')
+              }}
             </p>
             <div class="mt-3 flex flex-wrap gap-2">
+              <Button
+                v-if="alibabaCredentialAcquisition?.openIopTool"
+                size="sm"
+                type="button"
+                :variant="selectedProtocol === 'iop' ? 'default' : 'outline'"
+                @click="alibabaCredentialAcquisition.openIopTool()"
+              >
+                <WandSparkles class="size-3.5" />{{ credentialText('acquireIop') }}
+              </Button>
               <Button
                 v-if="alibabaCredentialAcquisition"
                 size="sm"
                 type="button"
+                :disabled="selectedProtocol === 'iop'"
+                :variant="selectedProtocol === 'iop' ? 'outline' : 'default'"
                 @click="credentialAcquisitionOpen = true"
               >
-                <WandSparkles class="size-3.5" />{{ t('settings.credentials.acquire') }}
+                <WandSparkles class="size-3.5" />{{ credentialText('acquireTop') }}
               </Button>
               <a
                 href="https://i.alibaba.com/explore/open-api"
@@ -663,6 +698,20 @@ function confirmLanguagePreference(): void {
             :expires="model.accessTokenExpiresTimeUtc"
             extension
           />
+          <label class="mt-4 block text-sm font-medium">
+            {{ credentialText('protocol') }}
+            <select
+              v-model="selectedProtocol"
+              :aria-label="credentialText('protocol')"
+              class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
+            >
+              <option value="top">{{ credentialText('protocolTop') }}</option>
+              <option value="iop">{{ credentialText('protocolIop') }}</option>
+            </select>
+          </label>
+          <p v-if="selectedProtocol === 'iop'" class="mt-2 text-sm text-muted-foreground">
+            {{ credentialText('iopCompatibility') }} {{ credentialText('iopPhotoGroupRequired') }}
+          </p>
           <div class="grid gap-4 sm:grid-cols-2">
             <label class="text-sm font-medium"
               >App Key<Input
@@ -699,12 +748,17 @@ function confirmLanguagePreference(): void {
             /></label>
             <label class="text-sm font-medium sm:col-span-2"
               >{{ t('settings.credentials.gateway')
-              }}<Input v-model="model.endpoint" class="mt-2" :aria-label="t('settings.credentials.gateway')"
+              }}<Input
+                v-model="model.endpoint"
+                class="mt-2"
+                :aria-label="t('settings.credentials.gateway')"
+                :readonly="selectedProtocol === 'iop'"
             /></label>
             <label class="text-sm font-medium"
               >{{ t('settings.credentials.signMethod')
               }}<select
                 v-model="model.signMethod"
+                :disabled="selectedProtocol === 'iop'"
                 class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
               >
                 <option v-for="item in signMethods" :key="item" :value="item">{{ item }}</option>

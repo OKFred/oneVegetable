@@ -6,15 +6,29 @@ import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { describe, expect, it, vi } from 'vitest';
 
 import { MockGatewayClient } from '@one-vegetable/core/mock';
+import type { ApiCapability } from '@one-vegetable/core';
 
 import CapabilitiesView from '../src/views/CapabilitiesView.vue';
 import { provideServices } from '../src/lib/services';
+import { applyExtensionCapabilityProtocol } from '../../../apps/extension/lib/operation-availability';
 
-function mountView(mode: 'mock' | 'extension' = 'mock') {
+function mountView(mode: 'mock' | 'extension' = 'mock', protocol?: 'iop') {
+  const gateway = new MockGatewayClient(0);
+  if (protocol) {
+    const request = gateway.request.bind(gateway);
+    vi.spyOn(gateway, 'request').mockImplementation(async (operation, payload) => {
+      const result = await request(operation, payload);
+      if (operation === 'listCapabilities')
+        return (result as ApiCapability[]).map((capability) =>
+          applyExtensionCapabilityProtocol(capability, { state: 'unlocked', protocol })
+        );
+      return result;
+    });
+  }
   const Host = defineComponent({
     setup() {
       provideServices({
-        gateway: new MockGatewayClient(0),
+        gateway,
         settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
         mode
       });
@@ -55,6 +69,21 @@ function bodyText(): string {
 }
 
 describe('CapabilitiesView platform safeguards', () => {
+  it.each([
+    ['alibaba.icbu.product.list', false],
+    ['alibaba.icbu.product.get', true],
+    ['alibaba.icbu.rfq.search', true]
+  ] as const)('gates the selected IOP target %s rather than all generic calls', async (method, disabled) => {
+    const wrapper = mountView('extension', 'iop');
+    await flushPromises();
+    await filterMethod(wrapper, method);
+    await methodButton(wrapper, method).trigger('click');
+    await vi.waitFor(() => {
+      expect(callButton().disabled).toBe(disabled);
+    });
+    expect(document.body.querySelector('[data-testid="capability-result"]')).toBeNull();
+    wrapper.unmount();
+  });
   it('clears an empty list through a labelled neutral action', async () => {
     const wrapper = mountView();
     await vi.waitFor(() => {

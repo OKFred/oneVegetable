@@ -70,6 +70,28 @@ afterEach(() => {
 
 describe('ErrorNotice', () => {
   it.each([
+    'ALIBABA_PROTOCOL_INVALID',
+    'ALIBABA_IOP_METHOD_UNSUPPORTED',
+    'ALIBABA_IOP_PHOTO_GROUP_REQUIRED',
+    'ALIBABA_PROTOCOL_ENDPOINT_MISMATCH',
+    'ALIBABA_IOP_RESPONSE_INVALID',
+    'ALIBABA_IOP_API_REJECTED'
+  ])('provides a safe bilingual description for %s', async (code) => {
+    const wrapper = mountErrorNotice(
+      new GatewayException({ code, message: code, retryable: false }),
+      'extension'
+    );
+    expect(wrapper.text()).not.toContain('errors.codes.');
+    const chinese = wrapper.text();
+    uiI18n.global.locale.value = 'en-US';
+    await flushPromises();
+    expect(wrapper.text()).not.toBe(chinese);
+    expect(wrapper.text()).not.toContain('errors.codes.');
+    if (code === 'ALIBABA_IOP_PHOTO_GROUP_REQUIRED')
+      expect(wrapper.text()).toContain('Choose a specific group');
+    wrapper.unmount();
+  });
+  it.each([
     '27',
     'invalid-sessionkey',
     'isv.invalid-session',

@@ -11,9 +11,11 @@ import {
   type CredentialVaultLockReason,
   type CredentialVaultState,
   type CredentialVaultStatus,
-  type GatewaySettings
+  type GatewaySettings,
+  type ExtensionAlibabaCredentialAcquisitionRepository
 } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
+import { IOP_BUSINESS_ENDPOINT } from '@one-vegetable/core/alibaba-iop';
 import credentialFixtures from '../../../mock/data/node-gateway-credentials.json';
 
 import SettingsView from '../src/views/SettingsView.vue';
@@ -49,7 +51,14 @@ function mountView(
   initialVaultState?: CredentialVaultState,
   initialLockReason: CredentialVaultLockReason = 'manual',
   backendRuntime: 'node' | 'cloudflare' = 'node',
-  options: { editing?: UnsavedEditingService; beforeInspect?: () => Promise<void>; logs?: boolean } = {}
+  options: {
+    editing?: UnsavedEditingService;
+    beforeInspect?: () => Promise<void>;
+    logs?: boolean;
+    initialSettings?: Partial<GatewaySettings>;
+    save?: (settings: GatewaySettings) => Promise<void>;
+    acquisition?: ExtensionAlibabaCredentialAcquisitionRepository;
+  } = {}
 ) {
   let grantedHosts = ['https://images.example.com/*'];
   let currentVaultState = initialVaultState;
@@ -65,9 +74,10 @@ function mountView(
               appSecret: '',
               accessToken: '',
               endpoint: ALIBABA_GATEWAY,
-              signMethod: 'hmac' as const
+              signMethod: 'hmac' as const,
+              ...options.initialSettings
             }),
-          save: () => Promise.resolve()
+          save: options.save ?? (() => Promise.resolve())
         },
         permissions: {
           list: () => Promise.resolve(grantedHosts),
@@ -129,7 +139,8 @@ function mountView(
             version: '2.6.0'
           }
         },
-        mode
+        mode,
+        ...(options.acquisition ? { alibabaCredentialAcquisition: options.acquisition } : {})
       });
       return () => h(options.logs ? LocalDiagnosticsPanel : SettingsView);
     }
@@ -162,6 +173,127 @@ afterEach(() => {
 });
 
 describe('SettingsView diagnostics', () => {
+  it('makes independent IOP acquisition primary and disables the labelled TOP acquisition', async () => {
+    const openIopTool = vi.fn().mockResolvedValue(undefined);
+    const acquisition = {
+      openIopTool,
+      start: vi.fn(),
+      continue: vi.fn(),
+      status: vi.fn(),
+      cancel: vi.fn(),
+      saveToVault: vi.fn(),
+      exportBundle: vi.fn(),
+      readPrerequisite: vi.fn(),
+      locatePrerequisiteField: vi.fn(),
+      focusPrerequisitePage: vi.fn()
+    };
+    const wrapper = mountView('extension', 'empty', 'manual', 'node', { acquisition });
+    await flushPromises();
+    const top = wrapper.findAll('button').find((button) => button.text() === '获取 TOP 开放平台凭证');
+    expect(top?.attributes('disabled')).toBeUndefined();
+    await wrapper.get('select[aria-label="网关协议"]').setValue('iop');
+    expect(top?.attributes('disabled')).toBeDefined();
+    const iop = wrapper.findAll('button').find((button) => button.text() === '打开独立 IOP 授权工具');
+    expect(iop?.classes()).toContain('bg-primary');
+    await iop?.trigger('click');
+    expect(openIopTool).toHaveBeenCalledOnce();
+    expect(acquisition.start).not.toHaveBeenCalled();
+    expect(createVault).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+  it('shows legacy TOP without changing or saving existing endpoint/signing', async () => {
+    const save = vi.fn().mockResolvedValue(undefined);
+    const wrapper = mountView('extension', 'unlocked', 'manual', 'node', {
+      initialSettings: { endpoint: 'https://gateway.example.test/router', signMethod: 'md5' },
+      save
+    });
+    await flushPromises();
+    expect((wrapper.get('select[aria-label="网关协议"]').element as HTMLSelectElement).value).toBe('top');
+    expect((wrapper.get('input[aria-label="HTTPS 网关"]').element as HTMLInputElement).value).toBe(
+      'https://gateway.example.test/router'
+    );
+    expect(save).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+  it('preserves saved IOP and only switches protocol after explicit selection/save', async () => {
+    const save = vi.fn().mockResolvedValue(undefined);
+    const wrapper = mountView('extension', 'unlocked', 'manual', 'node', {
+      initialSettings: { protocol: 'iop', endpoint: IOP_BUSINESS_ENDPOINT, signMethod: 'hmac-sha256' },
+      save
+    });
+    await flushPromises();
+    const selector = wrapper.get('select[aria-label="网关协议"]');
+    expect((selector.element as HTMLSelectElement).value).toBe('iop');
+    expect(wrapper.text()).toContain('不支持订单、RFQ 或写操作');
+    expect(wrapper.text()).toContain('请选择具体分组');
+    expect(wrapper.get('input[aria-label="HTTPS 网关"]').attributes('readonly')).toBeDefined();
+    expect(save).not.toHaveBeenCalled();
+    await selector.setValue('top');
+    expect(save).not.toHaveBeenCalled();
+    const saveButton = wrapper.findAll('button').find((candidate) => candidate.text().includes('保存设置'));
+    await saveButton?.trigger('click');
+    await flushPromises();
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({ protocol: 'top', endpoint: ALIBABA_GATEWAY, signMethod: 'hmac' })
+    );
+    wrapper.unmount();
+  });
+  it.each(['iop', 'top', undefined] as const)(
+    'imports %s with the correct protocol/endpoint/signing, without auto-save',
+    async (protocol) => {
+      const wrapper = mountView('extension', 'empty', 'manual', 'node', {
+        initialSettings: { protocol: 'iop', endpoint: IOP_BUSINESS_ENDPOINT, signMethod: 'hmac-sha256' }
+      });
+      await flushPromises();
+      const input = wrapper.get('input[aria-label="导入授权包 JSON"]');
+      const content = JSON.stringify({ ...credentialFixtures.oauthBundle, protocol });
+      const file = new File([content], 'credentials.json', { type: 'application/json' });
+      Object.defineProperty(file, 'text', { value: () => Promise.resolve(content) });
+      Object.defineProperty(input.element, 'files', { configurable: true, value: [file] });
+      await input.trigger('change');
+      await flushPromises();
+      expect((wrapper.get('select[aria-label="网关协议"]').element as HTMLSelectElement).value).toBe(
+        protocol ?? 'top'
+      );
+      expect(wrapper.text()).toContain('尚未保存');
+      expect(createVault).not.toHaveBeenCalled();
+      await wrapper.get('input[aria-label="设置保护口令"]').setValue('123456');
+      await wrapper.get('input[aria-label="确认保护口令"]').setValue('123456');
+      const saveButton = wrapper.findAll('button').find((candidate) => candidate.text().includes('保存设置'));
+      await saveButton?.trigger('click');
+      await flushPromises();
+      expect(createVault).toHaveBeenCalledWith(
+        '123456',
+        expect.objectContaining({
+          protocol: protocol ?? 'top',
+          endpoint: protocol === 'iop' ? IOP_BUSINESS_ENDPOINT : ALIBABA_GATEWAY,
+          signMethod: protocol === 'iop' ? 'hmac-sha256' : 'hmac'
+        })
+      );
+      wrapper.unmount();
+    }
+  );
+  it('retains existing TOP signing when importing a legacy TOP bundle', async () => {
+    const wrapper = mountView('extension', 'empty', 'manual', 'node', {
+      initialSettings: { endpoint: 'https://gateway.example.test/router', signMethod: 'md5' }
+    });
+    await flushPromises();
+    const content = JSON.stringify(credentialFixtures.oauthBundle);
+    const file = new File([content], 'credentials.json', { type: 'application/json' });
+    Object.defineProperty(file, 'text', { value: () => Promise.resolve(content) });
+    const input = wrapper.get('input[aria-label="导入授权包 JSON"]');
+    Object.defineProperty(input.element, 'files', { configurable: true, value: [file] });
+    await input.trigger('change');
+    await flushPromises();
+    expect((wrapper.get('input[aria-label="HTTPS 网关"]').element as HTMLInputElement).value).toBe(
+      ALIBABA_GATEWAY
+    );
+    expect(
+      wrapper.findAll('select').some((selector) => (selector.element as HTMLSelectElement).value === 'md5')
+    ).toBe(true);
+    expect(createVault).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
   it('does not load diagnostic data or inventory from settings', async () => {
     let finishInspect: (() => void) | undefined;
     const editing = new UnsavedEditingService();

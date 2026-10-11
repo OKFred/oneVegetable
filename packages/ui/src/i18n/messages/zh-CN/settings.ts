@@ -129,7 +129,6 @@ export const settings = {
     bundleImportError: '授权包导入失败',
     acquired: 'Alibaba 开放平台凭据已获取并加密保存，当前 Chrome 会话内可以直接使用。',
     bundleMissing: '授权包缺少 App Key、App Secret 或 Access Token',
-    iopSeparate: '这是新版 IOP 授权包，请使用 IOP 授权工具；不能导入旧版 TOP 工作台。',
     iopTool: '新版 IOP 授权与续期'
   },
   security: {

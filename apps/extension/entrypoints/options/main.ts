@@ -1,5 +1,6 @@
 import { browser } from 'wxt/browser';
 import { IOP_VAULT_KEY, IOP_RECEIPT_KEY } from '../../lib/iop-authorization-storage';
+import { IOP_API_ORIGIN } from '@one-vegetable/core/alibaba-iop';
 
 import type { GalleryRequestOptions } from '@one-vegetable/core/gallery-transfer-context';
 import {
@@ -22,7 +23,6 @@ import {
   ONBOARDING_STORAGE_KEY,
   readOnboardingState,
   SETTINGS_STORAGE_KEY,
-  StaticOperationAvailabilityClient,
   type CredentialVaultOperation,
   type CredentialVaultRepository,
   type CredentialVaultRequest,
@@ -55,15 +55,15 @@ import {
 } from '@one-vegetable/core/runtime';
 import '@one-vegetable/ui/styles.css';
 import { ALIBABA_CREDENTIAL_ACQUISITION_ORIGINS } from '../../lib/alibaba-credential-page-driver';
-import { resolveExtensionStaticOperationAvailability } from '../../lib/operation-availability';
+import { createExtensionOperationAvailabilityClient } from '../../lib/operation-availability';
 import { EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY } from '../../lib/product-display-mutation-storage';
 import { extensionS3Storage, requestS3 } from '../../lib/s3-client';
 import { EXTENSION_S3_STORAGE_KEY } from '../../lib/s3-protocol';
 import { requestVideoUpload } from '../../lib/video-upload-client';
 import { extensionTemplates, inspectLocalTemplates, resetLocalTemplates } from '../../lib/template-client';
 
-const operationAvailability = new StaticOperationAvailabilityClient((operation) =>
-  resolveExtensionStaticOperationAvailability(operation)
+const operationAvailability = createExtensionOperationAvailabilityClient(() =>
+  requestVault('status', undefined)
 );
 type RuntimeTranslator = (key: string, values?: Record<string, unknown>) => string;
 let activeRuntimeTranslator: RuntimeTranslator | null = null;
@@ -176,7 +176,7 @@ const settings: SettingsRepository = {
   load: () => requestVault('get-settings', undefined),
   async save(value) {
     await ensureOptionalHostPermission(
-      value.endpoint,
+      value.protocol === 'iop' ? IOP_API_ORIGIN : value.endpoint,
       translateUi('settings.extensionRuntime.permissionPurposes.customGateway')
     );
     await requestVault('save', value);
@@ -187,7 +187,7 @@ const vault: CredentialVaultRepository = {
   status: () => requestVault('status', undefined),
   create: async (passphrase, value) => {
     await ensureOptionalHostPermission(
-      value.endpoint,
+      value.protocol === 'iop' ? IOP_API_ORIGIN : value.endpoint,
       translateUi('settings.extensionRuntime.permissionPurposes.customGateway')
     );
     return requestVault('create', { passphrase, settings: value });
