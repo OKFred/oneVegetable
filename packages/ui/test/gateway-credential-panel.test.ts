@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 import { defineComponent, h } from 'vue';
-import { flushPromises, mount } from '@vue/test-utils';
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BffControlClient } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 import type { ControlGatewayCredentialSummary, ControlSession } from '@one-vegetable/core';
 import GatewayCredentialPanel from '../src/components/GatewayCredentialPanel.vue';
+import UnsavedEditingDialog from '../src/components/UnsavedEditingDialog.vue';
 import { provideServices } from '../src/lib/services';
+import { provideUnsavedEditing, UnsavedEditingService } from '../src/lib/unsaved-editing';
 import { uiI18n } from '../src/i18n';
 import fixture from '../../../mock/data/node-gateway-credentials.json';
 
@@ -18,7 +20,8 @@ afterEach(() => {
 });
 async function harness(
   role: 'admin' | 'user' = 'admin',
-  overrides: Partial<ControlGatewayCredentialSummary> = {}
+  overrides: Partial<ControlGatewayCredentialSummary> = {},
+  realDialogs = false
 ) {
   const client = new BffControlClient({ baseUrl: 'http://localhost:8787' });
   const user: ControlSession['user'] = {
@@ -67,8 +70,10 @@ async function harness(
     configurationId: null,
     errorCode: null
   });
+  const editing = new UnsavedEditingService();
   const Host = defineComponent({
     setup() {
+      provideUnsavedEditing(editing);
       provideServices({
         mode: 'bff',
         control: client,
@@ -96,15 +101,21 @@ async function harness(
           }
         }
       });
-      return () => h(GatewayCredentialPanel);
+      // Match the shell: the global leave dialog is mounted before the settings panel.
+      return () => [h(UnsavedEditingDialog, { service: editing }), h(GatewayCredentialPanel)];
     }
   });
   const wrapper = mount(Host, {
     attachTo: document.body,
     global: {
-      stubs: {
-        ModalDialog: { props: ['open'], template: '<div v-if="open"><slot /><slot name="footer" /></div>' }
-      }
+      stubs: realDialogs
+        ? {}
+        : {
+            ModalDialog: {
+              props: ['open'],
+              template: '<div v-if="open"><slot /><slot name="footer" /></div>'
+            }
+          }
     }
   });
   await flushPromises();
@@ -113,9 +124,58 @@ async function harness(
     if (!result) throw new Error(`Missing ${text}`);
     return result;
   };
-  return { wrapper, status, save, clear, test, button };
+  return { wrapper, status, save, clear, test, button, editing };
 }
 describe('Node credential configuration UI', () => {
+  it('exposes manual entry beside import and closes an unchanged real dialog immediately', async () => {
+    const h = await harness('admin', {}, true);
+    const manual = h.button('手动填写');
+    expect(manual.element.closest('details')).toBeNull();
+    expect(manual.element.parentElement).toBe(h.button('导入授权 JSON').element.parentElement);
+    await manual.trigger('click');
+    await flushPromises();
+    const body = new DOMWrapper(document.body);
+    expect(body.findAll('[role="dialog"]')).toHaveLength(1);
+    await body.get('button[aria-label="关闭手动填写"]').trigger('click');
+    await flushPromises();
+    expect(body.find('[role="dialog"]').exists()).toBe(false);
+    expect(h.editing.confirmationOpen.value).toBe(false);
+    expect(h.save).not.toHaveBeenCalled();
+    h.wrapper.unmount();
+  });
+
+  it('keeps dirty dismissal inside the real modal, allows returning and clears only after discarding', async () => {
+    const h = await harness('admin', {}, true);
+    const body = new DOMWrapper(document.body);
+    await h.button('手动填写').trigger('click');
+    await flushPromises();
+    await body.get('input[type="password"]').setValue(fixture.manual.appKey);
+    await body.get('button[aria-label="关闭手动填写"]').trigger('click');
+    await flushPromises();
+    expect(body.findAll('[role="dialog"]')).toHaveLength(2);
+    expect(h.editing.confirmationOpen.value).toBe(false);
+    const keep = body.findAll('button').find((button) => button.text() === '继续编辑');
+    expect(keep).toBeDefined();
+    await keep?.trigger('click');
+    await flushPromises();
+    expect(body.findAll('[role="dialog"]')).toHaveLength(1);
+    expect((body.get('input[type="password"]').element as HTMLInputElement).value).toBe(
+      fixture.manual.appKey
+    );
+    expect(h.editing.dirty.value).toBe(true);
+    await body.get('form button[type="button"]').trigger('click');
+    await flushPromises();
+    const discard = body.findAll('button').find((button) => button.text() === '放弃修改并离开');
+    await discard?.trigger('click');
+    await flushPromises();
+    expect(body.find('[role="dialog"]').exists()).toBe(false);
+    expect(h.editing.dirty.value).toBe(false);
+    expect(h.save).not.toHaveBeenCalled();
+    await h.button('手动填写').trigger('click');
+    await flushPromises();
+    expect((body.get('input[type="password"]').element as HTMLInputElement).value).toBe('');
+    h.wrapper.unmount();
+  });
   it('shows expired startup-file authorization even when configured is false', async () => {
     const h = await harness('admin', {
       source: 'credential-bundle',

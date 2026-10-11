@@ -39,10 +39,69 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     const panel = page.getByTestId('gateway-credential-panel');
     await expect(panel).toBeVisible();
     const en = locale === 'en-US';
-    await panel.getByText(en ? 'Advanced options' : '高级选项', { exact: true }).click();
-    await panel.getByRole('button', { name: en ? 'Enter manually' : '手动填写', exact: true }).click();
+    const manual = panel.getByRole('button', { name: en ? 'Enter manually' : '手动填写', exact: true });
+    await expect(manual).toBeVisible();
+    await expect(panel.locator('details').filter({ has: manual })).toHaveCount(0);
+    await manual.click();
     const form = page.getByRole('dialog').filter({ has: page.locator('form') });
     const passwords = form.locator('input[type="password"]');
+    const discard = page.getByRole('dialog', {
+      name: en ? 'Discard unsaved changes?' : '放弃未保存的修改？',
+      exact: true
+    });
+    for (const action of ['cancel', 'close', 'escape', 'overlay'] as const) {
+      if (action !== 'cancel') await manual.click();
+      if (action === 'cancel')
+        await form.getByRole('button', { name: en ? 'Cancel' : '取消', exact: true }).click();
+      else if (action === 'close')
+        await form.getByRole('button', { name: en ? 'Close Enter manually' : '关闭手动填写' }).click();
+      else if (action === 'escape') await page.keyboard.press('Escape');
+      else await page.locator('.ov-dialog-overlay').click({ position: { x: 5, y: 5 } });
+      await expect(form).toBeHidden();
+      await expect(discard).toBeHidden();
+    }
+    for (const action of ['cancel', 'close', 'escape', 'overlay'] as const) {
+      await manual.click();
+      await passwords.nth(0).fill(fixture.manual.appKey);
+      if (action === 'cancel')
+        await form.getByRole('button', { name: en ? 'Cancel' : '取消', exact: true }).click();
+      else if (action === 'close')
+        await form.getByRole('button', { name: en ? 'Close Enter manually' : '关闭手动填写' }).click();
+      else if (action === 'escape') await page.keyboard.press('Escape');
+      else await page.locator('.ov-dialog-overlay').click({ position: { x: 5, y: 5 } });
+      await expect(discard).toBeVisible();
+      // The discard dialog must own focus and accept keyboard interaction, not sit behind the form.
+      await expect(discard).toContainText(en ? 'Continue editing' : '继续编辑');
+      expect(await discard.evaluate((element) => element.contains(document.activeElement))).toBe(true);
+      if (action === 'cancel')
+        await discard
+          .getByRole('button', { name: en ? 'Continue editing' : '继续编辑', exact: true })
+          .click();
+      else if (action === 'close')
+        await discard
+          .getByRole('button', {
+            name: en ? 'Close Discard unsaved changes?' : '关闭放弃未保存的修改？',
+            exact: true
+          })
+          .click();
+      else if (action === 'escape') await page.keyboard.press('Escape');
+      else
+        await page
+          .locator('.ov-dialog-overlay')
+          .last()
+          .click({ position: { x: 5, y: 5 } });
+      await expect(discard).toBeHidden();
+      await expect(passwords.nth(0)).toHaveValue(fixture.manual.appKey);
+      await form.getByRole('button', { name: en ? 'Cancel' : '取消', exact: true }).click();
+      await discard
+        .getByRole('button', { name: en ? 'Discard changes and leave' : '放弃修改并离开', exact: true })
+        .click();
+      await expect(form).toBeHidden();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      expect(writes).toEqual([]);
+    }
+    await manual.click();
+    await expect(passwords.nth(0)).toHaveValue('');
     await passwords.nth(0).fill(fixture.manual.appKey);
     await passwords.nth(1).fill(fixture.manual.appSecret);
     await passwords.nth(2).fill(fixture.manual.accessToken);

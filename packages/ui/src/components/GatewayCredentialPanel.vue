@@ -11,6 +11,7 @@ import type {
 import { useServices } from '../lib/services';
 import { useUnsavedEditing } from '../lib/unsaved-editing';
 import { useGatewayCredentialsI18n } from '../i18n/gateway-credentials';
+import { useUiI18n } from '../i18n';
 import { formatDateTime } from '../lib/date-time';
 import { notifyGatewayConfigurationChanged } from '../lib/gateway-configuration-events';
 import Button from './ui/Button.vue';
@@ -24,6 +25,7 @@ import CredentialExpiryNotice from './CredentialExpiryNotice.vue';
 
 const { control, runtime } = useServices();
 const t = useGatewayCredentialsI18n();
+const { t: uiText } = useUiI18n();
 const summary = ref<ControlGatewayCredentialSummary | null>(null);
 const latestTest = ref<GatewayCredentialTestResult | null>(null);
 const admin = ref(false);
@@ -31,6 +33,7 @@ const busy = ref(false);
 const error = ref<unknown>(null);
 const unavailable = ref(false);
 const dialog = ref(false);
+const discardManual = ref(false);
 const confirmation = ref<'save' | 'import' | 'clear' | null>(null);
 const pendingBundle = ref<AlibabaOpenApiCredentialBundle | null>(null);
 const fileName = ref('');
@@ -82,11 +85,17 @@ function resetForm(): void {
   fileName.value = '';
   editing.markClean();
 }
-async function closeDialog(open: boolean): Promise<void> {
-  if (busy.value) return;
-  if (!open && !(await editing.confirmLeave())) return;
-  dialog.value = open;
-  if (!open) resetForm();
+function finishClosingManual(): void {
+  discardManual.value = false;
+  dialog.value = false;
+  resetForm();
+}
+function closeDialog(open: boolean): void {
+  if (open || busy.value || confirmation.value || discardManual.value) return;
+  // Keep dismissal owned by this modal. Do not wait for a shell-level navigation dialog
+  // while this dialog still owns the focus trap. Route/unload protection remains registered.
+  if (editing.dirty.value) discardManual.value = true;
+  else finishClosingManual();
 }
 async function reload(): Promise<void> {
   if (!control) return;
@@ -246,6 +255,15 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
           >
           <Button
             variant="outline"
+            :disabled="busy || !control?.saveGatewayCredential"
+            @click="
+              resetForm();
+              dialog = true;
+            "
+            ><KeyRound class="size-4" />{{ t('manual') }}</Button
+          >
+          <Button
+            variant="outline"
             :disabled="busy || !summary?.configured || !real"
             :title="!real ? t('notReal') : t('testNotice')"
             @click="run('test')"
@@ -264,19 +282,6 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
             >{{ t('clear') }}</Button
           >
         </div>
-        <details>
-          <summary class="cursor-pointer text-sm">{{ t('advanced') }}</summary>
-          <Button
-            class="mt-3"
-            variant="outline"
-            :disabled="busy || !control?.saveGatewayCredential"
-            @click="
-              resetForm();
-              dialog = true;
-            "
-            >{{ t('manual') }}</Button
-          >
-        </details>
         <p class="text-xs text-muted-foreground">{{ t('testNotice') }}</p>
         <div class="rounded-md bg-muted p-3 text-sm" aria-live="polite">
           <p>{{ t('lastTest') }}：{{ latestTest ? t(latestTest.status) : t('notTested') }}</p>
@@ -290,7 +295,13 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
     <AlibabaIndependentNotice />
     <slot />
   </Card>
-  <ModalDialog :open="dialog" :title="t('manual')" :description="t('required')" @update:open="closeDialog">
+  <ModalDialog
+    :open="dialog"
+    :title="t('manual')"
+    :description="t('required')"
+    :dismissible="!busy"
+    @update:open="closeDialog"
+  >
     <form class="space-y-3" data-feedback-redact @submit.prevent="confirmation = 'save'">
       <ErrorNotice v-if="error" :error="error" :fallback="t('error')" />
       <p class="text-sm text-muted-foreground">{{ t('required') }}</p>
@@ -328,6 +339,15 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
       </div>
     </form>
   </ModalDialog>
+  <ConfirmActionDialog
+    v-model:open="discardManual"
+    :title="uiText('shell.editing.title')"
+    :description="uiText('shell.editing.description')"
+    :cancel-label="uiText('shell.editing.continue')"
+    :confirm-label="uiText('shell.editing.discard')"
+    destructive
+    @confirm="finishClosingManual"
+  />
   <ConfirmActionDialog
     :open="confirmation !== null"
     :title="t(confirmation === 'clear' ? 'confirmClear' : 'confirmSave')"
