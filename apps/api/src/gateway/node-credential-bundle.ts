@@ -1,16 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import {
-  ALIBABA_GATEWAY,
-  alibabaAuthorizationMetadata,
-  type AlibabaAuthorizationMetadata
-} from '@one-vegetable/core';
+import { alibabaAuthorizationMetadata, type AlibabaAuthorizationMetadata } from '@one-vegetable/core';
 
 import {
   EnvironmentAlibabaCredentialProvider,
   GatewayConfigurationError,
   readEndpoint,
+  readProtocol,
   readSignMethod
 } from './credentials';
 
@@ -26,6 +23,7 @@ export interface NodeAlibabaCredentialEnvironment extends AlibabaCredentialEnvir
 }
 
 interface CredentialBundleData extends AlibabaAuthorizationMetadata {
+  protocol?: 'top' | 'iop';
   appKey: string;
   appSecret: string;
   accessToken: string;
@@ -52,6 +50,7 @@ export class NodeCredentialBundleProvider implements AlibabaCredentialProvider {
   readonly #endpoint: URL;
   readonly #signMethod: GatewayCredentials['signMethod'];
   readonly #now: () => number;
+  readonly #protocol: 'top' | 'iop';
 
   constructor(
     path: string,
@@ -59,8 +58,17 @@ export class NodeCredentialBundleProvider implements AlibabaCredentialProvider {
     options: { now?: () => number } = {}
   ) {
     this.#data = readCredentialBundle(path);
-    this.#endpoint = readEndpoint(environment.ONE_VEGETABLE_ALIBABA_ENDPOINT ?? ALIBABA_GATEWAY);
-    this.#signMethod = readSignMethod(environment.ONE_VEGETABLE_ALIBABA_SIGN_METHOD);
+    this.#protocol = readProtocol(this.#data.protocol);
+    if (
+      environment.ONE_VEGETABLE_ALIBABA_PROTOCOL !== undefined &&
+      readProtocol(environment.ONE_VEGETABLE_ALIBABA_PROTOCOL) !== this.#protocol
+    )
+      throw invalidBundle('Alibaba 授权包与环境协议不匹配');
+    this.#endpoint = readEndpoint(environment.ONE_VEGETABLE_ALIBABA_ENDPOINT, this.#protocol);
+    this.#signMethod =
+      this.#protocol === 'iop'
+        ? 'hmac-sha256'
+        : readSignMethod(environment.ONE_VEGETABLE_ALIBABA_SIGN_METHOD);
     this.#now = options.now ?? Date.now;
   }
 
@@ -74,6 +82,8 @@ export class NodeCredentialBundleProvider implements AlibabaCredentialProvider {
       accessTokenExpiresTimeUtc:
         this.#data.expiresAtUtc === null ? null : Date.parse(this.#data.expiresAtUtc),
       endpointOrigin: this.#endpoint.origin,
+      endpoint: this.#endpoint.href,
+      protocol: this.#protocol,
       signMethod: this.#signMethod,
       systemApiPermission: this.#data.systemApiPermission,
       permissionCapturedTimeUtc: this.#data.permissionCapturedTimeUtc
@@ -92,6 +102,7 @@ export class NodeCredentialBundleProvider implements AlibabaCredentialProvider {
       appSecret: this.#data.appSecret,
       accessToken: this.#data.accessToken,
       endpoint: this.#endpoint.href,
+      protocol: this.#protocol,
       signMethod: this.#signMethod
     };
   }
@@ -110,15 +121,14 @@ function readCredentialBundle(path: string): CredentialBundleData {
     throw invalidBundle('Alibaba 授权包不存在、不可读或不是有效 JSON');
   }
   const root = record(value);
-  if (root.protocol !== undefined && root.protocol !== 'top')
-    throw invalidBundle(
-      'IOP credentials cannot be used with the TOP gateway. Use the IOP authorization tool.'
-    );
+  if (root.protocol !== undefined && root.protocol !== 'top' && root.protocol !== 'iop')
+    throw invalidBundle('Alibaba 授权包协议无效');
   const application = record(root.application);
   const oauth = record(root.oauth);
   if (root.schemaVersion !== 1) throw invalidBundle('Alibaba 授权包版本不受支持');
   return {
     ...alibabaAuthorizationMetadata(value),
+    ...(root.protocol === undefined ? {} : { protocol: root.protocol }),
     appKey: requiredSecret(application.appKey, 'AppKey'),
     appSecret: requiredSecret(application.appSecret, 'AppSecret'),
     accessToken: requiredSecret(oauth.accessToken, 'Access Token'),

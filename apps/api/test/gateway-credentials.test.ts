@@ -21,6 +21,8 @@ describe('server Alibaba credential provider', () => {
       hasAppSecret: true,
       hasAccessToken: true,
       endpointOrigin: 'https://eco.taobao.com',
+      endpoint: 'https://eco.taobao.com/router/rest',
+      protocol: 'top',
       signMethod: 'hmac-sha256'
     });
     expect(JSON.stringify(provider.status())).not.toContain('value');
@@ -68,6 +70,49 @@ describe('server Alibaba credential provider', () => {
       appSecret: 'canonical-secret',
       accessToken: 'canonical-token'
     });
+  });
+
+  it('requires explicit IOP selection and never infers protocol from an endpoint', () => {
+    const environment = {
+      ONE_VEGETABLE_ALIBABA_APP_KEY: 'fixture-key',
+      ONE_VEGETABLE_ALIBABA_APP_SECRET: 'fixture-secret',
+      ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN: 'fixture-access'
+    };
+    const provider = new EnvironmentAlibabaCredentialProvider({
+      ...environment,
+      ONE_VEGETABLE_ALIBABA_PROTOCOL: 'iop'
+    });
+    expect(provider.status()).toMatchObject({
+      protocol: 'iop',
+      endpoint: 'https://openapi-api.alibaba.com/rest',
+      signMethod: 'hmac-sha256'
+    });
+    expect(provider.requireCredentials()).toMatchObject({
+      protocol: 'iop',
+      endpoint: 'https://openapi-api.alibaba.com/rest'
+    });
+    expect(
+      () =>
+        new EnvironmentAlibabaCredentialProvider({
+          ...environment,
+          ONE_VEGETABLE_ALIBABA_ENDPOINT: 'https://openapi-api.alibaba.com/rest'
+        })
+    ).toThrow(expect.objectContaining({ code: 'ALIBABA_PROTOCOL_ENDPOINT_MISMATCH' }));
+    expect(
+      () =>
+        new EnvironmentAlibabaCredentialProvider({
+          ...environment,
+          ONE_VEGETABLE_ALIBABA_PROTOCOL: 'iop',
+          ONE_VEGETABLE_ALIBABA_ENDPOINT: 'https://eco.taobao.com/router/rest'
+        })
+    ).toThrow(expect.objectContaining({ code: 'ALIBABA_PROTOCOL_ENDPOINT_MISMATCH' }));
+    expect(
+      () =>
+        new EnvironmentAlibabaCredentialProvider({
+          ...environment,
+          ONE_VEGETABLE_ALIBABA_PROTOCOL: 'unknown'
+        })
+    ).toThrow(expect.objectContaining({ code: 'ALIBABA_PROTOCOL_INVALID' }));
   });
 
   it('rejects non-HTTPS endpoints, credential URLs and unsupported signing methods', () => {

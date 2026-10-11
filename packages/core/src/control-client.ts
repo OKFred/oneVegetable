@@ -130,20 +130,7 @@ export interface ControlSystemInfo {
   schemaVersion: number;
   requestEventRetentionDays: number;
   realMutationsPaused?: boolean;
-  gatewayStatus: {
-    source: 'environment' | 'credential-bundle' | 'd1-vault' | 'documentation-replay';
-    configured: boolean;
-    hasAppKey: boolean;
-    hasAppSecret: boolean;
-    hasAccessToken: boolean;
-    endpointOrigin: string;
-    signMethod: 'hmac' | 'md5' | 'hmac-sha256';
-    realReadEnabled: boolean;
-    mutationEnabled: boolean;
-    accessTokenExpiresTimeUtc?: number | null;
-    lastRefreshTimeUtc?: number | null;
-    lastRefreshErrorCode?: string | null;
-  };
+  gatewayStatus: components['schemas']['AlibabaGatewayStatus'];
 }
 
 export interface ControlRealMutationStatus {

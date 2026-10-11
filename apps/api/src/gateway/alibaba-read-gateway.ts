@@ -22,6 +22,7 @@ import {
   validateCapabilityResponse
 } from '@one-vegetable/core';
 import { GatewayConfigurationError } from './credentials';
+import { iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
 import { VideoAdapter, VIDEO_OPERATIONS, VIDEO_METHODS } from '@one-vegetable/core/video';
 import { VideoAssociationAdapter } from '@one-vegetable/core/video-association';
 import {
@@ -55,6 +56,10 @@ export interface AlibabaReadGatewayOptions {
 export class CredentialBackedAlibabaGatewayClient implements GatewayClient {
   constructor(private readonly provider: AsyncAlibabaCredentialProvider) {}
 
+  async credentialProtocol(): Promise<'top' | 'iop'> {
+    return (await this.provider.status()).protocol ?? 'top';
+  }
+
   async galleryGatewayContextId(): Promise<string> {
     return galleryGatewayId(await this.provider.requireCredentials());
   }
@@ -65,6 +70,7 @@ export class CredentialBackedAlibabaGatewayClient implements GatewayClient {
     context?: GatewayRequestContext
   ): Promise<ResponseOf<K>> {
     try {
+      if ((await this.credentialProtocol()) === 'iop') assertIopOperation(operation, request);
       const credentials = await this.provider.requireCredentials(context?.requestId);
       return await new AlibabaReadGatewayClient(credentials).request(operation, request, context);
     } catch (error: unknown) {
@@ -96,7 +102,10 @@ export class AlibabaReadGatewayClient implements GatewayClient {
       ...(options.wait ? { wait: options.wait } : {}),
       policies: {
         alibaba: {
-          allowedOrigins: [new URL(credentials.endpoint).origin, new URL(ALIBABA_SYNC_GATEWAY).origin],
+          allowedOrigins:
+            credentials.protocol === 'iop'
+              ? [new URL(credentials.endpoint).origin]
+              : [new URL(credentials.endpoint).origin, new URL(ALIBABA_SYNC_GATEWAY).origin],
           timeoutMilliseconds: 30_000,
           maxRequestBytes: 30 * 1024 * 1024,
           maxResponseBytes: 30 * 1024 * 1024,
@@ -113,11 +122,16 @@ export class AlibabaReadGatewayClient implements GatewayClient {
     return galleryGatewayId(this.#credentials);
   }
 
+  credentialProtocol(): Promise<'top' | 'iop'> {
+    return Promise.resolve(this.#credentials.protocol ?? 'top');
+  }
+
   async request<K extends OperationId>(
     operation: K,
     request: RequestOf<K>,
     context?: GatewayRequestContext
   ): Promise<ResponseOf<K>> {
+    if (this.#credentials.protocol === 'iop') assertIopOperation(operation, request);
     assertGalleryContextId(context?.galleryContext?.gateway, await this.galleryGatewayContextId());
     if (context?.productContext && context.productContext.gateway !== (await this.galleryGatewayContextId()))
       throw new GatewayException({
@@ -155,7 +169,7 @@ export class AlibabaReadGatewayClient implements GatewayClient {
     maxAttempts = this.#maxAttempts
   ): AlibabaClient {
     const credentials =
-      protocol === 'sync'
+      protocol === 'sync' && this.#credentials.protocol !== 'iop'
         ? { ...this.#credentials, endpoint: ALIBABA_SYNC_GATEWAY, signMethod: 'hmac-sha256' as const }
         : this.#credentials;
     return new AlibabaClient(credentials, this.#network, {
@@ -361,6 +375,11 @@ export class AlibabaReadGatewayClient implements GatewayClient {
         throw gatewayError('REAL_MUTATION_DISABLED', 'BFF 真实写能力保持关闭');
     }
   }
+}
+
+function assertIopOperation(operation: OperationId, request: unknown): void {
+  const reason = iopOperationReason(operation, readRecord(request).method);
+  if (reason) throw gatewayError(reason, reason);
 }
 
 async function listLegacyOrders(client: AlibabaClient, request: RequestOf<'listOrders'>) {

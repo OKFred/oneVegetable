@@ -287,7 +287,7 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
               signMethod: 'hmac'
             }),
             realReadEnabled: options.gatewayMode === 'real' && gatewayStatus?.configured === true,
-            mutationEnabled: options.mutationEnabled === true
+            mutationEnabled: options.mutationEnabled === true && gatewayStatus?.protocol !== 'iop'
           },
           schemaVersion: CURRENT_SCHEMA_VERSION,
           requestEventRetentionDays: options.requestEventRetentionDays ?? 30,

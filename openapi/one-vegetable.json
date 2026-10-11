@@ -8785,16 +8785,26 @@
         "properties": {
           "source": {
             "type": "string",
-            "enum": ["environment", "credential-bundle", "d1-vault", "documentation-replay"]
+            "enum": ["environment", "credential-bundle", "d1-vault", "sqlite-vault", "documentation-replay"]
           },
           "configured": { "type": "boolean" },
           "hasAppKey": { "type": "boolean" },
           "hasAppSecret": { "type": "boolean" },
           "hasAccessToken": { "type": "boolean" },
           "endpointOrigin": { "type": "string" },
+          "endpoint": { "type": "string", "format": "uri" },
+          "protocol": { "type": "string", "enum": ["top", "iop"] },
           "signMethod": { "type": "string", "enum": ["hmac", "md5", "hmac-sha256"] },
           "realReadEnabled": { "type": "boolean" },
-          "mutationEnabled": { "const": false }
+          "mutationEnabled": { "type": "boolean" },
+          "accessTokenExpiresTimeUtc": { "type": ["integer", "null"], "minimum": 0 },
+          "systemApiPermission": {
+            "type": "string",
+            "enum": ["active", "inactive", "not-recorded", "unknown"]
+          },
+          "permissionCapturedTimeUtc": { "type": ["integer", "null"], "minimum": 0 },
+          "lastRefreshTimeUtc": { "type": ["integer", "null"], "minimum": 0 },
+          "lastRefreshErrorCode": { "type": ["string", "null"] }
         }
       },
       "AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentRequest": {

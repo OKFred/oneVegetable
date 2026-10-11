@@ -35,6 +35,7 @@ export class NodeManagedCredentialProvider {
         hasAppSecret: false,
         hasAccessToken: false,
         endpointOrigin: 'https://eco.taobao.com',
+        protocol: 'top',
         signMethod: 'hmac-sha256'
       };
     }
@@ -49,6 +50,7 @@ export class NodeManagedCredentialProvider {
         ...summary,
         source: legacy.source,
         configured: legacy.configured,
+        protocol: legacy.protocol ?? 'top',
         canRefresh: false,
         systemApiPermission: legacy.systemApiPermission ?? 'unknown',
         permissionCapturedTimeUtc: legacy.permissionCapturedTimeUtc ?? null,

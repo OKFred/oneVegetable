@@ -1,5 +1,6 @@
 import {
   ALIBABA_GATEWAY,
+  GatewayException,
   alibabaAuthorizationMetadata,
   credentialExpiryFromSeconds,
   NetworkManager,
@@ -7,9 +8,10 @@ import {
   parseAlibabaOpenApiCredentialBundle,
   parseAlibabaTokenResponse
 } from '@one-vegetable/core';
+import { AlibabaIopTokenClient } from '@one-vegetable/core/alibaba-iop';
 
 import { EntityVersionConflictError } from '../db/repository';
-import { GatewayConfigurationError, readEndpoint, readSignMethod } from './credentials';
+import { GatewayConfigurationError, readEndpoint, readProtocol, readSignMethod } from './credentials';
 import { hasTokenError, parseTokenBody, tokenRefreshFailure } from './token-refresh-error';
 
 import type {
@@ -55,6 +57,7 @@ export interface GatewayCredentialRecord {
 }
 
 export interface GatewayCredentialSummary {
+  protocol?: 'top' | 'iop';
   source?: AlibabaCredentialStatus['source'];
   configurationId?: string | null;
   appName?: string | null;
@@ -92,7 +95,12 @@ export interface GatewayCredentialRepository {
     now: number;
   }): Promise<GatewayCredentialRecord>;
   delete(expectedRevision: number): Promise<boolean>;
-  acquireRefreshLease(leaseId: string, now: number, expectedRevision: number): Promise<boolean>;
+  acquireRefreshLease(
+    leaseId: string,
+    now: number,
+    expectedRevision: number,
+    failureCode?: 'IOP_TOKEN_RESULT_UNKNOWN'
+  ): Promise<boolean>;
   completeRefresh(input: {
     leaseId: string;
     expectedRevision: number;
@@ -209,12 +217,28 @@ export class SqlGatewayCredentialRepository implements GatewayCredentialReposito
     return result.length === 1;
   }
 
-  async acquireRefreshLease(leaseId: string, now: number, expectedRevision: number): Promise<boolean> {
+  async acquireRefreshLease(
+    leaseId: string,
+    now: number,
+    expectedRevision: number,
+    failureCode?: 'IOP_TOKEN_RESULT_UNKNOWN'
+  ): Promise<boolean> {
     const result = await this.executor.query(
       `UPDATE alibaba_gateway_credentials
-       SET refresh_lease_id = ?, refresh_lease_until_utc = ?
-       WHERE id = ? AND revision = ? AND (refresh_lease_until_utc IS NULL OR refresh_lease_until_utc < ?) RETURNING id`,
-      [leaseId, now + REFRESH_LEASE_MS, CREDENTIAL_ID, expectedRevision, now]
+       SET refresh_lease_id = ?, refresh_lease_until_utc = ?,
+           last_refresh_error_code = COALESCE(?, last_refresh_error_code)
+       WHERE id = ? AND revision = ? AND (refresh_lease_until_utc IS NULL OR refresh_lease_until_utc < ?)
+         AND (? IS NULL OR last_refresh_error_code IS NULL OR last_refresh_error_code != ?) RETURNING id`,
+      [
+        leaseId,
+        now + REFRESH_LEASE_MS,
+        failureCode ?? null,
+        CREDENTIAL_ID,
+        expectedRevision,
+        now,
+        failureCode ?? null,
+        failureCode ?? null
+      ]
     );
     return result.length === 1;
   }
@@ -343,9 +367,7 @@ export class GatewayCredentialCipher {
         this.#key,
         toArrayBuffer(decodeBase64Url(record.encryptedBundle))
       );
-      const document = parseCredentialDocument(JSON.parse(new TextDecoder().decode(plaintext)) as unknown);
-      if (document.authorization?.protocol === 'iop') throw new Error('IOP_REQUIRED');
-      return document;
+      return parseCredentialDocument(JSON.parse(new TextDecoder().decode(plaintext)) as unknown);
     } catch {
       throw new GatewayConfigurationError(
         'ALIBABA_CREDENTIAL_VAULT_UNREADABLE',
@@ -385,9 +407,18 @@ export class GatewayCredentialService {
         appName: document.credentials.appName,
         appKeySuffix: document.credentials.appKey.slice(-4),
         inputSource: document.source,
+        protocol: readProtocol(document.credentials.protocol),
+        lastRefreshErrorCode:
+          document.credentials.protocol === 'iop'
+            ? (iopRefreshFailureCode(record, this.clock()) ?? record.lastRefreshErrorCode)
+            : record.lastRefreshErrorCode,
         ...alibabaAuthorizationMetadata(document.authorization),
         canRefresh:
           record.lastRefreshErrorCode !== 'ALIBABA_REFRESH_TOKEN_EXPIRED' &&
+          !(
+            document.credentials.protocol === 'iop' &&
+            record.lastRefreshErrorCode === 'IOP_TOKEN_RESULT_UNKNOWN'
+          ) &&
           document.credentials.refreshToken !== null &&
           (record.refreshTokenExpiresTimeUtc === null || record.refreshTokenExpiresTimeUtc > this.clock())
       };
@@ -403,11 +434,6 @@ export class GatewayCredentialService {
     remark: string | null;
   }): Promise<GatewayCredentialSummary> {
     const bundle = parseAlibabaOpenApiCredentialBundle(input.bundle);
-    if (bundle.protocol === 'iop')
-      throw new GatewayConfigurationError(
-        'ALIBABA_IOP_RUNTIME_NOT_SUPPORTED',
-        'IOP credentials cannot be used with the TOP gateway. Use the IOP authorization tool.'
-      );
     return this.saveDocument(credentialDocumentFromBundle(bundle), input);
   }
 
@@ -459,6 +485,7 @@ export class StoredAlibabaCredentialProvider {
   readonly #endpoint: URL;
   readonly #signMethod: SignMethod;
   readonly #network: NetworkManager;
+  readonly #iopTokens: AlibabaIopTokenClient;
 
   constructor(
     private readonly repository: GatewayCredentialRepository,
@@ -475,6 +502,7 @@ export class StoredAlibabaCredentialProvider {
     this.#signMethod = readSignMethod(options.signMethod);
     this.clock = options.clock ?? Date.now;
     this.source = options.source ?? 'd1-vault';
+    this.#iopTokens = new AlibabaIopTokenClient(options.transport, this.clock);
     this.#network = new NetworkManager({
       ...(options.transport ? { transport: options.transport } : {}),
       policies: {
@@ -497,17 +525,26 @@ export class StoredAlibabaCredentialProvider {
 
   async status(): Promise<AlibabaCredentialStatus> {
     const record = await this.repository.find();
+    const document = record ? await this.cipher.decryptDocument(record) : null;
+    const protocol = readProtocol(document?.credentials.protocol);
+    const endpoint = protocol === 'iop' ? readEndpoint(undefined, protocol) : this.#endpoint;
     return {
       source: this.source,
       configured: record !== null,
       hasAppKey: record !== null,
       hasAppSecret: record !== null,
       hasAccessToken: record !== null,
-      endpointOrigin: this.#endpoint.origin,
-      signMethod: this.#signMethod,
+      protocol,
+      endpoint: endpoint.href,
+      endpointOrigin: endpoint.origin,
+      signMethod: protocol === 'iop' ? 'hmac-sha256' : this.#signMethod,
+      ...alibabaAuthorizationMetadata(document?.authorization),
       accessTokenExpiresTimeUtc: record?.accessTokenExpiresTimeUtc ?? null,
       lastRefreshTimeUtc: record?.lastRefreshTimeUtc ?? null,
-      lastRefreshErrorCode: record?.lastRefreshErrorCode ?? null
+      lastRefreshErrorCode:
+        protocol === 'iop' && record
+          ? (iopRefreshFailureCode(record, this.clock()) ?? record.lastRefreshErrorCode)
+          : (record?.lastRefreshErrorCode ?? null)
     };
   }
 
@@ -545,8 +582,10 @@ export class StoredAlibabaCredentialProvider {
       appSecret: bundle.credentials.appSecret,
       accessToken: bundle.credentials.accessToken,
       galleryAccountGeneration: bundle.configurationId,
-      endpoint: this.#endpoint.href,
-      signMethod: this.#signMethod
+      protocol: readProtocol(bundle.credentials.protocol),
+      endpoint:
+        bundle.credentials.protocol === 'iop' ? readEndpoint(undefined, 'iop').href : this.#endpoint.href,
+      signMethod: bundle.credentials.protocol === 'iop' ? 'hmac-sha256' : this.#signMethod
     };
   }
 
@@ -555,13 +594,15 @@ export class StoredAlibabaCredentialProvider {
     bundle: GatewayCredentialDocument,
     requestId: string
   ): Promise<{ record: GatewayCredentialRecord; bundle: GatewayCredentialDocument }> {
+    const iop = bundle.credentials.protocol === 'iop';
+    const now = this.clock();
+    if (iop) assertIopRefreshState(record, now);
     if (!bundle.credentials.refreshToken) {
       throw new GatewayConfigurationError(
         'ALIBABA_REFRESH_TOKEN_MISSING',
         '授权包没有 Refresh Token，请重新完成浏览器授权'
       );
     }
-    const now = this.clock();
     if (
       record.lastRefreshErrorCode === 'ALIBABA_REFRESH_TOKEN_EXPIRED' ||
       (record.refreshTokenExpiresTimeUtc !== null && record.refreshTokenExpiresTimeUtc <= now)
@@ -572,8 +613,17 @@ export class StoredAlibabaCredentialProvider {
       );
     }
     const leaseId = crypto.randomUUID();
-    if (!(await this.repository.acquireRefreshLease(leaseId, now, record.revision))) {
+    // Persist a one-shot fence before I/O: an isolate/process may disappear after consuming the token.
+    if (
+      !(await this.repository.acquireRefreshLease(
+        leaseId,
+        now,
+        record.revision,
+        iop ? 'IOP_TOKEN_RESULT_UNKNOWN' : undefined
+      ))
+    ) {
       const latest = await this.repository.find();
+      if (iop && latest) assertIopRefreshState(latest, this.clock());
       if (latest && !shouldRefresh(latest.accessTokenExpiresTimeUtc, this.clock())) {
         return { record: latest, bundle: await this.cipher.decryptDocument(latest) };
       }
@@ -583,39 +633,18 @@ export class StoredAlibabaCredentialProvider {
       );
     }
     try {
-      const form = new URLSearchParams({
-        refresh_token: bundle.credentials.refreshToken,
-        grant_type: 'refresh_token',
-        client_id: bundle.credentials.appKey,
-        client_secret: bundle.credentials.appSecret,
-        sp: 'icbu'
-      });
-      const response = await this.#network.request({
-        service: 'alibaba',
-        url: TOKEN_ENDPOINT,
-        requestId,
-        method: 'POST',
-        body: form,
-        responseType: 'text',
-        maxAttempts: 1
-      });
-      const value = parseTokenBody(response.data);
-      const secrets = [
-        bundle.credentials.appKey,
-        bundle.credentials.appSecret,
-        bundle.credentials.accessToken,
-        bundle.credentials.refreshToken
-      ];
-      if (!response.ok || hasTokenError(value)) {
-        throw tokenRefreshFailure(response.status, value, secrets);
-      }
-      let token: ReturnType<typeof parseAlibabaTokenResponse>;
-      try {
-        token = parseAlibabaTokenResponse(value);
-      } catch {
-        throw tokenRefreshFailure(response.status, value, secrets);
-      }
+      const token = iop
+        ? await this.#iopTokens.request('/auth/token/refresh', {
+            appKey: bundle.credentials.appKey,
+            appSecret: bundle.credentials.appSecret,
+            value: bundle.credentials.refreshToken,
+            requestId
+          })
+        : await this.refreshTopToken(bundle, requestId);
       const refreshedAt = this.clock();
+      // IOP refresh tokens are consumed. Never fall back to the submitted refresh token.
+      const refreshToken = iop ? token.refreshToken : (token.refreshToken ?? bundle.credentials.refreshToken);
+      const refreshExpiry = credentialExpiryFromSeconds(refreshedAt, token.refreshExpiresInSeconds);
       const refreshedBundle: GatewayCredentialDocument = {
         ...bundle,
         authorization: bundle.authorization
@@ -623,24 +652,24 @@ export class StoredAlibabaCredentialProvider {
               ...bundle.authorization,
               oauth: {
                 accessToken: token.accessToken,
-                refreshToken: token.refreshToken ?? bundle.credentials.refreshToken,
+                refreshToken,
                 expiresAtUtc: credentialExpiryFromSeconds(refreshedAt, token.expiresInSeconds),
-                refreshExpiresAtUtc:
-                  credentialExpiryFromSeconds(refreshedAt, token.refreshExpiresInSeconds) ??
-                  bundle.authorization.oauth.refreshExpiresAtUtc
+                refreshExpiresAtUtc: iop
+                  ? refreshExpiry
+                  : (refreshExpiry ?? bundle.authorization.oauth.refreshExpiresAtUtc)
               }
             }
           : null,
         credentials: {
           ...bundle.credentials,
           accessToken: token.accessToken,
-          refreshToken: token.refreshToken ?? bundle.credentials.refreshToken,
+          refreshToken,
           accessTokenExpiresTimeUtc: dateToEpoch(
             credentialExpiryFromSeconds(refreshedAt, token.expiresInSeconds)
           ),
-          refreshTokenExpiresTimeUtc:
-            dateToEpoch(credentialExpiryFromSeconds(refreshedAt, token.refreshExpiresInSeconds)) ??
-            bundle.credentials.refreshTokenExpiresTimeUtc
+          refreshTokenExpiresTimeUtc: iop
+            ? dateToEpoch(refreshExpiry)
+            : (dateToEpoch(refreshExpiry) ?? bundle.credentials.refreshTokenExpiresTimeUtc)
         }
       };
       const encrypted = await this.cipher.encryptDocument(refreshedBundle);
@@ -654,11 +683,86 @@ export class StoredAlibabaCredentialProvider {
       });
       return { record: updated, bundle: refreshedBundle };
     } catch (error: unknown) {
-      const code = error instanceof GatewayConfigurationError ? error.code : 'ALIBABA_TOKEN_REFRESH_FAILED';
+      const failure = iop
+        ? new GatewayConfigurationError(
+            error instanceof GatewayException && error.gatewayError.code === 'IOP_TOKEN_REJECTED'
+              ? 'IOP_TOKEN_REJECTED'
+              : 'IOP_TOKEN_RESULT_UNKNOWN',
+            error instanceof GatewayException && error.gatewayError.code === 'IOP_TOKEN_REJECTED'
+              ? 'IOP 刷新被拒绝，请检查授权'
+              : 'IOP 刷新结果未知，请重新授权；不可重复使用已提交的 Refresh Token'
+          )
+        : error;
+      const code =
+        failure instanceof GatewayConfigurationError ? failure.code : 'ALIBABA_TOKEN_REFRESH_FAILED';
       await this.repository.failRefresh(leaseId, code, this.clock());
-      throw error;
+      throw failure;
     }
   }
+
+  private async refreshTopToken(
+    bundle: GatewayCredentialDocument,
+    requestId: string
+  ): Promise<ReturnType<typeof parseAlibabaTokenResponse>> {
+    if (!bundle.credentials.refreshToken)
+      throw new GatewayConfigurationError('ALIBABA_REFRESH_TOKEN_MISSING', '授权包没有 Refresh Token');
+    const form = new URLSearchParams({
+      refresh_token: bundle.credentials.refreshToken,
+      grant_type: 'refresh_token',
+      client_id: bundle.credentials.appKey,
+      client_secret: bundle.credentials.appSecret,
+      sp: 'icbu'
+    });
+    const response = await this.#network.request({
+      service: 'alibaba',
+      url: TOKEN_ENDPOINT,
+      requestId,
+      method: 'POST',
+      body: form,
+      responseType: 'text',
+      maxAttempts: 1
+    });
+    const value = parseTokenBody(response.data);
+    const secrets = [
+      bundle.credentials.appKey,
+      bundle.credentials.appSecret,
+      bundle.credentials.accessToken,
+      bundle.credentials.refreshToken
+    ];
+    if (!response.ok || hasTokenError(value)) {
+      throw tokenRefreshFailure(response.status, value, secrets);
+    }
+    let token: ReturnType<typeof parseAlibabaTokenResponse>;
+    try {
+      token = parseAlibabaTokenResponse(value);
+    } catch {
+      throw tokenRefreshFailure(response.status, value, secrets);
+    }
+    return token;
+  }
+}
+
+function iopRefreshFailureCode(
+  record: GatewayCredentialRecord,
+  now: number
+): 'ALIBABA_CREDENTIAL_REFRESH_IN_PROGRESS' | 'IOP_TOKEN_RESULT_UNKNOWN' | null {
+  if (record.lastRefreshErrorCode !== 'IOP_TOKEN_RESULT_UNKNOWN') return null;
+  return record.refreshLeaseId !== null &&
+    record.refreshLeaseUntilUtc !== null &&
+    record.refreshLeaseUntilUtc > now
+    ? 'ALIBABA_CREDENTIAL_REFRESH_IN_PROGRESS'
+    : 'IOP_TOKEN_RESULT_UNKNOWN';
+}
+
+function assertIopRefreshState(record: GatewayCredentialRecord, now: number): void {
+  const code = iopRefreshFailureCode(record, now);
+  if (code)
+    throw new GatewayConfigurationError(
+      code,
+      code === 'ALIBABA_CREDENTIAL_REFRESH_IN_PROGRESS'
+        ? 'Alibaba Token 正在由另一请求刷新，请稍后重试'
+        : 'IOP 刷新结果未知，请重新授权；不可重复使用已提交的 Refresh Token'
+    );
 }
 
 function shouldRefresh(expiresAt: number | null, now: number): boolean {

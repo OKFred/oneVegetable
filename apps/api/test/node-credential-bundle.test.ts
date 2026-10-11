@@ -28,6 +28,8 @@ describe('Node Alibaba credential bundle provider', () => {
       hasAccessToken: true,
       accessTokenExpiresTimeUtc: Date.parse('2026-09-01T00:00:00.000Z'),
       endpointOrigin: 'https://eco.taobao.com',
+      endpoint: 'https://eco.taobao.com/router/rest',
+      protocol: 'top',
       signMethod: 'hmac',
       systemApiPermission: 'unknown',
       permissionCapturedTimeUtc: null
@@ -51,6 +53,32 @@ describe('Node Alibaba credential bundle provider', () => {
     expect(() => provider.requireCredentials()).toThrow('openapi:auth:refresh');
   });
 
+  it('preserves explicit IOP bundles and rejects a conflicting environment protocol', () => {
+    const path = bundleFile({ expiresAtUtc: null, protocol: 'iop' });
+    const provider = createNodeAlibabaCredentialProvider({ ONE_VEGETABLE_ALIBABA_CREDENTIAL_FILE: path });
+    expect(provider.status()).toMatchObject({
+      protocol: 'iop',
+      endpoint: 'https://openapi-api.alibaba.com/rest'
+    });
+    expect(provider.requireCredentials()).toMatchObject({
+      protocol: 'iop',
+      endpoint: 'https://openapi-api.alibaba.com/rest'
+    });
+    expect(() =>
+      createNodeAlibabaCredentialProvider({
+        ONE_VEGETABLE_ALIBABA_CREDENTIAL_FILE: path,
+        ONE_VEGETABLE_ALIBABA_PROTOCOL: 'top'
+      })
+    ).toThrow('协议不匹配');
+    const oldPath = bundleFile({ expiresAtUtc: null });
+    expect(() =>
+      createNodeAlibabaCredentialProvider({
+        ONE_VEGETABLE_ALIBABA_CREDENTIAL_FILE: oldPath,
+        ONE_VEGETABLE_ALIBABA_PROTOCOL: 'iop'
+      })
+    ).toThrow('协议不匹配');
+  });
+
   it('rejects an incomplete or malformed bundle', () => {
     const directory = createTemporaryDirectory();
     const path = join(directory, 'credentials.json');
@@ -62,13 +90,14 @@ describe('Node Alibaba credential bundle provider', () => {
   });
 });
 
-function bundleFile(input: { expiresAtUtc: string | null }): string {
+function bundleFile(input: { expiresAtUtc: string | null; protocol?: 'top' | 'iop' }): string {
   const directory = createTemporaryDirectory();
   const path = join(directory, 'credentials.json');
   writeFileSync(
     path,
     JSON.stringify({
       schemaVersion: 1,
+      ...(input.protocol ? { protocol: input.protocol } : {}),
       application: {
         appName: 'TEST',
         appKey: 'app-key-value',

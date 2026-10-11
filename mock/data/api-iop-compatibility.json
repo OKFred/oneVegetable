@@ -1,0 +1,34 @@
+{
+  "productList": {
+    "code": "0",
+    "result": {
+      "products": [{ "id": "123", "subject": "Fixture product", "status": "approved" }],
+      "total_item": "1"
+    }
+  },
+  "schema": {
+    "code": "0",
+    "result": {
+      "success": true,
+      "data": "<itemSchema><field id=\"subject\" type=\"input\"><values><value>Fixture product</value></values></field></itemSchema>"
+    }
+  },
+  "photos": {
+    "code": "0",
+    "result": {
+      "pagination_query_list": {
+        "total": 1,
+        "list": [
+          {
+            "id": "1001",
+            "file_name": "fixture.jpg",
+            "url": "https://example.com/fixture.jpg",
+            "group_id": "10"
+          }
+        ]
+      }
+    }
+  },
+  "draftPayload": { "categoryId": 123, "language": "en_US", "schemaXml": "<itemSchema />" },
+  "renderPayload": { "productId": "123", "categoryId": 123, "language": "en_US" }
+}

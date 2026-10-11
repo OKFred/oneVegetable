@@ -20,6 +20,7 @@ export function credentialDocumentFromBundle(
     source: 'oauth-import',
     authorization: bundle,
     credentials: {
+      ...(bundle.protocol === undefined ? {} : { protocol: bundle.protocol }),
       appName: bundle.application.appName,
       appKey: bundle.application.appKey,
       appSecret: bundle.application.appSecret,
@@ -55,12 +56,29 @@ export function parseCredentialDocument(value: unknown): GatewayCredentialDocume
     throw new Error('INVALID_CREDENTIAL_DOCUMENT');
   if (value.source === 'manual' && value.authorization !== null)
     throw new Error('INVALID_CREDENTIAL_DOCUMENT');
+  const credentials = parseManualGatewayCredential(value.credentials);
+  const authorization =
+    value.source === 'oauth-import' ? parseAlibabaOpenApiCredentialBundle(value.authorization) : null;
+  if (authorization && (authorization.protocol ?? 'top') !== (credentials.protocol ?? 'top'))
+    throw new Error('INVALID_CREDENTIAL_DOCUMENT');
+  if (
+    authorization &&
+    (authorization.application.appKey !== credentials.appKey ||
+      authorization.application.appSecret !== credentials.appSecret ||
+      authorization.oauth.accessToken !== credentials.accessToken ||
+      authorization.oauth.refreshToken !== credentials.refreshToken ||
+      (authorization.oauth.expiresAtUtc === null ? null : Date.parse(authorization.oauth.expiresAtUtc)) !==
+        credentials.accessTokenExpiresTimeUtc ||
+      (authorization.oauth.refreshExpiresAtUtc === null
+        ? null
+        : Date.parse(authorization.oauth.refreshExpiresAtUtc)) !== credentials.refreshTokenExpiresTimeUtc)
+  )
+    throw new Error('INVALID_CREDENTIAL_DOCUMENT');
   return {
     schemaVersion: 2,
     configurationId: value.configurationId,
     source: value.source,
-    credentials: parseManualGatewayCredential(value.credentials),
-    authorization:
-      value.source === 'oauth-import' ? parseAlibabaOpenApiCredentialBundle(value.authorization) : null
+    credentials,
+    authorization
   };
 }

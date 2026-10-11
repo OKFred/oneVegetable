@@ -20,17 +20,28 @@ afterEach(() => {
 });
 
 describe('D1-compatible Alibaba credential vault', () => {
-  it('never imports an isolated IOP bundle into the TOP business gateway', async () => {
-    const { service } = await harness();
-    await expect(
-      service.import({
-        bundle: { ...bundle(), protocol: 'iop' },
-        actorId: 'admin-1',
-        expectedRevision: null,
-        remark: null
-      })
-    ).rejects.toMatchObject({ code: 'ALIBABA_IOP_RUNTIME_NOT_SUPPORTED' });
-    expect(await service.status()).toMatchObject({ configured: false });
+  it('preserves explicit IOP in encrypted credentials and reports only safe protocol metadata', async () => {
+    const { service, repository, cipher } = await harness(() => Date.parse('2026-08-30T00:00:00.000Z'));
+    await service.import({
+      bundle: { ...bundle(), protocol: 'iop' },
+      actorId: 'admin-1',
+      expectedRevision: null,
+      remark: null
+    });
+    expect(await service.status()).toMatchObject({ configured: true, protocol: 'iop', updaterId: 'admin-1' });
+    const provider = new StoredAlibabaCredentialProvider(repository, cipher, {
+      clock: () => Date.parse('2026-08-30T00:00:00.000Z')
+    });
+    expect(await provider.status()).toMatchObject({
+      protocol: 'iop',
+      endpoint: 'https://openapi-api.alibaba.com/rest',
+      signMethod: 'hmac-sha256'
+    });
+    expect(await provider.requireCredentials()).toMatchObject({
+      protocol: 'iop',
+      endpoint: 'https://openapi-api.alibaba.com/rest'
+    });
+    expect(JSON.stringify(await provider.status())).not.toMatch(/app-secret|access-token|refresh-token/);
   });
   it('blocks a confirmed expired refresh token without invalidating the retained access token; reimport resets it', async () => {
     const now = Date.parse('2026-08-30T00:00:00.000Z');

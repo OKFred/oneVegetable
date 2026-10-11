@@ -1,4 +1,5 @@
 import { ALIBABA_GATEWAY } from '@one-vegetable/core';
+import { IOP_API_ORIGIN, IOP_BUSINESS_ENDPOINT } from '@one-vegetable/core/alibaba-iop';
 
 import type { GatewayCredentials, SignMethod } from '@one-vegetable/core';
 
@@ -8,6 +9,7 @@ export interface AlibabaCredentialEnvironment {
   ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN?: string;
   ONE_VEGETABLE_ALIBABA_ENDPOINT?: string;
   ONE_VEGETABLE_ALIBABA_SIGN_METHOD?: string;
+  ONE_VEGETABLE_ALIBABA_PROTOCOL?: string;
 }
 
 export interface AlibabaCredentialStatus {
@@ -17,6 +19,8 @@ export interface AlibabaCredentialStatus {
   hasAppSecret: boolean;
   hasAccessToken: boolean;
   endpointOrigin: string;
+  endpoint?: string;
+  protocol?: 'top' | 'iop';
   signMethod: SignMethod;
   accessTokenExpiresTimeUtc?: number | null;
   systemApiPermission?: 'active' | 'inactive' | 'not-recorded' | 'unknown';
@@ -40,7 +44,10 @@ export class GatewayConfigurationError extends Error {
     readonly code:
       | 'ALIBABA_CREDENTIALS_INCOMPLETE'
       | 'ALIBABA_CREDENTIAL_FILE_INVALID'
-      | 'ALIBABA_IOP_RUNTIME_NOT_SUPPORTED'
+      | 'ALIBABA_PROTOCOL_INVALID'
+      | 'ALIBABA_PROTOCOL_ENDPOINT_MISMATCH'
+      | 'IOP_TOKEN_RESULT_UNKNOWN'
+      | 'IOP_TOKEN_REJECTED'
       | 'ALIBABA_ACCESS_TOKEN_EXPIRED'
       | 'ALIBABA_CREDENTIALS_NOT_CONFIGURED'
       | 'ALIBABA_CREDENTIAL_ENCRYPTION_KEY_INVALID'
@@ -72,15 +79,20 @@ export class EnvironmentAlibabaCredentialProvider implements AlibabaCredentialPr
   readonly #endpoint: string;
   readonly #endpointOrigin: string;
   readonly #signMethod: SignMethod;
+  readonly #protocol: 'top' | 'iop';
 
   constructor(environment: AlibabaCredentialEnvironment) {
     this.#appKey = readSecret(environment.ONE_VEGETABLE_ALIBABA_APP_KEY);
     this.#appSecret = readSecret(environment.ONE_VEGETABLE_ALIBABA_APP_SECRET);
     this.#accessToken = readSecret(environment.ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN);
-    const endpoint = readEndpoint(environment.ONE_VEGETABLE_ALIBABA_ENDPOINT ?? ALIBABA_GATEWAY);
+    this.#protocol = readProtocol(environment.ONE_VEGETABLE_ALIBABA_PROTOCOL);
+    const endpoint = readEndpoint(environment.ONE_VEGETABLE_ALIBABA_ENDPOINT, this.#protocol);
     this.#endpoint = endpoint.href;
     this.#endpointOrigin = endpoint.origin;
-    this.#signMethod = readSignMethod(environment.ONE_VEGETABLE_ALIBABA_SIGN_METHOD);
+    this.#signMethod =
+      this.#protocol === 'iop'
+        ? 'hmac-sha256'
+        : readSignMethod(environment.ONE_VEGETABLE_ALIBABA_SIGN_METHOD);
   }
 
   status(): AlibabaCredentialStatus {
@@ -94,6 +106,8 @@ export class EnvironmentAlibabaCredentialProvider implements AlibabaCredentialPr
       hasAppSecret,
       hasAccessToken,
       endpointOrigin: this.#endpointOrigin,
+      endpoint: this.#endpoint,
+      protocol: this.#protocol,
       signMethod: this.#signMethod
     };
   }
@@ -107,6 +121,7 @@ export class EnvironmentAlibabaCredentialProvider implements AlibabaCredentialPr
       appSecret: this.#appSecret,
       accessToken: this.#accessToken,
       endpoint: this.#endpoint,
+      protocol: this.#protocol,
       signMethod: this.#signMethod
     };
   }
@@ -120,10 +135,16 @@ function readSecret(value: string | undefined): string {
   return result;
 }
 
-export function readEndpoint(value: string): URL {
+export function readProtocol(value: unknown): 'top' | 'iop' {
+  if (value === undefined) return 'top';
+  if (value === 'top' || value === 'iop') return value;
+  throw new GatewayConfigurationError('ALIBABA_PROTOCOL_INVALID', 'Alibaba 协议必须显式为 top 或 iop');
+}
+
+export function readEndpoint(value: string | undefined, protocol: 'top' | 'iop' = 'top'): URL {
   let endpoint: URL;
   try {
-    endpoint = new URL(value);
+    endpoint = new URL(value ?? (protocol === 'iop' ? IOP_BUSINESS_ENDPOINT : ALIBABA_GATEWAY));
   } catch {
     throw new GatewayConfigurationError('ALIBABA_ENDPOINT_INVALID', 'Alibaba 网关地址无效');
   }
@@ -135,6 +156,12 @@ export function readEndpoint(value: string): URL {
     endpoint.hash !== ''
   ) {
     throw new GatewayConfigurationError('ALIBABA_ENDPOINT_INVALID', 'Alibaba 网关必须是无凭据的 HTTPS 地址');
+  }
+  if (
+    (protocol === 'iop' && endpoint.href !== IOP_BUSINESS_ENDPOINT) ||
+    (protocol === 'top' && endpoint.origin === IOP_API_ORIGIN)
+  ) {
+    throw new GatewayConfigurationError('ALIBABA_PROTOCOL_ENDPOINT_MISMATCH', 'Alibaba 协议与网关地址不匹配');
   }
   return endpoint;
 }

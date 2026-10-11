@@ -60,6 +60,7 @@ const credentialEnvironment = {
     process.env.ONE_VEGETABLE_ALIBABA_ACCESS_TOKEN
   ),
   ...optionalEnvironmentValue('ONE_VEGETABLE_ALIBABA_ENDPOINT', process.env.ONE_VEGETABLE_ALIBABA_ENDPOINT),
+  ...optionalEnvironmentValue('ONE_VEGETABLE_ALIBABA_PROTOCOL', process.env.ONE_VEGETABLE_ALIBABA_PROTOCOL),
   ...optionalEnvironmentValue(
     'ONE_VEGETABLE_ALIBABA_SIGN_METHOD',
     process.env.ONE_VEGETABLE_ALIBABA_SIGN_METHOD
@@ -101,7 +102,8 @@ const managedCredentialProvider =
         gatewayCredentialRepository,
         new StoredAlibabaCredentialProvider(gatewayCredentialRepository, gatewayCredentialCipher, {
           source: 'sqlite-vault',
-          ...(credentialEnvironment.ONE_VEGETABLE_ALIBABA_ENDPOINT
+          ...(credentialEnvironment.ONE_VEGETABLE_ALIBABA_ENDPOINT &&
+          credentialEnvironment.ONE_VEGETABLE_ALIBABA_PROTOCOL !== 'iop'
             ? { endpoint: credentialEnvironment.ONE_VEGETABLE_ALIBABA_ENDPOINT }
             : {}),
           ...(credentialEnvironment.ONE_VEGETABLE_ALIBABA_SIGN_METHOD

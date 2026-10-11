@@ -26,6 +26,7 @@ import {
   validateProductSchemaUpdateInput
 } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
+import { iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
 import {
   authorizeOperation,
   extensionAdminPrincipal,
@@ -147,6 +148,7 @@ interface OperationCallBody extends RequestEnvelope, Record<string, unknown> {
 }
 
 interface DynamicGateway {
+  credentialProtocol?(): Promise<'top' | 'iop'>;
   galleryGatewayContextId?(): Promise<string>;
   request(
     operation: OperationId,
@@ -408,6 +410,7 @@ export function createApiApp(options: ApiAppOptions): Hono {
       const principal = options.authService
         ? (await authenticateRequest(context, options.authService)).principal
         : extensionAdminPrincipal();
+      const protocol = await activeGatewayProtocol(options, dynamicGateway);
       const items = validation.data.operations.map((operation) => {
         if (!isOperationId(operation)) {
           return { operation, allowed: false, reasonCode: 'OPERATION_UNKNOWN' };
@@ -415,6 +418,8 @@ export function createApiApp(options: ApiAppOptions): Hono {
         if (options.gatewayMode === 'disabled') {
           return { operation, allowed: false, reasonCode: 'ALIBABA_GATEWAY_DISABLED' };
         }
+        const protocolReason = protocol === 'iop' ? iopOperationReason(operation) : null;
+        if (protocolReason) return { operation, allowed: false, reasonCode: protocolReason };
         if (options.gatewayMode !== 'mock' && operation === 'associateProductVideo') {
           return { operation, allowed: false, reasonCode: 'REAL_MUTATION_DISABLED' };
         }
@@ -547,6 +552,13 @@ export function createApiApp(options: ApiAppOptions): Hono {
               ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
             })
           : await authenticateRequest(context, options.authService);
+      }
+      // This check must precede contexts, mutation intent registration and durable task creation.
+      if ((await activeGatewayProtocol(options, dynamicGateway)) === 'iop') {
+        const reason = iopOperationReason(parsed.body.operation, parsed.body.payload.method);
+        if (reason) throw new GatewayException({ code: reason, message: reason, retryable: false });
+      }
+      if (options.authService && authenticated) {
         const decision = authorizeOperation(
           authenticated.principal,
           parsed.body.operation,
@@ -704,7 +716,10 @@ export function createApiApp(options: ApiAppOptions): Hono {
           parsed.requestId,
           authenticated?.principal.actorId ?? null,
           parsed.body.operation,
-          error instanceof AuthError && (status === 401 || status === 403) ? 'denied' : 'error',
+          (error instanceof AuthError && (status === 401 || status === 403)) ||
+            code === 'ALIBABA_IOP_METHOD_UNSUPPORTED'
+            ? 'denied'
+            : 'error',
           code
         );
       }
@@ -712,7 +727,10 @@ export function createApiApp(options: ApiAppOptions): Hono {
         options,
         parsed.requestId,
         parsed.body.operation,
-        error instanceof AuthError && (status === 401 || status === 403) ? 'denied' : 'error',
+        (error instanceof AuthError && (status === 401 || status === 403)) ||
+          code === 'ALIBABA_IOP_METHOD_UNSUPPORTED'
+          ? 'denied'
+          : 'error',
         status,
         startedAt,
         authenticated?.principal.actorId ?? null
@@ -755,7 +773,8 @@ function gatewayStatus(code: string): 400 | 403 | 409 | 429 | 502 | 503 | 504 {
     code === 'CAPABILITY_UNKNOWN' ||
     code === 'CAPABILITY_NOT_ACTIVE' ||
     code === 'CAPABILITY_RESTRICTED' ||
-    code === 'REAL_MUTATION_DISABLED'
+    code === 'REAL_MUTATION_DISABLED' ||
+    code === 'ALIBABA_IOP_METHOD_UNSUPPORTED'
   ) {
     return 403;
   }
@@ -763,6 +782,19 @@ function gatewayStatus(code: string): 400 | 403 | 409 | 429 | 502 | 503 | 504 {
   if (code === 'ALIBABA_CREDENTIALS_NOT_CONFIGURED') return 503;
   if (code === 'REQUEST_TIMEOUT') return 504;
   return 502;
+}
+
+async function activeGatewayProtocol(
+  options: ApiAppOptions,
+  gateway: DynamicGateway
+): Promise<'top' | 'iop'> {
+  if (options.gatewayMode !== 'real') return 'top';
+  if (options.gatewayCredentialProvider)
+    return (await options.gatewayCredentialProvider.status()).protocol ?? 'top';
+  if (gateway.credentialProtocol) return gateway.credentialProtocol();
+  const status =
+    typeof options.gatewayStatus === 'function' ? await options.gatewayStatus() : options.gatewayStatus;
+  return status?.protocol ?? 'top';
 }
 
 async function parseEnvelope(

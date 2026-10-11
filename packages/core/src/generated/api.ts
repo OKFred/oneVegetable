@@ -3693,17 +3693,26 @@ export interface components {
         };
         AlibabaGatewayStatus: {
             /** @enum {string} */
-            source: "environment" | "credential-bundle" | "d1-vault" | "documentation-replay";
+            source: "environment" | "credential-bundle" | "d1-vault" | "sqlite-vault" | "documentation-replay";
             configured: boolean;
             hasAppKey: boolean;
             hasAppSecret: boolean;
             hasAccessToken: boolean;
             endpointOrigin: string;
+            /** Format: uri */
+            endpoint?: string;
+            /** @enum {string} */
+            protocol?: "top" | "iop";
             /** @enum {string} */
             signMethod: "hmac" | "md5" | "hmac-sha256";
             realReadEnabled: boolean;
-            /** @constant */
-            mutationEnabled: false;
+            mutationEnabled: boolean;
+            accessTokenExpiresTimeUtc?: number | null;
+            /** @enum {string} */
+            systemApiPermission?: "active" | "inactive" | "not-recorded" | "unknown";
+            permissionCapturedTimeUtc?: number | null;
+            lastRefreshTimeUtc?: number | null;
+            lastRefreshErrorCode?: string | null;
         };
         /** alibaba.icbu.diagnostic.supplier.rank.getpercent request */
         AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentRequest: Record<string, never>;
