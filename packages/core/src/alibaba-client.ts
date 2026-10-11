@@ -1,6 +1,7 @@
 import { GatewayException, normalizeGatewayError } from './errors';
 import { NetworkManager, type NetworkResponse } from './network';
 import { createAlibabaRequest, createAlibabaSyncRequest } from './signing';
+import { createIopBusinessRequest, normalizeIopBusinessResponse } from './alibaba-iop-business';
 import type { GatewayCredentials, GatewayError } from './types';
 
 export interface AlibabaCallResult {
@@ -56,17 +57,21 @@ export class AlibabaClient {
   }
 
   async call(method: string, parameters: Readonly<Record<string, unknown>>): Promise<AlibabaCallResult> {
-    const maxAttempts = Math.max(1, Math.min(3, this.#options.maxAttempts ?? 1));
+    this.assertProtocol();
+    const iop = this.#credentials.protocol === 'iop';
+    const maxAttempts = iop ? 1 : Math.max(1, Math.min(3, this.#options.maxAttempts ?? 1));
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
+        const iopRequest = iop ? await createIopBusinessRequest(this.#credentials, method, parameters) : null;
         const requestParameters =
-          this.#options.protocol === 'sync'
+          iopRequest?.parameters ??
+          (this.#options.protocol === 'sync'
             ? createAlibabaSyncRequest(this.#credentials, method, parameters)
-            : createAlibabaRequest(this.#credentials, method, parameters);
+            : createAlibabaRequest(this.#credentials, method, parameters));
         const body = new URLSearchParams(requestParameters);
         const response = await this.#network.request({
           service: 'alibaba',
-          url: this.#credentials.endpoint,
+          url: iopRequest?.url ?? this.#credentials.endpoint,
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
           body,
@@ -75,9 +80,12 @@ export class AlibabaClient {
         });
         const transport = getTransportError(response);
         if (transport) throw new GatewayException(transport);
-        const apiError = getAlibabaError(response.data);
+        const data = iop
+          ? normalizeIopBusinessResponse(response.data, method, this.#credentials)
+          : response.data;
+        const apiError = getAlibabaError(data);
         if (apiError) throw new GatewayException(apiError);
-        return { method, data: response.data };
+        return { method, data };
       } catch (error: unknown) {
         const normalized = normalizeGatewayError(error);
         const retry =
@@ -96,6 +104,13 @@ export class AlibabaClient {
     parameters: Readonly<Record<string, unknown>>,
     file: AlibabaFilePart
   ): Promise<AlibabaCallResult> {
+    this.assertProtocol();
+    if (this.#credentials.protocol === 'iop')
+      throw new GatewayException({
+        code: 'ALIBABA_IOP_METHOD_UNSUPPORTED',
+        message: 'ALIBABA_IOP_METHOD_UNSUPPORTED',
+        retryable: false
+      });
     const bytes = new Uint8Array(file.bytes);
     const signedParameters = createAlibabaRequest(this.#credentials, method, parameters);
     const multipart = encodeMultipartBody(signedParameters, file, bytes);
@@ -119,6 +134,22 @@ export class AlibabaClient {
     const apiError = getAlibabaError(data);
     if (apiError) throw new GatewayException(apiError);
     return { method, data };
+  }
+
+  private assertProtocol(): void {
+    const protocol = this.#credentials.protocol;
+    if (protocol !== undefined && !['top', 'iop'].includes(protocol))
+      throw new GatewayException({
+        code: 'ALIBABA_PROTOCOL_INVALID',
+        message: 'ALIBABA_PROTOCOL_INVALID',
+        retryable: false
+      });
+    if (protocol !== 'iop' && new URL(this.#credentials.endpoint).hostname === 'openapi-api.alibaba.com')
+      throw new GatewayException({
+        code: 'ALIBABA_PROTOCOL_ENDPOINT_MISMATCH',
+        message: 'ALIBABA_PROTOCOL_ENDPOINT_MISMATCH',
+        retryable: false
+      });
   }
 }
 

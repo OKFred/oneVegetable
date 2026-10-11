@@ -17318,6 +17318,11 @@
           "remark"
         ],
         "properties": {
+          "protocol": {
+            "type": "string",
+            "enum": ["top", "iop"],
+            "description": "Explicit gateway protocol. Legacy records without this field use TOP."
+          },
           "source": {
             "type": "string",
             "enum": ["environment", "credential-bundle", "d1-vault", "sqlite-vault", "documentation-replay"]
@@ -17774,6 +17779,11 @@
           "refreshTokenExpiresTimeUtc"
         ],
         "properties": {
+          "protocol": {
+            "type": "string",
+            "enum": ["top", "iop"],
+            "description": "TOP is the backward-compatible default; IOP requires a matching application and token."
+          },
           "appName": { "type": ["string", "null"], "maxLength": 256 },
           "appKey": { "type": "string", "minLength": 1, "maxLength": 4096, "writeOnly": true },
           "appSecret": { "type": "string", "minLength": 1, "maxLength": 4096, "writeOnly": true },

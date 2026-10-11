@@ -9669,6 +9669,11 @@ export interface components {
             remark?: string | null;
         };
         GatewayCredentialSummary: {
+            /**
+             * @description Explicit gateway protocol. Legacy records without this field use TOP.
+             * @enum {string}
+             */
+            protocol?: "top" | "iop";
             /** @enum {string} */
             source?: "environment" | "credential-bundle" | "d1-vault" | "sqlite-vault" | "documentation-replay";
             configurationId?: string | null;
@@ -9891,6 +9896,11 @@ export interface components {
             children: components["schemas"]["LogisticsSpecialProductType"][];
         };
         ManualGatewayCredentialInput: {
+            /**
+             * @description TOP is the backward-compatible default; IOP requires a matching application and token.
+             * @enum {string}
+             */
+            protocol?: "top" | "iop";
             appName: string | null;
             appKey: string;
             appSecret: string;

@@ -4,6 +4,7 @@ import { parseAlibabaTokenResponse, type AlibabaTokenResponse } from './alibaba-
 
 export const IOP_AUTHORIZE_ENDPOINT = 'https://openapi-auth.alibaba.com/oauth/authorize';
 export const IOP_API_ORIGIN = 'https://openapi-api.alibaba.com';
+export const IOP_BUSINESS_ENDPOINT = `${IOP_API_ORIGIN}/rest`;
 export const PUBLIC_AUTH_ORIGIN = 'https://one-vegetable-auth.pages.dev';
 export const PUBLIC_AUTH_CALLBACK = `${PUBLIC_AUTH_ORIGIN}/callback`;
 export const STORE_EXTENSION_ID = 'aepfdoldflokikbbcpnfifkacpfakmjc';
@@ -12,7 +13,7 @@ export type IopTokenPath = '/auth/token/create' | '/auth/token/refresh';
 
 /** GOP signs the API path, sorted parameter names and values; it is not TOP signing. */
 export async function signIopRequest(
-  path: IopTokenPath,
+  path: IopTokenPath | `/alibaba/${string}` | `/icbu/${string}`,
   parameters: Readonly<Record<string, string>>,
   secret: string
 ): Promise<string> {

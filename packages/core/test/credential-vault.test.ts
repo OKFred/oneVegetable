@@ -24,6 +24,13 @@ const settings = {
 };
 
 describe('credential vault', () => {
+  it('preserves an explicit IOP protocol through encrypted session restoration', async () => {
+    const input = { ...settings, protocol: 'iop' as const, endpoint: 'https://openapi-api.alibaba.com/rest' };
+    const created = await createCredentialVault(input, '123456');
+    expect(
+      (await restoreCredentialVaultSession(created.record, created.sessionKeyMaterial)).settings
+    ).toEqual(input);
+  });
   it('encrypts all settings with the documented work factor and decrypts them', async () => {
     const { record, key } = await createCredentialVault(settings, 'correct horse battery staple');
     expect(record).toMatchObject({

@@ -8,6 +8,7 @@ export function parseManualGatewayCredential(value: unknown): ManualGatewayCrede
     throw new Error('INVALID_CREDENTIAL_INPUT');
   const input = value as Record<string, unknown>;
   const allowed = [
+    'protocol',
     'appName',
     'appKey',
     'appSecret',
@@ -17,6 +18,8 @@ export function parseManualGatewayCredential(value: unknown): ManualGatewayCrede
     'refreshTokenExpiresTimeUtc'
   ];
   if (Object.keys(input).some((key) => !allowed.includes(key))) throw new Error('INVALID_CREDENTIAL_INPUT');
+  if (input.protocol !== undefined && input.protocol !== 'top' && input.protocol !== 'iop')
+    throw new Error('INVALID_CREDENTIAL_INPUT');
   const secret = (key: string): string => {
     const entry = input[key];
     if (typeof entry !== 'string' || !entry.trim() || entry.length > 4096)
@@ -42,6 +45,7 @@ export function parseManualGatewayCredential(value: unknown): ManualGatewayCrede
   )
     throw new Error('INVALID_CREDENTIAL_INPUT');
   return {
+    ...(input.protocol === undefined ? {} : { protocol: input.protocol }),
     appName: typeof input.appName === 'string' ? input.appName.trim() || null : null,
     appKey: secret('appKey'),
     appSecret: secret('appSecret'),

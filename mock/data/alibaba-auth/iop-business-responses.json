@@ -1,0 +1,60 @@
+{
+  "products": {
+    "code": "0",
+    "request_id": "fixture-products-trace",
+    "result": {
+      "products": [
+        {
+          "id": 100001,
+          "subject": "Fixture product",
+          "category_id": 123,
+          "display": "online",
+          "gmt_modified": "2026-01-01 12:00:00"
+        }
+      ],
+      "total_item": 1,
+      "current_page": 1,
+      "page_size": 1
+    }
+  },
+  "emptyProducts": { "code": 0, "result": { "products": [], "total_item": 0 } },
+  "productGroups": {
+    "code": "0",
+    "result": { "product_group": { "group_id": -1, "group_name": "Root", "children_id_list": [] } }
+  },
+  "photoGroups": {
+    "code": "0",
+    "result": { "groups": [{ "id": 1001, "name": "Fixture images", "level1": 1, "level2": 0, "level3": 0 }] }
+  },
+  "photos": {
+    "code": "0",
+    "result": {
+      "pagination_query_list": {
+        "list": [
+          {
+            "id": 1002,
+            "name": "fixture.png",
+            "url": "https://s.alicdn.com/fixture.png",
+            "group_id": 1001,
+            "file_size": 1024
+          }
+        ],
+        "total": 1
+      }
+    }
+  },
+  "schema": {
+    "code": "0",
+    "result": {
+      "success": true,
+      "trace_id": "fixture-schema-trace",
+      "data": "<itemSchema><field id=\"subject\" type=\"input\"><value>Fixture product</value></field></itemSchema>"
+    }
+  },
+  "groupRejected": { "code": "0", "result": { "error_code": "400004", "error_msg": "Group not found" } },
+  "providerRejected": {
+    "code": "InvalidAccessToken",
+    "message": "Authorization expired",
+    "request_id": "fixture-token-trace"
+  }
+}

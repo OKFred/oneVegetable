@@ -8,6 +8,15 @@ import {
 } from '../src/settings-storage';
 
 describe('versioned gateway settings', () => {
+  it('preserves IOP markers and never infers them on legacy settings', () => {
+    const settings = migrateGatewaySettings({
+      protocol: 'iop',
+      endpoint: 'https://openapi-api.alibaba.com/rest'
+    }).settings;
+    expect(migrateGatewaySettings(persistGatewaySettings(settings)).settings.protocol).toBe('iop');
+    expect(migrateGatewaySettings({ appKey: 'fixture-key' }).settings.protocol).toBeUndefined();
+    expect(() => migrateGatewaySettings({ protocol: 'unknown' })).toThrow('ALIBABA_PROTOCOL_INVALID');
+  });
   it('preserves token expiry metadata and discards malformed timestamps', () => {
     const settings = migrateGatewaySettings({ accessTokenExpiresTimeUtc: 1_800_000_000_000 }).settings;
     expect(migrateGatewaySettings(persistGatewaySettings(settings)).settings.accessTokenExpiresTimeUtc).toBe(

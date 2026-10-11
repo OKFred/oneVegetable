@@ -22,6 +22,7 @@ export function migrateGatewaySettings(value: unknown): SettingsMigrationResult 
   const record = asRecord(value);
   const current = record.version === SETTINGS_SCHEMA_VERSION ? asRecord(record.settings) : record;
   const settings: GatewaySettings = {
+    ...gatewayProtocolMetadata(current),
     appKey: stringValue(current.appKey),
     appSecret: stringValue(current.appSecret),
     accessToken: stringValue(current.accessToken),
@@ -40,6 +41,7 @@ export function persistGatewaySettings(settings: GatewaySettings): SettingsMigra
   return {
     version: SETTINGS_SCHEMA_VERSION,
     settings: {
+      ...gatewayProtocolMetadata(settings),
       appKey: settings.appKey,
       appSecret: settings.appSecret,
       accessToken: settings.accessToken,
@@ -48,6 +50,13 @@ export function persistGatewaySettings(settings: GatewaySettings): SettingsMigra
       signMethod: settings.signMethod
     }
   };
+}
+
+/** Keep legacy settings unchanged; an unknown marker must never silently become TOP. */
+export function gatewayProtocolMetadata(value: { protocol?: unknown }): Pick<GatewaySettings, 'protocol'> {
+  if (value.protocol === undefined) return {};
+  if (value.protocol !== 'top' && value.protocol !== 'iop') throw new Error('ALIBABA_PROTOCOL_INVALID');
+  return { protocol: value.protocol };
 }
 
 export function gatewayCredentialExpiryMetadata(value: {

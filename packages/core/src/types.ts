@@ -371,6 +371,8 @@ export type RuntimeResponse<K extends OperationId = OperationId> =
   | { requestId: string; ok: false; error: GatewayError };
 
 export interface GatewayCredentials {
+  /** Missing protocol is legacy TOP. Never infer the protocol from an app key or token. */
+  protocol?: 'top' | 'iop';
   /** Stable bundle identity; automatic token refresh does not change this value. Never sent to Alibaba. */
   galleryAccountGeneration?: string;
   appKey: string;
@@ -383,6 +385,7 @@ export interface GatewayCredentials {
 export type SignMethod = 'hmac' | 'md5' | 'hmac-sha256';
 
 export interface GatewaySettings {
+  protocol?: 'top' | 'iop';
   appKey: string;
   appSecret: string;
   accessToken: string;
@@ -407,6 +410,7 @@ export interface CredentialVaultPolicy {
 }
 
 export interface CredentialVaultStatus {
+  protocol?: 'top' | 'iop';
   state: CredentialVaultState;
   hasAppKey: boolean;
   hasAppSecret: boolean;

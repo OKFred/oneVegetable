@@ -378,17 +378,26 @@ function strictCredentialVaultPolicy(value: unknown): CredentialVaultPolicy {
 
 function strictGatewaySettings(value: unknown): GatewaySettings {
   if (!isRecord(value)) throw new CredentialVaultError('VAULT_INVALID', '保险库设置不是对象');
-  const { appKey, appSecret, accessToken, endpoint, signMethod } = value;
+  const { appKey, appSecret, accessToken, endpoint, signMethod, protocol } = value;
   if (
     typeof appKey !== 'string' ||
     typeof appSecret !== 'string' ||
     typeof accessToken !== 'string' ||
     typeof endpoint !== 'string' ||
-    (signMethod !== 'hmac' && signMethod !== 'md5' && signMethod !== 'hmac-sha256')
+    (signMethod !== 'hmac' && signMethod !== 'md5' && signMethod !== 'hmac-sha256') ||
+    (protocol !== undefined && protocol !== 'top' && protocol !== 'iop')
   ) {
     throw new CredentialVaultError('VAULT_INVALID', '保险库设置字段不完整');
   }
-  return { appKey, appSecret, accessToken, endpoint, signMethod, ...gatewayCredentialExpiryMetadata(value) };
+  return {
+    appKey,
+    appSecret,
+    accessToken,
+    endpoint,
+    signMethod,
+    ...(protocol === undefined ? {} : { protocol }),
+    ...gatewayCredentialExpiryMetadata(value)
+  };
 }
 
 function isLegacySettings(value: unknown): boolean {
