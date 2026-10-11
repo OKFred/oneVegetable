@@ -15,6 +15,11 @@ const api = await request.newContext();
 
 try {
   const bundle = await readCredentialBundle(configuration.outputPath);
+  if (bundle.protocol === 'iop') {
+    throw new Error(
+      '这是新版 IOP 授权包。请在新版 IOP 授权工具或工作台凭据面板续期；旧 TOP 刷新命令不会发送该凭据。'
+    );
+  }
   if (!bundle.oauth.refreshToken) {
     throw new Error('授权包没有 Refresh Token，请重新运行 pnpm openapi:auth');
   }

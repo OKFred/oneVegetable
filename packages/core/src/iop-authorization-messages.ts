@@ -52,7 +52,8 @@ export const zh = {
   received: '回调已交给插件，请回到工具页查看。此页面不显示或保存凭据。',
   invalidCallback: '回调无效或任务已过期，请在插件中重新授权。',
   clipboardError: '无法复制，请手工选择回调地址复制。',
-  boundary: '这是独立 IOP 工具。现有 TOP 工作台尚未迁移，不能将 IOP 授权包导入 TOP 网关；两者互不覆盖。',
+  boundary:
+    '这是独立 IOP 授权工具。导出后可在工作台显式导入，当前仅兼容部分只读能力；原 TOP 配置不会自动改变。',
   privacy: '本服务与 alibaba.com 无官方关联。使用前请阅读平台规则。不要分享授权文件。',
   privacyLink: '隐私说明',
   rules: '平台规则',
@@ -138,7 +139,7 @@ export const en: Record<keyof typeof zh, string> = {
   invalidCallback: 'Invalid callback or expired task. Start authorization again in the extension.',
   clipboardError: 'Copy failed. Select and copy the callback address manually.',
   boundary:
-    'This is an independent IOP tool. The existing TOP workbench is not migrated. Do not import an IOP bundle into a TOP gateway; neither configuration replaces the other.',
+    'This is an independent IOP authorization tool. Explicitly import its export into the workbench for supported reads only. Existing TOP settings never change automatically.',
   privacy: 'Not affiliated with alibaba.com. Read platform rules before use. Do not share credential files.',
   privacyLink: 'Privacy',
   rules: 'Platform rules',

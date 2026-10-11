@@ -12,6 +12,7 @@ import {
 import { IOP_VAULT_KEY, IOP_RECEIPT_KEY } from '../../apps/extension/lib/iop-authorization';
 import tokens from '../../mock/data/alibaba-auth/iop-token-responses.json' with { type: 'json' };
 import credentials from '../../mock/data/node-gateway-credentials.json' with { type: 'json' };
+import business from '../../mock/data/alibaba-auth/iop-business-responses.json' with { type: 'json' };
 
 let context: BrowserContext;
 let worker: Worker;
@@ -258,4 +259,66 @@ test('public pages cannot export; mismatched callback does not call the platform
     { key: IOP_VAULT_KEY, receipt: IOP_RECEIPT_KEY }
   );
   expect(JSON.stringify(vault)).not.toContain(tokens.success.access_token);
+});
+
+test('workbench persists explicit IOP and rejects unadapted methods without TOP fallback', async () => {
+  let reads = 0;
+  let topCalls = 0;
+  await context.route('https://eco.taobao.com/**', async (route) => {
+    topCalls += 1;
+    await route.abort();
+  });
+  await context.route(`${PUBLIC_AUTH_ORIGIN}/rest/icbu/product/photobank/group/list`, async (route) => {
+    reads += 1;
+    const parameters = new URLSearchParams(route.request().postData() ?? '');
+    expect(parameters.get('access_token')).toBe(credentials.manual.accessToken);
+    expect(parameters.has('session')).toBe(false);
+    expect(parameters.has('method')).toBe(false);
+    await route.fulfill({ json: business.photoGroups });
+  });
+  const workbench = await context.newPage();
+  await workbench.goto(`chrome-extension://${extensionId}/options.html#/settings`);
+  async function send(kind: string, operation: string, payload: unknown = {}) {
+    return workbench.evaluate(
+      async (message) => {
+        const runtime = (
+          globalThis as unknown as {
+            chrome: { runtime: { sendMessage(value: unknown): Promise<unknown> } };
+          }
+        ).chrome.runtime;
+        return runtime.sendMessage({ ...message, requestId: crypto.randomUUID() });
+      },
+      { kind, operation, payload }
+    );
+  }
+  expect(
+    await send('credential-vault-request', 'create', {
+      passphrase: '123456',
+      settings: {
+        appKey: credentials.manual.appKey,
+        appSecret: credentials.manual.appSecret,
+        accessToken: credentials.manual.accessToken,
+        protocol: 'iop',
+        endpoint: `${PUBLIC_AUTH_ORIGIN}/rest`,
+        signMethod: 'hmac-sha256'
+      }
+    })
+  ).toMatchObject({ ok: true });
+  expect(await send('gateway-request', 'listPhotoGroups')).toMatchObject({
+    ok: true,
+    data: [{ id: '1001', name: 'Fixture images' }]
+  });
+  for (const operation of ['listTradeOrders', 'publishProduct', 'uploadPhoto'])
+    expect(await send('gateway-request', operation)).toMatchObject({
+      ok: false,
+      error: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED' }
+    });
+  await workbench.reload();
+  expect(await send('credential-vault-request', 'get-settings')).toMatchObject({
+    ok: true,
+    data: { protocol: 'iop', endpoint: `${PUBLIC_AUTH_ORIGIN}/rest`, appSecret: '', accessToken: '' }
+  });
+  expect(await send('gateway-request', 'listPhotoGroups')).toMatchObject({ ok: true });
+  expect(reads).toBe(2);
+  expect(topCalls).toBe(0);
 });

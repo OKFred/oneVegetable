@@ -73,7 +73,7 @@ pnpm capture:store-assets # 从构建后的扩展刷新 1280×800 商店截图
 
 Node 管理员可在设置页导入授权 JSON 或手动填写 Alibaba 开放平台凭据，保存即时生效、清除不回退旧账号；详见 [Node 凭据管理与验证](docs/node-credential-management.md)。
 
-新版 IOP 授权另有独立的静态 Pages + Chrome 插件工具，支持商家自己的应用、Token 续期及 `credentialInfo.json` 导出；公共页面不接收密钥。它不覆盖现有 TOP 工作台，也不表示业务网关已迁移。部署、使用与验证见 [静态 IOP 授权指南](docs/static-iop-authorization.md)。
+新版 IOP 授权另有独立的静态 Pages + Chrome 插件工具，支持商家自己的应用、Token 续期及 `credentialInfo.json` 导出；公共页面不接收密钥。工作台支持显式导入 IOP，历史用户继续默认 TOP，不自动替换凭据；IOP 仅开放已适配的只读能力，不继承 TOP 写白名单。详见 [双协议兼容](docs/alibaba-gateway-protocols.md) 和 [静态 IOP 授权指南](docs/static-iop-authorization.md)。
 
 ## 扩展调试
 

@@ -123,6 +123,7 @@ try {
   assert(validateGatewayCredentialSummary(imported));
   assert.equal(imported.source, 'sqlite-vault');
   assert.equal(imported.configured, true);
+  assert.equal(imported.protocol, bundle.protocol ?? 'top');
   assert(!JSON.stringify(imported).includes(bundle.application.appSecret), 'Secret in summary');
   checks.push('V1 JSON import encrypted and immediately active');
   const connection = await call('/admin/gateway-credentials/test');
@@ -137,6 +138,7 @@ try {
   const firstId = imported.configurationId;
   await call('/admin/gateway-credentials/save', {
     credentials: {
+      protocol: bundle.protocol ?? 'top',
       appName: bundle.application.appName,
       appKey: bundle.application.appKey,
       appSecret: bundle.application.appSecret,
@@ -149,6 +151,7 @@ try {
   });
   const manual = await status();
   assert.equal(manual.inputSource, 'manual');
+  assert.equal(manual.protocol, bundle.protocol ?? 'top');
   assert.equal(manual.canRefresh, false);
   assert.notEqual(manual.configurationId, firstId);
   checks.push('manual whole-set replacement and unknown expiry');
@@ -203,8 +206,7 @@ try {
     const panel = page.getByTestId('gateway-credential-panel');
     await panel.waitFor();
     await panel.getByText('SQLite 加密配置', { exact: true }).waitFor();
-    uiStage = 'advanced form';
-    await panel.locator('summary').click();
+    uiStage = 'manual form';
     await panel.getByRole('button', { name: '手动填写', exact: true }).click();
     const form = page.locator('[role="dialog"]').filter({ has: page.locator('form') });
     await form.waitFor();

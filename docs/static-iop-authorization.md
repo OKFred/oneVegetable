@@ -19,7 +19,7 @@
 
 - `protocol: "iop"` 明确标识导出包。没有标识的历史包仍按 TOP 兼容，不能仅凭 AppKey 或 Token 推断 IOP。
 - 独立 IOP 授权包使用 PBKDF2 + AES-256-GCM 保存在受信扩展本地存储；口令和解密密钥不持久化，后台重启后需要解锁该工具。它与工作台的 TOP 保险库无关。
-- 本轮**只实现 IOP 授权工具**，不是 TOP 业务网关迁移。IOP 文件不能导入现有 TOP 商品工作台；服务端和设置页均明确拒绝，不能覆盖当前业务凭据。
+- 工作台新增双协议兼容：历史包及未指定协议的设置仍使用 TOP；新版 IOP 包可以显式导入，但不会自动替换旧用户配置。两种应用的 AppKey、Secret、Token 不可混用。当前 IOP 仅开放已适配的商品、分组、Schema 渲染和指定图片分组查询；其他能力及真实写入明确禁用，详见 [双协议兼容](alibaba-gateway-protocols.md)。
 - Token 续期可能轮换 Refresh Token，需同步替换其他使用该授权包的服务。后台不静默续期、重试或重放商品任务。
 - 发出交换/续期前先保存脱敏执行意图。结果不明时禁止再次续期和导出旧包；重新授权。仅本机保存失败且新凭据仍在内存时，可“再次保存”，不会再调用平台。
 - 清除本机授权包不等于撤销 Alibaba 平台授权。
@@ -57,6 +57,6 @@ pnpm deploy:auth
 
 This is a static callback and an independent extension tool, not a server-side credential service. Prepare your own IOP application, register the exact callback, then enter its application details **inside the extension**, approve on Alibaba and export `credentialInfo.json`. Renew in the same tool. Expiry dates come from actual platform responses; missing values remain unknown.
 
-The file contains plaintext secrets. Keep it private. IOP and legacy TOP are separate protocols: this iteration does not migrate the existing TOP business gateway, and importing IOP into that gateway is rejected. An uncertain renewal is never resent automatically; reauthorize instead. A local-save retry does not call Alibaba again.
+The file contains plaintext secrets. Keep it private. IOP and legacy TOP are separate protocols. Existing settings and unmarked historical bundles still default to TOP. Explicit IOP imports enable only supported read operations; unmapped operations and unverified writes remain unavailable, without falling back to TOP. An uncertain renewal is never resent automatically; reauthorize instead. A local-save retry does not call Alibaba again.
 
 The static Pages deployment and Store rollout are separate from code verification. Production builds contain no simulation, website password collection, remote executable code or public credential-export API. Not affiliated with alibaba.com; read platform rules before use.

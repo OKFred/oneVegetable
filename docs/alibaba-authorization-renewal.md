@@ -26,7 +26,7 @@
 - 2026-10-11 真实验收已单独跑通 **IOP 授权 → Token 创建 → Token 续期 → 续期后真实商品列表查询**。该候选凭据仅保存在本机忽略目录，**未替换现有工作台配置**，没有商品写操作，也没有自动部署。
 - 本次新 Token 返回 `expires_in=7560000`（约 87.5 天）和正数 `refresh_expires_in`；这是当前应用的实际响应，不是所有账号的固定有效期。按 [卖家 OAuth 说明](https://openapi.alibaba.com/doc/doc.htm#/?docId=56)，续期会更新 Token，但不会重新开始整个 Refresh Token 授权周期，最终仍可能需要重新授权。
 - 旧应用实际返回 `param-refresh.token.expired / refresh token expired`，不是权限不足。即使刚重新授权，旧链路仍返回同一刷新拒绝；不能因新版 `System API` 为 Active 就改用 IOP 刷新旧 AppKey。已确认过期时停止重复刷新，界面保留原错误并引导重新授权；重新导入后重新判定能力。
-- 新 AppKey 调旧 `eco.taobao.com/router/rest` 返回 `isv.appkey-not-exists`，旧 AppKey 调新版 Token 入口返回 `InvalidAppKey`。新版商品查询按 [接口详情](https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=/alibaba/icbu/product/list&methodType=GET/POST)使用 `https://openapi-api.alibaba.com/rest/alibaba/icbu/product/list`、`access_token`、毫秒 timestamp 与带 API 路径前缀的 HMAC-SHA256，已真实成功；协议不能混用。现有 BFF/插件仍使用原 TOP 应用，不能直接导入新版候选凭据冒充兼容。
+- 新 AppKey 调旧 `eco.taobao.com/router/rest` 返回 `isv.appkey-not-exists`，旧 AppKey 调新版 Token 入口返回 `InvalidAppKey`。新版商品查询按 [接口详情](https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=/alibaba/icbu/product/list&methodType=GET/POST)使用 `https://openapi-api.alibaba.com/rest/alibaba/icbu/product/list`、`access_token`、毫秒 timestamp 与带 API 路径前缀的 HMAC-SHA256，已真实成功；协议不能混用。BFF/插件支持显式 IOP 导入及已适配只读能力，缺少协议字段的旧凭据仍按 TOP 处理，本机默认配置不自动改变。IOP 未适配方法及写操作出网前拒绝，不回退 TOP；详见[双协议说明](alibaba-gateway-protocols.md)。
 
 ### 独立 IOP 本地验收工具
 
