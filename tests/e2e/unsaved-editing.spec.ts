@@ -28,7 +28,10 @@ test.beforeEach(async ({ context }) => {
 
 async function openSettings(page: Page): Promise<void> {
   await page.goto('/#/settings');
-  await expect(page.getByTestId('account-avatar')).toHaveAttribute('aria-label', '当前用户：本地演示用户');
+  await expect(page.getByTestId('account-menu-trigger')).toHaveAttribute(
+    'aria-label',
+    '当前用户：本地演示用户'
+  );
   await expect(page.getByLabel('App Key', { exact: true })).toHaveValue(credentialFixture.manual.appKey);
 }
 

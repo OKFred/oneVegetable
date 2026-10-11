@@ -14,6 +14,7 @@ import {
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import OneVegetableApp from '../src/OneVegetableApp.vue';
+import AccountMenu from '../src/components/AccountMenu.vue';
 import AuthGate from '../src/components/AuthGate.vue';
 import { appHash, PAGE_IDS, pageHash, parseAppHash } from '../src/lib/hash-router';
 
@@ -264,7 +265,8 @@ describe('OneVegetableApp hash navigation', () => {
 
     expect(globalThis.location.hash).toBe('#/dashboard');
     expect(wrapper.find('nav a[href="#/admin"]').exists()).toBe(false);
-    expect(wrapper.get('[data-testid="account-avatar"]').attributes('aria-label')).toBe('当前用户：member');
+    expect(wrapper.findComponent(AccountMenu).props('name')).toBe('member');
+    expect(wrapper.findComponent(AccountMenu).props('canLogout')).toBe(true);
     wrapper.unmount();
   });
 

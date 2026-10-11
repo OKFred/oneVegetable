@@ -20,6 +20,7 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
       expect(
         (await http.post(`${api}/auth/login`, { data: { requestId: crypto.randomUUID(), ...auth } })).ok()
       ).toBe(true);
+    test.setTimeout(90000);
     await page.addInitScript(
       ({ key, state, locale }) => {
         localStorage.setItem(key, JSON.stringify(state));
@@ -123,6 +124,22 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     expect(writes.some((path) => path.endsWith('/test'))).toBe(false);
     await expect(panel).not.toContainText(fixture.manual.appSecret);
     await expect(panel.getByTestId('credential-expiry')).toContainText(en ? 'Expiry unknown' : '有效期未知');
+    await page.goto('/#/dashboard');
+    await expect(page.getByRole('menuitem', { name: en ? 'Sign out' : '退出', exact: true })).toBeHidden();
+    let renewalRequests = 0;
+    page.on('request', (request) => {
+      if (request.url().endsWith('/admin/gateway-credentials/refresh')) renewalRequests += 1;
+    });
+    await page.getByTestId('dashboard-renew-authorization').click();
+    const renewal = page.getByRole('dialog', { name: en ? 'Renew authorization' : '授权续期', exact: true });
+    await expect(renewal).toContainText(en ? 'Reauthorize and import' : '重新授权后导入');
+    expect(renewalRequests).toBe(0);
+    await renewal
+      .getByRole('link', { name: en ? 'Credential settings' : '前往凭据配置', exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/#\/settings$/u);
+    await expect(renewal).toBeHidden();
+    await expect(panel).toBeVisible();
     await panel.getByRole('button', { name: en ? 'Clear configuration' : '清除配置', exact: true }).click();
     const clear = page.getByRole('dialog', {
       name: en ? 'Clear server credentials?' : '确认清除服务端凭据？',
@@ -185,5 +202,13 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     await error.getByRole('link', { name: en ? 'S3 asset storage' : 'S3 素材存储', exact: true }).click();
     await expect(page).toHaveURL(/\/#\/settings$/u);
     await expect(galleryImport).toBeHidden();
+    await page.getByTestId('account-menu-trigger').click();
+    const logoutResponse = page.waitForResponse((response) => response.url().endsWith('/auth/logout'));
+    await page.getByRole('menuitem', { name: en ? 'Sign out' : '退出', exact: true }).click();
+    expect((await logoutResponse).ok()).toBe(true);
+    await expect(page.getByTestId('account-menu-trigger')).toBeHidden();
+    await expect(
+      page.getByRole('textbox', { name: en ? 'Workspace username' : '工作台用户名', exact: true })
+    ).toBeVisible();
   });
 }

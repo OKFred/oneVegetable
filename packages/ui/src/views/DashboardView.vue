@@ -6,6 +6,7 @@ import { Boxes, Image, PlugZap, ShoppingCart } from '@lucide/vue';
 import { useServices } from '../lib/services';
 import DashboardMetricCard from '../components/DashboardMetricCard.vue';
 import DashboardShopLink from '../components/DashboardShopLink.vue';
+import DashboardAuthorizationAction from '../components/DashboardAuthorizationAction.vue';
 import LocalTodoList from '../components/LocalTodoList.vue';
 import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
@@ -32,7 +33,7 @@ const summary = useQuery({
           : t('shell.dashboard.descriptions.mock')
     "
   >
-    <DashboardShopLink />
+    <div class="flex flex-wrap items-center gap-2"><DashboardAuthorizationAction /><DashboardShopLink /></div>
   </PageHeader>
   <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
     <DashboardMetricCard

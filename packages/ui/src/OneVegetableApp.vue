@@ -60,9 +60,8 @@ import {
 import Button from './components/ui/Button.vue';
 import GalleryTransferTaskCenter from './components/GalleryTransferTaskCenter.vue';
 import { GalleryTransferService, provideGalleryTransfers } from './lib/gallery-transfer-service';
-import { Avatar, AvatarFallback } from './components/ui/avatar';
+import AccountMenu from './components/AccountMenu.vue';
 import Sonner from './components/ui/Sonner.vue';
-import Tooltip from './components/ui/Tooltip.vue';
 import AuthGate from './components/AuthGate.vue';
 import FeedbackLauncher from './components/FeedbackLauncher.vue';
 import ExtensionReviewPrompt from './components/ExtensionReviewPrompt.vue';
@@ -163,6 +162,9 @@ provideServices({
   settings: props.settings,
   mode: props.mode,
   runtime,
+  openCredentialAcquisition: () => {
+    credentialAcquisitionOpen.value = true;
+  },
   ...(props.permissions ? { permissions: props.permissions } : {}),
   ...(props.localData ? { localData: props.localData } : {}),
   ...(props.onboarding ? { onboarding: props.onboarding } : {}),
@@ -588,21 +590,12 @@ function avatarInitials(name: string): string {
           <div class="flex items-center gap-2 text-xs text-muted-foreground">
             <LanguageToggle />
             <ThemeToggle />
-            <Tooltip :text="identityName">
-              <Avatar
-                class="border border-border bg-card text-foreground shadow-sm"
-                role="img"
-                data-testid="account-avatar"
-                :aria-label="t('shell.identity.avatarLabel', { name: identityName })"
-              >
-                <AvatarFallback class="bg-primary text-xs text-primary-foreground">
-                  {{ identityInitials }}
-                </AvatarFallback>
-              </Avatar>
-            </Tooltip>
-            <Button v-if="mode === 'bff' && session" variant="outline" size="sm" @click="logout">
-              {{ t('shell.logout') }}
-            </Button>
+            <AccountMenu
+              :name="identityName"
+              :initials="identityInitials"
+              :can-logout="mode === 'bff' && session !== null"
+              @logout="logout"
+            />
           </div>
         </header>
         <main class="p-4 lg:p-7">

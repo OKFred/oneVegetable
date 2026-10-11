@@ -29,6 +29,12 @@ export const gatewayCredentials = {
   manual: 'Enter manually',
   test: 'Test connection',
   refresh: 'Refresh Token',
+  renew: 'Renew authorization',
+  renewDescription:
+    'Renew Alibaba API authorization without changing workbench sign-in or replaying product operations.',
+  refreshAvailable:
+    'This configuration supports token refresh. If Alibaba rejects it, reconnect through credential settings.',
+  renewSettings: 'Credential settings',
   clear: 'Clear configuration',
   reload: 'Refresh status',
   noRefresh: 'Token refresh is unavailable for this configuration. Reauthorize and import.',

@@ -29,6 +29,27 @@ import {
 
 let context: BrowserContext | null = null;
 
+test('formal MV3 opens reauthorization from Overview without starting OAuth automatically', async () => {
+  if (!context) throw new Error('Missing extension context');
+  const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#/dashboard`);
+  const guide = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
+  await guide.getByRole('checkbox').check();
+  await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
+  const pagesBefore = context.pages().length;
+  await page.getByTestId('dashboard-renew-authorization').click();
+  const authorization = page.getByRole('dialog', { name: '获取开放平台凭证', exact: true });
+  await expect(authorization).toBeVisible();
+  await expect(authorization.getByRole('button', { name: '打开 Alibaba 并开始', exact: true })).toBeVisible();
+  expect(context.pages()).toHaveLength(pagesBefore);
+  await page.keyboard.press('Escape');
+  await expect(authorization).toBeHidden();
+  await page.getByTestId('account-menu-trigger').click();
+  await expect(page.getByRole('menuitem', { name: '设置', exact: true })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: '退出', exact: true })).toHaveCount(0);
+});
+
 test('formal MV3 preserves imported token expiry through vault save and page reload', async () => {
   if (!context) throw new Error('Missing extension context');
   await context.route('https://eco.taobao.com/**', (route) => route.abort());

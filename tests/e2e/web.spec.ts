@@ -150,7 +150,10 @@ test('web mock labels its in-process source and never calls the BFF', async ({ p
 
   await page.goto('/');
   await expect(page.getByText('用得不错？赏个评价。')).toHaveCount(0);
-  await expect(page.getByTestId('account-avatar')).toHaveAttribute('aria-label', '当前用户：本地演示用户');
+  await expect(page.getByTestId('account-menu-trigger')).toHaveAttribute(
+    'aria-label',
+    '当前用户：本地演示用户'
+  );
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
   await expect(page.getByText(/当前使用本地契约演示数据/)).toBeVisible();
 
@@ -182,7 +185,10 @@ test('version updates are bundled and link to the formal GitHub record', async (
 test('web mock exposes the migrated operations workspace', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
-  await expect(page.getByTestId('account-avatar')).toHaveAttribute('aria-label', '当前用户：本地演示用户');
+  await expect(page.getByTestId('account-menu-trigger')).toHaveAttribute(
+    'aria-label',
+    '当前用户：本地演示用户'
+  );
 
   const productNavigation = page.getByRole('link', { name: '商品' });
   await expect
