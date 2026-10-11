@@ -39,6 +39,26 @@ JSON/S3 packages contain portable content only. Imports skip same-language names
 
 自动验证包含契约与 UTF-8/大小限制、无敏感身份导出、冲突策略、分页、IndexedDB 事务、S3 配置变化及不重复写入、共享 SQLite/D1 审计与 revision，以及 Web/正式扩展编辑、归档、恢复和 JSON 往返。
 
-本次本地验证已通过模板专项单元测试、隔离 Worker/D1 回归，以及 Web 模板库、正式独立扩展和原商品详情编辑三条浏览器流程。Node 本地界面也完成了共享模板保存及读回；真实 S3 模板包上传/回读尚未验收。浏览器测试截图仅含模拟模板内容，保存在忽略目录 `artifacts/template-library/`，不进入扩展包。
+本次本地验证已通过模板专项单元测试、隔离 Worker/D1 回归，以及 Web 模板库、正式独立扩展和原商品详情编辑三条浏览器流程。Node 本地界面也完成了共享模板保存及读回。
 
-本轮不部署 Worker、不发布商店、不执行 Alibaba 商品 mutation。S3 模板包真实云存储验收与正式发布验收需分别记录，不能由 FakeTransport、Mock 或构建通过代替。
+2026-10-11 已使用本地 RustFS 完成真实 Node/Web S3 验收：签名查询、唯一对象上传、字节与 SHA-256 回读、同名跳过/另存副本、归档恢复，以及 Web 预览和确认后导入均通过。验收使用隔离 SQLite 和测试模板内容，S3 请求与 API 为真实调用，不修改现有工作台用户或模板。
+
+正式插件的真实 RustFS 验收尚未通过：本次停在原生域名授权/加密保存阶段，未进入模板上传。已有扩展 JSON 往返和离线浏览器测试不能代替此项真实 S3 验收。
+
+### 真实 S3 验收命令（Windows PowerShell）
+
+先在设置页保存有效 S3 配置，并启动 `pnpm dev:web`。以下命令读取本机加密配置，不把密钥写入脚本或报告：
+
+```powershell
+$env:ONE_VEGETABLE_TEMPLATE_S3_SMOKE = '1'
+$env:ONE_VEGETABLE_TEMPLATE_S3_UI = '1'
+pnpm smoke:templates:s3:real
+```
+
+可设置 `ONE_VEGETABLE_TEMPLATE_S3_DATABASE` 指定配置来源 SQLite；默认只读访问 `apps/api/.data/one-vegetable.sqlite`。执行数据写入独立临时数据库。
+
+添加 `$env:ONE_VEGETABLE_TEMPLATE_S3_EXTENSION = '1'` 可验证构建后的正式独立扩展，需先运行 `pnpm build:extension`，并在有头隔离浏览器中手动允许 S3 精确域名权限。此项通过真实设置页保存、S3 导入到 IndexedDB、备份回读和 service worker 重启验证，不预授予权限或修改 Manifest。
+
+每次运行仅向唯一测试前缀上传一个小型模板包，开启扩展验收时再备份一个包；对象保留，不自动删除。失败或结果不明不得盲目重跑 PUT，应先按报告中的 key 核对。脱敏回执及仅含测试模板的截图在 `artifacts/template-s3-validation/`；其他模板浏览器记录在 `artifacts/template-library/`，均被 Git 忽略且不进入扩展包。
+
+本轮不部署 Worker、不发布商店、不执行 Alibaba 商品 mutation。Cloudflare 在线 D1、云 S3 及正式发布验收需分别记录，不能由本地 RustFS、隔离回放或构建通过代替。

@@ -85,6 +85,7 @@
     "smoke:local-auth": "node scripts/smoke-local-auth.mjs",
     "test:e2e:node-credentials": "playwright test --config playwright.node-credentials.config.ts",
     "smoke:node-credentials:real": "tsx scripts/smoke-node-credential-management.ts",
+    "smoke:templates:s3:real": "tsx scripts/smoke-template-s3-real.ts",
     "smoke:alibaba:real": "tsx scripts/smoke-alibaba-real.ts",
     "smoke:photobank:upload:real": "tsx scripts/smoke-photobank-upload-real.ts",
     "smoke:photobank:group:real": "tsx scripts/smoke-photobank-group-real.ts",
