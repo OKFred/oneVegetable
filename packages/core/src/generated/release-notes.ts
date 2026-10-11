@@ -4,22 +4,61 @@ export const RELEASE_NOTES_DOCUMENT = {
   repositoryUrl: 'https://github.com/OKFred/oneVegetable',
   releases: [
     {
-      version: '2.14.0',
-      releasedAt: '2026-10-01',
+      version: '2.15.0',
+      releasedAt: '2026-10-11',
       title: {
-        'zh-CN': '现有商品批量维护',
-        'en-US': 'Batch maintenance for existing products'
+        'zh-CN': '共享模板与商品维护',
+        'en-US': 'Shared templates and product maintenance'
       },
       summary: {
         'zh-CN':
-          '预览并确认最多 30 件现有商品的分组和关键词调整，串行提交并保存批次回执。平台受理、字段回读与审核通过分别判断；本候选版真实修改及恢复验收尚未完成。',
+          '独立模板库支持公司、物流等详情内容复用及 JSON/S3 交换；优化凭据配置和续期提示。包含现有商品批量维护，但真实修改及恢复验收尚未闭环，当前仍为发布候选。',
         'en-US':
-          'Preview and confirm group and keyword changes for up to 30 existing products, with serial updates and batch receipts. Acceptance, field readback and platform approval are separate; live update-and-restoration acceptance is still pending for this candidate.'
+          'Reuse company and logistics content through the template library and JSON/S3 exchange, with clearer credential configuration and renewal guidance. Existing-product batch maintenance is included, but live update-and-restoration acceptance remains open; this is still a release candidate.'
       },
       source: 'release',
-      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.14.0',
-      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.13.0...v2.14.0',
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.15.0',
+      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.13.0...v2.15.0',
       changes: [
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '独立详情模板库',
+            'en-US': 'Reusable description template library'
+          },
+          description: {
+            'zh-CN':
+              '管理公司、物流、包装、服务及自定义模板，支持安全富文本、归档和恢复。Web 后端共享保存，独立插件保存在本机；商品详情中可插入、追加或确认覆盖，不自动修改平台商品。',
+            'en-US':
+              'Manage company, logistics, packaging, service and custom templates with safe rich text, archive and restore. Web sites share backend storage; the standalone extension stores templates locally. Insert, append or confirm replacement in descriptions without automatically updating platform products.'
+          }
+        },
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': 'JSON 与 S3 模板交换',
+            'en-US': 'JSON and S3 template exchange'
+          },
+          description: {
+            'zh-CN':
+              '预览并确认导入导出，重名可跳过或另存副本，不覆盖已有模板。S3 备份使用独立路径并精确回读；结果不明只核对，不自动重传。',
+            'en-US':
+              'Preview and confirm imports and exports, skipping duplicates or creating copies without overwriting templates. S3 backups use unique paths and exact readback; uncertain results are verified, not automatically resent.'
+          }
+        },
+        {
+          type: 'fix',
+          title: {
+            'zh-CN': '凭据配置与授权提示',
+            'en-US': 'Credential configuration and authorization guidance'
+          },
+          description: {
+            'zh-CN':
+              '手动填写与导入等操作同排显示，统一图标，支持关闭及就地放弃确认。点击头像打开退出菜单；总览提供授权续期入口。截图反馈可独立生成和复制，均不自动重放写操作。',
+            'en-US':
+              'Manual entry sits beside import with consistent icons and local discard confirmation. Open the avatar menu to sign out, or renew authorization from Overview. Feedback screenshots can be generated and copied independently; writes are never replayed automatically.'
+          }
+        },
         {
           type: 'feature',
           title: {
