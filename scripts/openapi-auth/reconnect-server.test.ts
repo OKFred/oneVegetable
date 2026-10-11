@@ -4,7 +4,7 @@ import { parseAlibabaOpenApiCredentialBundle } from '../../packages/core/src/ali
 import fixture from '../../mock/data/node-gateway-credentials.json';
 import { startReconnectServer } from './reconnect-server';
 
-async function harness(fail = false) {
+async function harness(fail = false, protocol: 'legacy' | 'iop' = 'legacy') {
   const exchange = vi.fn(() =>
     fail
       ? Promise.reject(new Error('sensitive provider body'))
@@ -17,7 +17,8 @@ async function harness(fail = false) {
   );
   const save = vi.fn(() => Promise.resolve());
   const server = await startReconnectServer({
-    bundle: parseAlibabaOpenApiCredentialBundle(fixture.oauthBundle),
+    application: parseAlibabaOpenApiCredentialBundle(fixture.oauthBundle).application,
+    protocol,
     timeoutMilliseconds: 30_000,
     exchange,
     save
@@ -44,6 +45,17 @@ async function harness(fail = false) {
   };
 }
 describe('local manual reauthorization', () => {
+  it('uses the documented IOP authorization origin only when explicitly selected', async () => {
+    const h = await harness(false, 'iop');
+    try {
+      expect(h.html).toContain('https://openapi-auth.alibaba.com/oauth/authorize?');
+      expect(h.html).not.toContain('https://oauth.alibaba.com/authorize');
+      expect(h.html).not.toContain('sp=ICBU');
+      expect(h.html).not.toContain(fixture.manual.appSecret);
+    } finally {
+      await h.close();
+    }
+  });
   it('exposes no secrets and rejects cross-origin, wrong callback and wrong state before exchange', async () => {
     const h = await harness();
     try {

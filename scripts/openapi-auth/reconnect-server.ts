@@ -8,19 +8,26 @@ import {
 import { buildAuthorizationUrl } from './browser';
 import { callbackMatches } from './config';
 import { validateCallback } from './oauth';
+import { IOP_AUTHORIZE_ENDPOINT } from './iop-token';
 
 export async function startReconnectServer(input: {
-  bundle: AlibabaOpenApiCredentialBundle;
+  application: AlibabaOpenApiCredentialBundle['application'];
+  protocol?: 'legacy' | 'iop';
   timeoutMilliseconds: number;
   exchange: (code: string) => Promise<AlibabaTokenResponse>;
   save: (bundle: AlibabaOpenApiCredentialBundle) => Promise<void>;
 }) {
   const state = randomUUID();
-  const callback = new URL(input.bundle.application.callbackUrl);
+  const callback = new URL(input.application.callbackUrl);
   const authorize = buildAuthorizationUrl(
-    { ...input.bundle.application, callbackUrl: callback, source: 'legacy-crosstrade' },
+    { ...input.application, callbackUrl: callback, source: 'legacy-crosstrade' },
     state
   );
+  if (input.protocol === 'iop') {
+    authorize.href = IOP_AUTHORIZE_ENDPOINT + authorize.search;
+    authorize.searchParams.delete('sp');
+    authorize.searchParams.delete('view');
+  }
   let origin = '';
   let submitted = false;
   const escape = (text: string) =>
@@ -76,7 +83,7 @@ export async function startReconnectServer(input: {
       const token = await input.exchange(code);
       const bundle = createAlibabaOpenApiCredentialBundle({
         capturedAtTimeUtc: Date.now(),
-        application: input.bundle.application,
+        application: input.application,
         token,
         receivedCallbackUrl: received.href
       });

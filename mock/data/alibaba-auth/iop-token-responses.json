@@ -1,0 +1,21 @@
+{
+  "success": {
+    "code": "0",
+    "access_token": "fixture-iop-access",
+    "refresh_token": "fixture-iop-refresh",
+    "expires_in": 3600,
+    "refresh_expires_in": 7200
+  },
+  "invalidAppKey": {
+    "code": "InvalidAppKey",
+    "message": "The specified App Key is invalid",
+    "request_id": "fixture-iop-trace"
+  },
+  "productRead": {
+    "code": "0",
+    "result": { "products": [{ "id": "123" }], "total_item": "1" }
+  },
+  "missingSuccess": {
+    "access_token": "fixture-not-a-success"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "path": "/auth/token/create",
+  "secret": "helloworld",
+  "parameters": {
+    "app_key": "12345678",
+    "code": "3_500102_JxZ05Ux3cnnSSUm6dCxYg6Q26",
+    "sign_method": "sha256",
+    "simplify": "true",
+    "timestamp": "1517820392000"
+  },
+  "signature": "0B409A354C6FB222EE2C8095002ACDB2D30566151D1A2361AEE7D2627B9BCBEA"
+}

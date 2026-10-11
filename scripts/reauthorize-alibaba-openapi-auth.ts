@@ -12,7 +12,7 @@ const api = await request.newContext();
 const result = { saved: false };
 try {
   const server = await startReconnectServer({
-    bundle: previous,
+    application: previous.application,
     timeoutMilliseconds: config.manualTimeoutMilliseconds,
     exchange: (code) =>
       exchangeAuthorizationCode(api, {
