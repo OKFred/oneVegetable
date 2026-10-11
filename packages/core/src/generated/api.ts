@@ -9671,6 +9671,12 @@ export interface components {
             appKeySuffix?: string | null;
             /** @enum {string|null} */
             inputSource?: "oauth-import" | "manual" | null;
+            /**
+             * @description Import-time evidence for the exact System API group; not a live entitlement check. SystemAPI is a different group.
+             * @enum {string}
+             */
+            systemApiPermission?: "active" | "inactive" | "not-recorded" | "unknown";
+            permissionCapturedTimeUtc?: number | null;
             canRefresh?: boolean;
             managementAvailable?: boolean;
             errorCode?: string | null;

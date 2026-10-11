@@ -1,5 +1,6 @@
 import {
   ALIBABA_GATEWAY,
+  alibabaAuthorizationMetadata,
   credentialExpiryFromSeconds,
   NetworkManager,
   normalizeRemark,
@@ -58,6 +59,8 @@ export interface GatewayCredentialSummary {
   appName?: string | null;
   appKeySuffix?: string | null;
   inputSource?: 'oauth-import' | 'manual' | null;
+  systemApiPermission?: 'active' | 'inactive' | 'not-recorded' | 'unknown';
+  permissionCapturedTimeUtc?: number | null;
   canRefresh?: boolean;
   managementAvailable?: boolean;
   errorCode?: string | null;
@@ -379,6 +382,7 @@ export class GatewayCredentialService {
         appName: document.credentials.appName,
         appKeySuffix: document.credentials.appKey.slice(-4),
         inputSource: document.source,
+        ...alibabaAuthorizationMetadata(document.authorization),
         canRefresh:
           document.credentials.refreshToken !== null &&
           (record.refreshTokenExpiresTimeUtc === null || record.refreshTokenExpiresTimeUtc > this.clock())

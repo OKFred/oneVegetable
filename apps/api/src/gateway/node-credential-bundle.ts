@@ -1,7 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { ALIBABA_GATEWAY } from '@one-vegetable/core';
+import {
+  ALIBABA_GATEWAY,
+  alibabaAuthorizationMetadata,
+  type AlibabaAuthorizationMetadata
+} from '@one-vegetable/core';
 
 import {
   EnvironmentAlibabaCredentialProvider,
@@ -21,7 +25,7 @@ export interface NodeAlibabaCredentialEnvironment extends AlibabaCredentialEnvir
   ONE_VEGETABLE_ALIBABA_CREDENTIAL_FILE?: string;
 }
 
-interface CredentialBundleData {
+interface CredentialBundleData extends AlibabaAuthorizationMetadata {
   appKey: string;
   appSecret: string;
   accessToken: string;
@@ -70,7 +74,9 @@ export class NodeCredentialBundleProvider implements AlibabaCredentialProvider {
       accessTokenExpiresTimeUtc:
         this.#data.expiresAtUtc === null ? null : Date.parse(this.#data.expiresAtUtc),
       endpointOrigin: this.#endpoint.origin,
-      signMethod: this.#signMethod
+      signMethod: this.#signMethod,
+      systemApiPermission: this.#data.systemApiPermission,
+      permissionCapturedTimeUtc: this.#data.permissionCapturedTimeUtc
     };
   }
 
@@ -108,6 +114,7 @@ function readCredentialBundle(path: string): CredentialBundleData {
   const oauth = record(root.oauth);
   if (root.schemaVersion !== 1) throw invalidBundle('Alibaba 授权包版本不受支持');
   return {
+    ...alibabaAuthorizationMetadata(value),
     appKey: requiredSecret(application.appKey, 'AppKey'),
     appSecret: requiredSecret(application.appSecret, 'AppSecret'),
     accessToken: requiredSecret(oauth.accessToken, 'Access Token'),

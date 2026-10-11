@@ -28,7 +28,9 @@ describe('Node Alibaba credential bundle provider', () => {
       hasAccessToken: true,
       accessTokenExpiresTimeUtc: Date.parse('2026-09-01T00:00:00.000Z'),
       endpointOrigin: 'https://eco.taobao.com',
-      signMethod: 'hmac'
+      signMethod: 'hmac',
+      systemApiPermission: 'unknown',
+      permissionCapturedTimeUtc: null
     });
     expect(JSON.stringify(provider.status())).not.toContain('secret-value');
     expect(provider.requireCredentials()).toMatchObject({

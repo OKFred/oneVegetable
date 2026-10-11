@@ -143,6 +143,7 @@ export function parseAlibabaTokenResponse(value: unknown): AlibabaTokenResponse 
     refreshToken: firstOptionalString(record, ['refresh_token', 'refreshToken']),
     expiresInSeconds: firstOptionalNumber(record, ['expires_in', 'expiresIn']),
     refreshExpiresInSeconds: firstOptionalNumber(record, [
+      'refresh_expires_in',
       're_expires_in',
       'refresh_token_timeout',
       'refresh_token_expires_in',

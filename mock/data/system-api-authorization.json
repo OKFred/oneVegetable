@@ -1,0 +1,12 @@
+{
+  "capturedAtUtc": "2026-10-11T00:00:00.000Z",
+  "active": [{ "name": "System API", "status": "Active" }],
+  "legacy": [{ "name": "SystemAPI", "status": "Active" }],
+  "inactive": [{ "name": "System API", "status": "Pending" }],
+  "token": {
+    "access_token": "fixture-access-token",
+    "refresh_token": "fixture-refresh-token",
+    "expires_in": "3600",
+    "refresh_expires_in": "7200"
+  }
+}

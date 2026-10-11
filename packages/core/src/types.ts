@@ -390,6 +390,8 @@ export interface GatewaySettings {
   signMethod: SignMethod;
   /** Optional expiry metadata, encrypted with the token; never a claim of platform validity. */
   accessTokenExpiresTimeUtc?: number | null;
+  systemApiPermission?: 'active' | 'inactive' | 'not-recorded' | 'unknown';
+  permissionCapturedTimeUtc?: number | null;
 }
 
 export interface SettingsRepository {

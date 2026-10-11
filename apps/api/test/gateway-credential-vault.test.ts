@@ -10,6 +10,7 @@ import {
 
 import type { AlibabaOpenApiCredentialBundle, NetworkTransport } from '@one-vegetable/core';
 import type { NodeDatabaseHandle } from '../src/db/node-database';
+import permissionFixture from '../../../mock/data/system-api-authorization.json';
 
 const databases: NodeDatabaseHandle[] = [];
 
@@ -18,6 +19,41 @@ afterEach(() => {
 });
 
 describe('D1-compatible Alibaba credential vault', () => {
+  it('returns only permission snapshot evidence and expiry, never secrets; manual replacement clears evidence', async () => {
+    const { service } = await harness();
+    const input = bundle();
+    input.application.permissions = permissionFixture.active;
+    const saved = await service.import({
+      bundle: input,
+      actorId: 'admin-1',
+      expectedRevision: null,
+      remark: null
+    });
+    expect(saved).toMatchObject({
+      systemApiPermission: 'active',
+      permissionCapturedTimeUtc: Date.parse(input.capturedAtUtc)
+    });
+    expect(JSON.stringify(saved)).not.toMatch(/app-secret|access-token|refresh-token/);
+    const manual = await service.save({
+      credentials: {
+        appName: 'Manual',
+        appKey: 'key',
+        appSecret: 'secret',
+        accessToken: 'token',
+        refreshToken: null,
+        accessTokenExpiresTimeUtc: null,
+        refreshTokenExpiresTimeUtc: null
+      },
+      actorId: 'admin-1',
+      expectedRevision: saved.revision,
+      remark: null
+    });
+    expect(manual).toMatchObject({
+      systemApiPermission: 'unknown',
+      permissionCapturedTimeUtc: null,
+      accessTokenExpiresTimeUtc: null
+    });
+  });
   it('offers refresh only while its known refresh window remains valid', async () => {
     let now = Date.parse('2026-08-30T00:00:00.000Z');
     const { service } = await harness(() => now);

@@ -17321,6 +17321,12 @@
           "appName": { "type": ["string", "null"] },
           "appKeySuffix": { "type": ["string", "null"], "maxLength": 4 },
           "inputSource": { "type": ["string", "null"], "enum": ["oauth-import", "manual", null] },
+          "systemApiPermission": {
+            "type": "string",
+            "enum": ["active", "inactive", "not-recorded", "unknown"],
+            "description": "Import-time evidence for the exact System API group; not a live entitlement check. SystemAPI is a different group."
+          },
+          "permissionCapturedTimeUtc": { "type": ["integer", "null"], "minimum": 0 },
           "canRefresh": { "type": "boolean" },
           "managementAvailable": { "type": "boolean" },
           "errorCode": { "type": ["string", "null"] },

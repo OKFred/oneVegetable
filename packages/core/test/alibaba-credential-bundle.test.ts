@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import tokenFixture from '../../../mock/data/system-api-authorization.json';
 
 import {
   credentialExpiryFromSeconds,
@@ -9,6 +10,20 @@ import {
 } from '../src/alibaba-credential-bundle';
 
 describe('Alibaba credential bundle contract', () => {
+  it('reads System API lifetime names without enabling an IOP endpoint or inventing unknown expiry', () => {
+    expect(parseAlibabaTokenResponse(tokenFixture.token)).toMatchObject({
+      expiresInSeconds: 3600,
+      refreshExpiresInSeconds: 7200
+    });
+    expect(
+      parseAlibabaTokenResponse({ ...tokenFixture.token, refresh_expires_in: 0, re_expires_in: 7200 })
+        .refreshExpiresInSeconds
+    ).toBe(0);
+    expect(parseAlibabaTokenResponse({ access_token: tokenFixture.token.access_token })).toMatchObject({
+      expiresInSeconds: null,
+      refreshExpiresInSeconds: null
+    });
+  });
   it('reads documented ICBU refresh duration and preserves zero without guessing a lifetime', () => {
     expect(
       parseAlibabaTokenResponse({ access_token: 'test', re_expires_in: '86400', expires_in: 0 })

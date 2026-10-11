@@ -50,6 +50,8 @@ export class NodeManagedCredentialProvider {
         source: legacy.source,
         configured: legacy.configured,
         canRefresh: false,
+        systemApiPermission: legacy.systemApiPermission ?? 'unknown',
+        permissionCapturedTimeUtc: legacy.permissionCapturedTimeUtc ?? null,
         accessTokenExpiresTimeUtc: legacy.accessTokenExpiresTimeUtc ?? null
       };
     } catch (error: unknown) {

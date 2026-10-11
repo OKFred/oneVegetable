@@ -52,15 +52,33 @@ export function persistGatewaySettings(settings: GatewaySettings): SettingsMigra
 
 export function gatewayCredentialExpiryMetadata(value: {
   accessTokenExpiresTimeUtc?: unknown;
-}): Pick<GatewaySettings, 'accessTokenExpiresTimeUtc'> {
+  systemApiPermission?: unknown;
+  permissionCapturedTimeUtc?: unknown;
+}): Pick<GatewaySettings, 'accessTokenExpiresTimeUtc' | 'systemApiPermission' | 'permissionCapturedTimeUtc'> {
   const time = value.accessTokenExpiresTimeUtc;
-  if (time === undefined) return {};
   return {
-    accessTokenExpiresTimeUtc:
-      typeof time === 'number' && Number.isSafeInteger(time) && time >= 0 && time <= 8_640_000_000_000_000
-        ? time
-        : null
+    ...(time === undefined ? {} : { accessTokenExpiresTimeUtc: validTime(time) }),
+    ...(value.systemApiPermission === undefined
+      ? {}
+      : {
+          systemApiPermission:
+            value.systemApiPermission === 'active' ||
+            value.systemApiPermission === 'inactive' ||
+            value.systemApiPermission === 'not-recorded'
+              ? value.systemApiPermission
+              : 'unknown',
+          permissionCapturedTimeUtc: validTime(value.permissionCapturedTimeUtc)
+        })
   };
+}
+
+function validTime(value: unknown): number | null {
+  return typeof value === 'number' &&
+    Number.isSafeInteger(value) &&
+    value >= 0 &&
+    value <= 8_640_000_000_000_000
+    ? value
+    : null;
 }
 
 function isCompleteSettings(value: unknown): boolean {

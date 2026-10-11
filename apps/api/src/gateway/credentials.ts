@@ -19,6 +19,8 @@ export interface AlibabaCredentialStatus {
   endpointOrigin: string;
   signMethod: SignMethod;
   accessTokenExpiresTimeUtc?: number | null;
+  systemApiPermission?: 'active' | 'inactive' | 'not-recorded' | 'unknown';
+  permissionCapturedTimeUtc?: number | null;
   lastRefreshTimeUtc?: number | null;
   lastRefreshErrorCode?: string | null;
 }

@@ -39,6 +39,7 @@ import {
   sanitizeDiagnosticMessage,
   SETTINGS_STORAGE_KEY,
   gatewayCredentialExpiryMetadata,
+  alibabaAuthorizationMetadata,
   unlockCredentialVault,
   PhotoAdapter,
   ProductAdapter,
@@ -400,6 +401,7 @@ async function saveAcquiredCredentialsToVault(
 ): Promise<CredentialVaultStatus> {
   const settings: GatewaySettings = {
     appKey: bundle.application.appKey,
+    ...alibabaAuthorizationMetadata(bundle),
     appSecret: bundle.application.appSecret,
     accessToken: bundle.oauth.accessToken,
     accessTokenExpiresTimeUtc:
@@ -557,6 +559,8 @@ async function editableSettings(
     appSecret: '',
     accessToken: '',
     accessTokenExpiresTimeUtc: settings?.accessTokenExpiresTimeUtc ?? null,
+    systemApiPermission: settings?.systemApiPermission ?? 'unknown',
+    permissionCapturedTimeUtc: settings?.permissionCapturedTimeUtc ?? null,
     endpoint: settings?.endpoint ?? ALIBABA_GATEWAY,
     signMethod: settings?.signMethod ?? 'hmac'
   };
