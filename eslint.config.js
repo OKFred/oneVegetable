@@ -25,6 +25,7 @@ export default tseslint.config(
   {
     files: ['**/*.{ts,vue}'],
     languageOptions: {
+      globals: { __ONE_VEGETABLE_EXTENSION__: 'readonly' },
       parserOptions: {
         extraFileExtensions: ['.vue'],
         parser: tseslint.parser,
@@ -69,6 +70,13 @@ export default tseslint.config(
   {
     files: ['**/*.config.{js,mjs,ts}', 'scripts/**/*.mjs', 'eslint.config.js'],
     ...tseslint.configs.disableTypeChecked
+  },
+  {
+    files: ['mock/data/alibaba-auth/iop-approval.js'],
+    ...tseslint.configs.disableTypeChecked,
+    languageOptions: {
+      globals: { document: 'readonly', location: 'readonly', URL: 'readonly', URLSearchParams: 'readonly' }
+    }
   },
   {
     files: ['packages/**/*.ts', 'apps/**/*.ts', 'apps/**/*.vue'],

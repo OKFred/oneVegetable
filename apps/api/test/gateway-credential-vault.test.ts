@@ -20,6 +20,18 @@ afterEach(() => {
 });
 
 describe('D1-compatible Alibaba credential vault', () => {
+  it('never imports an isolated IOP bundle into the TOP business gateway', async () => {
+    const { service } = await harness();
+    await expect(
+      service.import({
+        bundle: { ...bundle(), protocol: 'iop' },
+        actorId: 'admin-1',
+        expectedRevision: null,
+        remark: null
+      })
+    ).rejects.toMatchObject({ code: 'ALIBABA_IOP_RUNTIME_NOT_SUPPORTED' });
+    expect(await service.status()).toMatchObject({ configured: false });
+  });
   it('blocks a confirmed expired refresh token without invalidating the retained access token; reimport resets it', async () => {
     const now = Date.parse('2026-08-30T00:00:00.000Z');
     const send = vi.fn(() => Promise.resolve(new Response(JSON.stringify(tokenErrorFixture.legacyExpired))));

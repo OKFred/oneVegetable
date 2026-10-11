@@ -1,4 +1,5 @@
 import { readdir, readFile } from 'node:fs/promises';
+import { zh as iopZh, en as iopEn } from '../packages/core/src/iop-authorization-messages';
 import { relative, resolve } from 'node:path';
 
 import { enUS } from '../packages/ui/src/i18n/messages/en-US/index';
@@ -44,6 +45,7 @@ const hardcodedHanAllowlist: Readonly<Record<string, readonly RegExp[]>> = {
 };
 
 const errors = [
+  ...compareCatalogs(iopZh, iopEn),
   ...compareCatalogs(maintenanceZh, maintenanceEn),
   ...compareCatalogs(tasksZh, tasksEn),
   ...compareCatalogs(videoZh, videoEn),

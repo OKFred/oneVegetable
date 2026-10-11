@@ -16,6 +16,7 @@ interface Manifest {
   permissions?: string[];
   host_permissions?: string[];
   optional_host_permissions?: string[];
+  externally_connectable?: { ids?: string[]; matches?: string[] };
 }
 
 interface Listing {
@@ -76,6 +77,12 @@ if (JSON.stringify(manifest.host_permissions) !== JSON.stringify(['https://eco.t
 if (JSON.stringify(manifest.optional_host_permissions) !== JSON.stringify(['http://*/*', 'https://*/*'])) {
   errors.push('optional host permissions changed without updating the reviewed disclosure');
 }
+if (
+  JSON.stringify(manifest.externally_connectable?.matches) !==
+    JSON.stringify(['https://one-vegetable-auth.pages.dev/*']) ||
+  JSON.stringify(manifest.externally_connectable?.ids) !== '[]'
+)
+  errors.push('external authorization bridge must only allow the exact public Pages origin, not extensions');
 if (!listing.singlePurpose || listing.singlePurpose.length < 60)
   errors.push('store listing single purpose is missing or too vague');
 for (const field of ['privacyPolicyUrl', 'supportUrl', 'homepageUrl'] as const) {

@@ -286,9 +286,10 @@ const views: Record<PageId, Component> = {
 const AlibabaCredentialAcquisitionDialog = defineAsyncComponent(
   () => import('./components/AlibabaCredentialAcquisitionDialog.vue')
 );
-const AlibabaCloudCredentialAcquisitionDialog = defineAsyncComponent(
-  () => import('./components/AlibabaCloudCredentialAcquisitionDialog.vue')
-);
+const AlibabaCloudCredentialAcquisitionDialog =
+  typeof __ONE_VEGETABLE_EXTENSION__ !== 'undefined' && __ONE_VEGETABLE_EXTENSION__
+    ? null
+    : defineAsyncComponent(() => import('./components/AlibabaCloudCredentialAcquisitionDialog.vue'));
 const activeView = computed(() => views[page.value]);
 const onboardingActive = computed(
   () =>

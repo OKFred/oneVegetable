@@ -16,7 +16,8 @@ export default defineConfig({
       __VUE_I18N_LEGACY_API__: 'false',
       'import.meta.env.VITE_APP_RUNTIME': JSON.stringify('extension')
     },
-    plugins: [tailwindcss(), extensionValidatorCompactionPlugin(), extensionValidationLocalesPlugin()]
+    plugins: [tailwindcss(), extensionValidatorCompactionPlugin(), extensionValidationLocalesPlugin()],
+    build: { minify: 'terser', terserOptions: { compress: { passes: 3 }, format: { comments: false } } }
   }),
   hooks: {
     'config:resolved'(wxt) {
@@ -35,6 +36,8 @@ export default defineConfig({
         ...output,
         manualChunks(id) {
           const path = id.replaceAll('\\', '/');
+          if (/\/apps\/extension\/lib\/iop-authorization(?:-runtime)?\.ts$/u.test(path))
+            return 'iop-authorization';
           if (path.endsWith('/packages/core/src/validation-equal.ts')) return 'validation-equal';
           const match =
             /\/generated\/(validators-(?:product|rfq|trade|logistics|insights|photo|platform|free-api|video-upload))\.ts$/.exec(
@@ -54,6 +57,7 @@ export default defineConfig({
     permissions: ['storage', 'scripting'],
     host_permissions: ['https://eco.taobao.com/*'],
     optional_host_permissions: ['http://*/*', 'https://*/*'],
+    externally_connectable: { ids: [], matches: ['https://one-vegetable-auth.pages.dev/*'] },
     action: {
       default_title: '__MSG_extName__',
       default_icon: { 16: 'icon.png', 32: 'icon.png', 48: 'icon.png', 128: 'icon.png' }

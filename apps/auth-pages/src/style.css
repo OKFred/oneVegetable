@@ -1,0 +1,193 @@
+:root {
+  color-scheme: light dark;
+  font-family: Inter, system-ui, sans-serif;
+  background: #f7f9fc;
+  color: #17243c;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 900px;
+  margin: 48px auto;
+  padding: 0 24px;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+}
+h1 {
+  font-size: 28px;
+  margin: 8px 0;
+}
+h2 {
+  font-size: 18px;
+  margin-top: 0;
+}
+p {
+  line-height: 1.7;
+}
+small,
+.muted {
+  color: #526780;
+}
+section {
+  background: #fff;
+  border: 1px solid #dce4ef;
+  border-radius: 16px;
+  padding: 24px;
+  margin: 16px 0;
+}
+nav,
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+button,
+.button {
+  font: inherit;
+  border: 1px solid #c5d2e3;
+  border-radius: 8px;
+  padding: 10px 16px;
+  color: inherit;
+  background: #fff;
+  cursor: pointer;
+  text-decoration: none;
+}
+button.primary {
+  background: #155de9;
+  color: #fff;
+  border-color: #155de9;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+button:hover:not(:disabled),
+.button:hover {
+  filter: brightness(0.96);
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 3px solid #5890ff;
+  outline-offset: 3px;
+}
+label {
+  display: block;
+  margin: 16px 0 6px;
+}
+input:not([type='checkbox']) {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #b5c5da;
+  border-radius: 8px;
+  font: inherit;
+  color: inherit;
+  background: #fff;
+}
+input[type='checkbox'] {
+  margin-right: 8px;
+}
+code {
+  overflow-wrap: anywhere;
+}
+pre {
+  white-space: pre-wrap;
+}
+#notice {
+  min-height: 24px;
+  color: #185bba;
+}
+#error {
+  color: #b42318;
+  overflow-wrap: anywhere;
+}
+fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+dl {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 12px;
+}
+dt {
+  color: #526780;
+}
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+[hidden] {
+  display: none !important;
+}
+footer {
+  margin: 32px 0;
+  font-size: 13px;
+  color: #526780;
+}
+.language {
+  min-width: 48px;
+}
+.warning {
+  border-left: 4px solid #d8a33b;
+  padding-left: 12px;
+}
+@media (max-width: 640px) {
+  main {
+    margin-top: 24px;
+    padding: 0 16px;
+  }
+  .grid {
+    display: block;
+  }
+  dl {
+    grid-template-columns: 1fr;
+  }
+  h1 {
+    font-size: 23px;
+  }
+  section {
+    padding: 18px;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    background: #0e1624;
+    color: #e9eff8;
+  }
+  section,
+  button,
+  .button,
+  input:not([type='checkbox']) {
+    background: #172235;
+    border-color: #354965;
+    color: #e9eff8;
+  }
+  small,
+  .muted,
+  dt,
+  footer {
+    color: #a6b7ce;
+  }
+  #notice {
+    color: #89b4ff;
+  }
+  #error {
+    color: #ffada2;
+  }
+}

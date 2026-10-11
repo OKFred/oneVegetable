@@ -20,6 +20,7 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: xvfb-run --auto-servernum pnpm test:e2e
       - run: xvfb-run --auto-servernum pnpm test:e2e:bff-replay
+      - run: xvfb-run --auto-servernum pnpm exec playwright test --config playwright.authorization.config.ts
       - run: pnpm test:e2e:node-credentials
       # These CI suites use mock/replay data and Playwright's default test-results/ output.
       # No HTML reporter is configured. Never add real-smoke outputs or artifacts/ here.

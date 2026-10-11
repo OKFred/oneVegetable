@@ -246,6 +246,9 @@ const alibabaCredentialAcquisition: ExtensionAlibabaCredentialAcquisitionReposit
   },
   async focusPrerequisitePage() {
     await requestAcquisition('focus-prerequisite-page', undefined);
+  },
+  async openIopTool() {
+    await requestAcquisition('open-iop-tool', undefined);
   }
 };
 
@@ -265,6 +268,7 @@ interface AcquisitionOperationMap {
   };
   'locate-prerequisite-field': { request: undefined; response: string | null };
   'focus-prerequisite-page': { request: undefined; response: null };
+  'open-iop-tool': { request: undefined; response: null };
 }
 
 async function requestAcquisition<K extends ExtensionAlibabaCredentialAcquisitionOperation>(

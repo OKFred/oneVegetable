@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent, h, onMounted, ref } from 'vue';
 import { Copy, RefreshCw, ShieldCheck, UserPlus } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
@@ -15,13 +15,17 @@ import DataTable from '../components/DataTable.vue';
 import ListActionButton from '../components/ListActionButton.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import PageHeader from '../components/PageHeader.vue';
-import SelfHostedAdminPanel from '../components/SelfHostedAdminPanel.vue';
 import MetaSocialAdminPanel from '../components/MetaSocialAdminPanel.vue';
 import { useUiI18n } from '../i18n';
 import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 import { useUnsavedEditing } from '../lib/unsaved-editing';
+
+const SelfHostedAdminPanel =
+  typeof __ONE_VEGETABLE_EXTENSION__ !== 'undefined' && __ONE_VEGETABLE_EXTENSION__
+    ? null
+    : defineAsyncComponent(() => import('../components/SelfHostedAdminPanel.vue'));
 
 const { control, mode } = useServices();
 const { t } = useUiI18n();

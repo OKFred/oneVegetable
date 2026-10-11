@@ -61,7 +61,10 @@ const sections = computed(() => [
   { id: 'preferences', icon: Globe2 }
 ]);
 const S3StorageSettingsPanel = defineAsyncComponent(() => import('../components/S3StorageSettingsPanel.vue'));
-const GatewayCredentialPanel = defineAsyncComponent(() => import('../components/GatewayCredentialPanel.vue'));
+const GatewayCredentialPanel =
+  typeof __ONE_VEGETABLE_EXTENSION__ !== 'undefined' && __ONE_VEGETABLE_EXTENSION__
+    ? null
+    : defineAsyncComponent(() => import('../components/GatewayCredentialPanel.vue'));
 const { alibabaLanguage: preferredLanguage } = useAppPreferences();
 const signMethods: SignMethod[] = ['hmac', 'md5', 'hmac-sha256'];
 const model = ref<GatewaySettings>({
@@ -407,6 +410,13 @@ function confirmLanguagePreference(): void {
         class="min-w-0 space-y-4"
         :aria-label="t('settings.sections.credentials')"
       >
+        <Button
+          v-if="mode === 'extension' && alibabaCredentialAcquisition?.openIopTool"
+          size="sm"
+          type="button"
+          @click="alibabaCredentialAcquisition.openIopTool()"
+          ><WandSparkles class="size-3.5" />{{ t('settings.credentials.iopTool') }}</Button
+        >
         <GatewayCredentialPanel v-if="mode === 'bff' && runtime?.backendMeta?.runtime === 'node'" />
         <Card v-else-if="mode === 'bff'" class="space-y-3 p-5" data-testid="bff-credential-guide">
           <h2 class="flex items-center gap-2 font-semibold">

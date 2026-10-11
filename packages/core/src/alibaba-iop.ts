@@ -5,7 +5,7 @@ import { parseAlibabaTokenResponse, type AlibabaTokenResponse } from './alibaba-
 export const IOP_AUTHORIZE_ENDPOINT = 'https://openapi-auth.alibaba.com/oauth/authorize';
 export const IOP_API_ORIGIN = 'https://openapi-api.alibaba.com';
 export const PUBLIC_AUTH_ORIGIN = 'https://one-vegetable-auth.pages.dev';
-export const PUBLIC_AUTH_CALLBACK = `${PUBLIC_AUTH_ORIGIN}/callback.html`;
+export const PUBLIC_AUTH_CALLBACK = `${PUBLIC_AUTH_ORIGIN}/callback`;
 export const STORE_EXTENSION_ID = 'aepfdoldflokikbbcpnfifkacpfakmjc';
 
 export type IopTokenPath = '/auth/token/create' | '/auth/token/refresh';

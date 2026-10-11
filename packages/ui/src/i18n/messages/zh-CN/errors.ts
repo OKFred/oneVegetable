@@ -1,5 +1,6 @@
 export const errors = {
   codes: {
+    ALIBABA_IOP_RUNTIME_NOT_SUPPORTED: '这是新版 IOP 授权包，不能用于旧 TOP 网关。请使用 IOP 授权工具。',
     PRODUCT_CONTEXT_CHANGED: '账号或 Alibaba 凭据配置已变化。请重新选择商品并预览，不要重发旧任务。',
     PRODUCT_CONTEXT_UNAVAILABLE: '无法读取当前账号上下文。请检查登录和 Alibaba 凭据配置。',
     PRODUCT_CONTEXT_INVALID: '商品操作上下文无效，请重新打开批量维护。',

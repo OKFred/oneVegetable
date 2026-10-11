@@ -11,6 +11,7 @@ const root = resolve(import.meta.dirname, '..');
 const packageFiles = [
   'package.json',
   'apps/api/package.json',
+  'apps/auth-pages/package.json',
   'apps/extension/package.json',
   'apps/web/package.json',
   'packages/core/package.json',

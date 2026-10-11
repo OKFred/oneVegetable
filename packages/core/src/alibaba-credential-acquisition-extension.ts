@@ -14,7 +14,8 @@ export type ExtensionAlibabaCredentialAcquisitionOperation =
   | 'export-bundle'
   | 'read-prerequisite'
   | 'locate-prerequisite-field'
-  | 'focus-prerequisite-page';
+  | 'focus-prerequisite-page'
+  | 'open-iop-tool';
 
 export interface ExtensionAlibabaCredentialAcquisitionRequest {
   requestId: string;
@@ -42,4 +43,5 @@ export interface ExtensionAlibabaCredentialAcquisitionRepository {
   > | null>;
   locatePrerequisiteField(): Promise<string | null>;
   focusPrerequisitePage(): Promise<void>;
+  openIopTool?(): Promise<void>;
 }

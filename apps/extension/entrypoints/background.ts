@@ -1,4 +1,5 @@
 import { browser } from 'wxt/browser';
+import { handleAuthorization, handlePublicAuthorization } from '../lib/iop-authorization-runtime';
 import { defineBackground } from 'wxt/utils/define-background';
 import { VideoAdapter, VIDEO_OPERATIONS, VIDEO_METHODS } from '@one-vegetable/core/video';
 import { VideoAssociationAdapter } from '@one-vegetable/core/video-association';
@@ -163,6 +164,14 @@ export default defineBackground({
   type: 'module',
   main() {
     const storageAccessReady = restrictStorageToTrustedContexts();
+    browser.runtime.onMessageExternal.addListener((value: unknown, sender, respond) => {
+      void storageAccessReady
+        .then(() => handlePublicAuthorization(value, sender))
+        .then(respond, () => {
+          respond({ ok: false });
+        });
+      return true;
+    });
     const s3 = new ExtensionS3Service(
       s3LocalStore,
       (origins) => browser.permissions.contains({ origins }),
@@ -174,6 +183,14 @@ export default defineBackground({
     // WebExtension runtime listeners support returning a promise for the response.
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     browser.runtime.onMessage.addListener((value: unknown, sender) => {
+      if (
+        value &&
+        typeof value === 'object' &&
+        'kind' in value &&
+        value.kind === 'iop-authorization-request'
+      ) {
+        return storageAccessReady.then(() => handleAuthorization(value, sender));
+      }
       const trustedOptionsPage = isTrustedOptionsPageSender(sender);
       if (value && typeof value === 'object' && 'kind' in value && value.kind === 'video-upload-request') {
         return storageAccessReady.then(() => handleVideoUpload(value, trustedOptionsPage, s3, loadSettings));
@@ -386,6 +403,10 @@ async function handleAlibabaCredentialAcquisitionRequest(
         break;
       case 'focus-prerequisite-page':
         await alibabaCredentialAcquisition.focusPrerequisitePage();
+        data = null;
+        break;
+      case 'open-iop-tool':
+        await browser.tabs.create({ url: browser.runtime.getURL('/authorization.html') });
         data = null;
         break;
     }
@@ -1176,7 +1197,8 @@ function asAlibabaCredentialAcquisitionRequest(
     value.operation !== 'export-bundle' &&
     value.operation !== 'read-prerequisite' &&
     value.operation !== 'locate-prerequisite-field' &&
-    value.operation !== 'focus-prerequisite-page'
+    value.operation !== 'focus-prerequisite-page' &&
+    value.operation !== 'open-iop-tool'
   ) {
     return null;
   }

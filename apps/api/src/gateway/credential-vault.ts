@@ -343,7 +343,9 @@ export class GatewayCredentialCipher {
         this.#key,
         toArrayBuffer(decodeBase64Url(record.encryptedBundle))
       );
-      return parseCredentialDocument(JSON.parse(new TextDecoder().decode(plaintext)) as unknown);
+      const document = parseCredentialDocument(JSON.parse(new TextDecoder().decode(plaintext)) as unknown);
+      if (document.authorization?.protocol === 'iop') throw new Error('IOP_REQUIRED');
+      return document;
     } catch {
       throw new GatewayConfigurationError(
         'ALIBABA_CREDENTIAL_VAULT_UNREADABLE',

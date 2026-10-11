@@ -1,5 +1,7 @@
 export const errors = {
   codes: {
+    ALIBABA_IOP_RUNTIME_NOT_SUPPORTED:
+      'IOP credentials cannot be used with the legacy TOP gateway. Use the IOP authorization tool.',
     PRODUCT_CONTEXT_CHANGED:
       'Your account or Alibaba credentials changed. Select products and preview again; do not resubmit old tasks.',
     PRODUCT_CONTEXT_UNAVAILABLE:
