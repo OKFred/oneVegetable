@@ -14,7 +14,7 @@
     "build:auth": "pnpm --filter @one-vegetable/auth-pages build",
     "check:auth-pages": "tsx scripts/check-auth-pages.ts",
     "test:e2e:authorization": "pnpm run build:auth && pnpm run check:auth-pages && pnpm run build:extension && playwright test --config playwright.authorization.config.ts",
-    "deploy:auth": "pnpm run build:auth && wrangler pages deploy --config wrangler.auth.jsonc --project-name one-vegetable-auth --branch master",
+    "deploy:auth": "pnpm run build:auth && pnpm run check:auth-pages && wrangler pages deploy dist --cwd=apps/auth-pages --project-name one-vegetable-auth --branch master",
     "dev:extension": "pnpm --filter @one-vegetable/extension dev",
     "dev:api": "pnpm --filter @one-vegetable/api dev:node",
     "dev:api:real": "tsx scripts/run-real-api.ts",

@@ -1,4 +1,5 @@
 import { browser } from 'wxt/browser';
+import { IOP_VAULT_KEY, IOP_RECEIPT_KEY } from '../../lib/iop-authorization-storage';
 
 import type { GalleryRequestOptions } from '@one-vegetable/core/gallery-transfer-context';
 import {
@@ -400,7 +401,9 @@ const localData: LocalDataRepository = {
           key !== SETTINGS_STORAGE_KEY &&
           key !== EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY &&
           key !== EXTENSION_SOCIAL_BACKEND_STORAGE_KEY &&
-          key !== EXTENSION_S3_STORAGE_KEY
+          key !== EXTENSION_S3_STORAGE_KEY &&
+          key !== IOP_VAULT_KEY &&
+          key !== IOP_RECEIPT_KEY
       ),
       ...localEntries.filter(
         ([key]) => key === APP_PREFERENCES_STORAGE_KEY || key === LEGACY_APP_PREFERENCES_STORAGE_KEY
@@ -429,8 +432,12 @@ const localData: LocalDataRepository = {
         id: 'credentials',
         label: translateUi('settings.extensionRuntime.localData.credentials.label'),
         storage: 'chrome.storage.local',
-        itemCount: SETTINGS_STORAGE_KEY in local ? 1 : 0,
-        approximateBytes: approximateStorageBytes(local[SETTINGS_STORAGE_KEY]),
+        itemCount: Number(SETTINGS_STORAGE_KEY in local) + Number(IOP_VAULT_KEY in local),
+        approximateBytes: approximateStorageBytes({
+          settings: local[SETTINGS_STORAGE_KEY],
+          iop: local[IOP_VAULT_KEY],
+          receipt: local[IOP_RECEIPT_KEY]
+        }),
         sensitive: true,
         retention: translateUi('settings.extensionRuntime.localData.credentials.retention')
       },

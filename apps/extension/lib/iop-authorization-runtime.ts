@@ -18,6 +18,11 @@ browser.tabs.onUpdated.addListener((tabId, change) => {
   if (change.url) void controller.acceptCallback(change.url, tabId).catch(() => undefined);
 });
 
+/** Called only by the trusted workbench's explicit clear-all-data workflow. */
+export async function resetIopAuthorization(): Promise<void> {
+  await controller.clear();
+}
+
 export async function handleAuthorization(
   value: unknown,
   sender: ExtensionRuntimeSenderIdentity

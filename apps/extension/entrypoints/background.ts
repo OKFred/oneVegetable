@@ -1,5 +1,9 @@
 import { browser } from 'wxt/browser';
-import { handleAuthorization, handlePublicAuthorization } from '../lib/iop-authorization-runtime';
+import {
+  handleAuthorization,
+  handlePublicAuthorization,
+  resetIopAuthorization
+} from '../lib/iop-authorization-runtime';
 import { defineBackground } from 'wxt/utils/define-background';
 import { VideoAdapter, VIDEO_OPERATIONS, VIDEO_METHODS } from '@one-vegetable/core/video';
 import { VideoAssociationAdapter } from '@one-vegetable/core/video-association';
@@ -177,6 +181,7 @@ export default defineBackground({
       (origins) => browser.permissions.contains({ origins }),
       undefined,
       async () => {
+        await resetIopAuthorization();
         await new ExtensionVideoUploadRepository().clearAll();
       }
     );
@@ -420,6 +425,8 @@ async function saveAcquiredCredentialsToVault(
   bundle: Awaited<ReturnType<ExtensionAlibabaCredentialAcquisitionController['completedBundle']>>,
   passphrase: string | undefined
 ): Promise<CredentialVaultStatus> {
+  if (bundle.protocol === 'iop')
+    throw gatewayFailure('ALIBABA_IOP_RUNTIME_NOT_SUPPORTED', 'Use the independent IOP authorization tool.');
   const settings: GatewaySettings = {
     appKey: bundle.application.appKey,
     ...alibabaAuthorizationMetadata(bundle),

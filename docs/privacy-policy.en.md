@@ -1,7 +1,7 @@
 # oneVegetable Privacy Policy
 
-Effective date: 2026-09-27
-Applicable version: 2.13.0
+Effective date: 2026-10-12
+Applicable version: 2.15.0
 
 ## Independent third-party notice
 
@@ -28,6 +28,12 @@ HTTP S3 access on a trusted LAN requires explicit opt-in, a private IPv4 address
 After confirmation, local MP4 parts go to your S3 storage; the title and public HTTPS source URL or temporary signed read URL go to Alibaba for retrieval. Anyone holding a signed URL can read the video until expiry. Tasks retain titles, filenames/sizes/fingerprints, identity/configuration identifiers, object paths, multipart/upload IDs, ETags, request/platform IDs, timestamps and states, not file bytes, Base64, source/signed URLs, credentials or full responses. Storage is separate extension IndexedDB or backend SQLite/D1 for Node/Worker implementations. Up to 100 tasks are retained without automatic expiry. After reload, resume manually with the original file or same URL; unknown writes are not automatically resent. Cancellation only aborts this task's unfinished multipart upload. Clearing local records does not delete completed S3 objects or platform videos; you manage remote retention. Real uploads are enabled only for Node `local-node` and the formal extension, not Worker.
 
 ## Data processed
+
+### Static Pages and the independent IOP tool
+
+The public site only provides guidance, opens the extension and hands off the current OAuth callback. It collects no website password, App Secret, token or passphrase and has no token backend, analytics or recording. Merchants enter their own application details and registered Callback inside the extension. Only `https://one-vegetable-auth.pages.dev` may send probe, open-tool and callback messages; it cannot read or export credentials. Authorization codes and state pass through browser navigation and static hosting. The page immediately removes query parameters and uses no-referrer/no-store, forwarding nothing to third-party scripts. This does not guarantee the hosting provider keeps no request logs.
+
+The extension binds callbacks to the active task, known tab, exact origin/path and one-time state before calling Alibaba IOP directly. Tasks and passphrases remain in service-worker memory for at most ten minutes; closing the tool or restarting its worker can require authorization again. The independent bundle is encrypted with PBKDF2 (600,000 iterations) and AES-256-GCM in trusted `chrome.storage.local`, without replacing the TOP workbench. Worker restart requires unlocking; passphrases and derived keys are not persisted. Renewal records only a request identifier, time and stage before sending. Unknown outcomes block retries and export. If saving locally fails, persistence can be retried without another platform request. Explicitly confirmed export creates a plaintext `credentialInfo.json`; keep it private and never publish or commit it to Git. Clearing all local data removes this bundle and renewal receipt but does not revoke platform authorization.
 
 - App Key, App Secret, Access Token, signature algorithm, and gateway address entered by the user or obtained through the user-initiated authorization assistant;
 - product Schema and RFQ quotation edits in current-page memory, and legacy edit drafts still stored locally;

@@ -73,6 +73,8 @@ pnpm capture:store-assets # 从构建后的扩展刷新 1280×800 商店截图
 
 Node 管理员可在设置页导入授权 JSON 或手动填写 Alibaba 开放平台凭据，保存即时生效、清除不回退旧账号；详见 [Node 凭据管理与验证](docs/node-credential-management.md)。
 
+新版 IOP 授权另有独立的静态 Pages + Chrome 插件工具，支持商家自己的应用、Token 续期及 `credentialInfo.json` 导出；公共页面不接收密钥。它不覆盖现有 TOP 工作台，也不表示业务网关已迁移。部署、使用与验证见 [静态 IOP 授权指南](docs/static-iop-authorization.md)。
+
 ## 扩展调试
 
 日常开发使用 `pnpm dev:extension`。WXT 会启动独立 Chromium profile，并在 options、popup、service worker、content script 或 manifest 变化后自动更新/重载扩展；不需要像 MV2 一样每次打开 `chrome://extensions` 手工点击“重新加载”。

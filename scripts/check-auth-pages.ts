@@ -21,9 +21,17 @@ for (const required of [
 ]) {
   if (!headers.includes(required)) throw new Error(`Missing authorization privacy header: ${required}`);
 }
-const config = await readFile(resolve(root, 'wrangler.auth.jsonc'), 'utf8');
+const config = await readFile(resolve(root, 'apps/auth-pages/wrangler.jsonc'), 'utf8');
 if (/"(?:d1_databases|kv_namespaces|r2_buckets|secrets|vars|main)"/u.test(config))
   throw new Error('Static authorization site cannot have runtime bindings or secrets');
+if (!config.includes('"pages_build_output_dir": "dist"'))
+  throw new Error('Pages output must be relative to its independent project directory');
+const manifest = await readFile(resolve(root, 'package.json'), 'utf8');
+if (
+  !manifest.includes('wrangler pages deploy dist --cwd=apps/auth-pages') ||
+  /pages deploy[^"\n]*--config/u.test(manifest)
+)
+  throw new Error('Pages must use its own working directory, not an unsupported --config path');
 if (
   new URL(PUBLIC_AUTH_CALLBACK).origin !== PUBLIC_AUTH_ORIGIN ||
   new URL(PUBLIC_AUTH_CALLBACK).pathname !== '/callback'

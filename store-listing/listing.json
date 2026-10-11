@@ -26,7 +26,7 @@
     {
       "permission": "http://*/*, https://*/*",
       "required": false,
-      "justification": "Chrome grants only the specific host requested when a user starts credential acquisition, confirms the actual OAuth callback, configures a custom gateway or S3-compatible asset storage, pairs a user-controlled social publishing BFF, or explicitly transfers an external image. S3 requests, including video multipart staging, use the existing grant for the configured storage host and are signed in the extension background. Grants are revocable under Logs > Diagnostics and data; video upload adds no Manifest permission or permanent host grant."
+      "justification": "Chrome grants only the specific host requested when a user starts credential acquisition, confirms the actual OAuth callback, configures a custom gateway or S3-compatible asset storage, pairs a user-controlled social publishing BFF, or explicitly transfers an external image. The independent IOP authorization tool requests only openapi-api.alibaba.com and the merchant's registered Callback origin on a user gesture; it does not collect Alibaba website passwords. Only the exact one-vegetable-auth.pages.dev site can open the tool or deliver a task-bound callback, never read or export secrets. S3 requests, including video multipart staging, use the existing grant for the configured storage host and are signed in the extension background. Grants are revocable under Logs > Diagnostics and data; no new permanent host grant is added."
     }
   ],
   "dataUse": {

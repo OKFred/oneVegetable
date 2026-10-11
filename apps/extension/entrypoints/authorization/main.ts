@@ -33,7 +33,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 function render(): void {
   if (!summary) return;
-  el('#status').textContent = t(summary.state);
+  el('#status').textContent = t(busy ? 'busy' : summary.state);
   el('#name').textContent = summary.appName ?? '—';
   el('#key').textContent = summary.appKeySuffix ? `…${summary.appKeySuffix}` : '—';
   const date = (text: string | null): string =>

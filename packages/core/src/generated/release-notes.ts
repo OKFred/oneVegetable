@@ -23,6 +23,19 @@ export const RELEASE_NOTES_DOCUMENT = {
         {
           type: 'feature',
           title: {
+            'zh-CN': '独立 IOP 授权工具',
+            'en-US': 'Independent IOP authorization tool'
+          },
+          description: {
+            'zh-CN':
+              '静态回调配合插件，使用商家自己的应用完成授权、续期和 JSON 导出。密钥仅在本机处理，结果不明不自动重试；不覆盖旧 TOP 工作台。公共站点部署和首次回调验收仍需单独完成。',
+            'en-US':
+              'Authorize, renew and export JSON using your own application through a static callback and extension. Secrets stay local; uncertain results are never retried automatically. The legacy TOP workbench is not replaced. Public deployment and first callback acceptance remain separate.'
+          }
+        },
+        {
+          type: 'feature',
+          title: {
             'zh-CN': '独立详情模板库',
             'en-US': 'Reusable description template library'
           },

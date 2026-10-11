@@ -16,8 +16,8 @@ import {
 import { GatewayException } from '@one-vegetable/core/errors';
 import { validateVaultPassphrase } from '@one-vegetable/core/credential-vault';
 
-export const IOP_VAULT_KEY = 'one-vegetable-iop-authorization-v1';
-export const IOP_RECEIPT_KEY = 'one-vegetable-iop-refresh-receipt-v1';
+import { IOP_VAULT_KEY, IOP_RECEIPT_KEY } from './iop-authorization-storage';
+export { IOP_VAULT_KEY, IOP_RECEIPT_KEY } from './iop-authorization-storage';
 export interface AuthorizationStorage {
   get(key: string): Promise<Record<string, unknown>>;
   set(items: Record<string, unknown>): Promise<void>;

@@ -47,7 +47,11 @@ vi.mock('@one-vegetable/core/alibaba-iop', async (original) => {
     }
   };
 });
-import { handleAuthorization, handlePublicAuthorization } from '../lib/iop-authorization-runtime';
+import {
+  handleAuthorization,
+  handlePublicAuthorization,
+  resetIopAuthorization
+} from '../lib/iop-authorization-runtime';
 
 const trusted = {
   id: 'local-test-extension',
@@ -70,6 +74,29 @@ afterEach(async () => {
 });
 
 describe('narrow public authorization bridge', () => {
+  it('clear-all cancels the pending callback before removing local credentials', async () => {
+    await handleAuthorization(
+      command('start', {
+        ...credential.oauthBundle.application,
+        callbackUrl: PUBLIC_AUTH_CALLBACK,
+        passphrase: '123456'
+      }),
+      trusted
+    );
+    const state = new URL(mocks.open.mock.calls[0]?.[0].url ?? '').searchParams.get('state') ?? '';
+    await resetIopAuthorization();
+    expect(await handleAuthorization(command('status'), trusted)).toMatchObject({
+      ok: true,
+      data: { state: 'empty' }
+    });
+    expect(
+      await handlePublicAuthorization(external('callback', { state, code: 'fixture-code' }), {
+        url: PUBLIC_AUTH_CALLBACK,
+        tab: { id: 42 }
+      })
+    ).toMatchObject({ data: { received: false } });
+    expect(mocks.token).not.toHaveBeenCalled();
+  });
   it('only lets the exact Pages origin probe or open the local tool', async () => {
     expect(
       await handlePublicAuthorization(external('probe'), { url: `${PUBLIC_AUTH_ORIGIN}/` })
