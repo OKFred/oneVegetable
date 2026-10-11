@@ -514,14 +514,13 @@ export class StoredAlibabaCredentialProvider {
       );
     }
     let bundle = await this.cipher.decryptDocument(record);
-    if (record.lastRefreshErrorCode && !forceRefresh)
-      throw new GatewayConfigurationError(
-        'ALIBABA_TOKEN_REFRESH_FAILED',
-        'Token 刷新失败，请重新授权或手工刷新'
-      );
+    // A failed refresh does not establish that the retained access token is invalid.
+    // Keep the same account/token, stop automatic refresh attempts, and let the
+    // recorded expiry or the business API determine whether it is still usable.
     if (
       forceRefresh ||
-      (bundle.credentials.refreshToken !== null &&
+      (!record.lastRefreshErrorCode &&
+        bundle.credentials.refreshToken !== null &&
         shouldRefresh(record.accessTokenExpiresTimeUtc, this.clock()))
     ) {
       const refreshed = await this.refresh(record, bundle, requestId);

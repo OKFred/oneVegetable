@@ -53,11 +53,11 @@ async function refresh(): Promise<void> {
     await control.refreshGatewayCredential();
     open.value = false;
     toast.success(credentialText('refreshed'));
-    notifyGatewayConfigurationChanged();
   } catch (cause) {
     error.value = cause;
   } finally {
     refreshing.value = false;
+    notifyGatewayConfigurationChanged();
   }
 }
 </script>
@@ -83,7 +83,13 @@ async function refresh(): Promise<void> {
       <ErrorNotice v-if="error" :error="error" :fallback="credentialText('error')" />
       <p v-if="!loading && !admin">{{ credentialText('adminOnly') }}</p>
       <p v-else-if="!loading">
-        {{ summary?.canRefresh ? credentialText('refreshAvailable') : credentialText('noRefresh') }}
+        {{
+          summary?.lastRefreshErrorCode
+            ? credentialText('refreshFailed')
+            : summary?.canRefresh
+              ? credentialText('refreshAvailable')
+              : credentialText('noRefresh')
+        }}
       </p>
     </div>
     <template #footer>

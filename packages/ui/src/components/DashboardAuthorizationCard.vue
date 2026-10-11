@@ -19,9 +19,9 @@ const expires = ref<number | null>(null);
 const permission = ref<AlibabaAuthorizationMetadata['systemApiPermission']>('unknown');
 const captured = ref<number | null>(null);
 const reason = ref<'adminOnly' | 'empty' | 'unlockForExpiry' | 'expiryReadFailed' | null>(null);
-const invalid = ref(false);
+const refreshFailed = ref(false);
 const expiry = computed(() => credentialExpiryState(expires.value, now.value));
-const state = computed(() => (invalid.value ? 'invalid' : expiry.value.status));
+const state = computed(() => expiry.value.status);
 const value = computed(() =>
   loading.value
     ? '—'
@@ -36,7 +36,11 @@ const value = computed(() =>
 const reminder = computed(
   () =>
     (reason.value ? t(reason.value) : null) ??
-    (state.value === 'unknown' ? t(`permission${permission.value}`) : t(`expiry${state.value}`))
+    (refreshFailed.value
+      ? t('refreshFailed')
+      : state.value === 'unknown'
+        ? t(`permission${permission.value}`)
+        : t(`expiry${state.value}`))
 );
 const details = computed(() =>
   [
@@ -59,7 +63,7 @@ async function load(): Promise<void> {
   permission.value = 'unknown';
   captured.value = null;
   reason.value = null;
-  invalid.value = false;
+  refreshFailed.value = false;
   try {
     if (mode === 'bff' && control) {
       const session = await control.session();
@@ -73,9 +77,9 @@ async function load(): Promise<void> {
       expires.value = status.accessTokenExpiresTimeUtc;
       permission.value = status.systemApiPermission ?? 'unknown';
       captured.value = status.permissionCapturedTimeUtc ?? null;
-      invalid.value = Boolean(status.lastRefreshErrorCode);
+      refreshFailed.value = Boolean(status.lastRefreshErrorCode);
       if (status.errorCode) reason.value = 'expiryReadFailed';
-      if (!status.configured && expires.value === null && !invalid.value) reason.value = 'empty';
+      if (!status.configured && expires.value === null) reason.value = 'empty';
     } else if (mode === 'extension' && vault) {
       const status = await vault.status();
       if (current !== generation) return;
@@ -132,7 +136,11 @@ onBeforeUnmount(() => {
     <p
       v-if="!loading"
       class="mt-2 text-xs"
-      :class="state === 'valid' && !reason ? 'text-muted-foreground' : 'text-amber-700 dark:text-amber-300'"
+      :class="
+        state === 'valid' && !reason && !refreshFailed
+          ? 'text-muted-foreground'
+          : 'text-amber-700 dark:text-amber-300'
+      "
     >
       {{ reminder }}
     </p>

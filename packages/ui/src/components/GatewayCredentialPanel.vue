@@ -211,7 +211,7 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
           v-if="summary && (summary.configured || summary.accessTokenExpiresTimeUtc != null)"
           :expires="summary.accessTokenExpiresTimeUtc"
           :refresh-expires="summary.refreshTokenExpiresTimeUtc"
-          :invalid="Boolean(summary.lastRefreshErrorCode || latestTest?.status === 'credentials-invalid')"
+          :invalid="latestTest?.status === 'credentials-invalid'"
         />
         <details class="rounded-lg border p-3 text-sm">
           <summary class="cursor-pointer font-medium">{{ t('renewTitle') }}</summary>

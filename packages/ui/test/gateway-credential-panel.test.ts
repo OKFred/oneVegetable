@@ -133,6 +133,21 @@ describe('Node credential configuration UI', () => {
       expect(h.button(label).find('svg').exists()).toBe(true);
     h.wrapper.unmount();
   });
+  it.each([null, 864_000_000])(
+    'does not equate a refresh failure with access revocation (%s expiry)',
+    async (lifetime) => {
+      const h = await harness('admin', {
+        accessTokenExpiresTimeUtc: lifetime === null ? null : Date.now() + lifetime,
+        lastRefreshErrorCode: 'ALIBABA_TOKEN_REFRESH_FAILED'
+      });
+      const notice = h.wrapper.get('[data-testid="credential-expiry"]');
+      expect(notice.text()).toContain(lifetime === null ? '有效期未知' : '有效期内');
+      expect(notice.text()).not.toContain('授权已失效');
+      expect(h.wrapper.text()).toContain('ALIBABA_TOKEN_REFRESH_FAILED');
+      expect(h.test).not.toHaveBeenCalled();
+      h.wrapper.unmount();
+    }
+  );
   it('exposes manual entry beside import and closes an unchanged real dialog immediately', async () => {
     const h = await harness('admin', {}, true);
     const manual = h.button('手动填写');

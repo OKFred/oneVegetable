@@ -188,6 +188,19 @@ describe('dashboard authorization renewal', () => {
     h.wrapper.unmount();
   });
 
+  it('shows a previous refresh failure as a warning without attempting it on open', async () => {
+    const h = await harness();
+    h.status.mockResolvedValueOnce({
+      ...(fixture.credential as ControlGatewayCredentialSummary),
+      lastRefreshErrorCode: 'ALIBABA_TOKEN_REFRESH_FAILED'
+    });
+    await h.wrapper.get('button').trigger('click');
+    await flushPromises();
+    expect(h.body.get('[role="dialog"]').text()).toContain('续期失败，请测试连接或重新授权');
+    expect(h.refresh).not.toHaveBeenCalled();
+    h.wrapper.unmount();
+  });
+
   it('does not offer live renewal in the Mock demo', async () => {
     const h = await harness({ mode: 'mock' });
     expect(h.wrapper.find('button').exists()).toBe(false);

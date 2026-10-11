@@ -47,9 +47,9 @@ export const gatewayCredentials = {
   noRefresh: 'Refresh unavailable. Reauthorize and import.',
   renewTitle: 'How do I reconnect after authorization fails?',
   renewGuide:
-    'Try Refresh Token first. If it fails, get credentials in extension Settings, authorize and export JSON, then import and test here. Do not clear the old configuration or sign out. Local developers can also run pnpm openapi:auth.',
+    'Try refresh. Otherwise authorize in extension Settings, export JSON, import and test here. Keep the old configuration and workbench session. Local: pnpm openapi:auth.',
   legacy:
-    'Using a startup file or environment variables. Saving switches immediately to encrypted configuration; clearing will not restore the old account.',
+    'Startup file/environment. Saving switches to encrypted configuration; clearing never restores the old account.',
   save: 'Save and activate',
   cancel: 'Cancel',
   advanced: 'Advanced options',
@@ -66,6 +66,7 @@ export const gatewayCredentials = {
   saved: 'Credentials encrypted and activated. Test the connection next.',
   cleared: 'Configuration cleared; real calls stopped',
   refreshed: 'Token refreshed',
+  refreshFailed: 'Renewal failed; test connection or reauthorize',
   error: 'Credential operation failed. Review the error and retry.',
   invalid: 'Check required fields, dates and authorization JSON format (maximum 1 MiB).',
   testNotice:

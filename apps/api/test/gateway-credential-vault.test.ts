@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { applyNodeMigrations, openNodeDatabase } from '../src/db/node-database';
 import {
@@ -132,6 +132,52 @@ describe('D1-compatible Alibaba credential vault', () => {
       code: 'ALIBABA_CREDENTIALS_NOT_CONFIGURED'
     });
   });
+
+  it.each([null, 3_600_000, 60_000, -1])(
+    'retains the same access token after a failed explicit refresh (%s expiry), without automatic refresh retries',
+    async (lifetime) => {
+      const now = Date.parse('2026-08-30T00:00:00.000Z');
+      const send = vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify(permissionFixture.refreshRejected), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        )
+      );
+      const { repository, service, cipher } = await harness(() => now);
+      const input = bundle();
+      input.oauth.expiresAtUtc = lifetime === null ? null : new Date(now + lifetime).toISOString();
+      const before = await service.import({
+        bundle: input,
+        actorId: 'admin-1',
+        expectedRevision: null,
+        remark: null
+      });
+      const provider = new StoredAlibabaCredentialProvider(repository, cipher, {
+        transport: { send },
+        clock: () => now
+      });
+      await expect(provider.requireCredentials(crypto.randomUUID(), true)).rejects.toMatchObject({
+        code: 'ALIBABA_TOKEN_REFRESH_FAILED'
+      });
+      if (lifetime !== null && lifetime <= 0) {
+        await expect(provider.requireCredentials()).rejects.toMatchObject({
+          code: 'ALIBABA_ACCESS_TOKEN_EXPIRED'
+        });
+      } else {
+        const retained = await provider.requireCredentials();
+        expect(retained.accessToken).toBe(input.oauth.accessToken);
+        expect(retained.galleryAccountGeneration).toBe(before.configurationId);
+      }
+      expect(send).toHaveBeenCalledOnce();
+      expect(await service.status()).toMatchObject({
+        revision: before.revision,
+        lastRefreshErrorCode: 'ALIBABA_TOKEN_REFRESH_FAILED',
+        accessTokenExpiresTimeUtc: lifetime === null ? null : now + lifetime
+      });
+    }
+  );
 
   it('rejects an incorrect encryption key', async () => {
     const { repository, service } = await harness();

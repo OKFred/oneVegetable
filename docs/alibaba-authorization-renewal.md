@@ -11,6 +11,7 @@
 - 刷新凭证尚未到期也不保证续期成功；撤销、应用状态或特定接口权限可能使授权更早失效。
 - 插件仅保留加密的 Access Token 到期元数据，不自动刷新。重新授权后保存到现有保险库即可；手工换 Token 清除旧到期记录。
 - Node/Cloudflare 管理配置可尝试刷新；失败时重新授权并导入。环境变量/启动文件不支持页面直接刷新，先导入为加密配置。
+- 刷新失败不等于当前 Access Token 失效：保留原凭据和失败记录，停止自动刷新重试。实际到期或业务 API 拒绝时仍停止调用；未知有效期不能当成永久有效，也不能因一次刷新失败封锁全部页面。可先测试连接，再决定重新授权。
 
 ## 总览与新版 System API（2026-10-11 核对）
 
@@ -38,5 +39,7 @@
 The Overview countdown uses only the current credential's recorded expiry. System API and SystemAPI are distinct. Permission evidence is an import-time snapshot, not a live entitlement check; missing or empty metadata is not proof of missing permission. No expiry means no fabricated countdown. Enabling a new permission cannot reveal an old token's expiry. The IOP flow still needs separate live acceptance and never replaces the existing TOP flow automatically.
 
 Website login, workbench login, vault unlock and API authorization are independent. Token lifetime comes from the actual OAuth response, not a universal duration. Unknown expiry never means permanent authorization. The seven-day notice is a local reminder only; access can be revoked earlier.
+
+A failed refresh retains the same credentials and failure record, disables automatic refresh retries, and does not prove that the current access token is invalid. Recorded expiry and business API rejection still apply. Test the connection before reauthorizing; never switch accounts or fall back to Mock.
 
 Use `pnpm openapi:auth:reconnect` with an existing bundle to authorize in your signed-in browser. Paste the callback into the loopback form, never into a chat or issue. The receiver validates the registered callback and state, exchanges the code once, and atomically saves the local bundle. Import it into the server's encrypted configuration and run a read-only connection test. No product operations are replayed, and no credentials are synced to other installations automatically.

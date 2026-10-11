@@ -45,7 +45,7 @@ export const gatewayCredentials = {
     '插件不会自动续期。临近到期或接口提示失效时，点击“获取开放平台凭证”重新授权并保存；无需重建保险库。',
   renewTitle: '授权失效了，怎么重新连接？',
   renewGuide:
-    '先尝试刷新 Token。失败时在插件设置中获取开放平台凭证，完成授权后导出 JSON，在这里导入并测试连接；无需清除旧配置或重新登录工作台。本机开发也可运行 pnpm openapi:auth 获取授权包。',
+    '先尝试刷新 Token；失败后用插件重新授权、导出 JSON，再导入并测试连接。无需清除旧配置或退出工作台。本机可运行 pnpm openapi:auth。',
   legacy: '当前使用启动文件或环境变量。导入或保存后立即改用加密配置；清除后不会回退旧账号。',
   save: '保存并立即生效',
   cancel: '取消',
@@ -61,6 +61,7 @@ export const gatewayCredentials = {
   saved: '凭据已加密保存并立即生效，请点击测试连接',
   cleared: '配置已清除，真实调用已停止',
   refreshed: 'Token 已刷新',
+  refreshFailed: '续期失败，请测试连接或重新授权',
   error: '凭据操作未完成，请查看错误后重试',
   invalid: '请检查必填项、日期和授权 JSON 格式（最大 1 MiB）',
   testNotice: '只查询一条商品，不修改数据。成功只代表商品列表接口可用，不代表所有 API 均有权限。',

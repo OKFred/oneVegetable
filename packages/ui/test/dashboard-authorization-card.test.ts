@@ -112,6 +112,24 @@ describe('overview authorization card', () => {
     expect(view.read).not.toHaveBeenCalled();
     view.wrapper.unmount();
   });
+  it.each([null, 120_000])(
+    'does not label a failed refresh as revoked access (%s expiry)',
+    async (lifetime) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(1_800_000_000_000);
+      const view = await harness({
+        status: {
+          accessTokenExpiresTimeUtc: lifetime === null ? null : Date.now() + lifetime,
+          lastRefreshErrorCode: 'ALIBABA_TOKEN_REFRESH_FAILED'
+        }
+      });
+      expect(view.wrapper.text()).toContain('续期失败，请测试连接或重新授权');
+      expect(view.wrapper.text()).not.toContain('授权已失效');
+      expect(view.wrapper.text()).toContain(lifetime === null ? '未知' : '剩余约 2 分钟');
+      expect(view.refresh).not.toHaveBeenCalled();
+      view.wrapper.unmount();
+    }
+  );
   it('reads only safe extension settings; a locked vault is not a missing permission', async () => {
     const view = await harness({ extension: true, locked: true });
     expect(view.wrapper.text()).toContain('解锁凭据');

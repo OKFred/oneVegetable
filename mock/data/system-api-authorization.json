@@ -3,6 +3,7 @@
   "active": [{ "name": "System API", "status": "Active" }],
   "legacy": [{ "name": "SystemAPI", "status": "Active" }],
   "inactive": [{ "name": "System API", "status": "Pending" }],
+  "refreshRejected": { "error": "invalid_grant", "error_description": "Fixture refresh token rejected" },
   "token": {
     "access_token": "fixture-access-token",
     "refresh_token": "fixture-refresh-token",
