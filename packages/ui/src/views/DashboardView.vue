@@ -46,6 +46,15 @@ const summary = useQuery({
     >
       <template #icon><Boxes class="size-4 text-primary" /></template>
     </DashboardMetricCard>
+    <DashboardMetricCard
+      :title="t('shell.dashboard.metrics.orders')"
+      :value="summary.data.value?.orderCount"
+      :status="summary.data.value?.metricStatuses.orderCount"
+      :description="t('shell.dashboard.metrics.ordersDescription')"
+      :gateway-source-label="dataSource.label"
+    >
+      <template #icon><ShoppingCart class="size-4 text-primary" /></template>
+    </DashboardMetricCard>
     <DashboardAuthorizationCard v-if="mode !== 'mock'" />
     <DashboardMetricCard
       v-else
@@ -56,15 +65,6 @@ const summary = useQuery({
       :gateway-source-label="dataSource.label"
     >
       <template #icon><Image class="size-4 text-primary" /></template>
-    </DashboardMetricCard>
-    <DashboardMetricCard
-      :title="t('shell.dashboard.metrics.orders')"
-      :value="summary.data.value?.orderCount"
-      :status="summary.data.value?.metricStatuses.orderCount"
-      :description="t('shell.dashboard.metrics.ordersDescription')"
-      :gateway-source-label="dataSource.label"
-    >
-      <template #icon><ShoppingCart class="size-4 text-primary" /></template>
     </DashboardMetricCard>
     <DashboardMetricCard
       :title="t('shell.dashboard.metrics.capabilities')"
