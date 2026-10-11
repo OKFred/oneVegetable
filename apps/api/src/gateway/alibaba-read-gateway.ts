@@ -139,12 +139,15 @@ export class AlibabaReadGatewayClient implements GatewayClient {
         message: 'PRODUCT_CONTEXT_CHANGED',
         retryable: false
       });
-    if (operation === 'listCapabilities') return listCapabilitiesWithAccountVerification();
+    if (operation === 'listCapabilities')
+      return listCapabilitiesWithAccountVerification().map((capability) =>
+        this.applyCapabilityProtocol(capability)
+      );
     if (operation === 'getCapabilityDefinition') {
       const method = readString(readRecord(request), 'method');
       const definition = getCapabilityDefinition(method);
       if (!definition) throw gatewayError('CAPABILITY_UNKNOWN', '该能力尚无类型化定义');
-      return definition;
+      return this.applyCapabilityProtocol(definition);
     }
     const client = this.createClient(
       context,
@@ -161,6 +164,12 @@ export class AlibabaReadGatewayClient implements GatewayClient {
       return this.requestDedicated(operation, request, client, this.createClient(context, 'sync'));
     }
     return this.callCapability(request as CapabilityCallRequest, client, context) as Promise<ResponseOf<K>>;
+  }
+
+  private applyCapabilityProtocol<T extends { method: string; realCallEnabled: boolean }>(capability: T): T {
+    return this.#credentials.protocol === 'iop' && iopOperationReason('callCapability', capability.method)
+      ? { ...capability, realCallEnabled: false }
+      : capability;
   }
 
   private createClient(

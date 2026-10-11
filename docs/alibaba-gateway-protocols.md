@@ -28,6 +28,8 @@ TOP 仍是默认协议，不自动替换已有本地、Node、Cloudflare 或插�
 
 订单、RFQ、物流、产品分等尚未映射的能力，在调用前返回清晰限制原因。所有 IOP 商品、图片及其他 mutation 暂不继承 TOP 的真实写白名单。不会失败后切到 TOP、Mock 或其他应用。
 
+BFF 与插件的能力目录及方法定义使用同一协议限制：IOP 未适配方法标为不可调用；已映射的方法仍保留原有权限和启用状态，不因映射存在而自动开放。TOP 和未标记的旧凭据保留原目录状态。
+
 ## 续期和安全
 
 - Node/Cloudflare 凭据 Provider 按协议刷新；TOP 保持旧链路，IOP 只调用新版 System API。
@@ -47,7 +49,7 @@ TOP 仍是默认协议，不自动替换已有本地、Node、Cloudflare 或插�
 - 独立 IOP 授权包真实读取通过：商品列表、商品分组、正式商品 Schema、图片分组和指定分组图片列表。草稿 Schema 仅完成契约/适配测试，尚无本轮真实草稿样本。
 - 隔离 Node BFF 通过 JSON 导入、真实商品列表连接测试、显式 IOP 手动配置、重启保留、清除防回退、重新导入和设置页确认流程。验收使用临时 SQLite，不修改当前工作台 TOP 配置，也不轮换真实 Token。
 - 正式 MV3 构建的离线 E2E 通过静态 Pages 回调、加密保存/导出、单次续期、错误 state 拒绝，以及工作台 IOP 持久化、图片分组查询和未适配读写拦截。测试副本预授予主机权限并使用 `mock/data` 响应，不声称该项是插件真实账号验收。
-- 全量单测 294 文件 / 2067 项通过；Worker 隔离测试 23 项通过；相关 E2E 24 项通过（授权 3、双语 Node 配置 2、工作台及扩展回归 19）。Web/Worker/扩展构建、类型、契约漂移、格式、Lint 和文案检查通过；Lint 保留已有 warning，无 error。
+- 全量单测 294 文件 / 2070 项通过；Worker 隔离测试 23 项通过；相关 E2E 24 项通过（授权 3、双语 Node 配置 2、工作台及扩展回归 19）。Web/Worker/扩展构建、类型、契约漂移、格式、Lint 和文案检查通过；Lint 保留已有 warning，无 error。
 - 正式扩展 ZIP 1,189,371 字节，解包 4,097,280 字节；未增加永久 Manifest 权限。代码推送不等于已部署 Worker、Pages 或发布商店。
 
 只读真实回执保存在忽略目录 `artifacts/iop-business-read-validation/`，Node 设置验收记录在 `artifacts/node-credential-management/`；不提交凭据、完整 Schema 或平台业务响应。

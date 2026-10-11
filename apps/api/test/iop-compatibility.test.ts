@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createRequestId, parseAlibabaOpenApiCredentialBundle } from '@one-vegetable/core';
+import {
+  createRequestId,
+  getCapabilityDefinition,
+  listCapabilitiesWithAccountVerification,
+  parseAlibabaOpenApiCredentialBundle
+} from '@one-vegetable/core';
 import { IOP_BUSINESS_ENDPOINT } from '@one-vegetable/core/alibaba-iop';
 import credentialFixture from '../../../mock/data/node-gateway-credentials.json';
 import tokenFixture from '../../../mock/data/alibaba-auth/iop-token-responses.json';
@@ -416,6 +421,36 @@ describe('explicit TOP / IOP credential compatibility', () => {
 });
 
 describe('IOP API gateway integration without external networking', () => {
+  it.each([undefined, 'top', 'iop'] as const)(
+    'keeps catalog and definition availability consistent with protocol %s without network access',
+    async (protocol) => {
+      const send = vi.fn<NetworkTransport['send']>();
+      const { protocol: _protocol, ...credentials } = gatewayCredentials(protocol ?? 'top');
+      const gateway = new AlibabaReadGatewayClient(
+        { ...credentials, ...(protocol ? { protocol } : {}) },
+        { transport: { send } }
+      );
+      const originals = listCapabilitiesWithAccountVerification();
+      const capabilities = await gateway.request('listCapabilities', undefined);
+      expect(capabilities).toHaveLength(originals.length);
+      for (const method of ['alibaba.icbu.product.list', 'alibaba.icbu.product.country.getcountrylist']) {
+        const original = originals.find((capability) => capability.method === method);
+        const definition = getCapabilityDefinition(method);
+        expect(original).toBeDefined();
+        expect(definition).not.toBeNull();
+        const unsupported = protocol === 'iop' && method !== 'alibaba.icbu.product.list';
+        expect(capabilities.find((capability) => capability.method === method)).toEqual(
+          unsupported ? { ...original, realCallEnabled: false } : original
+        );
+        expect(await gateway.request('getCapabilityDefinition', { method })).toEqual(
+          unsupported ? { ...definition, realCallEnabled: false } : definition
+        );
+      }
+      expect(listCapabilitiesWithAccountVerification()).toEqual(originals);
+      expect(send).not.toHaveBeenCalled();
+    }
+  );
+
   it('routes a mapped read to IOP with no TOP parameters', async () => {
     const send = vi.fn<NetworkTransport['send']>((input, init) => {
       expect(transportUrl(input)).toBe(`${IOP_BUSINESS_ENDPOINT}/alibaba/icbu/product/list`);
