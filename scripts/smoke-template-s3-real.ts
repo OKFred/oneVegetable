@@ -401,8 +401,9 @@ async function verifyExtension(
       'Formal extension: approve the exact S3 host permission in the isolated Chromium window if prompted.'
     );
     stage = 'formal extension optional S3 permission and encrypted save';
+    await view.bringToFront();
     await view.getByRole('button', { name: '加密保存', exact: true }).click();
-    await expect(view.getByText('S3 配置已加密保存。', { exact: true })).toBeVisible({ timeout: 180_000 });
+    await expect(view.getByText('S3 配置已加密保存。', { exact: true })).toBeVisible({ timeout: 600_000 });
     await expect(view.getByLabel('Secret Access Key', { exact: true })).toHaveValue('');
     await extensionS3(view, 'test', {});
     stage = 'formal extension real S3 template import';

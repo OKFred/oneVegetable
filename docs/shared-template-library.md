@@ -43,7 +43,7 @@ JSON/S3 packages contain portable content only. Imports skip same-language names
 
 2026-10-11 已使用本地 RustFS 完成真实 Node/Web S3 验收：签名查询、唯一对象上传、字节与 SHA-256 回读、同名跳过/另存副本、归档恢复，以及 Web 预览和确认后导入均通过。验收使用隔离 SQLite 和测试模板内容，S3 请求与 API 为真实调用，不修改现有工作台用户或模板。
 
-正式插件的真实 RustFS 验收尚未通过：本次停在原生域名授权/加密保存阶段，未进入模板上传。已有扩展 JSON 往返和离线浏览器测试不能代替此项真实 S3 验收。
+同日正式独立插件的真实 RustFS 验收也已通过：用户完成原生精确域名授权后，通过设置页加密保存配置，将真实 S3 模板包导入 IndexedDB，再确认导出并精确回读。停止 service worker、刷新工作台后，模板和 S3 配置仍可使用，回读字节保持一致；整个过程不要求 BFF，没有 Alibaba 请求或远端删除。
 
 ### 真实 S3 验收命令（Windows PowerShell）
 
@@ -57,7 +57,7 @@ pnpm smoke:templates:s3:real
 
 可设置 `ONE_VEGETABLE_TEMPLATE_S3_DATABASE` 指定配置来源 SQLite；默认只读访问 `apps/api/.data/one-vegetable.sqlite`。执行数据写入独立临时数据库。
 
-添加 `$env:ONE_VEGETABLE_TEMPLATE_S3_EXTENSION = '1'` 可验证构建后的正式独立扩展，需先运行 `pnpm build:extension`，并在有头隔离浏览器中手动允许 S3 精确域名权限。此项通过真实设置页保存、S3 导入到 IndexedDB、备份回读和 service worker 重启验证，不预授予权限或修改 Manifest。
+添加 `$env:ONE_VEGETABLE_TEMPLATE_S3_EXTENSION = '1'` 可验证构建后的正式独立扩展，需先运行 `pnpm build:extension`，并在有头隔离浏览器中手动允许 S3 精确域名权限。验收脚本先将工作台切到前台，再触发保存，最多等待 10 分钟供用户授权。此项通过真实设置页保存、S3 导入到 IndexedDB、备份回读和 service worker 重启验证，不预授予权限或修改 Manifest。
 
 每次运行仅向唯一测试前缀上传一个小型模板包，开启扩展验收时再备份一个包；对象保留，不自动删除。失败或结果不明不得盲目重跑 PUT，应先按报告中的 key 核对。脱敏回执及仅含测试模板的截图在 `artifacts/template-s3-validation/`；其他模板浏览器记录在 `artifacts/template-library/`，均被 Git 忽略且不进入扩展包。
 
