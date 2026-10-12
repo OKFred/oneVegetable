@@ -8,6 +8,7 @@ import { IOP_BUSINESS_ENDPOINT } from '../packages/core/src/alibaba-iop';
 import { normalizeGatewayError } from '../packages/core/src/errors';
 import { ProductAdapter } from '../packages/core/src/product-adapter';
 import { PhotoAdapter } from '../packages/core/src/photo-adapter';
+import { TradeAdapter } from '../packages/core/src/trade-adapter';
 import { NativeFetchTransport, NetworkManager, type NetworkTransport } from '../packages/core/src/network';
 import type { OperationId } from '../packages/core/src/types';
 import { atomicWriteJson } from './openapi-auth/storage';
@@ -34,6 +35,7 @@ const records: {
   count?: number;
   errorCode?: string;
   subCode?: string;
+  responseShape?: unknown;
 }[] = [];
 const credentials = {
   protocol: 'iop' as const,
@@ -44,10 +46,27 @@ const credentials = {
   signMethod: 'hmac-sha256' as const
 };
 const native = new NativeFetchTransport();
+let responseShape: unknown;
+function shape(value: unknown, depth = 0): unknown {
+  if (depth > 5) return typeof value;
+  if (Array.isArray(value))
+    return {
+      type: 'array',
+      count: value.length,
+      item: value[0] === undefined ? null : shape(value[0], depth + 1)
+    };
+  if (value !== null && typeof value === 'object')
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, shape(item, depth + 1)]));
+  return value === null ? 'null' : typeof value;
+}
 let pending: Promise<unknown> = Promise.resolve();
 const transport: NetworkTransport = {
   send(input, init) {
-    const response = pending.then(() => native.send(input, init));
+    const response = pending.then(async () => {
+      const result = await native.send(input, init);
+      responseShape = shape((await result.clone().json()) as unknown);
+      return result;
+    });
     pending = response
       .then(
         () => undefined,
@@ -79,6 +98,7 @@ async function call<T>(
       requestId,
       status: 'failed',
       errorCode: error.code,
+      ...(error.code === 'ALIBABA_IOP_RESPONSE_INVALID' ? { responseShape } : {}),
       ...(error.subCode ? { subCode: error.subCode } : {})
     });
     process.exitCode = 1;
@@ -103,7 +123,7 @@ const groups = await call(
   (value) => value.length
 );
 const product = products?.items[0];
-if (product?.categoryId && product.categoryId > 0)
+if (product?.categoryId && product.categoryId > 0) {
   await call(
     'renderProductSchema',
     (client) =>
@@ -114,7 +134,36 @@ if (product?.categoryId && product.categoryId > 0)
       }),
     (value) => (value.xml.includes('<itemSchema') ? 1 : 0)
   );
-else
+  await call(
+    'getProductSchema',
+    (client) =>
+      new ProductAdapter(client).getSchema({
+        categoryId: product.categoryId ?? 0,
+        language: 'en_US',
+        market: 'wholesale'
+      }),
+    (value) => (value.xml.trim() ? 1 : 0)
+  );
+  await call(
+    'getProductScore',
+    (client) => new ProductAdapter(client).getScore(product.id),
+    () => 1
+  );
+  await call(
+    'callCapability',
+    (client) => client.call('alibaba.icbu.category.get.new', { cat_id: product.categoryId }),
+    () => 1
+  );
+  await call(
+    'callCapability',
+    (client) =>
+      client.call('alibaba.icbu.product.type.available.get', {
+        cat_id: product.categoryId,
+        language: 'en_US'
+      }),
+    () => 1
+  );
+} else
   records.push({
     operation: 'renderProductSchema',
     requestId: crypto.randomUUID(),
@@ -129,6 +178,24 @@ if (group)
   );
 else
   records.push({ operation: 'listPhotos', requestId: crypto.randomUUID(), status: 'skipped-prerequisite' });
+const orders = await call(
+  'listTradeOrders',
+  (client) => new TradeAdapter(client).list({ page: 1, pageSize: 1 }),
+  (value) => value.items.length
+);
+const order = orders?.items[0];
+if (order)
+  await call(
+    'getTradeOrderLogistics',
+    (client) => new TradeAdapter(client).getLogistics(order.id),
+    () => 1
+  );
+else
+  records.push({
+    operation: 'getTradeOrderLogistics',
+    requestId: crypto.randomUUID(),
+    status: 'skipped-prerequisite'
+  });
 const report = {
   capturedAtUtc: new Date().toISOString(),
   protocol: 'iop',

@@ -10293,6 +10293,13 @@ export interface components {
             /** @enum {string} */
             display: "online" | "offline";
         };
+        ProductDraftRenderRequest: {
+            productId: string;
+            /** @enum {string} */
+            language: "zh_CN" | "en_US";
+            /** @description Required by IOP draft rendering; optional for legacy TOP clients. */
+            categoryId?: number;
+        };
         ProductGroup: {
             id: number;
             name: string;
@@ -10430,13 +10437,6 @@ export interface components {
             categoryId: number;
             language: string;
             market: string;
-        };
-        ProductDraftRenderRequest: {
-            productId: string;
-            /** @enum {string} */
-            language: "zh_CN" | "en_US";
-            /** @description Required by IOP draft rendering; optional for legacy TOP clients. */
-            categoryId?: number;
         };
         ProductSchemaRenderRequest: {
             categoryId: number;

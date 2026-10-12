@@ -8,6 +8,7 @@ import { resolve } from 'node:path';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { chromium, request } from '@playwright/test';
 import { parseAlibabaOpenApiCredentialBundle } from '../packages/core/src/alibaba-credential-bundle';
+import { isRecord } from '../packages/core/src/alibaba-iop';
 import {
   validateGatewayCredentialSummary,
   validateGatewayCredentialTestResult
@@ -135,6 +136,38 @@ try {
     `Read-only connection result: ${connection.status}/${connection.errorCode ?? 'none'}`
   );
   checks.push('one real listProducts request passed; no product DTO exposed');
+  if (bundle.protocol === 'iop') {
+    const orders = await call('/operations/call', {
+      operation: 'listTradeOrders',
+      payload: { page: 1, pageSize: 1 }
+    });
+    assert(isRecord(orders) && Array.isArray(orders.items), 'Invalid IOP seller order page');
+    checks.push('IOP seller orders through authenticated isolated Node BFF');
+    const draftFile = process.env.IOP_DRAFT_RECEIPT;
+    if (draftFile) {
+      const draft: unknown = JSON.parse(await readFile(resolve(draftFile), 'utf8'));
+      assert(
+        isRecord(draft) &&
+          draft.protocol === 'iop' &&
+          draft.phase === 'created-and-confirmed' &&
+          typeof draft.createdId === 'string' &&
+          isRecord(draft.baseline) &&
+          typeof draft.baseline.categoryId === 'number'
+      );
+      const rendered = await call('/operations/call', {
+        operation: 'getProductDraft',
+        payload: { productId: draft.createdId, categoryId: draft.baseline.categoryId, language: 'en_US' }
+      });
+      assert(
+        isRecord(rendered) &&
+          rendered.id === draft.createdId &&
+          typeof rendered.schemaXml === 'string' &&
+          rendered.schemaXml.includes('<itemSchema'),
+        'IOP draft readback contract invalid'
+      );
+      checks.push('IOP real draft readback with category through authenticated Node BFF');
+    }
+  }
   const firstId = imported.configurationId;
   await call('/admin/gateway-credentials/save', {
     credentials: {

@@ -64,6 +64,8 @@
     "snapshot:free-api-docs": "tsx scripts/snapshot-free-api-docs.ts",
     "snapshot:iop-docs": "tsx scripts/snapshot-iop-docs.ts",
     "smoke:iop:read": "tsx scripts/smoke-iop-business-read.ts",
+    "smoke:iop:product-write": "tsx scripts/smoke-iop-product-writes.ts",
+    "reconcile:iop:product-write": "tsx scripts/reconcile-iop-product-write.ts",
     "smoke:free-api:real": "tsx scripts/smoke-free-api-real.ts",
     "generate:types": "tsx scripts/generate-types.ts",
     "generate:validators": "tsx scripts/generate-validators.ts",
