@@ -50,6 +50,7 @@ export interface ProductMutationJobTransitionInput {
 }
 
 export interface ProductCreationMutationJobCreateInput {
+  productContext?: ProductOperationContext;
   requestId: string;
   operation: Extract<ProductMutationJobOperation, 'publishProduct' | 'saveProductDraft'>;
   categoryId: number;
@@ -236,6 +237,7 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
   }
 
   async createCreation(input: ProductCreationMutationJobCreateInput): Promise<ProductMutationJob> {
+    if (input.productContext) requireProductOperationContext(input.productContext);
     assertCreationOperation(input.operation);
     if (!FINGERPRINT_PATTERN.test(input.payloadFingerprint)) throw new Error('写入载荷指纹无效');
     const now = this.#clock();
@@ -249,9 +251,10 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
           encrypted_product_id, target_display, original_display,
           trace_id, reason_code, message,
           submitted_time_utc, last_checked_time_utc, completed_time_utc,
-          create_time_utc, update_time_utc, creator_id, updater_id, revision, remark
+          create_time_utc, update_time_utc, creator_id, updater_id, revision, remark,
+          product_identity, product_gateway
         ) VALUES (?, ?, ?, ?, 'submitted', ?, ?, ?, '[]', NULL, NULL, NULL, NULL, NULL, NULL,
-          ?, NULL, NULL, ?, ?, ?, ?, ?, ?)`,
+          ?, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           input.requestId,
@@ -266,7 +269,9 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
           audit.creatorId,
           audit.updaterId,
           audit.revision,
-          audit.remark
+          audit.remark,
+          input.productContext?.identity ?? null,
+          input.productContext?.gateway ?? null
         ]
       );
     } catch (error: unknown) {

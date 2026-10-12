@@ -1373,7 +1373,8 @@ async function loadProductTransferItems(
       product.status === 'draft'
         ? await gateway.request('getProductDraft', {
             productId: product.id,
-            language: language.value
+            language: language.value,
+            ...(product.categoryId === null ? {} : { categoryId: product.categoryId })
           })
         : product.categoryId === null
           ? null
@@ -2431,7 +2432,8 @@ async function loadDraft(): Promise<void> {
   try {
     const result = await gateway.request('getProductDraft', {
       productId: editProductId.value,
-      language: language.value
+      language: language.value,
+      ...(Number(categoryId.value) > 0 ? { categoryId: Number(categoryId.value) } : {})
     });
     if (epoch !== editorEpoch) return;
     categoryId.value = String(result.categoryId);

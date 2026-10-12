@@ -52,7 +52,12 @@ export interface ExtensionProductDisplayGateway {
 
 export interface ExtensionProductCreationGateway {
   list(request: ProductListQuery): Promise<ProductPage>;
-  get(productId: string, draft?: boolean, language?: AlibabaLanguage): Promise<ProductDetail>;
+  get(
+    productId: string,
+    draft?: boolean,
+    language?: AlibabaLanguage,
+    categoryId?: number
+  ): Promise<ProductDetail>;
   mutate(
     method: 'alibaba.icbu.product.schema.add',
     request: RequestOf<'publishProduct'>
@@ -144,16 +149,17 @@ export class ExtensionProductDisplayMutationLifecycle {
         result = await gateway.updateDisplay(request);
       } catch (error: unknown) {
         const details = errorDetails(error);
-        const status: ProductMutationJobStatus = details.retryable ? 'recovery-required' : 'failed';
+        const status = productUpdateFailureStatus(error);
         await this.#transitionMany(
           jobs,
           status,
           {
             traceId: details.traceId,
             reasonCode: details.code,
-            message: details.retryable
-              ? `请求结果不确定，已停止重复操作并等待平台回读：${details.message}`
-              : details.message
+            message:
+              status === 'recovery-required'
+                ? `请求结果不确定，已停止重复操作并等待平台回读：${details.message}`
+                : details.message
           },
           false
         );
@@ -177,7 +183,8 @@ export class ExtensionProductDisplayMutationLifecycle {
     gateway: ExtensionProductCreationGateway,
     requestId: string,
     operation: ExtensionProductCreationOperation,
-    request: RequestOf<'publishProduct'>
+    request: RequestOf<'publishProduct'>,
+    options?: ProductOperationOptions
   ): Promise<ExtensionProductCreationSubmissionResult> {
     return this.#exclusive(async () => {
       const payloadFingerprint = await creationFingerprint(operation, request);
@@ -194,6 +201,7 @@ export class ExtensionProductDisplayMutationLifecycle {
       }
 
       const job = createCreationJob({
+        ...(options?.productContext ? { productContext: options.productContext } : {}),
         requestId,
         operation,
         categoryId: request.categoryId,
@@ -211,16 +219,17 @@ export class ExtensionProductDisplayMutationLifecycle {
             : await gateway.mutate('alibaba.icbu.product.schema.add', request);
       } catch (error: unknown) {
         const details = errorDetails(error);
-        const status: ProductMutationJobStatus = details.retryable ? 'recovery-required' : 'failed';
+        const status = productUpdateFailureStatus(error);
         await this.#transitionOne(
           job,
           status,
           {
             traceId: details.traceId,
             reasonCode: details.code,
-            message: details.retryable
-              ? `请求结果不确定，已停止重复创建并等待人工核对：${details.message}`
-              : details.message
+            message:
+              status === 'recovery-required'
+                ? `请求结果不确定，已停止重复创建并等待人工核对：${details.message}`
+                : details.message
           },
           false
         );
@@ -514,7 +523,7 @@ export class ExtensionProductDisplayMutationLifecycle {
 
     try {
       if (current.operation === 'saveProductDraft') {
-        const detail = await gateway.get(current.productId, true, current.language);
+        const detail = await gateway.get(current.productId, true, current.language, current.categoryId);
         if (detail.id !== current.productId || detail.schemaXml.trim() === '') {
           throw gatewayError('PRODUCT_DRAFT_READBACK_MISMATCH', '平台草稿回读缺少匹配的商品 ID 或 Schema');
         }
@@ -767,15 +776,18 @@ function createDisplayJob(input: {
   };
 }
 
-function createCreationJob(input: {
-  requestId: string;
-  operation: ExtensionProductCreationOperation;
-  categoryId: number;
-  language: 'zh_CN' | 'en_US';
-  payloadFingerprint: string;
-  now: number;
-}): ProductMutationJob {
+function createCreationJob(
+  input: ProductOperationOptions & {
+    requestId: string;
+    operation: ExtensionProductCreationOperation;
+    categoryId: number;
+    language: 'zh_CN' | 'en_US';
+    payloadFingerprint: string;
+    now: number;
+  }
+): ProductMutationJob {
   return {
+    ...(input.productContext ? { productContext: input.productContext } : {}),
     id: crypto.randomUUID(),
     requestId: input.requestId,
     productId: `${PENDING_PRODUCT_MUTATION_ID_PREFIX}${input.payloadFingerprint}`,

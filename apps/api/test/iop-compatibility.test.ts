@@ -5,10 +5,12 @@ import {
   listCapabilitiesWithAccountVerification,
   parseAlibabaOpenApiCredentialBundle
 } from '@one-vegetable/core';
+import * as iopBusiness from '@one-vegetable/core/alibaba-iop-business';
 import { IOP_BUSINESS_ENDPOINT } from '@one-vegetable/core/alibaba-iop';
 import credentialFixture from '../../../mock/data/node-gateway-credentials.json';
 import tokenFixture from '../../../mock/data/alibaba-auth/iop-token-responses.json';
 import fixture from '../../../mock/data/api-iop-compatibility.json';
+import tradeFixture from '../../../mock/data/trades.json';
 import { credentialDocumentFromBundle, parseCredentialDocument } from '../src/gateway/credential-document';
 import { EnvironmentAlibabaCredentialProvider } from '../src/gateway/credentials';
 import {
@@ -36,6 +38,7 @@ import type { NodeDatabaseHandle } from '../src/db/node-database';
 const now = Date.parse('2026-10-12T00:00:00.000Z');
 const databases: NodeDatabaseHandle[] = [];
 afterEach(() => {
+  vi.restoreAllMocks();
   databases.splice(0).forEach((database) => {
     database.connection.close();
   });
@@ -70,6 +73,11 @@ async function harness(clock: () => number = () => now) {
 }
 async function importIop(service: GatewayCredentialService, expectedRevision: number | null = null) {
   return service.import({ bundle: iopBundle(), actorId: 'fixture-admin', expectedRevision, remark: null });
+}
+function fixtureTradeOrder() {
+  const order = tradeFixture.tradeOrders[0];
+  if (!order) throw new Error('Missing mock trade order');
+  return order;
 }
 
 describe('explicit TOP / IOP credential compatibility', () => {
@@ -506,22 +514,146 @@ describe('IOP API gateway integration without external networking', () => {
     });
     expect(send).toHaveBeenCalledOnce();
   });
-  it.each([
-    'saveProductDraft',
-    'publishProduct',
-    'updateProduct',
-    'uploadPhoto',
-    'listVideos',
-    'getProductSchema',
-    'downloadProductAsset'
-  ] satisfies OperationId[])('rejects %s before any gateway network call', async (operation) => {
+  it('consumes seller order list normalization without dropping role, status, pagination or dates', async () => {
+    const order = fixtureTradeOrder();
+    const send = vi.fn<NetworkTransport['send']>((input, init) => {
+      expect(transportUrl(input)).toBe(`${IOP_BUSINESS_ENDPOINT}/alibaba/order/list`);
+      if (!(init.body instanceof URLSearchParams)) throw new Error('Expected form');
+      expect(init.body.get('role')).toBe('seller');
+      expect(init.body.get('start_page')).toBe('1');
+      expect(init.body.get('page_size')).toBe('20');
+      expect(init.body.get('status')).toBe(order.status);
+      expect(JSON.parse(init.body.get('create_date_start') ?? 'null')).toEqual({ date_str: order.createdAt });
+      expect(init.body.has('param_trade_ecology_order_list_query')).toBe(false);
+      expect(init.body.has('session')).toBe(false);
+      return Promise.resolve(
+        Response.json({
+          code: '0',
+          value: {
+            total_count: 1,
+            order_list: [
+              {
+                trade_id: order.id,
+                trade_status: order.status,
+                create_date: { timestamp: Date.parse(order.createdAt) },
+                modify_date: { timestamp: Date.parse(order.modifiedAt) }
+              }
+            ]
+          }
+        })
+      );
+    });
+    const gateway = new AlibabaReadGatewayClient(gatewayCredentials(), { transport: { send } });
+    expect(
+      await gateway.request('listTradeOrders', {
+        page: 2,
+        pageSize: 20,
+        status: order.status,
+        createDateStart: order.createdAt
+      })
+    ).toEqual({
+      items: [{ ...order, buyerLoginId: null, amount: null, currency: null }],
+      page: 2,
+      pageSize: 20,
+      total: 1,
+      documentTimeZoneUnverified: true
+    });
+    expect(send).toHaveBeenCalledOnce();
+  });
+  it('rejects the undocumented buyer filter before seller order networking', async () => {
     const send = vi.fn<NetworkTransport['send']>();
     const gateway = new AlibabaReadGatewayClient(gatewayCredentials(), { transport: { send } });
-    await expect(gateway.request<OperationId>(operation, {})).rejects.toMatchObject({
-      gatewayError: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED', retryable: false }
+    await expect(
+      gateway.request('listTradeOrders', { buyerLoginId: fixtureTradeOrder().buyerLoginId })
+    ).rejects.toMatchObject({
+      gatewayError: { code: 'ALIBABA_IOP_PARAMETER_UNSUPPORTED', retryable: false }
     });
     expect(send).not.toHaveBeenCalled();
   });
+  it.each([true, false])(
+    'independently degrades unsupported aggregate funds with valid logistics=%s',
+    async (valid) => {
+      const order = fixtureTradeOrder();
+      const logistics = tradeFixture.responses.getTradeOrderLogistics;
+      const send = vi.fn<NetworkTransport['send']>((input, init) => {
+        expect(transportUrl(input)).toBe(`${IOP_BUSINESS_ENDPOINT}/order/logistics/query`);
+        if (!(init.body instanceof URLSearchParams)) throw new Error('Expected form');
+        expect(init.body.get('trade_id')).toBe(order.id);
+        expect(init.body.has('e_trade_id')).toBe(false);
+        return Promise.resolve(
+          Response.json({
+            code: 0,
+            value: valid
+              ? {
+                  logistic_status: logistics.status,
+                  shipping_order_list: []
+                }
+              : {}
+          })
+        );
+      });
+      const gateway = new AlibabaReadGatewayClient(gatewayCredentials(), { transport: { send } });
+      expect(await gateway.request('getTradeOrderAggregate', { order })).toEqual({
+        order,
+        fund: null,
+        logistics: valid ? logistics : null,
+        availability: {
+          order: 'available',
+          fund: 'unavailable',
+          logistics: valid ? 'available' : 'unavailable',
+          fullDetail: 'jushita-only'
+        }
+      });
+      // No fund network call and no retry/replacement request for malformed logistics.
+      expect(send).toHaveBeenCalledOnce();
+    }
+  );
+  it('keeps standalone funds and RFQ dedicated/capability calls uniformly unsupported', async () => {
+    const send = vi.fn<NetworkTransport['send']>();
+    const gateway = new AlibabaReadGatewayClient(gatewayCredentials(), { transport: { send } });
+    for (const operation of [
+      'getTradeOrderFund',
+      'listRfqs',
+      'listRecommendedRfqs',
+      'getRfq',
+      'getRfqEquity',
+      'getRfqReadStatus'
+    ] satisfies OperationId[])
+      await expect(gateway.request<OperationId>(operation, {})).rejects.toMatchObject({
+        gatewayError: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED', retryable: false }
+      });
+    for (const method of ['alibaba.seller.order.fund.get', 'alibaba.icbu.rfq.search']) {
+      await expect(gateway.request('callCapability', { method, parameters: {} })).rejects.toMatchObject({
+        gatewayError: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED' }
+      });
+      expect(await gateway.request('getCapabilityDefinition', { method })).toMatchObject({
+        realCallEnabled: false
+      });
+    }
+    expect(send).not.toHaveBeenCalled();
+  });
+  it.each(['uploadPhoto', 'listVideos', 'getRfq', 'downloadProductAsset'] satisfies OperationId[])(
+    'rejects %s before any gateway network call',
+    async (operation) => {
+      const send = vi.fn<NetworkTransport['send']>();
+      const gateway = new AlibabaReadGatewayClient(gatewayCredentials(), { transport: { send } });
+      await expect(gateway.request<OperationId>(operation, {})).rejects.toMatchObject({
+        gatewayError: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED', retryable: false }
+      });
+      expect(send).not.toHaveBeenCalled();
+    }
+  );
+  it.each(['publishProduct', 'updateProduct'] as const)(
+    'keeps mapped but unverified %s blocked before network access',
+    async (operation) => {
+      const send = vi.fn<NetworkTransport['send']>();
+      const gateway = new AlibabaReadGatewayClient(gatewayCredentials(), { transport: { send } });
+      await expect(gateway.request<OperationId>(operation, {})).rejects.toMatchObject({
+        gatewayError: { code: 'ALIBABA_IOP_MUTATION_UNVERIFIED', retryable: false }
+      });
+      expect(send).not.toHaveBeenCalled();
+    }
+  );
   it('rejects unmapped capability reads/writes before credential refresh as well as transport', async () => {
     const provider = new EnvironmentAlibabaCredentialProvider({ ONE_VEGETABLE_ALIBABA_PROTOCOL: 'iop' });
     const requireCredentials = vi.fn<() => Promise<GatewayCredentials>>();
@@ -531,7 +663,7 @@ describe('IOP API gateway integration without external networking', () => {
     });
     for (const method of ['alibaba.icbu.product.schema.add', 'alibaba.icbu.product.country.getcountrylist'])
       await expect(gateway.request('callCapability', { method, parameters: {} })).rejects.toMatchObject({
-        gatewayError: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED' }
+        gatewayError: { code: iopBusiness.iopOperationReason('callCapability', method) }
       });
     expect(requireCredentials).not.toHaveBeenCalled();
   });
@@ -540,7 +672,9 @@ describe('IOP API gateway integration without external networking', () => {
     async (runtime) => {
       const h = await harness();
       const jobs = new SqlProductMutationJobRepository(h.database.executor);
-      const register = vi.spyOn(jobs, 'create');
+      const registrations = ['create', 'createCreation', 'createDisplay'].map((method) =>
+        vi.spyOn(jobs, method as 'create' | 'createCreation' | 'createDisplay')
+      );
       const request = vi.fn<GatewayClient['request']>();
       const logger = vi.fn();
       const authRepository = new SqlAuthRepository(h.database.executor);
@@ -565,7 +699,7 @@ describe('IOP API gateway integration without external networking', () => {
         authService,
         adminService: new AdminService(authRepository),
         productMutationJobs: jobs,
-        featureFlags: new StaticOperationFeatureFlags(new Set(['operation:saveProductDraft'])),
+        featureFlags: new StaticOperationFeatureFlags(new Set(['operation:publishProduct'])),
         allowedOrigins: ['http://localhost'],
         logger
       });
@@ -580,7 +714,15 @@ describe('IOP API gateway integration without external networking', () => {
         headers,
         body: JSON.stringify({
           requestId: createRequestId(),
-          operations: ['listProducts', 'saveProductDraft', 'getProductSchema']
+          operations: [
+            'listProducts',
+            'publishProduct',
+            'getRfq',
+            'getProductSchema',
+            'listTradeOrders',
+            'getTradeOrderAggregate',
+            'getTradeOrderFund'
+          ]
         })
       });
       expect(availability.status).toBe(200);
@@ -589,8 +731,12 @@ describe('IOP API gateway integration without external networking', () => {
         data: {
           items: [
             { operation: 'listProducts', allowed: true },
-            { operation: 'saveProductDraft', allowed: false, reasonCode: 'ALIBABA_IOP_METHOD_UNSUPPORTED' },
-            { operation: 'getProductSchema', allowed: false, reasonCode: 'ALIBABA_IOP_METHOD_UNSUPPORTED' }
+            { operation: 'publishProduct', allowed: false, reasonCode: 'ALIBABA_IOP_MUTATION_UNVERIFIED' },
+            { operation: 'getRfq', allowed: false, reasonCode: 'ALIBABA_IOP_METHOD_UNSUPPORTED' },
+            { operation: 'getProductSchema', allowed: true },
+            { operation: 'listTradeOrders', allowed: true },
+            { operation: 'getTradeOrderAggregate', allowed: true },
+            { operation: 'getTradeOrderFund', allowed: false, reasonCode: 'ALIBABA_IOP_METHOD_UNSUPPORTED' }
           ]
         }
       });
@@ -598,7 +744,7 @@ describe('IOP API gateway integration without external networking', () => {
       const response = await app.request('/api/v1/operations/call', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ requestId, operation: 'saveProductDraft', payload: fixture.draftPayload })
+        body: JSON.stringify({ requestId, operation: 'publishProduct', payload: fixture.draftPayload })
       });
       expect(response.status).toBe(403);
       expect(response.headers.get('X-Request-ID')).toBe(requestId);
@@ -607,12 +753,12 @@ describe('IOP API gateway integration without external networking', () => {
       expect(await response.json()).toMatchObject({
         requestId,
         ok: false,
-        error: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED', retryable: false }
+        error: { code: 'ALIBABA_IOP_MUTATION_UNVERIFIED', retryable: false }
       });
       expect(logger).toHaveBeenLastCalledWith(
         expect.objectContaining({ actorId: session.user.id, outcome: 'denied', statusCode: 403 })
       );
-      expect(register).not.toHaveBeenCalled();
+      for (const register of registrations) expect(register).not.toHaveBeenCalled();
       expect(request).not.toHaveBeenCalled();
     }
   );
@@ -642,7 +788,7 @@ describe('IOP API gateway integration without external networking', () => {
       app.request('/api/v1/operations/call', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ requestId: createRequestId(), operation: 'getProductSchema', payload: {} })
+        body: JSON.stringify({ requestId: createRequestId(), operation: 'getRfq', payload: {} })
       });
     expect((await run()).status).toBe(200);
     protocol = 'iop';

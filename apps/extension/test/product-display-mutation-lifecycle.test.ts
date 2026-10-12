@@ -164,12 +164,14 @@ describe('extension product display mutation lifecycle', () => {
     const storage = new MemoryStorage();
     const gateway = new FakeCreationGateway();
     const lifecycle = new ExtensionProductDisplayMutationLifecycle(storage, () => 20_000);
+    const productContext = { identity: 'a'.repeat(64), gateway: 'b'.repeat(64) };
 
     const result = await lifecycle.submitCreation(
       gateway,
       crypto.randomUUID(),
       'saveProductDraft',
-      creationRequest()
+      creationRequest(),
+      { productContext }
     );
 
     expect(gateway.draftCalls).toHaveLength(1);
@@ -180,11 +182,13 @@ describe('extension product display mutation lifecycle', () => {
         operation: 'saveProductDraft',
         productId: gateway.productId,
         status: 'verified',
+        productContext,
         reasonCode: 'PRODUCT_DRAFT_READBACK_MATCHED'
       }
     });
     const restarted = new ExtensionProductDisplayMutationLifecycle(storage, () => 20_001);
-    expect((await restarted.list()).items).toHaveLength(1);
+    expect((await restarted.list()).items).toMatchObject([{ productContext }]);
+    expect(gateway.readCategoryIds).toEqual([creationRequest().categoryId]);
     await expect(
       restarted.submitCreation(gateway, crypto.randomUUID(), 'saveProductDraft', creationRequest())
     ).rejects.toMatchObject({ gatewayError: { code: 'PRODUCT_CREATION_ALREADY_ACCEPTED' } });
@@ -218,29 +222,32 @@ describe('extension product display mutation lifecycle', () => {
     });
   });
 
-  it('fails closed and blocks duplicate creation after an uncertain network result', async () => {
-    const storage = new MemoryStorage();
-    const gateway = new FakeCreationGateway();
-    gateway.mutationError = new GatewayException({
-      code: 'NETWORK_TIMEOUT',
-      message: '请求超时',
-      retryable: true
-    });
-    const lifecycle = new ExtensionProductDisplayMutationLifecycle(storage, () => 40_000);
+  it.each([true, false])(
+    'blocks duplicate creation after an uncertain result (retryable=%s)',
+    async (retryable) => {
+      const storage = new MemoryStorage();
+      const gateway = new FakeCreationGateway();
+      gateway.mutationError = new GatewayException({
+        code: 'NETWORK_TIMEOUT',
+        message: '请求超时',
+        retryable
+      });
+      const lifecycle = new ExtensionProductDisplayMutationLifecycle(storage, () => 40_000);
 
-    await expect(
-      lifecycle.submitCreation(gateway, crypto.randomUUID(), 'publishProduct', creationRequest())
-    ).rejects.toMatchObject({ gatewayError: { code: 'NETWORK_TIMEOUT' } });
-    expect((await lifecycle.list()).items[0]).toMatchObject({
-      operation: 'publishProduct',
-      status: 'recovery-required',
-      reasonCode: 'NETWORK_TIMEOUT'
-    });
-    await expect(
-      lifecycle.submitCreation(gateway, crypto.randomUUID(), 'publishProduct', creationRequest())
-    ).rejects.toMatchObject({ gatewayError: { code: 'PRODUCT_MUTATION_ALREADY_IN_PROGRESS' } });
-    expect(gateway.publishCalls).toHaveLength(1);
-  });
+      await expect(
+        lifecycle.submitCreation(gateway, crypto.randomUUID(), 'publishProduct', creationRequest())
+      ).rejects.toMatchObject({ gatewayError: { code: 'NETWORK_TIMEOUT' } });
+      expect((await lifecycle.list()).items[0]).toMatchObject({
+        operation: 'publishProduct',
+        status: 'recovery-required',
+        reasonCode: 'NETWORK_TIMEOUT'
+      });
+      await expect(
+        lifecycle.submitCreation(gateway, crypto.randomUUID(), 'publishProduct', creationRequest())
+      ).rejects.toMatchObject({ gatewayError: { code: 'PRODUCT_MUTATION_ALREADY_IN_PROGRESS' } });
+      expect(gateway.publishCalls).toHaveLength(1);
+    }
+  );
 
   it('persists an update before calling Alibaba and verifies field fingerprints after restart', async () => {
     const storage = new MemoryStorage();
@@ -444,6 +451,7 @@ class FakeCreationGateway implements ExtensionProductCreationGateway {
   readonly productId = '1600000000002';
   readonly draftCalls: RequestOf<'saveProductDraft'>[] = [];
   readonly publishCalls: RequestOf<'publishProduct'>[] = [];
+  readonly readCategoryIds: (number | undefined)[] = [];
   publishVisible = true;
   draftVisible = true;
   mutationError: GatewayException | null = null;
@@ -473,7 +481,8 @@ class FakeCreationGateway implements ExtensionProductCreationGateway {
     });
   }
 
-  get(productId: string, draft = false, language = 'en_US'): Promise<ProductDetail> {
+  get(productId: string, draft = false, language = 'en_US', categoryId?: number): Promise<ProductDetail> {
+    this.readCategoryIds.push(categoryId);
     if (!this.draftVisible || !draft || productId !== this.productId) {
       return Promise.reject(
         new GatewayException({ code: 'DRAFT_PENDING', message: '草稿尚未可见', retryable: true })

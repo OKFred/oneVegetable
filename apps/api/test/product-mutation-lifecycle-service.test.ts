@@ -102,7 +102,7 @@ describe('product mutation lifecycle service', () => {
       reasonCode: 'PRODUCT_DRAFT_READBACK_MATCHED'
     });
     expect(gateway.saveDraft).toHaveBeenCalledOnce();
-    expect(gateway.get).toHaveBeenCalledWith('1601928079991', true, 'en_US', expect.any(String));
+    expect(gateway.get).toHaveBeenCalledWith('1601928079991', true, 'en_US', expect.any(String), 201712702);
   });
 
   it('keeps accepted publishing pending and prevents a duplicate platform mutation', async () => {

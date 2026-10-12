@@ -5,7 +5,10 @@ import {
 } from '@one-vegetable/core';
 import { DOMParser as ServerDomParser } from 'linkedom';
 import { productUpdateFailureStatus } from '@one-vegetable/core/product-update-outcome';
-import type { ProductOperationOptions } from '@one-vegetable/core/product-operation-context';
+import type {
+  ProductOperationContext,
+  ProductOperationOptions
+} from '@one-vegetable/core/product-operation-context';
 import { opaqueGalleryId } from '@one-vegetable/core/gallery-transfer-context';
 
 import type {
@@ -36,6 +39,7 @@ const SERVER_XML_PARSER: ProductSchemaXmlParser = {
 };
 
 export interface ProductMutationGateway {
+  assertProductContext?(context: ProductOperationContext): Promise<void>;
   publish(request: SchemaPublishRequest, requestId: string): Promise<ProductMutationResult>;
   saveDraft(request: SchemaPublishRequest, requestId: string): Promise<ProductMutationResult>;
   update(
@@ -47,7 +51,9 @@ export interface ProductMutationGateway {
     productId: string,
     draft: boolean,
     language: 'zh_CN' | 'en_US',
-    requestId: string
+    requestId: string,
+    categoryId?: number,
+    options?: ProductOperationOptions
   ): Promise<ProductDetail>;
   render(
     request: ProductSchemaRenderRequest,
@@ -55,7 +61,7 @@ export interface ProductMutationGateway {
     options?: ProductOperationOptions
   ): Promise<ProductSchema>;
   updateDisplay(request: ProductDisplayRequest, requestId: string): Promise<ProductDisplayMutationResult>;
-  list(request: ProductListQuery, requestId: string): Promise<ProductPage>;
+  list(request: ProductListQuery, requestId: string, options?: ProductOperationOptions): Promise<ProductPage>;
 }
 
 export type ProductMutationSubmissionResult = ProductMutationResult & { job: ProductMutationJob };
@@ -89,11 +95,13 @@ export class ProductMutationLifecycleService {
     actor: AuthPrincipal;
     operation: 'publishProduct' | 'saveProductDraft';
     request: SchemaPublishRequest;
+    options?: ProductOperationOptions;
   }): Promise<ProductMutationSubmissionResult> {
     const payloadFingerprint = await createCreationFingerprint(input.operation, input.request);
     const blocking = await this.#repository.findBlockingCreation(input.operation, payloadFingerprint);
     if (blocking) throw new ProductMutationAlreadyInProgressError(blocking);
     let job = await this.#repository.createCreation({
+      ...(input.options?.productContext ? { productContext: input.options.productContext } : {}),
       requestId: input.requestId,
       operation: input.operation,
       categoryId: input.request.categoryId,
@@ -110,7 +118,7 @@ export class ProductMutationLifecycleService {
           : await this.#gateway.publish(input.request, input.requestId);
     } catch (error: unknown) {
       const details = errorDetails(error);
-      const status: ProductMutationJobStatus = details.retryable ? 'recovery-required' : 'failed';
+      const status = productUpdateFailureStatus(error);
       const transitioned = await this.#repository.transition({
         id: job.id,
         expectedRevision: job.revision,
@@ -118,9 +126,10 @@ export class ProductMutationLifecycleService {
         actorId: input.actor.actorId,
         traceId: details.traceId,
         reasonCode: details.code,
-        message: details.retryable
-          ? `请求结果不确定，已停止重复创建并等待人工核对：${details.message}`
-          : details.message
+        message:
+          status === 'recovery-required'
+            ? `请求结果不确定，已停止重复创建并等待人工核对：${details.message}`
+            : details.message
       });
       await this.#audit(transitioned, input.requestId, input.actor.actorId, status, job.revision);
       throw error;
@@ -200,19 +209,20 @@ export class ProductMutationLifecycleService {
       return { ...result, jobs: verifyingJobs };
     } catch (error: unknown) {
       const details = errorDetails(error);
+      const status = productUpdateFailureStatus(error);
       for (const job of jobs) {
         const current = await this.#repository.get(job.id);
         if (current?.status !== 'submitted') continue;
         const failed = await this.#repository.transition({
           id: current.id,
           expectedRevision: current.revision,
-          status: 'failed',
+          status,
           actorId: input.actor.actorId,
           traceId: details.traceId,
           reasonCode: details.code,
           message: details.message
         });
-        await this.#audit(failed, input.requestId, input.actor.actorId, 'failed', current.revision);
+        await this.#audit(failed, input.requestId, input.actor.actorId, status, current.revision);
       }
       throw error;
     }
@@ -289,6 +299,7 @@ export class ProductMutationLifecycleService {
       });
     if (current.revision !== input.expectedRevision) throw new ProductMutationRevisionConflictError();
     if (current.status === 'verified' || current.status === 'recovered' || current.status === 'failed') {
+      if (isCreationOperation(current.operation)) await this.#assertCreationContext(current, input.actor);
       return current;
     }
     if (current.operation === 'updateProductDisplay') return this.#refreshDisplay(current, input);
@@ -520,6 +531,10 @@ export class ProductMutationLifecycleService {
     requestId: string,
     actor: AuthPrincipal
   ): Promise<ProductMutationJob> {
+    await this.#assertCreationContext(current, actor);
+    const operationOptions: [ProductOperationOptions?] = current.productContext
+      ? [{ productContext: current.productContext }]
+      : [];
     if (!isCreationOperation(current.operation) || current.categoryId === null || current.language === null) {
       throw new Error('新增商品任务缺少类目或语言快照');
     }
@@ -538,7 +553,14 @@ export class ProductMutationLifecycleService {
     }
     try {
       if (current.operation === 'saveProductDraft') {
-        const detail = await this.#gateway.get(current.productId, true, current.language, requestId);
+        const detail = await this.#gateway.get(
+          current.productId,
+          true,
+          current.language,
+          requestId,
+          current.categoryId,
+          ...operationOptions
+        );
         if (detail.id !== current.productId || detail.schemaXml.trim() === '') {
           throw new Error('平台草稿回读缺少匹配的商品 ID 或 Schema');
         }
@@ -555,7 +577,12 @@ export class ProductMutationLifecycleService {
         return verified;
       }
 
-      const product = await this.#findProductById(current.productId, current.language, requestId);
+      const product = await this.#findProductById(
+        current.productId,
+        current.language,
+        requestId,
+        operationOptions[0]
+      );
       if (product) {
         const verified = await this.#repository.transition({
           id: current.id,
@@ -589,6 +616,7 @@ export class ProductMutationLifecycleService {
       return pending;
     } catch (error: unknown) {
       const details = errorDetails(error);
+      if (details.code === 'PRODUCT_CONTEXT_CHANGED') throw error;
       const timedOut = this.#clock() - current.submittedTimeUtc >= CREATION_VERIFICATION_TIMEOUT_MILLISECONDS;
       const status: ProductMutationJobStatus = timedOut ? 'recovery-required' : 'verifying';
       const pending = await this.#repository.transition({
@@ -608,13 +636,30 @@ export class ProductMutationLifecycleService {
     }
   }
 
+  async #assertCreationContext(current: ProductMutationJob, actor: AuthPrincipal): Promise<void> {
+    if (!current.productContext) return;
+    if (current.productContext.identity !== (await opaqueGalleryId(actor.actorId)))
+      throw new GatewayException({
+        code: 'PRODUCT_CONTEXT_CHANGED',
+        message: 'PRODUCT_CONTEXT_CHANGED',
+        retryable: false
+      });
+    await this.#gateway.assertProductContext?.(current.productContext);
+  }
+
   async #findProductById(
     productId: string,
     language: 'zh_CN' | 'en_US',
-    requestId: string
+    requestId: string,
+    options?: ProductOperationOptions
   ): Promise<Product | null> {
     for (let page = 1; page <= 100; page += 1) {
-      const result = await this.#gateway.list({ page, pageSize: 30, language }, requestId);
+      const operationOptions: [ProductOperationOptions?] = options ? [options] : [];
+      const result = await this.#gateway.list(
+        { page, pageSize: 30, language },
+        requestId,
+        ...operationOptions
+      );
       const product = result.items.find((candidate) => candidate.id === productId);
       if (product) return product;
       if (page * result.pageSize >= result.total) return null;

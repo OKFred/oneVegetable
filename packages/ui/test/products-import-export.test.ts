@@ -166,7 +166,8 @@ describe('ProductsView import and export', () => {
     });
     expect(request).toHaveBeenCalledWith('getProductDraft', {
       productId: '10000002',
-      language: 'en_US'
+      language: 'en_US',
+      categoryId: 100001589
     });
     wrapper.unmount();
   });

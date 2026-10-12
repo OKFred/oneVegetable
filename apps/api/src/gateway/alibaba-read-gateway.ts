@@ -54,14 +54,22 @@ export interface AlibabaReadGatewayOptions {
 }
 
 export class CredentialBackedAlibabaGatewayClient implements GatewayClient {
-  constructor(private readonly provider: AsyncAlibabaCredentialProvider) {}
+  constructor(
+    private readonly provider: AsyncAlibabaCredentialProvider,
+    private readonly options: AlibabaReadGatewayOptions = {}
+  ) {}
 
   async credentialProtocol(): Promise<'top' | 'iop'> {
     return (await this.provider.status()).protocol ?? 'top';
   }
 
   async galleryGatewayContextId(): Promise<string> {
-    return galleryGatewayId(await this.provider.requireCredentials());
+    try {
+      return await galleryGatewayId(await this.provider.requireCredentials());
+    } catch (error: unknown) {
+      if (error instanceof GatewayConfigurationError) throw credentialGatewayError(error);
+      throw error;
+    }
   }
 
   async request<K extends OperationId>(
@@ -72,18 +80,26 @@ export class CredentialBackedAlibabaGatewayClient implements GatewayClient {
     try {
       if ((await this.credentialProtocol()) === 'iop') assertIopOperation(operation, request);
       const credentials = await this.provider.requireCredentials(context?.requestId);
-      return await new AlibabaReadGatewayClient(credentials).request(operation, request, context);
+      return await new AlibabaReadGatewayClient(credentials, this.options).request(
+        operation,
+        request,
+        context
+      );
     } catch (error: unknown) {
       if (error instanceof GatewayConfigurationError) {
-        throw new GatewayException({
-          code: error.code,
-          message: error.message,
-          retryable: error.code === 'ALIBABA_CREDENTIAL_REFRESH_IN_PROGRESS'
-        });
+        throw credentialGatewayError(error);
       }
       throw error;
     }
   }
+}
+
+function credentialGatewayError(error: GatewayConfigurationError): GatewayException {
+  return new GatewayException({
+    code: error.code,
+    message: error.message,
+    retryable: error.code === 'ALIBABA_CREDENTIAL_REFRESH_IN_PROGRESS'
+  });
 }
 
 export class AlibabaReadGatewayClient implements GatewayClient {
@@ -153,6 +169,10 @@ export class AlibabaReadGatewayClient implements GatewayClient {
       context,
       'top',
       context?.productContext !== undefined ||
+        operation === 'publishProduct' ||
+        operation === 'saveProductDraft' ||
+        operation === 'updateProduct' ||
+        operation === 'updateProductDisplay' ||
         operation === 'getProductInventory' ||
         operation === 'associateProductVideo' ||
         operation === 'verifyProductVideoAssociation' ||
@@ -161,7 +181,7 @@ export class AlibabaReadGatewayClient implements GatewayClient {
         : this.#maxAttempts
     );
     if (operation !== 'callCapability') {
-      return this.requestDedicated(operation, request, client, this.createClient(context, 'sync'));
+      return this.requestDedicated(operation, request, client, this.createClient(context, 'sync', 1));
     }
     return this.callCapability(request as CapabilityCallRequest, client, context) as Promise<ResponseOf<K>>;
   }
@@ -303,7 +323,8 @@ export class AlibabaReadGatewayClient implements GatewayClient {
         return await products.get(
           requiredString(record, 'productId'),
           true,
-          requiredAlibabaLanguage(record, 'language')
+          requiredAlibabaLanguage(record, 'language'),
+          optionalNumber(record, 'categoryId')
         );
       case 'listProductGroups':
         return await products.listGroups(optionalNumber(record, 'parentId'));

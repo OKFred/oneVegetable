@@ -312,13 +312,15 @@ async function handleProductMutationJobRequest(
       case 'get':
         data = await productMutations.get(requiredString(payload, 'id'));
         break;
-      case 'refresh':
+      case 'refresh': {
+        const job = await productMutations.get(requiredString(payload, 'id'));
         data = await productMutations.refresh(
-          await loadProductAdapter(),
+          await loadProductAdapter(job.productContext ?? undefined),
           requiredString(payload, 'id'),
           requiredNumber(payload, 'revision')
         );
         break;
+      }
       case 'complete-update-readback':
         assertTrustedOptionsPage(trustedOptionsPage);
         {
@@ -863,7 +865,15 @@ async function executeOperation(
           retryable: false
         });
       }
-      return productMutations.submitCreation(products, requestId, operation, validation.data);
+      return productMutations.submitCreation(
+        products,
+        requestId,
+        operation,
+        validation.data,
+        settings.protocol === 'iop'
+          ? { productContext: await createProductOperationContext('extension:local-admin', settings) }
+          : productOptions
+      );
     }
     case 'updateProduct': {
       assertTrustedOptionsPage(trustedOptionsPage);
@@ -904,7 +914,8 @@ async function executeOperation(
       return products.get(
         requiredString(request, 'productId'),
         true,
-        requiredAlibabaLanguage(request, 'language')
+        requiredAlibabaLanguage(request, 'language'),
+        readNumber(request, ['categoryId']) ?? undefined
       );
     case 'listProductGroups':
       return products.listGroups(readNumber(request, ['parentId']));
@@ -1164,8 +1175,15 @@ async function loadSettings(): Promise<GatewaySettings> {
   return (await getUnlockedVault(state)).settings;
 }
 
-async function loadProductAdapter(): Promise<ProductAdapter> {
+async function loadProductAdapter(
+  expectedContext?: ProductOperationOptions['productContext']
+): Promise<ProductAdapter> {
   const settings = await loadSettings();
+  if (expectedContext)
+    assertProductOperationContext(
+      expectedContext,
+      await createProductOperationContext('extension:local-admin', settings)
+    );
   assertCredentials(settings);
   const client = AlibabaClient.create(settings, {
     maxAttempts: 3,

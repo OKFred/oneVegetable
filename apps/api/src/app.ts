@@ -167,60 +167,99 @@ export function createApiApp(options: ApiAppOptions): Hono {
   const app = new Hono();
   const api = new Hono();
   const featureFlags = options.featureFlags ?? new StaticOperationFeatureFlags();
-  const productMutations = options.productMutationJobs
-    ? new ProductMutationLifecycleService(
-        options.productMutationJobs,
-        {
-          async publish(request: SchemaPublishRequest, requestId: string) {
-            return (await dynamicGateway.request('publishProduct', request, {
-              requestId
-            })) as ProductMutationResult;
+  // Bind submission/readback context to this request, never to shared app state.
+  function createProductMutations(boundOptions: GalleryRequestOptions = {}) {
+    return options.productMutationJobs
+      ? new ProductMutationLifecycleService(
+          options.productMutationJobs,
+          {
+            async assertProductContext(expected) {
+              if (!dynamicGateway.galleryGatewayContextId && options.gatewayMode === 'real')
+                throw new AuthError('PRODUCT_CONTEXT_UNAVAILABLE', 'PRODUCT_CONTEXT_UNAVAILABLE', 503);
+              const gatewayId = dynamicGateway.galleryGatewayContextId
+                ? await dynamicGateway.galleryGatewayContextId()
+                : await opaqueGalleryId(`local:${options.gatewayMode}`);
+              if (expected.gateway !== gatewayId)
+                throw new GatewayException({
+                  code: 'PRODUCT_CONTEXT_CHANGED',
+                  message: 'PRODUCT_CONTEXT_CHANGED',
+                  retryable: false
+                });
+            },
+            async publish(request: SchemaPublishRequest, requestId: string) {
+              return (await dynamicGateway.request('publishProduct', request, {
+                ...boundOptions,
+                requestId
+              })) as ProductMutationResult;
+            },
+            async saveDraft(request: SchemaPublishRequest, requestId: string) {
+              return (await dynamicGateway.request('saveProductDraft', request, {
+                ...boundOptions,
+                requestId
+              })) as ProductMutationResult;
+            },
+            async update(
+              request: ProductSchemaUpdateRequest,
+              requestId: string,
+              operationOptions?: ProductOperationOptions
+            ) {
+              return (await dynamicGateway.request('updateProduct', request, {
+                ...boundOptions,
+                requestId,
+                ...operationOptions
+              })) as ProductMutationResult;
+            },
+            async render(
+              request: ProductSchemaRenderRequest,
+              requestId: string,
+              operationOptions?: ProductOperationOptions
+            ) {
+              return (await dynamicGateway.request('renderProductSchema', request, {
+                ...boundOptions,
+                requestId,
+                ...operationOptions
+              })) as ProductSchema;
+            },
+            async get(
+              productId: string,
+              draft: boolean,
+              language: 'zh_CN' | 'en_US',
+              requestId: string,
+              categoryId?: number,
+              operationOptions?: ProductOperationOptions
+            ) {
+              return (await dynamicGateway.request(
+                draft ? 'getProductDraft' : 'getProduct',
+                draft
+                  ? { productId, language, ...(categoryId === undefined ? {} : { categoryId }) }
+                  : { productId },
+                { ...boundOptions, ...operationOptions, requestId }
+              )) as ProductDetail;
+            },
+            async updateDisplay(request: ProductDisplayRequest, requestId: string) {
+              return (await dynamicGateway.request('updateProductDisplay', request, {
+                ...boundOptions,
+                requestId
+              })) as ProductDisplayMutationResult;
+            },
+            async list(
+              request: ProductListQuery,
+              requestId: string,
+              operationOptions?: ProductOperationOptions
+            ) {
+              return (await dynamicGateway.request('listProducts', request, {
+                ...boundOptions,
+                ...operationOptions,
+                requestId
+              })) as ProductPage;
+            }
           },
-          async saveDraft(request: SchemaPublishRequest, requestId: string) {
-            return (await dynamicGateway.request('saveProductDraft', request, {
-              requestId
-            })) as ProductMutationResult;
-          },
-          async update(
-            request: ProductSchemaUpdateRequest,
-            requestId: string,
-            operationOptions?: ProductOperationOptions
-          ) {
-            return (await dynamicGateway.request('updateProduct', request, {
-              requestId,
-              ...operationOptions
-            })) as ProductMutationResult;
-          },
-          async render(
-            request: ProductSchemaRenderRequest,
-            requestId: string,
-            operationOptions?: ProductOperationOptions
-          ) {
-            return (await dynamicGateway.request('renderProductSchema', request, {
-              requestId,
-              ...operationOptions
-            })) as ProductSchema;
-          },
-          async get(productId: string, draft: boolean, language: 'zh_CN' | 'en_US', requestId: string) {
-            return (await dynamicGateway.request(
-              draft ? 'getProductDraft' : 'getProduct',
-              draft ? { productId, language } : { productId },
-              { requestId }
-            )) as ProductDetail;
-          },
-          async updateDisplay(request: ProductDisplayRequest, requestId: string) {
-            return (await dynamicGateway.request('updateProductDisplay', request, {
-              requestId
-            })) as ProductDisplayMutationResult;
-          },
-          async list(request: ProductListQuery, requestId: string) {
-            return (await dynamicGateway.request('listProducts', request, { requestId })) as ProductPage;
-          }
-        },
-        options.authService,
-        options.clock
-      )
-    : undefined;
+          options.authService,
+          options.clock
+        )
+      : undefined;
+  }
+  const productMutations = createProductMutations();
 
   api.use('*', async (context, next) => {
     const startedAt = (options.clock ?? Date.now)();
@@ -554,7 +593,8 @@ export function createApiApp(options: ApiAppOptions): Hono {
           : await authenticateRequest(context, options.authService);
       }
       // This check must precede contexts, mutation intent registration and durable task creation.
-      if ((await activeGatewayProtocol(options, dynamicGateway)) === 'iop') {
+      const protocol = await activeGatewayProtocol(options, dynamicGateway);
+      if (protocol === 'iop') {
         const reason = iopOperationReason(parsed.body.operation, parsed.body.payload.method);
         if (reason) throw new GatewayException({ code: reason, message: reason, retryable: false });
       }
@@ -607,7 +647,7 @@ export function createApiApp(options: ApiAppOptions): Hono {
           (await options.s3Storage?.galleryStorageContextId()) ?? null
         );
       }
-      const productContext =
+      let productContext =
         parsed.body.productContext === undefined
           ? undefined
           : requireProductOperationContext(parsed.body.productContext);
@@ -632,29 +672,57 @@ export function createApiApp(options: ApiAppOptions): Hono {
         if (!dynamicGateway.galleryGatewayContextId && options.gatewayMode === 'real')
           throw new AuthError('PRODUCT_CONTEXT_UNAVAILABLE', 'PRODUCT_CONTEXT_UNAVAILABLE', 503);
       }
+      const iopProductMutation =
+        options.gatewayMode === 'real' &&
+        protocol === 'iop' &&
+        ['publishProduct', 'saveProductDraft', 'updateProduct', 'updateProductDisplay'].includes(
+          parsed.body.operation
+        );
+      if (galleryContext || productContext || iopProductMutation) {
+        if (iopProductMutation && !dynamicGateway.galleryGatewayContextId)
+          throw new AuthError('PRODUCT_CONTEXT_UNAVAILABLE', 'PRODUCT_CONTEXT_UNAVAILABLE', 503);
+        const gatewayId = dynamicGateway.galleryGatewayContextId
+          ? await dynamicGateway.galleryGatewayContextId()
+          : await opaqueGalleryId(`local:${options.gatewayMode}`);
+        assertGalleryContextId(galleryContext?.gateway, gatewayId);
+        if (productContext && productContext.gateway !== gatewayId)
+          throw new GatewayException({
+            code: 'PRODUCT_CONTEXT_CHANGED',
+            message: 'PRODUCT_CONTEXT_CHANGED',
+            retryable: false
+          });
+        // Future accepted IOP writes also bind a snapshot when legacy callers omit a context.
+        if (!productContext && iopProductMutation && authenticated)
+          productContext = {
+            identity: await opaqueGalleryId(authenticated.principal.actorId),
+            gateway: gatewayId
+          };
+      }
       const transferOptions = {
         requestId: parsed.requestId,
         ...(galleryContext ? { galleryContext } : {}),
         ...(productContext ? { productContext } : {}),
         ...(typeof productBatchId === 'string' ? { productBatchId } : {})
       };
-      const data = productMutations
+      const submissionMutations = createProductMutations(transferOptions);
+      const data = submissionMutations
         ? parsed.body.operation === 'publishProduct' || parsed.body.operation === 'saveProductDraft'
-          ? await productMutations.submitCreation({
+          ? await submissionMutations.submitCreation({
               requestId: parsed.requestId,
               actor: authenticated?.principal ?? extensionAdminPrincipal(),
               operation: parsed.body.operation,
-              request: parsed.body.payload as unknown as SchemaPublishRequest
+              request: parsed.body.payload as unknown as SchemaPublishRequest,
+              options: transferOptions
             })
           : parsed.body.operation === 'updateProduct'
-            ? await productMutations.submitUpdate({
+            ? await submissionMutations.submitUpdate({
                 requestId: parsed.requestId,
                 actor: authenticated?.principal ?? extensionAdminPrincipal(),
                 request: parsed.body.payload as unknown as ProductSchemaUpdateRequest,
                 options: transferOptions
               })
             : parsed.body.operation === 'updateProductDisplay'
-              ? await productMutations.submitDisplay({
+              ? await submissionMutations.submitDisplay({
                   requestId: parsed.requestId,
                   actor: authenticated?.principal ?? extensionAdminPrincipal(),
                   request: parsed.body.payload as unknown as ProductDisplayRequest
@@ -716,8 +784,7 @@ export function createApiApp(options: ApiAppOptions): Hono {
           parsed.requestId,
           authenticated?.principal.actorId ?? null,
           parsed.body.operation,
-          (error instanceof AuthError && (status === 401 || status === 403)) ||
-            code === 'ALIBABA_IOP_METHOD_UNSUPPORTED'
+          (error instanceof AuthError && (status === 401 || status === 403)) || isIopPolicyDenial(code)
             ? 'denied'
             : 'error',
           code
@@ -727,8 +794,7 @@ export function createApiApp(options: ApiAppOptions): Hono {
         options,
         parsed.requestId,
         parsed.body.operation,
-        (error instanceof AuthError && (status === 401 || status === 403)) ||
-          code === 'ALIBABA_IOP_METHOD_UNSUPPORTED'
+        (error instanceof AuthError && (status === 401 || status === 403)) || isIopPolicyDenial(code)
           ? 'denied'
           : 'error',
         status,
@@ -774,7 +840,7 @@ function gatewayStatus(code: string): 400 | 403 | 409 | 429 | 502 | 503 | 504 {
     code === 'CAPABILITY_NOT_ACTIVE' ||
     code === 'CAPABILITY_RESTRICTED' ||
     code === 'REAL_MUTATION_DISABLED' ||
-    code === 'ALIBABA_IOP_METHOD_UNSUPPORTED'
+    isIopPolicyDenial(code)
   ) {
     return 403;
   }
@@ -782,6 +848,10 @@ function gatewayStatus(code: string): 400 | 403 | 409 | 429 | 502 | 503 | 504 {
   if (code === 'ALIBABA_CREDENTIALS_NOT_CONFIGURED') return 503;
   if (code === 'REQUEST_TIMEOUT') return 504;
   return 502;
+}
+
+function isIopPolicyDenial(code: string): boolean {
+  return code === 'ALIBABA_IOP_METHOD_UNSUPPORTED' || code === 'ALIBABA_IOP_MUTATION_UNVERIFIED';
 }
 
 async function activeGatewayProtocol(
