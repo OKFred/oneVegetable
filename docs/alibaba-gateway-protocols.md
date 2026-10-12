@@ -29,6 +29,8 @@ TOP 仍是默认协议，不自动替换已有本地、Node、Cloudflare 或插�
 | `alibaba.icbu.product.schema.get`          | `/alibaba/icbu/product/schema/get`   | 仅映射文档支持的 cat_id、language，不默默丢弃不支持的业务筛选                            |
 | `alibaba.icbu.product.score.get`           | `/icbu/product/score/get`            | 读取真实评分，缺失或无效值不能默认成 0                                                   |
 | `alibaba.icbu.product.type.available.get`  | `/icbu/product/other/available/get`  | 可用商品类型                                                                             |
+| `alibaba.icbu.product.inventory.get`       | `/icbu/product/inventory/get`        | 商品库存，保留 SKU 和仓编码；单层/双层 result 按明确结构校验，缺库存不当作零             |
+| `alibaba.icbu.product.id.encrypt`          | `/alibaba/icbu/product/id/encrypt`   | 已类型化；本次账号真实调用返回 InternalError，尚未通过 IOP 账号验收                      |
 | `alibaba.seller.order.list`                | `/alibaba/order/list`                | 文档明确支持 seller/buyer；原角色和分页逐项映射，不支持的筛选出网前拒绝                  |
 | `alibaba.seller.order.logistics.get`       | `/order/logistics/query`             | 交易 ID 映射为 trade_id；无物流状态时展示未知，不伪造已发货                              |
 
@@ -46,7 +48,7 @@ TOP 仍是默认协议，不自动替换已有本地、Node、Cloudflare 或插�
 
 未验收写入返回 `ALIBABA_IOP_MUTATION_UNVERIFIED`。不会失败后切到 TOP、Mock 或其他应用，也不继承 TOP 的全部写白名单。无需用户授权仍需要应用签名及平台应用权限。
 
-BFF 与插件的能力目录及方法定义使用同一协议限制：IOP 未适配方法标为不可调用；已映射的方法仍保留原有权限和启用状态，不因映射存在而自动开放。TOP 和未标记的旧凭据保留原目录状态。
+BFF 与插件的能力目录及方法定义使用同一协议限制：IOP 未适配方法标为不可调用；已映射的方法仍保留原有权限和启用状态，不因映射存在而自动开放。IOP 的 verification 单独由真实验收记录确定，不继承 TOP 的 account-verified 标签；未验收及未适配项显示 documented。TOP 和未标记的旧凭据保留原目录状态。
 
 ## 续期和安全
 
@@ -89,6 +91,19 @@ pnpm reconcile:iop:product-write --credential=<ignored IOP bundle> --receipt=art
 
 文档审计快照包含 82 项目录和 32 项商品/交易详情，保存在 `docs/alibaba-iop-api-docs.json`；审计命令仅显式执行，生产构建和 CI 不访问实时文档站。
 
+### 2026-10-13 库存与正式插件只读验收
+
+- 显式映射扩至 16 项只读方法。库存真实回读 8 条 SKU/仓记录通过；暂未适配 SKU 专属查询或库存写入，不借用商品库存方法冒充。
+- 商品 ID 加密在两件真实商品上返回平台 `InternalError`，不能归因为权限不足，更不能标为账号验证通过。旧类目映射和层级 Schema 仍只有 IOP 文档验证；本轮不制造前置参数进行试调用。
+- 新增 `pnpm smoke:iop:workbench --confirm-readonly --credential=<ignored IOP bundle> [--product-id=<verified product ID>]`。从已有正式 MV3 构建复制隔离 Profile，经设置页导入授权包、加密保存并刷新；成功验证商品列表、20 个商品分组、18 个图片分组、指定分组图片、Schema、8 条库存、订单列表，以及合法无数据的订单物流。
+- 真实插件共发送 28 次受限 IOP 只读请求。商品分组的 21 次请求为根节点及 20 个子节点，不是重试；验收工具限量串行并禁止重复读取同一分组。其余操作各一次，相邻出网请求至少 350ms。未访问 TOP、未续期 Token、未执行 mutation，也未替换用户当前 TOP 配置。
+- 只修改测试副本 Manifest，预授予精确 IOP 域名；没有替换签名、端点或正式代码，不把原生权限确认弹窗计为通过。未保存完整响应、XML、截图或密钥；Profile 仅含加密保险库，随机口令不导出。
+- 单测全量 298 文件 / 2201 项通过，之后新增验收护栏测试 5 项通过；正式 MV3 静态授权及双协议 E2E 9 项通过。Chrome `tabs.create` 可早于 Playwright locale 注入，测试用真实语言按钮显式固定中文，不修改用户语言默认行为。
+- 本批正式扩展 ZIP 1,190,035 字节，解包 4,099,851 字节；权限和所有包体门禁保持不变。剩余解包预算很小，后续开发应继续整理重复代码，不直接放宽门槛。
+- Web、静态授权 Pages、扩展和 Worker dry-run 构建通过；此处 dry-run 不是线上部署。额外根目录类型扫描仍有旧欠账，本批两个验收脚本及新增测试没有新增诊断。
+
+正式插件脱敏回执在忽略目录 `artifacts/iop-workbench-read-validation/`；API 只读回执仍在 `artifacts/iop-business-read-validation/`。不得把这些目录中的授权包、Profile 或真实业务内容提交到仓库。
+
 ## English
 
-TOP remains the backward-compatible default. Unmarked historical bundles/settings remain TOP; an explicit `protocol: "iop"` import is required to select IOP. Do not mix secrets or tokens between protocols. Fourteen reads have explicit paths, including seller orders and logistics. Schema draft/formal creation passed live creation and field readback; incremental title update and original-title restoration were each confirmed after platform review. Those three methods now pass the protocol gate, without bypassing administrator checks or environment mutation flags. RFQ has no confirmed public IOP path, and fees cannot substitute for paid amounts. No TOP/Mock fallback or automatic configuration switch occurs. Request-scoped credentials and persisted job contexts prevent readback with a changed account. Renewal uses the matching protocol; an uncertain renewal requires reauthorization rather than resending.
+TOP remains the backward-compatible default. Unmarked historical bundles/settings remain TOP; an explicit `protocol: "iop"` import is required to select IOP. Do not mix secrets or tokens between protocols. Sixteen reads have explicit paths, including seller orders, logistics and product inventory. Live inventory returned eight SKU/warehouse records. Product ID encryption returned InternalError and remains documented-only; IOP verification never inherits TOP acceptance. Schema draft/formal creation passed live creation and field readback; incremental title update and original-title restoration were each confirmed after platform review. Those three methods now pass the protocol gate, without bypassing administrator checks or environment mutation flags. RFQ has no confirmed public IOP path, and fees cannot substitute for paid amounts. No TOP/Mock fallback or automatic configuration switch occurs. Request-scoped credentials and persisted job contexts prevent readback with a changed account. Renewal uses the matching protocol; an uncertain renewal requires reauthorization rather than resending. An isolated production MV3 copy passed eight live read operations (including a valid empty logistics result), encrypted import and persistence. Native host consent was pregranted in the disposable manifest and was not tested. No active TOP credentials, tokens or products were changed by this read acceptance.
