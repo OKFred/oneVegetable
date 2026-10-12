@@ -124,12 +124,13 @@ const groups = await call(
 );
 const product = products?.items[0];
 if (product?.categoryId && product.categoryId > 0) {
+  const categoryId = product.categoryId;
   await call(
     'renderProductSchema',
     (client) =>
       new ProductAdapter(client).renderSchema({
         productId: product.id,
-        categoryId: product.categoryId,
+        categoryId,
         language: 'en_US'
       }),
     (value) => (value.xml.includes('<itemSchema') ? 1 : 0)
@@ -138,7 +139,7 @@ if (product?.categoryId && product.categoryId > 0) {
     'getProductSchema',
     (client) =>
       new ProductAdapter(client).getSchema({
-        categoryId: product.categoryId ?? 0,
+        categoryId,
         language: 'en_US',
         market: 'wholesale'
       }),
@@ -151,14 +152,14 @@ if (product?.categoryId && product.categoryId > 0) {
   );
   await call(
     'callCapability',
-    (client) => client.call('alibaba.icbu.category.get.new', { cat_id: product.categoryId }),
+    (client) => client.call('alibaba.icbu.category.get.new', { cat_id: categoryId }),
     () => 1
   );
   await call(
     'callCapability',
     (client) =>
       client.call('alibaba.icbu.product.type.available.get', {
-        cat_id: product.categoryId,
+        cat_id: categoryId,
         language: 'en_US'
       }),
     () => 1

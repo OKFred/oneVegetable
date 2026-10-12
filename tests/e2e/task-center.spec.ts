@@ -1,6 +1,7 @@
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
+import { settings as settingsZh } from '../../packages/ui/src/i18n/messages/zh-CN/settings';
 import { chromium, expect, test, type Page } from '@playwright/test';
 import galleryFixture from '../../mock/data/gallery-transfer-task.json' with { type: 'json' };
 import associationFixture from '../../mock/data/video/association-core.json' with { type: 'json' };
@@ -179,7 +180,7 @@ test('formal MV3 task center keeps uncertain receipts and reuses the original ta
     await page.getByLabel('设置保护口令').fill('e2e-vault-password');
     await page.getByLabel('确认保护口令').fill('e2e-vault-password');
     await page.getByRole('button', { name: '保存设置', exact: true }).click();
-    await expect(page.getByText('凭证与设置已加密保存，并将在当前 Chrome 会话内保持可用。')).toBeVisible();
+    await expect(page.getByText(settingsZh.vault.saveEncrypted)).toBeVisible();
     await seedReceipts(page);
     const baseline = externalRequests.length;
     await checkCenter(page);

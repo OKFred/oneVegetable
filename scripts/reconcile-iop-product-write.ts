@@ -1,7 +1,7 @@
 /** Read-only reconciliation; one explicitly confirmed restoration, never a repeated original write. */
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { isAbsolute, relative, resolve } from 'node:path';
 import { parseAlibabaOpenApiCredentialBundle } from '../packages/core/src/alibaba-credential-bundle';
 import { AlibabaClient } from '../packages/core/src/alibaba-client';
 import { IOP_BUSINESS_ENDPOINT, isRecord } from '../packages/core/src/alibaba-iop';
@@ -27,13 +27,23 @@ const file = arg('credential');
 const receipt = arg('receipt');
 const maxChecks = Number(arg('max-checks') ?? 60);
 assert(Number.isInteger(maxChecks) && maxChecks >= 1 && maxChecks <= 60, 'max-checks must be 1–60');
-assert(file && receipt?.replaceAll('\\', '/').startsWith('artifacts/iop-product-write-validation/'));
+assert(
+  file &&
+    typeof receipt === 'string' &&
+    receipt.replaceAll('\\', '/').startsWith('artifacts/iop-product-write-validation/')
+);
 const path = resolve(receipt);
+const receiptRelative = relative(resolve('artifacts/iop-product-write-validation'), path);
+assert(
+  receiptRelative !== '' && !receiptRelative.startsWith('..') && !isAbsolute(receiptRelative),
+  'Receipt must remain inside the ignored IOP acceptance directory.'
+);
 const report: unknown = JSON.parse(await readFile(path, 'utf8'));
 assert(
   isRecord(report) && report.protocol === 'iop' && isRecord(report.baseline) && Array.isArray(report.records)
 );
 const baseline = report.baseline;
+const savedReport: Record<string, unknown> = report;
 assert(
   typeof baseline.productId === 'string' &&
     typeof baseline.original === 'string' &&
@@ -72,7 +82,7 @@ let restoreSent = records.length > 1;
 async function persist(phase: string, error?: unknown) {
   const normalized = error === undefined ? null : normalizeGatewayError(error);
   await atomicWriteJson(path, {
-    ...report,
+    ...savedReport,
     phase,
     records,
     reconciledAtUtc: new Date().toISOString(),

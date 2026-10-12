@@ -20,13 +20,31 @@ TOP 仍是默认协议，不自动替换已有本地、Node、Cloudflare 或插�
 | `alibaba.icbu.product.list`                | `/alibaba/icbu/product/list`         | 商品分页、摘要；要求真实列表和总数                                                       |
 | `alibaba.icbu.product.group.get`           | `/alibaba/icbu/product/group/get`    | 已通过账号只读核对；根目录 `group_id=-1`，此方法未出现在当前新版菜单中，不把它当目录承诺 |
 | `alibaba.icbu.product.schema.render`       | `/icbu/product/schema/render`        | 将原请求 DTO 映射为 `render_request`；要求成功及 XML                                     |
-| `alibaba.icbu.product.schema.render.draft` | `/icbu/product/schema/render/draft`  | 对应文档映射；草稿读取另需真实样本验收                                                   |
+| `alibaba.icbu.product.schema.render.draft` | `/icbu/product/schema/render/draft`  | 明确传入类目、语言和草稿 ID；真实草稿已创建并回读确认                                    |
 | `alibaba.icbu.photobank.group.list`        | `/icbu/product/photobank/group/list` | 图片分组                                                                                 |
 | `alibaba.icbu.photobank.list`              | `/icbu/product/photobank/list`       | `groupId/currentPage/pageSize`；必须选择指定分组                                         |
+| `alibaba.icbu.category.get.new`            | `/icbu/product/category/get`         | 保留正式类目层级，不使用旧接口或猜测类目                                                 |
+| `alibaba.icbu.category.id.mapping`         | `/alibaba/icbu/category/id/mapping`  | 旧类目映射；文档无需用户授权时不发送 access_token                                        |
+| `alibaba.icbu.category.schema.level.get`   | `/icbu/product/schema/level/get`     | 层级属性 Schema；文档无需用户授权时不发送 access_token                                   |
+| `alibaba.icbu.product.schema.get`          | `/alibaba/icbu/product/schema/get`   | 仅映射文档支持的 cat_id、language，不默默丢弃不支持的业务筛选                            |
+| `alibaba.icbu.product.score.get`           | `/icbu/product/score/get`            | 读取真实评分，缺失或无效值不能默认成 0                                                   |
+| `alibaba.icbu.product.type.available.get`  | `/icbu/product/other/available/get`  | 可用商品类型                                                                             |
+| `alibaba.seller.order.list`                | `/alibaba/order/list`                | 文档明确支持 seller/buyer；原角色和分页逐项映射，不支持的筛选出网前拒绝                  |
+| `alibaba.seller.order.logistics.get`       | `/order/logistics/query`             | 交易 ID 映射为 trade_id；无物流状态时展示未知，不伪造已发货                              |
 
-总览可以显示可查询的商品统计；订单及跨全部分组的图片统计在未适配时显示不可用，不伪造为 0。IOP 的全部图片、未分组查询不猜特殊分组 ID，也不全店扫描。
+总览可以查询商品及订单统计；跨全部分组的图片统计仍显示不可用，不伪造为 0。IOP 的全部图片、未分组查询不猜特殊分组 ID，也不全店扫描。
 
-订单、RFQ、物流、产品分等尚未映射的能力，在调用前返回清晰限制原因。所有 IOP 商品、图片及其他 mutation 暂不继承 TOP 的真实写白名单。不会失败后切到 TOP、Mock 或其他应用。
+写接口参数和响应适配已补齐三项，但验收与开放分开：
+
+| 能力               | IOP path                         | 当前开放状态                                                                |
+| ------------------ | -------------------------------- | --------------------------------------------------------------------------- |
+| `schema.add.draft` | `/icbu/product/schema/add/draft` | 真实创建并回读确认，允许保存平台草稿；仍需管理员和原环境 mutation flag      |
+| `schema.add`       | `/icbu/product/schema/add`       | 真实创建、审核后字段回读确认；仍受管理员、环境 mutation flag 及任务核对控制 |
+| `schema.update`    | `/icbu/product/schema/update`    | 标题增量修改回读、恢复原标题并再次回读通过；未修改字段不进入补丁            |
+
+尚未找到新版公开 RFQ 方法；订单资金查询也不能以 `/order/fund/query` 的手续费字段冒充原 paidAmount。上下架文档的数字商品标识与旧能力的加密标识不等价，未确认前不猜转换。以上能力在 IOP 中返回 `ALIBABA_IOP_METHOD_UNSUPPORTED`，TOP 的原能力不受影响。
+
+未验收写入返回 `ALIBABA_IOP_MUTATION_UNVERIFIED`。不会失败后切到 TOP、Mock 或其他应用，也不继承 TOP 的全部写白名单。无需用户授权仍需要应用签名及平台应用权限。
 
 BFF 与插件的能力目录及方法定义使用同一协议限制：IOP 未适配方法标为不可调用；已映射的方法仍保留原有权限和启用状态，不因映射存在而自动开放。TOP 和未标记的旧凭据保留原目录状态。
 
@@ -37,23 +55,40 @@ BFF 与插件的能力目录及方法定义使用同一协议限制：IOP 未适
 - IOP Refresh Token 可能轮换；结果不明时需要重新授权，不能重新发送同一个续期请求。续期在共享租约和 revision 下原子保存，配置身份不因正常 Token 刷新改变。
 - 独立插件 IOP 工具可授权、续期及导出 JSON，再由工作台显式导入。旧 `pnpm openapi:auth:refresh` 只接受 TOP；遇 IOP 提示使用新版工具或凭据面板，不发送到旧端点。
 - 网关校验协议与 endpoint；未适配方法和写请求出网前拒绝。公开响应仅含协议、来源、到期时间和 AppKey 尾号，不返回 Secret 或 Token。
+- 新增 IOP 商品任务持久化身份和凭据配置上下文，提交及回读均绑定同一配置；换凭据后旧任务不可用新配置核对。正常 Token 刷新不改变上下文；无上下文的旧 TOP 任务不推断账号归属。
+- 写请求最多发送一次；超时、缺少明确成功字段或无法解释的响应保留结果不明，不能依据 retryable=false 将其当作明确未执行。
 
 ## 验证边界
 
-自动测试使用 `mock/data/alibaba-auth/iop-business-responses.json`，覆盖两种协议、旧包/设置、错误及预先拒绝。真实验收只使用独立 IOP 包顺序读取，不替换用户当前 TOP 配置、不续期现有 Token、不修改商品。
+自动测试使用 `mock/data/alibaba-auth/iop-business-responses.json`，覆盖两种协议、旧包/设置、错误及预先拒绝。真实验收使用独立 IOP 包，不替换用户当前 TOP 配置、不续期现有 Token。商品写验收有独立显式确认通道，不是生产调用的绕过开关。
 
 “IOP 只读可用”不等于其全部接口或写操作已验收。正式切换前仍需逐领域补齐映射和账号验收；当前无需旧用户重新授权或迁移。
 
 ### 2026-10-12 验收记录
 
-- 独立 IOP 授权包真实读取通过：商品列表、商品分组、正式商品 Schema、图片分组和指定分组图片列表。草稿 Schema 仅完成契约/适配测试，尚无本轮真实草稿样本。
-- 隔离 Node BFF 通过 JSON 导入、真实商品列表连接测试、显式 IOP 手动配置、重启保留、清除防回退、重新导入和设置页确认流程。验收使用临时 SQLite，不修改当前工作台 TOP 配置，也不轮换真实 Token。
+- 独立 IOP 授权包真实读取通过 11 项：商品列表、商品分组、正式商品 Schema、获取类目 Schema、产品分、类目树、可用商品类型、图片分组、指定分组图片、卖家订单列表、订单物流。无发货信息的物流字段保留未知。
+- 真实创建一条平台草稿，随后 schema.render.draft 回读确认商品 ID 和 XML；Node BFF 的认证链路也完成订单列表及这条草稿的只读回读。
+- 正式发布与现有商品标题增量更新先取得明确受理回执，回读一度返回 `PUB_BIZCHECK_PRODUCT_IN_AUDITING`。审核结束后，新增商品字段回读匹配；现有商品的标题标记回读匹配后，只发送一次原标题恢复，随后再次回读确认原值。两次更新分别保存 requestId，商品 ID 和最小恢复基线留在忽略目录，没有重复原写请求、下架或删除测试商品。
+- 隔离 Node BFF 通过 JSON 导入、真实商品列表连接测试、显式 IOP 手动配置、重启保留、清除防回退及重新导入。验收使用临时 SQLite，不修改当前工作台 TOP 配置，也不轮换真实 Token。
 - 正式 MV3 构建的离线 E2E 通过静态 Pages 回调、加密保存/导出、单次续期、错误 state 拒绝，以及工作台 IOP 持久化、图片分组查询和未适配读写拦截。测试副本预授予主机权限并使用 `mock/data` 响应，不声称该项是插件真实账号验收。
-- 全量单测 294 文件 / 2070 项通过；Worker 隔离测试 23 项通过；相关 E2E 24 项通过（授权 3、双语 Node 配置 2、工作台及扩展回归 19）。Web/Worker/扩展构建、类型、契约漂移、格式、Lint 和文案检查通过；Lint 保留已有 warning，无 error。
-- 正式扩展 ZIP 1,189,371 字节，解包 4,097,280 字节；未增加永久 Manifest 权限。代码推送不等于已部署 Worker、Pages 或发布商店。
+- 全量单测 296 文件 / 2168 项通过；Worker 隔离测试 23 项通过；相关 E2E 21 项通过（静态授权与 IOP 写操作 9、双语 Node 配置 2、旧 TOP 插件及任务中心 10）。正式工作区类型、格式、Lint、i18n、OpenAPI 漂移、离线审计和回放覆盖检查通过；Lint 有既有 warning，无 error。
+- 正式扩展 ZIP 1,189,689 字节，解包 4,099,375 字节；继续执行 ZIP 1,500,000 字节、解包 4,100,000 字节及既有门禁，未增加永久 Manifest 权限。代码推送不等于已部署 Worker、Pages 或发布商店。
+- 额外根目录 `tsconfig.json` 扫描仍有既有脚本和 Playwright 配置类型欠账，本轮新增/修改的 IOP 验收脚本未新增诊断。工作区的正式 `pnpm typecheck` 与此额外扫描分别记录，不宣称根目录全部脚本已无类型问题。
 
 只读真实回执保存在忽略目录 `artifacts/iop-business-read-validation/`，Node 设置验收记录在 `artifacts/node-credential-management/`；不提交凭据、完整 Schema 或平台业务响应。
 
+受控写回执及最小恢复基线位于 `artifacts/iop-product-write-validation/`。原写请求已发出时不得再次运行对应写入；先用 reconcile 做只读核对，只有最新标题仍等于本次标记、且显式确认后，才允许一次原标题恢复：
+
+```text
+pnpm snapshot:iop-docs
+pnpm smoke:iop:read --credential=<ignored IOP bundle> --confirm-read-only
+pnpm smoke:iop:product-write --credential=<ignored IOP bundle> --mode=draft --confirm-real-write
+pnpm reconcile:iop:product-write --credential=<ignored IOP bundle> --receipt=artifacts/iop-product-write-validation/<date>/publish.json
+pnpm reconcile:iop:product-write --credential=<ignored IOP bundle> --receipt=artifacts/iop-product-write-validation/<date>/update.json --confirm-restore
+```
+
+文档审计快照包含 82 项目录和 32 项商品/交易详情，保存在 `docs/alibaba-iop-api-docs.json`；审计命令仅显式执行，生产构建和 CI 不访问实时文档站。
+
 ## English
 
-TOP remains the backward-compatible default. Unmarked historical bundles/settings remain TOP; an explicit `protocol: "iop"` import is required to select IOP. Do not mix application secrets or tokens between protocols. Supported IOP reads have explicit paths and request/response mappings. Unmapped operations and all unverified IOP writes are rejected before network access, never retried through TOP or Mock. Renewal uses the matching protocol; an uncertain IOP renewal requires reauthorization rather than resending. No existing user configuration is switched automatically.
+TOP remains the backward-compatible default. Unmarked historical bundles/settings remain TOP; an explicit `protocol: "iop"` import is required to select IOP. Do not mix secrets or tokens between protocols. Fourteen reads have explicit paths, including seller orders and logistics. Schema draft/formal creation passed live creation and field readback; incremental title update and original-title restoration were each confirmed after platform review. Those three methods now pass the protocol gate, without bypassing administrator checks or environment mutation flags. RFQ has no confirmed public IOP path, and fees cannot substitute for paid amounts. No TOP/Mock fallback or automatic configuration switch occurs. Request-scoped credentials and persisted job contexts prevent readback with a changed account. Renewal uses the matching protocol; an uncertain renewal requires reauthorization rather than resending.

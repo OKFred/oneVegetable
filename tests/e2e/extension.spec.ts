@@ -2,6 +2,7 @@ import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
+import { settings as settingsZh } from '../../packages/ui/src/i18n/messages/zh-CN/settings';
 import { zipSync } from 'fflate';
 import galleryFixture from '../../mock/data/gallery-extension-transfer.json' with { type: 'json' };
 import showcaseFixture from '../../mock/data/showcase-management.json' with { type: 'json' };
@@ -75,9 +76,7 @@ test('formal MV3 preserves imported token expiry through vault save and page rel
   await page.getByLabel('设置保护口令').fill('123456');
   await page.getByLabel('确认保护口令').fill('123456');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
-  await expect(
-    page.getByText('凭证与设置已加密保存，并将在当前 Chrome 会话内保持可用。').first()
-  ).toBeVisible();
+  await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
   await page.reload();
   await expect(page.getByTestId('credential-expiry')).toContainText('2030-01-02');
   await expect(page.getByLabel('Access Token')).toHaveValue('');
@@ -91,7 +90,7 @@ test('formal MV3 preserves imported token expiry through vault save and page rel
   await page.getByLabel('Access Token').fill(credentialFixture.manual.accessToken);
   await expect(page.getByTestId('credential-expiry')).toContainText('未知，不代表永久有效');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
-  await expect(page.getByText('设置已重新加密写入 chrome.storage.local。').first()).toBeVisible();
+  await expect(page.getByText(settingsZh.credentials.encryptedSavedFeedback).first()).toBeVisible();
   await page.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#/dashboard`);
   await expect(page.getByTestId('dashboard-authorization-card')).toContainText('权限未确认');
   await expect(page.getByTestId('dashboard-authorization-card')).not.toContainText('剩余约');
@@ -136,9 +135,7 @@ test('formal MV3 catalog validates domain reads before and after worker restart'
   await page.getByLabel('设置保护口令').fill('e2e-vault-password');
   await page.getByLabel('确认保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
-  await expect(
-    page.getByText('凭证与设置已加密保存，并将在当前 Chrome 会话内保持可用。').first()
-  ).toBeVisible();
+  await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
   const invoke = async (method: string, parameters: unknown) => {
     const requestId = crypto.randomUUID();
     const response: unknown = await page.evaluate(
@@ -330,9 +327,7 @@ test('formal MV3 showcase uses the actual worker with isolated TOP responses', a
   await page.getByLabel('设置保护口令').fill('e2e-vault-password');
   await page.getByLabel('确认保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
-  await expect(
-    page.getByText('凭证与设置已加密保存，并将在当前 Chrome 会话内保持可用。').first()
-  ).toBeVisible();
+  await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
   await page.goto(`${origin}/options.html#/products`);
   await page.getByRole('button', { name: '更多', exact: true }).click();
   await page.getByRole('menuitem', { name: '橱窗管理', exact: true }).click();
@@ -541,9 +536,7 @@ test('formal MV3 dedicated inventory survives worker restart with no writes', as
   await page.getByLabel('设置保护口令').fill('e2e-vault-password');
   await page.getByLabel('确认保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
-  await expect(
-    page.getByText('凭证与设置已加密保存，并将在当前 Chrome 会话内保持可用。').first()
-  ).toBeVisible();
+  await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
   async function query(source: 'product' | 'sku', productId = '10000001') {
     return page.evaluate(
       async (payload) => {
@@ -625,9 +618,7 @@ test('formal MV3 video workspace isolates public reads and survives worker resta
   await page.getByLabel('设置保护口令').fill('e2e-vault-password');
   await page.getByLabel('确认保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
-  await expect(
-    page.getByText('凭证与设置已加密保存，并将在当前 Chrome 会话内保持可用。').first()
-  ).toBeVisible();
+  await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
   await page.goto(`${base}#/photos/videos`);
   const library = page.getByTestId('video-library');
   await library.getByRole('button', { name: '查看: Example video' }).click();
@@ -917,9 +908,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByLabel('设置保护口令').fill('e2e-vault-password');
   await page.getByLabel('确认保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
-  await expect(
-    page.getByText('凭证与设置已加密保存，并将在当前 Chrome 会话内保持可用。').first()
-  ).toBeVisible();
+  await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
   const encryptedSettings = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {
@@ -1085,7 +1074,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByLabel('新保护口令', { exact: true }).fill('e2e-rotated-vault-password');
   await page.getByLabel('确认新保护口令', { exact: true }).fill('e2e-rotated-vault-password');
   await page.getByRole('button', { name: '更换口令' }).click();
-  await expect(page.getByText('凭证已使用新 salt 和新口令重新加密。')).toBeVisible();
+  await expect(page.getByText(settingsZh.vault.rotatedFeedback)).toBeVisible();
   await page.getByRole('button', { name: '立即锁定' }).click();
   await expect(page.getByText('已锁定', { exact: true })).toBeVisible();
   await page.getByLabel('保护口令').fill('e2e-vault-password');
@@ -1379,7 +1368,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByRole('button', { name: '彻底清除' })).toBeDisabled();
   await page.getByLabel('清除确认短语').fill('清除全部数据');
   await page.getByRole('button', { name: '彻底清除' }).click();
-  await expect(page.getByText(/扩展本地数据和额外主机权限已清除/)).toBeVisible();
+  await expect(page.getByText(settingsZh.localData.cleared)).toBeVisible();
   const clearedState = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {
@@ -1425,13 +1414,11 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.reload();
   await page.getByRole('link', { name: '设置', exact: true }).click();
   await expect(page.getByText('待迁移', { exact: true })).toBeVisible();
-  await expect(page.getByText(/真实请求已停止读取该记录/)).toBeVisible();
+  await expect(page.getByText(settingsZh.vault.legacyDescription)).toBeVisible();
   await page.getByLabel('设置保护口令').fill('migrated-vault-password');
   await page.getByLabel('确认保护口令').fill('migrated-vault-password');
   await page.getByRole('button', { name: '加密并迁移旧凭证' }).click();
-  await expect(
-    page.getByText('旧版明文凭证已原位加密，并在当前 Chrome 会话内保持可用。').first()
-  ).toBeVisible();
+  await expect(page.getByText(settingsZh.vault.migratedFeedback).first()).toBeVisible();
   const migratedEncryptedSettings = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {
