@@ -59,17 +59,27 @@ export class ProductAdapter {
     };
   }
 
-  async get(productId: string, draft = false, language: AlibabaLanguage = 'en_US'): Promise<ProductDetail> {
+  async get(
+    productId: string,
+    draft = false,
+    language: AlibabaLanguage = 'en_US',
+    categoryId?: number
+  ): Promise<ProductDetail> {
     const method = draft ? 'alibaba.icbu.product.schema.render.draft' : 'alibaba.icbu.product.schema.render';
     const numericProductId = Number(productId);
     if (!Number.isSafeInteger(numericProductId) || numericProductId <= 0) {
       throw new Error('商品明文 ID 必须是安全范围内的正整数');
     }
+    const summary = draft ? null : await this.getProductSummary(numericProductId, language);
+    const category = categoryId ?? summary?.categoryId;
     const call = await this.client.call(method, {
-      param_product_top_publish_request: { product_id: numericProductId, language }
+      param_product_top_publish_request: {
+        product_id: numericProductId,
+        language,
+        ...(category && category > 0 ? { cat_id: category } : {})
+      }
     });
     const root = unwrap(call.data, call.method);
-    const summary = draft ? null : await this.getProductSummary(numericProductId, language);
     return {
       id: productId,
       encryptedId: summary?.encryptedId ?? null,
@@ -80,7 +90,7 @@ export class ProductAdapter {
       imageUrl: summary?.imageUrl ?? null,
       detailUrl: summary?.detailUrl ?? null,
       updatedAt: summary?.updatedAt ?? new Date().toISOString(),
-      categoryId: summary?.categoryId ?? 0,
+      categoryId: category ?? 0,
       language,
       schemaXml: requireSchemaXml(root, 'ALIBABA_DRAFT_SCHEMA_RENDER_FAILED')
     };

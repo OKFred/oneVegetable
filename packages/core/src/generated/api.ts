@@ -10431,6 +10431,13 @@ export interface components {
             language: string;
             market: string;
         };
+        ProductDraftRenderRequest: {
+            productId: string;
+            /** @enum {string} */
+            language: "zh_CN" | "en_US";
+            /** @description Required by IOP draft rendering; optional for legacy TOP clients. */
+            categoryId?: number;
+        };
         ProductSchemaRenderRequest: {
             categoryId: number;
             /** @default en_US */

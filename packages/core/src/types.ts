@@ -257,7 +257,7 @@ export interface OperationMap {
     response: ProductSchema;
   };
   getProductDraft: {
-    request: { productId: string; language: string };
+    request: components['schemas']['ProductDraftRenderRequest'];
     response: ProductDetail;
   };
   listProductGroups: { request: { parentId?: number } | undefined; response: ProductGroup[] };

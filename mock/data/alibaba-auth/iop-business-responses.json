@@ -51,6 +51,20 @@
       "data": "<itemSchema><field id=\"subject\" type=\"input\"><value>Fixture product</value></field></itemSchema>"
     }
   },
+  "orders": {
+    "code": 0,
+    "value": { "order_list": [{ "trade_id": "fixture-order", "trade_status": "PAID" }], "total_count": 1 }
+  },
+  "logistics": {
+    "code": 0,
+    "value": {
+      "logistic_status": "SHIPPED",
+      "shipping_order_list": [
+        { "voucher": { "tracking_number": "fixture-tracking", "service_provider": "Fixture carrier" } }
+      ]
+    }
+  },
+  "unshipped": { "code": 0, "value": { "shipment_date": {} } },
   "groupRejected": { "code": "0", "result": { "error_code": "400004", "error_msg": "Group not found" } },
   "providerRejected": {
     "code": "InvalidAccessToken",

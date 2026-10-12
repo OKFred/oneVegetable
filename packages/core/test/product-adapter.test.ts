@@ -260,7 +260,7 @@ describe('ProductAdapter', () => {
       encryptedId: 'encrypted-product-id',
       detailUrl: 'https://www.alibaba.com/product-detail/offline-product_123.html'
     });
-    expect(call).toHaveBeenNthCalledWith(2, 'alibaba.icbu.product.list', {
+    expect(call).toHaveBeenNthCalledWith(1, 'alibaba.icbu.product.list', {
       id: 123,
       language: 'ENGLISH',
       current_page: 1,

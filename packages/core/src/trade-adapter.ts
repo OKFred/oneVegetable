@@ -86,7 +86,7 @@ export class TradeAdapter {
     return {
       orderId,
       status: readString(root, ['logistic_status']) ?? 'unknown',
-      carrier: readStringDeep(first, ['carrier', 'logistics_company']) ?? null,
+      carrier: readStringDeep(first, ['carrier', 'logistics_company', 'service_provider']) ?? null,
       trackingNumber: readStringDeep(first, ['tracking_number', 'logistics_no', 'logistic_order_no']) ?? null
     };
   }
@@ -222,7 +222,7 @@ function normalizeOrder(record: Record<string, unknown>): TradeOrderSummary {
   return {
     id: readString(record, ['trade_id', 'e_trade_id', 'order_id']) ?? '',
     buyerLoginId: readString(record, ['other_login_id', 'buyer_login_id', 'buyer_name']) ?? null,
-    status: readString(record, ['status', 'order_status']) ?? 'unknown',
+    status: readString(record, ['status', 'order_status', 'trade_status']) ?? 'unknown',
     amount: total ? (readString(total, ['amount', 'value']) ?? null) : null,
     currency: total ? (readString(total, ['currency']) ?? null) : null,
     createdAt: readDate(record, ['create_date', 'gmt_create', 'create_time']),

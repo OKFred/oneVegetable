@@ -20,7 +20,11 @@ export function productUpdateFailureStatus(error: unknown): 'failed' | 'recovery
     'HOST_PERMISSION_DENIED',
     'PRODUCT_UPDATE_REJECTED',
     'NETWORK_ORIGIN_DENIED',
-    'REQUEST_TOO_LARGE'
+    'REQUEST_TOO_LARGE',
+    'ALIBABA_IOP_MUTATION_UNVERIFIED',
+    'ALIBABA_IOP_METHOD_UNSUPPORTED',
+    'ALIBABA_IOP_PARAMETER_UNSUPPORTED',
+    'ALIBABA_IOP_BUSINESS_REJECTED'
   ]);
   if (rejected.has(code)) return 'failed';
   const platformCode = `${code};${subCode ?? ''}`;

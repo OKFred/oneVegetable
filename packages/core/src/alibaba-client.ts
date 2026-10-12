@@ -1,7 +1,11 @@
 import { GatewayException, normalizeGatewayError } from './errors';
 import { NetworkManager, type NetworkResponse } from './network';
 import { createAlibabaRequest, createAlibabaSyncRequest } from './signing';
-import { createIopBusinessRequest, normalizeIopBusinessResponse } from './alibaba-iop-business';
+import {
+  createIopBusinessRequest,
+  iopMethodReason,
+  normalizeIopBusinessResponse
+} from './alibaba-iop-business';
 import type { GatewayCredentials, GatewayError } from './types';
 
 export interface AlibabaCallResult {
@@ -59,6 +63,8 @@ export class AlibabaClient {
   async call(method: string, parameters: Readonly<Record<string, unknown>>): Promise<AlibabaCallResult> {
     this.assertProtocol();
     const iop = this.#credentials.protocol === 'iop';
+    const reason = iop ? iopMethodReason(method) : null;
+    if (reason) throw new GatewayException({ code: reason, message: reason, retryable: false });
     const maxAttempts = iop ? 1 : Math.max(1, Math.min(3, this.#options.maxAttempts ?? 1));
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {

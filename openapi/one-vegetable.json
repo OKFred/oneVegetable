@@ -18767,6 +18767,20 @@
           "market": { "type": "string" }
         }
       },
+      "ProductDraftRenderRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["productId", "language"],
+        "properties": {
+          "productId": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+          "language": { "type": "string", "enum": ["zh_CN", "en_US"] },
+          "categoryId": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Required by IOP draft rendering; optional for legacy TOP clients."
+          }
+        }
+      },
       "ProductSchemaRenderRequest": {
         "type": "object",
         "additionalProperties": false,
