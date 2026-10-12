@@ -1,0 +1,5241 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-10-12T13:58:11.194Z",
+  "catalog": [
+    {
+      "categoryId": 4,
+      "category": "System API",
+      "title": "GenerateAccessToken",
+      "path": "/auth/token/create",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 4,
+      "category": "System API",
+      "title": "RefreshAccessToken",
+      "path": "/auth/token/refresh",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.category.get.new",
+      "path": "/icbu/product/category/get",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.category.id.mapping",
+      "path": "/alibaba/icbu/category/id/mapping",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.category.schema.level.get",
+      "path": "/icbu/product/schema/level/get",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.photobank.group.list",
+      "path": "/icbu/product/photobank/group/list",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.photobank.group.operate",
+      "path": "/icbu/product/photobank/group/operate",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.photobank.list",
+      "path": "/icbu/product/photobank/list",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.photobank.upload",
+      "path": "/alibaba/icbu/photobank/upload",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.batch.update.display",
+      "path": "/icbu/product/update/display",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.get",
+      "path": "/icbu/product/get",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.group.add",
+      "path": "/icbu/product/group/add",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.id.encrypt",
+      "path": "/alibaba/icbu/product/id/encrypt",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.inventory.get",
+      "path": "/icbu/product/inventory/get",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.inventory.update",
+      "path": "/icbu/product/inventory/update",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.list",
+      "path": "/alibaba/icbu/product/list",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.schema.add",
+      "path": "/icbu/product/schema/add",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.schema.add.draft",
+      "path": "/icbu/product/schema/add/draft",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.schema.get",
+      "path": "/alibaba/icbu/product/schema/get",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.schema.render",
+      "path": "/icbu/product/schema/render",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.schema.render.draft",
+      "path": "/icbu/product/schema/render/draft",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.schema.update",
+      "path": "/icbu/product/schema/update",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.score.get",
+      "path": "/icbu/product/score/get",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.type.available.get",
+      "path": "/icbu/product/other/available/get",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "icbuproduct",
+      "path": "/icbu/product",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 11,
+      "category": "Product V2",
+      "title": "Category prediction",
+      "path": "/alibaba/icbu/category/predict/v2",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 11,
+      "category": "Product V2",
+      "title": "Change listing status",
+      "path": "/alibaba/icbu/product/batch/update/status",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 11,
+      "category": "Product V2",
+      "title": "Create a new product listing",
+      "path": "/alibaba/icbu/product/listing/v2",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 11,
+      "category": "Product V2",
+      "title": "Delete draft",
+      "path": "/alibaba/icbu/draft/delete",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 11,
+      "category": "Product V2",
+      "title": "Delete product",
+      "path": "/alibaba/icbu/product/delete",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 11,
+      "category": "Product V2",
+      "title": "Edit product information",
+      "path": "/alibaba/icbu/product/update/v2",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 11,
+      "category": "Product V2",
+      "title": "Edit Product Inventory",
+      "path": "/icbu/product/edit-inventory",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 11,
+      "category": "Product V2",
+      "title": "Edit Product Price",
+      "path": "/icbu/product/edit-price",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 11,
+      "category": "Product V2",
+      "title": "Get Category Information",
+      "path": "/alibaba/icbu/category/get/v2",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 11,
+      "category": "Product V2",
+      "title": "Get Product Information",
+      "path": "/alibaba/icbu/product/get/v2",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 11,
+      "category": "Product V2",
+      "title": "Query Category Attributes",
+      "path": "/alibaba/icbu/category/attribute/get/v2",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 11,
+      "category": "Product V2",
+      "title": "Query Product List",
+      "path": "/alibaba/icbu/product/search/v2",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 11,
+      "category": "Product V2",
+      "title": "Query product listing status",
+      "path": "/alibaba/icbu/product/status/get/v2",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 11,
+      "category": "Product V2",
+      "title": "Query shipping templates",
+      "path": "/alibaba/icbu/product/list/shipping/templates",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 6,
+      "category": "Video",
+      "title": "alibaba.icbu.video.query",
+      "path": "/alibaba/icbu/video/query",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 6,
+      "category": "Video",
+      "title": "alibaba.icbu.video.relation.product.main",
+      "path": "/alibaba/icbu/video/relation/product/main",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 6,
+      "category": "Video",
+      "title": "alibaba.icbu.video.upload",
+      "path": "/alibaba/icbu/video/upload",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 6,
+      "category": "Video",
+      "title": "alibaba.icbu.video.upload.result",
+      "path": "/alibaba/icbu/video/upload/result",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 9,
+      "category": "Buyer - Partner Data Management",
+      "title": "Remove Product",
+      "path": "/eco/buyer/item/delete",
+      "httpMethods": "PUT"
+    },
+    {
+      "categoryId": 9,
+      "category": "Buyer - Partner Data Management",
+      "title": "Retrieve Products Information",
+      "path": "/eco/buyer/item/query",
+      "httpMethods": "GET"
+    },
+    {
+      "categoryId": 9,
+      "category": "Buyer - Partner Data Management",
+      "title": "Update Product",
+      "path": "/eco/buyer/item/update",
+      "httpMethods": "POST"
+    },
+    {
+      "categoryId": 9,
+      "category": "Buyer - Partner Data Management",
+      "title": "Upload Product",
+      "path": "/eco/buyer/item/add",
+      "httpMethods": "POST"
+    },
+    {
+      "categoryId": 7,
+      "category": "Buyer - Product ",
+      "title": "Batch Get Product Description",
+      "path": "/eco/buyer/product/batch/description",
+      "httpMethods": "GET"
+    },
+    {
+      "categoryId": 7,
+      "category": "Buyer - Product ",
+      "title": "Batch Get Product Inventory",
+      "path": "/eco/buyer/product/batch/inventory",
+      "httpMethods": "GET"
+    },
+    {
+      "categoryId": 7,
+      "category": "Buyer - Product ",
+      "title": "Batch Get Product Keyattributes",
+      "path": "/eco/buyer/product/batch/keyattributes",
+      "httpMethods": "GET"
+    },
+    {
+      "categoryId": 7,
+      "category": "Buyer - Product ",
+      "title": "Channel Product Events",
+      "path": "/eco/buyer/product/events",
+      "httpMethods": "POST"
+    },
+    {
+      "categoryId": 7,
+      "category": "Buyer - Product ",
+      "title": "Channel Store Products Batch Import By EcoId",
+      "path": "/eco/buyer/product/channel/batch-import",
+      "httpMethods": "POST"
+    },
+    {
+      "categoryId": 7,
+      "category": "Buyer - Product ",
+      "title": "Get item inventory",
+      "path": "/eco/buyer/product/inventory",
+      "httpMethods": "GET"
+    },
+    {
+      "categoryId": 7,
+      "category": "Buyer - Product ",
+      "title": "Get Product Certificates",
+      "path": "/eco/buyer/product/cert",
+      "httpMethods": "GET"
+    },
+    {
+      "categoryId": 7,
+      "category": "Buyer - Product ",
+      "title": "Get Product Description",
+      "path": "/eco/buyer/product/description",
+      "httpMethods": "GET"
+    },
+    {
+      "categoryId": 7,
+      "category": "Buyer - Product ",
+      "title": "Get Product Key Attributes",
+      "path": "/eco/buyer/product/keyattributes",
+      "httpMethods": "GET"
+    },
+    {
+      "categoryId": 7,
+      "category": "Buyer - Product ",
+      "title": "Product Image Search",
+      "path": "/eco/buyer/item/rec/image",
+      "httpMethods": "GET"
+    },
+    {
+      "categoryId": 7,
+      "category": "Buyer - Product ",
+      "title": "Product List",
+      "path": "/eco/buyer/product/check",
+      "httpMethods": "GET"
+    },
+    {
+      "categoryId": 7,
+      "category": "Buyer - Product ",
+      "title": "Product Search",
+      "path": "/eco/buyer/product/search",
+      "httpMethods": "GET"
+    },
+    {
+      "categoryId": 7,
+      "category": "Buyer - Product ",
+      "title": "Product Search & Recommendation",
+      "path": "/eco/buyer/item/rec",
+      "httpMethods": "GET"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "Advanced Freight Cost Calculation",
+      "path": "/order/freight/calculate",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "alibaba dropshipping order pay",
+      "path": "/alibaba/dropshipping/order/pay",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "alibaba fund query api",
+      "path": "/alibaba/order/fund/query",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "alibaba ggs seller warehouse list",
+      "path": "/alibaba/ggs/warehouse/list",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "alibaba order attachment upload",
+      "path": "/alibaba/order/attachment/upload",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "alibaba order cancel",
+      "path": "/alibaba/order/cancel",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "alibaba order get",
+      "path": "/alibaba/order/get",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "alibaba order list",
+      "path": "/alibaba/order/list",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "alibaba order pay result query",
+      "path": "/alibaba/order/pay/result/query",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "alibaba seller warehouse  list",
+      "path": "/warehouse/list",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "Basic Freight Cost Estimation",
+      "path": "/shipping/freight/calculate",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "Combined payment group query service",
+      "path": "/order/merge/pay/query",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "Create BuyNow Order",
+      "path": "/buynow/order/create",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "Logistics Tracking",
+      "path": "/order/logistics/tracking/get",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "order logistics info query api",
+      "path": "/order/logistics/query",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "Oversea admittance check api",
+      "path": "/icbu/check/overseas/admittance",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 12,
+      "category": "Seller - Transaction & Fulfillment",
+      "title": "alibaba ggs create batch order",
+      "path": "/alibaba/ggs/logistic/createBatchOrder",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 12,
+      "category": "Seller - Transaction & Fulfillment",
+      "title": "alibaba ggs place logistic order",
+      "path": "/alibaba/ggs/logistic/placeorder",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 12,
+      "category": "Seller - Transaction & Fulfillment",
+      "title": "alibaba ggs query carrier",
+      "path": "/alibaba/ggs/logistic/queryCarrier",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 12,
+      "category": "Seller - Transaction & Fulfillment",
+      "title": "alibaba ggs query logistic order list",
+      "path": "/alibaba/ggs/logistic/queryLogisticOrderList",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 12,
+      "category": "Seller - Transaction & Fulfillment",
+      "title": "Ggs  Order  Multi Shipping",
+      "path": "/alibaba/order/v2/multi/shipping",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 12,
+      "category": "Seller - Transaction & Fulfillment",
+      "title": "Ggs one Order Shipping",
+      "path": "/alibaba/v2/order/shipping",
+      "httpMethods": "GET/POST"
+    }
+  ],
+  "documents": [
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.category.get.new",
+      "path": "/icbu/product/category/get",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fcategory%2Fget&methodType=GET%2FPOST",
+      "updatedAt": "2023-11-20 01:18:04",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Used to obtain the category tree of Alibaba.com, use category_id: 0 to obtain all first-level categories.",
+      "request": [
+        {
+          "name": "cat_id",
+          "type": "String",
+          "required": true,
+          "description": "category id, pass 0 to get all first level categories"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "response object",
+          "children": [
+            {
+              "name": "response_msg",
+              "type": "String",
+              "required": true,
+              "description": "response message"
+            },
+            {
+              "name": "result",
+              "type": "Object",
+              "required": true,
+              "description": "data object",
+              "children": [
+                {
+                  "name": "category_id",
+                  "type": "Number",
+                  "required": false,
+                  "description": "unique category id"
+                },
+                {
+                  "name": "child_ids",
+                  "type": "Number[]",
+                  "required": false,
+                  "description": "children categorys of the current category"
+                },
+                {
+                  "name": "leaf_category",
+                  "type": "Boolean",
+                  "required": false,
+                  "description": "is leaf category?"
+                },
+                {
+                  "name": "name",
+                  "type": "String",
+                  "required": false,
+                  "description": "english name"
+                },
+                {
+                  "name": "level",
+                  "type": "Number",
+                  "required": false,
+                  "description": "category level in the post-category-tree"
+                },
+                {
+                  "name": "cn_name",
+                  "type": "String",
+                  "required": false,
+                  "description": "cn name"
+                },
+                {
+                  "name": "parent_ids",
+                  "type": "String",
+                  "required": false,
+                  "description": "parent categorys of the current category "
+                }
+              ]
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "is call success?"
+            },
+            {
+              "name": "response_code",
+              "type": "String",
+              "required": true,
+              "description": "response code"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.category.id.mapping",
+      "path": "/alibaba/icbu/category/id/mapping",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Falibaba%2Ficbu%2Fcategory%2Fid%2Fmapping&methodType=GET%2FPOST",
+      "updatedAt": "2023-03-14 22:58:21",
+      "chargeable": false,
+      "authorizationType": 0,
+      "description": "Map old and new category/attributes/value",
+      "request": [
+        {
+          "name": "attribute_id",
+          "type": "Number",
+          "required": false,
+          "description": "attribute_id"
+        },
+        {
+          "name": "cat_id",
+          "type": "Number",
+          "required": false,
+          "description": "cat_id"
+        },
+        {
+          "name": "attribute_value_id",
+          "type": "Number",
+          "required": false,
+          "description": "attribute_value_id"
+        },
+        {
+          "name": "convert_type",
+          "type": "Number",
+          "required": false,
+          "description": "1-category,2-attibute,3-value"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "result",
+          "children": [
+            {
+              "name": "mapping_result",
+              "type": "Object",
+              "required": true,
+              "description": "the id that has been mapped"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "success?"
+            },
+            {
+              "name": "response_code",
+              "type": "String",
+              "required": true,
+              "description": "response_code"
+            },
+            {
+              "name": "response_msg",
+              "type": "String",
+              "required": true,
+              "description": "response_msg"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.category.schema.level.get",
+      "path": "/icbu/product/schema/level/get",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fschema%2Flevel%2Fget&methodType=GET%2FPOST",
+      "updatedAt": "2023-03-27 15:07:20",
+      "chargeable": false,
+      "authorizationType": 0,
+      "description": "Return the sub-properties of the hierarchical properties ",
+      "request": [
+        {
+          "name": "cat_id",
+          "type": "Number",
+          "required": true,
+          "description": "Category id"
+        },
+        {
+          "name": "xml",
+          "type": "String",
+          "required": true,
+          "description": "the hierarchical properties"
+        },
+        {
+          "name": "language",
+          "type": "String",
+          "required": true,
+          "description": "language"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "result",
+          "children": [
+            {
+              "name": "trace_id",
+              "type": "String",
+              "required": true,
+              "description": "the unique id which can help us to troubleShoot"
+            },
+            {
+              "name": "data",
+              "type": "String",
+              "required": true,
+              "description": "Subordinate attribute structure of hierarchical attributes"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "success?"
+            },
+            {
+              "name": "message_info",
+              "type": "String",
+              "required": true,
+              "description": "message_info"
+            },
+            {
+              "name": "msg_code",
+              "type": "String",
+              "required": true,
+              "description": "msg_code"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.photobank.group.list",
+      "path": "/icbu/product/photobank/group/list",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fphotobank%2Fgroup%2Flist&methodType=GET%2FPOST",
+      "updatedAt": "2023-03-27 15:56:48",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Get image bank group information",
+      "request": [
+        {
+          "name": "id",
+          "type": "Number",
+          "required": false,
+          "description": "The parent group you want to query"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "call result",
+          "children": [
+            {
+              "name": "groups",
+              "type": "Object[]",
+              "required": true,
+              "description": "children groups under this group and itself in your photobank",
+              "children": [
+                {
+                  "name": "name",
+                  "type": "String",
+                  "required": true,
+                  "description": "display name of an group"
+                },
+                {
+                  "name": "id",
+                  "type": "Number",
+                  "required": true,
+                  "description": "the unique id of an group"
+                },
+                {
+                  "name": "level1",
+                  "type": "Number",
+                  "required": true,
+                  "description": "the order of level1 group"
+                },
+                {
+                  "name": "level3",
+                  "type": "Number",
+                  "required": true,
+                  "description": "the order of level2 group"
+                },
+                {
+                  "name": "level2",
+                  "type": "Number",
+                  "required": true,
+                  "description": "the order of level3 group"
+                }
+              ]
+            },
+            {
+              "name": "error_code",
+              "type": "String",
+              "required": true,
+              "description": "error_code"
+            },
+            {
+              "name": "error_msg",
+              "type": "String",
+              "required": true,
+              "description": "error_msg"
+            }
+          ]
+        }
+      ],
+      "errors": [
+        {
+          "code": "EC_IMAGE_U_ARG_VP",
+          "description": "aliId not exist",
+          "remedy": "member information is invalid, please check your accessToken"
+        },
+        {
+          "code": "EC_IMAGE_L_ARG_RQ",
+          "description": "query params is null.",
+          "remedy": "request param is empty, you must input params according to api doc"
+        }
+      ]
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.photobank.group.operate",
+      "path": "/icbu/product/photobank/group/operate",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fphotobank%2Fgroup%2Foperate&methodType=GET%2FPOST",
+      "updatedAt": "2023-03-27 15:56:52",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Modify the group information of the user photobank, including adding a group, deleting a group, and renaming a group",
+      "request": [
+        {
+          "name": "group_name",
+          "type": "String",
+          "required": false,
+          "description": "In the add operation, it indicates the newly added group name; in the rename operation, it indicates the renamed group name; in the delete operation, leave it blank"
+        },
+        {
+          "name": "group_id",
+          "type": "Number",
+          "required": false,
+          "description": "group id"
+        },
+        {
+          "name": "operation",
+          "type": "String",
+          "required": false,
+          "description": "add means to add a group, delete means to delete a group, and rename means to rename a group"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "result",
+          "children": [
+            {
+              "name": "trace_id",
+              "type": "String",
+              "required": true,
+              "description": "the unique id which can help us to troubleShoot"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "success?"
+            },
+            {
+              "name": "photobank_group",
+              "type": "Object",
+              "required": true,
+              "description": "the information of photobank group",
+              "children": [
+                {
+                  "name": "name",
+                  "type": "String",
+                  "required": true,
+                  "description": "group name"
+                },
+                {
+                  "name": "id",
+                  "type": "Number",
+                  "required": true,
+                  "description": "group id"
+                },
+                {
+                  "name": "level1",
+                  "type": "Number",
+                  "required": true,
+                  "description": "group level 1"
+                },
+                {
+                  "name": "level3",
+                  "type": "Number",
+                  "required": true,
+                  "description": "group level 3"
+                },
+                {
+                  "name": "level2",
+                  "type": "Number",
+                  "required": true,
+                  "description": "group level 2"
+                }
+              ]
+            },
+            {
+              "name": "error_code",
+              "type": "String",
+              "required": true,
+              "description": "error code"
+            },
+            {
+              "name": "error_msg",
+              "type": "String",
+              "required": true,
+              "description": "error msg"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.photobank.list",
+      "path": "/icbu/product/photobank/list",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fphotobank%2Flist&methodType=GET%2FPOST",
+      "updatedAt": "2023-11-20 01:22:20",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "query photos from photobank",
+      "request": [
+        {
+          "name": "groupId",
+          "type": "String",
+          "required": true,
+          "description": "groupId in your photobank"
+        },
+        {
+          "name": "currentPage",
+          "type": "Number",
+          "required": true,
+          "description": "the page number you want to get when querying by page"
+        },
+        {
+          "name": "pageSize",
+          "type": "Number",
+          "required": true,
+          "description": "the number of images you want to get when querying by page"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "call result",
+          "children": [
+            {
+              "name": "error_code",
+              "type": "String",
+              "required": true,
+              "description": "error code of this call"
+            },
+            {
+              "name": "error_msg",
+              "type": "String",
+              "required": true,
+              "description": "error msg of this call"
+            },
+            {
+              "name": "trace_id",
+              "type": "String",
+              "required": true,
+              "description": "the unique id of evert call:please offer it to Alibaba developer for solving problem quickly"
+            },
+            {
+              "name": "pagination_query_list",
+              "type": "Object",
+              "required": true,
+              "description": "data object of this call",
+              "children": [
+                {
+                  "name": "list",
+                  "type": "Object[]",
+                  "required": false,
+                  "description": "photo list in this page",
+                  "children": [
+                    {
+                      "name": "gmt_modified",
+                      "type": "String",
+                      "required": false,
+                      "description": "modified time of an image"
+                    },
+                    {
+                      "name": "owner_member_display_name",
+                      "type": "String",
+                      "required": false,
+                      "description": "owner's name of an image"
+                    },
+                    {
+                      "name": "file_size",
+                      "type": "String",
+                      "required": false,
+                      "description": "file size of an image"
+                    },
+                    {
+                      "name": "reference_count",
+                      "type": "String",
+                      "required": false,
+                      "description": "The number of products using this image in product description"
+                    },
+                    {
+                      "name": "group_id",
+                      "type": "Number",
+                      "required": false,
+                      "description": "groupId in your photobank"
+                    },
+                    {
+                      "name": "url",
+                      "type": "String",
+                      "required": false,
+                      "description": "image url directly accessible"
+                    },
+                    {
+                      "name": "id",
+                      "type": "String",
+                      "required": false,
+                      "description": "the unique id of an image"
+                    },
+                    {
+                      "name": "file_name",
+                      "type": "String",
+                      "required": false,
+                      "description": "display name of an image in your photobank"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "errors": [
+        {
+          "code": "-2",
+          "description": "Query Image Error",
+          "remedy": "occur exception when querying images:TimeoutException,NetworkException.eg.You can try to call again if you meet this errorcode "
+        }
+      ]
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.photobank.upload",
+      "path": "/alibaba/icbu/photobank/upload",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Falibaba%2Ficbu%2Fphotobank%2Fupload&methodType=GET%2FPOST",
+      "updatedAt": "2023-03-16 02:10:21",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "upload images to photobank",
+      "request": [
+        {
+          "name": "file_name",
+          "type": "String",
+          "required": true,
+          "description": "fileName"
+        },
+        {
+          "name": "group_id",
+          "type": "String",
+          "required": false,
+          "description": "groupid"
+        },
+        {
+          "name": "image_bytes",
+          "type": "byte[]",
+          "required": true,
+          "description": "image content"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "result",
+          "children": [
+            {
+              "name": "trace_id",
+              "type": "String",
+              "required": true,
+              "description": "the unique id  which can help us to  troubleShoot"
+            },
+            {
+              "name": "response_object",
+              "type": "Object",
+              "required": true,
+              "description": "response_object",
+              "children": [
+                {
+                  "name": "file_id",
+                  "type": "Number",
+                  "required": false,
+                  "description": "the unique file id"
+                },
+                {
+                  "name": "photobank_url",
+                  "type": "String",
+                  "required": false,
+                  "description": "image url"
+                },
+                {
+                  "name": "file_name",
+                  "type": "String",
+                  "required": false,
+                  "description": "image name"
+                }
+              ]
+            },
+            {
+              "name": "error_code",
+              "type": "String",
+              "required": true,
+              "description": "error code"
+            },
+            {
+              "name": "error_msg",
+              "type": "String",
+              "required": true,
+              "description": "error message"
+            }
+          ]
+        }
+      ],
+      "errors": [
+        {
+          "code": "SIZE_TOO_LARGE",
+          "description": "SIZE_TOO_LARGE",
+          "remedy": "The max limit is 5MB when uploading raw images!"
+        },
+        {
+          "code": "FUNCTION_FORBIDDEN",
+          "description": "FUNCTION_FORBIDDEN",
+          "remedy": "Your account is forbidden to upload images for risk issues, please contact our developer "
+        },
+        {
+          "code": "NOCAPACITY",
+          "description": "NOCAPACITY",
+          "remedy": "The capacity of your photobank is full and new images cannot be uploaded. "
+        },
+        {
+          "code": "-2",
+          "description": "Upload Image Error",
+          "remedy": "not predefined error when uploading images"
+        }
+      ]
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.batch.update.display",
+      "path": "/icbu/product/update/display",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fupdate%2Fdisplay&methodType=GET%2FPOST",
+      "updatedAt": "2024-05-30 09:57:59",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "operate product display status",
+      "request": [
+        {
+          "name": "new_display",
+          "type": "String",
+          "required": true,
+          "description": "on: upshelf, off: offshelf"
+        },
+        {
+          "name": "product_id_list",
+          "type": "Number[]",
+          "required": true,
+          "description": "product id list"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "result",
+          "children": [
+            {
+              "name": "fail_id_map",
+              "type": "Object",
+              "required": true,
+              "description": "errorcode:productId"
+            },
+            {
+              "name": "trace_id",
+              "type": "String",
+              "required": true,
+              "description": "the unique id  which can help us to  troubleShoot"
+            },
+            {
+              "name": "error_code",
+              "type": "String",
+              "required": true,
+              "description": "error code"
+            },
+            {
+              "name": "error_msg",
+              "type": "String",
+              "required": true,
+              "description": "error message"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.get",
+      "path": "/icbu/product/get",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fget&methodType=GET%2FPOST",
+      "updatedAt": "2023-03-27 15:56:59",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Get detailed product information according to the encrypted product ID",
+      "request": [
+        {
+          "name": "product_get_request",
+          "type": "Object",
+          "required": true,
+          "description": "request",
+          "children": [
+            {
+              "name": "productId",
+              "type": "Number",
+              "required": true,
+              "description": "productId"
+            }
+          ]
+        }
+      ],
+      "response": [
+        {
+          "name": "trace_id",
+          "type": "String",
+          "required": true,
+          "description": "traceId"
+        },
+        {
+          "name": "product",
+          "type": "String",
+          "required": true,
+          "description": "product ",
+          "children": [
+            {
+              "name": "gmt_modified",
+              "type": "String",
+              "required": true,
+              "description": " gmt_modified"
+            },
+            {
+              "name": "keywords",
+              "type": "String[]",
+              "required": true,
+              "description": "keywords"
+            },
+            {
+              "name": "subject",
+              "type": "String",
+              "required": true,
+              "description": "subject"
+            },
+            {
+              "name": "group_id",
+              "type": "Number",
+              "required": true,
+              "description": "group_id"
+            },
+            {
+              "name": "description",
+              "type": "String",
+              "required": true,
+              "description": "description"
+            },
+            {
+              "name": "language",
+              "type": "String",
+              "required": true,
+              "description": "language"
+            },
+            {
+              "name": "custom_info",
+              "type": "Object",
+              "required": true,
+              "description": "custom_info",
+              "children": [
+                {
+                  "name": "custom_contents",
+                  "type": "Object[]",
+                  "required": true,
+                  "description": "custom_contents",
+                  "children": [
+                    {
+                      "name": "custom_type",
+                      "type": "String",
+                      "required": true,
+                      "description": "custom_type"
+                    },
+                    {
+                      "name": "min_order_quantity_custom",
+                      "type": "Number",
+                      "required": true,
+                      "description": "min_order_quantity"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "product_sku",
+              "type": "Object",
+              "required": true,
+              "description": "product_sku",
+              "children": [
+                {
+                  "name": "skus",
+                  "type": "Object[]",
+                  "required": true,
+                  "description": "skus",
+                  "children": [
+                    {
+                      "name": "attr2_value",
+                      "type": "Object",
+                      "required": true,
+                      "description": "attr2_value"
+                    },
+                    {
+                      "name": "bulk_discount_prices",
+                      "type": "Object[]",
+                      "required": true,
+                      "description": "bulk_discount_prices",
+                      "children": [
+                        {
+                          "name": "start_quantity",
+                          "type": "Number",
+                          "required": true,
+                          "description": "start_quantity"
+                        },
+                        {
+                          "name": "bulk_discount_price",
+                          "type": "String",
+                          "required": true,
+                          "description": "price"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "inventory_dtolist",
+                      "type": "Object[]",
+                      "required": true,
+                      "description": "inventory_dtolist",
+                      "children": [
+                        {
+                          "name": "inventory",
+                          "type": "Number",
+                          "required": true,
+                          "description": "inventory"
+                        },
+                        {
+                          "name": "store_code",
+                          "type": "String",
+                          "required": true,
+                          "description": "store_code"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "sku_code",
+                      "type": "String",
+                      "required": true,
+                      "description": "sku_code"
+                    },
+                    {
+                      "name": "sku_id",
+                      "type": "Number",
+                      "required": true,
+                      "description": "sku_id"
+                    }
+                  ]
+                },
+                {
+                  "name": "sku_attributes",
+                  "type": "Object[]",
+                  "required": true,
+                  "description": "sku_attributes",
+                  "children": [
+                    {
+                      "name": "attribute_id_sku",
+                      "type": "Number",
+                      "required": true,
+                      "description": "attribute_id_sku"
+                    },
+                    {
+                      "name": "values",
+                      "type": "Object[]",
+                      "required": true,
+                      "description": "values",
+                      "children": [
+                        {
+                          "name": "mark_info",
+                          "type": "String",
+                          "required": true,
+                          "description": "mark_info"
+                        },
+                        {
+                          "name": "value_id_sku",
+                          "type": "Number",
+                          "required": true,
+                          "description": "value_id_sku"
+                        },
+                        {
+                          "name": "system_value_name",
+                          "type": "String",
+                          "required": true,
+                          "description": "system_value_name"
+                        },
+                        {
+                          "name": "custom_value_name",
+                          "type": "String",
+                          "required": true,
+                          "description": "custom_value_name"
+                        },
+                        {
+                          "name": "image_url",
+                          "type": "String",
+                          "required": true,
+                          "description": "image_url"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "attribute_name_sku",
+                      "type": "String",
+                      "required": true,
+                      "description": "attribute_name_sku"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "owner_member",
+              "type": "Number",
+              "required": true,
+              "description": "owner_member"
+            },
+            {
+              "name": "smart_edit",
+              "type": "Boolean",
+              "required": true,
+              "description": "smart_edit"
+            },
+            {
+              "name": "sourcing_trade",
+              "type": "Object",
+              "required": true,
+              "description": "sourcing_trade",
+              "children": [
+                {
+                  "name": "supply_period_type",
+                  "type": "String",
+                  "required": true,
+                  "description": "supply_period_type"
+                },
+                {
+                  "name": "delivery_time",
+                  "type": "String",
+                  "required": true,
+                  "description": "delivery_time"
+                },
+                {
+                  "name": "fob_unit_type",
+                  "type": "String",
+                  "required": true,
+                  "description": "fob_unit_type"
+                },
+                {
+                  "name": "packaging_desc",
+                  "type": "String",
+                  "required": true,
+                  "description": "packaging_desc"
+                },
+                {
+                  "name": "supply_unit_type",
+                  "type": "String",
+                  "required": true,
+                  "description": "supply_unit_type"
+                },
+                {
+                  "name": "delivery_port",
+                  "type": "String",
+                  "required": true,
+                  "description": "delivery_port"
+                },
+                {
+                  "name": "fob_min_price",
+                  "type": "String",
+                  "required": true,
+                  "description": "fob_min_price"
+                },
+                {
+                  "name": "payment_methods",
+                  "type": "String[]",
+                  "required": true,
+                  "description": "payment_methods"
+                },
+                {
+                  "name": "min_order_unit_type",
+                  "type": "String",
+                  "required": true,
+                  "description": "min_order_unit_type"
+                },
+                {
+                  "name": "min_order_quantity_sourcing",
+                  "type": "String",
+                  "required": true,
+                  "description": "min_order_quantity"
+                },
+                {
+                  "name": "fob_currency",
+                  "type": "String",
+                  "required": true,
+                  "description": "fob_currency"
+                },
+                {
+                  "name": "deliver_periods_sourcing",
+                  "type": "Object[]",
+                  "required": true,
+                  "description": "deliver_periods_sourcing",
+                  "children": [
+                    {
+                      "name": "quantity_sourcing",
+                      "type": "Number",
+                      "required": true,
+                      "description": "quantity_sourcing"
+                    },
+                    {
+                      "name": "process_period_sourcing",
+                      "type": "Number",
+                      "required": true,
+                      "description": "process_period"
+                    }
+                  ]
+                },
+                {
+                  "name": "supply_quantity",
+                  "type": "String",
+                  "required": true,
+                  "description": "supply_quantity"
+                },
+                {
+                  "name": "fob_max_price",
+                  "type": "String",
+                  "required": true,
+                  "description": "fob_max_price"
+                }
+              ]
+            },
+            {
+              "name": "product_type",
+              "type": "String",
+              "required": true,
+              "description": "product_type"
+            },
+            {
+              "name": "display",
+              "type": "String",
+              "required": true,
+              "description": "display"
+            },
+            {
+              "name": "pc_detail_url",
+              "type": "String",
+              "required": true,
+              "description": "pc_detail_url"
+            },
+            {
+              "name": "wholesale_trade",
+              "type": "Object",
+              "required": true,
+              "description": "wholesale_trade",
+              "children": [
+                {
+                  "name": "unit_type",
+                  "type": "String",
+                  "required": true,
+                  "description": "unit_type"
+                },
+                {
+                  "name": "handling_time",
+                  "type": "Number",
+                  "required": true,
+                  "description": "handling_time"
+                },
+                {
+                  "name": "volume",
+                  "type": "Number",
+                  "required": true,
+                  "description": "volume"
+                },
+                {
+                  "name": "shipping_line_template_id",
+                  "type": "Number",
+                  "required": true,
+                  "description": "shipping_line_template_id"
+                },
+                {
+                  "name": "price",
+                  "type": "String",
+                  "required": true,
+                  "description": "price"
+                },
+                {
+                  "name": "sale_type",
+                  "type": "String",
+                  "required": true,
+                  "description": "sale_type"
+                },
+                {
+                  "name": "weight",
+                  "type": "String",
+                  "required": true,
+                  "description": "weight"
+                },
+                {
+                  "name": "min_order_quantity",
+                  "type": "Number",
+                  "required": true,
+                  "description": "min_order_quantity"
+                },
+                {
+                  "name": "deliver_periods",
+                  "type": "Object[]",
+                  "required": true,
+                  "description": "deliver_periods",
+                  "children": [
+                    {
+                      "name": "quantity",
+                      "type": "Number",
+                      "required": true,
+                      "description": "quantity"
+                    },
+                    {
+                      "name": "process_period",
+                      "type": "Number",
+                      "required": true,
+                      "description": "process_period"
+                    }
+                  ]
+                },
+                {
+                  "name": "package_size",
+                  "type": "String",
+                  "required": true,
+                  "description": "package_size"
+                },
+                {
+                  "name": "batch_number",
+                  "type": "Number",
+                  "required": true,
+                  "description": "batch_number"
+                }
+              ]
+            },
+            {
+              "name": "price_type",
+              "type": "String",
+              "required": true,
+              "description": "price_type"
+            },
+            {
+              "name": "owner_member_display_name",
+              "type": "String",
+              "required": true,
+              "description": "owner_member_display_name"
+            },
+            {
+              "name": "rts",
+              "type": "Boolean",
+              "required": true,
+              "description": "rts"
+            },
+            {
+              "name": "main_image",
+              "type": "Object",
+              "required": true,
+              "description": "main_image",
+              "children": [
+                {
+                  "name": "images",
+                  "type": "String[]",
+                  "required": true,
+                  "description": " images"
+                },
+                {
+                  "name": "watermark",
+                  "type": "Boolean",
+                  "required": true,
+                  "description": "watermark"
+                },
+                {
+                  "name": "watermark_frame",
+                  "type": "String",
+                  "required": true,
+                  "description": "watermark_frame"
+                },
+                {
+                  "name": "watermark_position",
+                  "type": "String",
+                  "required": true,
+                  "description": "watermark_position"
+                }
+              ]
+            },
+            {
+              "name": "attributes",
+              "type": "Object[]",
+              "required": true,
+              "description": "attributes",
+              "children": [
+                {
+                  "name": "attribute_id",
+                  "type": "Number",
+                  "required": true,
+                  "description": "attribute_id"
+                },
+                {
+                  "name": "sku_custom_image_url",
+                  "type": "String",
+                  "required": true,
+                  "description": "sku_custom_image_url"
+                },
+                {
+                  "name": "value_id",
+                  "type": "Number",
+                  "required": true,
+                  "description": " value_id"
+                },
+                {
+                  "name": "value_name",
+                  "type": "String",
+                  "required": true,
+                  "description": "value_name"
+                },
+                {
+                  "name": "attribute_name",
+                  "type": "String",
+                  "required": true,
+                  "description": "attribute_name"
+                },
+                {
+                  "name": "sku_custom_value_name",
+                  "type": "String",
+                  "required": true,
+                  "description": "sku_custom_value_name"
+                }
+              ]
+            },
+            {
+              "name": "category_id",
+              "type": "Number",
+              "required": true,
+              "description": "category_id"
+            },
+            {
+              "name": "status",
+              "type": "String",
+              "required": true,
+              "description": "status"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.group.add",
+      "path": "/icbu/product/group/add",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fgroup%2Fadd&methodType=GET%2FPOST",
+      "updatedAt": "2024-02-26 11:09:23",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "create new product group",
+      "request": [
+        {
+          "name": "group_name",
+          "type": "String",
+          "required": true,
+          "description": "name of the group you want to create"
+        },
+        {
+          "name": "parent_group_id",
+          "type": "Number",
+          "required": true,
+          "description": "id of the parent group.if you are going to create first-level group, please set parent_id as -1"
+        }
+      ],
+      "response": [
+        {
+          "name": "product_group",
+          "type": "Object",
+          "required": true,
+          "description": "group object you have created",
+          "children": [
+            {
+              "name": "children_id_list",
+              "type": "Number[]",
+              "required": true,
+              "description": "子分组列表"
+            },
+            {
+              "name": "group_name",
+              "type": "String",
+              "required": true,
+              "description": "name of the group you have created"
+            },
+            {
+              "name": "group_id",
+              "type": "Number",
+              "required": true,
+              "description": "the unique id of the group you have created"
+            },
+            {
+              "name": "parent_id",
+              "type": "Number",
+              "required": true,
+              "description": "the parent group id of the group you have created"
+            }
+          ]
+        },
+        {
+          "name": "error_code",
+          "type": "String",
+          "required": true,
+          "description": "error code of the response"
+        },
+        {
+          "name": "error_msg",
+          "type": "String",
+          "required": true,
+          "description": "error msg of the response"
+        }
+      ],
+      "errors": [
+        {
+          "code": "PARENT_GROUP_IS_NOT_EXIST",
+          "description": "PARENT_GROUP_IS_NOT_EXIST",
+          "remedy": "The parent group is not found"
+        },
+        {
+          "code": "ERROR_INSERT_DUPLICATE_NAME",
+          "description": "ERROR_INSERT_DUPLICATE_NAME",
+          "remedy": "You can't use duplicate group name in your photobank"
+        },
+        {
+          "code": "LEVEL1_GROUP_COUNT_LIMIT",
+          "description": "LEVEL1_GROUP_COUNT_LIMIT",
+          "remedy": "You can create up to 50 level1 group in your photobank"
+        },
+        {
+          "code": "ERROR_INSERT_SUBGROUP_EXCEED_LIMIT",
+          "description": "ERROR_INSERT_SUBGROUP_EXCEED_LIMIT",
+          "remedy": "You can create up to 5000 groups in your photobank including level1,level2,level3 group"
+        }
+      ]
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.id.encrypt",
+      "path": "/alibaba/icbu/product/id/encrypt",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Falibaba%2Ficbu%2Fproduct%2Fid%2Fencrypt&methodType=GET%2FPOST",
+      "updatedAt": "2023-03-22 10:27:46",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Encrypt product-ID",
+      "request": [
+        {
+          "name": "language",
+          "type": "String",
+          "required": true,
+          "description": "language"
+        },
+        {
+          "name": "product_id",
+          "type": "Number",
+          "required": true,
+          "description": "Unencrypted product id"
+        }
+      ],
+      "response": [
+        {
+          "name": "secret_id",
+          "type": "String",
+          "required": true,
+          "description": "Encrypted item id"
+        },
+        {
+          "name": "error_code",
+          "type": "String",
+          "required": true,
+          "description": "error code"
+        },
+        {
+          "name": "error_msg",
+          "type": "String",
+          "required": true,
+          "description": "error message"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.inventory.get",
+      "path": "/icbu/product/inventory/get",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Finventory%2Fget&methodType=GET%2FPOST",
+      "updatedAt": "2023-04-03 08:16:13",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Get product inventory information",
+      "request": [
+        {
+          "name": "product_id",
+          "type": "Number",
+          "required": true,
+          "description": "product id"
+        },
+        {
+          "name": "language",
+          "type": "String",
+          "required": true,
+          "description": "language"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "result",
+          "children": [
+            {
+              "name": "trace_id",
+              "type": "String",
+              "required": true,
+              "description": "trace_id"
+            },
+            {
+              "name": "data_list",
+              "type": "Object[]",
+              "required": true,
+              "description": "data",
+              "children": [
+                {
+                  "name": "sku_id",
+                  "type": "Number",
+                  "required": false,
+                  "description": "sku_id"
+                },
+                {
+                  "name": "inventory_code",
+                  "type": "String",
+                  "required": false,
+                  "description": "inventory_code"
+                },
+                {
+                  "name": "inventory",
+                  "type": "Number",
+                  "required": false,
+                  "description": "inventory"
+                },
+                {
+                  "name": "sku_outer_id",
+                  "type": "String",
+                  "required": false,
+                  "description": "sku_outer_id"
+                }
+              ]
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "success?"
+            },
+            {
+              "name": "message_info",
+              "type": "String",
+              "required": true,
+              "description": "message"
+            },
+            {
+              "name": "msg_code",
+              "type": "String",
+              "required": true,
+              "description": "msg_code"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.inventory.update",
+      "path": "/icbu/product/inventory/update",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Finventory%2Fupdate&methodType=GET%2FPOST",
+      "updatedAt": "2023-04-03 08:16:29",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Update inventory information",
+      "request": [
+        {
+          "name": "product_id",
+          "type": "Number",
+          "required": true,
+          "description": "product_id"
+        },
+        {
+          "name": "inventory_list",
+          "type": "Object[]",
+          "required": true,
+          "description": "inventory list to be updated",
+          "children": [
+            {
+              "name": "operate",
+              "type": "String",
+              "required": true,
+              "description": "plus/sub"
+            },
+            {
+              "name": "inventory_code",
+              "type": "String",
+              "required": true,
+              "description": "inventory_code"
+            },
+            {
+              "name": "inventory",
+              "type": "Number",
+              "required": true,
+              "description": " inventory"
+            },
+            {
+              "name": "sku_id",
+              "type": "Number",
+              "required": true,
+              "description": " sku_id"
+            }
+          ]
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "result",
+          "children": [
+            {
+              "name": "trace_id",
+              "type": "String",
+              "required": true,
+              "description": "trace_id"
+            },
+            {
+              "name": "data",
+              "type": "String",
+              "required": true,
+              "description": "data"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "success?"
+            },
+            {
+              "name": "message_info",
+              "type": "String",
+              "required": true,
+              "description": "message_info"
+            },
+            {
+              "name": "msg_code",
+              "type": "String",
+              "required": true,
+              "description": "msg_code"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.list",
+      "path": "/alibaba/icbu/product/list",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Falibaba%2Ficbu%2Fproduct%2Flist&methodType=GET%2FPOST",
+      "updatedAt": "2023-04-03 08:16:41",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Query product summary information according to category ID and product name. The results are returned in the reverse order of modification time. Pagination is supported, with a maximum of 30 per page.",
+      "request": [
+        {
+          "name": "current_page",
+          "type": "Number",
+          "required": false,
+          "description": "current_page"
+        },
+        {
+          "name": "subject",
+          "type": "String",
+          "required": false,
+          "description": "subject of product"
+        },
+        {
+          "name": "page_size",
+          "type": "Number",
+          "required": false,
+          "description": " page size of the query"
+        },
+        {
+          "name": "gmt_modified_from",
+          "type": "String",
+          "required": false,
+          "description": "gmt_modified_from"
+        },
+        {
+          "name": "group_id2",
+          "type": "Number",
+          "required": false,
+          "description": "group_id2"
+        },
+        {
+          "name": "group_id3",
+          "type": "Number",
+          "required": false,
+          "description": "group_id3"
+        },
+        {
+          "name": "group_id1",
+          "type": "Number",
+          "required": false,
+          "description": "group_id1"
+        },
+        {
+          "name": "gmt_modified_to",
+          "type": "String",
+          "required": false,
+          "description": "gmt_modified_to"
+        },
+        {
+          "name": "id",
+          "type": "Number",
+          "required": false,
+          "description": "product id"
+        },
+        {
+          "name": "category_id",
+          "type": "Number",
+          "required": false,
+          "description": "Category id"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "result",
+          "children": [
+            {
+              "name": "trace_id",
+              "type": "String",
+              "required": true,
+              "description": "the unique id  which can help us to  troubleShoot"
+            },
+            {
+              "name": "curr_page",
+              "type": "Number",
+              "required": true,
+              "description": "current page"
+            },
+            {
+              "name": "total_item",
+              "type": "Number",
+              "required": true,
+              "description": "the total count of the result"
+            },
+            {
+              "name": "page_size",
+              "type": "Number",
+              "required": true,
+              "description": "the page size of the result"
+            },
+            {
+              "name": "error_code",
+              "type": "String",
+              "required": true,
+              "description": "error code"
+            },
+            {
+              "name": "products",
+              "type": "Object[]",
+              "required": true,
+              "description": "product detail information",
+              "children": [
+                {
+                  "name": "gmt_modified",
+                  "type": "String",
+                  "required": true,
+                  "description": "gmt_modified"
+                },
+                {
+                  "name": "keywords",
+                  "type": "String[]",
+                  "required": true,
+                  "description": "keywords of the product"
+                },
+                {
+                  "name": "subject",
+                  "type": "String",
+                  "required": true,
+                  "description": "subject of the product"
+                },
+                {
+                  "name": "group_id",
+                  "type": "Number",
+                  "required": true,
+                  "description": "group_id"
+                },
+                {
+                  "name": "display",
+                  "type": "String",
+                  "required": true,
+                  "description": "Y/N"
+                },
+                {
+                  "name": "pc_detail_url",
+                  "type": "String",
+                  "required": true,
+                  "description": "detail url on pc"
+                },
+                {
+                  "name": "owner_member_display_name",
+                  "type": "String",
+                  "required": true,
+                  "description": "the owner"
+                },
+                {
+                  "name": "language",
+                  "type": "String",
+                  "required": true,
+                  "description": "language"
+                },
+                {
+                  "name": "specific",
+                  "type": "Boolean",
+                  "required": true,
+                  "description": "specific product?"
+                },
+                {
+                  "name": "gmt_create",
+                  "type": "String",
+                  "required": true,
+                  "description": "gmt_create"
+                },
+                {
+                  "name": "rts",
+                  "type": "Boolean",
+                  "required": true,
+                  "description": "is readytoship product?"
+                },
+                {
+                  "name": "group_name",
+                  "type": "String",
+                  "required": true,
+                  "description": "groupname"
+                },
+                {
+                  "name": "main_image",
+                  "type": "Object",
+                  "required": true,
+                  "description": "main images of the product",
+                  "children": [
+                    {
+                      "name": "images",
+                      "type": "String[]",
+                      "required": true,
+                      "description": "image url list"
+                    },
+                    {
+                      "name": "watermark",
+                      "type": "Boolean",
+                      "required": true,
+                      "description": "has watermark?"
+                    },
+                    {
+                      "name": "watermark_frame",
+                      "type": "String",
+                      "required": true,
+                      "description": "watermark has frame?"
+                    },
+                    {
+                      "name": "watermark_position",
+                      "type": "String",
+                      "required": true,
+                      "description": "center/bottom"
+                    }
+                  ]
+                },
+                {
+                  "name": "owner_member",
+                  "type": "Number",
+                  "required": true,
+                  "description": "accountId of owner"
+                },
+                {
+                  "name": "smart_edit",
+                  "type": "Boolean",
+                  "required": true,
+                  "description": "is smart edit?"
+                },
+                {
+                  "name": "id",
+                  "type": "Number",
+                  "required": true,
+                  "description": "product Id"
+                },
+                {
+                  "name": "category_id",
+                  "type": "Number",
+                  "required": true,
+                  "description": "category id"
+                },
+                {
+                  "name": "product_type",
+                  "type": "String",
+                  "required": true,
+                  "description": "sourcing/wholesale"
+                },
+                {
+                  "name": "status",
+                  "type": "String",
+                  "required": true,
+                  "description": "product status"
+                }
+              ]
+            },
+            {
+              "name": "error_msg",
+              "type": "String",
+              "required": true,
+              "description": "error message"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.schema.add",
+      "path": "/icbu/product/schema/add",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fschema%2Fadd&methodType=GET%2FPOST",
+      "updatedAt": "2023-03-27 15:55:52",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Provide the entrance to publish products in Alibaba.com",
+      "request": [
+        {
+          "name": "publish_request",
+          "type": "Object",
+          "required": true,
+          "description": "the publish request",
+          "children": [
+            {
+              "name": "cat_id",
+              "type": "Number",
+              "required": true,
+              "description": "leaf category id in Alibaba.com"
+            },
+            {
+              "name": "xml",
+              "type": "String",
+              "required": true,
+              "description": "the detail information of product"
+            },
+            {
+              "name": "language",
+              "type": "String",
+              "required": true,
+              "description": "language"
+            }
+          ]
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "publish result",
+          "children": [
+            {
+              "name": "trace_id",
+              "type": "String",
+              "required": true,
+              "description": "the unique id which can help us to troubleshoot"
+            },
+            {
+              "name": "data",
+              "type": "Number",
+              "required": true,
+              "description": "product id"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "success？"
+            },
+            {
+              "name": "message_info",
+              "type": "String",
+              "required": true,
+              "description": "message"
+            },
+            {
+              "name": "msg_code",
+              "type": "String",
+              "required": true,
+              "description": "message  code"
+            }
+          ]
+        }
+      ],
+      "errors": [
+        {
+          "code": "isp.system-service-error:API_SYSTEM_ERROR",
+          "description": "ApiConfig is Null",
+          "remedy": "occur exception when runing, please contact developer of Alibaba.com"
+        },
+        {
+          "code": "CHK_CAT_NOT_LEAF",
+          "description": "The category is not a leaf category",
+          "remedy": "Only leaf category can be used to publish product"
+        },
+        {
+          "code": "PUB_BIZCHECK_DESCRIPTION_IMAGE_SOURCE_ERROR",
+          "description": "A detailed description can only be inserted for the pictures in your company account picture bank.",
+          "remedy": "Please upload image into your photobank before publishing product. You can see alibaba.icbu.photobank.upload"
+        },
+        {
+          "code": "PUB_BIZCHECK_PRODUCT_NOT_EDITABLE",
+          "description": "This product cannot be edited.",
+          "remedy": "The product is in approve-pending, you can edit this product after approving"
+        },
+        {
+          "code": "PUB_BIZCHECK_CAT_ID_NOTEXIST",
+          "description": "CatId can't be null",
+          "remedy": "Please input category id!"
+        },
+        {
+          "code": "PUB_BIZCHECK_CAT_DATA_NOTEXIST",
+          "description": "Please re-edit the product and adjust the category of the product.",
+          "remedy": "The category selected is not invalid, please change you category"
+        },
+        {
+          "code": "PUB_BIZCHECK_ASSURANCE_ACCOUNT_REQUIRED\u0000",
+          "description": "Your account is unable to publish wholesale goods.",
+          "remedy": "You can't publish ready to ship until you open trade assurance"
+        },
+        {
+          "code": "PUB_BIZCHECK_TEMPLATE_OWNER_ERROR",
+          "description": "Shipping template is not under your account",
+          "remedy": "You can only use shipping template under your account"
+        },
+        {
+          "code": "PUB_BIZCHECK_PRODUCT_SKU_INVALID",
+          "description": "SKU data is incomplete.",
+          "remedy": "Properties and values under every sku must be different, you can't upload any duplicate skus."
+        },
+        {
+          "code": "PUB_BIZCHECK_PROPERTY_CUSTOM_NAME_DUPLICATE",
+          "description": "Attribute name can not be repeated: ",
+          "remedy": "Custom properties must be different with each other, please delete duplicate properties"
+        },
+        {
+          "code": "PUB_BIZCHECK_DEFAULT_WAREHOUSE_NOT_SUPPORT",
+          "description": "Default warehouse code not support",
+          "remedy": "Inventory is only set for ready2Ship products（market-field 's value is 1）. It can't be set for souring products（market-field 's value is 2）. Please try to delete the skuStock field."
+        },
+        {
+          "code": "PUB_BIZCHECK_KEYWORD_TOO_LONG",
+          "description": "Keyword length must be between 1-256 characters.",
+          "remedy": "The keywords you input is too long, please deduce its length"
+        },
+        {
+          "code": "PUB_BIZCHECK_NOT_PRODUCT_OWNER",
+          "description": "You cannot modify or delete another member's product.",
+          "remedy": "The product is not under you account, please use another productId"
+        },
+        {
+          "code": "PUB_BIZCHECK_PRODUCT_COUNT_EXCEED_SAVE_SKETCH",
+          "description": "Product quantity exceeds maximum limit, try saving the draft.",
+          "remedy": "New order users can publish up to 48 products."
+        },
+        {
+          "code": "PUB_BIZCHECK_SUSPICIOUS\u0000",
+          "description": "Prohibited publish product for reasons of violation",
+          "remedy": "Your account has been temporarily closed due to infringement and violation of regulations，please contact Alibaba developer"
+        },
+        {
+          "code": "PUB_BIZCHECK_AUDITING_COMPANY_INFO",
+          "description": "You may display a new product after your company profile approved",
+          "remedy": "Before publishing new product, you must complete information of your company in comapnypage:https://mycompany.alibaba.com/sp/form/selectBizType.htm "
+        },
+        {
+          "code": "CHK_BASIC_MULTIPLEOF",
+          "description": "Input value is not within the specified range.",
+          "remedy": "For multiSelct type, you must use value in the option child field"
+        },
+        {
+          "code": "CHK_BASIC_ONEOF",
+          "description": "Input value is not within the specified range.",
+          "remedy": "You must use value in the option child field"
+        },
+        {
+          "code": "CHK_BASIC_MIN_LENGTH",
+          "description": "Cannot be less than {0} characters",
+          "remedy": "Value of this field has the mininum limit of length, please check you input "
+        },
+        {
+          "code": "CHK_BASIC_MAX_LENGTH",
+          "description": "Can not be more than {0} characters",
+          "remedy": "Value of this field has the max limit of length, please check you input "
+        },
+        {
+          "code": "CHK_STEP_CATEGORY_QUALITY_MINSIZE_ERROR\u0000",
+          "description": "The minimum order quantity under the category and unit must be no less than {0}",
+          "remedy": "According to rules of Alibaba.com, the moq under category selected must be no less than some number.The limit is determined by category and priceUnit-field."
+        },
+        {
+          "code": "CHK_STEP_LADDER_PERIOD_VALUE_ERROR",
+          "description": "The quantity of delivery period must be from small to large.",
+          "remedy": "When filling in ladderPeriod field ,you must fill in the moq from smallest to largest to form the correct ladder."
+        },
+        {
+          "code": "CHK_STEP_PRICE_PRICE_VALUE_ERROR",
+          "description": "This field is required.",
+          "remedy": "If one field is required in schema, you must fill in and can set it to null"
+        },
+        {
+          "code": "CHK_VIDEO_PRODUCT_LINK_LIMIT",
+          "description": "The number of products that this video binds exceeds size limit.",
+          "remedy": "A viedo can only be used to 20 product's main image: corresponding field is scImages."
+        },
+        {
+          "code": "CHK_DETAIL_VIDEO_PRODUCT_LINK_LIMIT\u0000",
+          "description": "The number of products bound to the detailed video exceeds the limit.",
+          "remedy": "A viedo can only be used to 200 product's description: corresponding field is superText."
+        },
+        {
+          "code": "PUB_BIZCHECK_PRODUCT_STATUS_INVALID",
+          "description": "Invalid product status",
+          "remedy": "You can't get the product that is under deleted/pending approved."
+        },
+        {
+          "code": "PUB_BIZCHECK_PROPERTY_VALUE_COUNT_MORE\u0000",
+          "description": "The number of property values exceeds the system setting",
+          "remedy": "The number of property values exceeds the system setting."
+        },
+        {
+          "code": "PUB_BIZCHECK_PROPERTY_CUSTOM_ITEMS_LIMIT",
+          "description": "Please check the number of custom attributes, edit and publish the product again.",
+          "remedy": "You can only input up to 10 custom attributes."
+        },
+        {
+          "code": "PUB_BIZCHECK_SUSPICIOUS_CATEGORY",
+          "description": "Category did not pass qualification verification.",
+          "remedy": "Sepcial catgory:If you want to publish product under this category, you need to upload verification"
+        }
+      ]
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.schema.add.draft",
+      "path": "/icbu/product/schema/add/draft",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fschema%2Fadd%2Fdraft&methodType=GET%2FPOST",
+      "updatedAt": "2023-03-27 15:58:37",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Provide the entrance for publishing ICBU product draft\n\n",
+      "request": [
+        {
+          "name": "param_product_top_publish_request",
+          "type": "Object",
+          "required": true,
+          "description": "request",
+          "children": [
+            {
+              "name": "cat_id",
+              "type": "Number",
+              "required": true,
+              "description": "category id"
+            },
+            {
+              "name": "xml",
+              "type": "String",
+              "required": true,
+              "description": "the detail information of product to be published"
+            },
+            {
+              "name": "language",
+              "type": "String",
+              "required": true,
+              "description": "language"
+            }
+          ]
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "publish result",
+          "children": [
+            {
+              "name": "trace_id",
+              "type": "String",
+              "required": true,
+              "description": "the unique id which can help us to troubleshoot"
+            },
+            {
+              "name": "product_id",
+              "type": "Number",
+              "required": true,
+              "description": "product id"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "success?"
+            },
+            {
+              "name": "message_info",
+              "type": "String",
+              "required": true,
+              "description": "message_info"
+            },
+            {
+              "name": "msg_code",
+              "type": "String",
+              "required": true,
+              "description": "msg_code"
+            }
+          ]
+        }
+      ],
+      "errors": [
+        {
+          "code": "CHK_CAT_NOT_LEAF",
+          "description": "The category is not a leaf category",
+          "remedy": "Only leaf category can be used to publish product"
+        },
+        {
+          "code": "PUB_BIZCHECK_CAT_ID_NOTEXIST",
+          "description": "CatId can't be null",
+          "remedy": "Please input category id when publishing product to Alibaba.com"
+        },
+        {
+          "code": "PUB_BIZCHECK_CAT_DATA_NOTEXIST",
+          "description": "Please re-edit the product and adjust the category of the product.",
+          "remedy": "The category selected is not invalid, please change you category"
+        },
+        {
+          "code": "PUB_BIZCHECK_ASSURANCE_ACCOUNT_REQUIRED",
+          "description": "Your account is unable to publish wholesale goods.",
+          "remedy": "You can't publish ready to ship until you open trade assurance"
+        },
+        {
+          "code": "PUB_BIZCHECK_TEMPLATE_OWNER_ERROR",
+          "description": "Shipping template is not under your account",
+          "remedy": "You can only use shipping template under your account"
+        },
+        {
+          "code": "PUB_BIZCHECK_SUSPICIOUS",
+          "description": "Prohibited publish product for reasons of violation",
+          "remedy": "Your account has been temporarily closed due to infringement and violation of regulations，please contact Alibaba developer"
+        },
+        {
+          "code": "PUB_BIZCHECK_AUDITING_COMPANY_INFO",
+          "description": "You may display a new product after your company profile approved",
+          "remedy": "Before publishing new product, you must complete information of your company in comapnypage:https://mycompany.alibaba.com/sp/form/selectBizType.htm "
+        },
+        {
+          "code": "CHK_BASIC_MULTIPLEOF",
+          "description": "Input value is not within the specified range.",
+          "remedy": "For multiSelct type, you must use value in the option child field"
+        },
+        {
+          "code": "CHK_BASIC_ONEOF",
+          "description": "Input value is not within the specified range.",
+          "remedy": "You must use value in the option child field"
+        },
+        {
+          "code": "CHK_BASIC_MIN_LENGTH",
+          "description": "Cannot be less than {0} characters",
+          "remedy": "Value of this field has the mininum limit of length, please check you input "
+        },
+        {
+          "code": "CHK_BASIC_MAX_LENGTH",
+          "description": "Can not be more than {0} characters",
+          "remedy": "Value of this field has the max limit of length, please check you input "
+        },
+        {
+          "code": "CHK_STEP_CATEGORY_QUALITY_MINSIZE_ERROR\u0000",
+          "description": "The minimum order quantity under the category and unit must be no less than {0}",
+          "remedy": "According to rules of Alibaba.com, the moq under category selected must be no less than some number.The limit is determined by category and priceUnit-field."
+        },
+        {
+          "code": "CHK_BASIC_REQUIRED",
+          "description": "This field is required.",
+          "remedy": "If one field is required in schema, you must fill in and can set it to null"
+        }
+      ]
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.schema.get",
+      "path": "/alibaba/icbu/product/schema/get",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Falibaba%2Ficbu%2Fproduct%2Fschema%2Fget&methodType=GET%2FPOST",
+      "updatedAt": "2023-03-09 02:33:18",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Obtain the page rules and fill-in fields for ICBU product release, which is applicable to new products",
+      "request": [
+        {
+          "name": "cat_id",
+          "type": "Number",
+          "required": true,
+          "description": "Category id"
+        },
+        {
+          "name": "language",
+          "type": "String",
+          "required": true,
+          "description": "language"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "result",
+          "children": [
+            {
+              "name": "trace_id",
+              "type": "String",
+              "required": true,
+              "description": "trace_id"
+            },
+            {
+              "name": "data",
+              "type": "String",
+              "required": true,
+              "description": "data"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "success？"
+            },
+            {
+              "name": "message_info",
+              "type": "String",
+              "required": true,
+              "description": "message_info"
+            },
+            {
+              "name": "msg_code",
+              "type": "String",
+              "required": true,
+              "description": "msg_code"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.schema.render",
+      "path": "/icbu/product/schema/render",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fschema%2Frender&methodType=GET%2FPOST",
+      "updatedAt": "2023-12-07 11:42:32",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Render existing product data",
+      "request": [
+        {
+          "name": "render_request",
+          "type": "Object",
+          "required": true,
+          "description": "request",
+          "children": [
+            {
+              "name": "cat_id",
+              "type": "Number",
+              "required": true,
+              "description": "category id"
+            },
+            {
+              "name": "product_id",
+              "type": "Number",
+              "required": true,
+              "description": "product id"
+            },
+            {
+              "name": "language",
+              "type": "String",
+              "required": true,
+              "description": "language"
+            }
+          ]
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "response",
+          "children": [
+            {
+              "name": "trace_id",
+              "type": "String",
+              "required": true,
+              "description": "uniq id"
+            },
+            {
+              "name": "data",
+              "type": "String",
+              "required": true,
+              "description": "page data"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "call success"
+            },
+            {
+              "name": "msg",
+              "type": "String",
+              "required": true,
+              "description": "message"
+            },
+            {
+              "name": "msg_code",
+              "type": "String",
+              "required": true,
+              "description": "message code"
+            }
+          ]
+        }
+      ],
+      "errors": [
+        {
+          "code": "PUB_BIZCHECK_PRODUCT_NOT_EDITABLE",
+          "description": "This product cannot be edited.",
+          "remedy": "The product is in approve-pending, you can edit this product after approving"
+        },
+        {
+          "code": "PUB_BIZCHECK_CAT_DATA_NOTEXIST",
+          "description": "Please re-edit the product and adjust the category of the product.",
+          "remedy": "The category selected is not invalid, please change you category"
+        },
+        {
+          "code": "PUB_BIZCHECK_NOT_PRODUCT_OWNER",
+          "description": "You cannot modify or delete another member's product.",
+          "remedy": "The product is not under you account, please use another productId"
+        },
+        {
+          "code": "PUB_BIZCHECK_SUSPICIOUS",
+          "description": "Prohibited publish product for reasons of violation",
+          "remedy": "Your account has been temporarily closed due to infringement and violation of regulations，please contact Alibaba developer"
+        },
+        {
+          "code": "PUB_BIZCHECK_AUDITING_COMPANY_INFO",
+          "description": "You may display a new product after your company profile approved",
+          "remedy": "Before publishing new product, you must complete information of your company in comapnypage:https://mycompany.alibaba.com/sp/form/selectBizType.htm "
+        },
+        {
+          "code": "PUB_BIZCHECK_PRODUCT_STATUS_INVALID",
+          "description": "Invalid product status",
+          "remedy": "You can't get the product that is under deleted/pending approved."
+        }
+      ]
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.schema.render.draft",
+      "path": "/icbu/product/schema/render/draft",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fschema%2Frender%2Fdraft&methodType=GET%2FPOST",
+      "updatedAt": "2023-03-27 15:58:39",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Query the data corresponding to a single draft product, which is applicable to the editing scenario of a single draft product",
+      "request": [
+        {
+          "name": "cat_id",
+          "type": "Number",
+          "required": true,
+          "description": "Category  id"
+        },
+        {
+          "name": "product_id",
+          "type": "Number",
+          "required": true,
+          "description": "product id"
+        },
+        {
+          "name": "language",
+          "type": "String",
+          "required": true,
+          "description": "language"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "result",
+          "children": [
+            {
+              "name": "trace_id",
+              "type": "String",
+              "required": true,
+              "description": "the unique id which can help us to troubleShoot"
+            },
+            {
+              "name": "data",
+              "type": "String",
+              "required": true,
+              "description": "the detail information of the product"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "success?"
+            },
+            {
+              "name": "message_info",
+              "type": "String",
+              "required": true,
+              "description": "message_info"
+            },
+            {
+              "name": "msg_code",
+              "type": "String",
+              "required": true,
+              "description": "msg_code"
+            }
+          ]
+        }
+      ],
+      "errors": [
+        {
+          "code": "PUB_BIZCHECK_PRODUCT_NOT_EDITABLE",
+          "description": "This product cannot be edited.",
+          "remedy": "The product is in approve-pending, you can edit this product after approving"
+        },
+        {
+          "code": "PUB_BIZCHECK_NOT_PRODUCT_OWNER",
+          "description": "You cannot modify or delete another member's product.",
+          "remedy": "The product is not under you account, please use another productId"
+        },
+        {
+          "code": "PUB_BIZCHECK_SUSPICIOUS\u0000",
+          "description": "Prohibited publish product for reasons of violation",
+          "remedy": "Your account has been temporarily closed due to infringement and violation of regulations，please contact Alibaba developer"
+        },
+        {
+          "code": "PUB_BIZCHECK_AUDITING_COMPANY_INFO",
+          "description": "You may display a new product after your company profile approved",
+          "remedy": "Before publishing new product, you must complete information of your company in comapnypage:https://mycompany.alibaba.com/sp/form/selectBizType.htm "
+        },
+        {
+          "code": "PUB_BIZCHECK_PRODUCT_STATUS_INVALID",
+          "description": "Invalid product status",
+          "remedy": "You can't get the product that is under deleted/pending approved."
+        }
+      ]
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.schema.update",
+      "path": "/icbu/product/schema/update",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fschema%2Fupdate&methodType=GET%2FPOST",
+      "updatedAt": "2023-03-27 15:56:11",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "This method is incremental update, only the incoming fields are updated in the product, other fields will remain unchanged!",
+      "request": [
+        {
+          "name": "cat_id",
+          "type": "Number",
+          "required": true,
+          "description": "category id of this product"
+        },
+        {
+          "name": "product_id",
+          "type": "Number",
+          "required": true,
+          "description": "product you want to update"
+        },
+        {
+          "name": "xml",
+          "type": "String",
+          "required": true,
+          "description": "fields you want to update"
+        },
+        {
+          "name": "language",
+          "type": "String",
+          "required": true,
+          "description": "language you want to use"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "the full result of this call",
+          "children": [
+            {
+              "name": "trace_id",
+              "type": "String",
+              "required": true,
+              "description": "important!the unique id which can help us to troubleShot"
+            },
+            {
+              "name": "product_id",
+              "type": "Number",
+              "required": true,
+              "description": "product id you have updated"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "success?"
+            },
+            {
+              "name": "message_info",
+              "type": "String",
+              "required": true,
+              "description": "return message of this call.This field will be empty only if the call fails."
+            },
+            {
+              "name": "msg_code",
+              "type": "String",
+              "required": true,
+              "description": "return code of this call.return message of this call.This field will be empty only if the call fails."
+            }
+          ]
+        }
+      ],
+      "errors": [
+        {
+          "code": "CHK_CAT_NOT_LEAF",
+          "description": "The category is not a leaf category",
+          "remedy": "Only leaf category can be used to publish product"
+        },
+        {
+          "code": "PUB_BIZCHECK_DESCRIPTION_IMAGE_SOURCE_ERROR",
+          "description": "A detailed description can only be inserted for the pictures in your company account picture bank.",
+          "remedy": "Please upload image into your photobank before publishing product. You can see alibaba.icbu.photobank.upload"
+        },
+        {
+          "code": "PUB_BIZCHECK_PRODUCT_NOT_EDITABLE",
+          "description": "This product cannot be edited.",
+          "remedy": "The product is in approve-pending, you can edit this product after approving"
+        },
+        {
+          "code": "PUB_BIZCHECK_CAT_ID_NOTEXIST",
+          "description": "CatId can't be null",
+          "remedy": "Please input category id!"
+        },
+        {
+          "code": "PUB_BIZCHECK_CAT_DATA_NOTEXIST",
+          "description": "Please re-edit the product and adjust the category of the product.",
+          "remedy": "The category selected is not invalid, please change you category"
+        },
+        {
+          "code": "PUB_BIZCHECK_ASSURANCE_ACCOUNT_REQUIRED\u0000",
+          "description": "Your account is unable to publish wholesale goods.",
+          "remedy": "You can't publish ready to ship until you open trade assurance"
+        },
+        {
+          "code": "PUB_BIZCHECK_TEMPLATE_OWNER_ERROR",
+          "description": "Shipping template is not under your account",
+          "remedy": "You can only use shipping template under your account"
+        },
+        {
+          "code": "PUB_BIZCHECK_PRODUCT_SKU_INVALID",
+          "description": "SKU data is incomplete.",
+          "remedy": "Properties and values under every sku must be different, you can't upload any duplicate skus."
+        },
+        {
+          "code": "PUB_BIZCHECK_PROPERTY_CUSTOM_NAME_DUPLICATE",
+          "description": "Default warehouse code not support",
+          "remedy": "Custom properties must be different with each other, please delete duplicate properties"
+        },
+        {
+          "code": "PUB_BIZCHECK_NOT_PRODUCT_OWNER",
+          "description": "You cannot modify or delete another member's product.",
+          "remedy": "The product is not under you account, please use another productId"
+        },
+        {
+          "code": "PUB_BIZCHECK_SUSPICIOUS",
+          "description": "Prohibited publish product for reasons of violation",
+          "remedy": "Your account has been temporarily closed due to infringement and violation of regulations，please contact Alibaba developer"
+        },
+        {
+          "code": "PUB_BIZCHECK_AUDITING_COMPANY_INFO",
+          "description": "You may display a new product after your company profile approved",
+          "remedy": "Before publishing new product, you must complete information of your company in comapnypage:https://mycompany.alibaba.com/sp/form/selectBizType.htm "
+        },
+        {
+          "code": "CHK_BASIC_MULTIPLEOF",
+          "description": "Input value is not within the specified range.",
+          "remedy": "For multiSelct type, you must use value in the option child field"
+        },
+        {
+          "code": "CHK_BASIC_ONEOF",
+          "description": "Input value is not within the specified range.",
+          "remedy": "You must use value in the option child field"
+        },
+        {
+          "code": "CHK_BASIC_MIN_LENGTH",
+          "description": "Cannot be less than {0} characters",
+          "remedy": "Value of this field has the mininum limit of length, please check you input "
+        },
+        {
+          "code": "CHK_BASIC_MAX_LENGTH",
+          "description": "Can not be more than {0} characters",
+          "remedy": "Value of this field has the max limit of length, please check you input "
+        },
+        {
+          "code": "CHK_STEP_CATEGORY_QUALITY_MINSIZE_ERROR\u0000",
+          "description": "The minimum order quantity under the category and unit must be no less than {0}",
+          "remedy": "According to rules of Alibaba.com, the moq under category selected must be no less than some number.The limit is determined by category and priceUnit-field."
+        },
+        {
+          "code": "CHK_STEP_LADDER_PERIOD_VALUE_ERROR",
+          "description": "The quantity of delivery period must be from small to large.",
+          "remedy": "When filling in ladderPrice field ,you must fill in  quantity\u0000 from smallest to largest to form the correct ladder."
+        },
+        {
+          "code": "CHK_BASIC_REQUIRED\u0000",
+          "description": "This field is required.",
+          "remedy": "If one field is required in schema, you must fill in and can set it to null"
+        },
+        {
+          "code": "CHK_RTS_MIN_ORDER_PERIOD_MAX_THAN_15_ERROR\u0000",
+          "description": "The period of moq can't be larger than 15 days",
+          "remedy": "if you want to publish a ready to ship product, you have to follow platform rules: the period of moq can't be larger than 15 days"
+        },
+        {
+          "code": "CHK_VIDEO_PRODUCT_LINK_LIMIT",
+          "description": "The number of products that this video binds exceeds size limit.",
+          "remedy": "A viedo can only be used to 20 product's main image: corresponding field is scImages."
+        },
+        {
+          "code": "CHK_DETAIL_VIDEO_PRODUCT_LINK_LIMIT\u0000",
+          "description": "The number of products bound to the detailed video exceeds the limit.",
+          "remedy": "A viedo can only be used to 200 product's description: corresponding field is superText."
+        },
+        {
+          "code": "PUB_BIZCHECK_PRODUCT_STATUS_INVALID",
+          "description": "Invalid product status",
+          "remedy": "You can't get the product that is under deleted/pending approved."
+        },
+        {
+          "code": "PUB_BIZCHECK_PROPERTY_VALUE_COUNT_MORE\u0000",
+          "description": "The number of property values exceeds the system setting",
+          "remedy": "The number of property values exceeds the system setting."
+        },
+        {
+          "code": "PUB_BIZCHECK_PROPERTY_CUSTOM_ITEMS_LIMIT\u0000",
+          "description": "Please check the number of custom attributes, edit and publish the product again.",
+          "remedy": "You can only input up to 10 custom attributes."
+        },
+        {
+          "code": "PUB_BIZCHECK_SUSPICIOUS_CATEGORY\u0000",
+          "description": "Category did not pass qualification verification.",
+          "remedy": "Sepcial catgory:If you want to publish product under this category, you need to upload verification"
+        }
+      ]
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.score.get",
+      "path": "/icbu/product/score/get",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fscore%2Fget&methodType=GET%2FPOST",
+      "updatedAt": "2023-03-09 02:33:41",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Query product quality score",
+      "request": [
+        {
+          "name": "product_id",
+          "type": "Number",
+          "required": true,
+          "description": "product id"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "result",
+          "children": [
+            {
+              "name": "trace_id",
+              "type": "String",
+              "required": true,
+              "description": "the unique id  which can help us to  troubleShoot"
+            },
+            {
+              "name": "final_score",
+              "type": "String",
+              "required": true,
+              "description": "product score"
+            },
+            {
+              "name": "boutique_tag",
+              "type": "Number",
+              "required": true,
+              "description": "Boutique tag, the meaning of boutique_tag in the return field，1 ：boutique product，2：ordinary product，3：low quality product，4：strong quality product"
+            },
+            {
+              "name": "error_code",
+              "type": "String",
+              "required": true,
+              "description": "error code"
+            },
+            {
+              "name": "error_msg",
+              "type": "String",
+              "required": true,
+              "description": "error message"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "alibaba.icbu.product.type.available.get",
+      "path": "/icbu/product/other/available/get",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fother%2Favailable%2Fget&methodType=GET%2FPOST",
+      "updatedAt": "2023-03-14 22:59:49",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Query merchant's permission to publish products",
+      "request": [
+        {
+          "name": "cat_id",
+          "type": "Number",
+          "required": true,
+          "description": "Category id"
+        },
+        {
+          "name": "language",
+          "type": "String",
+          "required": true,
+          "description": "language"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "result",
+          "children": [
+            {
+              "name": "data",
+              "type": "Object",
+              "required": true,
+              "description": "data",
+              "children": [
+                {
+                  "name": "supportPostWholeSale",
+                  "type": "Boolean",
+                  "required": false,
+                  "description": "supportPostWholeSale"
+                },
+                {
+                  "name": "supportPostSourcing",
+                  "type": "Boolean",
+                  "required": false,
+                  "description": "supportPostSourcing"
+                }
+              ]
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "success?"
+            },
+            {
+              "name": "message_info",
+              "type": "String",
+              "required": true,
+              "description": "message_info"
+            },
+            {
+              "name": "msg_code",
+              "type": "String",
+              "required": true,
+              "description": "msg_code"
+            },
+            {
+              "name": "trace_id",
+              "type": "String",
+              "required": true,
+              "description": "the unique id which can help us to troubleShoot"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 1,
+      "category": "Product",
+      "title": "icbuproduct",
+      "path": "/icbu/product",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct&methodType=GET%2FPOST",
+      "updatedAt": "2023-02-01 01:22:23",
+      "chargeable": false,
+      "authorizationType": 0,
+      "description": "Fetch ICBU product page rules and fields, opt to newly posted products",
+      "request": [
+        {
+          "name": "param_publish_get_request",
+          "type": "Object",
+          "required": true,
+          "description": "product render request",
+          "children": [
+            {
+              "name": "cat_id",
+              "type": "Number",
+              "required": true,
+              "description": "category id"
+            },
+            {
+              "name": "language",
+              "type": "String",
+              "required": true,
+              "description": "language, support en,zh"
+            }
+          ]
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "result object",
+          "children": [
+            {
+              "name": "trace_id",
+              "type": "String",
+              "required": true,
+              "description": "traceId"
+            },
+            {
+              "name": "data",
+              "type": "Object",
+              "required": true,
+              "description": "ICBU product publish rules"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "isSuccess"
+            },
+            {
+              "name": "msg",
+              "type": "String",
+              "required": true,
+              "description": "error message"
+            },
+            {
+              "name": "msg_code",
+              "type": "String",
+              "required": true,
+              "description": "error code"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "alibaba fund query api",
+      "path": "/alibaba/order/fund/query",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Falibaba%2Forder%2Ffund%2Fquery&methodType=GET%2FPOST",
+      "updatedAt": "2025-04-09 10:54:32",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "alibaba fund query api",
+      "request": [
+        {
+          "name": "e_trade_id",
+          "type": "String",
+          "required": true,
+          "description": "orderId"
+        },
+        {
+          "name": "data_select",
+          "type": "String",
+          "required": true,
+          "description": "payment transaction fee"
+        }
+      ],
+      "response": [
+        {
+          "name": "value",
+          "type": "Object",
+          "required": true,
+          "description": "fund",
+          "children": [
+            {
+              "name": "payment_transaction_fee",
+              "type": "Object",
+              "required": false,
+              "description": "paymentTransactionFee",
+              "children": [
+                {
+                  "name": "currency",
+                  "type": "String",
+                  "required": false,
+                  "description": "currency"
+                },
+                {
+                  "name": "amount",
+                  "type": "String",
+                  "required": false,
+                  "description": "amount"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "alibaba ggs seller warehouse list",
+      "path": "/alibaba/ggs/warehouse/list",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Falibaba%2Fggs%2Fwarehouse%2Flist&methodType=GET%2FPOST",
+      "updatedAt": "2025-11-12 17:01:15",
+      "chargeable": false,
+      "authorizationType": 0,
+      "description": "alibaba ggs seller warehouse list",
+      "request": [
+        {
+          "name": "product_id",
+          "type": "Number",
+          "required": true,
+          "description": "product_id"
+        },
+        {
+          "name": "page_size",
+          "type": "Number",
+          "required": true,
+          "description": "10"
+        },
+        {
+          "name": "current_page",
+          "type": "Number",
+          "required": true,
+          "description": "1"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "result",
+          "children": [
+            {
+              "name": "total",
+              "type": "Number",
+              "required": true,
+              "description": "total"
+            },
+            {
+              "name": "code",
+              "type": "String",
+              "required": true,
+              "description": "code"
+            },
+            {
+              "name": "data",
+              "type": "Object[]",
+              "required": true,
+              "description": "data",
+              "children": [
+                {
+                  "name": "id",
+                  "type": "String",
+                  "required": false,
+                  "description": "id"
+                },
+                {
+                  "name": "gmt_create",
+                  "type": "String",
+                  "required": false,
+                  "description": "createTime"
+                },
+                {
+                  "name": "gmt_modified",
+                  "type": "String",
+                  "required": false,
+                  "description": "updateTime"
+                },
+                {
+                  "name": "warehouse_code",
+                  "type": "String",
+                  "required": false,
+                  "description": "warehouseCode"
+                },
+                {
+                  "name": "warehouse_name",
+                  "type": "String",
+                  "required": false,
+                  "description": "warehouseName"
+                },
+                {
+                  "name": "warehouse_type",
+                  "type": "String",
+                  "required": false,
+                  "description": "Private warehouse or other"
+                },
+                {
+                  "name": "warehouse_status",
+                  "type": "String",
+                  "required": false,
+                  "description": "active or inactive"
+                },
+                {
+                  "name": "deleted",
+                  "type": "String",
+                  "required": false,
+                  "description": "1 is deleted"
+                },
+                {
+                  "name": "warehouse_address",
+                  "type": "String",
+                  "required": false,
+                  "description": "address"
+                },
+                {
+                  "name": "warehouse_province",
+                  "type": "String",
+                  "required": false,
+                  "description": "province"
+                },
+                {
+                  "name": "warehouse_city",
+                  "type": "String",
+                  "required": false,
+                  "description": "city"
+                },
+                {
+                  "name": "warehouse_country",
+                  "type": "String",
+                  "required": false,
+                  "description": "country"
+                },
+                {
+                  "name": "zip_code",
+                  "type": "String",
+                  "required": false,
+                  "description": "zipCode"
+                },
+                {
+                  "name": "warehouse_contact",
+                  "type": "String",
+                  "required": false,
+                  "description": "contact"
+                },
+                {
+                  "name": "warehouse_phone_number",
+                  "type": "String",
+                  "required": false,
+                  "description": "phone"
+                },
+                {
+                  "name": "ali_member_id",
+                  "type": "String",
+                  "required": false,
+                  "description": "aliMemberId"
+                }
+              ]
+            },
+            {
+              "name": "total_page",
+              "type": "Number",
+              "required": true,
+              "description": "total_page"
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "true is success false is fail"
+            },
+            {
+              "name": "page_size",
+              "type": "Number",
+              "required": true,
+              "description": "page_size"
+            },
+            {
+              "name": "current_page",
+              "type": "Number",
+              "required": true,
+              "description": "current_page"
+            },
+            {
+              "name": "message",
+              "type": "String",
+              "required": true,
+              "description": "message"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "alibaba order get",
+      "path": "/alibaba/order/get",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Falibaba%2Forder%2Fget&methodType=GET%2FPOST",
+      "updatedAt": "2024-12-11 11:30:47",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "alibaba order get",
+      "request": [
+        {
+          "name": "e_trade_id",
+          "type": "String",
+          "required": true,
+          "description": "orderId"
+        },
+        {
+          "name": "data_select",
+          "type": "String",
+          "required": false,
+          "description": "Data selectors all have parameters in English, separated by <br />statusAction,draft_role,snapshot_product"
+        },
+        {
+          "name": "language",
+          "type": "String",
+          "required": false,
+          "description": "multi language"
+        }
+      ],
+      "response": [
+        {
+          "name": "value",
+          "type": "Object",
+          "required": true,
+          "description": "{}",
+          "children": [
+            {
+              "name": "tags",
+              "type": "String",
+              "required": false,
+              "description": "ds_waybill represents distributor waybill for self-pickup"
+            },
+            {
+              "name": "seller",
+              "type": "Object",
+              "required": true,
+              "description": "seller",
+              "children": [
+                {
+                  "name": "immutable_eid",
+                  "type": "String",
+                  "required": true,
+                  "description": "unique id for each seller account"
+                },
+                {
+                  "name": "full_name",
+                  "type": "String",
+                  "required": true,
+                  "description": "seller name"
+                },
+                {
+                  "name": "immutable_eAdminId",
+                  "type": "String",
+                  "required": false,
+                  "description": "unique id for each seller admin account"
+                }
+              ]
+            },
+            {
+              "name": "shipment_fee",
+              "type": "Object",
+              "required": true,
+              "description": "Shipment fee",
+              "children": [
+                {
+                  "name": "amount",
+                  "type": "String",
+                  "required": true,
+                  "description": "amount"
+                },
+                {
+                  "name": "currency",
+                  "type": "String",
+                  "required": true,
+                  "description": "currency"
+                }
+              ]
+            },
+            {
+              "name": "advance_amount",
+              "type": "Object",
+              "required": true,
+              "description": "advance amount",
+              "children": [
+                {
+                  "name": "amount",
+                  "type": "String",
+                  "required": true,
+                  "description": "amount"
+                },
+                {
+                  "name": "currency",
+                  "type": "String",
+                  "required": true,
+                  "description": "currency"
+                }
+              ]
+            },
+            {
+              "name": "pay_step",
+              "type": "String",
+              "required": true,
+              "description": "ADVANCE/BALANCE/FULL"
+            },
+            {
+              "name": "biz_code",
+              "type": "String",
+              "required": true,
+              "description": "business code"
+            },
+            {
+              "name": "semi_manage",
+              "type": "Boolean",
+              "required": true,
+              "description": "if semi manage status"
+            },
+            {
+              "name": "discount_amount",
+              "type": "Object",
+              "required": true,
+              "description": "discount amount",
+              "children": [
+                {
+                  "name": "amount",
+                  "type": "String",
+                  "required": true,
+                  "description": "amount"
+                },
+                {
+                  "name": "currency",
+                  "type": "String",
+                  "required": true,
+                  "description": "currency"
+                }
+              ]
+            },
+            {
+              "name": "remark",
+              "type": "String",
+              "required": true,
+              "description": "order remark"
+            },
+            {
+              "name": "shipment_method",
+              "type": "String",
+              "required": true,
+              "description": "shipment method"
+            },
+            {
+              "name": "trade_term",
+              "type": "String",
+              "required": true,
+              "description": "trade term"
+            },
+            {
+              "name": "item_status",
+              "type": "String",
+              "required": true,
+              "description": "item status"
+            },
+            {
+              "name": "order_products",
+              "type": "Object[]",
+              "required": true,
+              "description": "product info List Object",
+              "children": [
+                {
+                  "name": "unit_price",
+                  "type": "Object",
+                  "required": true,
+                  "description": "unit price",
+                  "children": [
+                    {
+                      "name": "amount",
+                      "type": "String",
+                      "required": true,
+                      "description": "amount"
+                    },
+                    {
+                      "name": "currency",
+                      "type": "String",
+                      "required": true,
+                      "description": "currency"
+                    }
+                  ]
+                },
+                {
+                  "name": "quantity",
+                  "type": "String",
+                  "required": true,
+                  "description": "quantity"
+                },
+                {
+                  "name": "product_id",
+                  "type": "Number",
+                  "required": true,
+                  "description": "product id"
+                },
+                {
+                  "name": "sort",
+                  "type": "Number",
+                  "required": true,
+                  "description": "order product sort"
+                },
+                {
+                  "name": "id",
+                  "type": "String",
+                  "required": true,
+                  "description": "primary id"
+                },
+                {
+                  "name": "unit",
+                  "type": "String",
+                  "required": true,
+                  "description": "the unit of product"
+                },
+                {
+                  "name": "product_image",
+                  "type": "String",
+                  "required": true,
+                  "description": "image url of the product"
+                },
+                {
+                  "name": "sku_attributes",
+                  "type": "Object[]",
+                  "required": true,
+                  "description": "the sku attribute List",
+                  "children": [
+                    {
+                      "name": "value",
+                      "type": "String",
+                      "required": true,
+                      "description": "attribute key"
+                    },
+                    {
+                      "name": "key",
+                      "type": "String",
+                      "required": true,
+                      "description": "attribute value"
+                    }
+                  ]
+                },
+                {
+                  "name": "name",
+                  "type": "String",
+                  "required": true,
+                  "description": "the name of product"
+                },
+                {
+                  "name": "model_number",
+                  "type": "String",
+                  "required": true,
+                  "description": "product model number"
+                },
+                {
+                  "name": "sku_code",
+                  "type": "String",
+                  "required": true,
+                  "description": "Seller's custom sku code "
+                },
+                {
+                  "name": "sku_id",
+                  "type": "String",
+                  "required": true,
+                  "description": "the id of sku"
+                }
+              ]
+            },
+            {
+              "name": "shipment_date",
+              "type": "Object",
+              "required": true,
+              "description": "shipment date",
+              "children": [
+                {
+                  "name": "duration",
+                  "type": "Number",
+                  "required": true,
+                  "description": "shipment duration"
+                },
+                {
+                  "name": "date",
+                  "type": "Object",
+                  "required": true,
+                  "description": "absolute time vo",
+                  "children": [
+                    {
+                      "name": "format_date",
+                      "type": "String",
+                      "required": false,
+                      "description": "formated date"
+                    },
+                    {
+                      "name": "timestamp",
+                      "type": "Number",
+                      "required": false,
+                      "description": "time stamp"
+                    }
+                  ]
+                },
+                {
+                  "name": "type",
+                  "type": "String",
+                  "required": true,
+                  "description": "Relative prepayment relative, relative balance relative_balance, absolute time absolute If type=relative or relative_balance, then take the value of duration, which is a relative value. If type=absolute, then take the value of date, which is a specific time specified by the merchant."
+                }
+              ]
+            },
+            {
+              "name": "create_date",
+              "type": "Object",
+              "required": true,
+              "description": "the create date of order",
+              "children": [
+                {
+                  "name": "format_date",
+                  "type": "String",
+                  "required": true,
+                  "description": "formated date"
+                },
+                {
+                  "name": "timestamp",
+                  "type": "Number",
+                  "required": true,
+                  "description": "time stamp"
+                }
+              ]
+            },
+            {
+              "name": "dropshipping",
+              "type": "Boolean",
+              "required": true,
+              "description": "is dropshipping"
+            },
+            {
+              "name": "draft_role",
+              "type": "String",
+              "required": true,
+              "description": "Order drafting role seller or buyer"
+            },
+            {
+              "name": "export_service_type",
+              "type": "String",
+              "required": true,
+              "description": "Export method (onetouch export onetouch_service, non-onetouch export self_run_service), export Service (export by onetouch called onetouch_service, export by not onetouch called self_run_service)"
+            },
+            {
+              "name": "status_action",
+              "type": "Object",
+              "required": true,
+              "description": "Real-time status and action",
+              "children": [
+                {
+                  "name": "actions",
+                  "type": "Object[]",
+                  "required": false,
+                  "description": "actions",
+                  "children": [
+                    {
+                      "name": "value",
+                      "type": "String",
+                      "required": false,
+                      "description": "value"
+                    },
+                    {
+                      "name": "name",
+                      "type": "String",
+                      "required": false,
+                      "description": "Name:<br /> view_payment_link: View payment link"
+                    },
+                    {
+                      "name": "render_name",
+                      "type": "String",
+                      "required": false,
+                      "description": "Rendered copy"
+                    }
+                  ]
+                },
+                {
+                  "name": "status",
+                  "type": "String",
+                  "required": false,
+                  "description": "See trade_status field notes"
+                }
+              ]
+            },
+            {
+              "name": "product_total_amount",
+              "type": "Object",
+              "required": true,
+              "description": "The total amount of product",
+              "children": [
+                {
+                  "name": "amount",
+                  "type": "String",
+                  "required": true,
+                  "description": "amount"
+                },
+                {
+                  "name": "currency",
+                  "type": "String",
+                  "required": true,
+                  "description": "currency"
+                }
+              ]
+            },
+            {
+              "name": "adjust_amount",
+              "type": "Object",
+              "required": true,
+              "description": "adjust amount",
+              "children": [
+                {
+                  "name": "amount",
+                  "type": "String",
+                  "required": true,
+                  "description": "amount"
+                },
+                {
+                  "name": "currency",
+                  "type": "String",
+                  "required": true,
+                  "description": "currency"
+                }
+              ]
+            },
+            {
+              "name": "balance_amount",
+              "type": "Object",
+              "required": true,
+              "description": "balance amount",
+              "children": [
+                {
+                  "name": "amount",
+                  "type": "String",
+                  "required": true,
+                  "description": "amount"
+                },
+                {
+                  "name": "currency",
+                  "type": "String",
+                  "required": true,
+                  "description": "currency"
+                }
+              ]
+            },
+            {
+              "name": "buyer",
+              "type": "Object",
+              "required": true,
+              "description": "buyer",
+              "children": [
+                {
+                  "name": "immutable_eid",
+                  "type": "String",
+                  "required": true,
+                  "description": "The same buyer account remains unchanged encrypted ID"
+                },
+                {
+                  "name": "full_name",
+                  "type": "String",
+                  "required": true,
+                  "description": "buyer's full name"
+                }
+              ]
+            },
+            {
+              "name": "total_amount",
+              "type": "Object",
+              "required": true,
+              "description": "total amount",
+              "children": [
+                {
+                  "name": "amount",
+                  "type": "String",
+                  "required": true,
+                  "description": "amount"
+                },
+                {
+                  "name": "currency",
+                  "type": "String",
+                  "required": true,
+                  "description": "currency"
+                }
+              ]
+            },
+            {
+              "name": "shipment_insurance_fee",
+              "type": "Object",
+              "required": true,
+              "description": "shipment insurance fee",
+              "children": [
+                {
+                  "name": "amount",
+                  "type": "String",
+                  "required": false,
+                  "description": "amount"
+                },
+                {
+                  "name": "currency",
+                  "type": "String",
+                  "required": false,
+                  "description": "currency"
+                }
+              ]
+            },
+            {
+              "name": "carrier",
+              "type": "Object",
+              "required": true,
+              "description": "Carrier",
+              "children": [
+                {
+                  "name": "code",
+                  "type": "String",
+                  "required": true,
+                  "description": "Carrier code"
+                },
+                {
+                  "name": "name",
+                  "type": "String",
+                  "required": true,
+                  "description": "Carrier name"
+                }
+              ]
+            },
+            {
+              "name": "fulfillment_channel",
+              "type": "String",
+              "required": true,
+              "description": "Fulfillment Channel"
+            },
+            {
+              "name": "trade_status",
+              "type": "String",
+              "required": true,
+              "description": "https://openapi.alibaba.com/doc/doc.htm?spm=a2o9m.11193535.0.0.1b2c2f04X8G2xg#/?docId=131"
+            },
+            {
+              "name": "shipping_address",
+              "type": "Object",
+              "required": true,
+              "description": "shipping address",
+              "children": [
+                {
+                  "name": "zip",
+                  "type": "String",
+                  "required": true,
+                  "description": "zip"
+                },
+                {
+                  "name": "country",
+                  "type": "String",
+                  "required": true,
+                  "description": "country"
+                },
+                {
+                  "name": "address",
+                  "type": "String",
+                  "required": true,
+                  "description": "Detailed address"
+                },
+                {
+                  "name": "city",
+                  "type": "String",
+                  "required": true,
+                  "description": "city"
+                },
+                {
+                  "name": "mobile",
+                  "type": "Object",
+                  "required": true,
+                  "description": "mobile",
+                  "children": [
+                    {
+                      "name": "area",
+                      "type": "String",
+                      "required": true,
+                      "description": "area"
+                    },
+                    {
+                      "name": "country",
+                      "type": "String",
+                      "required": true,
+                      "description": "country"
+                    },
+                    {
+                      "name": "number",
+                      "type": "String",
+                      "required": true,
+                      "description": "number"
+                    }
+                  ]
+                },
+                {
+                  "name": "contact_person",
+                  "type": "String",
+                  "required": true,
+                  "description": "contact person"
+                },
+                {
+                  "name": "telephone",
+                  "type": "Object",
+                  "required": true,
+                  "description": "telephone",
+                  "children": [
+                    {
+                      "name": "area",
+                      "type": "String",
+                      "required": true,
+                      "description": "area"
+                    },
+                    {
+                      "name": "country",
+                      "type": "String",
+                      "required": true,
+                      "description": "country"
+                    },
+                    {
+                      "name": "number",
+                      "type": "String",
+                      "required": true,
+                      "description": "number"
+                    }
+                  ]
+                },
+                {
+                  "name": "province",
+                  "type": "String",
+                  "required": true,
+                  "description": "province"
+                },
+                {
+                  "name": "port",
+                  "type": "String",
+                  "required": true,
+                  "description": "port"
+                },
+                {
+                  "name": "country_code",
+                  "type": "String",
+                  "required": true,
+                  "description": "country code"
+                },
+                {
+                  "name": "alternate_address",
+                  "type": "String",
+                  "required": true,
+                  "description": "alternate address"
+                }
+              ]
+            },
+            {
+              "name": "trade_id",
+              "type": "String",
+              "required": true,
+              "description": "order id"
+            },
+            {
+              "name": "vat_amount",
+              "type": "Object",
+              "required": false,
+              "description": "vat amount",
+              "children": [
+                {
+                  "name": "amount",
+                  "type": "String",
+                  "required": false,
+                  "description": "amount"
+                },
+                {
+                  "name": "currency",
+                  "type": "String",
+                  "required": false,
+                  "description": "currency"
+                }
+              ]
+            },
+            {
+              "name": "duty_amount",
+              "type": "Object",
+              "required": false,
+              "description": "duty amount",
+              "children": [
+                {
+                  "name": "amount",
+                  "type": "String",
+                  "required": false,
+                  "description": "amount"
+                },
+                {
+                  "name": "currency",
+                  "type": "String",
+                  "required": false,
+                  "description": "currency"
+                }
+              ]
+            },
+            {
+              "name": "attachments",
+              "type": "Object[]",
+              "required": false,
+              "description": "attachments",
+              "children": [
+                {
+                  "name": "file_name",
+                  "type": "String",
+                  "required": false,
+                  "description": "file name"
+                },
+                {
+                  "name": "url",
+                  "type": "String",
+                  "required": false,
+                  "description": "url"
+                },
+                {
+                  "name": "service_provider_name",
+                  "type": "String",
+                  "required": false,
+                  "description": "service provider name"
+                },
+                {
+                  "name": "waybill_number",
+                  "type": "String",
+                  "required": false,
+                  "description": "waybill number"
+                },
+                {
+                  "name": "file_usage",
+                  "type": "String",
+                  "required": false,
+                  "description": "file usage"
+                }
+              ]
+            },
+            {
+              "name": "nation",
+              "type": "String",
+              "required": false,
+              "description": "order tenant nation"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "alibaba order list",
+      "path": "/alibaba/order/list",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Falibaba%2Forder%2Flist&methodType=GET%2FPOST",
+      "updatedAt": "2025-08-05 02:18:52",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "alibaba order list",
+      "request": [
+        {
+          "name": "start_page",
+          "type": "Number",
+          "required": false,
+          "description": "Default Value:0"
+        },
+        {
+          "name": "role",
+          "type": "String",
+          "required": true,
+          "description": "seller/buyer， default buyer"
+        },
+        {
+          "name": "modified_date_start",
+          "type": "Object",
+          "required": false,
+          "description": "Modify the time starting from the date_str time zone, which is America/Los_Angeles.",
+          "children": [
+            {
+              "name": "date_str",
+              "type": "String",
+              "required": false,
+              "description": "format is (yyyy-MM-dd HH:mm:ss)"
+            },
+            {
+              "name": "date_timestamp",
+              "type": "Number",
+              "required": false,
+              "description": "timestamp"
+            }
+          ]
+        },
+        {
+          "name": "page_size",
+          "type": "Number",
+          "required": false,
+          "description": "Default Value:10,The maximum number of pages is 100."
+        },
+        {
+          "name": "sales_man_login_id",
+          "type": "String",
+          "required": false,
+          "description": "sales man login id"
+        },
+        {
+          "name": "modified_date_end",
+          "type": "Object",
+          "required": false,
+          "description": "Modify the time starting from the date_str time zone, which is America/Los_Angeles.",
+          "children": [
+            {
+              "name": "date_str",
+              "type": "String",
+              "required": false,
+              "description": "format is (yyyy-MM-dd HH:mm:ss)"
+            },
+            {
+              "name": "date_timestamp",
+              "type": "Number",
+              "required": false,
+              "description": "timestamp"
+            }
+          ]
+        },
+        {
+          "name": "create_date_start",
+          "type": "Object",
+          "required": false,
+          "description": "Order creation time, preferably use date_str,  America/Los_Angeles.",
+          "children": [
+            {
+              "name": "date_str",
+              "type": "String",
+              "required": false,
+              "description": "format is (yyyy-MM-dd HH:mm:ss)"
+            },
+            {
+              "name": "date_timestamp",
+              "type": "Number",
+              "required": false,
+              "description": "timestamp"
+            }
+          ]
+        },
+        {
+          "name": "create_date_end",
+          "type": "Object",
+          "required": false,
+          "description": "Order creation time, preferably use date_str,  America/Los_Angeles.",
+          "children": [
+            {
+              "name": "date_str",
+              "type": "String",
+              "required": false,
+              "description": "format is (yyyy-MM-dd HH:mm:ss)"
+            },
+            {
+              "name": "date_timestamp",
+              "type": "Number",
+              "required": false,
+              "description": "timestamp"
+            }
+          ]
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "required": false,
+          "description": "order status。 see  https://openapi.alibaba.com/doc/doc.htm?spm=a2o9m.11193535.0.0.381a2f04MvF1fW#/?docId=131"
+        }
+      ],
+      "response": [
+        {
+          "name": "value",
+          "type": "Object",
+          "required": true,
+          "description": "{}",
+          "children": [
+            {
+              "name": "order_list",
+              "type": "Object[]",
+              "required": true,
+              "description": "order list",
+              "children": [
+                {
+                  "name": "create_date",
+                  "type": "Object",
+                  "required": true,
+                  "description": "Order creation time, preferably use date_str,  America/Los_Angeles.",
+                  "children": [
+                    {
+                      "name": "format_date",
+                      "type": "String",
+                      "required": true,
+                      "description": "Format time MMM. d, yyyy, HH:mm:ss z."
+                    },
+                    {
+                      "name": "timestamp",
+                      "type": "Number",
+                      "required": true,
+                      "description": "timestamp"
+                    }
+                  ]
+                },
+                {
+                  "name": "modify_date",
+                  "type": "Object",
+                  "required": true,
+                  "description": "Order modify time, preferably use date_str,  America/Los_Angeles.",
+                  "children": [
+                    {
+                      "name": "format_date",
+                      "type": "String",
+                      "required": true,
+                      "description": "Format time MMM. d, yyyy, HH:mm:ss z."
+                    },
+                    {
+                      "name": "timestamp",
+                      "type": "Number",
+                      "required": true,
+                      "description": "timestamp"
+                    }
+                  ]
+                },
+                {
+                  "name": "trade_status",
+                  "type": "String",
+                  "required": true,
+                  "description": " order status"
+                },
+                {
+                  "name": "trade_id",
+                  "type": "String",
+                  "required": true,
+                  "description": "order id"
+                }
+              ]
+            },
+            {
+              "name": "total_count",
+              "type": "Number",
+              "required": true,
+              "description": "total record count"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "alibaba order pay result query",
+      "path": "/alibaba/order/pay/result/query",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Falibaba%2Forder%2Fpay%2Fresult%2Fquery&methodType=GET%2FPOST",
+      "updatedAt": "2024-11-16 18:31:15",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "alibaba查询订单支付结果",
+      "request": [
+        {
+          "name": "trade_id",
+          "type": "Number",
+          "required": true,
+          "description": "order id"
+        }
+      ],
+      "response": [
+        {
+          "name": "value",
+          "type": "Object",
+          "required": true,
+          "description": "pay response",
+          "children": [
+            {
+              "name": "pay_url",
+              "type": "String",
+              "required": false,
+              "description": "pay url"
+            },
+            {
+              "name": "reason_code",
+              "type": "String",
+              "required": false,
+              "description": "Payment failed reason code"
+            },
+            {
+              "name": "reason_message",
+              "type": "String",
+              "required": false,
+              "description": "Payment failed reason message"
+            },
+            {
+              "name": "status",
+              "type": "String",
+              "required": false,
+              "description": "UNPAY Unpaid order <br /> PAYING The order is being paid and it needs to wait for about 1 minute,<br /> PAY_SUCCESS Order payment is successful,<br /> PAY_FAILED Order payment failed"
+            },
+            {
+              "name": "trade_id",
+              "type": "String",
+              "required": false,
+              "description": "order id"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "alibaba seller warehouse  list",
+      "path": "/warehouse/list",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Fwarehouse%2Flist&methodType=GET%2FPOST",
+      "updatedAt": "2025-04-09 16:10:29",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "alibaba seller warehouse  list",
+      "request": [
+        {
+          "name": "product_id",
+          "type": "Number",
+          "required": true,
+          "description": "product id"
+        },
+        {
+          "name": "country_code",
+          "type": "String",
+          "required": false,
+          "description": "country code"
+        },
+        {
+          "name": "current_page",
+          "type": "Number",
+          "required": false,
+          "description": "current page"
+        }
+      ],
+      "response": [
+        {
+          "name": "response",
+          "type": "Object",
+          "required": true,
+          "description": "response",
+          "children": [
+            {
+              "name": "total",
+              "type": "Number",
+              "required": true,
+              "description": "total count"
+            },
+            {
+              "name": "records",
+              "type": "Object[]",
+              "required": true,
+              "description": "{}",
+              "children": [
+                {
+                  "name": "zip_code",
+                  "type": "String",
+                  "required": true,
+                  "description": "zip code"
+                },
+                {
+                  "name": "country",
+                  "type": "String",
+                  "required": true,
+                  "description": "country name"
+                },
+                {
+                  "name": "address",
+                  "type": "String",
+                  "required": true,
+                  "description": "address"
+                },
+                {
+                  "name": "warehouse_id",
+                  "type": "Number",
+                  "required": true,
+                  "description": "warehouseId"
+                },
+                {
+                  "name": "city",
+                  "type": "String",
+                  "required": true,
+                  "description": "city"
+                },
+                {
+                  "name": "country_code",
+                  "type": "String",
+                  "required": true,
+                  "description": "countryCode"
+                },
+                {
+                  "name": "name",
+                  "type": "String",
+                  "required": true,
+                  "description": "name"
+                },
+                {
+                  "name": "state",
+                  "type": "String",
+                  "required": true,
+                  "description": "state"
+                }
+              ]
+            },
+            {
+              "name": "page_size",
+              "type": "Number",
+              "required": true,
+              "description": "pageSize"
+            },
+            {
+              "name": "current_page",
+              "type": "Number",
+              "required": true,
+              "description": "currentPage"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "Combined payment group query service",
+      "path": "/order/merge/pay/query",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Forder%2Fmerge%2Fpay%2Fquery&methodType=GET%2FPOST",
+      "updatedAt": "2025-08-06 12:22:30",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Combined payment group query service",
+      "request": [
+        {
+          "name": "order_ids",
+          "type": "String[]",
+          "required": true,
+          "description": "Need to query the order number array for combined payment"
+        }
+      ],
+      "response": [
+        {
+          "name": "value",
+          "type": "Object",
+          "required": true,
+          "description": "{}",
+          "children": [
+            {
+              "name": "groups",
+              "type": "Object[]",
+              "required": true,
+              "description": "order pay group",
+              "children": [
+                {
+                  "name": "can_not_merge_pay_reason",
+                  "type": "String",
+                  "required": true,
+                  "description": "The reason code that the entire group cannot be combined for payment"
+                },
+                {
+                  "name": "can_not_merge_pay_reason_message",
+                  "type": "String",
+                  "required": true,
+                  "description": "The reason message that the entire group cannot be combined for payment"
+                },
+                {
+                  "name": "can_merge_pay_order_items",
+                  "type": "Object[]",
+                  "required": true,
+                  "description": "Line items that can be merged",
+                  "children": [
+                    {
+                      "name": "order_id",
+                      "type": "String",
+                      "required": true,
+                      "description": "order id"
+                    }
+                  ]
+                },
+                {
+                  "name": "can_merge_pay",
+                  "type": "Boolean",
+                  "required": true,
+                  "description": "is can merge pay"
+                },
+                {
+                  "name": "group_code",
+                  "type": "String",
+                  "required": true,
+                  "description": "order pay group code etc.  CN/MX"
+                },
+                {
+                  "name": "can_not_merge_pay_order_items",
+                  "type": "Object[]",
+                  "required": true,
+                  "description": "Line items that can not be merged",
+                  "children": [
+                    {
+                      "name": "can_not_merge_pay_reason_message",
+                      "type": "String",
+                      "required": true,
+                      "description": "can not merge pay reason message"
+                    },
+                    {
+                      "name": "can_not_merge_pay_reason",
+                      "type": "String",
+                      "required": true,
+                      "description": "can not merge pay reason code"
+                    },
+                    {
+                      "name": "order_id",
+                      "type": "String",
+                      "required": true,
+                      "description": "order id"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "Logistics Tracking",
+      "path": "/order/logistics/tracking/get",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Forder%2Flogistics%2Ftracking%2Fget&methodType=GET%2FPOST",
+      "updatedAt": "2024-08-12 15:09:31",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Allows partners to track shipment and logistics updates for placed orders.",
+      "request": [
+        {
+          "name": "trade_id",
+          "type": "Number",
+          "required": true,
+          "description": "order id"
+        }
+      ],
+      "response": [
+        {
+          "name": "tracking_list",
+          "type": "Object[]",
+          "required": true,
+          "description": "logistics tracking list",
+          "children": [
+            {
+              "name": "carrier",
+              "type": "String",
+              "required": true,
+              "description": "carrier"
+            },
+            {
+              "name": "event_list",
+              "type": "Object[]",
+              "required": true,
+              "description": "{}",
+              "children": [
+                {
+                  "name": "event_code",
+                  "type": "String",
+                  "required": true,
+                  "description": "event Code"
+                },
+                {
+                  "name": "event_location",
+                  "type": "String",
+                  "required": true,
+                  "description": "event Location"
+                },
+                {
+                  "name": "event_time",
+                  "type": "String",
+                  "required": true,
+                  "description": "time"
+                },
+                {
+                  "name": "event_name",
+                  "type": "String",
+                  "required": true,
+                  "description": "name"
+                }
+              ]
+            },
+            {
+              "name": "tracking_url",
+              "type": "String",
+              "required": true,
+              "description": "url"
+            },
+            {
+              "name": "current_event_code",
+              "type": "String",
+              "required": true,
+              "description": "The latest logistics event code"
+            },
+            {
+              "name": "tracking_number",
+              "type": "String",
+              "required": true,
+              "description": "tracking Number"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "title": "order logistics info query api",
+      "path": "/order/logistics/query",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Forder%2Flogistics%2Fquery&methodType=GET%2FPOST",
+      "updatedAt": "2025-08-05 14:45:09",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "order logistics info query api",
+      "request": [
+        {
+          "name": "trade_id",
+          "type": "String",
+          "required": true,
+          "description": "order id"
+        },
+        {
+          "name": "data_select",
+          "type": "String",
+          "required": false,
+          "description": "If logistic_order is provided, it will query the express shipping tracking number."
+        }
+      ],
+      "response": [
+        {
+          "name": "value",
+          "type": "Object",
+          "required": true,
+          "description": "{}",
+          "children": [
+            {
+              "name": "shipment_date",
+              "type": "Object",
+              "required": true,
+              "description": "Actual delivery time",
+              "children": [
+                {
+                  "name": "format_date",
+                  "type": "String",
+                  "required": true,
+                  "description": "MMM. d, yyyy, HH:mm:ss z. "
+                },
+                {
+                  "name": "timestamp",
+                  "type": "Number",
+                  "required": true,
+                  "description": "timestamp"
+                }
+              ]
+            },
+            {
+              "name": "logistic_status",
+              "type": "String",
+              "required": true,
+              "description": "Shipping Status"
+            },
+            {
+              "name": "shipping_order_list",
+              "type": "Object[]",
+              "required": false,
+              "description": "[]",
+              "children": [
+                {
+                  "name": "voucher",
+                  "type": "Object",
+                  "required": false,
+                  "description": "{}",
+                  "children": [
+                    {
+                      "name": "tracking_number",
+                      "type": "String",
+                      "required": false,
+                      "description": "tracking number"
+                    },
+                    {
+                      "name": "logistics_type",
+                      "type": "String",
+                      "required": false,
+                      "description": "logistics type"
+                    },
+                    {
+                      "name": "service_provider",
+                      "type": "String",
+                      "required": false,
+                      "description": "service provider"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "errors": []
+    }
+  ]
+}
