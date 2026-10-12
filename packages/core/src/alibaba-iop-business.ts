@@ -6,6 +6,8 @@ import type { GatewayCredentials, OperationId } from './types';
 
 /** Explicit mappings, not method.replaceAll('.', '/'). Unmapped methods never go to TOP. */
 type BusinessPath = `/alibaba/${string}` | `/icbu/${string}` | `/order/${string}`;
+const INVENTORY = 'alibaba.icbu.product.inventory.get';
+const ENCRYPT = 'alibaba.icbu.product.id.encrypt';
 const READ_PATHS: Readonly<Record<string, BusinessPath>> = {
   'alibaba.icbu.product.list': '/alibaba/icbu/product/list',
   'alibaba.icbu.product.group.get': '/alibaba/icbu/product/group/get',
@@ -19,6 +21,8 @@ const READ_PATHS: Readonly<Record<string, BusinessPath>> = {
   'alibaba.icbu.product.schema.get': '/alibaba/icbu/product/schema/get',
   'alibaba.icbu.product.score.get': '/icbu/product/score/get',
   'alibaba.icbu.product.type.available.get': '/icbu/product/other/available/get',
+  [INVENTORY]: '/icbu/product/inventory/get',
+  [ENCRYPT]: '/alibaba/icbu/product/id/encrypt',
   'alibaba.seller.order.list': '/alibaba/order/list',
   'alibaba.seller.order.logistics.get': '/order/logistics/query'
 };
@@ -55,6 +59,7 @@ const READ_OPERATIONS: readonly OperationId[] = [
   'listProductCategories',
   'mapProductCategory',
   'getProductScore',
+  'getProductInventory',
   'listTradeOrders',
   'getTradeOrderLogistics',
   'getTradeOrderAggregate'
@@ -92,14 +97,17 @@ export async function createIopBusinessRequest(
       : undefined;
   if (!path) throw failure('ALIBABA_IOP_METHOD_UNSUPPORTED');
   let business: Readonly<Record<string, unknown>> = input;
-  if (method.startsWith('alibaba.icbu.product.schema.')) {
+  if (method === INVENTORY || method === ENCRYPT) {
+    if (Object.keys(input).some((key) => key !== 'product_id' && key !== 'language'))
+      throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
+    business = { product_id: positiveInteger(input.product_id), language: requiredText(input.language) };
+  } else if (method.startsWith('alibaba.icbu.product.schema.')) {
     const request = input.param_product_top_publish_request;
     if (!isRecord(request)) throw failure('REQUEST_CONTRACT_INVALID');
     const data: Record<string, unknown> = {
       cat_id: positiveInteger(request.cat_id),
-      language: request.language
+      language: requiredText(request.language)
     };
-    if (typeof data.language !== 'string' || !data.language) throw failure('REQUEST_CONTRACT_INVALID');
     if (method.endsWith('schema.get')) {
       // IOP chooses the market inside the returned Schema, not a TOP transport parameter.
       if (
@@ -111,8 +119,7 @@ export async function createIopBusinessRequest(
       if (method.includes('render') || method.endsWith('update'))
         data.product_id = positiveInteger(request.product_id);
       if (!method.includes('render')) {
-        if (typeof request.xml !== 'string' || !request.xml.trim()) throw failure('REQUEST_CONTRACT_INVALID');
-        data.xml = request.xml;
+        data.xml = requiredText(request.xml);
       }
     }
     business = method.endsWith('schema.render')
@@ -177,8 +184,7 @@ export function normalizeIopBusinessResponse(
   method: string,
   credentials: GatewayCredentials
 ): unknown {
-  if (!isRecord(value) || (typeof value.code !== 'number' && typeof value.code !== 'string'))
-    throw failure('ALIBABA_IOP_RESPONSE_INVALID');
+  if (!isRecord(value) || (typeof value.code !== 'number' && typeof value.code !== 'string')) throw failure();
   if (value.code !== '0' && value.code !== 0)
     throw providerFailure(value.code, value.message, value.request_id, credentials);
   if (method === 'alibaba.seller.order.list' || method === 'alibaba.seller.order.logistics.get') {
@@ -192,73 +198,96 @@ export function normalizeIopBusinessResponse(
         : (typeof data.logistic_status !== 'string' && !isRecord(data.shipment_date)) ||
           (data.shipping_order_list !== undefined && !records(data.shipping_order_list)))
     )
-      throw failure('ALIBABA_IOP_RESPONSE_INVALID');
+      throw failure();
     return { [`${method.replaceAll('.', '_')}_response`]: { value: data } };
   }
-  const result = value.result;
-  if (!isRecord(result)) throw failure('ALIBABA_IOP_RESPONSE_INVALID');
-  if (
-    (result.error_code !== undefined &&
-      result.error_code !== '' &&
-      result.error_code !== '0' &&
-      result.error_code !== 0) ||
-    result.success === false ||
-    result.success === 'false'
-  )
-    throw providerFailure(
-      result.error_code ?? result.msg_code ?? 'BUSINESS_REJECTED',
-      result.error_msg ?? result.msg ?? result.message_info ?? result.response_msg,
-      result.trace_id ?? value.request_id,
-      credentials,
-      Object.hasOwn(WRITE_PATHS, method) ? 'ALIBABA_IOP_BUSINESS_REJECTED' : 'ALIBABA_IOP_API_REJECTED'
-    );
+  const root = value.result;
+  if (!isRecord(root)) throw failure();
+  const inventory = method === INVENTORY;
+  const result = inventory && Object.hasOwn(root, 'result') ? root.result : root;
+  if (!isRecord(result)) throw failure();
+  const success = result.success === true || result.success === 'true';
+  for (const data of root === result ? [result] : [root, result])
+    if (
+      (data.error_code !== undefined &&
+        data.error_code !== '' &&
+        data.error_code !== '0' &&
+        data.error_code !== 0) ||
+      (inventory && data.msg_code) ||
+      data.success === false ||
+      data.success === 'false'
+    )
+      throw providerFailure(
+        data.error_code ?? data.msg_code ?? 'BUSINESS_REJECTED',
+        data.error_msg ?? data.msg ?? data.message_info ?? data.response_msg,
+        data.trace_id ?? value.request_id,
+        credentials,
+        Object.hasOwn(WRITE_PATHS, method) ? 'ALIBABA_IOP_BUSINESS_REJECTED' : 'ALIBABA_IOP_API_REJECTED'
+      );
   if (method === 'alibaba.icbu.product.list' && (!records(result.products) || !validTotal(result.total_item)))
-    throw failure('ALIBABA_IOP_RESPONSE_INVALID');
-  if (method === 'alibaba.icbu.product.group.get' && !isRecord(result.product_group))
-    throw failure('ALIBABA_IOP_RESPONSE_INVALID');
-  if (method === 'alibaba.icbu.photobank.group.list' && !records(result.groups))
-    throw failure('ALIBABA_IOP_RESPONSE_INVALID');
+    throw failure();
+  if (method === 'alibaba.icbu.product.group.get' && !isRecord(result.product_group)) throw failure();
+  if (method === 'alibaba.icbu.photobank.group.list' && !records(result.groups)) throw failure();
   if (
     method === 'alibaba.icbu.photobank.list' &&
     (!isRecord(result.pagination_query_list) || !records(result.pagination_query_list.list))
   )
-    throw failure('ALIBABA_IOP_RESPONSE_INVALID');
+    throw failure();
   if (
     (method.includes('schema.render') ||
       method.endsWith('schema.get') ||
       method.endsWith('schema.level.get')) &&
-    ((result.success !== true && result.success !== 'true') ||
-      typeof result.data !== 'string' ||
-      !result.data.trim())
+    (!success || typeof result.data !== 'string' || !result.data.trim())
   )
-    throw failure('ALIBABA_IOP_RESPONSE_INVALID');
+    throw failure();
   let normalized = result;
-  if (Object.hasOwn(WRITE_PATHS, method)) {
-    if (result.success !== true && result.success !== 'true') throw failure('ALIBABA_IOP_RESPONSE_INVALID');
+  if (inventory) {
+    if (!success || !records(result.data_list)) throw failure();
+    const { message_info, ...data } = result;
+    normalized = {
+      result: {
+        ...data,
+        success: true,
+        ...(message_info === undefined ? {} : { biz_message: message_info })
+      },
+      ...(typeof value.request_id === 'string' ? { request_id: value.request_id } : {})
+    };
+  } else if (method === ENCRYPT) {
+    if (
+      typeof result.secret_id !== 'string' ||
+      !result.secret_id.trim() ||
+      result.secret_id.length > 1024 ||
+      /\p{Cc}/u.test(result.secret_id)
+    )
+      throw failure();
+    normalized = { secret_id: result.secret_id };
+  } else if (Object.hasOwn(WRITE_PATHS, method)) {
+    if (!success) throw failure();
     const id = method.endsWith('schema.add') ? result.data : result.product_id;
-    if (!validTotal(id) || Number(id) <= 0) throw failure('ALIBABA_IOP_RESPONSE_INVALID');
+    if (!validTotal(id) || Number(id) <= 0) throw failure();
     normalized = { ...result, biz_success: true, product_id: Number(id) };
   } else if (method === 'alibaba.icbu.category.get.new') {
-    if (!isRecord(result.result) || (result.success !== true && result.success !== 'true'))
-      throw failure('ALIBABA_IOP_RESPONSE_INVALID');
+    if (!isRecord(result.result) || !success) throw failure();
     normalized = { category: result.result };
   } else if (method === 'alibaba.icbu.category.id.mapping') {
     const mapped = isRecord(result.mapping_result)
       ? result.mapping_result.category_id
       : result.mapping_result;
-    if ((result.success !== true && result.success !== 'true') || !validTotal(mapped) || Number(mapped) <= 0)
-      throw failure('ALIBABA_IOP_RESPONSE_INVALID');
+    if (!success || !validTotal(mapped) || Number(mapped) <= 0) throw failure();
     normalized = { ...result, mapping_result: Number(mapped) };
   } else if (method === 'alibaba.icbu.product.score.get') {
-    if (typeof result.final_score !== 'string' && typeof result.final_score !== 'number')
-      throw failure('ALIBABA_IOP_RESPONSE_INVALID');
-    if (!String(result.final_score).trim() || !Number.isFinite(Number(result.final_score)))
-      throw failure('ALIBABA_IOP_RESPONSE_INVALID');
+    if (typeof result.final_score !== 'string' && typeof result.final_score !== 'number') throw failure();
+    if (!String(result.final_score).trim() || !Number.isFinite(Number(result.final_score))) throw failure();
     normalized = { result };
   } else if (method === 'alibaba.icbu.product.type.available.get') {
-    if (result.success !== true || !isRecord(result.data)) throw failure('ALIBABA_IOP_RESPONSE_INVALID');
+    if (result.success !== true || !isRecord(result.data)) throw failure();
   }
   return { [`${method.replaceAll('.', '_')}_response`]: normalized };
+}
+
+function requiredText(value: unknown): string {
+  if (typeof value !== 'string' || !value.trim()) throw failure('REQUEST_CONTRACT_INVALID');
+  return value;
 }
 
 function positiveInteger(value: unknown): number {
@@ -283,7 +312,7 @@ function validTotal(value: unknown): boolean {
   );
 }
 
-function failure(code: string): GatewayException {
+function failure(code = 'ALIBABA_IOP_RESPONSE_INVALID'): GatewayException {
   return new GatewayException({ code, message: code, retryable: false });
 }
 function providerFailure(

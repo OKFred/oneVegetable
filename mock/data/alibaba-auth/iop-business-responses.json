@@ -51,6 +51,34 @@
       "data": "<itemSchema><field id=\"subject\" type=\"input\"><value>Fixture product</value></field></itemSchema>"
     }
   },
+  "inventory": {
+    "code": "0",
+    "result": {
+      "result": {
+        "trace_id": "fixture-inventory-trace",
+        "success": true,
+        "message_info": "success",
+        "msg_code": "",
+        "data_list": [
+          {
+            "sku_id": 33323,
+            "inventory_code": "CN_LOCAL_01",
+            "inventory": 100,
+            "sku_outer_id": "fixture-sku"
+          }
+        ]
+      }
+    }
+  },
+  "encryptedProduct": {
+    "code": "0",
+    "result": { "secret_id": "fixture-encrypted-product", "error_code": "", "error_msg": "" }
+  },
+  "emptyInventory": {
+    "code": "0",
+    "result": { "data_list": [], "success": true },
+    "request_id": "fixture-empty-inventory-trace"
+  },
   "orders": {
     "code": 0,
     "value": { "order_list": [{ "trade_id": "fixture-order", "trade_status": "PAID" }], "total_count": 1 }

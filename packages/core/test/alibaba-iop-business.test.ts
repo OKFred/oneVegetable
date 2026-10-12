@@ -10,6 +10,10 @@ import {
 import { NetworkManager, type NetworkTransport } from '../src/network';
 import { ProductAdapter } from '../src/product-adapter';
 import { PhotoAdapter } from '../src/photo-adapter';
+import { ProductInventoryAdapter } from '../src/product-inventory';
+import { executeCapabilityCall } from '../src/capability-call';
+import { findCapability } from '../src/capability-registry';
+import { validateCapabilityRequest, validateCapabilityResponse } from '../src/capability-validation-worker';
 import type { GatewayCredentials } from '../src/types';
 
 const credentials: GatewayCredentials = {
@@ -28,6 +32,20 @@ function createClient(response: unknown = fixtures.products, options = {}) {
   });
   return { send, client: new AlibabaClient(credentials, network, options) };
 }
+const inventoryMethod = 'alibaba.icbu.product.inventory.get';
+const encryptMethod = 'alibaba.icbu.product.id.encrypt';
+const inventoryInput = { productId: '100001', source: 'product' as const, language: 'en_US' as const };
+const inventoryAdapter = (response: unknown) => {
+  const current = createClient(response);
+  return {
+    ...current,
+    adapter: new ProductInventoryAdapter(
+      current.client,
+      validateCapabilityRequest,
+      validateCapabilityResponse
+    )
+  };
+};
 describe('explicit IOP business compatibility', () => {
   it('signs the actual API path and never includes TOP method/session/date fields', async () => {
     const payload = await createIopBusinessRequest(
@@ -125,6 +143,249 @@ describe('explicit IOP business compatibility', () => {
     await expect(
       new PhotoAdapter(createClient(fixtures.photoGroups).client).listGroups()
     ).resolves.toMatchObject([{ id: '1001', name: 'Fixture images' }]);
+  });
+  it.each([
+    [inventoryMethod, '/icbu/product/inventory/get'],
+    [encryptMethod, '/alibaba/icbu/product/id/encrypt']
+  ] as const)('maps only documented numeric ID/language parameters for %s', async (method, path) => {
+    expect(iopOperationReason('callCapability', method)).toBeNull();
+    expect(findCapability(method)).toMatchObject({ risk: 'read', realCallEnabled: true });
+    const payload = await createIopBusinessRequest(credentials, method, {
+      product_id: inventoryInput.productId,
+      language: inventoryInput.language
+    });
+    expect(payload.url).toBe(IOP_BUSINESS_ENDPOINT + path);
+    expect(payload.parameters).toMatchObject({ product_id: '100001', language: 'en_US' });
+    expect(payload.parameters.sign).toBe(
+      await signIopRequest(path, payload.parameters, credentials.appSecret)
+    );
+    const { client, send } = createClient();
+    for (const product_id of [
+      undefined,
+      null,
+      true,
+      0,
+      -1,
+      1.5,
+      Number.MAX_SAFE_INTEGER + 1,
+      '9007199254740992',
+      '1e3',
+      '001',
+      'fixture-encrypted-product'
+    ])
+      await expect(client.call(method, { product_id, language: 'en_US' })).rejects.toMatchObject({
+        gatewayError: { code: 'REQUEST_CONTRACT_INVALID' }
+      });
+    for (const language of [undefined, null, false, '', ' '])
+      await expect(client.call(method, { product_id: 100001, language })).rejects.toMatchObject({
+        gatewayError: { code: 'REQUEST_CONTRACT_INVALID' }
+      });
+    await expect(
+      client.call(method, { product_id: 100001, language: 'en_US', sku_id: 33323 })
+    ).rejects.toMatchObject({
+      gatewayError: { code: 'ALIBABA_IOP_PARAMETER_UNSUPPORTED' }
+    });
+    expect(send).not.toHaveBeenCalled();
+  });
+  it('feeds the dedicated inventory adapter and generic capability validator without wrapper drift', async () => {
+    expect(iopOperationReason('getProductInventory')).toBeNull();
+    const { adapter, send } = inventoryAdapter(fixtures.inventory);
+    await expect(adapter.get(inventoryInput)).resolves.toMatchObject({
+      status: 'ready',
+      traceId: 'fixture-inventory-trace',
+      issues: [],
+      records: [{ skuId: '33323', inventoryCode: 'CN_LOCAL_01', inventory: 100 }]
+    });
+    expect(send.mock.calls[0]?.[0]).toEqual(new URL(IOP_BUSINESS_ENDPOINT + '/icbu/product/inventory/get'));
+    expect(Object.fromEntries(send.mock.calls[0]?.[1].body as URLSearchParams)).toMatchObject({
+      product_id: '100001',
+      language: 'en_US',
+      access_token: credentials.accessToken,
+      sign_method: 'sha256'
+    });
+    await expect(
+      executeCapabilityCall(
+        createClient(fixtures.inventory).client,
+        {
+          method: inventoryMethod,
+          parameters: { product_id: 100001, language: 'en_US' }
+        },
+        { validateCapabilityRequest, validateCapabilityResponse }
+      )
+    ).resolves.toMatchObject({
+      contractValid: true,
+      contractIssues: [],
+      data: { result: { success: true, biz_message: 'success' } }
+    });
+  });
+  it('preserves absent quantities and unsafe SKU IDs as drift, not invented stock or identifiers', async () => {
+    const result = fixtures.inventory.result.result;
+    for (const [row, expected] of [
+      [
+        { sku_id: 33323, inventory_code: 'CN_LOCAL_01', inventory: 0 },
+        { status: 'ready', records: [{ inventory: 0 }] }
+      ],
+      [
+        { sku_id: 33323, inventory_code: 'CN_LOCAL_01' },
+        { status: 'drift', records: [{ inventory: null }] }
+      ],
+      [
+        { sku_id: Number.MAX_SAFE_INTEGER + 1, inventory_code: 'CN_LOCAL_01', inventory: 1 },
+        { status: 'drift', records: [{ skuId: null }] }
+      ],
+      [
+        { sku_id: '33323', inventory_code: 'CN_LOCAL_01', inventory: 1 },
+        { status: 'drift', records: [{ skuId: null }] }
+      ],
+      [
+        { sku_id: 33323, inventory_code: 'CN_LOCAL_01', inventory: -1 },
+        { status: 'drift', records: [{ inventory: null }] }
+      ]
+    ] as const) {
+      await expect(
+        inventoryAdapter({ code: 0, result: { result: { ...result, data_list: [row] } } }).adapter.get(
+          inventoryInput
+        )
+      ).resolves.toMatchObject(expected);
+    }
+    await expect(
+      inventoryAdapter({ code: 0, result: { result: { ...result, data_list: [] } } }).adapter.get(
+        inventoryInput
+      )
+    ).resolves.toMatchObject({ status: 'no-data', records: [] });
+  });
+  it('accepts the observed single inventory layer and supplements its trace from request_id', async () => {
+    await expect(
+      inventoryAdapter(fixtures.emptyInventory).adapter.get(inventoryInput)
+    ).resolves.toMatchObject({
+      status: 'no-data',
+      records: [],
+      issues: [],
+      traceId: 'fixture-empty-inventory-trace'
+    });
+    const { trace_id: _trace, ...result } = fixtures.inventory.result.result;
+    const response = { ...fixtures.emptyInventory, result };
+    await expect(inventoryAdapter(response).adapter.get(inventoryInput)).resolves.toMatchObject({
+      status: 'ready',
+      records: [{ inventory: 100 }],
+      issues: [],
+      traceId: 'fixture-empty-inventory-trace'
+    });
+    await expect(
+      executeCapabilityCall(
+        createClient(fixtures.emptyInventory).client,
+        {
+          method: inventoryMethod,
+          parameters: { product_id: 100001, language: 'en_US' }
+        },
+        { validateCapabilityRequest, validateCapabilityResponse }
+      )
+    ).resolves.toMatchObject({
+      contractValid: true,
+      contractIssues: [],
+      traceId: 'fixture-empty-inventory-trace',
+      data: { result: { success: true, data_list: [] } }
+    });
+  });
+  it.each([
+    {},
+    { success: true },
+    { data_list: [] },
+    { success: true, data_list: [null] },
+    { result: null, success: true, data_list: [] },
+    { result: fixtures.inventory.result },
+    { result: {} },
+    { result: { success: true } },
+    { result: { data_list: [] } },
+    { result: { success: true, data_list: [null] } }
+  ])('rejects missing or malformed inventory envelopes: %j', async (result) => {
+    const { client, send } = createClient({ code: 0, result }, { maxAttempts: 3, shouldRetry: () => true });
+    await expect(
+      client.call(inventoryMethod, { product_id: 100001, language: 'en_US' })
+    ).rejects.toMatchObject({
+      gatewayError: { code: 'ALIBABA_IOP_RESPONSE_INVALID', retryable: false }
+    });
+    expect(send).toHaveBeenCalledOnce();
+  });
+  it.each([
+    { ...fixtures.inventory, code: 'InvalidAccessToken' },
+    { code: 0, result: { ...fixtures.inventory.result, error_code: 'DENIED' } },
+    {
+      code: 0,
+      result: { result: { ...fixtures.inventory.result.result, success: false, msg_code: 'DENIED' } }
+    },
+    { code: 0, result: { result: { ...fixtures.inventory.result.result, success: 'false' } } },
+    { code: 0, result: { ...fixtures.emptyInventory.result, success: false, msg_code: 'DENIED' } },
+    { code: 0, result: { result: { ...fixtures.inventory.result.result, msg_code: 'DENIED' } } }
+  ])('never converts inventory failures into successful/empty stock: %j', async (response) => {
+    const { client, send } = createClient(response, { maxAttempts: 3, shouldRetry: () => true });
+    await expect(
+      client.call(inventoryMethod, { product_id: 100001, language: 'en_US' })
+    ).rejects.toMatchObject({
+      gatewayError: { code: 'ALIBABA_IOP_API_REJECTED', retryable: false }
+    });
+    expect(send).toHaveBeenCalledOnce();
+  });
+  it('normalizes ID encryption into the existing read-only capability contract', async () => {
+    const { client, send } = createClient(fixtures.encryptedProduct);
+    await expect(
+      executeCapabilityCall(
+        client,
+        {
+          method: encryptMethod,
+          parameters: { product_id: 100001, language: 'en_US' }
+        },
+        { validateCapabilityRequest, validateCapabilityResponse }
+      )
+    ).resolves.toMatchObject({
+      contractValid: true,
+      contractIssues: [],
+      data: { secret_id: 'fixture-encrypted-product' }
+    });
+    expect(send.mock.calls[0]?.[0]).toEqual(
+      new URL(IOP_BUSINESS_ENDPOINT + '/alibaba/icbu/product/id/encrypt')
+    );
+    for (const secret_id of [
+      undefined,
+      null,
+      100001,
+      '',
+      ' ',
+      'fixture\nid',
+      'fixture\u007fid',
+      'x'.repeat(1025)
+    ])
+      expect(() =>
+        normalizeIopBusinessResponse({ code: 0, result: { secret_id } }, encryptMethod, credentials)
+      ).toThrow('ALIBABA_IOP_RESPONSE_INVALID');
+    const secret_id = ' fixture.+/=opaque-id ';
+    expect(
+      normalizeIopBusinessResponse({ code: 0, result: { secret_id } }, encryptMethod, credentials)
+    ).toEqual({ alibaba_icbu_product_id_encrypt_response: { secret_id } });
+    expect(() =>
+      normalizeIopBusinessResponse(
+        { code: 0, result: { secret_id: 'fixture-id', error_code: 'DENIED' } },
+        encryptMethod,
+        credentials
+      )
+    ).toThrow('ALIBABA_IOP_API_REJECTED');
+  });
+  it('keeps SKU inventory, stock writes and ID decryption unsupported before network', async () => {
+    const { adapter, send, client } = inventoryAdapter(fixtures.inventory);
+    await expect(adapter.get({ ...inventoryInput, source: 'sku' })).rejects.toMatchObject({
+      gatewayError: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED' }
+    });
+    for (const method of [
+      'alibaba.icbu.product.inventory.update',
+      'alibaba.icbu.product.sku.inventory.get',
+      'alibaba.icbu.product.id.decrypt'
+    ]) {
+      expect(iopOperationReason('callCapability', method)).toBe('ALIBABA_IOP_METHOD_UNSUPPORTED');
+      await expect(client.call(method, {})).rejects.toMatchObject({
+        gatewayError: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED' }
+      });
+    }
+    expect(send).not.toHaveBeenCalled();
   });
   it('fails unmapped methods and writes before network; never derives a path from the TOP method', async () => {
     const { client, send } = createClient();

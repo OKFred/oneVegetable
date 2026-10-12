@@ -17,7 +17,11 @@ export default defineConfig({
       'import.meta.env.VITE_APP_RUNTIME': JSON.stringify('extension')
     },
     plugins: [tailwindcss(), extensionValidatorCompactionPlugin(), extensionValidationLocalesPlugin()],
-    build: { minify: 'terser', terserOptions: { compress: { passes: 3 }, format: { comments: false } } }
+    // Chrome 102 supports ES2020; keep safe modern syntax instead of ES5-style minifier output.
+    build: {
+      minify: 'terser',
+      terserOptions: { ecma: 2020, compress: { passes: 3 }, format: { comments: false } }
+    }
   }),
   hooks: {
     'config:resolved'(wxt) {
