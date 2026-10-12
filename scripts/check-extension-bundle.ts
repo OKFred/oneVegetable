@@ -1,5 +1,6 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { assertExtensionUnpackedBudget } from './lib/extension-package-budget';
 import { inspectExtensionWorkerGraph } from './lib/extension-worker-graph';
 
 interface Manifest {
@@ -66,9 +67,11 @@ if (!productTransferWorker || productTransferWorker.size > 50_000) {
 if (!i18nChunk || i18nChunk.size > 310_000) {
   errors.push(`Bilingual i18n chunk exceeds 310 KB: ${i18nChunk?.size ?? 'missing'}`);
 }
-// v2.5 includes direct S3 signing, local encrypted storage, mapping UI and both locales.
-// Keep startup/worker/permission/security gates unchanged; measured unpacked size is ~4.06 MB.
-if (totalBytes > 4_100_000) errors.push(`Unpacked extension exceeds 4.1 MB: ${totalBytes}`);
+try {
+  assertExtensionUnpackedBudget(totalBytes);
+} catch (error) {
+  errors.push(error instanceof Error ? error.message : String(error));
+}
 if (sizes.some((entry) => entry.file.endsWith('.map'))) errors.push('Production source maps are not allowed');
 if (manifest.permissions?.includes('cookies')) errors.push('cookies permission is not allowed');
 if (manifest.host_permissions?.includes('<all_urls>'))
