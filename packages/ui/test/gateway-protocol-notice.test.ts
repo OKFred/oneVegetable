@@ -9,11 +9,18 @@ afterEach(() => {
 });
 describe('protocol guidance', () => {
   it.each(['zh-CN', 'en-US'] as const)(
-    'explains mapped reads and verified writes without a blanket ban (%s)',
+    'names only the three verified Schema writes and keeps other methods gated (%s)',
     (locale) => {
       uiI18n.global.locale.value = locale;
       const wrapper = mount(GatewayProtocolNotice, { props: { protocol: 'iop' } });
-      expect(wrapper.text()).toContain(locale === 'zh-CN' ? '通过账号验收的方法' : 'account-verified writes');
+      expect(wrapper.text()).toContain(
+        locale === 'zh-CN'
+          ? '已验收的 Schema 发布、存草稿、更新'
+          : 'verified Schema publish, draft and update'
+      );
+      expect(wrapper.text()).toContain(
+        locale === 'zh-CN' ? '其他方法逐项启用' : 'Other methods open individually'
+      );
       expect(wrapper.text()).toContain(locale === 'zh-CN' ? '不回退 TOP' : 'no TOP fallback');
       expect(wrapper.text()).not.toMatch(/不支持订单|not orders|compatible reads/u);
       wrapper.unmount();

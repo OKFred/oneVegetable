@@ -1,5 +1,5 @@
 import { cp, mkdtemp, readFile, writeFile, readdir } from 'node:fs/promises';
-import { createHash, generateKeyPairSync } from 'node:crypto';
+import { createHash, createHmac, generateKeyPairSync } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { resolve, extname } from 'node:path';
 import { chromium, expect, test, type BrowserContext, type Worker, type Page } from '@playwright/test';
@@ -14,6 +14,13 @@ import tokens from '../../mock/data/alibaba-auth/iop-token-responses.json' with 
 import credentials from '../../mock/data/node-gateway-credentials.json' with { type: 'json' };
 import business from '../../mock/data/alibaba-auth/iop-business-responses.json' with { type: 'json' };
 import { iopOperationReason } from '../../packages/core/src/alibaba-iop-business';
+import { isProductMutationJob } from '../../packages/core/src/product-mutation-job-client';
+import { requireProductOperationContext } from '../../packages/core/src/product-operation-context';
+import {
+  compareProductMutationFingerprints,
+  createProductMutationFingerprints
+} from '../../packages/core/src/product-mutation-fingerprint';
+import { installNodeXmlDomGlobals } from '../../scripts/node-xml-dom';
 
 let context: BrowserContext;
 let worker: Worker;
@@ -180,7 +187,13 @@ async function exportBundle(tool: Page): Promise<Record<string, unknown>> {
   return JSON.parse(await readFile(path, 'utf8')) as Record<string, unknown>;
 }
 
-async function sendWorkbench(page: Page, kind: string, operation: string, payload: unknown = {}) {
+async function sendWorkbench(
+  page: Page,
+  kind: string,
+  operation: string,
+  payload: unknown = {},
+  extra: Record<string, unknown> = {}
+) {
   return page.evaluate(
     async (message) => {
       const runtime = (
@@ -190,7 +203,7 @@ async function sendWorkbench(page: Page, kind: string, operation: string, payloa
       ).chrome.runtime;
       return runtime.sendMessage({ ...message, requestId: crypto.randomUUID() });
     },
-    { kind, operation, payload }
+    { ...extra, kind, operation, payload }
   );
 }
 async function openWorkbenchSettings(): Promise<Page> {
@@ -322,16 +335,9 @@ test('workbench persists explicit IOP and rejects unadapted methods without TOP 
     ok: true,
     data: [{ id: '1001', name: 'Fixture images' }]
   });
-  for (const operation of [
-    'getProductInventory',
-    'publishProduct',
-    'saveProductDraft',
-    'updateProduct',
-    'uploadPhoto'
-  ] as const) {
+  for (const operation of ['getProductInventory', 'uploadPhoto'] as const) {
     const reason = iopOperationReason(operation);
-    // Only test blocked writes; independently verified writes must never be replayed by this harness.
-    if (reason === null) continue;
+    expect(reason).toBe('ALIBABA_IOP_METHOD_UNSUPPORTED');
     expect(await send('gateway-request', operation)).toMatchObject({
       ok: false,
       error: { code: reason }
@@ -346,6 +352,204 @@ test('workbench persists explicit IOP and rejects unadapted methods without TOP 
   expect(reads).toBe(2);
   expect(topCalls).toBe(0);
 });
+
+for (const [operation, path, wrapper] of [
+  ['publishProduct', '/icbu/product/schema/add', 'publish_request'],
+  ['saveProductDraft', '/icbu/product/schema/add/draft', 'param_product_top_publish_request'],
+  ['updateProduct', '/icbu/product/schema/update', null]
+] as const) {
+  test(`formal MV3 ${operation} uses verified IOP parameters and confirms fixture readback`, async () => {
+    const restoreXml = installNodeXmlDomGlobals();
+    try {
+      const schemaXml = business.schema.result.data;
+      const fingerprints = await createProductMutationFingerprints(schemaXml);
+      expect(iopOperationReason(operation)).toBeNull();
+      let writes = 0;
+      let reads = 0;
+      let topCalls = 0;
+      await context.route('https://eco.taobao.com/**', async (route) => {
+        topCalls++;
+        await route.abort();
+      });
+      await context.route(`${PUBLIC_AUTH_ORIGIN}/rest/**`, async (route) => {
+        expect(route.request().method()).toBe('POST');
+        const target = new URL(route.request().url()).pathname.slice('/rest'.length);
+        const parameters = new URLSearchParams(route.request().postData() ?? '');
+        expect(parameters.get('app_key')).toBe(credentials.manual.appKey);
+        expect(parameters.get('access_token')).toBe(credentials.manual.accessToken);
+        expect(parameters.get('sign_method')).toBe('sha256');
+        expect(parameters.has('session')).toBe(false);
+        expect(parameters.has('method')).toBe(false);
+        const signatureInput = [...parameters.keys()]
+          .filter((key) => key !== 'sign')
+          .sort()
+          .map((key) => key + (parameters.get(key) ?? ''))
+          .join('');
+        expect(parameters.get('sign')).toBe(
+          createHmac('sha256', credentials.manual.appSecret)
+            .update(target + signatureInput)
+            .digest('hex')
+            .toUpperCase()
+        );
+        if (target === path) {
+          writes++;
+          const input = wrapper
+            ? (JSON.parse(parameters.get(wrapper) ?? '') as Record<string, unknown>)
+            : Object.fromEntries(parameters);
+          expect(input).toMatchObject({ cat_id: wrapper ? 123 : '123', language: 'en_US', xml: schemaXml });
+          expect(input).not.toHaveProperty('version');
+          expect(input).not.toHaveProperty('publish_type');
+          if (operation === 'updateProduct') {
+            expect(input.product_id).toBe('100001');
+            expect(parameters.has('param_product_top_publish_request')).toBe(false);
+            expect(parameters.has('publish_request')).toBe(false);
+          } else {
+            expect(Object.keys(input).sort()).toEqual(['cat_id', 'language', 'xml']);
+            expect(
+              parameters.has(
+                wrapper === 'publish_request' ? 'param_product_top_publish_request' : 'publish_request'
+              )
+            ).toBe(false);
+          }
+          await route.fulfill({
+            json: {
+              code: 0,
+              result: {
+                success: true,
+                ...(operation === 'publishProduct' ? { data: 100001 } : { product_id: 100001 }),
+                trace_id: 'fixture-schema-write'
+              }
+            }
+          });
+        } else if (target === '/alibaba/icbu/product/list' && operation === 'publishProduct') {
+          reads++;
+          await route.fulfill({ json: business.products });
+        } else if (target === '/icbu/product/schema/render/draft' && operation === 'saveProductDraft') {
+          reads++;
+          expect(Object.fromEntries(parameters)).toMatchObject({
+            product_id: '100001',
+            cat_id: '123',
+            language: 'en_US'
+          });
+          expect(parameters.has('render_request')).toBe(false);
+          await route.fulfill({ json: business.schema });
+        } else if (target === '/icbu/product/schema/render' && operation === 'updateProduct') {
+          reads++;
+          expect(JSON.parse(parameters.get('render_request') ?? '')).toEqual({
+            product_id: 100001,
+            cat_id: 123,
+            language: 'en_US'
+          });
+          await route.fulfill({ json: business.schema });
+        } else {
+          await route.abort();
+          throw new Error('Unexpected offline Schema request');
+        }
+      });
+      const page = await openWorkbenchSettings();
+      expect(
+        await sendWorkbench(page, 'credential-vault-request', 'create', {
+          passphrase: '123456',
+          settings: {
+            appKey: credentials.manual.appKey,
+            appSecret: credentials.manual.appSecret,
+            accessToken: credentials.manual.accessToken,
+            protocol: 'iop',
+            endpoint: `${PUBLIC_AUTH_ORIGIN}/rest`,
+            signMethod: 'hmac-sha256'
+          }
+        })
+      ).toMatchObject({ ok: true });
+      const contextResponse = await page.evaluate(async () => {
+        const api = (
+          globalThis as unknown as {
+            chrome: { runtime: { sendMessage(value: unknown): Promise<{ ok: boolean; data?: unknown }> } };
+          }
+        ).chrome;
+        return api.runtime.sendMessage({ kind: 'product-operation-context', requestId: crypto.randomUUID() });
+      });
+      expect(contextResponse.ok).toBe(true);
+      const productContext = requireProductOperationContext(contextResponse.data);
+      const payload =
+        operation === 'updateProduct'
+          ? { categoryId: 123, language: 'en_US', productId: '100001', schemaPatchXml: schemaXml }
+          : { categoryId: 123, language: 'en_US', schemaXml };
+      const extra = {
+        productContext,
+        ...(operation === 'updateProduct' ? { productMutationFingerprint: fingerprints } : {})
+      };
+      expect(
+        await sendWorkbench(page, 'gateway-request', operation, payload, {
+          ...extra,
+          productContext: { ...productContext, gateway: 'a'.repeat(64) }
+        })
+      ).toMatchObject({ ok: false, error: { code: 'PRODUCT_CONTEXT_CHANGED' } });
+      expect(writes + reads).toBe(0);
+      const response = (await sendWorkbench(page, 'gateway-request', operation, payload, extra)) as {
+        ok: boolean;
+        data?: { job?: unknown };
+      };
+      expect(response).toMatchObject({ ok: true, data: { success: true, productId: '100001' } });
+      const job = response.data?.job;
+      if (!isProductMutationJob(job)) throw new Error('Missing offline Schema receipt');
+      expect(job).toMatchObject({ productContext, operation, categoryId: 123, language: 'en_US' });
+      expect(JSON.stringify(job)).not.toContain(credentials.manual.accessToken);
+      if (operation === 'updateProduct') {
+        expect(job.status).toBe('auditing');
+        expect(await sendWorkbench(page, 'gateway-request', operation, payload, extra)).toMatchObject({
+          ok: false,
+          error: { code: 'PRODUCT_MUTATION_ALREADY_IN_PROGRESS' }
+        });
+        const readback = (await sendWorkbench(page, 'gateway-request', 'renderProductSchema', {
+          categoryId: 123,
+          language: 'en_US',
+          productId: '100001'
+        })) as { data?: { xml?: unknown } };
+        expect(readback).toMatchObject({ ok: true, data: { xml: schemaXml } });
+        expect(
+          await sendWorkbench(page, 'product-mutation-job-request', 'complete-update-readback', {
+            id: job.id,
+            revision: job.revision,
+            result: {
+              kind: 'comparison',
+              comparison: await compareProductMutationFingerprints(
+                String(readback.data?.xml),
+                job.fieldExpectations
+              )
+            }
+          })
+        ).toMatchObject({
+          ok: true,
+          data: { status: 'verified', reasonCode: 'PRODUCT_MUTATION_READBACK_MATCHED' }
+        });
+      } else {
+        expect(job).toMatchObject({
+          status: 'verified',
+          reasonCode:
+            operation === 'publishProduct'
+              ? 'PRODUCT_PUBLISH_READBACK_MATCHED'
+              : 'PRODUCT_DRAFT_READBACK_MATCHED'
+        });
+        expect(await sendWorkbench(page, 'gateway-request', operation, payload, extra)).toMatchObject({
+          ok: false,
+          error: { code: 'PRODUCT_CREATION_ALREADY_ACCEPTED' }
+        });
+      }
+      expect(writes).toBe(1);
+      expect(reads).toBe(1);
+      expect(topCalls).toBe(0);
+      expect(creates + refreshes).toBe(0);
+      await page.reload();
+      expect(await sendWorkbench(page, 'product-mutation-job-request', 'get', { id: job.id })).toMatchObject({
+        ok: true,
+        data: { productContext, status: 'verified' }
+      });
+      expect(writes).toBe(1);
+    } finally {
+      restoreXml();
+    }
+  });
+}
 
 test('legacy TOP import stays TOP, saves only explicitly and keeps TOP session signing', async () => {
   let topCalls = 0;
@@ -423,7 +627,9 @@ for (const [body, code] of [
     ).toMatchObject({ ok: true });
     await workbench.reload();
     await expect(workbench.getByLabel('网关协议')).toHaveValue('iop');
-    await expect(workbench.getByTestId('iop-protocol-notice')).toContainText('通过账号验收的方法');
+    await expect(workbench.getByTestId('iop-protocol-notice')).toContainText(
+      '已验收的 Schema 发布、存草稿、更新'
+    );
     await expect(
       workbench.getByRole('button', { name: '获取 TOP 开放平台凭证', exact: true })
     ).toBeDisabled();

@@ -9,6 +9,7 @@ import productFixture from '../../../mock/data/products.json';
 import { createApiApp } from '../src/app';
 import { StaticOperationFeatureFlags } from '../src/abac';
 import { AuthService } from '../src/auth/service';
+import { AdminService } from '../src/auth/admin-service';
 import { SqlAuthRepository } from '../src/auth/repository';
 import { applyNodeMigrations, openNodeDatabase } from '../src/db/node-database';
 import {
@@ -39,22 +40,13 @@ function fixtureProduct() {
   return value;
 }
 
-// Simulate a future account-accepted gate only for BFF dispatch/lifecycle tests.
-// Production verification flags and serializers are never modified by these tests.
-function acceptFutureWrites() {
+// Display remains unsupported. Only its hypothetical lifecycle tests simulate a future gate.
+// The three accepted schema writes always exercise the real, unmodified protocol policy.
+function acceptFutureDisplay(operation: OperationId) {
+  if (operation !== 'updateProductDisplay') return;
   const original = iopBusiness.iopOperationReason;
   vi.spyOn(iopBusiness, 'iopOperationReason').mockImplementation((operation, method) =>
-    writes.some((write) => write === operation) ? null : original(operation, method)
-  );
-  const methodReason = iopBusiness.iopMethodReason;
-  vi.spyOn(iopBusiness, 'iopMethodReason').mockImplementation((method) =>
-    [
-      'alibaba.icbu.product.schema.add',
-      'alibaba.icbu.product.schema.add.draft',
-      'alibaba.icbu.product.schema.update'
-    ].includes(String(method))
-      ? null
-      : methodReason(method)
+    operation === 'updateProductDisplay' ? null : original(operation, method)
   );
 }
 
@@ -77,18 +69,34 @@ function payload(operation: (typeof writes)[number]) {
 async function appHarness(
   gateway: GatewayClient & { galleryGatewayContextId?: () => Promise<string> },
   runtime: ApiRuntime = 'node',
-  protocol: 'top' | 'iop' = 'iop'
+  protocol: 'top' | 'iop' = 'iop',
+  role: 'admin' | 'user' = 'admin'
 ) {
   const database = openNodeDatabase(':memory:');
   databases.push(database);
   applyNodeMigrations(database);
   const repository = new SqlAuthRepository(database.executor);
   const authService = new AuthService({ repository, bootstrapToken: credentialFixture.workbench.password });
-  const session = await authService.bootstrap({
+  let session = await authService.bootstrap({
     requestId: createRequestId(),
     bootstrapToken: credentialFixture.workbench.password,
     ...credentialFixture.workbench
   });
+  if (role === 'user') {
+    const username = 'fixture-readonly';
+    await new AdminService(repository).createUser({
+      requestId: createRequestId(),
+      username,
+      password: credentialFixture.workbench.password,
+      role,
+      actor: { actorId: session.user.id, username: session.user.username, role: 'admin', source: 'bff' }
+    });
+    session = await authService.login({
+      requestId: createRequestId(),
+      username,
+      password: credentialFixture.workbench.password
+    });
+  }
   const jobs = new SqlProductMutationJobRepository(database.executor);
   const registrations = [
     vi.spyOn(jobs, 'create'),
@@ -143,7 +151,7 @@ async function appHarness(
   };
 }
 
-describe('future accepted IOP write BFF consistency (test-only gate)', () => {
+describe('accepted IOP write BFF consistency (display simulation only)', () => {
   it.each([
     ['publishProduct', true],
     ['publishProduct', 'true'],
@@ -154,7 +162,6 @@ describe('future accepted IOP write BFF consistency (test-only gate)', () => {
   ] as const)(
     'feeds documented %s success=%s through the real normalizer and adapter',
     async (operation, success) => {
-      acceptFutureWrites();
       const send = vi.fn<NetworkTransport['send']>((input, init) => {
         const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
         const path =
@@ -169,6 +176,23 @@ describe('future accepted IOP write BFF consistency (test-only gate)', () => {
         expect(init.body.get('sign_method')).toBe('sha256');
         expect(init.body.has('session')).toBe(false);
         expect(init.body.has('method')).toBe(false);
+        const business: unknown =
+          operation === 'updateProduct'
+            ? Object.fromEntries(init.body)
+            : JSON.parse(
+                init.body.get(
+                  operation === 'publishProduct' ? 'publish_request' : 'param_product_top_publish_request'
+                ) ?? 'null'
+              );
+        expect(business).toMatchObject({
+          cat_id:
+            operation === 'updateProduct'
+              ? String(fixture.renderPayload.categoryId)
+              : fixture.draftPayload.categoryId,
+          language: fixture.draftPayload.language,
+          xml: operation === 'updateProduct' ? fixture.schema.result.data : fixture.draftPayload.schemaXml
+        });
+        if (operation === 'updateProduct') expect(init.body.get('product_id')).toBe(product.id);
         return Promise.resolve(
           Response.json({
             code: 0,
@@ -188,7 +212,15 @@ describe('future accepted IOP write BFF consistency (test-only gate)', () => {
         },
         { transport: { send } }
       );
-      expect(await gateway.request<OperationId>(operation, payload(operation))).toMatchObject({
+      expect(
+        await gateway.request<OperationId>(operation, payload(operation), {
+          requestId: createRequestId(),
+          productContext: {
+            identity: await opaqueGalleryId('fixture-admin'),
+            gateway: await gateway.galleryGatewayContextId()
+          }
+        })
+      ).toMatchObject({
         success: true,
         productId: product.id
       });
@@ -199,7 +231,6 @@ describe('future accepted IOP write BFF consistency (test-only gate)', () => {
   it.each(['publishProduct', 'saveProductDraft', 'updateProduct'] as const)(
     'rejects uncertain %s envelopes before adapter success and never retries',
     async (operation) => {
-      acceptFutureWrites();
       const send = vi
         .fn<NetworkTransport['send']>()
         .mockResolvedValue(Response.json({ code: 0, result: { success: 'true' } }));
@@ -224,7 +255,6 @@ describe('future accepted IOP write BFF consistency (test-only gate)', () => {
   it.each(['top', 'iop'] as const)(
     'keeps %s mutation transport failures to one attempt without a supplied context',
     async (protocol) => {
-      acceptFutureWrites();
       const send = vi
         .fn<NetworkTransport['send']>()
         .mockRejectedValue(new Error('Fixture transport interruption'));
@@ -249,7 +279,7 @@ describe('future accepted IOP write BFF consistency (test-only gate)', () => {
   it.each(writes)(
     'rejects changed credential context before %s registers any task or dispatches',
     async (operation) => {
-      acceptFutureWrites();
+      acceptFutureDisplay(operation);
       const request = vi.fn<GatewayClient['request']>();
       const galleryGatewayContextId = vi
         .fn()
@@ -273,7 +303,6 @@ describe('future accepted IOP write BFF consistency (test-only gate)', () => {
   it.each(['node', 'cloudflare'] as const)(
     'checks current credentials before task creation in %s even without a supplied context',
     async (runtime) => {
-      acceptFutureWrites();
       const request = vi.fn<GatewayClient['request']>();
       const galleryGatewayContextId = vi.fn().mockRejectedValue(
         new GatewayException({
@@ -295,7 +324,7 @@ describe('future accepted IOP write BFF consistency (test-only gate)', () => {
   );
 
   it.each(writes)('forwards the bound context through %s and its immediate readback', async (operation) => {
-    acceptFutureWrites();
+    acceptFutureDisplay(operation);
     const gatewayId = await opaqueGalleryId('fixture-current-generation');
     const request = vi.fn((operation: OperationId, _payload: unknown, _context?: GatewayRequestContext) => {
       if (operation === 'listProducts') return Promise.resolve(productFixture.responses.listProducts);
@@ -345,7 +374,7 @@ describe('future accepted IOP write BFF consistency (test-only gate)', () => {
   it.each(writes)(
     'does not let the dedicated adapter assume success for unknown %s responses',
     async (operation) => {
-      acceptFutureWrites();
+      acceptFutureDisplay(operation);
       const send = vi.fn<NetworkTransport['send']>();
       const call = vi.spyOn(AlibabaClient.prototype, 'call').mockImplementation((method) =>
         Promise.resolve({
@@ -374,7 +403,7 @@ describe('future accepted IOP write BFF consistency (test-only gate)', () => {
   it.each(writes)(
     'fences a non-retryable unknown %s outcome against repeated submission',
     async (operation) => {
-      acceptFutureWrites();
+      acceptFutureDisplay(operation);
       const gatewayId = await opaqueGalleryId('fixture-current-generation');
       const request = vi.fn((called: OperationId) =>
         called === 'listProducts'
@@ -414,7 +443,7 @@ describe('future accepted IOP write BFF consistency (test-only gate)', () => {
     }
   );
   it.each(writes)('distinguishes known provider rejection from an unknown %s outcome', async (operation) => {
-    acceptFutureWrites();
+    acceptFutureDisplay(operation);
     const request = vi.fn((called: OperationId) =>
       called === 'listProducts'
         ? Promise.resolve(productFixture.responses.listProducts)
@@ -440,6 +469,37 @@ describe('future accepted IOP write BFF consistency (test-only gate)', () => {
 });
 
 describe('account-accepted IOP draft routing (no verification mock)', () => {
+  it.each(['node', 'cloudflare'] as const)(
+    'still denies non-admin schema writes in %s even when all flags are enabled',
+    async (runtime) => {
+      const request = vi.fn<GatewayClient['request']>();
+      const galleryGatewayContextId = vi.fn<() => Promise<string>>();
+      const h = await appHarness({ request, galleryGatewayContextId }, runtime, 'iop', 'user');
+      for (const operation of ['publishProduct', 'saveProductDraft', 'updateProduct'] as const) {
+        const response = await h.call(operation, payload(operation));
+        expect(response.status).toBe(403);
+        expect(await response.json()).toMatchObject({
+          error: { code: 'USER_MUTATION_DENIED', retryable: false }
+        });
+      }
+      for (const register of h.registrations) expect(register).not.toHaveBeenCalled();
+      expect(request).not.toHaveBeenCalled();
+      expect(galleryGatewayContextId).not.toHaveBeenCalled();
+    }
+  );
+  it('keeps unadapted display unsupported despite an admin and an enabled flag', async () => {
+    const request = vi.fn<GatewayClient['request']>();
+    const galleryGatewayContextId = vi.fn<() => Promise<string>>();
+    const h = await appHarness({ request, galleryGatewayContextId });
+    const response = await h.call('updateProductDisplay', payload('updateProductDisplay'));
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED', retryable: false }
+    });
+    for (const register of h.registrations) expect(register).not.toHaveBeenCalled();
+    expect(request).not.toHaveBeenCalled();
+    expect(galleryGatewayContextId).not.toHaveBeenCalled();
+  });
   it.each([false, true])(
     'uses the persisted context on later draft dispatch with a preflight race=%s',
     async (switchDuringDispatch) => {
@@ -599,7 +659,11 @@ describe('account-accepted IOP draft routing (no verification mock)', () => {
     for (const register of h.registrations) expect(register).not.toHaveBeenCalled();
     expect(send).not.toHaveBeenCalled();
   });
-  it('does not allow the generic debugger to bypass the dedicated draft task workflow', async () => {
+  it.each([
+    'alibaba.icbu.product.schema.add',
+    'alibaba.icbu.product.schema.add.draft',
+    'alibaba.icbu.product.schema.update'
+  ])('does not let generic %s bypass its dedicated task workflow', async (method) => {
     const send = vi.fn<NetworkTransport['send']>();
     const gateway = new AlibabaReadGatewayClient(
       {
@@ -612,7 +676,7 @@ describe('account-accepted IOP draft routing (no verification mock)', () => {
     );
     const h = await appHarness(gateway);
     const response = await h.call('callCapability', {
-      method: 'alibaba.icbu.product.schema.add.draft',
+      method,
       parameters: {}
     });
     expect(response.status).toBe(403);

@@ -3,11 +3,18 @@ import {
   ALIBABA_GATEWAY,
   AlibabaClient,
   SETTINGS_STORAGE_KEY,
+  isProductMutationJob,
   type GatewaySettings
 } from '@one-vegetable/core';
 import { IOP_BUSINESS_ENDPOINT } from '@one-vegetable/core/alibaba-iop';
 import { iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
-import type { OperationId } from '@one-vegetable/core';
+import {
+  compareProductMutationFingerprints,
+  createProductMutationFingerprints
+} from '../../../packages/core/src/product-mutation-fingerprint';
+import { createProductOperationContext } from '../../../packages/core/src/product-operation-context';
+import { installNodeXmlDomGlobals } from '../../../scripts/node-xml-dom';
+import business from '../../../mock/data/alibaba-auth/iop-business-responses.json';
 
 const state = vi.hoisted<{
   local: Record<string, unknown>;
@@ -70,21 +77,36 @@ interface Result {
   error?: { code: string };
 }
 async function send(
-  kind: 'credential-vault-request' | 'gateway-request',
+  kind: 'credential-vault-request' | 'gateway-request' | 'product-mutation-job-request',
   operation: string,
   payload?: unknown
 ) {
-  return (await state.listener?.(
-    { kind, operation, payload, requestId: crypto.randomUUID() },
-    sender
-  )) as Result;
+  return sendEnvelope({ kind, operation, payload });
 }
+async function sendEnvelope(envelope: Record<string, unknown>, source = sender) {
+  return (await state.listener?.({ ...envelope, requestId: crypto.randomUUID() }, source)) as Result;
+}
+function resultJob(result: Result) {
+  const job = result.data?.job;
+  if (!isProductMutationJob(job)) throw new Error('Expected a fixture mutation receipt');
+  return job;
+}
+const schemaXml = business.schema.result.data;
+const schemaWrites = [
+  ['publishProduct', '/icbu/product/schema/add', 'publish_request'],
+  ['saveProductDraft', '/icbu/product/schema/add/draft', 'param_product_top_publish_request'],
+  ['updateProduct', '/icbu/product/schema/update', null]
+] as const;
+const creationInput = { categoryId: 123, language: 'en_US', schemaXml };
+const updateInput = { categoryId: 123, language: 'en_US', productId: '100001', schemaPatchXml: schemaXml };
+let restoreXmlGlobals: () => void;
 async function create(value = settings) {
   expect(
     await send('credential-vault-request', 'create', { passphrase: '123456', settings: value })
   ).toMatchObject({ ok: true });
 }
 beforeEach(() => {
+  restoreXmlGlobals = installNodeXmlDomGlobals();
   state.local = {};
   state.session = {};
   background.main();
@@ -92,6 +114,7 @@ beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Unexpected network request')));
 });
 afterEach(() => {
+  restoreXmlGlobals();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -154,19 +177,12 @@ describe('extension background protocol persistence and dispatch', () => {
     expect(state.local).not.toHaveProperty(SETTINGS_STORAGE_KEY);
     expect(fetch).not.toHaveBeenCalled();
   });
-  it('rejects unverified/unmapped IOP writes and targeted reads before creating a network client', async () => {
+  it('rejects unmapped IOP writes and targeted reads before creating a network client', async () => {
     await create();
     const client = vi.spyOn(AlibabaClient, 'create');
-    for (const operation of [
-      'publishProduct',
-      'saveProductDraft',
-      'updateProduct',
-      'uploadPhoto',
-      'createProductGroup'
-    ] satisfies OperationId[]) {
+    for (const operation of ['uploadPhoto', 'createProductGroup'] as const) {
       const reason = iopOperationReason(operation);
-      // Account verification can open each write independently. Never execute an enabled write here.
-      if (reason === null) continue;
+      expect(reason).toBe('ALIBABA_IOP_METHOD_UNSUPPORTED');
       expect(await send('gateway-request', operation, {})).toMatchObject({
         ok: false,
         error: { code: reason }
@@ -177,6 +193,187 @@ describe('extension background protocol persistence and dispatch', () => {
     ).toMatchObject({ ok: false, error: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED' } });
     expect(client).not.toHaveBeenCalled();
     expect(fetch).not.toHaveBeenCalled();
+  });
+  it.each(schemaWrites)(
+    'dispatches verified %s with IOP parameters, pinned context and successful readback',
+    async (operation, path, wrapper) => {
+      await create();
+      expect(iopOperationReason(operation)).toBeNull();
+      const productContext = await createProductOperationContext('extension:local-admin', settings);
+      let writes = 0;
+      vi.mocked(fetch).mockImplementation((url, init) => {
+        const target = new URL(url instanceof URL ? url.href : typeof url === 'string' ? url : url.url);
+        expect(target.origin).toBe(new URL(IOP_BUSINESS_ENDPOINT).origin);
+        const parameters = new URLSearchParams(init?.body as URLSearchParams);
+        expect(parameters.get('access_token')).toBe(settings.accessToken);
+        expect(parameters.get('sign_method')).toBe('sha256');
+        expect(parameters.has('method')).toBe(false);
+        expect(parameters.has('session')).toBe(false);
+        if (target.pathname === '/rest' + path) {
+          writes++;
+          const input = wrapper
+            ? (JSON.parse(parameters.get(wrapper) ?? '') as Record<string, unknown>)
+            : Object.fromEntries(parameters);
+          expect(input).toMatchObject({ cat_id: wrapper ? 123 : '123', language: 'en_US', xml: schemaXml });
+          expect(input).not.toHaveProperty('publish_type');
+          expect(input).not.toHaveProperty('version');
+          if (operation === 'updateProduct') expect(input.product_id).toBe('100001');
+          else expect(input).not.toHaveProperty('product_id');
+          return Promise.resolve(
+            Response.json({
+              code: 0,
+              result: {
+                success: true,
+                ...(operation === 'publishProduct' ? { data: 100001 } : { product_id: 100001 }),
+                trace_id: 'fixture-write'
+              }
+            })
+          );
+        }
+        if (target.pathname === '/rest/alibaba/icbu/product/list')
+          return Promise.resolve(Response.json(business.products));
+        if (target.pathname === '/rest/icbu/product/schema/render/draft') {
+          expect(Object.fromEntries(parameters)).toMatchObject({
+            product_id: '100001',
+            cat_id: '123',
+            language: 'en_US'
+          });
+          expect(parameters.has('param_product_top_publish_request')).toBe(false);
+          return Promise.resolve(Response.json(business.schema));
+        }
+        if (target.pathname === '/rest/icbu/product/schema/render') {
+          expect(JSON.parse(parameters.get('render_request') ?? '')).toEqual({
+            product_id: 100001,
+            cat_id: 123,
+            language: 'en_US'
+          });
+          return Promise.resolve(Response.json(business.schema));
+        }
+        throw new Error('Unexpected fixture request');
+      });
+      const fingerprints = await createProductMutationFingerprints(schemaXml);
+      const envelope = {
+        kind: 'gateway-request',
+        operation,
+        productContext,
+        ...(operation === 'updateProduct' ? { productMutationFingerprint: fingerprints } : {}),
+        payload: operation === 'updateProduct' ? updateInput : creationInput
+      };
+      const response = await sendEnvelope(envelope);
+      expect(response).toMatchObject({ ok: true, data: { success: true, productId: '100001' } });
+      const job = resultJob(response);
+      expect(job).toMatchObject({ productContext, operation, categoryId: 123, language: 'en_US' });
+      if (operation === 'updateProduct') {
+        expect(job.status).toBe('auditing');
+        expect(await sendEnvelope(envelope)).toMatchObject({
+          ok: false,
+          error: { code: 'PRODUCT_MUTATION_ALREADY_IN_PROGRESS' }
+        });
+        const readback = await send('gateway-request', 'renderProductSchema', {
+          productId: '100001',
+          categoryId: 123,
+          language: 'en_US'
+        });
+        expect(readback).toMatchObject({ ok: true, data: { xml: schemaXml } });
+        expect(
+          await send('product-mutation-job-request', 'complete-update-readback', {
+            id: job.id,
+            revision: job.revision,
+            result: {
+              kind: 'comparison',
+              comparison: await compareProductMutationFingerprints(
+                String(readback.data?.xml),
+                job.fieldExpectations
+              )
+            }
+          })
+        ).toMatchObject({
+          ok: true,
+          data: { status: 'verified', reasonCode: 'PRODUCT_MUTATION_READBACK_MATCHED' }
+        });
+      } else {
+        expect(job.status).toBe('verified');
+        expect(await sendEnvelope(envelope)).toMatchObject({
+          ok: false,
+          error: { code: 'PRODUCT_CREATION_ALREADY_ACCEPTED' }
+        });
+      }
+      expect(writes).toBe(1);
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(await send('credential-vault-request', 'get-settings')).toMatchObject({
+        data: { protocol: 'iop' }
+      });
+      expect(JSON.stringify(job)).not.toContain(settings.accessToken);
+    }
+  );
+  it.each(schemaWrites)(
+    'blocks %s with changed account/gateway context before network',
+    async (operation) => {
+      await create();
+      const productContext = await createProductOperationContext('extension:local-admin', settings);
+      for (const field of ['identity', 'gateway'] as const) {
+        expect(
+          await sendEnvelope({
+            kind: 'gateway-request',
+            operation,
+            productContext: { ...productContext, [field]: 'a'.repeat(64) },
+            payload: operation === 'updateProduct' ? updateInput : creationInput
+          })
+        ).toMatchObject({ ok: false, error: { code: 'PRODUCT_CONTEXT_CHANGED' } });
+      }
+      expect(fetch).not.toHaveBeenCalled();
+    }
+  );
+  it('keeps update fingerprints and the trusted page boundary after IOP verification', async () => {
+    await create();
+    const envelope = { kind: 'gateway-request', operation: 'updateProduct', payload: updateInput };
+    expect(await sendEnvelope(envelope)).toMatchObject({
+      ok: false,
+      error: { code: 'PRODUCT_MUTATION_FINGERPRINT_REQUIRED' }
+    });
+    const fingerprints = await createProductMutationFingerprints(schemaXml);
+    expect(
+      await sendEnvelope({
+        ...envelope,
+        productMutationFingerprint: { ...fingerprints, payloadFingerprint: 'a'.repeat(64) }
+      })
+    ).toMatchObject({ ok: false, error: { code: 'PRODUCT_MUTATION_FINGERPRINT_MISMATCH' } });
+    expect(
+      await sendEnvelope(
+        { ...envelope, productMutationFingerprint: fingerprints },
+        { ...sender, url: 'chrome-extension://protocol-test-extension/popup.html' }
+      )
+    ).toMatchObject({ ok: false, error: { code: 'EXTENSION_TRUSTED_PAGE_REQUIRED' } });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it('rejects completion of a pending IOP update after saved credentials change', async () => {
+    await create();
+    const productContext = await createProductOperationContext('extension:local-admin', settings);
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json({ code: 0, result: { success: true, product_id: 100001 } })
+    );
+    const response = await sendEnvelope({
+      kind: 'gateway-request',
+      operation: 'updateProduct',
+      productContext,
+      productMutationFingerprint: await createProductMutationFingerprints(schemaXml),
+      payload: updateInput
+    });
+    const job = resultJob(response);
+    expect(
+      await send('credential-vault-request', 'save', { ...settings, accessToken: 'fixture-changed-token' })
+    ).toMatchObject({ ok: true });
+    expect(
+      await send('product-mutation-job-request', 'complete-update-readback', {
+        id: job.id,
+        revision: job.revision,
+        result: {
+          kind: 'comparison',
+          comparison: { matched: true, missingFieldIds: [], mismatchedFieldIds: [] }
+        }
+      })
+    ).toMatchObject({ ok: false, error: { code: 'PRODUCT_CONTEXT_CHANGED' } });
+    expect(fetch).toHaveBeenCalledOnce();
   });
   it('gates existing catalog and definition metadata by target without closing mapped reads', async () => {
     await create();

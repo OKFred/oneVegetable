@@ -224,7 +224,9 @@ describe('SettingsView diagnostics', () => {
     await flushPromises();
     const selector = wrapper.get('select[aria-label="网关协议"]');
     expect((selector.element as HTMLSelectElement).value).toBe('iop');
-    expect(wrapper.get('[data-testid="iop-protocol-notice"]').text()).toContain('通过账号验收的方法');
+    expect(wrapper.get('[data-testid="iop-protocol-notice"]').text()).toContain(
+      '已验收的 Schema 发布、存草稿、更新'
+    );
     expect(wrapper.text()).not.toContain('不支持订单、RFQ 或写操作');
     expect(wrapper.get('input[aria-label="HTTPS 网关"]').attributes('readonly')).toBeDefined();
     expect(save).not.toHaveBeenCalled();

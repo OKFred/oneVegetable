@@ -150,7 +150,9 @@ describe('Node credential configuration UI', () => {
     const h = await harness();
     await h.button('手动填写').trigger('click');
     await h.wrapper.get('select[aria-label="网关协议"]').setValue('iop');
-    expect(h.wrapper.get('[data-testid="iop-protocol-notice"]').text()).toContain('通过账号验收的方法');
+    expect(h.wrapper.get('[data-testid="iop-protocol-notice"]').text()).toContain(
+      '已验收的 Schema 发布、存草稿、更新'
+    );
     const inputs = h.wrapper.findAll('input[type="password"]');
     await inputs[0]?.setValue(fixture.manual.appKey);
     await inputs[1]?.setValue(fixture.manual.appSecret);

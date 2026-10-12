@@ -3,7 +3,7 @@ export const gatewayCredentials = {
   protocol: '网关协议',
   protocolTop: 'TOP（默认）',
   protocolIop: 'IOP（显式选择）',
-  iopCompatibility: 'IOP 按映射开放读取；写入仅限通过账号验收的方法。未映射或未验收会拦截，不回退 TOP。',
+  iopCompatibility: 'IOP 支持映射读取及已验收的 Schema 发布、存草稿、更新；其他方法逐项启用，不回退 TOP。',
   acquireTop: '获取 TOP 开放平台凭证',
   acquireIop: '打开独立 IOP 授权工具',
   extensionGuideIop: '使用独立 IOP 工具授权，导出 JSON 后导入并保存；TOP 一键获取不适用于 IOP。',

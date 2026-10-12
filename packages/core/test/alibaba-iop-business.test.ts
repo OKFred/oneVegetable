@@ -126,19 +126,16 @@ describe('explicit IOP business compatibility', () => {
       new PhotoAdapter(createClient(fixtures.photoGroups).client).listGroups()
     ).resolves.toMatchObject([{ id: '1001', name: 'Fixture images' }]);
   });
-  it('fails unsupported methods and writes before network; never derives a path from the TOP method', async () => {
+  it('fails unmapped methods and writes before network; never derives a path from the TOP method', async () => {
     const { client, send } = createClient();
     for (const method of [
       'alibaba.seller.trade.order.list',
-      'alibaba.icbu.product.schema.add',
-      'alibaba.icbu.product.schema.update',
+      'alibaba.icbu.product.display.update',
       'alibaba.icbu.photobank.group.operate'
     ]) {
       await expect(client.call(method, {})).rejects.toMatchObject({
         gatewayError: {
-          code: method.includes('schema.')
-            ? 'ALIBABA_IOP_MUTATION_UNVERIFIED'
-            : 'ALIBABA_IOP_METHOD_UNSUPPORTED'
+          code: 'ALIBABA_IOP_METHOD_UNSUPPORTED'
         }
       });
     }
@@ -155,14 +152,14 @@ describe('explicit IOP business compatibility', () => {
       )
     ).rejects.toMatchObject({ gatewayError: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED' } });
     expect(send).not.toHaveBeenCalled();
-    expect(iopOperationReason('updateProduct')).toBe('ALIBABA_IOP_MUTATION_UNVERIFIED');
+    expect(iopOperationReason('updateProduct')).toBeNull();
     expect(iopOperationReason('getProductDraft')).toBeNull();
     expect(iopOperationReason('listProductGroups')).toBeNull();
     expect(iopOperationReason('listPhotoGroups')).toBeNull();
     expect(iopOperationReason('callCapability', 'alibaba.icbu.product.list')).toBeNull();
-    expect(iopOperationReason('callCapability', 'alibaba.icbu.product.schema.update')).not.toBeNull();
+    expect(iopOperationReason('callCapability', 'alibaba.icbu.product.schema.update')).toBeNull();
   });
-  it('maps documented Schema write shapes without opening unverified production writes', async () => {
+  it('maps each account-verified Schema write with its documented shape', async () => {
     const request = {
       cat_id: '123',
       language: 'en_US',
@@ -201,6 +198,19 @@ describe('explicit IOP business compatibility', () => {
       expect(response).toMatchObject({
         [`${method.replaceAll('.', '_')}_response`]: { biz_success: true, product_id: 100001 }
       });
+      const verified = createClient({
+        code: 0,
+        result: {
+          success: true,
+          trace_id: 'fixture-trace',
+          ...(method.endsWith('schema.add') ? { data: 100001 } : { product_id: 100001 })
+        }
+      });
+      expect(iopOperationReason('callCapability', method)).toBeNull();
+      await expect(
+        verified.client.call(method, { param_product_top_publish_request: request })
+      ).resolves.toMatchObject({ data: response });
+      expect(verified.send).toHaveBeenCalledOnce();
       for (const result of [
         { success: true },
         { product_id: 100001 },

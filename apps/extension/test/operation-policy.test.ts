@@ -85,20 +85,28 @@ describe('extension operation policy', () => {
     'alibaba.icbu.product.schema.add',
     'alibaba.icbu.product.schema.add.draft',
     'alibaba.icbu.product.schema.update'
-  ])('follows per-method account verification for IOP write %s', (method) => {
-    const reason = iopOperationReason('callCapability', method);
-    expect([null, 'ALIBABA_IOP_MUTATION_UNVERIFIED']).toContain(reason);
+  ])('allows the verified IOP mapping %s without bypassing generic authorization', (method) => {
+    expect(iopOperationReason('callCapability', method)).toBeNull();
     const decision = resolveExtensionOperationAvailability(
       'callCapability',
       { method, parameters: {} },
       'iop'
     );
-    if (reason) expect(decision).toMatchObject({ allowed: false, reasonCode: reason });
-    else
-      expect(decision).toEqual(
-        resolveExtensionOperationAvailability('callCapability', { method, parameters: {} }, 'top')
-      );
+    expect(decision).toEqual(
+      resolveExtensionOperationAvailability('callCapability', { method, parameters: {} }, 'top')
+    );
   });
+  it.each(['publishProduct', 'saveProductDraft', 'updateProduct'] as const)(
+    'allows verified IOP operation %s through current safe status',
+    async (operation) => {
+      expect(iopOperationReason(operation)).toBeNull();
+      expect(resolveExtensionOperationAvailability(operation, {}, 'iop')).toMatchObject({ allowed: true });
+      const client = createExtensionOperationAvailabilityClient(
+        vi.fn().mockResolvedValue({ state: 'unlocked', protocol: 'iop' })
+      );
+      expect((await client.get([operation])).items[0]).toMatchObject({ operation, allowed: true });
+    }
+  );
   it.each([
     'alibaba.icbu.product.list',
     'alibaba.icbu.product.group.get',

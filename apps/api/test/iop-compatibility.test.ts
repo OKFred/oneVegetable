@@ -632,25 +632,34 @@ describe('IOP API gateway integration without external networking', () => {
     }
     expect(send).not.toHaveBeenCalled();
   });
-  it.each(['uploadPhoto', 'listVideos', 'getRfq', 'downloadProductAsset'] satisfies OperationId[])(
-    'rejects %s before any gateway network call',
-    async (operation) => {
+  it.each([
+    'updateProductDisplay',
+    'uploadPhoto',
+    'listVideos',
+    'getRfq',
+    'downloadProductAsset'
+  ] satisfies OperationId[])('rejects %s before any gateway network call', async (operation) => {
+    const send = vi.fn<NetworkTransport['send']>();
+    const gateway = new AlibabaReadGatewayClient(gatewayCredentials(), { transport: { send } });
+    await expect(gateway.request<OperationId>(operation, {})).rejects.toMatchObject({
+      gatewayError: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED', retryable: false }
+    });
+    expect(send).not.toHaveBeenCalled();
+  });
+  it.each([
+    ['publishProduct', 'alibaba.icbu.product.schema.add'],
+    ['saveProductDraft', 'alibaba.icbu.product.schema.add.draft'],
+    ['updateProduct', 'alibaba.icbu.product.schema.update']
+  ] as const)(
+    'allows accepted %s through the IOP protocol gate without changing capability policy',
+    async (operation, method) => {
+      expect(iopBusiness.iopOperationReason(operation)).toBeNull();
+      expect(iopBusiness.iopOperationReason('callCapability', method)).toBeNull();
       const send = vi.fn<NetworkTransport['send']>();
       const gateway = new AlibabaReadGatewayClient(gatewayCredentials(), { transport: { send } });
-      await expect(gateway.request<OperationId>(operation, {})).rejects.toMatchObject({
-        gatewayError: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED', retryable: false }
-      });
-      expect(send).not.toHaveBeenCalled();
-    }
-  );
-  it.each(['publishProduct', 'updateProduct'] as const)(
-    'keeps mapped but unverified %s blocked before network access',
-    async (operation) => {
-      const send = vi.fn<NetworkTransport['send']>();
-      const gateway = new AlibabaReadGatewayClient(gatewayCredentials(), { transport: { send } });
-      await expect(gateway.request<OperationId>(operation, {})).rejects.toMatchObject({
-        gatewayError: { code: 'ALIBABA_IOP_MUTATION_UNVERIFIED', retryable: false }
-      });
+      expect(await gateway.request('getCapabilityDefinition', { method })).toEqual(
+        getCapabilityDefinition(method)
+      );
       expect(send).not.toHaveBeenCalled();
     }
   );
@@ -661,14 +670,17 @@ describe('IOP API gateway integration without external networking', () => {
       status: () => Promise.resolve(provider.status()),
       requireCredentials
     });
-    for (const method of ['alibaba.icbu.product.schema.add', 'alibaba.icbu.product.country.getcountrylist'])
+    for (const method of [
+      'alibaba.icbu.product.batch.update.display',
+      'alibaba.icbu.product.country.getcountrylist'
+    ])
       await expect(gateway.request('callCapability', { method, parameters: {} })).rejects.toMatchObject({
         gatewayError: { code: iopBusiness.iopOperationReason('callCapability', method) }
       });
     expect(requireCredentials).not.toHaveBeenCalled();
   });
   it.each(['node', 'cloudflare'] as const)(
-    'denies availability and calls before task registration in %s with the same CORS/wrapper',
+    'still requires write flags after IOP acceptance in %s with the same CORS/wrapper',
     async (runtime) => {
       const h = await harness();
       const jobs = new SqlProductMutationJobRepository(h.database.executor);
@@ -699,7 +711,7 @@ describe('IOP API gateway integration without external networking', () => {
         authService,
         adminService: new AdminService(authRepository),
         productMutationJobs: jobs,
-        featureFlags: new StaticOperationFeatureFlags(new Set(['operation:publishProduct'])),
+        featureFlags: new StaticOperationFeatureFlags(),
         allowedOrigins: ['http://localhost'],
         logger
       });
@@ -717,6 +729,9 @@ describe('IOP API gateway integration without external networking', () => {
           operations: [
             'listProducts',
             'publishProduct',
+            'saveProductDraft',
+            'updateProduct',
+            'updateProductDisplay',
             'getRfq',
             'getProductSchema',
             'listTradeOrders',
@@ -731,7 +746,14 @@ describe('IOP API gateway integration without external networking', () => {
         data: {
           items: [
             { operation: 'listProducts', allowed: true },
-            { operation: 'publishProduct', allowed: false, reasonCode: 'ALIBABA_IOP_MUTATION_UNVERIFIED' },
+            { operation: 'publishProduct', allowed: false, reasonCode: 'MUTATION_FLAG_DISABLED' },
+            { operation: 'saveProductDraft', allowed: false, reasonCode: 'MUTATION_FLAG_DISABLED' },
+            { operation: 'updateProduct', allowed: false, reasonCode: 'MUTATION_FLAG_DISABLED' },
+            {
+              operation: 'updateProductDisplay',
+              allowed: false,
+              reasonCode: 'ALIBABA_IOP_METHOD_UNSUPPORTED'
+            },
             { operation: 'getRfq', allowed: false, reasonCode: 'ALIBABA_IOP_METHOD_UNSUPPORTED' },
             { operation: 'getProductSchema', allowed: true },
             { operation: 'listTradeOrders', allowed: true },
@@ -740,24 +762,30 @@ describe('IOP API gateway integration without external networking', () => {
           ]
         }
       });
-      const requestId = createRequestId();
-      const response = await app.request('/api/v1/operations/call', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ requestId, operation: 'publishProduct', payload: fixture.draftPayload })
-      });
-      expect(response.status).toBe(403);
-      expect(response.headers.get('X-Request-ID')).toBe(requestId);
-      expect(response.headers.get('Cache-Control')).toBe('no-store');
-      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('http://localhost');
-      expect(await response.json()).toMatchObject({
-        requestId,
-        ok: false,
-        error: { code: 'ALIBABA_IOP_MUTATION_UNVERIFIED', retryable: false }
-      });
-      expect(logger).toHaveBeenLastCalledWith(
-        expect.objectContaining({ actorId: session.user.id, outcome: 'denied', statusCode: 403 })
-      );
+      for (const operation of ['publishProduct', 'saveProductDraft', 'updateProduct'] as const) {
+        const requestId = createRequestId();
+        const payload =
+          operation === 'updateProduct'
+            ? { ...fixture.renderPayload, schemaPatchXml: fixture.schema.result.data }
+            : fixture.draftPayload;
+        const response = await app.request('/api/v1/operations/call', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ requestId, operation, payload })
+        });
+        expect(response.status).toBe(403);
+        expect(response.headers.get('X-Request-ID')).toBe(requestId);
+        expect(response.headers.get('Cache-Control')).toBe('no-store');
+        expect(response.headers.get('Access-Control-Allow-Origin')).toBe('http://localhost');
+        expect(await response.json()).toMatchObject({
+          requestId,
+          ok: false,
+          error: { code: 'MUTATION_FLAG_DISABLED', retryable: false }
+        });
+        expect(logger).toHaveBeenLastCalledWith(
+          expect.objectContaining({ actorId: session.user.id, outcome: 'denied', statusCode: 403 })
+        );
+      }
       for (const register of registrations) expect(register).not.toHaveBeenCalled();
       expect(request).not.toHaveBeenCalled();
     }

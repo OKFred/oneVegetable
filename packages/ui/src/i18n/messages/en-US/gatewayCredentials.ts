@@ -4,7 +4,7 @@ export const gatewayCredentials = {
   protocolTop: 'TOP (default)',
   protocolIop: 'IOP (explicit choice)',
   iopCompatibility:
-    'IOP uses mapped reads and account-verified writes only. Unmapped or unverified calls are blocked; no TOP fallback.',
+    'IOP supports mapped reads and verified Schema publish, draft and update. Other methods open individually; no TOP fallback.',
   acquireTop: 'Get TOP Open Platform credentials',
   acquireIop: 'Open independent IOP authorization tool',
   extensionGuideIop:

@@ -28,7 +28,12 @@ const WRITE_PATHS: Readonly<Record<string, BusinessPath>> = {
   'alibaba.icbu.product.schema.update': '/icbu/product/schema/update'
 };
 // Separate IOP acceptance from the existing TOP allowlist. No runtime bypass switch.
-const VERIFIED_WRITES: readonly string[] = ['alibaba.icbu.product.schema.add.draft'];
+// Live creation/readback and incremental update/restoration confirmed on 2026-10-12.
+const VERIFIED_WRITES: readonly string[] = [
+  'alibaba.icbu.product.schema.add.draft',
+  'alibaba.icbu.product.schema.add',
+  'alibaba.icbu.product.schema.update'
+];
 const WRITE_OPERATIONS: Partial<Record<OperationId, string>> = {
   publishProduct: 'alibaba.icbu.product.schema.add',
   saveProductDraft: 'alibaba.icbu.product.schema.add.draft',
