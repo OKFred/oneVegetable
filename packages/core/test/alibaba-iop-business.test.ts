@@ -3,6 +3,7 @@ import fixtures from '../../../mock/data/alibaba-auth/iop-business-responses.jso
 import { AlibabaClient } from '../src/alibaba-client';
 import { IOP_BUSINESS_ENDPOINT, signIopRequest } from '../src/alibaba-iop';
 import {
+  applyIopCapabilityProtocol,
   createIopBusinessRequest,
   iopOperationReason,
   normalizeIopBusinessResponse
@@ -47,6 +48,30 @@ const inventoryAdapter = (response: unknown) => {
   };
 };
 describe('explicit IOP business compatibility', () => {
+  it('keeps IOP live acceptance separate from TOP and never mutates shared metadata', () => {
+    const top = { method: encryptMethod, realCallEnabled: true, verification: 'account-verified' };
+    expect(applyIopCapabilityProtocol(top)).toEqual({ ...top, verification: 'documented' });
+    expect(top.verification).toBe('account-verified');
+    expect(applyIopCapabilityProtocol({ ...top, method: inventoryMethod })).toMatchObject({
+      verification: 'account-verified',
+      realCallEnabled: true
+    });
+    for (const method of ['alibaba.icbu.category.id.mapping', 'alibaba.icbu.category.schema.level.get'])
+      expect(applyIopCapabilityProtocol({ ...top, method })).toMatchObject({
+        verification: 'documented',
+        realCallEnabled: true
+      });
+    expect(applyIopCapabilityProtocol({ ...top, method: 'alibaba.icbu.rfq.list' })).toMatchObject({
+      verification: 'documented',
+      realCallEnabled: false
+    });
+    expect(
+      applyIopCapabilityProtocol({ ...top, method: 'alibaba.icbu.product.schema.update' })
+    ).toMatchObject({
+      verification: 'account-verified',
+      realCallEnabled: true
+    });
+  });
   it('signs the actual API path and never includes TOP method/session/date fields', async () => {
     const payload = await createIopBusinessRequest(
       credentials,

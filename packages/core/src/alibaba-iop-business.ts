@@ -8,23 +8,24 @@ import type { GatewayCredentials, OperationId } from './types';
 type BusinessPath = `/alibaba/${string}` | `/icbu/${string}` | `/order/${string}`;
 const INVENTORY = 'alibaba.icbu.product.inventory.get';
 const ENCRYPT = 'alibaba.icbu.product.id.encrypt';
-const READ_PATHS: Readonly<Record<string, BusinessPath>> = {
-  'alibaba.icbu.product.list': '/alibaba/icbu/product/list',
-  'alibaba.icbu.product.group.get': '/alibaba/icbu/product/group/get',
-  'alibaba.icbu.product.schema.render': '/icbu/product/schema/render',
-  'alibaba.icbu.product.schema.render.draft': '/icbu/product/schema/render/draft',
-  'alibaba.icbu.photobank.group.list': '/icbu/product/photobank/group/list',
-  'alibaba.icbu.photobank.list': '/icbu/product/photobank/list',
-  'alibaba.icbu.category.get.new': '/icbu/product/category/get',
-  'alibaba.icbu.category.id.mapping': '/alibaba/icbu/category/id/mapping',
-  'alibaba.icbu.category.schema.level.get': '/icbu/product/schema/level/get',
-  'alibaba.icbu.product.schema.get': '/alibaba/icbu/product/schema/get',
-  'alibaba.icbu.product.score.get': '/icbu/product/score/get',
-  'alibaba.icbu.product.type.available.get': '/icbu/product/other/available/get',
-  [INVENTORY]: '/icbu/product/inventory/get',
-  [ENCRYPT]: '/alibaba/icbu/product/id/encrypt',
-  'alibaba.seller.order.list': '/alibaba/order/list',
-  'alibaba.seller.order.logistics.get': '/order/logistics/query'
+// Second tuple entry is IOP-specific live acceptance, never inherited from TOP metadata.
+const READ_PATHS: Readonly<Record<string, readonly [BusinessPath, boolean]>> = {
+  'alibaba.icbu.product.list': ['/alibaba/icbu/product/list', true],
+  'alibaba.icbu.product.group.get': ['/alibaba/icbu/product/group/get', true],
+  'alibaba.icbu.product.schema.render': ['/icbu/product/schema/render', true],
+  'alibaba.icbu.product.schema.render.draft': ['/icbu/product/schema/render/draft', true],
+  'alibaba.icbu.photobank.group.list': ['/icbu/product/photobank/group/list', true],
+  'alibaba.icbu.photobank.list': ['/icbu/product/photobank/list', true],
+  'alibaba.icbu.category.get.new': ['/icbu/product/category/get', true],
+  'alibaba.icbu.category.id.mapping': ['/alibaba/icbu/category/id/mapping', false],
+  'alibaba.icbu.category.schema.level.get': ['/icbu/product/schema/level/get', false],
+  'alibaba.icbu.product.schema.get': ['/alibaba/icbu/product/schema/get', true],
+  'alibaba.icbu.product.score.get': ['/icbu/product/score/get', true],
+  'alibaba.icbu.product.type.available.get': ['/icbu/product/other/available/get', true],
+  [INVENTORY]: ['/icbu/product/inventory/get', true],
+  [ENCRYPT]: ['/alibaba/icbu/product/id/encrypt', false],
+  'alibaba.seller.order.list': ['/alibaba/order/list', true],
+  'alibaba.seller.order.logistics.get': ['/order/logistics/query', true]
 };
 const WRITE_PATHS: Readonly<Record<string, BusinessPath>> = {
   'alibaba.icbu.product.schema.add': '/icbu/product/schema/add',
@@ -80,6 +81,19 @@ export function iopMethodReason(method: unknown): string | null {
     : 'ALIBABA_IOP_METHOD_UNSUPPORTED';
 }
 
+export function applyIopCapabilityProtocol<T extends { method: string; realCallEnabled: boolean }>(
+  capability: T
+): T {
+  return {
+    ...capability,
+    realCallEnabled: capability.realCallEnabled && iopMethodReason(capability.method) === null,
+    verification:
+      READ_PATHS[capability.method]?.[1] || VERIFIED_WRITES.includes(capability.method)
+        ? 'account-verified'
+        : 'documented'
+  };
+}
+
 export async function createIopBusinessRequest(
   credentials: GatewayCredentials,
   method: string,
@@ -91,7 +105,7 @@ export async function createIopBusinessRequest(
   assertAlibabaBusinessParameters(input);
   if (Object.hasOwn(input, 'access_token')) throw failure('CAPABILITY_TRANSPORT_PARAMETER_FORBIDDEN');
   const path = Object.hasOwn(READ_PATHS, method)
-    ? READ_PATHS[method]
+    ? READ_PATHS[method]?.[0]
     : Object.hasOwn(WRITE_PATHS, method)
       ? WRITE_PATHS[method]
       : undefined;

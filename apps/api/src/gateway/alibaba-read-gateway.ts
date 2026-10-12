@@ -22,7 +22,7 @@ import {
   validateCapabilityResponse
 } from '@one-vegetable/core';
 import { GatewayConfigurationError } from './credentials';
-import { iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
+import { applyIopCapabilityProtocol, iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
 import { VideoAdapter, VIDEO_OPERATIONS, VIDEO_METHODS } from '@one-vegetable/core/video';
 import { VideoAssociationAdapter } from '@one-vegetable/core/video-association';
 import {
@@ -187,9 +187,7 @@ export class AlibabaReadGatewayClient implements GatewayClient {
   }
 
   private applyCapabilityProtocol<T extends { method: string; realCallEnabled: boolean }>(capability: T): T {
-    return this.#credentials.protocol === 'iop' && iopOperationReason('callCapability', capability.method)
-      ? { ...capability, realCallEnabled: false }
-      : capability;
+    return this.#credentials.protocol === 'iop' ? applyIopCapabilityProtocol(capability) : capability;
   }
 
   private createClient(

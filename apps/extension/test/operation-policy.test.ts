@@ -4,6 +4,7 @@ import ts from 'typescript';
 
 import { resolveExtensionOperationAvailability } from '../lib/operation-policy';
 import {
+  applyExtensionCapabilityProtocol,
   createExtensionOperationAvailabilityClient,
   resolveExtensionStaticOperationAvailability
 } from '../lib/operation-availability';
@@ -11,6 +12,27 @@ import { iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
 import { OPERATION_IDS } from '../../../packages/core/src/operation-id';
 
 describe('extension operation policy', () => {
+  it('reports IOP verification without inheriting TOP metadata or unlocking a locked vault', () => {
+    const top = {
+      method: 'alibaba.icbu.product.id.encrypt',
+      realCallEnabled: true,
+      verification: 'account-verified'
+    };
+    expect(applyExtensionCapabilityProtocol(top, { state: 'unlocked', protocol: 'top' })).toEqual(top);
+    expect(applyExtensionCapabilityProtocol(top, { state: 'unlocked', protocol: 'iop' })).toEqual({
+      ...top,
+      verification: 'documented'
+    });
+    expect(applyExtensionCapabilityProtocol(top, { state: 'locked', protocol: 'iop' })).toEqual({
+      ...top,
+      verification: 'documented',
+      realCallEnabled: false
+    });
+    expect(
+      applyExtensionCapabilityProtocol(top, { state: 'unlocked', protocol: 'unknown' }).realCallEnabled
+    ).toBe(false);
+    expect(top.verification).toBe('account-verified');
+  });
   it('keeps options startup on the static availability boundary rather than the core registry barrel', () => {
     const runtimeImports = (path: string) => {
       const source = readFileSync(new URL(path, import.meta.url), 'utf8');

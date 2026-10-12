@@ -5,7 +5,7 @@ import {
   type OperationAvailabilityClient,
   type OperationId
 } from '@one-vegetable/core/runtime';
-import { iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
+import { applyIopCapabilityProtocol, iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
 
 export interface ExtensionOperationPolicyDecision {
   allowed: boolean;
@@ -29,14 +29,13 @@ export function applyExtensionCapabilityProtocol<T extends { method: string; rea
   capability: T,
   status: { state: CredentialVaultStatus['state']; protocol?: unknown }
 ): T {
+  const mapped = status.protocol === 'iop' ? applyIopCapabilityProtocol(capability) : capability;
   return {
-    ...capability,
+    ...mapped,
     realCallEnabled:
-      capability.realCallEnabled &&
+      mapped.realCallEnabled &&
       ['empty', 'legacy', 'unlocked'].includes(status.state) &&
-      (status.protocol === undefined ||
-        status.protocol === 'top' ||
-        (status.protocol === 'iop' && iopOperationReason('callCapability', capability.method) === null))
+      (status.protocol === undefined || status.protocol === 'top' || status.protocol === 'iop')
   };
 }
 

@@ -46,7 +46,10 @@ describe('IOP inventory and product identity gateway integration', () => {
     const h = gateway(fixture.encryptedProduct);
     for (const method of ['alibaba.icbu.product.inventory.get', 'alibaba.icbu.product.id.encrypt']) {
       const definition = getCapabilityDefinition(method);
-      expect(await h.client.request('getCapabilityDefinition', { method })).toEqual(definition);
+      expect(await h.client.request('getCapabilityDefinition', { method })).toEqual({
+        ...definition,
+        verification: method.endsWith('id.encrypt') ? 'documented' : 'account-verified'
+      });
       expect(definition?.realCallEnabled).toBe(true);
     }
     const result = await h.client.request('callCapability', {

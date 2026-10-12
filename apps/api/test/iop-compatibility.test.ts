@@ -448,10 +448,22 @@ describe('IOP API gateway integration without external networking', () => {
         expect(definition).not.toBeNull();
         const unsupported = protocol === 'iop' && method !== 'alibaba.icbu.product.list';
         expect(capabilities.find((capability) => capability.method === method)).toEqual(
-          unsupported ? { ...original, realCallEnabled: false } : original
+          protocol === 'iop'
+            ? {
+                ...original,
+                realCallEnabled: !unsupported && original?.realCallEnabled,
+                verification: unsupported ? 'documented' : 'account-verified'
+              }
+            : original
         );
         expect(await gateway.request('getCapabilityDefinition', { method })).toEqual(
-          unsupported ? { ...definition, realCallEnabled: false } : definition
+          protocol === 'iop'
+            ? {
+                ...definition,
+                realCallEnabled: !unsupported && definition?.realCallEnabled,
+                verification: unsupported ? 'documented' : 'account-verified'
+              }
+            : definition
         );
       }
       expect(listCapabilitiesWithAccountVerification()).toEqual(originals);
@@ -657,9 +669,10 @@ describe('IOP API gateway integration without external networking', () => {
       expect(iopBusiness.iopOperationReason('callCapability', method)).toBeNull();
       const send = vi.fn<NetworkTransport['send']>();
       const gateway = new AlibabaReadGatewayClient(gatewayCredentials(), { transport: { send } });
-      expect(await gateway.request('getCapabilityDefinition', { method })).toEqual(
-        getCapabilityDefinition(method)
-      );
+      expect(await gateway.request('getCapabilityDefinition', { method })).toEqual({
+        ...getCapabilityDefinition(method),
+        verification: 'account-verified'
+      });
       expect(send).not.toHaveBeenCalled();
     }
   );
