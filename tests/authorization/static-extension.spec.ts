@@ -159,6 +159,9 @@ async function authorize(): Promise<Page> {
   await site.locator('#open').click();
   const tool = await toolEvent;
   await tool.waitForLoadState();
+  // tabs.create can render before Playwright applies the context locale; use the real UI switch.
+  await expect(tool.locator('#language')).toBeVisible();
+  if ((await tool.locator('html').getAttribute('lang')) === 'en-US') await tool.locator('#language').click();
   await expect(tool.locator('#status')).toHaveText('尚未配置');
   await tool.locator('#appName').fill('Merchant fixture');
   await tool.locator('#appKey').fill(credentials.oauthBundle.application.appKey);
@@ -335,7 +338,7 @@ test('workbench persists explicit IOP and rejects unadapted methods without TOP 
     ok: true,
     data: [{ id: '1001', name: 'Fixture images' }]
   });
-  for (const operation of ['getProductInventory', 'uploadPhoto'] as const) {
+  for (const operation of ['listVideos', 'uploadPhoto'] as const) {
     const reason = iopOperationReason(operation);
     expect(reason).toBe('ALIBABA_IOP_METHOD_UNSUPPORTED');
     expect(await send('gateway-request', operation)).toMatchObject({
@@ -650,9 +653,10 @@ for (const [body, code] of [
         )
         .first()
     ).toBeVisible();
-    expect(
-      await sendWorkbench(workbench, 'gateway-request', 'getProductInventory', { productId: '100001' })
-    ).toMatchObject({ ok: false, error: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED' } });
+    expect(await sendWorkbench(workbench, 'gateway-request', 'listVideos', {})).toMatchObject({
+      ok: false,
+      error: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED' }
+    });
     expect(reads).toBe(1);
     expect(topCalls).toBe(0);
     expect(creates + refreshes).toBe(0);

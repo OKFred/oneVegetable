@@ -9,11 +9,23 @@ import { normalizeGatewayError } from '../packages/core/src/errors';
 import { ProductAdapter } from '../packages/core/src/product-adapter';
 import { PhotoAdapter } from '../packages/core/src/photo-adapter';
 import { TradeAdapter } from '../packages/core/src/trade-adapter';
+import { ProductInventoryAdapter } from '../packages/core/src/product-inventory';
+import {
+  validateCapabilityRequest,
+  validateCapabilityResponse
+} from '../packages/core/src/capability-registry';
+import { executeCapabilityCall } from '../packages/core/src/capability-call';
+import { isRecord } from '../packages/core/src/alibaba-iop';
 import { NativeFetchTransport, NetworkManager, type NetworkTransport } from '../packages/core/src/network';
 import type { OperationId } from '../packages/core/src/types';
 import { atomicWriteJson } from './openapi-auth/storage';
 
 const file = process.argv.find((value) => value.startsWith('--credential='))?.slice('--credential='.length);
+const productId = process.argv
+  .find((value) => value.startsWith('--product-id='))
+  ?.slice('--product-id='.length);
+if (productId)
+  assert(/^[1-9][0-9]*$/u.test(productId) && Number.isSafeInteger(Number(productId)), 'Invalid product ID');
 if (!file || !process.argv.includes('--confirm-read-only'))
   throw new Error(
     'Provide --credential=<ignored IOP bundle> --confirm-read-only. No active configuration is changed.'
@@ -30,6 +42,7 @@ if (bundle.oauth.expiresAtUtc !== null)
 const receipt = crypto.randomUUID();
 const records: {
   operation: string;
+  method?: string;
   requestId: string;
   status: 'passed' | 'no-data' | 'failed' | 'skipped-prerequisite';
   count?: number;
@@ -83,18 +96,26 @@ const network = new NetworkManager({
 async function call<T>(
   operation: OperationId,
   execute: (client: AlibabaClient) => Promise<T>,
-  summary: (value: T) => number
+  summary: (value: T) => number,
+  method?: string
 ): Promise<T | null> {
   const requestId = crypto.randomUUID();
   try {
     const value = await execute(new AlibabaClient(credentials, network, { maxAttempts: 1, requestId }));
     const count = summary(value);
-    records.push({ operation, requestId, status: count === 0 ? 'no-data' : 'passed', count });
+    records.push({
+      operation,
+      ...(method ? { method } : {}),
+      requestId,
+      status: count === 0 ? 'no-data' : 'passed',
+      count
+    });
     return value;
   } catch (cause) {
     const error = normalizeGatewayError(cause);
     records.push({
       operation,
+      ...(method ? { method } : {}),
       requestId,
       status: 'failed',
       errorCode: error.code,
@@ -109,7 +130,13 @@ async function call<T>(
 }
 const products = await call(
   'listProducts',
-  (client) => new ProductAdapter(client).list({ page: 1, pageSize: 1, language: 'en_US' }),
+  (client) =>
+    new ProductAdapter(client).list({
+      page: 1,
+      pageSize: 1,
+      language: 'en_US',
+      ...(productId ? { productId } : {})
+    }),
   (value) => value.items.length
 );
 await call(
@@ -123,6 +150,43 @@ const groups = await call(
   (value) => value.length
 );
 const product = products?.items[0];
+if (product) {
+  await call(
+    'getProductInventory',
+    (client) =>
+      new ProductInventoryAdapter(client, validateCapabilityRequest, validateCapabilityResponse).get({
+        productId: product.id,
+        source: 'product',
+        language: 'en_US'
+      }),
+    (value) => {
+      assert(value.status === 'ready' || value.status === 'no-data', 'Inventory contract not confirmed');
+      return value.records.length;
+    },
+    'alibaba.icbu.product.inventory.get'
+  );
+  await call(
+    'callCapability',
+    (client) =>
+      executeCapabilityCall(
+        client,
+        {
+          method: 'alibaba.icbu.product.id.encrypt',
+          parameters: { product_id: Number(product.id), language: 'en_US' }
+        },
+        { validateCapabilityRequest, validateCapabilityResponse }
+      ),
+    (value) => {
+      assert(isRecord(value) && value.contractValid === true, 'ID encryption contract not confirmed');
+      assert(isRecord(value.data) && typeof value.data.secret_id === 'string' && value.data.secret_id);
+      return 1;
+    },
+    'alibaba.icbu.product.id.encrypt'
+  );
+} else {
+  for (const operation of ['getProductInventory', 'callCapability'])
+    records.push({ operation, requestId: crypto.randomUUID(), status: 'skipped-prerequisite' });
+}
 if (product?.categoryId && product.categoryId > 0) {
   const categoryId = product.categoryId;
   await call(
