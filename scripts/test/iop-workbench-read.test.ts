@@ -26,10 +26,14 @@ describe('IOP real workbench acceptance safety', () => {
     expect(
       parseOptions(['--confirm-readonly', '--credential=artifacts/input.json', '--product-id=100001'])
     ).toMatchObject({ productId: '100001' });
+    expect(
+      parseOptions(['--confirm-readonly', '--credential=artifacts/input.json', '--native-host-consent'])
+    ).toMatchObject({ nativeHostConsent: true });
     for (const args of [
       [],
       ['--credential=foo'],
       ['--confirm-readonly', '--credential=foo', '--write'],
+      ['--confirm-readonly', '--credential=foo', '--native-host-consent', '--native-host-consent'],
       ['--confirm-readonly', '--credential=foo', '--product-id=9007199254740993']
     ])
       expect(() => parseOptions(args)).toThrow();

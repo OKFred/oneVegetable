@@ -106,6 +106,7 @@
     "smoke:product:publish:real": "tsx scripts/smoke-product-publish-real.ts",
     "smoke:product:batch-publish:real": "tsx scripts/smoke-product-batch-publish-real.ts",
     "smoke:product:batch-maintenance:real": "tsx scripts/smoke-product-batch-maintenance-real.ts",
+    "check:product:batch-restoration:real": "tsx scripts/check-product-batch-restoration-real.ts",
     "smoke:product:mutations:real": "tsx scripts/smoke-product-mutations-real.ts",
     "smoke:product:display:real": "tsx scripts/smoke-product-display-lifecycle-real.ts",
     "smoke:product-group:real": "tsx scripts/smoke-product-group-real.ts",

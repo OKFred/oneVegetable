@@ -2,7 +2,8 @@
  * Read-only acceptance against an existing production MV3 build, never a rebuild.
  * Usage: pnpm exec tsx scripts/smoke-iop-workbench-real.ts --confirm-readonly --credential=<IOP JSON>
  * The retained, isolated profile contains an encrypted vault; its random passphrase is not exported.
- * Native permission UI is NOT tested: only the copied manifest pregrants the exact IOP origin.
+ * Default pregrants the exact IOP origin only in the copied manifest.
+ * --native-host-consent preserves the production manifest and waits for the user to allow the host.
  */
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, readdir } from 'node:fs/promises';
@@ -45,16 +46,24 @@ export interface ReadRecord {
   networkRequests: number;
 }
 
-export function parseOptions(args: readonly string[]): { credential: string; productId?: string } {
+export function parseOptions(args: readonly string[]): {
+  credential: string;
+  productId?: string;
+  nativeHostConsent?: true;
+} {
   const inputs = args.filter((arg) => arg.startsWith('--credential='));
   const products = args.filter((arg) => arg.startsWith('--product-id='));
   if (
     inputs.length !== 1 ||
     args.filter((arg) => arg === '--confirm-readonly').length !== 1 ||
+    args.filter((arg) => arg === '--native-host-consent').length > 1 ||
     products.length > 1 ||
     args.some(
       (arg) =>
-        !arg.startsWith('--credential=') && !arg.startsWith('--product-id=') && arg !== '--confirm-readonly'
+        !arg.startsWith('--credential=') &&
+        !arg.startsWith('--product-id=') &&
+        arg !== '--confirm-readonly' &&
+        arg !== '--native-host-consent'
     )
   )
     throw new Error('READ_ONLY_ARGUMENTS_REQUIRED');
@@ -62,7 +71,11 @@ export function parseOptions(args: readonly string[]): { credential: string; pro
   if (!credential) throw new Error('READ_ONLY_ARGUMENTS_REQUIRED');
   const productId = products[0]?.slice('--product-id='.length);
   if (products.length && !safeNumericId(productId)) throw new Error('PRODUCT_ID_INVALID');
-  return { credential, ...(productId ? { productId } : {}) };
+  return {
+    credential,
+    ...(productId ? { productId } : {}),
+    ...(args.includes('--native-host-consent') ? { nativeHostConsent: true as const } : {})
+  };
 }
 
 export function readIopBundle(value: unknown) {
@@ -342,7 +355,7 @@ export async function main(args: readonly string[]): Promise<void> {
     isolatedProfile: true,
     configuredCredentialsReplaced: false,
     nativePermissionConsentTested: false,
-    isolatedManifestPregrant: `${IOP_API_ORIGIN}/*`,
+    isolatedManifestPregrant: options.nativeHostConsent ? null : `${IOP_API_ORIGIN}/*`,
     encryptedVaultConfirmed: false,
     protocolPersisted: false,
     tokenRenewed: false,
@@ -379,8 +392,12 @@ export async function main(args: readonly string[]): Promise<void> {
     )
       throw new Error('MV3_BUILD_REQUIRED');
     // ONLY this disposable manifest changes. No endpoint/signing/code substitutions.
-    manifest.host_permissions = [...new Set([...manifest.host_permissions, `${IOP_API_ORIGIN}/*`])];
-    await atomicWriteJson(resolve(extension, 'manifest.json'), manifest);
+    if (!options.nativeHostConsent) {
+      manifest.host_permissions = [...new Set([...manifest.host_permissions, `${IOP_API_ORIGIN}/*`])];
+      await atomicWriteJson(resolve(extension, 'manifest.json'), manifest);
+    } else if (manifest.host_permissions.includes(`${IOP_API_ORIGIN}/*`)) {
+      throw new Error('NATIVE_HOST_MUST_START_UNGRANTED');
+    }
     report.stage = 'launch';
     context = await chromium.launchPersistentContext(profile, {
       headless: false,
@@ -475,11 +492,28 @@ export async function main(args: readonly string[]): Promise<void> {
     await page.getByLabel(settingsZh.vault.setPassphrase, { exact: true }).fill(passphrase);
     await page.getByLabel(settingsZh.vault.confirmPassphrase, { exact: true }).fill(passphrase);
     await page.getByRole('button', { name: settingsZh.credentials.save, exact: true }).click();
+    if (options.nativeHostConsent)
+      process.stdout.write('Please allow openapi-api.alibaba.com in this isolated Chromium window.\n');
     // Only a boolean crosses back; no plaintext/ciphertext/settings dumps are retained.
-    await page.waitForFunction(() => {
-      const input = document.querySelector<HTMLInputElement>('[aria-label="Access Token"]');
-      return input?.value === '';
-    });
+    await page.waitForFunction(
+      () => {
+        const input = document.querySelector<HTMLInputElement>('[aria-label="Access Token"]');
+        return input?.value === '';
+      },
+      undefined,
+      { timeout: options.nativeHostConsent ? 600_000 : 20_000 }
+    );
+    if (options.nativeHostConsent) {
+      report.nativePermissionConsentTested = await worker.evaluate(async (origin) => {
+        const chrome = (
+          globalThis as unknown as {
+            chrome: { permissions: { contains(value: { origins: string[] }): Promise<boolean> } };
+          }
+        ).chrome;
+        return chrome.permissions.contains({ origins: [`${origin}/*`] });
+      }, IOP_API_ORIGIN);
+      if (!report.nativePermissionConsentTested) throw new Error('NATIVE_HOST_GRANT_NOT_CONFIRMED');
+    }
     report.stage = 'verify-vault';
     report.encryptedVaultConfirmed = await worker.evaluate(
       async (secrets) => {
