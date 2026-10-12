@@ -72,6 +72,9 @@ describe('ErrorNotice', () => {
   it.each([
     'ALIBABA_PROTOCOL_INVALID',
     'ALIBABA_IOP_METHOD_UNSUPPORTED',
+    'ALIBABA_IOP_PARAMETER_UNSUPPORTED',
+    'ALIBABA_IOP_MUTATION_UNVERIFIED',
+    'ALIBABA_IOP_BUSINESS_REJECTED',
     'ALIBABA_IOP_PHOTO_GROUP_REQUIRED',
     'ALIBABA_PROTOCOL_ENDPOINT_MISMATCH',
     'ALIBABA_IOP_RESPONSE_INVALID',
@@ -89,6 +92,10 @@ describe('ErrorNotice', () => {
     expect(wrapper.text()).not.toContain('errors.codes.');
     if (code === 'ALIBABA_IOP_PHOTO_GROUP_REQUIRED')
       expect(wrapper.text()).toContain('Choose a specific group');
+    if (code === 'ALIBABA_IOP_PARAMETER_UNSUPPORTED')
+      expect(wrapper.text()).toContain('never silently ignored');
+    if (code === 'ALIBABA_IOP_MUTATION_UNVERIFIED') expect(wrapper.text()).toContain('remains disabled');
+    if (code === 'ALIBABA_IOP_BUSINESS_REJECTED') expect(wrapper.text()).toContain('do not resubmit');
     wrapper.unmount();
   });
   it.each([

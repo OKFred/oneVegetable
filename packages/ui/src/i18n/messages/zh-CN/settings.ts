@@ -17,11 +17,11 @@ export const settings = {
   confirmation: {
     revokeTitle: '确认撤销主机权限',
     clearDiagnosticsTitle: '确认清空诊断',
-    revokeDescription: '撤销 {origin} 后，再次访问该主机时 Chrome 会重新询问授权。',
-    clearDiagnosticsDescription: '将清除当前保存的 {count} 条脱敏诊断记录。',
+    revokeDescription: '撤销 {origin} 后，Chrome 会在下次访问时重新询问。',
+    clearDiagnosticsDescription: '将清除 {count} 条脱敏诊断。',
     continue: '确认继续',
-    clearDiagnosticsDetail: '诊断内容已经脱敏，但清空后无法恢复；该操作不会删除账号凭证或商品草稿。',
-    revokeDetail: '该操作只撤销所选额外主机，不影响 Alibaba 正式网关的必选权限。'
+    clearDiagnosticsDetail: '清空不可恢复；不删除凭证或商品草稿。',
+    revokeDetail: '只撤销所选额外主机，不影响 TOP 网关必选权限。'
   },
   diagnostics: {
     busy: '正在处理诊断记录',
@@ -31,8 +31,7 @@ export const settings = {
     exported: '已导出 {count} 条脱敏诊断。',
     cleared: '诊断记录已清空。',
     title: '脱敏诊断',
-    description:
-      '仅保留最近 100 条操作名、requestId、耗时、错误码和 traceId；不记录请求参数、凭证或响应正文。',
+    description: '最近 100 条：操作名、requestId、耗时、错误码、traceId；无参数、凭证或响应正文。',
     countLabel: '诊断记录数量',
     count: '{count} 条',
     latestError: '最近错误：',
@@ -43,7 +42,7 @@ export const settings = {
   vault: {
     title: '开放平台凭证保护',
     description:
-      '凭证加密保存在本机。解锁后，刷新页面或 MV3 后台休眠不会要求重复输入口令；浏览器重启、扩展更新、主动锁定或所选空闲时限到期后才会重新锁定。',
+      '凭证本机加密。页面刷新或 MV3 休眠不锁定；浏览器重启、扩展更新、手动锁定或所选空闲时限到期才锁定。',
     status: {
       loading: '读取中',
       unlocked: '已解锁',
@@ -52,34 +51,31 @@ export const settings = {
       invalid: '格式无效',
       locked: '已锁定'
     },
-    activity: '最近活动：{time}；状态快照剩余约 {minutes} 分钟。',
+    activity: '活动：{time}；快照剩余约 {minutes} 分钟。',
     legacyTitle: '发现旧版明文凭证',
-    legacyDescription:
-      '真实请求已停止读取该记录。设置新口令后会在 service worker 内直接加密迁移，页面不会收到旧 App Secret 或 Access Token。',
+    legacyDescription: '已停止读取明文。设口令后由后台加密迁移，页面不接收旧密钥或 Token。',
     lockReason: {
       idle: '开放平台凭证已因空闲超时自动锁定',
       sessionEnded: 'Chrome 会话已结束，需要重新解锁',
       manual: '开放平台凭证已手动锁定'
     },
     lockDescription: {
-      sessionEnded: '浏览器重启、扩展更新或重载会清除仅存于内存的会话解锁材料；本地加密凭据仍然安全保存。',
-      other: '页面与后台中的解锁状态已清除，重新输入口令后才能继续真实查询。'
+      sessionEnded: '浏览器重启、扩展更新或重载会清除内存解锁材料；加密凭据仍保留。',
+      other: '页面及后台已锁定，请输入口令后继续查询。'
     },
     passphrase: '保护口令',
     unlock: '解锁',
     invalidTitle: '本机凭证记录无效',
-    invalidDescription:
-      '为避免覆盖无法恢复的数据，当前不提供自动修复。请先备份浏览器配置，再前往日志 → 诊断与数据，使用彻底清除功能重新开始。',
+    invalidDescription: '不自动修复，以免覆盖数据。先备份浏览器配置，再到日志 → 诊断与数据彻底清除重建。',
     lockNow: '立即锁定',
     idleTitle: '空闲自动锁定',
-    idleDescription:
-      '默认不因空闲自动锁定；只有选择时长后才会启用。MV3 后台休眠不会清除当前 Chrome 会话的解锁状态。',
+    idleDescription: '默认不自动锁定；选时长后启用。MV3 休眠不清除会话解锁状态。',
     idleLabel: '空闲自动锁定时间',
     neverLock: '不自动锁定（默认）',
     minutes: '{minutes} 分钟',
     savePolicy: '保存锁定策略',
     rotateTitle: '更换本机保护口令',
-    rotateDescription: '将生成新 salt 和新密钥重新加密，不需要旧口令再次参与。',
+    rotateDescription: '用新 salt、密钥重新加密，无需旧口令。',
     newPassphrase: '新保护口令',
     confirmNewPassphrase: '确认新保护口令',
     setPassphrase: '设置保护口令',
@@ -88,13 +84,13 @@ export const settings = {
     enterAgain: '再次输入',
     rotate: '更换口令',
     migrate: '加密并迁移旧凭证',
-    saveEncrypted: '凭证与设置已加密保存，并将在当前 Chrome 会话内保持可用。',
+    saveEncrypted: '凭证与设置已加密保存，会话内可用。',
     savedToast: '凭证与设置已保存',
-    unlockedFeedback: '凭证已解锁；刷新页面或后台休眠后无需重复输入口令。',
-    migratedFeedback: '旧版明文凭证已原位加密，并在当前 Chrome 会话内保持可用。',
-    lockedFeedback: '凭证已锁定，当前 Chrome 会话中的解锁状态已清除。',
-    rotatedFeedback: '凭证已使用新 salt 和新口令重新加密。',
-    idleDisabledFeedback: '已关闭空闲自动锁定；当前 Chrome 会话内将保持可用。',
+    unlockedFeedback: '凭证已解锁；刷新或后台休眠无需再输口令。',
+    migratedFeedback: '旧凭证已原位加密，会话内可用。',
+    lockedFeedback: '凭证已锁定，会话解锁状态已清除。',
+    rotatedFeedback: '已用新 salt 和口令重新加密。',
+    idleDisabledFeedback: '已关闭空闲自动锁定，会话内可用。',
     idleEnabledFeedback: '开放平台凭证将在连续 {minutes} 分钟未使用后自动锁定。',
     statusError: '凭证保护状态读取失败',
     unlockError: '凭证解锁失败',
@@ -108,7 +104,7 @@ export const settings = {
     title: '国际站开放平台凭证',
     guideTitle: '三步完成真实接口连接',
     guideDescription:
-      '可以用插件向导复用当前 Chrome 登录态，读取已有应用并完成 OAuth；遇到滑块、验证码或密钥安全确认时，直接在打开的 Alibaba 标签页中处理。也可以手工填写或导入授权包。',
+      'TOP 向导复用 Chrome 登录、已有应用完成 OAuth；滑块、验证码及密钥确认在 Alibaba 标签页处理。也可手填或导入。',
     acquire: '获取开放平台凭证',
     openCenter: '打开 Alibaba 应用中心',
     importBundle: '一键导入授权包 JSON',
@@ -119,26 +115,24 @@ export const settings = {
     saving: '保存中…',
     save: '保存设置',
     mockSavedFeedback: '演示设置已保存在本地浏览器。',
-    encryptedSavedFeedback: '设置已重新加密写入 chrome.storage.local。',
+    encryptedSavedFeedback: '设置已重新加密保存到本机。',
     mockSavedToast: '演示设置已保存',
     savedToast: '设置已保存',
     saveError: '设置保存失败',
     bundleTooLarge: '授权包 JSON 不能超过 256 KiB',
-    bundleLoaded:
-      '已从授权包读取 App Key、App Secret 和 Access Token；尚未保存，请设置本机保护口令并确认保存。',
+    bundleLoaded: '授权包已读入，尚未保存；设置保护口令并确认保存。',
     bundleImportError: '授权包导入失败',
-    acquired: 'Alibaba 开放平台凭据已获取并加密保存，当前 Chrome 会话内可以直接使用。',
+    acquired: '凭据已获取并加密保存，会话内可用。',
     bundleMissing: '授权包缺少 App Key、App Secret 或 Access Token',
     iopTool: '新版 IOP 授权与续期'
   },
   security: {
     title: '安全边界',
-    description:
-      '加密可降低本地静态存储泄露风险，但已解锁或被恶意扩展控制的浏览器仍可能暴露 App Secret；高安全场景应迁移到用户控制的 BFF。'
+    description: '加密仅保护静态存储；解锁或恶意扩展仍可能泄露密钥。高安全场景请用自控 BFF。'
   },
   socialBackend: {
     title: '社交发布后端',
-    description: '配对你自己的 oneVegetable 后端后，插件才能通过 Facebook / Instagram 官方 API 发布。',
+    description: '配对自有 oneVegetable 后端后，可用 Facebook / Instagram 官方 API 发布。',
     defaultDeviceName: 'Chrome 插件',
     states: {
       loading: '正在读取',
@@ -161,25 +155,25 @@ export const settings = {
     copyCode: '复制配对码',
     expires: '配对码于 {time} 失效。批准后回到这里检查结果。',
     openAdmin: '打开管理页',
-    authorizationExpires: '授权到期：{time}；Token 仅保存在受信扩展存储中，不会显示。',
+    authorizationExpires: '到期：{time}；Token 仅存于受信扩展，不回显。',
     expiredTitle: '设备授权已失效',
-    expiredDescription: '可能是 30 天有效期已到或管理员已撤销设备。重新配对会签发新令牌，不会恢复旧令牌。',
+    expiredDescription: '30 天已到期或管理员已撤销。重新配对签发新令牌，不恢复旧令牌。',
     pairAgain: '重新配对',
     startPairing: '开始配对',
     checkApproval: '检查批准结果',
     checkConnection: '检查连接',
     disconnect: '断开',
     disconnectTitle: '确认断开社交发布后端',
-    disconnectDescription: '将从插件删除设备令牌；如需立即让服务端令牌失效，还应在后端管理页撤销该设备。',
+    disconnectDescription: '删除插件令牌；如需立即撤销服务端授权，请同时在后端管理页撤销设备。',
     disconnectConfirm: '确认断开'
   },
   ...{
     s3: {
       localHttp:
-        '仅在可信局域网使用 HTTP，流量未加密。只允许私有 IPv4 和 path-style；本地 Node 需显式开启，云端 Worker 不支持。',
+        'HTTP 未加密，仅限可信局域网私有 IPv4、path-style。本地 Node 需显式开启，云端 Worker 不支持。',
       title: 'S3 素材存储',
       extensionDescription:
-        '插件独立连接 S3，无需部署后端。密钥在本机加密保存，由后台签名；不另设口令，不能防止浏览器配置文件被入侵。保存时仅申请对应存储域名权限。传输时请保持工作台打开；中断后先核对结果，不会自动重传。',
+        '插件直连 S3：本机加密、后台签名，无额外口令，不防浏览器入侵。保存只申请存储域名权限。传输请保持工作台打开；中断先核对，不自动重传。',
       description: '连接兼容 S3 的对象存储，用于素材导入、导出和备份。密钥由后端加密保存。',
       configured: '已配置',
       notConfigured: '未配置',
@@ -208,8 +202,7 @@ export const settings = {
       },
       rules: {
         title: '自动导入规则',
-        description:
-          '按顺序匹配 S3 对象路径；第一条命中的规则决定目标图片分组。导入时可选择自动创建缺失分组。规则仅保存在当前浏览器。',
+        description: 'S3 路径按顺序匹配，首条决定图片分组；导入可创建缺失分组。规则仅存本机。',
         add: '新增规则',
         newRule: '新规则',
         enabled: '启用',
@@ -231,8 +224,8 @@ export const settings = {
   },
   alibabaLanguage: {
     title: 'Alibaba 接口语言',
-    description: '只影响 Schema、官方提示及支持 language 参数的 Alibaba 平台请求，不改变界面语言。',
-    interfaceHint: '界面语言由右上角的“中 / EN”按钮控制。',
+    description: '用于 Schema、官方提示及支持 language 的请求；不改界面语言。',
+    interfaceHint: '界面语言：右上角“中 / EN”。',
     label: '平台请求语言',
     chinese: '简体中文（zh_CN）',
     english: 'English（en_US）',
@@ -240,7 +233,7 @@ export const settings = {
   },
   permissions: {
     title: '主机权限',
-    description: '正式网关为扩展必选权限；下面只列出曾由自定义网关或外部图片转存按需授予的主机。',
+    description: 'TOP 网关为必选权限；这里只列按需授权的额外主机。',
     empty: '当前没有额外主机权限。',
     revoke: '撤销',
     revokeLabel: '撤销 {origin}',
@@ -276,19 +269,19 @@ export const settings = {
     localData: {
       credentials: {
         label: '加密开放平台凭证与网关设置',
-        retention: '保留到用户覆盖、清除扩展数据或卸载扩展'
+        retention: '保留到覆盖、清除数据或卸载'
       },
       productMutationJobs: {
         label: '商品写入本地任务',
-        retention: '未完成任务保留到核验或恢复；完成任务最多保留 30 天、100 条'
+        retention: '未完成：待核验或恢复；完成：最多 30 天、100 条'
       },
       socialBackendDevice: {
         label: '社交发布后端设备授权',
-        retention: '保留到用户断开社交后端、清除扩展数据、设备授权到期或卸载扩展'
+        retention: '保留到断开、清除数据、到期或卸载'
       },
       drafts: {
         label: '商品与 RFQ 本地草稿',
-        retention: '保留到草稿被删除、清除扩展数据或卸载扩展'
+        retention: '保留到删除、清除数据或卸载'
       },
       diagnostics: {
         label: '脱敏会话诊断',
@@ -296,13 +289,13 @@ export const settings = {
       },
       preferences: {
         label: '首次使用与界面偏好',
-        retention: '保留到清除扩展数据或卸载扩展'
+        retention: '保留到清除数据或卸载'
       }
     }
   },
   localData: {
     title: '本地数据与隐私',
-    description: '清单只包含类别和估算大小，不导出 App Secret、Access Token、草稿正文或诊断内容。',
+    description: '清单仅含类别和估算大小，不含密钥、Token、草稿或诊断正文。',
     columns: {
       category: '类别',
       storage: '存储位置',
@@ -314,15 +307,14 @@ export const settings = {
     empty: '暂无本地数据',
     refresh: '刷新清单',
     export: '导出数据清单',
-    exported: '已导出不包含具体值的本地数据清单。',
+    exported: '已导出清单，不含具体值。',
     loadError: '本地数据清单加载失败',
     dangerTitle: '彻底清除扩展本地数据',
-    dangerDescription:
-      '此操作无法撤销。请输入“{phrase}”，将删除凭证、设置、草稿、诊断、首次使用状态并撤销额外主机权限。',
+    dangerDescription: '不可撤销。输入“{phrase}”删除凭证、设置、草稿、诊断、首次使用状态及额外主机权限。',
     clearLabel: '清除确认短语',
     clearPhrase: '清除全部数据',
     clear: '彻底清除',
-    cleared: '扩展本地数据和额外主机权限已清除；重新加载后会再次显示首次使用说明。',
+    cleared: '本地数据及额外权限已清除；重载后显示首次使用说明。',
     clearError: '扩展本地数据清除失败'
   }
 } as const;

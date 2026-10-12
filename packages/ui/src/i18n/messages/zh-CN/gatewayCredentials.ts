@@ -2,14 +2,12 @@ export const gatewayCredentials = {
   title: 'Alibaba 凭据配置',
   protocol: '网关协议',
   protocolTop: 'TOP（默认）',
-  protocolIop: 'IOP（兼容只读）',
-  iopCompatibility: 'IOP 支持商品、分组、Schema 渲染及部分图片读取；不支持订单、RFQ 或写操作，不会回退 TOP。',
-  iopPhotoGroupRequired: '读取 IOP 图片时请选择具体分组；全部图片和未分组不可用。',
+  protocolIop: 'IOP（显式选择）',
+  iopCompatibility: 'IOP 按映射开放读取；写入仅限通过账号验收的方法。未映射或未验收会拦截，不回退 TOP。',
   acquireTop: '获取 TOP 开放平台凭证',
   acquireIop: '打开独立 IOP 授权工具',
   extensionGuideIop: '使用独立 IOP 工具授权，导出 JSON 后导入并保存；TOP 一键获取不适用于 IOP。',
-  renewGuideIop:
-    '用独立 IOP 授权工具续期或重新授权，导出并导入 JSON 后保存、测试。不要使用 TOP 工具；保留保险库和登录，不重发写操作。',
+  renewGuideIop: '用独立 IOP 授权工具续期，导出 JSON 后导入、保存并测试。保留保险库和登录，不重放操作。',
   description: '当前服务的所有用户共用此配置。这里填写开放平台凭据，不是 Alibaba 网站登录账密。',
   adminOnly: '只有管理员可以管理 Alibaba 凭据。',
   unavailable: '当前后端尚未启用凭据管理。请配置服务端加密密钥并重启一次。',
@@ -32,8 +30,7 @@ export const gatewayCredentials = {
   'permissionnot-recorded': '未记录 System API 权限，请关注续期',
   permissionunknown: '权限未确认，请关注续期',
   permissionSnapshot: '权限快照：{time}（非实时查询）',
-  systemApiHelp:
-    'System API ≠ SystemAPI。权限不能反查旧 Token；TOP 与 IOP 的凭据、授权工具和可用接口不能混用。',
+  systemApiHelp: 'System API ≠ SystemAPI，不能反查旧 Token 到期时间。TOP/IOP 凭据与工具不能混用。',
   unlockForExpiry: '解锁凭据后查看授权',
   expiryReadFailed: '无法读取授权，请检查配置',
   renewDescription: '续期 API 授权；不影响工作台登录，不重发商品操作。',
@@ -55,8 +52,7 @@ export const gatewayCredentials = {
   extensionRenew:
     '插件不会自动续期。临近到期或接口提示失效时，点击“获取开放平台凭证”重新授权并保存；无需重建保险库。',
   renewTitle: '授权失效了，怎么重新连接？',
-  renewGuide:
-    '先尝试刷新 Token；失败后用插件重新授权、导出 JSON，再导入并测试连接。无需清除旧配置或退出工作台。本机可运行 pnpm openapi:auth。',
+  renewGuide: 'TOP 先尝试刷新；失败则重新授权、导入并测试。保留配置和登录。本机：pnpm openapi:auth。',
   legacy: '当前使用启动文件或环境变量。导入或保存后立即改用加密配置；清除后不会回退旧账号。',
   save: '保存并立即生效',
   cancel: '取消',

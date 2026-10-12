@@ -224,8 +224,8 @@ describe('SettingsView diagnostics', () => {
     await flushPromises();
     const selector = wrapper.get('select[aria-label="网关协议"]');
     expect((selector.element as HTMLSelectElement).value).toBe('iop');
-    expect(wrapper.text()).toContain('不支持订单、RFQ 或写操作');
-    expect(wrapper.text()).toContain('请选择具体分组');
+    expect(wrapper.get('[data-testid="iop-protocol-notice"]').text()).toContain('通过账号验收的方法');
+    expect(wrapper.text()).not.toContain('不支持订单、RFQ 或写操作');
     expect(wrapper.get('input[aria-label="HTTPS 网关"]').attributes('readonly')).toBeDefined();
     expect(save).not.toHaveBeenCalled();
     await selector.setValue('top');
@@ -655,12 +655,10 @@ describe('SettingsView diagnostics', () => {
 
     await vi.waitFor(() => {
       expect(clearAllLocalData).toHaveBeenCalledOnce();
-      expect(toast.success).toHaveBeenCalledWith(
-        '扩展本地数据和额外主机权限已清除；重新加载后会再次显示首次使用说明。'
-      );
+      expect(toast.success).toHaveBeenCalledWith('本地数据及额外权限已清除；重载后显示首次使用说明。');
     });
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('扩展本地数据和额外主机权限已清除');
+      expect(wrapper.text()).toContain('本地数据及额外权限已清除');
     });
     wrapper.unmount();
   });
@@ -701,8 +699,8 @@ describe('SettingsView diagnostics', () => {
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('Chrome 会话已结束，需要重新解锁');
     });
-    expect(wrapper.text()).toContain('会清除仅存于内存的会话解锁材料');
-    expect(wrapper.text()).toContain('本地加密凭据仍然安全保存');
+    expect(wrapper.text()).toContain('会清除内存解锁材料');
+    expect(wrapper.text()).toContain('加密凭据仍保留');
     wrapper.unmount();
   });
 
@@ -723,7 +721,7 @@ describe('SettingsView diagnostics', () => {
     await wrapper.get('#settings-credentials button').trigger('click');
     await vi.waitFor(() => {
       expect(migrateVault).toHaveBeenCalledWith('migrated-vault-password');
-      expect(wrapper.text()).toContain('旧版明文凭证已原位加密，并在当前 Chrome 会话内保持可用');
+      expect(wrapper.text()).toContain('旧凭证已原位加密，会话内可用');
     });
     wrapper.unmount();
   });

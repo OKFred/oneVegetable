@@ -150,7 +150,7 @@ describe('Node credential configuration UI', () => {
     const h = await harness();
     await h.button('手动填写').trigger('click');
     await h.wrapper.get('select[aria-label="网关协议"]').setValue('iop');
-    expect(h.wrapper.text()).toContain('不支持订单、RFQ 或写操作');
+    expect(h.wrapper.get('[data-testid="iop-protocol-notice"]').text()).toContain('通过账号验收的方法');
     const inputs = h.wrapper.findAll('input[type="password"]');
     await inputs[0]?.setValue(fixture.manual.appKey);
     await inputs[1]?.setValue(fixture.manual.appSecret);
@@ -188,7 +188,7 @@ describe('Node credential configuration UI', () => {
     Object.defineProperty(input.element, 'files', { configurable: true, value: [file] });
     await input.trigger('change');
     await flushPromises();
-    expect(h.wrapper.text()).toContain('IOP（兼容只读）');
+    expect(h.wrapper.text()).toContain('IOP（显式选择）');
     expect(h.importCredential).not.toHaveBeenCalled();
     h.wrapper
       .findAll('button')

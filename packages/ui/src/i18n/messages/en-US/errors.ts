@@ -2,7 +2,13 @@ export const errors = {
   codes: {
     ALIBABA_PROTOCOL_INVALID: 'Invalid gateway protocol. Explicitly choose TOP or IOP.',
     ALIBABA_IOP_METHOD_UNSUPPORTED:
-      'This endpoint does not support IOP. Use a compatible read; no automatic TOP fallback.',
+      'This method is not mapped to IOP. Choose a supported method; no TOP fallback.',
+    ALIBABA_IOP_PARAMETER_UNSUPPORTED:
+      'IOP does not support this filter. Request blocked; never silently ignored.',
+    ALIBABA_IOP_MUTATION_UNVERIFIED:
+      'This IOP write method has not passed account verification and remains disabled.',
+    ALIBABA_IOP_BUSINESS_REJECTED:
+      'The platform explicitly rejected this IOP operation. Check business conditions; do not resubmit.',
     ALIBABA_IOP_PHOTO_GROUP_REQUIRED:
       'Choose a specific group for IOP photos; all photos and ungrouped photos are unsupported.',
     ALIBABA_PROTOCOL_ENDPOINT_MISMATCH:

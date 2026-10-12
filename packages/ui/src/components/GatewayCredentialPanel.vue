@@ -22,6 +22,7 @@ import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import ErrorNotice from './ErrorNotice.vue';
 import AlibabaIndependentNotice from './AlibabaIndependentNotice.vue';
 import CredentialExpiryNotice from './CredentialExpiryNotice.vue';
+import GatewayProtocolNotice from './settings/GatewayProtocolNotice.vue';
 
 const { control, runtime } = useServices();
 const t = useGatewayCredentialsI18n();
@@ -225,9 +226,7 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
         <p class="text-sm" data-testid="gateway-protocol-summary">
           {{ t('protocol') }}: {{ t(summary?.protocol === 'iop' ? 'protocolIop' : 'protocolTop') }}
         </p>
-        <p v-if="summary?.protocol === 'iop'" class="text-sm text-muted-foreground">
-          {{ t('iopCompatibility') }} {{ t('iopPhotoGroupRequired') }}
-        </p>
+        <GatewayProtocolNotice :protocol="summary?.protocol" />
         <CredentialExpiryNotice
           v-if="summary && (summary.configured || summary.accessTokenExpiresTimeUtc != null)"
           :expires="summary.accessTokenExpiresTimeUtc"
@@ -336,9 +335,7 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
           <option value="iop">{{ t('protocolIop') }}</option>
         </select>
       </label>
-      <p v-if="fields.protocol === 'iop'" class="text-sm text-muted-foreground">
-        {{ t('iopCompatibility') }} {{ t('iopPhotoGroupRequired') }}
-      </p>
+      <GatewayProtocolNotice :protocol="fields.protocol" />
       <label class="block space-y-1 text-sm"
         >AppName ({{ t('optional') }})<Input v-model="fields.appName" maxlength="256"
       /></label>
@@ -395,8 +392,6 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
     <p v-if="pendingBundle">
       {{ t('protocol') }}: {{ t(pendingBundle.protocol === 'iop' ? 'protocolIop' : 'protocolTop') }}
     </p>
-    <p v-if="pendingBundle?.protocol === 'iop'">
-      {{ t('iopCompatibility') }} {{ t('iopPhotoGroupRequired') }}
-    </p>
+    <GatewayProtocolNotice :protocol="pendingBundle?.protocol" />
   </ConfirmActionDialog>
 </template>

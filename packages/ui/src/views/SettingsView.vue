@@ -32,6 +32,7 @@ import {
 import AlibabaCredentialAcquisitionDialog from '../components/AlibabaCredentialAcquisitionDialog.vue';
 import AlibabaIndependentNotice from '../components/AlibabaIndependentNotice.vue';
 import CredentialExpiryNotice from '../components/CredentialExpiryNotice.vue';
+import GatewayProtocolNotice from '../components/settings/GatewayProtocolNotice.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import ExtensionSocialBackendPanel from '../components/ExtensionSocialBackendPanel.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -709,9 +710,7 @@ function confirmLanguagePreference(): void {
               <option value="iop">{{ credentialText('protocolIop') }}</option>
             </select>
           </label>
-          <p v-if="selectedProtocol === 'iop'" class="mt-2 text-sm text-muted-foreground">
-            {{ credentialText('iopCompatibility') }} {{ credentialText('iopPhotoGroupRequired') }}
-          </p>
+          <GatewayProtocolNotice class="mt-2" :protocol="selectedProtocol" />
           <div class="grid gap-4 sm:grid-cols-2">
             <label class="text-sm font-medium"
               >App Key<Input

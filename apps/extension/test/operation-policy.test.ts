@@ -41,23 +41,64 @@ describe('extension operation policy', () => {
       );
     }
   });
-  it('limits IOP to the core read allowlist, including known TOP writes', () => {
+  it('follows the shared IOP mapping/account verification policy, not TOP write permissions', () => {
     for (const operation of OPERATION_IDS) {
       const staticDecision = resolveExtensionStaticOperationAvailability(operation, 'iop');
       expect(staticDecision.allowed, operation).toBe(iopOperationReason(operation) === null);
       expect(resolveExtensionOperationAvailability(operation, {}, 'iop')).toEqual(staticDecision);
     }
-    for (const operation of ['publishProduct', 'updateProduct', 'uploadPhoto', 'createProductGroup'] as const)
-      expect(resolveExtensionOperationAvailability(operation, {}, 'iop').reasonCode).toBe(
-        'ALIBABA_IOP_METHOD_UNSUPPORTED'
-      );
+    for (const operation of [
+      'publishProduct',
+      'updateProduct',
+      'uploadPhoto',
+      'createProductGroup'
+    ] as const) {
+      const reason = iopOperationReason(operation);
+      expect(resolveExtensionOperationAvailability(operation, {}, 'iop').allowed).toBe(reason === null);
+      if (reason) expect(resolveExtensionOperationAvailability(operation, {}, 'iop').reasonCode).toBe(reason);
+    }
   });
-  it.each(['listProductGroups', 'listPhotoGroups'] as const)(
-    'allows the real IOP group operation ID %s',
+  it.each([
+    'listProductGroups',
+    'listPhotoGroups',
+    'getProductSchema',
+    'getProductLevelSchema',
+    'listProductCategories',
+    'mapProductCategory',
+    'getProductScore',
+    'listTradeOrders',
+    'getTradeOrderLogistics',
+    'getTradeOrderAggregate'
+  ] as const)('allows the mapped IOP read operation ID %s', (operation) => {
+    expect(resolveExtensionStaticOperationAvailability(operation, 'iop').allowed).toBe(true);
+  });
+  it.each(['listRfqs', 'listRecommendedRfqs', 'getRfq', 'getTradeOrderFund'] as const)(
+    'keeps undocumented or non-equivalent IOP read %s closed',
     (operation) => {
-      expect(resolveExtensionStaticOperationAvailability(operation, 'iop').allowed).toBe(true);
+      expect(resolveExtensionStaticOperationAvailability(operation, 'iop')).toMatchObject({
+        allowed: false,
+        reasonCode: 'ALIBABA_IOP_METHOD_UNSUPPORTED'
+      });
     }
   );
+  it.each([
+    'alibaba.icbu.product.schema.add',
+    'alibaba.icbu.product.schema.add.draft',
+    'alibaba.icbu.product.schema.update'
+  ])('follows per-method account verification for IOP write %s', (method) => {
+    const reason = iopOperationReason('callCapability', method);
+    expect([null, 'ALIBABA_IOP_MUTATION_UNVERIFIED']).toContain(reason);
+    const decision = resolveExtensionOperationAvailability(
+      'callCapability',
+      { method, parameters: {} },
+      'iop'
+    );
+    if (reason) expect(decision).toMatchObject({ allowed: false, reasonCode: reason });
+    else
+      expect(decision).toEqual(
+        resolveExtensionOperationAvailability('callCapability', { method, parameters: {} }, 'top')
+      );
+  });
   it.each([
     'alibaba.icbu.product.list',
     'alibaba.icbu.product.group.get',
@@ -81,7 +122,7 @@ describe('extension operation policy', () => {
       ).allowed
     ).toBe(false);
   });
-  it.each(['alibaba.icbu.product.get', 'alibaba.icbu.product.schema.update', 'unknown', undefined])(
+  it.each(['alibaba.icbu.product.get', 'unknown', undefined])(
     'rejects unmapped IOP capability %s before a TOP policy could allow it',
     (method) => {
       expect(
@@ -98,7 +139,9 @@ describe('extension operation policy', () => {
     const client = createExtensionOperationAvailabilityClient(readStatus);
     const operations = ['listProducts', 'publishProduct', 'callCapability'] as const;
     expect((await client.get(operations)).items.map((item) => item.allowed)).toEqual([true, true, false]);
-    expect((await client.get(operations)).items.map((item) => item.allowed)).toEqual([true, false, false]);
+    expect((await client.get(operations)).items.map((item) => item.allowed)).toEqual(
+      operations.map((operation) => resolveExtensionStaticOperationAvailability(operation, 'iop').allowed)
+    );
     expect((await client.get(operations)).items.map((item) => item.allowed)).toEqual([true, true, false]);
     expect(readStatus).toHaveBeenCalledTimes(3);
   });

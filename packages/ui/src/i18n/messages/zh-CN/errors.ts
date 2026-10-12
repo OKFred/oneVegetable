@@ -1,7 +1,10 @@
 export const errors = {
   codes: {
     ALIBABA_PROTOCOL_INVALID: '网关协议无效，请明确选择 TOP 或 IOP。',
-    ALIBABA_IOP_METHOD_UNSUPPORTED: '此接口不支持 IOP，请使用兼容的只读接口；不会自动回退 TOP。',
+    ALIBABA_IOP_METHOD_UNSUPPORTED: '此方法尚未映射到 IOP，请选择已支持的方法；不会回退 TOP。',
+    ALIBABA_IOP_PARAMETER_UNSUPPORTED: 'IOP 尚不支持此筛选参数，已停止请求，不会静默忽略。',
+    ALIBABA_IOP_MUTATION_UNVERIFIED: '此 IOP 写方法尚未完成账号验收，保持禁用。',
+    ALIBABA_IOP_BUSINESS_REJECTED: '平台明确拒绝了此 IOP 操作，请核对业务条件，不要重复提交。',
     ALIBABA_IOP_PHOTO_GROUP_REQUIRED: 'IOP 图片查询需要具体分组，请选择分组；不支持全部图片或未分组。',
     ALIBABA_PROTOCOL_ENDPOINT_MISMATCH: '协议与网关地址不匹配，请核对 TOP 或 IOP 配置。',
     ALIBABA_IOP_RESPONSE_INVALID: 'IOP 响应格式不符合预期，请核对配置和接口；不会回退 TOP。',

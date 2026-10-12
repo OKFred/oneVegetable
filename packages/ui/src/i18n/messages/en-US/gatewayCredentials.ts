@@ -2,17 +2,15 @@ export const gatewayCredentials = {
   title: 'Alibaba credentials',
   protocol: 'Gateway protocol',
   protocolTop: 'TOP (default)',
-  protocolIop: 'IOP (compatible reads)',
+  protocolIop: 'IOP (explicit choice)',
   iopCompatibility:
-    'IOP supports product, group, schema render and selected photo reads; not orders, RFQ or writes. No TOP fallback.',
-  iopPhotoGroupRequired:
-    'Choose a specific group for IOP photos; all photos and ungrouped photos are unavailable.',
+    'IOP uses mapped reads and account-verified writes only. Unmapped or unverified calls are blocked; no TOP fallback.',
   acquireTop: 'Get TOP Open Platform credentials',
   acquireIop: 'Open independent IOP authorization tool',
   extensionGuideIop:
     'Authorize in the independent IOP tool, then export, import and save JSON. TOP acquisition is not for IOP.',
   renewGuideIop:
-    'Renew in the independent IOP tool; export, import, save and test JSON. Do not use TOP tools. Keep the vault and session; do not replay writes.',
+    'Renew in the independent IOP tool; export, import, save and test JSON. Keep the vault and session; do not replay operations.',
   expiryunknown: 'Expiry unknown; this does not mean permanent access',
   expiryvalid: 'Within the recorded authorization period',
   expiryexpiring: 'Authorization expires within 7 days; prepare to renew',
@@ -50,7 +48,7 @@ export const gatewayCredentials = {
   permissionunknown: 'Permissions unconfirmed; check renewal',
   permissionSnapshot: 'Permission snapshot: {time}; not live',
   systemApiHelp:
-    'System API ≠ SystemAPI. Permissions cannot reveal old expiry; TOP and IOP credentials, authorization tools and compatible endpoints are not interchangeable.',
+    'System API ≠ SystemAPI; it cannot reveal old token expiry. Do not mix TOP/IOP credentials or tools.',
   unlockForExpiry: 'Unlock to view expiry',
   expiryReadFailed: 'Cannot read authorization; check settings',
   renewDescription: 'Renew API access without signing out or replaying product operations.',
@@ -61,7 +59,7 @@ export const gatewayCredentials = {
   noRefresh: 'Refresh unavailable. Reauthorize and import.',
   renewTitle: 'How do I reconnect after authorization fails?',
   renewGuide:
-    'Try refresh. Otherwise authorize in extension Settings, export JSON, import and test here. Keep the old configuration and workbench session. Local: pnpm openapi:auth.',
+    'TOP: try refresh, or reauthorize, import and test. Keep configuration and sign-in. Local: pnpm openapi:auth.',
   legacy:
     'Startup file/environment. Saving switches to encrypted configuration; clearing never restores the old account.',
   save: 'Save and activate',

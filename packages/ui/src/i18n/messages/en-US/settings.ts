@@ -17,13 +17,11 @@ export const settings = {
   confirmation: {
     revokeTitle: 'Revoke host access?',
     clearDiagnosticsTitle: 'Clear diagnostics?',
-    revokeDescription: 'After revoking {origin}, Chrome will ask again the next time this host is accessed.',
-    clearDiagnosticsDescription: 'This will clear the {count} redacted diagnostic records currently stored.',
+    revokeDescription: 'Revoke {origin}; Chrome will ask again on next access.',
+    clearDiagnosticsDescription: 'Clear {count} redacted diagnostics.',
     continue: 'Continue',
-    clearDiagnosticsDetail:
-      'Diagnostics are redacted, but cannot be recovered after clearing. Account credentials and product drafts are not deleted.',
-    revokeDetail:
-      'Only the selected additional host is revoked. Required access to the official Alibaba gateway is unaffected.'
+    clearDiagnosticsDetail: 'Clearing is irreversible; credentials and product drafts remain.',
+    revokeDetail: 'Only the selected extra host is revoked; required TOP access remains.'
   },
   diagnostics: {
     busy: 'Processing diagnostic records',
@@ -34,7 +32,7 @@ export const settings = {
     cleared: 'Diagnostic records cleared.',
     title: 'Redacted diagnostics',
     description:
-      'Stores only the latest 100 operation names, request IDs, durations, error codes, and trace IDs. Request payloads, credentials, and response bodies are never recorded.',
+      'Latest 100: operation, requestId, duration, error code, traceId. No payloads, credentials or response bodies.',
     countLabel: 'Diagnostic record count',
     count: '{count} records',
     latestError: 'Latest error:',
@@ -45,7 +43,7 @@ export const settings = {
   vault: {
     title: 'Open Platform credential protection',
     description:
-      'Credentials are encrypted on this device. Once unlocked, refreshing the page or suspending the MV3 background does not require the passphrase again. A browser restart, extension update, manual lock, or selected idle timeout locks it again.',
+      'Encrypted locally. Page refresh or MV3 suspension does not lock; browser restart, extension update, manual lock or selected idle timeout does.',
     status: {
       loading: 'Loading',
       unlocked: 'Unlocked',
@@ -54,10 +52,10 @@ export const settings = {
       invalid: 'Invalid format',
       locked: 'Locked'
     },
-    activity: 'Last activity: {time}; status snapshot has about {minutes} minutes remaining.',
+    activity: 'Activity: {time}; snapshot: about {minutes} minutes left.',
     legacyTitle: 'Legacy plaintext credentials found',
     legacyDescription:
-      'Real requests no longer read this record. After you set a new passphrase, the service worker encrypts it in place. The page never receives the old App Secret or Access Token.',
+      'Plaintext reads stopped. Set a passphrase for background encryption; old secrets and tokens never reach the page.',
     lockReason: {
       idle: 'Open Platform credentials were locked after the idle timeout',
       sessionEnded: 'The Chrome session ended — unlock again',
@@ -65,26 +63,24 @@ export const settings = {
     },
     lockDescription: {
       sessionEnded:
-        'Restarting Chrome, updating, or reloading the extension clears session unlock material held only in memory. Locally encrypted credentials remain stored safely.',
-      other:
-        'The page and background unlock state has been cleared. Enter the passphrase again before making real queries.'
+        'Browser restart or extension update/reload clears memory-only unlock material. Encrypted credentials remain.',
+      other: 'Page and background are locked. Enter the passphrase to resume queries.'
     },
     passphrase: 'Protection passphrase',
     unlock: 'Unlock',
     invalidTitle: 'The local credential record is invalid',
     invalidDescription:
-      'Automatic repair is disabled to avoid overwriting unrecoverable data. Back up your browser profile, then go to Logs → Diagnostics & data and use the full clear action to start over.',
+      'No automatic repair: it could overwrite data. Back up the browser profile, then use full clear in Logs → Diagnostics & data to rebuild.',
     lockNow: 'Lock now',
     idleTitle: 'Automatic idle lock',
     idleDescription:
-      'Idle locking is disabled by default and is enabled only after you choose a duration. MV3 background suspension does not clear the unlocked state in the current Chrome session.',
+      'Off by default; choose a duration to enable. MV3 suspension keeps the session unlocked.',
     idleLabel: 'Automatic idle lock duration',
     neverLock: 'Do not lock automatically (default)',
     minutes: '{minutes} minutes',
     savePolicy: 'Save lock policy',
     rotateTitle: 'Change the local protection passphrase',
-    rotateDescription:
-      'A new salt and key are generated to re-encrypt the record; the old passphrase is not needed again.',
+    rotateDescription: 'Re-encrypt with a new salt and key; no old passphrase needed.',
     newPassphrase: 'New protection passphrase',
     confirmNewPassphrase: 'Confirm new protection passphrase',
     setPassphrase: 'Set protection passphrase',
@@ -93,19 +89,14 @@ export const settings = {
     enterAgain: 'Enter again',
     rotate: 'Change passphrase',
     migrate: 'Encrypt and migrate legacy credentials',
-    saveEncrypted:
-      'Credentials and settings were encrypted and will remain available in the current Chrome session.',
+    saveEncrypted: 'Credentials and settings encrypted; available in this session.',
     savedToast: 'Credentials and settings saved',
-    unlockedFeedback:
-      'Credentials unlocked. A page refresh or background suspension will not ask for the passphrase again.',
-    migratedFeedback:
-      'Legacy plaintext credentials were encrypted in place and remain available in the current Chrome session.',
-    lockedFeedback: 'Credentials locked. The unlocked state in the current Chrome session was cleared.',
-    rotatedFeedback: 'Credentials were re-encrypted with a new salt and passphrase.',
-    idleDisabledFeedback:
-      'Automatic idle locking is off. Credentials remain available in the current Chrome session.',
-    idleEnabledFeedback:
-      'Open Platform credentials will lock after {minutes} consecutive minutes without use.',
+    unlockedFeedback: 'Unlocked; refresh or background suspension needs no passphrase.',
+    migratedFeedback: 'Legacy credentials encrypted in place; available in this session.',
+    lockedFeedback: 'Locked; session unlock state cleared.',
+    rotatedFeedback: 'Re-encrypted with a new salt and passphrase.',
+    idleDisabledFeedback: 'Idle lock off; available in this session.',
+    idleEnabledFeedback: 'Credentials lock after {minutes} consecutive idle minutes.',
     statusError: 'Unable to read credential protection status',
     unlockError: 'Unable to unlock credentials',
     migrateError: 'Unable to encrypt legacy credentials',
@@ -118,7 +109,7 @@ export const settings = {
     title: 'Alibaba.com Open Platform credentials',
     guideTitle: 'Connect real APIs in three steps',
     guideDescription:
-      'The extension assistant can reuse your current Chrome sign-in, read an existing application, and complete OAuth. Handle a slider, CAPTCHA, or secret-view confirmation in the Alibaba tab it opens. You can also enter credentials manually or import a credential bundle.',
+      'The TOP assistant reuses Chrome sign-in and an existing app for OAuth. Handle CAPTCHA, sliders and secret confirmation in the Alibaba tab. Or enter/import credentials.',
     acquire: 'Get Open Platform credentials',
     openCenter: 'Open Alibaba Application Center',
     importBundle: 'Import credential bundle JSON',
@@ -129,28 +120,25 @@ export const settings = {
     saving: 'Saving…',
     save: 'Save settings',
     mockSavedFeedback: 'Demo settings were saved in this browser.',
-    encryptedSavedFeedback: 'Settings were encrypted and written to chrome.storage.local again.',
+    encryptedSavedFeedback: 'Settings re-encrypted and saved locally.',
     mockSavedToast: 'Demo settings saved',
     savedToast: 'Settings saved',
     saveError: 'Unable to save settings',
     bundleTooLarge: 'Credential bundle JSON cannot exceed 256 KiB',
-    bundleLoaded:
-      'App Key, App Secret, and Access Token were read from the bundle but are not saved yet. Set a local protection passphrase and confirm save.',
+    bundleLoaded: 'Bundle loaded, not saved. Set a protection passphrase and confirm save.',
     bundleImportError: 'Unable to import credential bundle',
-    acquired:
-      'Alibaba Open Platform credentials were acquired, encrypted, and can be used in the current Chrome session.',
+    acquired: 'Credentials acquired and encrypted; available in this session.',
     bundleMissing: 'The credential bundle is missing an App Key, App Secret, or Access Token',
     iopTool: 'IOP authorization and renewal'
   },
   security: {
     title: 'Security boundary',
     description:
-      'Encryption reduces exposure from local static storage, but an unlocked browser or malicious extension may still expose the App Secret. Higher-security deployments should use a BFF you control.'
+      'Encryption protects storage only; unlocking or malicious extensions may expose secrets. For higher security, use a BFF you control.'
   },
   socialBackend: {
     title: 'Social publishing backend',
-    description:
-      'Pair the extension with your own oneVegetable backend to publish through the official Facebook and Instagram APIs.',
+    description: 'Pair your oneVegetable backend to publish via official Facebook / Instagram APIs.',
     defaultDeviceName: 'Chrome extension',
     states: {
       loading: 'Loading',
@@ -173,11 +161,10 @@ export const settings = {
     copyCode: 'Copy pairing code',
     expires: 'The pairing code expires at {time}. Return here to check after approval.',
     openAdmin: 'Open Administration',
-    authorizationExpires:
-      'Authorization expires at {time}. The token is stored only in trusted extension storage and is never displayed.',
+    authorizationExpires: 'Expires: {time}. Token stays in trusted extension storage; never displayed.',
     expiredTitle: 'Device authorization expired',
     expiredDescription:
-      'The 30-day validity period may have ended, or an administrator may have revoked the device. Pairing again issues a new token and never restores the old one.',
+      'Expired after 30 days or revoked by an admin. Pair again for a new token; old tokens stay invalid.',
     pairAgain: 'Pair again',
     startPairing: 'Start pairing',
     checkApproval: 'Check approval',
@@ -185,16 +172,16 @@ export const settings = {
     disconnect: 'Disconnect',
     disconnectTitle: 'Disconnect the social publishing backend?',
     disconnectDescription:
-      'This removes the device token from the extension. To invalidate the server-side token immediately, also revoke this device in backend Administration.',
+      'Removes the extension token. For immediate server revocation, also revoke the device in backend Administration.',
     disconnectConfirm: 'Disconnect'
   },
   ...{
     s3: {
       localHttp:
-        'Use HTTP only on a trusted LAN; traffic is unencrypted. Requires a private IPv4 address and path-style. Local Node needs explicit opt-in; cloud Workers do not support it.',
+        'HTTP is unencrypted: trusted LAN, private IPv4 and path-style only. Local Node requires opt-in; cloud Workers do not support it.',
       title: 'S3 asset storage',
       extensionDescription:
-        'Connect directly from the extension without a backend. Credentials are encrypted locally and signed in the background. There is no extra password; this does not protect a compromised browser profile. Saving requests only the storage host permission. Keep the workbench open during transfers; check interrupted results before retrying. Transfers never resume automatically.',
+        'Direct S3: local encryption, background signing, no extra password; cannot protect a compromised browser. Save requests storage-host access only. Keep the workbench open during transfers; check interrupted results before retrying. No automatic resume.',
       description:
         'Connect S3-compatible object storage for asset imports, exports, and backups. Secrets are encrypted by the backend.',
       configured: 'Configured',
@@ -227,7 +214,7 @@ export const settings = {
       rules: {
         title: 'Automatic import rules',
         description:
-          'S3 object paths are matched in order. The first match selects the target image group. Missing groups can be created automatically during import. Rules stay in this browser.',
+          'First matching S3 path rule selects the image group; import can create missing groups. Rules stay local.',
         add: 'Add rule',
         newRule: 'New rule',
         enabled: 'Enabled',
@@ -250,8 +237,8 @@ export const settings = {
   alibabaLanguage: {
     title: 'Alibaba API language',
     description:
-      'Only affects Schema, official guidance, and Alibaba requests that support the language parameter. It does not change the interface language.',
-    interfaceHint: 'Use the “中 / EN” button in the top-right corner to change the interface language.',
+      'For Schema, official guidance and requests supporting language; not the interface language.',
+    interfaceHint: 'Interface language: “中 / EN” at top right.',
     label: 'Platform request language',
     chinese: 'Simplified Chinese (zh_CN)',
     english: 'English (en_US)',
@@ -259,8 +246,7 @@ export const settings = {
   },
   permissions: {
     title: 'Host access',
-    description:
-      'The official gateway is required by the extension. This list contains only hosts granted on demand for custom gateways or external-image transfers.',
+    description: 'TOP access is required. This list shows only extra hosts authorized on demand.',
     empty: 'No additional hosts are currently authorized.',
     revoke: 'Revoke',
     revokeLabel: 'Revoke {origin}',
@@ -297,21 +283,19 @@ export const settings = {
     localData: {
       credentials: {
         label: 'Encrypted Open Platform credentials and gateway settings',
-        retention: 'Kept until replaced, extension data is cleared, or the extension is uninstalled'
+        retention: 'Until replaced, data cleared or uninstalled'
       },
       productMutationJobs: {
         label: 'Local product mutation jobs',
-        retention:
-          'Incomplete jobs remain until verified or recovered; completed jobs are kept for up to 30 days and 100 entries'
+        retention: 'Incomplete: until verified/recovered. Completed: max 30 days, 100 entries'
       },
       socialBackendDevice: {
         label: 'Social publishing backend device authorization',
-        retention:
-          'Kept until disconnected, extension data is cleared, authorization expires, or the extension is uninstalled'
+        retention: 'Until disconnected, data cleared, expired or uninstalled'
       },
       drafts: {
         label: 'Local product and RFQ drafts',
-        retention: 'Kept until deleted, extension data is cleared, or the extension is uninstalled'
+        retention: 'Until deleted, data cleared or uninstalled'
       },
       diagnostics: {
         label: 'Redacted session diagnostics',
@@ -319,14 +303,13 @@ export const settings = {
       },
       preferences: {
         label: 'First-use state and interface preferences',
-        retention: 'Kept until extension data is cleared or the extension is uninstalled'
+        retention: 'Until data cleared or uninstalled'
       }
     }
   },
   localData: {
     title: 'Local data and privacy',
-    description:
-      'The inventory contains only categories and estimated sizes. It does not export App Secrets, Access Tokens, draft content, or diagnostic details.',
+    description: 'Categories and estimated sizes only; no secrets, tokens, draft or diagnostic content.',
     columns: {
       category: 'Category',
       storage: 'Storage',
@@ -338,16 +321,15 @@ export const settings = {
     empty: 'No local data',
     refresh: 'Refresh inventory',
     export: 'Export inventory',
-    exported: 'Exported a local data inventory without stored values.',
+    exported: 'Inventory exported; no stored values.',
     loadError: 'Unable to load the local data inventory',
     dangerTitle: 'Clear all extension local data',
     dangerDescription:
-      'This cannot be undone. Enter “{phrase}” to delete credentials, settings, drafts, diagnostics, first-use status, and revoke additional host access.',
+      'Irreversible. Enter “{phrase}” to delete credentials, settings, drafts, diagnostics, first-use status and extra host access.',
     clearLabel: 'Clear confirmation phrase',
     clearPhrase: 'clear all data',
     clear: 'Clear everything',
-    cleared:
-      'Extension local data and additional host access were cleared. The first-use notice will appear again after reload.',
+    cleared: 'Local data and extra access cleared. Reload to see the first-use notice.',
     clearError: 'Unable to clear extension local data'
   }
 } as const;

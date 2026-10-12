@@ -13,6 +13,7 @@ import { IOP_VAULT_KEY, IOP_RECEIPT_KEY } from '../../apps/extension/lib/iop-aut
 import tokens from '../../mock/data/alibaba-auth/iop-token-responses.json' with { type: 'json' };
 import credentials from '../../mock/data/node-gateway-credentials.json' with { type: 'json' };
 import business from '../../mock/data/alibaba-auth/iop-business-responses.json' with { type: 'json' };
+import { iopOperationReason } from '../../packages/core/src/alibaba-iop-business';
 
 let context: BrowserContext;
 let worker: Worker;
@@ -178,6 +179,30 @@ async function exportBundle(tool: Page): Promise<Record<string, unknown>> {
   if (!path) throw new Error('Missing downloaded fixture');
   return JSON.parse(await readFile(path, 'utf8')) as Record<string, unknown>;
 }
+
+async function sendWorkbench(page: Page, kind: string, operation: string, payload: unknown = {}) {
+  return page.evaluate(
+    async (message) => {
+      const runtime = (
+        globalThis as unknown as {
+          chrome: { runtime: { sendMessage(value: unknown): Promise<unknown> } };
+        }
+      ).chrome.runtime;
+      return runtime.sendMessage({ ...message, requestId: crypto.randomUUID() });
+    },
+    { kind, operation, payload }
+  );
+}
+async function openWorkbenchSettings(): Promise<Page> {
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${extensionId}/options.html#/settings`);
+  const onboarding = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
+  await onboarding.getByRole('checkbox').check();
+  await onboarding.getByRole('button', { name: '稍后，仅浏览' }).click();
+  await expect(onboarding).not.toBeVisible();
+  await page.goto(`chrome-extension://${extensionId}/options.html#/settings`);
+  return page;
+}
 test('static page, real MV3 callback, encrypted export and single refresh work end-to-end', async () => {
   const tool = await authorize();
   expect(creates).toBe(1);
@@ -278,19 +303,8 @@ test('workbench persists explicit IOP and rejects unadapted methods without TOP 
   });
   const workbench = await context.newPage();
   await workbench.goto(`chrome-extension://${extensionId}/options.html#/settings`);
-  async function send(kind: string, operation: string, payload: unknown = {}) {
-    return workbench.evaluate(
-      async (message) => {
-        const runtime = (
-          globalThis as unknown as {
-            chrome: { runtime: { sendMessage(value: unknown): Promise<unknown> } };
-          }
-        ).chrome.runtime;
-        return runtime.sendMessage({ ...message, requestId: crypto.randomUUID() });
-      },
-      { kind, operation, payload }
-    );
-  }
+  const send = (kind: string, operation: string, payload?: unknown) =>
+    sendWorkbench(workbench, kind, operation, payload);
   expect(
     await send('credential-vault-request', 'create', {
       passphrase: '123456',
@@ -308,11 +322,21 @@ test('workbench persists explicit IOP and rejects unadapted methods without TOP 
     ok: true,
     data: [{ id: '1001', name: 'Fixture images' }]
   });
-  for (const operation of ['listTradeOrders', 'publishProduct', 'uploadPhoto'])
+  for (const operation of [
+    'getProductInventory',
+    'publishProduct',
+    'saveProductDraft',
+    'updateProduct',
+    'uploadPhoto'
+  ] as const) {
+    const reason = iopOperationReason(operation);
+    // Only test blocked writes; independently verified writes must never be replayed by this harness.
+    if (reason === null) continue;
     expect(await send('gateway-request', operation)).toMatchObject({
       ok: false,
-      error: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED' }
+      error: { code: reason }
     });
+  }
   await workbench.reload();
   expect(await send('credential-vault-request', 'get-settings')).toMatchObject({
     ok: true,
@@ -322,3 +346,112 @@ test('workbench persists explicit IOP and rejects unadapted methods without TOP 
   expect(reads).toBe(2);
   expect(topCalls).toBe(0);
 });
+
+test('legacy TOP import stays TOP, saves only explicitly and keeps TOP session signing', async () => {
+  let topCalls = 0;
+  let iopCalls = 0;
+  await context.route(`${PUBLIC_AUTH_ORIGIN}/rest/**`, async (route) => {
+    iopCalls++;
+    await route.abort();
+  });
+  await context.route('https://eco.taobao.com/router/rest', async (route) => {
+    topCalls++;
+    const parameters = new URLSearchParams(route.request().postData() ?? '');
+    expect(parameters.get('session')).toBe(credentials.manual.accessToken);
+    expect(parameters.get('sign_method')).toBe('hmac');
+    expect(parameters.has('access_token')).toBe(false);
+    await route.fulfill({
+      json: { alibaba_icbu_photobank_group_list_response: business.photoGroups.result }
+    });
+  });
+  const workbench = await openWorkbenchSettings();
+  await expect(workbench.getByLabel('网关协议')).toHaveValue('top');
+  await workbench.getByLabel('导入授权包 JSON').setInputFiles({
+    name: 'legacy-top.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(credentials.oauthBundle))
+  });
+  await expect(workbench.getByLabel('App Key')).toHaveValue(credentials.manual.appKey);
+  await expect(workbench.getByLabel('网关协议')).toHaveValue('top');
+  await expect(workbench.getByTestId('iop-protocol-notice')).toHaveCount(0);
+  expect(await sendWorkbench(workbench, 'credential-vault-request', 'status')).toMatchObject({
+    data: { state: 'empty' }
+  });
+  expect(topCalls + iopCalls).toBe(0);
+  await workbench.getByLabel('设置保护口令').fill('123456');
+  await workbench.getByLabel('确认保护口令').fill('123456');
+  await workbench.getByRole('button', { name: '保存设置', exact: true }).click();
+  await expect(workbench.getByLabel('Access Token')).toHaveValue('');
+  await workbench.reload();
+  await expect(workbench.getByLabel('网关协议')).toHaveValue('top');
+  expect(await sendWorkbench(workbench, 'credential-vault-request', 'get-settings')).toMatchObject({
+    data: { protocol: 'top', endpoint: 'https://eco.taobao.com/router/rest', appSecret: '', accessToken: '' }
+  });
+  expect(await sendWorkbench(workbench, 'gateway-request', 'listPhotoGroups')).toMatchObject({ ok: true });
+  expect(topCalls).toBe(1);
+  expect(iopCalls).toBe(0);
+});
+
+for (const [body, code] of [
+  [{ code: 'InvalidAccessToken', message: 'Fixture access rejected' }, 'ALIBABA_IOP_API_REJECTED'],
+  [{ fixture: 'invalid envelope' }, 'ALIBABA_IOP_RESPONSE_INVALID']
+] as const) {
+  test(`MV3 shows ${code} and unsupported IOP reads without TOP fallback`, async () => {
+    let reads = 0;
+    let topCalls = 0;
+    await context.route('https://eco.taobao.com/**', async (route) => {
+      topCalls++;
+      await route.abort();
+    });
+    await context.route(`${PUBLIC_AUTH_ORIGIN}/rest/icbu/product/photobank/group/list`, async (route) => {
+      reads++;
+      await route.fulfill({ json: body });
+    });
+    const workbench = await openWorkbenchSettings();
+    expect(
+      await sendWorkbench(workbench, 'credential-vault-request', 'create', {
+        passphrase: '123456',
+        settings: {
+          appKey: credentials.manual.appKey,
+          appSecret: credentials.manual.appSecret,
+          accessToken: credentials.manual.accessToken,
+          protocol: 'iop',
+          endpoint: `${PUBLIC_AUTH_ORIGIN}/rest`,
+          signMethod: 'hmac-sha256'
+        }
+      })
+    ).toMatchObject({ ok: true });
+    await workbench.reload();
+    await expect(workbench.getByLabel('网关协议')).toHaveValue('iop');
+    await expect(workbench.getByTestId('iop-protocol-notice')).toContainText('通过账号验收的方法');
+    await expect(
+      workbench.getByRole('button', { name: '获取 TOP 开放平台凭证', exact: true })
+    ).toBeDisabled();
+    await workbench.goto(`chrome-extension://${extensionId}/options.html#/photos`);
+    await expect(workbench.getByText(`错误码：${code}`, { exact: true })).toBeVisible();
+    await expect(workbench.getByText('IOP 图片查询需要具体分组', { exact: false }).first()).toBeVisible();
+    await workbench.getByTestId('language-toggle').click();
+    await expect(
+      workbench.getByText('Choose a specific group for IOP photos', { exact: false }).first()
+    ).toBeVisible();
+    await expect(
+      workbench
+        .getByText(
+          code === 'ALIBABA_IOP_API_REJECTED'
+            ? 'Alibaba IOP rejected the request'
+            : 'Unexpected IOP response format',
+          { exact: false }
+        )
+        .first()
+    ).toBeVisible();
+    expect(
+      await sendWorkbench(workbench, 'gateway-request', 'getProductInventory', { productId: '100001' })
+    ).toMatchObject({ ok: false, error: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED' } });
+    expect(reads).toBe(1);
+    expect(topCalls).toBe(0);
+    expect(creates + refreshes).toBe(0);
+    expect(await sendWorkbench(workbench, 'credential-vault-request', 'get-settings')).toMatchObject({
+      data: { protocol: 'iop' }
+    });
+  });
+}
