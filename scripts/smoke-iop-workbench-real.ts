@@ -299,7 +299,7 @@ export function installReadOnlyGuard(config: {
   };
 }
 
-async function buildDigest(directory: string): Promise<string> {
+export async function buildDigest(directory: string): Promise<string> {
   const hash = createHash('sha256');
   async function visit(path: string, prefix: string): Promise<void> {
     const entries = await readdir(path, { withFileTypes: true });
