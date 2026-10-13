@@ -19,14 +19,29 @@
 
 ## 发布门禁
 
-本次 Windows 完整 `pnpm check` 已通过：300 个单测文件 / 2,247 项测试，格式、Lint（0 error，30 项既有 warning）、i18n、版本、OpenAPI/生成物漂移、类型、Web/AuthPages/Worker 干跑/MV3 构建及商店合规均通过。日志位于忽略目录 `artifacts/release-2.15.1-check.log`。
+修复后的 Windows 完整 `pnpm check` 已通过：300 个单测文件 / 2,249 项测试，格式、Lint（0 error，30 项既有 warning）、i18n、版本、OpenAPI/生成物漂移、类型、Web/AuthPages/Worker 干跑/MV3 构建及商店合规均通过。最终日志位于忽略目录 `artifacts/release-2.15.1-check-final.log`。
 
 隔离 Worker 23 项、Node 凭据与中英文倒计时浏览器用例 4 项已通过。BFF 回放首次与全量检查并行时在最后的登录失效检查遇到 30 秒整体超时，失败日志和 trace 保留；在全量检查结束后单独运行，同样的 30 秒限制下该完整用例用时 7.4 秒，2 项均通过，没有改代码、增加重试或放宽超时。独立复跑日志为 `artifacts/release-2.15.1-bff-replay-isolated.log`，首次失败现场仍在本机忽略目录。
 
-首轮正式 Web/MV3 本地与功能分支 CI 都发现一项真实兼容回归：旧设置缺少新授权时间字段，修改后还原 App Key 仍会被新增空字段误判为未保存（104/105 通过）。已保留历史失败日志；新增的 Mock/插件组件用例先复现了问题，再修正手动编辑时对缺省字段的保留。修复后定向组件检查通过，最终全量回归、授权与旧包升级检查执行后补记实际结果。没有删除失败用例或放宽门禁。
+首轮正式 Web/MV3 本地与功能分支 CI 都发现一项真实兼容回归：旧设置缺少新授权时间字段，修改后还原 App Key 仍会被新增空字段误判为未保存（104/105 通过）。已保留历史失败日志；新增的 Mock/插件组件用例先复现了问题，再修正手动编辑时对缺省字段的保留。修复后定向组件 41 项及离开保护浏览器 10 项通过，最终全量回归、授权与旧包升级检查也通过。没有删除失败用例或放宽门禁。
+
+最终源代码与固定构建的检查结果：
+
+| 检查                        | 结果      | 本机日志（忽略目录）                                  |
+| --------------------------- | --------- | ----------------------------------------------------- |
+| Web / 正式 MV3 全量 E2E     | 105 / 105 | `artifacts/release-2.15.1-web-mv3-final.log`          |
+| 静态授权页 / MV3 TOP 与 IOP | 9 / 9     | `artifacts/release-2.15.1-authorization-final.log`    |
+| 2.15.0 → 2.15.1 升级        | 20 项检查 | `artifacts/release-2.15.1-upgrade-final.log`          |
+| Worker 隔离单测             | 23 / 23   | `artifacts/release-2.15.1-worker-final.log`           |
+| Node 凭据与双语倒计时 E2E   | 4 / 4     | `artifacts/release-2.15.1-node-credentials-final.log` |
+| BFF / D1 隔离回放 E2E       | 2 / 2     | `artifacts/release-2.15.1-bff-replay-final.log`       |
+
+最终 BFF 检查使用新的端口与本地数据库，完整用例用时 9.0 秒；没有复用登录态、访问远程 D1 或进行平台写操作。
 
 准备状态本身不代表商店已提交或网站已部署。
 
 最终先冻结扩展构建，验证其指纹后打包同一构建。商店 ZIP 上限为 2,000,000 字节，解包上限为 5,470,000 字节；分块、权限和敏感数据门禁不放宽。2.15.0 的既有 Tag、Release 与 ZIP 保持不变。
+
+Windows 固定构建候选包 `artifacts/one-vegetable-v2.15.1-chrome-mv3.zip` 已逐文件核对：205 个文件，ZIP 1,192,042 字节，解包 4,106,065 字节。SHA-256 为 `d2b06aac18314161c312cb5b7217af3bf5a9cea0a7a95cf2e64f7a92727b1f2d`；构建指纹为 `46109fe3da780d6c55951a490f8a0b600e386dd9e00f71c77def32d0d108c5fe`。不含环境文件、授权包或浏览器 Profile，权限不变。正式 GitHub 工作流会从不可变 Tag 单独构建，上传前仍需下载其正式资产并核对随附校验值，不以本机候选包的校验值代替。
 
 GitHub Release 由 annotated `v2.15.1` Tag 的正式工作流创建并保留 ZIP、SHA-256 和元数据。商店上传/提交及现有 Cloudflare 网站部署是独立发布动作。
