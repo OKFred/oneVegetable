@@ -61,7 +61,7 @@ export async function compareProductMutationFingerprints(
       missingFieldIds.push(expectation.fieldId);
       continue;
     }
-    if ((await digest(canonicalFieldValue(field))) !== expectation.fingerprint) {
+    if (!(await fieldFingerprintMatches(field, expectation.fingerprint))) {
       mismatchedFieldIds.push(expectation.fieldId);
     }
   }
@@ -70,6 +70,60 @@ export async function compareProductMutationFingerprints(
     missingFieldIds,
     mismatchedFieldIds
   };
+}
+
+async function fieldFingerprintMatches(field: ProductSchemaField, expected: string): Promise<boolean> {
+  if ((await digest(canonicalFieldValue(field))) === expected) return true;
+  // Alibaba omits unused declared group-path slots in its rendered complex value.
+  // Keep existing receipts/hashes compatible without accepting a changed nonempty ID.
+  const ids = ['first_group_id', 'second_group_id', 'third_group_id'];
+  const empty = (item: ProductSchemaField): boolean =>
+    item.type === 'input' &&
+    item.children.length === 0 &&
+    item.instances.length === 0 &&
+    item.values.every((value) => value.text === '' && Object.keys(value.attributes).length === 0);
+  if (
+    field.id !== 'productGroup' ||
+    field.type !== 'complex' ||
+    field.instances.length > 1 ||
+    field.children.length !== 3 ||
+    field.children.some((item, index) => item.id !== ids[index] || !empty(item))
+  )
+    return false;
+  const actual = field.instances[0]?.fields ?? [];
+  if (
+    new Set(actual.map((item) => item.id)).size !== actual.length ||
+    actual.some(
+      (item) =>
+        !ids.includes(item.id) ||
+        item.type !== 'input' ||
+        item.children.length !== 0 ||
+        item.instances.length !== 0
+    )
+  )
+    return false;
+  if (
+    actual
+      .map((item) => ids.indexOf(item.id))
+      .some((index, position, order) => position > 0 && index <= (order[position - 1] ?? -1))
+  )
+    return false;
+  const slots = field.children.map((template) => actual.find((item) => item.id === template.id) ?? template);
+  const optional = slots.flatMap((item, index) => (empty(item) ? [index] : []));
+  for (let mask = 0; mask < 2 ** optional.length; mask++) {
+    const fields = slots.map((item, index) => {
+      const bit = optional.indexOf(index);
+      return bit < 0
+        ? item
+        : { ...item, values: (mask & (1 << bit)) === 0 ? [] : [{ text: '', attributes: {}, metadata: {} }] };
+    });
+    const candidate = {
+      ...field,
+      instances: [{ key: field.instances[0]?.key ?? '', sourcePath: null, sourceIndex: null, fields }]
+    };
+    if ((await digest(canonicalFieldValue(candidate))) === expected) return true;
+  }
+  return actual.every(empty) && (await digest(canonicalFieldValue({ ...field, instances: [] }))) === expected;
 }
 
 function canonicalFieldValue(field: ProductSchemaField): string {
