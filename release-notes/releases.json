@@ -3,6 +3,42 @@
   "repositoryUrl": "https://github.com/OKFred/oneVegetable",
   "releases": [
     {
+      "version": "2.15.1",
+      "releasedAt": "2026-10-14",
+      "title": {
+        "zh-CN": "授权倒计时分级提醒",
+        "en-US": "Authorization countdown warnings"
+      },
+      "summary": {
+        "zh-CN": "总览按本次授权的剩余有效期显示分级颜色，续期成功后重新计算；Web 与插件一致，兼容旧凭据，不猜测未知到期时间。",
+        "en-US": "Overview colors the remaining lifetime of the current authorization and recalculates after successful renewal. Web and extension behavior is consistent, preserves older credentials and never guesses unknown expiry dates."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/releases/tag/v2.15.1",
+      "compareUrl": "https://github.com/OKFred/oneVegetable/compare/v2.15.0...v2.15.1",
+      "changes": [
+        {
+          "type": "improvement",
+          "title": { "zh-CN": "半程与临期颜色提醒", "en-US": "Lifetime-based warning colors" },
+          "description": {
+            "zh-CN": "剩余有效期低于本次总有效期的一半时显示黄色，低于四分之一或已经到期时显示红色；支持中英文和暗色模式。计时仅在本地更新，不因此自动续期或额外查询接口。",
+            "en-US": "The countdown turns yellow below half of the current token lifetime and red below one quarter or after expiry, in both languages and themes. Time updates locally without automatically renewing authorization or querying APIs."
+          }
+        },
+        {
+          "type": "fix",
+          "title": {
+            "zh-CN": "正确保存本次授权起点",
+            "en-US": "Preserve the current token's lifetime baseline"
+          },
+          "description": {
+            "zh-CN": "凭据导入和成功续期保留对应的获取时间，不拿权限检查或配置保存时间作为授权起点。续期失败不重置比例；旧凭据缺少起点时保留原有到期提醒，未返回有效期时继续显示未知。TOP 保持默认，IOP 仍须显式选择，不增加权限或写操作。",
+            "en-US": "Imports and successful renewals preserve the corresponding token capture time, not permission-check or configuration-save time. Failed renewal does not reset the baseline. Older credentials without a baseline retain existing expiry notices, and unreported expiry stays unknown. TOP remains the default; IOP is explicit, with no added permissions or writes."
+          }
+        }
+      ]
+    },
+    {
       "version": "2.15.0",
       "releasedAt": "2026-10-13",
       "title": {
