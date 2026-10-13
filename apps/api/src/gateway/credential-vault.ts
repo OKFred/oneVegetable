@@ -2,6 +2,7 @@ import {
   ALIBABA_GATEWAY,
   GatewayException,
   alibabaAuthorizationMetadata,
+  alibabaAccessTokenCapturedTime,
   credentialExpiryFromSeconds,
   NetworkManager,
   normalizeRemark,
@@ -65,6 +66,7 @@ export interface GatewayCredentialSummary {
   inputSource?: 'oauth-import' | 'manual' | null;
   systemApiPermission?: 'active' | 'inactive' | 'not-recorded' | 'unknown';
   permissionCapturedTimeUtc?: number | null;
+  accessTokenCapturedTimeUtc?: number | null;
   canRefresh?: boolean;
   managementAvailable?: boolean;
   errorCode?: string | null;
@@ -395,6 +397,7 @@ export class GatewayCredentialService {
       appName: null,
       appKeySuffix: null,
       inputSource: null,
+      accessTokenCapturedTimeUtc: null,
       canRefresh: false,
       errorCode: null
     };
@@ -413,6 +416,8 @@ export class GatewayCredentialService {
             ? (iopRefreshFailureCode(record, this.clock()) ?? record.lastRefreshErrorCode)
             : record.lastRefreshErrorCode,
         ...alibabaAuthorizationMetadata(document.authorization),
+        accessTokenCapturedTimeUtc:
+          record.lastRefreshTimeUtc ?? alibabaAccessTokenCapturedTime(document.authorization),
         canRefresh:
           record.lastRefreshErrorCode !== 'ALIBABA_REFRESH_TOKEN_EXPIRED' &&
           !(
@@ -540,6 +545,8 @@ export class StoredAlibabaCredentialProvider {
       signMethod: protocol === 'iop' ? 'hmac-sha256' : this.#signMethod,
       ...alibabaAuthorizationMetadata(document?.authorization),
       accessTokenExpiresTimeUtc: record?.accessTokenExpiresTimeUtc ?? null,
+      accessTokenCapturedTimeUtc:
+        record?.lastRefreshTimeUtc ?? alibabaAccessTokenCapturedTime(document?.authorization),
       lastRefreshTimeUtc: record?.lastRefreshTimeUtc ?? null,
       lastRefreshErrorCode:
         protocol === 'iop' && record

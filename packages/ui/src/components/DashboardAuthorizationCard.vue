@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { KeyRound } from '@lucide/vue';
 import type { AlibabaAuthorizationMetadata } from '@one-vegetable/core';
 import { useServices } from '../lib/services';
-import { credentialExpiryState } from '../lib/credential-expiry';
+import { credentialExpiryState, credentialExpiryTone } from '../lib/credential-expiry';
 import { formatDateTime } from '../lib/date-time';
 import { GATEWAY_CONFIGURATION_EVENT } from '../lib/gateway-configuration-events';
 import { VAULT_UNLOCKED_EVENT } from '../lib/unsaved-editing';
@@ -16,12 +16,25 @@ const t = useGatewayCredentialsI18n();
 const now = ref(Date.now());
 const loading = ref(true);
 const expires = ref<number | null>(null);
+const tokenCaptured = ref<number | null>(null);
 const permission = ref<AlibabaAuthorizationMetadata['systemApiPermission']>('unknown');
 const captured = ref<number | null>(null);
 const reason = ref<'adminOnly' | 'empty' | 'unlockForExpiry' | 'expiryReadFailed' | null>(null);
 const refreshFailed = ref(false);
 const expiry = computed(() => credentialExpiryState(expires.value, now.value));
 const state = computed(() => expiry.value.status);
+const tone = computed(() =>
+  loading.value || reason.value
+    ? 'normal'
+    : credentialExpiryTone(expires.value, tokenCaptured.value, now.value)
+);
+const toneClass = computed(() =>
+  tone.value === 'danger'
+    ? 'text-red-700 dark:text-red-300'
+    : tone.value === 'warning'
+      ? 'text-amber-700 dark:text-amber-300'
+      : 'text-foreground'
+);
 const value = computed(() =>
   loading.value
     ? '—'
@@ -58,8 +71,10 @@ const reload = () => {
 
 async function load(): Promise<void> {
   const current = ++generation;
+  now.value = Date.now();
   loading.value = true;
   expires.value = null;
+  tokenCaptured.value = null;
   permission.value = 'unknown';
   captured.value = null;
   reason.value = null;
@@ -75,6 +90,7 @@ async function load(): Promise<void> {
       const status = await control.gatewayCredentialStatus();
       if (current !== generation) return;
       expires.value = status.accessTokenExpiresTimeUtc;
+      tokenCaptured.value = status.accessTokenCapturedTimeUtc ?? null;
       permission.value = status.systemApiPermission ?? 'unknown';
       captured.value = status.permissionCapturedTimeUtc ?? null;
       refreshFailed.value = Boolean(status.lastRefreshErrorCode);
@@ -94,6 +110,7 @@ async function load(): Promise<void> {
       const metadata = await settings.load();
       if (current !== generation) return;
       expires.value = metadata.accessTokenExpiresTimeUtc ?? null;
+      tokenCaptured.value = metadata.accessTokenCapturedTimeUtc ?? null;
       permission.value = metadata.systemApiPermission ?? 'unknown';
       captured.value = metadata.permissionCapturedTimeUtc ?? null;
     }
@@ -132,14 +149,16 @@ onBeforeUnmount(() => {
           <KeyRound class="size-4" /></button
       ></Tooltip>
     </div>
-    <p class="mt-3 text-xl font-semibold" role="status">{{ value }}</p>
+    <p class="mt-3 text-xl font-semibold" :class="toneClass" :data-tone="tone" role="status">{{ value }}</p>
     <p
       v-if="!loading"
       class="mt-2 text-xs"
       :class="
-        state === 'valid' && !reason && !refreshFailed
-          ? 'text-muted-foreground'
-          : 'text-amber-700 dark:text-amber-300'
+        tone === 'danger'
+          ? 'text-red-700 dark:text-red-300'
+          : tone === 'normal' && state === 'valid' && !reason && !refreshFailed
+            ? 'text-muted-foreground'
+            : 'text-amber-700 dark:text-amber-300'
       "
     >
       {{ reminder }}

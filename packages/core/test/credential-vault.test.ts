@@ -49,11 +49,15 @@ describe('credential vault', () => {
   it('preserves imported token expiry through encryption and session restoration', async () => {
     const settingsWithExpiry = {
       ...settings,
-      accessTokenExpiresTimeUtc: Date.parse(credentialFixtures.knownExpiry)
+      accessTokenExpiresTimeUtc: Date.parse(credentialFixtures.knownExpiry),
+      accessTokenCapturedTimeUtc: Date.parse(credentialFixtures.oauthBundle.capturedAtUtc)
     };
     const created = await createCredentialVault(settingsWithExpiry, '123456');
     expect(JSON.stringify(created.record)).not.toContain(
       String(settingsWithExpiry.accessTokenExpiresTimeUtc)
+    );
+    expect(JSON.stringify(created.record)).not.toContain(
+      String(settingsWithExpiry.accessTokenCapturedTimeUtc)
     );
     const restored = await restoreCredentialVaultSession(created.record, created.sessionKeyMaterial);
     expect(restored.settings).toEqual(settingsWithExpiry);
