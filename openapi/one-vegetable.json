@@ -8798,6 +8798,11 @@
           "realReadEnabled": { "type": "boolean" },
           "mutationEnabled": { "type": "boolean" },
           "accessTokenExpiresTimeUtc": { "type": ["integer", "null"], "minimum": 0 },
+          "accessTokenCapturedTimeUtc": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "maximum": 8640000000000000
+          },
           "systemApiPermission": {
             "type": "string",
             "enum": ["active", "inactive", "not-recorded", "unknown"]
@@ -17353,6 +17358,11 @@
           "configured": { "type": "boolean" },
           "revision": { "type": ["integer", "null"], "minimum": 1 },
           "accessTokenExpiresTimeUtc": { "type": ["integer", "null"], "minimum": 0 },
+          "accessTokenCapturedTimeUtc": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "maximum": 8640000000000000
+          },
           "refreshTokenExpiresTimeUtc": { "type": ["integer", "null"], "minimum": 0 },
           "lastRefreshTimeUtc": { "type": ["integer", "null"], "minimum": 0 },
           "lastRefreshErrorCode": { "type": ["string", "null"], "maxLength": 128 },

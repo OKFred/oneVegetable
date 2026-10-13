@@ -20,6 +20,7 @@ import { IOP_BUSINESS_ENDPOINT } from '@one-vegetable/core/alibaba-iop';
 import {
   ALIBABA_GATEWAY,
   alibabaAuthorizationMetadata,
+  alibabaAccessTokenCapturedTime,
   CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES,
   CREDENTIAL_VAULT_IDLE_TIMEOUT_OPTIONS,
   CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS,
@@ -210,6 +211,7 @@ function readImportedCredentials(
   | 'appSecret'
   | 'accessToken'
   | 'accessTokenExpiresTimeUtc'
+  | 'accessTokenCapturedTimeUtc'
   | 'systemApiPermission'
   | 'permissionCapturedTimeUtc'
   | 'protocol'
@@ -239,6 +241,7 @@ function readImportedCredentials(
     appSecret,
     accessToken,
     ...alibabaAuthorizationMetadata(value),
+    accessTokenCapturedTimeUtc: alibabaAccessTokenCapturedTime(value),
     accessTokenExpiresTimeUtc:
       typeof expires === 'number' &&
       Number.isSafeInteger(expires) &&
@@ -251,6 +254,9 @@ function readImportedCredentials(
 
 function clearAuthorizationMetadata(): void {
   model.value.accessTokenExpiresTimeUtc = null;
+  // Do not add a new nullable field to legacy settings solely because an input changed.
+  // Restoring the original credential must not leave a phantom unsaved edit behind.
+  if (model.value.accessTokenCapturedTimeUtc !== undefined) model.value.accessTokenCapturedTimeUtc = null;
   model.value.systemApiPermission = 'unknown';
   model.value.permissionCapturedTimeUtc = null;
 }

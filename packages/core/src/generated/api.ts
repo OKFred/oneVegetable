@@ -3708,6 +3708,7 @@ export interface components {
             realReadEnabled: boolean;
             mutationEnabled: boolean;
             accessTokenExpiresTimeUtc?: number | null;
+            accessTokenCapturedTimeUtc?: number | null;
             /** @enum {string} */
             systemApiPermission?: "active" | "inactive" | "not-recorded" | "unknown";
             permissionCapturedTimeUtc?: number | null;
@@ -9702,6 +9703,7 @@ export interface components {
             configured: boolean;
             revision: number | null;
             accessTokenExpiresTimeUtc: number | null;
+            accessTokenCapturedTimeUtc?: number | null;
             refreshTokenExpiresTimeUtc: number | null;
             lastRefreshTimeUtc: number | null;
             lastRefreshErrorCode: string | null;

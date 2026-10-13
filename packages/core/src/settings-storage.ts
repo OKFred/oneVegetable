@@ -61,12 +61,22 @@ export function gatewayProtocolMetadata(value: { protocol?: unknown }): Pick<Gat
 
 export function gatewayCredentialExpiryMetadata(value: {
   accessTokenExpiresTimeUtc?: unknown;
+  accessTokenCapturedTimeUtc?: unknown;
   systemApiPermission?: unknown;
   permissionCapturedTimeUtc?: unknown;
-}): Pick<GatewaySettings, 'accessTokenExpiresTimeUtc' | 'systemApiPermission' | 'permissionCapturedTimeUtc'> {
+}): Pick<
+  GatewaySettings,
+  | 'accessTokenExpiresTimeUtc'
+  | 'accessTokenCapturedTimeUtc'
+  | 'systemApiPermission'
+  | 'permissionCapturedTimeUtc'
+> {
   const time = value.accessTokenExpiresTimeUtc;
   return {
     ...(time === undefined ? {} : { accessTokenExpiresTimeUtc: validTime(time) }),
+    ...(value.accessTokenCapturedTimeUtc === undefined
+      ? {}
+      : { accessTokenCapturedTimeUtc: validTime(value.accessTokenCapturedTimeUtc) }),
     ...(value.systemApiPermission === undefined
       ? {}
       : {

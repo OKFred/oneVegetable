@@ -27,6 +27,7 @@ describe('Node Alibaba credential bundle provider', () => {
       hasAppSecret: true,
       hasAccessToken: true,
       accessTokenExpiresTimeUtc: Date.parse('2026-09-01T00:00:00.000Z'),
+      accessTokenCapturedTimeUtc: null,
       endpointOrigin: 'https://eco.taobao.com',
       endpoint: 'https://eco.taobao.com/router/rest',
       protocol: 'top',

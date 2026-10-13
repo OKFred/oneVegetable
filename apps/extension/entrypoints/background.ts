@@ -46,6 +46,7 @@ import {
   SETTINGS_STORAGE_KEY,
   gatewayCredentialExpiryMetadata,
   alibabaAuthorizationMetadata,
+  alibabaAccessTokenCapturedTime,
   unlockCredentialVault,
   PhotoAdapter,
   ProductAdapter,
@@ -433,6 +434,7 @@ async function saveAcquiredCredentialsToVault(
     protocol: bundle.protocol ?? 'top',
     appKey: bundle.application.appKey,
     ...alibabaAuthorizationMetadata(bundle),
+    accessTokenCapturedTimeUtc: alibabaAccessTokenCapturedTime(bundle),
     appSecret: bundle.application.appSecret,
     accessToken: bundle.oauth.accessToken,
     accessTokenExpiresTimeUtc:
@@ -593,6 +595,7 @@ async function editableSettings(
     appSecret: '',
     accessToken: '',
     accessTokenExpiresTimeUtc: settings?.accessTokenExpiresTimeUtc ?? null,
+    accessTokenCapturedTimeUtc: settings?.accessTokenCapturedTimeUtc ?? null,
     systemApiPermission: settings?.systemApiPermission ?? 'unknown',
     permissionCapturedTimeUtc: settings?.permissionCapturedTimeUtc ?? null,
     endpoint: settings?.endpoint ?? ALIBABA_GATEWAY,

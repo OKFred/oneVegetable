@@ -23,6 +23,7 @@ export interface AlibabaCredentialStatus {
   protocol?: 'top' | 'iop';
   signMethod: SignMethod;
   accessTokenExpiresTimeUtc?: number | null;
+  accessTokenCapturedTimeUtc?: number | null;
   systemApiPermission?: 'active' | 'inactive' | 'not-recorded' | 'unknown';
   permissionCapturedTimeUtc?: number | null;
   lastRefreshTimeUtc?: number | null;

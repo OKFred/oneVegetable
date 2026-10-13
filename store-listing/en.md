@@ -8,6 +8,7 @@ TOP remains the backward-compatible default; unmarked historical credential bund
 
 Key features (subject to the selected protocol and account permissions):
 
+- Review authorization time remaining in Overview: yellow below half of the current lifetime and red below one quarter or after expiry. Unknown expiry is never guessed, and display changes never automatically renew a token.
 - Visually edit Schema-based products and standard descriptions, choosing category-supported direct-order or inquiry/custom types when creating a product.
 - Select up to 30 existing formal products, preview group and keyword differences, deselect individual items and confirm serial updates. Only changed fields are sent; account or credential changes stop the workflow. Accepted requests still await platform review and field readback. Batch receipts stay in the task center; unknown writes are never resent automatically, and no bulk group-clearing or automatic-rollback control is added.
 - Search, show, hide and reorder optional columns in supported lists, with fixed selection/action columns and consistent search, filter and row-action controls. Filters apply only on confirmation; repeating the same search queries again.
