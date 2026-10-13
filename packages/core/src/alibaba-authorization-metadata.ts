@@ -4,6 +4,15 @@ export interface AlibabaAuthorizationMetadata {
   permissionCapturedTimeUtc: number | null;
 }
 
+/** Token capture/refresh time is independent of the original permission snapshot. */
+export function alibabaAccessTokenCapturedTime(value: unknown): number | null {
+  const capturedAt = record(value).capturedAtUtc;
+  const captured = typeof capturedAt === 'string' ? Date.parse(capturedAt) : NaN;
+  return Number.isSafeInteger(captured) && captured >= 0 && captured <= 8_640_000_000_000_000
+    ? captured
+    : null;
+}
+
 export function alibabaAuthorizationMetadata(value: unknown): AlibabaAuthorizationMetadata {
   const root = record(value);
   const permissions = record(root.application).permissions;

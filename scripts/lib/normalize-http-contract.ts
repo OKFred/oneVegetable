@@ -125,6 +125,7 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       realReadEnabled: { type: 'boolean' },
       mutationEnabled: { type: 'boolean' },
       accessTokenExpiresTimeUtc: { type: ['integer', 'null'], minimum: 0 },
+      accessTokenCapturedTimeUtc: { type: ['integer', 'null'], minimum: 0, maximum: 8_640_000_000_000_000 },
       systemApiPermission: { type: 'string', enum: ['active', 'inactive', 'not-recorded', 'unknown'] },
       permissionCapturedTimeUtc: { type: ['integer', 'null'], minimum: 0 },
       lastRefreshTimeUtc: { type: ['integer', 'null'], minimum: 0 },

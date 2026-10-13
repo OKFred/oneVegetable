@@ -66,6 +66,7 @@ describe('D1-compatible Alibaba credential vault', () => {
     expect(await service.status()).toMatchObject({
       canRefresh: false,
       lastRefreshErrorCode: 'ALIBABA_REFRESH_TOKEN_EXPIRED',
+      accessTokenCapturedTimeUtc: Date.parse(input.capturedAtUtc),
       revision: before.revision
     });
     await expect(provider.requireCredentials(crypto.randomUUID(), true)).rejects.toMatchObject({
@@ -93,7 +94,8 @@ describe('D1-compatible Alibaba credential vault', () => {
     });
     expect(saved).toMatchObject({
       systemApiPermission: 'active',
-      permissionCapturedTimeUtc: Date.parse(input.capturedAtUtc)
+      permissionCapturedTimeUtc: Date.parse(input.capturedAtUtc),
+      accessTokenCapturedTimeUtc: Date.parse(input.capturedAtUtc)
     });
     expect(JSON.stringify(saved)).not.toMatch(/app-secret|access-token|refresh-token/);
     const manual = await service.save({
@@ -113,7 +115,8 @@ describe('D1-compatible Alibaba credential vault', () => {
     expect(manual).toMatchObject({
       systemApiPermission: 'unknown',
       permissionCapturedTimeUtc: null,
-      accessTokenExpiresTimeUtc: null
+      accessTokenExpiresTimeUtc: null,
+      accessTokenCapturedTimeUtc: null
     });
   });
   it('offers refresh only while its known refresh window remains valid', async () => {
@@ -183,6 +186,7 @@ describe('D1-compatible Alibaba credential vault', () => {
     expect(await service.status()).toMatchObject({
       revision: 2,
       lastRefreshTimeUtc: now,
+      accessTokenCapturedTimeUtc: now,
       lastRefreshErrorCode: null
     });
   });
