@@ -268,6 +268,7 @@ describe('SettingsView diagnostics', () => {
         '123456',
         expect.objectContaining({
           protocol: protocol ?? 'top',
+          accessTokenCapturedTimeUtc: Date.parse(credentialFixtures.oauthBundle.capturedAtUtc),
           endpoint: protocol === 'iop' ? IOP_BUSINESS_ENDPOINT : ALIBABA_GATEWAY,
           signMethod: protocol === 'iop' ? 'hmac-sha256' : 'hmac'
         })

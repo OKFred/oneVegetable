@@ -76,6 +76,74 @@ async function harness(
 }
 
 describe('overview authorization card', () => {
+  it.each([false, true])(
+    'uses the current token lifetime in %s extension mode with dark-mode colors',
+    async (extension) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(1_800_000_000_000);
+      const day = 86_400_000;
+      const view = await harness({
+        extension,
+        status: {
+          accessTokenCapturedTimeUtc: Date.now() - 76 * day,
+          accessTokenExpiresTimeUtc: Date.now() + 24 * day,
+          permissionCapturedTimeUtc: Date.now()
+        }
+      });
+      const value = view.wrapper.get('[role="status"]');
+      expect(value.attributes('data-tone')).toBe('danger');
+      expect(value.classes()).toContain('text-red-700');
+      expect(value.classes()).toContain('dark:text-red-300');
+      expect(view.wrapper.text()).toContain('剩余约 24 天');
+      uiI18n.global.locale.value = 'en-US';
+      await flushPromises();
+      expect(view.wrapper.text()).toContain('About 24 days left');
+      expect(view.refresh).not.toHaveBeenCalled();
+      view.wrapper.unmount();
+    }
+  );
+  it('crosses half and quarter thresholds locally and resets only when a renewed lifetime is loaded', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_800_000_000_000);
+    const view = await harness({
+      status: {
+        accessTokenCapturedTimeUtc: Date.now() - 6 * 60_000,
+        accessTokenExpiresTimeUtc: Date.now() + 6 * 60_000
+      }
+    });
+    const tone = () => view.wrapper.get('[role="status"]').attributes('data-tone');
+    expect(tone()).toBe('normal');
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(tone()).toBe('warning');
+    expect(view.wrapper.get('[role="status"]').classes()).toContain('dark:text-amber-300');
+    await vi.advanceTimersByTimeAsync(3 * 60_000);
+    expect(tone()).toBe('danger');
+    expect(view.read).toHaveBeenCalledOnce();
+    view.read.mockResolvedValueOnce({
+      ...(fixture.credential as ControlGatewayCredentialSummary),
+      accessTokenCapturedTimeUtc: Date.now(),
+      accessTokenExpiresTimeUtc: Date.now() + 12 * 60_000
+    });
+    globalThis.dispatchEvent(new Event(GATEWAY_CONFIGURATION_EVENT));
+    await flushPromises();
+    expect(tone()).toBe('normal');
+    expect(view.read).toHaveBeenCalledTimes(2);
+    expect(view.refresh).not.toHaveBeenCalled();
+    view.wrapper.unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('does not substitute permission-check time for an unknown token baseline', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_800_000_000_000);
+    const view = await harness({
+      status: {
+        accessTokenExpiresTimeUtc: Date.now() + 24 * 86_400_000,
+        permissionCapturedTimeUtc: Date.now() - 76 * 86_400_000
+      }
+    });
+    expect(view.wrapper.get('[role="status"]').attributes('data-tone')).toBe('normal');
+    view.wrapper.unmount();
+  });
   it('counts down recorded expiry even with legacy/unknown permissions, without renewing or refetching on locale change', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(1_800_000_000_000);
