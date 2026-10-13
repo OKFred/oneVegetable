@@ -5,11 +5,41 @@ import { resolve } from 'node:path';
 import {
   parseBatchOptions,
   batchWireAllowed,
-  claimBatchAcceptance
+  claimBatchAcceptance,
+  explicitGroupClearModel
 } from '../smoke-extension-batch-maintenance-real';
 import { installNodeXmlDomGlobals } from '../node-xml-dom';
+import {
+  inspectProductSchemaPatchSerialization,
+  parseProductSchemaXml
+} from '../../packages/core/src/product-schema';
 
 describe('formal MV3 batch real acceptance guard', () => {
+  it('serializes an explicit empty group value rather than an ignored value-less root', async () => {
+    installNodeXmlDomGlobals();
+    const source = await readFile(resolve('mock/data/product-schema/group-fingerprint.xml'), 'utf8');
+    const current = source
+      .replace('<field id="second_group_id" type="input"><value/></field>', '')
+      .replace('<field id="third_group_id" type="input"><value/></field>', '');
+    const patch = inspectProductSchemaPatchSerialization(explicitGroupClearModel(current));
+    expect(patch.safe).toBe(true);
+    expect(patch.changedFieldKeys).toHaveLength(1);
+    const fields = parseProductSchemaXml(patch.xml).fields;
+    expect(fields.map((field) => field.id)).toEqual(['productGroup']);
+    expect(fields[0]?.instances[0]?.fields[0]?.values[0]?.text).toBe('');
+    expect(
+      batchWireAllowed(
+        'https://eco.taobao.com/router/rest',
+        new URLSearchParams({
+          method: 'alibaba.icbu.product.schema.update',
+          param_product_top_publish_request: JSON.stringify({ product_id: 123, xml: patch.xml })
+        }).toString(),
+        '123',
+        true
+      )
+    ).toBe(true);
+    expect(() => explicitGroupClearModel(source)).toThrow('EXPLICIT_GROUP_CLEAR_UNSUPPORTED');
+  });
   it('refuses a second run until the first claim is explicitly reconciled', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'onevegetable-batch-guard-'));
     const release = await claimBatchAcceptance(root, '123', 'fixture-key', 'ignored/report.json');

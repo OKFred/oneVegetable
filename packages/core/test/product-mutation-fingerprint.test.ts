@@ -32,6 +32,14 @@ describe('product mutation fingerprints', () => {
       false
     );
   });
+  it('recognizes an explicit empty first group path after the platform omits its value instance', async () => {
+    const request = omitted.replace('123456789', '');
+    const expected = await createProductMutationFingerprints(request);
+    const rendered = request.replace(/<complex-value>[\s\S]*?<\/complex-value>/u, '');
+    expect((await compareProductMutationFingerprints(rendered, expected.fieldExpectations)).matched).toBe(
+      true
+    );
+  });
   it('does not generalize omitted-slot compatibility to other complex roots', async () => {
     const expected = await createProductMutationFingerprints(
       group.replace('id="productGroup"', 'id="attributes"')

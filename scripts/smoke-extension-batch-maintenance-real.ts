@@ -21,7 +21,15 @@ import {
   parseProductSchemaXml,
   inspectProductSchemaPatchSerialization
 } from '../packages/core/src/product-schema';
+import {
+  inspectProductSchemaSerialization,
+  withProductSchemaFieldText
+} from '../packages/core/src/product-schema';
 import { GatewayException } from '../packages/core/src/errors';
+import type {
+  ProductMutationJob,
+  ProductMutationFieldExpectation
+} from '../packages/core/src/product-mutation-job';
 import type { GatewayClient, RequestOf, ResponseOf, OperationId } from '../packages/core/src/types';
 import { buildDigest } from './smoke-iop-workbench-real';
 import { atomicWriteJson } from './openapi-auth/storage';
@@ -57,7 +65,7 @@ export function parseBatchOptions(args: readonly string[]): { credential: string
     throw new Error('BATCH_ACCEPTANCE_ARGUMENTS_REQUIRED');
   return { credential: path, productId };
 }
-export function batchWireAllowed(url: string, body: string, target: string): boolean {
+export function batchWireAllowed(url: string, body: string, target: string, groupOnly = false): boolean {
   if (url !== 'https://eco.taobao.com/router/rest') return false;
   const values = new URLSearchParams(body);
   const method = values.get('method');
@@ -73,7 +81,7 @@ export function batchWireAllowed(url: string, body: string, target: string): boo
       const roots = parseProductSchemaXml(payload.xml)
         .fields.map((field) => field.id)
         .toSorted();
-      return roots.join(',') === 'productGroup,productKeywords';
+      return roots.join(',') === (groupOnly ? 'productGroup' : 'productGroup,productKeywords');
     }
     return true;
   } catch {
@@ -106,7 +114,49 @@ export async function claimBatchAcceptance(
   return () => unlink(path);
 }
 
-export async function main(args: readonly string[]): Promise<void> {
+/** Explicit recovery of one retained receipt; never executes the batch again. */
+export interface BatchRestorationInput {
+  productId: string;
+  categoryId: number;
+  rootIds: string[];
+  fingerprint: string;
+  fieldExpectations: ProductMutationFieldExpectation[];
+  originalXml: string;
+  changedJob: ProductMutationJob;
+  previousReportPath: string;
+  retainedBuild: string;
+  buildSha256: string;
+  correctiveGroupClear?: {
+    previousRestoreReportPath: string;
+    expectedCurrentFields: ProductMutationFieldExpectation[];
+  };
+}
+
+export function explicitGroupClearModel(xml: string) {
+  const model = parseProductSchemaXml(xml);
+  const group = model.fields.find((field) => field.id === 'productGroup');
+  if (
+    group?.type !== 'complex' ||
+    group.instances.length !== 1 ||
+    group.instances[0]?.fields.length !== 1 ||
+    group.instances[0].fields[0]?.id !== 'first_group_id'
+  )
+    throw new Error('EXPLICIT_GROUP_CLEAR_UNSUPPORTED');
+  const cleared = {
+    ...group,
+    instances: group.instances.map((instance) => ({
+      ...instance,
+      fields: instance.fields.map((field) => withProductSchemaFieldText(field, ''))
+    }))
+  };
+  return {
+    ...model,
+    fields: model.fields.map((field) => (field.id === group.id ? cleared : field)),
+    touchedFieldKeys: [group.key]
+  };
+}
+
+export async function main(args: readonly string[], restoration?: BatchRestorationInput): Promise<void> {
   const options = parseBatchOptions(args);
   installNodeXmlDomGlobals();
   const bundle = parseAlibabaOpenApiCredentialBundle(
@@ -118,8 +168,17 @@ export async function main(args: readonly string[]): Promise<void> {
   const folder = await mkdtemp(resolve(outputRoot, `${randomUUID()}-`));
   const reportPath = resolve(folder, 'report.json');
   const extension = resolve(folder, 'extension');
-  const source = resolve('apps/extension/.output/chrome-mv3');
+  if (
+    restoration &&
+    (restoration.productId !== options.productId ||
+      restoration.changedJob.productId !== options.productId ||
+      restoration.changedJob.operation !== 'updateProduct' ||
+      restoration.rootIds.toSorted().join(',') !== 'productGroup,productKeywords')
+  )
+    throw new Error('RECOVERY_BASELINE_INVALID');
+  const source = resolve(restoration?.retainedBuild ?? 'apps/extension/.output/chrome-mv3');
   const digest = await buildDigest(source);
+  if (restoration && digest !== restoration.buildSha256) throw new Error('RETAINED_BUILD_CHANGED');
   await cp(source, extension, { recursive: true, errorOnExist: true, force: false });
   if ((await buildDigest(extension)) !== digest || (await buildDigest(source)) !== digest)
     throw new Error('BUILD_CHANGED');
@@ -134,6 +193,7 @@ export async function main(args: readonly string[]): Promise<void> {
     restored: false,
     untouchedFieldsMatched: false
   };
+  if (restoration) report.originalChangeJobId = restoration.changedJob.id;
   let armed: { operation: OperationId; requestId: string } | null = null;
   let lastWire = 0;
   let queue: Promise<void> = Promise.resolve();
@@ -155,7 +215,12 @@ export async function main(args: readonly string[]): Promise<void> {
         !request.serviceWorker() ||
         request.method() !== 'POST' ||
         request.headers()['x-request-id'] !== current.requestId ||
-        !batchWireAllowed(request.url(), request.postData() ?? '', options.productId)
+        !batchWireAllowed(
+          request.url(),
+          request.postData() ?? '',
+          options.productId,
+          !!restoration?.correctiveGroupClear
+        )
       ) {
         await route.abort('blockedbyclient');
         return;
@@ -170,7 +235,10 @@ export async function main(args: readonly string[]): Promise<void> {
       await previous;
       try {
         await delay(Math.max(0, 350 - (Date.now() - lastWire)));
-        if (armed !== current || (mutation && (current.operation !== 'updateProduct' || writes >= 2))) {
+        if (
+          armed !== current ||
+          (mutation && (current.operation !== 'updateProduct' || writes >= (restoration ? 1 : 2)))
+        ) {
           await route.abort('blockedbyclient');
           return;
         }
@@ -246,7 +314,7 @@ export async function main(args: readonly string[]): Promise<void> {
         const requestId = callOptions?.requestId ?? randomUUID();
         const mutation = operation === 'updateProduct';
         if (mutation) {
-          report.stage = writes === 0 ? 'change-sending' : 'restore-sending';
+          report.stage = !restoration && writes === 0 ? 'change-sending' : 'restore-sending';
           await persist();
         }
         armed = { operation, requestId };
@@ -301,74 +369,186 @@ export async function main(args: readonly string[]): Promise<void> {
       /dont-edit/iu.test(product.subject)
     )
       throw new Error('EXPLICIT_TEST_PRODUCT_REQUIRED');
-    const groups = await gateway.request('listProductGroups', {});
+    const groups = restoration ? [] : await gateway.request('listProductGroups', {});
     const schema = await gateway.request('renderProductSchema', {
       productId: product.id,
       categoryId: product.categoryId,
       language: 'en_US'
     });
-    const probe = await previewProductBatchMaintenance(schema.xml, {
-      groupPath: [{ id: groups[0]?.id ?? 0, name: '' }],
-      keywords: { action: 'remove', values: ['not-present-probe'] }
-    });
-    if (probe.status === 'unsupported' || !probe.before.keywords.length)
-      throw new Error('REVERSIBLE_BASELINE_REQUIRED');
-    const targetGroup = groups.find(
-      (group) => /test/iu.test(group.name) && !probe.before.groups.includes(String(group.id))
-    );
-    if (!targetGroup) throw new Error('EXISTING_TEST_GROUP_REQUIRED');
-    const firstKeyword = probe.before.keywords[0];
-    if (!firstKeyword) throw new Error('REVERSIBLE_BASELINE_REQUIRED');
-    const nextKeywords =
-      probe.before.keywords.length > 1 ? [...probe.before.keywords].reverse() : [firstKeyword + ' outdoor'];
-    if (probe.before.keywords.length === 1 && !/outdoor/iu.test(product.subject))
-      throw new Error('RELATED_TEST_KEYWORD_REQUIRED');
-    const expected = await createProductMutationFingerprints(schema.xml);
-    await atomicWriteJson(resolve(folder, 'baseline.json'), {
-      productId: product.id,
-      categoryId: product.categoryId,
-      rootIds: probe.rootIds,
-      fingerprint: probe.baseline,
-      groups: probe.before.groups,
-      keywords: probe.before.keywords,
-      fieldExpectations: expected.fieldExpectations
-    });
-    releaseClaim = await claimBatchAcceptance(outputRoot, product.id, bundle.application.appKey, reportPath);
-    const runner = new ProductBatchMaintenanceRunner({
-      gateway,
-      jobs,
-      products: [product],
-      language: 'en_US'
-    });
-    await runner.preview({
-      groupPath: [{ id: targetGroup.id, name: targetGroup.name }],
-      keywords: { action: 'replace', values: nextKeywords }
-    });
-    if (runner.items[0]?.state !== 'ready' || runner.items[0].preview?.baseline !== probe.baseline)
-      throw new Error('BASELINE_CONFLICT');
-    await runner.execute();
-    const changed = runner.items[0];
-    report.change = {
-      batchId: runner.batchId,
-      jobId: changed.job?.id,
-      requestId: changed.requestId,
-      state: changed.state,
-      reasonCode: changed.job?.reasonCode
-    };
-    await persist();
-    if (changed.state !== 'verified' || !changed.job) throw new Error('CHANGE_PENDING_NO_COMPENSATION');
-    const productContext = requireProductOperationContext(changed.job.productContext);
-    const current = await gateway.request(
-      'renderProductSchema',
-      { productId: product.id, categoryId: product.categoryId, language: 'en_US' },
-      { productContext }
-    );
-    if (!(await compareProductMutationFingerprints(current.xml, changed.job.fieldExpectations)).matched)
-      throw new Error('TARGET_CHANGED_NO_COMPENSATION');
-    const originalModel = parseProductSchemaXml(schema.xml);
-    const currentModel = parseProductSchemaXml(current.xml);
-    const rootSet = new Set(probe.rootIds);
-    const nextModel = {
+    let originalXml = schema.xml;
+    let currentXml = schema.xml;
+    let productContext = requireProductOperationContext(await gateway.productOperationContext?.());
+    let rootIds: string[] = [];
+    let baselineFingerprint = '';
+    const expectations =
+      restoration?.fieldExpectations ??
+      (await createProductMutationFingerprints(schema.xml)).fieldExpectations;
+    if (restoration) {
+      if (
+        product.categoryId !== restoration.categoryId ||
+        !(
+          await compareProductMutationFingerprints(
+            schema.xml,
+            restoration.correctiveGroupClear?.expectedCurrentFields ??
+              restoration.changedJob.fieldExpectations
+          )
+        ).matched
+      )
+        throw new Error('TARGET_CHANGED_NO_COMPENSATION');
+      if (
+        (await productBatchTargetFingerprint(restoration.originalXml, restoration.rootIds)) !==
+          restoration.fingerprint ||
+        !(
+          await compareProductMutationFingerprints(
+            restoration.originalXml,
+            restoration.fieldExpectations.filter((field) => restoration.rootIds.includes(field.fieldId))
+          )
+        ).matched
+      )
+        throw new Error('ARCHIVED_BASELINE_NOT_MATCHED');
+      const previousPath = resolve(restoration.previousReportPath);
+      if (!previousPath.startsWith(outputRoot + '\\') && !previousPath.startsWith(outputRoot + '/'))
+        throw new Error('RECOVERY_PATH_INVALID');
+      const previous: unknown = JSON.parse(await readFile(previousPath, 'utf8'));
+      if (
+        !isRecord(previous) ||
+        previous.writes !== 1 ||
+        previous.restored !== false ||
+        previous.productId !== product.id ||
+        !isRecord(previous.change) ||
+        previous.change.jobId !== restoration.changedJob.id ||
+        previous.change.requestId !== restoration.changedJob.requestId
+      )
+        throw new Error('RECOVERY_RECEIPT_INVALID');
+      const originalClaimPath = resolve(
+        outputRoot,
+        'claims',
+        createHash('sha256')
+          .update(JSON.stringify([bundle.application.appKey, product.id]))
+          .digest('hex') + '.json'
+      );
+      const originalClaim: unknown = JSON.parse(await readFile(originalClaimPath, 'utf8'));
+      if (!isRecord(originalClaim) || originalClaim.reportPath !== previousPath)
+        throw new Error('RECOVERY_SCOPE_INVALID');
+      if (restoration.correctiveGroupClear) {
+        const correction: unknown = JSON.parse(
+          await readFile(resolve(restoration.correctiveGroupClear.previousRestoreReportPath), 'utf8')
+        );
+        if (
+          !isRecord(correction) ||
+          correction.productId !== product.id ||
+          correction.writes !== 1 ||
+          correction.restored !== false ||
+          correction.originalChangeJobId !== restoration.changedJob.id ||
+          !isRecord(correction.restore) ||
+          typeof correction.restore.requestId !== 'string'
+        )
+          throw new Error('KNOWN_PARTIAL_RESTORE_REQUIRED');
+      }
+      const recoveryClaim = resolve(
+        previousPath,
+        '..',
+        restoration.correctiveGroupClear ? 'clear-group-only.claim.json' : 'restore-only.claim.json'
+      );
+      const claim = await open(recoveryClaim, 'wx').catch(() => {
+        throw new Error('RESTORATION_ALREADY_SENT_READONLY_ONLY');
+      });
+      try {
+        await claim.writeFile(JSON.stringify({ reportPath }));
+        await claim.sync();
+      } finally {
+        await claim.close();
+      }
+      releaseClaim = async () => {
+        await unlink(recoveryClaim);
+        if (report.stage === 'restored-and-confirmed') await unlink(originalClaimPath);
+      };
+      rootIds = restoration.rootIds;
+      baselineFingerprint = restoration.fingerprint;
+      originalXml = restoration.originalXml;
+      report.change = {
+        jobId: restoration.changedJob.id,
+        requestId: restoration.changedJob.requestId,
+        originalStatus: restoration.changedJob.status,
+        fieldReadbackMatched: true,
+        oldReceiptRebound: false
+      };
+      await persist();
+    } else {
+      const probe = await previewProductBatchMaintenance(schema.xml, {
+        groupPath: [{ id: groups[0]?.id ?? 0, name: '' }],
+        keywords: { action: 'remove', values: ['not-present-probe'] }
+      });
+      if (probe.status === 'unsupported' || !probe.before.keywords.length)
+        throw new Error('REVERSIBLE_BASELINE_REQUIRED');
+      const targetGroup = groups.find(
+        (group) => /test/iu.test(group.name) && !probe.before.groups.includes(String(group.id))
+      );
+      if (!targetGroup) throw new Error('EXISTING_TEST_GROUP_REQUIRED');
+      const firstKeyword = probe.before.keywords[0];
+      if (!firstKeyword) throw new Error('REVERSIBLE_BASELINE_REQUIRED');
+      const nextKeywords =
+        probe.before.keywords.length > 1 ? [...probe.before.keywords].reverse() : [firstKeyword + ' outdoor'];
+      if (probe.before.keywords.length === 1 && !/outdoor/iu.test(product.subject))
+        throw new Error('RELATED_TEST_KEYWORD_REQUIRED');
+      await atomicWriteJson(resolve(folder, 'baseline.json'), {
+        productId: product.id,
+        categoryId: product.categoryId,
+        rootIds: probe.rootIds,
+        fingerprint: probe.baseline,
+        groups: probe.before.groups,
+        keywords: probe.before.keywords,
+        // Only the two original roots needed for restoration, never the full Schema/XML.
+        originalFields: parseProductSchemaXml(schema.xml).fields.filter((field) =>
+          probe.rootIds.includes(field.id)
+        ),
+        fieldExpectations: expectations
+      });
+      releaseClaim = await claimBatchAcceptance(
+        outputRoot,
+        product.id,
+        bundle.application.appKey,
+        reportPath
+      );
+      const runner = new ProductBatchMaintenanceRunner({
+        gateway,
+        jobs,
+        products: [product],
+        language: 'en_US'
+      });
+      await runner.preview({
+        groupPath: [{ id: targetGroup.id, name: targetGroup.name }],
+        keywords: { action: 'replace', values: nextKeywords }
+      });
+      if (runner.items[0]?.state !== 'ready' || runner.items[0].preview?.baseline !== probe.baseline)
+        throw new Error('BASELINE_CONFLICT');
+      await runner.execute();
+      const changed = runner.items[0];
+      report.change = {
+        batchId: runner.batchId,
+        jobId: changed.job?.id,
+        requestId: changed.requestId,
+        state: changed.state,
+        reasonCode: changed.job?.reasonCode
+      };
+      await persist();
+      if (changed.state !== 'verified' || !changed.job) throw new Error('CHANGE_PENDING_NO_COMPENSATION');
+      productContext = requireProductOperationContext(changed.job.productContext);
+      const current = await gateway.request(
+        'renderProductSchema',
+        { productId: product.id, categoryId: product.categoryId, language: 'en_US' },
+        { productContext }
+      );
+      if (!(await compareProductMutationFingerprints(current.xml, changed.job.fieldExpectations)).matched)
+        throw new Error('TARGET_CHANGED_NO_COMPENSATION');
+      currentXml = current.xml;
+      rootIds = probe.rootIds;
+      baselineFingerprint = probe.baseline;
+    }
+    const originalModel = parseProductSchemaXml(originalXml);
+    const currentModel = parseProductSchemaXml(currentXml);
+    const rootSet = new Set(rootIds);
+    let nextModel = {
       ...currentModel,
       fields: currentModel.fields.map((field) => {
         if (!rootSet.has(field.id)) return field;
@@ -378,18 +558,31 @@ export async function main(args: readonly string[]): Promise<void> {
       }),
       touchedFieldKeys: currentModel.fields.filter((field) => rootSet.has(field.id)).map((field) => field.key)
     };
+    if (restoration?.correctiveGroupClear) {
+      nextModel = explicitGroupClearModel(currentXml);
+      const full = inspectProductSchemaSerialization(nextModel);
+      if (!full.safe || !(await compareProductMutationFingerprints(full.xml, expectations)).matched)
+        throw new Error('CORRECTIVE_ORIGINAL_VALUES_NOT_MATCHED');
+    }
     const patch = inspectProductSchemaPatchSerialization(nextModel);
     if (
       !patch.safe ||
-      patch.changedFieldKeys.length !== 2 ||
+      patch.changedFieldKeys.length !== (restoration?.correctiveGroupClear ? 1 : 2) ||
       !(
         await compareProductMutationFingerprints(
           patch.xml,
-          expected.fieldExpectations.filter((field) => rootSet.has(field.fieldId))
+          expectations.filter((field) =>
+            restoration?.correctiveGroupClear ? field.fieldId === 'productGroup' : rootSet.has(field.fieldId)
+          )
         )
       ).matched
     )
       throw new Error('ORIGINAL_FIELD_PATCH_INVALID');
+    if (
+      !restoration?.correctiveGroupClear &&
+      (await productBatchTargetFingerprint(patch.xml, rootIds)) !== baselineFingerprint
+    )
+      throw new Error('ORIGINAL_FIELD_SEMANTICS_CHANGED');
     const restored = await gateway.request(
       'updateProduct',
       { productId: product.id, categoryId: product.categoryId, language: 'en_US', schemaPatchXml: patch.xml },
@@ -403,10 +596,26 @@ export async function main(args: readonly string[]): Promise<void> {
     };
     await persist();
     let job = restored.job;
-    for (let attempt = 0; attempt < 30 && job.status !== 'verified'; attempt++) {
+    // Operator-controlled read-only reconciliation after the application's five-minute stop.
+    for (let attempt = 0; attempt < (restoration ? 90 : 30) && job.status !== 'verified'; attempt++) {
       await delay(10_000);
-      job = await jobs.refresh(job.id, job.revision);
+      if (restoration) {
+        try {
+          const readback = await gateway.request(
+            'renderProductSchema',
+            { productId: product.id, categoryId: product.categoryId, language: 'en_US' },
+            { productContext }
+          );
+          if ((await compareProductMutationFingerprints(readback.xml, job.fieldExpectations)).matched)
+            job = await jobs.refresh(job.id, job.revision);
+        } catch (error) {
+          if (!(error instanceof GatewayException) || !/PRODUCT_IN_AUDITING/iu.test(error.gatewayError.code))
+            throw error;
+        }
+      } else job = await jobs.refresh(job.id, job.revision);
       if (job.status === 'failed' || job.status === 'recovery-required') break;
+      if (restoration && attempt % 6 === 0)
+        console.log(JSON.stringify({ stage: 'manual-readonly-reconciliation', status: job.status, attempt }));
     }
     if (job.status !== 'verified') throw new Error('RESTORE_PENDING_READONLY_ONLY');
     const final = await gateway.request(
@@ -414,11 +623,11 @@ export async function main(args: readonly string[]): Promise<void> {
       { productId: product.id, categoryId: product.categoryId, language: 'en_US' },
       { productContext: requireProductOperationContext(job.productContext) }
     );
-    report.restored = (await productBatchTargetFingerprint(final.xml, probe.rootIds)) === probe.baseline;
+    report.restored = (await productBatchTargetFingerprint(final.xml, rootIds)) === baselineFingerprint;
     report.untouchedFieldsMatched = (
       await compareProductMutationFingerprints(
         final.xml,
-        expected.fieldExpectations.filter((field) => !rootSet.has(field.fieldId))
+        expectations.filter((field) => !rootSet.has(field.fieldId))
       )
     ).matched;
     report.stage =

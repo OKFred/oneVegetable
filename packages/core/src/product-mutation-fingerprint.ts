@@ -110,12 +110,14 @@ async function fieldFingerprintMatches(field: ProductSchemaField, expected: stri
     return false;
   const slots = field.children.map((template) => actual.find((item) => item.id === template.id) ?? template);
   const optional = slots.flatMap((item, index) => (empty(item) ? [index] : []));
-  for (let mask = 0; mask < 2 ** optional.length; mask++) {
-    const fields = slots.map((item, index) => {
+  for (let mask = 0; mask < 3 ** optional.length; mask++) {
+    const fields = slots.flatMap((item, index) => {
       const bit = optional.indexOf(index);
-      return bit < 0
-        ? item
-        : { ...item, values: (mask & (1 << bit)) === 0 ? [] : [{ text: '', attributes: {}, metadata: {} }] };
+      if (bit < 0) return [item];
+      const representation = Math.floor(mask / 3 ** bit) % 3;
+      return representation === 0
+        ? []
+        : [{ ...item, values: representation === 1 ? [] : [{ text: '', attributes: {}, metadata: {} }] }];
     });
     const candidate = {
       ...field,
