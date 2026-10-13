@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Dialog, type Page } from '@playwright/test';
 import rfqFixture from '../../mock/data/rfqs.json' with { type: 'json' };
 import credentialFixture from '../../mock/data/node-gateway-credentials.json' with { type: 'json' };
 
@@ -20,7 +20,12 @@ test.beforeEach(async ({ context }) => {
           appSecret: fixture.appSecret,
           accessToken: fixture.accessToken,
           endpoint: 'https://eco.taobao.com/router/rest',
-          signMethod: 'hmac'
+          signMethod: 'hmac',
+          // Manual credential edits reset these too; restoring App Key alone must
+          // restore the complete baseline, not leave new metadata fields behind.
+          accessTokenExpiresTimeUtc: null,
+          systemApiPermission: 'unknown',
+          permissionCapturedTimeUtc: null
         })
       );
   }, credentialFixture.manual);
@@ -33,6 +38,24 @@ async function openSettings(page: Page): Promise<void> {
     '当前用户：本地演示用户'
   );
   await expect(page.getByLabel('App Key', { exact: true })).toHaveValue(credentialFixture.manual.appKey);
+}
+
+async function expectCleanSettingsReload(page: Page): Promise<void> {
+  const unexpectedDialogs: string[] = [];
+  const onDialog = async (dialog: Dialog) => {
+    unexpectedDialogs.push(dialog.type());
+    // Let navigation finish so an unexpected warning fails the assertion below
+    // instead of hiding it behind a cancelled-navigation timeout.
+    await dialog.accept();
+  };
+  page.on('dialog', onDialog);
+  try {
+    expect(await page.reload()).not.toBeNull();
+    expect(unexpectedDialogs).toEqual([]);
+    await expect(page.getByLabel('App Key', { exact: true })).toHaveValue(credentialFixture.manual.appKey);
+  } finally {
+    page.off('dialog', onDialog);
+  }
 }
 
 test('dirty settings keep the current hash and values on cancel, and discard only after confirmation', async ({
@@ -78,6 +101,8 @@ test('browser Back cannot replace the edited view before the leave dialog is acc
 
 test('refresh uses the native warning only while business fields are dirty', async ({ page }) => {
   await openSettings(page);
+  await page.getByLabel('App Key', { exact: true }).click();
+  await expectCleanSettingsReload(page);
   // Chromium requires a real user activation before it may show beforeunload.
   await page.getByLabel('App Key', { exact: true }).click();
   await page.getByLabel('App Key', { exact: true }).fill('unsaved-before-reload');
@@ -89,17 +114,11 @@ test('refresh uses the native warning only while business fields are dirty', asy
   expect(warning.type()).toBe('beforeunload');
   await warning.dismiss();
   await reload;
+  await expect(page).toHaveURL(/#\/settings$/u);
   await expect(page.getByLabel('App Key', { exact: true })).toHaveValue('unsaved-before-reload');
 
   await page.getByLabel('App Key', { exact: true }).fill(credentialFixture.manual.appKey);
-  const unexpectedDialogs: string[] = [];
-  page.on('dialog', async (dialog) => {
-    unexpectedDialogs.push(dialog.type());
-    await dialog.dismiss();
-  });
-  await page.reload();
-  await expect(page.getByLabel('App Key', { exact: true })).toHaveValue(credentialFixture.manual.appKey);
-  expect(unexpectedDialogs).toEqual([]);
+  await expectCleanSettingsReload(page);
 });
 
 test('RFQ does not restore legacy data and closing an edited sheet requires consent', async ({ page }) => {

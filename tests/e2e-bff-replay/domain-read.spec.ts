@@ -35,7 +35,11 @@ test('authenticated Web uses Worker, D1 and documentation replay across every do
   await acquisitionDialog.getByRole('button', { name: '取消' }).click();
 
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
-  await expect(page.getByTestId('account-avatar')).toHaveAttribute('aria-label', '当前用户：replay-admin');
+  const accountMenu = page.getByRole('button', { name: '当前用户：replay-admin', exact: true });
+  await expect(accountMenu).toBeVisible();
+  await accountMenu.click();
+  await expect(page.getByRole('menuitem', { name: '退出', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
   await expectOperation(successfulOperations, 'getDashboard');
 
   await openDomain(page, successfulOperations, '商品', '商品管理', ['listProducts']);
