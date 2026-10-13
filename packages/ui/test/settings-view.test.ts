@@ -527,6 +527,33 @@ describe('SettingsView diagnostics', () => {
     wrapper.unmount();
   });
 
+  it.each(['mock', 'extension'] as const)(
+    'restoring an edited key leaves old %s settings without a token-capture field clean',
+    async (mode) => {
+      const editing = new UnsavedEditingService();
+      const wrapper = mountView(mode, mode === 'extension' ? 'unlocked' : undefined, 'manual', 'node', {
+        editing,
+        initialSettings: {
+          appKey: credentialFixtures.manual.appKey,
+          accessTokenExpiresTimeUtc: null,
+          systemApiPermission: 'unknown',
+          permissionCapturedTimeUtc: null
+        }
+      });
+      await flushPromises();
+      expect(editing.dirty.value).toBe(false);
+      const key = wrapper.get('input[aria-label="App Key"]');
+      await key.setValue('edited-key');
+      expect(editing.dirty.value).toBe(true);
+      await key.setValue(credentialFixtures.manual.appKey);
+      expect(editing.dirty.value).toBe(false);
+      expect(await editing.confirmLeave()).toBe(true);
+      expect(editing.confirmationOpen.value).toBe(false);
+      wrapper.unmount();
+      editing.dispose();
+    }
+  );
+
   it('retains imported expiry when saving but clears stale expiry after a manual credential change', async () => {
     const wrapper = mountView('extension', 'empty');
     await flushPromises();

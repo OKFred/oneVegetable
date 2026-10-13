@@ -45,6 +45,19 @@ export const RELEASE_NOTES_DOCUMENT = {
             'en-US':
               'Imports and successful renewals preserve the corresponding token capture time, not permission-check or configuration-save time. Failed renewal does not reset the baseline. Older credentials without a baseline retain existing expiry notices, and unreported expiry stays unknown. TOP remains the default; IOP is explicit, with no added permissions or writes.'
           }
+        },
+        {
+          type: 'fix',
+          title: {
+            'zh-CN': '旧设置还原后的离开提醒',
+            'en-US': 'Correct leave warnings for older settings'
+          },
+          description: {
+            'zh-CN':
+              '旧凭据没有授权起点字段时，编辑后还原原 App Key 不再因新增空字段而误报未保存；实际修改仍保留离开和刷新确认。',
+            'en-US':
+              'Restoring the original App Key in older settings no longer leaves a new empty metadata field that falsely triggers an unsaved-change warning. Actual changes still require confirmation when leaving or reloading.'
+          }
         }
       ]
     },

@@ -254,7 +254,9 @@ function readImportedCredentials(
 
 function clearAuthorizationMetadata(): void {
   model.value.accessTokenExpiresTimeUtc = null;
-  model.value.accessTokenCapturedTimeUtc = null;
+  // Do not add a new nullable field to legacy settings solely because an input changed.
+  // Restoring the original credential must not leave a phantom unsaved edit behind.
+  if (model.value.accessTokenCapturedTimeUtc !== undefined) model.value.accessTokenCapturedTimeUtc = null;
   model.value.systemApiPermission = 'unknown';
   model.value.permissionCapturedTimeUtc = null;
 }
