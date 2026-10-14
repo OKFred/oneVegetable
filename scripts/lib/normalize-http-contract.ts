@@ -875,6 +875,16 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       'importAdminGatewayCredential',
       'GatewayCredentialImportRequest'
     ),
+    '/admin/gateway-credentials/save': postOperation(
+      'Encrypt and save manual credentials for the selected protocol',
+      'saveAdminGatewayCredential',
+      'GatewayCredentialSaveRequest'
+    ),
+    '/admin/gateway-credentials/test': postOperation(
+      'Test the selected protocol with a read-only request',
+      'testAdminGatewayCredential',
+      'GatewayCredentialProtocolRequest'
+    ),
     '/admin/gateway-credentials/refresh': postOperation(
       'Refresh the encrypted Alibaba access token',
       'refreshAdminGatewayCredential',

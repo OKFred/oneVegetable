@@ -152,7 +152,7 @@ interface OperationCallBody extends RequestEnvelope, Record<string, unknown> {
 
 interface DynamicGateway {
   credentialProtocol?(): Promise<'top' | 'iop'>;
-  galleryGatewayContextId?(): Promise<string>;
+  galleryGatewayContextId?(expected?: string): Promise<string>;
   productGatewayContextId?(): Promise<string>;
   operationProtocol?(
     operation: OperationId,
@@ -417,9 +417,9 @@ export function createApiApp(options: ApiAppOptions): Hono {
     registerS3StorageRoutes(api, {
       authService: options.authService,
       service: options.s3Storage,
-      galleryGatewayContextId: () =>
+      galleryGatewayContextId: (expected) =>
         dynamicGateway.galleryGatewayContextId
-          ? dynamicGateway.galleryGatewayContextId()
+          ? dynamicGateway.galleryGatewayContextId(expected)
           : opaqueGalleryId(`local:${options.gatewayMode}`),
       ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
     });

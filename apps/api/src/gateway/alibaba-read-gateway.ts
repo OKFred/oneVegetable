@@ -94,9 +94,17 @@ export class CredentialBackedAlibabaGatewayClient implements GatewayClient {
     return this.operationGatewayContextId('updateProduct', {});
   }
 
-  async galleryGatewayContextId(): Promise<string> {
+  async galleryGatewayContextId(expected?: string): Promise<string> {
     try {
-      return await this.operationGatewayContextId('uploadPhoto', {});
+      return await this.operationGatewayContextId(
+        'uploadPhoto',
+        {},
+        expected
+          ? {
+              galleryContext: { identity: 'server-validated', gateway: expected, storage: null }
+            }
+          : undefined
+      );
     } catch (error: unknown) {
       if (error instanceof GatewayConfigurationError) throw credentialGatewayError(error);
       throw error;

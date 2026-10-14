@@ -4,7 +4,6 @@ import { DEFAULT_API_PREFIX, normalizeApiPrefix } from './api-contract';
 import { notifyBffAuthenticationRequired } from './bff-authentication';
 import { GatewayException } from './errors';
 import { createRequestId, NetworkManager } from './network';
-import { validateAlibabaAuthorizationsSummary } from './gateway-credential-validation';
 
 import type { ApiResponse, BackendMeta } from './api-contract';
 import type { BffAuthenticationRequiredHandler } from './bff-authentication';
@@ -660,7 +659,8 @@ export class BffControlClient implements ControlClient {
     );
   }
 
-  private authorizationSummary(value: unknown): AlibabaAuthorizationsSummary {
+  private async authorizationSummary(value: unknown): Promise<AlibabaAuthorizationsSummary> {
+    const { validateAlibabaAuthorizationsSummary } = await import('./gateway-credential-validation');
     if (!validateAlibabaAuthorizationsSummary(value))
       throw new GatewayException({
         code: 'RESPONSE_CONTRACT_INVALID',
