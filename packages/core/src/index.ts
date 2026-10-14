@@ -55,6 +55,7 @@ export * from './signing';
 export * from './settings-storage';
 export * from './alibaba-authorization-metadata';
 export * from './gateway-credential-management';
+export * from './alibaba-protocol-routing';
 export * from './social-sharing';
 export * from './social-meta';
 export * from './social-media';

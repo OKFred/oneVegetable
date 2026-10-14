@@ -69,6 +69,8 @@ async function harness(
   } = {}
 ) {
   const client = new BffControlClient({ baseUrl: 'http://localhost:8787' });
+  // Existing cases intentionally model a client without the optional dual-profile endpoint.
+  Object.defineProperty(client, 'gatewayAuthorizations', { value: undefined });
   const session = fixture.session as ControlSession;
   const readSession = vi.spyOn(client, 'session').mockResolvedValue({
     ...session,

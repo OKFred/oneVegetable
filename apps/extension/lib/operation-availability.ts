@@ -6,6 +6,16 @@ import {
   type OperationId
 } from '@one-vegetable/core/runtime';
 import { applyIopCapabilityProtocol, iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
+import {
+  selectAlibabaOperationProtocol,
+  type AlibabaProtocolAvailability
+} from '@one-vegetable/core/alibaba-protocol-routing';
+
+export interface AuthorizationStatus {
+  state: CredentialVaultStatus['state'];
+  protocol?: unknown;
+  pool?: AlibabaProtocolAvailability | undefined;
+}
 
 export interface ExtensionOperationPolicyDecision {
   allowed: boolean;
@@ -27,9 +37,16 @@ const DISABLED_MUTATION_OPERATIONS: ReadonlySet<OperationId> = new Set([
 /** Reuse existing capability metadata so the debugger can gate its known target, not all generic reads. */
 export function applyExtensionCapabilityProtocol<T extends { method: string; realCallEnabled: boolean }>(
   capability: T,
-  status: { state: CredentialVaultStatus['state']; protocol?: unknown }
+  status: AuthorizationStatus
 ): T {
-  const mapped = status.protocol === 'iop' ? applyIopCapabilityProtocol(capability) : capability;
+  const protocol = status.pool
+    ? selectAlibabaOperationProtocol(
+        'callCapability',
+        { method: capability.method, parameters: {} },
+        status.pool
+      )
+    : status.protocol;
+  const mapped = protocol === 'iop' ? applyIopCapabilityProtocol(capability) : capability;
   return {
     ...mapped,
     realCallEnabled:
@@ -75,7 +92,7 @@ export function resolveExtensionStaticOperationAvailability(
 
 /** Read only safe status, never settings/secrets or a stale startup protocol snapshot. */
 export function createExtensionOperationAvailabilityClient(
-  readStatus: () => Promise<{ state: CredentialVaultStatus['state']; protocol?: unknown }>
+  readStatus: () => Promise<AuthorizationStatus>
 ): OperationAvailabilityClient {
   return {
     async get(operations) {
@@ -90,7 +107,10 @@ export function createExtensionOperationAvailabilityClient(
         return {
           items: operations.map((operation) => ({
             operation,
-            ...resolveExtensionStaticOperationAvailability(operation, protocol)
+            ...resolveExtensionStaticOperationAvailability(
+              operation,
+              status.pool ? selectAlibabaOperationProtocol(operation, {}, status.pool) : protocol
+            )
           }))
         };
       } catch {

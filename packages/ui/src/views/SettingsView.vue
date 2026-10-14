@@ -33,6 +33,8 @@ import {
 import AlibabaCredentialAcquisitionDialog from '../components/AlibabaCredentialAcquisitionDialog.vue';
 import AlibabaIndependentNotice from '../components/AlibabaIndependentNotice.vue';
 import CredentialExpiryNotice from '../components/CredentialExpiryNotice.vue';
+import AlibabaAuthorizationsPanel from '../components/AlibabaAuthorizationsPanel.vue';
+import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import GatewayProtocolNotice from '../components/settings/GatewayProtocolNotice.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import ExtensionSocialBackendPanel from '../components/ExtensionSocialBackendPanel.vue';
@@ -46,6 +48,8 @@ import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import { useUnsavedEditing, VAULT_UNLOCKED_EVENT } from '../lib/unsaved-editing';
+import { useAlibabaAuthorizations } from '../lib/alibaba-authorizations';
+import { notifyGatewayConfigurationChanged } from '../lib/gateway-configuration-events';
 
 const {
   settings,
@@ -59,6 +63,21 @@ const {
 } = useServices();
 const { t } = useUiI18n();
 const credentialText = useGatewayCredentialsI18n();
+const authorizations = useAlibabaAuthorizations();
+const {
+  summary: authorizationSummary,
+  busy: authorizationBusy,
+  error: authorizationError,
+  canConfirm
+} = authorizations;
+const switchingAuthorization = ref(false);
+const clearingAuthorization = ref<'top' | 'iop' | null>(null);
+const dualSettings = computed(
+  () =>
+    mode === 'extension' &&
+    authorizationSummary.value !== null &&
+    typeof settings.loadAuthorization === 'function'
+);
 const activeSection = ref('credentials');
 const sections = computed(() => [
   { id: 'credentials', icon: KeyRound },
@@ -66,10 +85,10 @@ const sections = computed(() => [
   { id: 'preferences', icon: Globe2 }
 ]);
 const S3StorageSettingsPanel = defineAsyncComponent(() => import('../components/S3StorageSettingsPanel.vue'));
-const GatewayCredentialPanel =
+const GatewayAuthorizationsPanel =
   typeof __ONE_VEGETABLE_EXTENSION__ !== 'undefined' && __ONE_VEGETABLE_EXTENSION__
     ? null
-    : defineAsyncComponent(() => import('../components/GatewayCredentialPanel.vue'));
+    : defineAsyncComponent(() => import('../components/GatewayAuthorizationsPanel.vue'));
 const { alibabaLanguage: preferredLanguage } = useAppPreferences();
 const signMethods: SignMethod[] = ['hmac', 'md5', 'hmac-sha256'];
 const model = ref<GatewaySettings>({
@@ -82,6 +101,10 @@ const model = ref<GatewaySettings>({
 const selectedProtocol = computed({
   get: () => model.value.protocol ?? 'top',
   set: (protocol: 'top' | 'iop') => {
+    if (dualSettings.value) {
+      void selectAuthorization(protocol);
+      return;
+    }
     model.value.protocol = protocol;
     model.value.endpoint = protocol === 'iop' ? IOP_BUSINESS_ENDPOINT : ALIBABA_GATEWAY;
     model.value.signMethod = protocol === 'iop' ? 'hmac-sha256' : 'hmac';
@@ -133,6 +156,7 @@ async function initializeView(): Promise<void> {
   credentialEditing.markClean();
   policyEditing.markClean();
   settingsLoaded.value = true;
+  if (mode === 'extension' && settingsEditable.value) await authorizations.reload();
 }
 
 async function initializeSettings(): Promise<GatewaySettings | undefined> {
@@ -151,13 +175,13 @@ async function save(): Promise<void> {
       assertMatchingPassphrases(vaultPassphrase.value, vaultPassphraseConfirmation.value);
       applyVaultStatus(await vault.create(vaultPassphrase.value, model.value));
       clearVaultPassphrases();
-      model.value = await settings.load();
+      model.value = await loadSelectedAuthorization();
       credentialEditing.markClean();
       feedback.value = t('settings.vault.saveEncrypted');
       toast.success(t('settings.vault.savedToast'));
     } else {
       await settings.save(model.value);
-      model.value = await settings.load();
+      model.value = await loadSelectedAuthorization();
       credentialEditing.markClean();
       feedback.value =
         mode === 'mock'
@@ -166,6 +190,11 @@ async function save(): Promise<void> {
       toast.success(
         mode === 'mock' ? t('settings.credentials.mockSavedToast') : t('settings.credentials.savedToast')
       );
+    }
+    if (mode === 'extension') {
+      authorizations.invalidateBinding();
+      await authorizations.reload();
+      notifyGatewayConfigurationChanged();
     }
   } catch (error: unknown) {
     const visibleError = userVisibleCause(error, t('settings.credentials.saveError'));
@@ -186,8 +215,12 @@ async function importCredentialBundle(event: Event): Promise<void> {
     await settingsInitialization;
     if (!(await credentialEditing.confirmLeave())) return;
     if (file.size > 256 * 1024) throw new Error(t('settings.credentials.bundleTooLarge'));
-    const imported = readImportedCredentials(JSON.parse(await file.text()) as unknown);
-    model.value = { ...model.value, ...imported };
+    const parsed = JSON.parse(await file.text()) as unknown;
+    const imported = readImportedCredentials(parsed);
+    if (dualSettings.value && settings.loadAuthorization) {
+      const target = await settings.loadAuthorization(imported.protocol ?? 'top');
+      model.value = { ...target, ...readImportedCredentials(parsed, target) };
+    } else model.value = { ...model.value, ...imported };
     feedback.value = t('settings.credentials.bundleLoaded');
   } catch (error: unknown) {
     credentialImportError.value = userVisibleCause(error, t('settings.credentials.bundleImportError'));
@@ -199,12 +232,18 @@ async function importCredentialBundle(event: Event): Promise<void> {
 async function handleAcquiredCredentialsSaved(status: CredentialVaultStatus): Promise<void> {
   applyVaultStatus(status);
   model.value = await settings.load();
+  if (mode === 'extension') {
+    authorizations.invalidateBinding();
+    await authorizations.reload();
+    notifyGatewayConfigurationChanged();
+  }
   credentialEditing.markClean();
   feedback.value = t('settings.credentials.acquired');
 }
 
 function readImportedCredentials(
-  value: unknown
+  value: unknown,
+  current: GatewaySettings = model.value
 ): Pick<
   GatewaySettings,
   | 'appKey'
@@ -212,6 +251,8 @@ function readImportedCredentials(
   | 'accessToken'
   | 'accessTokenExpiresTimeUtc'
   | 'accessTokenCapturedTimeUtc'
+  | 'refreshToken'
+  | 'refreshTokenExpiresTimeUtc'
   | 'systemApiPermission'
   | 'permissionCapturedTimeUtc'
   | 'protocol'
@@ -232,14 +273,29 @@ function readImportedCredentials(
   }
   const expires =
     typeof oauth.expiresAtUtc === 'string' ? Date.parse(oauth.expiresAtUtc) : root.accessTokenExpiresTimeUtc;
+  const refreshExpires =
+    typeof oauth.refreshExpiresAtUtc === 'string'
+      ? Date.parse(oauth.refreshExpiresAtUtc)
+      : root.refreshTokenExpiresTimeUtc;
   return {
     protocol,
     endpoint: protocol === 'iop' ? IOP_BUSINESS_ENDPOINT : ALIBABA_GATEWAY,
-    signMethod:
-      protocol === 'iop' ? 'hmac-sha256' : model.value.protocol === 'iop' ? 'hmac' : model.value.signMethod,
+    signMethod: protocol === 'iop' ? 'hmac-sha256' : current.protocol === 'iop' ? 'hmac' : current.signMethod,
     appKey,
     appSecret,
     accessToken,
+    ...(dualSettings.value
+      ? {
+          refreshToken: importedString(root.refreshToken) ?? importedString(oauth.refreshToken),
+          refreshTokenExpiresTimeUtc:
+            typeof refreshExpires === 'number' &&
+            Number.isSafeInteger(refreshExpires) &&
+            refreshExpires >= 0 &&
+            refreshExpires <= 8_640_000_000_000_000
+              ? refreshExpires
+              : null
+        }
+      : {}),
     ...alibabaAuthorizationMetadata(value),
     accessTokenCapturedTimeUtc: alibabaAccessTokenCapturedTime(value),
     accessTokenExpiresTimeUtc:
@@ -259,6 +315,16 @@ function clearAuthorizationMetadata(): void {
   if (model.value.accessTokenCapturedTimeUtc !== undefined) model.value.accessTokenCapturedTimeUtc = null;
   model.value.systemApiPermission = 'unknown';
   model.value.permissionCapturedTimeUtc = null;
+  if (dualSettings.value) {
+    // Replacing access credentials must not reuse a refresh token from the old grant.
+    model.value.refreshToken = null;
+    model.value.refreshTokenExpiresTimeUtc = null;
+  }
+}
+
+function setRefreshToken(value: string | number): void {
+  model.value.refreshToken = String(value);
+  model.value.refreshTokenExpiresTimeUtc = null;
 }
 
 function objectValue(value: unknown): Record<string, unknown> {
@@ -288,6 +354,7 @@ async function unlockVault(): Promise<void> {
   try {
     applyVaultStatus(await vault.unlock(vaultPassphrase.value));
     model.value = await settings.load();
+    await authorizations.reload();
     clearVaultPassphrases();
     credentialEditing.markClean();
     policyEditing.markClean();
@@ -309,6 +376,7 @@ async function migrateVault(): Promise<void> {
     assertMatchingPassphrases(vaultPassphrase.value, vaultPassphraseConfirmation.value);
     applyVaultStatus(await vault.migrate(vaultPassphrase.value));
     model.value = await settings.load();
+    await authorizations.reload();
     clearVaultPassphrases();
     credentialEditing.markClean();
     policyEditing.markClean();
@@ -326,6 +394,7 @@ async function lockVault(): Promise<void> {
   vaultBusy.value = true;
   try {
     applyVaultStatus(await vault.lock());
+    authorizations.reset();
     model.value = {
       appKey: '',
       appSecret: '',
@@ -340,6 +409,84 @@ async function lockVault(): Promise<void> {
   } finally {
     vaultBusy.value = false;
   }
+}
+
+async function loadSelectedAuthorization(): Promise<GatewaySettings> {
+  return dualSettings.value && settings.loadAuthorization
+    ? settings.loadAuthorization(selectedProtocol.value)
+    : settings.load();
+}
+
+async function selectAuthorization(protocol: 'top' | 'iop'): Promise<void> {
+  if (
+    !settings.loadAuthorization ||
+    selectedProtocol.value === protocol ||
+    switchingAuthorization.value ||
+    saving.value ||
+    vaultBusy.value
+  )
+    return;
+  if (!(await credentialEditing.confirmLeave())) return;
+  switchingAuthorization.value = true;
+  credentialImportError.value = null;
+  try {
+    model.value = await settings.loadAuthorization(protocol);
+    credentialEditing.markClean();
+    feedback.value = '';
+  } catch (cause) {
+    credentialImportError.value = userVisibleCause(cause, credentialText('error'));
+  } finally {
+    switchingAuthorization.value = false;
+  }
+}
+
+async function renewAuthorization(protocol: 'top' | 'iop'): Promise<void> {
+  if (!settings.refreshAuthorization || vaultBusy.value || saving.value) return;
+  if (!(await credentialEditing.confirmLeave())) return;
+  vaultBusy.value = true;
+  vaultError.value = null;
+  try {
+    authorizationSummary.value = await settings.refreshAuthorization(protocol);
+    model.value = await loadSelectedAuthorization();
+    credentialEditing.markClean();
+    notifyGatewayConfigurationChanged();
+    toast.success(credentialText('refreshed'));
+  } catch (cause) {
+    await authorizations.reload();
+    vaultError.value = userVisibleCause(cause, credentialText('refreshFailed'));
+  } finally {
+    vaultBusy.value = false;
+  }
+}
+
+async function requestClearAuthorization(protocol: 'top' | 'iop'): Promise<void> {
+  if (vaultBusy.value || saving.value || !(await credentialEditing.confirmLeave())) return;
+  clearingAuthorization.value = protocol;
+}
+
+async function clearAuthorization(): Promise<void> {
+  const protocol = clearingAuthorization.value;
+  if (!protocol || !settings.clearAuthorization || vaultBusy.value) return;
+  vaultBusy.value = true;
+  vaultError.value = null;
+  try {
+    await settings.clearAuthorization(protocol);
+    authorizations.invalidateBinding();
+    await authorizations.reload();
+    model.value = await loadSelectedAuthorization();
+    credentialEditing.markClean();
+    notifyGatewayConfigurationChanged();
+  } catch (cause) {
+    vaultError.value = userVisibleCause(cause, credentialText('error'));
+  } finally {
+    clearingAuthorization.value = null;
+    vaultBusy.value = false;
+  }
+}
+
+async function confirmAuthorizations(): Promise<void> {
+  await authorizations.confirm();
+  if (!authorizationError.value) notifyGatewayConfigurationChanged();
 }
 
 async function rotateVaultPassphrase(): Promise<void> {
@@ -427,7 +574,7 @@ function confirmLanguagePreference(): void {
     <div class="min-w-0 space-y-4">
       <p
         v-if="feedback"
-        class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
+        class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
       >
         {{ feedback }}
       </p>
@@ -444,7 +591,7 @@ function confirmLanguagePreference(): void {
           @click="alibabaCredentialAcquisition.openIopTool()"
           ><WandSparkles class="size-3.5" />{{ credentialText('acquireIop') }}</Button
         >
-        <GatewayCredentialPanel v-if="mode === 'bff' && runtime?.backendMeta?.runtime === 'node'" />
+        <GatewayAuthorizationsPanel v-if="mode === 'bff' && runtime?.backendMeta?.runtime === 'node'" />
         <Card v-else-if="mode === 'bff'" class="space-y-3 p-5" data-testid="bff-credential-guide">
           <h2 class="flex items-center gap-2 font-semibold">
             <KeyRound class="size-4 text-primary" />{{ t('settings.credentials.title') }}
@@ -642,6 +789,25 @@ function confirmLanguagePreference(): void {
           <ErrorNotice v-if="vaultError" class="mt-3" :error="vaultError" compact />
         </Card>
 
+        <AlibabaAuthorizationsPanel
+          v-if="settingsEditable && dualSettings && authorizationSummary"
+          :summary="authorizationSummary"
+          :selected-protocol="selectedProtocol"
+          :busy="authorizationBusy || switchingAuthorization || saving || vaultBusy"
+          :can-confirm="canConfirm"
+          :can-renew="Boolean(settings.refreshAuthorization)"
+          :can-clear="Boolean(settings.clearAuthorization)"
+          extension
+          @select="selectAuthorization"
+          @confirm="confirmAuthorizations"
+          @renew="renewAuthorization"
+          @clear="requestClearAuthorization"
+        />
+        <ErrorNotice
+          v-if="authorizationError"
+          :error="authorizationError"
+          :fallback="credentialText('error')"
+        />
         <Card v-if="settingsEditable" class="p-5">
           <div class="mb-4 flex items-center gap-2">
             <KeyRound class="size-4 text-primary" />
@@ -705,7 +871,10 @@ function confirmLanguagePreference(): void {
             :expires="model.accessTokenExpiresTimeUtc"
             extension
           />
-          <label class="mt-4 block text-sm font-medium">
+          <p v-if="dualSettings" class="my-3 text-sm font-medium">
+            {{ credentialText('selectedProfile', { protocol: selectedProtocol.toUpperCase() }) }}
+          </p>
+          <label v-else class="mt-4 block text-sm font-medium">
             {{ credentialText('protocol') }}
             <select
               v-model="selectedProtocol"
@@ -751,6 +920,18 @@ function confirmLanguagePreference(): void {
                   vaultStatus?.hasAccessToken ? t('settings.credentials.encryptedPlaceholder') : ''
                 "
             /></label>
+            <label v-if="dualSettings" class="text-sm font-medium sm:col-span-2">
+              Refresh Token ({{ credentialText('optional') }})
+              <Input
+                :model-value="model.refreshToken ?? ''"
+                type="password"
+                class="mt-2"
+                autocomplete="new-password"
+                aria-label="Refresh Token"
+                data-feedback-redact
+                @update:model-value="setRefreshToken"
+              />
+            </label>
             <label class="text-sm font-medium sm:col-span-2"
               >{{ t('settings.credentials.gateway')
               }}<Input
@@ -774,6 +955,8 @@ function confirmLanguagePreference(): void {
             class="mt-4"
             :disabled="
               saving ||
+              switchingAuthorization ||
+              authorizationBusy ||
               vaultBusy ||
               (mode === 'extension' &&
                 vaultStatus?.state === 'empty' &&
@@ -786,6 +969,21 @@ function confirmLanguagePreference(): void {
             {{ saving ? t('settings.credentials.saving') : t('settings.credentials.save') }}
           </Button>
         </Card>
+        <ConfirmActionDialog
+          :open="clearingAuthorization !== null"
+          :title="credentialText('confirmClear')"
+          :description="
+            credentialText('profileClearBody', { protocol: clearingAuthorization?.toUpperCase() ?? '' })
+          "
+          :pending="vaultBusy"
+          destructive
+          @update:open="
+            (open) => {
+              if (!open && !vaultBusy) clearingAuthorization = null;
+            }
+          "
+          @confirm="clearAuthorization"
+        />
         <AlibabaCredentialAcquisitionDialog
           v-if="alibabaCredentialAcquisition"
           v-model:open="credentialAcquisitionOpen"

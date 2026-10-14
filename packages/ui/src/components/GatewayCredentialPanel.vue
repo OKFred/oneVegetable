@@ -24,6 +24,7 @@ import AlibabaIndependentNotice from './AlibabaIndependentNotice.vue';
 import CredentialExpiryNotice from './CredentialExpiryNotice.vue';
 import GatewayProtocolNotice from './settings/GatewayProtocolNotice.vue';
 
+const props = defineProps<{ protocol?: 'top' | 'iop' | undefined }>();
 const { control, runtime } = useServices();
 const t = useGatewayCredentialsI18n();
 const { t: uiText } = useUiI18n();
@@ -66,7 +67,7 @@ const managed = computed(() => summary.value?.revision !== null && summary.value
 const valid = computed(() =>
   Boolean(fields.appKey.trim() && fields.appSecret.trim() && fields.accessToken.trim())
 );
-const emit = defineEmits<{ changed: [] }>();
+const emit = defineEmits<{ changed: []; statusChanged: [] }>();
 defineExpose({ reload });
 
 onMounted(async () => {
@@ -84,7 +85,7 @@ onMounted(async () => {
 onBeforeUnmount(resetForm);
 function resetForm(): void {
   Object.assign(fields, {
-    protocol: summary.value?.protocol ?? 'top',
+    protocol: props.protocol ?? summary.value?.protocol ?? 'top',
     appName: '',
     appKey: '',
     appSecret: '',
@@ -114,7 +115,9 @@ async function reload(): Promise<void> {
   if (!control) return;
   error.value = null;
   try {
-    const next = await control.gatewayCredentialStatus();
+    const next = props.protocol
+      ? await control.gatewayCredentialStatus(props.protocol)
+      : await control.gatewayCredentialStatus();
     if (summary.value && summary.value.configurationId !== next.configurationId) latestTest.value = null;
     summary.value = next;
     unavailable.value = next.managementAvailable === false;
@@ -132,6 +135,11 @@ async function chooseFile(event: Event): Promise<void> {
   try {
     if (file.size > 1024 * 1024) throw new Error(t('invalid'));
     pendingBundle.value = parseAlibabaOpenApiCredentialBundle(JSON.parse(await file.text()) as unknown);
+    if (props.protocol && (pendingBundle.value.protocol ?? 'top') !== props.protocol) {
+      pendingBundle.value = null;
+      error.value = new Error(t('profileMismatch'));
+      return;
+    }
     fileName.value = file.name;
     confirmation.value = 'import';
   } catch {
@@ -150,13 +158,23 @@ async function confirm(): Promise<void> {
   error.value = null;
   const action = confirmation.value;
   try {
-    if (action === 'clear') await control.clearGatewayCredential(summary.value?.revision ?? null);
-    else if (action === 'import' && pendingBundle.value)
-      await control.importGatewayCredential(pendingBundle.value, summary.value?.revision ?? null);
-    else if (action === 'save') {
+    if (action === 'clear') {
+      if (props.protocol)
+        await control.clearGatewayCredential(summary.value?.revision ?? null, props.protocol);
+      else await control.clearGatewayCredential(summary.value?.revision ?? null);
+    } else if (action === 'import' && pendingBundle.value) {
+      if (props.protocol)
+        await control.importGatewayCredential(
+          pendingBundle.value,
+          summary.value?.revision ?? null,
+          null,
+          props.protocol
+        );
+      else await control.importGatewayCredential(pendingBundle.value, summary.value?.revision ?? null);
+    } else if (action === 'save') {
       if (!control.saveGatewayCredential) throw new Error(t('unavailable'));
       const credentials = parseManualGatewayCredential({
-        protocol: fields.protocol,
+        protocol: props.protocol ?? fields.protocol,
         appName: fields.appName || null,
         appKey: fields.appKey,
         appSecret: fields.appSecret,
@@ -165,11 +183,19 @@ async function confirm(): Promise<void> {
         accessTokenExpiresTimeUtc: fields.expires ? Date.parse(fields.expires) : null,
         refreshTokenExpiresTimeUtc: fields.refreshExpires ? Date.parse(fields.refreshExpires) : null
       });
-      await control.saveGatewayCredential(
-        credentials,
-        summary.value?.revision ?? null,
-        fields.remark || null
-      );
+      if (props.protocol)
+        await control.saveGatewayCredential(
+          credentials,
+          summary.value?.revision ?? null,
+          fields.remark || null,
+          props.protocol
+        );
+      else
+        await control.saveGatewayCredential(
+          credentials,
+          summary.value?.revision ?? null,
+          fields.remark || null
+        );
     }
     latestTest.value = null;
     confirmation.value = null;
@@ -193,19 +219,25 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
   error.value = null;
   try {
     if (kind === 'test' && control.testGatewayCredential) {
-      latestTest.value = await control.testGatewayCredential();
+      latestTest.value = props.protocol
+        ? await control.testGatewayCredential(props.protocol)
+        : await control.testGatewayCredential();
       const message = t(latestTest.value.status);
       if (['passed', 'no-data'].includes(latestTest.value.status)) toast.success(message);
       else toast.error(message);
     } else if (kind === 'refresh') {
-      await control.refreshGatewayCredential();
+      if (props.protocol) await control.refreshGatewayCredential(props.protocol);
+      else await control.refreshGatewayCredential();
       latestTest.value = null;
       toast.success(t('refreshed'));
+      notifyGatewayConfigurationChanged();
     }
     await reload();
+    emit('statusChanged');
   } catch (cause) {
     // Refresh safe status after a failed control action, retaining its original error.
     await reload();
+    emit('statusChanged');
     error.value = cause;
   } finally {
     busy.value = false;
@@ -217,6 +249,10 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
   <Card id="alibaba-credentials" class="space-y-4 p-5" data-testid="gateway-credential-panel">
     <h2 class="flex items-center gap-2 font-semibold"><KeyRound class="size-4" />{{ t('title') }}</h2>
     <p class="text-sm text-muted-foreground">{{ t('description') }}</p>
+    <p v-if="protocol" class="text-sm font-medium">
+      {{ t('selectedProfile', { protocol: protocol.toUpperCase() }) }}
+    </p>
+    <p v-if="protocol" class="text-xs text-muted-foreground">{{ t('profileIsolation') }}</p>
     <p v-if="!busy && !admin" class="text-sm">{{ t('adminOnly') }}</p>
     <ErrorNotice v-if="error" :error="error" :fallback="t('error')" />
     <template v-if="admin">
@@ -224,9 +260,10 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
       <template v-else>
         <p class="text-sm font-medium">{{ summary?.configured ? t('configured') : t('empty') }}</p>
         <p class="text-sm" data-testid="gateway-protocol-summary">
-          {{ t('protocol') }}: {{ t(summary?.protocol === 'iop' ? 'protocolIop' : 'protocolTop') }}
+          {{ t('protocol') }}:
+          {{ t((protocol ?? summary?.protocol) === 'iop' ? 'protocolIop' : 'protocolTop') }}
         </p>
-        <GatewayProtocolNotice :protocol="summary?.protocol" />
+        <GatewayProtocolNotice :protocol="protocol ?? summary?.protocol" />
         <CredentialExpiryNotice
           v-if="summary && (summary.configured || summary.accessTokenExpiresTimeUtc != null)"
           :expires="summary.accessTokenExpiresTimeUtc"
@@ -236,7 +273,7 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
         <details class="rounded-lg border p-3 text-sm">
           <summary class="cursor-pointer font-medium">{{ t('renewTitle') }}</summary>
           <p class="mt-2 leading-6 text-muted-foreground">
-            {{ t(summary?.protocol === 'iop' ? 'renewGuideIop' : 'renewGuide') }}
+            {{ t((protocol ?? summary?.protocol) === 'iop' ? 'renewGuideIop' : 'renewGuide') }}
           </p>
         </details>
         <dl class="grid gap-4 rounded-lg bg-muted/40 p-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
@@ -272,7 +309,7 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
           @change="chooseFile"
         />
         <div class="flex flex-wrap gap-2">
-          <Button :disabled="busy" @click="fileInput?.click()"
+          <Button variant="outline" :disabled="busy" @click="fileInput?.click()"
             ><Upload class="size-4" />{{ t('import') }}</Button
           >
           <Button
@@ -286,7 +323,7 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
           >
           <Button
             variant="outline"
-            :disabled="busy || !summary?.configured || !real"
+            :disabled="busy || !summary?.configured || !real || !control?.testGatewayCredential"
             :title="!real ? t('notReal') : t('testNotice')"
             @click="run('test')"
             ><PlugZap class="size-4" />{{ t('test') }}</Button
@@ -328,6 +365,7 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
         {{ t('protocol') }}
         <select
           v-model="fields.protocol"
+          :disabled="Boolean(protocol)"
           :aria-label="t('protocol')"
           class="h-9 w-full rounded-md border bg-background px-3 text-sm"
         >
@@ -382,7 +420,13 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
   <ConfirmActionDialog
     :open="confirmation !== null"
     :title="t(confirmation === 'clear' ? 'confirmClear' : 'confirmSave')"
-    :description="t(confirmation === 'clear' ? 'clearBody' : 'confirmBody')"
+    :description="
+      protocol
+        ? t(confirmation === 'clear' ? 'profileClearBody' : 'profileConfirmBody', {
+            protocol: protocol.toUpperCase()
+          })
+        : t(confirmation === 'clear' ? 'clearBody' : 'confirmBody')
+    "
     :destructive="confirmation === 'clear'"
     :pending="busy"
     @update:open="dismissConfirmation"

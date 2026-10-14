@@ -18,6 +18,7 @@ import type { RequestEventRepository } from '../observability/request-events';
 import type { AlibabaCredentialStatus, AsyncAlibabaCredentialProvider } from '../gateway/credentials';
 import type { GatewayMode } from '../runtime-config';
 import type { GatewayCredentialService, GatewayCredentialSummary } from '../gateway/credential-vault';
+import type { DualAlibabaAuthorization } from '../gateway/dual-authorization';
 import type { RealMutationControlService } from '../safety/real-mutation-control';
 import type { AlibabaCredentialAcquisitionService } from '../alibaba-credential-acquisition/service';
 import { AlibabaCredentialAcquisitionServiceError } from '../alibaba-credential-acquisition/service';
@@ -25,7 +26,10 @@ import { AlibabaCredentialAcquisitionContractError } from '@one-vegetable/core';
 import { toPublicUser } from './types';
 import { testGatewayCredential } from '../gateway/credential-test';
 import { GatewayConfigurationError } from '../gateway/credentials';
-import { validateGatewayCredentialSaveRequest } from '@one-vegetable/core/gateway-credential-validators';
+import {
+  validateGatewayCredentialSaveRequest,
+  validateAlibabaAuthorizationsConfirmRequest
+} from '@one-vegetable/core/gateway-credential-validators';
 
 export const SESSION_COOKIE = 'ov_session';
 export const CSRF_COOKIE = 'ov_csrf';
@@ -45,6 +49,7 @@ export interface AuthRoutesOptions {
   gatewayCredentialService?: GatewayCredentialService;
   gatewayCredentialProvider?: AsyncAlibabaCredentialProvider;
   gatewayCredentialSummary?: () => Promise<GatewayCredentialSummary>;
+  gatewayAuthorizations?: DualAlibabaAuthorization;
   mutationEnabled?: boolean;
   allowedOrigins?: readonly string[];
   requestEvents?: RequestEventRepository;
@@ -348,6 +353,44 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
   const gatewayCredentialService = options.gatewayCredentialService;
   const gatewayCredentialProvider = options.gatewayCredentialProvider;
   if (gatewayCredentialService && gatewayCredentialProvider) {
+    const authorizations = options.gatewayAuthorizations;
+    const selectedService = async (body: Record<string, unknown>) =>
+      authorizations ? authorizations.service(readCredentialProtocol(body)) : gatewayCredentialService;
+    const selectedProvider = async (body: Record<string, unknown>) =>
+      authorizations
+        ? authorizations.managementProvider(readCredentialProtocol(body))
+        : gatewayCredentialProvider;
+    if (authorizations) {
+      api.post('/admin/gateway-credentials/authorizations/get', (context) =>
+        adminRead(context, options, () => authorizations.authorizations(), ['requestId'])
+      );
+      api.post('/admin/gateway-credentials/authorizations/confirm', (context) =>
+        adminWrite(
+          context,
+          options,
+          async (body, authenticated) => {
+            if (!validateAlibabaAuthorizationsConfirmRequest(body))
+              throw new AuthError('INVALID_REQUEST_BODY', '双授权确认信息无效', 400);
+            const result = await authorizations.confirm(
+              body.topConfigurationId,
+              body.iopConfigurationId,
+              authenticated.principal.actorId
+            );
+            await options.authService.audit({
+              requestId: readRequestId(body),
+              actorId: authenticated.principal.actorId,
+              action: 'admin.gateway-credentials.authorizations.confirm',
+              resourceKind: 'gateway-credential',
+              resourceId: 'pair',
+              outcome: 'success',
+              reasonCode: 'ALIBABA_AUTHORIZATIONS_CONFIRMED'
+            });
+            return result;
+          },
+          ['requestId', 'topConfigurationId', 'iopConfigurationId']
+        )
+      );
+    }
     api.post('/admin/gateway-credentials/save', async (context) =>
       adminWrite(
         context,
@@ -356,7 +399,9 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
           if (!validateGatewayCredentialSaveRequest(body))
             throw new AuthError('GATEWAY_CREDENTIAL_INVALID', '凭据格式无效', 400);
           try {
-            const result = await gatewayCredentialService.save({
+            const result = await (
+              await selectedService(body)
+            ).save({
               credentials: body.credentials,
               actorId: authenticated.principal.actorId,
               expectedRevision: readNullableRevision(body, 'revision'),
@@ -367,7 +412,7 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
               actorId: authenticated.principal.actorId,
               action: 'admin.gateway-credentials.save',
               resourceKind: 'gateway-credential',
-              resourceId: 'primary',
+              resourceId: readCredentialProtocol(body) ?? 'primary',
               outcome: 'success',
               reasonCode: 'GATEWAY_CREDENTIAL_SAVED',
               revisionAfter: result.revision
@@ -377,7 +422,7 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
             throw credentialRouteError(error);
           }
         },
-        ['requestId', 'credentials', 'revision', 'remark']
+        ['requestId', 'credentials', 'revision', 'remark', 'protocol']
       )
     );
 
@@ -388,27 +433,30 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
         async (body, authenticated) => {
           if (options.gatewayMode !== 'real')
             throw new AuthError('REAL_GATEWAY_DISABLED', '当前环境不执行真实连接测试', 403);
-          const result = await testGatewayCredential(gatewayCredentialProvider, readRequestId(body));
+          const result = await testGatewayCredential(await selectedProvider(body), readRequestId(body));
           await options.authService.audit({
             requestId: result.requestId,
             actorId: authenticated.principal.actorId,
             action: 'admin.gateway-credentials.test',
             resourceKind: 'gateway-credential',
-            resourceId: 'primary',
+            resourceId: readCredentialProtocol(body) ?? 'primary',
             outcome: ['passed', 'no-data'].includes(result.status) ? 'success' : 'error',
             reasonCode: result.errorCode ?? 'GATEWAY_CONNECTION_VERIFIED'
           });
           return result;
         },
-        ['requestId']
+        ['requestId', 'protocol']
       )
     );
     api.post('/admin/gateway-credentials/get', async (context) => {
       return adminRead(
         context,
         options,
-        () => options.gatewayCredentialSummary?.() ?? gatewayCredentialService.status(),
-        ['requestId']
+        (body) =>
+          authorizations
+            ? authorizations.summary(readCredentialProtocol(body))
+            : (options.gatewayCredentialSummary?.() ?? gatewayCredentialService.status()),
+        ['requestId', 'protocol']
       );
     });
 
@@ -419,7 +467,9 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
         async (body, authenticated) => {
           const requestId = readRequestId(body);
           try {
-            const result = await gatewayCredentialService.import({
+            const result = await (
+              await selectedService(body)
+            ).import({
               bundle: body.bundle,
               actorId: authenticated.principal.actorId,
               expectedRevision: readNullableRevision(body, 'revision'),
@@ -430,7 +480,7 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
               actorId: authenticated.principal.actorId,
               action: 'admin.gateway-credentials.import',
               resourceKind: 'gateway-credential',
-              resourceId: 'primary',
+              resourceId: readCredentialProtocol(body) ?? 'primary',
               outcome: 'success',
               reasonCode: 'GATEWAY_CREDENTIAL_IMPORTED',
               revisionAfter: result.revision
@@ -440,7 +490,7 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
             throw credentialRouteError(error);
           }
         },
-        ['requestId', 'bundle', 'revision', 'remark']
+        ['requestId', 'bundle', 'revision', 'remark', 'protocol']
       );
     });
 
@@ -450,21 +500,23 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
         options,
         async (body, authenticated) => {
           const requestId = readRequestId(body);
-          await gatewayCredentialProvider.requireCredentials(requestId, true);
-          const result = await gatewayCredentialService.status();
+          await (await selectedProvider(body)).requireCredentials(requestId, true);
+          const result = authorizations
+            ? await authorizations.summary(readCredentialProtocol(body))
+            : await gatewayCredentialService.status();
           await options.authService.audit({
             requestId,
             actorId: authenticated.principal.actorId,
             action: 'admin.gateway-credentials.refresh',
             resourceKind: 'gateway-credential',
-            resourceId: 'primary',
+            resourceId: readCredentialProtocol(body) ?? 'primary',
             outcome: 'success',
             reasonCode: 'GATEWAY_CREDENTIAL_REFRESHED',
             revisionAfter: result.revision
           });
           return result;
         },
-        ['requestId']
+        ['requestId', 'protocol']
       );
     });
 
@@ -476,7 +528,7 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
           const requestId = readRequestId(body);
           const revision = readNullableRevision(body, 'revision');
           try {
-            await gatewayCredentialService.clear(revision);
+            await (await selectedService(body)).clear(revision);
           } catch (error: unknown) {
             throw credentialRouteError(error);
           }
@@ -485,14 +537,14 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
             actorId: authenticated.principal.actorId,
             action: 'admin.gateway-credentials.clear',
             resourceKind: 'gateway-credential',
-            resourceId: 'primary',
+            resourceId: readCredentialProtocol(body) ?? 'primary',
             outcome: 'success',
             reasonCode: 'GATEWAY_CREDENTIAL_CLEARED',
             revisionBefore: revision
           });
           return {};
         },
-        ['requestId', 'revision']
+        ['requestId', 'revision', 'protocol']
       );
     });
   }
@@ -1086,8 +1138,22 @@ function readNullableRevision(body: Record<string, unknown>, key: string): numbe
   return readInteger(body, key);
 }
 
+function readCredentialProtocol(body: Record<string, unknown>): 'top' | 'iop' | undefined {
+  if (body.protocol === undefined || body.protocol === 'top' || body.protocol === 'iop') return body.protocol;
+  throw new AuthError('ALIBABA_PROTOCOL_INVALID', '请选择 TOP 或 IOP 授权', 400);
+}
+
 function credentialRouteError(error: unknown): AuthError {
   if (error instanceof AuthError) return error;
+  if (error instanceof GatewayConfigurationError)
+    return new AuthError(
+      error.code,
+      error.message,
+      error.code === 'ALIBABA_AUTHORIZATION_BINDING_CHANGED' ||
+        error.code === 'ALIBABA_PROTOCOL_SELECTION_REQUIRED'
+        ? 409
+        : 400
+    );
   if (error instanceof EntityVersionConflictError) {
     return new AuthError('ENTITY_VERSION_CONFLICT', '凭据已被其他请求更新', 409);
   }
@@ -1127,12 +1193,22 @@ async function handle(context: Context, action: () => Promise<Response>): Promis
       });
     }
     if (error instanceof GatewayConfigurationError) {
-      return failure(context, requestId, error.code === 'ALIBABA_TOKEN_REFRESH_FAILED' ? 502 : 503, {
-        code: error.code,
-        message: error.message,
-        ...error.diagnostics,
-        retryable: false
-      });
+      return failure(
+        context,
+        requestId,
+        error.code === 'ALIBABA_TOKEN_REFRESH_FAILED'
+          ? 502
+          : error.code === 'ALIBABA_PROTOCOL_SELECTION_REQUIRED' ||
+              error.code === 'ALIBABA_AUTHORIZATION_BINDING_CHANGED'
+            ? 409
+            : 503,
+        {
+          code: error.code,
+          message: error.message,
+          ...error.diagnostics,
+          retryable: false
+        }
+      );
     }
     return failure(context, requestId, 500, {
       code: 'INTERNAL_ERROR',

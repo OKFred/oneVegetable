@@ -38,16 +38,32 @@ export default defineConfig({
       if (Array.isArray(output)) throw new Error('Expected one MV3 ESM output');
       config.build.rollupOptions.output = {
         ...output,
-        manualChunks(id) {
-          const path = id.replaceAll('\\', '/');
-          if (/\/apps\/extension\/lib\/iop-authorization(?:-runtime)?\.ts$/u.test(path))
-            return 'iop-authorization';
-          if (path.endsWith('/packages/core/src/validation-equal.ts')) return 'validation-equal';
-          const match =
-            /\/generated\/(validators-(?:product|rfq|trade|logistics|insights|photo|platform|free-api|video-upload))\.ts$/.exec(
-              path
-            );
-          return match?.[1];
+        codeSplitting: {
+          groups: [
+            {
+              name: 'alibaba-authorizations',
+              test: /[\\/]apps[\\/]extension[\\/]lib[\\/](?:alibaba-authorizations|authorization-refresh)\.ts$/u,
+              includeDependenciesRecursively: false
+            },
+            {
+              name: 'credential-acquisition',
+              test: /[\\/]apps[\\/]extension[\\/]lib[\\/]alibaba-credential-acquisition\.ts$/u,
+              includeDependenciesRecursively: false
+            },
+            {
+              // Retain the existing validator/auth grouping; do not merge the shared
+              // protocol selector with worker-only profile helpers (Options uses it too).
+              name(id) {
+                const path = id.replaceAll('\\', '/');
+                if (/\/apps\/extension\/lib\/iop-authorization(?:-runtime)?\.ts$/u.test(path))
+                  return 'iop-authorization';
+                if (path.endsWith('/packages/core/src/validation-equal.ts')) return 'validation-equal';
+                return /\/generated\/(validators-(?:product|rfq|trade|logistics|insights|photo|platform|free-api|video-upload))\.ts$/.exec(
+                  path
+                )?.[1];
+              }
+            }
+          ]
         }
       };
     }

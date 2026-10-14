@@ -1,5 +1,12 @@
 export const errors = {
   codes: {
+    ALIBABA_AUTHORIZATION_BINDING_REQUIRED:
+      '请先在凭据配置中确认 TOP 和 IOP 属于同一商家，再使用按能力自动路由。',
+    ALIBABA_AUTHORIZATION_BINDING_CHANGED: '授权已变化，请核对两份配置并重新确认同一商家；不会自动重试操作。',
+    ALIBABA_AUTHORIZATION_BINDING_STALE: '授权已变化，请核对两份配置并重新确认同一商家；不会自动重试操作。',
+    ALIBABA_PROTOCOL_SELECTION_REQUIRED: '更换凭据前请明确选择 TOP 或 IOP，另一份授权必须保留。',
+    ALIBABA_PROTOCOL_CREDENTIALS_NOT_CONFIGURED:
+      '请求协议尚未配置凭据，请配置对应授权；不能混用另一协议的授权。',
     ALIBABA_PROTOCOL_INVALID: '网关协议无效，请明确选择 TOP 或 IOP。',
     ALIBABA_IOP_METHOD_UNSUPPORTED: '此方法尚未映射到 IOP，请选择已支持的方法；不会回退 TOP。',
     ALIBABA_IOP_PARAMETER_UNSUPPORTED: 'IOP 尚不支持此筛选参数，已停止请求，不会静默忽略。',
@@ -64,6 +71,11 @@ export const errors = {
     ALIBABA_REFRESH_TOKEN_EXPIRED: 'Alibaba Refresh Token 已过期，请重新授权。',
     ALIBABA_REFRESH_TOKEN_MISSING: '缺少 Alibaba Refresh Token，请重新授权。',
     ALIBABA_TOKEN_REFRESH_FAILED: 'Alibaba Token 刷新失败，请重新授权。',
+    TOP_TOKEN_REJECTED: '平台拒绝了 TOP Token 刷新请求。请检查应用授权和权限，或重新进行 TOP 授权。',
+    AUTH_REFRESH_RESULT_UNKNOWN: '刷新结果不确定，请勿重发本次刷新请求；请重新进行对应协议授权并导入新授权。',
+    AUTH_REFRESH_EXPIRED: '已记录的续期有效期已过，请重新进行对应协议授权并导入新授权。',
+    AUTH_PERMISSION_REQUIRED:
+      '请先允许当前协议所需站点访问：TOP 为 https://oauth.alibaba.com，IOP 为 https://openapi-api.alibaba.com，再尝试续期。',
     ALIBABA_DRAFT_UPDATE_UNSUPPORTED: 'Alibaba 暂不支持覆盖更新已有平台草稿。',
     ALIBABA_PRODUCT_GROUP_CREATE_UNCONFIRMED: '当前环境尚未开放商品分组新增。',
     MISSING_CREDENTIALS: '请先在设置中配置 App Key、App Secret 和 Access Token。',

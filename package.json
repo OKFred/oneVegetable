@@ -64,6 +64,7 @@
     "snapshot:free-api-docs": "tsx scripts/snapshot-free-api-docs.ts",
     "snapshot:iop-docs": "tsx scripts/snapshot-iop-docs.ts",
     "smoke:iop:read": "tsx scripts/smoke-iop-business-read.ts",
+    "smoke:alibaba:dual:read": "tsx scripts/smoke-dual-alibaba-read.ts",
     "smoke:iop:workbench": "tsx scripts/smoke-iop-workbench-real.ts",
     "smoke:iop:product-write": "tsx scripts/smoke-iop-product-writes.ts",
     "reconcile:iop:product-write": "tsx scripts/reconcile-iop-product-write.ts",

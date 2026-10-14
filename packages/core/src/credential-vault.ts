@@ -1,4 +1,9 @@
-import { gatewayCredentialExpiryMetadata, migrateGatewaySettings } from './settings-storage';
+import {
+  gatewayAuthorizationMetadata,
+  gatewayCredentialExpiryMetadata,
+  gatewayCredentialIdentityMetadata,
+  migrateGatewaySettings
+} from './settings-storage';
 import type { CredentialVaultPolicy, GatewaySettings } from './types';
 
 export const CREDENTIAL_VAULT_VERSION = 2;
@@ -396,7 +401,9 @@ function strictGatewaySettings(value: unknown): GatewaySettings {
     endpoint,
     signMethod,
     ...(protocol === undefined ? {} : { protocol }),
-    ...gatewayCredentialExpiryMetadata(value)
+    ...gatewayCredentialExpiryMetadata(value),
+    ...gatewayCredentialIdentityMetadata(value),
+    ...gatewayAuthorizationMetadata(value)
   };
 }
 
@@ -434,7 +441,7 @@ function isBase64WithByteLength(value: unknown, length: number): value is string
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function sameCredentialVaultRecord(left: CredentialVaultRecord, right: CredentialVaultRecord): boolean {

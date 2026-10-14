@@ -1,16 +1,46 @@
 export const gatewayCredentials = {
   title: 'Alibaba credentials',
+  dualTitle: 'TOP + IOP authorizations',
+  dualDescription:
+    'Two independent grants are recommended, not mandatory. You can keep one profile. Configuring one never replaces the other.',
+  profileTop: 'TOP authorization',
+  profileIop: 'IOP authorization',
+  selectProfile: 'Select the authorization profile to configure',
+  configureProfile: 'Configure {protocol}',
+  selectedProfile: 'Editing {protocol} authorization',
+  profileIsolation: 'Import, save, test, renew and clear apply only to this profile. No automatic renewal.',
+  profileMismatch:
+    'This JSON belongs to the other protocol. Select its profile first, then import again. Nothing was changed.',
+  profileConfirmBody:
+    'Replace only {protocol} for all users of this server. The other profile is preserved; same-merchant confirmation becomes invalid. No Alibaba products are changed.',
+  profileClearBody:
+    'Clear only {protocol}; the other profile remains configured. Same-merchant confirmation becomes invalid. This does not revoke the platform grant.',
+  bindingConfirmed: 'User confirmed the same merchant; capability routing enabled',
+  bindingRequired: 'Same-merchant confirmation required for automatic capability routing',
+  bindingNeedsBoth:
+    'Configure both profiles before confirming. A single authorization can still be used on its own.',
+  bindingNeedsManaged:
+    'A startup file or environment profile has no stable configuration ID. Import managed authorization JSON for each profile first, then confirm the pair.',
+  unconfirmedRouting:
+    'Until confirmed, requests keep the legacy default ({protocol}); automatic capability routing is not enabled.',
+  sameMerchant: 'I confirm that both TOP and IOP authorizations belong to the same merchant.',
+  confirmBinding: 'Confirm and enable capability routing',
+  bindingDisclaimer:
+    'This is your confirmation, not official platform verification. Replacing or clearing either profile requires confirmation again.',
+  bindingTime: 'User confirmed at {time}',
+  routingPolicy:
+    'Once confirmed, verified supported requests prefer IOP; other supported requests use TOP. Unsupported operations stay blocked. Uncertain writes are never retried through the other protocol.',
   protocol: 'Gateway protocol',
   protocolTop: 'TOP (default)',
   protocolIop: 'IOP (explicit choice)',
   iopCompatibility:
-    'IOP supports mapped reads and verified Schema publish, draft and update. Other methods open individually; no TOP fallback.',
+    'IOP supports mapped reads and verified Schema publish, draft and update. Other methods open individually; failed IOP calls are never retried through TOP.',
   acquireTop: 'Get TOP Open Platform credentials',
   acquireIop: 'Open independent IOP authorization tool',
   extensionGuideIop:
     'Authorize in the independent IOP tool, then export, import and save JSON. TOP acquisition is not for IOP.',
   renewGuideIop:
-    'Renew in the independent IOP tool; export, import, save and test JSON. Keep the vault and session; do not replay operations.',
+    'For the selected IOP profile, try Refresh Token first. If missing or refresh fails, reauthorize in the independent IOP tool, then export, import, save and test JSON. Keep the vault and session; do not replay operations.',
   expiryunknown: 'Expiry unknown; this does not mean permanent access',
   expiryvalid: 'Within the recorded authorization period',
   expiryexpiring: 'Authorization expires within 7 days; prepare to renew',

@@ -29,6 +29,8 @@ async function harness(
   } = {}
 ) {
   const client = new BffControlClient({ baseUrl: 'http://localhost:8787' });
+  // This harness models the legacy optional-API surface, not the new live endpoint.
+  Object.defineProperty(client, 'gatewayAuthorizations', { value: undefined });
   const session = fixture.session as ControlSession;
   const readSession = vi
     .spyOn(client, 'session')

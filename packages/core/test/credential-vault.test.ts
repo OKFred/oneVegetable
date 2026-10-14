@@ -24,6 +24,43 @@ const settings = {
 };
 
 describe('credential vault', () => {
+  it('encrypts nested profiles, refresh tokens and confirmation under the compatible vault format', async () => {
+    const input = {
+      ...settings,
+      configurationId: 'top-configuration',
+      refreshToken: 'top-refresh-private',
+      protocolCredentials: {
+        iop: {
+          ...settings,
+          protocol: 'iop' as const,
+          configurationId: 'iop-configuration',
+          endpoint: 'https://openapi-api.alibaba.com/rest',
+          refreshToken: 'iop-refresh-private',
+          accessToken: 'iop-token-private',
+          appSecret: 'iop-secret-private'
+        }
+      },
+      authorizationBinding: {
+        topConfigurationId: 'top-configuration',
+        iopConfigurationId: 'iop-configuration',
+        confirmedAtUtc: 1_000
+      }
+    };
+    const created = await createCredentialVault(input, '123456');
+    for (const secret of [
+      'top-refresh-private',
+      'iop-refresh-private',
+      'iop-token-private',
+      'iop-secret-private',
+      'iop-configuration'
+    ])
+      expect(JSON.stringify(created.record)).not.toContain(secret);
+    expect((await unlockCredentialVault(created.record, '123456')).settings).toEqual(input);
+    const resealed = await resealCredentialVault(created.record, input, created.key);
+    expect((await restoreCredentialVaultSession(resealed, created.sessionKeyMaterial)).settings).toEqual(
+      input
+    );
+  });
   it('preserves an explicit IOP protocol through encrypted session restoration', async () => {
     const input = { ...settings, protocol: 'iop' as const, endpoint: 'https://openapi-api.alibaba.com/rest' };
     const created = await createCredentialVault(input, '123456');

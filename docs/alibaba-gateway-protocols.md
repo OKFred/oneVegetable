@@ -4,7 +4,27 @@
 
 TOP 仍是默认协议，不自动替换已有本地、Node、Cloudflare 或插件凭据。历史授权包和加密设置没有 `protocol` 时按 TOP 读取；未知协议标识拒绝，不猜测 AppKey 或 Token 所属协议。
 
-新版应用导出包通过 `protocol: "iop"` 显式标记。管理员或插件用户确认导入后才替换该工作台配置；导入包含明文密钥的 JSON 前应备份原授权包。旧 TOP 包仍可重新导入，两种协议不得共享或混搭凭据。
+新版应用导出包通过 `protocol: "iop"` 显式标记。TOP 与 IOP 可分别保存；导入一个协议不会覆盖另一个协议。仍然禁止混搭两套 AppKey、Secret 和 Token。旧的单授权记录和未标记 TOP 包保留兼容。
+
+## 双授权与自动选路
+
+- 设置页分别配置 TOP、IOP，独立展示到期时间、续期状态、导入/更换和清除。仅有一份授权时按原行为运行。
+- 两份授权齐全后，必须由用户确认属于同一商家，才启用自动选路。这是用户确认，不是平台账号认证；配置被替换或清除后确认失效，正常 Token 刷新不改变配置身份。
+- 出网前根据已通过 IOP 账号验收的方法与请求参数选路：适配能力优先 IOP；未适配的 RFQ、订单聚合、SKU 专属库存等保留 TOP。
+- IOP 图片列表必须指定分组。因此全部图片、未分组和 TOP 原始 `ALL_GROUP/UNGROUP` 查询使用 TOP，不猜 IOP 特殊 ID；指定分组可使用 IOP。
+- 任务绑定实际使用的授权配置，后续回读仍使用同一协议。更换授权后必须重新预览，不能自动把旧任务绑定到新授权。
+- 失败后不切换协议、应用或 Mock；尤其结果不明的写请求绝不跨协议重试。自动选路不绕过管理员、CSRF、资格或 mutation flag。
+- Node/Worker 将新协议记录保存到独立加密位置，AAD 绑定位置；旧 primary 密文不变。Node 环境变量或文件配置需先导入为受管理授权，才能获得用于双授权确认的稳定配置 ID。
+- 未指明协议的旧管理客户端在单授权时继续可用；双授权同时存在时返回 `ALIBABA_PROTOCOL_SELECTION_REQUIRED`，避免误覆盖或清除另一份配置。
+- 插件仅在保险库内保存完整资料；页面、状态和诊断只接收脱敏摘要，另一协议的 Secret、Token 不随设置读取返回。
+
+本迭代自动测试覆盖双位置存储、AAD 隔离、独立续期、配置确认、上下文固定及失败不跨协议重发；真实只读与 UI 验收须分别记录，不将测试回放当成平台验收。
+
+2026-10-14 双授权只读抽样：隔离内存数据库导入两份测试授权后，IOP 商品列表、图片分组、指定分组图片及 TOP 全部图片四项均通过；没有 Token 刷新、业务写入或当前配置替换。第一次商品查询被验收工具自身的端点白名单拦住，修正为文档中的 `/alibaba/icbu/product/list` 后通过；不将该工具错误记为平台故障。脱敏回执保存在忽略目录 `artifacts/dual-alibaba-read-validation/`。
+
+独立插件同时支持显式 TOP/IOP 续期：仅操作选中的授权，发送前保存不含 Token 的意图；续期结果不明时禁用该授权的再次刷新并要求重新授权，另一份授权不受影响。真实 Token 续期本轮未执行，使用离线 Token 回放验证；不把回放当成平台续期验收。
+
+Dual authorization preserves independent encrypted TOP and IOP profiles. Automatic per-operation routing requires explicit user confirmation that both belong to the same merchant; this is not platform identity verification. Verified supported operations prefer IOP, while all/ungrouped photo queries and unmapped capabilities retain TOP. Replacement invalidates confirmation; ordinary token renewal preserves task identity. Failed calls are never retried through the other protocol. Four isolated live read cases passed on 2026-10-14; no active credentials, tokens or business records were changed.
 
 | 协议            | 业务网关                                                      | 认证与签名                                                        | 续期                                  |
 | --------------- | ------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------- |

@@ -21,6 +21,7 @@ import type {
   AlibabaOpenApiCredentialBundle
 } from '@one-vegetable/core';
 import type { GatewayCredentialService } from '../gateway/credential-vault';
+import type { DualAlibabaAuthorization } from '../gateway/dual-authorization';
 import type {
   AlibabaCredentialAcquisitionJob,
   AlibabaCredentialAcquisitionJobRepository
@@ -74,7 +75,7 @@ export class AlibabaCredentialAcquisitionService {
   constructor(
     private readonly repository: AlibabaCredentialAcquisitionJobRepository,
     private readonly driver: AlibabaCredentialAcquisitionDriver,
-    private readonly credentialService: GatewayCredentialService,
+    private readonly credentialService: GatewayCredentialService | DualAlibabaAuthorization,
     private readonly clock: () => number = Date.now
   ) {}
 
@@ -244,8 +245,12 @@ export class AlibabaCredentialAcquisitionService {
       await this.closeSession(job.browserSessionId);
     } else {
       try {
-        const current = await this.credentialService.status();
-        await this.credentialService.import({
+        const target =
+          'service' in this.credentialService
+            ? await this.credentialService.service(result.bundle.protocol ?? 'top')
+            : this.credentialService;
+        const current = await target.status();
+        await target.import({
           bundle: result.bundle,
           actorId,
           expectedRevision: current.revision,

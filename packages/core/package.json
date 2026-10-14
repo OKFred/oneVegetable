@@ -9,6 +9,7 @@
     "./credential-bundle": "./src/alibaba-credential-bundle.ts",
     "./alibaba-iop": "./src/alibaba-iop.ts",
     "./alibaba-iop-business": "./src/alibaba-iop-business.ts",
+    "./alibaba-protocol-routing": "./src/alibaba-protocol-routing.ts",
     "./network": "./src/network.ts",
     "./credential-vault": "./src/credential-vault.ts",
     "./iop-messages": "./src/iop-authorization-messages.ts",

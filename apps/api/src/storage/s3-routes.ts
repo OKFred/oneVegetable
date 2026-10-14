@@ -25,7 +25,7 @@ export function registerS3StorageRoutes(
     authService: AuthService;
     service: S3StorageConfigurationService;
     allowedOrigins?: readonly string[];
-    galleryGatewayContextId?: () => Promise<string>;
+    galleryGatewayContextId?: (expected?: string) => Promise<string>;
   }
 ): void {
   api.post('/admin/storage/s3/get', (context) =>
@@ -178,7 +178,7 @@ export function registerS3StorageRoutes(
 
 async function adminRead(
   context: Context,
-  options: { authService: AuthService; galleryGatewayContextId?: () => Promise<string> },
+  options: { authService: AuthService; galleryGatewayContextId?: (expected?: string) => Promise<string> },
   action: (body: Record<string, unknown>, actorId: string) => Promise<unknown>,
   allowedKeys: readonly string[]
 ): Promise<Response> {
@@ -197,7 +197,7 @@ async function adminWrite(
   options: {
     authService: AuthService;
     allowedOrigins?: readonly string[];
-    galleryGatewayContextId?: () => Promise<string>;
+    galleryGatewayContextId?: (expected?: string) => Promise<string>;
   },
   action: (body: Record<string, unknown>, actorId: string) => Promise<unknown>,
   allowedKeys: readonly string[]
@@ -239,13 +239,13 @@ async function readBody(context: Context, allowedKeys: readonly string[]): Promi
 async function checkTransferIdentity(
   body: Record<string, unknown>,
   actorId: string,
-  gatewayId?: () => Promise<string>
+  gatewayId?: (expected?: string) => Promise<string>
 ): Promise<void> {
   if (body.galleryContext === undefined) return;
   const expected = requireGalleryContext(body.galleryContext);
   assertGalleryContextId(expected.identity, await opaqueGalleryId(actorId));
   if (!gatewayId) throw new AuthError('GALLERY_CONTEXT_UNAVAILABLE', 'GALLERY_CONTEXT_UNAVAILABLE', 503);
-  assertGalleryContextId(expected.gateway, await gatewayId());
+  assertGalleryContextId(expected.gateway, await gatewayId(expected.gateway));
 }
 
 async function handle(context: Context, action: () => Promise<Response>): Promise<Response> {

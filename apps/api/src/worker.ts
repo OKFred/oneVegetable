@@ -11,6 +11,7 @@ import { createD1MetadataRepository } from './db/repository';
 import { SqlRequestEventRepository } from './observability/request-events';
 import { CredentialBackedAlibabaGatewayClient } from './gateway/alibaba-read-gateway';
 import { GatewayConfigurationError } from './gateway/credentials';
+import { DualAlibabaAuthorization } from './gateway/dual-authorization';
 import {
   GatewayCredentialCipher,
   GatewayCredentialService,
@@ -67,7 +68,15 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY
   );
   const credentialService = new GatewayCredentialService(credentialRepository, credentialCipher);
-  const credentialProvider = new StoredAlibabaCredentialProvider(credentialRepository, credentialCipher);
+  const primaryCredentialProvider = new StoredAlibabaCredentialProvider(
+    credentialRepository,
+    credentialCipher
+  );
+  const credentialProvider = new DualAlibabaAuthorization(database.executor, credentialCipher, {
+    service: credentialService,
+    provider: primaryCredentialProvider,
+    summary: () => credentialService.status()
+  });
   const credentialStatus = await credentialProvider.status();
   const authRepository = new SqlAuthRepository(database.executor);
   const authService = new AuthService({
@@ -119,7 +128,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
           // Wrangler generates BrowserRun as a structural BrowserWorker binding; ESLint cannot resolve that ambient type.
           // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
           new CloudflareAlibabaCredentialAcquisitionDriver(env.BROWSER),
-          credentialService
+          credentialProvider
         )
       : undefined;
   return await createApiApp({
@@ -140,6 +149,8 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     adminService: new AdminService(authRepository),
     gatewayCredentialService: credentialService,
     gatewayCredentialProvider: credentialProvider,
+    gatewayAuthorizations: credentialProvider,
+    gatewayCredentialSummary: () => credentialProvider.defaultSummary(),
     featureFlags,
     realMutationControl,
     metaSocial,

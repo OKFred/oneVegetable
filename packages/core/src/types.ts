@@ -1,4 +1,6 @@
 import type { GalleryRequestOptions } from './gallery-transfer-context';
+import type { AlibabaProtocol, AlibabaAuthorizationBinding } from './alibaba-protocol-routing';
+import type { AlibabaAuthorizationsSummary } from './gateway-credential-management';
 import type { GalleryTransferContext } from './gallery-transfer-task';
 import type { ProductOperationContext, ProductOperationOptions } from './product-operation-context';
 import type { components } from './generated/api';
@@ -384,7 +386,7 @@ export interface GatewayCredentials {
 
 export type SignMethod = 'hmac' | 'md5' | 'hmac-sha256';
 
-export interface GatewaySettings {
+export interface GatewayCredentialSettings {
   protocol?: 'top' | 'iop';
   appKey: string;
   appSecret: string;
@@ -397,11 +399,28 @@ export interface GatewaySettings {
   accessTokenCapturedTimeUtc?: number | null;
   systemApiPermission?: 'active' | 'inactive' | 'not-recorded' | 'unknown';
   permissionCapturedTimeUtc?: number | null;
+  configurationId?: string;
+  refreshToken?: string | null;
+  refreshTokenExpiresTimeUtc?: number | null;
+}
+
+export interface GatewaySettings extends GatewayCredentialSettings {
+  /** Additional profiles stay encrypted; options pages must not receive their secrets. */
+  protocolCredentials?: Partial<Record<AlibabaProtocol, GatewayCredentialSettings>>;
+  authorizationBinding?: AlibabaAuthorizationBinding;
 }
 
 export interface SettingsRepository {
   load(): Promise<GatewaySettings>;
   save(settings: GatewaySettings): Promise<void>;
+  authorizations?(): Promise<AlibabaAuthorizationsSummary>;
+  loadAuthorization?(protocol: AlibabaProtocol): Promise<GatewaySettings>;
+  confirmAuthorizations?(
+    topConfigurationId: string,
+    iopConfigurationId: string
+  ): Promise<AlibabaAuthorizationsSummary>;
+  clearAuthorization?(protocol: AlibabaProtocol): Promise<void>;
+  refreshAuthorization?(protocol: AlibabaProtocol): Promise<AlibabaAuthorizationsSummary>;
 }
 
 export type CredentialVaultState = 'empty' | 'legacy' | 'locked' | 'unlocked' | 'invalid';
@@ -437,7 +456,20 @@ export interface CredentialVaultRepository {
 }
 
 export type CredentialVaultOperation =
-  'status' | 'get-settings' | 'create' | 'migrate' | 'unlock' | 'lock' | 'save' | 'rotate' | 'update-policy';
+  | 'status'
+  | 'get-settings'
+  | 'create'
+  | 'migrate'
+  | 'unlock'
+  | 'lock'
+  | 'save'
+  | 'rotate'
+  | 'update-policy'
+  | 'authorizations'
+  | 'get-authorization'
+  | 'confirm-authorizations'
+  | 'clear-authorization'
+  | 'refresh-authorization';
 
 export interface CredentialVaultRequest {
   requestId: string;

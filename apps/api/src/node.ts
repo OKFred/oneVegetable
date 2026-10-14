@@ -16,6 +16,7 @@ import {
   StoredAlibabaCredentialProvider
 } from './gateway/credential-vault';
 import { NodeManagedCredentialProvider } from './gateway/node-managed-credentials';
+import { DualAlibabaAuthorization } from './gateway/dual-authorization';
 import { createNodeAlibabaCredentialProvider } from './gateway/node-credential-bundle';
 
 import type { NodeAlibabaCredentialEnvironment } from './gateway/node-credential-bundle';
@@ -115,6 +116,20 @@ const managedCredentialProvider =
       )
     : undefined;
 const legacyCredentialProvider = () => createNodeAlibabaCredentialProvider(credentialEnvironment);
+const dualAuthorizations =
+  gatewayCredentialCipher && gatewayCredentialService && managedCredentialProvider
+    ? new DualAlibabaAuthorization(
+        database.executor,
+        gatewayCredentialCipher,
+        {
+          service: gatewayCredentialService,
+          provider: managedCredentialProvider,
+          summary: () => managedCredentialProvider.summary()
+        },
+        { source: 'sqlite-vault' }
+      )
+    : undefined;
+const activeCredentialProvider = dualAuthorizations ?? managedCredentialProvider;
 const metaSocial = metaSecretCipher
   ? new MetaSocialService(new SqlMetaSocialRepository(database.executor), metaSecretCipher, {
       apiPrefix: runtimeConfiguration.apiPrefix
@@ -156,13 +171,13 @@ const app = createApiApp({
   gatewayStatus:
     gatewayMode === 'replay'
       ? documentationReplayStatus()
-      : managedCredentialProvider
-        ? () => managedCredentialProvider.status()
+      : activeCredentialProvider
+        ? () => activeCredentialProvider.status()
         : () => Promise.resolve(legacyCredentialProvider().status()),
   ...(gatewayMode === 'real'
     ? {
-        gateway: managedCredentialProvider
-          ? new CredentialBackedAlibabaGatewayClient(managedCredentialProvider)
+        gateway: activeCredentialProvider
+          ? new CredentialBackedAlibabaGatewayClient(activeCredentialProvider)
           : new CredentialBackedAlibabaGatewayClient({
               status: () => Promise.resolve(legacyCredentialProvider().status()),
               requireCredentials: () => Promise.resolve(legacyCredentialProvider().requireCredentials())
@@ -181,8 +196,10 @@ const app = createApiApp({
   ...(gatewayCredentialService && managedCredentialProvider
     ? {
         gatewayCredentialService,
-        gatewayCredentialProvider: managedCredentialProvider,
-        gatewayCredentialSummary: () => managedCredentialProvider.summary()
+        gatewayCredentialProvider: activeCredentialProvider ?? managedCredentialProvider,
+        gatewayCredentialSummary: () =>
+          dualAuthorizations ? dualAuthorizations.defaultSummary() : managedCredentialProvider.summary(),
+        ...(dualAuthorizations ? { gatewayAuthorizations: dualAuthorizations } : {})
       }
     : {}),
   ...(metaSocial ? { metaSocial } : {}),
@@ -191,7 +208,7 @@ const app = createApiApp({
     ? {
         videoUploads: {
           repository: new SqlVideoUploadRepository(database.executor),
-          credentials: managedCredentialProvider ?? {
+          credentials: activeCredentialProvider ?? {
             status: () => Promise.resolve(legacyCredentialProvider().status()),
             requireCredentials: () => Promise.resolve(legacyCredentialProvider().requireCredentials())
           }

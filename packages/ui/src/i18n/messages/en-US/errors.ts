@@ -1,5 +1,15 @@
 export const errors = {
   codes: {
+    ALIBABA_AUTHORIZATION_BINDING_REQUIRED:
+      'Confirm that TOP and IOP belong to the same merchant in credential settings before using automatic capability routing.',
+    ALIBABA_AUTHORIZATION_BINDING_CHANGED:
+      'An authorization changed. Review both profiles and confirm the same merchant again; nothing was automatically retried.',
+    ALIBABA_AUTHORIZATION_BINDING_STALE:
+      'An authorization changed. Review both profiles and confirm the same merchant again; nothing was automatically retried.',
+    ALIBABA_PROTOCOL_SELECTION_REQUIRED:
+      'Choose TOP or IOP explicitly before replacing credentials. The other authorization must be preserved.',
+    ALIBABA_PROTOCOL_CREDENTIALS_NOT_CONFIGURED:
+      'The requested protocol has no credentials. Configure that profile; the other grant cannot be reused for it.',
     ALIBABA_PROTOCOL_INVALID: 'Invalid gateway protocol. Explicitly choose TOP or IOP.',
     ALIBABA_IOP_METHOD_UNSUPPORTED:
       'This method is not mapped to IOP. Choose a supported method; no TOP fallback.',
@@ -80,6 +90,14 @@ export const errors = {
     ALIBABA_REFRESH_TOKEN_EXPIRED: 'The Alibaba Refresh Token has expired. Authorize again.',
     ALIBABA_REFRESH_TOKEN_MISSING: 'The Alibaba Refresh Token is missing. Authorize again.',
     ALIBABA_TOKEN_REFRESH_FAILED: 'The Alibaba Token refresh failed. Authorize again.',
+    TOP_TOKEN_REJECTED:
+      'The platform rejected the TOP token refresh request. Check the application authorization and permissions, or authorize TOP again.',
+    AUTH_REFRESH_RESULT_UNKNOWN:
+      'The refresh result is unknown. Do not resend this refresh request; reauthorize this protocol and import the new authorization.',
+    AUTH_REFRESH_EXPIRED:
+      'The recorded refresh period has expired. Reauthorize this protocol and import the new authorization.',
+    AUTH_PERMISSION_REQUIRED:
+      'Allow the selected protocol’s required host first: https://oauth.alibaba.com for TOP, or https://openapi-api.alibaba.com for IOP. Then try renewal.',
     ALIBABA_DRAFT_UPDATE_UNSUPPORTED:
       'Alibaba does not currently support overwriting an existing platform draft.',
     ALIBABA_PRODUCT_GROUP_CREATE_UNCONFIRMED: 'Product-group creation is not enabled in this environment.',

@@ -2,6 +2,7 @@ import type { components } from './generated/api';
 /** Server-side configuration input; secrets must never be returned or persisted in the browser. */
 export type ManualGatewayCredentialInput = components['schemas']['ManualGatewayCredentialInput'];
 export type GatewayCredentialTestResult = components['schemas']['GatewayCredentialTestResult'];
+export type AlibabaAuthorizationsSummary = components['schemas']['AlibabaAuthorizationsSummary'];
 
 export function parseManualGatewayCredential(value: unknown): ManualGatewayCredentialInput {
   if (typeof value !== 'object' || value === null || Array.isArray(value))

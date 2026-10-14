@@ -44,6 +44,19 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     page.on('request', (request) => {
       if (request.url().endsWith('/admin/gateway-credentials/refresh')) refreshes++;
     });
+    // This case also protects the legacy-server fallback: only the old status endpoint
+    // is available, so optional dual metadata must not replace its expiry evidence.
+    await page.route('**/admin/gateway-credentials/authorizations/get', (route) =>
+      route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        json: {
+          requestId: (route.request().postDataJSON() as { requestId: string }).requestId,
+          ok: false,
+          error: { code: 'ROUTE_NOT_FOUND', message: 'fixture legacy server', retryable: false }
+        }
+      })
+    );
     await page.route('**/admin/gateway-credentials/get', async (route) => {
       const now = Date.now();
       const lifetime = 100 * 86_400_000;

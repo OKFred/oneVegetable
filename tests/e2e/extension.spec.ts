@@ -14,7 +14,9 @@ import skuInventoryFixture from '../../mock/data/product-sku-inventory.json' wit
 import videoFixture from '../../mock/data/video/top.json' with { type: 'json' };
 import credentialFixture from '../../mock/data/node-gateway-credentials.json' with { type: 'json' };
 import permissionFixture from '../../mock/data/system-api-authorization.json' with { type: 'json' };
+import iopBusinessFixture from '../../mock/data/alibaba-auth/iop-business-responses.json' with { type: 'json' };
 import videoAssociationFixture from '../../mock/data/video/association-core.json' with { type: 'json' };
+import type { AlibabaAuthorizationsSummary } from '../../packages/core/src/gateway-credential-management';
 import { MockGatewayClient } from '../../packages/core/src/mock-client';
 import {
   getCapabilityDefinition,
@@ -94,6 +96,266 @@ test('formal MV3 preserves imported token expiry through vault save and page rel
   await page.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#/dashboard`);
   await expect(page.getByTestId('dashboard-authorization-card')).toContainText('权限未确认');
   await expect(page.getByTestId('dashboard-authorization-card')).not.toContainText('剩余约');
+});
+
+test('formal MV3 dual profiles persist user confirmation and route photo reads independently', async () => {
+  if (!context) throw new Error('Missing extension context');
+  const browserContext = context;
+  const worker = browserContext.serviceWorkers()[0] ?? (await browserContext.waitForEvent('serviceworker'));
+  const extensionOrigin = `chrome-extension://${new URL(worker.url()).host}`;
+  const topBundle = {
+    ...credentialFixture.oauthBundle,
+    protocol: 'top',
+    oauth: { ...credentialFixture.oauthBundle.oauth, expiresAtUtc: credentialFixture.knownExpiry }
+  };
+  const iopExpiry = new Date(Date.parse(credentialFixture.knownExpiry) + 86_400_000).toISOString();
+  const iopBundle = {
+    ...credentialFixture.oauthBundle,
+    protocol: 'iop',
+    application: {
+      ...credentialFixture.oauthBundle.application,
+      appKey: `${credentialFixture.oauthBundle.application.appKey}-iop`,
+      appSecret: `${credentialFixture.oauthBundle.application.appSecret}-iop`
+    },
+    oauth: {
+      ...credentialFixture.oauthBundle.oauth,
+      accessToken: `${credentialFixture.oauthBundle.oauth.accessToken}-iop`,
+      expiresAtUtc: iopExpiry
+    }
+  };
+  const fixturePhoto = iopBusinessFixture.photos.result.pagination_query_list.list[0];
+  if (!fixturePhoto) throw new Error('Missing controlled photobank fixture');
+  const groupId = String(fixturePhoto.group_id);
+  const calls: { protocol: 'top' | 'iop'; location: string }[] = [];
+  const blockedRequests: string[] = [];
+  // beforeEach already denies HTTP(S). This test also records denied origins/paths,
+  // never query strings, credentials or request bodies. No route continues or fetches live data.
+  await browserContext.route(/^https?:\/\//u, async (route) => {
+    const url = new URL(route.request().url());
+    blockedRequests.push(url.origin + url.pathname);
+    await route.abort();
+  });
+  const fixtureHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Request-ID'
+  };
+  await browserContext.route('https://eco.taobao.com/router/rest', async (route) => {
+    if (route.request().method() === 'OPTIONS') {
+      await route.fulfill({ status: 204, headers: fixtureHeaders });
+      return;
+    }
+    const form = new URLSearchParams(route.request().postData() ?? '');
+    const valid =
+      route.request().method() === 'POST' &&
+      form.get('method') === 'alibaba.icbu.photobank.list' &&
+      form.get('app_key') === topBundle.application.appKey &&
+      form.get('session') === topBundle.oauth.accessToken &&
+      form.get('current_page') === '1' &&
+      form.get('page_size') === '24' &&
+      ((form.get('location_type') === 'ALL_GROUP' && !form.has('group_id')) ||
+        (form.get('location_type') === 'SUB_GROUP' && form.get('group_id') === groupId));
+    if (!valid) {
+      blockedRequests.push('unexpected TOP fixture request');
+      await route.abort();
+      return;
+    }
+    calls.push({ protocol: 'top', location: form.get('location_type') ?? '' });
+    await route.fulfill({
+      headers: fixtureHeaders,
+      json: {
+        alibaba_icbu_photobank_list_response: iopBusinessFixture.photos.result,
+        request_id: 'fixture-dual-top-photos'
+      }
+    });
+  });
+  await browserContext.route(
+    'https://openapi-api.alibaba.com/rest/icbu/product/photobank/list',
+    async (route) => {
+      if (route.request().method() === 'OPTIONS') {
+        await route.fulfill({ status: 204, headers: fixtureHeaders });
+        return;
+      }
+      const form = new URLSearchParams(route.request().postData() ?? '');
+      const valid =
+        route.request().method() === 'POST' &&
+        form.get('app_key') === iopBundle.application.appKey &&
+        form.get('access_token') === iopBundle.oauth.accessToken &&
+        form.get('groupId') === groupId &&
+        form.get('currentPage') === '1' &&
+        form.get('pageSize') === '24' &&
+        !form.has('method') &&
+        !form.has('session') &&
+        !form.has('location_type');
+      if (!valid) {
+        blockedRequests.push('unexpected IOP fixture request');
+        await route.abort();
+        return;
+      }
+      calls.push({ protocol: 'iop', location: groupId });
+      await route.fulfill({ headers: fixtureHeaders, json: iopBusinessFixture.photos });
+    }
+  );
+
+  const page = await browserContext.newPage();
+  // Simulate only the IOP consent lookup on this page (including reload). Native
+  // host-consent UX is out of scope; the actual worker/vault/signing/transport remain real.
+  // The fixture supplies CORS and all unhandled network traffic is still aborted.
+  await page.addInitScript(
+    ({ origin, iopPermission }) => {
+      if (location.origin !== origin) return;
+      const permissions = (
+        globalThis as unknown as {
+          chrome: {
+            permissions: {
+              contains(query: { origins?: string[]; permissions?: string[] }): Promise<boolean>;
+            };
+          };
+        }
+      ).chrome.permissions;
+      const nativeContains = permissions.contains.bind(permissions);
+      permissions.contains = (query) =>
+        query.origins?.length === 1 && query.origins[0] === iopPermission && !query.permissions?.length
+          ? Promise.resolve(true)
+          : nativeContains(query);
+    },
+    { origin: extensionOrigin, iopPermission: 'https://openapi-api.alibaba.com/*' }
+  );
+  await page.goto(`${extensionOrigin}/options.html#/settings`);
+  const guide = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
+  await guide.getByRole('checkbox').check();
+  await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
+  const importInput = page.getByLabel('导入授权包 JSON', { exact: true });
+  await importInput.setInputFiles({
+    name: 'top-fixture.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(topBundle))
+  });
+  await page.getByLabel('设置保护口令').fill('e2e-dual-vault-password');
+  await page.getByLabel('确认保护口令').fill('e2e-dual-vault-password');
+  await page.getByRole('button', { name: '保存设置', exact: true }).click();
+  await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
+  const panel = page.getByTestId('alibaba-authorizations-panel');
+  await expect(panel.getByTestId('authorization-top')).toContainText(
+    credentialFixture.knownExpiry.slice(0, 10)
+  );
+  await expect(panel.getByTestId('authorization-iop')).toContainText('尚未配置');
+  const readAuthorizations = async () => {
+    const requestId = crypto.randomUUID();
+    const response: unknown = await page.evaluate((requestId) => {
+      const runtime = (
+        globalThis as unknown as {
+          chrome: {
+            runtime: {
+              sendMessage(message: unknown): Promise<unknown>;
+            };
+          };
+        }
+      ).chrome.runtime;
+      return runtime.sendMessage({
+        requestId,
+        kind: 'credential-vault-request',
+        operation: 'authorizations'
+      });
+    }, requestId);
+    expect(response).toMatchObject({ requestId, ok: true });
+    return (response as { data: AlibabaAuthorizationsSummary }).data;
+  };
+  const topOnly = await readAuthorizations();
+  expect(topOnly).toMatchObject({ defaultProtocol: 'top', iop: null, binding: { confirmed: false } });
+  expect(topOnly.top?.configurationId).toEqual(expect.any(String));
+  await importInput.setInputFiles({
+    name: 'iop-fixture.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(iopBundle))
+  });
+  await expect(page.getByLabel('App Key', { exact: true })).toHaveValue(iopBundle.application.appKey);
+  await page.getByRole('button', { name: '保存设置', exact: true }).click();
+  await expect(page.getByText(settingsZh.credentials.encryptedSavedFeedback).first()).toBeVisible();
+  await expect(panel.getByTestId('authorization-iop')).toContainText(iopExpiry.slice(0, 10));
+  const beforeConfirmation = await readAuthorizations();
+  expect(beforeConfirmation.top).toEqual(topOnly.top);
+  expect(beforeConfirmation).toMatchObject({ defaultProtocol: 'top', binding: { confirmed: false } });
+  expect(beforeConfirmation.iop?.configurationId).toEqual(expect.any(String));
+  const checkbox = panel.getByTestId('same-merchant-confirmation');
+  const confirm = panel.getByTestId('confirm-authorization-binding');
+  await expect(checkbox).not.toBeChecked();
+  await expect(confirm).toBeDisabled();
+  await expect(panel.getByTestId('authorization-binding')).toContainText('不是平台官方验证');
+  await expect(panel.getByTestId('authorization-binding')).toContainText('请求仍使用原默认协议（TOP）');
+
+  const listPhotos = async (selectedGroupId: string) => {
+    const requestId = crypto.randomUUID();
+    const response: unknown = await page.evaluate(
+      ({ requestId, groupId }) => {
+        const runtime = (
+          globalThis as unknown as {
+            chrome: {
+              runtime: {
+                sendMessage(message: unknown): Promise<unknown>;
+              };
+            };
+          }
+        ).chrome.runtime;
+        return runtime.sendMessage({
+          requestId,
+          kind: 'gateway-request',
+          operation: 'listPhotos',
+          payload: { groupId, page: 1, pageSize: 24 }
+        });
+      },
+      { requestId, groupId: selectedGroupId }
+    );
+    expect(response).toMatchObject({
+      requestId,
+      ok: true,
+      data: {
+        total: 1,
+        items: [{ id: String(fixturePhoto.id) }]
+      }
+    });
+  };
+  expect(calls).toEqual([]); // Imports never auto-renew or test a gateway.
+  await listPhotos(groupId);
+  expect(calls).toEqual([{ protocol: 'top', location: 'SUB_GROUP' }]);
+  await checkbox.check();
+  await expect(confirm).toBeEnabled();
+  expect((await readAuthorizations()).binding.confirmed).toBe(false); // Checkbox alone does not bind.
+  await confirm.click();
+  await expect(panel.getByTestId('authorization-binding')).toContainText('用户已确认同一商家');
+  const confirmed = await readAuthorizations();
+  expect(confirmed.binding).toMatchObject({
+    confirmed: true,
+    topConfigurationId: topOnly.top?.configurationId,
+    iopConfigurationId: beforeConfirmation.iop?.configurationId,
+    confirmedAtUtc: expect.any(Number)
+  });
+  await page.reload();
+  await expect(panel.getByTestId('authorization-top')).toContainText(
+    credentialFixture.knownExpiry.slice(0, 10)
+  );
+  await expect(panel.getByTestId('authorization-iop')).toContainText(iopExpiry.slice(0, 10));
+  await expect(panel.getByTestId('authorization-binding')).toContainText('用户已确认同一商家');
+  expect(await readAuthorizations()).toEqual(confirmed);
+  await expect(page.getByLabel('App Secret', { exact: true })).toHaveValue('');
+  await expect(page.getByLabel('Access Token', { exact: true })).toHaveValue('');
+  const encrypted = await readExtensionLocalValue(page, 'gatewaySettings');
+  expect(encrypted).toMatchObject({ version: 2, format: 'PBKDF2-HMAC-SHA256/AES-256-GCM' });
+  for (const secret of [
+    topBundle.application.appSecret,
+    topBundle.oauth.accessToken,
+    iopBundle.application.appSecret,
+    iopBundle.oauth.accessToken
+  ])
+    expect(JSON.stringify(encrypted)).not.toContain(secret);
+  await listPhotos('-1');
+  await listPhotos(groupId);
+  expect(calls).toEqual([
+    { protocol: 'top', location: 'SUB_GROUP' },
+    { protocol: 'top', location: 'ALL_GROUP' },
+    { protocol: 'iop', location: groupId }
+  ]);
+  expect(blockedRequests).toEqual([]);
 });
 
 test('formal MV3 catalog validates domain reads before and after worker restart', async () => {

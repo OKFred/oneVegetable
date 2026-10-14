@@ -21,7 +21,11 @@ describe('protocol guidance', () => {
       expect(wrapper.text()).toContain(
         locale === 'zh-CN' ? '其他方法逐项启用' : 'Other methods open individually'
       );
-      expect(wrapper.text()).toContain(locale === 'zh-CN' ? '不回退 TOP' : 'no TOP fallback');
+      expect(wrapper.text()).toContain(
+        locale === 'zh-CN'
+          ? 'IOP 调用失败后不会跨协议重试 TOP'
+          : 'failed IOP calls are never retried through TOP'
+      );
       expect(wrapper.text()).not.toMatch(/不支持订单|not orders|compatible reads/u);
       wrapper.unmount();
     }

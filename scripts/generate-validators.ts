@@ -149,7 +149,9 @@ targets.set(
       validateManualGatewayCredentialInput: schemas.ManualGatewayCredentialInput,
       validateGatewayCredentialSaveRequest: schemas.GatewayCredentialSaveRequest,
       validateGatewayCredentialSummary: schemas.GatewayCredentialSummary,
-      validateGatewayCredentialTestResult: schemas.GatewayCredentialTestResult
+      validateGatewayCredentialTestResult: schemas.GatewayCredentialTestResult,
+      validateAlibabaAuthorizationsSummary: schemas.AlibabaAuthorizationsSummary,
+      validateAlibabaAuthorizationsConfirmRequest: schemas.AlibabaAuthorizationsConfirmRequest
     },
     'fast'
   )

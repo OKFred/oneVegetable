@@ -2955,7 +2955,179 @@
         "operationId": "getAdminGatewayCredential",
         "requestBody": {
           "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GatewayCredentialProtocolRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/gateway-credentials/authorizations/get": {
+      "post": {
+        "summary": "Get independent TOP and IOP credential summaries",
+        "operationId": "getAlibabaAuthorizations",
+        "requestBody": {
+          "required": true,
           "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RequestEnvelope" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/gateway-credentials/authorizations/confirm": {
+      "post": {
+        "summary": "Confirm both current credential configurations belong to the same merchant",
+        "operationId": "confirmAlibabaAuthorizations",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AlibabaAuthorizationsConfirmRequest" }
+            }
+          }
         },
         "responses": {
           "200": {
@@ -3117,13 +3289,187 @@
         }
       }
     },
+    "/admin/gateway-credentials/save": {
+      "post": {
+        "summary": "Encrypt and save manual credentials for the selected protocol",
+        "operationId": "saveAdminGatewayCredential",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/GatewayCredentialSaveRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/gateway-credentials/test": {
+      "post": {
+        "summary": "Test the selected protocol with a read-only request",
+        "operationId": "testAdminGatewayCredential",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GatewayCredentialProtocolRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operation denied",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Entity conflict",
+            "headers": { "X-Request-ID": { "schema": { "$ref": "#/components/schemas/RequestId" } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    { "$ref": "#/components/schemas/ApiFailure" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/gateway-credentials/refresh": {
       "post": {
         "summary": "Refresh the encrypted Alibaba access token",
         "operationId": "refreshAdminGatewayCredential",
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RequestEnvelope" } } }
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GatewayCredentialProtocolRequest" }
+            }
+          }
         },
         "responses": {
           "200": {
@@ -5558,6 +5904,44 @@
           "status": { "$ref": "#/components/schemas/UserStatus" },
           "revision": { "type": "integer", "minimum": 1 },
           "remark": { "type": ["string", "null"], "maxLength": 500 }
+        }
+      },
+      "AlibabaAuthorizationsConfirmRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "topConfigurationId", "iopConfigurationId"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "topConfigurationId": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "iopConfigurationId": { "type": "string", "minLength": 1, "maxLength": 128 }
+        }
+      },
+      "AlibabaAuthorizationsSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["top", "iop", "defaultProtocol", "binding"],
+        "properties": {
+          "top": {
+            "anyOf": [{ "$ref": "#/components/schemas/GatewayCredentialSummary" }, { "type": "null" }]
+          },
+          "iop": {
+            "anyOf": [{ "$ref": "#/components/schemas/GatewayCredentialSummary" }, { "type": "null" }]
+          },
+          "defaultProtocol": { "type": "string", "enum": ["top", "iop"] },
+          "binding": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["confirmed", "topConfigurationId", "iopConfigurationId", "confirmedAtUtc"],
+            "properties": {
+              "confirmed": {
+                "type": "boolean",
+                "description": "Explicit user-confirmed merchant ownership; not platform verification."
+              },
+              "topConfigurationId": { "type": ["string", "null"], "minLength": 1, "maxLength": 128 },
+              "iopConfigurationId": { "type": ["string", "null"], "minLength": 1, "maxLength": 128 },
+              "confirmedAtUtc": { "type": ["integer", "null"], "minimum": 0 }
+            }
+          }
         }
       },
       "AlibabaCredentialAcquisitionApplicationSummary": {
@@ -17293,7 +17677,8 @@
         "required": ["requestId", "revision"],
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
-          "revision": { "type": ["integer", "null"], "minimum": 1 }
+          "revision": { "type": ["integer", "null"], "minimum": 1 },
+          "protocol": { "type": "string", "enum": ["top", "iop"] }
         }
       },
       "GatewayCredentialImportRequest": {
@@ -17303,8 +17688,18 @@
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
           "bundle": { "$ref": "#/components/schemas/AlibabaOpenApiCredentialBundle" },
+          "protocol": { "type": "string", "enum": ["top", "iop"] },
           "revision": { "type": ["integer", "null"], "minimum": 1 },
           "remark": { "type": ["string", "null"], "maxLength": 500 }
+        }
+      },
+      "GatewayCredentialProtocolRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId"],
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "protocol": { "type": "string", "enum": ["top", "iop"] }
         }
       },
       "GatewayCredentialSaveRequest": {
@@ -17314,6 +17709,7 @@
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
           "credentials": { "$ref": "#/components/schemas/ManualGatewayCredentialInput" },
+          "protocol": { "type": "string", "enum": ["top", "iop"] },
           "revision": { "type": ["integer", "null"], "minimum": 1 },
           "remark": { "type": ["string", "null"], "maxLength": 500 }
         }

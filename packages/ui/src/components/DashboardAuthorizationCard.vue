@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { KeyRound } from '@lucide/vue';
-import type { AlibabaAuthorizationMetadata } from '@one-vegetable/core';
+import type {
+  AlibabaAuthorizationMetadata,
+  AlibabaAuthorizationsSummary,
+  ControlGatewayCredentialSummary
+} from '@one-vegetable/core';
 import { useServices } from '../lib/services';
 import { credentialExpiryState, credentialExpiryTone } from '../lib/credential-expiry';
 import { formatDateTime } from '../lib/date-time';
@@ -10,6 +14,9 @@ import { VAULT_UNLOCKED_EVENT } from '../lib/unsaved-editing';
 import { useGatewayCredentialsI18n } from '../i18n/gateway-credentials';
 import Card from './ui/Card.vue';
 import Tooltip from './ui/Tooltip.vue';
+import AlibabaAuthorizationProfile from './AlibabaAuthorizationProfile.vue';
+import DashboardAuthorizationAction from './DashboardAuthorizationAction.vue';
+import { parseAuthorizationSummary } from '../lib/alibaba-authorizations';
 
 const { mode, control, settings, vault } = useServices();
 const t = useGatewayCredentialsI18n();
@@ -21,6 +28,7 @@ const permission = ref<AlibabaAuthorizationMetadata['systemApiPermission']>('unk
 const captured = ref<number | null>(null);
 const reason = ref<'adminOnly' | 'empty' | 'unlockForExpiry' | 'expiryReadFailed' | null>(null);
 const refreshFailed = ref(false);
+const authorizations = ref<AlibabaAuthorizationsSummary | null>(null);
 const expiry = computed(() => credentialExpiryState(expires.value, now.value));
 const state = computed(() => expiry.value.status);
 const tone = computed(() =>
@@ -56,18 +64,41 @@ const reminder = computed(
         : t(`expiry${state.value}`))
 );
 const details = computed(() =>
-  [
-    reminder.value,
-    expires.value === null ? t('expiryunknown') : `${t('expires')}: ${formatDateTime(expires.value)}`,
-    t('permissionSnapshot', { time: formatDateTime(captured.value) }),
-    t('systemApiHelp')
-  ].join(' · ')
+  authorizations.value
+    ? t('dualDescription')
+    : [
+        reminder.value,
+        expires.value === null ? t('expiryunknown') : `${t('expires')}: ${formatDateTime(expires.value)}`,
+        t('permissionSnapshot', { time: formatDateTime(captured.value) }),
+        t('systemApiHelp')
+      ].join(' · ')
 );
 let generation = 0;
 let timer: ReturnType<typeof globalThis.setInterval> | undefined;
 const reload = () => {
   void load();
 };
+
+function applySingleProfile(status: ControlGatewayCredentialSummary | null): void {
+  expires.value = status?.accessTokenExpiresTimeUtc ?? null;
+  tokenCaptured.value = status?.accessTokenCapturedTimeUtc ?? null;
+  permission.value = status?.systemApiPermission ?? 'unknown';
+  captured.value = status?.permissionCapturedTimeUtc ?? null;
+  refreshFailed.value = Boolean(status?.lastRefreshErrorCode);
+  if (status?.errorCode) reason.value = 'expiryReadFailed';
+  if (!status?.configured && expires.value === null) reason.value = 'empty';
+}
+
+function applyAuthorizations(next: AlibabaAuthorizationsSummary): void {
+  // Optional metadata does not change the established one-profile card/tooltip layout.
+  if (next.top?.configured && next.iop?.configured) authorizations.value = next;
+  else {
+    authorizations.value = null;
+    applySingleProfile(
+      next.top?.configured ? next.top : next.iop?.configured ? next.iop : (next.top ?? next.iop)
+    );
+  }
+}
 
 async function load(): Promise<void> {
   const current = ++generation;
@@ -84,24 +115,47 @@ async function load(): Promise<void> {
       const session = await control.session();
       if (current !== generation) return;
       if (session.principal.role !== 'admin') {
+        authorizations.value = null;
         reason.value = 'adminOnly';
         return;
       }
+      if (control.gatewayAuthorizations) {
+        try {
+          const next = await parseAuthorizationSummary(await control.gatewayAuthorizations());
+          if (current !== generation) return;
+          applyAuthorizations(next);
+          return;
+        } catch {
+          if (authorizations.value) {
+            reason.value = 'expiryReadFailed';
+            return;
+          }
+          // Optional metadata is unavailable on a legacy backend; keep its existing behavior.
+        }
+      }
       const status = await control.gatewayCredentialStatus();
       if (current !== generation) return;
-      expires.value = status.accessTokenExpiresTimeUtc;
-      tokenCaptured.value = status.accessTokenCapturedTimeUtc ?? null;
-      permission.value = status.systemApiPermission ?? 'unknown';
-      captured.value = status.permissionCapturedTimeUtc ?? null;
-      refreshFailed.value = Boolean(status.lastRefreshErrorCode);
-      if (status.errorCode) reason.value = 'expiryReadFailed';
-      if (!status.configured && expires.value === null) reason.value = 'empty';
+      applySingleProfile(status);
     } else if (mode === 'extension' && vault) {
       const status = await vault.status();
       if (current !== generation) return;
       if (status.state !== 'unlocked' && status.state !== 'legacy') {
+        authorizations.value = null;
         reason.value = status.state === 'locked' ? 'unlockForExpiry' : 'empty';
         return;
+      }
+      if (settings.authorizations) {
+        try {
+          const next = await parseAuthorizationSummary(await settings.authorizations());
+          if (current !== generation) return;
+          applyAuthorizations(next);
+          return;
+        } catch {
+          if (authorizations.value) {
+            reason.value = 'expiryReadFailed';
+            return;
+          }
+        }
       }
       if (!status.hasAccessToken) {
         reason.value = 'empty';
@@ -149,9 +203,23 @@ onBeforeUnmount(() => {
           <KeyRound class="size-4" /></button
       ></Tooltip>
     </div>
-    <p class="mt-3 text-xl font-semibold" :class="toneClass" :data-tone="tone" role="status">{{ value }}</p>
+    <div v-if="authorizations" class="mt-3 grid gap-3" data-testid="dashboard-dual-authorizations">
+      <p v-if="reason" class="text-xs text-amber-700 dark:text-amber-300" role="status">{{ t(reason) }}</p>
+      <AlibabaAuthorizationProfile
+        v-for="protocol in ['top', 'iop'] as const"
+        :key="protocol"
+        :protocol="protocol"
+        :summary="authorizations[protocol]"
+        :extension="mode === 'extension'"
+      >
+        <DashboardAuthorizationAction :protocol="protocol" />
+      </AlibabaAuthorizationProfile>
+    </div>
+    <p v-else class="mt-3 text-xl font-semibold" :class="toneClass" :data-tone="tone" role="status">
+      {{ value }}
+    </p>
     <p
-      v-if="!loading"
+      v-if="!loading && !authorizations"
       class="mt-2 text-xs"
       :class="
         tone === 'danger'

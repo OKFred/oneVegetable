@@ -81,6 +81,10 @@ export function iopMethodReason(method: unknown): string | null {
     : 'ALIBABA_IOP_METHOD_UNSUPPORTED';
 }
 
+export function isAccountVerifiedIopMethod(method: string): boolean {
+  return READ_PATHS[method]?.[1] === true || VERIFIED_WRITES.includes(method);
+}
+
 export function applyIopCapabilityProtocol<T extends { method: string; realCallEnabled: boolean }>(
   capability: T
 ): T {
