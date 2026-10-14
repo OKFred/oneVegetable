@@ -25,6 +25,7 @@ import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
 import Input from './ui/Input.vue';
 import { useUiI18n } from '../i18n';
+import { provideDescriptionTemplateContext } from '../lib/template-composition-context';
 
 const ProductAdvancedEditor = defineAsyncComponent({
   loader: () => import('./ProductAdvancedEditor.vue'),
@@ -84,6 +85,7 @@ const emit = defineEmits<{
   submit: [draft: boolean];
 }>();
 const { t } = useUiI18n();
+provideDescriptionTemplateContext(() => props.model);
 
 const search = ref('');
 const optionalOpen = ref<Record<string, boolean>>({});

@@ -131,6 +131,8 @@ describe('ProductDescriptionEditor', () => {
     expect(document.body.textContent).toContain('Company profile');
 
     await clickButton('追加末尾', templateCard('Company profile'));
+    expect(model.value).not.toContain('About Us');
+    await clickButton('确认追加');
     await nextTick();
     expect(model.value).toContain('Original details');
     expect(model.value).toContain('About Us');
@@ -158,6 +160,7 @@ describe('ProductDescriptionEditor', () => {
     await clickButton('详情模板');
     await flushPromises();
     await clickButton('追加末尾', templateCard('Company profile'));
+    await clickButton('确认追加');
 
     await clickButton('详情模板');
     await nextTick();
