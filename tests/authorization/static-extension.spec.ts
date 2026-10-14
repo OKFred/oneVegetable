@@ -631,7 +631,10 @@ for (const [body, code] of [
       })
     ).toMatchObject({ ok: true });
     await workbench.reload();
-    await expect(workbench.getByLabel('网关协议')).toHaveValue('iop');
+    const iopProfile = workbench.getByTestId('select-authorization-iop');
+    await expect(iopProfile).toBeEnabled();
+    await iopProfile.click();
+    await expect(iopProfile).toHaveAttribute('aria-pressed', 'true');
     await expect(workbench.getByTestId('iop-protocol-notice')).toContainText(
       '已验收的 Schema 发布、存草稿、更新'
     );
