@@ -48,6 +48,15 @@ function setSource(element: Element, value: string, fileId?: string): void {
   element.attrs.push({ name: 'src', value });
   if (fileId) element.attrs.push({ name: 'data-photobank-file-id', value: fileId });
 }
+function safeGalleryUrl(value: string): string | null {
+  if (!isPhotoBankUrl(value)) return null;
+  try {
+    const url = new URL(value.startsWith('//') ? `https:${value}` : value);
+    return url.username || url.password || url.hash ? null : url.href;
+  } catch {
+    return null;
+  }
+}
 export function templateMaterialPathValid(value: string): boolean {
   return PATH.test(value);
 }
@@ -61,11 +70,9 @@ export function templateImageSources(templates: readonly Pick<PortableTemplate, 
   for (const template of templates) {
     images(template.html, (element) => {
       const value = source(element);
-      if (!isPhotoBankUrl(value)) throw templateError('TEMPLATE_MATERIAL_SOURCE_UNSUPPORTED');
-      const url = new URL(value.startsWith('//') ? `https:${value}` : value);
-      if (url.username || url.password || url.hash)
-        throw templateError('TEMPLATE_MATERIAL_SOURCE_UNSUPPORTED');
-      sources.add(url.href);
+      const url = safeGalleryUrl(value);
+      if (!url) throw templateError('TEMPLATE_MATERIAL_SOURCE_UNSUPPORTED');
+      sources.add(url);
     });
   }
   return [...sources];
@@ -76,6 +83,12 @@ export function templatesWithMaterialPaths(
   templates: readonly PortableTemplate[],
   replacements: ReadonlyMap<string, string>
 ): PortableTemplate[] {
+  const imageResources = new Set(
+    [...replacements.keys()].map((value) => {
+      const url = new URL(value);
+      return `${url.origin}${url.pathname}`;
+    })
+  );
   return templates.map((template) => {
     const fragment = images(template.html, (element) => {
       const value = source(element);
@@ -84,6 +97,29 @@ export function templatesWithMaterialPaths(
       if (!path || !PATH.test(path)) throw templateError('TEMPLATE_MATERIAL_MISSING');
       setSource(element, path);
     });
+    function removeOriginalImageLinks(parent: DefaultTreeAdapterTypes.ParentNode): void {
+      for (const child of parent.childNodes) {
+        if (!('tagName' in child)) continue;
+        if (child.tagName === 'a') {
+          const href = child.attrs.find((attribute) => attribute.name === 'href')?.value;
+          if (href) {
+            try {
+              const url = new URL(href.startsWith('//') ? `https:${href}` : href);
+              // A source-image hyperlink may use another signature or a preview
+              // fragment. Neither makes the original account URL portable.
+              if (url.username || url.password || imageResources.has(`${url.origin}${url.pathname}`))
+                child.attrs = child.attrs.filter(
+                  (attribute) => !['href', 'target', 'rel'].includes(attribute.name)
+                );
+            } catch {
+              // The normal HTML whitelist handles unsupported/relative links.
+            }
+          }
+        }
+        removeOriginalImageLinks(child);
+      }
+    }
+    removeOriginalImageLinks(fragment);
     return { ...template, html: sanitizeMaterialHtml(serialize(fragment)) };
   });
 }
@@ -155,8 +191,9 @@ export function templateMaterialResolvedBundle(
   const templates = document.templates.map((template) => {
     const fragment = images(template.html, (element) => {
       const photo = photos.get(source(element));
-      if (!photo?.fileId || !isPhotoBankUrl(photo.url)) throw templateError('TEMPLATE_MATERIAL_UNCONFIRMED');
-      setSource(element, photo.url, photo.fileId);
+      const url = photo ? safeGalleryUrl(photo.url) : null;
+      if (!photo?.fileId || !url) throw templateError('TEMPLATE_MATERIAL_UNCONFIRMED');
+      setSource(element, url, photo.fileId);
     });
     return { ...template, html: sanitizeProductDescriptionHtml(serialize(fragment)).html };
   });

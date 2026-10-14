@@ -103,8 +103,19 @@ export class BrowserGalleryTransferDriver implements GalleryTransferDriver {
     return this.services.gateway.galleryTransferContext();
   }
   async attachArchive(task: Task, bytes: Uint8Array): Promise<void> {
-    if ((await galleryAssetSha256(bytes)) !== task.archiveSha256)
-      throw new GalleryTaskError('GALLERY_TASK_ARCHIVE_CHANGED');
+    if ((await galleryAssetSha256(bytes)) !== task.archiveSha256) {
+      // Template materials reuse gallery write-ahead receipts. Recovery accepts
+      // the original template ZIP, but still verifies the frozen gallery hash.
+      const { readTemplateMaterialArchive, templateMaterialGalleryArchive } =
+        await import('./template-material-archive');
+      try {
+        bytes = await templateMaterialGalleryArchive(await readTemplateMaterialArchive(bytes));
+      } catch {
+        throw new GalleryTaskError('GALLERY_TASK_ARCHIVE_CHANGED');
+      }
+      if ((await galleryAssetSha256(bytes)) !== task.archiveSha256)
+        throw new GalleryTaskError('GALLERY_TASK_ARCHIVE_CHANGED');
+    }
     this.archives.set(task.id, await readGalleryTransferArchive(bytes));
   }
   private control() {

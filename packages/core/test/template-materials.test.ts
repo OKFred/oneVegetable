@@ -97,6 +97,20 @@ describe('portable template materials', () => {
       'https://s.alicdn.com/a.png'
     ]);
   });
+  it('does not export original signed image links around portable images', () => {
+    const entry = sample().templates[0];
+    if (!entry) throw new Error('fixture');
+    const url = `${fixture.sourceUrl}?signature=fixture-not-a-secret`;
+    for (const href of [url, `${url}#preview`, `${fixture.sourceUrl}?signature=another-fixture`]) {
+      const values = templatesWithMaterialPaths(
+        [{ ...entry, html: `<a href="${href}" target="_blank"><img src="${url}"></a>` }],
+        new Map([[url, path]])
+      );
+      expect(values[0]?.html).toContain(path);
+      expect(values[0]?.html).not.toContain(fixture.sourceUrl);
+      expect(values[0]?.html).not.toContain('signature');
+    }
+  });
   it('resolves only freshly confirmed material IDs and URLs, not old account IDs', () => {
     const document = sample();
     const parsed = templateMaterialResolvedBundle(
