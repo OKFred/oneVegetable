@@ -25,7 +25,7 @@
 
 占位项仅替换正文文本，不执行表达式，不替换链接、图片 URL 或属性。未知占位项、属性中的变量、未填写项及超限内容需先修正才能确认填入；这不是商品提交预检，也不改变平台最终校验。变量值不写回模板、不保存为账号默认信息；JSON/S3 模板包仍保存原始占位项。现有图片 URL 和素材 ID 经同一白名单保留，不查询或上传图片。
 
-确认只修改当前编辑中的详情，未调用 Alibaba mutation。模板与图片一起迁移、批量应用到商品、翻译和动态表达式不在本轮范围内。
+确认只修改当前编辑中的详情，未调用 Alibaba 商品 mutation。批量应用到商品、翻译和动态表达式不在本轮范围内；模板图片迁移另走下述显式确认流程。
 
 Fixed placeholders are text-only substitutions, not an executable template language. Combine up to ten templates, review the order and verified product defaults, fill missing details, then confirm insertion, append or replacement. Values remain in the current editor session; saved templates and JSON/S3 packages retain their placeholders. No product is published or updated automatically.
 
@@ -39,6 +39,22 @@ Fixed placeholders are text-only substitutions, not an executable template langu
 
 S3 **不是实时模板数据库**，不自动同步、合并冲突或跨设备同步。共享以 SQLite/D1 为准，独立插件以 IndexedDB 为准；S3 用于备份、迁移或人工交换，不改变桶权限、不自动清理对象。
 
+### 模板与图片素材包
+
+原有 JSON 模式保留；导出格式选 **ZIP（模板及图片文件）** 时，将图库图片下载到 `assets/<sha256>.<扩展名>`，`templates.json` 中改为相对图片路径。相同 URL 或相同内容只保存一份文件，原 fileId、图片上的账号元数据、指向原图片的链接及其签名不进入包。正文占位项保留，不代填商家资料。包不包含凭据、审计身份或模板数据库 ID。
+
+- 限制：ZIP 50 MiB、解压总量 100 MiB、最多 500 张图片、单图 5 MiB、清单 5 MiB。仅接受 JPEG/PNG/GIF/BMP，并检查文件头、大小、SHA-256 与清单引用；拒绝路径穿越、重复条目、未声明素材和不支持的 ZIP 结构。
+- 导入 JSON/ZIP 自动识别。图片包先选一个**真实图片分组**，检查上传权限并预览，再二次确认。没有图片的 ZIP 不要求 Alibaba 凭据或图库权限。
+- 确认后，复用图库传输任务的持久发送记录；上传并按 fileId/目标分组完整分页回读后，才将新 URL 和 fileId 写入模板。不能以同名图片代替确认，也不保存缺图模板。
+- 两个窗口的同包任务通过 Web Locks 原子认领。相同账号、配置、图片包及目标分组下复用已确认回执；未知上传仅核对，不自动重传。恢复时重新选择原模板 ZIP，图库任务可自动校验其确定性转换后的指纹。
+- 任一模板写入失败即停止，已完成模板及图片保留。同名全部跳过时不再上传图片；部分跳过时仍可能传输整个包。图片任务与模板写入不是跨服务事务，不能承诺无孤立图片；不自动删除素材。
+
+S3 勾选“备份包含图片文件”后，图片和清单分别保存到独立批次前缀，**不上传一个大 ZIP，也不放宽 S3 单对象 5 MiB 限制**。逐个 PUT 后精确 GET 核对，全部图片确认后才写 `templates.json`。结果不明的当前备份只允许读取核对，不重复 PUT；关闭/刷新后不自动续传，保留前缀供人工核查。导入先读清单并校验素材，再按同一图库流程上传；配置或身份变化停止执行，不自动换绑。
+
+ZIP/S3 只是备份与迁移格式，模板仍存 SQLite/D1 或插件 IndexedDB。导入图片会执行真实图库上传，因此仍受管理员、现有权限、CSRF、配置上下文和 mutation 策略限制；保存模板不发布商品。生产错误不回退 Mock。
+
+**English:** Choose ZIP to include gallery images, or enable image files for an S3 backup. Images use content-addressed relative paths; original photo IDs and image hyperlinks are removed. On import, select a real gallery group, review permissions and confirm. Only after uploads are verified by the new file IDs and target group are the templates saved with fresh URLs. Confirmed receipts are reused, uncertain uploads are checked rather than resent, and incomplete templates are not saved. S3 stores individual images and writes the manifest last; it is not a live template database or an automatic background synchronization service.
+
 ## English quick guide
 
 Open **Templates** from the sidebar. Node and Cloudflare store shared templates in SQLite/D1; the independent extension stores editable templates locally in IndexedDB. Built-in templates are read-only. Active site users can edit shared templates; local templates are not synchronized across devices.
@@ -48,6 +64,12 @@ Choose company, logistics, packaging, service or custom content. Insert at the c
 JSON/S3 packages contain portable content only. Imports skip same-language names by default or create copies; they never overwrite. S3 backups use unique paths and require exact readback verification. An uncertain upload is verified, not automatically resent. Clearing extension local data removes local templates, so export backups first.
 
 ## 验证边界
+
+2026-10-15 模板图片素材包：312 个测试文件、2502 项全量单测通过，Worker/D1 隔离回归 9 个文件、24 项通过；Web 模板组合、JSON/ZIP 往返、真实代码路径的 Mock 图库上传/回读及同包回执复用，加上正式独立 MV3 本地模板/ZIP 往返与 1 MiB DEFLATE 素材解析，共 4 项浏览器回归通过。覆盖中英文、暗色、跨窗口旧预览复用未知回执、发送前落盘、配置变化、原图链接脱敏、S3 清单最后写入，以及错误后从弹窗转到任务中心。
+
+格式、Lint（仅保留既有 warning）、i18n、OpenAPI/生成漂移、类型、静态授权页/Web/Worker dry-run/MV3 构建、包体与商店合规检查通过。Windows 全量测试固定最多 2 个 worker，原有 5 秒测试超时没有放宽。最终构建 212 个文件、解包 4,223,348 字节；按正式参数内存测量 ZIP 为 1,229,513 字节，低于现有 2,000,000/5,470,000 字节预算，未替换正式发布附件。
+
+这些为离线/隔离验收；新增图片迁移**尚未执行真实 Alibaba、RustFS 或云 S3 上传**，不能由 Mock 回读、此前 JSON-only S3 验收或构建结果代替。原来的 Node/Web 真实模式本地服务已启动；未重置账号、修改凭据、部署 Worker 或合入主线。截图位于忽略目录 `artifacts/template-materials/`、`artifacts/template-library/` 与 `artifacts/template-composition/`。
 
 2026-10-14 固定变量/组合补验：全量 308 个测试文件、2356 项单测通过；Web 模板变量组合、原详情编辑及模板库往返，加上正式独立 MV3 的本地模板编辑/JSON 往返，共 4 项浏览器验收通过。覆盖模板顺序、商品标题回填、缺失信息、显式确认、变量不回写、中英文、暗色，以及旧模板继续使用。测试使用 `mock/data/template-composition.json` 等隔离样本，未执行 Alibaba mutation，也未重新执行真实 S3 上传。
 

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
-import { decodeBase64, type GatewaySettings, type ResponseOf } from '@one-vegetable/core';
+import { decodeBase64, type GatewaySettings, type RequestOf, type ResponseOf } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 import { MemoryProductDescriptionTemplateClient } from '../../core/src/product-description-template-client';
 import {
@@ -295,7 +295,7 @@ describe('template material runtime with persistent gallery tasks', () => {
       if (operation === 'uploadPhoto') {
         expect(activeLocks.has('one-vegetable.template-material.import-claim.v1')).toBe(false);
         expect(activeLocks.has('one-vegetable.gallery-transfer.executor.v1')).toBe(true);
-        await s.originalRequest(operation, payload, options);
+        await s.originalRequest(operation, payload as RequestOf<'uploadPhoto'>, options);
         throw new Error('Offline response lost after upload');
       }
       return s.originalRequest(operation, payload, options);

@@ -590,6 +590,8 @@ describe('template material UI without provider writes', () => {
     await flushPromises();
     expect(mocks.executeImport).toHaveBeenCalledOnce();
     await button('Open gallery tasks').trigger('click');
+    await flushPromises();
+    expect(dialog.emitted('update:open')?.at(-1)).toEqual([false]);
     expect(mocks.transfers?.show).toHaveBeenCalledOnce();
   });
 

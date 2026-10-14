@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
 import {
   encodeTemplateBundle,
@@ -61,6 +61,13 @@ const emit = defineEmits<{ 'update:open': [open: boolean]; imported: [] }>();
 const services = useServices();
 const { control, s3Storage, productDescriptionTemplates, operationAvailability } = services;
 const transfers = useGalleryTransfers();
+async function showMaterialTasks(): Promise<void> {
+  if (busy.value || !transfers || !isCurrent()) return;
+  // The task Sheet sits below a modal dialog: close the modal before opening it.
+  emit('update:open', false);
+  await nextTick();
+  transfers.show();
+}
 function isStorage(value: ControlClient | undefined): value is ControlClient & S3StorageControl {
   return (
     value !== undefined &&
@@ -729,7 +736,7 @@ async function execute(): Promise<void> {
         v-if="writeStarted && mode === 'import' && error && requiresUpload && transfers"
         variant="outline"
         :disabled="busy || !isCurrent()"
-        @click="transfers.show()"
+        @click="showMaterialTasks"
       >
         {{ mt('tasks') }}
       </Button>
