@@ -55,7 +55,19 @@ pnpm exec tsx scripts/diagnose-alibaba-token-refresh.ts --document=<上一步生
 
 接收器仅监听 loopback，校验 Host、同源 Origin 和随机 state；10 分钟后关闭，不保存 Callback/code，不回显密钥。授权文件含明文密钥，位于 Git 忽略目录。
 
+TOP 和 IOP 可以各自使用原应用重新授权。脚本默认使用授权包中的 `protocol`；历史未标记的包仍按 TOP 处理，绝不根据 AppKey 猜测。Windows PowerShell 中重新授权 IOP 时，显式指定已有 IOP 包的路径：
+
+```powershell
+$env:OPEN_API_PROTOCOL = 'iop'
+$env:OPEN_API_OUTPUT = 'artifacts/openapi-auth/iop-credentials.json'
+pnpm openapi:auth:reconnect
+```
+
+该文件必须已经含有对应应用的完整凭据；此命令不创建应用。生成结果明确记录 `protocol`，不会把 IOP 文件误导入 TOP。显式协议与已标记的原包冲突时，出网前停止。两份授权独立导入本地工作台，TOP 默认协议不变；“配置 TOP / IOP”的消息只表示选择编辑对象，不代表已保存或已验证。
+
 ## English
+
+Reconnect chooses the existing bundle's explicit protocol, with TOP as the backward-compatible default for unmarked bundles. For IOP, set `OPEN_API_PROTOCOL=iop` and `OPEN_API_OUTPUT` to its existing private bundle in PowerShell before running `pnpm openapi:auth:reconnect`. A conflicting explicit marker is rejected before any network call. Saved bundles always include the protocol; reconnecting one never imports or replaces the other automatically. Profile-selection notifications do not imply a saved or verified grant.
 
 The Overview countdown uses only the current credential's recorded expiry. System API and SystemAPI are distinct. Permission evidence is an import-time snapshot, not a live entitlement check; missing or empty metadata is not proof of missing permission. No expiry means no fabricated countdown. Enabling a new permission cannot reveal an old token's expiry.
 
