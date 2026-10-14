@@ -41,6 +41,29 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     const panel = page.getByTestId('gateway-credential-panel');
     await expect(panel).toBeVisible();
     const en = locale === 'en-US';
+    await page.getByTestId('select-authorization-top').click();
+    await expect(
+      page.getByText(
+        en
+          ? 'Already configuring TOP. Import or enter credentials below.'
+          : '当前正在配置 TOP，请在下方导入或填写。',
+        { exact: true }
+      )
+    ).toBeVisible();
+    await page.getByTestId('select-authorization-iop').click();
+    await expect(
+      page.getByText(
+        en
+          ? 'Switched to IOP settings. Import or enter credentials below; the default protocol is unchanged.'
+          : '已切换到 IOP 配置，请在下方导入或填写；默认协议未改变。',
+        { exact: true }
+      )
+    ).toBeVisible();
+    await expect(page.getByTestId('select-authorization-iop')).toHaveAttribute('aria-pressed', 'true');
+    expect(writes).toEqual([]);
+    await page.getByTestId('select-authorization-top').click();
+    await expect(page.getByTestId('select-authorization-top')).toHaveAttribute('aria-pressed', 'true');
+    expect(writes).toEqual([]);
     const manual = panel.getByRole('button', { name: en ? 'Enter manually' : '手动填写', exact: true });
     await expect(manual).toBeVisible();
     await expect(panel.locator('details').filter({ has: manual })).toHaveCount(0);

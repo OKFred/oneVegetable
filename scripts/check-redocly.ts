@@ -38,7 +38,12 @@ try {
 
 const issues = redoclyReportIssues(report);
 if (result.status !== 0 || issues.length > 0) {
-  throw new Error(`Redocly quality gate failed:\n${issues.map((issue) => `- ${issue}`).join('\n')}`);
+  // Keep a non-zero process exit blocking even if its JSON report says zero problems.
+  // Never dump stderr: inherited proxy/registry diagnostics may contain credentials.
+  const exit = result.status === null ? 'unavailable' : String(result.status);
+  throw new Error(
+    `Redocly quality gate failed (exit=${exit}, signal=${result.signal ?? 'none'}):\n${issues.map((issue) => `- ${issue}`).join('\n')}`
+  );
 }
 
 console.log('Redocly quality gate passed with 0 errors and 0 warnings.');

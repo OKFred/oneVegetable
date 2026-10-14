@@ -3,6 +3,50 @@
   "repositoryUrl": "https://github.com/OKFred/oneVegetable",
   "releases": [
     {
+      "version": "2.16.0",
+      "releasedAt": "2026-10-15",
+      "title": { "zh-CN": "模板组合与携图迁移", "en-US": "Template composition and portable images" },
+      "summary": {
+        "zh-CN": "详情模板支持安全文本变量、顺序组合，以及携图 ZIP/S3 交换；TOP 和 IOP 保持独立，配置切换增加消息提示，不自动发布商品。",
+        "en-US": "Description templates add safe text placeholders, ordered composition and image-inclusive ZIP/S3 exchange. TOP and IOP stay independent, configuration selection shows feedback and products are never published automatically."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/releases/tag/v2.16.0",
+      "compareUrl": "https://github.com/OKFred/oneVegetable/compare/v2.15.1...v2.16.0",
+      "changes": [
+        {
+          "type": "feature",
+          "title": { "zh-CN": "填写变量并组合详情模板", "en-US": "Fill placeholders and compose templates" },
+          "description": {
+            "zh-CN": "填写固定文本变量，按顺序组合最多 10 个模板并预览后插入、追加或确认覆盖。缺失资料明确提示，不执行模板代码；输入仅保留在当前编辑会话，不改写共享模板。",
+            "en-US": "Fill fixed text placeholders and compose up to ten templates in order before inserting, appending or confirming replacement. Missing information stays visible, no template code executes and values remain in the current editing session without rewriting shared templates."
+          }
+        },
+        {
+          "type": "feature",
+          "title": {
+            "zh-CN": "模板图片随 ZIP 或 S3 迁移",
+            "en-US": "Move template images through ZIP or S3"
+          },
+          "description": {
+            "zh-CN": "导出图片至 assets 相对路径并校验完整性，导入时确认图片分组，上传并按新 fileId 回读后保存模板。复用已确认回执，结果不明不自动重传；S3 清单最后写入，原 JSON 模式保留，不新增永久权限。",
+            "en-US": "Export images to integrity-checked relative assets paths. Confirm an image group on import, then upload and verify new file IDs before saving templates. Confirmed receipts are reused, uncertain writes are not resent and the S3 manifest is written last. JSON mode remains available without new permanent permissions."
+          }
+        },
+        {
+          "type": "fix",
+          "title": {
+            "zh-CN": "独立授权配置提示与协议标识",
+            "en-US": "Independent authorization feedback and protocol markers"
+          },
+          "description": {
+            "zh-CN": "点击配置 TOP 或 IOP 后显示明确消息，重复点击同样有反馈，不冒充已保存或已验证。本地重新授权工具保留并输出明确协议，避免 IOP 授权包被误当 TOP；TOP 默认及历史包兼容不变。总览双授权卡片更紧凑。",
+            "en-US": "Selecting Configure TOP or IOP, including the already-selected profile, now shows clear feedback without implying a save or successful verification. Local reconnection preserves an explicit protocol so IOP bundles are not mistaken for TOP. TOP defaults and historical compatibility remain unchanged, with more compact dashboard cards."
+          }
+        }
+      ]
+    },
+    {
       "version": "2.15.1",
       "releasedAt": "2026-10-14",
       "title": {

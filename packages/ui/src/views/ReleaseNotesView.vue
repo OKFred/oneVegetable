@@ -8,7 +8,7 @@ import {
   releaseNoteText,
   type LocalizedReleaseText,
   type ReleaseChangeType
-} from '@one-vegetable/core';
+} from '@one-vegetable/core/release-notes';
 import { APP_VERSION } from '@one-vegetable/core/version';
 
 import PageHeader from '../components/PageHeader.vue';

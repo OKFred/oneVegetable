@@ -16,6 +16,12 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             {
+              // Historical notes belong to the lazy release page, not the eager catalogs.
+              name: 'release-notes',
+              test: /core[\\/]src[\\/](?:generated[\\/])?release-notes\.ts$/u,
+              includeDependenciesRecursively: false
+            },
+            {
               // Keep the translation runtime separate from the growing bilingual catalogs.
               name: 'i18n-runtime',
               test: /node_modules[\\/](?:vue-i18n|@intlify)[\\/]/u
