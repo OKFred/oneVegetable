@@ -24,6 +24,8 @@ import { gatewayCredentials as credentialsZh } from '../packages/ui/src/i18n/mes
 import { gatewayCredentials as credentialsEn } from '../packages/ui/src/i18n/messages/en-US/gatewayCredentials';
 import { templateComposition as compositionZh } from '../packages/ui/src/i18n/messages/zh-CN/templateComposition';
 import { templateComposition as compositionEn } from '../packages/ui/src/i18n/messages/en-US/templateComposition';
+import { templateMaterials as materialsZh } from '../packages/ui/src/i18n/messages/zh-CN/templateMaterials';
+import { templateMaterials as materialsEn } from '../packages/ui/src/i18n/messages/en-US/templateMaterials';
 
 interface TranslationLeaf {
   kind: 'boolean' | 'null' | 'number' | 'string';
@@ -59,6 +61,7 @@ const errors = [
   ...compareCatalogs(postingZh, postingEn),
   ...compareCatalogs(credentialsZh, credentialsEn),
   ...compareCatalogs(compositionZh, compositionEn),
+  ...compareCatalogs(materialsZh, materialsEn),
   ...(await findHardcodedInterfaceText())
 ];
 
