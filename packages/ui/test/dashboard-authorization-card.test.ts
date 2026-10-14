@@ -221,6 +221,8 @@ describe('overview authorization card', () => {
     view.wrapper.unmount();
   });
   it('reads unlocked extension metadata and reloads when credentials change, never replaying refresh', async () => {
+    // An exact day boundary must not depend on CI scheduling between request and render.
+    vi.spyOn(Date, 'now').mockReturnValue(1_800_000_000_000);
     const view = await harness({ extension: true });
     expect(view.wrapper.get('[data-testid="authorization-details"]').attributes('aria-label')).toContain(
       '有效期未返回'
