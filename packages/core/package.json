@@ -39,6 +39,7 @@
     "./templates": "./src/product-description-template-client.ts",
     "./composite-templates": "./src/composite-template-client.ts",
     "./template-library": "./src/template-library.ts",
+    "./template-composition": "./src/template-composition.ts",
     "./local-templates": "./src/indexeddb-template-client.ts",
     "./version": "./src/version.ts"
   },
