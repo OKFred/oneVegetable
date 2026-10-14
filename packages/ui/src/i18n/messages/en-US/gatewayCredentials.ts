@@ -8,6 +8,9 @@ export const gatewayCredentials = {
   selectProfile: 'Select the authorization profile to configure',
   configureProfile: 'Configure {protocol}',
   selectedProfile: 'Editing {protocol} authorization',
+  profileSelected:
+    'Switched to {protocol} settings. Import or enter credentials below; the default protocol is unchanged.',
+  profileAlreadySelected: 'Already configuring {protocol}. Import or enter credentials below.',
   profileIsolation: 'Import, save, test, renew and clear apply only to this profile. No automatic renewal.',
   profileMismatch:
     'This JSON belongs to the other protocol. Select its profile first, then import again. Nothing was changed.',

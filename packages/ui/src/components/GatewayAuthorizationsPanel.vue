@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
+import { toast } from 'vue-sonner';
 import { useAlibabaAuthorizations } from '../lib/alibaba-authorizations';
 import { useUnsavedEditingService } from '../lib/unsaved-editing';
 import { notifyGatewayConfigurationChanged } from '../lib/gateway-configuration-events';
@@ -21,9 +22,14 @@ onMounted(async () => {
   ready.value = true;
 });
 async function select(protocol: 'top' | 'iop'): Promise<void> {
-  if (busy.value || protocol === selectedProtocol.value) return;
+  if (busy.value) return;
+  if (protocol === selectedProtocol.value) {
+    toast.info(t('profileAlreadySelected', { protocol: protocol.toUpperCase() }));
+    return;
+  }
   if (editing && !(await editing.confirmLeave())) return;
   selectedProtocol.value = protocol;
+  toast.info(t('profileSelected', { protocol: protocol.toUpperCase() }));
 }
 async function changed(): Promise<void> {
   authorizations.invalidateBinding();

@@ -7,6 +7,8 @@ export const gatewayCredentials = {
   selectProfile: '选择要配置的授权档案',
   configureProfile: '配置 {protocol}',
   selectedProfile: '正在编辑 {protocol} 授权',
+  profileSelected: '已切换到 {protocol} 配置，请在下方导入或填写；默认协议未改变。',
+  profileAlreadySelected: '当前正在配置 {protocol}，请在下方导入或填写。',
   profileIsolation: '导入、保存、测试、续期和清除仅针对当前授权，不自动续期。',
   profileMismatch: '此 JSON 属于另一协议，请先选择对应授权再导入；尚未修改任何配置。',
   profileConfirmBody:

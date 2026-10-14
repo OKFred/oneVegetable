@@ -2,6 +2,7 @@
 import { defineComponent, h, type Component } from 'vue';
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { toast } from 'vue-sonner';
 import {
   ALIBABA_GATEWAY,
   BffControlClient,
@@ -26,7 +27,7 @@ import { provideServices } from '../src/lib/services';
 import { provideUnsavedEditing, UnsavedEditingService } from '../src/lib/unsaved-editing';
 import { GATEWAY_CONFIGURATION_EVENT } from '../src/lib/gateway-configuration-events';
 
-vi.mock('vue-sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('vue-sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 const wrappers: VueWrapper[] = [];
 afterEach(() => {
   wrappers.splice(0).forEach((wrapper) => {
@@ -34,6 +35,7 @@ afterEach(() => {
   });
   vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.clearAllMocks();
   uiI18n.global.locale.value = 'zh-CN';
   document.body.innerHTML = '';
 });
@@ -296,6 +298,40 @@ async function manualSave(wrapper: VueWrapper): Promise<void> {
 }
 
 describe('independent authorization metadata and user binding', () => {
+  it.each([false, true])(
+    'notifies profile selection without saving or changing defaults (extension=%s)',
+    async (extension) => {
+      const view = await harness(extension ? SettingsView : GatewayAuthorizationsPanel, { extension });
+      await view.wrapper.get('[data-testid="select-authorization-top"]').trigger('click');
+      expect(toast.info).toHaveBeenLastCalledWith('当前正在配置 TOP，请在下方导入或填写。');
+      await view.wrapper.get('[data-testid="select-authorization-iop"]').trigger('click');
+      await flushPromises();
+      expect(toast.info).toHaveBeenLastCalledWith('已切换到 IOP 配置，请在下方导入或填写；默认协议未改变。');
+      expect(view.current().defaultProtocol).toBe('top');
+      expect(view.save).not.toHaveBeenCalled();
+      expect(view.saveSettings).not.toHaveBeenCalled();
+      expect(view.test).not.toHaveBeenCalled();
+      expect(view.refresh).not.toHaveBeenCalled();
+      const reads = extension ? view.loadAuthorization.mock.calls.length : view.status.mock.calls.length;
+      await view.wrapper.get('[data-testid="select-authorization-iop"]').trigger('click');
+      expect(toast.info).toHaveBeenLastCalledWith('当前正在配置 IOP，请在下方导入或填写。');
+      expect(extension ? view.loadAuthorization.mock.calls.length : view.status.mock.calls.length).toBe(
+        reads
+      );
+    }
+  );
+
+  it('does not announce a switch when the extension cannot load the profile', async () => {
+    const view = await harness(SettingsView, { extension: true });
+    view.loadAuthorization.mockRejectedValue(new Error('Profile unavailable'));
+    await view.wrapper.get('[data-testid="select-authorization-iop"]').trigger('click');
+    await flushPromises();
+    expect(toast.info).not.toHaveBeenCalled();
+    expect(view.wrapper.get('[data-testid="select-authorization-top"]').attributes('aria-pressed')).toBe(
+      'true'
+    );
+  });
+
   it('requires the same-merchant checkbox and an explicit confirmation, with both opaque IDs', async () => {
     const view = await harness(GatewayAuthorizationsPanel);
     expect(view.wrapper.text()).toContain('推荐同时配置');
