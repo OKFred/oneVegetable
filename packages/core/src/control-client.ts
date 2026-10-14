@@ -16,6 +16,8 @@ import type {
   S3StorageConfigurationSummary
 } from './s3-storage';
 import type { AlibabaOpenApiCredentialBundle } from './alibaba-credential-bundle';
+import type { AlibabaProtocol } from './alibaba-protocol-routing';
+import type { AlibabaAuthorizationsSummary } from './gateway-credential-management';
 import type {
   ManualGatewayCredentialInput,
   GatewayCredentialTestResult
@@ -256,20 +258,27 @@ export interface ControlClient {
     retentionDays: number;
     cutoffTimeUtc: UnixEpochMilliseconds;
   }>;
-  gatewayCredentialStatus(): Promise<ControlGatewayCredentialSummary>;
+  gatewayCredentialStatus(protocol?: AlibabaProtocol): Promise<ControlGatewayCredentialSummary>;
+  gatewayAuthorizations?(): Promise<AlibabaAuthorizationsSummary>;
+  confirmGatewayAuthorizations?(
+    topConfigurationId: string,
+    iopConfigurationId: string
+  ): Promise<AlibabaAuthorizationsSummary>;
   importGatewayCredential(
     bundle: AlibabaOpenApiCredentialBundle,
     revision: number | null,
-    remark?: string | null
+    remark?: string | null,
+    protocol?: AlibabaProtocol
   ): Promise<ControlGatewayCredentialSummary>;
-  refreshGatewayCredential(): Promise<ControlGatewayCredentialSummary>;
-  clearGatewayCredential(revision: number | null): Promise<void>;
+  refreshGatewayCredential(protocol?: AlibabaProtocol): Promise<ControlGatewayCredentialSummary>;
+  clearGatewayCredential(revision: number | null, protocol?: AlibabaProtocol): Promise<void>;
   saveGatewayCredential?(
     credentials: ManualGatewayCredentialInput,
     revision: number | null,
-    remark?: string | null
+    remark?: string | null,
+    protocol?: AlibabaProtocol
   ): Promise<ControlGatewayCredentialSummary>;
-  testGatewayCredential?(): Promise<GatewayCredentialTestResult>;
+  testGatewayCredential?(protocol?: AlibabaProtocol): Promise<GatewayCredentialTestResult>;
   s3StorageConfiguration?(): Promise<S3StorageConfigurationSummary>;
   videoUpload?: VideoUploadControl['videoUpload'];
   updateS3StorageConfiguration?(
@@ -630,36 +639,62 @@ export class BffControlClient implements ControlClient {
     return this.#call('/admin/request-events/purge', {});
   }
 
-  gatewayCredentialStatus(): Promise<ControlGatewayCredentialSummary> {
-    return this.#call('/admin/gateway-credentials/get', {});
+  gatewayCredentialStatus(protocol?: AlibabaProtocol): Promise<ControlGatewayCredentialSummary> {
+    return this.#call('/admin/gateway-credentials/get', protocol ? { protocol } : {});
+  }
+
+  gatewayAuthorizations(): Promise<AlibabaAuthorizationsSummary> {
+    return this.#call('/admin/gateway-credentials/authorizations/get', {});
+  }
+
+  confirmGatewayAuthorizations(
+    topConfigurationId: string,
+    iopConfigurationId: string
+  ): Promise<AlibabaAuthorizationsSummary> {
+    return this.#call('/admin/gateway-credentials/authorizations/confirm', {
+      topConfigurationId,
+      iopConfigurationId
+    });
   }
 
   importGatewayCredential(
     bundle: AlibabaOpenApiCredentialBundle,
     revision: number | null,
-    remark: string | null = null
+    remark: string | null = null,
+    protocol?: AlibabaProtocol
   ): Promise<ControlGatewayCredentialSummary> {
-    return this.#call('/admin/gateway-credentials/import', { bundle, revision, remark });
+    return this.#call('/admin/gateway-credentials/import', {
+      bundle,
+      revision,
+      remark,
+      ...(protocol ? { protocol } : {})
+    });
   }
 
-  refreshGatewayCredential(): Promise<ControlGatewayCredentialSummary> {
-    return this.#call('/admin/gateway-credentials/refresh', {});
+  refreshGatewayCredential(protocol?: AlibabaProtocol): Promise<ControlGatewayCredentialSummary> {
+    return this.#call('/admin/gateway-credentials/refresh', protocol ? { protocol } : {});
   }
 
-  async clearGatewayCredential(revision: number | null): Promise<void> {
-    await this.#call('/admin/gateway-credentials/clear', { revision });
+  async clearGatewayCredential(revision: number | null, protocol?: AlibabaProtocol): Promise<void> {
+    await this.#call('/admin/gateway-credentials/clear', { revision, ...(protocol ? { protocol } : {}) });
   }
 
   saveGatewayCredential(
     credentials: ManualGatewayCredentialInput,
     revision: number | null,
-    remark: string | null = null
+    remark: string | null = null,
+    protocol?: AlibabaProtocol
   ): Promise<ControlGatewayCredentialSummary> {
-    return this.#call('/admin/gateway-credentials/save', { credentials, revision, remark });
+    return this.#call('/admin/gateway-credentials/save', {
+      credentials,
+      revision,
+      remark,
+      ...(protocol ? { protocol } : {})
+    });
   }
 
-  testGatewayCredential(): Promise<GatewayCredentialTestResult> {
-    return this.#call('/admin/gateway-credentials/test', {});
+  testGatewayCredential(protocol?: AlibabaProtocol): Promise<GatewayCredentialTestResult> {
+    return this.#call('/admin/gateway-credentials/test', protocol ? { protocol } : {});
   }
 
   s3StorageConfiguration(): Promise<S3StorageConfigurationSummary> {

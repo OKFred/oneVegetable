@@ -22,6 +22,37 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
   document.servers = [{ url: '/api/v1' }];
   const schemas = document.components.schemas;
   addListQueryContract(schemas);
+  schemas.GatewayCredentialProtocolRequest = objectRequest([], {
+    protocol: { type: 'string', enum: ['top', 'iop'] }
+  });
+  schemas.AlibabaAuthorizationsConfirmRequest = objectRequest(['topConfigurationId', 'iopConfigurationId'], {
+    topConfigurationId: { type: 'string', minLength: 1, maxLength: 128 },
+    iopConfigurationId: { type: 'string', minLength: 1, maxLength: 128 }
+  });
+  schemas.AlibabaAuthorizationsSummary = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['top', 'iop', 'defaultProtocol', 'binding'],
+    properties: {
+      top: { anyOf: [{ $ref: '#/components/schemas/GatewayCredentialSummary' }, { type: 'null' }] },
+      iop: { anyOf: [{ $ref: '#/components/schemas/GatewayCredentialSummary' }, { type: 'null' }] },
+      defaultProtocol: { type: 'string', enum: ['top', 'iop'] },
+      binding: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['confirmed', 'topConfigurationId', 'iopConfigurationId', 'confirmedAtUtc'],
+        properties: {
+          confirmed: {
+            type: 'boolean',
+            description: 'Explicit user-confirmed merchant ownership; not platform verification.'
+          },
+          topConfigurationId: { type: ['string', 'null'], minLength: 1, maxLength: 128 },
+          iopConfigurationId: { type: ['string', 'null'], minLength: 1, maxLength: 128 },
+          confirmedAtUtc: { type: ['integer', 'null'], minimum: 0 }
+        }
+      }
+    }
+  };
   schemas.RequestId = requestIdSchema;
   schemas.RequestEnvelope = {
     type: 'object',
@@ -827,7 +858,17 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     '/admin/gateway-credentials/get': postOperation(
       'Get encrypted Alibaba gateway credential status',
       'getAdminGatewayCredential',
+      'GatewayCredentialProtocolRequest'
+    ),
+    '/admin/gateway-credentials/authorizations/get': postOperation(
+      'Get independent TOP and IOP credential summaries',
+      'getAlibabaAuthorizations',
       'RequestEnvelope'
+    ),
+    '/admin/gateway-credentials/authorizations/confirm': postOperation(
+      'Confirm both current credential configurations belong to the same merchant',
+      'confirmAlibabaAuthorizations',
+      'AlibabaAuthorizationsConfirmRequest'
     ),
     '/admin/gateway-credentials/import': postOperation(
       'Encrypt and import an Alibaba OpenAPI credential bundle',
@@ -837,7 +878,7 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     '/admin/gateway-credentials/refresh': postOperation(
       'Refresh the encrypted Alibaba access token',
       'refreshAdminGatewayCredential',
-      'RequestEnvelope'
+      'GatewayCredentialProtocolRequest'
     ),
     '/admin/gateway-credentials/clear': postOperation(
       'Clear the encrypted Alibaba credential bundle',

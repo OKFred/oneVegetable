@@ -1,6 +1,17 @@
 import * as standalone from './generated/validators-gateway-credentials';
 import type { components } from './generated/api';
 
+export function validateAlibabaAuthorizationsSummary(
+  value: unknown
+): value is components['schemas']['AlibabaAuthorizationsSummary'] {
+  return standalone.validateAlibabaAuthorizationsSummary(value);
+}
+export function validateAlibabaAuthorizationsConfirmRequest(
+  value: unknown
+): value is components['schemas']['AlibabaAuthorizationsConfirmRequest'] {
+  return standalone.validateAlibabaAuthorizationsConfirmRequest(value);
+}
+
 export function validateGatewayCredentialSummary(
   value: unknown
 ): value is components['schemas']['GatewayCredentialSummary'] {

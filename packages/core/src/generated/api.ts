@@ -713,6 +713,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/gateway-credentials/authorizations/get": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Get independent TOP and IOP credential summaries */
+        post: operations["getAlibabaAuthorizations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/gateway-credentials/authorizations/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm both current credential configurations belong to the same merchant */
+        post: operations["confirmAlibabaAuthorizations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/gateway-credentials/import": {
         parameters: {
             query?: never;
@@ -1289,6 +1323,24 @@ export interface components {
             status: components["schemas"]["UserStatus"];
             revision: number;
             remark: string | null;
+        };
+        AlibabaAuthorizationsConfirmRequest: {
+            requestId: components["schemas"]["RequestId"];
+            topConfigurationId: string;
+            iopConfigurationId: string;
+        };
+        AlibabaAuthorizationsSummary: {
+            top: components["schemas"]["GatewayCredentialSummary"] | null;
+            iop: components["schemas"]["GatewayCredentialSummary"] | null;
+            /** @enum {string} */
+            defaultProtocol: "top" | "iop";
+            binding: {
+                /** @description Explicit user-confirmed merchant ownership; not platform verification. */
+                confirmed: boolean;
+                topConfigurationId: string | null;
+                iopConfigurationId: string | null;
+                confirmedAtUtc: number | null;
+            };
         };
         AlibabaCredentialAcquisitionApplicationSummary: {
             applicationId: string;
@@ -9665,16 +9717,27 @@ export interface components {
         GatewayCredentialClearRequest: {
             requestId: components["schemas"]["RequestId"];
             revision: number | null;
+            /** @enum {string} */
+            protocol?: "top" | "iop";
         };
         GatewayCredentialImportRequest: {
             requestId: components["schemas"]["RequestId"];
             bundle: components["schemas"]["AlibabaOpenApiCredentialBundle"];
+            /** @enum {string} */
+            protocol?: "top" | "iop";
             revision: number | null;
             remark?: string | null;
+        };
+        GatewayCredentialProtocolRequest: {
+            requestId: components["schemas"]["RequestId"];
+            /** @enum {string} */
+            protocol?: "top" | "iop";
         };
         GatewayCredentialSaveRequest: {
             requestId: components["schemas"]["RequestId"];
             credentials: components["schemas"]["ManualGatewayCredentialInput"];
+            /** @enum {string} */
+            protocol?: "top" | "iop";
             revision: number | null;
             remark?: string | null;
         };
@@ -13482,7 +13545,137 @@ export interface operations {
         };
         requestBody: {
             content: {
+                "application/json": components["schemas"]["GatewayCredentialProtocolRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    getAlibabaAuthorizations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
                 "application/json": components["schemas"]["RequestEnvelope"];
+            };
+        };
+        responses: {
+            /** @description Operation succeeded */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Operation denied */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Entity conflict */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    confirmAlibabaAuthorizations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlibabaAuthorizationsConfirmRequest"];
             };
         };
         responses: {
@@ -13612,7 +13805,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RequestEnvelope"];
+                "application/json": components["schemas"]["GatewayCredentialProtocolRequest"];
             };
         };
         responses: {
