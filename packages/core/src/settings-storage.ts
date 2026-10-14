@@ -1,5 +1,5 @@
 import { ALIBABA_GATEWAY } from './signing';
-import type { GatewaySettings, SignMethod } from './types';
+import type { GatewayCredentialSettings, GatewaySettings, SignMethod } from './types';
 
 export const SETTINGS_STORAGE_KEY = 'gatewaySettings';
 export const SETTINGS_SCHEMA_VERSION = 1;
@@ -27,8 +27,10 @@ export function migrateGatewaySettings(value: unknown): SettingsMigrationResult 
     appSecret: stringValue(current.appSecret),
     accessToken: stringValue(current.accessToken),
     ...gatewayCredentialExpiryMetadata(current),
+    ...gatewayCredentialIdentityMetadata(current),
     endpoint: stringValue(current.endpoint) || ALIBABA_GATEWAY,
-    signMethod: signMethodValue(current.signMethod)
+    signMethod: signMethodValue(current.signMethod),
+    ...gatewayAuthorizationMetadata(current)
   };
   return {
     settings,
@@ -46,10 +48,97 @@ export function persistGatewaySettings(settings: GatewaySettings): SettingsMigra
       appSecret: settings.appSecret,
       accessToken: settings.accessToken,
       ...gatewayCredentialExpiryMetadata(settings),
+      ...gatewayCredentialIdentityMetadata(settings),
       endpoint: settings.endpoint,
-      signMethod: settings.signMethod
+      signMethod: settings.signMethod,
+      ...gatewayAuthorizationMetadata(settings)
     }
   };
+}
+
+/** Private metadata: persist only inside the vault, never in options-facing settings. */
+export function gatewayCredentialIdentityMetadata(value: {
+  configurationId?: unknown;
+  refreshToken?: unknown;
+  refreshTokenExpiresTimeUtc?: unknown;
+}): Pick<GatewayCredentialSettings, 'configurationId' | 'refreshToken' | 'refreshTokenExpiresTimeUtc'> {
+  if (
+    value.configurationId !== undefined &&
+    (typeof value.configurationId !== 'string' || !/^[\w.-]{1,128}$/u.test(value.configurationId))
+  )
+    throw new Error('ALIBABA_CONFIGURATION_ID_INVALID');
+  if (
+    value.refreshToken !== undefined &&
+    value.refreshToken !== null &&
+    (typeof value.refreshToken !== 'string' || value.refreshToken.length > 4096)
+  )
+    throw new Error('ALIBABA_REFRESH_TOKEN_INVALID');
+  return {
+    ...(value.configurationId === undefined ? {} : { configurationId: value.configurationId }),
+    ...(value.refreshToken === undefined ? {} : { refreshToken: value.refreshToken }),
+    ...(value.refreshTokenExpiresTimeUtc === undefined
+      ? {}
+      : {
+          refreshTokenExpiresTimeUtc: validTime(value.refreshTokenExpiresTimeUtc)
+        })
+  };
+}
+
+export function gatewayAuthorizationMetadata(value: {
+  protocolCredentials?: unknown;
+  authorizationBinding?: unknown;
+}): Pick<GatewaySettings, 'protocolCredentials' | 'authorizationBinding'> {
+  const result: Pick<GatewaySettings, 'protocolCredentials' | 'authorizationBinding'> = {};
+  if (value.protocolCredentials !== undefined) {
+    if (
+      !isRecord(value.protocolCredentials) ||
+      Object.keys(value.protocolCredentials).some((key) => key !== 'top' && key !== 'iop')
+    )
+      throw new Error('ALIBABA_AUTHORIZATIONS_INVALID');
+    const profiles: NonNullable<GatewaySettings['protocolCredentials']> = {};
+    for (const protocol of ['top', 'iop'] as const) {
+      const profile = value.protocolCredentials[protocol];
+      if (profile === undefined) continue;
+      if (
+        !isRecord(profile) ||
+        !isCompleteSettings(profile) ||
+        (profile.protocol !== undefined && profile.protocol !== protocol) ||
+        profile.protocolCredentials !== undefined ||
+        profile.authorizationBinding !== undefined
+      )
+        throw new Error('ALIBABA_AUTHORIZATIONS_INVALID');
+      profiles[protocol] = {
+        protocol,
+        appKey: stringValue(profile.appKey),
+        appSecret: stringValue(profile.appSecret),
+        accessToken: stringValue(profile.accessToken),
+        endpoint: stringValue(profile.endpoint),
+        signMethod: signMethodValue(profile.signMethod),
+        ...gatewayCredentialExpiryMetadata(profile),
+        ...gatewayCredentialIdentityMetadata(profile)
+      };
+    }
+    result.protocolCredentials = profiles;
+  }
+  if (value.authorizationBinding !== undefined) {
+    const binding = value.authorizationBinding;
+    if (
+      !isRecord(binding) ||
+      Object.keys(binding).length !== 3 ||
+      typeof binding.topConfigurationId !== 'string' ||
+      !/^[\w.-]{1,128}$/u.test(binding.topConfigurationId) ||
+      typeof binding.iopConfigurationId !== 'string' ||
+      !/^[\w.-]{1,128}$/u.test(binding.iopConfigurationId) ||
+      validTime(binding.confirmedAtUtc) === null
+    )
+      throw new Error('ALIBABA_AUTHORIZATION_BINDING_INVALID');
+    result.authorizationBinding = {
+      topConfigurationId: binding.topConfigurationId,
+      iopConfigurationId: binding.iopConfigurationId,
+      confirmedAtUtc: binding.confirmedAtUtc as number
+    };
+  }
+  return result;
 }
 
 /** Keep legacy settings unchanged; an unknown marker must never silently become TOP. */
@@ -124,5 +213,9 @@ function isSignMethod(value: unknown): value is SignMethod {
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
+  return isRecord(value) ? value : {};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

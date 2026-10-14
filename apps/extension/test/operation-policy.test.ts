@@ -12,6 +12,48 @@ import { iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
 import { OPERATION_IDS } from '../../../packages/core/src/operation-id';
 
 describe('extension operation policy', () => {
+  it('loads one fresh safe snapshot per operation batch and selects every route purely', async () => {
+    const readStatus = vi.fn().mockResolvedValue({
+      state: 'unlocked',
+      protocol: 'iop',
+      pool: {
+        top: true,
+        iop: true,
+        defaultProtocol: 'iop',
+        bindingConfirmed: true
+      }
+    });
+    const client = createExtensionOperationAvailabilityClient(readStatus);
+    const result = await client.get(OPERATION_IDS);
+    expect(result.items).toHaveLength(OPERATION_IDS.length);
+    expect(readStatus).toHaveBeenCalledOnce();
+    await client.get(OPERATION_IDS);
+    expect(readStatus).toHaveBeenCalledTimes(2);
+  });
+  it('uses confirmed pools for static availability/capabilities and keeps locked or unconfirmed pools closed', async () => {
+    const pool = { top: true, iop: true, defaultProtocol: 'iop' as const, bindingConfirmed: true };
+    const client = createExtensionOperationAvailabilityClient(() =>
+      Promise.resolve({ state: 'unlocked', protocol: 'iop', pool })
+    );
+    expect(
+      (await client.get(['uploadPhoto', 'getDashboard', 'updateProduct', 'createTradeOrder'])).items
+    ).toMatchObject([{ allowed: true }, { allowed: true }, { allowed: true }, { allowed: false }]);
+    const capability = { method: 'alibaba.icbu.product.get', realCallEnabled: true };
+    expect(
+      applyExtensionCapabilityProtocol(capability, { state: 'unlocked', protocol: 'iop', pool })
+        .realCallEnabled
+    ).toBe(true);
+    expect(
+      applyExtensionCapabilityProtocol(capability, { state: 'locked', protocol: 'iop', pool }).realCallEnabled
+    ).toBe(false);
+    expect(
+      applyExtensionCapabilityProtocol(capability, {
+        state: 'unlocked',
+        protocol: 'iop',
+        pool: { ...pool, bindingConfirmed: false }
+      }).realCallEnabled
+    ).toBe(false);
+  });
   it('reports IOP verification without inheriting TOP metadata or unlocking a locked vault', () => {
     const top = {
       method: 'alibaba.icbu.product.id.encrypt',
@@ -48,9 +90,16 @@ describe('extension operation policy', () => {
     expect(optionsImports).toContain('../../lib/operation-availability');
     expect(optionsImports).not.toContain('../../lib/operation-policy');
     expect(optionsImports).not.toContain('@one-vegetable/core');
+    const backgroundImports = runtimeImports('../entrypoints/background.ts');
+    expect(backgroundImports).not.toContain('../lib/alibaba-authorizations');
+    expect(backgroundImports).not.toContain('../lib/authorization-refresh');
+    const backgroundSource = readFileSync(new URL('../entrypoints/background.ts', import.meta.url), 'utf8');
+    expect(backgroundSource).toContain("import('../lib/alibaba-authorizations')");
+    expect(backgroundSource).toContain("import('../lib/authorization-refresh')");
     expect(runtimeImports('../lib/operation-availability.ts')).toEqual([
       '@one-vegetable/core/runtime',
-      '@one-vegetable/core/alibaba-iop-business'
+      '@one-vegetable/core/alibaba-iop-business',
+      '@one-vegetable/core/alibaba-protocol-routing'
     ]);
   });
   it('keeps legacy and explicit TOP decisions identical for every operation', () => {

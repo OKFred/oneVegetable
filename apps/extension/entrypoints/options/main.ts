@@ -53,9 +53,13 @@ import {
   type SocialPublishingClient,
   type SettingsRepository
 } from '@one-vegetable/core/runtime';
+import type { AlibabaAuthorizationsSummary } from '@one-vegetable/core';
 import '@one-vegetable/ui/styles.css';
 import { ALIBABA_CREDENTIAL_ACQUISITION_ORIGINS } from '../../lib/alibaba-credential-page-driver';
-import { createExtensionOperationAvailabilityClient } from '../../lib/operation-availability';
+import {
+  createExtensionOperationAvailabilityClient,
+  type AuthorizationStatus
+} from '../../lib/operation-availability';
 import { EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY } from '../../lib/product-display-mutation-storage';
 import { extensionS3Storage, requestS3 } from '../../lib/s3-client';
 import { EXTENSION_S3_STORAGE_KEY } from '../../lib/s3-protocol';
@@ -174,6 +178,20 @@ const socialPublishing: SocialPublishingClient = {
 
 const settings: SettingsRepository = {
   load: () => requestVault('get-settings', undefined),
+  authorizations: () => requestVault('authorizations', undefined),
+  loadAuthorization: (protocol) => requestVault('get-authorization', { protocol }),
+  confirmAuthorizations: (topConfigurationId, iopConfigurationId) =>
+    requestVault('confirm-authorizations', { topConfigurationId, iopConfigurationId }),
+  async clearAuthorization(protocol) {
+    await requestVault('clear-authorization', { protocol });
+  },
+  async refreshAuthorization(protocol) {
+    await ensureOptionalHostPermission(
+      protocol === 'iop' ? IOP_API_ORIGIN : 'https://oauth.alibaba.com',
+      translateUi('settings.extensionRuntime.permissionPurposes.customGateway')
+    );
+    return requestVault('refresh-authorization', { protocol });
+  },
   async save(value) {
     await ensureOptionalHostPermission(
       value.protocol === 'iop' ? IOP_API_ORIGIN : value.endpoint,
@@ -302,7 +320,15 @@ function rememberAcquisitionState(
 }
 
 interface VaultOperationMap {
-  status: { request: undefined; response: CredentialVaultStatus };
+  authorizations: { request: undefined; response: AlibabaAuthorizationsSummary };
+  'get-authorization': { request: { protocol: 'top' | 'iop' }; response: GatewaySettings };
+  'confirm-authorizations': {
+    request: { topConfigurationId: string; iopConfigurationId: string };
+    response: AlibabaAuthorizationsSummary;
+  };
+  'clear-authorization': { request: { protocol: 'top' | 'iop' }; response: null };
+  'refresh-authorization': { request: { protocol: 'top' | 'iop' }; response: AlibabaAuthorizationsSummary };
+  status: { request: undefined; response: CredentialVaultStatus & AuthorizationStatus };
   'get-settings': { request: undefined; response: GatewaySettings };
   create: {
     request: { passphrase: string; settings: GatewaySettings };

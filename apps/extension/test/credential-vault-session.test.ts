@@ -16,6 +16,36 @@ const settings = {
 };
 
 describe('extension credential vault session', () => {
+  it('restores both encrypted protocol slots and confirmation without persisting plaintext', async () => {
+    const storage = new MemorySessionStorage();
+    const input = {
+      ...settings,
+      configurationId: 'top-profile',
+      refreshToken: 'top-private-refresh',
+      protocolCredentials: {
+        iop: {
+          ...settings,
+          protocol: 'iop' as const,
+          configurationId: 'iop-profile',
+          endpoint: 'https://openapi-api.alibaba.com/rest',
+          accessToken: 'iop-private-token',
+          refreshToken: 'iop-private-refresh'
+        }
+      },
+      authorizationBinding: {
+        topConfigurationId: 'top-profile',
+        iopConfigurationId: 'iop-profile',
+        confirmedAtUtc: 1_000
+      }
+    };
+    const created = await createCredentialVault(input, '123456');
+    await new ExtensionCredentialVaultSession(storage).activate(created, created.sessionKeyMaterial);
+    for (const secret of ['top-private-refresh', 'iop-private-refresh', 'iop-private-token'])
+      expect(JSON.stringify(storage.values)).not.toContain(secret);
+    expect((await new ExtensionCredentialVaultSession(storage).read(created.record))?.value.settings).toEqual(
+      input
+    );
+  });
   it('restores an unlocked vault after the service worker memory is lost', async () => {
     const storage = new MemorySessionStorage();
     const created = await createCredentialVault(settings, 'session-password');

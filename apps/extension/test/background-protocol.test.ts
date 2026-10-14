@@ -4,9 +4,13 @@ import {
   AlibabaClient,
   SETTINGS_STORAGE_KEY,
   isProductMutationJob,
+  unlockCredentialVault,
+  type AlibabaAuthorizationsSummary,
+  type CredentialVaultRecord,
   type GatewaySettings
 } from '@one-vegetable/core';
 import { IOP_BUSINESS_ENDPOINT } from '@one-vegetable/core/alibaba-iop';
+import { AlibabaIopTokenClient } from '@one-vegetable/core/alibaba-iop';
 import { iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
 import {
   compareProductMutationFingerprints,
@@ -15,19 +19,28 @@ import {
 import { createProductOperationContext } from '../../../packages/core/src/product-operation-context';
 import { installNodeXmlDomGlobals } from '../../../scripts/node-xml-dom';
 import business from '../../../mock/data/alibaba-auth/iop-business-responses.json';
+import credentialFixtures from '../../../mock/data/node-gateway-credentials.json';
+import { ExtensionAlibabaCredentialAcquisitionController } from '../lib/alibaba-credential-acquisition';
+import { ExtensionCredentialVaultSession } from '../lib/credential-vault-session';
+import { AUTHORIZATION_REFRESH_INTENTS_KEY } from '../lib/authorization-refresh';
 
 const state = vi.hoisted<{
   local: Record<string, unknown>;
   session: Record<string, unknown>;
+  localReads: string[];
   listener: undefined | ((value: unknown, sender: { id: string; url: string }) => unknown);
 }>(() => ({
   local: {},
   session: {},
+  localReads: [],
   listener: undefined
 }));
 vi.mock('wxt/browser', () => {
   const area = (name: 'local' | 'session') => ({
-    get: (key: string) => Promise.resolve(Object.hasOwn(state[name], key) ? { [key]: state[name][key] } : {}),
+    get: (key: string) => {
+      if (name === 'local') state.localReads.push(key);
+      return Promise.resolve(Object.hasOwn(state[name], key) ? { [key]: state[name][key] } : {});
+    },
     set: (items: Record<string, unknown>) => {
       Object.assign(state[name], items);
       return Promise.resolve();
@@ -77,7 +90,11 @@ interface Result {
   error?: { code: string };
 }
 async function send(
-  kind: 'credential-vault-request' | 'gateway-request' | 'product-mutation-job-request',
+  kind:
+    | 'credential-vault-request'
+    | 'gateway-request'
+    | 'product-mutation-job-request'
+    | 'alibaba-credential-acquisition-request',
   operation: string,
   payload?: unknown
 ) {
@@ -105,10 +122,44 @@ async function create(value = settings) {
     await send('credential-vault-request', 'create', { passphrase: '123456', settings: value })
   ).toMatchObject({ ok: true });
 }
+const topSettings: GatewaySettings = {
+  appKey: 'fixture-top-key',
+  appSecret: 'fixture-top-secret',
+  accessToken: 'fixture-top-access',
+  endpoint: ALIBABA_GATEWAY,
+  signMethod: 'hmac'
+};
+async function createPair(confirm = true) {
+  await create(topSettings);
+  expect(
+    await send('credential-vault-request', 'save', { ...settings, refreshToken: 'fixture-iop-refresh' })
+  ).toMatchObject({ ok: true });
+  const summary = (await send('credential-vault-request', 'authorizations'))
+    .data as unknown as AlibabaAuthorizationsSummary;
+  if (confirm)
+    expect(
+      await send('credential-vault-request', 'confirm-authorizations', {
+        topConfigurationId: summary.binding.topConfigurationId,
+        iopConfigurationId: summary.binding.iopConfigurationId
+      })
+    ).toMatchObject({ ok: true, data: { binding: { confirmed: true } } });
+  return summary;
+}
+async function fixtureContext(value = settings) {
+  const summary = (await send('credential-vault-request', 'authorizations'))
+    .data as unknown as AlibabaAuthorizationsSummary;
+  const configurationId = summary[value.protocol ?? 'top']?.configurationId;
+  if (!configurationId) throw new Error('Missing fixture configuration ID');
+  return createProductOperationContext('extension:local-admin', {
+    ...value,
+    galleryAccountGeneration: configurationId
+  });
+}
 beforeEach(() => {
   restoreXmlGlobals = installNodeXmlDomGlobals();
   state.local = {};
   state.session = {};
+  state.localReads = [];
   background.main();
   // Only local fixtures are allowed. Any unexpected attempt to use the network fails the test.
   vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Unexpected network request')));
@@ -154,7 +205,7 @@ describe('extension background protocol persistence and dispatch', () => {
     });
     expect(fetch).not.toHaveBeenCalled();
   });
-  it('retains legacy TOP settings and permits only an explicit marker switch', async () => {
+  it('retains legacy TOP as the default when saving an explicit IOP profile', async () => {
     const legacy = { ...settings, endpoint: ALIBABA_GATEWAY, signMethod: 'md5' as const };
     delete legacy.protocol;
     await create(legacy);
@@ -162,6 +213,10 @@ describe('extension background protocol persistence and dispatch', () => {
     expect(safe).toMatchObject({ endpoint: ALIBABA_GATEWAY, signMethod: 'md5' });
     expect(safe).not.toHaveProperty('protocol');
     expect(await send('credential-vault-request', 'save', settings)).toMatchObject({
+      ok: true,
+      data: { endpoint: ALIBABA_GATEWAY }
+    });
+    expect(await send('credential-vault-request', 'get-authorization', { protocol: 'iop' })).toMatchObject({
       ok: true,
       data: { protocol: 'iop', endpoint: IOP_BUSINESS_ENDPOINT }
     });
@@ -199,7 +254,7 @@ describe('extension background protocol persistence and dispatch', () => {
     async (operation, path, wrapper) => {
       await create();
       expect(iopOperationReason(operation)).toBeNull();
-      const productContext = await createProductOperationContext('extension:local-admin', settings);
+      const productContext = await fixtureContext();
       let writes = 0;
       vi.mocked(fetch).mockImplementation((url, init) => {
         const target = new URL(url instanceof URL ? url.href : typeof url === 'string' ? url : url.url);
@@ -310,7 +365,7 @@ describe('extension background protocol persistence and dispatch', () => {
     'blocks %s with changed account/gateway context before network',
     async (operation) => {
       await create();
-      const productContext = await createProductOperationContext('extension:local-admin', settings);
+      const productContext = await fixtureContext();
       for (const field of ['identity', 'gateway'] as const) {
         expect(
           await sendEnvelope({
@@ -348,7 +403,7 @@ describe('extension background protocol persistence and dispatch', () => {
   });
   it('rejects completion of a pending IOP update after saved credentials change', async () => {
     await create();
-    const productContext = await createProductOperationContext('extension:local-admin', settings);
+    const productContext = await fixtureContext();
     vi.mocked(fetch).mockResolvedValue(
       Response.json({ code: 0, result: { success: true, product_id: 100001 } })
     );
@@ -418,6 +473,20 @@ describe('extension background protocol persistence and dispatch', () => {
     expect(vi.mocked(fetch).mock.calls[0]?.[0]).toMatchObject({
       href: `${IOP_BUSINESS_ENDPOINT}/icbu/product/photobank/group/list`
     });
+  });
+  it('never returns the unselected profile even when it is the default and the caller selects the other slot', async () => {
+    await createPair();
+    const masked = await send('credential-vault-request', 'get-authorization', { protocol: 'iop' });
+    const visible = JSON.stringify(masked);
+    for (const field of [
+      topSettings.appKey,
+      topSettings.endpoint,
+      topSettings.accessToken,
+      topSettings.appSecret
+    ])
+      expect(visible).not.toContain(field);
+    expect(masked.data).not.toHaveProperty('authorizationBinding');
+    expect(masked.data).not.toHaveProperty('protocolCredentials');
   });
   it('rejects unsupported IOP order filters instead of ignoring them or sending to TOP', async () => {
     await create();
@@ -496,5 +565,384 @@ describe('extension background protocol persistence and dispatch', () => {
     expect(parameters.get('session')).toBe(settings.accessToken);
     expect(parameters.get('sign_method')).toBe('hmac');
     expect(parameters.has('access_token')).toBe(false);
+  });
+  it('preserves TOP importing IOP and rejects stale pair confirmation after replacement', async () => {
+    const summary = await createPair();
+    const record = state.local[SETTINGS_STORAGE_KEY] as CredentialVaultRecord;
+    const restored = await unlockCredentialVault(record, '123456');
+    expect(restored.settings).toMatchObject(topSettings);
+    expect(restored.settings.protocolCredentials?.iop).toMatchObject({
+      ...settings,
+      refreshToken: 'fixture-iop-refresh'
+    });
+    const safe = await send('credential-vault-request', 'get-authorization', { protocol: 'iop' });
+    const encoded = JSON.stringify([
+      safe,
+      await send('credential-vault-request', 'get-settings'),
+      await send('credential-vault-request', 'authorizations'),
+      state.local,
+      state.session
+    ]);
+    for (const secret of [
+      settings.appSecret,
+      settings.accessToken,
+      'fixture-iop-refresh',
+      topSettings.appSecret,
+      topSettings.accessToken
+    ])
+      expect(encoded).not.toContain(secret);
+    expect(safe.data).not.toHaveProperty('protocolCredentials');
+    expect(safe.data).not.toHaveProperty('refreshToken');
+    await send('credential-vault-request', 'save', settings);
+    expect(
+      await send('credential-vault-request', 'confirm-authorizations', {
+        topConfigurationId: summary.binding.topConfigurationId,
+        iopConfigurationId: summary.binding.iopConfigurationId
+      })
+    ).toMatchObject({ ok: false, error: { code: 'ALIBABA_AUTHORIZATION_BINDING_STALE' } });
+    expect(await send('credential-vault-request', 'authorizations')).toMatchObject({
+      data: { binding: { confirmed: false } }
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it('routes all and ungrouped photos to TOP, a specific group to IOP, with no error fallback', async () => {
+    await createPair();
+    for (const [payload, protocol] of [
+      [{}, 'top'],
+      [{ groupId: '-1' }, 'top'],
+      [{ ungrouped: true }, 'top'],
+      [{ groupId: '123' }, 'iop']
+    ] as const) {
+      vi.mocked(fetch).mockClear();
+      vi.mocked(fetch).mockImplementation(() =>
+        Promise.resolve(
+          Response.json(
+            protocol === 'iop'
+              ? { code: '0', result: { pagination_query_list: { list: [], total: 0 } } }
+              : { images: [], total: 0 }
+          )
+        )
+      );
+      const result = await send('gateway-request', 'listPhotos', payload);
+      expect(result.error).toBeUndefined();
+      expect(result).toMatchObject({ ok: true });
+      expect(fetch).toHaveBeenCalledOnce();
+      const [url, init] = vi.mocked(fetch).mock.calls[0] ?? [];
+      const parameters = new URLSearchParams(init?.body as string);
+      expect(url).toMatchObject({
+        href: protocol === 'iop' ? `${IOP_BUSINESS_ENDPOINT}/icbu/product/photobank/list` : ALIBABA_GATEWAY
+      });
+      expect(parameters.get(protocol === 'iop' ? 'access_token' : 'session')).toBe(
+        protocol === 'iop' ? settings.accessToken : topSettings.accessToken
+      );
+    }
+    vi.mocked(fetch).mockClear();
+    vi.mocked(fetch).mockResolvedValue(Response.json({ code: 'InvalidAccessToken' }));
+    expect(await send('gateway-request', 'listPhotos', { groupId: '123' })).toMatchObject({ ok: false });
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+  it('generates operation-specific contexts and honors the pinned profile before preferred routing', async () => {
+    await createPair();
+    const product = await sendEnvelope({ kind: 'product-operation-context' });
+    const gallery = await sendEnvelope({ kind: 'gallery-transfer-context' });
+    expect(product.data).toMatchObject(await fixtureContext());
+    expect(gallery.data).toMatchObject(await fixtureContext(topSettings));
+    // listPhotoGroups normally prefers IOP, but this request is pinned to TOP.
+    vi.mocked(fetch).mockResolvedValue(Response.json({ groups: [] }));
+    expect(
+      await sendEnvelope({
+        kind: 'gateway-request',
+        operation: 'listPhotoGroups',
+        payload: {},
+        productContext: await fixtureContext(topSettings)
+      })
+    ).toMatchObject({ ok: true });
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toMatchObject({ href: ALIBABA_GATEWAY });
+    vi.mocked(fetch).mockClear();
+    await send('credential-vault-request', 'clear-authorization', { protocol: 'iop' });
+    expect(
+      await sendEnvelope({
+        kind: 'gateway-request',
+        operation: 'listPhotoGroups',
+        payload: {},
+        productContext: product.data
+      })
+    ).toMatchObject({ ok: false, error: { code: 'PRODUCT_CONTEXT_CHANGED' } });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it('keeps denied dual-profile writes closed and never sends a second uncertain write', async () => {
+    await createPair();
+    expect(await send('gateway-request', 'createTradeOrder', {})).toMatchObject({
+      ok: false,
+      error: { code: 'REAL_MUTATION_DISABLED' }
+    });
+    expect(
+      await send('gateway-request', 'callCapability', {
+        method: 'alibaba.icbu.product.schema.update',
+        parameters: {}
+      })
+    ).toMatchObject({ ok: false });
+    expect(fetch).not.toHaveBeenCalled();
+    vi.mocked(fetch).mockRejectedValue(new Error('fixture uncertain response'));
+    expect(await send('gateway-request', 'saveProductDraft', creationInput)).toMatchObject({ ok: false });
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toMatchObject({
+      href: `${IOP_BUSINESS_ENDPOINT}/icbu/product/schema/add/draft`
+    });
+  });
+  it('refreshes only IOP, preserving both configuration IDs and user confirmation', async () => {
+    const summary = await createPair();
+    const refresh = vi.spyOn(AlibabaIopTokenClient.prototype, 'request').mockResolvedValue({
+      accessToken: 'fixture-rotated-access',
+      refreshToken: 'fixture-rotated-refresh',
+      expiresInSeconds: 3600,
+      refreshExpiresInSeconds: 7200
+    });
+    expect(
+      await send('credential-vault-request', 'refresh-authorization', { protocol: 'iop' })
+    ).toMatchObject({
+      ok: true,
+      data: {
+        binding: {
+          confirmed: true,
+          topConfigurationId: summary.binding.topConfigurationId,
+          iopConfigurationId: summary.binding.iopConfigurationId
+        }
+      }
+    });
+    expect(refresh).toHaveBeenCalledOnce();
+    const restored = await unlockCredentialVault(
+      state.local[SETTINGS_STORAGE_KEY] as CredentialVaultRecord,
+      '123456'
+    );
+    expect(restored.settings.accessToken).toBe(topSettings.accessToken);
+    expect(restored.settings.protocolCredentials?.iop).toMatchObject({
+      accessToken: 'fixture-rotated-access',
+      configurationId: summary.binding.iopConfigurationId
+    });
+    expect(
+      JSON.stringify(await send('credential-vault-request', 'get-authorization', { protocol: 'iop' }))
+    ).not.toContain('fixture-rotated');
+    expect(
+      await send('credential-vault-request', 'refresh-authorization', { protocol: 'top' })
+    ).toMatchObject({ ok: false, error: { code: 'ALIBABA_REFRESH_TOKEN_MISSING' } });
+    expect(refresh).toHaveBeenCalledOnce();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it.each(['top', 'iop'] as const)(
+    'saves acquired %s to its actual slot, reports that slot, and never exposes the other profile',
+    async (protocol) => {
+      const other = protocol === 'top' ? settings : topSettings;
+      await create(other);
+      const original = (
+        await unlockCredentialVault(state.local[SETTINGS_STORAGE_KEY] as CredentialVaultRecord, '123456')
+      ).settings;
+      const bundle = {
+        ...credentialFixtures.oauthBundle,
+        schemaVersion: 1 as const,
+        protocol,
+        application: {
+          ...credentialFixtures.oauthBundle.application,
+          appKey: 'acquired-slot-key',
+          appSecret: 'acquired-slot-secret'
+        },
+        oauth: {
+          ...credentialFixtures.oauthBundle.oauth,
+          accessToken: 'acquired-slot-access',
+          refreshToken: 'acquired-slot-refresh'
+        },
+        callback: { ...credentialFixtures.oauthBundle.callback, stateMatched: true as const }
+      };
+      vi.spyOn(
+        ExtensionAlibabaCredentialAcquisitionController.prototype,
+        'completedBundle'
+      ).mockResolvedValue(bundle);
+      const result = await send('alibaba-credential-acquisition-request', 'save-to-vault');
+      expect(result).toMatchObject({ ok: true, data: { protocol, appKey: bundle.application.appKey } });
+      expect(JSON.stringify(result)).not.toContain(other.appKey);
+      expect(JSON.stringify(result)).not.toContain('acquired-slot-secret');
+      expect(JSON.stringify(result)).not.toContain('acquired-slot-refresh');
+      const restored = await unlockCredentialVault(
+        state.local[SETTINGS_STORAGE_KEY] as CredentialVaultRecord,
+        '123456'
+      );
+      const { protocolCredentials, ...primary } = restored.settings;
+      expect(primary).toEqual(original);
+      expect(protocolCredentials?.[protocol]).toMatchObject({
+        protocol,
+        appKey: bundle.application.appKey,
+        refreshToken: bundle.oauth.refreshToken
+      });
+      const masked = await send('credential-vault-request', 'get-authorization', { protocol });
+      expect(masked).toMatchObject({
+        data: { protocol, appKey: bundle.application.appKey, appSecret: '', accessToken: '' }
+      });
+      expect(JSON.stringify(masked)).not.toContain(other.appKey);
+      expect(masked.data).not.toHaveProperty('protocolCredentials');
+      expect(masked.data).not.toHaveProperty('refreshToken');
+      expect(fetch).not.toHaveBeenCalled();
+    }
+  );
+  it('reports an unknown refresh only for the matching configuration ID without leaking intent values', async () => {
+    await createPair();
+    const before = (await send('credential-vault-request', 'authorizations'))
+      .data as unknown as AlibabaAuthorizationsSummary;
+    const refresh = vi
+      .spyOn(AlibabaIopTokenClient.prototype, 'request')
+      .mockRejectedValue(new Error('fixture-provider-secret'));
+    expect(
+      await send('credential-vault-request', 'refresh-authorization', { protocol: 'iop' })
+    ).toMatchObject({ ok: false, error: { code: 'AUTH_REFRESH_RESULT_UNKNOWN' } });
+    const after = (await send('credential-vault-request', 'authorizations'))
+      .data as unknown as AlibabaAuthorizationsSummary;
+    expect(after.top).toEqual(before.top);
+    expect(after.iop).toMatchObject({
+      canRefresh: false,
+      lastRefreshErrorCode: 'AUTH_REFRESH_RESULT_UNKNOWN'
+    });
+    const id = before.binding.iopConfigurationId;
+    if (!id) throw new Error('Missing fixture IOP configuration ID');
+    state.local[AUTHORIZATION_REFRESH_INTENTS_KEY] = {
+      [id]: { requestId: 'private-intent-value', status: 'sending', body: 'private-intent-body' }
+    };
+    const safe = await send('credential-vault-request', 'authorizations');
+    expect(JSON.stringify(safe)).not.toContain('private-intent');
+    expect(
+      await send('credential-vault-request', 'refresh-authorization', { protocol: 'iop' })
+    ).toMatchObject({ ok: false, error: { code: 'AUTH_REFRESH_RESULT_UNKNOWN' } });
+    expect(refresh).toHaveBeenCalledOnce();
+    await send('credential-vault-request', 'save', { ...settings, refreshToken: 'fixture-new-refresh' });
+    expect(await send('credential-vault-request', 'authorizations')).toMatchObject({
+      data: {
+        iop: {
+          canRefresh: true,
+          lastRefreshErrorCode: null
+        }
+      }
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it('reads vault storage once for status/pool and once for an entire capability catalog', async () => {
+    await createPair();
+    state.localReads = [];
+    expect(await send('credential-vault-request', 'status')).toMatchObject({
+      data: {
+        pool: { top: true, iop: true, defaultProtocol: 'top', bindingConfirmed: true }
+      }
+    });
+    expect(state.localReads.filter((key) => key === SETTINGS_STORAGE_KEY)).toHaveLength(1);
+    state.localReads = [];
+    expect(await send('gateway-request', 'listCapabilities')).toMatchObject({ ok: true });
+    expect(state.localReads.filter((key) => key === SETTINGS_STORAGE_KEY)).toHaveLength(1);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it('keeps TOP gallery and IOP product contexts stable across both token refreshes and session restoration', async () => {
+    const originalSummary = await createPair();
+    await send('credential-vault-request', 'save', { ...topSettings, refreshToken: 'fixture-top-refresh' });
+    const summary = (await send('credential-vault-request', 'authorizations'))
+      .data as unknown as AlibabaAuthorizationsSummary;
+    await send('credential-vault-request', 'confirm-authorizations', {
+      topConfigurationId: summary.binding.topConfigurationId,
+      iopConfigurationId: summary.binding.iopConfigurationId
+    });
+    expect(summary.binding.iopConfigurationId).toBe(originalSummary.binding.iopConfigurationId);
+    const productBefore = await sendEnvelope({ kind: 'product-operation-context' });
+    const galleryBefore = await sendEnvelope({ kind: 'gallery-transfer-context' });
+    const iopRefresh = vi.spyOn(AlibabaIopTokenClient.prototype, 'request').mockResolvedValue({
+      accessToken: 'fixture-iop-rotated',
+      refreshToken: 'fixture-iop-next-refresh',
+      expiresInSeconds: 3600,
+      refreshExpiresInSeconds: null
+    });
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json({
+        access_token: 'fixture-top-rotated',
+        refresh_token: 'fixture-top-next-refresh',
+        expires_in: 3600
+      })
+    );
+    expect(
+      await send('credential-vault-request', 'refresh-authorization', { protocol: 'top' })
+    ).toMatchObject({ ok: true, data: { binding: { confirmed: true } } });
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toMatchObject({ href: 'https://oauth.alibaba.com/token' });
+    expect(
+      await send('credential-vault-request', 'refresh-authorization', { protocol: 'iop' })
+    ).toMatchObject({ ok: true, data: { binding: { confirmed: true } } });
+    expect(iopRefresh).toHaveBeenCalledOnce();
+    expect((await sendEnvelope({ kind: 'product-operation-context' })).data).toEqual(productBefore.data);
+    expect((await sendEnvelope({ kind: 'gallery-transfer-context' })).data).toEqual(galleryBefore.data);
+    const record = state.local[SETTINGS_STORAGE_KEY] as CredentialVaultRecord;
+    const session = new ExtensionCredentialVaultSession({
+      get: (key) => Promise.resolve({ [key]: state.session[key] }),
+      set: (items) => {
+        Object.assign(state.session, items);
+        return Promise.resolve();
+      },
+      remove: (key) => {
+        Reflect.deleteProperty(state.session, key);
+        return Promise.resolve();
+      }
+    });
+    const restored = await session.read(record);
+    expect(restored?.value.settings.configurationId).toBe(summary.binding.topConfigurationId);
+    expect(restored?.value.settings.protocolCredentials?.iop?.configurationId).toBe(
+      summary.binding.iopConfigurationId
+    );
+    expect(JSON.stringify(restored?.value.settings)).not.toContain('galleryAccountGeneration');
+    await send('credential-vault-request', 'lock');
+    await send('credential-vault-request', 'unlock', { passphrase: '123456' });
+    expect((await sendEnvelope({ kind: 'product-operation-context' })).data).toEqual(productBefore.data);
+    vi.mocked(fetch).mockClear();
+    vi.mocked(fetch).mockResolvedValue(Response.json({ code: '0', result: { groups: [] } }));
+    expect(
+      await sendEnvelope({
+        kind: 'gateway-request',
+        operation: 'listPhotoGroups',
+        payload: {},
+        productContext: productBefore.data
+      })
+    ).toMatchObject({ ok: true });
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toMatchObject({
+      href: `${IOP_BUSINESS_ENDPOINT}/icbu/product/photobank/group/list`
+    });
+  });
+  it('allows only trusted options to access/manage either slot, including summaries', async () => {
+    await createPair();
+    for (const operation of [
+      'status',
+      'get-settings',
+      'authorizations',
+      'get-authorization',
+      'save',
+      'confirm-authorizations',
+      'clear-authorization',
+      'refresh-authorization',
+      'lock'
+    ]) {
+      expect(
+        await sendEnvelope(
+          { kind: 'credential-vault-request', operation, payload: { protocol: 'iop' } },
+          { ...sender, url: 'chrome-extension://protocol-test-extension/popup.html' }
+        )
+      ).toMatchObject({ ok: false, error: { code: 'EXTENSION_TRUSTED_PAGE_REQUIRED' } });
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it.each([
+    ['authorizations', {}],
+    ['get-authorization', { protocol: 'bad' }],
+    ['clear-authorization', { protocol: 'top', extra: true }],
+    ['confirm-authorizations', { topConfigurationId: 'test' }],
+    ['save', { ...settings, protocolCredentials: { top: topSettings } }],
+    ['save', { ...settings, refreshToken: {} }],
+    ['save', { ...settings, refreshTokenExpiresTimeUtc: -1 }]
+  ])('strictly rejects malformed vault %s payloads before storage changes', async (operation, payload) => {
+    await createPair();
+    const ciphertext = JSON.stringify(state.local);
+    expect(await send('credential-vault-request', operation, payload)).toMatchObject({ ok: false });
+    expect(JSON.stringify(state.local)).toBe(ciphertext);
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
