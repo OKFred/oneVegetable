@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
-import { credentialExpiryState } from '../lib/credential-expiry';
+import { credentialExpiryState, credentialExpiryTone } from '../lib/credential-expiry';
 import { formatDateTime } from '../lib/date-time';
 import { useGatewayCredentialsI18n } from '../i18n/gateway-credentials';
 const props = defineProps<{
   expires: number | null | undefined;
+  capturedTime?: number | null | undefined;
   refreshExpires?: number | null | undefined;
   invalid?: boolean;
   extension?: boolean;
@@ -13,6 +14,9 @@ const t = useGatewayCredentialsI18n();
 const now = ref(Date.now());
 const expiry = computed(() => credentialExpiryState(props.expires, now.value));
 const state = computed(() => (props.invalid ? 'invalid' : expiry.value.status));
+const tone = computed(() =>
+  props.invalid ? 'danger' : credentialExpiryTone(props.expires, props.capturedTime, now.value)
+);
 const remaining = computed(() => t(`remaining${expiry.value.unit}`, { count: expiry.value.count }));
 let timer: ReturnType<typeof globalThis.setInterval> | undefined;
 onMounted(() => {
@@ -28,11 +32,14 @@ onBeforeUnmount(() => {
   <section
     class="space-y-2 rounded-lg border p-3 text-sm"
     :class="
-      ['expired', 'expiring', 'invalid'].includes(state)
-        ? 'border-amber-500/50 bg-amber-500/10'
-        : 'bg-muted/30'
+      tone === 'danger'
+        ? 'border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-300'
+        : tone === 'warning'
+          ? 'border-amber-500/50 bg-amber-500/10'
+          : 'bg-muted/30'
     "
     data-testid="credential-expiry"
+    :data-tone="tone"
     role="status"
   >
     <p class="font-medium">

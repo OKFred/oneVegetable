@@ -25,6 +25,7 @@ const t = useGatewayCredentialsI18n();
       v-if="summary && (summary.configured || summary.accessTokenExpiresTimeUtc != null)"
       :data-testid="`authorization-${protocol}-expiry`"
       :expires="summary.accessTokenExpiresTimeUtc"
+      :captured-time="summary.accessTokenCapturedTimeUtc"
       :refresh-expires="summary.refreshTokenExpiresTimeUtc"
       :extension="extension"
     />

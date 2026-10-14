@@ -135,7 +135,10 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
       if (request.url().endsWith('/admin/gateway-credentials/refresh')) renewalRequests += 1;
     });
     await page.getByTestId('dashboard-renew-authorization').click();
-    const renewal = page.getByRole('dialog', { name: en ? 'Renew authorization' : '授权续期', exact: true });
+    const renewal = page.getByRole('dialog', {
+      name: en ? 'TOP · Renew authorization' : 'TOP · 授权续期',
+      exact: true
+    });
     await expect(renewal).toContainText(en ? 'Reauthorize and import' : '重新授权后导入');
     expect(renewalRequests).toBe(0);
     await renewal

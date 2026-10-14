@@ -72,4 +72,26 @@ describe('authorization expiry reminders', () => {
     expect(wrapper.text()).not.toContain('剩余约');
     wrapper.unmount();
   });
+  it.each([
+    [0.8, 'normal'],
+    [0.4, 'warning'],
+    [0.2, 'danger']
+  ] as const)(
+    'retains proportional expiry coloring in individual authorization cards (%s)',
+    (fraction, tone) => {
+      vi.useFakeTimers();
+      const now = 1_800_000_000_000;
+      const lifetime = 100 * 86_400_000;
+      vi.setSystemTime(now);
+      const wrapper = mount(CredentialExpiryNotice, {
+        props: {
+          expires: now + fraction * lifetime,
+          capturedTime: now - (1 - fraction) * lifetime
+        }
+      });
+      expect(wrapper.attributes('data-tone')).toBe(tone);
+      wrapper.unmount();
+      expect(vi.getTimerCount()).toBe(0);
+    }
+  );
 });
