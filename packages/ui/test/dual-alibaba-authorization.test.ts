@@ -640,20 +640,20 @@ describe('overview independent expiries and explicit renewal', () => {
       vi.useFakeTimers();
       vi.setSystemTime(1_800_000_000_000);
       const view = await harness(DashboardAuthorizationCard, { extension });
-      expect(view.wrapper.get('[data-testid="authorization-top"]').text()).toContain('有效期未知');
-      expect(view.wrapper.get('[data-testid="authorization-iop"]').text()).toContain('剩余约 30 天');
-      expect(view.wrapper.get('[data-testid="dashboard-renew-authorization-top"]').find('svg').exists()).toBe(
-        true
-      );
-      expect(view.wrapper.get('[data-testid="dashboard-renew-authorization-iop"]').classes()).toContain(
-        'border-input'
+      expect(view.wrapper.get('[data-testid="authorization-top"]').text()).toContain('未知');
+      expect(view.wrapper.get('[data-testid="authorization-iop"]').text()).toContain('30 天');
+      expect(view.wrapper.findAll('button')).toHaveLength(0);
+      expect(view.wrapper.text()).not.toContain('Access Token');
+      expect(view.wrapper.text()).not.toContain('Refresh Token');
+      expect(view.wrapper.get('[data-testid="dashboard-dual-authorizations"]').classes()).toContain(
+        'grid-cols-2'
       );
       const readCount = extension ? view.settingsSummary.mock.calls.length : view.read.mock.calls.length;
       uiI18n.global.locale.value = 'en-US';
       await vi.advanceTimersByTimeAsync(60_000);
       await flushPromises();
-      expect(view.wrapper.get('[data-testid="authorization-top"]').text()).toContain('Expiry unknown');
-      expect(view.wrapper.get('[data-testid="authorization-iop"]').text()).toContain('About 29 days left');
+      expect(view.wrapper.get('[data-testid="authorization-top"]').text()).toContain('Unknown');
+      expect(view.wrapper.get('[data-testid="authorization-iop"]').text()).toContain('29 days');
       expect(extension ? view.settingsSummary.mock.calls.length : view.read.mock.calls.length).toBe(
         readCount
       );
@@ -692,7 +692,36 @@ describe('overview independent expiries and explicit renewal', () => {
     expect(view.read).toHaveBeenCalledTimes(2);
     expect(view.wrapper.find('[data-testid="dashboard-dual-authorizations"]').exists()).toBe(false);
     expect(view.wrapper.text()).toContain('未知');
-    expect(view.wrapper.get('button').attributes('aria-label')).toContain('有效期未知');
+    expect(view.wrapper.get('[data-testid="authorization-details"]').attributes('aria-label')).toContain(
+      '有效期未知'
+    );
+  });
+
+  it('keeps compact dual countdown colors and expiry details without rendering settings actions', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_800_000_000_000);
+    const summary = dualSummary();
+    if (!summary.iop || !summary.top) throw new Error('Missing fixture profiles');
+    const day = 86_400_000;
+    summary.top.accessTokenCapturedTimeUtc = Date.now() - 60 * day;
+    summary.top.accessTokenExpiresTimeUtc = Date.now() + 40 * day;
+    summary.iop.accessTokenCapturedTimeUtc = Date.now() - 80 * day;
+    summary.iop.accessTokenExpiresTimeUtc = Date.now() + 20 * day;
+    const view = await harness(DashboardAuthorizationCard, { summary });
+    expect(
+      view.wrapper.get('[data-testid="authorization-top"] [role="status"]').attributes('data-tone')
+    ).toBe('warning');
+    expect(
+      view.wrapper.get('[data-testid="authorization-iop"] [role="status"]').attributes('data-tone')
+    ).toBe('danger');
+    expect(view.wrapper.get('[data-testid="authorization-details"]').attributes('aria-label')).toContain(
+      'Access Token'
+    );
+    expect(view.wrapper.text()).not.toContain('Access Token');
+    expect(view.wrapper.text().length).toBeLessThan(70);
+    expect(view.wrapper.findAll('button')).toHaveLength(0);
+    expect(view.read).toHaveBeenCalledOnce();
+    expect(view.status).not.toHaveBeenCalled();
   });
 
   it.each(['top', 'iop'] as const)(
@@ -704,9 +733,11 @@ describe('overview independent expiries and explicit renewal', () => {
       if (selected) selected.accessTokenExpiresTimeUtc = Date.parse(fixture.knownExpiry);
       const view = await harness(DashboardAuthorizationCard, { summary, extension: true });
       expect(view.wrapper.find('[data-testid="dashboard-dual-authorizations"]').exists()).toBe(false);
-      expect(view.wrapper.get('[role="status"]').classes()).toContain('text-xl');
-      expect(view.wrapper.findAll('button')).toHaveLength(1);
-      expect(view.wrapper.get('button').attributes('aria-label')).toContain('2030-01-02');
+      expect(view.wrapper.get('[role="status"]').classes()).toContain('text-3xl');
+      expect(view.wrapper.findAll('button')).toHaveLength(0);
+      expect(view.wrapper.get('[data-testid="authorization-details"]').attributes('aria-label')).toContain(
+        '2030-01-02'
+      );
       expect(view.wrapper.find('[data-testid="dashboard-renew-authorization-top"]').exists()).toBe(false);
       expect(view.wrapper.find('[data-testid="dashboard-renew-authorization-iop"]').exists()).toBe(false);
     }

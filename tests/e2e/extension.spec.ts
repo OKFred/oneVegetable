@@ -83,18 +83,20 @@ test('formal MV3 preserves imported token expiry through vault save and page rel
   await expect(page.getByTestId('credential-expiry')).toContainText('2030-01-02');
   await expect(page.getByLabel('Access Token')).toHaveValue('');
   await page.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#/dashboard`);
-  await expect(page.getByTestId('dashboard-authorization-card')).toContainText('剩余约');
-  await expect(page.getByTestId('dashboard-authorization-card').getByRole('button')).toHaveAttribute(
-    'aria-label',
-    /2030-01-02/
-  );
+  await expect(page.getByTestId('dashboard-authorization-card').getByRole('status')).toContainText('天');
+  await expect(page.getByTestId('dashboard-authorization-card').getByRole('button')).toHaveCount(0);
+  await expect(
+    page.getByTestId('dashboard-authorization-card').getByTestId('authorization-details')
+  ).toHaveAttribute('aria-label', /2030-01-02/);
   await page.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#/settings`);
   await page.getByLabel('Access Token').fill(credentialFixture.manual.accessToken);
   await expect(page.getByTestId('credential-expiry')).toContainText('未知，不代表永久有效');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(page.getByText(settingsZh.credentials.encryptedSavedFeedback).first()).toBeVisible();
   await page.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#/dashboard`);
-  await expect(page.getByTestId('dashboard-authorization-card')).toContainText('权限未确认');
+  await expect(
+    page.getByTestId('dashboard-authorization-card').getByTestId('authorization-details')
+  ).toHaveAttribute('aria-label', /权限未确认/);
   await expect(page.getByTestId('dashboard-authorization-card')).not.toContainText('剩余约');
 });
 

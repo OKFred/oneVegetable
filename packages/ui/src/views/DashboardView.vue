@@ -36,7 +36,7 @@ const summary = useQuery({
   >
     <div class="flex flex-wrap items-center gap-2"><DashboardAuthorizationAction /><DashboardShopLink /></div>
   </PageHeader>
-  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+  <div class="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-4" data-testid="dashboard-metrics">
     <DashboardMetricCard
       :title="t('shell.dashboard.metrics.products')"
       :value="summary.data.value?.productCount"

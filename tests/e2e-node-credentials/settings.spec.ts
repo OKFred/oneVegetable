@@ -126,9 +126,9 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     await expect(panel).not.toContainText(fixture.manual.appSecret);
     await expect(panel.getByTestId('credential-expiry')).toContainText(en ? 'Expiry unknown' : '有效期未知');
     await page.goto('/#/dashboard');
-    await expect(page.getByTestId('dashboard-authorization-card')).toContainText(
-      en ? 'Permissions unconfirmed; check renewal' : '权限未确认，请关注续期'
-    );
+    await expect(
+      page.getByTestId('dashboard-authorization-card').getByTestId('authorization-details')
+    ).toHaveAttribute('aria-label', en ? /Permissions unconfirmed; check renewal/ : /权限未确认，请关注续期/);
     await expect(page.getByRole('menuitem', { name: en ? 'Sign out' : '退出', exact: true })).toBeHidden();
     let renewalRequests = 0;
     page.on('request', (request) => {
