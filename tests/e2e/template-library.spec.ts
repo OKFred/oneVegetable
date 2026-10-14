@@ -15,6 +15,9 @@ async function createTemplate(page: Page): Promise<string> {
   await page
     .locator('.ProseMirror')
     .fill('Template editing acceptance. Replace with accurate company information.');
+  await page.getByText('插入占位项', { exact: true }).click();
+  await page.getByRole('button', { name: '插入 商品名称 占位项', exact: true }).click();
+  await expect(page.locator('.ProseMirror')).toContainText('{{productName}}');
   await page.getByRole('combobox', { name: /模板分类/u }).selectOption('company');
   await page.getByRole('button', { name: '保存模板', exact: true }).click();
   await expect(page.getByText(name, { exact: true })).toBeVisible();
@@ -28,7 +31,9 @@ async function archiveRestore(page: Page, name: string): Promise<void> {
   await expect(preview).toContainText('Template editing acceptance');
   await preview.getByRole('button', { name: `关闭${name}`, exact: true }).click();
   await card.getByRole('button', { name: '编辑', exact: true }).click();
-  await page.locator('.ProseMirror').fill('Template editing acceptance. Updated reusable content.');
+  await page
+    .locator('.ProseMirror')
+    .fill('Template editing acceptance. Updated reusable content. {{productName}}');
   await page.getByRole('button', { name: '保存模板', exact: true }).click();
   await card.getByRole('button', { name: '归档', exact: true }).click();
   await expect(card).toBeHidden();
@@ -55,6 +60,7 @@ async function exportImport(page: Page, name: string): Promise<void> {
   expect(bundle.templates).toHaveLength(1);
   expect(bundle.templates[0]?.name).toBe(name);
   expect(bundle.templates[0]?.html).toContain('Updated reusable content');
+  expect(bundle.templates[0]?.html).toContain('{{productName}}');
   expect(Object.keys(bundle.templates[0] ?? {}).sort()).toEqual([
     'category',
     'html',

@@ -15,7 +15,19 @@
 
 ## 在商品中使用
 
-商品详情中的“商品详情模板 / Product description templates”合并内置与当前模式的自定义模板。插入光标处、追加末尾，或对照预览并确认覆盖全文。插入后就是普通富文本；内容必须按实际公司、物流及商品情况修改，模板不执行变量、脚本或自动平台更新。智能详情和不安全旧 HTML 仍需先确认转换。
+商品详情中的“商品详情模板 / Product description templates”合并内置与当前模式的自定义模板。插入光标处、追加末尾，或对照预览并确认覆盖全文。插入后就是普通富文本；内容必须按实际公司、物流及商品情况修改，模板不执行脚本或自动平台更新。智能详情和不安全旧 HTML 仍需先确认转换。
+
+### 固定占位项与组合
+
+新建/编辑模板时，可展开“插入占位项”，在富文本光标处插入 `{{productName}}`、`{{model}}`、`{{packaging}}`、`{{leadTime}}`、`{{companyName}}` 和 `{{shippingOrigin}}`。提供中英文“商品与交付概览（可填）”内置模板，原有模板继续可用。
+
+在商品详情选择一个模板，或勾选多个模板后点击“组合使用”。可调整顺序、移除不需要的片段，检查自动带入的商品信息，并补齐空项，再预览并确认插入、追加或覆盖。只从明确匹配且无歧义的 Schema 标量字段回填；公司信息及无单位的交期不猜测。每次最多组合 10 个模板，组合 HTML 不超过 256 KiB，单个变量最长 2000 个 Unicode 字符。
+
+占位项仅替换正文文本，不执行表达式，不替换链接、图片 URL 或属性。未知占位项、属性中的变量、未填写项及超限内容需先修正才能确认填入；这不是商品提交预检，也不改变平台最终校验。变量值不写回模板、不保存为账号默认信息；JSON/S3 模板包仍保存原始占位项。现有图片 URL 和素材 ID 经同一白名单保留，不查询或上传图片。
+
+确认只修改当前编辑中的详情，未调用 Alibaba mutation。模板与图片一起迁移、批量应用到商品、翻译和动态表达式不在本轮范围内。
+
+Fixed placeholders are text-only substitutions, not an executable template language. Combine up to ten templates, review the order and verified product defaults, fill missing details, then confirm insertion, append or replacement. Values remain in the current editor session; saved templates and JSON/S3 packages retain their placeholders. No product is published or updated automatically.
 
 ## JSON 与 S3
 
@@ -36,6 +48,10 @@ Choose company, logistics, packaging, service or custom content. Insert at the c
 JSON/S3 packages contain portable content only. Imports skip same-language names by default or create copies; they never overwrite. S3 backups use unique paths and require exact readback verification. An uncertain upload is verified, not automatically resent. Clearing extension local data removes local templates, so export backups first.
 
 ## 验证边界
+
+2026-10-14 固定变量/组合补验：全量 308 个测试文件、2356 项单测通过；Web 模板变量组合、原详情编辑及模板库往返，加上正式独立 MV3 的本地模板编辑/JSON 往返，共 4 项浏览器验收通过。覆盖模板顺序、商品标题回填、缺失信息、显式确认、变量不回写、中英文、暗色，以及旧模板继续使用。测试使用 `mock/data/template-composition.json` 等隔离样本，未执行 Alibaba mutation，也未重新执行真实 S3 上传。
+
+类型、Lint、i18n、OpenAPI/生成漂移、Web/MV3 构建及商店合规检查通过。最终构建 211 个文件、解包 4,174,078 字节；按正式打包参数在内存中测得 ZIP 1,214,693 字节，未写入或替换正式发布附件。没有新增依赖、权限、数据库 migration 或公共 API。本轮未部署 Worker、合入主线或发布商店；截图位于忽略目录 `artifacts/template-composition/`。
 
 自动验证包含契约与 UTF-8/大小限制、无敏感身份导出、冲突策略、分页、IndexedDB 事务、S3 配置变化及不重复写入、共享 SQLite/D1 审计与 revision，以及 Web/正式扩展编辑、归档、恢复和 JSON 往返。
 
