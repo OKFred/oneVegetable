@@ -1,0 +1,14 @@
+{
+  "sourceUrl": "https://s.alicdn.com/template-fixture/company.png",
+  "oldFileId": "fixture-old-photo",
+  "newUrl": "https://s.alicdn.com/template-fixture/imported.png",
+  "newFileId": "fixture-imported-photo",
+  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "template": {
+    "name": "Portable company",
+    "category": "company",
+    "language": "en_US",
+    "html": "<p>{{companyName}}</p>",
+    "remark": null
+  }
+}

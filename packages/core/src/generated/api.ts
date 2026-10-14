@@ -10339,6 +10339,23 @@ export interface components {
             /** @enum {string} */
             status?: "active" | "archived";
         };
+        ProductDescriptionTemplateMaterial: {
+            path: string;
+            fileName: string;
+            /** @enum {string} */
+            contentType: "image/jpeg" | "image/png" | "image/gif" | "image/bmp";
+            byteLength: number;
+            sha256: string;
+        };
+        ProductDescriptionTemplateMaterialBundle: {
+            /** @constant */
+            kind: "oneVegetable.product-description-template-assets";
+            /** @constant */
+            schemaVersion: 1;
+            exportedAtUtc: number;
+            templates: components["schemas"]["ProductDescriptionTemplatePortable"][];
+            assets: components["schemas"]["ProductDescriptionTemplateMaterial"][];
+        };
         ProductDescriptionTemplatePage: {
             items: components["schemas"]["ProductDescriptionTemplate"][];
             page: number;
