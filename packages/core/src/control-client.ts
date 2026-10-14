@@ -4,6 +4,7 @@ import { DEFAULT_API_PREFIX, normalizeApiPrefix } from './api-contract';
 import { notifyBffAuthenticationRequired } from './bff-authentication';
 import { GatewayException } from './errors';
 import { createRequestId, NetworkManager } from './network';
+import { validateAlibabaAuthorizationsSummary } from './gateway-credential-validation';
 
 import type { ApiResponse, BackendMeta } from './api-contract';
 import type { BffAuthenticationRequiredHandler } from './bff-authentication';
@@ -643,18 +644,30 @@ export class BffControlClient implements ControlClient {
     return this.#call('/admin/gateway-credentials/get', protocol ? { protocol } : {});
   }
 
-  gatewayAuthorizations(): Promise<AlibabaAuthorizationsSummary> {
-    return this.#call('/admin/gateway-credentials/authorizations/get', {});
+  async gatewayAuthorizations(): Promise<AlibabaAuthorizationsSummary> {
+    return this.authorizationSummary(await this.#call('/admin/gateway-credentials/authorizations/get', {}));
   }
 
-  confirmGatewayAuthorizations(
+  async confirmGatewayAuthorizations(
     topConfigurationId: string,
     iopConfigurationId: string
   ): Promise<AlibabaAuthorizationsSummary> {
-    return this.#call('/admin/gateway-credentials/authorizations/confirm', {
-      topConfigurationId,
-      iopConfigurationId
-    });
+    return this.authorizationSummary(
+      await this.#call('/admin/gateway-credentials/authorizations/confirm', {
+        topConfigurationId,
+        iopConfigurationId
+      })
+    );
+  }
+
+  private authorizationSummary(value: unknown): AlibabaAuthorizationsSummary {
+    if (!validateAlibabaAuthorizationsSummary(value))
+      throw new GatewayException({
+        code: 'RESPONSE_CONTRACT_INVALID',
+        message: 'RESPONSE_CONTRACT_INVALID',
+        retryable: false
+      });
+    return value;
   }
 
   importGatewayCredential(

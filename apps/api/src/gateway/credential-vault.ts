@@ -29,6 +29,7 @@ import type { GatewayCredentialDocument } from './credential-document';
 import { parseManualGatewayCredential } from '@one-vegetable/core';
 
 const CREDENTIAL_ID = 'primary';
+export type GatewayCredentialSlotId = 'primary' | 'top' | 'iop';
 const ALGORITHM = 'AES-256-GCM';
 const SCHEMA_VERSION = 1;
 const KEY_VERSION = 1;
@@ -37,7 +38,7 @@ const REFRESH_LEASE_MS = 60_000;
 const TOKEN_ENDPOINT = 'https://oauth.alibaba.com/token';
 
 export interface GatewayCredentialRecord {
-  id: 'primary';
+  id: GatewayCredentialSlotId;
   encryptedBundle: string;
   initializationVector: string;
   algorithm: 'AES-256-GCM';
@@ -82,6 +83,7 @@ export interface GatewayCredentialSummary {
 }
 
 export interface GatewayCredentialRepository {
+  readonly credentialId?: GatewayCredentialSlotId;
   managed(): Promise<boolean>;
   disableLegacy(): Promise<boolean>;
   find(): Promise<GatewayCredentialRecord | null>;
@@ -117,12 +119,15 @@ export interface GatewayCredentialRepository {
 }
 
 export class SqlGatewayCredentialRepository implements GatewayCredentialRepository {
-  constructor(private readonly executor: SqlExecutor) {}
+  constructor(
+    private readonly executor: SqlExecutor,
+    readonly credentialId: GatewayCredentialSlotId = CREDENTIAL_ID
+  ) {}
 
   async disableLegacy(): Promise<boolean> {
     const result = await this.executor.execute(
-      "INSERT INTO alibaba_gateway_credential_control SELECT 'primary', 1, ? WHERE NOT EXISTS(SELECT 1 FROM alibaba_gateway_credentials) AND NOT EXISTS(SELECT 1 FROM alibaba_gateway_credential_control)",
-      [crypto.randomUUID()]
+      'INSERT INTO alibaba_gateway_credential_control SELECT ?, 1, ? WHERE NOT EXISTS(SELECT 1 FROM alibaba_gateway_credentials WHERE id = ?) AND NOT EXISTS(SELECT 1 FROM alibaba_gateway_credential_control WHERE id = ?)',
+      [this.credentialId, crypto.randomUUID(), this.credentialId, this.credentialId]
     );
     return result.changes === 1;
   }
@@ -131,7 +136,7 @@ export class SqlGatewayCredentialRepository implements GatewayCredentialReposito
     return (
       (
         await this.executor.query('SELECT id FROM alibaba_gateway_credential_control WHERE id = ?', [
-          CREDENTIAL_ID
+          this.credentialId
         ])
       ).length > 0
     );
@@ -139,7 +144,7 @@ export class SqlGatewayCredentialRepository implements GatewayCredentialReposito
 
   async find(): Promise<GatewayCredentialRecord | null> {
     const rows = await this.executor.query('SELECT * FROM alibaba_gateway_credentials WHERE id = ? LIMIT 1', [
-      CREDENTIAL_ID
+      this.credentialId
     ]);
     return rows[0] ? toCredentialRecord(rows[0]) : null;
   }
@@ -157,7 +162,7 @@ export class SqlGatewayCredentialRepository implements GatewayCredentialReposito
   }): Promise<GatewayCredentialRecord> {
     const previous = await this.executor.query(
       'SELECT revision FROM alibaba_gateway_credential_control WHERE id = ?',
-      [CREDENTIAL_ID]
+      [this.credentialId]
     );
     const revision =
       input.expectedRevision === null ? Number(previous[0]?.revision ?? 0) + 1 : input.expectedRevision + 1;
@@ -168,8 +173,8 @@ export class SqlGatewayCredentialRepository implements GatewayCredentialReposito
         refresh_lease_id, refresh_lease_until_utc, last_refresh_time_utc, last_refresh_error_code,
         create_time_utc, update_time_utc, creator_id, updater_id, revision, remark
       ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, ?, ?, ?, ?, ?, ?
-      WHERE (? IS NULL AND NOT EXISTS(SELECT 1 FROM alibaba_gateway_credentials WHERE id = 'primary'))
-         OR EXISTS(SELECT 1 FROM alibaba_gateway_credentials WHERE id = 'primary' AND revision = ?)
+      WHERE (? IS NULL AND NOT EXISTS(SELECT 1 FROM alibaba_gateway_credentials WHERE id = ?))
+         OR EXISTS(SELECT 1 FROM alibaba_gateway_credentials WHERE id = ? AND revision = ?)
       ON CONFLICT(id) DO UPDATE SET
         encrypted_bundle = excluded.encrypted_bundle,
         initialization_vector = excluded.initialization_vector,
@@ -188,7 +193,7 @@ export class SqlGatewayCredentialRepository implements GatewayCredentialReposito
         remark = excluded.remark
       WHERE alibaba_gateway_credentials.revision = ? RETURNING *`,
       [
-        CREDENTIAL_ID,
+        this.credentialId,
         input.encryptedBundle,
         input.initializationVector,
         ALGORITHM,
@@ -203,6 +208,8 @@ export class SqlGatewayCredentialRepository implements GatewayCredentialReposito
         revision,
         input.remark,
         input.expectedRevision,
+        this.credentialId,
+        this.credentialId,
         input.expectedRevision,
         input.expectedRevision
       ]
@@ -214,7 +221,7 @@ export class SqlGatewayCredentialRepository implements GatewayCredentialReposito
   async delete(expectedRevision: number): Promise<boolean> {
     const result = await this.executor.query(
       'DELETE FROM alibaba_gateway_credentials WHERE id = ? AND revision = ? RETURNING id',
-      [CREDENTIAL_ID, expectedRevision]
+      [this.credentialId, expectedRevision]
     );
     return result.length === 1;
   }
@@ -235,7 +242,7 @@ export class SqlGatewayCredentialRepository implements GatewayCredentialReposito
         leaseId,
         now + REFRESH_LEASE_MS,
         failureCode ?? null,
-        CREDENTIAL_ID,
+        this.credentialId,
         expectedRevision,
         now,
         failureCode ?? null,
@@ -271,7 +278,7 @@ export class SqlGatewayCredentialRepository implements GatewayCredentialReposito
         input.refreshTokenExpiresTimeUtc,
         input.now,
         input.now,
-        CREDENTIAL_ID,
+        this.credentialId,
         input.expectedRevision,
         input.leaseId
       ]
@@ -286,7 +293,7 @@ export class SqlGatewayCredentialRepository implements GatewayCredentialReposito
         refresh_lease_id = NULL, refresh_lease_until_utc = NULL,
         last_refresh_error_code = ?, update_time_utc = ?
        WHERE id = ? AND refresh_lease_id = ?`,
-      [errorCode.slice(0, 128), now, CREDENTIAL_ID, leaseId]
+      [errorCode.slice(0, 128), now, this.credentialId, leaseId]
     );
   }
 }
@@ -322,14 +329,16 @@ export class GatewayCredentialCipher {
   }
 
   async encryptDocument(
-    document: GatewayCredentialDocument
+    document: GatewayCredentialDocument,
+    credentialId: GatewayCredentialSlotId = CREDENTIAL_ID
   ): Promise<{ encryptedBundle: string; initializationVector: string; schemaVersion: 2 }> {
-    return { ...(await this.encryptValue(document, 2)), schemaVersion: 2 };
+    return { ...(await this.encryptValue(document, 2, credentialId)), schemaVersion: 2 };
   }
 
   private async encryptValue(
     bundle: AlibabaOpenApiCredentialBundle | GatewayCredentialDocument,
-    schemaVersion: 1 | 2
+    schemaVersion: 1 | 2,
+    credentialId: GatewayCredentialSlotId = CREDENTIAL_ID
   ): Promise<{ encryptedBundle: string; initializationVector: string }> {
     const initializationVector = crypto.getRandomValues(new Uint8Array(12));
     const plaintext = new TextEncoder().encode(JSON.stringify(bundle));
@@ -337,7 +346,7 @@ export class GatewayCredentialCipher {
       {
         name: 'AES-GCM',
         iv: toArrayBuffer(initializationVector),
-        additionalData: toArrayBuffer(additionalData(KEY_VERSION, schemaVersion))
+        additionalData: toArrayBuffer(additionalData(KEY_VERSION, schemaVersion, credentialId))
       },
       this.#key,
       plaintext
@@ -364,12 +373,15 @@ export class GatewayCredentialCipher {
         {
           name: 'AES-GCM',
           iv: toArrayBuffer(decodeBase64Url(record.initializationVector)),
-          additionalData: toArrayBuffer(additionalData(record.keyVersion, record.schemaVersion))
+          additionalData: toArrayBuffer(additionalData(record.keyVersion, record.schemaVersion, record.id))
         },
         this.#key,
         toArrayBuffer(decodeBase64Url(record.encryptedBundle))
       );
-      return parseCredentialDocument(JSON.parse(new TextDecoder().decode(plaintext)) as unknown);
+      const document = parseCredentialDocument(JSON.parse(new TextDecoder().decode(plaintext)) as unknown);
+      if (record.id !== 'primary' && readProtocol(document.credentials.protocol) !== record.id)
+        throw new Error('CREDENTIAL_SLOT_PROTOCOL_MISMATCH');
+      return document;
     } catch {
       throw new GatewayConfigurationError(
         'ALIBABA_CREDENTIAL_VAULT_UNREADABLE',
@@ -464,7 +476,10 @@ export class GatewayCredentialService {
     document: GatewayCredentialDocument,
     input: { actorId: string; expectedRevision: number | null; remark: string | null }
   ): Promise<GatewayCredentialSummary> {
-    const encrypted = await this.cipher.encryptDocument(document);
+    const slotId = this.repository.credentialId ?? CREDENTIAL_ID;
+    if (slotId !== 'primary' && readProtocol(document.credentials.protocol) !== slotId)
+      throw new GatewayConfigurationError('ALIBABA_PROTOCOL_INVALID', '授权协议与目标凭据位置不一致');
+    const encrypted = await this.cipher.encryptDocument(document, slotId);
     await this.repository.save({
       ...encrypted,
       accessTokenExpiresTimeUtc: document.credentials.accessTokenExpiresTimeUtc,
@@ -584,16 +599,15 @@ export class StoredAlibabaCredentialProvider {
       bundle.credentials.accessTokenExpiresTimeUtc <= this.clock()
     )
       throw new GatewayConfigurationError('ALIBABA_ACCESS_TOKEN_EXPIRED', 'Access Token 已过期，请更换凭据');
-    return {
-      appKey: bundle.credentials.appKey,
-      appSecret: bundle.credentials.appSecret,
-      accessToken: bundle.credentials.accessToken,
-      galleryAccountGeneration: bundle.configurationId,
-      protocol: readProtocol(bundle.credentials.protocol),
-      endpoint:
-        bundle.credentials.protocol === 'iop' ? readEndpoint(undefined, 'iop').href : this.#endpoint.href,
-      signMethod: bundle.credentials.protocol === 'iop' ? 'hmac-sha256' : this.#signMethod
-    };
+    return credentialSnapshot(bundle, this.#endpoint.href, this.#signMethod);
+  }
+
+  /** Match a context without refreshing or consuming an unselected protocol's token. */
+  async credentialSnapshot(): Promise<GatewayCredentials | null> {
+    const record = await this.repository.find();
+    return record
+      ? credentialSnapshot(await this.cipher.decryptDocument(record), this.#endpoint.href, this.#signMethod)
+      : null;
   }
 
   private async refresh(
@@ -679,7 +693,7 @@ export class StoredAlibabaCredentialProvider {
             : (dateToEpoch(refreshExpiry) ?? bundle.credentials.refreshTokenExpiresTimeUtc)
         }
       };
-      const encrypted = await this.cipher.encryptDocument(refreshedBundle);
+      const encrypted = await this.cipher.encryptDocument(refreshedBundle, record.id);
       const updated = await this.repository.completeRefresh({
         leaseId,
         expectedRevision: record.revision,
@@ -790,9 +804,30 @@ function summarize(record: GatewayCredentialRecord | null): GatewayCredentialSum
   };
 }
 
-function additionalData(keyVersion = KEY_VERSION, schemaVersion: 1 | 2 = SCHEMA_VERSION): Uint8Array {
+function credentialSnapshot(
+  document: GatewayCredentialDocument,
+  endpoint: string,
+  signMethod: SignMethod
+): GatewayCredentials {
+  const credentials = document.credentials;
+  return {
+    appKey: credentials.appKey,
+    appSecret: credentials.appSecret,
+    accessToken: credentials.accessToken,
+    galleryAccountGeneration: document.configurationId,
+    protocol: readProtocol(credentials.protocol),
+    endpoint: credentials.protocol === 'iop' ? readEndpoint(undefined, 'iop').href : endpoint,
+    signMethod: credentials.protocol === 'iop' ? 'hmac-sha256' : signMethod
+  };
+}
+
+function additionalData(
+  keyVersion = KEY_VERSION,
+  schemaVersion: 1 | 2 = SCHEMA_VERSION,
+  credentialId: GatewayCredentialSlotId = CREDENTIAL_ID
+): Uint8Array {
   return new TextEncoder().encode(
-    `one-vegetable:alibaba-credential:${schemaVersion}:${CREDENTIAL_ID}:${keyVersion}`
+    `one-vegetable:alibaba-credential:${schemaVersion}:${credentialId}:${keyVersion}`
   );
 }
 
@@ -824,8 +859,10 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 }
 
 function toCredentialRecord(row: Record<string, unknown>): GatewayCredentialRecord {
+  const id = row.id;
+  if (id !== 'primary' && id !== 'top' && id !== 'iop') throw new Error('CREDENTIAL_SLOT_INVALID');
   return {
-    id: 'primary',
+    id,
     encryptedBundle: requiredString(row, 'encrypted_bundle'),
     initializationVector: requiredString(row, 'initialization_vector'),
     algorithm: ALGORITHM,

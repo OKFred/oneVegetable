@@ -76,4 +76,10 @@ export class NodeManagedCredentialProvider {
       );
     return this.legacy().requireCredentials();
   }
+
+  async credentialSnapshot(): Promise<GatewayCredentials | null> {
+    if (await this.repository.managed()) return this.stored.credentialSnapshot();
+    const legacy = this.legacy();
+    return legacy.status().configured ? legacy.requireCredentials() : null;
+  }
 }

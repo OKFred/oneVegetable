@@ -520,6 +520,14 @@ export const alibabaGatewayCredentialControl = sqliteTable('alibaba_gateway_cred
   configurationId: text('configuration_id').notNull()
 });
 
+export const alibabaAuthorizationBinding = sqliteTable('alibaba_authorization_binding', {
+  id: text('id').primaryKey(),
+  topConfigurationId: text('top_configuration_id').notNull(),
+  iopConfigurationId: text('iop_configuration_id').notNull(),
+  confirmedTimeUtc: integer('confirmed_time_utc').notNull(),
+  actorId: text('actor_id').notNull()
+});
+
 export const videoUploadTasks = sqliteTable(
   'video_upload_tasks',
   {
@@ -544,6 +552,7 @@ export const schema = {
   productMutationJobs,
   alibabaGatewayCredentials,
   alibabaGatewayCredentialControl,
+  alibabaAuthorizationBinding,
   alibabaCredentialAcquisitionJobs,
   metaAppConfigurations,
   metaOauthGrants,
@@ -573,4 +582,4 @@ export const s3StorageConfigurations = sqliteTable('s3_storage_configurations', 
   remark: text('remark')
 });
 
-export const CURRENT_SCHEMA_VERSION = 15;
+export const CURRENT_SCHEMA_VERSION = 16;

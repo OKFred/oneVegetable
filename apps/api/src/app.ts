@@ -23,7 +23,8 @@ import {
   validateProductDisplayInput,
   validateProductGroupCreateInput,
   validateSchemaPublishInput,
-  validateProductSchemaUpdateInput
+  validateProductSchemaUpdateInput,
+  selectAlibabaOperationProtocol
 } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 import { iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
@@ -76,6 +77,7 @@ import type { PasskeyService } from './auth/passkey-service';
 import type { RequestEventRepository } from './observability/request-events';
 import type { AlibabaCredentialStatus, AsyncAlibabaCredentialProvider } from './gateway/credentials';
 import type { GatewayCredentialService, GatewayCredentialSummary } from './gateway/credential-vault';
+import type { DualAlibabaAuthorization } from './gateway/dual-authorization';
 import type { GatewayMode } from './runtime-config';
 import type { ProductDescriptionTemplateRepository } from './product-description-templates/repository';
 import {
@@ -115,6 +117,7 @@ export interface ApiAppOptions {
   gatewayCredentialService?: GatewayCredentialService;
   gatewayCredentialProvider?: AsyncAlibabaCredentialProvider;
   gatewayCredentialSummary?: () => Promise<GatewayCredentialSummary>;
+  gatewayAuthorizations?: DualAlibabaAuthorization;
   productDescriptionTemplates?: ProductDescriptionTemplateRepository;
   productMutationJobs?: ProductMutationJobRepository;
   realMutationControl?: RealMutationControlService;
@@ -150,6 +153,17 @@ interface OperationCallBody extends RequestEnvelope, Record<string, unknown> {
 interface DynamicGateway {
   credentialProtocol?(): Promise<'top' | 'iop'>;
   galleryGatewayContextId?(): Promise<string>;
+  productGatewayContextId?(): Promise<string>;
+  operationProtocol?(
+    operation: OperationId,
+    payload: unknown,
+    context?: GalleryRequestOptions
+  ): Promise<'top' | 'iop'>;
+  operationGatewayContextId?(
+    operation: OperationId,
+    payload: unknown,
+    context?: GalleryRequestOptions
+  ): Promise<string>;
   request(
     operation: OperationId,
     request: unknown,
@@ -176,9 +190,15 @@ export function createApiApp(options: ApiAppOptions): Hono {
             async assertProductContext(expected) {
               if (!dynamicGateway.galleryGatewayContextId && options.gatewayMode === 'real')
                 throw new AuthError('PRODUCT_CONTEXT_UNAVAILABLE', 'PRODUCT_CONTEXT_UNAVAILABLE', 503);
-              const gatewayId = dynamicGateway.galleryGatewayContextId
-                ? await dynamicGateway.galleryGatewayContextId()
-                : await opaqueGalleryId(`local:${options.gatewayMode}`);
+              const gatewayId = dynamicGateway.operationGatewayContextId
+                ? await dynamicGateway.operationGatewayContextId(
+                    'updateProduct',
+                    {},
+                    { productContext: expected }
+                  )
+                : dynamicGateway.galleryGatewayContextId
+                  ? await dynamicGateway.galleryGatewayContextId()
+                  : await opaqueGalleryId(`local:${options.gatewayMode}`);
               if (expected.gateway !== gatewayId)
                 throw new GatewayException({
                   code: 'PRODUCT_CONTEXT_CHANGED',
@@ -335,6 +355,7 @@ export function createApiApp(options: ApiAppOptions): Hono {
       ...(options.gatewayCredentialProvider
         ? { gatewayCredentialProvider: options.gatewayCredentialProvider }
         : {}),
+      ...(options.gatewayAuthorizations ? { gatewayAuthorizations: options.gatewayAuthorizations } : {}),
       ...(options.requestEventRetentionDays !== undefined
         ? { requestEventRetentionDays: options.requestEventRetentionDays }
         : {}),
@@ -449,25 +470,43 @@ export function createApiApp(options: ApiAppOptions): Hono {
       const principal = options.authService
         ? (await authenticateRequest(context, options.authService)).principal
         : extensionAdminPrincipal();
-      const protocol = await activeGatewayProtocol(options, dynamicGateway);
-      const items = validation.data.operations.map((operation) => {
-        if (!isOperationId(operation)) {
-          return { operation, allowed: false, reasonCode: 'OPERATION_UNKNOWN' };
-        }
-        if (options.gatewayMode === 'disabled') {
-          return { operation, allowed: false, reasonCode: 'ALIBABA_GATEWAY_DISABLED' };
-        }
-        const protocolReason = protocol === 'iop' ? iopOperationReason(operation) : null;
-        if (protocolReason) return { operation, allowed: false, reasonCode: protocolReason };
-        if (options.gatewayMode !== 'mock' && operation === 'associateProductVideo') {
-          return { operation, allowed: false, reasonCode: 'REAL_MUTATION_DISABLED' };
-        }
-        if (options.gatewayMode !== 'mock' && QUALIFICATION_GATED_OPERATION_IDS.has(operation)) {
-          return { operation, allowed: false, reasonCode: 'LOGISTICS_QUALIFICATION_REQUIRED' };
-        }
-        const decision = authorizeOperation(principal, operation, {}, featureFlags);
-        return { operation, allowed: decision.allowed, reasonCode: decision.reasonCode };
-      });
+      const pool = options.gatewayAuthorizations
+        ? await options.gatewayAuthorizations.authorizations()
+        : null;
+      const items = await Promise.all(
+        validation.data.operations.map(async (operation) => {
+          if (!isOperationId(operation)) {
+            return { operation, allowed: false, reasonCode: 'OPERATION_UNKNOWN' };
+          }
+          if (options.gatewayMode === 'disabled') {
+            return { operation, allowed: false, reasonCode: 'ALIBABA_GATEWAY_DISABLED' };
+          }
+          const protocol = pool
+            ? selectAlibabaOperationProtocol(
+                operation,
+                {},
+                {
+                  top: pool.top !== null,
+                  iop: pool.iop !== null,
+                  defaultProtocol: pool.defaultProtocol,
+                  bindingConfirmed: pool.binding.confirmed
+                }
+              )
+            : dynamicGateway.operationProtocol
+              ? await dynamicGateway.operationProtocol(operation, {})
+              : await activeGatewayProtocol(options, dynamicGateway);
+          const protocolReason = protocol === 'iop' ? iopOperationReason(operation) : null;
+          if (protocolReason) return { operation, allowed: false, reasonCode: protocolReason };
+          if (options.gatewayMode !== 'mock' && operation === 'associateProductVideo') {
+            return { operation, allowed: false, reasonCode: 'REAL_MUTATION_DISABLED' };
+          }
+          if (options.gatewayMode !== 'mock' && QUALIFICATION_GATED_OPERATION_IDS.has(operation)) {
+            return { operation, allowed: false, reasonCode: 'LOGISTICS_QUALIFICATION_REQUIRED' };
+          }
+          const decision = authorizeOperation(principal, operation, {}, featureFlags);
+          return { operation, allowed: decision.allowed, reasonCode: decision.reasonCode };
+        })
+      );
       logRequest(
         options,
         parsed.requestId,
@@ -532,9 +571,11 @@ export function createApiApp(options: ApiAppOptions): Hono {
         throw new AuthError('PRODUCT_CONTEXT_UNAVAILABLE', 'PRODUCT_CONTEXT_UNAVAILABLE', 503);
       return success(context, parsed.requestId, {
         identity: await opaqueGalleryId(session.principal.actorId),
-        gateway: dynamicGateway.galleryGatewayContextId
-          ? await dynamicGateway.galleryGatewayContextId()
-          : await opaqueGalleryId(`local:${options.gatewayMode}`)
+        gateway: dynamicGateway.productGatewayContextId
+          ? await dynamicGateway.productGatewayContextId()
+          : dynamicGateway.galleryGatewayContextId
+            ? await dynamicGateway.galleryGatewayContextId()
+            : await opaqueGalleryId(`local:${options.gatewayMode}`)
       });
     } catch (error) {
       return failure(context, parsed.requestId, error instanceof AuthError ? error.status : 503, {
@@ -593,7 +634,17 @@ export function createApiApp(options: ApiAppOptions): Hono {
           : await authenticateRequest(context, options.authService);
       }
       // This check must precede contexts, mutation intent registration and durable task creation.
-      const protocol = await activeGatewayProtocol(options, dynamicGateway);
+      const selectionContext: GalleryRequestOptions = {
+        ...(parsed.body.galleryContext !== undefined
+          ? { galleryContext: requireGalleryContext(parsed.body.galleryContext) }
+          : {}),
+        ...(parsed.body.productContext !== undefined
+          ? { productContext: requireProductOperationContext(parsed.body.productContext) }
+          : {})
+      };
+      const protocol = dynamicGateway.operationProtocol
+        ? await dynamicGateway.operationProtocol(parsed.body.operation, parsed.body.payload, selectionContext)
+        : await activeGatewayProtocol(options, dynamicGateway);
       if (protocol === 'iop') {
         const reason = iopOperationReason(parsed.body.operation, parsed.body.payload.method);
         if (reason) throw new GatewayException({ code: reason, message: reason, retryable: false });
@@ -681,9 +732,15 @@ export function createApiApp(options: ApiAppOptions): Hono {
       if (galleryContext || productContext || iopProductMutation) {
         if (iopProductMutation && !dynamicGateway.galleryGatewayContextId)
           throw new AuthError('PRODUCT_CONTEXT_UNAVAILABLE', 'PRODUCT_CONTEXT_UNAVAILABLE', 503);
-        const gatewayId = dynamicGateway.galleryGatewayContextId
-          ? await dynamicGateway.galleryGatewayContextId()
-          : await opaqueGalleryId(`local:${options.gatewayMode}`);
+        const gatewayId = dynamicGateway.operationGatewayContextId
+          ? await dynamicGateway.operationGatewayContextId(
+              parsed.body.operation,
+              parsed.body.payload,
+              selectionContext
+            )
+          : dynamicGateway.galleryGatewayContextId
+            ? await dynamicGateway.galleryGatewayContextId()
+            : await opaqueGalleryId(`local:${options.gatewayMode}`);
         assertGalleryContextId(galleryContext?.gateway, gatewayId);
         if (productContext && productContext.gateway !== gatewayId)
           throw new GatewayException({

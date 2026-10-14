@@ -63,9 +63,40 @@ export class CredentialBackedAlibabaGatewayClient implements GatewayClient {
     return (await this.provider.status()).protocol ?? 'top';
   }
 
+  async operationProtocol(
+    operation: OperationId,
+    payload: unknown,
+    context?: GalleryRequestOptions
+  ): Promise<'top' | 'iop'> {
+    return this.provider.selectProtocol
+      ? this.provider.selectProtocol(operation, payload, context)
+      : this.credentialProtocol();
+  }
+
+  async operationGatewayContextId(
+    operation: OperationId,
+    payload: unknown,
+    context?: GalleryRequestOptions
+  ): Promise<string> {
+    try {
+      return await galleryGatewayId(
+        this.provider.resolveForOperation
+          ? await this.provider.resolveForOperation(operation, payload, context)
+          : await this.provider.requireCredentials()
+      );
+    } catch (error: unknown) {
+      if (error instanceof GatewayConfigurationError) throw credentialGatewayError(error);
+      throw error;
+    }
+  }
+
+  productGatewayContextId(): Promise<string> {
+    return this.operationGatewayContextId('updateProduct', {});
+  }
+
   async galleryGatewayContextId(): Promise<string> {
     try {
-      return await galleryGatewayId(await this.provider.requireCredentials());
+      return await this.operationGatewayContextId('uploadPhoto', {});
     } catch (error: unknown) {
       if (error instanceof GatewayConfigurationError) throw credentialGatewayError(error);
       throw error;
@@ -78,8 +109,11 @@ export class CredentialBackedAlibabaGatewayClient implements GatewayClient {
     context?: GatewayRequestContext
   ): Promise<ResponseOf<K>> {
     try {
-      if ((await this.credentialProtocol()) === 'iop') assertIopOperation(operation, request);
-      const credentials = await this.provider.requireCredentials(context?.requestId);
+      if ((await this.operationProtocol(operation, request, context)) === 'iop')
+        assertIopOperation(operation, request);
+      const credentials = this.provider.resolveForOperation
+        ? await this.provider.resolveForOperation(operation, request, context)
+        : await this.provider.requireCredentials(context?.requestId);
       return await new AlibabaReadGatewayClient(credentials, this.options).request(
         operation,
         request,

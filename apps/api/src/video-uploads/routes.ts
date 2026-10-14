@@ -88,7 +88,13 @@ export function registerVideoUploadRoutes(
         const ownerId = session.principal.actorId;
         markRequestOperation(context.req.raw, `video-upload.${request.command.action}`);
         const service = new VideoUploadService(options.repository, async (expected, id) => {
-          const credentials = await options.credentials.requireCredentials(id);
+          const credentials = options.credentials.resolveForOperation
+            ? await options.credentials.resolveForOperation(
+                'callCapability',
+                { method: 'alibaba.icbu.video.upload' },
+                { galleryContext: expected, requestId: id }
+              )
+            : await options.credentials.requireCredentials(id);
           // Read the real configuration even for an expected null context. Never let the caller
           // opt out of detecting an account/storage change. Client creation revalidates this context.
           const configuration = await options.storage.requireConfiguration().catch((error: unknown) => {

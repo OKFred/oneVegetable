@@ -1,7 +1,8 @@
 import { ALIBABA_GATEWAY } from '@one-vegetable/core';
 import { IOP_API_ORIGIN, IOP_BUSINESS_ENDPOINT } from '@one-vegetable/core/alibaba-iop';
 
-import type { GatewayCredentials, SignMethod } from '@one-vegetable/core';
+import type { GatewayCredentials, SignMethod, OperationId } from '@one-vegetable/core';
+import type { GalleryRequestOptions } from '@one-vegetable/core/gallery-transfer-context';
 
 export interface AlibabaCredentialEnvironment {
   ONE_VEGETABLE_ALIBABA_APP_KEY?: string;
@@ -38,6 +39,17 @@ export interface AlibabaCredentialProvider {
 export interface AsyncAlibabaCredentialProvider {
   status(): Promise<AlibabaCredentialStatus>;
   requireCredentials(requestId?: string, forceRefresh?: boolean): Promise<GatewayCredentials>;
+  credentialSnapshot?(): Promise<GatewayCredentials | null>;
+  selectProtocol?(
+    operation: OperationId,
+    payload: unknown,
+    context?: GalleryRequestOptions
+  ): Promise<'top' | 'iop'>;
+  resolveForOperation?(
+    operation: OperationId,
+    payload: unknown,
+    context?: GalleryRequestOptions & { requestId?: string }
+  ): Promise<GatewayCredentials>;
 }
 
 export class GatewayConfigurationError extends Error {
@@ -46,6 +58,10 @@ export class GatewayConfigurationError extends Error {
       | 'ALIBABA_CREDENTIALS_INCOMPLETE'
       | 'ALIBABA_CREDENTIAL_FILE_INVALID'
       | 'ALIBABA_PROTOCOL_INVALID'
+      | 'ALIBABA_PROTOCOL_SELECTION_REQUIRED'
+      | 'ALIBABA_AUTHORIZATION_BINDING_CHANGED'
+      | 'PRODUCT_CONTEXT_CHANGED'
+      | 'GALLERY_CONTEXT_CHANGED'
       | 'ALIBABA_PROTOCOL_ENDPOINT_MISMATCH'
       | 'IOP_TOKEN_RESULT_UNKNOWN'
       | 'IOP_TOKEN_REJECTED'
