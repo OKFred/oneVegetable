@@ -41,6 +41,36 @@ describe('Alibaba protocol routing before dispatch', () => {
     expect(selectAlibabaOperationProtocol('publishProduct', {}, both)).toBe('iop');
     expect(selectAlibabaOperationProtocol('updateProductDisplay', {}, both)).toBe('top');
   });
+  it('retains TOP-only draft/category request semantics before dispatch', () => {
+    expect(selectAlibabaOperationProtocol('getProductDraft', { productId: '123' }, both)).toBe('top');
+    expect(
+      selectAlibabaOperationProtocol('getProductDraft', { productId: '123', categoryId: 456 }, both)
+    ).toBe('iop');
+    expect(
+      selectAlibabaOperationProtocol(
+        'callCapability',
+        {
+          method: 'alibaba.icbu.product.schema.get',
+          parameters: {
+            param_product_top_publish_request: { cat_id: 456, product_id: 123 }
+          }
+        },
+        both
+      )
+    ).toBe('top');
+    expect(
+      selectAlibabaOperationProtocol(
+        'callCapability',
+        {
+          method: 'alibaba.icbu.product.schema.get',
+          parameters: {
+            param_product_top_publish_request: { cat_id: 456, market: 'wholesale' }
+          }
+        },
+        both
+      )
+    ).toBe('iop');
+  });
   it('invalidates a confirmation when either configuration changes, not on token refresh', () => {
     const binding = {
       topConfigurationId: 'top-config',

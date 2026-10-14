@@ -187,6 +187,18 @@ describe('extension background protocol persistence and dispatch', () => {
     expect(state.local).toEqual({});
     expect(fetch).not.toHaveBeenCalled();
   });
+  it('accepts historical empty-object payloads for no-argument vault operations, but rejects extra fields', async () => {
+    await create(topSettings);
+    for (const operation of ['status', 'get-settings', 'authorizations']) {
+      expect(await send('credential-vault-request', operation, {})).toMatchObject({ ok: true });
+      expect(await send('credential-vault-request', operation, { extra: true })).toMatchObject({
+        ok: false,
+        error: { code: 'INVALID_CREDENTIAL_VAULT_REQUEST' }
+      });
+    }
+    expect(await send('credential-vault-request', 'lock', {})).toMatchObject({ ok: true });
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it('preserves IOP through create, safe settings/status, save and unlock without leaking secrets', async () => {
     await create();
     const safe = await send('credential-vault-request', 'get-settings');
@@ -947,7 +959,7 @@ describe('extension background protocol persistence and dispatch', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
   it.each([
-    ['authorizations', {}],
+    ['authorizations', { extra: true }],
     ['get-authorization', { protocol: 'bad' }],
     ['clear-authorization', { protocol: 'top', extra: true }],
     ['confirm-authorizations', { topConfigurationId: 'test' }],

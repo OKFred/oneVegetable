@@ -1512,7 +1512,9 @@ function validateCredentialVaultPayload(
   payload: unknown
 ): void {
   if (['status', 'get-settings', 'authorizations', 'lock'].includes(operation)) {
-    if (payload !== undefined)
+    // Historical runtime callers sent an empty object for no-argument operations.
+    // Retain that wire shape, without accepting any extra fields.
+    if (payload !== undefined && (!isRecord(payload) || Object.keys(payload).length !== 0))
       throw gatewayFailure('INVALID_CREDENTIAL_VAULT_REQUEST', 'INVALID_CREDENTIAL_VAULT_REQUEST');
     return;
   }

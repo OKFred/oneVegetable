@@ -347,7 +347,9 @@ test('workbench persists explicit IOP and rejects unadapted methods without TOP 
     });
   }
   await workbench.reload();
-  expect(await send('credential-vault-request', 'get-settings')).toMatchObject({
+  const restoredSettings = await send('credential-vault-request', 'get-settings');
+  expect((restoredSettings as { error?: { code: string } }).error?.code).toBeUndefined();
+  expect(restoredSettings).toMatchObject({
     ok: true,
     data: { protocol: 'iop', endpoint: `${PUBLIC_AUTH_ORIGIN}/rest`, appSecret: '', accessToken: '' }
   });
@@ -572,14 +574,14 @@ test('legacy TOP import stays TOP, saves only explicitly and keeps TOP session s
     });
   });
   const workbench = await openWorkbenchSettings();
-  await expect(workbench.getByLabel('网关协议')).toHaveValue('top');
+  await expect(workbench.getByTestId('select-authorization-top')).toHaveAttribute('aria-pressed', 'true');
   await workbench.getByLabel('导入授权包 JSON').setInputFiles({
     name: 'legacy-top.json',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(credentials.oauthBundle))
   });
   await expect(workbench.getByLabel('App Key')).toHaveValue(credentials.manual.appKey);
-  await expect(workbench.getByLabel('网关协议')).toHaveValue('top');
+  await expect(workbench.getByTestId('select-authorization-top')).toHaveAttribute('aria-pressed', 'true');
   await expect(workbench.getByTestId('iop-protocol-notice')).toHaveCount(0);
   expect(await sendWorkbench(workbench, 'credential-vault-request', 'status')).toMatchObject({
     data: { state: 'empty' }
@@ -590,7 +592,7 @@ test('legacy TOP import stays TOP, saves only explicitly and keeps TOP session s
   await workbench.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(workbench.getByLabel('Access Token')).toHaveValue('');
   await workbench.reload();
-  await expect(workbench.getByLabel('网关协议')).toHaveValue('top');
+  await expect(workbench.getByTestId('select-authorization-top')).toHaveAttribute('aria-pressed', 'true');
   expect(await sendWorkbench(workbench, 'credential-vault-request', 'get-settings')).toMatchObject({
     data: { protocol: 'top', endpoint: 'https://eco.taobao.com/router/rest', appSecret: '', accessToken: '' }
   });

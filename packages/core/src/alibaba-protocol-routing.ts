@@ -51,6 +51,8 @@ export function selectAlibabaOperationProtocol(
     return 'top';
   if (operation === 'listPhotoGroups' && input.parentId !== undefined) return 'top';
   if (operation === 'getProductInventory' && input.source === 'sku') return 'top';
+  // TOP can render a draft by ID alone; the verified IOP path requires its category.
+  if (operation === 'getProductDraft' && input.categoryId === undefined) return 'top';
   if (operation === 'getProductSchema' && input.market !== undefined && input.market !== 'wholesale')
     return 'top';
   const method =
@@ -62,6 +64,14 @@ export function selectAlibabaOperationProtocol(
   if (operation === 'callCapability' && method === 'alibaba.icbu.photobank.list') {
     const parameters = record(input.parameters);
     if (parameters.location_type !== 'SUB_GROUP' || parameters.group_id === undefined) return 'top';
+  }
+  if (operation === 'callCapability' && method === 'alibaba.icbu.product.schema.get') {
+    const schemaRequest = record(record(input.parameters).param_product_top_publish_request);
+    if (
+      schemaRequest.product_id !== undefined ||
+      (schemaRequest.market !== undefined && schemaRequest.market !== 'wholesale')
+    )
+      return 'top';
   }
   return method && isAccountVerifiedIopMethod(method) && iopMethodReason(method) === null ? 'iop' : 'top';
 }
