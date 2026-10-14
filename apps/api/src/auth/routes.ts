@@ -1193,12 +1193,22 @@ async function handle(context: Context, action: () => Promise<Response>): Promis
       });
     }
     if (error instanceof GatewayConfigurationError) {
-      return failure(context, requestId, error.code === 'ALIBABA_TOKEN_REFRESH_FAILED' ? 502 : 503, {
-        code: error.code,
-        message: error.message,
-        ...error.diagnostics,
-        retryable: false
-      });
+      return failure(
+        context,
+        requestId,
+        error.code === 'ALIBABA_TOKEN_REFRESH_FAILED'
+          ? 502
+          : error.code === 'ALIBABA_PROTOCOL_SELECTION_REQUIRED' ||
+              error.code === 'ALIBABA_AUTHORIZATION_BINDING_CHANGED'
+            ? 409
+            : 503,
+        {
+          code: error.code,
+          message: error.message,
+          ...error.diagnostics,
+          retryable: false
+        }
+      );
     }
     return failure(context, requestId, 500, {
       code: 'INTERNAL_ERROR',

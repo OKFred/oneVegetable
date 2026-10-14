@@ -643,31 +643,18 @@ export class BffControlClient implements ControlClient {
     return this.#call('/admin/gateway-credentials/get', protocol ? { protocol } : {});
   }
 
-  async gatewayAuthorizations(): Promise<AlibabaAuthorizationsSummary> {
-    return this.authorizationSummary(await this.#call('/admin/gateway-credentials/authorizations/get', {}));
+  gatewayAuthorizations(): Promise<AlibabaAuthorizationsSummary> {
+    return this.#call('/admin/gateway-credentials/authorizations/get', {});
   }
 
-  async confirmGatewayAuthorizations(
+  confirmGatewayAuthorizations(
     topConfigurationId: string,
     iopConfigurationId: string
   ): Promise<AlibabaAuthorizationsSummary> {
-    return this.authorizationSummary(
-      await this.#call('/admin/gateway-credentials/authorizations/confirm', {
-        topConfigurationId,
-        iopConfigurationId
-      })
-    );
-  }
-
-  private async authorizationSummary(value: unknown): Promise<AlibabaAuthorizationsSummary> {
-    const { validateAlibabaAuthorizationsSummary } = await import('./gateway-credential-validation');
-    if (!validateAlibabaAuthorizationsSummary(value))
-      throw new GatewayException({
-        code: 'RESPONSE_CONTRACT_INVALID',
-        message: 'RESPONSE_CONTRACT_INVALID',
-        retryable: false
-      });
-    return value;
+    return this.#call('/admin/gateway-credentials/authorizations/confirm', {
+      topConfigurationId,
+      iopConfigurationId
+    });
   }
 
   importGatewayCredential(

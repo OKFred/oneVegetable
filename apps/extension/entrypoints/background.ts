@@ -559,7 +559,12 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
     }
     case 'get-authorization': {
       const protocol = requiredAuthorizationProtocol(asRecord(payload).protocol);
-      const profile = authorizationProfiles((await getUnlockedVault(state)).settings)[protocol];
+      const profile =
+        state.kind === 'empty'
+          ? undefined
+          : authorizationProfiles(
+              state.kind === 'legacy' ? state.settings : (await getUnlockedVault(state)).settings
+            )[protocol];
       return editableAuthorization(
         profile ?? {
           protocol,

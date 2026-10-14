@@ -171,6 +171,22 @@ afterEach(() => {
 });
 
 describe('extension background protocol persistence and dispatch', () => {
+  it('returns a safe empty profile for first-time import without requiring an existing vault', async () => {
+    for (const protocol of ['top', 'iop'] as const) {
+      expect(await send('credential-vault-request', 'get-authorization', { protocol })).toMatchObject({
+        ok: true,
+        data: {
+          protocol,
+          appKey: '',
+          appSecret: '',
+          accessToken: '',
+          endpoint: protocol === 'iop' ? IOP_BUSINESS_ENDPOINT : ALIBABA_GATEWAY
+        }
+      });
+    }
+    expect(state.local).toEqual({});
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it('preserves IOP through create, safe settings/status, save and unlock without leaking secrets', async () => {
     await create();
     const safe = await send('credential-vault-request', 'get-settings');

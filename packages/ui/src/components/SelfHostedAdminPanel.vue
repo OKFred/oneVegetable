@@ -25,7 +25,7 @@ type Confirmation =
 
 const { control } = useServices();
 const { t } = useUiI18n();
-const GatewayCredentialPanel = defineAsyncComponent(() => import('./GatewayCredentialPanel.vue'));
+const GatewayAuthorizationsPanel = defineAsyncComponent(() => import('./GatewayAuthorizationsPanel.vue'));
 const credentialPanel = ref<{ reload: () => Promise<void> } | null>(null);
 const mutationControl = ref<ControlRealMutationStatus | null>(null);
 const passkeys = ref<ControlPasskeyCredential[]>([]);
@@ -168,11 +168,11 @@ function userError(cause: unknown, fallback: string): Error {
     <ErrorNotice v-if="error" :error="error" :fallback="t('admin.selfHosted.errors.panel')" />
 
     <div class="grid gap-5 xl:grid-cols-3">
-      <GatewayCredentialPanel ref="credentialPanel">
-        <Button size="sm" @click="acquisitionOpen = true"
+      <GatewayAuthorizationsPanel ref="credentialPanel" v-slot="{ protocol }">
+        <Button v-if="protocol !== 'iop'" variant="outline" size="sm" @click="acquisitionOpen = true"
           ><Sparkles class="size-4" />{{ t('admin.selfHosted.connect') }}</Button
         >
-      </GatewayCredentialPanel>
+      </GatewayAuthorizationsPanel>
 
       <Card class="p-5">
         <div class="flex items-center justify-between gap-3">
