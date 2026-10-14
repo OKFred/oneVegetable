@@ -20,6 +20,12 @@ TOP 仍是默认协议，不自动替换已有本地、Node、Cloudflare 或插�
 
 本迭代自动测试覆盖双位置存储、AAD 隔离、独立续期、配置确认、上下文固定及失败不跨协议重发；真实只读与 UI 验收须分别记录，不将测试回放当成平台验收。
 
+2026-10-14 双授权只读抽样：隔离内存数据库导入两份测试授权后，IOP 商品列表、图片分组、指定分组图片及 TOP 全部图片四项均通过；没有 Token 刷新、业务写入或当前配置替换。第一次商品查询被验收工具自身的端点白名单拦住，修正为文档中的 `/alibaba/icbu/product/list` 后通过；不将该工具错误记为平台故障。脱敏回执保存在忽略目录 `artifacts/dual-alibaba-read-validation/`。
+
+独立插件同时支持显式 TOP/IOP 续期：仅操作选中的授权，发送前保存不含 Token 的意图；续期结果不明时禁用该授权的再次刷新并要求重新授权，另一份授权不受影响。真实 Token 续期本轮未执行，使用离线 Token 回放验证；不把回放当成平台续期验收。
+
+Dual authorization preserves independent encrypted TOP and IOP profiles. Automatic per-operation routing requires explicit user confirmation that both belong to the same merchant; this is not platform identity verification. Verified supported operations prefer IOP, while all/ungrouped photo queries and unmapped capabilities retain TOP. Replacement invalidates confirmation; ordinary token renewal preserves task identity. Failed calls are never retried through the other protocol. Four isolated live read cases passed on 2026-10-14; no active credentials, tokens or business records were changed.
+
 | 协议            | 业务网关                                                      | 认证与签名                                                        | 续期                                  |
 | --------------- | ------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------- |
 | TOP（历史默认） | `https://eco.taobao.com/router/rest`，部分既有操作使用旧 sync | `method`、`session`、既有 TOP 签名；保持原行为                    | 旧 OAuth Token 端点                   |

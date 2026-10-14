@@ -91,11 +91,12 @@ describe('extension operation policy', () => {
     expect(optionsImports).not.toContain('../../lib/operation-policy');
     expect(optionsImports).not.toContain('@one-vegetable/core');
     const backgroundImports = runtimeImports('../entrypoints/background.ts');
-    expect(backgroundImports).not.toContain('../lib/alibaba-authorizations');
-    expect(backgroundImports).not.toContain('../lib/authorization-refresh');
+    expect(backgroundImports).toContain('../lib/alibaba-authorizations');
+    expect(backgroundImports).toContain('../lib/authorization-refresh');
     const backgroundSource = readFileSync(new URL('../entrypoints/background.ts', import.meta.url), 'utf8');
-    expect(backgroundSource).toContain("import('../lib/alibaba-authorizations')");
-    expect(backgroundSource).toContain("import('../lib/authorization-refresh')");
+    // Chrome MV3 workers require static ESM imports, even for optional authorization tools.
+    expect(backgroundSource).not.toContain("import('../lib/alibaba-authorizations')");
+    expect(backgroundSource).not.toContain("import('../lib/authorization-refresh')");
     expect(runtimeImports('../lib/operation-availability.ts')).toEqual([
       '@one-vegetable/core/runtime',
       '@one-vegetable/core/alibaba-iop-business',
