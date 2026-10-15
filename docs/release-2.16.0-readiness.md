@@ -47,7 +47,24 @@ Lint 为 0 error，保留 30 项既有 warning；未提高测试超时或放宽�
 
 包内容与经过测试的固定构建逐文件一致，权限及外部连接声明与正式 2.15.1 相同；没有环境文件、授权包、浏览器 Profile 或 Mock 文件目录。扫描本机当前两份 AppKey/AppSecret/Token、网站测试账密及环境敏感值，没有发现混入。审计回执为 `artifacts/release-2.16.0-package-audit.json`。候选包不等于正式 GitHub Release 资产；正式发布后仍需下载不可变资产，独立核对其 SHA-256、manifest 和权限。
 
-模板变量及图片迁移已有离线 Web/MV3、隔离 Worker 与契约测试；新携图流程的实际 Alibaba/RustFS 写入必须单独记录，不能用真实授权只读、此前 JSON-only S3 验收或 Mock 回读代替。未获本轮受控写入确认时保留此项边界，不修改远端数据。
+模板变量及图片迁移已有离线 Web/MV3、隔离 Worker 与契约测试；不能用真实授权只读、此前 JSON-only S3 验收或 Mock 回读代替真实携图验收。
+
+## 2026-10-15 受控携图验收补充
+
+用户已批准少量真实图片/模板/S3 验收，以及通过后推进主线和 GitHub Release。测试使用独立 SQLite、浏览器上下文和 RustFS `dev` 下的 2.16.0 唯一前缀，不更换现有工作台凭据，不修改商品、桶权限或删除远端数据。
+
+- **通过：真实 ZIP 导出。** 从测试账号读取一张现有图片，在实际模板页面导出 ZIP；校验图片字节、内容哈希和相对路径，包中不保留原图片 URL/fileId。
+- **通过：RustFS 携图备份与读取。** 实际页面将一张图片及清单写入独立前缀，逐对象 GET 确认，清单最后写入；共享 S3 读取器再次校验图片 SHA-256 和模板内容。该次测试没有 Alibaba 写请求。
+- **未通过：Alibaba 携图导入。** 仅创建一次独立测试分组，并仅发送一次图片上传；BFF 记录成功响应，但随后公开 API 和官网均显示目标分组为空。持久任务未通过目标分组/fileId 核对，因此模板没有被保存为迁移成功，也没有自动重复上传、移动或删除图片。平台去重、归组行为或查询延迟尚不能据此确定根因。
+- 分页读取已确认不同页面确实返回不同素材；没有通过扫描整店或仅凭同名素材来判定上传成功。官网显示该账号存在大量图片，不扩大扫描范围。
+- 上传请求及失败阶段的脱敏记录保存在 `artifacts/template-materials-real/dcdecaf5-01cf-478a-9717-79834508dcae/report.json`；独立 S3 成功记录为同目录下 `ae7929c2-d2d8-44f7-989d-e11365de3fbc/report.json`。这些目录均被 Git 忽略。
+- 远端测试分组和两个 S3 备份对象保留；没有改商品、重新上传失败项或重放旧任务。S3 成功不代表整个 Alibaba 导入链路已通过。
+
+**发布决策：** 在用户决定继续整改，或明确接受上述已知限制之前，不将携图导入标为真实验收通过，不创建正式 Tag/Release。原候选代码 CI 成功仍有效，但不能替代这项真实接口结果。
+
+### Live acceptance summary
+
+Real ZIP export and image-inclusive RustFS backup/readback passed. One Alibaba image upload was acknowledged, but neither the public gallery query nor the official UI found the image in the intended test group. The application correctly refused to save an unverified imported template and did not retry the mutation. The exact provider cause remains unconfirmed. Formal publication is on hold pending remediation or explicit acceptance of this known limitation; no product mutation or remote deletion was performed.
 
 ## 发布操作边界
 
