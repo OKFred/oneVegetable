@@ -74,13 +74,15 @@ Lint 为 0 error，保留 30 项既有 warning；未提高测试超时或放宽�
 
 成功回执保存在 `artifacts/template-materials-real/3db3a5ce-58c6-4710-ae08-3ecf6f0e17de/`，包含 `report.json`、逐次脱敏上传回执和关键截图。独立对照实验、失败回执及授权包均保留在本机忽略目录，不进入仓库或发布包。
 
-正式独立 MV3 的真实携图导入已进入用户手势触发的精确图片域名授权阶段；该项仍待用户允许后完成上传、哈希回读和后台重启核对，暂不标为真实通过。无凭据泄露的预览现场位于 `artifacts/template-materials-extension-real/e822af08-f7b5-448e-8cd4-7a73cc49b875/`。Web/BFF 成功不替代这一端的真实验收。
+正式独立 MV3 的真实 ZIP 携图导入补验已通过三项检查：最终确认中的精确图片域名权限检查、真实上传后的确切 fileId/实际分组/SHA-256 回读；同包再次导入复用同一任务和 requestId；停止 service worker 并刷新后模板与回执仍保留。总计仅一次图片上传请求，第二次导入只核对、不重传，没有商品修改、分组移动或远端删除。该项使用独立 Profile，不改变用户当前插件或工作台配置；它不等于插件 S3 携图流程也已单独真实验收。
+
+本次成功报告、脱敏回执和截图在 `artifacts/template-materials-extension-real/64fe4c40-c89d-46d9-aa9e-c8d34a2aa80c/`。此前权限等待超时的记录保留在同级 `e822af08-f7b5-448e-8cd4-7a73cc49b875/`，该次没有任务或上传回执，不补造为成功。成功验收使用同一固定构建，未改源码或重新打包，候选 ZIP 哈希不变。
 
 **发布决策：** 用户已明确选择“暂停正式发布，先处理携图导入”。修复及验收不会自动撤销该决定；本轮仅提交、推送开发分支和准备候选包，不合并主线、不创建正式 Tag/Release、不部署或提交商店。
 
 ### Live acceptance summary
 
-A controlled original-image test confirmed that Alibaba deduplicates identical uploads, returning the existing file ID without moving its gallery group. Strict verification remains the default. Explicit reuse verifies the exact ID and image hash, records the actual group and reconciles the same durable receipt without another upload. Real Web/Node ZIP and image-inclusive RustFS import/export passed; the original failure remains recorded. Formal publication is still paused at the user's request. No product/inventory mutation or remote deletion was performed.
+A controlled original-image test confirmed that Alibaba deduplicates identical uploads, returning the existing file ID without moving its gallery group. Strict verification remains the default. Explicit reuse verifies the exact ID and image hash, records the actual group and reconciles the same durable receipt without another upload. Real Web/Node ZIP and image-inclusive RustFS import/export passed. The formal standalone MV3 ZIP import also passed exact-host permission checks, hash readback, repeat-import receipt reuse and worker restart; this does not claim a separate real extension S3 image-inclusive acceptance. Original failures remain recorded. Formal publication is still paused at the user's request. No product/inventory mutation or remote deletion was performed.
 
 ## 发布操作边界
 
