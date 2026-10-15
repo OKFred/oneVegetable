@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   IopAuthorizationController,
   IOP_VAULT_KEY,
@@ -6,7 +6,8 @@ import {
   failure,
   parseCallback
 } from '../lib/iop-authorization';
-import type { AuthorizationStorage } from '../lib/iop-authorization';
+import type { AuthorizationStorage, AuthorizationTokenClient } from '../lib/iop-authorization';
+import { TOP_VAULT_KEY, TOP_RECEIPT_KEY } from '../lib/iop-authorization-storage';
 import credential from '../../../mock/data/node-gateway-credentials.json';
 import {
   parseAlibabaOpenApiCredentialBundle,
@@ -24,7 +25,11 @@ const bundle = parseAlibabaOpenApiCredentialBundle({
   }
 });
 const token = parseAlibabaTokenResponse(tokens.success);
-function setup() {
+const controllers: IopAuthorizationController[] = [];
+afterEach(() => {
+  for (const controller of controllers.splice(0)) controller.cancel();
+});
+function setup(protocol: 'top' | 'iop' = 'iop') {
   const data: Record<string, unknown> = {};
   const write = vi.fn((values: Record<string, unknown>) => {
     Object.assign(data, values);
@@ -39,9 +44,13 @@ function setup() {
     }
   };
   let now = Date.parse(bundle.capturedAtUtc);
-  const client = { request: vi.fn(() => Promise.resolve(token)) };
+  const client = { request: vi.fn<AuthorizationTokenClient['request']>().mockResolvedValue(token) };
   const open = vi.fn((_url: string) => Promise.resolve(42));
-  const create = () => new IopAuthorizationController(storage, client, open, () => now);
+  const create = () => {
+    const controller = new IopAuthorizationController(storage, client, open, () => now, protocol);
+    controllers.push(controller);
+    return controller;
+  };
   return {
     data,
     storage,
@@ -137,4 +146,240 @@ describe('independent IOP authorization', () => {
   ])('rejects unsafe callbacks %s', (url) => {
     expect(() => parseCallback(url)).toThrow();
   });
+});
+
+describe('standalone TOP/IOP protocol isolation and reauthorization', () => {
+  it.each([
+    ['origin', null],
+    ['path', null],
+    ['duplicate-state', 'OAUTH_STATE_MISMATCH'],
+    ['duplicate-code', 'OAUTH_CODE_MISSING'],
+    ['missing-code', 'OAUTH_CODE_MISSING'],
+    ['provider-error', 'OAUTH_PROVIDER_ERROR']
+  ] as const)('never exchanges a code for a callback with invalid %s', async (kind, errorCode) => {
+    const test = setup('top');
+    await test.controller.start({ ...bundle.application, passphrase: '123456' });
+    const auth = new URL(test.open.mock.calls[0]?.[0] ?? '');
+    const callback = new URL(bundle.application.callbackUrl);
+    callback.search = new URLSearchParams({
+      state: auth.searchParams.get('state') ?? '',
+      code: 'callback-security-test'
+    }).toString();
+    if (kind === 'origin') callback.hostname = 'other.example.com';
+    if (kind === 'path') callback.pathname += '/unexpected';
+    if (kind === 'duplicate-state')
+      callback.searchParams.append('state', auth.searchParams.get('state') ?? '');
+    if (kind === 'duplicate-code') callback.searchParams.append('code', 'another-code');
+    if (kind === 'missing-code') callback.searchParams.delete('code');
+    if (kind === 'provider-error') callback.searchParams.set('error', 'access_denied');
+    const result = test.controller.acceptCallback(callback.href, 42);
+    if (errorCode) await expect(result).rejects.toThrow(errorCode);
+    else expect(await result).toBe(false);
+    expect(test.client.request).not.toHaveBeenCalled();
+    expect(test.data[TOP_RECEIPT_KEY]).toBeUndefined();
+  });
+
+  it('does not send a TOP authorization code when the exchange intent cannot be persisted', async () => {
+    const test = setup('top');
+    await test.controller.start({ ...bundle.application, passphrase: '123456' });
+    const auth = new URL(test.open.mock.calls[0]?.[0] ?? '');
+    const callback = new URL(bundle.application.callbackUrl);
+    callback.search = new URLSearchParams({
+      state: auth.searchParams.get('state') ?? '',
+      code: 'never-sent-code'
+    }).toString();
+    test.write.mockRejectedValueOnce(new Error('quota'));
+    await expect(test.controller.acceptCallback(callback.href, 42)).rejects.toThrow('AUTH_ACTION_FAILED');
+    expect(test.client.request).not.toHaveBeenCalled();
+    expect(await test.controller.acceptCallback(callback.href, 42)).toBe(false);
+    expect(JSON.stringify(test.data)).not.toContain('never-sent-code');
+  });
+
+  it('keeps TOP OAuth, vault and receipts separate from the default IOP controller', async () => {
+    const test = setup('top');
+    const iop = { ciphertext: 'other-protocol-record' };
+    test.data[IOP_VAULT_KEY] = iop;
+    await test.controller.start({ ...bundle.application, passphrase: '123456' });
+    const url = new URL(test.open.mock.calls[0]?.[0] ?? '');
+    expect(url.origin + url.pathname).toBe('https://oauth.alibaba.com/authorize');
+    expect(url.searchParams.get('view')).toBe('web');
+    expect(url.searchParams.get('sp')).toBe('ICBU');
+    expect(url.searchParams.get('client_id')).toBe(bundle.application.appKey);
+    expect(url.searchParams.get('redirect_uri')).toBe(bundle.application.callbackUrl);
+    const callback = new URL(bundle.application.callbackUrl);
+    callback.search = new URLSearchParams({
+      state: url.searchParams.get('state') ?? '',
+      code: 'top-code'
+    }).toString();
+    test.client.request.mockImplementationOnce((path, input) => {
+      expect(path).toBe('/auth/token/create');
+      expect(input).toMatchObject({ value: 'top-code', redirectUri: bundle.application.callbackUrl });
+      expect(test.data[TOP_RECEIPT_KEY]).toMatchObject({ status: 'exchanging' });
+      expect(test.data[IOP_RECEIPT_KEY]).toBeUndefined();
+      return Promise.resolve(token);
+    });
+    expect(await test.controller.acceptCallback(callback.href, 42)).toBe(true);
+    expect((await test.controller.export()).protocol).toBe('top');
+    expect(test.data[TOP_VAULT_KEY]).toBeDefined();
+    expect(test.data[TOP_RECEIPT_KEY]).toBeNull();
+    expect(test.data[IOP_VAULT_KEY]).toBe(iop);
+    await test.controller.clear();
+    expect(test.data[TOP_VAULT_KEY]).toBeUndefined();
+    expect(test.data[IOP_VAULT_KEY]).toBe(iop);
+  });
+
+  it.each(['top', 'iop'] as const)(
+    'rejects the other protocol import without replacing %s data',
+    async (protocol) => {
+      const test = setup(protocol);
+      await test.controller.import({ ...bundle, protocol }, '123456');
+      const before = structuredClone(test.data);
+      await expect(
+        test.controller.import({ ...bundle, protocol: protocol === 'top' ? 'iop' : 'top' }, '123456')
+      ).rejects.toThrow(protocol === 'top' ? 'TOP_REQUIRED' : 'IOP_REQUIRED');
+      expect(test.data).toEqual(before);
+      expect((await test.controller.export()).protocol).toBe(protocol);
+      expect(test.client.request).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['top', 'iop'] as const)(
+    'reauthorizes %s with its existing key and no replacement passphrase',
+    async (protocol) => {
+      const test = setup(protocol);
+      const vaultKey = protocol === 'top' ? TOP_VAULT_KEY : IOP_VAULT_KEY;
+      await test.controller.import({ ...bundle, protocol }, '123456');
+      const original = test.data[vaultKey] as { salt: string; iv: string };
+      expect((await test.controller.status()).canReauthorize).toBe(true);
+      await test.controller.reauthorize();
+      expect((await test.controller.status()).canReauthorize).toBe(false);
+      expect(test.data[vaultKey]).toBe(original);
+      expect(test.client.request).not.toHaveBeenCalled();
+      const url = new URL(test.open.mock.calls[0]?.[0] ?? '');
+      const callback = new URL(bundle.application.callbackUrl);
+      callback.search = new URLSearchParams({
+        state: url.searchParams.get('state') ?? '',
+        code: 'new-grant-code'
+      }).toString();
+      await test.controller.acceptCallback(callback.href, 42);
+      expect(test.data[vaultKey]).toMatchObject({ salt: original.salt });
+      expect((test.data[vaultKey] as { iv: string }).iv).not.toBe(original.iv);
+      expect((await test.controller.status()).canReauthorize).toBe(true);
+      const restarted = test.create();
+      expect((await restarted.status()).canReauthorize).toBe(false);
+      await expect(restarted.reauthorize()).rejects.toThrow('AUTH_VAULT_LOCKED');
+      await restarted.unlock('123456');
+      expect((await restarted.export()).oauth.accessToken).toBe(token.accessToken);
+    }
+  );
+
+  it.each(['top', 'iop'] as const)(
+    'accepts empty start passphrase only for an unlocked %s vault',
+    async (protocol) => {
+      const test = setup(protocol);
+      const input = { ...bundle.application, passphrase: '' };
+      await expect(test.controller.start(input)).rejects.toThrow();
+      expect(test.open).not.toHaveBeenCalled();
+      await test.controller.import({ ...bundle, protocol }, '123456');
+      const vaultKey = protocol === 'top' ? TOP_VAULT_KEY : IOP_VAULT_KEY;
+      const original = test.data[vaultKey] as { salt: string };
+      await test.controller.start(input);
+      const url = new URL(test.open.mock.calls[0]?.[0] ?? '');
+      const callback = new URL(bundle.application.callbackUrl);
+      callback.search = new URLSearchParams({
+        state: url.searchParams.get('state') ?? '',
+        code: 'reused-key-code'
+      }).toString();
+      await test.controller.acceptCallback(callback.href, 42);
+      expect(test.data[vaultKey]).toMatchObject({ salt: original.salt });
+      test.controller.lock();
+      expect((await test.controller.status()).canReauthorize).toBe(false);
+      await expect(test.controller.start(input)).rejects.toThrow();
+      await test.controller.unlock('123456');
+      expect((await test.controller.export()).protocol).toBe(protocol);
+      expect(test.open).toHaveBeenCalledOnce();
+    }
+  );
+
+  it.each(['top', 'iop'] as const)(
+    'retains an unknown %s refresh receipt until a new OAuth grant is saved',
+    async (protocol) => {
+      const test = setup(protocol);
+      const receiptKey = protocol === 'top' ? TOP_RECEIPT_KEY : IOP_RECEIPT_KEY;
+      const vaultKey = protocol === 'top' ? TOP_VAULT_KEY : IOP_VAULT_KEY;
+      await test.controller.import({ ...bundle, protocol }, '123456');
+      const original = test.data[vaultKey];
+      test.client.request.mockRejectedValueOnce(failure('NETWORK_TIMEOUT'));
+      await expect(test.controller.refresh()).rejects.toThrow('NETWORK_TIMEOUT');
+      const receipt = test.data[receiptKey];
+      expect(await test.controller.status()).toMatchObject({
+        state: 'unknown',
+        canReauthorize: true,
+        canRefresh: false
+      });
+      await expect(test.controller.refresh()).rejects.toThrow('AUTH_REFRESH_RESULT_UNKNOWN');
+      await test.controller.reauthorize();
+      expect(test.data[receiptKey]).toBe(receipt);
+      expect(test.data[vaultKey]).toBe(original);
+      test.controller.cancel();
+      expect(test.data[receiptKey]).toBe(receipt);
+      await test.controller.reauthorize();
+      const url = new URL(test.open.mock.calls[1]?.[0] ?? '');
+      const callback = new URL(bundle.application.callbackUrl);
+      callback.search = new URLSearchParams({
+        state: url.searchParams.get('state') ?? '',
+        code: 'replacement-grant-code'
+      }).toString();
+      await test.controller.acceptCallback(callback.href, 42);
+      expect(test.client.request.mock.calls.map(([path]) => path)).toEqual([
+        '/auth/token/refresh',
+        '/auth/token/create'
+      ]);
+      expect(test.data[receiptKey]).toBeNull();
+      expect((await test.controller.status()).state).toBe('ready');
+    }
+  );
+
+  it('clears a definitive TOP rejection but blocks a second attempt after an unknown exchange', async () => {
+    const test = setup('top');
+    await test.controller.import({ ...bundle, protocol: 'top' }, '123456');
+    test.client.request.mockRejectedValueOnce(failure('TOP_TOKEN_REJECTED'));
+    await expect(test.controller.refresh()).rejects.toThrow('TOP_TOKEN_REJECTED');
+    expect(test.data[TOP_RECEIPT_KEY]).toBeUndefined();
+    expect((await test.controller.export()).oauth.accessToken).toBe(bundle.oauth.accessToken);
+    test.client.request.mockRejectedValueOnce(failure('TOP_TOKEN_RESULT_UNKNOWN'));
+    await expect(test.controller.refresh()).rejects.toThrow('TOP_TOKEN_RESULT_UNKNOWN');
+    await expect(test.controller.refresh()).rejects.toThrow('AUTH_REFRESH_RESULT_UNKNOWN');
+    expect(test.data[TOP_RECEIPT_KEY]).toBeDefined();
+    expect(test.client.request).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['top', 'iop'] as const)(
+    'does not lose an earlier unknown %s refresh when a fresh OAuth exchange is rejected',
+    async (protocol) => {
+      const test = setup(protocol);
+      const receiptKey = protocol === 'top' ? TOP_RECEIPT_KEY : IOP_RECEIPT_KEY;
+      await test.controller.import({ ...bundle, protocol }, '123456');
+      test.client.request.mockRejectedValueOnce(failure('NETWORK_TIMEOUT'));
+      await expect(test.controller.refresh()).rejects.toThrow('NETWORK_TIMEOUT');
+      await test.controller.reauthorize();
+      const url = new URL(test.open.mock.calls[0]?.[0] ?? '');
+      const callback = new URL(bundle.application.callbackUrl);
+      callback.search = new URLSearchParams({
+        state: url.searchParams.get('state') ?? '',
+        code: 'rejected-new-grant-code'
+      }).toString();
+      const rejection = protocol === 'top' ? 'TOP_TOKEN_REJECTED' : 'IOP_TOKEN_REJECTED';
+      test.client.request.mockRejectedValueOnce(failure(rejection));
+      await expect(test.controller.acceptCallback(callback.href, 42)).rejects.toThrow(rejection);
+      expect(test.data[receiptKey]).toBeDefined();
+      expect(await test.controller.status()).toMatchObject({ state: 'unknown', canRefresh: false });
+      await expect(test.controller.export()).rejects.toThrow('AUTH_REFRESH_RESULT_UNKNOWN');
+      await expect(test.controller.refresh()).rejects.toThrow('AUTH_REFRESH_RESULT_UNKNOWN');
+      expect(test.client.request.mock.calls.map(([path]) => path)).toEqual([
+        '/auth/token/refresh',
+        '/auth/token/create'
+      ]);
+    }
+  );
 });
