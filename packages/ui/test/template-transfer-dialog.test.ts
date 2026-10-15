@@ -14,6 +14,7 @@ import { templateMaterials as materialZh } from '../src/i18n/messages/zh-CN/temp
 import { templateMaterials as materialEn } from '../src/i18n/messages/en-US/templateMaterials';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 import { GalleryTaskError } from '@one-vegetable/core/gallery-transfer-task';
+import { splitUserVisibleErrorMessages } from '@one-vegetable/core/errors';
 import TemplateTransferDialog from '../src/components/TemplateTransferDialog.vue';
 import { provideServices } from '../src/lib/services';
 import { provideListIdentityScope } from '../src/lib/list-identity-scope';
@@ -641,7 +642,8 @@ describe('template material UI without provider writes', () => {
     await button(confirmLabel).trigger('click');
     await flushPromises();
     const messages = locale === 'zh-CN' ? materialZh : materialEn;
-    expect(body.text()).toContain(messages.codes.GALLERY_TASK_BUSY);
+    for (const message of splitUserVisibleErrorMessages(messages.codes.GALLERY_TASK_BUSY))
+      expect(body.text()).toContain(message);
     expect(body.text()).not.toContain(messages.unknownImport);
     expect(button(importLabel).attributes('disabled')).toBeUndefined();
     expect(body.get('[data-testid=template-reuse-existing-photos]').attributes('disabled')).toBeUndefined();

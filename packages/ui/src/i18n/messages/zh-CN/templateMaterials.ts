@@ -45,12 +45,14 @@ export const templateMaterials = {
   packing: '正在打包文件 {current}/{total}',
   verifying: '正在核对文件 {current}/{total}',
   codes: {
-    GALLERY_TASK_BUSY: '另一个素材传输任务正在执行。本次未开始写入，请等待该任务结束后再次确认。',
-    GALLERY_TASK_STORAGE: '无法保存本机传输记录，本次操作已停止。请检查浏览器存储空间后重试。',
+    GALLERY_TASK_BUSY:
+      '有正在执行或需要恢复的素材传输任务。本次未开始写入，请等待任务结束，或先到任务中心核对/恢复后再次确认。',
+    GALLERY_TASK_STORAGE:
+      '无法保存本机传输记录，已停止后续调度。请检查浏览器存储，并先核对已发送的结果，勿重复上传。',
     TEMPLATE_MATERIAL_PERMISSION_REQUIRED:
       '未获得图片校验所需的域名权限，未开始上传。请再次确认并允许所列图片域名，或取消复用已有图片。',
     TEMPLATE_MATERIAL_EXISTING_OTHER_GROUP:
-      '平台返回了其他分组中的已有图片，未重复上传或移动。请关闭并重新导入同一包，选择同一目标分组，勾选“复用已存在图片（保留原分组）”后只读核对；或先在官方图库调整分组。',
+      '平台返回了其他分组中的已有图片，未重复上传或移动。请关闭并重新导入同一包，选择同一目标分组，勾选“复用已存在图片（保留原分组）”后只读核对。',
     TEMPLATE_MATERIAL_INVALID: '模板素材清单无效。',
     TEMPLATE_MATERIAL_INVALID_DOCUMENT: 'ZIP 中缺少 templates.json 清单，或清单无效。',
     TEMPLATE_MATERIAL_INVALID_ZIP: 'ZIP 结构无效或不受支持。',

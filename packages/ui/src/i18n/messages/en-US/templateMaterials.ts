@@ -53,13 +53,13 @@ export const templateMaterials = {
   verifying: 'Verifying files {current}/{total}',
   codes: {
     GALLERY_TASK_BUSY:
-      'Another asset transfer is running. This attempt has not started writing. Wait for that task to stop, then confirm again.',
+      'An asset transfer is running or needs recovery. This attempt has not started writing. Wait for it to stop, or check/recover it in the task center, then confirm again.',
     GALLERY_TASK_STORAGE:
-      'Local transfer records could not be saved. This attempt was stopped. Check browser storage space, then try again.',
+      'Local transfer records could not be saved. Further scheduling was stopped. Check browser storage, then verify any sent uploads. Do not resend uncertain uploads.',
     TEMPLATE_MATERIAL_PERMISSION_REQUIRED:
       'Image verification host access was not granted. No upload started. Confirm again to allow the listed hosts, or disable existing-image reuse.',
     TEMPLATE_MATERIAL_EXISTING_OTHER_GROUP:
-      'Alibaba returned an existing image in another group. Nothing was reuploaded or moved. Reopen the same package and target group, enable existing-image reuse, and confirm a read-only check; or change its group on Alibaba first.',
+      'Alibaba returned an existing image in another group. Nothing was reuploaded or moved. Reopen the same package and target group, enable existing-image reuse, and confirm a read-only check.',
     TEMPLATE_MATERIAL_INVALID: 'The template material manifest is invalid.',
     TEMPLATE_MATERIAL_INVALID_DOCUMENT: 'The ZIP contains an invalid or missing templates.json manifest.',
     TEMPLATE_MATERIAL_INVALID_ZIP: 'The ZIP structure is invalid or unsupported.',
