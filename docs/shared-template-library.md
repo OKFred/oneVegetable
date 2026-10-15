@@ -57,7 +57,11 @@ Alibaba 可能将相同内容的上传去重，返回已有 fileId，并保留�
 
 遇到分组不符后，可关闭弹窗，重新选择**同一个包、同一个目标分组**并启用上述选项；会复用原任务及 requestId，仅核对已发送结果，不再次上传。没有 fileId 或结果仍不明的任务不能据此强制重传。插件会在最终确认点击时申请所需的精确图片域名权限，拒绝权限就不开始本次上传；未新增永久权限。
 
+恢复任务以**本次确认**的复用勾选为准，不静默沿用旧窗口的选择。若已有跨分组图片的确认回执，取消复用不会抹掉历史回执，而是提示重新确认并停止后续调度。另一窗口正在执行的任务不允许修改复用策略，需等待该任务停止后重新预览；任务正忙和存储故障分别提示。
+
 **Existing-image reuse:** Alibaba can return an existing file ID without moving the image into the requested group. Strict group verification remains the default. Explicitly enable reuse to verify the exact returned ID, byte length and SHA-256 while keeping its original group. Reopening the same package and target reuses the existing durable receipt rather than uploading again. Lookup is bounded to the first 100 gallery images; absence or ambiguity never proves success.
+
+Resuming uses the current confirmation, not an earlier window's checkbox. Confirmed cross-group receipts are never erased to revoke consent, and another window cannot change a running task's reuse policy. Busy-task errors remain distinct from storage failures.
 
 S3 勾选“备份包含图片文件”后，图片和清单分别保存到独立批次前缀，**不上传一个大 ZIP，也不放宽 S3 单对象 5 MiB 限制**。逐个 PUT 后精确 GET 核对，全部图片确认后才写 `templates.json`。结果不明的当前备份只允许读取核对，不重复 PUT；关闭/刷新后不自动续传，保留前缀供人工核查。导入先读清单并校验素材，再按同一图库流程上传；配置或身份变化停止执行，不自动换绑。
 

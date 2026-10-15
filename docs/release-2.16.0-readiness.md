@@ -30,22 +30,22 @@ TOP/IOP 两份授权的两个商品样本匹配，但这不是平台身份认证
 
 第二轮发现新增版本历史使 Web i18n 分块达到 500,441 字节，超过原有 500,000 字节门槛。将完整版本历史独立为懒加载页面使用的分块后降到 447,716 字节；没有删除历史记录、缩减双语内容或放宽预算。修复后的完整检查成功，之前的失败日志保留。
 
-| 检查                     | 结果                                                                                   | 忽略目录中的本机日志                                                                  |
-| ------------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| 完整 `pnpm check`        | 修复后 313 个文件 / 2,516 项单测；格式、类型、i18n、契约及生成漂移、三端构建和合规通过 | `artifacts/template-dedup-full-check-accepted.log`                                    |
-| 隔离 Worker / D1         | 修复后 9 个文件 / 24 项                                                                | `artifacts/template-dedup-worker.log`                                                 |
-| Web / 正式 MV3 E2E       | 修复后 108 / 108                                                                       | `artifacts/template-dedup-web-mv3.log`                                                |
-| 静态授权与 TOP / IOP MV3 | 修复后固定构建 9 / 9                                                                   | `artifacts/template-dedup-authorization-fixed.log`                                    |
-| Node 凭据与双语交互      | 修复后 4 / 4                                                                           | `artifacts/template-dedup-node-credentials-fixed.log`                                 |
-| BFF / D1 回放            | 修复后 2 / 2                                                                           | `artifacts/template-dedup-bff-replay.log`                                             |
-| 2.15.1 → 2.16.0 升级     | 修复后 20 项；另补 2.5.0/2.6.0 共 37 项                                                | `artifacts/template-dedup-upgrade-2.15.1.log`、`artifacts/template-dedup-upgrade.log` |
-| Cloudflare 生产模式构建  | 类型、隔离测试、同源 Web 及 Worker 干跑通过；不含 localhost API 地址，未部署           | `artifacts/release-2.16.0-cloudflare-build.log`                                       |
+| 检查                     | 结果                                                                                       | 忽略目录中的本机日志                                                             |
+| ------------------------ | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| 完整 `pnpm check`        | 恢复补丁后 313 个文件 / 2,527 项单测；格式、类型、i18n、契约及生成漂移、三端构建和合规通过 | `artifacts/template-consent-final-check.log`                                     |
+| 隔离 Worker / D1         | 修复后 9 个文件 / 24 项                                                                    | `artifacts/template-dedup-worker.log`                                            |
+| Web / 正式 MV3 E2E       | 前一携图候选 108 / 108；恢复补丁相关流程 7 / 7                                             | `artifacts/template-dedup-web-mv3.log`、`artifacts/template-consent-e2e.log`     |
+| 静态授权与 TOP / IOP MV3 | 修复后固定构建 9 / 9                                                                       | `artifacts/template-dedup-authorization-fixed.log`                               |
+| Node 凭据与双语交互      | 修复后 4 / 4                                                                               | `artifacts/template-dedup-node-credentials-fixed.log`                            |
+| BFF / D1 回放            | 修复后 2 / 2                                                                               | `artifacts/template-dedup-bff-replay.log`                                        |
+| 2.15.1 → 2.16.0 升级     | 恢复补丁后 20 项；此前另补 2.5.0/2.6.0 共 37 项                                            | `artifacts/template-consent-upgrade.log`、`artifacts/template-dedup-upgrade.log` |
+| Cloudflare 生产模式构建  | 类型、隔离测试、同源 Web 及 Worker 干跑通过；不含 localhost API 地址，未部署               | `artifacts/release-2.16.0-cloudflare-build.log`                                  |
 
 Lint 为 0 error，保留 30 项既有 warning；未提高测试超时或放宽权限、包体门禁。中英文配置选择提示已在 Node E2E 中覆盖，不会因选择授权而保存、测试或刷新凭据。
 
 携图修复补验时，首次授权回归与构建同时运行，遇到构建文件被替换的 `ENOENT`；设置页首次回归亦遇到按钮被卸载后超时。保留两份失败日志，完成构建后对固定产物重新运行，两套回归分别 9/9、4/4 通过，没有忽略错误或提高超时。
 
-携图修复后的固定构建候选 `artifacts/one-vegetable-v2.16.0-chrome-mv3.zip`：213 个文件，ZIP 1,232,971 字节，解包 4,234,511 字节，分别低于 2,000,000 / 5,470,000 字节门槛。SHA-256：`6aeea330006e9c92a499dcb56853e634e0e74fbadfb47e6db67620951cf21056`。先前候选包的旧哈希不适用于此修复包。
+恢复补丁后的固定构建候选 `artifacts/one-vegetable-v2.16.0-chrome-mv3.zip`：213 个文件，ZIP 1,233,465 字节，解包 4,235,722 字节，分别低于 2,000,000 / 5,470,000 字节门槛。SHA-256：`5ca571f7bf0e95e5624248c5a984e1e56dcc6fd0f200e7428df82f1b4d2d2964`。先前候选包的旧哈希不适用于此修复包。
 
 包内容与经过测试的固定构建逐文件一致，权限及外部连接声明与正式 2.15.1 相同；没有环境文件、授权包、浏览器 Profile 或 Mock 文件目录。扫描本机当前两份 AppKey/AppSecret/Token、网站测试账密及环境敏感值，没有发现混入。审计回执为 `artifacts/release-2.16.0-package-audit.json`。候选包不等于正式 GitHub Release 资产；正式发布后仍需下载不可变资产，独立核对其 SHA-256、manifest 和权限。
 
@@ -76,7 +76,7 @@ Lint 为 0 error，保留 30 项既有 warning；未提高测试超时或放宽�
 
 正式独立 MV3 的真实 ZIP 携图导入补验已通过三项检查：最终确认中的精确图片域名权限检查、真实上传后的确切 fileId/实际分组/SHA-256 回读；同包再次导入复用同一任务和 requestId；停止 service worker 并刷新后模板与回执仍保留。总计仅一次图片上传请求，第二次导入只核对、不重传，没有商品修改、分组移动或远端删除。该项使用独立 Profile，不改变用户当前插件或工作台配置；它不等于插件 S3 携图流程也已单独真实验收。
 
-本次成功报告、脱敏回执和截图在 `artifacts/template-materials-extension-real/64fe4c40-c89d-46d9-aa9e-c8d34a2aa80c/`。此前权限等待超时的记录保留在同级 `e822af08-f7b5-448e-8cd4-7a73cc49b875/`，该次没有任务或上传回执，不补造为成功。成功验收使用同一固定构建，未改源码或重新打包，候选 ZIP 哈希不变。
+本次成功报告、脱敏回执和截图在 `artifacts/template-materials-extension-real/64fe4c40-c89d-46d9-aa9e-c8d34a2aa80c/`。此前权限等待超时的记录保留在同级 `e822af08-f7b5-448e-8cd4-7a73cc49b875/`，该次没有任务或上传回执，不补造为成功。该次真实验收使用前一固定构建，验收期间未改源码或重新打包；后续恢复补丁的新候选及其隔离回归单独记录。
 
 **发布决策：** 用户已明确选择“暂停正式发布，先处理携图导入”。修复及验收不会自动撤销该决定；本轮仅提交、推送开发分支和准备候选包，不合并主线、不创建正式 Tag/Release、不部署或提交商店。
 
@@ -85,5 +85,15 @@ Lint 为 0 error，保留 30 项既有 warning；未提高测试超时或放宽�
 A controlled original-image test confirmed that Alibaba deduplicates identical uploads, returning the existing file ID without moving its gallery group. Strict verification remains the default. Explicit reuse verifies the exact ID and image hash, records the actual group and reconciles the same durable receipt without another upload. Real Web/Node ZIP and image-inclusive RustFS import/export passed. The formal standalone MV3 ZIP import also passed exact-host permission checks, hash readback, repeat-import receipt reuse and worker restart; this does not claim a separate real extension S3 image-inclusive acceptance. Original failures remain recorded. Formal publication is still paused at the user's request. No product/inventory mutation or remote deletion was performed.
 
 ## 发布操作边界
+
+### 恢复确认与并发收尾
+
+真实携图验收之后，进一步复查发现两个尚未发布的恢复边界：未发送任务可能沿用旧窗口勾选的复用策略；新窗口也可能在任务运行中修改该策略。新增回归先复现失败，再修复为以本次确认为准，并在 IndexedDB 更新事务内再次检查执行状态。已确认的跨分组回执不能靠取消勾选来抹除，运行中任务也不会被改写。
+
+事务回滚保留已知的“任务正忙”等策略错误，不再一律误报为存储失败；意外内部错误仍归一化，不能泄露错误正文。导入因任务正忙而尚未发送时，显示中英文说明并允许等待后重新确认；真正上传结果不明仍保持只读、禁止重发。
+
+新增 11 项恢复、并发、事务回滚及中英文交互测试，相关七个文件共 106 项定向测试通过，记录为 `artifacts/template-consent-final-targeted.log`。本轮只收紧本地确认与执行边界，没有扩大 Alibaba 权限、增加依赖或修改网关参数，也没有重复执行真实图片上传。此前真实回执仍按原候选保留，不将新补丁的隔离回归说成新的真实上传验收。
+
+最终提示文案另经 49 项组件测试及 i18n 检查通过（`artifacts/template-consent-copy-final.log`）。冻结构建后的七项 Web/MV3 浏览器流程涵盖模板 ZIP 图片替换、已确认回执复用、页面切换与手工恢复、未知结果保护、活跃窗口互斥、任务中心及独立插件本地模板。最终文案的 Web 及 Worker 另重建、预算检查和干跑通过（`artifacts/template-consent-fresh-web.log`、`artifacts/template-consent-fresh-api.log`），没有部署。更早 Cloudflare 生产模式专用构建仍按原记录保留，不冒充本轮生产部署验收。
 
 候选代码与检查说明推送后，须等待同一候选的远端 CI 成功；以当前提交的 Actions 结果为准，不以旧提交通过替代。主线合并、不可变 Tag/GitHub Release、现有网站部署及商店提交分别确认；不移动旧 Tag，不覆盖旧 Release，不自动提交商店。
