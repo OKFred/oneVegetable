@@ -27,6 +27,7 @@ export interface GalleryTaskPlanInput {
   importMapping: 'rules' | 'current';
   exportMapping: 'flat' | 'groups';
   exportPrefix: string;
+  reuseExistingPhotos?: boolean;
 }
 function item(fields: Partial<Item>): Item {
   return {
@@ -164,6 +165,7 @@ export class GalleryTransferService {
     const now = Date.now();
     const task: Task = {
       schemaVersion: 1,
+      ...(input.reuseExistingPhotos === true ? { reuseExistingPhotos: true } : {}),
       id,
       direction: input.direction,
       storage: input.storage,
