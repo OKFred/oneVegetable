@@ -3,6 +3,7 @@ import { getCookie, setCookie } from 'hono/cookie';
 import { isRequestId, normalizeRemark } from '@one-vegetable/core';
 import { authorizeAdmin, policySummary } from '../abac';
 import { AuthError, SESSION_ABSOLUTE_MILLISECONDS } from './service';
+import { PASSWORD_MAX_BYTES, validatePassword } from './password';
 import { markRequestActor } from '../observability/request-context';
 import { requestEventRetentionCutoff } from '../observability/request-events';
 import { CURRENT_SCHEMA_VERSION } from '../db/schema';
@@ -96,7 +97,7 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
       const result = await options.authService.login({
         requestId,
         username: readString(body, 'username'),
-        password: readPassword(body, 'password')
+        password: readPassword(body, 'password', 'existing')
       });
       setSessionCookies(context, options, result.sessionToken, result.session.csrfToken);
       return success(context, requestId, { user: result.user, session: result.session });
@@ -145,7 +146,7 @@ export function registerAuthRoutes(api: Hono, options: AuthRoutesOptions): void 
       await options.authService.changePassword({
         requestId,
         authenticated,
-        currentPassword: readPassword(body, 'currentPassword'),
+        currentPassword: readPassword(body, 'currentPassword', 'existing'),
         newPassword: readPassword(body, 'newPassword')
       });
       clearSessionCookies(context, options);
@@ -1112,11 +1113,18 @@ function readRemark(body: Record<string, unknown>, key: string): string | null {
   }
 }
 
-function readPassword(body: Record<string, unknown>, key: string): string {
+function readPassword(
+  body: Record<string, unknown>,
+  key: string,
+  policy: 'new' | 'existing' = 'new'
+): string {
   const password = readString(body, key);
-  const bytes = new TextEncoder().encode(password).byteLength;
-  if (bytes < 12 || bytes > 256) {
-    throw new AuthError('INVALID_PASSWORD', '密码必须为 12–256 UTF-8 字节', 400);
+  try {
+    if (policy === 'new') validatePassword(password);
+    else if (new TextEncoder().encode(password).byteLength > PASSWORD_MAX_BYTES)
+      throw new Error('密码长度超出限制');
+  } catch {
+    throw new AuthError('INVALID_PASSWORD', '密码至少需要 6 个字符，且不能超过 256 字节', 400);
   }
   return password;
 }

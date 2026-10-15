@@ -55,7 +55,7 @@ export const auth = {
     username: '工作台用户名',
     recoveryCode: '一次性恢复码',
     password: '工作台密码',
-    passwordHint: '至少 12 个字符左右，建议使用密码管理器生成'
+    passwordHint: '至少 6 个字符'
   },
   submit: {
     working: '请按浏览器提示操作…',

@@ -3,6 +3,7 @@
 import { defineComponent, h } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
+import passwords from '../../../mock/data/auth-password-policy.json';
 
 import { ALIBABA_GATEWAY } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
@@ -42,15 +43,16 @@ describe('AuthGate', () => {
     expect(inputs[0]?.attributes('data-feedback-redact')).toBe('');
     expect(inputs[1]?.attributes('type')).toBe('password');
     await inputs[0]?.setValue('admin');
-    await inputs[1]?.setValue('correct-password-value');
+    await inputs[1]?.setValue(passwords.sixCharacters);
     await wrapper.get('form').trigger('submit');
     await flushPromises();
 
-    expect(login).toHaveBeenCalledWith('admin', 'correct-password-value');
+    expect(login).toHaveBeenCalledWith('admin', passwords.sixCharacters);
     expect(wrapper.findComponent(AuthGate).emitted('authenticated')?.[0]).toEqual([session]);
     expect(wrapper.text()).not.toContain('注册账号');
     expect(wrapper.text()).not.toContain('初始化管理员');
     expect(wrapper.text()).toContain('不是 Alibaba 国际站登录账号');
+    expect(wrapper.text()).toContain('至少 6 个字符');
   });
 
   it('offers one-time administrator initialization only before the workspace is initialized', async () => {
@@ -74,14 +76,14 @@ describe('AuthGate', () => {
     const inputs = wrapper.findAll('input');
     await inputs[0]?.setValue('bootstrap-secret-that-is-long');
     await inputs[1]?.setValue('admin');
-    await inputs[2]?.setValue('correct-password-value');
+    await inputs[2]?.setValue(passwords.sixCharacters);
     await wrapper.get('form').trigger('submit');
     await flushPromises();
 
     expect(bootstrap).toHaveBeenCalledWith({
       bootstrapToken: 'bootstrap-secret-that-is-long',
       username: 'admin',
-      password: 'correct-password-value',
+      password: passwords.sixCharacters,
       remark: '首个本地管理员'
     });
   });

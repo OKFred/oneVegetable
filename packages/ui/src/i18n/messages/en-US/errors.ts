@@ -152,6 +152,7 @@ export const errors = {
     SESSION_INVALID: 'The sign-in session is invalid. Sign in again.',
     SESSION_EXPIRED: 'The sign-in session expired. Sign in again.',
     INVALID_CREDENTIALS: 'The username or password is incorrect.',
+    INVALID_PASSWORD: 'Use at least 6 characters. If the password is too long, shorten it and try again.',
     LOGIN_LOCKED: 'Too many failed sign-in attempts. Try again later.',
     USER_DISABLED: 'This user is disabled.',
     ENTITY_VERSION_CONFLICT: 'The data was updated elsewhere. Refresh and try again.',

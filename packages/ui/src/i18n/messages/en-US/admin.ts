@@ -385,7 +385,7 @@ export const admin = {
       createTitle: 'Create user',
       username: 'Username',
       initialPassword: 'Initial password',
-      passwordPlaceholder: 'Password of at least 12 bytes',
+      passwordPlaceholder: 'At least 6 characters',
       role: 'Role',
       userRole: 'Regular user (read-only)',
       adminRole: 'Administrator',

@@ -1,5 +1,5 @@
 export const PASSWORD_ITERATIONS = 600_000;
-export const PASSWORD_MIN_BYTES = 12;
+export const PASSWORD_MIN_CHARACTERS = 6;
 export const PASSWORD_MAX_BYTES = 256;
 
 export interface PasswordDigest {
@@ -9,7 +9,10 @@ export interface PasswordDigest {
 
 export async function hashPassword(password: string, salt?: Uint8Array): Promise<PasswordDigest> {
   validatePassword(password);
-  const passwordSalt = salt ?? crypto.getRandomValues(new Uint8Array(16));
+  return derivePasswordDigest(password, salt ?? crypto.getRandomValues(new Uint8Array(16)));
+}
+
+async function derivePasswordDigest(password: string, passwordSalt: Uint8Array): Promise<PasswordDigest> {
   const passwordSaltBuffer = Uint8Array.from(passwordSalt);
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, [
     'deriveBits'
@@ -24,7 +27,10 @@ export async function hashPassword(password: string, salt?: Uint8Array): Promise
 
 export async function verifyPassword(password: string, expectedHash: string, salt: string): Promise<boolean> {
   try {
-    const actual = await hashPassword(password, base64UrlToBytes(salt));
+    // Existing passwords used a byte-based minimum. Do not invalidate their hashes
+    // when new-password rules change (for example, a four-character CJK password).
+    if (!password || new TextEncoder().encode(password).byteLength > PASSWORD_MAX_BYTES) return false;
+    const actual = await derivePasswordDigest(password, base64UrlToBytes(salt));
     return timingSafeEqual(actual.hash, expectedHash);
   } catch {
     return false;
@@ -33,8 +39,8 @@ export async function verifyPassword(password: string, expectedHash: string, sal
 
 export function validatePassword(password: string): void {
   const bytes = new TextEncoder().encode(password).byteLength;
-  if (bytes < PASSWORD_MIN_BYTES || bytes > PASSWORD_MAX_BYTES) {
-    throw new Error('密码必须为 12–256 UTF-8 字节');
+  if (Array.from(password).length < PASSWORD_MIN_CHARACTERS || bytes > PASSWORD_MAX_BYTES) {
+    throw new Error('密码至少需要 6 个字符，且不能超过 256 字节');
   }
 }
 

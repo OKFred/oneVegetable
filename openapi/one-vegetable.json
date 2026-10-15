@@ -5841,7 +5841,7 @@
           "requestId": { "$ref": "#/components/schemas/RequestId" },
           "userId": { "type": "string", "format": "uuid" },
           "revision": { "type": "integer", "minimum": 1 },
-          "newPassword": { "type": "string", "minLength": 12, "maxLength": 256 }
+          "newPassword": { "type": "string", "minLength": 6, "maxLength": 256 }
         }
       },
       "AdminRequestEventListRequest": {
@@ -5868,7 +5868,7 @@
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
           "username": { "type": "string" },
-          "password": { "type": "string", "minLength": 12, "maxLength": 256 },
+          "password": { "type": "string", "minLength": 6, "maxLength": 256 },
           "role": { "$ref": "#/components/schemas/UserRole" },
           "remark": { "type": ["string", "null"], "maxLength": 500 }
         }
@@ -17125,7 +17125,7 @@
           "requestId": { "$ref": "#/components/schemas/RequestId" },
           "bootstrapToken": { "type": "string" },
           "username": { "type": "string" },
-          "password": { "type": "string", "minLength": 12, "maxLength": 256 },
+          "password": { "type": "string", "minLength": 6, "maxLength": 256 },
           "remark": { "type": ["string", "null"], "maxLength": 500 }
         }
       },
@@ -17157,7 +17157,7 @@
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
           "username": { "type": "string" },
-          "password": { "type": "string", "minLength": 12, "maxLength": 256 }
+          "password": { "type": "string", "minLength": 1, "maxLength": 256 }
         }
       },
       "AuthPasswordChangeRequest": {
@@ -17167,7 +17167,7 @@
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
           "currentPassword": { "type": "string" },
-          "newPassword": { "type": "string", "minLength": 12, "maxLength": 256 }
+          "newPassword": { "type": "string", "minLength": 6, "maxLength": 256 }
         }
       },
       "BackendMeta": {

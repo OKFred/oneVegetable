@@ -350,7 +350,7 @@ export const admin = {
       createTitle: '创建用户',
       username: '用户名',
       initialPassword: '初始密码',
-      passwordPlaceholder: '至少 12 字节密码',
+      passwordPlaceholder: '至少 6 个字符',
       role: '角色',
       userRole: '普通用户（只读）',
       adminRole: '管理员',

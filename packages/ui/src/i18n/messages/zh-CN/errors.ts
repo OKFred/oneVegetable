@@ -124,6 +124,7 @@ export const errors = {
     SESSION_INVALID: '登录会话无效，请重新登录。',
     SESSION_EXPIRED: '登录会话已过期，请重新登录。',
     INVALID_CREDENTIALS: '用户名或密码错误。',
+    INVALID_PASSWORD: '密码至少需要 6 个字符，过长时请缩短后重试。',
     LOGIN_LOCKED: '登录失败次数过多，请稍后重试。',
     USER_DISABLED: '该用户已停用。',
     ENTITY_VERSION_CONFLICT: '数据已被其他操作更新，请刷新后重试。',

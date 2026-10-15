@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { pbkdf2Sync } from 'node:crypto';
 
 import { createRequestId } from '@one-vegetable/core';
+import passwords from '../../../mock/data/auth-password-policy.json';
 
 import { createApiApp } from '../src/app';
 import { AdminService } from '../src/auth/admin-service';
@@ -58,6 +60,116 @@ function authHeaders(sessionToken: string, csrfToken?: string): Record<string, s
 }
 
 describe('authentication and ABAC routes', () => {
+  it('preserves login for legacy Unicode passwords created under the byte-based minimum', async () => {
+    const { app, authService } = fixture();
+    const previous = await bootstrap(authService);
+    const salt = Buffer.alloc(16, 4);
+    const hash = pbkdf2Sync(passwords.legacyUnicode, salt, 600_000, 32, 'sha256').toString('base64url');
+    if (!database) throw new Error('Missing isolated test database');
+    await database.executor.execute('UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?', [
+      hash,
+      salt.toString('base64url'),
+      previous.user.id
+    ]);
+    const result = await app.request('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        requestId: createRequestId(),
+        username: 'admin',
+        password: passwords.legacyUnicode
+      })
+    });
+    expect(result.status).toBe(200);
+  });
+
+  it('accepts six-character passwords when administrators create users and reset passwords', async () => {
+    const { app, authService } = fixture();
+    const administrator = await bootstrap(authService);
+    const headers = authHeaders(administrator.sessionToken, administrator.session.csrfToken);
+    const created = await app.request('/api/v1/admin/users/create', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        requestId: createRequestId(),
+        username: 'six-character-reader',
+        password: passwords.sixCharacters,
+        role: 'user'
+      })
+    });
+    expect(created.status).toBe(200);
+    const body = (await created.json()) as { data: { id: string; revision: number } };
+    const reset = await app.request('/api/v1/admin/users/password/reset', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        requestId: createRequestId(),
+        userId: body.data.id,
+        revision: body.data.revision,
+        newPassword: passwords.replacement
+      })
+    });
+    expect(reset.status).toBe(200);
+    const result = await app.request('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        requestId: createRequestId(),
+        username: 'six-character-reader',
+        password: passwords.replacement
+      })
+    });
+    expect(result.status).toBe(200);
+  });
+
+  it('accepts six-character passwords for initialization, login and password change', async () => {
+    const { app } = fixture();
+    const initialized = await app.request('/api/v1/auth/bootstrap', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        requestId: createRequestId(),
+        bootstrapToken: 'bootstrap-secret-that-is-long',
+        username: 'admin',
+        password: passwords.sixCharacters
+      })
+    });
+    expect(initialized.status).toBe(200);
+    const signedIn = await app.request('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        requestId: createRequestId(),
+        username: 'admin',
+        password: passwords.sixCharacters
+      })
+    });
+    expect(signedIn.status).toBe(200);
+    const body = (await signedIn.json()) as { data: { session: { csrfToken: string } } };
+    const sessionCookie = signedIn.headers.get('set-cookie')?.match(/ov_session=([^;]+)/u)?.[1];
+    expect(sessionCookie).toBeTruthy();
+    const changed = await app.request('/api/v1/auth/password/change', {
+      method: 'POST',
+      headers: authHeaders(sessionCookie ?? '', body.data.session.csrfToken),
+      body: JSON.stringify({
+        requestId: createRequestId(),
+        currentPassword: passwords.sixCharacters,
+        newPassword: passwords.replacement
+      })
+    });
+    expect(changed.status).toBe(200);
+    const relogin = await app.request('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        requestId: createRequestId(),
+        username: 'admin',
+        password: passwords.replacement
+      })
+    });
+    expect(relogin.status).toBe(200);
+  });
+
   it('exposes bootstrap availability without a session and closes it after initialization', async () => {
     const { app, authService } = fixture();
     const beforeRequestId = createRequestId();
@@ -135,7 +247,7 @@ describe('authentication and ABAC routes', () => {
     );
   });
 
-  it('rejects weak passwords and oversized remarks as contract errors', async () => {
+  it('rejects passwords shorter than six characters and oversized remarks as contract errors', async () => {
     const { app } = fixture();
     const weak = await app.request('/api/v1/auth/bootstrap', {
       method: 'POST',

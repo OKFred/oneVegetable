@@ -199,16 +199,16 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
   schemas.AuthBootstrapRequest = objectRequest(['requestId', 'bootstrapToken', 'username', 'password'], {
     bootstrapToken: { type: 'string' },
     username: { type: 'string' },
-    password: { type: 'string', minLength: 12, maxLength: 256 },
+    password: { type: 'string', minLength: 6, maxLength: 256 },
     remark: { type: ['string', 'null'], maxLength: 500 }
   });
   schemas.AuthLoginRequest = objectRequest(['requestId', 'username', 'password'], {
     username: { type: 'string' },
-    password: { type: 'string', minLength: 12, maxLength: 256 }
+    password: { type: 'string', minLength: 1, maxLength: 256 }
   });
   schemas.AuthPasswordChangeRequest = objectRequest(['requestId', 'currentPassword', 'newPassword'], {
     currentPassword: { type: 'string' },
-    newPassword: { type: 'string', minLength: 12, maxLength: 256 }
+    newPassword: { type: 'string', minLength: 6, maxLength: 256 }
   });
   schemas.PasskeyBootstrapOptionsRequest = objectRequest(['requestId', 'bootstrapToken', 'username'], {
     bootstrapToken: { type: 'string', minLength: 1 },
@@ -304,7 +304,7 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
   });
   schemas.AdminUserCreateRequest = objectRequest(['requestId', 'username', 'password', 'role'], {
     username: { type: 'string' },
-    password: { type: 'string', minLength: 12, maxLength: 256 },
+    password: { type: 'string', minLength: 6, maxLength: 256 },
     role: { $ref: '#/components/schemas/UserRole' },
     remark: { type: ['string', 'null'], maxLength: 500 }
   });
@@ -321,7 +321,7 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
   schemas.AdminPasswordResetRequest = objectRequest(['requestId', 'userId', 'revision'], {
     userId: { type: 'string', format: 'uuid' },
     revision: { type: 'integer', minimum: 1 },
-    newPassword: { type: 'string', minLength: 12, maxLength: 256 }
+    newPassword: { type: 'string', minLength: 6, maxLength: 256 }
   });
   schemas.AdminUserTargetRequest = objectRequest(['requestId', 'userId'], {
     userId: { type: 'string', format: 'uuid' }
