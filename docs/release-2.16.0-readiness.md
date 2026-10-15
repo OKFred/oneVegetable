@@ -78,11 +78,25 @@ Lint 为 0 error，保留 30 项既有 warning；未提高测试超时或放宽�
 
 本次成功报告、脱敏回执和截图在 `artifacts/template-materials-extension-real/64fe4c40-c89d-46d9-aa9e-c8d34a2aa80c/`。此前权限等待超时的记录保留在同级 `e822af08-f7b5-448e-8cd4-7a73cc49b875/`，该次没有任务或上传回执，不补造为成功。该次真实验收使用前一固定构建，验收期间未改源码或重新打包；后续恢复补丁的新候选及其隔离回归单独记录。
 
+### 正式插件 S3 携图补验
+
+恢复补丁后的固定候选（SHA-256 `5ca571f7bf0e95e5624248c5a984e1e56dcc6fd0f200e7428df82f1b4d2d2964`）已在独立有头 Chromium Profile 完成真实 S3 携图流程，不依赖 BFF：
+
+- 用户授予精确 RustFS 域名权限，通过设置页加密保存独立配置，真实连接和唯一测试前缀检查通过。
+- 通过实际模板弹窗导出一张无敏感测试图片及清单；图片先 PUT、精确 GET 校验，`templates.json` 最后 PUT。两个对象的大小及 SHA-256 均匹配。
+- 从该 S3 包预览、选择真实图片分组并显式同意复用；一次图库上传返回已有 fileId，核对内容哈希和实际原分组后才保存模板，不伪称图片已移入目标分组。
+- 再次导入同包复用同一持久任务和 requestId，没有新增图库上传或 S3 PUT。
+- 停止 service worker、刷新后，S3 加密配置、两个对象的精确回读、模板和传输回执均保留。另一次禁止 HTTP 网络的本地检查确认三份模板（源模板和两次导入副本）均包含正确 HTTPS 图片地址及 fileId，无遗留 `assets/` 相对地址。
+
+本次总计一次图库上传、两次 S3 PUT；没有商品/库存修改、分组创建/移动、桶策略变更或远端删除。两个测试对象保留。脱敏报告、逐次请求意图/回执和截图位于 `artifacts/template-materials-extension-s3-real/d33e2310-066c-4281-8d5a-74ab7b1b2888/`，本机忽略目录不进入发布包。
+
+验收脚本最初使用过期的本地 HTTP 勾选项文案，另一次误把叠层弹窗的可访问节点数当作确认条件。这些是测试定位问题，未改动产品流程；修正后先读取测试前缀再继续，没有盲目重复上传。原始失败记录保留，仓库 JSON-only S3 smoke 的对应勾选项定位同步修正。真实 S3 携图结果独立记录，不能以旧 JSON-only smoke 替代。
+
 **发布决策：** 用户已明确选择“暂停正式发布，先处理携图导入”。修复及验收不会自动撤销该决定；本轮仅提交、推送开发分支和准备候选包，不合并主线、不创建正式 Tag/Release、不部署或提交商店。
 
 ### Live acceptance summary
 
-A controlled original-image test confirmed that Alibaba deduplicates identical uploads, returning the existing file ID without moving its gallery group. Strict verification remains the default. Explicit reuse verifies the exact ID and image hash, records the actual group and reconciles the same durable receipt without another upload. Real Web/Node ZIP and image-inclusive RustFS import/export passed. The formal standalone MV3 ZIP import also passed exact-host permission checks, hash readback, repeat-import receipt reuse and worker restart; this does not claim a separate real extension S3 image-inclusive acceptance. Original failures remain recorded. Formal publication is still paused at the user's request. No product/inventory mutation or remote deletion was performed.
+A controlled original-image test confirmed that Alibaba deduplicates identical uploads, returning the existing file ID without moving its gallery group. Strict verification remains the default. Explicit reuse verifies the exact ID and image hash, records the actual group and reconciles the same durable receipt without another upload. Real Web/Node ZIP and image-inclusive RustFS import/export passed. The formal standalone MV3 ZIP import passed; the current recovery-patch candidate separately passed real image-inclusive S3 export/import, exact object hashes, manifest-last writes, repeat-import receipt reuse and worker restart. Saved HTML was independently checked for HTTPS URLs, the correct file ID and replaced relative paths. Original failures remain recorded. Formal publication is still paused at the user's request. No product/inventory mutation or remote deletion was performed.
 
 ## 发布操作边界
 
